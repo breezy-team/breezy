@@ -1,3 +1,11 @@
+bzr-0.0.2  NOT RELEASED YET
+
+  CHANGES:
+
+    * Default ignore list changed to .bzr.log, *~, #*#, *.tmp, *.bak,
+      *.o, *.a, *.py[oc], {arch}, CVS, .svn, _darcs.
+
+
 bzr-0.0.1  2005-03-26
 
   ENHANCEMENTS:

@@ -1,5 +1,4 @@
-#! /usr/bin/env python
-# -*- coding: UTF-8 -*-
+# (C) 2005 Canonical Development Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,8 +26,9 @@ import add
 
 BZRDIR = ".bzr"
 
-DEFAULT_IGNORE = ['.*', '*~', '#*#', '*.tmp', '*.o', '*.a', '*.py[oc]',
-                  '{arch}']
+DEFAULT_IGNORE = ['.bzr.log', '*~', '#*#', '*.tmp', '*.bak',
+                  '*.o', '*.a', '*.py[oc]',
+                  '{arch}', 'CVS', '.svn', '_darcs']
 
 IGNORE_FILENAME = ".bzrignore"
 
