@@ -443,7 +443,9 @@ def cmd_local_time_offset():
 
 
 
-def cmd_commit(message, verbose=False):
+def cmd_commit(message=None, verbose=False):
+    if not message:
+        bailout("please specify a commit message")
     Branch('.').commit(message, verbose=verbose)
 
 
