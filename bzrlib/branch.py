@@ -616,6 +616,7 @@ class Branch:
         """Write out human-readable log of commits to this branch
 
         :param utc: If true, show dates in universal time, not local time."""
+        ## TODO: Option to choose either original, utc or local timezone
         revno = 1
         precursor = None
         for p in self.revision_history():
