@@ -1,6 +1,3 @@
-#! /usr/bin/env python
-# -*- coding: UTF-8 -*-
-
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -41,6 +38,32 @@ BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 
 
 
+def find_branch_root(f=None):
+    """Find the branch root enclosing f, or pwd.
+
+    It is not necessary that f exists.
+
+    Basically we keep looking up until we find the control directory or
+    run into the root."""
+    if f is None:
+        f = os.getcwd()
+    elif hasattr(os.path, 'realpath'):
+        f = os.path.realpath(f)
+    else:
+        f = os.path.abspath(f)
+
+    orig_f = f
+
+    last_f = f
+    while True:
+        if os.path.exists(os.path.join(f, bzrlib.BZRDIR)):
+            return f
+        head, tail = os.path.split(f)
+        if head == f:
+            # reached the root, whatever that may be
+            bailout('%r is not in a branch' % orig_f)
+        f = head
+    
 
 
 ######################################################################
@@ -62,27 +85,32 @@ class Branch:
 
     :todo: mkdir() method.
     """
-    def __init__(self, base, init=False):
+    def __init__(self, base, init=False, find_root=True):
         """Create new branch object at a particular location.
 
         :param base: Base directory for the branch.
-
+        
         :param init: If True, create new control files in a previously
              unversioned directory.  If False, the branch must already
              be versioned.
 
+        :param find_root: If true and init is false, find the root of the
+             existing branch containing base.
+
         In the test suite, creation of new trees is tested using the
         `ScratchBranch` class.
         """
-        self.base = os.path.realpath(base)
         if init:
             self._make_control()
+        elif find_root:
+            self.base = find_branch_root(base)
         else:
+            self.base = os.path.realpath(base)
             if not isdir(self.controlfilename('.')):
                 bailout("not a bzr branch: %s" % quotefn(base),
                         ['use "bzr init" to initialize a new working tree',
                          'current bzr can only operate from top-of-tree'])
-            self._check_format()
+        self._check_format()
 
         self.text_store = ImmutableStore(self.controlfilename('text-store'))
         self.revision_store = ImmutableStore(self.controlfilename('revision-store'))

@@ -368,6 +368,10 @@ def cmd_diff(revision=None):
 
 
 
+def cmd_find_branch_root(filename=None):
+    print bzrlib.branch.find_branch_root(filename)
+    
+
 def cmd_log(timezone='original'):
     """Show log of this branch.
 
@@ -587,6 +591,7 @@ cmd_args = {
     'commit':                 [],
     'diff':                   [],
     'file-id':                ['filename'],
+    'find-branch-root':       ['filename?'],
     'get-file-text':          ['text_id'],
     'get-inventory':          ['inventory_id'],
     'get-revision':           ['revision_id'],
@@ -681,10 +686,12 @@ def _match_args(cmd, args):
     # TODO: Need a way to express 'cp SRC... DEST', where it matches
     # all but one.
 
+    # step through args and argform, allowing appropriate 0-many matches
     for ap in argform:
         argname = ap[:-1]
         if ap[-1] == '?':
-            assert 0
+            if args:
+                argdict[argname] = args.pop(0)
         elif ap[-1] == '*':
             assert 0
         elif ap[-1] == '+':
