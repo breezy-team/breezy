@@ -128,6 +128,12 @@ class InventoryEntry(XMLMixin):
             self.children = {}
 
 
+    def sorted_children(self):
+        l = self.children.items()
+        l.sort()
+        return l
+
+
     def copy(self):
         other = InventoryEntry(self.file_id, self.name, self.kind,
                                self.text_id, self.parent_id)
@@ -205,6 +211,7 @@ class RootEntry(InventoryEntry):
         self.children = {}
         self.kind = 'root_directory'
         self.parent_id = None
+        self.name = ''
 
     def __cmp__(self, other):
         if self is other:
@@ -318,11 +325,25 @@ class Inventory(XMLMixin):
     def directories(self, from_dir=None):
         """Return (path, entry) pairs for all directories.
         """
-        assert self.root
-        yield '', self.root
-        for path, entry in self.iter_entries():
-            if entry.kind == 'directory':
-                yield path, entry
+        def descend(parent_ie):
+            parent_name = parent_ie.name
+            if parent_name == '':
+                parent_name = '.'
+            yield parent_name, parent_ie
+
+            # directory children in sorted order
+            dn = []
+            for ie in parent_ie.children.itervalues():
+                if ie.kind == 'directory':
+                    dn.append((ie.name, ie))
+            dn.sort()
+            
+            for name, child_ie in dn:
+                for sub_name, sub_ie in descend(child_ie):
+                    yield appendpath(parent_name, sub_name), sub_ie
+
+        for name, ie in descend(self.root):
+            yield name, ie
         
 
 

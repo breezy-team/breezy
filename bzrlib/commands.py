@@ -232,6 +232,13 @@ def cmd_revision_history():
         print patchid
 
 
+def cmd_directories():
+    for name, ie in Branch('.').read_working_inventory().directories():
+        if name == '':
+            print '.'
+        else:
+            print name
+
 
 def cmd_init():
     # TODO: Check we're not already in a working directory?  At the
