@@ -73,7 +73,10 @@ Design of particular features
 
 * `Config specs <config-specs.html>`__ assemble a tree from several places.
 
-* `Conflicts <conflicts.html>`_ that can occur during merge-like operations.
+* `Conflicts <conflicts.html>`_ that can occur during merge-like
+  operations.
+
+* `Ignored files <ignore.html>`__
 
 * `Recovering from interrupted operations <interrupted.html>`__
 

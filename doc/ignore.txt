@@ -1,0 +1,22 @@
+Ignore patterns
+***************
+
+Ignore patterns need to be flexible but simple.
+
+Based on the system from rsync, which is in turn based on that of
+CVS.  
+
+First build a list by concatenating:
+
+* per-user configuration
+* per-tree configuration
+* command line options
+
+Just one ``.bzrignore`` at tree root?
+
+File can contain '+ ' and '- ' prefixes to include and exclude things,
+also '#' for comments.
+ 
+Should have a ``--ignore`` command line option that specifies ignore
+patterns; by putting a ! in this you can turn off any other includes.
+(Similar to CVS.)
