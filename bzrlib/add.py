@@ -32,20 +32,13 @@ def smart_add(file_list, verbose=False, recurse=True):
     b = bzrlib.branch.Branch(file_list[0], find_root=True)
     inv = b.read_working_inventory()
     tree = b.working_tree()
-    dirty = False
-
-    def add_one(rf, kind):
-        file_id = bzrlib.branch.gen_file_id(rf)
-        inv.add_path(rf, kind=kind, file_id=file_id)
-        bzrlib.mutter("added %r kind %r file_id={%s}" % (rf, kind, file_id))
-        dirty = True
-        if verbose:
-            bzrlib.textui.show_status('A', kind, quotefn(f))
-        
+    count = 0
 
     for f in file_list:
         rf = b.relpath(f)
         af = b.abspath(rf)
+
+        ## TODO: It's OK to add root but only in recursive mode
 
         bzrlib.mutter("smart add of %r" % f)
         
@@ -53,34 +46,31 @@ def smart_add(file_list, verbose=False, recurse=True):
             bailout("cannot add control file %r" % af)
 
         kind = bzrlib.osutils.file_kind(f)
+
+        if kind != 'file' and kind != 'directory':
+            bailout("can't add file of kind %r" % kind)
+            
         versioned = (inv.path2id(rf) != None)
 
-        ## TODO: It's OK to add '.' but only in recursive mode
-
-        if kind == 'file':
-            if versioned:
-                bzrlib.warning("%r is already versioned" % f)
-                continue
-            else:
-                add_one(rf, kind)
-        elif kind == 'directory':
-            if versioned and not recurse:
-                bzrlib.warning("%r is already versioned" % f)
-                continue
-            
-            if not versioned:
-                add_one(rf, kind)
-
-            if recurse:
-                for subf in os.listdir(af):
-                    subp = appendpath(rf, subf)
-                    if tree.is_ignored(subp):
-                        mutter("skip ignored sub-file %r" % subp)
-                    else:
-                        mutter("queue to add sub-file %r" % (subp))
-                        file_list.append(subp)
+        if versioned:
+            bzrlib.warning("%r is already versioned" % f)
         else:
-            bailout("can't smart_add file kind %r" % kind)
+            file_id = bzrlib.branch.gen_file_id(rf)
+            inv.add_path(rf, kind=kind, file_id=file_id)
+            bzrlib.mutter("added %r kind %r file_id={%s}" % (rf, kind, file_id))
+            count += 1 
+            if verbose:
+                bzrlib.textui.show_status('A', kind, quotefn(f))
 
-    if dirty:
+        if kind == 'directory' and recurse:
+            for subf in os.listdir(af):
+                subp = appendpath(rf, subf)
+                if tree.is_ignored(subp):
+                    mutter("skip ignored sub-file %r" % subp)
+                else:
+                    mutter("queue to add sub-file %r" % (subp))
+                    file_list.append(subp)
+
+    if count > 0:
+        print '* added %d' % count
         b._write_inventory(inv)

@@ -172,17 +172,11 @@ def cmd_add(file_list, verbose=False):
     Therefore simply saying 'bzr add .' will version all files that
     are currently unknown.
     """
-    if True:
-        bzrlib.add.smart_add(file_list, verbose)
-    else:
-        # old way
-        assert file_list
-        b = Branch(file_list[0], find_root=True)
-        b.add([b.relpath(f) for f in file_list], verbose=verbose)
-
+    bzrlib.add.smart_add(file_list, verbose)
     
 
 def cmd_relpath(filename):
+    """Show path of file relative to root"""
     print Branch(filename).relpath(filename)
 
 
