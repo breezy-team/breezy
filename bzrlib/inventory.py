@@ -335,21 +335,18 @@ class Inventory(XMLMixin):
 
         To add  a file to a branch ready to be committed, use Branch.add,
         which calls this."""
-        if entry.file_id in self:
+        if entry.file_id in self._byid:
             bailout("inventory already contains entry with id {%s}" % entry.file_id)
 
-        if entry.parent_id != None:
-            if entry.parent_id not in self:
-                bailout("parent_id %s of new entry not found in inventory"
-                        % entry.parent_id)
-            # TODO: parent must be a directory
-            
-        if self[entry.parent_id].children.has_key(entry.name):
-            bailout("%s is already versioned"
-                    % appendpath(self.id2path(entry.parent_id), entry.name))
+        parent = self._byid[entry.parent_id]
+        if parent.kind != 'directory':
+            bailout("attempt to add under non-directory {%s}" % parent.file_id)
+
+        if parent.children.has_key(entry.name):
+            bailout("{%s} already has child %r" % (parent.file_id, entry.name))
 
         self._byid[entry.file_id] = entry
-        self[entry.parent_id].children[entry.name] = entry
+        parent.children[entry.name] = entry
 
 
     def add_path(self, relpath, kind, file_id=None):
