@@ -1,5 +1,9 @@
 bzr-0.0.1  NOT RELEASED YET
 
+  ENHANCEMENTS:
+
+    * More information from info command.
+
   PORTABILITY:
 
     * Include a subset of ElementTree-1.2.20040618 to make

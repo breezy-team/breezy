@@ -24,6 +24,7 @@ __copyright__ = "Copyright (C) 2005 Canonical Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
 
 import os, tempfile, types, osutils
+from stat import ST_SIZE
 from StringIO import StringIO
 from trace import mutter
 
@@ -116,6 +117,15 @@ class ImmutableStore:
     def __getitem__(self, fileid):
         """Returns a file reading from a particular entry."""
         return file(self._path(fileid), 'rb')
+
+    def total_size(self):
+        """Return (count, bytes)"""
+        total = 0
+        count = 0
+        for fid in self:
+            count += 1
+            total += os.stat(self._path(fid))[ST_SIZE]
+        return count, total
 
     def delete_all(self):
         for fileid in self:

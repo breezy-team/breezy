@@ -77,12 +77,20 @@ def show_info(b):
 
     print
     print 'text store:'
-    print '  %5d file texts' % len(b.text_store)
+    c, t = b.text_store.total_size()
+    print '  %5d file texts' % c
+    print '  %5d kB' % (t/1024)
 
     print
     print 'revision store:'
-    print '  %5d revisions' % len(b.revision_store)
+    c, t = b.revision_store.total_size()
+    print '  %5d revisions' % c
+    print '  %5d kB' % (t/1024)
+
 
     print
     print 'inventory store:'
-    print '  %5d inventories' % len(b.inventory_store)
+    c, t = b.inventory_store.total_size()
+    print '  %5d inventories' % c
+    print '  %5d kB' % (t/1024)
+
