@@ -270,3 +270,11 @@ After auto-add:
 
 I wonder why it is not exactly the same?  Maybe because the python
 diff algorithm is a bit differnt to GNU diff.
+
+----
+
+2005-03-29  
+
+full check, retrieving all file texts once for the 2.4 kernel branch
+takes 10m elapsed, 1m cpu time.  lots of random IO and seeking.
+

@@ -23,11 +23,10 @@ unique ID, which is typically the SHA-1 of the content."""
 __copyright__ = "Copyright (C) 2005 Canonical Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
 
-import os, tempfile, types, osutils
+import os, tempfile, types, osutils, gzip, errno
 from stat import ST_SIZE
 from StringIO import StringIO
 from trace import mutter
-
 
 ######################################################################
 # stores
@@ -116,10 +115,20 @@ class ImmutableStore:
 
     def __getitem__(self, fileid):
         """Returns a file reading from a particular entry."""
-        return file(self._path(fileid), 'rb')
+        p = self._path(fileid)
+        try:
+            return gzip.GzipFile(p + '.gz', 'rb')
+        except IOError, e:
+            if e.errno == errno.ENOENT:
+                return file(p, 'rb')
+            else:
+                raise e
 
     def total_size(self):
-        """Return (count, bytes)"""
+        """Return (count, bytes)
+
+        This is the (compressed) size stored on disk, not the size of
+        the content."""
         total = 0
         count = 0
         for fid in self:
