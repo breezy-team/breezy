@@ -80,7 +80,7 @@ class ImmutableStore:
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._basedir)
 
-    def add(self, f, fileid):
+    def add(self, f, fileid, compressed=True):
         """Add contents of a file into the store.
 
         :param f: An open file, or file-like object."""
@@ -92,14 +92,20 @@ class ImmutableStore:
             content = f
         else:
             content = f.read()
-        if fileid not in self:
-            filename = self._path(fileid)
-            f = file(filename, 'wb')
-            f.write(content)
-            ## f.flush()
-            ## os.fsync(f.fileno())
-            f.close()
-            osutils.make_readonly(filename)
+
+        p = self._path(fileid)
+        if os.access(p, os.F_OK) or os.access(p + '.gz', os.F_OK):
+            bailout("store %r already contains id %r" % (self._basedir, fileid))
+
+        if compressed:
+            f = gzip.GzipFile(p + '.gz', 'wb')
+            os.chmod(p + '.gz', 0444)
+        else:
+            f = file(p, 'wb')
+            os.chmod(p, 0444)
+            
+        f.write(content)
+        f.close()
 
 
     def __contains__(self, fileid):
