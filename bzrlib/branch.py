@@ -162,7 +162,7 @@ class Branch:
         self.controlfile('README', 'w').write(
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.")
-        self.controlfile('branch-format', 'w').write(BZR_BRANCH_FORMAT)
+        self.controlfile('branch-format', 'wb').write(BZR_BRANCH_FORMAT)
         for d in ('text-store', 'inventory-store', 'revision-store'):
             os.mkdir(self.controlfilename(d))
         for f in ('revision-history', 'merged-patches',
@@ -179,9 +179,12 @@ class Branch:
 
         In the future, we might need different in-memory Branch
         classes to support downlevel branches.  But not yet.
-        """        
-        # read in binary mode to detect newline wierdness.
+        """
+        # This ignores newlines so that we can open branches created
+        # on Windows from Linux and so on.  I think it might be better
+        # to always make all internal files in unix format.
         fmt = self.controlfile('branch-format', 'rb').read()
+        fmt.replace('\r\n', '')
         if fmt != BZR_BRANCH_FORMAT:
             bailout('sorry, branch format %r not supported' % fmt,
                     ['use a different bzr version',
@@ -209,7 +212,10 @@ class Branch:
         tmpf = file(tmpfname, 'w')
         inv.write_xml(tmpf)
         tmpf.close()
-        os.rename(tmpfname, self.controlfilename('inventory'))
+        inv_fname = self.controlfilename('inventory')
+        if sys.platform == 'win32':
+            os.remove(inv_fname)
+        os.rename(tmpfname, inv_fname)
         mutter('wrote working inventory')
 
 
@@ -817,7 +823,15 @@ class ScratchBranch(Branch):
 
     def __del__(self):
         """Destroy the test branch, removing the scratch directory."""
-        shutil.rmtree(self.base)
+        try:
+            shutil.rmtree(self.base)
+        except OSError:
+            # Work around for shutil.rmtree failing on Windows when
+            # readonly files are encountered
+            for root, dirs, files in os.walk(self.base, topdown=False):
+                for name in files:
+                    os.chmod(os.path.join(root, name), 0700)
+            shutil.rmtree(self.base)
 
     
 

@@ -169,6 +169,9 @@ class ImmutableScratchStore(ImmutableStore):
 
     def __del__(self):
         for f in os.listdir(self._basedir):
-            os.remove(os.path.join(self._basedir, f))
+            fpath = os.path.join(self._basedir, f)
+            # needed on windows, and maybe some other filesystems
+            os.chmod(fpath, 0600)
+            os.remove(fpath)
         os.rmdir(self._basedir)
         mutter("%r destroyed" % self)
