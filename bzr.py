@@ -141,17 +141,6 @@ def cmd_get_revision(revision_id):
     Branch('.').get_revision(revision_id).write_xml(sys.stdout)
 
 
-def cmd_get_inventory(inventory_id):
-    """Return inventory in XML by hash"""
-    Branch('.').get_inventory(inventory_hash).write_xml(sys.stdout)
-
-
-def cmd_get_revision_inventory(revision_id):
-    """Output inventory for a revision."""
-    b = Branch('.')
-    b.get_revision_inventory(revision_id).write_xml(sys.stdout)
-
-
 def cmd_get_file_text(text_id):
     """Get contents of a file by hash."""
     sf = Branch('.').text_store[text_id]
