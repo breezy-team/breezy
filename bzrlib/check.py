@@ -1,9 +1,5 @@
-#! /usr/bin/python
-
-
 # Copyright (C) 2004, 2005 by Martin Pool
 # Copyright (C) 2005 by Canonical Ltd
-
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,7 +21,16 @@
 # consistency checks
 
 def check():
-    """Consistency check of tree."""
+    """check: Consistency check of branch history.
+
+usage: bzr check [-v] [BRANCH]
+
+options:
+  --verbose, -v         Show progress of checking.
+
+This command checks various invariants about the branch storage to
+detect data corruption or bzr bugs.
+"""
     assert_in_tree()
     mutter("checking tree")
     check_patches_exist()

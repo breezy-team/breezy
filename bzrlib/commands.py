@@ -441,9 +441,19 @@ TODO: Strict commit that fails if there are unknown or deleted files.
     Branch('.').commit(message, verbose=verbose)
 
 
-def cmd_check():
-    """Check consistency of the branch."""
-    check()
+def cmd_check(dir='.'):
+    """check: Consistency check of branch history.
+
+usage: bzr check [-v] [BRANCH]
+
+options:
+  --verbose, -v         Show progress of checking.
+
+This command checks various invariants about the branch storage to
+detect data corruption or bzr bugs.
+"""
+    import bzrlib.check
+    bzrlib.check.check(Branch(dir, find_root=False))
 
 
 def cmd_is(pred, *rest):
