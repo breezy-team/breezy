@@ -258,14 +258,20 @@ class WorkingTree(Tree):
 
 
     def is_ignored(self, filename):
-        """Check whether the filename matches an ignore pattern."""
+        """Check whether the filename matches an ignore pattern.
+
+        Patterns containing '/' need to match the whole path; others
+        match against only the last component."""
         ## TODO: Take them from a file, not hardcoded
         ## TODO: Use extended zsh-style globs maybe?
         ## TODO: Use '**' to match directories?
-        ## TODO: Patterns without / should match in subdirectories?
-        for i in bzrlib.DEFAULT_IGNORE:
-            if fnmatch.fnmatchcase(filename, i):
-                return True
+        for pat in bzrlib.DEFAULT_IGNORE:
+            if '/' in pat:
+                if fnmatch.fnmatchcase(filename, pat):
+                    return True
+            else:
+                if fnmatch.fnmatchcase(splitpath(filename)[-1], pat):
+                    return True
         return False
         
 
