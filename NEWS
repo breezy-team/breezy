@@ -7,7 +7,7 @@ bzr-0.0.2  "black cube"  NOT RELEASED YET
     * Patterns in .bzrignore are now added to the default ignore list,
       rather than replacing it.
 
-    * Ignore list is memoized after first request.
+    * Ignore list isn't reread for every file.
 
     * More help topics.
 
@@ -20,7 +20,9 @@ bzr-0.0.2  "black cube"  NOT RELEASED YET
     * Performance improvements.
 
     * New global --profile option.
-    
+    
+    * Ignore patterns like './config.h' now correctly match files in
+      the root directory only.
 bzr-0.0.1  2005-03-26
 
   ENHANCEMENTS:

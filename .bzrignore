@@ -1,4 +1,4 @@
-doc/*.html
+./doc/*.html
 *.py[oc]
 *~
 .arch-ids
