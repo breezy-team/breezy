@@ -761,30 +761,10 @@ def main(argv):
     ## TODO: If the arguments are wrong, give a usage message rather
     ## than just a backtrace.
 
+    bzrlib.trace.create_tracefile(argv)
+    
     try:
-        # TODO: Lift into separate function in trace.py
-        # TODO: Also show contents of /etc/lsb-release, if it can be parsed.
-        #       Perhaps that should eventually go into the platform library?
-        # TODO: If the file doesn't exist, add a note describing it.
-        t = bzrlib.trace._tracefile
-        t.write('-' * 60 + '\n')
-        t.write('bzr invoked at %s\n' % format_date(time.time()))
-        t.write('  by %s on %s\n' % (bzrlib.osutils.username(), socket.getfqdn()))
-        t.write('  arguments: %r\n' % argv)
-
-        starttime = os.times()[4]
-
-        import platform
-        t.write('  platform: %s\n' % platform.platform())
-        t.write('  python: %s\n' % platform.python_version())
-
         ret = run_bzr(argv)
-        
-        times = os.times()
-        mutter("finished, %.3fu/%.3fs cpu, %.3fu/%.3fs cum"
-               % times[:4])
-        mutter("    %.3f elapsed" % (times[4] - starttime))
-
         return ret
     except BzrError, e:
         log_error('bzr: error: ' + e.args[0] + '\n')

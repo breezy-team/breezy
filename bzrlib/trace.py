@@ -20,18 +20,16 @@ __copyright__ = "Copyright (C) 2005 Canonical Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
 
 
-import sys
+import sys, os, time, socket
+import bzrlib
 
 ######################################################################
 # messages and logging
 
-# Messages are always written to here, so that we have some
-# information if something goes wrong.  In a future version this
-# file will be removed on successful completion.
-_tracefile = file('.bzr.log', 'at')
-
 ## TODO: If --verbose is given then write to both stderr and
 ## _tracefile; perhaps replace _tracefile with a tee thing.
+
+global _tracefile, _starttime
 
 # used to have % (os.environ['USER'], time.time(), os.getpid()), 'w')
 
@@ -63,3 +61,42 @@ def log_error(msg):
     sys.stderr.write(msg)
     _tracefile.write(msg)
     _tracefile.flush()
+
+
+
+def create_tracefile(argv):
+    # TODO: Also show contents of /etc/lsb-release, if it can be parsed.
+    #       Perhaps that should eventually go into the platform library?
+    # TODO: If the file doesn't exist, add a note describing it.
+
+    # Messages are always written to here, so that we have some
+    # information if something goes wrong.  In a future version this
+    # file will be removed on successful completion.
+    global _starttime, _tracefile
+
+    _starttime = os.times()[4]
+
+    _tracefile = file('.bzr.log', 'at')
+
+    t = _tracefile
+    
+    t.write('-' * 60 + '\n')
+    t.write('bzr invoked at %s\n' % bzrlib.osutils.format_date(time.time()))
+    t.write('  by %s on %s\n' % (bzrlib.osutils.username(), socket.getfqdn()))
+    t.write('  arguments: %r\n' % argv)
+
+    import platform
+    t.write('  platform: %s\n' % platform.platform())
+    t.write('  python: %s\n' % platform.python_version())
+
+    import atexit
+    atexit.register(_close_trace)
+
+
+def _close_trace():
+    times = os.times()
+    mutter("finished, %.3fu/%.3fs cpu, %.3fu/%.3fs cum, %.3f elapsed"
+           % (times[:4] + ((times[4] - _starttime),)))
+
+
+
