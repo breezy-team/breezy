@@ -63,8 +63,6 @@ Interesting commands::
 """
 
 # not currently working:
-#  bzr check
-#       Run internal consistency checks.
 #  bzr info
 #       Show some information about this branch.
 
@@ -115,11 +113,11 @@ EMPTY = 'empty'
 ## TODO: Perhaps make UUIDs predictable in test mode to make it easier
 ## to compare output?
 
+## TODO: Some kind of global code to generate the right Branch object
+## to work on.  Almost, but not quite all, commands need one, and it
+## can be taken either from their parameters or their working
+## directory.
 
-
-
-######################################################################
-# check status
 
 
 def cmd_status(all=False):
