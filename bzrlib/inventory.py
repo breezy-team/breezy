@@ -499,6 +499,22 @@ class Inventory(XMLMixin):
         return 0
 
 
+    def get_idpath(self, file_id):
+        """Return a list of file_ids for the path to an entry.
+
+        The list contains one element for each directory followed by
+        the id of the file itself.  So the length of the returned list
+        is equal to the depth of the file in the tree, counting the
+        root directory as depth 0.
+        """
+        p = []
+        while file_id != None:
+            ie = self._byid[file_id]
+            p.insert(0, ie.file_id)
+            file_id = ie.parent_id
+        return p
+
+
     def id2path(self, file_id):
         """Return as a list the path to file_id."""
         p = []
@@ -555,6 +571,11 @@ class Inventory(XMLMixin):
         new_parent = self._byid[new_parent_id]
         if new_name in new_parent.children:
             bailout("%r already exists in %r" % (new_name, self.id2path(new_parent_id)))
+
+        new_parent_idpath = self.get_idpath(new_parent_id)
+        if file_id in new_parent_idpath:
+            bailout("cannot move directory %r into a subdirectory of itself, %r"
+                    % (self.id2path(file_id), self.id2path(new_parent_id)))
 
         file_ie = self._byid[file_id]
         old_parent = self._byid[file_ie.parent_id]
