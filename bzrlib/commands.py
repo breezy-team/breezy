@@ -604,6 +604,7 @@ OPTIONS = {
     'all':                    None,
     'help':                   None,
     'message':                unicode,
+    'profile':                None,
     'revision':               int,
     'show-ids':               None,
     'timezone':               str,
@@ -793,7 +794,12 @@ def run_bzr(argv):
     except KeyError:
         bailout("unknown command " + `cmd`)
 
-    # TODO: special --profile option to turn on the Python profiler
+    # global option
+    if 'profile' in opts:
+        profile = True
+        del opts['profile']
+    else:
+        profile = False
 
     # check options are reasonable
     allowed = cmd_options.get(cmd, [])
@@ -802,11 +808,24 @@ def run_bzr(argv):
             bailout("option %r is not allowed for command %r"
                     % (oname, cmd))
 
+    # mix arguments and options into one dictionary
     cmdargs = _match_args(cmd, args)
     for k, v in opts.items():
         cmdargs[k.replace('-', '_')] = v
 
-    ret = cmd_handler(**cmdargs) or 0
+    if profile:
+        import hotshot
+        prof = hotshot.Profile('.bzr.profile')
+        ret = prof.runcall(cmd_handler, **cmdargs) or 0
+        prof.close()
+
+        import hotshot.stats
+        stats = hotshot.stats.load('.bzr.profile')
+        #stats.strip_dirs()
+        stats.sort_stats('cumulative', 'calls')
+        stats.print_stats(20)
+    else:
+        return cmd_handler(**cmdargs) or 0
 
 
 

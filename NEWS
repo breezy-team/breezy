@@ -18,7 +18,9 @@ bzr-0.0.2  "black cube"  NOT RELEASED YET
       'deleted' lists files deleted in the current working tree.
 
     * Performance improvements.
-
+
+    * New global --profile option.
+    
 bzr-0.0.1  2005-03-26
 
   ENHANCEMENTS:
