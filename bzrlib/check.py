@@ -83,6 +83,7 @@ def check_inventory(branch, inv, revid):
                     % (file_id, revid))
         seen_ids.add(file_id)
         
+
     for file_id in inv:
         ie = inv[file_id]
         
@@ -94,7 +95,10 @@ def check_inventory(branch, inv, revid):
         if ie.kind == 'file':
             if not ie.text_id in branch.text_store:
                 bailout('text {%s} not in text_store' % ie.text_id)
-
+        elif ie.kind == 'directory':
+            if ie.text_sha1 != None or ie.text_size != None or ie.text_id != None:
+                bailout('directory {%s} has text in revision {%s}'
+                        % (file_id, revid))
                 
             
     for path, ie in inv.iter_entries():
