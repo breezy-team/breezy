@@ -27,7 +27,7 @@ from sets import Set
 try:
     from cElementTree import Element, ElementTree, SubElement
 except ImportError:
-    from elementtree import Element, ElementTree, SubElement
+    from elementtree.ElementTree import Element, ElementTree, SubElement
 
 from xml import XMLMixin
 from errors import bailout

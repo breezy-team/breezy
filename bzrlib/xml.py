@@ -24,7 +24,7 @@ __author__ = "Martin Pool <mbp@canonical.com>"
 try:
     from cElementTree import Element, ElementTree, SubElement
 except ImportError:
-    from elementtree import Element, ElementTree, SubElement
+    from elementtree.ElementTree import Element, ElementTree, SubElement
 
 import os, time
 from trace import mutter

@@ -23,7 +23,7 @@ from xml import XMLMixin
 try:
     from cElementTree import Element, ElementTree, SubElement
 except ImportError:
-    from elementtree import Element, ElementTree, SubElement
+    from elementtree.ElementTree import Element, ElementTree, SubElement
 
 
 class Revision(XMLMixin):
