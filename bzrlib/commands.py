@@ -264,12 +264,36 @@ def cmd_remove(file_list, verbose=False):
 
 
 def cmd_file_id(filename):
+    """Print file_id of a particular file or directory.
+
+usage: bzr file-id FILE
+
+The file_id is assigned when the file is first added and remains the
+same through all revisions where the file exists, even when it is
+moved or renamed.
+"""
     b = Branch(filename)
     i = b.inventory.path2id(b.relpath(filename))
-    if i is None:
-        bailout("%s is not a versioned file" % filename)
+    if i == None:
+        bailout("%r is not a versioned file" % filename)
     else:
         print i
+
+
+def cmd_file_id_path(filename):
+    """Print path of file_ids to a file or directory.
+
+usage: bzr file-id-path FILE
+
+This prints one line for each directory down to the target,
+starting at the branch root."""
+    b = Branch(filename)
+    inv = b.inventory
+    fid = inv.path2id(b.relpath(filename))
+    if fid == None:
+        bailout("%r is not a versioned file" % filename)
+    for fip in inv.get_idpath(fid):
+        print fip
 
 
 def cmd_find_filename(fileid):
@@ -748,6 +772,7 @@ cmd_args = {
     'diff':                   [],
     'export':                 ['revno', 'dest'],
     'file-id':                ['filename'],
+    'file-id-path':           ['filename'],
     'get-file-text':          ['text_id'],
     'get-inventory':          ['inventory_id'],
     'get-revision':           ['revision_id'],
@@ -971,6 +996,8 @@ def main(argv):
         if len(e.args) > 1:
             for h in e.args[1]:
                 log_error('  ' + h + '\n')
+        traceback.print_exc(None, bzrlib.trace._tracefile)
+        log_error('see ~/.bzr.log for more information\n')
         return 1
     except Exception, e:
         log_error('bzr: exception: %s\n' % e)

@@ -121,6 +121,7 @@ def diff_trees(old_tree, new_tree):
             old_item = next(old_it)
         else:
             assert old_id == new_id
+            assert old_id != None
             assert old_name == new_name
             assert old_kind == new_kind
 

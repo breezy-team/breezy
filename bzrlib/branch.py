@@ -304,7 +304,11 @@ class Branch:
     def print_file(self, file, revno):
         """Print `file` to stdout."""
         tree = self.revision_tree(self.lookup_revision(revno))
-        tree.print_file(self.inventory.path2id(file))
+        # use inventory as it was in that revision
+        file_id = tree.inventory.path2id(file)
+        if not file_id:
+            bailout("%r is not present in revision %d" % (file, revno))
+        tree.print_file(file_id)
         
 
     def remove(self, files, verbose=False):

@@ -269,7 +269,7 @@ def splitpath(p):
     BzrError: ("sorry, '..' not allowed in path", [])
     """
     assert isinstance(p, types.StringTypes)
-    ps = [f for f in p.split('/') if f != '.']
+    ps = [f for f in p.split('/') if (f != '.' and f != '')]
     for f in ps:
         if f == '..':
             bailout("sorry, %r not allowed in path" % f)

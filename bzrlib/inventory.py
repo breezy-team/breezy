@@ -18,8 +18,13 @@
 
 # TODO: Maybe store inventory_id in the file?  Not really needed.
 
-__copyright__ = "Copyright (C) 2005 Canonical Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
+
+
+# This should really be an id randomly assigned when the tree is
+# created, but it's not for now.
+ROOT_ID = "TREE_ROOT"
+
 
 import sys, os.path, types, re
 from sets import Set
@@ -59,24 +64,25 @@ class InventoryEntry(XMLMixin):
 
     >>> i = Inventory()
     >>> i.path2id('')
-    >>> i.add(InventoryEntry('123', 'src', kind='directory'))
-    >>> i.add(InventoryEntry('2323', 'hello.c', parent_id='123'))
+    'TREE_ROOT'
+    >>> i.add(InventoryEntry('123', 'src', 'directory', ROOT_ID))
+    >>> i.add(InventoryEntry('2323', 'hello.c', 'file', parent_id='123'))
     >>> for j in i.iter_entries():
     ...   print j
     ... 
-    ('src', InventoryEntry('123', 'src', kind='directory', parent_id=None))
+    ('src', InventoryEntry('123', 'src', kind='directory', parent_id='TREE_ROOT'))
     ('src/hello.c', InventoryEntry('2323', 'hello.c', kind='file', parent_id='123'))
-    >>> i.add(InventoryEntry('2323', 'bye.c', parent_id='123'))
+    >>> i.add(InventoryEntry('2323', 'bye.c', 'file', '123'))
     Traceback (most recent call last):
     ...
     BzrError: ('inventory already contains entry with id {2323}', [])
-    >>> i.add(InventoryEntry('2324', 'bye.c', parent_id='123'))
-    >>> i.add(InventoryEntry('2325', 'wibble', parent_id='123', kind='directory'))
+    >>> i.add(InventoryEntry('2324', 'bye.c', 'file', '123'))
+    >>> i.add(InventoryEntry('2325', 'wibble', 'directory', '123'))
     >>> i.path2id('src/wibble')
     '2325'
     >>> '2325' in i
     True
-    >>> i.add(InventoryEntry('2326', 'wibble.c', parent_id='2325'))
+    >>> i.add(InventoryEntry('2326', 'wibble.c', 'file', '2325'))
     >>> i['2326']
     InventoryEntry('2326', 'wibble.c', kind='file', parent_id='2325')
     >>> for j in i.iter_entries():
@@ -95,19 +101,22 @@ class InventoryEntry(XMLMixin):
            But those depend on its position within a particular inventory, and
            it would be nice not to need to hold the backpointer here.
     """
-    def __init__(self, file_id, name, kind='file', text_id=None,
-                 parent_id=None):
+
+    # TODO: split InventoryEntry into subclasses for files,
+    # directories, etc etc.
+    
+    def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
         
         The filename must be a single component, relative to the
         parent directory; it cannot be a whole path or relative name.
 
-        >>> e = InventoryEntry('123', 'hello.c')
+        >>> e = InventoryEntry('123', 'hello.c', 'file', ROOT_ID)
         >>> e.name
         'hello.c'
         >>> e.file_id
         '123'
-        >>> e = InventoryEntry('123', 'src/hello.c')
+        >>> e = InventoryEntry('123', 'src/hello.c', 'file', ROOT_ID)
         Traceback (most recent call last):
         BzrError: ("InventoryEntry name is not a simple filename: 'src/hello.c'", [])
         """
@@ -126,6 +135,8 @@ class InventoryEntry(XMLMixin):
         self.text_size = None
         if kind == 'directory':
             self.children = {}
+        else:
+            assert kind == 'file'
 
 
     def sorted_children(self):
@@ -136,7 +147,7 @@ class InventoryEntry(XMLMixin):
 
     def copy(self):
         other = InventoryEntry(self.file_id, self.name, self.kind,
-                               self.text_id, self.parent_id)
+                               self.parent_id, text_id=self.text_id)
         other.text_sha1 = self.text_sha1
         other.text_size = self.text_size
         return other
@@ -159,13 +170,20 @@ class InventoryEntry(XMLMixin):
         e.set('file_id', self.file_id)
         e.set('kind', self.kind)
 
-        if self.text_size is not None:
+        if self.text_size != None:
             e.set('text_size', '%d' % self.text_size)
             
-        for f in ['text_id', 'text_sha1', 'parent_id']:
+        for f in ['text_id', 'text_sha1']:
             v = getattr(self, f)
-            if v is not None:
+            if v != None:
                 e.set(f, v)
+
+        # to be conservative, we don't externalize the root pointers
+        # for now, leaving them as null in the xml form.  in a future
+        # version it will be implied by nested elements.
+        if self.parent_id != ROOT_ID:
+            assert isinstance(self.parent_id, basestring)
+            e.set('parent_id', self.parent_id)
 
         e.tail = '\n'
             
@@ -174,10 +192,17 @@ class InventoryEntry(XMLMixin):
 
     def from_element(cls, elt):
         assert elt.tag == 'entry'
-        self = cls(elt.get('file_id'), elt.get('name'), elt.get('kind'))
+
+        ## original format inventories don't have a parent_id for
+        ## nodes in the root directory, but it's cleaner to use one
+        ## internally.
+        parent_id = elt.get('parent_id')
+        if parent_id == None:
+            parent_id = ROOT_ID
+
+        self = cls(elt.get('file_id'), elt.get('name'), elt.get('kind'), parent_id)
         self.text_id = elt.get('text_id')
         self.text_sha1 = elt.get('text_sha1')
-        self.parent_id = elt.get('parent_id')
         
         ## mutter("read inventoryentry: %r" % (elt.attrib))
 
@@ -247,7 +272,7 @@ class Inventory(XMLMixin):
     >>> inv.write_xml(sys.stdout)
     <inventory>
     </inventory>
-    >>> inv.add(InventoryEntry('123-123', 'hello.c'))
+    >>> inv.add(InventoryEntry('123-123', 'hello.c', 'file', ROOT_ID))
     >>> inv['123-123'].name
     'hello.c'
 
@@ -291,8 +316,8 @@ class Inventory(XMLMixin):
         The inventory is created with a default root directory, with
         an id of None.
         """
-        self.root = RootEntry(None)
-        self._byid = {None: self.root}
+        self.root = RootEntry(ROOT_ID)
+        self._byid = {self.root.file_id: self.root}
 
 
     def __iter__(self):
@@ -322,7 +347,7 @@ class Inventory(XMLMixin):
                     
 
 
-    def directories(self, from_dir=None):
+    def directories(self):
         """Return (path, entry) pairs for all directories.
         """
         def descend(parent_ie):
@@ -349,7 +374,7 @@ class Inventory(XMLMixin):
         """True if this entry contains a file with given id.
 
         >>> inv = Inventory()
-        >>> inv.add(InventoryEntry('123', 'foo.c'))
+        >>> inv.add(InventoryEntry('123', 'foo.c', 'file', ROOT_ID))
         >>> '123' in inv
         True
         >>> '456' in inv
@@ -362,11 +387,17 @@ class Inventory(XMLMixin):
         """Return the entry for given file_id.
 
         >>> inv = Inventory()
-        >>> inv.add(InventoryEntry('123123', 'hello.c'))
+        >>> inv.add(InventoryEntry('123123', 'hello.c', 'file', ROOT_ID))
         >>> inv['123123'].name
         'hello.c'
         """
-        return self._byid[file_id]
+        if file_id == None:
+            bailout("can't look up file_id None")
+            
+        try:
+            return self._byid[file_id]
+        except KeyError:
+            bailout("file_id {%s} not in inventory" % file_id)
 
 
     def get_child(self, parent_id, filename):
@@ -384,7 +415,7 @@ class Inventory(XMLMixin):
         try:
             parent = self._byid[entry.parent_id]
         except KeyError:
-            bailout("parent_id %r not in inventory" % entry.parent_id)
+            bailout("parent_id {%s} not in inventory" % entry.parent_id)
 
         if parent.children.has_key(entry.name):
             bailout("%s is already versioned" %
@@ -402,10 +433,11 @@ class Inventory(XMLMixin):
         if len(parts) == 0:
             bailout("cannot re-add root of inventory")
 
-        if file_id is None:
+        if file_id == None:
             file_id = bzrlib.branch.gen_file_id(relpath)
 
         parent_id = self.path2id(parts[:-1])
+        assert parent_id != None
         ie = InventoryEntry(file_id, parts[-1],
                             kind=kind, parent_id=parent_id)
         return self.add(ie)
@@ -415,7 +447,7 @@ class Inventory(XMLMixin):
         """Remove entry by id.
 
         >>> inv = Inventory()
-        >>> inv.add(InventoryEntry('123', 'foo.c'))
+        >>> inv.add(InventoryEntry('123', 'foo.c', 'file', ROOT_ID))
         >>> '123' in inv
         True
         >>> del inv['123']
@@ -454,7 +486,7 @@ class Inventory(XMLMixin):
         """Construct from XML Element
 
         >>> inv = Inventory()
-        >>> inv.add(InventoryEntry('foo.c-123981239', 'foo.c'))
+        >>> inv.add(InventoryEntry('foo.c-123981239', 'foo.c', 'file', ROOT_ID))
         >>> elt = inv.to_element()
         >>> inv2 = Inventory.from_element(elt)
         >>> inv2 == inv
@@ -476,10 +508,10 @@ class Inventory(XMLMixin):
         >>> i2 = Inventory()
         >>> i1 == i2
         True
-        >>> i1.add(InventoryEntry('123', 'foo'))
+        >>> i1.add(InventoryEntry('123', 'foo', 'file', ROOT_ID))
         >>> i1 == i2
         False
-        >>> i2.add(InventoryEntry('123', 'foo'))
+        >>> i2.add(InventoryEntry('123', 'foo', 'file', ROOT_ID))
         >>> i1 == i2
         True
         """
@@ -505,11 +537,14 @@ class Inventory(XMLMixin):
         The list contains one element for each directory followed by
         the id of the file itself.  So the length of the returned list
         is equal to the depth of the file in the tree, counting the
-        root directory as depth 0.
+        root directory as depth 1.
         """
         p = []
         while file_id != None:
-            ie = self._byid[file_id]
+            try:
+                ie = self._byid[file_id]
+            except KeyError:
+                bailout("file_id {%s} not found in inventory" % file_id)
             p.insert(0, ie.file_id)
             file_id = ie.parent_id
         return p
@@ -517,11 +552,9 @@ class Inventory(XMLMixin):
 
     def id2path(self, file_id):
         """Return as a list the path to file_id."""
-        p = []
-        while file_id != None:
-            ie = self._byid[file_id]
-            p.insert(0, ie.name)
-            file_id = ie.parent_id
+
+        # get all names, skipping root
+        p = [self[fid].name for fid in self.get_idpath(file_id)[1:]]
         return '/'.join(p)
             
 
@@ -534,15 +567,20 @@ class Inventory(XMLMixin):
 
         This returns the entry of the last component in the path,
         which may be either a file or a directory.
+
+        Returns None iff the path is not found.
         """
         if isinstance(name, types.StringTypes):
             name = splitpath(name)
 
-        parent = self[None]
+        mutter("lookup path %r" % name)
+
+        parent = self.root
         for f in name:
             try:
                 cie = parent.children[f]
                 assert cie.name == f
+                assert cie.parent_id == parent.file_id
                 parent = cie
             except KeyError:
                 # or raise an error?
@@ -595,9 +633,3 @@ _NAME_RE = re.compile(r'^[^/\\]+$')
 
 def is_valid_name(name):
     return bool(_NAME_RE.match(name))
-
-
-
-if __name__ == '__main__':
-    import doctest, inventory
-    doctest.testmod(inventory)

@@ -157,6 +157,7 @@ class WorkingTree(Tree):
         return file(self.abspath(filename), 'rb')
 
     def _get_store_filename(self, file_id):
+        ## XXX: badly named; this isn't in the store at all
         return self.abspath(self.id2path(file_id))
 
     def has_id(self, file_id):
@@ -194,7 +195,7 @@ class WorkingTree(Tree):
         """
         inv = self.inventory
 
-        def descend(from_dir, from_dir_id, dp):
+        def descend(from_dir_relpath, from_dir_id, dp):
             ls = os.listdir(dp)
             ls.sort()
             for f in ls:
@@ -205,7 +206,7 @@ class WorkingTree(Tree):
                     continue
 
                 # path within tree
-                fp = appendpath(from_dir, f)
+                fp = appendpath(from_dir_relpath, f)
 
                 # absolute path
                 fap = appendpath(dp, f)
@@ -237,7 +238,7 @@ class WorkingTree(Tree):
                 for ff in descend(fp, f_ie.file_id, fap):
                     yield ff
 
-        for f in descend('', None, self.basedir):
+        for f in descend('', inv.root.file_id, self.basedir):
             yield f
             
 
