@@ -280,17 +280,22 @@ class WorkingTree(Tree):
         """Check whether the filename matches an ignore pattern.
 
         Patterns containing '/' need to match the whole path; others
-        match against only the last component."""
-        ## TODO: Use extended zsh-style globs maybe?
-        ## TODO: Use '**' to match directories?
+        match against only the last component.
+
+        If the file is ignored, returns the pattern which caused it to
+        be ignored, otherwise None.  So this can simply be used as a
+        boolean if desired."""
+
+        ## TODO: Use '**' to match directories, and other extended globbing stuff from cvs/rsync.
+        
         for pat in self.get_ignore_list():
             if '/' in pat:
                 if fnmatch.fnmatchcase(filename, pat):
-                    return True
+                    return pat
             else:
                 if fnmatch.fnmatchcase(splitpath(filename)[-1], pat):
-                    return True
-        return False
+                    return pat
+        return None
         
 
         
