@@ -31,6 +31,8 @@ bzr-0.0.3  NOT RELEASED YET
 
     * Refactored inventory storage to insert a root entry at the top.
 
+    * Start of shell-based black-box testing in test.sh.
+
 
 bzr-0.0.2.1
 
