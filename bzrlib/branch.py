@@ -300,7 +300,8 @@ class Branch:
         if isinstance(files, types.StringTypes):
             files = [files]
         
-        inv = self.read_working_inventory()
+        tree = self.working_tree()
+        inv = tree.inventory
 
         # do this before any modifications
         for f in files:
@@ -309,7 +310,12 @@ class Branch:
                 bailout("cannot remove unversioned file %s" % quotefn(f))
             mutter("remove inventory entry %s {%s}" % (quotefn(f), fid))
             if verbose:
-                show_status('D', inv[fid].kind, quotefn(f))
+                # having remove it, it must be either ignored or unknown
+                if tree.is_ignored(f):
+                    new_status = 'I'
+                else:
+                    new_status = '?'
+                show_status(new_status, inv[fid].kind, quotefn(f))
             del inv[fid]
 
         self._write_inventory(inv)
