@@ -17,6 +17,9 @@
 
 """XML externalization support."""
 
+# "XML is like violence: if it doesn't solve your problem, you aren't
+# using enough of it." -- various
+
 
 __copyright__ = "Copyright (C) 2005 Canonical Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
