@@ -13,6 +13,8 @@ bzr-0.0.2  NOT RELEASED YET
 
     * More help topics.
 
+    * Reinstate the 'bzr check' command to check invariants of the
+      branch.
 
 bzr-0.0.1  2005-03-26
 
