@@ -194,6 +194,9 @@ those operations should be *extremely* easy.
 * Use readline for reading log messages, and store a history of
   previous commit messages!
 
+* Warn when adding huge files(?) - more than say 10MB?  On the other
+  hand, why not just cope?
+
 ----
 
 20050218090900.GA2071@opteron.random
