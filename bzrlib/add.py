@@ -67,7 +67,9 @@ def smart_add(file_list, verbose=False, recurse=True):
         if kind == 'directory' and recurse:
             for subf in os.listdir(af):
                 subp = appendpath(rf, subf)
-                if tree.is_ignored(subp):
+                if subf == bzrlib.BZRDIR:
+                    mutter("skip control directory %r" % subp)
+                elif tree.is_ignored(subp):
                     mutter("skip ignored sub-file %r" % subp)
                 else:
                     mutter("queue to add sub-file %r" % (subp))
