@@ -196,25 +196,23 @@ def cmd_info():
     print 'branch format:', b.controlfile('branch-format', 'r').readline().rstrip('\n')
     print 'revision number:', b.revno()
 
-    count_versioned = count_unknown = count_ignored = 0
     count_version_dirs = 0
-    for fpath, fclass, fkind, fid in b.working_tree().list_files():
-        if fclass == 'V':
-            count_versioned += 1
-            if fkind == 'directory':
-                count_version_dirs += 1
-        elif fclass == 'I':
-            count_ignored += 1
-        elif fclass == '?':
-            count_unknown += 1
-        else:
-            bailout('unknown file class %r for %r' % (fclass, fpath))
-   
-    print 'number of versioned entries: %d' % count_versioned
-    print 'number of versioned subdirectories: %d' % count_version_dirs
-    print 'number of unknown files: %d' % count_unknown
-    print 'number of ignored files: %d' % count_ignored
 
+    count_status = {'A': 0, 'D': 0, 'M': 0, 'R': 0, '?': 0, 'I': 0, '.': 0}
+    for st_tup in bzrlib.diff_trees(b.basis_tree(), b.working_tree()):
+        fs = st_tup[0]
+        count_status[fs] += 1
+        if fs not in ['I', '?'] and st_tup[4] == 'directory':
+            count_version_dirs += 1
+
+    print
+    print 'in the working tree:'
+    for name, fs in (('unchanged', '.'),
+                     ('modified', 'M'), ('added', 'A'), ('removed', 'D'),
+                     ('renamed', 'R'), ('unknown', '?'), ('ignored', 'I'),
+                     ):
+        print '  %5d %s' % (count_status[fs], name)
+    print '  %5d versioned subdirectories' % count_version_dirs
             
 
 
