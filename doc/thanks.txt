@@ -17,6 +17,7 @@ Inspiration, suggestions, advice, bug reports
 * Faheem Mitha
 * Luke Gorrie
 * Dan Nicolaescu
+* Tim Parkin
 
 Sponsor
 -------

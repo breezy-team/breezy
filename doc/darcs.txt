@@ -17,13 +17,15 @@ Loads everything into memory.
 
 Written in Haskell.
 
-Breaking commits into hunks at commit time is interesting, but I think
-not totally necessary.  Sometimes it won't break hunks where you want
-it. 
-
 A really simple pre-commit check hook is remarkably useful.
 
 http://www.scannedinavian.org/DarcsWiki/DifferencesFromArch
+
+
+
+Sometimes useful to be able to set email per-branch, for people who
+work on different projects under different personas.
+
 
 Token replace
 -------------
@@ -37,3 +39,33 @@ problems in terms of being able to reliably sign revisions.
 
 This can perhaps be inferred by a smart 3-way merge tool.  Certainly
 you could have it do sub-line merges.
+
+Partial commit
+--------------
+
+darcs allows you to commit only some of the changes to a single file.
+This is like the common feature of commiting only a subset of changed
+files, but taken to a higher level.
+
+It is useful more often than one might think: it is common to fix some
+documentation 'on the wing' and while strictly it should be in a
+separate commit it is not always worth the hassle to back out changes,
+fix the docs, then do the real change.  Similarly for making a
+separate branch.
+
+Although the idea is very good, the current darcs implementation is
+limited to selecting by patch hunk, which means that neighbouring
+changes cannot be separated.  Fixing this probably means having some
+kind of pluggable GUI to build the file-to-be-committed or an edited
+patch, possibly using something like meld, emacs, or dirdiff.  Another
+approach some people might like is editing the diff file to chop out
+hunks.
+
+I don't think this needs to be on by default, as it is in darcs.  It
+is usual to commit all the changes.
+
+For this to work safely, it is good to have a commit hook that
+builds/tests the tree.  Of course this needs to be evaluated against
+the tree as it will be committed (taking account of partial commits),
+not the working tree.
+
