@@ -23,7 +23,7 @@ import os.path, os, fnmatch
 from inventory import Inventory
 from trace import mutter, note
 from osutils import pumpfile, compare_files, filesize, quotefn, sha_file, \
-     joinpath, splitpath, appendpath, isdir, isfile, file_kind
+     joinpath, splitpath, appendpath, isdir, isfile, file_kind, fingerprint_file
 from errors import bailout
 import branch
 from stat import S_ISREG, S_ISDIR, ST_MODE, ST_SIZE
@@ -73,21 +73,20 @@ class Tree:
                          doc="Inventory of this Tree")
 
     def _check_retrieved(self, ie, f):
-        # TODO: Test this check by damaging the store?
+        fp = fingerprint_file(f)
+        f.seek(0)
+        
         if ie.text_size is not None:
-            fs = filesize(f)
-            if fs != ie.text_size:
+            if fs != fp['size']:
                 bailout("mismatched size for file %r in %r" % (ie.file_id, self._store),
                         ["inventory expects %d bytes" % ie.text_size,
-                         "file is actually %d bytes" % fs,
+                         "file is actually %d bytes" % fp['size'],
                          "store is probably damaged/corrupt"])
 
-        f_hash = sha_file(f)
-        f.seek(0)
-        if ie.text_sha1 != f_hash:
+        if ie.text_sha1 != fp['sha1']:
             bailout("wrong SHA-1 for file %r in %r" % (ie.file_id, self._store),
                     ["inventory expects %s" % ie.text_sha1,
-                     "file is actually %s" % f_hash,
+                     "file is actually %s" % fp['sha1'],
                      "store is probably damaged/corrupt"])
 
 
@@ -315,10 +314,7 @@ class RevisionTree(Tree):
         ie = self._inventory[file_id]
         f = self._store[ie.text_id]
         mutter("  get fileid{%s} from %r" % (file_id, self))
-        fs = filesize(f)
-        if ie.text_size is None:
-            note("warning: no text size recorded on %r" % ie)
-        self._check_retrieved(ie, f)
+        ## self._check_retrieved(ie, f)
         return f
 
     def get_file_size(self, file_id):

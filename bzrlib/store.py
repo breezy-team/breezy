@@ -155,23 +155,6 @@ class ImmutableStore:
                 
         return count, total
 
-    def delete_all(self):
-        for fileid in self:
-            self.delete(fileid)
-
-    def delete(self, fileid):
-        """Remove nominated store entry.
-
-        Most stores will be add-only."""
-        filename = self._path(fileid)
-        ## osutils.make_writable(filename)
-        ## TODO: handle gzip
-        os.remove(filename)
-
-    def destroy(self):
-        """Remove store; only allowed if it is empty."""
-        os.rmdir(self._basedir)
-        mutter("%r destroyed" % self)
 
 
 
@@ -185,5 +168,7 @@ class ImmutableScratchStore(ImmutableStore):
         ImmutableStore.__init__(self, tempfile.mkdtemp())
 
     def __del__(self):
-        self.delete_all()
-        self.destroy()
+        for f in os.listdir(self._basedir):
+            os.remove(os.path.join(self._basedir, f))
+        os.rmdir(self._basedir)
+        mutter("%r destroyed" % self)
