@@ -267,6 +267,9 @@ def cmd_diff(revision=None):
     :todo: Mangle filenames in diff to be more relevant.
 
     :todo: Shouldn't be in the cmd function.
+
+    TODO: Option to use external diff command; could be GNU diff,
+    wdiff, or a graphical diff.
     """
 
     b = Branch('.')
