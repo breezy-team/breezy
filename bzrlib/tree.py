@@ -199,6 +199,9 @@ class WorkingTree(Tree):
             ls = os.listdir(dp)
             ls.sort()
             for f in ls:
+                ## TODO: If we find a subdirectory with its own .bzr
+                ## directory, then that is a separate tree and we
+                ## should exclude it.
                 if bzrlib.BZRDIR == f:
                     continue
 
