@@ -324,7 +324,7 @@ def cmd_diff(revision=None):
 
 
 
-def cmd_log(timezone):
+def cmd_log(timezone='original'):
     """Show log of this branch.
 
     :todo: Options for utc; to show ids; to limit range; etc.
