@@ -542,9 +542,12 @@ class Branch:
         mutter("committing patch r%d" % (self.revno() + 1))
 
         mutter("append to revision-history")
-        self.controlfile('revision-history', 'at').write(rev_id + '\n')
+        f = self.controlfile('revision-history', 'at')
+        f.write(rev_id + '\n')
+        f.close()
 
-        mutter("done!")
+        if verbose:
+            note("commited r%d" % self.revno())
 
 
     def get_revision(self, revision_id):
