@@ -175,6 +175,10 @@ def cmd_add(file_list, verbose=False):
     b.add(file_list, verbose=verbose)
 
 
+def cmd_relpath(filename):
+    print Branch(filename).relpath(filename)
+
+
 def cmd_inventory(revision=None):
     """Show inventory of the current working copy."""
     ## TODO: Also optionally show a previous inventory
@@ -595,6 +599,7 @@ cmd_args = {
     'diff':                   [],
     'file-id':                ['filename'],
     'root':                   ['filename?'],
+    'relpath':                ['filename'],
     'get-file-text':          ['text_id'],
     'get-inventory':          ['inventory_id'],
     'get-revision':           ['revision_id'],

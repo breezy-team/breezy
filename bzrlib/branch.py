@@ -130,6 +130,19 @@ class Branch:
         return os.path.join(self.base, name)
 
 
+    def relpath(self, path):
+        """Return path relative to this branch of something inside it.
+
+        Raises an error if path is not in this branch."""
+        rp = os.path.realpath(path)
+        # FIXME: windows
+        if not rp.startswith(self.base):
+            bailout("path %r is not within branch %r" % (rp, self.base))
+        rp = rp[len(self.base):]
+        rp = rp.lstrip(os.sep)
+        return rp
+
+
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
         if isinstance(file_or_path, types.StringTypes):
