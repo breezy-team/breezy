@@ -56,3 +56,22 @@ There are several overlapping purposes:
 * As a file-sharing mechanism: even with just a single developer and
   line of development it can be useful to keep files synchronized
   between several machines, which may not always be connected.
+
+
+----
+
+Steve Berczuk says__:
+
+__ http://www.bell-labs.com/cgi-user/OrgPatterns/OrgPatterns?ConfigurationManagementPatterns
+
+    A successful configuration management process allows:
+
+    * Developers to work together on a project, sharing common code.
+
+    * Developers to share development effort on a module.
+
+    * Developers to have access to the current stable (tested) version of a system.
+
+    * The ability to back up to a previous stable version (one of a number of NamedStableBases), of a system
+
+    * The ability of a developer to checkpoint changes to a module and to back off to a previous version of that module
