@@ -187,6 +187,8 @@ def format_date(t, offset=0, timezone='original'):
         tt = time.gmtime(t)
         offset = 0
     elif timezone == 'original':
+        if offset == None:
+            offset = 0
         tt = time.gmtime(t + offset)
     elif timezone == 'local':
         tt = time.localtime(t)
