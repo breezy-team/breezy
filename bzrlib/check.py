@@ -21,6 +21,8 @@
 # consistency checks
 
 
+from sets import Set
+
 import bzrlib
 from trace import mutter
 from errors import bailout
@@ -31,6 +33,7 @@ def check(branch):
 
     mutter('checking revision history')
     last_ptr = None
+    checked_revs = Set()
     for rid in branch.revision_history():
         mutter('    revision {%s}' % rid)
         rev = branch.get_revision(rid)
@@ -39,11 +42,10 @@ def check(branch):
         if rev.precursor != last_ptr:
             bailout('mismatched precursor in revision {%s}' % rid)
         last_ptr = rid
+        if rid in checked_revs:
+            bailout('repeated revision {%s}' % rid)
+        checked_revs.add(rid)
 
-    #mutter("checking tree")
-    #check_patches_exist()
-    #check_patch_chaining()
-    #check_patch_uniqueness()
     #check_inventory()
 
     mutter('branch %s is OK' % branch.base)
@@ -86,36 +88,3 @@ def check_inventory():
         
         if is_control_file(name):
             raise BzrError("control file %s present in inventory" % quotefn(name))
-
-
-def check_patches_exist():
-    """Check constraint of current version: all patches exist"""
-    mutter("checking all patches are present...")
-    for pid in revision_history():
-        read_patch_header(pid)
-
-
-def check_patch_chaining():
-    """Check ancestry of patches and history file is consistent"""
-    mutter("checking patch chaining...")
-    prev = None
-    for pid in revision_history():
-        log_prev = read_patch_header(pid).precursor
-        if log_prev != prev:
-            bailout("inconsistent precursor links on " + pid)
-        prev = pid
-
-
-def check_patch_uniqueness():
-    """Make sure no patch is listed twice in the history.
-
-    This should be implied by having correct ancestry but I'll check it
-    anyhow."""
-    mutter("checking history for duplicates...")
-    seen = Set()
-    for pid in revision_history():
-        if pid in seen:
-            bailout("patch " + pid + " appears twice in history")
-        seen.add(pid)
-        
-
