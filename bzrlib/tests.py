@@ -162,7 +162,7 @@ Adding a directory, and we see the file underneath:
     >>> [v[0] for v in b.inventory.directories()]
     ['', 'd1']
     >>> list(b.working_tree().unknowns())
-    ['d1/f1', 'd2']
+    ['d2', 'd1/f1']
     >>> # d2 comes first because it's in the top directory
 
     >>> b.add('d2')
@@ -184,7 +184,7 @@ Tests for ignored files and patterns:
     ['configure', 'configure.in', 'doc', 'foo', 'foo.c', 'src']
     >>> b.add(['doc', 'foo.c', 'src', 'configure.in'])
     >>> list(b.unknowns())
-    ['configure', 'doc/configure', 'foo']
+    ['configure', 'foo', 'doc/configure']
     >>> f = file(b.abspath('.bzrignore'), 'w')
     >>> f.write('./configure\n'
     ...         './foo\n')
