@@ -26,9 +26,12 @@ import add
 
 BZRDIR = ".bzr"
 
-DEFAULT_IGNORE = ['.bzr.log', '*~', '#*#', '*.tmp', '*.bak',
-                  '*.o', '*.a', '*.py[oc]',
-                  '{arch}', 'CVS', '.svn', '_darcs']
+DEFAULT_IGNORE = ['.bzr.log',
+                  '*~', '#*#', '*$', '.#*',
+                  '*.tmp', '*.bak', '*.BAK', '*.orig',
+                  '*.o', '*.obj', '*.a', '*.py[oc]', '*.so', '*.exe', '*.elc', 
+                  '{arch}', 'CVS', '.svn', '_darcs', 'SCCS', 'RCS',
+                  'TAGS', '.make.state', '.sconsign']
 
 IGNORE_FILENAME = ".bzrignore"
 

@@ -2,8 +2,7 @@ bzr-0.0.2  NOT RELEASED YET
 
   CHANGES:
 
-    * Default ignore list changed to .bzr.log, *~, #*#, *.tmp, *.bak,
-      *.o, *.a, *.py[oc], {arch}, CVS, .svn, _darcs.
+    * Default ignore list extended (see bzrlib/__init__.py).
 
     * Patterns in .bzrignore are now added to the default ignore list,
       rather than replacing it.
@@ -11,6 +10,8 @@ bzr-0.0.2  NOT RELEASED YET
   ENHANCEMENTS:
 
     * Ignore list is memoized after first request.
+
+    * More help topics.
 
 
 bzr-0.0.1  2005-03-26
