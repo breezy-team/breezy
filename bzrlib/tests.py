@@ -169,4 +169,8 @@ Adding a directory, and we see the file underneath:
     >>> list(b.working_tree().unknowns())
     ['d1/f1', 'd2/d3', 'd2/f2', 'd2/f3']
 
+    >>> b.add('d1/f1')
+    >>> list(b.working_tree().unknowns())
+    ['d2/d3', 'd2/f2', 'd2/f3']
+
 """
