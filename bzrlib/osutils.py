@@ -17,7 +17,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os, types, re, time, types
-from stat import S_ISREG, S_ISDIR, ST_MODE, ST_SIZE
+from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 
 from errors import bailout
 
@@ -51,8 +51,10 @@ def file_kind(f):
         return 'file'
     elif S_ISDIR(mode):
         return 'directory'
+    elif S_ISLNK(mode):
+        return 'symlink'
     else:
-        bailout("can't handle file kind of %r" % fp)
+        bailout("can't handle file kind with mode %o of %r" % (mode, f)) 
 
 
 
