@@ -480,27 +480,39 @@ def cmd_gen_revision_id():
     print bzrlib.branch._gen_revision_id(time.time())
 
 
-def cmd_doctest():
-    """Run internal doctest suite"""
+def cmd_selftest(verbose=False):
+    """Run internal test suite"""
     ## -v, if present, is seen by doctest; the argument is just here
     ## so our parser doesn't complain
 
     ## TODO: --verbose option
+
+    failures, tests = 0, 0
     
-    import doctest, bzrlib.store
+    import doctest, bzrlib.store, bzrlib.tests
     bzrlib.trace.verbose = False
-    doctest.testmod(bzrlib.store)
-    doctest.testmod(bzrlib.inventory)
-    doctest.testmod(bzrlib.branch)
-    doctest.testmod(bzrlib.osutils)
-    doctest.testmod(bzrlib.tree)
 
-    # more strenuous tests;
-    import bzrlib.tests
-    doctest.testmod(bzrlib.tests)
+    for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \
+        bzrlib.tree, bzrlib.tests:
+        mf, mt = doctest.testmod(m)
+        failures += mf
+        tests += mt
+        print '%-40s %3d tests' % (m.__name__, mt),
+        if mf:
+            print '%3d FAILED!' % mf
+        else:
+            print
+
+    print '%-40s %3d tests' % ('total', tests),
+    if failures:
+        print '%3d FAILED!' % failures
+    else:
+        print
 
 
-cmd_selftest = cmd_doctest
+
+# deprecated
+cmd_doctest = cmd_selftest
 
 
 ######################################################################
