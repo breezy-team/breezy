@@ -244,20 +244,24 @@ def cmd_init():
 
 
 def cmd_diff(revision=None):
-    """Show diff from basis to working copy.
+    """bzr diff: Show differences in working tree.
+    
+usage: bzr diff [-r REV]
 
-    :todo: Take one or two revision arguments, look up those trees,
-           and diff them.
+--revision REV
+    Show changes since REV, rather than predecessor.
 
-    :todo: Allow diff across branches.
+TODO: Given two revision arguments, show the difference between them.
 
-    :todo: Mangle filenames in diff to be more relevant.
+TODO: Allow diff across branches.
 
-    :todo: Shouldn't be in the cmd function.
+TODO: Option to use external diff command; could be GNU diff, wdiff,
+or a graphical diff.
 
-    TODO: Option to use external diff command; could be GNU diff,
-    wdiff, or a graphical diff.
-    """
+TODO: Diff selected files.
+"""
+
+    ## TODO: Shouldn't be in the cmd function.
 
     b = Branch('.')
 
