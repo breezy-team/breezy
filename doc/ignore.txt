@@ -4,7 +4,8 @@ Ignore patterns
 Ignore patterns need to be flexible but simple.
 
 Based on the system from rsync, which is in turn based on that of
-CVS.  
+CVS.  However, I won't implement all of this at first but rather add
+bits as they seem to be needed.
 
 First build a list by concatenating:
 
