@@ -20,7 +20,7 @@ __copyright__ = "Copyright (C) 2005 Canonical Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
 
 
-import sys, os, time, socket, stat
+import sys, os, time, socket, stat, codecs
 import bzrlib
 
 ######################################################################
@@ -87,7 +87,7 @@ def create_tracefile(argv):
 
     # XXX: Is HOME always set on Windows?
     trace_fname = os.path.join(os.environ['HOME'], '.bzr.log')
-    _tracefile = file(trace_fname, 'at')
+    _tracefile = codecs.open(trace_fname, 'at', 'utf8')
     t = _tracefile
 
     if os.fstat(t.fileno())[stat.ST_SIZE] == 0:

@@ -15,8 +15,9 @@ bzr-0.0.3  NOT RELEASED YET
 
   CHANGES:
 
-    * .bzr.log is placed in $HOME, not pwd.  (Probably not a
-      completely good long-term solution, but will do for now.)
+    * .bzr.log is placed in $HOME (not pwd) and is always written in
+      UTF-8.  (Probably not a completely good long-term solution, but
+      will do for now.)
 
   PORTABILITY:
 
