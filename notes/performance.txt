@@ -278,3 +278,23 @@ diff algorithm is a bit differnt to GNU diff.
 full check, retrieving all file texts once for the 2.4 kernel branch
 takes 10m elapsed, 1m cpu time.  lots of random IO and seeking.
 
+----
+
+
+mbp@hope% time python =bzr deleted --show-ids 
+README                                             README-fa1d8447b4fd0140-adbf4342752f0fc3
+python =bzr deleted --show-ids  1.55s user 0.09s system 96% cpu 1.701 total
+mbp@hope% time python -O =bzr deleted --show-ids 
+README                                             README-fa1d8447b4fd0140-adbf4342752f0fc3
+python -O =bzr deleted --show-ids  1.47s user 0.10s system 101% cpu 1.547 total
+mbp@hope% time python -O =bzr deleted --show-ids
+README                                             README-fa1d8447b4fd0140-adbf4342752f0fc3
+python -O =bzr deleted --show-ids  1.49s user 0.07s system 99% cpu 1.565 total
+mbp@hope% time python =bzr deleted --show-ids   
+README                                             README-fa1d8447b4fd0140-adbf4342752f0fc3
+python =bzr deleted --show-ids  1.55s user 0.08s system 99% cpu 1.637 total
+
+small but significant improvement from Python -O
+
+
+

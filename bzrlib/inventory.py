@@ -1,5 +1,4 @@
-#! /usr/bin/env python
-# -*- coding: UTF-8 -*-
+# (C) 2005 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -125,6 +124,8 @@ class InventoryEntry(XMLMixin):
         self.parent_id = parent_id
         self.text_sha1 = None
         self.text_size = None
+        if kind == 'directory':
+            self.children = {}
 
 
     def copy(self):
@@ -225,9 +226,6 @@ class Inventory(XMLMixin):
     >>> inv.add(InventoryEntry('123-123', 'hello.c'))
     >>> inv['123-123'].name
     'hello.c'
-    >>> for file_id in inv: print file_id
-    ...
-    123-123
 
     May be treated as an iterator or set to look up file ids:
     
@@ -248,18 +246,16 @@ class Inventory(XMLMixin):
 
     """
 
-    ## TODO: Clear up handling of files in subdirectories; we probably
-    ## do want to be able to just look them up by name but this
-    ## probably means gradually walking down the path, looking up as we go.
-
     ## TODO: Make sure only canonical filenames are stored.
 
     ## TODO: Do something sensible about the possible collisions on
     ## case-losing filesystems.  Perhaps we should just always forbid
     ## such collisions.
 
-    ## _tree should probably just be stored as
-    ## InventoryEntry._children on each directory.
+    ## TODO: No special cases for root, rather just give it a file id
+    ## like everything else.
+
+    ## TODO: Probably change XML serialization to use nesting
 
     def __init__(self):
         """Create or read an inventory.
@@ -268,11 +264,8 @@ class Inventory(XMLMixin):
         from there.  If the file is specified, read from that. If not,
         the inventory is created empty.
         """
-        self._byid = dict()
-
-        # _tree is indexed by parent_id; at each level a map from name
-        # to ie.  The None entry is the root.
-        self._tree = {None: {}}
+        self._root = InventoryEntry(None, '', kind='directory')
+        self._byid = {None: self._root}
 
 
     def __iter__(self):
@@ -286,7 +279,7 @@ class Inventory(XMLMixin):
 
     def iter_entries(self, parent_id=None):
         """Return (path, entry) pairs, in order by name."""
-        kids = self._tree[parent_id].items()
+        kids = self[parent_id].children.items()
         kids.sort()
         for name, ie in kids:
             yield name, ie
@@ -304,15 +297,6 @@ class Inventory(XMLMixin):
             if entry.kind == 'directory':
                 yield path, entry
         
-
-
-    def children(self, parent_id):
-        """Return entries that are direct children of parent_id."""
-        return self._tree[parent_id]
-                    
-
-
-    # TODO: return all paths and entries
 
 
     def __contains__(self, file_id):
@@ -339,6 +323,13 @@ class Inventory(XMLMixin):
         return self._byid[file_id]
 
 
+    def get_child(self, parent_id, filename):
+        if parent_id == None:
+            return self._root.children.get(filename)
+        else:
+            return self[parent_id].children.get(filename)
+
+
     def add(self, entry):
         """Add entry to inventory.
 
@@ -351,16 +342,14 @@ class Inventory(XMLMixin):
             if entry.parent_id not in self:
                 bailout("parent_id %s of new entry not found in inventory"
                         % entry.parent_id)
+            # TODO: parent must be a directory
             
-        if self._tree[entry.parent_id].has_key(entry.name):
+        if self[entry.parent_id].children.has_key(entry.name):
             bailout("%s is already versioned"
                     % appendpath(self.id2path(entry.parent_id), entry.name))
 
         self._byid[entry.file_id] = entry
-        self._tree[entry.parent_id][entry.name] = entry
-
-        if entry.kind == 'directory':
-            self._tree[entry.file_id] = {}
+        self[entry.parent_id].children[entry.name] = entry
 
 
     def add_path(self, relpath, kind, file_id=None):
@@ -393,17 +382,17 @@ class Inventory(XMLMixin):
         """
         ie = self[file_id]
 
-        assert self._tree[ie.parent_id][ie.name] == ie
+        assert self[ie.parent_id].children[ie.name] == ie
         
         # TODO: Test deleting all children; maybe hoist to a separate
         # deltree method?
         if ie.kind == 'directory':
-            for cie in self._tree[file_id].values():
+            for cie in ie.children.values():
                 del self[cie.file_id]
-            del self._tree[file_id]
+            del ie.children
 
         del self._byid[file_id]
-        del self._tree[ie.parent_id][ie.name]
+        del self[ie.parent_id].children[ie.name]
 
 
     def id_set(self):
@@ -491,21 +480,17 @@ class Inventory(XMLMixin):
         if isinstance(name, types.StringTypes):
             name = splitpath(name)
 
-        parent_id = None
+        parent = self[None]
         for f in name:
             try:
-                cie = self._tree[parent_id][f]
+                cie = parent.children[f]
                 assert cie.name == f
-                parent_id = cie.file_id
+                parent = cie
             except KeyError:
                 # or raise an error?
                 return None
 
-        return parent_id
-
-
-    def get_child(self, parent_id, child_name):
-        return self._tree[parent_id].get(child_name)
+        return parent.file_id
 
 
     def has_filename(self, names):
