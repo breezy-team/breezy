@@ -348,6 +348,11 @@ TODO: Show files deleted since a previous revision, or between two revisions.
     old = b.basis_tree()
     new = b.working_tree()
 
+    ## TODO: Much more efficient way to do this: read in new
+    ## directories with readdir, rather than stating each one.  Same
+    ## level of effort but possibly much less IO.  (Or possibly not,
+    ## if the directories are very large...)
+
     for path, ie in old.inventory.iter_entries():
         if not new.has_id(ie.file_id):
             if show_ids:
