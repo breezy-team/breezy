@@ -235,6 +235,12 @@ class WorkingTree(Tree):
 
 
     def unknowns(self):
+        for subp in self.extras():
+            if not self.is_ignored(subp):
+                yield subp
+
+
+    def extras(self):
         """Yield all unknown files in this WorkingTree.
 
         If there are any unknown directories then only the directory is
@@ -261,8 +267,6 @@ class WorkingTree(Tree):
             fl.sort()
             for subf in fl:
                 subp = appendpath(path, subf)
-                if self.is_ignored(subp):
-                    continue
                 yield subp
                 
 
