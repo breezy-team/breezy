@@ -25,8 +25,6 @@ Current limitation include:
 * Metadata format is not stable yet -- you may need to
   discard history in the future.
 
-* No handling of subdirectories, symlinks or any non-text files.
-
 * Insufficient error handling.
 
 * Many commands unimplemented or partially implemented.
@@ -37,8 +35,8 @@ Current limitation include:
 
 Interesting commands::
 
-  bzr help
-       Show summary help screen
+  bzr help [COMMAND]
+       Show help screen
   bzr version
        Show software version/licence/non-warranty.
   bzr init
