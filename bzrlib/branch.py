@@ -125,10 +125,10 @@ class Branch:
     __repr__ = __str__
 
 
-    def _rel(self, name):
-        """Return filename relative to branch top"""
+    def abspath(self, name):
+        """Return absolute filename for something in the branch"""
         return os.path.join(self.base, name)
-        
+
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
@@ -257,7 +257,7 @@ class Branch:
             if len(fp) == 0:
                 bailout("cannot add top-level %r" % f)
                 
-            fullpath = os.path.normpath(self._rel(f))
+            fullpath = os.path.normpath(self.abspath(f))
 
             if isfile(fullpath):
                 kind = 'file'
@@ -417,7 +417,7 @@ class Branch:
 
             entry = entry.copy()
 
-            p = self._rel(path)
+            p = self.abspath(path)
             file_id = entry.file_id
             mutter('commit prep file %s, id %r ' % (p, file_id))
 
@@ -698,7 +698,7 @@ class Branch:
         A       foo
         >>> b.commit("add foo")
         >>> b.show_status()
-        >>> os.unlink(b._rel('foo'))
+        >>> os.unlink(b.abspath('foo'))
         >>> b.show_status()
         D       foo
         

@@ -139,17 +139,17 @@ and we can also add files within subdirectories:
 Tests for adding subdirectories, etc.
 
     >>> b = bzrlib.branch.ScratchBranch()
-    >>> os.mkdir(b._rel('d1'))
-    >>> os.mkdir(b._rel('d2'))
-    >>> os.mkdir(b._rel('d2/d3'))
+    >>> os.mkdir(b.abspath('d1'))
+    >>> os.mkdir(b.abspath('d2'))
+    >>> os.mkdir(b.abspath('d2/d3'))
     >>> list(b.working_tree().unknowns())
     ['d1', 'd2']
 
 Create some files, but they're not seen as unknown yet:
 
-    >>> file(b._rel('d1/f1'), 'w').close()
-    >>> file(b._rel('d2/f2'), 'w').close()
-    >>> file(b._rel('d2/f3'), 'w').close()
+    >>> file(b.abspath('d1/f1'), 'w').close()
+    >>> file(b.abspath('d2/f2'), 'w').close()
+    >>> file(b.abspath('d2/f3'), 'w').close()
     >>> [v[0] for v in b.inventory.directories()]
     ['']
     >>> list(b.working_tree().unknowns())

@@ -138,26 +138,26 @@ class WorkingTree(Tree):
         return "<%s of %s>" % (self.__class__.__name__,
                                self.basedir)
 
-    def _rel(self, filename):
+    def abspath(self, filename):
         return os.path.join(self.basedir, filename)
 
     def has_filename(self, filename):
-        return os.path.exists(self._rel(filename))
+        return os.path.exists(self.abspath(filename))
 
     def get_file(self, file_id):
         return self.get_file_byname(self.id2path(file_id))
 
     def get_file_byname(self, filename):
-        return file(self._rel(filename), 'rb')
+        return file(self.abspath(filename), 'rb')
 
     def _get_store_filename(self, file_id):
-        return self._rel(self.id2path(file_id))
+        return self.abspath(self.id2path(file_id))
 
     def has_id(self, file_id):
         # files that have been deleted are excluded
         if not self.inventory.has_id(file_id):
             return False
-        return os.access(self._rel(self.inventory.id2path(file_id)), os.F_OK)
+        return os.access(self.abspath(self.inventory.id2path(file_id)), os.F_OK)
 
     def get_file_size(self, file_id):
         return os.stat(self._get_store_filename(file_id))[ST_SIZE]
@@ -177,9 +177,9 @@ class WorkingTree(Tree):
 
 
     def file_kind(self, filename):
-        if isfile(self._rel(filename)):
+        if isfile(self.abspath(filename)):
             return 'file'
-        elif isdir(self._rel(filename)):
+        elif isdir(self.abspath(filename)):
             return 'directory'
         else:
             return 'unknown'
