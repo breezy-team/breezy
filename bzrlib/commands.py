@@ -500,6 +500,9 @@ def cmd_doctest():
     doctest.testmod(bzrlib.tests)
 
 
+cmd_selftest = cmd_doctest
+
+
 ######################################################################
 # help
 
