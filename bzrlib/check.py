@@ -23,21 +23,21 @@
 
 import bzrlib
 from trace import mutter
+from errors import bailout
 
-def _ass(a, b):
-    if a != b:
-        bzrlib.errors.bailout("check failed: %r != %r" % (a, b))
 
 def check(branch):
     mutter('checking tree %r' % branch.base)
 
-    mutter('checking entire revision history is present')
+    mutter('checking revision history')
     last_ptr = None
     for rid in branch.revision_history():
         mutter('    revision {%s}' % rid)
         rev = branch.get_revision(rid)
-        _ass(rev.revision_id, rid)
-        _ass(rev.precursor, last_ptr)
+        if rev.revision_id != rid:
+            bailout('wrong internal revision id in revision {%s}' % rid)
+        if rev.precursor != last_ptr:
+            bailout('mismatched precursor in revision {%s}' % rid)
         last_ptr = rid
 
     #mutter("checking tree")
