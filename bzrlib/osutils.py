@@ -135,7 +135,12 @@ def username():
         import pwd
         uid = os.getuid()
         w = pwd.getpwuid(uid)
-        realname, junk = w.pw_gecos.split(',', 1)
+        gecos = w.pw_gecos
+        comma = gecos.find(',')
+        if comma == -1:
+            realname = gecos
+        else:
+            realname = gecos[:comma]
         return '%s <%s@%s>' % (realname, w.pw_name, socket.getfqdn())
     except ImportError:
         pass
