@@ -18,6 +18,7 @@ Inspiration, suggestions, advice, bug reports
 * Luke Gorrie
 * Dan Nicolaescu
 * Tim Parkin
+* Scott James Remnant
 
 Sponsor
 -------

@@ -174,8 +174,9 @@ def compare_files(a, b):
 
 
 
-def local_time_offset():
-    if time.daylight:
+def local_time_offset(t=None):
+    """Return offset of local zone from GMT, either at present or at time t."""
+    if time.localtime(t).tm_isdst and time.daylight:
         return -time.altzone
     else:
         return -time.timezone
@@ -197,7 +198,7 @@ def format_date(t, offset=0, timezone='original'):
         tt = time.gmtime(t + offset)
     elif timezone == 'local':
         tt = time.localtime(t)
-        offset = local_time_offset()
+        offset = local_time_offset(t)
     else:
         bailout("unsupported timezone format %r",
                 ['options are "utc", "original", "local"'])
