@@ -23,6 +23,9 @@ import bzrlib
 from osutils import format_date
 
 def show_info(b):
+    # TODO: Maybe show space used by working tree, versioned files,
+    # unknown files, text store.
+    
     print 'branch format:', b.controlfile('branch-format', 'r').readline().rstrip('\n')
 
     def plural(n, base='', pl=None):
