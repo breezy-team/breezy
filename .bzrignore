@@ -1,0 +1,5 @@
+doc/*.html
+*.py[oc]
+*~
+.*
+{arch}
