@@ -25,5 +25,6 @@ from diff import diff_trees
 
 BZRDIR = ".bzr"
 
-DEFAULT_IGNORE = ['.*', '*~', '#*#', '*.tmp', '*.o', '*.a', '*.py[oc]']
+DEFAULT_IGNORE = ['.*', '*~', '#*#', '*.tmp', '*.o', '*.a', '*.py[oc]',
+                  '{arch}']
 
