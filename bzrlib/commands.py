@@ -203,6 +203,28 @@ def cmd_mv(source_list, dest):
 
 
 
+def cmd_rename(from_name, to_name):
+    """Change the name of an entry.
+
+usage: bzr rename FROM_NAME TO_NAME
+
+examples:
+  bzr rename frob.c frobber.c
+  bzr rename src/frob.c lib/frob.c
+
+It is an error if the destination name exists.
+
+See also the 'move' command, which moves files into a different
+directory without changing their name.
+
+TODO: Some way to rename multiple files without invoking bzr for each
+one?"""
+    b = Branch('.')
+    b.rename_one(b.relpath(from_name), b.relpath(to_name))
+    
+
+
+
 def cmd_renames(dir='.'):
     """Show list of renamed files.
 
@@ -728,6 +750,7 @@ cmd_args = {
     'mv':                     ['source$', 'dest'],
     'relpath':                ['filename'],
     'remove':                 ['file+'],
+    'rename':                 ['from_name', 'to_name'],
     'renames':                ['dir?'],
     'root':                   ['filename?'],
     'status':                 [],
