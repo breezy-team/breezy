@@ -207,7 +207,7 @@ Renames, etc:
     >>> b.commit('add foo')
     >>> list(b.unknowns())
     []
-    >>> b.rename(['foo'], 'subdir')
+    >>> b.move(['foo'], 'subdir')
     foo => subdir/foo
     >>> b.show_status()
     R       foo => subdir/foo

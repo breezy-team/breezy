@@ -730,6 +730,8 @@ class Branch:
         mutter("  to_dir_id  {%s}" % to_dir_id)
             
         inv.rename(file_id, to_dir_id, to_tail)
+
+        print "%s => %s" % (from_rel, to_rel)
         
         from_abs = self.abspath(from_rel)
         to_abs = self.abspath(to_rel)
@@ -744,8 +746,10 @@ class Branch:
             
 
 
-    def rename(self, from_paths, to_name):
+    def move(self, from_paths, to_name):
         """Rename files.
+
+        to_name must exist as a versioned directory.
 
         If to_name exists and is a directory, the files are moved into
         it, keeping their old names.  If it is a directory, 
@@ -757,23 +761,49 @@ class Branch:
         assert not isinstance(from_paths, basestring)
         tree = self.working_tree()
         inv = tree.inventory
-        dest_dir = isdir(self.abspath(to_name))
-        if dest_dir:
-            # TODO: Wind back properly if some can't be moved?
-            dest_dir_id = inv.path2id(to_name)
-            if not dest_dir_id and to_name != '':
-                bailout("destination %r is not a versioned directory" % to_name)
-            for f in from_paths:
-                name_tail = splitpath(f)[-1]
-                dest_path = appendpath(to_name, name_tail)
-                print "%s => %s" % (f, dest_path)
-                inv.rename(inv.path2id(f), dest_dir_id, name_tail)
+        to_abs = self.abspath(to_name)
+        if not isdir(to_abs):
+            bailout("destination %r is not a directory" % to_abs)
+        if not tree.has_filename(to_name):
+            bailout("destination %r is not a versioned directory" % to_abs)
+        to_dir_id = inv.path2id(to_name)
+        if to_dir_id == None and to_name != '':
+            bailout("destination %r is not a versioned directory" % to_name)
+        to_dir_ie = inv[to_dir_id]
+        if to_dir_ie.kind != 'directory':
+            bailout("destination %r is not a versioned directory" % to_abs)
+
+        to_idpath = Set(inv.get_idpath(to_dir_id))
+
+        for f in from_paths:
+            if not tree.has_filename(f):
+                bailout("%r does not exist in working tree" % f)
+            f_id = inv.path2id(f)
+            if f_id == None:
+                bailout("%r is not versioned" % f)
+            name_tail = splitpath(f)[-1]
+            dest_path = appendpath(to_name, name_tail)
+            if tree.has_filename(dest_path):
+                bailout("destination %r already exists" % dest_path)
+            if f_id in to_idpath:
+                bailout("can't move %r to a subdirectory of itself" % f)
+
+        # OK, so there's a race here, it's possible that someone will
+        # create a file in this interval and then the rename might be
+        # left half-done.  But we should have caught most problems.
+
+        for f in from_paths:
+            name_tail = splitpath(f)[-1]
+            dest_path = appendpath(to_name, name_tail)
+            print "%s => %s" % (f, dest_path)
+            inv.rename(inv.path2id(f), to_dir_id, name_tail)
+            try:
                 os.rename(self.abspath(f), self.abspath(dest_path))
-            self._write_inventory(inv)
-        else:
-            if len(from_paths) != 1:
-                bailout("when moving multiple files, destination must be a directory")
-            bailout("rename to non-directory %r not implemented sorry" % to_name)
+            except OSError, e:
+                bailout("failed to rename %r to %r: %s" % (f, dest_path, e[1]),
+                        ["rename rolled back"])
+
+        self._write_inventory(inv)
 
 
 

@@ -7,7 +7,11 @@ bzr-0.0.3  NOT RELEASED YET
 
     * Can now say "bzr commit --help".
 
-    * New "rename" command to rename one file.
+    * New "rename" command to rename one file to a different name
+      and/or directory.
+
+    * New "move" command to move one or more files into a different
+      directory.
 
     * Basic "bzr mv" support for renames!  (Not all scenarios work
       through the command at the moment, but the inventory support is

@@ -196,10 +196,13 @@ def cmd_inventory(revision=None):
 
 
 
-def cmd_mv(source_list, dest):
+# TODO: Maybe a 'mv' command that has the combined move/rename
+# special behaviour of Unix?
+
+def cmd_move(source_list, dest):
     b = Branch('.')
 
-    b.rename([b.relpath(s) for s in source_list], b.relpath(dest))
+    b.move([b.relpath(s) for s in source_list], b.relpath(dest))
 
 
 
@@ -747,7 +750,7 @@ cmd_args = {
     'init':                   [],
     'log':                    [],
     'lookup-revision':        ['revno'],
-    'mv':                     ['source$', 'dest'],
+    'move':                   ['source$', 'dest'],
     'relpath':                ['filename'],
     'remove':                 ['file+'],
     'rename':                 ['from_name', 'to_name'],
