@@ -52,7 +52,9 @@ def smart_add(file_list, verbose=False, recurse=True):
             
         versioned = (inv.path2id(rf) != None)
 
-        if versioned:
+        if rf == '':
+            mutter("branch root doesn't need to be added")
+        elif versioned:
             mutter("%r is already versioned" % f)
         else:
             file_id = bzrlib.branch.gen_file_id(rf)
