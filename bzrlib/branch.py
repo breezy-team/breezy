@@ -101,6 +101,7 @@ class Branch:
         `ScratchBranch` class.
         """
         if init:
+            self.base = os.path.realpath(base)
             self._make_control()
         elif find_root:
             self.base = find_branch_root(base)
