@@ -78,6 +78,8 @@ cd ../../
 
 bzr commit -m "more renames"
 
+! bzr rename sub1 sub1/knotted-up
+
 
 
 

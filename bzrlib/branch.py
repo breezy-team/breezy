@@ -730,7 +730,15 @@ class Branch:
         mutter("  to_dir_id  {%s}" % to_dir_id)
             
         inv.rename(file_id, to_dir_id, to_tail)
-        os.rename(self.abspath(from_rel), self.abspath(to_rel))
+        
+        from_abs = self.abspath(from_rel)
+        to_abs = self.abspath(to_rel)
+        try:
+            os.rename(from_abs, to_abs)
+        except OSError, e:
+            bailout("failed to rename %r to %r: %s"
+                    % (from_abs, to_abs, e[1]),
+                    ["rename rolled back"])
 
         self._write_inventory(inv)
             
