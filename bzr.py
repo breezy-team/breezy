@@ -235,6 +235,13 @@ def cmd_info():
         firstrev = b.get_revision(history[0])
         age = int((time.time() - firstrev.timestamp) / 3600 / 24)
         print '  %5d day%s old' % (age, plural(age))
+        print '  first revision: %s' % format_date(firstrev.timestamp,
+                                                 firstrev.timezone)
+
+        lastrev = b.get_revision(history[-1])
+        print '  latest revision: %s' % format_date(lastrev.timestamp,
+                                                    lastrev.timezone)
+        
     
 
 
