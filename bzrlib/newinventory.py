@@ -37,7 +37,8 @@ def write_inventory(inv, f):
                 el.set('text_size', ('%d' % ie.text_size))
         elif kind != 'directory':
             bailout('unknown InventoryEntry kind %r' % kind)
-            
+
+        el.tail = '\n'
         parent_el.append(el)
 
         if kind == 'directory':
@@ -56,3 +57,44 @@ def write_inventory(inv, f):
     
     ElementTree(el).write(f, 'utf-8')
     f.write('\n')
+
+
+
+def write_slacker_inventory(inv, f):
+    def descend(ie):
+        kind = ie.kind
+        f.write('<%s name="%s" id="%s" ' % (kind, ie.name, ie.file_id))
+
+        if kind == 'file':
+            if ie.text_id:
+                f.write('text_id="%s" ' % ie.text_id)
+            if ie.text_sha1:
+                f.write('text_sha1="%s" ' % ie.text_sha1)
+            if ie.text_size != None:
+                f.write('text_size="%d" ' % ie.text_size)
+            f.write('/>\n')
+        elif kind == 'directory':
+            f.write('>\n')
+            
+            l = ie.children.items()
+            l.sort()
+            for child_name, child_ie in l:
+                descend(child_ie)
+
+            f.write('</directory>\n')
+        else:
+            bailout('unknown InventoryEntry kind %r' % kind)
+
+    f.write('<inventory>\n')
+    f.write('<root_directory id="bogus-root-id">\n')
+
+    l = inv._root.children.items()
+    l.sort()
+    for entry_name, ie in l:
+        descend(ie)
+
+    f.write('</root-directory>\n')
+    f.write('</inventory>\n')
+    
+
+
