@@ -165,15 +165,34 @@ def cmd_revno():
     print Branch('.').revno()
     
 
-def cmd_add(file_list, verbose=False):
-    """Add specified files.
     
-    Fails if the files are already added.
-    """
-    assert file_list
-    b = Branch(file_list[0], find_root=True)
-    b.add([b.relpath(f) for f in file_list], verbose=verbose)
+def cmd_add(file_list, verbose=False):
+    """Add specified files or directories.
 
+    In non-recursive mode, all the named items are added, regardless
+    of whether they were previously ignored.  A warning is given if
+    any of the named files are already versioned.
+
+    In recursive mode (the default), files are treated the same way
+    but the behaviour for directories is different.  Directories that
+    are already versioned do not give a warning.  All directories,
+    whether already versioned or not, are searched for files or
+    subdirectories that are neither versioned or ignored, and these
+    are added.  This search proceeds recursively into versioned
+    directories.
+
+    Therefore simply saying 'bzr add .' will version all files that
+    are currently unknown.
+    """
+    if True:
+        bzrlib.add.smart_add(file_list, verbose)
+    else:
+        # old way
+        assert file_list
+        b = Branch(file_list[0], find_root=True)
+        b.add([b.relpath(f) for f in file_list], verbose=verbose)
+
+    
 
 def cmd_relpath(filename):
     print Branch(filename).relpath(filename)
@@ -508,7 +527,7 @@ def cmd_selftest(verbose=False):
     bzrlib.trace.verbose = False
 
     for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \
-        bzrlib.tree, bzrlib.tests, bzrlib.commands:
+        bzrlib.tree, bzrlib.tests, bzrlib.commands, bzrlib.add:
         mf, mt = doctest.testmod(m)
         failures += mf
         tests += mt

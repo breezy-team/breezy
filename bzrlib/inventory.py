@@ -31,8 +31,10 @@ except ImportError:
 
 from xml import XMLMixin
 from errors import bailout
-from osutils import uuid, quotefn, splitpath, joinpath, appendpath
-from trace import mutter
+
+import bzrlib
+from bzrlib.osutils import uuid, quotefn, splitpath, joinpath, appendpath
+from bzrlib.trace import mutter
 
 class InventoryEntry(XMLMixin):
     """Description of a versioned file.
@@ -360,6 +362,23 @@ class Inventory(XMLMixin):
             self._tree[entry.file_id] = {}
 
 
+    def add_path(self, relpath, kind, file_id=None):
+        """Add entry from a path.
+
+        The immediate parent must already be versioned"""
+        parts = bzrlib.osutils.splitpath(relpath)
+        if len(parts) == 0:
+            bailout("cannot re-add root of inventory")
+
+        if file_id is None:
+            file_id = bzrlib.branch.gen_file_id(relpath)
+
+        parent_id = self.path2id(parts[:-1])
+        ie = InventoryEntry(file_id, parts[-1],
+                            kind=kind, parent_id=parent_id)
+        return self.add(ie)
+
+
     def __delitem__(self, file_id):
         """Remove entry by id.
 
@@ -468,10 +487,11 @@ class Inventory(XMLMixin):
         This returns the entry of the last component in the path,
         which may be either a file or a directory.
         """
-        assert isinstance(name, types.StringTypes)
+        if isinstance(name, types.StringTypes):
+            name = splitpath(name)
 
         parent_id = None
-        for f in splitpath(name):
+        for f in name:
             try:
                 cie = self._tree[parent_id][f]
                 assert cie.name == f
@@ -494,6 +514,8 @@ class Inventory(XMLMixin):
     def has_id(self, file_id):
         assert isinstance(file_id, str)
         return self._byid.has_key(file_id)
+
+
 
 
 

@@ -22,6 +22,8 @@ from branch import Branch, ScratchBranch
 from osutils import format_date
 from tree import Tree
 from diff import diff_trees
+from trace import mutter, warning
+import add
 
 BZRDIR = ".bzr"
 

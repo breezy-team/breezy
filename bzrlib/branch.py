@@ -1,3 +1,5 @@
+# Copyright (C) 2005 Canonical Ltd
+
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -202,6 +204,7 @@ class Branch:
         will be committed to the next revision.
         """
         ## TODO: factor out to atomicfile?  is rename safe on windows?
+        ## TODO: Maybe some kind of clean/dirty marker on inventory?
         tmpfname = self.controlfilename('inventory.tmp')
         tmpf = file(tmpfname, 'w')
         inv.write_xml(tmpf)
@@ -272,30 +275,23 @@ class Branch:
                 
             fullpath = os.path.normpath(self.abspath(f))
 
-            if isfile(fullpath):
-                kind = 'file'
-            elif isdir(fullpath):
-                kind = 'directory'
-            else:
+            try:
+                kind = file_kind(fullpath)
+            except OSError:
+                # maybe something better?
+                bailout('cannot add: not a regular file or directory: %s' % quotefn(f))
+            
+            if kind != 'file' and kind != 'directory':
                 bailout('cannot add: not a regular file or directory: %s' % quotefn(f))
 
-            if len(fp) > 1:
-                parent_name = joinpath(fp[:-1])
-                mutter("lookup parent %r" % parent_name)
-                parent_id = inv.path2id(parent_name)
-                if parent_id == None:
-                    bailout("cannot add: parent %r is not versioned"
-                            % joinpath(fp[:-1]))
-            else:
-                parent_id = None
+            file_id = gen_file_id(f)
+            inv.add_path(f, kind=kind, file_id=file_id)
 
-            file_id = _gen_file_id(fp[-1])
-            inv.add(InventoryEntry(file_id, fp[-1], kind=kind, parent_id=parent_id))
             if verbose:
                 show_status('A', kind, quotefn(f))
                 
-            mutter("add file %s file_id:{%s} kind=%r parent_id={%s}"
-                   % (f, file_id, kind, parent_id))
+            mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
+            
         self._write_inventory(inv)
 
 
@@ -476,7 +472,7 @@ class Branch:
                            entry.text_id)
                     
                 else:
-                    entry.text_id = _gen_file_id(entry.name)
+                    entry.text_id = gen_file_id(entry.name)
                     self.text_store.add(content, entry.text_id)
                     mutter('    stored with text_id {%s}' % entry.text_id)
                     if verbose:
@@ -798,6 +794,8 @@ def is_control_file(filename):
         ## mutter('check %r for control file' % ((head, tail), ))
         if tail == bzrlib.BZRDIR:
             return True
+        if filename == head:
+            break
         filename = head
     return False
 
@@ -810,15 +808,18 @@ def _gen_revision_id(when):
     return s
 
 
-def _gen_file_id(name):
+def gen_file_id(name):
     """Return new file id.
 
     This should probably generate proper UUIDs, but for the moment we
     cope with just randomness because running uuidgen every time is
     slow."""
-    assert '/' not in name
-    while name[0] == '.':
-        name = name[1:]
+    idx = name.rfind('/')
+    if idx != -1:
+        name = name[idx+1 : ]
+
+    name = name.lstrip('.')
+
     s = hexlify(rand_bytes(8))
     return '-'.join((name, compact_date(time.time()), s))
 

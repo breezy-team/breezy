@@ -41,6 +41,12 @@ silent = False
 verbose = False
 
 
+def warning(msg):
+    b = 'bzr: warning: ' + msg + '\n'
+    sys.stderr.write(b)
+    _tracefile.write(b)
+    _tracefile.flush()
+
 def mutter(msg):
     _tracefile.write(msg)
     _tracefile.write('\n')
