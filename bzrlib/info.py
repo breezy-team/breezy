@@ -51,23 +51,23 @@ def show_info(b):
                      ('modified', 'M'), ('added', 'A'), ('removed', 'D'),
                      ('renamed', 'R'), ('unknown', '?'), ('ignored', 'I'),
                      ):
-        print '  %5d %s' % (count_status[fs], name)
-    print '  %5d versioned subdirector%s' % (count_version_dirs,
+        print '  %8d %s' % (count_status[fs], name)
+    print '  %8d versioned subdirector%s' % (count_version_dirs,
                                              plural(count_version_dirs, 'y', 'ies'))
 
     print
     print 'branch history:'
     history = b.revision_history()
     revno = len(history)
-    print '  %5d revision%s' % (revno, plural(revno))
+    print '  %8d revision%s' % (revno, plural(revno))
     committers = Set()
     for rev in history:
         committers.add(b.get_revision(rev).committer)
-    print '  %5d committer%s' % (len(committers), plural(len(committers)))
+    print '  %8d committer%s' % (len(committers), plural(len(committers)))
     if revno > 0:
         firstrev = b.get_revision(history[0])
         age = int((time.time() - firstrev.timestamp) / 3600 / 24)
-        print '  %5d day%s old' % (age, plural(age))
+        print '  %8d day%s old' % (age, plural(age))
         print '   first revision: %s' % format_date(firstrev.timestamp,
                                                     firstrev.timezone)
 
@@ -78,19 +78,19 @@ def show_info(b):
     print
     print 'text store:'
     c, t = b.text_store.total_size()
-    print '  %5d file texts' % c
-    print '  %5d kB' % (t/1024)
+    print '  %8d file texts' % c
+    print '  %8d kB' % (t/1024)
 
     print
     print 'revision store:'
     c, t = b.revision_store.total_size()
-    print '  %5d revisions' % c
-    print '  %5d kB' % (t/1024)
+    print '  %8d revisions' % c
+    print '  %8d kB' % (t/1024)
 
 
     print
     print 'inventory store:'
     c, t = b.inventory_store.total_size()
-    print '  %5d inventories' % c
-    print '  %5d kB' % (t/1024)
+    print '  %8d inventories' % c
+    print '  %8d kB' % (t/1024)
 
