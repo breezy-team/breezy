@@ -110,6 +110,9 @@ class ImmutableStore:
     def __iter__(self):
         return iter(os.listdir(self._basedir))
 
+    def __len__(self):
+        return len(os.listdir(self._basedir))
+
     def __getitem__(self, fileid):
         """Returns a file reading from a particular entry."""
         return file(self._path(fileid), 'rb')

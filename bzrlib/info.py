@@ -74,3 +74,15 @@ def show_info(b):
         lastrev = b.get_revision(history[-1])
         print '  latest revision: %s' % format_date(lastrev.timestamp,
                                                     lastrev.timezone)
+
+    print
+    print 'text store:'
+    print '  %5d file texts' % len(b.text_store)
+
+    print
+    print 'revision store:'
+    print '  %5d revisions' % len(b.revision_store)
+
+    print
+    print 'inventory store:'
+    print '  %5d inventories' % len(b.inventory_store)
