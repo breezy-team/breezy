@@ -159,8 +159,13 @@ class Branch:
         That is to say, the inventory describing changes underway, that
         will be committed to the next revision.
         """
-        inv.write_xml(self.controlfile('inventory', 'w'))
-        mutter('wrote inventory to %s' % quotefn(self.controlfilename('inventory')))
+        ## TODO: factor out to atomicfile?  is rename safe on windows?
+        tmpfname = self.controlfilename('inventory.tmp')
+        tmpf = file(tmpfname, 'w')
+        inv.write_xml(tmpf)
+        tmpf.close()
+        os.rename(tmpfname, self.controlfilename('inventory'))
+        mutter('wrote working inventory')
 
 
     inventory = property(read_working_inventory, _write_inventory, None,
