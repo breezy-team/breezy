@@ -170,7 +170,9 @@ def cmd_add(file_list, verbose=False):
     
     Fails if the files are already added.
     """
-    Branch('.').add(file_list, verbose=verbose)
+    assert file_list
+    b = Branch(file_list[0], find_root=True)
+    b.add(file_list, verbose=verbose)
 
 
 def cmd_inventory(revision=None):
