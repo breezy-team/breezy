@@ -104,11 +104,19 @@ class ImmutableStore:
 
     def __contains__(self, fileid):
         """"""
-        return os.access(self._path(fileid), os.R_OK)
+        p = self._path(fileid)
+        return (os.access(p, os.R_OK)
+                or os.access(p + '.gz', os.R_OK))
 
+    # TODO: Guard against the same thing being stored twice, compressed and uncompresse
 
     def __iter__(self):
-        return iter(os.listdir(self._basedir))
+        for f in os.listdir(self._basedir):
+            if f[-3:] == '.gz':
+                # TODO: case-insensitive?
+                yield f[:-3]
+            else:
+                yield f
 
     def __len__(self):
         return len(os.listdir(self._basedir))
@@ -133,7 +141,12 @@ class ImmutableStore:
         count = 0
         for fid in self:
             count += 1
-            total += os.stat(self._path(fid))[ST_SIZE]
+            p = self._path(fid)
+            try:
+                total += os.stat(p)[ST_SIZE]
+            except OSError:
+                total += os.stat(p + '.gz')[ST_SIZE]
+                
         return count, total
 
     def delete_all(self):
@@ -146,6 +159,7 @@ class ImmutableStore:
         Most stores will be add-only."""
         filename = self._path(fileid)
         ## osutils.make_writable(filename)
+        ## TODO: handle gzip
         os.remove(filename)
 
     def destroy(self):
