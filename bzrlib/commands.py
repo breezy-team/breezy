@@ -503,9 +503,24 @@ cmd_doctest = cmd_selftest
 # help
 
 
-def cmd_help():
-    # TODO: Specific help for particular commands
-    print __doc__
+def cmd_help(topic=None):
+    if topic == None:
+        print __doc__
+        return
+
+    # otherwise, maybe the name of a command?
+    try:
+        cmdfn = globals()['cmd_' + topic.replace('-', '_')]
+    except KeyError:
+        bailout("no help for %r" % topic)
+
+    doc = cmdfn.__doc__
+    if doc == None:
+        bailout("sorry, no detailed help yet for %r" % topic)
+
+    print doc
+        
+
 
 
 def cmd_version():
@@ -564,21 +579,22 @@ cmd_options = {
 
 
 cmd_args = {
-    'init':                   [],
     'add':                    ['file+'],
     'commit':                 [],
     'diff':                   [],
+    'export':                 ['revno', 'dest'],
     'file-id':                ['filename'],
-    'root':                   ['filename?'],
-    'relpath':                ['filename'],
     'get-file-text':          ['text_id'],
     'get-inventory':          ['inventory_id'],
     'get-revision':           ['revision_id'],
     'get-revision-inventory': ['revision_id'],
+    'help':                   ['topic?'],
+    'init':                   [],
     'log':                    [],
     'lookup-revision':        ['revno'],
-    'export':                 ['revno', 'dest'],
+    'relpath':                ['filename'],
     'remove':                 ['file+'],
+    'root':                   ['filename?'],
     'status':                 [],
     }
 
