@@ -553,6 +553,8 @@ def parse_args(argv):
     ([], {'version': True})
     >>> parse_args('bzr status --all'.split())
     (['status'], {'all': True})
+    >>> parse_args('bzr commit --message=biter'.split())
+    (['commit'], {'message': u'biter'})
     """
     args = []
     opts = {}
@@ -563,9 +565,13 @@ def parse_args(argv):
     while it:
         a = it.next()
         if a[0] == '-':
+            optarg = None
             if a[1] == '-':
                 mutter("  got option %r" % a)
-                optname = a[2:]
+                if '=' in a:
+                    optname, optarg = a[2:].split('=', 1)
+                else:
+                    optname = a[2:]
                 if optname not in OPTIONS:
                     bailout('unknown long option %r' % a)
             else:
@@ -577,17 +583,20 @@ def parse_args(argv):
             if optname in opts:
                 # XXX: Do we ever want to support this, e.g. for -r?
                 bailout('repeated option %r' % a)
+                
             optargfn = OPTIONS[optname]
             if optargfn:
-                if not it:
-                    bailout('option %r needs an argument' % a)
-                opts[optname] = optargfn(it.next())
+                if optarg == None:
+                    if not it:
+                        bailout('option %r needs an argument' % a)
+                    else:
+                        optarg = it.next()
+                opts[optname] = optargfn(optarg)
                 mutter("    option argument %r" % opts[optname])
             else:
-                # takes no option argument
+                if optarg != None:
+                    bailout('option %r takes no argument' % optname)
                 opts[optname] = True
-        elif a[:1] == '-':
-            bailout('unknown short option %r' % a)
         else:
             args.append(a)
 
