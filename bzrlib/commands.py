@@ -240,6 +240,11 @@ def cmd_directories():
             print name
 
 
+def cmd_missing():
+    for name, ie in Branch('.').working_tree().missing():
+        print name
+
+
 def cmd_init():
     # TODO: Check we're not already in a working directory?  At the
     # moment you'll get an ugly error.

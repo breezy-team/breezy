@@ -20,13 +20,15 @@
 from sets import Set
 import os.path, os, fnmatch
 
-from inventory import Inventory
-from trace import mutter, note
 from osutils import pumpfile, compare_files, filesize, quotefn, sha_file, \
      joinpath, splitpath, appendpath, isdir, isfile, file_kind, fingerprint_file
+import errno
+from stat import S_ISREG, S_ISDIR, ST_MODE, ST_SIZE
+
+from inventory import Inventory
+from trace import mutter, note
 from errors import bailout
 import branch
-from stat import S_ISREG, S_ISDIR, ST_MODE, ST_SIZE
 
 import bzrlib
 
@@ -268,7 +270,7 @@ class WorkingTree(Tree):
             for subf in fl:
                 subp = appendpath(path, subf)
                 yield subp
-                
+
 
     def ignored_files(self):
         """Yield list of PATH, IGNORE_PATTERN"""

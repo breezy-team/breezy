@@ -327,8 +327,6 @@ class Inventory(XMLMixin):
         """
         def descend(parent_ie):
             parent_name = parent_ie.name
-            if parent_name == '':
-                parent_name = '.'
             yield parent_name, parent_ie
 
             # directory children in sorted order

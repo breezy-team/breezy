@@ -192,4 +192,8 @@ Tests for ignored files and patterns:
     >>> b.add('.bzrignore')
     >>> list(b.unknowns())
     ['doc/configure']
+
+Detection of missing files and directories:
+
+    
 """
