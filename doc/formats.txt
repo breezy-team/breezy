@@ -238,3 +238,13 @@ all the revisions, present in the history of a branch, so that we do
 need to walk the whole history of the branch to build this list.
   
 
+----
+
+Proposed changes
+****************
+
+* Don't store parent-id in all revisions, but rather have <DIRECTORY>
+  nodes that contain entries for children?
+
+* Assign an id to the root of the tree, perhaps listed in the top of
+  the inventory?
