@@ -17,6 +17,7 @@
 
 
 
+
 from xml import XMLMixin
 
 try:
@@ -39,6 +40,7 @@ class Revision(XMLMixin):
         self.revision_id = None
         self.timestamp = None
         self.message = None
+        self.timezone = None
         self.__dict__.update(args)
 
 
@@ -50,9 +52,10 @@ class Revision(XMLMixin):
     def to_element(self):
         root = Element('changeset',
                        committer = self.committer,
-                       timestamp = '%f' % self.timestamp,
+                       timestamp = '%.9f' % self.timestamp,
                        revision_id = self.revision_id,
-                       inventory_id = self.inventory_id)
+                       inventory_id = self.inventory_id,
+                       timezone = str(self.timezone))
         if self.precursor:
             root.set('precursor', self.precursor)
         root.text = '\n'
@@ -69,6 +72,9 @@ class Revision(XMLMixin):
                  precursor = root.get('precursor'),
                  revision_id = root.get('revision_id'),
                  inventory_id = root.get('inventory_id'))
+
+        v = root.get('timezone')
+        cs.timezone = v and int(v)
 
         cs.message = root.findtext('message') # text of <message>
         return cs

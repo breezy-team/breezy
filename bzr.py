@@ -394,6 +394,11 @@ def cmd_uuid():
 
 
 
+def cmd_local_time_offset():
+    print bzrlib.osutils.local_time_offset()
+
+
+
 def cmd_commit(message, verbose=False):
     Branch('.').commit(message, verbose=verbose)
 

@@ -167,29 +167,32 @@ def compare_files(a, b):
 
 
 
-def format_date(t, inutc=False):
+def local_time_offset():
+    if time.daylight:
+        return -time.altzone
+    else:
+        return -time.timezone
+
+    
+def format_date(t, offset=0, timezone='original'):
     ## TODO: Perhaps a global option to use either universal or local time?
     ## Or perhaps just let people set $TZ?
     import time
     
     assert isinstance(t, float)
     
-    if inutc:
+    if timezone == 'utc':
         tt = time.gmtime(t)
-        zonename = 'UTC'
         offset = 0
+    elif timezone == 'original':
+        tt = time.gmtime(t - offset)
     else:
+        assert timezone == 'local'
         tt = time.localtime(t)
-        if time.daylight:
-            zonename = time.tzname[1]
-            offset = - time.altzone
-        else:
-            zonename = time.tzname[0]
-            offset = - time.timezone
-            
+        offset = local_time_offset()
+
     return (time.strftime("%a %Y-%m-%d %H:%M:%S", tt)
-            + ' ' + zonename + ' '
-            + '%+03d%02d' % (offset / 3600, (offset / 60) % 60))
+            + ' %+03d%02d' % (offset / 3600, (offset / 60) % 60))
 
 
 def compact_date(when):

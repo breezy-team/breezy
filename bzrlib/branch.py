@@ -29,7 +29,7 @@ from tree import Tree, EmptyTree, RevisionTree, WorkingTree
 from inventory import InventoryEntry, Inventory
 from osutils import isdir, quotefn, isfile, uuid, sha_file, username, chomp, \
      format_date, compact_date, pumpfile, user_email, rand_bytes, splitpath, \
-     joinpath, sha_string, file_kind
+     joinpath, sha_string, file_kind, local_time_offset
 from store import ImmutableStore
 from revision import Revision
 from errors import bailout
@@ -329,7 +329,8 @@ class Branch:
         return self.working_tree().unknowns()
 
 
-    def commit(self, message, timestamp=None, committer=None,
+    def commit(self, message, timestamp=None, timezone=None,
+               committer=None,
                verbose=False):
         """Commit working copy as a new revision.
         
@@ -463,8 +464,12 @@ class Branch:
         if committer == None:
             committer = username()
 
+        if timezone == None:
+            timezone = local_time_offset()
+
         mutter("building commit log message")
         rev = Revision(timestamp=timestamp,
+                       timezone=timezone,
                        committer=committer,
                        precursor = self.last_patch(),
                        message = message,
@@ -620,7 +625,7 @@ class Branch:
             ##print 'revision-hash:', p
             rev = self.get_revision(p)
             print 'committer:', rev.committer
-            print 'timestamp: %s' % (format_date(rev.timestamp, utc))
+            print 'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0))
 
             ## opportunistic consistency check, same as check_patch_chaining
             if rev.precursor != precursor:
