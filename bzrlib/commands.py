@@ -736,6 +736,10 @@ def main(argv):
     ## than just a backtrace.
 
     try:
+        # TODO: Lift into separate function in trace.py
+        # TODO: Also show contents of /etc/lsb-release, if it can be parsed.
+        #       Perhaps that should eventually go into the platform library?
+        # TODO: If the file doesn't exist, add a note describing it.
         t = bzrlib.trace._tracefile
         t.write('-' * 60 + '\n')
         t.write('bzr invoked at %s\n' % format_date(time.time()))
