@@ -1,6 +1,13 @@
+***********************************
 Release notes for Bazaar-NG (pre-0)
+***********************************
 
-mbp@sourcefrog.net, November 2004, London
+mbp@sourcefrog.net, March 2005, Canberra
+
+
+
+Caveats
+-------
 
 
 * There is little locking or transaction control here; if you
