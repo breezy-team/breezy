@@ -36,11 +36,11 @@ You must install either cElementTree_ or ElementTree_ first.
 Installation
 ------------
 
-bzr has a standard python ``setup.py`` script.  
+The best way to install bzr is to symlink the ``bzr`` command onto a
+directory on your path.  For example::
 
-To install it system-wide::
+  ln -s ~/work/bzr/bzr ~/bin/bzr
 
-  # python ./setup.py install
-
-Alternatively you can simply put the source directory on $PYTHONPATH
-and $PATH.
+If you use a symlink for this, Python will be able to automatically
+find the bzr libraries.  Otherwise you must ensure they are listed on
+your $PYTHONPATH.
