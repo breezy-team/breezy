@@ -28,7 +28,7 @@ Bazaar-NG test cases
 These are run by ``bzr.doctest``.
 
 >>> import bzr, bzrlib, os
->>> bzr.cmd_rocks()
+>>> bzrlib.commands.cmd_rocks()
 it sure does!
 
 Hey, nice place to begin.
@@ -39,7 +39,7 @@ up, but is in other respects identical.
 
 ScratchBranches are initially empty:
 
->>> b = bzr.ScratchBranch()
+>>> b = bzrlib.ScratchBranch()
 >>> b.show_status()
 
 New files in that directory are, it is initially unknown:
