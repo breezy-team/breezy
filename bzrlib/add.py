@@ -28,7 +28,7 @@ def smart_add(file_list, verbose=False, recurse=True):
     For the specific behaviour see the help for cmd_add().
     """
     assert file_list
-    assert not isinstance(file_list, types.StringTypes)
+    assert not isinstance(file_list, basestring)
     b = bzrlib.branch.Branch(file_list[0], find_root=True)
     inv = b.read_working_inventory()
     tree = b.working_tree()
@@ -53,7 +53,7 @@ def smart_add(file_list, verbose=False, recurse=True):
         versioned = (inv.path2id(rf) != None)
 
         if versioned:
-            bzrlib.warning("%r is already versioned" % f)
+            mutter("%r is already versioned" % f)
         else:
             file_id = bzrlib.branch.gen_file_id(rf)
             inv.add_path(rf, kind=kind, file_id=file_id)
