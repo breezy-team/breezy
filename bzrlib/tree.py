@@ -78,7 +78,7 @@ class Tree:
         fp = fingerprint_file(f)
         f.seek(0)
         
-        if ie.text_size is not None:
+        if ie.text_size != None:
             if ie.text_size != fp['size']:
                 bailout("mismatched size for file %r in %r" % (ie.file_id, self._store),
                         ["inventory expects %d bytes" % ie.text_size,
@@ -121,7 +121,7 @@ class Tree:
             elif kind == 'file':
                 pumpfile(self.get_file(ie.file_id), file(fullpath, 'wb'))
             else:
-                bailout("don't know how to export {%s} of kind %r", fid, kind)
+                bailout("don't know how to export {%s} of kind %r" % (fid, kind))
             mutter("  export {%s} kind %s to %s" % (ie.file_id, kind, fullpath))
 
 

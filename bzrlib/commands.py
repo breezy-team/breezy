@@ -62,9 +62,7 @@ Interesting commands::
 
 
 
-import sys, os, random, time, sha, sets, types, re, shutil, tempfile
-import traceback, socket, fnmatch, difflib
-from os import path
+import sys, os, time, types, shutil, tempfile, traceback, fnmatch, difflib, os.path
 from sets import Set
 from pprint import pprint
 from stat import *
@@ -73,7 +71,7 @@ from glob import glob
 import bzrlib
 from bzrlib.store import ImmutableStore
 from bzrlib.trace import mutter, note, log_error
-from bzrlib.errors import bailout, BzrError
+from bzrlib.errors import bailout, BzrError, BzrCheckError
 from bzrlib.osutils import quotefn, pumpfile, isdir, isfile
 from bzrlib.tree import RevisionTree, EmptyTree, WorkingTree, Tree
 from bzrlib.revision import Revision
@@ -296,14 +294,6 @@ starting at the branch root."""
         print fip
 
 
-def cmd_find_filename(fileid):
-    n = find_filename(fileid)
-    if n is None:
-        bailout("%s is not a live file id" % fileid)
-    else:
-        print n
-
-
 def cmd_revision_history():
     for patchid in Branch('.').revision_history():
         print patchid
@@ -363,8 +353,6 @@ TODO: Diff selected files.
         old_tree = b.revision_tree(b.lookup_revision(revision))
         
     new_tree = b.working_tree()
-    old_inv = old_tree.inventory
-    new_inv = new_tree.inventory
 
     # TODO: Options to control putting on a prefix or suffix, perhaps as a format string
     old_label = ''
@@ -381,8 +369,6 @@ TODO: Diff selected files.
     # TODO: Better to return them in sorted order I think.
     
     for file_state, fid, old_name, new_name, kind in bzrlib.diff_trees(old_tree, new_tree):
-        d = None
-
         # Don't show this by default; maybe do it if an option is passed
         # idlabel = '      {%s}' % fid
         idlabel = ''
@@ -464,7 +450,8 @@ def cmd_parse_inventory():
 
 
 def cmd_load_inventory():
-    inv = Branch('.').basis_tree().inventory
+    """Load inventory for timing purposes"""
+    Branch('.').basis_tree().inventory
 
 
 
@@ -532,11 +519,11 @@ def cmd_unknowns():
 
 
 
-def cmd_ignored(verbose=True):
+def cmd_ignored():
     """List ignored files and the patterns that matched them.
       """
     tree = Branch('.').working_tree()
-    for path, file_class, kind, id in tree.list_files():
+    for path, file_class, kind, file_id in tree.list_files():
         if file_class != 'I':
             continue
         ## XXX: Slightly inefficient since this was already calculated
@@ -644,11 +631,10 @@ def cmd_user_email():
 
 
 def cmd_gen_revision_id():
-    import time
     print bzrlib.branch._gen_revision_id(time.time())
 
 
-def cmd_selftest(verbose=False):
+def cmd_selftest():
     """Run internal test suite"""
     ## -v, if present, is seen by doctest; the argument is just here
     ## so our parser doesn't complain
@@ -879,7 +865,7 @@ def _match_args(cmd, args):
             if args:
                 argdict[argname] = args.pop(0)
         elif ap[-1] == '*':
-            assert 0
+            raise BzrError("arg form %r not implemented yet" % ap)
         elif ap[-1] == '+':
             if not args:
                 bailout("command %r needs one or more %s"
@@ -974,6 +960,8 @@ def run_bzr(argv):
         #stats.strip_dirs()
         stats.sort_stats('time')
         stats.print_stats(20)
+
+        return ret
     else:
         return cmd_handler(**cmdargs) or 0
 

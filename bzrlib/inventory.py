@@ -35,7 +35,7 @@ except ImportError:
     from elementtree.ElementTree import Element, ElementTree, SubElement
 
 from xml import XMLMixin
-from errors import bailout
+from errors import bailout, BzrError
 
 import bzrlib
 from bzrlib.osutils import uuid, quotefn, splitpath, joinpath, appendpath
@@ -392,12 +392,12 @@ class Inventory(XMLMixin):
         'hello.c'
         """
         if file_id == None:
-            bailout("can't look up file_id None")
+            raise BzrError("can't look up file_id None")
             
         try:
             return self._byid[file_id]
         except KeyError:
-            bailout("file_id {%s} not in inventory" % file_id)
+            raise BzrError("file_id {%s} not in inventory" % file_id)
 
 
     def get_child(self, parent_id, filename):

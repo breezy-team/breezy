@@ -31,7 +31,7 @@ from osutils import isdir, quotefn, isfile, uuid, sha_file, username, chomp, \
      joinpath, sha_string, file_kind, local_time_offset, appendpath
 from store import ImmutableStore
 from revision import Revision
-from errors import bailout
+from errors import bailout, BzrError
 from textui import show_status
 from diff import diff_trees
 
@@ -47,7 +47,7 @@ def find_branch_root(f=None):
 
     Basically we keep looking up until we find the control directory or
     run into the root."""
-    if f is None:
+    if f == None:
         f = os.getcwd()
     elif hasattr(os.path, 'realpath'):
         f = os.path.realpath(f)
@@ -56,14 +56,13 @@ def find_branch_root(f=None):
 
     orig_f = f
 
-    last_f = f
     while True:
         if os.path.exists(os.path.join(f, bzrlib.BZRDIR)):
             return f
         head, tail = os.path.split(f)
         if head == f:
             # reached the root, whatever that may be
-            bailout('%r is not in a branch' % orig_f)
+            raise BzrError('%r is not in a branch' % orig_f)
         f = head
     
 
@@ -624,7 +623,9 @@ class Branch:
         ph = self.revision_history()
         if ph:
             return ph[-1]
-
+        else:
+            return None
+        
 
     def lookup_revision(self, revno):
         """Return revision hash for revision number."""
@@ -635,7 +636,7 @@ class Branch:
             # list is 0-based; revisions are 1-based
             return self.revision_history()[revno-1]
         except IndexError:
-            bailout("no such revision %s" % revno)
+            raise BzrError("no such revision %s" % revno)
 
 
     def revision_tree(self, revision_id):
@@ -816,7 +817,7 @@ class Branch:
 
 
 
-    def show_status(branch, show_all=False):
+    def show_status(self, show_all=False):
         """Display single-line status for non-ignored working files.
 
         The list is show sorted in order by file name.
@@ -849,10 +850,8 @@ class Branch:
         # Interesting case: the old ID for a file has been removed,
         # but a new file has been created under that name.
 
-        old = branch.basis_tree()
-        old_inv = old.inventory
-        new = branch.working_tree()
-        new_inv = new.inventory
+        old = self.basis_tree()
+        new = self.working_tree()
 
         for fs, fid, oldname, newname, kind in diff_trees(old, new):
             if fs == 'R':

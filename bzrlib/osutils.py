@@ -263,7 +263,7 @@ def splitpath(p):
     >>> splitpath('a/.b')
     ['a', '.b']
     >>> splitpath('a/../b')
-    Traeceback (most recent call last):
+    Traceback (most recent call last):
     ...
     BzrError: ("sorry, '..' not allowed in path", [])
     """

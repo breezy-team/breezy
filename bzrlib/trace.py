@@ -33,7 +33,7 @@ global _tracefile, _starttime
 _tracefile = None
 
 # used to have % (os.environ['USER'], time.time(), os.getpid()), 'w')
-
+_starttime = None
 
 # If false, notes also go to stdout; should replace this with --silent
 # at some point.

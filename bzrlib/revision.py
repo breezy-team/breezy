@@ -1,5 +1,4 @@
-#! /usr/bin/env python
-# -*- coding: UTF-8 -*-
+# (C) 2005 Canonical
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +24,8 @@ try:
 except ImportError:
     from elementtree.ElementTree import Element, ElementTree, SubElement
 
+from errors import BzrError
+
 
 class Revision(XMLMixin):
     """Single revision on a branch.
@@ -41,12 +42,13 @@ class Revision(XMLMixin):
         self.timestamp = None
         self.message = None
         self.timezone = None
+        self.committer = None
+        self.precursor = None
         self.__dict__.update(args)
 
 
     def __repr__(self):
-        if self.revision_id:
-            return "<Revision id %s>" % self.revision_id
+        return "<Revision id %s>" % self.revision_id
 
         
     def to_element(self):
@@ -70,7 +72,7 @@ class Revision(XMLMixin):
     def from_element(cls, elt):
         # <changeset> is deprecated...
         if elt.tag not in ('revision', 'changeset'):
-            bailout("unexpected tag in revision file: %r" % elt)
+            raise BzrError("unexpected tag in revision file: %r" % elt)
 
         cs = cls(committer = elt.get('committer'),
                  timestamp = float(elt.get('timestamp')),

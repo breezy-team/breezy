@@ -23,7 +23,6 @@
 import sys
 from sets import Set
 
-import bzrlib
 from trace import mutter
 from errors import bailout
 import osutils
@@ -74,7 +73,7 @@ def check(branch, progress=True):
         for file_id in inv:
             if file_id in seen_ids:
                 bailout('duplicated file_id {%s} in inventory for revision {%s}'
-                        % (file_id, revid))
+                        % (file_id, rid))
             seen_ids.add(file_id)
 
         i = 0
@@ -89,7 +88,7 @@ def check(branch, progress=True):
             if ie.parent_id != None:
                 if ie.parent_id not in seen_ids:
                     bailout('missing parent {%s} in inventory for revision {%s}'
-                            % (ie.parent_id, revid))
+                            % (ie.parent_id, rid))
 
             if ie.kind == 'file':
                 if ie.text_id in checked_texts:
@@ -109,7 +108,7 @@ def check(branch, progress=True):
             elif ie.kind == 'directory':
                 if ie.text_sha1 != None or ie.text_size != None or ie.text_id != None:
                     bailout('directory {%s} has text in revision {%s}'
-                            % (file_id, revid))
+                            % (file_id, rid))
 
         p('revision %d/%d file paths' % (revno, revcount))
         for path, ie in inv.iter_entries():
