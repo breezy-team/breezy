@@ -663,6 +663,10 @@ class Branch:
         A       foo
         >>> b.commit("add foo")
         >>> b.show_status()
+        >>> os.unlink(b._rel('foo'))
+        >>> b.show_status()
+        D       foo
+        
 
         :todo: Get state for single files.
 

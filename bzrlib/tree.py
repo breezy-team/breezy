@@ -153,6 +153,12 @@ class WorkingTree(Tree):
     def _get_store_filename(self, file_id):
         return self._rel(self.id2path(file_id))
 
+    def has_id(self, file_id):
+        # files that have been deleted are excluded
+        if not self.inventory.has_id(file_id):
+            return False
+        return os.access(self._rel(self.inventory.id2path(file_id)), os.F_OK)
+
     def get_file_size(self, file_id):
         return os.stat(self._get_store_filename(file_id))[ST_SIZE]
 
