@@ -30,6 +30,7 @@ import bzrlib
 ## _tracefile; perhaps replace _tracefile with a tee thing.
 
 global _tracefile, _starttime
+_tracefile = None
 
 # used to have % (os.environ['USER'], time.time(), os.getpid()), 'w')
 
