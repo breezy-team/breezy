@@ -53,10 +53,6 @@ class Tree:
     trees or versioned trees.
     """
     
-    def get_file(self, file_id):
-        """Return an open file-like object for given file id."""
-        raise NotImplementedError()
-
     def has_filename(self, filename):
         """True if the tree has given filename."""
         raise NotImplementedError()
@@ -149,7 +145,10 @@ class WorkingTree(Tree):
         return os.path.exists(self._rel(filename))
 
     def get_file(self, file_id):
-        return file(self._get_store_filename(file_id), 'rb')
+        return self.get_file_byname(self.id2path(file_id))
+
+    def get_file_byname(self, filename):
+        return file(self._rel(filename), 'rb')
 
     def _get_store_filename(self, file_id):
         return self._rel(self.id2path(file_id))
@@ -257,6 +256,15 @@ class WorkingTree(Tree):
                 yield fpath
 
 
+    def get_ignore_list(self):
+        """Return list of ignore patterns."""
+        if self.has_filename(bzrlib.IGNORE_FILENAME):
+            f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
+            return [line.rstrip("\n\r") for line in f.readlines()]
+        else:
+            return bzrlib.DEFAULT_IGNORE
+
+
     def is_ignored(self, filename):
         """Check whether the filename matches an ignore pattern.
 
@@ -265,7 +273,7 @@ class WorkingTree(Tree):
         ## TODO: Take them from a file, not hardcoded
         ## TODO: Use extended zsh-style globs maybe?
         ## TODO: Use '**' to match directories?
-        for pat in bzrlib.DEFAULT_IGNORE:
+        for pat in self.get_ignore_list():
             if '/' in pat:
                 if fnmatch.fnmatchcase(filename, pat):
                     return True

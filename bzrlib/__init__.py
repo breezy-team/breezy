@@ -28,3 +28,6 @@ BZRDIR = ".bzr"
 DEFAULT_IGNORE = ['.*', '*~', '#*#', '*.tmp', '*.o', '*.a', '*.py[oc]',
                   '{arch}']
 
+IGNORE_FILENAME = ".bzrignore"
+
+
