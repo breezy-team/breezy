@@ -197,6 +197,9 @@ those operations should be *extremely* easy.
 * Warn when adding huge files(?) - more than say 10MB?  On the other
   hand, why not just cope?
 
+* Perhaps allow people to specify a revision-id, much as people have
+  unique but human-assigned names for patches at the moment?
+
 ----
 
 20050218090900.GA2071@opteron.random
