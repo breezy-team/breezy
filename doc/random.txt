@@ -232,3 +232,8 @@ those operations should be *extremely* easy.
     levels with them and they can be greatly optimized easily with C/C++
     extensions of the performance critical parts.
 
+
+-----
+
+
+* Fix up diffs for files without a trailing newline

@@ -27,7 +27,7 @@ Bazaar-NG test cases
 
 These are run by ``bzr.doctest``.
 
->>> import bzr, bzrlib, os
+>>> import bzrlib, os
 >>> bzrlib.commands.cmd_rocks()
 it sure does!
 

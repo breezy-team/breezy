@@ -74,4 +74,5 @@ __ http://www.bell-labs.com/cgi-user/OrgPatterns/OrgPatterns?ConfigurationManage
 
     * The ability to back up to a previous stable version (one of a number of NamedStableBases), of a system
 
-    * The ability of a developer to checkpoint changes to a module and to back off to a previous version of that module
+    * The ability of a developer to checkpoint changes to a module and
+      to back off to a previous version of that module

@@ -487,9 +487,8 @@ def cmd_doctest():
 
     ## TODO: --verbose option
     
-    import bzr, doctest, bzrlib.store
+    import doctest, bzrlib.store
     bzrlib.trace.verbose = False
-    doctest.testmod(bzr)
     doctest.testmod(bzrlib.store)
     doctest.testmod(bzrlib.inventory)
     doctest.testmod(bzrlib.branch)
