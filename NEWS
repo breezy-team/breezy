@@ -9,6 +9,10 @@ bzr-0.0.1  NOT RELEASED YET
     * Less file flushing and faster performance when writing logs and
       committing to stores.
 
+  BUG FIXES:
+
+    * Fix inverted display of 'R' and 'M' during 'commit -v'.
+
   PORTABILITY:
 
     * Include a subset of ElementTree-1.2.20040618 to make

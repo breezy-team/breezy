@@ -480,9 +480,9 @@ class Branch:
                             state = 'A'
                         elif (old_ie.name == entry.name
                               and old_ie.parent_id == entry.parent_id):
-                            state = 'R'
-                        else:
                             state = 'M'
+                        else:
+                            state = 'R'
 
                         show_status(state, entry.kind, quotefn(path))
 
