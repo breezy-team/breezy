@@ -38,6 +38,8 @@ global _tracefile, _starttime
 # at some point.
 silent = False
 
+
+# TODO: Somehow tie this to the --verbose option?
 verbose = False
 
 

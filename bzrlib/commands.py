@@ -754,7 +754,7 @@ def run_bzr(argv):
         log_error('usage: bzr COMMAND\n')
         log_error('  try "bzr help"\n')
         return 1
-            
+
     try:
         cmd_handler = globals()['cmd_' + cmd.replace('-', '_')]
     except KeyError:
