@@ -67,5 +67,40 @@ checking every possible predecessor.
 
 ----
 
+Rather than storing or calculating annotations, we could try using a
+complex weave, which allows one file version to be represented as a
+weave of multiple disjoint previous versions.  It sounds complex but
+it might work.
+
+Essentially we store each file as a selection of lines that should be
+turned on in that file.  These files might come from any of the
+predecessors that were merged into that file.  Complex to get right
+but it might work.
+
+This is written in terms of lines, but it might make more sense to
+just use byte ranges: perhaps more efficient when handling long files,
+and makes binaries less of a special case.
+
+codeville in fact does *not* seem to do this, though to me it seems
+like a fairly natural corollary of their design.
+
+This seems to imply holding the file text and ancestry of every branch
+that ever merged into this one, rather than just finding them if we
+later want them.  Hm.  That is nice in terms of doing smart merges.
+That possibly causes trouble in terms of having a name for these
+branches floating around inside our space, and making sure we don't
+clash with them.  It may make sense in terms of having a working
+directory be just a view into a shared database, looking at a
+particular line of development.
+
+Indeed the main difficulty seems to be of naming branches in this
+space.  Perhaps we should move back to using repositories and named
+branches within them, but not rely on branch names being unique out of
+the context of a single repository.
+
+Wow, this seems to open a big can of worms.
+
+----
+
 So the conclusion is that this is very cool, but it does not require a
 fundamental change of model and can be implemented later.
