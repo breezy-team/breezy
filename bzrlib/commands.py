@@ -321,8 +321,13 @@ TODO: Diff selected files.
         # FIXME: Something about the diff format makes patch unhappy
         # with newly-added files.
 
-        def diffit(*a, **kw):
-            sys.stdout.writelines(difflib.unified_diff(*a, **kw))
+        def diffit(oldlines, newlines, **kw):
+            # FIXME: difflib is wrong if there is no trailing newline.
+
+            # Special workaround for Python2.3, where difflib fails if
+            # both sequences are empty.
+            if oldlines or newlines:
+                sys.stdout.writelines(difflib.unified_diff(oldlines, newlines, **kw))
             print
         
         if file_state in ['.', '?', 'I']:

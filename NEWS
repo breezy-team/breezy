@@ -14,6 +14,12 @@ bzr-0.0.3  NOT RELEASED YET
     * Basic "bzr mv" support for renames!  (Not all scenarios work
       through the command at the moment, but the inventory support is
       there.)
+
+  PORTABILITY:
+
+    * Workaround for difflib bug in Python 2.3 that causes an
+      exception when comparing empty files.  Reported by Erik Toubro
+      Nielsen.
 
 bzr-0.0.2  "black cube"  2003-03-31
 
