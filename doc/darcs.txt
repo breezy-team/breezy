@@ -69,3 +69,13 @@ builds/tests the tree.  Of course this needs to be evaluated against
 the tree as it will be committed (taking account of partial commits),
 not the working tree.
 
+
+Schwern
+-------
+
+* http://www.scannedinavian.org/DarcsWiki/SchwernLikesDarcs
+* http://www.scannedinavian.org/DarcsWiki/SchwernHatesDarcs
+
+I think we hit most of these; more evidence for the hypothesis that
+what people really like about darcs is the simple interface not the
+patch-commutation model.
