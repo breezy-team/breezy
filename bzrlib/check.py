@@ -20,24 +20,32 @@
 ######################################################################
 # consistency checks
 
-def check():
-    """check: Consistency check of branch history.
 
-usage: bzr check [-v] [BRANCH]
+import bzrlib
 
-options:
-  --verbose, -v         Show progress of checking.
 
-This command checks various invariants about the branch storage to
-detect data corruption or bzr bugs.
-"""
-    assert_in_tree()
-    mutter("checking tree")
-    check_patches_exist()
-    check_patch_chaining()
-    check_patch_uniqueness()
-    check_inventory()
-    mutter("tree looks OK")
+def _ass(a, b):
+    if a != b:
+        bzrlib.errors.bailout("check failed: %r != %r" % (a, b))
+
+def check(branch, verbose=True):
+    print 'checking tree %r' % branch.base
+
+    print 'checking entire revision history is present'
+    last_ptr = None
+    for rid in branch.revision_history():
+        print '    revision {%s}' % rid
+        rev = branch.get_revision(rid)
+        _ass(rev.revision_id, rid)
+        _ass(rev.precursor, last_ptr)
+        last_ptr = rid
+
+    #mutter("checking tree")
+    #check_patches_exist()
+    #check_patch_chaining()
+    #check_patch_uniqueness()
+    #check_inventory()
+    print ("tree looks OK")
     ## TODO: Check that previous-inventory and previous-manifest
     ## are the same as those stored in the previous changeset.
 
