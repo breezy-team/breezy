@@ -14,7 +14,10 @@ bzr-0.0.2  "black cube"  NOT RELEASED YET
     * Reinstate the 'bzr check' command to check invariants of the
       branch.
 
-    * New 'ignored' command shows which files are ignored and why.
+    * New 'ignored' command lists which files are ignored and why;
+      'deleted' lists files deleted in the current working tree.
+
+    * Performance improvements.
 
 bzr-0.0.1  2005-03-26
 

@@ -339,6 +339,21 @@ TODO: Diff selected files.
 
 
 
+def cmd_deleted():
+    """List files deleted in the working tree.
+
+TODO: Show files deleted since a previous revision, or between two revisions.
+    """
+    b = Branch('.')
+    old = b.basis_tree()
+    new = b.working_tree()
+
+    for path, ie in old.inventory.iter_entries():
+        if not new.has_id(ie.file_id):
+            print path
+    
+
+
 def cmd_root(filename=None):
     """Print the branch root."""
     print bzrlib.branch.find_branch_root(filename)
