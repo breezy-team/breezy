@@ -60,11 +60,9 @@ Interesting commands::
        Show summary of pending changes.
   bzr remove FILE...
        Make a file not versioned.
+  bzr info
+       Show statistics about this branch.
 """
-
-# not currently working:
-#  bzr info
-#       Show some information about this branch.
 
 
 
