@@ -1,0 +1,26 @@
+Release notes for Bazaar-NG (pre-0)
+
+mbp@sourcefrog.net, November 2004, London
+
+
+* There is little locking or transaction control here; if you
+  interrupt it the tree may be arbitrarily broken.  This will be
+  fixed.
+
+* Don't use this for critical data; at the very least keep separate
+  regular snapshots of your tree.
+
+
+Dependencies
+------------
+
+This is mostly developed on Linux (Ubuntu); it should work on Unix,
+Windows, or OS X with relatively little trouble.
+
+bzr requires a fairly recent Python, say after 2.2.  
+
+You can improve performance by installing Fredrik Lundh's amazing
+cElementTree__ module.
+
+__ http://effbot.org/zone/celementtree.htm
+
