@@ -21,7 +21,7 @@
 __copyright__ = "Copyright (C) 2005 Canonical Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
 
-import sys, os.path, types
+import sys, os.path, types, re
 from sets import Set
 
 try:
@@ -543,6 +543,37 @@ class Inventory(XMLMixin):
         return self._byid.has_key(file_id)
 
 
+    def rename(self, file_id, new_parent_id, new_name):
+        """Move a file within the inventory.
+
+        This can change either the name, or the parent, or both.
+
+        This does not move the working file."""
+        if not is_valid_name(new_name):
+            bailout("not an acceptable filename: %r" % new_name)
+
+        new_parent = self._byid[new_parent_id]
+        if new_name in new_parent.children:
+            bailout("%r already exists in %r" % (new_name, self.id2path(new_parent_id)))
+
+        file_ie = self._byid[file_id]
+        old_parent = self._byid[file_ie.parent_id]
+
+        # TODO: Don't leave things messed up if this fails
+
+        del old_parent.children[file_ie.name]
+        new_parent.children[new_name] = file_ie
+        
+        file_ie.name = new_name
+        file_ie.parent_id = new_parent_id
+
+
+
+
+_NAME_RE = re.compile(r'^[^/\\]+$')
+
+def is_valid_name(name):
+    return bool(_NAME_RE.match(name))
 
 
 

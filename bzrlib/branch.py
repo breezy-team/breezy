@@ -28,7 +28,7 @@ from tree import Tree, EmptyTree, RevisionTree, WorkingTree
 from inventory import InventoryEntry, Inventory
 from osutils import isdir, quotefn, isfile, uuid, sha_file, username, chomp, \
      format_date, compact_date, pumpfile, user_email, rand_bytes, splitpath, \
-     joinpath, sha_string, file_kind, local_time_offset
+     joinpath, sha_string, file_kind, local_time_offset, appendpath
 from store import ImmutableStore
 from revision import Revision
 from errors import bailout
@@ -694,6 +694,39 @@ class Branch:
 
             revno += 1
             precursor = p
+
+
+
+    def rename(self, from_paths, to_name):
+        """Rename files.
+
+        If to_name exists and is a directory, the files are moved into
+        it, keeping their old names.  If it is a directory, 
+
+        Note that to_name is only the last component of the new name;
+        this doesn't change the directory.
+        """
+        ## TODO: Option to move IDs only
+        assert not isinstance(from_paths, basestring)
+        tree = self.working_tree()
+        inv = tree.inventory
+        dest_dir = isdir(self.abspath(to_name))
+        if dest_dir:
+            # TODO: Wind back properly if some can't be moved?
+            dest_dir_id = inv.path2id(to_name)
+            if not dest_dir_id and to_name != '':
+                bailout("destination %r is not a versioned directory" % to_name)
+            for f in from_paths:
+                name_tail = splitpath(f)[-1]
+                dest_path = appendpath(to_name, name_tail)
+                print "%s => %s" % (f, dest_path)
+                inv.rename(inv.path2id(f), dest_dir_id, name_tail)
+                os.rename(self.abspath(f), self.abspath(dest_path))
+            self._write_inventory(inv)
+        else:
+            if len(from_paths) != 1:
+                bailout("when moving multiple files, destination must be a directory")
+            bailout("rename to non-directory %r not implemented sorry" % to_name)
 
 
 

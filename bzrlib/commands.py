@@ -180,6 +180,7 @@ def cmd_relpath(filename):
     print Branch(filename).relpath(filename)
 
 
+
 def cmd_inventory(revision=None):
     """Show inventory of the current working copy."""
     ## TODO: Also optionally show a previous inventory
@@ -192,6 +193,13 @@ def cmd_inventory(revision=None):
         
     for path, entry in inv.iter_entries():
         print '%-50s %s' % (entry.file_id, path)
+
+
+
+def cmd_mv(source_list, dest):
+    b = Branch('.')
+
+    b.rename([b.relpath(s) for s in source_list], b.relpath(dest))
 
 
 
@@ -692,6 +700,7 @@ cmd_args = {
     'init':                   [],
     'log':                    [],
     'lookup-revision':        ['revno'],
+    'mv':                     ['source$', 'dest'],
     'relpath':                ['filename'],
     'remove':                 ['file+'],
     'root':                   ['filename?'],
@@ -795,6 +804,12 @@ def _match_args(cmd, args):
             else:
                 argdict[argname + '_list'] = args[:]
                 args = []
+        elif ap[-1] == '$': # all but one
+            if len(args) < 2:
+                bailout("command %r needs one or more %s"
+                        % (cmd, argname.upper()))
+            argdict[argname + '_list'] = args[:-1]
+            args[:-1] = []                
         else:
             # just a plain arg
             argname = ap

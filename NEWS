@@ -11,8 +11,9 @@ bzr-0.0.3  NOT RELEASED YET
 
     * Can now say "bzr commit --help".
 
-
-
+    * Basic "bzr mv" support for renames!  (Not all scenarios work
+      through the command at the moment, but the inventory support is
+      there.)
 
 bzr-0.0.2  "black cube"  2003-03-31
 

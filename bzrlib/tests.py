@@ -29,6 +29,7 @@ These are run by ``bzr.doctest``.
 
 >>> import bzrlib, os
 >>> from bzrlib import ScratchBranch
+>>> from bzrlib.osutils import isdir, isfile
 >>> bzrlib.commands.cmd_rocks()
 it sure does!
 
@@ -197,5 +198,23 @@ Tests for ignored files and patterns:
     ['doc/configure']
     >>> b.add("doc/configure")
     >>> b.commit("commit more")
+    >>> del b
+
+Renames, etc:
+
+    >>> b = ScratchBranch(files=['foo'], dirs=['subdir'])
+    >>> b.add(['foo', 'subdir'])
+    >>> b.commit('add foo')
+    >>> list(b.unknowns())
+    []
+    >>> b.rename(['foo'], 'subdir')
+    foo => subdir/foo
+    >>> b.show_status()
+    R       foo => subdir/foo
+    >>> b.commit("move foo to subdir")
+    >>> isfile(b.abspath('foo'))
+    False
+    >>> isfile(b.abspath('subdir/foo'))
+    True
 
 """
