@@ -19,7 +19,7 @@ import bzrlib
 
 from osutils import quotefn, appendpath
 from errors import bailout
-from trace import mutter
+from trace import mutter, note
 
 def smart_add(file_list, verbose=False, recurse=True):
     """Add files to version, optionall recursing into directories.
@@ -74,5 +74,6 @@ def smart_add(file_list, verbose=False, recurse=True):
                     file_list.append(subp)
 
     if count > 0:
-        print '* added %d' % count
+        if verbose:
+            note('added %d' % count)
         b._write_inventory(inv)
