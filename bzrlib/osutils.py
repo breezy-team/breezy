@@ -120,14 +120,10 @@ def sha_string(f):
 def fingerprint_file(f):
     import sha
     s = sha.new()
-    size = 0
-    BUFSIZE = 64<<10
-    while True:
-        b = f.read(BUFSIZE)
-        if b == '':
-            break
-        s.update(b)
-        size += len(b)
+    b = f.read()
+    s.update(b)
+    size = len(b)
+    f.close()
     return {'size': size,
             'sha1': s.hexdigest()}
 
