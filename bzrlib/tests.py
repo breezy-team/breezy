@@ -191,5 +191,5 @@ Tests for ignored files and patterns:
     >>> f.close()
     >>> b.add('.bzrignore')
     >>> list(b.unknowns())
-    ['configure', 'doc/configure', 'foo']
+    ['doc/configure']
 """
