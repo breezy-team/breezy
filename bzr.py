@@ -608,9 +608,8 @@ def parse_args(argv):
 
     # TODO: Maybe handle '--' to end options?
 
-    it = iter(argv[1:])
-    while it:
-        a = it.next()
+    while argv:
+        a = argv.pop(0)
         if a[0] == '-':
             optarg = None
             if a[1] == '-':
@@ -634,10 +633,10 @@ def parse_args(argv):
             optargfn = OPTIONS[optname]
             if optargfn:
                 if optarg == None:
-                    if not it:
+                    if not argv:
                         bailout('option %r needs an argument' % a)
                     else:
-                        optarg = it.next()
+                        optarg = argv.pop(0)
                 opts[optname] = optargfn(optarg)
                 mutter("    option argument %r" % opts[optname])
             else:
@@ -668,6 +667,7 @@ def _match_args(cmd, args):
     argdict = {}
     # TODO: Need a way to express 'cp SRC... DEST', where it matches
     # all but one.
+
     for ap in argform:
         argname = ap[:-1]
         if ap[-1] == '?':
@@ -705,7 +705,7 @@ def run_bzr(argv):
     logging and error handling.
     """
     try:
-        args, opts = parse_args(argv)
+        args, opts = parse_args(argv[1:])
         if 'help' in opts:
             # TODO: pass down other arguments in case they asked for
             # help on a command name?
