@@ -1,3 +1,11 @@
+bzr-0.0.1  NOT RELEASED YET
+
+  PORTABILITY:
+
+    * Include a subset of ElementTree-1.2.20040618 to make
+      installation easier.
+
+
 bzr-0.0.0.69  2005-03-22
 
   ENHANCEMENTS:
