@@ -413,6 +413,22 @@ def cmd_local_time_offset():
 
 
 def cmd_commit(message=None, verbose=False):
+    """Commit changes to a new revision.
+
+--message MESSAGE
+    Description of changes in this revision; free form text.
+    It is recommended that the first line be a single-sentence
+    summary.
+--verbose
+    Show status of changed files,
+
+TODO: Commit only selected files.
+
+TODO: Run hooks on tree to-be-committed, and after commit.
+
+TODO: Strict commit that fails if there are unknown or deleted files.
+"""
+
     if not message:
         bailout("please specify a commit message")
     Branch('.').commit(message, verbose=verbose)
