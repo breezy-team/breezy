@@ -339,7 +339,7 @@ TODO: Diff selected files.
 
 
 
-def cmd_deleted():
+def cmd_deleted(show_ids=False):
     """List files deleted in the working tree.
 
 TODO: Show files deleted since a previous revision, or between two revisions.
@@ -350,7 +350,11 @@ TODO: Show files deleted since a previous revision, or between two revisions.
 
     for path, ie in old.inventory.iter_entries():
         if not new.has_id(ie.file_id):
-            print path
+            if show_ids:
+                print '%-50s %s' % (path, ie.file_id)
+            else:
+                print path
+                
     
 
 
@@ -618,9 +622,10 @@ SHORT_OPTIONS = {
 cmd_options = {
     'add':                    ['verbose'],
     'commit':                 ['message', 'verbose'],
+    'deleted':                ['show-ids'],
     'diff':                   ['revision'],
     'inventory':              ['revision'],
-    'log':                    ['show-ids', 'timezone'],
+    'log':                    ['timezone'],
     'ls':                     ['revision', 'verbose'],
     'remove':                 ['verbose'],
     'status':                 ['all'],
@@ -700,7 +705,6 @@ def parse_args(argv):
                     else:
                         optarg = argv.pop(0)
                 opts[optname] = optargfn(optarg)
-                mutter("    option argument %r" % opts[optname])
             else:
                 if optarg != None:
                     bailout('option %r takes no argument' % optname)
@@ -799,7 +803,8 @@ def run_bzr(argv):
                     % (oname, cmd))
 
     cmdargs = _match_args(cmd, args)
-    cmdargs.update(opts)
+    for k, v in opts.items():
+        cmdargs[k.replace('-', '_')] = v
 
     ret = cmd_handler(**cmdargs) or 0
 
