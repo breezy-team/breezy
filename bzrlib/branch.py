@@ -301,6 +301,11 @@ class Branch:
         self._write_inventory(inv)
 
 
+    def print_file(self, file, revno):
+        """Print `file` to stdout."""
+        tree = self.revision_tree(self.lookup_revision(revno))
+        tree.print_file(self.inventory.path2id(file))
+        
 
     def remove(self, files, verbose=False):
         """Mark nominated files for removal from the inventory.

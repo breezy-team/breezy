@@ -19,6 +19,8 @@ bzr-0.0.3  NOT RELEASED YET
 
     * New "renames" command lists files renamed since base revision.
 
+    * New cat command contributed by janmar.
+
   CHANGES:
 
     * .bzr.log is placed in $HOME (not pwd) and is always written in

@@ -538,6 +538,10 @@ def cmd_export(revno, dest):
     t = b.revision_tree(rh)
     t.export(dest)
 
+def cmd_cat(revision, filename):
+    """Print file to stdout."""
+    b = Branch('.')
+    b.print_file(b.relpath(filename), int(revision))
 
 
 ######################################################################
@@ -725,6 +729,7 @@ SHORT_OPTIONS = {
 # listed take none.
 cmd_options = {
     'add':                    ['verbose'],
+    'cat':                    ['revision'],
     'commit':                 ['message', 'verbose'],
     'deleted':                ['show-ids'],
     'diff':                   ['revision'],
@@ -738,6 +743,7 @@ cmd_options = {
 
 cmd_args = {
     'add':                    ['file+'],
+    'cat':                    ['filename'],
     'commit':                 [],
     'diff':                   [],
     'export':                 ['revno', 'dest'],
@@ -922,6 +928,10 @@ def run_bzr(argv):
         if oname not in allowed:
             bailout("option %r is not allowed for command %r"
                     % (oname, cmd))
+
+    # TODO: give an error if there are any mandatory options which are
+    # not specified?  Or maybe there shouldn't be any "mandatory
+    # options" (it is an oxymoron)
 
     # mix arguments and options into one dictionary
     cmdargs = _match_args(cmd, args)

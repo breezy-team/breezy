@@ -92,7 +92,13 @@ class Tree:
                      "store is probably damaged/corrupt"])
 
 
-    def export(self, dest):
+    def print_file(self, fileid):
+        """Print file with id `fileid` to stdout."""
+        import sys
+        pumpfile(self.get_file(fileid), sys.stdout)
+        
+        
+    def export(self, dest):        
         """Export this tree to a new directory.
 
         `dest` should not exist, and will be created holding the
