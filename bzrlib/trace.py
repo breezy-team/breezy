@@ -85,7 +85,9 @@ def create_tracefile(argv):
 
     _starttime = os.times()[4]
 
-    _tracefile = file('.bzr.log', 'at')
+    # XXX: Is HOME always set on Windows?
+    trace_fname = os.path.join(os.environ['HOME'], '.bzr.log')
+    _tracefile = file(trace_fname, 'at')
     t = _tracefile
 
     if os.fstat(t.fileno())[stat.ST_SIZE] == 0:
@@ -102,8 +104,8 @@ def create_tracefile(argv):
     t.write('  version: %s\n' % bzrlib.__version__)
     t.write('  by %s on %s\n' % (bzrlib.osutils.username(), socket.getfqdn()))
     t.write('  arguments: %r\n' % argv)
+    t.write('  working dir: %s\n' % os.getcwdu())
 
-    # This causes a vfork; I don't care enough about it.
     t.write('  platform: %s\n' % sys.platform)
     t.write('  python: %s\n' % (sys.version_info,))
 

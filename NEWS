@@ -1,9 +1,5 @@
 bzr-0.0.3  NOT RELEASED YET
 
-  INTERNAL:
-
-    * Refactored inventory storage to insert a root entry at the top.
-
   ENHANCEMENTS:
 
     * New "directories" internal command lists versioned directories
@@ -17,11 +13,20 @@ bzr-0.0.3  NOT RELEASED YET
 
     * New "renames" command lists files renamed since base revision.
 
+  CHANGES:
+
+    * .bzr.log is placed in $HOME, not pwd.  (Probably not a
+      completely good long-term solution, but will do for now.)
+
   PORTABILITY:
 
     * Workaround for difflib bug in Python 2.3 that causes an
       exception when comparing empty files.  Reported by Erik Toubro
       Nielsen.
+
+  INTERNAL:
+
+    * Refactored inventory storage to insert a root entry at the top.
 
 
 bzr-0.0.2.1
