@@ -765,13 +765,13 @@ class Branch:
         if not isdir(to_abs):
             bailout("destination %r is not a directory" % to_abs)
         if not tree.has_filename(to_name):
-            bailout("destination %r is not a versioned directory" % to_abs)
+            bailout("destination %r not in working directory" % to_abs)
         to_dir_id = inv.path2id(to_name)
         if to_dir_id == None and to_name != '':
             bailout("destination %r is not a versioned directory" % to_name)
         to_dir_ie = inv[to_dir_id]
-        if to_dir_ie.kind != 'directory':
-            bailout("destination %r is not a versioned directory" % to_abs)
+        if to_dir_ie.kind not in ('directory', 'root_directory'):
+            bailout("destination %r is not a directory" % to_abs)
 
         to_idpath = Set(inv.get_idpath(to_dir_id))
 
