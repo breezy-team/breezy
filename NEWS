@@ -9,6 +9,9 @@ bzr-0.0.3  NOT RELEASED YET
     * New "directories" internal command lists versioned directories
       in the tree.
 
+    * Can now say "bzr commit --help".
+
+
 
 
 bzr-0.0.2  "black cube"  2003-03-31

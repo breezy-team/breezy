@@ -823,7 +823,10 @@ def run_bzr(argv):
         if 'help' in opts:
             # TODO: pass down other arguments in case they asked for
             # help on a command name?
-            cmd_help()
+            if args:
+                cmd_help(args[0])
+            else:
+                cmd_help()
             return 0
         elif 'version' in opts:
             cmd_version()
