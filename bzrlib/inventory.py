@@ -458,10 +458,10 @@ class Inventory(XMLMixin):
         """Return as a list the path to file_id."""
         p = []
         while file_id != None:
-            ie = self[file_id]
-            p = [ie.name] + p
+            ie = self._byid[file_id]
+            p.insert(0, ie.name)
             file_id = ie.parent_id
-        return joinpath(p)
+        return '/'.join(p)
             
 
 
@@ -495,7 +495,6 @@ class Inventory(XMLMixin):
 
 
     def has_id(self, file_id):
-        assert isinstance(file_id, str)
         return self._byid.has_key(file_id)
 
 

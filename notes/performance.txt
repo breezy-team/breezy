@@ -310,3 +310,12 @@ those objects when most of them aren't called on most invocations?
 Instead perhaps the Inventory object should hold the ElementTree and
 pull things out of it only as necessary?  We can even have an index
 pointing into the ElementTree by id, path, etc.
+
+
+as of r148
+
+bzr deleted  1.46s user 0.08s system 98% cpu 1.561 total
+
+
+Alternatively maybe keep an id2path and path2id cache?  Keeping it
+coherent may be hard...

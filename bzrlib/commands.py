@@ -370,10 +370,22 @@ def cmd_parse_inventory():
 
 
 def cmd_load_inventory():
-    inv = Branch('.').read_working_inventory()
+    inv = Branch('.').basis_tree().inventory
+
+
+
+def cmd_dump_new_inventory():
+    import bzrlib.newinventory
+    inv = Branch('.').basis_tree().inventory
+    bzrlib.newinventory.write_inventory(inv, sys.stdout)
                 
     
-
+def cmd_dump_slacker_inventory():
+    import bzrlib.newinventory
+    inv = Branch('.').basis_tree().inventory
+    bzrlib.newinventory.write_slacker_inventory(inv, sys.stdout)
+                
+    
 
 def cmd_root(filename=None):
     """Print the branch root."""
@@ -838,7 +850,7 @@ def run_bzr(argv):
         import hotshot.stats
         stats = hotshot.stats.load('.bzr.profile')
         #stats.strip_dirs()
-        stats.sort_stats('cumulative', 'calls')
+        stats.sort_stats('time')
         stats.print_stats(20)
     else:
         return cmd_handler(**cmdargs) or 0
