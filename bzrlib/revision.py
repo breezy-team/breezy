@@ -50,7 +50,7 @@ class Revision(XMLMixin):
 
         
     def to_element(self):
-        root = Element('changeset',
+        root = Element('revision',
                        committer = self.committer,
                        timestamp = '%.9f' % self.timestamp,
                        revision_id = self.revision_id,
@@ -66,17 +66,22 @@ class Revision(XMLMixin):
 
         return root
 
-    def from_element(cls, root):
-        cs = cls(committer = root.get('committer'),
-                 timestamp = float(root.get('timestamp')),
-                 precursor = root.get('precursor'),
-                 revision_id = root.get('revision_id'),
-                 inventory_id = root.get('inventory_id'))
 
-        v = root.get('timezone')
+    def from_element(cls, elt):
+        # <changeset> is deprecated...
+        if elt.tag not in ('revision', 'changeset'):
+            bailout("unexpected tag in revision file: %r" % elt)
+
+        cs = cls(committer = elt.get('committer'),
+                 timestamp = float(elt.get('timestamp')),
+                 precursor = elt.get('precursor'),
+                 revision_id = elt.get('revision_id'),
+                 inventory_id = elt.get('inventory_id'))
+
+        v = elt.get('timezone')
         cs.timezone = v and int(v)
 
-        cs.message = root.findtext('message') # text of <message>
+        cs.message = elt.findtext('message') # text of <message>
         return cs
 
     from_element = classmethod(from_element)
