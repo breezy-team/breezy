@@ -767,7 +767,7 @@ class ScratchBranch(Branch):
     >>> isdir(bd)
     False
     """
-    def __init__(self, files = []):
+    def __init__(self, files=[], dirs=[]):
         """Make a test branch.
 
         This creates a temporary directory and runs init-tree in it.
@@ -775,6 +775,9 @@ class ScratchBranch(Branch):
         If any files are listed, they are created in the working copy.
         """
         Branch.__init__(self, tempfile.mkdtemp(), init=True)
+        for d in dirs:
+            os.mkdir(self.abspath(d))
+            
         for f in files:
             file(os.path.join(self.base, f), 'w').write('content of %s' % f)
 

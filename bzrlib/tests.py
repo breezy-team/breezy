@@ -28,6 +28,7 @@ Bazaar-NG test cases
 These are run by ``bzr.doctest``.
 
 >>> import bzrlib, os
+>>> from bzrlib import ScratchBranch
 >>> bzrlib.commands.cmd_rocks()
 it sure does!
 
@@ -173,4 +174,22 @@ Adding a directory, and we see the file underneath:
     >>> list(b.working_tree().unknowns())
     ['d2/d3', 'd2/f2', 'd2/f3']
 
+Tests for ignored files and patterns:
+
+    >>> b = ScratchBranch(dirs=['src', 'doc'],
+    ...                   files=['configure.in', 'configure',
+    ...                          'doc/configure', 'foo.c',
+    ...                          'foo'])
+    >>> list(b.unknowns())
+    ['configure', 'configure.in', 'doc', 'foo', 'foo.c', 'src']
+    >>> b.add(['doc', 'foo.c', 'src', 'configure.in'])
+    >>> list(b.unknowns())
+    ['configure', 'doc/configure', 'foo']
+    >>> f = file(b.abspath('.bzrignore'), 'w')
+    >>> f.write('./configure\n'
+    ...         './foo\n')
+    >>> f.close()
+    >>> b.add('.bzrignore')
+    >>> list(b.unknowns())
+    ['configure', 'doc/configure', 'foo']
 """
