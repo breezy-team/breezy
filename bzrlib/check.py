@@ -26,7 +26,7 @@ from sets import Set
 import bzrlib
 from trace import mutter
 from errors import bailout
-
+import osutils
 
 def check(branch, progress=True):
     out = sys.stdout
@@ -95,6 +95,13 @@ def check_inventory(branch, inv, revid):
         if ie.kind == 'file':
             if not ie.text_id in branch.text_store:
                 bailout('text {%s} not in text_store' % ie.text_id)
+
+            tf = branch.text_store[ie.text_id]
+            fp = osutils.fingerprint_file(tf)
+            if ie.text_size != fp['size']:
+                bailout('text {%s} wrong size' % ie.text_id)
+            if ie.text_sha1 != fp['sha1']:
+                bailout('text {%s} wrong sha1' % ie.text_id)
         elif ie.kind == 'directory':
             if ie.text_sha1 != None or ie.text_size != None or ie.text_id != None:
                 bailout('directory {%s} has text in revision {%s}'
