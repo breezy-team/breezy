@@ -16,9 +16,18 @@ fi
 rm -rf bzr-test.tmp
 mkdir bzr-test.tmp
 
+# save it for real errors
+exec 3>&2
+
 exec > bzr-test.log
 exec 2>&1 
 set -x
+
+quitter() {
+    echo "tests failed, look in bzr-test.log" >&3; exit 2; 
+}
+
+trap quitter ERR
 
 cd bzr-test.tmp 
 rm -rf .bzr
@@ -49,7 +58,9 @@ bzr add test.txt
 bzr rename test.txt newname.txt
 [ "`bzr status`" = "A       newname.txt" ]
 
+[ `bzr revno` = 0 ]
 bzr commit -m "add first revision"
+[ `bzr revno` = 1 ]
 
 # now more complicated renames
 mkdir sub1
@@ -77,6 +88,10 @@ bzr rename bar.txt ../../bar.txt
 cd ../../
 
 bzr commit -m "more renames"
+[ `bzr revno` = 2 ] 
+
+# now try pulling that file back out, checking it was stored properly
+[ "`bzr cat -r 1 newname.txt`" = "hello world" ]
 
 ! bzr rename sub1 sub1/knotted-up
 
