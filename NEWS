@@ -5,6 +5,10 @@ bzr-0.0.1  NOT RELEASED YET
     * Include a subset of ElementTree-1.2.20040618 to make
       installation easier.
 
+    * Fix time.localtime call to work with Python 2.3 (the minimum
+      supported).
+
+
 
 bzr-0.0.0.69  2005-03-22
 
