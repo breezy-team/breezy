@@ -86,8 +86,11 @@ def uuid():
     ## XXX: Could alternatively read /proc/sys/kernel/random/uuid on
     ## Linux, but we need something portable for other systems;
     ## preferably an implementation in Python.
-    bailout('uuids not allowed!')
-    return chomp(os.popen('uuidgen').readline())
+    try:
+        return chomp(file('/proc/sys/kernel/random/uuid').readline())
+    except IOError:
+        return chomp(os.popen('uuidgen').readline())
+
 
 def chomp(s):
     if s and (s[-1] == '\n'):

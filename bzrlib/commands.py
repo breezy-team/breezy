@@ -438,7 +438,7 @@ def cmd_export(revno, dest):
 
 def cmd_uuid():
     """Print a newly-generated UUID."""
-    print uuid()
+    print bzrlib.osutils.uuid()
 
 
 
