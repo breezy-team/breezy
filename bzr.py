@@ -195,7 +195,27 @@ def cmd_info():
     b = Branch('.')
     print 'branch format:', b.controlfile('branch-format', 'r').readline().rstrip('\n')
     print 'revision number:', b.revno()
-    print 'number of versioned files:', len(b.read_working_inventory())
+
+    count_versioned = count_unknown = count_ignored = 0
+    count_version_dirs = 0
+    for fpath, fclass, fkind, fid in b.working_tree().list_files():
+        if fclass == 'V':
+            count_versioned += 1
+            if fkind == 'directory':
+                count_version_dirs += 1
+        elif fclass == 'I':
+            count_ignored += 1
+        elif fclass == '?':
+            count_unknown += 1
+        else:
+            bailout('unknown file class %r for %r' % (fclass, fpath))
+   
+    print 'number of versioned entries: %d' % count_versioned
+    print 'number of versioned subdirectories: %d' % count_version_dirs
+    print 'number of unknown files: %d' % count_unknown
+    print 'number of ignored files: %d' % count_ignored
+
+            
 
 
 def cmd_remove(file_list, verbose=False):
