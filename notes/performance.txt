@@ -258,3 +258,15 @@ thing; I suppose it has to read every file.
 
 This shows many files as being renamed; I don't know why that would
 be.
+
+
+Patch to 2.4.21:
+
+ 2969 files changed, 366643 insertions(+), 147759 deletions(-)
+
+After auto-add:
+
+ 2969 files changed, 372168 insertions(+), 153284 deletions(-)
+
+I wonder why it is not exactly the same?  Maybe because the python
+diff algorithm is a bit differnt to GNU diff.
