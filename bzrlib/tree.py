@@ -262,12 +262,19 @@ class WorkingTree(Tree):
 
 
     def get_ignore_list(self):
-        """Return list of ignore patterns."""
+        """Return list of ignore patterns.
+
+        Cached in the Tree object after the first call.
+        """
+        if hasattr(self, '_ignorelist'):
+            return self._ignorelist
+
+        l = bzrlib.DEFAULT_IGNORE[:]
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
-            return [line.rstrip("\n\r") for line in f.readlines()]
-        else:
-            return bzrlib.DEFAULT_IGNORE
+            l.extend([line.rstrip("\n\r") for line in f.readlines()])
+        self._ignorelist = l
+        return l
 
 
     def is_ignored(self, filename):
@@ -275,7 +282,6 @@ class WorkingTree(Tree):
 
         Patterns containing '/' need to match the whole path; others
         match against only the last component."""
-        ## TODO: Take them from a file, not hardcoded
         ## TODO: Use extended zsh-style globs maybe?
         ## TODO: Use '**' to match directories?
         for pat in self.get_ignore_list():
