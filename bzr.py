@@ -583,13 +583,13 @@ def parse_args(argv):
     lookup table, something about the available options, what optargs
     they take, and which commands will accept them.
 
-    >>> parse_args('bzr --help'.split())
+    >>> parse_args('--help'.split())
     ([], {'help': True})
-    >>> parse_args('bzr --version'.split())
+    >>> parse_args('--version'.split())
     ([], {'version': True})
-    >>> parse_args('bzr status --all'.split())
+    >>> parse_args('status --all'.split())
     (['status'], {'all': True})
-    >>> parse_args('bzr commit --message=biter'.split())
+    >>> parse_args('commit --message=biter'.split())
     (['commit'], {'message': u'biter'})
     """
     args = []
