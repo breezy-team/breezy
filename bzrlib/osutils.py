@@ -16,10 +16,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, types, re, time, types
+import os, types, re, time
 from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 
-from errors import bailout
+from errors import bailout, BzrError
+from trace import mutter
 
 def make_readonly(filename):
     """Make a filename read-only."""
@@ -54,7 +55,7 @@ def file_kind(f):
     elif S_ISLNK(mode):
         return 'symlink'
     else:
-        bailout("can't handle file kind with mode %o of %r" % (mode, f)) 
+        raise BzrError("can't handle file kind with mode %o of %r" % (mode, f)) 
 
 
 
@@ -163,12 +164,12 @@ def username():
     return '<%s@%s>' % (getpass.getuser(), socket.getfqdn())
 
 
+_EMAIL_RE = re.compile(r'[\w+.-]+@[\w+.-]+')
 def user_email():
     """Return just the email component of a username."""
     e = os.environ.get('BZREMAIL') or os.environ.get('EMAIL')
     if e:
-        import re
-        m = re.search(r'[\w+.-]+@[\w+.-]+', e)
+        m = _EMAIL_RE.search(e)
         if not m:
             bailout('%r is not a reasonable email address' % e)
         return m.group(0)
@@ -197,7 +198,7 @@ def compare_files(a, b):
 def local_time_offset(t=None):
     """Return offset of local zone from GMT, either at present or at time t."""
     # python2.3 localtime() can't take None
-    if t is None:
+    if t == None:
         t = time.time()
         
     if time.localtime(t).tm_isdst and time.daylight:
@@ -209,8 +210,6 @@ def local_time_offset(t=None):
 def format_date(t, offset=0, timezone='original'):
     ## TODO: Perhaps a global option to use either universal or local time?
     ## Or perhaps just let people set $TZ?
-    import time
-    
     assert isinstance(t, float)
     
     if timezone == 'utc':
@@ -264,7 +263,7 @@ def splitpath(p):
     >>> splitpath('a/.b')
     ['a', '.b']
     >>> splitpath('a/../b')
-    Traceback (most recent call last):
+    Traeceback (most recent call last):
     ...
     BzrError: ("sorry, '..' not allowed in path", [])
     """
@@ -278,7 +277,7 @@ def splitpath(p):
 def joinpath(p):
     assert isinstance(p, list)
     for f in p:
-        if (f == '..') or (f is None) or (f == ''):
+        if (f == '..') or (f == None) or (f == ''):
             bailout("sorry, %r not allowed in path" % f)
     return '/'.join(p)
 
