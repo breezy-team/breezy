@@ -234,8 +234,8 @@ class WorkingTree(Tree):
             
 
 
-    def unknowns(self, path='', dir_id=None):
-        """Yield names of unknown files in this WorkingTree.
+    def unknowns(self):
+        """Yield all unknown files in this WorkingTree.
 
         If there are any unknown directories then only the directory is
         returned, not all its children.  But if there are unknown files
@@ -243,9 +243,27 @@ class WorkingTree(Tree):
 
         Currently returned depth-first, sorted by name within directories.
         """
-        for fpath, fclass, fkind, fid in self.list_files():
-            if fclass == '?':
-                yield fpath
+        ## TODO: Work from given directory downwards
+        
+        for path, dir_entry in self.inventory.directories():
+            mutter("search for unknowns in %r" % path)
+            dirabs = self.abspath(path)
+            if not isdir(dirabs):
+                # e.g. directory deleted
+                continue
+
+            fl = []
+            for subf in os.listdir(dirabs):
+                if (subf != '.bzr'
+                    and (subf not in dir_entry.children)):
+                    fl.append(subf)
+            
+            fl.sort()
+            for subf in fl:
+                subp = appendpath(path, subf)
+                if self.is_ignored(subp):
+                    continue
+                yield subp
                 
 
     def ignored_files(self):

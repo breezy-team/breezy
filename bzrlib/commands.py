@@ -414,7 +414,6 @@ def cmd_ignored(verbose=True):
         ## XXX: Slightly inefficient since this was already calculated
         pat = tree.is_ignored(path)
         print '%-50s %s' % (path, pat)
-    
 
 
 def cmd_lookup_revision(revno):

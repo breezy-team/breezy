@@ -288,11 +288,10 @@ class Inventory(XMLMixin):
                     yield joinpath([name, cn]), cie
 
 
-    def directories(self, include_root=True):
+    def directories(self):
         """Return (path, entry) pairs for all directories.
         """
-        if include_root:
-            yield '', None
+        yield '', self._root
         for path, entry in self.iter_entries():
             if entry.kind == 'directory':
                 yield path, entry
