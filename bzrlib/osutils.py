@@ -123,7 +123,6 @@ def fingerprint_file(f):
     b = f.read()
     s.update(b)
     size = len(b)
-    f.close()
     return {'size': size,
             'sha1': s.hexdigest()}
 

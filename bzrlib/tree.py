@@ -77,7 +77,7 @@ class Tree:
         f.seek(0)
         
         if ie.text_size is not None:
-            if fs != fp['size']:
+            if ie.text_size != fp['size']:
                 bailout("mismatched size for file %r in %r" % (ie.file_id, self._store),
                         ["inventory expects %d bytes" % ie.text_size,
                          "file is actually %d bytes" % fp['size'],
@@ -314,7 +314,7 @@ class RevisionTree(Tree):
         ie = self._inventory[file_id]
         f = self._store[ie.text_id]
         mutter("  get fileid{%s} from %r" % (file_id, self))
-        ## self._check_retrieved(ie, f)
+        self._check_retrieved(ie, f)
         return f
 
     def get_file_size(self, file_id):
