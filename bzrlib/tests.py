@@ -211,6 +211,8 @@ Renames, etc:
     foo => subdir/foo
     >>> b.show_status()
     R       foo => subdir/foo
+    >>> bzrlib.commands.cmd_renames(b.base)
+    foo => subdir/foo
     >>> b.commit("move foo to subdir")
     >>> isfile(b.abspath('foo'))
     False

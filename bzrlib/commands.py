@@ -203,6 +203,26 @@ def cmd_mv(source_list, dest):
 
 
 
+def cmd_renames(dir='.'):
+    """Show list of renamed files.
+
+usage: bzr renames [BRANCH]
+
+TODO: Option to show renames between two historical versions.
+
+TODO: Only show renames under dir, rather than in the whole branch.
+"""
+    b = Branch(dir)
+    old_inv = b.basis_tree().inventory
+    new_inv = b.read_working_inventory()
+    
+    renames = list(bzrlib.tree.find_renames(old_inv, new_inv))
+    renames.sort()
+    for old_name, new_name in renames:
+        print "%s => %s" % (old_name, new_name)        
+
+
+
 def cmd_info():
     """info: Show statistical information for this branch
 
@@ -708,6 +728,7 @@ cmd_args = {
     'mv':                     ['source$', 'dest'],
     'relpath':                ['filename'],
     'remove':                 ['file+'],
+    'renames':                ['dir?'],
     'root':                   ['filename?'],
     'status':                 [],
     }

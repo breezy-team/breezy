@@ -432,3 +432,12 @@ def file_status(filename, old_tree, new_tree):
 
     
 
+def find_renames(old_inv, new_inv):
+    for file_id in old_inv:
+        if file_id not in new_inv:
+            continue
+        old_name = old_inv.id2path(file_id)
+        new_name = new_inv.id2path(file_id)
+        if old_name != new_name:
+            yield (old_name, new_name)
+            
