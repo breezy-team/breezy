@@ -19,20 +19,7 @@ be internally or externally inconsistent or redundant.  Comments are
 still very welcome.  Please send them to <mbp@sourcefrog.net>.
 
 
-Summary status
---------------
-
-(as of 2005-02-23)
-
-* Bazaar-NG can track the history of a single local branch, similar to
-  RCS.  The storage format should be reasonably close to what will be
-  used for 1.0.
-
-* The following commands work: ``add``, ``remove``, ``commit``,
-  ``log``, ``diff`` (whole tree against basis revision), ``status``, ``help``,
-  ``export`` (any revision).
-
-* Subdirectories and files within them are now supported.
+For more information, see the homepage at http://bazaar-ng.org/
 
 
 
@@ -49,8 +36,6 @@ User documentation
   how to use, intended to check it's adequately simple.  Incomplete.
 
 * `FAQ <faq.html>`__ -- mostly user-oriented FAQ.
-
-* `Demonstration/tutorial <short-demo.html>`__
 
 
 Requirements and general design
@@ -208,22 +193,3 @@ Project management and organization
   internal/developer/debugger use.
 
 * `Choice of Python as a development language <python.html>`__
-
-
-Download
---------
-
-There are no releases yet.
-
-The Bazaar-NG development code may be downloaded using GNU Arch by the
-following steps::
-
-   tla register-archive http://sourcefrog.net/arch/mbp@sourcefrog.net--2004
-   tla get mbp@sourcefrog.net--2004/bazaar-ng--0  bazaar-ng
-
-(By contrast, when Bazaar-NG network operations are complete, a single
-much shorter command will do.)
-
-Note that the current code is under heavy development and so is not
-guaranteed to do anything useful whatsoever.
-
