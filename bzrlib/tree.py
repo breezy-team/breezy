@@ -271,9 +271,11 @@ class WorkingTree(Tree):
                 
 
     def ignored_files(self):
-        for fpath, fclass, fkind, fid in self.list_files():
-            if fclass == 'I':
-                yield fpath
+        """Yield list of PATH, IGNORE_PATTERN"""
+        for subp in self.extras():
+            pat = self.is_ignored(subp)
+            if pat != None:
+                yield subp, pat
 
 
     def get_ignore_list(self):
