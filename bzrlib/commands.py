@@ -997,13 +997,13 @@ def main(argv):
             for h in e.args[1]:
                 log_error('  ' + h + '\n')
         traceback.print_exc(None, bzrlib.trace._tracefile)
-        log_error('see ~/.bzr.log for more information\n')
+        log_error('(see $HOME/.bzr.log for debug information)\n')
         return 1
     except Exception, e:
         log_error('bzr: exception: %s\n' % e)
-        log_error('    see .bzr.log for details\n')
+        log_error('(see $HOME/.bzr.log for debug information)\n')
         traceback.print_exc(None, bzrlib.trace._tracefile)
-        traceback.print_exc(None, sys.stderr)
+        ## traceback.print_exc(None, sys.stderr)
         return 1
 
     # TODO: Maybe nicer handling of IOError?
