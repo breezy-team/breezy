@@ -343,7 +343,8 @@ class Inventory(XMLMixin):
             bailout("attempt to add under non-directory {%s}" % parent.file_id)
 
         if parent.children.has_key(entry.name):
-            bailout("{%s} already has child %r" % (parent.file_id, entry.name))
+            bailout("%s is already versioned" %
+                    appendpath(self.id2path(parent.file_id), entry.name))
 
         self._byid[entry.file_id] = entry
         parent.children[entry.name] = entry
