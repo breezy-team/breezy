@@ -46,45 +46,24 @@ def check(branch):
             bailout('repeated revision {%s}' % rid)
         checked_revs.add(rid)
 
-    #check_inventory()
+        ## TODO: Check all the required fields are present on the revision.
+
+        inv = branch.get_inventory(rev.inventory_id)
+        check_inventory(branch, inv)
 
     mutter('branch %s is OK' % branch.base)
 
-    ## TODO: Check that previous-inventory and previous-manifest
-    ## are the same as those stored in the previous changeset.
-
-    ## TODO: Check all patches present in patch directory are
-    ## mentioned in patch history; having an orphaned patch only gives
-    ## a warning.
-
-    ## TODO: Check cached data is consistent with data reconstructed
-    ## from scratch.
-
-    ## TODO: Check no control files are versioned.
-
-    ## TODO: Check that the before-hash of each file in a later
-    ## revision matches the after-hash in the previous revision to
-    ## touch it.
 
 
-def check_inventory():
-    mutter("checking inventory file and ids...")
+def check_inventory(branch, inv):
     seen_ids = Set()
     seen_names = Set()
-    
-    for l in controlfile('inventory').readlines():
-        parts = l.split()
-        if len(parts) != 2:
-            bailout("malformed inventory line: " + `l`)
-        file_id, name = parts
-        
-        if file_id in seen_ids:
-            bailout("duplicated file id " + file_id)
-        seen_ids.add(file_id)
 
-        if name in seen_names:
-            bailout("duplicated file name in inventory: " + quotefn(name))
-        seen_names.add(name)
+    for path, ie in inv.iter_entries():
+        if path in seen_names:
+            bailout('duplicated path %r in inventory' % path)
+        seen_names.add(path)
+        if ie.kind == 'file':
+            if not ie.text_id in branch.text_store:
+                bailout('text {%s} not in text_store' % ie.text_id)
         
-        if is_control_file(name):
-            raise BzrError("control file %s present in inventory" % quotefn(name))

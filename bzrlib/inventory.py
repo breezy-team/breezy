@@ -17,6 +17,7 @@
 
 """Inventories map files to their name in a revision."""
 
+# TODO: Maybe store inventory_id in the file?  Not really needed.
 
 __copyright__ = "Copyright (C) 2005 Canonical Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
