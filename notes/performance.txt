@@ -296,5 +296,17 @@ python =bzr deleted --show-ids  1.55s user 0.08s system 99% cpu 1.637 total
 
 small but significant improvement from Python -O
 
+----
 
+Loading a large inventory through cElementTree is pretty quick; only
+about 0.117s.  By contrast reading the inventory into our data
+structure takes about 0.7s.  
 
+So I think the problem must be in converting everything to
+InventoryEntries and back again every time.
+
+Thought about that way it seems pretty inefficient: why create all
+those objects when most of them aren't called on most invocations?
+Instead perhaps the Inventory object should hold the ElementTree and
+pull things out of it only as necessary?  We can even have an index
+pointing into the ElementTree by id, path, etc.

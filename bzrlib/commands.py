@@ -359,6 +359,18 @@ TODO: Show files deleted since a previous revision, or between two revisions.
                 print '%-50s %s' % (path, ie.file_id)
             else:
                 print path
+
+
+
+def cmd_parse_inventory():
+    import cElementTree
+    
+    cElementTree.ElementTree().parse(file('.bzr/inventory'))
+
+
+
+def cmd_load_inventory():
+    inv = Branch('.').read_working_inventory()
                 
     
 
