@@ -63,11 +63,6 @@ Interesting commands::
 
 
 
-__copyright__ = "Copyright 2005 Canonical Development Ltd."
-__author__ = "Martin Pool <mbp@canonical.com>"
-__docformat__ = "restructuredtext en"
-__version__ = '0.0.0'
-
 
 import sys, os, random, time, sha, sets, types, re, shutil, tempfile
 import traceback, socket, fnmatch, difflib
@@ -524,8 +519,8 @@ def cmd_help(topic=None):
 
 
 def cmd_version():
-    print "bzr (bazaar-ng) %s" % __version__
-    print __copyright__
+    print "bzr (bazaar-ng) %s" % bzrlib.__version__
+    print bzrlib.__copyright__
     print "http://bazaar-ng.org/"
     print
     print \
