@@ -1,0 +1,8 @@
+bzr-0.0.0.69  2005-03-22
+
+  ENHANCEMENTS:
+
+    * First public release.
+
+    * Storage of local versions: init, add, remove, rm, info, log,
+      diff, status, etc.
