@@ -22,19 +22,19 @@
 
 
 import bzrlib
-
+from trace import mutter
 
 def _ass(a, b):
     if a != b:
         bzrlib.errors.bailout("check failed: %r != %r" % (a, b))
 
-def check(branch, verbose=True):
-    print 'checking tree %r' % branch.base
+def check(branch):
+    mutter('checking tree %r' % branch.base)
 
-    print 'checking entire revision history is present'
+    mutter('checking entire revision history is present')
     last_ptr = None
     for rid in branch.revision_history():
-        print '    revision {%s}' % rid
+        mutter('    revision {%s}' % rid)
         rev = branch.get_revision(rid)
         _ass(rev.revision_id, rid)
         _ass(rev.precursor, last_ptr)
@@ -45,7 +45,9 @@ def check(branch, verbose=True):
     #check_patch_chaining()
     #check_patch_uniqueness()
     #check_inventory()
-    print ("tree looks OK")
+
+    mutter('branch %s is OK' % branch.base)
+
     ## TODO: Check that previous-inventory and previous-manifest
     ## are the same as those stored in the previous changeset.
 
