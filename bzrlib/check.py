@@ -20,7 +20,7 @@
 ######################################################################
 # consistency checks
 
-
+import sys
 from sets import Set
 
 import bzrlib
@@ -28,13 +28,29 @@ from trace import mutter
 from errors import bailout
 
 
-def check(branch):
-    mutter('checking tree %r' % branch.base)
+def check(branch, progress=True):
+    out = sys.stdout
 
-    mutter('checking revision history')
+    if progress:
+        def p(m):
+            mutter('checking ' + m)
+            out.write('\rchecking: %-50.50s' % m)
+            out.flush()
+    else:
+        def p(m):
+            mutter('checking ' + m)
+
+    p('history of %r' % branch.base)
     last_ptr = None
     checked_revs = Set()
-    for rid in branch.revision_history():
+    
+    history = branch.revision_history()
+    revno = 0
+    revcount = len(history)
+    
+    for rid in history:
+        revno += 1
+        p('revision %d/%d' % (revno, revcount))
         mutter('    revision {%s}' % rid)
         rev = branch.get_revision(rid)
         if rev.revision_id != rid:
@@ -49,20 +65,28 @@ def check(branch):
         ## TODO: Check all the required fields are present on the revision.
 
         inv = branch.get_inventory(rev.inventory_id)
-        check_inventory(branch, inv)
+        check_inventory(branch, inv, rid)
 
-    mutter('branch %s is OK' % branch.base)
+    p('done')
+    if progress:
+        print 
 
 
 
-def check_inventory(branch, inv):
+def check_inventory(branch, inv, revid):
     seen_ids = Set()
     seen_names = Set()
 
     for path, ie in inv.iter_entries():
         if path in seen_names:
-            bailout('duplicated path %r in inventory' % path)
+            bailout('duplicated path %r in inventory for revision {%s}' % (path, revid))
         seen_names.add(path)
+        
+        if ie.file_id in seen_ids:
+            bailout('duplicated file_id {%s} in inventory for revision {%s}'
+                    % (ie.file_id, revid))
+        seen_ids.add(ie.file_id)
+            
         if ie.kind == 'file':
             if not ie.text_id in branch.text_store:
                 bailout('text {%s} not in text_store' % ie.text_id)
