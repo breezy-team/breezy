@@ -1,0 +1,102 @@
+Detecting unchanged files
+*************************
+
+Many operations need to know which working files have changed compared
+to the basis revision.  (We also sometimes want to know which files
+have changed between two revisions, but since we know the text-ids
+and hashes that is much easier.)  
+
+The simplest way is to just directly compare the files.  This is
+simple and reliable, but has the disadvantage that we need to read in
+both files.  For a large tree like the kernel or even samba, this can
+use a lot of cache memory and/or be slow.  Some people have machines
+that do not have enough memory to hold even one copy of the tree at a
+time, and this would use two copies.
+
+So it is nice to know which files have not changed without actually
+reading them.  Possibilities:
+
+* Make the working files be hardlinks to the file store.  Easy to see
+  if they are still the same file or not by simply stat'ing them.  For
+  extra protection, make the stored files readonly.  Has the
+  additional advantage of reducing the disk usage of the working copy.
+
+  Disadvantage is that some people have editors that do not handle
+  this safely.  In that case the changes will go undetected, and they
+  could corrupt history.  Pretty bad.
+
+  We can provide a ``bzr edit`` command that breaks the link and makes
+  the working copy writable.
+
+* As above, but link to a temporary pristine directory, not to the
+  real store.  They can get a wrong answer, but at least cannot
+  corrupt the store.
+
+* Check the mtime and size of the file; compare them to those of the
+  previous stored version.  
+
+  The mtime doesn't need to be the time the previous revision was
+  committed.
+
+  There is a possibility of a race here where the file is modified but
+  does not change size, all in the second after the checkout.  Many
+  filesystems don't report sub-second modification times, but Linux
+  now allows for it and it may be supported in future.
+
+* Read in all the working files, but first compare them to the
+  size and text-hash of the previous file revision; only do the diff
+  if they have actually changed.  Means only reading one tree, not
+  two, but we still have to scan all the source.
+
+* Copy the file, but use an explicit edit command to remember which
+  ones have been changed.  Uneditable files should be readonly to
+  prevent inadvertent changes.
+
+The problem with almost all of these models is that it is possible for
+people to change a file without tripping them.  The only way to make
+this perfectly safe is to actually compare.  So perhaps there should
+be a paranoia option.  
+
+It is crucial that no failure can lose history.  Does that mean
+hardlinks directly into the file store are just too risky?
+
+It is most important that ``diff``, ``status`` and similar things be
+fast, because they are invoked often.  It may be that the ``commit``
+command can tolerate being somewhat slower -- but then it would be
+confusing if ``commit`` saw something different to what ``diff`` does,
+so they should be the same.
+
+For the mooted `edit command`__, we will know whether a file is
+checked out as r/o or r/w; if a file is known to be read-only it can
+be assumed to be unmodified.
+
+__ optional-edit.html
+
+The ``check`` command can make sure that any files that would be
+assumed to be unmodified are actually unmodified.
+
+File times can skew, particularly on network filesystems.  We should
+not make any assumptions that mtimes are the same as the system clock
+at the time of creation (and that would probably be racy anyhow).
+
+Proposal
+--------
+
+::
+  
+    if file is not editable:
+        unmodified
+
+    if not paranoid:
+        if same inum and device as basis:
+            unmodified
+        elif present as read-only:
+            unmodified
+        elif same mtime and size:
+            unmodified
+
+    read working file, calculate sha1
+    if same size and sha-1 as previous inventory-entry:
+        unmodified
+
+    possibly-modified

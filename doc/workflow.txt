@@ -1,0 +1,117 @@
+********
+Workflow
+********
+
+People want to manage submissions of patches; see `Havoc's post`__.
+
+__ http://log.ometer.com/2004-11.html#19
+
+The ideal interface is::
+
+    baz branch http://project.org/bzr/project-2.0
+    [hackety hack]
+    baz submit
+
+It would be nice if people could submit simple changes without needing
+to set up their own public branches.  I don't think people will want
+to allow random strangers to create branches on their machine, so this
+probably means submitting the changes by email.  To form such a patch
+we need to know what branch point counts as "upstream", and who to
+send the patches to.  As a reasonable default, we might use the last
+time we branched and the last 
+
+Some of this should be better done in integration with e.g. mail
+clients or external robots or bug trackers. 
+
+Bazaar-NG allows redrafting rejected patches in an interesting way: 
+
+  Person writes a feature on a new feature branch.  They can commit
+  several times, merge up to date, even have sub-forks to an arbitrary
+  extent.  When they're ready, they submit their changes to the
+  maintainer, either by mailing the diffs relative to the main branch,
+  or by the maintainer pulling from their tree.   If they don't like
+  it, they can not commit it to their tree, and hopefully give some
+  feedback to the contributor.  (I don't think that feedback needs to
+  go back through the tool; email or some other communication
+  mechanism is probably fine.)  The contributor can then keep working
+  in their branch, until it eventually gets merged.
+
+  Alternatively, the maintainer might want to merge the change but fix
+  it up themselves.  We keep track of the fact that it was merged, and
+  the maintainer can make arbitrary fixups either in the course of
+  merging it or afterwards.  When the contributor later merges back
+  everything will work.
+
+  Another case is that the maintainer wants to improve the patch but
+  not take it into their main tree.  What they can do here is take it
+  into a separate feature branch, fix it up, and then ask the
+  contributor to merge back from there.
+
+Maintainers__ would also like to keep track of patches that have been
+submitted but not yet accepted, so they're not lost and can be
+updated.  One way to do this would be to create a branch on the
+maintainer's machine for a submitted patch, and apply the submission
+to that.  The maintainer can fix it if they want, or take updates to
+it.  The submitter can see what, if anything, was done.  Because this
+branch is identified by a URL it can be cited in bug reports, and it
+might make sense to name the branch by the bug it is supposed to fix.
+
+__ http://gcc.gnu.org/ml/gcc/2002-12/msg00444.html
+
+
+
+Aegis-style review and integration
+----------------------------------
+
+Some projects might want all changes to be submitted for review before
+merging onto the mainline.  This might be done either by convention,
+or perhaps by not allowing individual developers to merge to the
+mainline but rather having specific privileged integrators.
+
+Aegis_ enforces a lot of workflow/process; it would be good to be able
+to do something similar on top of bazaar-ng either manually or as a
+higher-level tool.  Aegis's model is that each proposed change is
+essentially on a branch that later merges into the mainline, which
+makes a lot of sense.
+
+.. _Aegis: compared-aegis.html
+
+To do something like Aegis, follow this process:
+
+* Developer makes a new branch from the trunk to develop a feature,
+  called say ``project--devel--bug-123``.
+
+* When they have almost finished development, they re-merge from the
+  trunk to make sure they're up to date.
+
+* By some mechanism they ask a reviewer to consider their changes --
+  perhaps by sending email, or using a bug tracking system, or
+  something else.  They tell the reviewer the location of their
+  branch, which might be on an HTTP server for a public project, or on
+  a directory on a shared server.
+
+* The reviewer makes a new branch for review based off the trunk,
+  ``project--review--bug-123``, and merges the development branch into
+  it.  The merge should be perfect if the developer was up to date
+  with the trunk.  If the merge fails they can either bounce it back
+  to the developer or fix the merge themselves according to local
+  policy or their own discretion.  They then review, build and test
+  the branch.  If it's OK, they commit to their review branch and send
+  a note asking for it to be integrated (or perhaps they integrate
+  themselves.)
+
+* The integrator merges from the review branch onto the trunk,
+  builds/tests and commits.  Since they pull from the reviewer's
+  branch there is no way unreviewed changes can sneak through even if
+  the developer adds to their work branch after the review.
+  
+  This can be done by a robot, or by a reviewer.
+
+* The developer can look at the review, integration and trunk branches
+  to see that their changes have merged.
+
+This model is practiced by some people at Canonical using tla.  Since
+people work within a complex configspec, they like very much to be
+able to branch in-place so that they do not need to rebuild the whole
+config to start new development.  (Though perhaps the real fix is to
+make assembling a config simpler...)

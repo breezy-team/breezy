@@ -1,0 +1,137 @@
+***************
+Shared branches
+***************
+
+How much can we simulate the single-branch model of svn/cvs?  GNU arch
+does reasonably well, but at the cost of making disconnected/connected
+operation leave ugly merge marks in the project history.
+
+This does seem to be a drawback of the otherwise-good branch/tree
+fusion.
+
+`Greg Hudson`__ makes the very good point that the Linux kernel is
+quite unusual among free software projects in relying on human
+integrators, rather than having a shared branch between the
+committers.  The other case is very small projects (distcc?) where
+there is a single person with commit access.
+
+__ http://web.mit.edu/ghudson/thoughts/bitkeeper.whynot
+
+I think decentralized systems can still be very good, but they need to
+support this model very well: a team of committers, working on a
+single trunk branch, but merging from other branches as well.  The
+Samba team is more typical of a demanding open-source project than the
+kernel is.
+
+People fundamentally want to be able to share a tree and all commit
+into it.  It's fine to support other models (like sending patches to
+an owner/integrator/maintainer), but it is not reasonable to require
+that there be exactly one such person.
+
+arch-pqm is a clever kludge; shouldn't be required.  Setting up email
+on all clients, and scripts to automatically process email on the
+server is certainly possible.  But for some people it may not be easy;
+it is never trivial to debug; and particularly for Windows users it
+may be very hard.  If you don't control your own email server or
+cannot  easily run scripts it will be even more messy.
+
+The model of Bitkeeper, and the default model of Bazaar-NG, is that
+each branch has one owner and exists in one place.  People submit
+their patches to the owner of the branch.  This is a pretty good
+model, but has some limitations.
+
+It is a tough transition from CVS; it requires that people learn a
+whole new way of working as well as a new tool.
+
+If the person who owns the branch is away, should all integration
+work stop?
+
+I'm not totally confident in Darcs; it seems like the shared branch
+can reach a state that is not exactly the same as any of the
+checkouts.  Maybe not?  In other respects it is a good model.
+
+Possible solution: bound branches
+---------------------------------
+
+You can make a branch which is a write-through mirror of another
+branch.  They work like CVS checkouts in that you must be connected
+and fully up-to-date to commit.  These can hold as much history as you
+like from the main branch, so you can view history, annotate, make new
+branches when offline.  If you are offline for a long time then make a
+new branch, then integrate it back later.
+
+The effect is similar to systems which have separate working copies
+and storage: we have one branch used primarily as a workarea, and
+another used as storage.  I think that making them both branches
+is possibly cleaner: it expresses the way some state may be held
+locally, allows offline branching from the bound branch, etc.
+
+:: 
+
+    $ bzr get http://foo.net/foo ./foo-main
+    $ cd foo-main 
+    (make some changes)
+    $ bzr commit -m 'Add my neat feature'
+    bzr: error: this branch is not-up-to-date with master 
+        http://foo.net/foo
+    - run 'bzr update'
+    - or detach this branch from its parent to work independently
+    $ bzr update
+    - setting aside local changes
+    - pulling changes from parent
+    - putting back local changes
+    $ bzr commit -m 'Add my neat feature'
+
+The ``get`` command is very similar to ``branch``, but means that
+commits will be written back.
+
+This means that the ``pull`` or ``update`` command must be able to
+work even when there are local changes, by setting them aside.  This
+in turn means that local changes may conflict with remote changes, and
+that has to be resolved -- that is no worse than in pulling in changes
+from elsewhere.
+
+commit to a master repository should fail if the slave's patch history
+is not exactly equal to that of the master -- the slave has diverged.
+If the slave history is a prefix of the master history then an update
+will do it.  Otherwise, they have diverged and the slave gets
+detached.
+
+We can have shared server-side hooks, even for access control, at
+least in principle.
+
+Perhaps ``bind`` is a nicer word than ``slave``.
+
+It is conceptually possible to take an existing branch and bind it to
+another, as long as the history of the first is a prefix of that of
+the second.  One could also unbind a branch.  These should at most be
+advanced commands, because in general it is simpler just to make a new
+branch with the desired properties.
+
+Difficulties
+~~~~~~~~~~~~
+
+It may be a bit hard to get a remote commit exactly right,
+particularly if we want to keep a working copy there.  If working
+copies are optional, then turning it off will keep things simple but
+not totally avoid the problem.
+
+I think this is just an example of a general problem though: there is
+no totally satisfactory way to atomically update a working copy.
+(What happens to cvs or svn if you interrupt while it's doing this?
+Generally you get a broken wc.)  What we can do is create a lock while
+the update is taking place, which can be used to at least detect the
+problem. 
+
+If changes are allowed to the working copy of the master branch then
+they might conflict with what is committed by the slave.  Should those
+changes be merged into the working copy of the parent?  If so, they
+might conflict.  
+
+  (darcs handles this case by inserting conflict markers in the remote
+  file, which seems unsatisfactory to me.)
+
+So I am inclined to say that at the moment of pushing to a master
+branch, the destination should be clean.  If we have explicit edits
+then probably there should be no editable files there.  (We could
+perhaps make all the files read-only for the duration of the update.)

@@ -1,0 +1,789 @@
+***********************
+Reference for Bazaar-NG
+***********************
+
+:Author: Martin Pool
+:Copyright: Copyright 2004, 2005 Martin Pool; GNU GPL v2
+
+.. contents::
+
+
+
+Generalities
+------------
+
+Note that this document refers to many features which are not
+implemented yet.  Some may never be implemented.
+
+The top level command is ``bzr``.  Everything else is invoked as a
+subcommand of that, as is common in version control systems.
+
+A source directory containing some files to be versioned is called a
+*tree*; this contains a number of *files* and possibly some
+subdirectories.  The point of bzr is to keep track of the *versions*
+(or *revisions*) of the tree at various points in time.  A sequence of
+versions of a tree form a *branch*.  All branches begin with the empty
+directory, called the null revision.  Two branches may have some
+revisions in common and then *diverge* later -- which is why they're
+called branches.  We can distinguish the *working copy* of the files,
+which is available for modification, from their previous versions.
+
+Each file has a unique *file-id*, which remains the same for the life
+of the file, even when files are renamed.  Files also have a *kind*,
+which can currently be *file* or *directory*, and which cannot change
+for any file-id.
+
+The difference between two revisions is a *changeset*.  Changesets
+include the textual changes to files, the affected file-ids, the date
+of the change, the author, the name of the branch.  Changesets have a
+globally unique identifier.
+
+A changeset committed to a branch is *local* to that branch; otherwise
+it is foreign.  (Note that a changeset may be local to several
+different branches if it was created prior to their divergence.)
+
+Changesets may include a note that they *incorporate* other
+changesets; this is used when changes are merged from one branch into
+another.  After changes have been merged but before they are committed
+they are listed as *pending merges*; when they are committed they are
+listed within their changeset.
+
+All files in a versioned directory can be divided into four classes:
+
+Versioned
+  Anything assigned a file-id.  Changes to these files are tracked.
+Control
+  Anything under ``.bzr/``.  Should not be edited by users.
+Ignored
+  Anything matching an ignore pattern.  As the name suggests, ignored
+  by Bazaar.
+Unknown
+  Everything else.  Generally ignored, except that they are reported
+  as 'unknown' and can be added by a recursive add_.
+
+We say a tree, or a file, is *unmodified* if it is the same as in the
+most recent version, or *modified* otherwise.
+
+*Committing* creates a new revision equal to the current state of the
+tree.  Immediately after committing, all files are unmodified, since
+they are the same as the just-committed state.
+
+
+
+
+File states
+-----------
+
+A file is in exactly one of these *states*.  These are identified by
+single characters which should be familiar to people used to svn/cvs.
+
+?, Unknown
+    Not versioned, ignored, or control.
+    Typically new files that should be versioned or
+    ignored but have not been marked as either yet.
+., Up-to-date
+    This versioned file is the same as in the last revision on this
+    branch.  (The file had the same name and text and properties in
+    the previous revision.)
+A, Added
+    This file will be added by the next commit.  (The file ID was not
+    present in the previous revision.)
+M, Modified
+    This file has been changed from the previous revision and will be
+    recorded in the next commit.  (The file had the same name but
+    different text in the previous revision.)  Directories have no 
+    text and so can never be in this state.
+D, Deleted
+    This file has been removed from the inventory or deleted in the 
+    working copy and will be removed in the next revision.
+R, Renamed
+    This file had a different name in the previous revision; the next
+    commit will record the new name.  The file text may also have been
+    modified.
+
+These are only summaries, not complete descriptions.  For example the
+'D' state does not distinguish between a file removed by the remove_
+command and one whose text has been deleted.  (There should perhaps be
+a variation of the ``info`` command, or a ``file-info`` that shows
+enough details.)
+
+A directory may be up-to-date even if some files inside it have
+different states.
+
+.. _pinned: pinned.html
+
+
+
+Global options
+--------------
+
+These can be applied to many or all commands.
+
+--help     Show help, either globally or for the selected command.
+
+-v, --verbose  Show progress/explanatory information.  This is good if
+               for example using a slow network and you want to see
+               that something is happening.
+
+--debug    Show way too much detail about files being opened, locking,
+           etc.  Intended for
+
+--silent   Show nothing but errors.  (Perhaps unnecessary; you could
+           just redirect stdout to /dev/null.)
+
+--version  Show version and quit.
+
+--dry-run         Show what would be done, but don't make any
+                  permanent changes.
+
+--directory DIR   Operate in given directory rather than cwd.
+                  (Perhaps this should be ``-d``, but that might be
+                  better saved for ``--delete``.  Perhaps -b?)
+
+--recurse, -R     When a directory name is given, operate not only on
+                  that directory but also any files or directories
+                  contained within it.
+
+                  (XXX: Should this be on by default?  It will often
+                  be what people want, but also possibly more
+                  surprising.  If it is, we will want a
+                  ``--no-recurse``.)
+
+--force           Relax safety checks.
+
+--format=FORMAT
+   Choose output format; options might include XML, YAML, text.
+
+--id-only
+    Only update the inventory, don't touch the working copy.  (May
+    need a better name.)
+
+--show-ids
+    List file ids, as well as names.
+
+
+
+init
+----
+
+Create bzr control files in the current directory::
+
+    bzr init
+
+Use this, followed by add_ and then commit_ to import or start a new
+project.
+
+
+
+add
+---
+
+Add one or more files or directories to the branch::
+
+    bzr add FILE...
+
+Each added file is assigned a new file-id, and will be in the Added
+state.  They will be recorded in the next commit that covers that
+file, and then in the Up-to-date state.
+
++-------------+-------------------------------------------------+
+|File state   |Action                                           |
++=============+=================================================+
+|?            |New file id given to file; now in A state        |
++-------------+-------------------------------------------------+
+|I            |"Adding previously ignored file"; now in A       |
++-------------+-------------------------------------------------+
+|Z, ZM        |Add file with new ID; now in A state.            |
+|             |(To get the old ID back, use revert_ on that     |
+|             |file.)                                           |
++-------------+-------------------------------------------------+
+|U, A, M, R,  |Warning "already added"; no change               |
+|RM           |                                                 |
++-------------+-------------------------------------------------+
+|!, D         |Error "no such file"; no change                  |
++-------------+-------------------------------------------------+
+|#            |Error "cannot add control file"; no change       |
++-------------+-------------------------------------------------+
+
+--id ID
+      Add file with given ID rather than a random UUID.  Error if this
+      id is assigned to any other file.  (not implemented yet)
+
+--recurse
+    Add directory and all Unknown children, recursively.  This
+    includes U children of previously-added subdirectories.
+    (not implemented yet)
+
+This command will add any new source files, except for those matching
+ignore rules::
+
+  $ bzr add --recurse .
+
+(Note: I hope this might satisfy people who are fond of arch
+name-based tagging, and who dislike individually adding & removing
+files.  All they need to do is set up the appropriate ignore patterns,
+then 'add -R .' and they're done.)
+
+
+remove
+------
+
+Make a file no longer be versioned, and record its deletion from the
+inventory::
+
+    $ bzr remove FILE...
+
+This does not remove the working copy.  If you wish to both remove the
+working copy and unregister the file, you can simply delete it using
+regular ``rm``.  This is the opposite of add_.
+
+:State table:
+
++--------------+--------------------------------------------------+
+| File state   | Action                                           |
++==============+==================================================+
+| M, R, RM, .  | File to D state.                                 |
++--------------+--------------------------------------------------+
+| A            | File back to I or ? state                        |
++--------------+--------------------------------------------------+
+| I, ?, Z, ZM  | Error, no change                                 |
++--------------+--------------------------------------------------+
+| !            | Change to D                                      |
++--------------+--------------------------------------------------+
+| D            | Warning "already deleted"                        |
++--------------+--------------------------------------------------+
+| #            | "Cannot remove control file"                     |
++--------------+--------------------------------------------------+
+
+
+
+diff
+----
+
+Show all changes compared to the pristine as a text changeset.
+
+--full      Include details for even binary files, uuencoded.  Makes the
+            diff long but lossless.
+
+
+
+export
+------
+
+::
+
+    bzr export TO-DIR
+
+Copy the tree, but leave out Bazaar-NG control files.  This includes copying
+uncommitted changes.
+
+This is equivalent to copying the branch and then deleting the control
+directory (except more efficient).
+
+Should this also delete any other control files like ``.bzrignore``?
+
+
+
+status
+------
+
+Show which files are added/deleted/modified/unknown/missing/etc, as in
+subversion.
+
+Given the ``--check`` option, returns non-zero if there are any
+uncommitted changes.
+
+
+
+info
+----
+
+Display various information items about the branch.  Can be given
+various options to pull out particular fields for easier use in
+scripts.
+
+Should include:
+
+* branch name
+* parent
+* number of revisions
+* number of files that are versioned/modified/deleted/added/unknown
+* number of versioned directories
+* branch format version
+* number of people who have made commits
+* date of last commit
+
+
+
+delta
+-----
+
+Compute a two-way non-history-sensitive delta from one branch or
+version to another.  Basically a smart diff between the two.
+
+(Perhaps this should just be a ``--format`` option to diff_?)
+
+
+
+merge
+-----
+
+Merge changes in from another branch, and leave them uncommitted in
+this tree::
+
+   merge [FROM-BRANCH]
+
+This makes a note of the revisions which were merged.
+
+A range of revisions may be specified to cherry-pick changes from that
+branch, or to merge changes only up to a certain point.
+
+Merge refuses to run if there are uncommitted changes unless forced,
+so that merged changes don't get mixed up with your own changes.
+
+You can use a merge rather than an update to accomplish any of several
+things:
+
+* Merge in a patch, but modify it to either suit your taste or fix
+  textual or semantic conflicts.
+
+* Collapse several merged patches into a single changeset.  A feature
+  may go through many revisions when being developed on its own
+  branch, but you might want to hide that detail when it merges onto a
+  main branch.
+
+--revision RANGE  Merge only selected revisions, rather than
+                  everything that's not present yet.
+
+Before a merge is committed, it may be reversed with the revert_
+command.
+
+
+
+sync
+----
+
+::
+
+    sync [OTHER-BRANCH]
+
+--revision RANGE  Pull only selected revisions.
+
+Synchronize mirrored branches.
+
+A mirror branch is a branch that strictly follows a parent branch,
+without any changes being committed to it.  This is useful in several
+ways:
+
+* Moving a backup of a branch onto another machine to protect against
+  disk failure or laptop theft.
+
+* Making the complete history of a upstream branch available for
+  offline use.
+
+The result is the same as copying the whole branch, but it is more
+efficient for remote branches because only newly-added changesets are
+moved.   The result is similar to rsync except it respects Bzr locking.
+
+The same command can be used for push mirrors (changesets are moved
+from this branch to the other) or pull mirrors (vice versa).  Bzr
+automatically determines which to do by looking at which branch has
+more patches.   (Perhaps it would be clearer to have separate *push*
+and *pull* commands?)
+
+This command can only be used when the history of one branch is a
+subset of the other.  If you commit different changes to both
+branches, then ``sync`` will say that the branches have diverged and
+it will refuse to run.  This command also refuses to run if the
+destination branch has any uncommitted changes.  Uncommitted changes
+on the origin are not copied.
+
+Method:
+
+* Get the ordered list of change ids on both branches.
+
+* One list should be a prefix of the other; if not, fail.  The shorter
+  list will be the destination branch.
+
+* Check the destination has no uncommitted changes.
+
+* For each change present only in the origin, download it to the
+  destination, add to the changeset history and update the tree and
+  control files.
+
+
+
+commit
+------
+
+::
+
+   commit MESSAGE [WHAT]
+
+Commit changes from the working copy into the branch.  By default
+commits everything, but can be given a list of files directories or
+files.
+
+Partial commits (not implemented yet) should ideally be allowed even when the partial thing
+you want to commit is an add, delete or rename.  Partial commits are
+**not** allowed if patches have been merged in this change.
+
+Method:
+
+* check preconditions
+* get log, if not present or given on command line
+* re-check preconditions
+* calculate diff from pristine to working copy
+* store this diff, plus headers, into the patches directory
+* add the diff to the list of applied patches
+* update pristine tree
+
+Commit can optionally run some pre-commit and post-commit hooks,
+passing them the delta which will be applied; this might mail the
+delta or apply it to an export and run a test case there.
+
+:State table:
+
++-------------+-------------------------------------------------+
+|File state   |After commit                                     |
++=============+=================================================+
+|?, I, #      |Unchanged                                        |
++-------------+-------------------------------------------------+
+|A, M, R, RM  |Recorded, U                                      |
++-------------+-------------------------------------------------+
+|D            |Gone                                             |
++-------------+-------------------------------------------------+
+|Z, ZM        |Recorded, working copy remains as I or ?         |
++-------------+-------------------------------------------------+
+|!            |Error "file is missing"; must be deleted or      |
+|             |reverted before commit                           |
++-------------+-------------------------------------------------+
+
+
+
+lint
+----
+
+Check for problems in the working copy.
+
++-------------+-------------------------------------------------+
+|File state   |Lint output                                      |
++=============+=================================================+
+|?            |"Unknown file, please add/ignore/remove"         |
++-------------+-------------------------------------------------+
+|Z, ZM        |"Zombie file, please add/ignore/remove/revert"   |
++-------------+-------------------------------------------------+
+|!            |"File is missing, please recreate, delete or     |
+|             |revert."                                         |
++-------------+-------------------------------------------------+
+|A, M, D, R,  |No output                                        |
+|RM, #, I     |                                                 |
++-------------+-------------------------------------------------+
+
+
+
+check
+-----
+
+Run various consistency/sanity checks on the branch.  These might
+include:
+
+* Make sure all patches named by the inventory exist.
+
+* No patch IDs are duplicated.
+
+* Make sure hash of each patch is correct.
+
+* Starting at zero, apply each patch and make sure it does not
+  conflict.
+
+* All files named in inventory are reasonable.
+
+* No file IDs are duplicated in inventory.
+
+* Possibly many more.
+
+* No patches are in both ``patch-history`` and ``merged-patches``.
+
+* The patches in the bag are exactly those listed in ``patch-history``.
+
+Maybe add a separate option to say that you believe the tree is clean.
+
+
+
+backout
+-------
+
+Reverse the changes made by previous changesets::
+
+   bzr backout REVISION
+   bzr backout REV1 REV2
+
+If a single revision is given, that single changeset is backed out.
+If two revisions are given, all changes in that range are backed out.
+
+The change that is reversed need not be the most recently committed
+change, but if there are revisions after the ones to be reverse which
+depend on them this command may cause conflicts.
+
+This undoes the changes but remembers that it was once applied, so it
+will not be merged again.  Anyone who pulls from later versions of
+this tree will also have that patch reversed.
+
+You can backout a backout patch, etc, which will restore the previous changes.
+
+This leaves the changeset prepared but not committed; after doing this
+you should commit it if you want.
+
+You can also backout only the parts of  a changeset touching a
+particular file or subdirectory::
+
+  bzr reverse foo.c@31
+
+
+revert
+------
+
+Undo changes to the working copy of files or directories, and discard
+any pending merge notes::
+
+  $ bzr revert [FILE...]
+
+If no files are specified, the entire tree is reverted, which is
+equivalent to specifying the top-level directory.  In either case, the
+list of pending merges is also cleared.
+
+This does not affect history, only the working copy.  A corollary is
+that if no changes have been made to the working copy, this does
+nothing.
+
+If a file was Modified, it is returned to the last committed state,
+reversing changes to the working copy.  If the file has been Added, it
+is un-added but the working copy is not removed, so it returns to
+either the Unknown or Ignored state.  If the file has been Deleted, it
+is resurrected and returns to the Up-to-date state.  If the file is
+Unknown, Ignored, or a Control file then it is not changed and a
+warning is issued::
+
+  bzr: warning: cannot revert ignored file foo.c
+
+If the file has been Renamed, it is returned to its original name and
+any textual changes are reversed.  This may cause an error if the
+rename clashes with an existing file::
+
+  bzr: error: cannot revert foo.c to old name bar.c: file exists
+
+If a directory is listed, by default only changes to the directory
+itself are undone.
+
+Ideally this would not lose any changes, but rather just set them
+aside, so that the revert command would be undoable.  One way is to
+follow Arch and write out the discarded changes to a changeset file
+which can be either re-applied or discarded at a later date.  This
+very nicely allows for arbitrarily nested undo.  A simpler
+intermediate mechanism would be to just move the discarded files to
+GNU-style tilde backups.
+
+--merges        Clear the list of pending merges.  If files are
+                specified, their text is also reverted, otherwise no
+                files are changed.
+
+--id-only       Don't touch the working text, only the inventory.
+
+
++-------------+-------------------------------------------------+
+| File state  | Actions                                         |
++=============+=================================================+
+| A           | Returned to ? or I state, working text unchanged|
++-------------+-------------------------------------------------+
+| D           | Working copy restored, returned to U            |
++-------------+-------------------------------------------------+
+| Z           | Returned to U                                   |
++-------------+-------------------------------------------------+
+| ZM          | Working copy restored to previous               |
+|             | version, returned to U                          |
++-------------+-------------------------------------------------+
+| R           | Moved back to old                               |
+|             | name.                                           |
++-------------+-------------------------------------------------+
+| RM          | Moved back to old name and restored to previous |
+|             | text.                                           |
++-------------+-------------------------------------------------+
+|I, #, ?      | "Cannot revert"                                 |
++-------------+-------------------------------------------------+
+
+
+log
+---
+
+Show a log of changes::
+
+    bzr log
+
+By default shows all changes on this branch.
+
+The default format shows merged changes indented under the change that
+merged them.
+
+Alternatively changes can be sorted by date disregarding merges, which
+shows the order in which they were written not the order they were
+merged.  Changes which were merged are flagged as such.  Such an order
+is needed for a GNU-style ChangeLog.  The option is comparable to
+choosing a threaded or unthreaded display in an email client, and
+should perhaps have those names.
+
+Another option is to show just short descriptions of the merged
+changes, similar to arch.
+
+The log can be filtered in any of these ways:
+
+* Logs touching a particular file or directory.
+
+* Changes touching a particular file-id, regardless of what name it
+  had in the past.
+
+* Changes by a particular author.
+
+* Changes from a particular branch name (not necessarily the same
+  branch).
+
+Another option is to also include diffs (which may make it quite
+large).
+
+
+ignore
+------
+
+Mark a file pattern to be ignored and not versioned::
+
+    bzr ignore PATTERN
+
+The pattern should be quoted on Unix to protect it against shell
+expansion.
+
+The pattern is appended to ``.bzr-ignore``.  This file is created if
+it does not already exist, and added if it is not already versioned.
+bzr prints a message showing the pattern added so that people can see
+where to go to remove it::
+
+    $ bzr ignore \*.pyc
+    bzr: notice: created .bzr-ignored
+    bzr: notice: added pattern '*.pyc' to .bzr-ignore
+    $ bzr status
+    A      .bzr-ignore
+
+If the wrong pattern is added it can be removed by either editing
+``.bzr-ignore`` or by reverting__ that file.
+
+__ revert_
+
+
+is
+--
+
+Test various predicates against a branch, similar to the Unix shell
+``test`` command::
+
+    bzr is TEST [ARGS]
+
+Takes a third-level command:
+
+``clean``
+  Tree has no uncommitted changes.
+
+``in-tree``
+  Pwd is in a versioned tree.
+
+``in-control-dir``
+  Pwd is inside a Bazaar-NG control directory (and therefore should
+  not be modified directly).
+
+``tree-top``
+  Pwd is the top of a working tree.
+
+
+protect
+-------
+
+(Proposed idea, may not be implemented or may need a better name.)
+
+Sets a voluntary write-protect flag on a branch, to protect against
+accidental changes::
+
+    bzr protect
+    bzr unprotect
+
+This is typically used on branches functioning as tags, which should
+not normally be committed to or updated.
+
+There may, in the future, be a mechanism to allow only particular
+users to protect/unprotect a branch.
+
+
+uncommit
+--------
+
+(It is not certain this command will be implemented.)
+
+This command removes the most recent revision from the branch::
+
+    bzr uncommit
+
+This does not affect the working copy, which can be fixed up and a new
+commit run.  The new commit will have a different revision ID.
+
+Removal of the revision will not propagate to any other branches.
+
+The command may be repeated to successively remove more and more
+revisions.
+
+This command should perhaps have a more obviously dangerous name,
+since it can lose information or cause confusion.
+
+By default the revision is removed from the history, but its text is
+left in the store, which allows some chance of recovery.
+
+You cannot partially uncommit; you can however uncommit the whole
+revision and then re-commit just part of it.
+
+:Use cases:
+    `Wrong commit message`_
+
+
+.. _`Wrong commit message`: use-cases.html#wrong-commit-message
+
+
+
+find
+----
+
+Finds files, versions, etc in a branch::
+
+   bzr find [OPERATORS]
+
+The behaviour is similar to regular unix *find*, but this understands
+about bzr versioning.  Eventually this may gain all the
+and/or/grouping options of Unix find, but not yet.
+
+This does not have the quirky syntax of unix find, but rather just
+specifies commands as regular words.
+
+Operators:
+
+* ``directory``
+* ``file``
+* ``unknown``
+* ``ignored``
+
+By default the operators are anded together; there is also an ``or``
+operator.
+
+If no action is specified, just prints the file name.  Other actions:
+
+``print``
+    Print just the filename.
+``printf``
+    Print various fields about the object, using a formating system.
+``exec``
+    Execute a command on the file.
+

@@ -1,0 +1,50 @@
+**************************
+Deadly sins in tool design
+**************************
+
+http://gcc.gnu.org/wiki/DeadlySins
+
+They don't directly apply, but many do correspond.
+
+  The "Deadly Sins" from P. J. Brown's *Writing Interactive Compilers and Interpreters*, Wiley 1979. We've committed them all at least once in GCC.
+
+  The deadly sins are:
+
+  1. to code before you think.
+
+  2. to assume the user has all the knowledge the compiler writer has.
+
+  3. to not write proper documentation.
+
+  4. to ignore language standards.
+
+  5. to treat error diagnosis as an afterthought.
+
+  6. to equate the unlikely with the impossible.
+
+  7. to make the encoding of the compiler dependent on its data formats.
+
+  8. to use numbers for objects that are not numbers.
+
+  9. to pretend you are catering to everyone at the same time.
+
+  10. to have no strategy for processing break-ins.
+
+      (A break-in is when you interrupt an interactive compiler, and
+      then possibly continue it later. This is meaningful in an
+      environment in which the compiler is run dynamically, such as
+      many LISP and some BASIC environments. It is not meaningful for
+      typical uses of C/C++ (although there was at least one
+      interactive C environment, from Sabre).)
+
+      (Perhaps this corresponds to handling user interrupts during
+      operation -- they should not leave anything in an inconsistent
+      state.)
+
+  11. to rate the beauty of mathematics above the usability of your
+      compiler.
+
+  12. to let any error go undetected.
+
+  13. to leave users to find the errors in your compiler.
+

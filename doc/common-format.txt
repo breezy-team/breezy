@@ -1,0 +1,39 @@
+***********************
+Common changeset format
+***********************
+
+It might be useful to have a common changeset format for interchange
+between projects.
+
+It is not clear that you would be able to capture everything that
+every tool produces, but perhaps a lot could be done.
+
+Scenarios: (in order of difficulty?)
+
+ * dump/load
+
+ * convert repo from one tool to another
+
+ * one-way sync from exotic tool into read-only CVS or Svn repo
+
+ * two way sync between writable archives
+
+Perforce's RevML and ``vcp`` may be some use but apparently don't go
+all the way.
+
+Things like darcs and monotone may have such a different model that it
+may be hard to map them.
+
+Two-way sync may require keeping external state and is probably pretty
+hard.
+
+Apparently tlord tried to do something about this before but it
+stalled.
+
+Eventually perhaps we could arrange for someone to export key
+bitkeeper archives in this format, allowing all tools to read them in.
+
+Colin__ points the existing mailing list about this which is just a
+bunch of spam.
+
+__ http://web.verbum.org/blog/freesoftware/fsrc-responses

@@ -1,0 +1,81 @@
+****************
+Joining branches
+****************
+
+(I think this is pretty brilliant. :-)
+
+Branches diverge when people create more than one changeset following
+on from a common ancestor::
+
+  A:   0 ------- 1
+  B:    \------- 2
+
+We also allow branches to reunite.  This means that all the decisions
+taken on multiple branches have been reconciled and unified into a
+single successor::
+
+  A: 0 ------- 1 ----- 3
+      \               /
+  B:   \------ 2 ----/
+
+The predecessor of 3 is 1, in the sense that it was created on that
+branch.  We could have created the exact same state as a successor to
+2, and we can move that state onto branch 2 without any loss of
+information.
+
+(One thing we can do here is just delete B.  Because all of the work
+there has been merged onto A, this will not lose anything.  We might
+do this if the purpose of B has been achieved, such as completing a
+feature or bug.  But if the work is still in progress, we might keep
+it around.  It makes little difference whether we decide to do new
+work in a branch called B or make a new one called C.)
+
+That is to say that 3 can be perfectly (trivially) merged onto B,
+with, say ``bzr push``, ``bzr pull`` or ``bzr update`` (whatever name
+works best).  Perfectly merged means that we know there will be no
+conflicts or need for manual intervention, and that we can just
+directly store it without forming a roll-up changeset.
+
+I think we might also like the choice of merging A onto B, rather than
+pulling the changeset.  That causes a new changeset to be created on
+B, noted as a successor of 2 and 3::
+
+  A: 0 ------- 1 ----- 3 ------+
+      \               /         \
+  B:   \------ 2 ----+---------- 4
+
+One complication is that 3 is probably stored in A's history as a
+patch relative to 1; we can't just move this representation across.
+Instead, we need to recalculate the delta from 2 to 3 and store that.
+
+Despite that the delta is stored differently, the original signature
+on 3 should still be valid.  So it must be a signature of the tree
+state, not the diff.
+
+Note from `Kernel Traffic discussion`__:
+
+__ http://www.kerneltraffic.org/kernel-traffic/kt20030323_210.txt
+
+    But anyway, what made Bitkeeper suck less is the real DAG
+    structure.  Neither arch (http://arch.fifthvision.net/bin/view)
+    nor subversion seem to have understood that and, as a result,
+    don't and won't provide the same level of semantics. Zero hope for
+    Linus to use them, ever. They're needed for any decently
+    distributed development process.
+
+This in turn suggests that possibly deltas should be stored separately
+from the commits that create them.  Commits name points of
+development; deltas describe how to get from one to the other.
+
+The separation is nice in allowing us to send just a delta when
+diffing trees or recording for undo.  We might want to compute many
+deltas between different trees.
+
+Is this a problem?  Does this ignore Tom's advice about the primacy of
+storing changesets?
+
+Splitting them is probably good, but then what manifest is stored in
+changesets?  We don't want to store the manifest of the whole tree if
+we can avoid it.  So I suppose the changeset just gives the hash of
+the manifest, and the manifest then can be stored separately, possibly
+delta-encoded.

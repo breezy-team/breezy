@@ -1,0 +1,32 @@
+*****
+CVSNT
+*****
+
+
+http://www.cvsnt.com/cvspro/
+
+ * Remembers last-merge-point__ between two branches, and uses this to
+   do smarter incremental merges.
+
+__ http://www.cvsnt.org/wiki/MergePoint
+
+http://www.cvsnt.org/wiki/CvsntAdvantages
+
+ * SSPI authentication on Windows, and built-in Putty SSH code.
+
+ * Branch ACLs.
+ 
+ * Remote user administration using cvs passwd command.
+
+ * Repository browsing via cvs ls command (update: now provided in
+   standard CVS since version 1.12.9)
+
+ * LockServer on a second port replaces filesystem-based locks &
+   provides file level locking
+
+
+Various other improvements relative to CVS, particularly for Windows
+users.  Worth looking at, but nothing apparently earth-shaking.
+
+Interesting that the advanced merge support is basically that it
+remembers what was pulled across.

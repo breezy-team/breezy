@@ -1,0 +1,27 @@
+***********************
+Test plan for Patchflow
+***********************
+
+This should be amenable to good automated testing.  Here are some
+ideas.
+
+* Corrupt the branch in various ways and make sure it is detected.
+
+  - To start with test all cases checked by check()
+
+* Commit.
+
+
+I'm using doctest_ for some API tests, and it looks pretty nice.  It
+adds some documentation of the pre/post-conditions of various
+operations.  It also encourages creating a clean and friendly Python
+API.
+
+Testing through the Python API does not cover all of the external
+shell interface, but it is much easier to write, because we don't need
+to deal with serializing everything to/from text.
+
+We may need additional tests to this.
+
+
+.. _doctest: http://docs.python.org/lib/module-doctest.html

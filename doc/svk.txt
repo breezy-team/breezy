@@ -1,0 +1,11 @@
+svk
+===
+
+The strategic strength is that it can trivially and reliably
+interoperate with upstream projects using Subversion.  This tends to
+satisfy people who need disconnected operation, and so to allow
+projects to feel safe about switching to Subversion.
+
+On the other hand it may be a bit flaky in implementation; being
+written in Perl on top of Svn bindings may not inspire confidence;
+relatively little documentation.

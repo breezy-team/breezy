@@ -1,0 +1,229 @@
+Bazaar-NG
+*********
+
+..   These documents are formatted as ReStructuredText.  You can    ..
+..   convert them to HTML, PDF, etc using the ``python-docutils``   ..
+..   package.                                                       ..
+
+
+*Bazaar-NG* (``bzr``) is a project of `Canonical Ltd`__ to develop an
+open source distributed version control system that is powerful,
+friendly, and scalable.  The project is at an early stage of
+development.
+
+__ http://canonical.com/
+
+
+**Note:** These documents are in a very preliminary state, and so may
+be internally or externally inconsistent or redundant.  Comments are
+still very welcome.  Please send them to <mbp@sourcefrog.net>.
+
+
+Summary status
+--------------
+
+(as of 2005-02-23)
+
+* Bazaar-NG can track the history of a single local branch, similar to
+  RCS.  The storage format should be reasonably close to what will be
+  used for 1.0.
+
+* The following commands work: ``add``, ``remove``, ``commit``,
+  ``log``, ``diff`` (whole tree against basis revision), ``status``, ``help``,
+  ``export`` (any revision).
+
+* Subdirectories and files within them are now supported.
+
+
+
+User documentation
+------------------
+
+* `Project overview/introduction <intro.html>`__
+
+* `Command reference <cmdref.html>`__ -- intended to be user
+  documentation, and gives the best overview at the moment of what the
+  system will feel like to use.  Fairly complete.
+
+* `Quick reference <quickref.html>`__ -- single page description of
+  how to use, intended to check it's adequately simple.  Incomplete.
+
+* `FAQ <faq.html>`__ -- mostly user-oriented FAQ.
+
+* `Demonstration/tutorial <short-demo.html>`__
+
+
+Requirements and general design
+-------------------------------
+
+* `Various purposes of a VCS <purpose.html>`__ -- taking snapshots and
+  helping with merges is not the whole story.
+
+* `Requirements <requirements.html>`__
+
+* `Costs <costs.html>`__ of various factors: time, disk, network, etc.
+
+* `Deadly sins <deadly-sins.html>`__ that gcc maintainers suggest we avoid.
+
+* `Overview of the whole design <design.html>`__ and miscellaneous
+  small design points.
+
+* `File formats <formats.html>`__
+
+* `Random observations <random.html>`__ that don't fit anywhere else yet.
+
+
+
+Design of particular features
+-----------------------------
+
+* `Automatic generation of ChangeLogs <changelogs.html>`__
+
+* `Cherry picking <cherry-picking.html>`__ -- merge just selected non-contiguous changes  from a branch.
+
+* `Common changeset format <common-format.html>`__ for  interchange
+  format between VCS.
+
+* `Compression <compression.html>`__ of file text for more efficient storage.
+
+* `Config specs <config-specs.html>`__ assemble a tree from several places.
+
+* `Conflicts <conflicts.html>`_ that can occur during merge-like operations.
+
+* `Recovering from interrupted operations <interrupted.html>`__
+
+* `Inventory command <inventory.html>`__
+
+* `Branch joins <join-branches.html>`__ represent that all the changes
+  from one branch are integrated into another.
+
+* `Kill a version <kill-version.html>`__ to fix a broken commit or
+  wrong message, or to
+  remove confidential information from the history.
+
+* `Hash collisions <hashes.html>`__ and weaknesses, and the security
+  implications thereof.
+
+* `Layers <layers.html>`__ within the design
+
+* `Library interface <library-interface.html>`__ for Python.
+
+* `Merge <merge.html>`__
+
+* `Mirroring <mirroring.html>`__
+
+* `Optional edit command <optional-edit.html>`__: sometimes people
+  want to make the  working copy read-only, or not present at all.
+
+* `Partial commits <partial-commit.html>`__
+
+* `Patch pools <pool.html>`__ to efficiently store related branches.
+
+* `Revision syntax <revision-syntax.html>`__ -- ``hello.c@12``, etc.
+
+* `Roll-up commits <rollup.html>`__ -- a single revision incorporates
+  the changes from several others.
+
+* `Scalability <scalability.html>`__
+
+* `Security <security.html>`__
+
+* `Shared branches <shared-branches.html>`__ maintained by more than
+  one person
+
+* `Supportability <supportability.html>`__ -- how to handle any bugs
+  or problems in the field.
+
+* `Place tags on revisions for easy reference <tagging.html>`__
+
+* `Detecting unchanged files <unchanged.html>`__
+   
+* `Merging previously-unrelated branches <unrelated-merge.html>`__
+
+* `Usability principles <usability.html>`__ (very small at the moment)
+
+* `<use-cases.html>`__
+
+* `<web-interface.html>`__
+
+* `<workflow.html>`__ Modelling/controlling flow of patches.
+
+* `<yaml.html>`__ --  Discussion of using YAML_ as a storage or transmission format.
+
+.. _YAML: http://www.yaml.org/
+
+
+
+Comparisons to other systems
+----------------------------
+
+* `Taxonomy <taxonomy.html>`__: basic questions a VCS must answer.
+
+* `Bitkeeper <bitkeeper.html>`__, the proprietary system used by some
+  kernel developers.
+
+* `Aegis <compared-aegis.html>`__, a tool focussed on enforcing
+  process and workflow.
+
+* `Codeville <compared-codeville.html>`__ has an intruiging but
+  scarcely-documented merge algorithm.
+
+* `CVSNT <compared-cvsnt.html>`__, with more Windows support and some
+  merge enhancements.
+
+* `OpenCM <compared-opencm.html>`__, another hash-based tool with a
+  good whitepaper.
+
+* `PRCS <compared-prcs.html>`__, a non-distributed inventory-based tool.
+
+* `GNU Arch <todo-from-arch.html>`__, with many pros and cons.
+
+* `Darcs <darcs.html>`__, a merge-focussed tool with good usability.
+
+* `Quilt <quilt.html>`__ -- Andrew Morton's patch scripts, popular with kernel maintainers.
+
+* `Monotone <monotone.html>`__, Graydon Hoare's hash-based distributed system.
+
+* `SVK <svk.html>`__ --     distributed operation stacked on Subversion.
+
+* `Sun Teamware <compared-teamware.html>`__
+
+
+Project management and organization
+-----------------------------------
+
+* `Development news <news.html>`__
+
+* `Notes on how to get a VCS adopted <adoption.html>`__
+
+* `Testing plan <testing.html>`__ -- very sketchy.
+
+* `Thanks <thanks.html>`__ to various people
+
+* `Roadmap <roadmap.html>`__: High-level order for implementing features.
+
+* `<work-order.html>`__: current tasks.
+
+* `Extra commands <extra-commands.html>`__ for
+  internal/developer/debugger use.
+
+* `Choice of Python as a development language <python.html>`__
+
+
+Download
+--------
+
+There are no releases yet.
+
+The Bazaar-NG development code may be downloaded using GNU Arch by the
+following steps::
+
+   tla register-archive http://sourcefrog.net/arch/mbp@sourcefrog.net--2004
+   tla get mbp@sourcefrog.net--2004/bazaar-ng--0  bazaar-ng
+
+(By contrast, when Bazaar-NG network operations are complete, a single
+much shorter command will do.)
+
+Note that the current code is under heavy development and so is not
+guaranteed to do anything useful whatsoever.
+

@@ -1,0 +1,39 @@
+Darcs compared to Arch
+======================
+
+Simpler to use; perhaps harder to completely understand.
+
+Always local; always fast.
+
+Patch commution is slow and perhaps doesn't clearly do what people
+want.  
+
+Too slow!
+
+Can't reliably get back to any previous point.  Explicitly not
+addressing source archive/librarian function.
+
+Loads everything into memory.
+
+Written in Haskell.
+
+Breaking commits into hunks at commit time is interesting, but I think
+not totally necessary.  Sometimes it won't break hunks where you want
+it. 
+
+A really simple pre-commit check hook is remarkably useful.
+
+http://www.scannedinavian.org/DarcsWiki/DifferencesFromArch
+
+Token replace
+-------------
+
+Very cute; possibly handy; not absolutely necessary in most places.
+Somewhat limited by the requirement that it be reversible.
+
+This is one of very few cases where it does seem necessary that we
+store deltas, rather than tree states.  But that seems to cause other
+problems in terms of being able to reliably sign revisions.
+
+This can perhaps be inferred by a smart 3-way merge tool.  Certainly
+you could have it do sub-line merges.

@@ -1,0 +1,77 @@
+Syntax for identifying revisions
+********************************
+
+There seem to be two main options: use a separate ``-r`` option, or
+put a revision identifier within the filename.
+
+``-r`` options are familiar from CVS and Subversion, and easy to
+specify, and cover almost all situations.
+
+Special identifiers in the filename are sometimes more concise, and
+allow for more complete specification of filenames in the presence of
+renames.  They may be more complex to implement, and will cause some
+filenames to be either forbidden or to require escaping.
+
+----
+
+
+How to interpret revisions in the presence of renamed files?  Suppose
+hello.c was renamed in r3; when we do ``bzr diff -r2 hello.c`` should
+we compare to 
+
+* the file currently called ``hello.c``, as it was in revision 2, even
+  if it then had a different name
+
+or
+
+* the file that was called ``hello.c`` in revision 2, even if that is
+  a different file-id?
+
+Often only one will work, but it is possible to have situations where
+in revision 2 there was a file called ``hello.c`` but it is not the
+same one that now has that name.
+
+If we can have a simple syntax that accomodates either that would be
+good.  One might be to mix revision numbers into the path, rather than
+a separate ``-r`` option.  For example::
+
+   hello.c@2
+   @2/hello.c
+
+   src/@2/hello.c
+
+The simplest case is to just append the number, but you can vary
+them.  It might even be possible to chain them, getting the file id
+from one revision and its state from another:
+
+  @70/hello.c@31
+
+This means "the file that was called ``hello.c`` in revision 70, give
+me its state in revision 31."  (If you wanted to do this across
+branches, I think you might need to get the file id and then look it
+up, etc.)
+
+Some more syntax: you can refer to a revision by its hash just by
+specifying that; we can distinguish them from anything else by their
+length::
+
+  hello.c@09fac8dbfd27bd9b4d23a00eb648aa751789536d 
+
+(Is that really safe?  Perhaps some punctuation is needed to
+distinguish it from a label.  But then I think people should rarely or
+never use them; perhaps it need not be allowed at all.)
+
+You can also give a date, which is used to find the most recent
+revision no later than that date::
+
+  hello.c@{2004-12-01}
+  hello.c@{yesterday}
+  ./@{10:30}/
+
+(Braces can be a bit scary for shell, but if there are no commas they
+are somewhat safe.)
+
+Or, once we have labels, you can use a label::
+
+  hello.c@release-2.2
+

@@ -1,0 +1,34 @@
+Compared to Sun Teamware
+************************
+
+(**note**: I have never used Sun Teamware, so this document is just
+based on public documentation and information from other people.
+Corrections would be appreciated.)
+
+http://docs.sun.com/app/docs/doc/806-3573
+
+Needless to say bazaar-ng is currently far less mature, and some of
+the advantages listed below don't work in the current pre-1.0 code.
+But they are accounted for in the design.
+
+TeamWare has file locking.  Distributed systems can't easily support
+file locking because you can't prevent people diverging.  But perhaps
+we can have scripts or a higher-level tool to communicate that changes
+to a particular file are in train.  (One possibility: there is a
+development branch where that file has been changed, but not yet
+checked in.  Or if Bob can see Alice's work area, he can see that a
+particular file has been fetched read/write.)
+
+parent/child workspaces.
+
+Advantages of bazaar-ng:
+
+* Free / open source software
+
+* Prior tree revisions are always exactly reproducible (atomic
+  changesets, etc)
+
+* Can get whole-tree diff
+
+* Versioned, mergeable renames.
+

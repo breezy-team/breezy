@@ -1,0 +1,66 @@
+Compression
+***********
+
+At the moment bzr just stores the full text of every file state ever.
+(Files unmodified from one revision are stored only once.)
+
+This is simple to write, and adequate for even reasonably large trees
+with many versions.  Disk is very cheap.  
+
+Eventually we might like something more compressed, but this is
+neither an interesting nor urgent problem.  (Not "interesting" in the
+sense that doing it is just a matter of coding; there is no
+theoretical problem or risk.)  
+
+There are various possibilities:
+
+* Store history of each file in RCS, relying on RCS to do line-by-line
+  delta compression.  (Does not handle binaries very well.)
+
+  OpenCMS paper has a horror story about using RCS for file storage.
+
+* Store full copies of each file in a container with gzip compression,
+  which should fairly efficiently eliminate unchanged areas.  This
+  works on binaries, and gives compression of file text as a side
+  benefit.
+
+  (Note that ``.zip`` will *not* do for this, because every file is
+  compressed independently.)
+  
+  The OpenCMS paper notes that RCS storage is only 20% more efficient
+  than gzip'd storage of individual file versions.
+
+* Store history of each file in SCCS; allows quick retrieval of any
+  previous state and may give more efficient storage than RCS.  Allows
+  for divergent branches within a single file.
+
+* Store xdeltas between consecutive file states.
+
+* Store xdeltas according to a spanning delta algorithm; this probably
+  requires files are stored with some kind of sequence number so that
+  we can predict related version names.
+
+* Store in something like XDFS.
+
+* Any of the above, but with the final storage in some kind of
+  database: psql, sqlite, mysql, whatever is convenient.   
+
+  It should be something that is safe across system crashes, which
+  rules out tdb at the moment.
+
+----
+
+These properties are seen as desirable in darcs and arch:
+
+* Passive HTTP downloads: without requiring any server-side
+  intelligence, a client can get updates from one version to the next
+  by requesting a set of self-contained files.  
+
+  The number of files necessary to do this must not be unfeasibly
+  large, and the size of each of those files should be proportionate
+  to the amount of actual change.  In other words the data downloaded
+  should be of comparable size to the actual edits between the trees.
+
+
+* Write-once storage: once a file is written to the repository, it is
+  not modified.

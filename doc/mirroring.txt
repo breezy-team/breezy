@@ -1,0 +1,14 @@
+Mirroring
+=========
+
+The basic idea of mirroring is good, but it's too hard to understand.
+
+Push mirrors and pull mirrors.
+
+Suggest that people commit to their local machine and then regularly
+mirror elsewhere as a backup.
+
+bk and darcs's design inherently avoids this; just make another repo
+and decide to use it that way.
+
+On the other hand they do not keep track of the progress of a patch.

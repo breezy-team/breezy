@@ -1,0 +1,113 @@
+Interrupted operations
+**********************
+
+Problem: interrupted operations
+===============================
+
+Many version control systems tend to have trouble when operations are
+interrupted.  This can happen in various ways:
+
+ * user hits Ctrl-C
+
+ * program hits a bug and aborts
+
+ * machine crashes
+
+ * network goes down
+
+ * tree is naively copied (e.g. by cp/tar) while an operation is in
+   progress
+
+We can reduce the window during which operations can be interrupted:
+most importantly, by receiving everything off the network into a
+staging area, so that network interruptions won't leave a job half
+complete.  But it is not possible to totally avoid this, because the
+power can always fail.
+
+I think we can reasonably rely on flushing to stable storage at
+various points, and trust that such files will be accessible when we
+come back up.
+
+I think by using this and building from the bottom up there are never
+any broken pointers in the branch metadata: first we add the file
+versions, then the inventory, then the revision and signature, then
+link them into the revision history.  The worst that can happen is
+that there will be some orphaned files if this is interrupted at any
+point. 
+
+rsync is just impossible in the general case: it reads the files in a
+fairly unpredictable order, so what it copies may not be a tree that
+existed at any particular point in time.  If people want to make
+backups or replicate using rsync they need to treat it like any other
+database and either
+
+ * make a copy which will not be updated, and rsync from that
+
+ * lock the database while rsyncing
+
+The operating system facilities are not sufficient to protect against
+all of these.  We cannot satisfactorily commit a whole atomic
+transaction in one step.
+
+Operations might be updating either the metadata or the working copy.
+
+The working copy is in some ways more difficult:
+
+ * Other processes are allowed to modify it from time to time in
+   arbitrary ways.
+
+   If they modify it while bazaar is working then they will lose, but
+   we should at least try to make sure there is no corruption.
+
+ * We can't atomically replace the whole working copy.  We can
+   (semi) atomically updated particular files.
+
+ * If the working copy files are in a wierd state it is hard to know
+   whether that occurred because bzr's work was interrupted or because
+   the user changed them.
+
+   (A reasonable user might run ``bzr revert`` if they notice
+   something like this has happened, but it would be nice to avoid
+   it.)
+
+We don't want to leave things in a broken state.
+
+
+Solution: write-ahead journaling?
+=================================
+
+One possibly solution might be write-ahead journaling:
+
+  Before beginning a change, write and flush to disk a description of
+  what change will be made.
+
+  Every bzr operation checks this journal; if there are any pending
+  operations waiting then they are completed first, before proceeding
+  with whatever the user wanted.  (Perhaps this should be in a
+  separate ``bzr recover``, but I think it's better to just do it,
+  perhaps with a warning.)
+
+  The descriptions written into the journal need to be simple enough
+  that they can safely be re-run in a totally different context.  They
+  must not depend on any external resources which might have gone
+  away.
+
+  If we can do anything without depending on journalling we should.
+
+  It may be that the only case where we cannot get by with just
+  ordering is in updating the working copy; the user might get into a
+  difficult situation where they have pulled in a change and only half
+  the working copy has been updated.  One solution would be to remove
+  the working copy files, or mark them readonly, while this is in
+  progress.  We don't want people accidentally writing to a file that
+  needs to be overwritten.
+
+  Or perhaps, in this particular case, it is OK to leave them in
+  pointing to an old state, and let people revert if they're sure they
+  want the new one?  Sounds dangerous.
+
+Aaron points out that this basically sounds like changesets.  So
+before updating the history, we first calculate the changeset and
+write it out to stable storage as a single file.  We then apply the
+changeset, possibly updating several files.  Each command should check
+whether such an application was in progress.

@@ -1,0 +1,23 @@
+******
+Thanks
+******
+
+Inspiration, suggestions, advice
+--------------------------------
+
+* Mark Shuttleworth
+* Robert Collins
+* David Allouche
+* Robert Weir
+* James Blackwell
+* Garrett Rooney
+* Andrew Tridgell
+* Paul Russell
+* Aaron Bentley
+
+Sponsor
+-------
+
+* Canonical_
+
+.. _Canonical: http://www.canonical.com/

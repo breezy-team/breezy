@@ -1,0 +1,128 @@
+Killing versions
+****************
+
+Sometimes people really need to rewrite history.  The canonical
+example is that they have accidentally checked confidential
+information into the wrong tree.
+
+There is a tension between two imperatives:
+
+* Accurately record all history.
+
+* Remove critical information.
+
+Of course we cannot control who may have made use of the information
+in the time it was public, but often these things are caught early enough.
+
+After history has been rewritten, anything that depends on that
+history may be inconsistent.  We cannot consistently continue on a
+version that has had some revisions knocked out; therefore it seems
+simplest to kill the version over all.  
+
+You can make a tag onto a new version from a previous consistent
+revision.  
+
+Downstream users will need to switch on to the new version.
+
+We can mark the version as killed so that mirroring will delete the
+revisions and clients looking at the version can suggest switching.
+
+This should be an extremely infrequent operation so it is OK that it
+is simple as long as it fulfils the basic requirement.
+
+A related problem is that people sometimes commit the wrong log
+message, or (more seriously) the wrong files.  It is common to notice
+immediately afterwards.
+
+
+Uncommit
+--------
+
+I think this is the best and most useful option at the moment: the
+`uncommit command`_ undoes the last commit, and nothing else.  It can
+be repeated to successively remove more and more history.
+
+.. _`uncommit command`: cmdref.html#uncommit
+
+Example::
+
+    % cd my-project
+    % bzr add launch-codes.txt
+    % bzr commit -m 'add launch codes'
+    A     launch-codes.txt
+    recorded r23
+    [oops!]
+    % bzr uncommit
+    [now back to just before the commit command]
+    
+    % bzr status
+    A     launch-codes.txt
+    % bzr revert launch-codes.txt
+    % bzr status
+    ?     launch-codes.txt
+
+If anyone else has depended on the option then the branches will have
+diverged and that needs to be resolved somehow, probably by the other
+people starting a new branch with the correct commit.  In particular
+uncommitting from a shared branch will break anyone who has seen that
+revision; possibly there needs to be a policy option on such branches
+to deny uncommit.
+
+If someone else on that shared branch did a the equivalent of a
+switch_ command then they would bring their changes onto the correct
+basis.  Would it be reasonable to do that automatically?
+
+.. _switch: cmdref.html#switch
+
+
+
+UI proposals
+------------
+
+Aaron's proposal::
+
+    % cd my-project
+    % baz add launch-codes.txt
+    % baz commit -s 'add launch codes'
+    recorded patch-4
+    % baz add good-code.c
+    % baz commit -s 'add good code'
+    recorded patch-5
+    [oops!]
+    % baz undo patch-3
+    % baz pull patch-5
+    % baz commit --as-latest
+    renamed old branch to my-project-old-1
+    % baz eradicate my-project-old-1
+
+Long form::
+
+  % cd my-project
+  % baz add launch-codes.txt
+  % baz commit -s 'add launch codes'
+  recorded patch-4
+  % baz add good-code.c
+  % baz commit -s 'add good code'
+  recorded patch-5
+  [oops!]
+  % cd ../
+  % baz fork my-project--patch3 my-project-fixed
+  % cd my-project-fixed
+  % baz pull ../my-project patch5
+  % cd ../
+  % rm -rf my-project
+  % mv my-project-fixed my-project
+
+Robert's proposal::
+
+  % cd my-project
+  % baz add launch-codes.txt
+  % baz commit -s 'add launch codes'
+  recorded patch-4
+  % baz add good-code.c
+  % baz commit -s 'add good code'
+  recorded patch-5
+  [oops!]
+  % baz branch patch-3 $(baz tree-version)
+  % baz pull . patch-5
+  % baz eliminate patch-4

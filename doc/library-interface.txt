@@ -1,0 +1,11 @@
+*****************
+Library interface
+*****************
+
+Should have a pleasant library interface.
+
+* Be clear what is supposed to be in a stable public interface and
+  what is not.  (A common failing of Python programs.)
+
+* If a function changes the working directory (as may be necessary to
+  run patch) it should restore it.

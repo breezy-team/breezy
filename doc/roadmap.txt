@@ -1,0 +1,61 @@
+Roadmap for Bazaar-NG
+*********************
+
+(This document contains only things still-to-do, in in approximate
+order.  For a list of things already done, see the `development
+news`__.)
+
+__ news.html
+
+* get doctest going again now that we have predictable-order status
+  commands
+
+* note at top of .bzr.log
+
+* basic local versioning working: init, add, remove, mv, status, log,
+  diff, commit, revert
+
+  * revert command
+  * mv command
+  
+* some commands should work on selected files, if any are given:
+
+  * diff
+  * status
+  * log
+  * commit
+
+* work properly when invoked from a subdirectory
+
+* give a file-id to tree root?
+
+* use stat information to detect unchanged files without reading the
+  full text (or establish that this is not safe).
+
+* basic find command: find versioned, deleted, unknown, etc.
+
+* branch command
+
+* get a branch from an http server (remote Tree/Store/Branch proxy
+  classes)
+
+* write experimental weave algorithm in Python to see how it works?
+
+* update command: pull in changes from another branch that is a strict
+  superset of the destination
+
+* merge command: reconcile changes in this branch with those in
+  another.  punt on structural changes at first and only merge text,
+  then work out a nice way to resolve structure.
+
+* ``vc-bzr.el`` emacs support
+
+* *go self-hosting at about this point*, with parallel commits to baz
+
+* ignore patterns from ``.bzrignore``
+
+
+
+longer-term things:
+
+* Some kind of `compressed storage <compression.html>`_.

@@ -1,0 +1,10 @@
+Should be a simple command that shows something similar to 'svn
+status':
+
+  what is not added but perhaps should be
+  what is source, backup, precious, junk, etc
+
+Or a nice simple command like 'bk extras' to show what's not added but
+should be.
+  
+baz inventory almost does this but it way too hard to understand

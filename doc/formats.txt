@@ -1,0 +1,240 @@
+*****************
+Bazaar-NG formats
+*****************
+
+.. contents::
+
+Since branches are working directories there is just a single
+directory format.
+
+There is one metadata directory called ``.bzr`` at the top of each
+tree.  Control files inside ``.bzr`` are never touched by patches and
+should not normally be edited by the user.
+
+These files are designed so that repository-level operations are ACID
+without depending on atomic operations spanning multiple files.  There
+are two particular cases: aborting a transaction in the middle, and
+contention from multiple processes.  We also need to be careful to
+flush files to disk at appropriate points; even this may not be
+totally safe if the filesystem does not guarantee ordering between
+multiple file changes, so we need to be sure to roll back.
+
+The design must also be such that the directory can simply be copied
+and that hardlinked directories will work.  (So we must always replace
+files, never just append.)
+
+A cache is kept under here of easily-accessible information about
+previous revisions.  This should be under a single directory so that
+it can be easily identified, excluded from backups, removed, etc.
+This might contain pristine tree from previous revisions, manifests
+and inventories, etc.  It might also contain working directories when
+building a commit, etc.  Call this maybe ``cache`` or ``tmp``.
+
+I wonder if we should use .zip files for revisions and cacherevs
+rather than tar files so that random access is easier/more efficient.
+There is a Python library ``zipfile``.
+
+
+Signing XML files
+*****************
+
+bzr relies on storing hashes or GPG signatures of various XML files.
+There can be multiple equivalent representations of the same XML tree,
+but these will have different byte-by-byte hashes.
+
+Once signed files are written out, they must be stored byte-for-byte
+and never re-encoded or renormalized, because that would break their
+hash or signature.
+
+
+
+
+Branch metadata
+***************
+
+All inside ``.bzr``
+
+``README``
+  Tells people not to touch anything here.
+
+``branch-format``
+  Identifies the parent as a Bazaar-NG branch; contains the overall
+  branch metadata format as a string.
+
+``pristine-directory``
+  Identifies that this is a pristine directory and may not be
+  committed to.
+
+``patches/``
+  Directory containing all patches applied to this branch, one per
+  file.  Patches are stored as compressed deltas.  We also store the
+  hash of the delta, hash of the before and after manifests, and
+  optionally a GPG signature.
+
+``cache/``
+  Contains various cached data that can be destroyed and will be
+  recreated.  (It should not be modified.)
+
+``cache/pristine/``
+  Contains cached full trees for selected previous revisions, used
+  when generating diffs, etc.
+
+``cache/inventory/``
+  Contains cached inventories of previous revisions.
+
+``cache/snapshot/``
+  Contains tarballs of cached revisions of the tree, named by their
+  revision id.  These can also be removed, but 
+
+``patch-history``
+  File containing the UUIDs of all patches taken in this branch,
+  in the order they were taken.
+  Each commit adds exactly one line to this file; lines are
+  never removed or reordered.
+
+``merged-patches``
+  List of foreign patches that have been merged into this branch.
+  Must have no entries in common with ``patch-history``.  Commits that
+  include merges add to this file; lines are never removed or
+  reordered.
+
+``pending-merge-patches``
+  List of foreign patches that have been merged and are waiting to be
+  committed. 
+
+``branch-name``
+  User-qualified name of the branch, for the purpose of describing the
+  origin of patches, e.g. ``mbp@sourcefrog.net/distcc--main``.
+
+``friends``
+  List of branches from which we have pulled; file containing a list
+  of pairs of branch-name and location.
+
+``parent``
+  Default pull/push target.
+
+``pending-inventory``
+  Mapping from UUIDs to file name in the current working directory.  
+
+``branch-lock``
+  Lock held while modifying the branch, to protect against clashing
+  updates.
+
+
+Locking
+*******
+
+Is locking a good strategy?  Perhaps somekind of read-copy-update or
+seq-lock based mechanism would work better?
+
+If we do use a locking algorithm, is it OK to rely on filesystem
+locking or do we need our own mechanism?  I think most hosts should
+have reasonable ``flock()`` or equivalent, even on NFS.  One risk is
+that on NFS it is easy to have broken locking and not know it, so it
+might be better to have something that will fail safe.
+
+Filesystem locks go away if the machine crashes or the process is
+terminated; this can be a feature in that we do not need to deal with
+stale locks but also a feature in that the lock itself does not
+indicate cleanup may be needed.
+
+robertc points out that tla converged on renaming a directory as a
+mechanism: this is one thing which is known to be atomic on almost all
+filesystems.  Apparently renaming files, creating directories, making
+symlinks etc are not good enough.
+
+
+
+Delta
+*****
+
+XML document plus a bag of patches, expressing the difference between
+two revisions.  May be a partial delta.
+
+* list of entries
+
+  * entry
+  
+    * parent directory (if any)
+    * before-name or null if new
+    * after-name or null if deleted
+    * uuid
+    * type (dir, file, symlink, ...)
+    * patch type (patch, full-text, xdelta, ...)
+    * patch filename (?)
+
+
+Inventory
+*********
+
+XML document; series of entries.  (Quite similar to the svn
+``entries`` file; perhaps should even have that name.)
+Stored identified by its hash.
+
+An inventory is stored for recorded revisions, also a
+``pending-inventory`` for a working directory.
+
+
+
+Revision
+********
+
+XML document.  Stored identified by its hash.
+
+committer
+  RFC-2822-style name of the committer.  Should match the key used to
+  sign the revision.
+
+comment
+  multi-line free-form text; whitespace and line breaks preserved
+
+timestamp
+  As floating-point seconds since epoch.
+
+precursor
+  ID of the previous revision on this branch.  May be absent (null) if
+  this is the start of a new branch.
+
+branch name
+  Name of the branch to which this was originally committed.    
+
+  (I'm not totally satisfied that this is the right way to do it; the
+  results will be a bit wierd when a series of revisions pass through
+  variously named branches.)
+
+inventory_hash
+  Acts as a pointer to the inventory for this revision.
+
+merged-branches
+  Revision ids of complete branches merged into this revision.  If a
+  revision is listed, that revision and transitively its predecessor
+  and all other merged-branches are merged.  This is empty except
+  where cherry-picks have occurred.
+
+merged-patches
+  Revision ids of cherry-picked patches.  Patches whose branches are
+  merged need not be listed here.  Listing a revision ID implies that
+  only the change of that particular revision from its predecessor has
+  been merged in.   This is empty except where cherry-picks have
+  occurred.
+
+The transitive closure avoids Arch's problem of needing to list a
+large number of previous revisions.  As ddaa writes:
+
+    Continuation revisions (created by tla tag or baz branch) are associated
+    to a patchlog whose New-patches header lists the revisions associated to
+    all the patchlogs present in the tree. That was introduced as an
+    optimisation so the set of patchlogs in any revision could be determined
+    solely by examining the patchlogs of ancestor revisions in the same
+    branch. This behaves well as long as the total count of patchlog is
+    reasonably small or new branches are not very frequent.
+
+    A continuation revision on $tree currently creates a patchlog of
+    about 500K. This patchlog is present in all descendent of the revision,
+    and all revisions that merges it.
+
+It may be useful at some times to keep a cache of all the branches, or
+all the revisions, present in the history of a branch, so that we do
+need to walk the whole history of the branch to build this list.
+  
+

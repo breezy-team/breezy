@@ -1,0 +1,98 @@
+*******
+Tagging
+*******
+
+
+It is useful to be able to point to particular revisions on a branch
+by symbolic names, rather than revision numbers or hashes.
+
+
+Proposal: just use branches
+---------------------------
+
+This is probably the simplest model.
+
+In both Subversion and Arch, tags are basically just branches that do
+not differ from their parent revision.  This has a few advantages:
+
+* We do not need to introduce another type of entity, which can
+  simplify both understanding and implementation.  We also do not need
+  a special 
+
+* If branches are cheap (through shared storage, etc) then tags are
+  also appropriately cheap.
+
+* The general idea is familiar to people from those two systems (and
+  probably some others).
+
+* People often do put tags in the wrong place, and need to update
+  them, or want tags that move along from one state to another
+  (e.g. ``STABLE``.)  Tags-as-branches capture this through the usual
+  versioning mechanism, rather than needing to invent a parallel
+  versioning system for tags.
+
+There are some problems:
+
+* Users want tags to stay fixed, but branches are things that can be
+  committed-to.  So at one level there is a mismatch.
+
+* In particular, it can be easy to accidentally commit onto a tag
+  branch rather than a "branch branch", and that commit can easily be
+  'lost' and never integrated back to the right place.
+
+One possible resolution is to have a voluntary write-protect bit on a
+branch, which prevents accidental updates.  (Similar to the unix owner
+write bit.)  When it is necessary to update the branch, that bit can
+be removed or bypassed.
+
+This is an alternative to the Arch ``--seal`` mechanism.
+
+
+
+Proposal: tags within a branch
+------------------------------
+
+(This is probably "crack"; I don't think we'll do this.)
+
+You can place tags on a branch as shorthand for a particular
+revision::
+
+  bzr tag rel3.14.18
+
+  bzr branch foo-project--main@rel3.14.18
+
+Tags are alphanumeric identifiers that do not begin with a digit.
+Tags will cover an entire revision, not particular files.
+
+Another term sometimes used is "labels"; I think we're close enough to
+CVS's "tags" that it's good to be consistent.  However, it does
+possibly clash with Arch's ``tag`` command and ``id-tagging-method``
+(sheesh).
+
+In Subversion a tag is just a branch you don't commit to.  You *can*
+work this way in Bazaar if you want to.  (And until tags are
+implemented, this will be the way to do it.)
+
+I'm not sure if tags should be versioned objects or not.  Options:
+
+* Tags are added or changed by a commit; they mark previous revisions
+  but are only visible when looking from a later commit.
+
+* Tags are not versioned; if you move them they're gone.
+
+* Tags exist within their own versioning space.
+
+It is useful to have mutable tags, in case they're incorrectly placed
+or need to be updated.  At the same time we do not want to lose
+history.  I think in this model it is not helpful to update tags
+within revisions.  One approach would be to version tags within a
+separate namespace, so 
+
+  | STABLE.0
+  | STABLE.1
+  | STABLE.2
+
+as just STABLE it finds the most recent tag.
+
+(Is this kludgy?)
+

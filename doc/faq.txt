@@ -1,0 +1,14 @@
+Bazaar-NG frequently asked questions
+************************************
+
+
+*The XML is unreadable!*
+
+  Try running it through a pretty-printer like this::
+
+    xmllint --format *.xml
+
+
+*There's only two questions here?*
+  
+  Yes.

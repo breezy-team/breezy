@@ -1,0 +1,28 @@
+bzr init 
+    Prepare to record history in a new working directory.
+
+bzr add FILE...
+    Make one or more files be versioned.  This puts the file in the "added"
+    state, and it will be added by the next commit.
+
+bzr commit [-s MESSAGE] [FILE...]
+    Commit pending changes, with the given commit message.  If no
+    message is given you will be prompted to enter one.
+
+bzr diff [-r REV] [FILE...]
+
+bzr status [FILE...]
+    Show a brief description of the status of a file. 
+
+
+Status codes
+------------
+
+
+
+A 
+    Added 
+D
+    Deleted
+M
+    Modified

@@ -1,0 +1,30 @@
+******************************
+Optional explicit edit command
+******************************
+
+The default is for each branch to have an editable working copy, which
+can be modified and committed.  However, in some cases (following RCS
+and BK) people might prefer to have either a read-only working copy,
+or none at all.
+
+Reasons:
+
+ - Branches which are never edited don't need it; removing it saves
+   some time and space.  In particular this applies to branches on a
+   server which are meant to be branched from or committed too, not
+   edited.
+
+ - Files for which there is no working copy or a read-only copy are
+   known not to be edited, and this can make some operations such as
+   diffing a bit simpler.
+
+Since this is mostly an optimization and requires user knowledge it
+perhaps should not be added.  Certainly not yet.
+
+Sketch::
+
+  $ bzr get --no-wc SOURCE TARGET
+  $ bzr edit --remove
+  $ bzr edit --read-only .
+  $ bzr edit --write foo.c
+

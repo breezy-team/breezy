@@ -1,0 +1,24 @@
+*************
+Web interface
+*************
+
+The web interface may be the first way many people interact with a new
+VC system.  It may not be core functionality but it is important.
+
+mpe says he likes the bkbits.net one, in particular that you can
+quickly search the comments and pull out individual patches.  However,
+it does not really give people a good sense of how the tool works.
+
+The `Aegis web interface`__ is rather better, giving a good sense (for
+better or worse) of the ideas behind the tool, as well as the
+particular tree being viewed.  For example you can see that all
+changes in progress are registered, that one can identify conflicts
+before a merge is attempted and so on.  In part this is because there
+are many links ("Information available") and they are explained in
+some detail:
+
+  "This item will provide you with a list of changes to this project,
+  including those which have not yet commenced, those in progress, and
+  those which have been completed."
+
+__ http://aegis.sourceforge.net/webiface.html

@@ -1,0 +1,20 @@
+Merging
+=======
+
+There should be one merge command which does the right thing, and
+which is called 'merge'.
+
+The merge command pulls a changeset or a range of changesets into your
+tree.  It knows what changes have already been integrated and avoids
+pulling them again.
+
+There should be some intelligence about working out what changes have
+already been merged. 
+
+The tool intelligently chooses (or perhaps synthesizes) an ancestor
+and two trees to merge.  These are then intelligently merged.
+
+Merge should refuse to run (unless forced) if there are any
+uncommitted changes in your tree beforehand.  This has two purposes:
+if you mess up the merge you won't lose anything important; secondly
+this makes it more likely that the merge will be relatively pure.

@@ -1,0 +1,40 @@
+YAML
+****
+
+I am thinking about keeping changeset headers in YAML_, as a nice
+tradeoff:
+
+ * Standard data format, so we don't need to invent, write and debug
+   an ad-hoc format.
+
+ * More concise than XML, which is useful if we're storing a few.
+
+ * Reasonably readable for humans; thus suitable for sending in email
+   and giving people at least some chance to read and understand it.
+   Seeing this at the top of a patch would not be actively horrible as
+   long as we keep it reasonably small; that's not true for XML.
+
+ * Since YAML documents have a document header and terminator ('---'
+   and '...') we can pick them out of a text document and append
+   text patches directly afterwards.
+
+ * Fits well with Python internal data structures.
+
+ * There are parsers for various languages, so people can write their
+   own implementation if they really want.
+
+ * There is space to specify a document format/version at the top
+   (though this is not currently handled in ydump).  
+
+The ydump module is pretty primitive, but it should have enough.
+
+.. _YAML: http://www.yaml.org/
+
+
+Conclusion
+----------
+
+On the whole, I think this is not a good idea.  It is a nicer syntax
+for XML, but there are less bindings, and it does not achieve the goal
+of having the storage format look reassuring and giving confidence
+that the data could be retrieved by an alternative implementation.

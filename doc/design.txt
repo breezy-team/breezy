@@ -1,0 +1,1172 @@
+****************
+Bazaar-NG design
+****************
+
+
+:Author:
+  Martin Pool <mbp@sourcefrog.net>
+
+:Date: December 2004, Noosa.
+
+.. sectnum::
+.. contents::
+
+
+Abstract
+--------
+
+  *Bazaar-NG should be a joy to use.*
+
+  What if we started from scratch and tried to take the best features
+  from darcs, svn, arch, quilt, and bk?
+
+  Don't get the sum of all features; rather get the minimum features
+  that make it a joy to use.  Choose simplicity, in both interface and model.
+  Do not multiply entities
+  beyond necessity.
+
+  *Make it work; make it correct; make it fast* -- Ritchie(?)
+
+
+
+Design model
+------------
+
+* Unify archives and branches; one archive holds one branch.  If you
+  want to publish multiple branches, just put up multiple directories.
+
+* Explicitly add/remove files only; no names or tagline tagging.  If
+  someone wants to do heuristic detection of renames that's fine, but
+  it's not in the core model.
+
+Quilt indicates an interesting approach: patches themselves are the
+thing we're trying to build.  We don't just want a record of what
+happened, but we want to build up a good description of the change
+that will be implied when it's integrated.  This implies that we want
+to be able to change history quite a lot before merging upstream; or
+at least change our description of what will go up.
+
+
+Principles
+----------
+
+* Unix design philosophy (via Peter Miller), tempered by modern
+  expectations:
+
+  - least unnecessary output
+
+  - little dependence on *specific* external tools
+
+  - short command lines
+
+  - least overlap with cooperating tools
+
+* `Worse is better`__
+
+__ http://www.jwz.org/doc/worse-is-better.html
+
+ - *Simplicity: the design must be simple, both in implementation and
+   interface. It is more important for the implementation to be
+   simple than the interface. Simplicity is the most important
+   consideration in a design.*
+
+ - *Correctness: the design must be correct in all observable
+   aspects. It is slightly better to be simple than correct.*
+
+
+ - *Consistency: the design must not be overly inconsistent. Consistency
+   can be sacrificed for simplicity in some cases, but it is better to
+   drop those parts of the design that deal with less common
+   circumstances than to introduce either implementational complexity
+   or inconsistency.*
+
+ - *Completeness: the design must cover as many important situations as
+   is practical. All reasonably expected cases should be
+   covered. Completeness can be sacrificed in favor of any other
+   quality. In fact, completeness must sacrificed whenever implementation
+   simplicity is jeopardized. Consistency can be sacrificed to achieve
+   completeness if simplicity is retained; especially worthless is
+   consistency of interface.*
+
+* Try to get a reasonably tasteful balance between having something
+  that works out of the box but also has composable parts.  Provide
+  mechanism rather than policy but not to excess.
+
+* Files have ids to let us detect renames without having to walk the
+  whole path.  
+
+  If there are conflicts in ids they can in principle be resolved.
+  There might be a ``merge --by-name`` to allow you to force two trees
+  into agreement on IDs.  If the merge sees two files with the same
+  name and text then it should conclude that the files merged.
+
+  It would be nice if there were some way to make repeated imports of
+  the same tree give the same ids, but I don't think there is a safe
+  feasible way.  Sometimes files start out the same but really should
+  diverge; boilerplate files are one example. 
+
+* Archives are just directories; if you can read/write the files in
+  them you can do what you need.  This works even over http/sftp/etc.
+  Or at least this should work for read-only access; perhaps for
+  writing it is reasonable to require a svn+ssh style server invoked
+  over a socket.  
+
+  Of course people should not edit the files in there by hand but in
+  an emergency it should be possible.
+
+* Storing archives in plain directories means making some special
+  effort to make sure they can be rolled back if the commit is
+  interrupted any time.  On truly malicious filesystems (NFS) this may
+  be quite difficult, but at a minimum it should be possible to roll
+  back whatever was uncommitted and get to a reasonable state.  It
+  should also be reasonably possible to mirror branches using rsync,
+  which may transfer files in arbitrary order and cannot handle files
+  changing while in flight.  
+
+  Recovering from an interrupted commit may require a special ``bzr
+  fix`` command, which should write the results to a new branch to
+  avoid losing anything.
+
+* Branches carry enough information to recreate any previous state of
+  the branch (including its ancestors).  
+
+  This does not necessarily mean holding the complete text of all
+  those patches, but we do store at least a globally unique identifier
+  so that we can retrieve them.
+
+* Commands should correspond to svn or cvs as much as possible: add,
+  get, copy, commit, diff, status, log, merge. 
+
+* We have all the power of mirroring, but without needing to introduce
+  special concepts or commands.  If you want somebody's branch
+  available offline just copy it and keep updating to pull in their
+  changes; if you never make any changes the updates will always
+  succeed.
+
+* It is useful to be able to easily undo a previous change by
+  committing the opposite.  I had previously imagined requiring all
+  patches to be stored in a reversible form but it's enough to just do
+  backwards three-way merges.
+
+* Patches have globally unique IDs which uniquely identify them.
+
+* As a general principle we separate identification (which must be
+  globally unique) from naming (which must be meaningful to users).
+  Arch fuses them, which makes the human names long and prevents them
+  ever being reused.  Monotone doesn't have human-friendly names.
+
+* Users are identified by something like an email address;
+  ``user@domain``.  This need not actually be a working email
+  address; the point is just to piggyback on domain names to get
+  human-readable globally unique names.
+
+* Everything will be designed from the beginning to be safe and
+  reasonable on Windows and Unix.
+
+* History is append-only.  Patches are recorded along with the time at
+  which they were committed; if time steps backwards then we give a
+  warning (but probably commit anyhow.)  This means we can reliably
+  reproduce the state of the branch at any previous point, just by
+  backing out patches until we get back there.
+  
+  This is also true at a physical level as much as possible; once a
+  patch is committed we do not overwrite it.  This should make it less
+  likely that a failure will corrupt past history.  However, we may
+  need some indexes which are updated rather than replaced; they
+  should probably be atomically updated.
+
+* Storage should be reasonably transparent, as much as possible.  (ie
+  don't use SQLite or BDB.)  At the same time it should be reasonably
+  efficient on a wide range of systems (ie don't require reiserfs to
+  work well.)
+  
+  Programmers who look behind the covers should feel comfortable that
+  their data is safe, and hopefully pleased that the design is
+  elegant.
+
+* Unrecognized files cause a warning when you try to commit, but you
+  can still commit.  (Same behavior as CVS/Subversion; less discipline
+  than Arch.)
+
+  If you wish, you can change this to fail rather than just warn; this
+  can be done as tree policy or as an option (eg ``commit --strict``)
+
+* Files may be ignored by a glob; this can be applied globally (across
+  the whole tree) or for a particular directory.  As a special
+  convenience there is ``bzr ignore``. 
+
+* If branches move location (e.g. to a new host or a different
+  directory), then everyone who uses them needs to know the new URL by
+  some out-of-band method.
+
+* All operations on a branch or pair of branches can be done entirely
+  with the information stored in those branches.  Bazaar-NG never needs to
+  go and look at another branch, so we don't need unique branch names
+  or to remember the location of branches.
+
+* Store SHA-1 hashes of all patches, also store hashes of the tree
+  state in each revision.  (We need some defined way to make a hash of
+  a tree of files; for a start we can just cat them together in order
+  by filename.)
+  
+  Hashes are stored in such a way that we can switch hash algorithms
+  later if needed if SHA-1 is insecure.
+
+* You can also sign the hashes of patches or trees.
+
+* All branches carry all the patches leading up to their current
+  state, so you can recreate any previous state of that branch,
+  including the branches leading up to it.
+
+* A branch has an append-only history of patches committed on this
+  branch, and also an append-only history of patches that have been
+  merged in.
+
+* A commit log message file is present in .bzr-log all the time; you
+  can add notes to it as you go along.  Some commands automatically
+  add information to this file, such as when merging or reversing
+  changes. 
+  
+  The first line of the message is used as the summary.
+
+* Commands that make changes to the working copy will by default baulk
+  if you have any uncommitted changes.  Such commands include ``merge``
+  and ``reverse``.  This is done for two reasons: to avoid losing your
+  changes in the case where the merge causes problems, and to try to
+  keep merges relatively pure.  You can force it if you wish.
+
+  (*pull* is possibly a special case; perhaps it should set aside
+  local changes, update, and then reapply them/remerge them?)
+
+* Within a branch, you can refer to commits by their sequence number;
+  it's nice and friendly for the common case of looking at your
+  commits in order.
+
+* You can generate a changelog any time by looking at only local
+  files.  Automatically including a changelog in every commit is
+  redundant and so can be eliminated.  Of course if you want to
+  manually maintain a changelog you can do that too.
+
+* At the very least we should have ``undo`` as a reversible
+  ``revert``.  It might be even better to have a totally general undo
+  which will undo any operation; this is possible by keeping a journal
+  of all changes.
+
+* Perhaps eventually move to storing changesets in single text files,
+  containing file diffs and also information on renames, etc.  The
+  format should be similar to that of ``tla show-changeset``, but
+  lossless. 
+
+* Pristines are kept in the control directory; pristines are
+  relatively expensive to recreate so we might want to keep more than
+  one.  
+
+  (Robert says that keeping pristines under there can cause trouble
+  with people running recursive commands across the source tree, so
+  there should probably be some other way to do it.  If pristines are
+  identified by their hash then we can have a revlib without needing
+  unique branch names.)
+  
+* Can probably still have cacherevs for revisions; ideally
+  autogenerated in some sensible way.  We know the tree checksum for
+  each revision and can make sure we cached the right thing.
+
+* Bazaar-NG should ideally combine the best merging features of
+  Bitkeeper and Arch: both cherry-picking and arbitrary merging within
+  a graph.  The metaphor of a bazaar or souk is appropriate: many
+  independent agents, exchanging selected patches at will.
+
+* Code should be structured as a library plus a command-line client;
+  the library could be called from any other client.  Therefore
+  communication with the user should go through a layer, the library
+  should not arbitrarily exit() or abort(), etc.
+
+* Any of these details are open to change.  If you disagree, write and
+  say so, sooner rather than later.  There will be a day in the future
+  where we commit to compatibility, but that is a while off.
+
+* Timestamps obviously need to be in UTC to be meaningful on the
+  network.  I guess they should be displayed in localtime by default
+  and you can change that by setting $TZ or perhaps some option like
+  ``--utc``.  It might be cool to also capture the local time as an
+  indicator of what the committer was doing.
+
+* Should probably have some kind of progress indicator like --showdots
+  that is easy to ignore when run from a program (especially an
+  editor); that probably means avoiding tricks with carriage return.
+  (That might be a problem on Windows too.)
+
+* What date should be present on restored files?  We don't remember
+  the date of individual files, but we could set the date for the
+  entire commit.
+
+* One important layer is concerned with reproducing a previous
+  revision from a given branch; either the whole thing or just a
+  particular file or subdirectory.  This is used in many different
+  places.  We can potentially plug in different storage mechanisms
+  that can do this; either a very transparent and simple file-based
+  store as in darcs and arch, or perhaps a more tricky/fast
+  database-based system.         
+
+
+Entities and terminology
+------------------------
+
+The name of the project is *Bazaar-NG*; the top-level command is
+``bzr``.
+
+Branch
+''''''
+
+Development in Bazaar-NG takes places on branches.  A branch records
+the progress of a *tree* through various *revisions* by the
+accumulation of a series of *patches*.
+
+We can point to a branch by specifying its *location*.  At first this
+will be just a local directory name but it might grow to allow remote
+URLs with various schemes.
+
+Branches have a *name* which is for human convenience only; changesets
+are permanently labelled with the name of the branch on which they
+originated.  Branch names complement change descriptions by providing
+a broader context for the purpose of the change.  Typically the branch
+name will be the same as the last component of the directory or path.
+
+There is no higher-level grouping than branches.  (Nothing that
+corresponds to repositories in CVS or Subversion, or
+archives/categories/versions in Arch.)  Of course it may be a good
+practice to keep your branches organized into directories for each
+project, just as you might do with tarballs or cvs working
+directories.  
+
+Bazaar-NG makes forking branches very easy and common.  
+
+
+
+Revision
+''''''''
+
+The tree in a branch at a particular moment, after applying all the
+patches up to that point.
+
+
+File id
+'''''''
+
+A UUID for a versioned file, assigned by ``bzr add``.
+
+
+Delta
+'''''
+
+A smart diff, containing:
+
+* unidiff hunks for textual changes
+
+* for each affected file, the file id and the name of that file before
+  and after the delta (they will be the same if the file was not renamed)
+
+* in future, possibly other information describing symlinks,
+  permissions, etc
+
+A delta can be generated by comparing two trees without needing any
+additional input. 
+
+Although deltas have some diff context that would allow fuzzy
+application they are (almost?) always exactly applied to the correct
+predecessor. 
+
+
+Changeset
+'''''''''
+
+(also known as a patch)
+
+A changeset represents a commit to a particular branch; it
+incorporates a *delta* plus some header information such as the name
+of the committer, the date of the commit, and the commit message.
+
+
+Tree
+''''
+
+A tree of files and directories.  A branch minus the Bazaar-NG control files.
+
+
+
+
+Syntax
+------
+
+Branches
+''''''''
+
+Branches are identified by their directory name or URL::
+
+  bzr branch http://kernel.org/bzr/linux/linux-2.6
+  bzr branch ./linux-2.6 ./linux-2.6-mbp-partitions
+
+Branches have human-specified names used for tracing patches to their
+origin.  By default this is the last component of the directory name. 
+
+
+Revisions
+'''''''''
+
+Revisions within a branch may be identified by their sequence number
+on that branch, or by a tag name::
+
+  bzr branch ./linux-2.6@43 ./linux-2.6-old
+  bzr branch ./linux-2.6@rel6.8.1 ./linux-2.6.8.1
+
+You may also use the UUID of the patch or by the hash of that
+revision, though sane humans should never (need to) use these::
+
+  bzr log ./linux-2.6@uuid:6eaa1c41-34b8-4e0e-8819-acb5dfcabb78
+  bzr log ./linux-2.6@hash:4bf00930372cce9716411b266d2e03494f7fe7aa
+
+Revision ranges are given as two revisions separated by a colon (same
+as Svn):
+
+  bzr merge ../distcc-doc@4:10 
+
+
+Authors
+'''''''
+
+Authors are identified by their email address, taken from ``$EMAIL``
+or ``$BZR_EMAIL``.
+
+
+
+
+Tree inventory
+--------------
+
+When a revision is committed, Bazaar-NG records an "inventory"  which
+essentially says which version of each file should be assembled into
+which location in the tree.  It also includes the SHA-1 hash and the
+size of each file.
+
+
+
+Merging
+-------
+
+Merges are carried out in Bazaar-NG by a three-way merge of trees.  Users
+can choose to merge all changes from another branch, or a particular
+subset of changes.  In either case Bazaar-NG chooses an appropriate
+common base appropriately, although there should perhaps also be an
+option to specify a different base.
+
+I have not solved all the merge problems here.  I do think that this
+design preserves as much information as possible about the history of
+the code and so gives a good foundation for smart merging.
+The basic merge operation is a 3-way diff: we have three files *BASE*,
+*OTHER* and *MINE* and want to produce a result.  There are many
+different tools that could be used to resolve this interactively or
+automatically. 
+
+There are some cases where the best base is not a state that ever
+occurred on the two branches.  One such case is when there are two
+branches that have both tracked an upstream branch but have never
+previously synced with each other.  In this case we suggest that
+people manually specify the base::
+
+  bzr merge --base linus-2.6 my-2.6 
+
+Merges most commonly happen on files, but can also occur on metadata.
+For example we may need to resolve a conflict between file ids to
+decide what name a file should have, or conversely which id it should
+have.
+
+When merging an entire branch, the base is chosen as the last revision
+in which the trees manifests were identical.
+
+If merging only selected revisions from a branch (ie cherry picking)
+then the base is set just before the revisions to be merged.
+
+A three-way merge operates on three inputs: THIS, OTHER, and a BASE.
+Any regions which have been changed in only one of THIS and OTHER, or
+changed the same way in both will be carried across automatically.
+Regions which differ in all three trees are conflicts and must be
+manually resolved.
+
+The merge does not depend upon any states the trees may have
+passed through in between the revisions that are merged. 
+
+After the merge, the destination tree incorporates all the patches
+from the branch region that was merged in.  
+
+
+
+Sending patches by email
+------------------------
+
+Patches can be sent to someone else by email, just by posting the
+string representation of the changeset.  Could also post the GPG
+signature.
+
+The changeset cannot itself contain its uniquely-identifying hash.
+Therefore I suppose it needs some kind of super-header which says what
+the patch id is; this can be verified by comparing it to the hash of
+the actual changeset.  This in turn applies that the text must be
+exactly preserved in email, so possibly we need some kind of
+quoted-printable or ascii-armoured form.
+
+Another approach would be to not use the hash as the id, but rather
+something else which allows us to check the patch is actually what it
+claims to be.  For example giving a GPG key id and a UUID would do
+just as well, and *would* allow the id to be included within the
+patch, as would giving an arch-style revision ID, assuming we can
+either map the userid to a GPG key and/or check against a trusted
+archive. 
+
+There are two ways to apply such a received patch.  Ideally it tells
+us a revision of our branch from which it was based, probably by
+specifying the content hash.  We can use that as the base, make a
+branch there, apply the patch perfectly, and then merge that branch
+back in through a 3-way merge.  This gives a clean reconciliation of
+changes in the patch against any local changes in the branch since the
+base.
+
+If we do not have the base for the patch we can try apply it using
+a similar mechanism to regular patch, which might cause conflicts.  Or
+maybe it is not worth special-casing this; we could just require
+people to have the right basis to accept a patch.
+
+
+
+Rewriting history
+-----------------
+
+History is generally append-only; once something is committed it
+cannot be undone.  We need this to make several important guarantees
+about being able to reconstruct previous versions, about patches being
+consistent, and so on and on.
+
+However, pragmatically, there are a few cases where people will insist
+on being able to fudge it.  We need to accommodate those as best we
+can, within the limits of causality.  In other words, what is
+physically and logically possible should not be arbitrarily forbidden
+by the software (though it might be enormously discouraged).
+
+The basic transaction is a changeset/patch/commit.  There is little
+value and hellish complexity in introducing meta-changesets or trying
+to update already-committed changes.
+
+
+Wrong commit message
+''''''''''''''''''''
+
+*Oops, I pressed Save too soon, and the commit message is wrong.*  This
+happens all the time.
+
+If no other branch has taken that change, there is no harm in fixing
+the message.  Noticing the problem right away is probably a very
+common case.
+
+Therefore, you can change the descriptive text (but not any other
+metadata) of a changeset in your tree.  This will not propagate to
+anyone else who has already accepted the change.  Nothing will break,
+but they'll still see the original (incorrect/incomplete) commit.
+
+
+Committed confidential information
+''''''''''''''''''''''''''''''''''
+
+If you just added a file you didn't mean to add then you can simply
+commit a second changeset to remove it again.  However, sometimes
+people will accidentally commit sensitive/confidential information,
+and they need to remove it from the history. 
+
+If anyone else has already taken the changeset we can't prevent them
+seeing or keeping the information.  You need to find them and ask them
+nicely to remove it as well.  Similarly, if you've mirrored your
+branch elsewhere you need to fix it up by hand.  This additional
+manual work is a feature because it gives you some protection against
+accidentally destroying the wrong thing.
+
+A similar but related case is accidentally committing an enormous
+file; you don't want it to hang around in the archive for ever.  (In
+fact, it would need to be stored twice, once for the original commit
+and again for a reversible remove changeset.)
+
+Here is our suggestion for how to fix this: make a second branch from
+just before the undesired commit, typically by specifying a timestamp.
+If there are any later commits that need to be preserved, they can be
+merged in too.  Possibly that will cause conflicts if they depended on
+the removed changeset, and those changes then need to be resolved.
+
+
+
+
+
+
+History truncation
+------------------
+
+(I don't think we should implement this soon, if at all, but people
+might want to know it's possible.)
+
+Bazaar-NG relies on each branch being able to recreate any of its
+predecessor states.  This is needed to do really intelligent merging.
+
+However, you might eventually get sick of keeping all the history
+around forever.  Therefore, we can set a history horizon, ignoring all
+patches before that point. 
+
+The patches are still recorded as being merged but we do not keep the
+text of the patches.  Perhaps we add them to a special list.  
+
+Merges with a tree that have no history in common since the horizon
+will be somewhat harder.
+
+
+A development path
+------------------
+
+**See also work-log.txt for what I'm currently doing.**
+
+* Start by still using Arch changeset format, do-changeset and delta
+  commands, possibly also for merge.
+
+* Don't do any merges automatically at first but rather just build
+  some trees and let the user run dirdiff or something.
+
+* Don't handle renames at first.
+
+* Don't worry about actually being distributed yet; just work between
+  local directories.  There are no conceptual problems with accessing
+  remote directories.
+
+
+Compared to others
+------------------
+
+* History cannot be rewritten, aside from a couple of special
+  pragmatic cases.
+
+* Allows cherry-picking, which is not possible on bk or most others.
+
+* Allows merges within an arbitrary graph (rather than a line, star or
+  tree), which can be done by bk but not by arch or others.
+
+* History-sensitive merges allow safe repeated merges and mutual
+  merges between parallel lines.
+
+* Patches are labelled with the history of branches they traversed to
+  their current location, which is previously unique to Arch.
+
+* Would aim to be almost as small and simple as Quilt.
+
+* Does not need archives to be registered.  
+
+* Like darcs and bk, remembers the last archive you pulled from and
+  uses this as the default.  Also as a bonus remembers all branches
+  you previously pulled and their name, so that it is as if they were
+  registered.
+
+* Because patches do not change when they move around (as in Darcs),
+  they can be cryptographically signed.
+
+* Recognizes that textually non-conflicting merges may not be a
+  correct merge and may not work, and so should not be auto-committed.
+  The developer must have a chance to intervene after the merge and
+  before a commit.  (I think Monotone is wrong on this.)
+
+
+
+
+Best practices
+--------------
+
+We recommend that people using Bazaar-NG follow these practices and
+protocols:
+
+* Develop independent features in separate branches.  It's easier to
+  keep them separate and merge later than to mix things together and
+  then try to separate them.  Although cherry picking is possible,
+  it's generally harder than keeping the code separate in the first
+  place.
+
+* Although you can merge in a graph, it can be easier to understand
+  things if you keep them roughly sorted into a star of downstream and
+  upstream branches.
+
+* Merge off your laptop/workstation into a personal stable tree at
+  regular changes; this protects against accidentally losing your
+  development branch for any reason. 
+
+* Try to have relatively "pure" merges: a single changeset that merges
+  changes should make only those merges and any edits needed to fix
+  them up. 
+
+* You can use reStructuredText (like this document) for commit
+  messages to allow nicer formatting and automatic detection of URLs,
+  email addreses, lists, etc.  Nothing requires this.
+
+
+
+Mechanics
+---------
+
+Patch format
+''''''''''''
+
+A patch (i.e. commit to a branch) exists at three levels:
+
+* the hash of the patch, which is used as its globally-unique name
+
+* the headers of the patch, including:
+
+  - the human-readable name of the branch to which the changeset was committed
+
+  - free-form comments about the changeset
+
+  - the email address and name of the user who committed the changeset
+
+  - the date when the changeset was committed to the branch
+
+  - the UUIDs of any patches merged by this change
+
+  - the hash of the before and after trees
+
+  - the IDs of any files affected by the change, and their names
+    before and after the change, and their hash before and after the
+    change
+
+* the actual text of the patch, which may include
+
+  - unidiff hunks
+
+  - xdeltas (in reversible pairs?)
+
+  - complete files for adds/deletes, or for binaries
+
+At the simplest level a branch knows just the IDs of all of the
+patches committed to it.  More usually it will also have all their
+logs or all their text.
+
+Using the IDs, it can retrieve the patches when necessary from a
+shared or external store.  By this means we can have many checkouts,
+each of which looks like it holds all of its history, without actually
+using a lot of space.  When pulling down a remote branch by default
+everything will be mirrored, but there might be an option to only get
+the inventory or only the logs. 
+
+Keeping the relatively small header separate from the text makes it
+easy to get only the header information from a remote machine.  One
+might also when offline like to see only the logs but not necessarily
+have the text.
+
+Only the basic policy (keep everything everywhere) needs to be done in
+the first release of course.
+
+The headers need to be stored in some format that allows moderately
+structured data.  Ideally it would be both human readable and
+accessible from various languages.  In the prototype I think I'll use
+Python data format, but that's probably not good in the long term.  It
+may be better to use XML (tasteless though that is) or perhaps YAML or
+RFC-2822 style.  Python data is probably not secure in the face of
+untrusted patches.
+
+The date should probably be shown in ISO form (unoptimal though that
+is in some ways.)
+
+
+
+  
+
+Unresolved questions and other ideas
+------------------------------------
+
+
+Pulling in inexact matches
+''''''''''''''''''''''''''
+
+If ``update`` pulls in patches noninteractively onto the history, then
+there are some issues with patches that do not exactly match.  Some
+consequences:
+
+* You may pull in a patch which causes your tree to semantically
+  break.  This might be avoided by having a test case which is checked
+  before committing.
+
+* The patch may fuzzily apply; this is OK. 
+
+If we pull in a patch from elsewhere then we will have a signature on
+the patch but not a signature for the whole cacherev. 
+
+
+
+
+Have pristines/working directory by default?
+''''''''''''''''''''''''''''''''''''''''''''
+
+It seems a bit redundant to have two copies of the current version of
+each file in every repository, even ones in which you'll never edit.
+Some fixes are possible:
+
+* don't create working copy files 
+
+* hard link working copies into pristine directory (can detect
+  corruption by having SHA-1 sums for all pristine files)
+
+I think it's reasonable to have 
+
+
+
+Directory name
+''''''''''''''
+
+We have a single metadata directory at the top-level of the tree: ``.bzr``.
+There is no value in having it non-hidden, because it can't be seen
+from subdirectories anyhow.  Apparently three-letter names after a dot
+are fine on Windows -- it works for ``.svn``.
+
+
+File encodings
+''''''''''''''
+
+Unicode, line endings, etc.  Ignore this for now?
+
+Case-insensitive file names?  Maybe follow Darcs in forbidding files
+that differ only in case.
+
+
+Always use 3-way merge
+''''''''''''''''''''''
+
+I think using .rej files and fuzzy patches is confusing/unhelpful.  
+
+I would like to use 3-way merges between appropriate coordinates as
+the fundamental mechanism for all 'merge'-type operations.  
+
+Is there any case where .rej files are more useful?  Why would you
+ever want that?  Some people seem to `prefer them`__ in Arch.
+
+__ http://wiki.gnuarch.org/moin.cgi/Process_20_2a_2erej_20files 
+ 
+I guess when cherry-picking you might not be able to find an
+appropriate ancestor for diff3?  I think you can; anyhow wiggle can
+transform rejects into diff3-style conflicts so why not do that?
+
+Miles says there that he prefers .rej files to conflict markers
+because they give better results for complex conflicts. 
+
+Perhaps we should just always produce both and let people use whatever
+they want.
+
+Another suggestion is the *rej_* tool, which helps fix up simple
+rejects:
+
+  There are four basic rejects fixable via rej.
+
+  1) missing context at the top or bottom of the hunk
+  2) different context in the middle of the hunk
+  3) slightly different lines removed by the hunk than exist in the file
+  4) Large hunks that might apply if they were broken up into smaller ones.
+
+.. _rej: ftp://ftp.suse.com/pub/people/mason/rej/
+
+
+Mirroring
+'''''''''
+
+One reason people say they like archives is that all new work in that
+archive will be automatically mirrored off your laptop, if it's
+already set up to mirror that archive.
+
+
+
+Control files out of tree
+'''''''''''''''''''''''''
+
+Some people would like to have absolutely no control files in their
+tree.  This is conceptually easy as long as we can find both the
+control files and working directory when a command is run.
+
+As a first step, the ``.bzr`` directory can be replaced by a symlink,
+which will prevent recursive commands looking into it.  Another
+approach is to put all actual source in a subdirectory of the tree, so
+that you never need to see the directory unless you look above the
+ceiling.
+
+If this is not enough, we might ask them to have an environment
+variable point to the control files, or have a map somewhere
+associating working directories with their control files.
+Unfortunately both of those seem likely to come loose and whip around
+dangerously.
+
+
+Representation of changesets
+''''''''''''''''''''''''''''
+
+Using patches is nice for plain text files.  In general we want the
+old and new names to correspond, but these are only for decoration;
+the file id determines where the patch really goes.
+
+* Should they be reversible?
+
+* How to represent binary diffs?
+
+* How to represent adds/removes?
+
+* How to zip up multiple changes into a single bundle?
+
+Reversibility is very important.  We do not need it for regular
+merges, since we can always recover the previous state.  We do need it
+for application of isolated patches, since we may not be able to
+recover the prior state.  It might also help when building a previous
+tree state.  
+
+Of course we can have an option to show deletes or to make the diff
+reversible even if it normally is not.
+
+It is very nice that plain diffs can be concatenated into a single
+text file.  This is not easily possible with binary files, xdeltas,
+etc.  Of course it is uncommon to display binary deltas directly or
+mail them, but if mailing is really required we could use base64 or
+MIME.
+
+Perhaps it would be reasonable to just store xdeltas between versions.
+
+Perhaps each changeset body should be a tar or zip holding the
+patches, though in simpler form than Arch.
+
+(Since these are free choices, perhaps stick closely to what Arch
+does?)
+
+
+Continuations
+'''''''''''''
+
+Do we need the generalized continuations currently present in Arch, or
+will a more restricted type do?  
+
+One use case for arch continuation tags is to make a release branch
+which contains only tags from the development branch.
+
+Maybe want darcs-style tags which just label the tree at various
+points; more familiar to users perhaps?
+
+::
+
+    bzr fork http://samba.org/bzr/samba/main ./my-samba
+ 
+1. creates directory my-samba
+2. copies contents of samba main branch
+3. the parent becomes samba-main
+4. parent is the default place you'll pull from & push to
+   
+Is there a difference between "contains stuff from samba-main" and "is
+branched from samba-main"?
+
+
+
+File split/merge
+''''''''''''''''
+
+Is there any sense in having a command to copy a file, or to rejoin
+several files with different IDs?
+
+Joining might be useful when the same tree is imported several times,
+or the same new-file operation is done in different trees.
+
+
+
+Time skew
+'''''''''
+
+Local clocks can be wrong when they record a commit.  This means that
+changes may be irrevocably recorded with the wrong time, and that in
+turn means that later changes may seem to come from before earlier
+changes.  We can give a warning at the later time, but short of
+refusing the commit there is not much we can do about it.
+
+
+Annotate/blame/praise
+---------------------
+
+``cvs annotate`` is pretty useful for understanding the history of
+development.  At the same time it is not quite trivial to implement,
+so I plan to make sure all the necessary data is easily accessible and
+then defer actually writing it.  Possibly the most complicated part is
+something to read in a diff and find which lines came from where. 
+
+What we need is a way to easily follow back through the history of a
+file, this is easily done by walking back along the branch.  Since we
+have revision numbers within a branch we have a short label which can
+be put against each line; we can also put a key at the bottom with
+some fields from each revision showing the committer and comment.
+
+For the case of merge commits people might be interested to know which
+merged patch brought in a change.  We cannot do this completely
+accurately since we don't know what the person did during the manual
+resolution of the merge, but by looking for identical lines we can
+probably get very close.  We can at the very least tell people the
+hash of all patches that were merged in so they can go and have a look
+at them.
+
+
+
+Performance
+-----------
+
+I think nothing here requires loading the whole tree into memory, as
+Darcs does.  We can detect renames and then diff files one by one.
+
+Because patches cannot change or be removed once they are committed or
+merged, we do not need to diff the patch-log, which is a problem in
+Arch.
+
+We do need to hold the whole list of patches in memory at various
+points but that should be at most perhaps 100,000 commits.
+
+We do need to pull down all patches since forever but that's not too
+unreasonable.
+
+Most heavy lifting can be done by GNU diff, patch and diff3, which are
+hopefully fast.
+
+Patches should be reasonably proportionate to the actual size of
+changes, not to the total size of the tree -- we should only list the
+hash and id for files that were touched by the change.  This implies
+that generating the manifest for any given revision means walking from
+the start of history to that revision.   Of course we can cache that
+manifest without necessarily caching the whole revision.
+
+* The dominant effect on performance in many cases will be network
+  round-trips; as Tom says "every one is like punching your user in
+  the face."
+
+  The network protocol can/should try to avoid them.
+
+  However, here's an even lazier idea: by making it possible to use
+  rsync for moving trees around, we get an insanely pipelined protocol
+  *for free*.
+
+  It's not always suitable (as when committing to a central tree), but
+  it will often work.  Cool!
+
+  Safely using rsync probably requires user intervention to make sure
+  that the tree is idle at the time the command runs; otherwise the
+  ordering of files arriving makes it really hard to know that we have
+  a consistent state.  I guess we can just ignore patches that are
+  missing...
+
+
+Hashing
+-------
+
+It might be nice to present hashes in BubbleBabble or some similar
+form to make it a bit easier on humans who have to see them.  This can
+of course be translated to and from binary.  On the other hand there
+is something in favour of regular strings that can be easily verified
+with other tools.
+
+We can have a Henson Mode in which it never trusts that files with the
+same hash are identical but always checks it.  Of course if SHA-1 is
+broken then GPG will probably be broken too...
+
+Comparison:
+
+binary:
+  20 bytes
+bubblebabble
+  > xizif-segim-vipyz-dyzak-gatas-sifet-dynir-gegon-borad-cetit-tixux
+  65 bytes
+base64:
+  > qvTGHdzF6KLavt4PO0gs2a6pQ00=
+  28 bytes
+hex:
+  > aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d
+  40 bytes
+
+Hex is probably the most reasonable tradeoff.
+
+
+File metadata
+-------------
+
+I don't want to get into general versioning of file metadata like
+permissions, at least in the first version; it's hard to say what
+should be propagated and what should not be.  This is a source code
+control system.
+
+It may be useful to carry some very restricted bits, like *read only*
+or *executable*; I think these are harmless.
+
+The only case where people generally want to remember permissions and
+ownership is when versioning ``/etc``, which is quite a special case.
+Perhaps this should be deferred to a special script such as the
+``cvs-conf`` package.
+
+
+Faster comparisons
+------------------
+
+There are many cases where we need to compare trees; perhaps the most
+common is just diffing the tree to see what changed.  For small to
+medium trees it is OK to just diff everything in the tree, and we can
+do just this in the first version.  This runs into trouble for
+kernel-sized trees, where reading every 
+
+
+Fear of forking
+---------------
+
+There is some fear that distributed version control (many branches)
+will encourage projects to fork.  I don't think this is necessarily
+true of Bazaar.
+
+A fundamental principle of Bazaar is that is not the tool's place to
+make you run a project a particular way.  The tool enables you to do
+what you want.  The documentation and community might suggest some
+practices that have been useful for other projects, but the choice is
+up to you.  There are principles for running open source projects that
+are useful regardless of tool, and Bazaar supports them.  They include
+encouraging new contributors, building community, managing a good
+release schedule and so on, but I won't enumerate them all here (and I
+don't claim to know them all.)
+
+Bazaar reduces some pressures that can lead to forking.  There need
+not be fights about who gets commit access: everyone can have a branch
+and they can contribute their changes.  Radical new development can
+occur on one branch while stabilization occurs on another and a new
+feature or port on a third.  Both creating the branches and merging
+between them should be easier in the Bazaar than with existing
+systems.  (Though of course there may be technical difficulties that
+no tool can totally remove.)
+
+Sometimes there really is a time for a fork, for various reasons:
+irreconcilable differences on technical direction or personality.  If
+that happens, Bazaar makes the break less total: the projects can
+still merge patches, share bug fixes and features, and even eventually
+reunite.
+
+
+Why a new project?
+------------------
+
+A key goal is simplicity and user-friendliness; this is easier to
+build into a new tool than to fix in an existing tool.  Nevertheless
+we want to provide a smooth upgrade path from Arch, CVS, and other
+systems.
+
+
+References
+----------
+
+* http://www.dwheeler.com/essays/scm.html
+
+  Good analysis; should try to address everything there in a way he will like.
+
+
+.. Local variables:
+.. mode: indented-text
+.. End:
+
+.. Would like to use rst-mode, but it's too slow on a document of this
+.. size.

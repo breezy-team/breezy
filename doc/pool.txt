@@ -1,0 +1,65 @@
+Patch pools
+***********
+
+*Patch pools* are an optimization for efficient storage of related
+branches.  They are not required for the first release.
+
+Revisions, inventories, and file states are identified in Bazaar-NG by
+universally unique hashes, and they are never modified once they are
+created.  Objects which are common between branches may therefore be
+stored only once and referenced from each branch.  Various strategies
+are available for doing this.
+
+Objects can be held hard-linked between related branches on
+filesystems that support hardlinks.  This provides automatic reference
+counting as branches are deleted.
+
+It is common to have several branches of the same project on a
+machine, with many objects in common.  These can be configured with
+each other on the pool path.  The parent should be the default pool
+path when creating a new branch.
+
+Each user might also have a pool that acts as a cache of all remote
+revisions.  Such a cache might use some kind of least-recently-used
+policy to limit its size.
+
+The user might nominate a series or hierarchy of pools to be searched for a
+patch; these might be progressively on the local machine, local
+network and remotely.  
+
+A system like the supermirror might make good use of a pool that
+gradually accumulates all public objects in the world, and stores
+branches very cheaply.
+
+One complication is garbage collection.  Naive implementations that
+store references from branches into the pool will not be able to
+detect objects that are no longer referenced by any active branch; as
+branches are created and deleted over time such objects will
+accumulate.  This may not be a problem in many cases, given the
+relative abundance of disk compared to programmer time, and the
+relatively small number of long branches that are discarded.  There
+are some partial solutions:
+
+* Keep a reference count for each object.  There is no problem of
+  circular references.  However, keeping the count accurately requires
+  that branches are never lost or deleted other than through the
+  correct mechanism.
+
+* From time to time, building a new pool including only objects from
+  active branches.
+
+* Keeping a pool that holds only patches known to be available from
+  elsewhere, so the pool is only a cache and never the single source
+  of a particular object.  Such a pool can then be discarded at will
+  and the objects will be re-fetched from their original source.
+
+This last point suggests that new objects should never be written
+solely into a pool, because of the risk that they might be
+accidentally lost.
+
+Using the parent on the default pool path allows for varying
+greed or laziness in fetching objects.  By default, objects might be
+read only as necessary, and then stored in the local cache.  If the
+user wants to keep the whole history available locally that could be
+specified with a ``--greedy`` option when making the branch, or
+through later pulling down the history.

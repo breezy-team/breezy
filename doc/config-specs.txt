@@ -1,0 +1,47 @@
+************
+Config specs
+************
+
+A *config spec* is a set of instructions for assembling a source tree
+from separately maintained branches.  This is like CVS's "modules"
+format.  Config specs are very commonly used in Clearcase, and the
+main way of getting a new checkout.
+
+Scenarios:
+
+ * One module is shared by several projects, and it needs to be
+   present in a subdirectory of their trees to build.
+
+ * There are different commit or stability rules for different parts
+   of a tree.
+
+The simplest form is just a specification of branch sources, and where
+they should be assembled into the tree.  Example::
+
+  .              http://foo.net/fooapp
+  ./libbaz       http://foo.net/libbaz
+
+Normally the entire branch will be placed at this point, but sometimes
+subdirectory should be selected.  Selecting just a single file rather
+than subdirectory might be problematic because we wouldn't have
+anywhere to put the control files.
+
+Each branch will have a .bzr directory at the top level.  Changes on
+each branch can be pushed back independently.
+
+The tool needs to support (and be tested with) nested checkouts.
+Commands should normally only apply to a single tree, but there might
+be an option to descend into nested trees.
+
+One very important use case is a naive user checking out a tree that
+happens to use a configspec.  This is transparent in cvs, but not at
+all so in Arch.
+
+The ``svn:externals`` mechanism in Subversion works like this.
+
+One interesting idea from Aaron is that all branches should be like
+this: the latest-patch pointer can be generalized to in fact name
+several patches that should be assembled in subdirectories.  A
+simplest branch names just one, assembled to the base directory.  You
+might want to specify the parent branches for each one as well....
+

@@ -1,0 +1,30 @@
+**********
+ChangeLogs
+**********
+
+Changelogs have an interesting relation to version control systems.
+They are, for some projects, the primary way of examining history.
+They provide a pattern and standard for writing commit history, which
+may encourage people to enter more details (function names, etc) in a
+systematic way than they otherwise might.  The ChangeLog is available
+offline, in tarfiles, or even when the project has been switched into
+a different VCS.
+
+GNU ChangeLog format is only the most important, not the only such
+file.  Debian uses a different format for packages.  At a higher
+level, 
+
+At the same time the information there is some redundancy: both the
+ChangeLog and the VCS want to hold the description of what has been
+done, including descriptive text, names of files changed, etc.
+
+Some people say__ that ChangeLogs are mostly needed because of the
+limitations of CVS (and originally RCS): if it was easy to read the VC
+history when disconnected and at local speed, and if there are atomic
+commits then they might be needed rather less.
+
+__ http://gcc.gnu.org/ml/gcc/2004-06/msg00270.html
+
+There should be hooks called to create the log message template and
+before committing it.  These might, for example, populate it with
+space for per-file comments, or check that it is in the right format.

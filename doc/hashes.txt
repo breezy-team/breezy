@@ -1,0 +1,73 @@
+Use of hashes in Bazaar-NG
+**************************
+
+* http://infohost.nmt.edu/~val/review/hash.html
+* http://infohost.nmt.edu/~val/review/hash2.html
+
+The main attraction of hashes in bazaar-ng is as an easy way to get
+universally-unique IDs, or at least with a low chance of collision:
+
+The first paper is a bit paranoid; the second has some sensible
+advice:
+
+1. Will compare-by-hash provide significant benefit -- save time,
+   bandwidth, etc?
+
+2. Is the system usable if hash collisions can be generated at will?
+
+3. Can the hashes be regenerated with a different algorithm at any
+   time?
+
+We should try to abide by these rules.  I think they are possibly too
+paranoid -- a real break of SHA-1 would have much wider security
+implications -- but if a design that respects them is practical, it
+should be preferred.
+
+The first is probably true; the third is just a matter of making sure
+we allow for the choice of hash to be varied in the format.
+
+There are actually two variations on the second:
+
+2a. Is the system safe if an attacker can generate hash collisions?
+
+2b. Is the system safe if a user's own files contain collisions.
+
+Regardless of cryptographic weakness, SHA-1 is unlikely to
+"accidentally" collide, but it's possible that someone will
+intentionally generate collisions (in research on SHA) and then want
+to store them.  It would be unfortunate if that did not work.
+
+An advantage of naming by hash is that it lets us store only a single
+copy of identical files, but we have already decided__ that disk space
+is pretty cheap.  It is perhaps enough to have a single copy of files
+that do not change from one tree revision to the next.
+
+__ costs.html
+
+As far as an attacker: we will not automatically trust that ids from
+one branch have the same value in another.  It is possible for a
+branch to contain "lies" about its history or contents, but that
+doesn't corrupt anything else.  It may confuse or mislead someone who
+looks at the branch, but there is no substitute for human review
+anyhow.
+
+-------
+
+The safest position may be to never rely on identifying content by
+hash.  Rather, things which need a universally unique ID should get a
+UUID instead.
+
+This has a slight advantage that the id can be stored directly in the
+object it refers to, when that's useful.
+
+So a `Revision` holds a UUID for the `Inventory`.  
+
+An inventory holds `InventoryEntry` objects, each with
+
+* file-id
+* filename (location in tree)
+* type (file, dir, etc)
+* text-id (uuid identifying the text)
+* text-sha1
+* text-length (for catching bugs)
+* parent-file-id

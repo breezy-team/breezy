@@ -1,0 +1,36 @@
+******************
+Compared to OpenCM
+******************
+
+  http://opencm.org/
+
+
+Not very stable; apparently inactive.  
+
+* Separated working copy & repository model.
+
+* Files have long-lived identifiers.
+
+* Files and revisions identified by the SHA-1 hash of their content
+  (as in monotone); explicitly makes it easier to be sure we have the
+  right one and prevents some tricks.
+
+* Binding of objects to external names done on the client, so you can
+  version e.g. database objects, instead of files.
+
+* Directories are inferred by having files that exist under them;
+  empty directories are a special case with an object of type DIR.
+  
+  This is a bit ugly.  I might rather have files given a name only
+  relative to their parent directory.  So renaming a directory will
+  only update the entry for the directory, and everything will move
+  with it.
+
+* Access-control rules about who can write to a central server. 
+
+* Their design is somewhat similar to ours and used a lot of disk
+  space -- enough to be a significant problem.
+
+* Assigning human names to branches proved problematic -- i think this
+  is a good reason to rely on the filesystem/URL space, which people
+  already know how to manage and deal with.

@@ -1,0 +1,16 @@
+********************
+Thoughts on Monotone
+********************
+
+Great project, but not perfect.
+
+My main feeling is that it exposes too much mechanism and in the wrong
+ways.  For example, hashes are all very well for representing
+identity, but I don't want to see them; I just want to say "r43 of
+this branch".  
+
+Cryptographic signing is good for making sure revisions are really
+what they claim to be, but I don't want to directly deal with it: I
+want it as a check that things are really happening as they should
+be.  It should be barely seen and not heard unless/until something
+goes wrong.

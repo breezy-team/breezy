@@ -1,0 +1,68 @@
+Roll-up changesets
+******************
+
+Sometimes it is useful to collapse changes; sometimes it is useful to
+pull in patches while keeping their original identity.  So (uniquely?)
+Bazaar-NG allows either option at the user's discretion.
+
+I'm not completely sure yet how this should be controlled: should it
+be an option at every stage, or should mergers generate roll-up
+changesets?  I think possibly the second.
+
+Rolled-up changesets can be represented as so::
+
+  mbp, 2005-04-01
+  import new quantum-computing feature
+
+    jrh, 2005-03-02
+    stub implementation for quantum computing
+
+    jrh, 2005-03-03
+    plus operator
+    
+    jrh, 2005-03-04
+    regexps
+
+    jrh, 2005-03-03
+    fix bugs, ready to go
+
+down to an arbitrary level of nesting.
+    
+When bringing changes into a branch, we have the choice of either
+rolling them up into a single changeset or bringing them across
+individually.  I'm not sure, but I think this may be best handled by
+having two separate commands:
+
+* *update* (or maybe *pull*) brings across revisions onto the current
+  branch, adding them one-by-one into the revision history.  This can
+  only be executed if the destination branch is a prefix of the source
+  branch and therefore we know the patches will apply perfectly.
+
+* *merge* pulls in one or more changes from another branch, and allows
+   the user to edit the merged state or fix any conflicts.  These
+   changes are then all marked as rolled-up by a new commit.  It is
+   possible to look up those changes inside the commit, if the
+   information is still accessible.
+
+In this model, Arch is missing the first command: you cannot put
+patches from one branch onto another -- and it would be hard to add
+it, since the unique branch id is part of the name of the patch name.
+
+Most other tools are missing the second: it is impossible to combine
+changesets and therefore the total history of any branch can grow very
+long; there is no way to make summaries within the tool itself.
+
+People might also want to retrospectively zip up several changes
+existing on a branch, but I think it may be better to make a new
+branch from before the changes and pull them across onto that.
+
+----
+
+One interesting application of this is in maintaining the ``NEWS``
+file present in many software distributions.  This summarizes the
+changes to the software in each release at a very high user-visible
+level.  Although this is very much version-control data it is not
+normally known to the VC system, except as another versioned file.
+
+One way to handle this is to have a *release* branch, where the commit
+message for each release the NEWS notes for that release.

@@ -1,0 +1,45 @@
+Types of conflict
+*****************
+
+The following types of conflict can be encountered during a merge, or
+a merge-like operation (such as resyncing local changes with
+upstream):
+
+Aaron's list:
+
+* Parent directory missing when attempting to add a file
+
+* Attempt to create directory that already exists
+
+* Some patch hunks failed to apply
+
+* While changing permissions, the "old" permissions in the changeset do
+  not match the file.
+
+* While replacing contents of a file, the old contents of a file do not
+  match the changeset
+
+* Attempt to remove non-empty directory: This only occurs when the
+  directory has contents that it didn't have the last time it was deleted.
+  It's pretty easy to handle adds, renames and deletes for exact
+  patching.  There's no need to rm -rf directories as tla does.
+
+* Attempt to create a symlink when there is already a file/dir/etc with
+  that name
+
+* Attempt to apply a patch to a file that does not exist
+
+* Attempt to remove a file that does not exist
+
+* Attempt to rename a file that does not exist
+
+* Attempt to change permissions of a file that does not exist
+
+* Can't determine filename during three-way merging
+
+* Can't determine file parent directory during three-way merging
+
+* Can't determine file permissions during three-way merging
+
+Aaaron says: I have no doubt there are more.  For example, attempt to
+change permissions of a symlink.
