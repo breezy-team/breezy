@@ -1,0 +1,188 @@
+For a tree holding 2.4.18 (two copies), 2.4.19, 2.4.20
+
+With gzip -9:
+
+mbp@hope% du .bzr
+195110  .bzr/text-store
+20      .bzr/revision-store
+12355   .bzr/inventory-store
+216325  .bzr
+mbp@hope% du -s .
+523128  .
+
+Without gzip:
+
+This is actually a pretty bad example because of deleting and
+re-importing 2.4.18, but still not totally unreasonable.
+
+----
+
+linux-2.4.0: 116399 kB
+after addding everything: 119505kB
+bzr status  2.68s user 0.13s system 84% cpu 3.330 total
+bzr commit 'import 2.4.0'  4.41s user 2.15s system 11% cpu 59.490 total
+
+242446  .
+122068  .bzr
+
+
+----
+
+Performance (2005-03-01)
+
+To add all files from linux-2.4.18: about 70s, mostly inventory
+serialization/deserialization.
+
+To commit:
+- finished, 6.520u/3.870s cpu, 33.940u/10.730s cum
+-     134.040 elapsed
+
+Interesting that it spends so long on external processing!  I wonder
+if this is for running uuidgen?  Let's try generating things
+internally.
+
+Great, this cuts it to 17.15s user 0.61s system 83% cpu 21.365 total
+to add, with no external command time.  The commit now seems to spend
+most of its time copying to disk.
+
+- finished, 6.550u/3.320s cpu, 35.050u/9.870s cum
+-     89.650 elapsed
+
+I wonder where the external time is now?  We were also using uuids()
+for revisions.
+
+Let's remove everything and re-add.  Detecting everything was removed
+takes 
+- finished, 2.460u/0.110s cpu, 0.000u/0.000s cum
+-     3.430 elapsed
+
+which may be mostly XML deserialization?
+
+Just getting the previous revision takes about this long:
+
+bzr invoked at Tue 2005-03-01 15:53:05.183741 EST +1100
+  by mbp@sourcefrog.net on hope
+  arguments: ['/home/mbp/bin/bzr', 'get-revision-inventory', 'mbp@sourcefrog.net-20050301044608-8513202ab179aff4-44e8cd52a41aa705']
+  platform: Linux-2.6.10-4-686-i686-with-debian-3.1
+- finished, 3.910u/0.390s cpu, 0.000u/0.000s cum
+-     6.690 elapsed
+
+Now committing the revision which removes all files should be fast.
+
+- finished, 1.280u/0.030s cpu, 0.000u/0.000s cum
+-     1.320 elapsed
+
+Now re-add with new code that doesn't call uuidgen:
+
+- finished, 1.990u/0.030s cpu, 0.000u/0.000s cum
+-     2.040 elapsed
+
+16.61s user 0.55s system 74% cpu 22.965 total
+
+Status::
+
+  - finished, 2.500u/0.110s cpu, 0.010u/0.000s cum
+  -     3.350 elapsed
+
+And commit::
+
+Now patch up to 2.4.19.  There were some bugs in handling missing
+directories, but with that fixed we do much better::
+
+  bzr status  5.86s user 1.06s system 10% cpu 1:05.55 total
+
+This is slow because it's diffing every file; we should use mtimes etc
+to make this faster.  The cpu time is reasonable.
+
+I see difflib is pure Python; it might be faster to shell out to GNU
+diff when we need it.
+
+Export is very fast::
+
+  - finished, 4.220u/1.480s cpu, 0.010u/0.000s cum
+  -     10.810 elapsed
+
+  bzr export 1 ../linux-2.4.18.export1  3.92s user 1.72s system 21% cpu 26.030 total
+
+
+Now to find and add the new changes::
+
+  - finished, 2.190u/0.030s cpu, 0.000u/0.000s cum
+  -     2.300 elapsed
+
+
+:: 
+  bzr commit 'import 2.4.19'  9.36s user 1.91s system 23% cpu 47.127 total
+
+And the result is exactly right.  Try exporting::
+
+  mbp@hope%  bzr export 4 ../linux-2.4.19.export4
+  bzr export 4 ../linux-2.4.19.export4  4.21s user 1.70s system 18% cpu 32.304 total
+
+and the export is exactly the same as the tarball.
+
+Now we can optimize the diff a bit more by not comparing files that
+have the right SHA-1 from within the commit
+
+For comparison::
+
+  patch -p1 < ../kernel.pkg/patch-2.4.20  1.61s user 1.03s system 13% cpu 19.106 total
+
+
+Now status after applying the .20 patch.  With full-text verification::
+
+  bzr status  7.07s user 1.32s system 13% cpu 1:04.29 total
+
+with that turned off::
+
+  bzr status  5.86s user 0.56s system 25% cpu 25.577 total
+
+After adding:
+
+  bzr status  6.14s user 0.61s system 25% cpu 26.583 total
+
+Should add some kind of profile counter for quick compares vs slow
+compares.
+
+  bzr commit 'import 2.4.20'  7.57s user 1.36s system 20% cpu 43.568
+  total
+
+export:  finished, 3.940u/1.820s cpu, 0.000u/0.000s cum,  50.990 elapsed
+
+also exports correctly
+
+now .21
+
+bzr commit 'import 2.4.1'  5.59s user 0.51s system 60% cpu 10.122 total
+
+265520  .
+137704  .bzr
+
+import 2.4.2
+317758  .
+183463  .bzr
+
+
+with everything through to 2.4.29 imported, the .bzr directory is
+1132MB, compared to 185MB for one tree.  The .bzr.log is 100MB!.  So
+the storage is 6.1 times larger, although we're holding 30 versions.
+It's pretty large but I think not ridiculous.  By contrast the tarball
+for 2.4.0 is 104MB, and the tarball plus uncompressed patches are
+315MB.
+
+Uncompressed, the text store is 1041MB.  So it is only three times
+worse than patches, and could be compressed at presumably roughly
+equal efficiency.  It is large, but also a very simple design and
+perhaps adequate for the moment.  The text store with each file
+individually gziped is 264MB, which is also a very simple format and
+makes it less than twice the size of the source tree.
+
+This is actually rather pessimistic because I think there are some
+orphaned texts in there.
+
+Measured by du, the compressed full-text store is 363MB; also probably
+tolerable.
+
+The real fix is perhaps to use some kind of weave, not so much for
+storage efficiency as for fast annotation and therefore possible
+annotation-based merge.
