@@ -194,7 +194,14 @@ def cmd_inventory(revision=None):
 def cmd_info():
     b = Branch('.')
     print 'branch format:', b.controlfile('branch-format', 'r').readline().rstrip('\n')
-    print 'revision number:', b.revno()
+
+    def plural(n, base='', pl=None):
+        if n == 1:
+            return base
+        elif pl is not None:
+            return pl
+        else:
+            return 's'
 
     count_version_dirs = 0
 
@@ -212,8 +219,23 @@ def cmd_info():
                      ('renamed', 'R'), ('unknown', '?'), ('ignored', 'I'),
                      ):
         print '  %5d %s' % (count_status[fs], name)
-    print '  %5d versioned subdirectories' % count_version_dirs
-            
+    print '  %5d versioned subdirector%s' % (count_version_dirs,
+                                             plural(count_version_dirs, 'y', 'ies'))
+
+    print
+    print 'branch history:'
+    history = b.revision_history()
+    revno = len(history)
+    print '  %5d revision%s' % (revno, plural(revno))
+    committers = Set()
+    for rev in history:
+        committers.add(b.get_revision(rev).committer)
+    print '  %5d committer%s' % (len(committers), plural(len(committers)))
+    if revno > 0:
+        firstrev = b.get_revision(history[0])
+        age = int((time.time() - firstrev.timestamp) / 3600 / 24)
+        print '  %5d day%s old' % (age, plural(age))
+    
 
 
 def cmd_remove(file_list, verbose=False):
