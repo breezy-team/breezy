@@ -1,6 +1,3 @@
-#! /usr/bin/python
-
-
 # Copyright (C) 2004, 2005 by Martin Pool
 # Copyright (C) 2005 by Canonical Ltd
 
@@ -212,56 +209,8 @@ def cmd_inventory(revision=None):
 
 
 def cmd_info():
-    b = Branch('.')
-    print 'branch format:', b.controlfile('branch-format', 'r').readline().rstrip('\n')
-
-    def plural(n, base='', pl=None):
-        if n == 1:
-            return base
-        elif pl is not None:
-            return pl
-        else:
-            return 's'
-
-    count_version_dirs = 0
-
-    count_status = {'A': 0, 'D': 0, 'M': 0, 'R': 0, '?': 0, 'I': 0, '.': 0}
-    for st_tup in bzrlib.diff_trees(b.basis_tree(), b.working_tree()):
-        fs = st_tup[0]
-        count_status[fs] += 1
-        if fs not in ['I', '?'] and st_tup[4] == 'directory':
-            count_version_dirs += 1
-
-    print
-    print 'in the working tree:'
-    for name, fs in (('unchanged', '.'),
-                     ('modified', 'M'), ('added', 'A'), ('removed', 'D'),
-                     ('renamed', 'R'), ('unknown', '?'), ('ignored', 'I'),
-                     ):
-        print '  %5d %s' % (count_status[fs], name)
-    print '  %5d versioned subdirector%s' % (count_version_dirs,
-                                             plural(count_version_dirs, 'y', 'ies'))
-
-    print
-    print 'branch history:'
-    history = b.revision_history()
-    revno = len(history)
-    print '  %5d revision%s' % (revno, plural(revno))
-    committers = Set()
-    for rev in history:
-        committers.add(b.get_revision(rev).committer)
-    print '  %5d committer%s' % (len(committers), plural(len(committers)))
-    if revno > 0:
-        firstrev = b.get_revision(history[0])
-        age = int((time.time() - firstrev.timestamp) / 3600 / 24)
-        print '  %5d day%s old' % (age, plural(age))
-        print '  first revision: %s' % format_date(firstrev.timestamp,
-                                                 firstrev.timezone)
-
-        lastrev = b.get_revision(history[-1])
-        print '  latest revision: %s' % format_date(lastrev.timestamp,
-                                                    lastrev.timezone)
-        
+    import info
+    info.show_info(Branch('.'))        
     
 
 
