@@ -96,6 +96,7 @@ def create_tracefile(argv):
     
     t.write('-' * 60 + '\n')
     t.write('bzr invoked at %s\n' % bzrlib.osutils.format_date(time.time()))
+    t.write('  version: %s\n' % bzrlib.__version__)
     t.write('  by %s on %s\n' % (bzrlib.osutils.username(), socket.getfqdn()))
     t.write('  arguments: %r\n' % argv)
 
