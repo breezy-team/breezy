@@ -45,12 +45,12 @@ def warning(msg):
     b = 'bzr: warning: ' + msg + '\n'
     sys.stderr.write(b)
     _tracefile.write(b)
-    _tracefile.flush()
+    #_tracefile.flush()
 
 def mutter(msg):
     _tracefile.write(msg)
     _tracefile.write('\n')
-    _tracefile.flush()
+    # _tracefile.flush()
     if verbose:
         sys.stderr.write('- ' + msg + '\n')
 
@@ -60,13 +60,13 @@ def note(msg):
     if not silent:
         sys.stderr.write(b)
     _tracefile.write(b)
-    _tracefile.flush()
+    # _tracefile.flush()
 
 
 def log_error(msg):
     sys.stderr.write(msg)
     _tracefile.write(msg)
-    _tracefile.flush()
+    # _tracefile.flush()
 
 
 

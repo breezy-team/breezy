@@ -186,3 +186,36 @@ tolerable.
 The real fix is perhaps to use some kind of weave, not so much for
 storage efficiency as for fast annotation and therefore possible
 annotation-based merge.
+
+-----
+
+
+2005-03-25
+
+Now we have recursive add, add is much faster.  Adding all of the
+linux 2.4.19 kernel tree takes only 
+
+finished, 5.460u/0.610s cpu, 0.010u/0.000s cum, 6.710 elapsed
+
+
+However, the store code currently flushes to disk after every write,
+which is probably excessive.  So a commit takes
+
+finished, 8.740u/3.950s cpu, 0.010u/0.000s cum, 156.420 elapsed
+
+
+Status is now also quite fast, depsite that it still has to read all
+the working copies:
+
+mbp@hope% bzr status                                                            ~/work/linux-2.4.19
+bzr status  5.51s user 0.79s system 99% cpu 6.337 total
+
+strace shows much of this is in write(2), probably because of
+logging.  With more buffering on that file, removing all the explicit
+flushes, that is reduced to 
+
+mbp@hope% time bzr status  
+bzr status  5.23s user 0.42s system 97% cpu 5.780 total
+
+which is mostly opening, stating and reading files, as it should be.
+Still a few too many stat calls.
