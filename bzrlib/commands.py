@@ -368,7 +368,8 @@ def cmd_diff(revision=None):
 
 
 
-def cmd_find_branch_root(filename=None):
+def cmd_root(filename=None):
+    """Print the branch root."""
     print bzrlib.branch.find_branch_root(filename)
     
 
@@ -591,7 +592,7 @@ cmd_args = {
     'commit':                 [],
     'diff':                   [],
     'file-id':                ['filename'],
-    'find-branch-root':       ['filename?'],
+    'root':                   ['filename?'],
     'get-file-text':          ['text_id'],
     'get-inventory':          ['inventory_id'],
     'get-revision':           ['revision_id'],
