@@ -97,8 +97,8 @@ class ImmutableStore:
             filename = self._path(fileid)
             f = file(filename, 'wb')
             f.write(content)
-            f.flush()
-            os.fsync(f.fileno())
+            ## f.flush()
+            ## os.fsync(f.fileno())
             f.close()
             osutils.make_readonly(filename)
 
