@@ -196,6 +196,9 @@ def cmd_inventory(revision=None):
 
 
 def cmd_info():
+    """info: Show statistical information for this branch
+
+usage: bzr info"""
     import info
     info.show_info(Branch('.'))        
     
