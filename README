@@ -31,3 +31,16 @@ You must install either cElementTree_ or ElementTree_ first.
 .. _cElementTree: http://effbot.org/zone/celementtree.htm
 .. _ElementTree: http://effbot.org/zone/element-index.htm
 
+
+
+Installation
+------------
+
+bzr has a standard python ``setup.py`` script.  
+
+To install it system-wide::
+
+  # python ./setup.py install
+
+Alternatively you can simply put the source directory on $PYTHONPATH
+and $PATH.
