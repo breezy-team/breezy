@@ -743,7 +743,7 @@ def main(argv):
         t = bzrlib.trace._tracefile
         t.write('-' * 60 + '\n')
         t.write('bzr invoked at %s\n' % format_date(time.time()))
-        t.write('  by %s on %s\n' % (bzrlib.osutils.username(), socket.gethostname()))
+        t.write('  by %s on %s\n' % (bzrlib.osutils.username(), socket.getfqdn()))
         t.write('  arguments: %r\n' % argv)
 
         starttime = os.times()[4]
