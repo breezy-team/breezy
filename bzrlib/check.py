@@ -77,17 +77,28 @@ def check_inventory(branch, inv, revid):
     seen_ids = Set()
     seen_names = Set()
 
+    for file_id in inv:
+        if file_id in seen_ids:
+            bailout('duplicated file_id {%s} in inventory for revision {%s}'
+                    % (file_id, revid))
+        seen_ids.add(file_id)
+        
+    for file_id in inv:
+        ie = inv[file_id]
+        
+        if ie.parent_id != None:
+            if ie.parent_id not in seen_ids:
+                bailout('missing parent {%s} in inventory for revision {%s}'
+                        % (ie.parent_id, revid))
+
+        if ie.kind == 'file':
+            if not ie.text_id in branch.text_store:
+                bailout('text {%s} not in text_store' % ie.text_id)
+
+                
+            
     for path, ie in inv.iter_entries():
         if path in seen_names:
             bailout('duplicated path %r in inventory for revision {%s}' % (path, revid))
         seen_names.add(path)
-        
-        if ie.file_id in seen_ids:
-            bailout('duplicated file_id {%s} in inventory for revision {%s}'
-                    % (ie.file_id, revid))
-        seen_ids.add(ie.file_id)
-            
-        if ie.kind == 'file':
-            if not ie.text_id in branch.text_store:
-                bailout('text {%s} not in text_store' % ie.text_id)
         
