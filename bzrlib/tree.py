@@ -174,15 +174,6 @@ class WorkingTree(Tree):
             return '?'
 
 
-    def file_kind(self, filename):
-        if isfile(self.abspath(filename)):
-            return 'file'
-        elif isdir(self.abspath(filename)):
-            return 'directory'
-        else:
-            return 'unknown'
-
-
     def list_files(self):
         """Recursively list all files as (path, class, kind, id).
 
