@@ -20,7 +20,7 @@ __copyright__ = "Copyright (C) 2005 Canonical Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
 
 
-import sys, os, time, socket
+import sys, os, time, socket, stat
 import bzrlib
 
 ######################################################################
@@ -77,8 +77,16 @@ def create_tracefile(argv):
     _starttime = os.times()[4]
 
     _tracefile = file('.bzr.log', 'at')
-
     t = _tracefile
+
+    if os.fstat(t.fileno())[stat.ST_SIZE] == 0:
+        t.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
+        t.write("you can delete or truncate this file, or include sections in\n")
+        t.write("bug reports to bazaar-ng@lists.canonical.com\n\n")
+
+    # TODO: If we failed to create the file, perhaps give a warning
+    # but don't abort; send things to /dev/null instead?
+
     
     t.write('-' * 60 + '\n')
     t.write('bzr invoked at %s\n' % bzrlib.osutils.format_date(time.time()))
