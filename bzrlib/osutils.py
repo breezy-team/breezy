@@ -172,8 +172,14 @@ def user_email():
 def compare_files(a, b):
     """Returns true if equal in contents"""
     # TODO: don't read the whole thing in one go.
-    result = a.read() == b.read()
-    return result
+    BUFSIZE = 4096
+    while True:
+        ai = a.read(BUFSIZE)
+        bi = b.read(BUFSIZE)
+        if ai != bi:
+            return False
+        if ai == '':
+            return True
 
 
 
