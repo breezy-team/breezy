@@ -93,8 +93,38 @@ def write_slacker_inventory(inv, f):
     for entry_name, ie in l:
         descend(ie)
 
-    f.write('</root-directory>\n')
+    f.write('</root_directory>\n')
     f.write('</inventory>\n')
     
 
 
+def read_new_inventory(f):
+    from inventory import Inventory, InventoryEntry
+    
+    def descend(parent_ie, el):
+        kind = el.tag
+        name = el.get('name')
+        file_id = el.get('id')
+        ie = InventoryEntry(file_id, name, el.tag)
+        parent_ie.children[name] = ie
+        inv._byid[file_id] = ie
+        if kind == 'directory':
+            for child_el in el:
+                descend(ie, child_el)
+        elif kind == 'file':
+            assert len(el) == 0
+            ie.text_id = el.get('text_id')
+            v = el.get('text_size')
+            ie.text_size = v and int(v)
+            ie.text_sha1 = el.get('text_sha1')
+        else:
+            bailout("unknown inventory entry %r" % kind)
+
+    inv_el = ElementTree().parse(f)
+    assert inv_el.tag == 'inventory'
+    root_el = inv_el[0]
+    assert root_el.tag == 'root_directory'
+
+    inv = Inventory()
+    for el in root_el:
+        descend(inv._root, el)

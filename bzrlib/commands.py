@@ -378,6 +378,11 @@ def cmd_dump_new_inventory():
     import bzrlib.newinventory
     inv = Branch('.').basis_tree().inventory
     bzrlib.newinventory.write_inventory(inv, sys.stdout)
+
+
+def cmd_load_new_inventory():
+    import bzrlib.newinventory
+    bzrlib.newinventory.read_new_inventory(sys.stdin)
                 
     
 def cmd_dump_slacker_inventory():
