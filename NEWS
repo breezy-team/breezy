@@ -1,13 +1,11 @@
-bzr-0.0.2  NOT RELEASED YET
+bzr-0.0.2  "black cube"  NOT RELEASED YET
 
-  CHANGES:
+  ENHANCEMENTS:
 
     * Default ignore list extended (see bzrlib/__init__.py).
 
     * Patterns in .bzrignore are now added to the default ignore list,
       rather than replacing it.
-
-  ENHANCEMENTS:
 
     * Ignore list is memoized after first request.
 
@@ -15,6 +13,8 @@ bzr-0.0.2  NOT RELEASED YET
 
     * Reinstate the 'bzr check' command to check invariants of the
       branch.
+
+    * New 'ignored' command shows which files are ignored and why.
 
 bzr-0.0.1  2005-03-26
 

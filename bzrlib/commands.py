@@ -384,6 +384,20 @@ def cmd_unknowns():
         print quotefn(f)
 
 
+
+def cmd_ignored(verbose=True):
+    """List ignored files and the patterns that matched them.
+      """
+    tree = Branch('.').working_tree()
+    for path, file_class, kind, id in tree.list_files():
+        if file_class != 'I':
+            continue
+        ## XXX: Slightly inefficient since this was already calculated
+        pat = tree.is_ignored(path)
+        print '%-50s %s' % (path, pat)
+    
+
+
 def cmd_lookup_revision(revno):
     try:
         revno = int(revno)
