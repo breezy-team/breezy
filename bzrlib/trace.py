@@ -99,9 +99,9 @@ def create_tracefile(argv):
     t.write('  by %s on %s\n' % (bzrlib.osutils.username(), socket.getfqdn()))
     t.write('  arguments: %r\n' % argv)
 
-    import platform
-    t.write('  platform: %s\n' % platform.platform())
-    t.write('  python: %s\n' % platform.python_version())
+    # This causes a vfork; I don't care enough about it.
+    t.write('  platform: %s\n' % sys.platform)
+    t.write('  python: %s\n' % (sys.version_info,))
 
     import atexit
     atexit.register(_close_trace)
