@@ -83,7 +83,6 @@ from sets import Set
 from pprint import pprint
 from stat import *
 from glob import glob
-from ElementTree import Element, ElementTree, SubElement
 
 import bzrlib
 from bzrlib.store import ImmutableStore
@@ -115,11 +114,6 @@ EMPTY = 'empty'
 
 ## TODO: Perhaps make UUIDs predictable in test mode to make it easier
 ## to compare output?
-
-## TODO: Is ElementTree really all that much better for our purposes?
-## Perhaps using the standard MiniDOM would be enough?
-
-
 
 
 

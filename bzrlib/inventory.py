@@ -24,8 +24,12 @@ __author__ = "Martin Pool <mbp@canonical.com>"
 import sys, os.path, types
 from sets import Set
 
+try:
+    from cElementTree import Element, ElementTree, SubElement
+except ImportError:
+    from elementtree import Element, ElementTree, SubElement
+
 from xml import XMLMixin
-from ElementTree import ElementTree, Element
 from errors import bailout
 from osutils import uuid, quotefn, splitpath, joinpath, appendpath
 from trace import mutter

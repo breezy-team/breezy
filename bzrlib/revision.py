@@ -18,7 +18,12 @@
 
 
 from xml import XMLMixin
-from ElementTree import Element, ElementTree, SubElement
+
+try:
+    from cElementTree import Element, ElementTree, SubElement
+except ImportError:
+    from elementtree import Element, ElementTree, SubElement
+
 
 class Revision(XMLMixin):
     """Single revision on a branch.
