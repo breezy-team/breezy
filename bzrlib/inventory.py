@@ -199,6 +199,23 @@ class InventoryEntry(XMLMixin):
 
 
 
+class RootEntry(InventoryEntry):
+    def __init__(self, file_id):
+        self.file_id = file_id
+        self.children = {}
+        self.kind = 'root_directory'
+        self.parent_id = None
+
+    def __cmp__(self, other):
+        if self is other:
+            return 0
+        if not isinstance(other, RootEntry):
+            return NotImplemented
+        return cmp(self.file_id, other.file_id) \
+               or cmp(self.children, other.children)
+
+
+
 class Inventory(XMLMixin):
     """Inventory of versioned files in a tree.
 
@@ -217,7 +234,7 @@ class Inventory(XMLMixin):
     returned quickly.
 
     InventoryEntry objects must not be modified after they are
-    inserted.
+    inserted, other than through the Inventory API.
 
     >>> inv = Inventory()
     >>> inv.write_xml(sys.stdout)
@@ -263,9 +280,12 @@ class Inventory(XMLMixin):
         If a working directory is specified, the inventory is read
         from there.  If the file is specified, read from that. If not,
         the inventory is created empty.
+
+        The inventory is created with a default root directory, with
+        an id of None.
         """
-        self._root = InventoryEntry(None, '', kind='directory')
-        self._byid = {None: self._root}
+        self.root = RootEntry(None)
+        self._byid = {None: self.root}
 
 
     def __iter__(self):
@@ -277,21 +297,29 @@ class Inventory(XMLMixin):
         return len(self._byid)
 
 
-    def iter_entries(self, parent_id=None):
+    def iter_entries(self, from_dir=None):
         """Return (path, entry) pairs, in order by name."""
-        kids = self[parent_id].children.items()
+        if from_dir == None:
+            assert self.root
+            from_dir = self.root
+        elif isinstance(from_dir, basestring):
+            from_dir = self._byid[from_dir]
+            
+        kids = from_dir.children.items()
         kids.sort()
         for name, ie in kids:
             yield name, ie
             if ie.kind == 'directory':
-                for cn, cie in self.iter_entries(parent_id=ie.file_id):
-                    yield joinpath([name, cn]), cie
+                for cn, cie in self.iter_entries(from_dir=ie.file_id):
+                    yield '/'.join((name, cn)), cie
+                    
 
 
-    def directories(self):
+    def directories(self, from_dir=None):
         """Return (path, entry) pairs for all directories.
         """
-        yield '', self._root
+        assert self.root
+        yield '', self.root
         for path, entry in self.iter_entries():
             if entry.kind == 'directory':
                 yield path, entry
@@ -323,10 +351,7 @@ class Inventory(XMLMixin):
 
 
     def get_child(self, parent_id, filename):
-        if parent_id == None:
-            return self._root.children.get(filename)
-        else:
-            return self[parent_id].children.get(filename)
+        return self[parent_id].children.get(filename)
 
 
     def add(self, entry):
@@ -337,9 +362,10 @@ class Inventory(XMLMixin):
         if entry.file_id in self._byid:
             bailout("inventory already contains entry with id {%s}" % entry.file_id)
 
-        parent = self._byid[entry.parent_id]
-        if parent.kind != 'directory':
-            bailout("attempt to add under non-directory {%s}" % parent.file_id)
+        try:
+            parent = self._byid[entry.parent_id]
+        except KeyError:
+            bailout("parent_id %r not in inventory" % entry.parent_id)
 
         if parent.children.has_key(entry.name):
             bailout("%s is already versioned" %

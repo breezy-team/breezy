@@ -1,3 +1,11 @@
+bzr-0.0.3  NOT RELEASED YET
+
+  INTERNAL:
+
+    * Refactored inventory storage to insert a root entry at the top.
+
+
+
 bzr-0.0.2  "black cube"  2003-03-31
 
   ENHANCEMENTS:
