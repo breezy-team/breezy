@@ -17,10 +17,10 @@ Dependencies
 This is mostly developed on Linux (Ubuntu); it should work on Unix,
 Windows, or OS X with relatively little trouble.
 
-bzr requires a fairly recent Python, say after 2.2.  
+bzr requires a fairly recent Python, say after 2.2.  2.4 is recommended.
 
-You can improve performance by installing Fredrik Lundh's amazing
-cElementTree__ module.
+You must install either cElementTree_ or ElementTree_ first.
 
-__ http://effbot.org/zone/celementtree.htm
+.. _cElementTree: http://effbot.org/zone/celementtree.htm
+.. _ElementTree: http://effbot.org/zone/element-index.htm
 
