@@ -192,8 +192,10 @@ Tests for ignored files and patterns:
     >>> b.add('.bzrignore')
     >>> list(b.unknowns())
     ['doc/configure']
+    >>> b.commit("commit 1")
+    >>> list(b.unknowns())
+    ['doc/configure']
+    >>> b.add("doc/configure")
+    >>> b.commit("commit more")
 
-Detection of missing files and directories:
-
-    
 """
