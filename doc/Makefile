@@ -5,4 +5,4 @@ all: $(addsuffix .html,$(basename $(wildcard *.txt)))
 
 
 upload: all
-	(echo 'cd www'; ls *html | sed -e 's/^/put /') | sftp -b /dev/fd/0 bazng@escudero.ubuntu.com
+	(echo 'cd www/doc'; ls *html | sed -e 's/^/put /') | sftp -b /dev/fd/0 bazng@escudero.ubuntu.com
