@@ -172,7 +172,7 @@ def cmd_add(file_list, verbose=False):
     """
     assert file_list
     b = Branch(file_list[0], find_root=True)
-    b.add(file_list, verbose=verbose)
+    b.add([b.relpath(f) for f in file_list], verbose=verbose)
 
 
 def cmd_relpath(filename):
@@ -249,12 +249,14 @@ def cmd_info():
 
 
 def cmd_remove(file_list, verbose=False):
-    Branch('.').remove(file_list, verbose=verbose)
+    b = Branch(file_list[0])
+    b.remove([b.relpath(f) for f in file_list], verbose=verbose)
 
 
 
 def cmd_file_id(filename):
-    i = Branch('.').read_working_inventory().path2id(filename)
+    b = Branch(filename)
+    i = b.inventory.path2id(b.relpath(filename))
     if i is None:
         bailout("%s is not a versioned file" % filename)
     else:
