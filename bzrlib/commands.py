@@ -495,7 +495,7 @@ def cmd_selftest(verbose=False):
     bzrlib.trace.verbose = False
 
     for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \
-        bzrlib.tree, bzrlib.tests:
+        bzrlib.tree, bzrlib.tests, bzrlib.commands:
         mf, mt = doctest.testmod(m)
         failures += mf
         tests += mt
