@@ -219,3 +219,42 @@ bzr status  5.23s user 0.42s system 97% cpu 5.780 total
 
 which is mostly opening, stating and reading files, as it should be.
 Still a few too many stat calls.
+
+Now fixed up handling of root directory.
+
+Without flushing everything to disk as it goes into the store:
+
+mbp@hope% bzr commit -m 'import linux 2.4.19'
+bzr commit -m 'import linux 2.4.19'  8.15s user 2.09s system 53% cpu 19.295 total
+
+mbp@hope% time bzr diff
+bzr diff  5.80s user 0.52s system 69% cpu 9.128 total
+mbp@hope% time bzr status
+bzr status  5.64s user 0.43s system 68% cpu 8.848 total
+
+patch -p1 < ../linux.pkg/patch-2.4.20  1.67s user 0.96s system 90% cpu 2.905 total
+
+The diff changes 3462 files according to diffstat.
+
+branch format: Bazaar-NG branch, format 0.0.4
+
+in the working tree:
+   8674 unchanged
+   2463 modified
+    818 added
+    229 removed
+      0 renamed
+      0 unknown
+      4 ignored
+    614 versioned subdirectories
+
+That is, 3510 entries have changed, but there are 48 changed
+directories so the count is exactly right!
+
+bzr commit -v -m 'import 2.4.20'  8.23s user 1.09s system 48% cpu 19.411 total
+
+Kind of strange that this takes as much time as committing the whole
+thing; I suppose it has to read every file.  
+
+This shows many files as being renamed; I don't know why that would
+be.
