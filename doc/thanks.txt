@@ -2,8 +2,8 @@
 Thanks
 ******
 
-Inspiration, suggestions, advice
---------------------------------
+Inspiration, suggestions, advice, bug reports
+---------------------------------------------
 
 * Mark Shuttleworth
 * Robert Collins
@@ -14,6 +14,9 @@ Inspiration, suggestions, advice
 * Andrew Tridgell
 * Paul Russell
 * Aaron Bentley
+* Faheem Mitha
+* Luke Gorrie
+* Dan Nicolaescu
 
 Sponsor
 -------
