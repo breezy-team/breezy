@@ -612,7 +612,7 @@ class Branch:
 
 
 
-    def write_log(self, utc=False):
+    def write_log(self, show_timezone='original'):
         """Write out human-readable log of commits to this branch
 
         :param utc: If true, show dates in universal time, not local time."""
@@ -626,7 +626,8 @@ class Branch:
             ##print 'revision-hash:', p
             rev = self.get_revision(p)
             print 'committer:', rev.committer
-            print 'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0))
+            print 'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0,
+                                                 show_timezone))
 
             ## opportunistic consistency check, same as check_patch_chaining
             if rev.precursor != precursor:

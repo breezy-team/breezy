@@ -324,12 +324,12 @@ def cmd_diff(revision=None):
 
 
 
-def cmd_log():
+def cmd_log(timezone):
     """Show log of this branch.
 
     :todo: Options for utc; to show ids; to limit range; etc.
     """
-    Branch('.').write_log()
+    Branch('.').write_log(show_timezone=timezone)
 
 
 def cmd_ls(revision=None, verbose=False):
@@ -496,6 +496,7 @@ OPTIONS = {
     'message':                unicode,
     'revision':               int,
     'show-ids':               None,
+    'timezone':               str,
     'verbose':                None,
     'version':                None,
     }
@@ -513,10 +514,10 @@ cmd_options = {
     'commit':                 ['message', 'verbose'],
     'diff':                   ['revision'],
     'inventory':              ['revision'],
+    'log':                    ['show-ids', 'timezone'],
     'ls':                     ['revision', 'verbose'],
-    'status':                 ['all'],
-    'log':                    ['show-ids'],
     'remove':                 ['verbose'],
+    'status':                 ['all'],
     }
 
 

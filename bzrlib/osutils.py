@@ -186,10 +186,12 @@ def format_date(t, offset=0, timezone='original'):
         offset = 0
     elif timezone == 'original':
         tt = time.gmtime(t - offset)
-    else:
-        assert timezone == 'local'
+    elif timezone == 'local':
         tt = time.localtime(t)
         offset = local_time_offset()
+    else:
+        bailout("unsupported timezone format %r",
+                ['options are "utc", "original", "local"'])
 
     return (time.strftime("%a %Y-%m-%d %H:%M:%S", tt)
             + ' %+03d%02d' % (offset / 3600, (offset / 60) % 60))

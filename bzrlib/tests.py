@@ -103,11 +103,11 @@ We can look back at history
   >>> r = b.get_revision(b.lookup_revision(1))
   >>> r.message
   'start hello world'
-  >>> b.write_log(utc=True)
+  >>> b.write_log(show_timezone='utc')
   ----------------------------------------
   revno: 1
   committer: foo@nowhere
-  timestamp: Thu 1970-01-01 00:00:00 UTC +0000
+  timestamp: Thu 1970-01-01 00:00:00 +0000
   message:
     start hello world
 
