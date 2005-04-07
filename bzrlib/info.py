@@ -31,7 +31,7 @@ def show_info(b):
     def plural(n, base='', pl=None):
         if n == 1:
             return base
-        elif pl == None:
+        elif pl != None:
             return pl
         else:
             return 's'
