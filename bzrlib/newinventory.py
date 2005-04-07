@@ -20,7 +20,7 @@ from cElementTree import Element, ElementTree, SubElement
 def write_inventory(inv, f):
     el = Element('inventory', {'version': '2'})
     
-    root = Element('root_directory', {'id': 'bogus-root-id'})
+    root = Element('root_directory', {'id': inv.root.file_id})
     el.append(root)
 
     def descend(parent_el, ie):
@@ -59,7 +59,8 @@ def write_inventory(inv, f):
     f.write('\n')
 
 
-
+# This writes out an inventory without building an XML tree first,
+# just to see if it's faster.  Not currently used.
 def write_slacker_inventory(inv, f):
     def descend(ie):
         kind = ie.kind
