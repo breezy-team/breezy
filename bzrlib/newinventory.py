@@ -19,8 +19,10 @@ from cElementTree import Element, ElementTree, SubElement
 
 def write_inventory(inv, f):
     el = Element('inventory', {'version': '2'})
+    el.text = '\n'
     
     root = Element('root_directory', {'id': inv.root.file_id})
+    root.tail = root.text = '\n'
     el.append(root)
 
     def descend(parent_el, ie):
@@ -42,6 +44,7 @@ def write_inventory(inv, f):
         parent_el.append(el)
 
         if kind == 'directory':
+            el.text = '\n' # break before having children
             l = ie.children.items()
             l.sort()
             for child_name, child_ie in l:
@@ -50,7 +53,7 @@ def write_inventory(inv, f):
         
     # walk down through inventory, adding all directories
 
-    l = inv._root.children.items()
+    l = inv.root.children.items()
     l.sort()
     for entry_name, ie in l:
         descend(root, ie)
@@ -89,7 +92,7 @@ def write_slacker_inventory(inv, f):
     f.write('<inventory>\n')
     f.write('<root_directory id="bogus-root-id">\n')
 
-    l = inv._root.children.items()
+    l = inv.root.children.items()
     l.sort()
     for entry_name, ie in l:
         descend(ie)
@@ -128,4 +131,4 @@ def read_new_inventory(f):
 
     inv = Inventory()
     for el in root_el:
-        descend(inv._root, el)
+        descend(inv.root, el)
