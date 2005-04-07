@@ -62,12 +62,22 @@ def write_inventory(inv, f):
     f.write('\n')
 
 
+
+def escape_attr(text):
+    return text.replace("&", "&amp;") \
+           .replace("'", "&apos;") \
+           .replace('"', "&quot;") \
+           .replace("<", "&lt;") \
+           .replace(">", "&gt;")
+
+
 # This writes out an inventory without building an XML tree first,
 # just to see if it's faster.  Not currently used.
 def write_slacker_inventory(inv, f):
     def descend(ie):
         kind = ie.kind
-        f.write('<%s name="%s" id="%s" ' % (kind, ie.name, ie.file_id))
+        f.write('<%s name="%s" id="%s" ' % (kind, escape_attr(ie.name),
+                                            escape_attr(ie.file_id)))
 
         if kind == 'file':
             if ie.text_id:
@@ -90,7 +100,7 @@ def write_slacker_inventory(inv, f):
             bailout('unknown InventoryEntry kind %r' % kind)
 
     f.write('<inventory>\n')
-    f.write('<root_directory id="bogus-root-id">\n')
+    f.write('<root_directory id="%s">\n' % escape_attr(inv.root.file_id))
 
     l = inv.root.children.items()
     l.sort()

@@ -454,6 +454,9 @@ def cmd_load_inventory():
     Branch('.').basis_tree().inventory
 
 
+def cmd_dump_inventory():
+    Branch('.').read_working_inventory().write_xml(sys.stdout)
+
 
 def cmd_dump_new_inventory():
     import bzrlib.newinventory
