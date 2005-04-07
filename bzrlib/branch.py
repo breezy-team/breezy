@@ -936,7 +936,7 @@ def is_control_file(filename):
 def _gen_revision_id(when):
     """Return new revision-id."""
     s = '%s-%s-' % (user_email(), compact_date(when))
-    s += hexlify(rand_bytes(12))
+    s += hexlify(rand_bytes(8))
     return s
 
 
@@ -952,7 +952,7 @@ def gen_file_id(name):
 
     name = name.lstrip('.')
 
-    s = hexlify(rand_bytes(12))
+    s = hexlify(rand_bytes(8))
     return '-'.join((name, compact_date(time.time()), s))
 
 
