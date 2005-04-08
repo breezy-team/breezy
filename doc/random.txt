@@ -251,3 +251,21 @@ those operations should be *extremely* easy.
   be modified would be enough to guide the add and commit.
   
   Given this we might be able to import patches at 1/second or better.
+
+
+----
+
+When sending patches by email (optionall) send each one as a separate
+mail, with a sequence number [%03d/%03d] at the start of the Subject.
+See mail from linus 2005-04-07.
+
+http://linux.yyz.us/patch-format.html
+
+http://www.zip.com.au/~akpm/linux/patches/stuff/tpp.txt
+
+----
+
+dwmw2 (2005-04-07) 
+
+reorder patches by cherry-picking them from a main development tree
+before sending them on.
