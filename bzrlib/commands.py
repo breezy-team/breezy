@@ -45,7 +45,7 @@ Interesting commands::
        Make files versioned.
   bzr log
        Show revision history.
-  bzr diff
+  bzr diff [FILE...]
        Show changes from last revision to working copy.
   bzr commit -m 'MESSAGE'
        Store current state as new revision.
@@ -325,13 +325,16 @@ def cmd_init():
     Branch('.', init=True)
 
 
-def cmd_diff(revision=None):
+def cmd_diff(revision=None, file_list=None):
     """bzr diff: Show differences in working tree.
     
-usage: bzr diff [-r REV]
+usage: bzr diff [-r REV] [FILE...]
 
 --revision REV
     Show changes since REV, rather than predecessor.
+
+If files are listed, only the changes in those files are listed.
+Otherwise, all changes for the tree are listed.
 
 TODO: Given two revision arguments, show the difference between them.
 
@@ -340,7 +343,9 @@ TODO: Allow diff across branches.
 TODO: Option to use external diff command; could be GNU diff, wdiff,
 or a graphical diff.
 
-TODO: Diff selected files.
+TODO: If a directory is given, diff everything under that.
+
+TODO: Selected-file diff is inefficient and doesn't show you deleted files.
 """
 
     ## TODO: Shouldn't be in the cmd function.
@@ -367,8 +372,15 @@ TODO: Diff selected files.
     # be usefully made into a much faster special case.
 
     # TODO: Better to return them in sorted order I think.
+
+    # FIXME: If given a file list, compare only those files rather
+    # than comparing everything and then throwing stuff away.
     
     for file_state, fid, old_name, new_name, kind in bzrlib.diff_trees(old_tree, new_tree):
+
+        if file_list and new_name not in file_list:
+            continue
+        
         # Don't show this by default; maybe do it if an option is passed
         # idlabel = '      {%s}' % fid
         idlabel = ''
@@ -758,7 +770,7 @@ cmd_args = {
     'add':                    ['file+'],
     'cat':                    ['filename'],
     'commit':                 [],
-    'diff':                   [],
+    'diff':                   ['file*'],
     'export':                 ['revno', 'dest'],
     'file-id':                ['filename'],
     'file-id-path':           ['filename'],
@@ -867,8 +879,12 @@ def _match_args(cmd, args):
         if ap[-1] == '?':
             if args:
                 argdict[argname] = args.pop(0)
-        elif ap[-1] == '*':
-            raise BzrError("arg form %r not implemented yet" % ap)
+        elif ap[-1] == '*': # all remaining arguments
+            if args:
+                argdict[argname + '_list'] = args[:]
+                args = []
+            else:
+                argdict[argname + '_list'] = None
         elif ap[-1] == '+':
             if not args:
                 bailout("command %r needs one or more %s"

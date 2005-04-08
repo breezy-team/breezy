@@ -1,6 +1,9 @@
 bzr-0.0.4  NOT RELEASED YET
 
+  ENHANCEMENTS:
 
+    * bzr diff optionally takes a list of files to diff.  Still a bit
+      basic.  Patch from QuantumG.
 
 
 bzr-0.0.3  2005-04-06
