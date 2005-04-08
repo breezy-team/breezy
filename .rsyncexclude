@@ -1,0 +1,13 @@
+*.pyc
+*.pyo
+*~
+# arch can bite me
+{arch}
+.arch-ids
+,,*
+++*
+/doc/*.html
+*.tmp
+bzr-test.log
+[#]*#
+.#*
