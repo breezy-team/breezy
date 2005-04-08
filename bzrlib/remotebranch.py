@@ -32,16 +32,24 @@ from inventory import Inventory
 # h = HTTPConnection('localhost:8000')
 # h = HTTPConnection('bazaar-ng.org')
 
+# velocitynet.com.au transparently proxies connections and thereby
+# breaks keep-alive -- sucks!
 
-# prefix = 'http://localhost:8000'
-prefix = 'http://bazaar-ng.org/bzr/main/'
+
+import urlgrabber.keepalive
+urlgrabber.keepalive.DEBUG = 2
+
+import urlgrabber
+
+prefix = 'http://localhost:8000'
+# prefix = 'http://bazaar-ng.org/bzr/main/'
 
 def get_url(path, compressed=False):
     try:
         url = prefix + path
         if compressed:
             url += '.gz'
-        url_f = urllib2.urlopen(url)
+        url_f = urlgrabber.urlopen(url, keepalive=1, close_connection=0)
         if not compressed:
             return url_f
         else:
