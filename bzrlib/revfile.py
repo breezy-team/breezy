@@ -203,7 +203,15 @@ class Revfile:
         self._check_index(base)
         base_text = self.get(base)
         data = mdiff.bdiff(base_text, text)
-        return self._add_common(text_sha, data, base)
+        
+        # If the delta is larger than the text, we might as well just
+        # store the text.  (OK, the delta might be more compressible,
+        # but the overhead of applying it probably still makes it
+        # bad.)
+        if len(data) >= len(text):
+            return self._add_full_text(text, text_sha)
+        else:
+            return self._add_common(text_sha, data, base)
 
 
     def add(self, text, base=_NO_RECORD):
