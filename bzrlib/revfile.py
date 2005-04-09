@@ -45,7 +45,7 @@ records:
 
 total 48 bytes.
 
-The header is also 48 bytes for tidyness.
+The header is also 48 bytes for tidyness and easy calculation.
 
 Both the index and the text are only ever appended to; a consequence
 is that sequence numbers are stable references.  But not every
@@ -73,6 +73,7 @@ _RECORDSIZE = 48
 
 _HEADER = "bzr revfile v1\n"
 _HEADER = _HEADER + ('\xff' * (_RECORDSIZE - len(_HEADER)))
+_NO_BASE = 0xFFFFFFFFL
 
 class RevfileError(Exception):
     pass
@@ -141,7 +142,7 @@ class Revfile:
         self.datafile.flush()
 
         entry = sha.new(t).digest()
-        entry += struct.pack(">llll12x", 0, 0, data_offset, len(t))
+        entry += struct.pack(">IIII12x", 0xFFFFFFFFL, 0, data_offset, len(t))
         assert len(entry) == _RECORDSIZE
 
         self.idxfile.write(entry)
@@ -159,7 +160,7 @@ class Revfile:
         if len(rec) != _RECORDSIZE:
             raise RevfileError("short read of %d bytes getting index %d from %r"
                                % (len(rec), idx, self.basename))
-        return struct.unpack(">20sllll12x", rec)
+        return struct.unpack(">20sIIII12x", rec)
 
         
         
@@ -185,14 +186,21 @@ class Revfile:
         open(self.indexfile(), "a").write(entry)
         open(self.datafile(), "a").write(data)
 
-    def dump(self):
-        print '%-8s %-40s %-8s %-8s %-8s %-8s' \
-              % tuple('idx sha1 base flags offset len'.split())
-        print '-'*8, '-'*40, ('-'*8 + ' ')*4
+    def dump(self, f=sys.stdout):
+        f.write('%-8s %-40s %-8s %-8s %-8s %-8s\n' 
+                % tuple('idx sha1 base flags offset len'.split()))
+        f.write('-------- ---------------------------------------- ')
+        f.write('-------- -------- -------- --------\n')
+
         for i in range(len(self)):
             rec = self[i]
-            print "#%-7d %40s #%-7d %08x %8d %8d " \
-                  % (i, hexlify(rec[0]), rec[1], rec[2], rec[3], rec[4])
+            f.write("#%-7d %40s " % (i, hexlify(rec[0])))
+            if rec[1] == _NO_BASE:
+                f.write("(none)   ")
+            else:
+                f.write("#%-7d " % rec[1])
+                
+            f.write("%8x %8d %8d\n" % (rec[2], rec[3], rec[4]))
         
 
 
