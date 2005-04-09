@@ -109,8 +109,6 @@ class Revfile:
         idxname = basename + '.irev'
         dataname = basename + '.drev'
 
-        self.idxpos = 0L
-
         idx_exists = os.path.exists(idxname)
         data_exists = os.path.exists(dataname)
 
