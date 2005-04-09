@@ -132,28 +132,6 @@ class Revfile:
                                    % (h, self.basename))
 
 
-
-    def revision(self, rev):
-        base = self.index[rev][0]
-        start = self.index[base][1]
-        end = self.index[rev][1] + self.index[rev][2]
-        f = open(self.datafile())
-
-        f.seek(start)
-        data = f.read(end - start)
-
-        last = self.index[base][2]
-        text = zlib.decompress(data[:last])
-
-        for r in range(base + 1, rev + 1):
-            s = self.index[r][2]
-            b = zlib.decompress(data[last:last + s])
-            text = mdiff.bpatch(text, b)
-            last = last + s
-
-        return text    
-
-
     def _check_index(self, idx):
         if idx < 0 or idx > len(self):
             raise RevfileError("invalid index %r" % idx)
