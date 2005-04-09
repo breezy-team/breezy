@@ -388,6 +388,12 @@ class Revfile:
                 f.write("#%-7d " % rec[1])
                 
             f.write("%8x %8d %8d\n" % (rec[2], rec[3], rec[4]))
+
+    def total_text_size(self):
+        t = 0L
+        for idx in range(len(self)):
+            t += len(self.get(idx))
+        return t
         
 
 
@@ -439,10 +445,7 @@ def main(argv):
         else:
             print idx
     elif cmd == 'total-text-size':
-        t = 0L
-        for idx in range(len(r)):
-            t += len(r.get(idx))
-        print t
+        print r.total_text_size()
     else:
         sys.stderr.write("unknown command %r\n" % cmd)
         return 1
