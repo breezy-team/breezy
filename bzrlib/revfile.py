@@ -381,19 +381,37 @@ class Revfile:
         """Index by sequence id returns the index field"""
         ## TODO: Can avoid seek if we just moved there...
         self._seek_index(idx)
-        return self._read_next_index()
+        idxrec = self._read_next_index()
+        if idxrec == None:
+            raise IndexError()
+        else:
+            return idxrec
 
 
     def _seek_index(self, idx):
         if idx < 0:
             raise RevfileError("invalid index %r" % idx)
         self.idxfile.seek((idx + 1) * _RECORDSIZE)
+
+
+
+    def __iter__(self):
+        """Read back all index records.
+
+        Do not seek the index file while this is underway!"""
+        sys.stderr.write(" ** iter called ** \n")
+        self._seek_index(0)
+        while True:
+            idxrec = self._read_next_index()
+            if not idxrec:
+                break
+            yield idxrec
         
 
     def _read_next_index(self):
         rec = self.idxfile.read(_RECORDSIZE)
         if not rec:
-            raise IndexError("end of index file")
+            return None
         elif len(rec) != _RECORDSIZE:
             raise RevfileError("short read of %d bytes getting index %d from %r"
                                % (len(rec), idx, self.basename))
