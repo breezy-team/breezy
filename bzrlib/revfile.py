@@ -145,27 +145,33 @@ class Revfile:
             if idxrec[I_SHA] == s:
                 return idx
         else:
-            return _NO_RECORD        
+            return _NO_RECORD
 
 
-    def _add_common(self, text_sha, data, base):
+
+    def _add_compressed(self, text_sha, data, base, compress):
+        # well, maybe compress
+        flags = 0
+        if compress:
+            data_len = len(data)
+            if data_len > 50:
+                # don't do compression if it's too small; it's unlikely to win
+                # enough to be worthwhile
+                compr_data = zlib.compress(data)
+                compr_len = len(compr_data)
+                if compr_len < data_len:
+                    data = compr_data
+                    flags = FL_GZIP
+                    ##print '- compressed %d -> %d, %.1f%%' \
+                    ##      % (data_len, compr_len, float(compr_len)/float(data_len) * 100.0)
+        return self._add_raw(text_sha, data, base, flags)
+        
+
+
+    def _add_raw(self, text_sha, data, base, flags):
         """Add pre-processed data, can be either full text or delta.
 
         This does the compression if that makes sense."""
-
-        flags = 0
-        data_len = len(data)
-        if data_len > 50:
-            # don't do compression if it's too small; it's unlikely to win
-            # enough to be worthwhile
-            compr_data = zlib.compress(data)
-            compr_len = len(compr_data)
-            if compr_len < data_len:
-                data = compr_data
-                flags = FL_GZIP
-                print '- compressed %d -> %d, %.1f%%' \
-                      % (data_len, compr_len, float(compr_len)/float(data_len) * 100.0)
-        
         idx = len(self)
         self.datafile.seek(0, 2)        # to end
         self.idxfile.seek(0, 2)
@@ -195,10 +201,10 @@ class Revfile:
         This is not compressed against any reference version.
 
         Returns the index for that text."""
-        return self._add_common(text_sha, text, _NO_RECORD)
+        return self._add_compressed(text_sha, text, _NO_RECORD, compress)
 
 
-    def _add_delta(self, text, text_sha, base):
+    def _add_delta(self, text, text_sha, base, compress):
         """Add a text stored relative to a previous text."""
         self._check_index(base)
         base_text = self.get(base)
@@ -209,16 +215,19 @@ class Revfile:
         # but the overhead of applying it probably still makes it
         # bad, and I don't want to compress both of them to find out.)
         if len(data) >= len(text):
-            return self._add_full_text(text, text_sha)
+            return self._add_full_text(text, text_sha, compress)
         else:
-            return self._add_common(text_sha, data, base)
+            return self._add_compressed(text_sha, data, base, compress)
 
 
-    def add(self, text, base=_NO_RECORD):
+    def add(self, text, base=_NO_RECORD, compress=True):
         """Add a new text to the revfile.
 
         If the text is already present them its existing id is
         returned and the file is not changed.
+
+        If compress is true then gzip compression will be used if it
+        reduces the size.
 
         If a base index is specified, that text *may* be used for
         delta compression of the new text.  Delta compression will
@@ -234,9 +243,9 @@ class Revfile:
             return idx                  # already present
         
         if base == _NO_RECORD:
-            return self._add_full_text(text, text_sha)
+            return self._add_full_text(text, text_sha, compress)
         else:
-            return self._add_delta(text, text_sha, base)
+            return self._add_delta(text, text_sha, base, compress)
 
 
 
