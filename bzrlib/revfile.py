@@ -117,14 +117,16 @@ class LimitHitException(Exception):
     pass
 
 class Revfile:
-    def __init__(self, basename):
-        # TODO: Option to open readonly
-
+    def __init__(self, basename, mode):
         # TODO: Lock file  while open
 
         # TODO: advise of random access
 
         self.basename = basename
+
+        if mode not in ['r', 'w']:
+            raise RevfileError("invalid open mode %r" % mode)
+        self.mode = mode
         
         idxname = basename + '.irev'
         dataname = basename + '.drev'
@@ -136,6 +138,9 @@ class Revfile:
             raise RevfileError("half-assed revfile")
         
         if not idx_exists:
+            if mode == 'r':
+                raise RevfileError("Revfile %r does not exist" % basename)
+            
             self.idxfile = open(idxname, 'w+b')
             self.datafile = open(dataname, 'w+b')
             
@@ -143,8 +148,13 @@ class Revfile:
             self.idxfile.write(_HEADER)
             self.idxfile.flush()
         else:
-            self.idxfile = open(idxname, 'r+b')
-            self.datafile = open(dataname, 'r+b')
+            if mode == 'r':
+                diskmode = 'rb'
+            else:
+                diskmode = 'r+b'
+                
+            self.idxfile = open(idxname, diskmode)
+            self.datafile = open(dataname, diskmode)
             
             h = self.idxfile.read(_RECORDSIZE)
             if h != _HEADER:
@@ -155,6 +165,10 @@ class Revfile:
     def _check_index(self, idx):
         if idx < 0 or idx > len(self):
             raise RevfileError("invalid index %r" % idx)
+
+    def _check_write(self):
+        if self.mode != 'w':
+            raise RevfileError("%r is open readonly" % self.basename)
 
 
     def find_sha(self, s):
@@ -259,6 +273,8 @@ class Revfile:
         only be used if it would be a size win and if the existing
         base is not at too long of a delta chain already.
         """
+        self._check_write()
+        
         text_sha = sha.new(text).digest()
 
         idx = self.find_sha(text_sha)
@@ -417,8 +433,6 @@ class Revfile:
 
 
 def main(argv):
-    r = Revfile("testrev")
-
     try:
         cmd = argv[1]
     except IndexError:
@@ -431,14 +445,18 @@ def main(argv):
                          "       revfile last\n")
         return 1
 
+    def rw():
+        return Revfile('testrev', 'w')
+
+    def ro():
+        return Revfile('testrev', 'r')
+
     if cmd == 'add':
-        new_idx = r.add(sys.stdin.read())
-        print new_idx
+        print rw().add(sys.stdin.read())
     elif cmd == 'add-delta':
-        new_idx = r.add(sys.stdin.read(), int(argv[2]))
-        print new_idx
+        print rw().add(sys.stdin.read(), int(argv[2]))
     elif cmd == 'dump':
-        r.dump()
+        ro().dump()
     elif cmd == 'get':
         try:
             idx = int(argv[2])
@@ -450,7 +468,7 @@ def main(argv):
             sys.stderr.write("invalid index %r\n" % idx)
             return 1
 
-        sys.stdout.write(r.get(idx))
+        sys.stdout.write(ro().get(idx))
     elif cmd == 'find-sha':
         try:
             s = unhexlify(argv[2])
@@ -458,16 +476,16 @@ def main(argv):
             sys.stderr.write("usage: revfile find-sha HEX\n")
             return 1
 
-        idx = r.find_sha(s)
+        idx = ro().find_sha(s)
         if idx == _NO_RECORD:
             sys.stderr.write("no such record\n")
             return 1
         else:
             print idx
     elif cmd == 'total-text-size':
-        print r.total_text_size()
+        print ro().total_text_size()
     elif cmd == 'last':
-        print len(r)-1
+        print len(ro())-1
     else:
         sys.stderr.write("unknown command %r\n" % cmd)
         return 1
