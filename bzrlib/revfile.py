@@ -225,7 +225,6 @@ class Revfile:
         only be used if it would be a size win and if the existing
         base is not at too long of a delta chain already.
         """
-        
         text_sha = sha.new(text).digest()
 
         idx = self.find_sha(text_sha)
@@ -370,10 +369,10 @@ def main(argv):
 
     if cmd == 'add':
         new_idx = r.add(sys.stdin.read())
-        print 'added idx %d' % new_idx
+        print new_idx
     elif cmd == 'add-delta':
         new_idx = r.add(sys.stdin.read(), int(argv[2]))
-        print 'added idx %d' % new_idx
+        print new_idx
     elif cmd == 'dump':
         r.dump()
     elif cmd == 'get':
