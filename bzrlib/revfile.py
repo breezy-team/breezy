@@ -215,10 +215,23 @@ class Revfile:
 
 
     def add(self, text, base=_NO_RECORD):
+        """Add a new text to the revfile.
+
+        If the text is already present them its existing id is
+        returned and the file is not changed.
+
+        If a base index is specified, that text *may* be used for
+        delta compression of the new text.  Delta compression will
+        only be used if it would be a size win and if the existing
+        base is not at too long of a delta chain already.
+        """
+        
         text_sha = sha.new(text).digest()
 
         idx = self.find_sha(text_sha)
         if idx != _NO_RECORD:
+            # TODO: Optional paranoid mode where we read out that record and make sure
+            # it's the same, in case someone ever breaks SHA-1.
             return idx                  # already present
         
         if base == _NO_RECORD:
