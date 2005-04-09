@@ -95,6 +95,12 @@ class RevfileError(Exception):
 
 class Revfile:
     def __init__(self, basename):
+        # TODO: Option to open readonly
+
+        # TODO: Lock file  while open
+
+        # TODO: advise of random access
+
         self.basename = basename
         
         idxname = basename + '.irev'
@@ -115,7 +121,7 @@ class Revfile:
             self.idxfile.flush()
         else:
             self.idxfile = open(idxname, 'r+b')
-            self.dataname = open(dataname, 'r+b')
+            self.datafile = open(dataname, 'r+b')
             
             h = self.idxfile.read(_RECORDSIZE)
             if h != _HEADER:
@@ -130,7 +136,7 @@ class Revfile:
             return -1
         if l % _RECORDSIZE:
             raise RevfileError("bad length %d on index of %r" % (l, self.basename))
-        return (l / _RECORDSIZE) - 1
+        return (l / _RECORDSIZE) - 2
 
 
     def revision(self, rev):
@@ -163,7 +169,7 @@ class Revfile:
         idx = self.last_idx() + 1
         self.datafile.seek(0, 2)        # to end
         self.idxfile.seek(0, 2)
-        assert self.idxfile.tell() == _RECORDSIZE * idx
+        assert self.idxfile.tell() == _RECORDSIZE * (idx + 1)
         data_offset = self.datafile.tell()
 
         assert isinstance(t, str) # not unicode or anything wierd
@@ -202,7 +208,7 @@ class Revfile:
 
 
     def __len__(self):
-        return int(self.last_idx())
+        return int(self.last_idx()) + 1
 
 
     def __getitem__(self, idx):
@@ -280,7 +286,11 @@ def main(argv):
     elif argv[1] == 'dump':
         r.dump()
     elif argv[1] == 'get':
-        sys.stdout.write(r._get_full_text(int(argv[2])))
+        try:
+            sys.stdout.write(r._get_full_text(int(argv[2])))
+        except IndexError:
+            sys.stderr.write("no such record\n")
+            sys.exit(1)
     else:
         sys.stderr.write("unknown command %r\n" % argv[1])
         sys.exit(1)
