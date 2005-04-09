@@ -94,11 +94,16 @@ I_LEN = 4
 
 FL_GZIP = 1
 
+# maximum number of patches in a row before recording a whole text.
+# intentionally pretty low for testing purposes.
+CHAIN_LIMIT = 2
+
 
 class RevfileError(Exception):
     pass
 
-
+class LimitHitException(Exception):
+    pass
 
 class Revfile:
     def __init__(self, basename):
@@ -199,7 +204,7 @@ class Revfile:
         
 
 
-    def _add_full_text(self, text, text_sha):
+    def _add_full_text(self, text, text_sha, compress):
         """Add a full text to the file.
 
         This is not compressed against any reference version.
@@ -211,7 +216,12 @@ class Revfile:
     def _add_delta(self, text, text_sha, base, compress):
         """Add a text stored relative to a previous text."""
         self._check_index(base)
-        base_text = self.get(base)
+        
+        try:
+            base_text = self.get(base, recursion_limit=CHAIN_LIMIT)
+        except LimitHitException:
+            return self._add_full_text(text, text_sha, compress)
+        
         data = mdiff.bdiff(base_text, text)
         
         # If the delta is larger than the text, we might as well just
@@ -253,13 +263,21 @@ class Revfile:
 
 
 
-    def get(self, idx):
+    def get(self, idx, recursion_limit=None):
+        """Retrieve text of a previous revision.
+
+        If recursion_limit is an integer then walk back at most that
+        many revisions and then raise LimitHitException, indicating
+        that we ought to record a new file text instead of another
+        delta.  Don't use this when trying to get out an existing
+        revision."""
+        
         idxrec = self[idx]
         base = idxrec[I_BASE]
         if base == _NO_RECORD:
             text = self._get_full_text(idx, idxrec)
         else:
-            text = self._get_patched(idx, idxrec)
+            text = self._get_patched(idx, idxrec, recursion_limit)
 
         if sha.new(text).digest() != idxrec[I_SHA]:
             raise RevfileError("corrupt SHA-1 digest on record %d"
@@ -301,12 +319,19 @@ class Revfile:
         return text
 
 
-    def _get_patched(self, idx, idxrec):
+    def _get_patched(self, idx, idxrec, recursion_limit):
         base = idxrec[I_BASE]
         assert base >= 0
         assert base < idx    # no loops!
 
-        base_text = self.get(base)
+        if recursion_limit == None:
+            sub_limit = None
+        else:
+            sub_limit = recursion_limit - 1
+            if sub_limit < 0:
+                raise LimitHitException()
+            
+        base_text = self.get(base, sub_limit)
         patch = self._get_raw(idx, idxrec)
 
         text = mdiff.bpatch(base_text, patch)
