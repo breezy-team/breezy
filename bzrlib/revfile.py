@@ -389,7 +389,15 @@ class Revfile:
                 
             f.write("%8x %8d %8d\n" % (rec[2], rec[3], rec[4]))
 
+
     def total_text_size(self):
+        """Return the sum of sizes of all file texts.
+
+        This is how much space they would occupy if they were stored without
+        delta and gzip compression.
+
+        As a side effect this completely validates the Revfile, checking that all
+        texts can be reproduced with the correct SHA-1."""
         t = 0L
         for idx in range(len(self)):
             t += len(self.get(idx))
