@@ -88,6 +88,8 @@ I_FLAGS = 2
 I_OFFSET = 3
 I_LEN = 4
 
+FL_GZIP = 1
+
 
 class RevfileError(Exception):
     pass
@@ -132,8 +134,6 @@ class Revfile:
                                    % (h, self.basename))
 
 
-        
-
 
     def revision(self, rev):
         base = self.index[rev][0]
@@ -172,8 +172,20 @@ class Revfile:
             return _NO_RECORD        
 
 
-    def _add_common(self, text_sha, data, flags, base):
-        """Add pre-processed data, can be either full text or delta."""
+    def _add_common(self, text_sha, data, base):
+        """Add pre-processed data, can be either full text or delta.
+
+        This does the compression if that makes sense."""
+
+        flags = 0
+        if len(data) > 50:
+            # don't do compression if it's too small; it's unlikely to win
+            # enough to be worthwhile
+            compr_data = zlib.compress(data)
+            if len(compr_data) < len(data):
+                data = compr_data
+                flags = FL_GZIP
+        
         idx = len(self)
         self.datafile.seek(0, 2)        # to end
         self.idxfile.seek(0, 2)
@@ -203,7 +215,7 @@ class Revfile:
         This is not compressed against any reference version.
 
         Returns the index for that text."""
-        return self._add_common(text_sha, text, 0, _NO_RECORD)
+        return self._add_common(text_sha, text, _NO_RECORD)
 
 
     def _add_delta(self, text, text_sha, base):
@@ -211,7 +223,7 @@ class Revfile:
         self._check_index(base)
         base_text = self.get(base)
         data = mdiff.bdiff(base_text, text)
-        return self._add_common(text_sha, data, 0, base)
+        return self._add_common(text_sha, data, base)
 
 
     def add(self, text, base=_NO_RECORD):
@@ -224,7 +236,7 @@ class Revfile:
         if base == _NO_RECORD:
             return self._add_full_text(text, text_sha)
         else:
-            return self._add_delta(self, text, text_sha, base)
+            return self._add_delta(text, text_sha, base)
 
 
     def addrevision(self, text, changeset):
@@ -376,7 +388,7 @@ def main(argv):
         new_idx = r.add(sys.stdin.read())
         print 'added idx %d' % new_idx
     elif cmd == 'add-delta':
-        new_idx = r._add_delta(sys.stdin.read(), int(argv[2]))
+        new_idx = r.add(sys.stdin.read(), int(argv[2]))
         print 'added idx %d' % new_idx
     elif cmd == 'dump':
         r.dump()
