@@ -107,6 +107,8 @@ class Revfile:
         idxname = basename + '.irev'
         dataname = basename + '.drev'
 
+        self.idxpos = 0L
+
         idx_exists = os.path.exists(idxname)
         data_exists = os.path.exists(dataname)
 
@@ -128,6 +130,9 @@ class Revfile:
             if h != _HEADER:
                 raise RevfileError("bad header %r in index of %r"
                                    % (h, self.basename))
+
+
+        
 
 
     def revision(self, rev):
@@ -192,29 +197,36 @@ class Revfile:
         
 
 
-    def _add_full_text(self, text):
+    def _add_full_text(self, text, text_sha):
         """Add a full text to the file.
 
         This is not compressed against any reference version.
 
         Returns the index for that text."""
-        return self._add_common(sha.new(text).digest(), text, 0, _NO_RECORD)
+        return self._add_common(text_sha, text, 0, _NO_RECORD)
 
 
-    def _add_delta(self, text, base):
+    def _add_delta(self, text, text_sha, base):
         """Add a text stored relative to a previous text."""
         self._check_index(base)
-        text_sha = sha.new(text).digest()
         base_text = self.get(base)
         data = mdiff.bdiff(base_text, text)
         return self._add_common(text_sha, data, 0, base)
 
 
-    def add(self, text, base=None):
-        # TODO: check it's not already present?
-        assert 0
+    def add(self, text, base=_NO_RECORD):
+        text_sha = sha.new(text).digest()
 
+        idx = self.find_sha(text_sha)
+        if idx != _NO_RECORD:
+            return idx                  # already present
         
+        if base == _NO_RECORD:
+            return self._add_full_text(text, text_sha)
+        else:
+            return self._add_delta(self, text, text_sha, base)
+
+
     def addrevision(self, text, changeset):
         t = self.tip()
         n = t + 1
@@ -236,6 +248,7 @@ class Revfile:
 
         open(self.indexfile(), "a").write(entry)
         open(self.datafile(), "a").write(data)
+
 
 
     def get(self, idx):
@@ -360,7 +373,7 @@ def main(argv):
         
 
     if cmd == 'add':
-        new_idx = r._add_full_text(sys.stdin.read())
+        new_idx = r.add(sys.stdin.read())
         print 'added idx %d' % new_idx
     elif cmd == 'add-delta':
         new_idx = r._add_delta(sys.stdin.read(), int(argv[2]))
