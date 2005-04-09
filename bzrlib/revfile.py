@@ -178,13 +178,17 @@ class Revfile:
         This does the compression if that makes sense."""
 
         flags = 0
-        if len(data) > 50:
+        data_len = len(data)
+        if data_len > 50:
             # don't do compression if it's too small; it's unlikely to win
             # enough to be worthwhile
             compr_data = zlib.compress(data)
-            if len(compr_data) < len(data):
+            compr_len = len(compr_data)
+            if compr_len < data_len:
                 data = compr_data
                 flags = FL_GZIP
+                print '- compressed %d -> %d, %.1f%%' \
+                      % (data_len, compr_len, float(compr_len)/float(data_len) * 100.0)
         
         idx = len(self)
         self.datafile.seek(0, 2)        # to end
