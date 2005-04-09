@@ -107,8 +107,7 @@ I_LEN = 4
 FL_GZIP = 1
 
 # maximum number of patches in a row before recording a whole text.
-# intentionally pretty low for testing purposes.
-CHAIN_LIMIT = 2
+CHAIN_LIMIT = 50
 
 
 class RevfileError(Exception):
