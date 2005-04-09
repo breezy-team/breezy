@@ -401,13 +401,9 @@ def main(argv):
                          "       revfile add\n"
                          "       revfile add-delta BASE\n"
                          "       revfile get IDX\n"
-                         "       revfile find-sha HEX\n")
+                         "       revfile find-sha HEX\n"
+                         "       revfile total-text-size\n")
         return 1
-
-
-    # TODO: Something to show compression ratio, e.g. total size of
-    # all files vs size of index and data files.
-        
 
     if cmd == 'add':
         new_idx = r.add(sys.stdin.read())
@@ -442,7 +438,11 @@ def main(argv):
             return 1
         else:
             print idx
-            
+    elif cmd == 'total-text-size':
+        t = 0L
+        for idx in range(len(r)):
+            t += len(r.get(idx))
+        print t
     else:
         sys.stderr.write("unknown command %r\n" % cmd)
         return 1
