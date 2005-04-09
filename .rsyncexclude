@@ -11,3 +11,5 @@
 bzr-test.log
 [#]*#
 .#*
+testrev.*
+/tmp
