@@ -61,6 +61,12 @@ Some of the reserved fields could be used to implement a (semi?)
 balanced tree indexed by SHA1 so we can much more efficiently find the
 index associated with a particular hash.  For 100,000 revs we would be
 able to find it in about 17 random reads, which is not too bad.
+
+This performs pretty well except when trying to calculate deltas of
+really large files.  For that the main thing would be to plug in
+something faster than difflib, which is after all pure Python.
+Another approach is to just store the gzipped full text of big files,
+though perhaps that's too perverse?
 """
  
 
@@ -72,6 +78,12 @@ able to find it in about 17 random reads, which is not too bad.
 
 # TODO: Some kind of faster lookup of SHAs?  The bad thing is that probably means
 # rewriting existing records, which is not so nice.
+
+# TODO: Something to check that regions identified in the index file
+# completely butt up and do not overlap.  Strictly it's not a problem
+# if there are gaps and that can happen if we're interrupted while
+# writing to the datafile.  Overlapping would be very bad though.
+
 
 
 import sys, zlib, struct, mdiff, stat, os, sha
