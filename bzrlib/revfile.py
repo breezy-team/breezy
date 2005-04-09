@@ -129,16 +129,6 @@ class Revfile:
                                    % (h, self.basename))
 
 
-    def last_idx(self):
-        """Return last index already present, or -1 if none."""
-        l = os.fstat(self.idxfile.fileno())[stat.ST_SIZE]
-        if l == 0:
-            return -1
-        if l % _RECORDSIZE:
-            raise RevfileError("bad length %d on index of %r" % (l, self.basename))
-        return (l / _RECORDSIZE) - 2
-
-
     def revision(self, rev):
         base = self.index[rev][0]
         start = self.index[base][1]
@@ -166,7 +156,7 @@ class Revfile:
         This is not compressed against any reference version.
 
         Returns the index for that text."""
-        idx = self.last_idx() + 1
+        idx = len(self)
         self.datafile.seek(0, 2)        # to end
         self.idxfile.seek(0, 2)
         assert self.idxfile.tell() == _RECORDSIZE * (idx + 1)
@@ -208,7 +198,13 @@ class Revfile:
 
 
     def __len__(self):
-        return int(self.last_idx()) + 1
+        """Return number of revisions."""
+        l = os.fstat(self.idxfile.fileno())[stat.ST_SIZE]
+        if l % _RECORDSIZE:
+            raise RevfileError("bad length %d on index of %r" % (l, self.basename))
+        if l < _RECORDSIZE:
+            raise RevfileError("no header present in index of %r" % (self.basename))
+        return int(l / _RECORDSIZE) - 1
 
 
     def __getitem__(self, idx):
@@ -274,28 +270,38 @@ class Revfile:
 
 def main(argv):
     r = Revfile("testrev")
-    if len(argv) < 2:
+
+    try:
+        cmd = argv[1]
+    except IndexError:
         sys.stderr.write("usage: revfile dump\n"
                          "       revfile add\n"
                          "       revfile get IDX\n")
-        sys.exit(1)
+        return 1
         
-    if argv[1] == 'add':
+
+    if cmd == 'add':
         new_idx = r.add_full_text(sys.stdin.read())
         print 'added idx %d' % new_idx
-    elif argv[1] == 'dump':
+    elif cmd == 'dump':
         r.dump()
-    elif argv[1] == 'get':
+    elif cmd == 'get':
         try:
-            sys.stdout.write(r._get_full_text(int(argv[2])))
+            idx = int(argv[2])
         except IndexError:
-            sys.stderr.write("no such record\n")
-            sys.exit(1)
+            sys.stderr.write("usage: revfile get IDX\n")
+            return 1
+
+        if idx < 0 or idx >= len(r):
+            sys.stderr.write("invalid index %r\n" % idx)
+            return 1
+
+        sys.stdout.write(r._get_full_text(idx))
     else:
-        sys.stderr.write("unknown command %r\n" % argv[1])
-        sys.exit(1)
+        sys.stderr.write("unknown command %r\n" % cmd)
+        return 1
     
 
 if __name__ == '__main__':
     import sys
-    main(sys.argv)
+    sys.exit(main(sys.argv) or 0)
