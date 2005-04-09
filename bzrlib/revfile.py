@@ -207,7 +207,7 @@ class Revfile:
         # If the delta is larger than the text, we might as well just
         # store the text.  (OK, the delta might be more compressible,
         # but the overhead of applying it probably still makes it
-        # bad.)
+        # bad, and I don't want to compress both of them to find out.)
         if len(data) >= len(text):
             return self._add_full_text(text, text_sha)
         else:
