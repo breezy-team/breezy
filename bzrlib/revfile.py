@@ -243,29 +243,6 @@ class Revfile:
             return self._add_delta(text, text_sha, base)
 
 
-    def addrevision(self, text, changeset):
-        t = self.tip()
-        n = t + 1
-
-        if not n % factor:
-            data = zlib.compress(text)
-            base = n
-        else:
-            prev = self.revision(t)
-            data = zlib.compress(mdiff.bdiff(prev, text))
-            base = self.index[t][0]
-
-        offset = 0
-        if t >= 0:
-            offset = self.index[t][1] + self.index[t][2]
-
-        self.index.append((base, offset, len(data), changeset))
-        entry = struct.pack(">llll", base, offset, len(data), changeset)
-
-        open(self.indexfile(), "a").write(entry)
-        open(self.datafile(), "a").write(data)
-
-
 
     def get(self, idx):
         idxrec = self[idx]
