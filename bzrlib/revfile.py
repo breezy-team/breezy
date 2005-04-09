@@ -1,7 +1,8 @@
 #! /usr/bin/env python
 
-# (C) 2005 Matt Mackall
+# (C) 2005 Canonical Ltd
 
+# based on an idea by Matt Mackall
 # modified to squish into bzr by Martin Pool
 
 # This program is free software; you can redistribute it and/or modify
@@ -154,10 +155,13 @@ class Revfile:
     def __len__(self):
         return int(self.last_idx())
 
+
     def __getitem__(self, idx):
         self.idxfile.seek((idx + 1) * _RECORDSIZE)
         rec = self.idxfile.read(_RECORDSIZE)
-        if len(rec) != _RECORDSIZE:
+        if not rec:
+            raise IndexError("no record %d in index for %r" % (idx, self.basename))
+        elif len(rec) != _RECORDSIZE:
             raise RevfileError("short read of %d bytes getting index %d from %r"
                                % (len(rec), idx, self.basename))
         return struct.unpack(">20sIIII12x", rec)
@@ -192,8 +196,7 @@ class Revfile:
         f.write('-------- ---------------------------------------- ')
         f.write('-------- -------- -------- --------\n')
 
-        for i in range(len(self)):
-            rec = self[i]
+        for i, rec in enumerate(self):
             f.write("#%-7d %40s " % (i, hexlify(rec[0])))
             if rec[1] == _NO_BASE:
                 f.write("(none)   ")
