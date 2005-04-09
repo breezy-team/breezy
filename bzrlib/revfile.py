@@ -71,7 +71,7 @@ able to find it in about 17 random reads, which is not too bad.
 
 
 import sys, zlib, struct, mdiff, stat, os, sha
-from binascii import hexlify
+from binascii import hexlify, unhexlify
 
 factor = 10
 
@@ -79,7 +79,7 @@ _RECORDSIZE = 48
 
 _HEADER = "bzr revfile v1\n"
 _HEADER = _HEADER + ('\xff' * (_RECORDSIZE - len(_HEADER)))
-_NO_BASE = 0xFFFFFFFFL
+_NO_RECORD = 0xFFFFFFFFL
 
 # fields in the index record
 I_SHA = 0
@@ -150,7 +150,7 @@ class Revfile:
         return text    
 
 
-    def add_full_text(self, t):
+    def _add_full_text(self, t):
         """Add a full text to the file.
 
         This is not compressed against any reference version.
@@ -177,57 +177,27 @@ class Revfile:
         return idx
 
 
-    def _get_full_text(self, idx):
-        idxrec = self[idx]
-        assert idxrec[I_FLAGS] == 0
-        assert idxrec[I_BASE] == _NO_BASE
+    def _check_index(self, idx):
+        if idx < 0 or idx > len(self):
+            raise RevfileError("invalid index %r" % idx)
 
-        l = idxrec[I_LEN]
-        if l == 0:
-            return ''
 
-        self.datafile.seek(idxrec[I_OFFSET])
-
-        text = self.datafile.read(l)
-        if len(text) != l:
-            raise RevfileError("short read %d of %d "
-                               "getting text for record %d in %r"
-                               % (len(text), l, idx, self.basename))
+    def find_sha(self, s):
+        assert isinstance(s, str)
+        assert len(s) == 20
         
-        return text
+        for idx, idxrec in enumerate(self):
+            if idxrec[I_SHA] == s:
+                return idx
+        else:
+            return _NO_RECORD        
 
 
-    def __len__(self):
-        """Return number of revisions."""
-        l = os.fstat(self.idxfile.fileno())[stat.ST_SIZE]
-        if l % _RECORDSIZE:
-            raise RevfileError("bad length %d on index of %r" % (l, self.basename))
-        if l < _RECORDSIZE:
-            raise RevfileError("no header present in index of %r" % (self.basename))
-        return int(l / _RECORDSIZE) - 1
+    def _add_diff(self, text, base):
+        """Add a text stored relative to a previous text."""
+        self._check_index(base)
+        text_sha = sha.new(text).digest()
 
-
-    def __getitem__(self, idx):
-        """Index by sequence id returns the index field"""
-        self._seek_index(idx)
-        return self._read_next_index()
-
-
-    def _seek_index(self, idx):
-        self.idxfile.seek((idx + 1) * _RECORDSIZE)
-        
-
-    def _read_next_index(self):
-        rec = self.idxfile.read(_RECORDSIZE)
-        if not rec:
-            raise IndexError("end of index file")
-        elif len(rec) != _RECORDSIZE:
-            raise RevfileError("short read of %d bytes getting index %d from %r"
-                               % (len(rec), idx, self.basename))
-        
-        return struct.unpack(">20sIIII12x", rec)
-
-        
         
     def addrevision(self, text, changeset):
         t = self.tip()
@@ -251,6 +221,62 @@ class Revfile:
         open(self.indexfile(), "a").write(entry)
         open(self.datafile(), "a").write(data)
 
+    def _get_full_text(self, idx):
+        idxrec = self[idx]
+        assert idxrec[I_FLAGS] == 0
+        assert idxrec[I_BASE] == _NO_RECORD
+
+        l = idxrec[I_LEN]
+        if l == 0:
+            return ''
+
+        self.datafile.seek(idxrec[I_OFFSET])
+
+        text = self.datafile.read(l)
+        if len(text) != l:
+            raise RevfileError("short read %d of %d "
+                               "getting text for record %d in %r"
+                               % (len(text), l, idx, self.basename))
+
+        if sha.new(text).digest() != idxrec[I_SHA]:
+            raise RevfileError("corrupt SHA-1 digest on record %d"
+                               % idx)
+        
+        return text
+
+
+    def __len__(self):
+        """Return number of revisions."""
+        l = os.fstat(self.idxfile.fileno())[stat.ST_SIZE]
+        if l % _RECORDSIZE:
+            raise RevfileError("bad length %d on index of %r" % (l, self.basename))
+        if l < _RECORDSIZE:
+            raise RevfileError("no header present in index of %r" % (self.basename))
+        return int(l / _RECORDSIZE) - 1
+
+
+    def __getitem__(self, idx):
+        """Index by sequence id returns the index field"""
+        ## TODO: Can avoid seek if we just moved there...
+        self._seek_index(idx)
+        return self._read_next_index()
+
+
+    def _seek_index(self, idx):
+        self.idxfile.seek((idx + 1) * _RECORDSIZE)
+        
+
+    def _read_next_index(self):
+        rec = self.idxfile.read(_RECORDSIZE)
+        if not rec:
+            raise IndexError("end of index file")
+        elif len(rec) != _RECORDSIZE:
+            raise RevfileError("short read of %d bytes getting index %d from %r"
+                               % (len(rec), idx, self.basename))
+        
+        return struct.unpack(">20sIIII12x", rec)
+
+        
     def dump(self, f=sys.stdout):
         f.write('%-8s %-40s %-8s %-8s %-8s %-8s\n' 
                 % tuple('idx sha1 base flags offset len'.split()))
@@ -259,7 +285,7 @@ class Revfile:
 
         for i, rec in enumerate(self):
             f.write("#%-7d %40s " % (i, hexlify(rec[0])))
-            if rec[1] == _NO_BASE:
+            if rec[1] == _NO_RECORD:
                 f.write("(none)   ")
             else:
                 f.write("#%-7d " % rec[1])
@@ -276,12 +302,13 @@ def main(argv):
     except IndexError:
         sys.stderr.write("usage: revfile dump\n"
                          "       revfile add\n"
-                         "       revfile get IDX\n")
+                         "       revfile get IDX\n"
+                         "       revfile find-sha HEX\n")
         return 1
         
 
     if cmd == 'add':
-        new_idx = r.add_full_text(sys.stdin.read())
+        new_idx = r._add_full_text(sys.stdin.read())
         print 'added idx %d' % new_idx
     elif cmd == 'dump':
         r.dump()
@@ -297,6 +324,20 @@ def main(argv):
             return 1
 
         sys.stdout.write(r._get_full_text(idx))
+    elif cmd == 'find-sha':
+        try:
+            s = unhexlify(argv[2])
+        except IndexError:
+            sys.stderr.write("usage: revfile find-sha HEX\n")
+            return 1
+
+        idx = r.find_sha(s)
+        if idx == _NO_RECORD:
+            sys.stderr.write("no such record\n")
+            return 1
+        else:
+            print idx
+            
     else:
         sys.stderr.write("unknown command %r\n" % cmd)
         return 1
