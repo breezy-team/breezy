@@ -88,6 +88,7 @@ I_FLAGS = 2
 I_OFFSET = 3
 I_LEN = 4
 
+
 class RevfileError(Exception):
     pass
 
@@ -150,33 +151,6 @@ class Revfile:
         return text    
 
 
-    def _add_full_text(self, t):
-        """Add a full text to the file.
-
-        This is not compressed against any reference version.
-
-        Returns the index for that text."""
-        idx = len(self)
-        self.datafile.seek(0, 2)        # to end
-        self.idxfile.seek(0, 2)
-        assert self.idxfile.tell() == _RECORDSIZE * (idx + 1)
-        data_offset = self.datafile.tell()
-
-        assert isinstance(t, str) # not unicode or anything wierd
-
-        self.datafile.write(t)
-        self.datafile.flush()
-
-        entry = sha.new(t).digest()
-        entry += struct.pack(">IIII12x", 0xFFFFFFFFL, 0, data_offset, len(t))
-        assert len(entry) == _RECORDSIZE
-
-        self.idxfile.write(entry)
-        self.idxfile.flush()
-
-        return idx
-
-
     def _check_index(self, idx):
         if idx < 0 or idx > len(self):
             raise RevfileError("invalid index %r" % idx)
@@ -193,10 +167,52 @@ class Revfile:
             return _NO_RECORD        
 
 
-    def _add_diff(self, text, base):
+    def _add_common(self, text_sha, data, flags, base):
+        """Add pre-processed data, can be either full text or delta."""
+        idx = len(self)
+        self.datafile.seek(0, 2)        # to end
+        self.idxfile.seek(0, 2)
+        assert self.idxfile.tell() == _RECORDSIZE * (idx + 1)
+        data_offset = self.datafile.tell()
+
+        assert isinstance(data, str) # not unicode or anything wierd
+
+        self.datafile.write(data)
+        self.datafile.flush()
+
+        assert isinstance(text_sha, str)
+        entry = text_sha
+        entry += struct.pack(">IIII12x", base, flags, data_offset, len(data))
+        assert len(entry) == _RECORDSIZE
+
+        self.idxfile.write(entry)
+        self.idxfile.flush()
+
+        return idx
+        
+
+
+    def _add_full_text(self, text):
+        """Add a full text to the file.
+
+        This is not compressed against any reference version.
+
+        Returns the index for that text."""
+        return self._add_common(sha.new(text).digest(), text, 0, _NO_RECORD)
+
+
+    def _add_delta(self, text, base):
         """Add a text stored relative to a previous text."""
         self._check_index(base)
         text_sha = sha.new(text).digest()
+        base_text = self.get(base)
+        data = mdiff.bdiff(base_text, text)
+        return self._add_common(text_sha, data, 0, base)
+
+
+    def add(self, text, base=None):
+        # TODO: check it's not already present?
+        assert 0
 
         
     def addrevision(self, text, changeset):
@@ -221,28 +237,61 @@ class Revfile:
         open(self.indexfile(), "a").write(entry)
         open(self.datafile(), "a").write(data)
 
-    def _get_full_text(self, idx):
-        idxrec = self[idx]
-        assert idxrec[I_FLAGS] == 0
-        assert idxrec[I_BASE] == _NO_RECORD
 
+    def get(self, idx):
+        idxrec = self[idx]
+        base = idxrec[I_BASE]
+        if base == _NO_RECORD:
+            text = self._get_full_text(idx, idxrec)
+        else:
+            text = self._get_patched(idx, idxrec)
+
+        if sha.new(text).digest() != idxrec[I_SHA]:
+            raise RevfileError("corrupt SHA-1 digest on record %d"
+                               % idx)
+
+        return text
+
+
+
+    def _get_raw(self, idx, idxrec):
         l = idxrec[I_LEN]
         if l == 0:
             return ''
 
         self.datafile.seek(idxrec[I_OFFSET])
 
-        text = self.datafile.read(l)
-        if len(text) != l:
+        data = self.datafile.read(l)
+        if len(data) != l:
             raise RevfileError("short read %d of %d "
                                "getting text for record %d in %r"
-                               % (len(text), l, idx, self.basename))
+                               % (len(data), l, idx, self.basename))
 
-        if sha.new(text).digest() != idxrec[I_SHA]:
-            raise RevfileError("corrupt SHA-1 digest on record %d"
-                               % idx)
+        return data
         
+
+    def _get_full_text(self, idx, idxrec):
+        assert idxrec[I_FLAGS] == 0
+        assert idxrec[I_BASE] == _NO_RECORD
+
+        text = self._get_raw(idx, idxrec)
+
         return text
+
+
+    def _get_patched(self, idx, idxrec):
+        assert idxrec[I_FLAGS] == 0
+        base = idxrec[I_BASE]
+        assert base >= 0
+        assert base < idx    # no loops!
+
+        base_text = self.get(base)
+        patch = self._get_raw(idx, idxrec)
+
+        text = mdiff.bpatch(base_text, patch)
+
+        return text
+
 
 
     def __len__(self):
@@ -263,6 +312,8 @@ class Revfile:
 
 
     def _seek_index(self, idx):
+        if idx < 0:
+            raise RevfileError("invalid index %r" % idx)
         self.idxfile.seek((idx + 1) * _RECORDSIZE)
         
 
@@ -302,6 +353,7 @@ def main(argv):
     except IndexError:
         sys.stderr.write("usage: revfile dump\n"
                          "       revfile add\n"
+                         "       revfile add-delta BASE\n"
                          "       revfile get IDX\n"
                          "       revfile find-sha HEX\n")
         return 1
@@ -309,6 +361,9 @@ def main(argv):
 
     if cmd == 'add':
         new_idx = r._add_full_text(sys.stdin.read())
+        print 'added idx %d' % new_idx
+    elif cmd == 'add-delta':
+        new_idx = r._add_delta(sys.stdin.read(), int(argv[2]))
         print 'added idx %d' % new_idx
     elif cmd == 'dump':
         r.dump()
@@ -323,7 +378,7 @@ def main(argv):
             sys.stderr.write("invalid index %r\n" % idx)
             return 1
 
-        sys.stdout.write(r._get_full_text(idx))
+        sys.stdout.write(r.get(idx))
     elif cmd == 'find-sha':
         try:
             s = unhexlify(argv[2])
