@@ -67,7 +67,11 @@ able to find it in about 17 random reads, which is not too bad.
 # TODO: Something like pread() would make this slightly simpler and
 # perhaps more efficient.
 
-# TODO: Could also try to mmap things...
+# TODO: Could also try to mmap things...  Might be faster for the
+# index in particular?
+
+# TODO: Some kind of faster lookup of SHAs?  The bad thing is that probably means
+# rewriting existing records, which is not so nice.
 
 
 import sys, zlib, struct, mdiff, stat, os, sha
