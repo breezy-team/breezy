@@ -64,6 +64,11 @@ able to find it in about 17 random reads, which is not too bad.
 """
  
 
+# TODO: Something like pread() would make this slightly simpler and
+# perhaps more efficient.
+
+# TODO: Could also try to mmap things...
+
 
 import sys, zlib, struct, mdiff, stat, os, sha
 from binascii import hexlify
@@ -76,24 +81,48 @@ _HEADER = "bzr revfile v1\n"
 _HEADER = _HEADER + ('\xff' * (_RECORDSIZE - len(_HEADER)))
 _NO_BASE = 0xFFFFFFFFL
 
+# fields in the index record
+I_SHA = 0
+I_BASE = 1
+I_FLAGS = 2
+I_OFFSET = 3
+I_LEN = 4
+
 class RevfileError(Exception):
     pass
+
+
 
 class Revfile:
     def __init__(self, basename):
         self.basename = basename
-        self.idxfile = open(basename + '.irev', 'r+b')
-        self.datafile = open(basename + '.drev', 'r+b')
-        if self.last_idx() == -1:
+        
+        idxname = basename + '.irev'
+        dataname = basename + '.drev'
+
+        idx_exists = os.path.exists(idxname)
+        data_exists = os.path.exists(dataname)
+
+        if idx_exists != data_exists:
+            raise RevfileError("half-assed revfile")
+        
+        if not idx_exists:
+            self.idxfile = open(idxname, 'w+b')
+            self.datafile = open(dataname, 'w+b')
+            
             print 'init empty file'
             self.idxfile.write(_HEADER)
             self.idxfile.flush()
         else:
+            self.idxfile = open(idxname, 'r+b')
+            self.dataname = open(dataname, 'r+b')
+            
             h = self.idxfile.read(_RECORDSIZE)
             if h != _HEADER:
                 raise RevfileError("bad header %r in index of %r"
                                    % (h, self.basename))
-        
+
+
     def last_idx(self):
         """Return last index already present, or -1 if none."""
         l = os.fstat(self.idxfile.fileno())[stat.ST_SIZE]
@@ -152,18 +181,48 @@ class Revfile:
         return idx
 
 
+    def _get_full_text(self, idx):
+        idxrec = self[idx]
+        assert idxrec[I_FLAGS] == 0
+        assert idxrec[I_BASE] == _NO_BASE
+
+        l = idxrec[I_LEN]
+        if l == 0:
+            return ''
+
+        self.datafile.seek(idxrec[I_OFFSET])
+
+        text = self.datafile.read(l)
+        if len(text) != l:
+            raise RevfileError("short read %d of %d "
+                               "getting text for record %d in %r"
+                               % (len(text), l, idx, self.basename))
+        
+        return text
+
+
     def __len__(self):
         return int(self.last_idx())
 
 
     def __getitem__(self, idx):
+        """Index by sequence id returns the index field"""
+        self._seek_index(idx)
+        return self._read_next_index()
+
+
+    def _seek_index(self, idx):
         self.idxfile.seek((idx + 1) * _RECORDSIZE)
+        
+
+    def _read_next_index(self):
         rec = self.idxfile.read(_RECORDSIZE)
         if not rec:
-            raise IndexError("no record %d in index for %r" % (idx, self.basename))
+            raise IndexError("end of index file")
         elif len(rec) != _RECORDSIZE:
             raise RevfileError("short read of %d bytes getting index %d from %r"
                                % (len(rec), idx, self.basename))
+        
         return struct.unpack(">20sIIII12x", rec)
 
         
@@ -211,7 +270,8 @@ def main(argv):
     r = Revfile("testrev")
     if len(argv) < 2:
         sys.stderr.write("usage: revfile dump\n"
-                         "       revfile add\n")
+                         "       revfile add\n"
+                         "       revfile get IDX\n")
         sys.exit(1)
         
     if argv[1] == 'add':
@@ -219,6 +279,8 @@ def main(argv):
         print 'added idx %d' % new_idx
     elif argv[1] == 'dump':
         r.dump()
+    elif argv[1] == 'get':
+        sys.stdout.write(r._get_full_text(int(argv[2])))
     else:
         sys.stderr.write("unknown command %r\n" % argv[1])
         sys.exit(1)
