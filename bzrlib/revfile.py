@@ -428,7 +428,8 @@ def main(argv):
                          "       revfile add-delta BASE\n"
                          "       revfile get IDX\n"
                          "       revfile find-sha HEX\n"
-                         "       revfile total-text-size\n")
+                         "       revfile total-text-size\n"
+                         "       revfile last\n")
         return 1
 
     if cmd == 'add':
@@ -466,6 +467,8 @@ def main(argv):
             print idx
     elif cmd == 'total-text-size':
         print r.total_text_size()
+    elif cmd == 'last':
+        print len(r)-1
     else:
         sys.stderr.write("unknown command %r\n" % cmd)
         return 1
