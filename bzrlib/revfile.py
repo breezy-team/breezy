@@ -284,6 +284,11 @@ class Revfile:
 
 
     def _get_raw(self, idx, idxrec):
+        flags = idxrec[I_FLAGS]
+        if flags & ~FL_GZIP:
+            raise RevfileError("unsupported index flags %#x on index %d"
+                               % (flags, idx))
+        
         l = idxrec[I_LEN]
         if l == 0:
             return ''
@@ -296,11 +301,13 @@ class Revfile:
                                "getting text for record %d in %r"
                                % (len(data), l, idx, self.basename))
 
+        if flags & FL_GZIP:
+            data = zlib.decompress(data)
+
         return data
         
 
     def _get_full_text(self, idx, idxrec):
-        assert idxrec[I_FLAGS] == 0
         assert idxrec[I_BASE] == _NO_RECORD
 
         text = self._get_raw(idx, idxrec)
@@ -309,7 +316,6 @@ class Revfile:
 
 
     def _get_patched(self, idx, idxrec):
-        assert idxrec[I_FLAGS] == 0
         base = idxrec[I_BASE]
         assert base >= 0
         assert base < idx    # no loops!
