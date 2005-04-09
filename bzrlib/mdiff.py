@@ -31,6 +31,9 @@ from cStringIO import StringIO
 
 def diff(a, b):
     d = difflib.SequenceMatcher(None, a, b)
+    
+    ## sys.stderr.write('  ~ real_quick_ratio: %.4f\n' % d.real_quick_ratio())
+    
     for o, m, n, s, t in d.get_opcodes():
         if o == 'equal': continue
         # a[m:n] should be replaced by b[s:t]
