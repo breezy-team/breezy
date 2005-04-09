@@ -374,6 +374,10 @@ def main(argv):
                          "       revfile get IDX\n"
                          "       revfile find-sha HEX\n")
         return 1
+
+
+    # TODO: Something to show compression ratio, e.g. total size of
+    # all files vs size of index and data files.
         
 
     if cmd == 'add':
