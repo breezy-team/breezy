@@ -67,6 +67,11 @@ really large files.  For that the main thing would be to plug in
 something faster than difflib, which is after all pure Python.
 Another approach is to just store the gzipped full text of big files,
 though perhaps that's too perverse?
+
+The iter method here will generally read through the whole index file
+in one go.  With readahead in the kernel and python/libc (typically
+128kB) this means that there should be no seeks and often only one
+read() call to get everything into memory.
 """
  
 
