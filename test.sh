@@ -107,5 +107,22 @@ bzr commit -m "more renames"
 
 
 # now test hardlinked branches in subdirectories
+cd ..
+[ -d branch2 ] && rm -rf branch2
+cp -al branch1 branch2
+
+cd branch2
+bzr log 
+[ `bzr revno` = 2 ]
+
+echo "added in branch2" > new-in-2.txt
+bzr add new-in-2.txt
+bzr commit -m "add file to branch 2 only"
+
+[ `bzr revno` = 3 ]
+
+cd ../branch1
+[ `bzr revno` = 2 ]
+
 
 echo "tests completed ok" >&3
