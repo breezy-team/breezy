@@ -5,10 +5,18 @@ bzr-0.0.4  NOT RELEASED YET
     * bzr diff optionally takes a list of files to diff.  Still a bit
       basic.  Patch from QuantumG.
 
+
+  BUG FIXES: 
+
+    * Make commit safe for hardlinked bzr trees.
+
+
   INTERNAL:
 
     * Allow docstrings for help to be in PEP0257 format.  Patch from
       Matt Brubeck.
+
+    * More tests in test.sh.
 
 
 bzr-0.0.3  2005-04-06
