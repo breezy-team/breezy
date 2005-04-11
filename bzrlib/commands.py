@@ -488,7 +488,20 @@ def cmd_dump_slacker_inventory():
     import bzrlib.newinventory
     inv = Branch('.').basis_tree().inventory
     bzrlib.newinventory.write_slacker_inventory(inv, sys.stdout)
-                
+
+
+
+def cmd_dump_text_inventory():
+    import bzrlib.textinv
+    inv = Branch('.').basis_tree().inventory
+    bzrlib.textinv.write_text_inventory(inv, sys.stdout)
+
+
+def cmd_load_text_inventory():
+    import bzrlib.textinv
+    inv = bzrlib.textinv.read_text_inventory(sys.stdin)
+    print 'loaded %d entries' % len(inv)
+    
     
 
 def cmd_root(filename=None):
@@ -1016,7 +1029,9 @@ def main(argv):
         ## traceback.print_exc(None, sys.stderr)
         return 1
 
-    # TODO: Maybe nicer handling of IOError?
+    ## TODO: Trap AssertionError
+
+    # TODO: Maybe nicer handling of IOError especially for broken pipe.
 
 
 
