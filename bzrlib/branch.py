@@ -555,13 +555,30 @@ class Branch:
         ## TODO: Also calculate and store the inventory SHA1
         mutter("committing patch r%d" % (self.revno() + 1))
 
-        mutter("append to revision-history")
-        f = self.controlfile('revision-history', 'at')
-        f.write(rev_id + '\n')
-        f.close()
 
+        self.append_revision(rev_id)
+        
         if verbose:
             note("commited r%d" % self.revno())
+
+
+    def append_revision(self, revision_id):
+        mutter("add {%s} to revision-history" % revision_id)
+        rev_history = self.revision_history()
+
+        tmprhname = self.controlfilename('revision-history.tmp')
+        rhname = self.controlfilename('revision-history')
+        
+        f = file(tmprhname, 'wt')
+        rev_history.append(revision_id)
+        f.write('\n'.join(rev_history))
+        f.write('\n')
+        f.close()
+
+        if sys.platform == 'win32':
+            os.remove(rhname)
+        os.rename(tmprhname, rhname)
+        
 
 
     def get_revision(self, revision_id):

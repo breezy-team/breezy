@@ -126,6 +126,8 @@ def cmd_status(all=False):
 
     :todo: Don't show unchanged files unless ``--all`` is given?
     """
+    #import bzrlib.status
+    #bzrlib.status.tree_status(Branch('.'))
     Branch('.').show_status(show_all=all)
 
 

@@ -9,9 +9,13 @@
 # This must already exist and be in the right place
 if ! [ -d bzr-test.tmp ] 
 then
-    echo "please create bzr-test.tmp"
+    echo "please create directory bzr-test.tmp"
     exit 1
 fi
+
+echo "testing `which bzr`"
+bzr --version | head -n 1
+echo
 
 rm -rf bzr-test.tmp
 mkdir bzr-test.tmp
@@ -31,6 +35,9 @@ trap quitter ERR
 
 cd bzr-test.tmp 
 rm -rf .bzr
+
+mkdir branch1
+cd branch1
 
 # some information commands
 bzr help
@@ -99,3 +106,6 @@ bzr commit -m "more renames"
 
 
 
+# now test hardlinked branches in subdirectories
+
+echo "tests completed ok" >&3
