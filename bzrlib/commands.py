@@ -986,14 +986,17 @@ def run_bzr(argv):
 
     if profile:
         import hotshot
-        prof = hotshot.Profile('.bzr.profile')
+        pfname = tempfile.mkstemp()[1]
+        prof = hotshot.Profile(pfname)
         ret = prof.runcall(cmd_handler, **cmdargs) or 0
         prof.close()
 
         import hotshot.stats
-        stats = hotshot.stats.load('.bzr.profile')
+        stats = hotshot.stats.load(pfname)
         #stats.strip_dirs()
         stats.sort_stats('time')
+        ## XXX: Might like to write to stderr or the trace file instead but
+        ## print_stats seems hardcoded to stdout
         stats.print_stats(20)
 
         return ret

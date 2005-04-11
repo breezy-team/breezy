@@ -18,6 +18,8 @@ bzr-0.0.4  NOT RELEASED YET
 
     * More tests in test.sh.
 
+    * Write profile data to a temporary file not into working directory.
+
 
 bzr-0.0.3  2005-04-06
 
