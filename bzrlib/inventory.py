@@ -14,11 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Inventories map files to their name in a revision."""
 
 # TODO: Maybe store inventory_id in the file?  Not really needed.
-
-__author__ = "Martin Pool <mbp@canonical.com>"
 
 
 # This should really be an id randomly assigned when the tree is
@@ -253,12 +250,9 @@ class RootEntry(InventoryEntry):
 class Inventory(XMLMixin):
     """Inventory of versioned files in a tree.
 
-    An Inventory acts like a set of InventoryEntry items.  You can
-    also look files up by their file_id or name.
-    
-    May be read from and written to a metadata file in a tree.  To
-    manipulate the inventory (for example to add a file), it is read
-    in, modified, and then written back out.
+    This describes which file_id is present at each point in the tree,
+    and possibly the SHA-1 or other information about the file.
+    Entries can be looked up either by path or by file_id.
 
     The inventory represents a typical unix file tree, with
     directories containing files and subdirectories.  We never store
@@ -306,7 +300,11 @@ class Inventory(XMLMixin):
     ## TODO: No special cases for root, rather just give it a file id
     ## like everything else.
 
-    ## TODO: Probably change XML serialization to use nesting
+    ## TODO: Probably change XML serialization to use nesting rather
+    ## than parent_id pointers.
+
+    ## TODO: Perhaps hold the ElementTree in memory and work directly
+    ## on that rather than converting into Python objects every time?
 
     def __init__(self):
         """Create or read an inventory.
