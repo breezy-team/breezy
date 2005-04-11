@@ -127,7 +127,6 @@ class InventoryEntry(XMLMixin):
         
         self.file_id = file_id
         self.name = name
-        assert kind in ['file', 'directory']
         self.kind = kind
         self.text_id = text_id
         self.parent_id = parent_id
@@ -135,8 +134,11 @@ class InventoryEntry(XMLMixin):
         self.text_size = None
         if kind == 'directory':
             self.children = {}
+        elif kind == 'file':
+            pass
         else:
-            assert kind == 'file'
+            raise BzrError("unhandled entry kind %r" % kind)
+
 
 
     def sorted_children(self):
