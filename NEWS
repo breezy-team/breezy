@@ -5,6 +5,11 @@ bzr-0.0.4  NOT RELEASED YET
     * bzr diff optionally takes a list of files to diff.  Still a bit
       basic.  Patch from QuantumG.
 
+  INTERNAL:
+
+    * Allow docstrings for help to be in PEP0257 format.  Patch from
+      Matt Brubeck.
+
 
 bzr-0.0.3  2005-04-06
 

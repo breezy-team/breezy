@@ -67,6 +67,7 @@ from sets import Set
 from pprint import pprint
 from stat import *
 from glob import glob
+from inspect import getdoc
 
 import bzrlib
 from bzrlib.store import ImmutableStore
@@ -207,19 +208,19 @@ def cmd_move(source_list, dest):
 def cmd_rename(from_name, to_name):
     """Change the name of an entry.
 
-usage: bzr rename FROM_NAME TO_NAME
+    usage: bzr rename FROM_NAME TO_NAME
 
-examples:
-  bzr rename frob.c frobber.c
-  bzr rename src/frob.c lib/frob.c
+    examples:
+      bzr rename frob.c frobber.c
+      bzr rename src/frob.c lib/frob.c
 
-It is an error if the destination name exists.
+    It is an error if the destination name exists.
 
-See also the 'move' command, which moves files into a different
-directory without changing their name.
+    See also the 'move' command, which moves files into a different
+    directory without changing their name.
 
-TODO: Some way to rename multiple files without invoking bzr for each
-one?"""
+    TODO: Some way to rename multiple files without invoking bzr for each
+    one?"""
     b = Branch('.')
     b.rename_one(b.relpath(from_name), b.relpath(to_name))
     
@@ -229,12 +230,12 @@ one?"""
 def cmd_renames(dir='.'):
     """Show list of renamed files.
 
-usage: bzr renames [BRANCH]
+    usage: bzr renames [BRANCH]
 
-TODO: Option to show renames between two historical versions.
+    TODO: Option to show renames between two historical versions.
 
-TODO: Only show renames under dir, rather than in the whole branch.
-"""
+    TODO: Only show renames under dir, rather than in the whole branch.
+    """
     b = Branch(dir)
     old_inv = b.basis_tree().inventory
     new_inv = b.read_working_inventory()
@@ -249,7 +250,7 @@ TODO: Only show renames under dir, rather than in the whole branch.
 def cmd_info():
     """info: Show statistical information for this branch
 
-usage: bzr info"""
+    usage: bzr info"""
     import info
     info.show_info(Branch('.'))        
     
@@ -264,12 +265,12 @@ def cmd_remove(file_list, verbose=False):
 def cmd_file_id(filename):
     """Print file_id of a particular file or directory.
 
-usage: bzr file-id FILE
+    usage: bzr file-id FILE
 
-The file_id is assigned when the file is first added and remains the
-same through all revisions where the file exists, even when it is
-moved or renamed.
-"""
+    The file_id is assigned when the file is first added and remains the
+    same through all revisions where the file exists, even when it is
+    moved or renamed.
+    """
     b = Branch(filename)
     i = b.inventory.path2id(b.relpath(filename))
     if i == None:
@@ -281,10 +282,10 @@ moved or renamed.
 def cmd_file_id_path(filename):
     """Print path of file_ids to a file or directory.
 
-usage: bzr file-id-path FILE
+    usage: bzr file-id-path FILE
 
-This prints one line for each directory down to the target,
-starting at the branch root."""
+    This prints one line for each directory down to the target,
+    starting at the branch root."""
     b = Branch(filename)
     inv = b.inventory
     fid = inv.path2id(b.relpath(filename))
@@ -328,24 +329,24 @@ def cmd_init():
 def cmd_diff(revision=None, file_list=None):
     """bzr diff: Show differences in working tree.
     
-usage: bzr diff [-r REV] [FILE...]
+    usage: bzr diff [-r REV] [FILE...]
 
---revision REV
-    Show changes since REV, rather than predecessor.
+    --revision REV
+         Show changes since REV, rather than predecessor.
 
-If files are listed, only the changes in those files are listed.
-Otherwise, all changes for the tree are listed.
+    If files are listed, only the changes in those files are listed.
+    Otherwise, all changes for the tree are listed.
 
-TODO: Given two revision arguments, show the difference between them.
+    TODO: Given two revision arguments, show the difference between them.
 
-TODO: Allow diff across branches.
+    TODO: Allow diff across branches.
 
-TODO: Option to use external diff command; could be GNU diff, wdiff,
-or a graphical diff.
+    TODO: Option to use external diff command; could be GNU diff, wdiff,
+          or a graphical diff.
 
-TODO: If a directory is given, diff everything under that.
+    TODO: If a directory is given, diff everything under that.
 
-TODO: Selected-file diff is inefficient and doesn't show you deleted files.
+    TODO: Selected-file diff is inefficient and doesn't show you deleted files.
 """
 
     ## TODO: Shouldn't be in the cmd function.
@@ -434,7 +435,7 @@ TODO: Selected-file diff is inefficient and doesn't show you deleted files.
 def cmd_deleted(show_ids=False):
     """List files deleted in the working tree.
 
-TODO: Show files deleted since a previous revision, or between two revisions.
+    TODO: Show files deleted since a previous revision, or between two revisions.
     """
     b = Branch('.')
     old = b.basis_tree()
@@ -588,19 +589,19 @@ def cmd_local_time_offset():
 def cmd_commit(message=None, verbose=False):
     """Commit changes to a new revision.
 
---message MESSAGE
-    Description of changes in this revision; free form text.
-    It is recommended that the first line be a single-sentence
-    summary.
---verbose
-    Show status of changed files,
+    --message MESSAGE
+        Description of changes in this revision; free form text.
+        It is recommended that the first line be a single-sentence
+        summary.
+    --verbose
+        Show status of changed files,
 
-TODO: Commit only selected files.
+    TODO: Commit only selected files.
 
-TODO: Run hooks on tree to-be-committed, and after commit.
+    TODO: Run hooks on tree to-be-committed, and after commit.
 
-TODO: Strict commit that fails if there are unknown or deleted files.
-"""
+    TODO: Strict commit that fails if there are unknown or deleted files.
+    """
 
     if not message:
         bailout("please specify a commit message")
@@ -610,14 +611,14 @@ TODO: Strict commit that fails if there are unknown or deleted files.
 def cmd_check(dir='.'):
     """check: Consistency check of branch history.
 
-usage: bzr check [-v] [BRANCH]
+    usage: bzr check [-v] [BRANCH]
 
-options:
-  --verbose, -v         Show progress of checking.
+    options:
+      --verbose, -v         Show progress of checking.
 
-This command checks various invariants about the branch storage to
-detect data corruption or bzr bugs.
-"""
+    This command checks various invariants about the branch storage to
+    detect data corruption or bzr bugs.
+    """
     import bzrlib.check
     bzrlib.check.check(Branch(dir, find_root=False))
 
@@ -699,7 +700,7 @@ def cmd_help(topic=None):
     except KeyError:
         bailout("no help for %r" % topic)
 
-    doc = cmdfn.__doc__
+    doc = getdoc(cmdfn)
     if doc == None:
         bailout("sorry, no detailed help yet for %r" % topic)
 
