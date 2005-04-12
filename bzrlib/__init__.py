@@ -31,7 +31,8 @@ DEFAULT_IGNORE = ['.bzr.log',
                   '*.tmp', '*.bak', '*.BAK', '*.orig',
                   '*.o', '*.obj', '*.a', '*.py[oc]', '*.so', '*.exe', '*.elc', 
                   '{arch}', 'CVS', '.svn', '_darcs', 'SCCS', 'RCS',
-                  'TAGS', '.make.state', '.sconsign']
+                  'BitKeeper',
+                  'TAGS', '.make.state', '.sconsign', '.tmp*']
 
 IGNORE_FILENAME = ".bzrignore"
 

@@ -269,3 +269,9 @@ dwmw2 (2005-04-07)
 
 reorder patches by cherry-picking them from a main development tree
 before sending them on.
+
+----
+
+ignore BitKeeper
+
+re-add should give the same id as before
