@@ -5,6 +5,8 @@ bzr-0.0.4  NOT RELEASED YET
     * bzr diff optionally takes a list of files to diff.  Still a bit
       basic.  Patch from QuantumG.
 
+    * More default ignore patterns.
+
 
   BUG FIXES: 
 
@@ -20,6 +22,11 @@ bzr-0.0.4  NOT RELEASED YET
 
     * Write profile data to a temporary file not into working
       directory and delete it when done.
+
+
+  PORTABILITY:
+
+    * Fix opening of ~/.bzr.log on Windows.  Patch from Andrew Bennetts.
 
 
 bzr-0.0.3  2005-04-06

@@ -85,8 +85,8 @@ def create_tracefile(argv):
 
     _starttime = os.times()[4]
 
-    # XXX: Is HOME always set on Windows?
-    trace_fname = os.path.join(os.environ['HOME'], '.bzr.log')
+    # XXX:  Does this always work on Windows?
+    trace_fname = os.path.join(os.path.expanduser('~/.bzr.log'))
     _tracefile = codecs.open(trace_fname, 'at', 'utf8')
     t = _tracefile
 
