@@ -128,6 +128,41 @@ def fingerprint_file(f):
             'sha1': s.hexdigest()}
 
 
+def auto_user_id():
+    """Calculate automatic user identification.
+
+    Returns (realname, email).
+
+    Only used when none is set in the environment.
+
+    """
+    import socket, locale
+
+    # XXX: Any good way to get real user name on win32?
+
+    # XXX: can the FQDN be non-ascii?
+
+    enc = locale.getpreferredencoding()
+    
+    try:
+        import pwd
+        uid = os.getuid()
+        w = pwd.getpwuid(uid)
+        gecos = w.pw_gecos.decode(enc)
+        username = w.pw_name.decode(enc)
+        comma = gecos.find(',')
+        if comma == -1:
+            realname = gecos
+        else:
+            realname = gecos[:comma]
+
+        return realname, (username + '@' + socket.getfqdn())
+
+    except ImportError:
+        import getpass
+        return '', (getpass.getuser().decode(enc) + '@' + socket.getfqdn())
+
+
 
 def username():
     """Return email-style username.
@@ -138,46 +173,32 @@ def username():
 
     :todo: Allow taking it from a dotfile to help people on windows
            who can't easily set variables.
-
-    :todo: Cope without pwd module, which is only on unix. 
     """
+    import locale
     e = os.environ.get('BZREMAIL') or os.environ.get('EMAIL')
-    if e: return e
+    if e:
+        return e.decode(locale.getpreferredencoding())
 
-    import socket
-    
-    try:
-        import pwd
-        uid = os.getuid()
-        w = pwd.getpwuid(uid)
-        gecos = w.pw_gecos
-        comma = gecos.find(',')
-        if comma == -1:
-            realname = gecos
-        else:
-            realname = gecos[:comma]
-        return '%s <%s@%s>' % (realname, w.pw_name, socket.getfqdn())
-    except ImportError:
-        pass
-
-    import getpass, socket
-    return '<%s@%s>' % (getpass.getuser(), socket.getfqdn())
+    name, email = auto_user_id()
+    if name:
+        return '%s <%s>' % (name, email)
+    else:
+        return email
 
 
 _EMAIL_RE = re.compile(r'[\w+.-]+@[\w+.-]+')
 def user_email():
     """Return just the email component of a username."""
     e = os.environ.get('BZREMAIL') or os.environ.get('EMAIL')
+    import locale
+    e = e.decode(locale.getpreferredencoding())
     if e:
         m = _EMAIL_RE.search(e)
         if not m:
             bailout('%r is not a reasonable email address' % e)
         return m.group(0)
 
-
-    import getpass, socket
-    return '%s@%s' % (getpass.getuser(), socket.getfqdn())
-
+    return auto_user_id()[1]
     
 
 
