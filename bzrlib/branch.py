@@ -697,7 +697,7 @@ class Branch:
 
 
 
-    def write_log(self, show_timezone='original'):
+    def write_log(self, show_timezone='original', verbose=False):
         """Write out human-readable log of commits to this branch
 
         :param utc: If true, show dates in universal time, not local time."""
@@ -725,6 +725,21 @@ class Branch:
                 for l in rev.message.split('\n'):
                     print '  ' + l
 
+            if verbose == True and precursor != None:
+                print 'changed files:'
+                tree = self.revision_tree(p)
+                prevtree = self.revision_tree(precursor)
+                
+                for file_state, fid, old_name, new_name, kind in \
+                                        diff_trees(prevtree, tree, ):
+                    if file_state == 'A' or file_state == 'M':
+                        show_status(file_state, kind, new_name)
+                    elif file_state == 'D':
+                        show_status(file_state, kind, old_name)
+                    elif file_state == 'R':
+                        show_status(file_state, kind,
+                            old_name + ' => ' + new_name)
+                
             revno += 1
             precursor = p
 
@@ -971,5 +986,3 @@ def gen_file_id(name):
 
     s = hexlify(rand_bytes(8))
     return '-'.join((name, compact_date(time.time()), s))
-
-

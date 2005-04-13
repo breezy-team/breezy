@@ -509,12 +509,12 @@ def cmd_root(filename=None):
     print bzrlib.branch.find_branch_root(filename)
     
 
-def cmd_log(timezone='original'):
+def cmd_log(timezone='original', verbose=False):
     """Show log of this branch.
 
     :todo: Options for utc; to show ids; to limit range; etc.
     """
-    Branch('.').write_log(show_timezone=timezone)
+    Branch('.').write_log(show_timezone=timezone, verbose=verbose)
 
 
 def cmd_ls(revision=None, verbose=False):
@@ -775,7 +775,7 @@ cmd_options = {
     'deleted':                ['show-ids'],
     'diff':                   ['revision'],
     'inventory':              ['revision'],
-    'log':                    ['timezone'],
+    'log':                    ['timezone', 'verbose'],
     'ls':                     ['revision', 'verbose'],
     'remove':                 ['verbose'],
     'status':                 ['all'],
@@ -1047,4 +1047,3 @@ if __name__ == '__main__':
     sys.exit(main(sys.argv))
     ##import profile
     ##profile.run('main(sys.argv)')
-    

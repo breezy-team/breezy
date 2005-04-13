@@ -2,10 +2,13 @@ bzr-0.0.4  NOT RELEASED YET
 
   ENHANCEMENTS:
 
-    * bzr diff optionally takes a list of files to diff.  Still a bit
+    * 'bzr diff' optionally takes a list of files to diff.  Still a bit
       basic.  Patch from QuantumG.
 
     * More default ignore patterns.
+
+    * New 'bzr log --verbose' shows a list of files changed in the
+      changeset.  Patch from Sebastian Cote.
 
 
   BUG FIXES: 
