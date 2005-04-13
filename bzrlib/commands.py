@@ -935,8 +935,13 @@ def run_bzr(argv):
     """Execute a command.
 
     This is similar to main(), but without all the trappings for
-    logging and error handling.
+    logging and error handling.  
     """
+
+    import locale
+    enc = locale.getpreferredencoding()
+    argv = [a.decode(enc) for a in argv]
+    
     try:
         args, opts = parse_args(argv[1:])
         if 'help' in opts:

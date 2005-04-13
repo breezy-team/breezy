@@ -152,8 +152,25 @@ class Branch:
 
 
     def controlfile(self, file_or_path, mode='r'):
-        """Open a control file for this branch"""
-        return file(self.controlfilename(file_or_path), mode)
+        """Open a control file for this branch.
+
+        There are two classes of file in the control directory: text
+        and binary.  binary files are untranslated byte streams.  Text
+        control files are stored with Unix newlines and in UTF-8, even
+        if the platform or locale defaults are different.
+        """
+
+        fn = self.controlfilename(file_or_path)
+
+        if mode == 'rb' or mode == 'wb':
+            return file(fn, mode)
+        elif mode == 'r' or mode == 'w':
+            # open in binary mode anyhow so there's no newline translation
+            import codecs
+            return codecs.open(fn, mode + 'b', 'utf-8')
+        else:
+            raise BzrError("invalid controlfile mode %r" % mode)
+
 
 
     def _make_control(self):
@@ -161,7 +178,7 @@ class Branch:
         self.controlfile('README', 'w').write(
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.")
-        self.controlfile('branch-format', 'wb').write(BZR_BRANCH_FORMAT)
+        self.controlfile('branch-format', 'w').write(BZR_BRANCH_FORMAT)
         for d in ('text-store', 'inventory-store', 'revision-store'):
             os.mkdir(self.controlfilename(d))
         for f in ('revision-history', 'merged-patches',
@@ -182,7 +199,7 @@ class Branch:
         # This ignores newlines so that we can open branches created
         # on Windows from Linux and so on.  I think it might be better
         # to always make all internal files in unix format.
-        fmt = self.controlfile('branch-format', 'rb').read()
+        fmt = self.controlfile('branch-format', 'r').read()
         fmt.replace('\r\n', '')
         if fmt != BZR_BRANCH_FORMAT:
             bailout('sorry, branch format %r not supported' % fmt,
@@ -193,7 +210,9 @@ class Branch:
     def read_working_inventory(self):
         """Read the working inventory."""
         before = time.time()
-        inv = Inventory.read_xml(self.controlfile('inventory', 'r'))
+        # ElementTree does its own conversion from UTF-8, so open in
+        # binary.
+        inv = Inventory.read_xml(self.controlfile('inventory', 'rb'))
         mutter("loaded inventory of %d items in %f"
                % (len(inv), time.time() - before))
         return inv
@@ -208,7 +227,7 @@ class Branch:
         ## TODO: factor out to atomicfile?  is rename safe on windows?
         ## TODO: Maybe some kind of clean/dirty marker on inventory?
         tmpfname = self.controlfilename('inventory.tmp')
-        tmpf = file(tmpfname, 'w')
+        tmpf = file(tmpfname, 'wb')
         inv.write_xml(tmpf)
         tmpf.close()
         inv_fname = self.controlfilename('inventory')
@@ -612,7 +631,7 @@ class Branch:
         >>> ScratchBranch().revision_history()
         []
         """
-        return [chomp(l) for l in self.controlfile('revision-history').readlines()]
+        return [chomp(l) for l in self.controlfile('revision-history', 'r').readlines()]
 
 
     def revno(self):
