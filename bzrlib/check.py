@@ -30,6 +30,10 @@ import osutils
 def check(branch, progress=True):
     out = sys.stdout
 
+    # TODO: factor out
+    if not (hasattr(out, 'isatty') and out.isatty()):
+        progress=False
+
     if progress:
         def p(m):
             mutter('checking ' + m)
@@ -120,5 +124,5 @@ def check(branch, progress=True):
     p('done')
     if progress:
         print 
-
+    print 'checked %d revisions, %d file texts' % (revcount, len(checked_texts))
 
