@@ -244,6 +244,8 @@ class Branch:
     def add(self, files, verbose=False):
         """Make files versioned.
 
+        Note that the command line normally calls smart_add instead.
+
         This puts the files in the Added state, so that they will be
         recorded by the next commit.
 
