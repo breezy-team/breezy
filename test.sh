@@ -124,5 +124,7 @@ bzr commit -m "add file to branch 2 only"
 cd ../branch1
 [ `bzr revno` = 2 ]
 
+bzr check
+
 
 echo "tests completed ok" >&3
