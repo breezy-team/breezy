@@ -123,8 +123,6 @@ def cmd_status(all=False):
     For each file there is a single line giving its file state and name.
     The name is that in the current revision unless it is deleted or
     missing, in which case the old name is shown.
-
-    :todo: Don't show unchanged files unless ``--all`` is given?
     """
     #import bzrlib.status
     #bzrlib.status.tree_status(Branch('.'))
@@ -987,7 +985,7 @@ def run_bzr(argv):
     # mix arguments and options into one dictionary
     cmdargs = _match_args(cmd, args)
     for k, v in opts.items():
-        cmdargs[k.replace('-', '_')] = v
+        cmdargs[str(k.replace('-', '_'))] = v
 
     if profile:
         import hotshot
