@@ -21,6 +21,7 @@ from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 
 from errors import bailout, BzrError
 from trace import mutter
+import bzrlib
 
 def make_readonly(filename):
     """Make a filename read-only."""
@@ -136,20 +137,18 @@ def auto_user_id():
     Only used when none is set in the environment.
 
     """
-    import socket, locale
+    import socket
 
     # XXX: Any good way to get real user name on win32?
 
     # XXX: can the FQDN be non-ascii?
 
-    enc = locale.getpreferredencoding()
-    
     try:
         import pwd
         uid = os.getuid()
         w = pwd.getpwuid(uid)
-        gecos = w.pw_gecos.decode(enc)
-        username = w.pw_name.decode(enc)
+        gecos = w.pw_gecos.decode(bzrlib.user_encoding)
+        username = w.pw_name.decode(bzrlib.user_encoding)
         comma = gecos.find(',')
         if comma == -1:
             realname = gecos
@@ -160,7 +159,8 @@ def auto_user_id():
 
     except ImportError:
         import getpass
-        return '', (getpass.getuser().decode(enc) + '@' + socket.getfqdn())
+        getpass.getuser().decode(bzrlib.user_encoding)
+        return '', (username + '@' + socket.getfqdn())
 
 
 
@@ -174,10 +174,9 @@ def username():
     :todo: Allow taking it from a dotfile to help people on windows
            who can't easily set variables.
     """
-    import locale
     e = os.environ.get('BZREMAIL') or os.environ.get('EMAIL')
     if e:
-        return e.decode(locale.getpreferredencoding())
+        return e.decode(bzrlib.user_encoding)
 
     name, email = auto_user_id()
     if name:
@@ -190,9 +189,9 @@ _EMAIL_RE = re.compile(r'[\w+.-]+@[\w+.-]+')
 def user_email():
     """Return just the email component of a username."""
     e = os.environ.get('BZREMAIL') or os.environ.get('EMAIL')
-    import locale
-    e = e.decode(locale.getpreferredencoding())
     if e:
+        e = e.decode(bzrlib.user_encoding)
+        
         m = _EMAIL_RE.search(e)
         if not m:
             bailout('%r is not a reasonable email address' % e)

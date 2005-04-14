@@ -36,6 +36,8 @@ DEFAULT_IGNORE = ['.bzr.log',
 
 IGNORE_FILENAME = ".bzrignore"
 
+import locale
+user_encoding = locale.getpreferredencoding()
 
 __copyright__ = "Copyright 2005 Canonical Development Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"

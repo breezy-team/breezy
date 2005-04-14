@@ -936,9 +936,7 @@ def run_bzr(argv):
     logging and error handling.  
     """
 
-    import locale
-    enc = locale.getpreferredencoding()
-    argv = [a.decode(enc) for a in argv]
+    argv = [a.decode(bzrlib.user_encoding) for a in argv]
     
     try:
         args, opts = parse_args(argv[1:])
