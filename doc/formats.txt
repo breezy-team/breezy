@@ -199,7 +199,7 @@ branch name
   Name of the branch to which this was originally committed.    
 
   (I'm not totally satisfied that this is the right way to do it; the
-  results will be a bit wierd when a series of revisions pass through
+  results will be a bit weird when a series of revisions pass through
   variously named branches.)
 
 inventory_hash

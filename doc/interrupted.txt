@@ -62,7 +62,7 @@ The working copy is in some ways more difficult:
  * We can't atomically replace the whole working copy.  We can
    (semi) atomically updated particular files.
 
- * If the working copy files are in a wierd state it is hard to know
+ * If the working copy files are in a weird state it is hard to know
    whether that occurred because bzr's work was interrupted or because
    the user changed them.
 

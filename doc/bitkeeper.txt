@@ -6,7 +6,7 @@ friendly to the new user.  It does pay attention to allowing quick
 keyboard navigation.
 
 The tool itself is also a bit unfriendly in terms of emitting a lot of
-noise messages and having lots of wierd commands.
+noise messages and having lots of weird commands.
 
 Bitkeeper always requires both per-file and per-changeset commands.
 It seems bad to always require this; at most per-file messages should

@@ -104,7 +104,7 @@ class Tree:
         `dest` should not exist, and will be created holding the
         contents of this tree.
 
-        :todo: To handle subdirectories we need to create the
+        TODO: To handle subdirectories we need to create the
                directories first.
 
         :note: If the export fails, the destination directory will be
@@ -339,7 +339,7 @@ class RevisionTree(Tree):
 
     File text can be retrieved from the text store.
 
-    :todo: Some kind of `__repr__` method, but a good one
+    TODO: Some kind of `__repr__` method, but a good one
            probably means knowing the branch and revision number,
            or at least passing a description to the constructor.
     """

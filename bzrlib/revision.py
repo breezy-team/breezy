@@ -34,7 +34,7 @@ class Revision(XMLMixin):
     written out.  This is not stored because you cannot write the hash
     into the file it describes.
 
-    :todo: Perhaps make predecessor be a child element, not an attribute?
+    TODO: Perhaps make predecessor be a child element, not an attribute?
     """
     def __init__(self, **args):
         self.inventory_id = None

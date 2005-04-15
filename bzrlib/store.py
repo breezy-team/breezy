@@ -57,13 +57,13 @@ class ImmutableStore:
     >>> st['123123'].read()
     'goodbye'
 
-    :todo: Atomic add by writing to a temporary file and renaming.
+    TODO: Atomic add by writing to a temporary file and renaming.
 
-    :todo: Perhaps automatically transform to/from XML in a method?
+    TODO: Perhaps automatically transform to/from XML in a method?
            Would just need to tell the constructor what class to
            use...
 
-    :todo: Even within a simple disk store like this, we could
+    TODO: Even within a simple disk store like this, we could
            gzip the files.  But since many are less than one disk
            block, that might not help a lot.
 
@@ -82,7 +82,7 @@ class ImmutableStore:
     def add(self, f, fileid, compressed=True):
         """Add contents of a file into the store.
 
-        :param f: An open file, or file-like object."""
+        f -- An open file, or file-like object."""
         # FIXME: Only works on smallish files
         # TODO: Can be optimized by copying at the same time as
         # computing the sum.

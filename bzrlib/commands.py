@@ -510,7 +510,7 @@ def cmd_root(filename=None):
 def cmd_log(timezone='original', verbose=False):
     """Show log of this branch.
 
-    :todo: Options for utc; to show ids; to limit range; etc.
+    TODO: Options for utc; to show ids; to limit range; etc.
     """
     Branch('.').write_log(show_timezone=timezone, verbose=verbose)
 
@@ -518,7 +518,7 @@ def cmd_log(timezone='original', verbose=False):
 def cmd_ls(revision=None, verbose=False):
     """List files in a tree.
 
-    :todo: Take a revision or remote path and list that tree instead.
+    TODO: Take a revision or remote path and list that tree instead.
     """
     b = Branch('.')
     if revision == None:

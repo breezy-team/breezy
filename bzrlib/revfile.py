@@ -217,7 +217,7 @@ class Revfile:
         assert self.idxfile.tell() == _RECORDSIZE * (idx + 1)
         data_offset = self.datafile.tell()
 
-        assert isinstance(data, str) # not unicode or anything wierd
+        assert isinstance(data, str) # not unicode or anything weird
 
         self.datafile.write(data)
         self.datafile.flush()

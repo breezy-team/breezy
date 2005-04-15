@@ -77,7 +77,7 @@ languages.  There are projects like Jython, IronPython, Parrot and so
 on that may well fix this.
 
 Thirdly, we can present a Python library through a C interface; this
-might seem a bit wierd but I think it will work fine.  Python is
+might seem a bit weird but I think it will work fine.  Python is
 easily embeddable; this might be the best way for Windows IDE
 integration.
 

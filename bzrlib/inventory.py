@@ -94,7 +94,7 @@ class InventoryEntry(XMLMixin):
     >>> i.id2path('2326')
     'src/wibble/wibble.c'
 
-    :todo: Maybe also keep the full path of the entry, and the children?
+    TODO: Maybe also keep the full path of the entry, and the children?
            But those depend on its position within a particular inventory, and
            it would be nice not to need to hold the backpointer here.
     """

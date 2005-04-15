@@ -73,29 +73,29 @@ def find_branch_root(f=None):
 class Branch:
     """Branch holding a history of revisions.
 
-    :todo: Perhaps use different stores for different classes of object,
+    TODO: Perhaps use different stores for different classes of object,
            so that we can keep track of how much space each one uses,
            or garbage-collect them.
 
-    :todo: Add a RemoteBranch subclass.  For the basic case of read-only
+    TODO: Add a RemoteBranch subclass.  For the basic case of read-only
            HTTP access this should be very easy by, 
            just redirecting controlfile access into HTTP requests.
            We would need a RemoteStore working similarly.
 
-    :todo: Keep the on-disk branch locked while the object exists.
+    TODO: Keep the on-disk branch locked while the object exists.
 
-    :todo: mkdir() method.
+    TODO: mkdir() method.
     """
     def __init__(self, base, init=False, find_root=True):
         """Create new branch object at a particular location.
 
-        :param base: Base directory for the branch.
+        base -- Base directory for the branch.
         
-        :param init: If True, create new control files in a previously
+        init -- If True, create new control files in a previously
              unversioned directory.  If False, the branch must already
              be versioned.
 
-        :param find_root: If true and init is false, find the root of the
+        find_root -- If true and init is false, find the root of the
              existing branch containing base.
 
         In the test suite, creation of new trees is tested using the
@@ -249,15 +249,15 @@ class Branch:
         This puts the files in the Added state, so that they will be
         recorded by the next commit.
 
-        :todo: Perhaps have an option to add the ids even if the files do
+        TODO: Perhaps have an option to add the ids even if the files do
                not (yet) exist.
 
-        :todo: Perhaps return the ids of the files?  But then again it
+        TODO: Perhaps return the ids of the files?  But then again it
                is easy to retrieve them if they're needed.
 
-        :todo: Option to specify file id.
+        TODO: Option to specify file id.
 
-        :todo: Adding a directory should optionally recurse down and
+        TODO: Adding a directory should optionally recurse down and
                add all non-ignored children.  Perhaps do that in a
                higher-level method.
 
@@ -336,7 +336,7 @@ class Branch:
 
         This does not remove their text.  This does not run on 
 
-        :todo: Refuse to remove modified files unless --force is given?
+        TODO: Refuse to remove modified files unless --force is given?
 
         >>> b = ScratchBranch(files=['foo'])
         >>> b.add('foo')
@@ -360,9 +360,9 @@ class Branch:
         >>> b.working_tree().has_filename('foo') 
         True
 
-        :todo: Do something useful with directories.
+        TODO: Do something useful with directories.
 
-        :todo: Should this remove the text or not?  Tough call; not
+        TODO: Should this remove the text or not?  Tough call; not
         removing may be useful and the user can just use use rm, and
         is the opposite of add.  Removing it is consistent with most
         other tools.  Maybe an option.
@@ -432,7 +432,7 @@ class Branch:
         be robust against files disappearing, moving, etc.  So the
         whole thing is a bit hard.
 
-        :param timestamp: if not None, seconds-since-epoch for a
+        timestamp -- if not None, seconds-since-epoch for a
              postdated/predated commit.
         """
 
@@ -612,7 +612,7 @@ class Branch:
     def get_inventory(self, inventory_id):
         """Get Inventory object by hash.
 
-        :todo: Perhaps for this and similar methods, take a revision
+        TODO: Perhaps for this and similar methods, take a revision
                parameter which can be either an integer revno or a
                string hash."""
         i = Inventory.read_xml(self.inventory_store[inventory_id])
@@ -721,7 +721,7 @@ class Branch:
     def write_log(self, show_timezone='original', verbose=False):
         """Write out human-readable log of commits to this branch
 
-        :param utc: If true, show dates in universal time, not local time."""
+        utc -- If true, show dates in universal time, not local time."""
         ## TODO: Option to choose either original, utc or local timezone
         revno = 1
         precursor = None
@@ -888,9 +888,9 @@ class Branch:
         D       foo
         
 
-        :todo: Get state for single files.
+        TODO: Get state for single files.
 
-        :todo: Perhaps show a slash at the end of directory names.        
+        TODO: Perhaps show a slash at the end of directory names.        
 
         """
 
@@ -923,7 +923,7 @@ class Branch:
             elif fs == '?':
                 show_status(fs, kind, newname)
             else:
-                bailout("wierd file state %r" % ((fs, fid),))
+                bailout("weird file state %r" % ((fs, fid),))
                 
 
 

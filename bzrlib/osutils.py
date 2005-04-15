@@ -190,9 +190,9 @@ def username():
 
     Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
-    :todo: Check it's reasonably well-formed.
+    TODO: Check it's reasonably well-formed.
 
-    :todo: Allow taking it from a dotfile to help people on windows
+    TODO: Allow taking it from a dotfile to help people on windows
            who can't easily set variables.
     """
     v = _get_user_id()

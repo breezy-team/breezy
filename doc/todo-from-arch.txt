@@ -80,7 +80,7 @@ Good bits to keep
 
 * Autogeneration of Changelogs -- but should be in GNU format, at
   least optionally.  I'm not convinced auto-updating them in the tree
-  is worthwhile; it makes merges wierd.
+  is worthwhile; it makes merges weird.
 
 * Sealing branches.
 
