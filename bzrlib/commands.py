@@ -651,12 +651,12 @@ def cmd_is(pred, *rest):
         sys.exit(1)
 
 
-def cmd_username():
+def cmd_whoami():
+    """Show bzr user id.
+
+    TODO: Command to show only the email-address part as parsed out.
+    """
     print bzrlib.osutils.username()
-
-
-def cmd_user_email():
-    print bzrlib.osutils.user_email()
 
 
 def cmd_gen_revision_id():

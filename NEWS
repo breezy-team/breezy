@@ -19,6 +19,8 @@ bzr-0.0.4  NOT RELEASED YET
       fully-qualified name is not used because that tends to fail when
       there are DNS problems.
 
+    * New 'bzr whoami' command instead of username user-email.
+
 
   BUG FIXES: 
 
