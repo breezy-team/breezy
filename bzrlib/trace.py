@@ -77,6 +77,29 @@ def log_error(msg):
 
 
 
+def _rollover_trace_maybe(trace_fname):
+    try:
+        size = os.stat(trace_fname)[stat.ST_SIZE]
+        if size <= 100000:
+            return
+        old_fname = trace_fname + '.old'
+
+        try:
+            # must remove before rename on windows
+            os.remove(old_fname)
+        except OSError:
+            pass
+
+        try:
+            # might fail if in use on windows
+            os.rename(trace_fname, old_fname)
+        except OSError:
+            pass
+    except OSError:
+        return
+
+
+
 def create_tracefile(argv):
     # TODO: Also show contents of /etc/lsb-release, if it can be parsed.
     #       Perhaps that should eventually go into the platform library?
@@ -89,11 +112,8 @@ def create_tracefile(argv):
 
     _starttime = os.times()[4]
 
-    # TODO: If the file exists and is too large, rename it to .old;
-    # must handle failures of this because we can't rename an open
-    # file on Windows.
-
     trace_fname = os.path.join(os.path.expanduser('~/.bzr.log'))
+    _rollover_trace_maybe(trace_fname)
 
     # buffering=1 means line buffered
     _tracefile = codecs.open(trace_fname, 'at', 'utf8', buffering=1)

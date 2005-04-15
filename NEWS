@@ -10,6 +10,8 @@ bzr-0.0.4  NOT RELEASED YET
     * New 'bzr log --verbose' shows a list of files changed in the
       changeset.  Patch from Sebastian Cote.
 
+    * Roll over ~/.bzr.log if it gets too large.
+
 
   CHANGES:
 
@@ -44,7 +46,8 @@ bzr-0.0.4  NOT RELEASED YET
 
   PORTABILITY:
 
-    * Fix opening of ~/.bzr.log on Windows.  Patch from Andrew Bennetts.
+    * Fix opening of ~/.bzr.log on Windows.  Patch from Andrew
+      Bennetts.
 
 
 bzr-0.0.3  2005-04-06
