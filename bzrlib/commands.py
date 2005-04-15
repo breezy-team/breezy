@@ -374,12 +374,15 @@ def cmd_diff(revision=None, file_list=None):
 
     # TODO: Better to return them in sorted order I think.
 
+    if file_list:
+        file_list = [b.relpath(f) for f in file_list]
+
     # FIXME: If given a file list, compare only those files rather
     # than comparing everything and then throwing stuff away.
     
     for file_state, fid, old_name, new_name, kind in bzrlib.diff_trees(old_tree, new_tree):
 
-        if file_list and new_name not in file_list:
+        if file_list and (new_name not in file_list):
             continue
         
         # Don't show this by default; maybe do it if an option is passed

@@ -19,6 +19,7 @@
 
 def show_status(state, kind, name):
     if kind == 'directory':
+        # use this even on windows?
         kind_ch = '/'
     else:
         assert kind == 'file'

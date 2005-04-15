@@ -343,7 +343,7 @@ class Inventory(XMLMixin):
             yield name, ie
             if ie.kind == 'directory':
                 for cn, cie in self.iter_entries(from_dir=ie.file_id):
-                    yield '/'.join((name, cn)), cie
+                    yield os.path.join(name, cn), cie
                     
 
 
@@ -555,7 +555,7 @@ class Inventory(XMLMixin):
 
         # get all names, skipping root
         p = [self[fid].name for fid in self.get_idpath(file_id)[1:]]
-        return '/'.join(p)
+        return os.sep.join(p)
             
 
 

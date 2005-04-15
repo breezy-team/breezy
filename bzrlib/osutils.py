@@ -319,25 +319,34 @@ def splitpath(p):
     BzrError: ("sorry, '..' not allowed in path", [])
     """
     assert isinstance(p, types.StringTypes)
-    ps = [f for f in p.split('/') if (f != '.' and f != '')]
+
+    # split on either delimiter because people might use either on
+    # Windows
+    ps = re.split(r'[\\/]', p)
+
+    rps = []
     for f in ps:
         if f == '..':
             bailout("sorry, %r not allowed in path" % f)
-    return ps
+        elif (f == '.') or (f == ''):
+            pass
+        else:
+            rps.append(f)
+    return rps
 
 def joinpath(p):
     assert isinstance(p, list)
     for f in p:
         if (f == '..') or (f == None) or (f == ''):
             bailout("sorry, %r not allowed in path" % f)
-    return '/'.join(p)
+    return os.path.join(*p)
 
 
 def appendpath(p1, p2):
     if p1 == '':
         return p2
     else:
-        return p1 + '/' + p2
+        return os.path.join(p1, p2)
     
 
 def extern_command(cmd, ignore_errors = False):

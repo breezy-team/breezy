@@ -304,22 +304,32 @@ class WorkingTree(Tree):
 
 
     def is_ignored(self, filename):
-        """Check whether the filename matches an ignore pattern.
+        r"""Check whether the filename matches an ignore pattern.
 
-        Patterns containing '/' need to match the whole path; others
-        match against only the last component.
+        Patterns containing '/' or '\' need to match the whole path;
+        others match against only the last component.
 
         If the file is ignored, returns the pattern which caused it to
         be ignored, otherwise None.  So this can simply be used as a
         boolean if desired."""
 
-        ## TODO: Use '**' to match directories, and other extended globbing stuff from cvs/rsync.
+        # TODO: Use '**' to match directories, and other extended
+        # globbing stuff from cvs/rsync.
+
+        # XXX: fnmatch is actually not quite what we want: it's only
+        # approximately the same as real Unix fnmatch, and doesn't
+        # treat dotfiles correctly and allows * to match /.
+        # Eventually it should be replaced with something more
+        # accurate.
         
         for pat in self.get_ignore_list():
-            if '/' in pat:
-                # as a special case, you can put ./ at the start of a pattern;
-                # this is good to match in the top-level only;
-                if pat[:2] == './':
+            if '/' in pat or '\\' in pat:
+                
+                # as a special case, you can put ./ at the start of a
+                # pattern; this is good to match in the top-level
+                # only;
+                
+                if (pat[:2] == './') or (pat[:2] == '.\\'):
                     newpat = pat[2:]
                 else:
                     newpat = pat
