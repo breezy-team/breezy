@@ -49,6 +49,9 @@ bzr-0.0.4  NOT RELEASED YET
     * Fix opening of ~/.bzr.log on Windows.  Patch from Andrew
       Bennetts.
 
+    * Some improvements in handling paths on Windows, based on a patch
+      from QuantumG.
+
 
 bzr-0.0.3  2005-04-06
 

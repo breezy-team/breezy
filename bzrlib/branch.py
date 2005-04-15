@@ -1004,6 +1004,9 @@ def gen_file_id(name):
     idx = name.rfind('/')
     if idx != -1:
         name = name[idx+1 : ]
+    idx = name.rfind('\\')
+    if idx != -1:
+        name = name[idx+1 : ]
 
     name = name.lstrip('.')
 
