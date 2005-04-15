@@ -54,6 +54,12 @@ bzr unknowns
 # should be the only unknown file
 [ "`bzr unknowns`" = test.txt ]
 
+bzr status --all > status.tmp
+! diff -u - status.tmp <<EOF
+?       status.tmp
+?       test.txt
+EOF
+
 # can't rename unversioned files; use the regular unix rename command
 ! bzr rename test.txt new-test.txt
 
