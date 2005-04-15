@@ -80,7 +80,7 @@ def log_error(msg):
 def _rollover_trace_maybe(trace_fname):
     try:
         size = os.stat(trace_fname)[stat.ST_SIZE]
-        if size <= 100000:
+        if size <= 1 << 20:
             return
         old_fname = trace_fname + '.old'
 
