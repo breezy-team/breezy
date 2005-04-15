@@ -1025,7 +1025,7 @@ def _report_exception(e, summary):
 
 
 def cmd_assert_fail():
-    assert False
+    assert False, "always fails"
 
 
 def main(argv):
