@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, types, re, time
+import os, types, re, time, errno
 from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 
 from errors import bailout, BzrError
@@ -129,19 +129,20 @@ def fingerprint_file(f):
             'sha1': s.hexdigest()}
 
 
-def auto_user_id():
+def _auto_user_id():
     """Calculate automatic user identification.
 
     Returns (realname, email).
 
-    Only used when none is set in the environment.
+    Only used when none is set in the environment or the id file.
 
+    This previously used the FQDN as the default domain, but that can
+    be very slow on machines where DNS is broken.  So now we simply
+    use the hostname.
     """
     import socket
 
     # XXX: Any good way to get real user name on win32?
-
-    # XXX: can the FQDN be non-ascii?
 
     try:
         import pwd
@@ -155,13 +156,33 @@ def auto_user_id():
         else:
             realname = gecos[:comma]
 
-        return realname, (username + '@' + socket.getfqdn())
-
     except ImportError:
+        realname = ''
         import getpass
-        getpass.getuser().decode(bzrlib.user_encoding)
-        return '', (username + '@' + socket.getfqdn())
+        username = getpass.getuser().decode(bzrlib.user_encoding)
 
+    return realname, (username + '@' + os.gethostname())
+
+
+def _get_user_id():
+    v = os.environ.get('BZREMAIL')
+    if v:
+        return v.decode(bzrlib.user_encoding)
+    
+    try:
+        return (open(os.path.expanduser("~/.bzr.email"))
+                .read()
+                .decode(bzrlib.user_encoding)
+                .rstrip("\r\n"))
+    except OSError, e:
+        if e.errno != ENOENT:
+            raise e
+
+    v = os.environ.get('EMAIL')
+    if v:
+        return v.decode(bzrlib.user_encoding)
+    else:    
+        return None
 
 
 def username():
@@ -174,11 +195,11 @@ def username():
     :todo: Allow taking it from a dotfile to help people on windows
            who can't easily set variables.
     """
-    e = os.environ.get('BZREMAIL') or os.environ.get('EMAIL')
-    if e:
-        return e.decode(bzrlib.user_encoding)
-
-    name, email = auto_user_id()
+    v = _get_user_id()
+    if v:
+        return v
+    
+    name, email = _auto_user_id()
     if name:
         return '%s <%s>' % (name, email)
     else:
@@ -188,16 +209,14 @@ def username():
 _EMAIL_RE = re.compile(r'[\w+.-]+@[\w+.-]+')
 def user_email():
     """Return just the email component of a username."""
-    e = os.environ.get('BZREMAIL') or os.environ.get('EMAIL')
+    e = _get_user_id()
     if e:
-        e = e.decode(bzrlib.user_encoding)
-        
         m = _EMAIL_RE.search(e)
         if not m:
-            bailout('%r is not a reasonable email address' % e)
+            bailout("%r doesn't seem to contain a reasonable email address" % e)
         return m.group(0)
 
-    return auto_user_id()[1]
+    return _auto_user_id()[1]
     
 
 

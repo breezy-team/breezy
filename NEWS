@@ -11,6 +11,15 @@ bzr-0.0.4  NOT RELEASED YET
       changeset.  Patch from Sebastian Cote.
 
 
+  CHANGES:
+
+    * User email is determined by looking at $BZREMAIL or ~/.bzr.email
+      or $EMAIL.  All are decoded by the locale preferred encoding.
+      If none of these are present user@hostname is used.  The host's
+      fully-qualified name is not used because that tends to fail when
+      there are DNS problems.
+
+
   BUG FIXES: 
 
     * Make commit safe for hardlinked bzr trees.
