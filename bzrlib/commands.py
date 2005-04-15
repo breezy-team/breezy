@@ -831,6 +831,8 @@ def parse_args(argv):
     while argv:
         a = argv.pop(0)
         if a[0] == '-':
+            # option names must not be unicode
+            a = str(a)
             optarg = None
             if a[1] == '-':
                 mutter("  got option %r" % a)
