@@ -1013,6 +1013,21 @@ def run_bzr(argv):
 
 
 
+def _report_exception(e, summary):
+    import traceback
+    log_error('bzr: ' + summary)
+    bzrlib.trace.log_exception(e)
+    tb = sys.exc_info()[2]
+    exinfo = traceback.extract_tb(tb, 1)
+    if exinfo:
+        sys.stderr.write('  at %s:%d in %s()\n' % exinfo[0][:3])
+    sys.stderr.write('  see ~/.bzr.log for debug information\n')
+
+
+def cmd_assert_fail():
+    assert False
+
+
 def main(argv):
     bzrlib.trace.create_tracefile(argv)
 
@@ -1021,17 +1036,19 @@ def main(argv):
             ret = run_bzr(argv)
             return ret
         except BzrError, e:
-            log_error('bzr: error: ' + e.args[0])
+            _report_exception(e, 'error: ' + e.args[0])
             if len(e.args) > 1:
                 for h in e.args[1]:
+                    # some explanation or hints
                     log_error('  ' + h)
-            bzrlib.trace.log_exception(e)
-            sys.stderr.write('(see ~/.bzr.log for debug information)\n')
             return 1
+        except AssertionError, e:
+            msg = 'assertion failed'
+            if str(e):
+                msg += ': ' + str(e)
+            _report_exception(e, msg)
         except Exception, e:
-            log_error('bzr: exception: %s' % str(e).rstrip('\n'))
-            sys.stderr.write('(see $HOME/.bzr.log for debug information)\n')
-            bzrlib.trace.log_exception(e)
+            _report_exception(e, 'exception: %s' % str(e).rstrip('\n'))
             return 1
     finally:
         bzrlib.trace.close_trace()
