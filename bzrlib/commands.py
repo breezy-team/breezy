@@ -116,6 +116,29 @@ EMPTY = 'empty'
 
 
 
+cmd_aliases = {
+    '?':         'help',
+    'ci':        'commit',
+    'checkin':   'commit',
+    'di':        'diff',
+    'st':        'status',
+    'stat':      'status',
+    }
+
+
+def get_cmd_handler(cmd):
+    assert isinstance(cmd, str)
+    
+    cmd = cmd_aliases.get(cmd, cmd)
+    
+    try:
+        cmd_handler = globals()['cmd_' + cmd.replace('-', '_')]
+    except KeyError:
+        raise BzrError("unknown command %r" % cmd)
+
+    return cmd, cmd_handler
+
+
 
 def cmd_status(all=False):
     """Display status summary.
@@ -711,10 +734,7 @@ def cmd_help(topic=None):
         return
 
     # otherwise, maybe the name of a command?
-    try:
-        cmdfn = globals()['cmd_' + topic.replace('-', '_')]
-    except KeyError:
-        bailout("no help for %r" % topic)
+    topic, cmdfn = get_cmd_handler(topic)
 
     doc = getdoc(cmdfn)
     if doc == None:
@@ -962,10 +982,7 @@ def run_bzr(argv):
         log_error('  try "bzr help"')
         return 1
 
-    try:
-        cmd_handler = globals()['cmd_' + cmd.replace('-', '_')]
-    except KeyError:
-        bailout("unknown command " + `cmd`)
+    canonical_cmd, cmd_handler = get_cmd_handler(cmd)
 
     # global option
     if 'profile' in opts:
@@ -975,7 +992,7 @@ def run_bzr(argv):
         profile = False
 
     # check options are reasonable
-    allowed = cmd_options.get(cmd, [])
+    allowed = cmd_options.get(canonical_cmd, [])
     for oname in opts:
         if oname not in allowed:
             bailout("option %r is not allowed for command %r"
@@ -986,7 +1003,7 @@ def run_bzr(argv):
     # options" (it is an oxymoron)
 
     # mix arguments and options into one dictionary
-    cmdargs = _match_args(cmd, args)
+    cmdargs = _match_args(canonical_cmd, args)
     for k, v in opts.items():
         cmdargs[k.replace('-', '_')] = v
 

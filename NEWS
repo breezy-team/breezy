@@ -12,6 +12,9 @@ bzr-0.0.4  NOT RELEASED YET
 
     * Roll over ~/.bzr.log if it gets too large.
 
+    * Command abbreviations 'ci', 'st', 'stat', '?' based on a patch
+      by Jason Diamon.
+
 
   CHANGES:
 

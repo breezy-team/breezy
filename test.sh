@@ -60,6 +60,9 @@ bzr status --all > status.tmp
 ?       test.txt
 EOF
 
+# command alias
+bzr st --all | diff -u - status.tmp
+
 # can't rename unversioned files; use the regular unix rename command
 ! bzr rename test.txt new-test.txt
 
