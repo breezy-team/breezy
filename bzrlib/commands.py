@@ -1056,9 +1056,9 @@ def _report_exception(e, summary):
     log_error('bzr: ' + summary)
     bzrlib.trace.log_exception(e)
     tb = sys.exc_info()[2]
-    exinfo = traceback.extract_tb(tb, 1)
+    exinfo = traceback.extract_tb(tb)
     if exinfo:
-        sys.stderr.write('  at %s:%d in %s()\n' % exinfo[0][:3])
+        sys.stderr.write('  at %s:%d in %s()\n' % exinfo[-1][:3])
     sys.stderr.write('  see ~/.bzr.log for debug information\n')
 
 
