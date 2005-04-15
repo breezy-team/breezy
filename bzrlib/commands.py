@@ -17,15 +17,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """Bazaar-NG -- a free distributed version-control tool
+http://bazaar-ng.org/
 
 **WARNING: THIS IS AN UNSTABLE DEVELOPMENT VERSION**
 
-Current limitation include:
-
 * Metadata format is not stable yet -- you may need to
   discard history in the future.
-
-* Insufficient error handling.
 
 * Many commands unimplemented or partially implemented.
 
@@ -33,30 +30,33 @@ Current limitation include:
 
 * No merge operators yet.
 
-Interesting commands::
+Interesting commands:
 
   bzr help [COMMAND]
-       Show help screen
+      Show help screen
   bzr version
-       Show software version/licence/non-warranty.
+      Show software version/licence/non-warranty.
   bzr init
-       Start versioning the current directory
+      Start versioning the current directory
   bzr add FILE...
-       Make files versioned.
+      Make files versioned.
   bzr log
-       Show revision history.
+      Show revision history.
   bzr diff [FILE...]
-       Show changes from last revision to working copy.
+      Show changes from last revision to working copy.
   bzr commit -m 'MESSAGE'
-       Store current state as new revision.
+      Store current state as new revision.
   bzr export REVNO DESTINATION
-       Export the branch state at a previous version.
+      Export the branch state at a previous version.
   bzr status
-       Show summary of pending changes.
+      Show summary of pending changes.
   bzr remove FILE...
-       Make a file not versioned.
+      Make a file not versioned.
   bzr info
-       Show statistics about this branch.
+      Show statistics about this branch.
+  bzr check
+      Verify history is stored safely. 
+  (for more type 'bzr help commands')
 """
 
 
@@ -680,6 +680,8 @@ def cmd_is(pred, *rest):
 def cmd_whoami():
     """Show bzr user id.
 
+    usage: bzr whoami
+
     TODO: Command to show only the email-address part as parsed out.
     """
     print bzrlib.osutils.username()
@@ -731,16 +733,32 @@ cmd_doctest = cmd_selftest
 def cmd_help(topic=None):
     if topic == None:
         print __doc__
-        return
+    elif topic == 'commands':
+        help_commands()
+    else:
+        # otherwise, maybe the name of a command?
+        topic, cmdfn = get_cmd_handler(topic)
 
-    # otherwise, maybe the name of a command?
-    topic, cmdfn = get_cmd_handler(topic)
+        doc = getdoc(cmdfn)
+        if doc == None:
+            bailout("sorry, no detailed help yet for %r" % topic)
 
-    doc = getdoc(cmdfn)
-    if doc == None:
-        bailout("sorry, no detailed help yet for %r" % topic)
+        print doc
 
-    print doc
+
+def help_commands():
+    """List all commands"""
+    accu = []
+    for k in globals().keys():
+        if k.startswith('cmd_'):
+            accu.append(k[4:].replace('_','-'))
+    accu.sort()
+    print "bzr commands: "
+    for x in accu:
+        print "   " + x
+    print "note: some of these commands are internal-use or obsolete"
+    # TODO: Some kind of marker for internal-use commands?
+    # TODO: Show aliases?
         
 
 

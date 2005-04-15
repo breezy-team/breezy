@@ -15,6 +15,8 @@ bzr-0.0.4  NOT RELEASED YET
     * Command abbreviations 'ci', 'st', 'stat', '?' based on a patch
       by Jason Diamon.
 
+    * New 'bzr help commands' based on a patch from Denys Duchier.
+
 
   CHANGES:
 

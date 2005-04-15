@@ -43,6 +43,8 @@ cd branch1
 bzr help
 bzr version
 
+[ $(bzr help commands | wc -l) -gt 20 ]
+
 # invalid commands are detected
 ! bzr pants
 
