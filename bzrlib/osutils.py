@@ -129,6 +129,16 @@ def fingerprint_file(f):
             'sha1': s.hexdigest()}
 
 
+def config_dir():
+    """Return per-user configuration directory.
+
+    By default this is ~/.bzr.conf/
+    
+    TODO: Global option --config-dir to override this.
+    """
+    return os.path.expanduser("~/.bzr.conf")
+
+
 def _auto_user_id():
     """Calculate automatic user identification.
 
@@ -166,12 +176,16 @@ def _auto_user_id():
 
 
 def _get_user_id():
+    """Return the full user id from a file or environment variable.
+
+    TODO: Allow taking this from a file in the branch directory too
+    for per-branch ids."""
     v = os.environ.get('BZREMAIL')
     if v:
         return v.decode(bzrlib.user_encoding)
     
     try:
-        return (open(os.path.expanduser("~/.bzr.email"))
+        return (open(os.path.join(config_dir(), "email"))
                 .read()
                 .decode(bzrlib.user_encoding)
                 .rstrip("\r\n"))
@@ -192,9 +206,6 @@ def username():
     Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
     TODO: Check it's reasonably well-formed.
-
-    TODO: Allow taking it from a dotfile to help people on windows
-           who can't easily set variables.
     """
     v = _get_user_id()
     if v:
