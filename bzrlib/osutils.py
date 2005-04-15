@@ -155,13 +155,14 @@ def _auto_user_id():
             realname = gecos
         else:
             realname = gecos[:comma]
+        if not realname:
+            realname = username
 
     except ImportError:
-        realname = ''
         import getpass
-        username = getpass.getuser().decode(bzrlib.user_encoding)
+        realname = username = getpass.getuser().decode(bzrlib.user_encoding)
 
-    return realname, (username + '@' + os.gethostname())
+    return realname, (username + '@' + socket.gethostname())
 
 
 def _get_user_id():
@@ -174,8 +175,8 @@ def _get_user_id():
                 .read()
                 .decode(bzrlib.user_encoding)
                 .rstrip("\r\n"))
-    except OSError, e:
-        if e.errno != ENOENT:
+    except IOError, e:
+        if e.errno != errno.ENOENT:
             raise e
 
     v = os.environ.get('EMAIL')
