@@ -44,32 +44,36 @@ silent = False
 verbose = False
 
 
-def warning(msg):
-    b = 'bzr: warning: ' + msg + '\n'
-    sys.stderr.write(b)
-    _tracefile.write(b)
-    #_tracefile.flush()
+# fix this if we ever fork within python
+_mypid = os.getpid()
+_logprefix = '[%d] ' % _mypid
 
-def mutter(msg):
-    _tracefile.write(msg)
-    _tracefile.write('\n')
-    # _tracefile.flush()
-    if verbose:
-        sys.stderr.write('- ' + msg + '\n')
+
+def _write_trace(msg):
+    _tracefile.write(_logprefix + msg + '\n')
+
+
+def warning(msg):
+    sys.stderr.write('bzr: warning: ' + msg + '\n')
+    _write_trace('warning: ' + msg)
+
+
+mutter = _write_trace
 
 
 def note(msg):
     b = '* ' + str(msg) + '\n'
     if not silent:
         sys.stderr.write(b)
-    _tracefile.write(b)
-    # _tracefile.flush()
+    _write_trace('note: ' + msg)
 
 
 def log_error(msg):
-    sys.stderr.write(msg)
-    _tracefile.write(msg)
-    # _tracefile.flush()
+    sys.stderr.write(msg + '\n')
+    _write_trace(msg)
+
+
+# TODO: Something to log exceptions in here.
 
 
 
@@ -85,9 +89,14 @@ def create_tracefile(argv):
 
     _starttime = os.times()[4]
 
-    # XXX:  Does this always work on Windows?
+    # TODO: If the file exists and is too large, rename it to .old;
+    # must handle failures of this because we can't rename an open
+    # file on Windows.
+
     trace_fname = os.path.join(os.path.expanduser('~/.bzr.log'))
-    _tracefile = codecs.open(trace_fname, 'at', 'utf8')
+
+    # buffering=1 means line buffered
+    _tracefile = codecs.open(trace_fname, 'at', 'utf8', buffering=1)
     t = _tracefile
 
     if os.fstat(t.fileno())[stat.ST_SIZE] == 0:
@@ -98,16 +107,13 @@ def create_tracefile(argv):
     # TODO: If we failed to create the file, perhaps give a warning
     # but don't abort; send things to /dev/null instead?
 
-    
-    t.write('-' * 60 + '\n')
-    t.write('bzr invoked at %s\n' % bzrlib.osutils.format_date(time.time()))
-    t.write('  version: %s\n' % bzrlib.__version__)
-    t.write('  by %s on %s\n' % (bzrlib.osutils.username(), socket.getfqdn()))
-    t.write('  arguments: %r\n' % argv)
-    t.write('  working dir: %s\n' % os.getcwdu())
+    _write_trace('bzr %s invoked on python %s (%s)'
+                 % (bzrlib.__version__,
+                    '.'.join(map(str, sys.version_info)),
+                    sys.platform))
 
-    t.write('  platform: %s\n' % sys.platform)
-    t.write('  python: %s\n' % (sys.version_info,))
+    _write_trace('  arguments: %r' % argv)
+    _write_trace('  working dir: ' + os.getcwdu())
 
     import atexit
     atexit.register(_close_trace)

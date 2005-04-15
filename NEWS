@@ -39,6 +39,8 @@ bzr-0.0.4  NOT RELEASED YET
     * Write profile data to a temporary file not into working
       directory and delete it when done.
 
+    * Smaller .bzr.log with process ids.
+
 
   PORTABILITY:
 

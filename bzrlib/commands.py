@@ -953,8 +953,8 @@ def run_bzr(argv):
             return 0
         cmd = args.pop(0)
     except IndexError:
-        log_error('usage: bzr COMMAND\n')
-        log_error('  try "bzr help"\n')
+        log_error('usage: bzr COMMAND')
+        log_error('  try "bzr help"')
         return 1
 
     try:
@@ -1024,16 +1024,16 @@ def main(argv):
         ret = run_bzr(argv)
         return ret
     except BzrError, e:
-        log_error('bzr: error: ' + e.args[0] + '\n')
+        log_error('bzr: error: ' + e.args[0])
         if len(e.args) > 1:
             for h in e.args[1]:
-                log_error('  ' + h + '\n')
+                log_error('  ' + h)
         traceback.print_exc(None, bzrlib.trace._tracefile)
-        log_error('(see $HOME/.bzr.log for debug information)\n')
+        log_error('(see ~/.bzr.log for debug information)')
         return 1
     except Exception, e:
-        log_error('bzr: exception: %s\n' % e)
-        log_error('(see $HOME/.bzr.log for debug information)\n')
+        log_error('bzr: exception: %s' % str(e).rstrip('\n'))
+        log_error('(see $HOME/.bzr.log for debug information)')
         traceback.print_exc(None, bzrlib.trace._tracefile)
         ## traceback.print_exc(None, sys.stderr)
         return 1
