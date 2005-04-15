@@ -144,6 +144,10 @@ def close_trace():
 
 
 def log_exception(e):
-    import traceback
-    traceback.print_exc(None, _tracefile)
+    import traceback, cStringIO
+    s = cStringIO.StringIO()
+    traceback.print_exc(None, s)
+    for l in s.getvalue().split('\n'):
+        _write_trace(l)
+        
     
