@@ -143,3 +143,7 @@ def close_trace():
 
 
 
+def log_exception(e):
+    import traceback
+    traceback.print_exc(None, _tracefile)
+    

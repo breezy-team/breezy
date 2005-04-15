@@ -62,7 +62,7 @@ Interesting commands::
 
 
 
-import sys, os, time, types, shutil, tempfile, traceback, fnmatch, difflib, os.path
+import sys, os, time, types, shutil, tempfile, fnmatch, difflib, os.path
 from sets import Set
 from pprint import pprint
 from stat import *
@@ -1012,12 +1012,6 @@ def run_bzr(argv):
 
 
 def main(argv):
-    ## TODO: Handle command-line options; probably know what options are valid for
-    ## each command
-
-    ## TODO: If the arguments are wrong, give a usage message rather
-    ## than just a backtrace.
-
     bzrlib.trace.create_tracefile(argv)
 
     try:
@@ -1029,14 +1023,13 @@ def main(argv):
             if len(e.args) > 1:
                 for h in e.args[1]:
                     log_error('  ' + h)
-            traceback.print_exc(None, bzrlib.trace._tracefile)
-            log_error('(see ~/.bzr.log for debug information)')
+            bzrlib.trace.log_exception(e)
+            sys.stderr.write('(see ~/.bzr.log for debug information)\n')
             return 1
         except Exception, e:
             log_error('bzr: exception: %s' % str(e).rstrip('\n'))
-            log_error('(see $HOME/.bzr.log for debug information)')
-            traceback.print_exc(None, bzrlib.trace._tracefile)
-            ## traceback.print_exc(None, sys.stderr)
+            sys.stderr.write('(see $HOME/.bzr.log for debug information)\n')
+            bzrlib.trace.log_exception(e)
             return 1
     finally:
         bzrlib.trace.close_trace()
