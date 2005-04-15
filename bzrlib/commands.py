@@ -1019,24 +1019,27 @@ def main(argv):
     ## than just a backtrace.
 
     bzrlib.trace.create_tracefile(argv)
-    
+
     try:
-        ret = run_bzr(argv)
-        return ret
-    except BzrError, e:
-        log_error('bzr: error: ' + e.args[0])
-        if len(e.args) > 1:
-            for h in e.args[1]:
-                log_error('  ' + h)
-        traceback.print_exc(None, bzrlib.trace._tracefile)
-        log_error('(see ~/.bzr.log for debug information)')
-        return 1
-    except Exception, e:
-        log_error('bzr: exception: %s' % str(e).rstrip('\n'))
-        log_error('(see $HOME/.bzr.log for debug information)')
-        traceback.print_exc(None, bzrlib.trace._tracefile)
-        ## traceback.print_exc(None, sys.stderr)
-        return 1
+        try:
+            ret = run_bzr(argv)
+            return ret
+        except BzrError, e:
+            log_error('bzr: error: ' + e.args[0])
+            if len(e.args) > 1:
+                for h in e.args[1]:
+                    log_error('  ' + h)
+            traceback.print_exc(None, bzrlib.trace._tracefile)
+            log_error('(see ~/.bzr.log for debug information)')
+            return 1
+        except Exception, e:
+            log_error('bzr: exception: %s' % str(e).rstrip('\n'))
+            log_error('(see $HOME/.bzr.log for debug information)')
+            traceback.print_exc(None, bzrlib.trace._tracefile)
+            ## traceback.print_exc(None, sys.stderr)
+            return 1
+    finally:
+        bzrlib.trace.close_trace()
 
     ## TODO: Trap AssertionError
 

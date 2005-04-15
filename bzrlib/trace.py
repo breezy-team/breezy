@@ -115,11 +115,8 @@ def create_tracefile(argv):
     _write_trace('  arguments: %r' % argv)
     _write_trace('  working dir: ' + os.getcwdu())
 
-    import atexit
-    atexit.register(_close_trace)
 
-
-def _close_trace():
+def close_trace():
     times = os.times()
     mutter("finished, %.3fu/%.3fs cpu, %.3fu/%.3fs cum, %.3f elapsed"
            % (times[:4] + ((times[4] - _starttime),)))
