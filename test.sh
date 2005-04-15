@@ -48,6 +48,10 @@ bzr version
 # invalid commands are detected
 ! bzr pants
 
+# TODO: test unicode user names
+
+bzr help
+
 # some experiments with renames
 bzr init
 echo "hello world" > test.txt
