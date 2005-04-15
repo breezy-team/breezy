@@ -367,9 +367,13 @@ def cmd_diff(revision=None, file_list=None):
     TODO: Option to use external diff command; could be GNU diff, wdiff,
           or a graphical diff.
 
+    TODO: Python difflib is not exactly the same as unidiff; should
+          either fix it up or prefer to use an external diff.
+
     TODO: If a directory is given, diff everything under that.
 
-    TODO: Selected-file diff is inefficient and doesn't show you deleted files.
+    TODO: Selected-file diff is inefficient and doesn't show you
+          deleted files.
 """
 
     ## TODO: Shouldn't be in the cmd function.
