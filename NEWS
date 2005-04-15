@@ -35,6 +35,9 @@ bzr-0.0.4  NOT RELEASED YET
 
     * Some Unicode/locale fixes.
 
+    * Partial workaround for difflib.unified_diff not handling
+      trailing newlines properly.
+
 
   INTERNAL:
 

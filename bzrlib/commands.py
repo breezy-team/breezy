@@ -374,6 +374,8 @@ def cmd_diff(revision=None, file_list=None):
 
     TODO: Selected-file diff is inefficient and doesn't show you
           deleted files.
+
+    TODO: This probably handles non-Unix newlines poorly.
 """
 
     ## TODO: Shouldn't be in the cmd function.
@@ -420,13 +422,37 @@ def cmd_diff(revision=None, file_list=None):
         # with newly-added files.
 
         def diffit(oldlines, newlines, **kw):
+            
             # FIXME: difflib is wrong if there is no trailing newline.
+            # The syntax used by patch seems to be "\ No newline at
+            # end of file" following the last diff line from that
+            # file.  This is not trivial to insert into the
+            # unified_diff output and it might be better to just fix
+            # or replace that function.
+
+            # In the meantime we at least make sure the patch isn't
+            # mangled.
+            
 
             # Special workaround for Python2.3, where difflib fails if
             # both sequences are empty.
-            if oldlines or newlines:
-                sys.stdout.writelines(difflib.unified_diff(oldlines, newlines, **kw))
-            print
+            if not oldlines and not newlines:
+                return
+
+            nonl = False
+
+            if oldlines and (oldlines[-1][-1] != '\n'):
+                oldlines[-1] += '\n'
+                nonl = True
+            if newlines and (newlines[-1][-1] != '\n'):
+                newlines[-1] += '\n'
+                nonl = True
+
+            ud = difflib.unified_diff(oldlines, newlines, **kw)
+            sys.stdout.writelines(ud)
+            if nonl:
+                print "\\ No newline at end of file"
+            sys.stdout.write('\n')
         
         if file_state in ['.', '?', 'I']:
             continue
