@@ -127,7 +127,7 @@ cmd_aliases = {
 
 
 def get_cmd_handler(cmd):
-    assert isinstance(cmd, str)
+    cmd = str(cmd)
     
     cmd = cmd_aliases.get(cmd, cmd)
     
