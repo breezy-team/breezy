@@ -953,7 +953,7 @@ def run_bzr(argv):
         elif 'version' in opts:
             cmd_version()
             return 0
-        cmd = args.pop(0)
+        cmd = str(args.pop(0))
     except IndexError:
         log_error('usage: bzr COMMAND')
         log_error('  try "bzr help"')
@@ -985,7 +985,7 @@ def run_bzr(argv):
     # mix arguments and options into one dictionary
     cmdargs = _match_args(cmd, args)
     for k, v in opts.items():
-        cmdargs[str(k.replace('-', '_'))] = v
+        cmdargs[k.replace('-', '_')] = v
 
     if profile:
         import hotshot
