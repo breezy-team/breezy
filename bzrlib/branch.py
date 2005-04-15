@@ -165,9 +165,11 @@ class Branch:
         if mode == 'rb' or mode == 'wb':
             return file(fn, mode)
         elif mode == 'r' or mode == 'w':
-            # open in binary mode anyhow so there's no newline translation
+            # open in binary mode anyhow so there's no newline translation;
+            # codecs uses line buffering by default; don't want that.
             import codecs
-            return codecs.open(fn, mode + 'b', 'utf-8')
+            return codecs.open(fn, mode + 'b', 'utf-8',
+                               buffering=60000)
         else:
             raise BzrError("invalid controlfile mode %r" % mode)
 
