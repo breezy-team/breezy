@@ -193,6 +193,9 @@ def cmd_add(file_list, verbose=False):
 
     Therefore simply saying 'bzr add .' will version all files that
     are currently unknown.
+
+    TODO: Perhaps adding a file whose directly is not versioned should
+    recursively add that parent, rather than giving an error?
     """
     bzrlib.add.smart_add(file_list, verbose)
     
