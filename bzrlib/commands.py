@@ -42,6 +42,10 @@ Interesting commands:
       Make files versioned.
   bzr log
       Show revision history.
+  bzr rename FROM TO
+      Rename one file.
+  bzr move FROM... DESTDIR
+      Move one or more files to a different directory.
   bzr diff [FILE...]
       Show changes from last revision to working copy.
   bzr commit -m 'MESSAGE'
