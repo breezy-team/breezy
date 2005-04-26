@@ -27,6 +27,9 @@ Small things
   in a separate process (in sh, C, whatever).   It should be possible
   to get help for plugin commands.
 
+* Smart rewrap text in help messages to fit in $COLUMNS (or equivalent
+  on Windows)
+
 Medium things
 -------------
 
