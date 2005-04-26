@@ -5,5 +5,9 @@ all: $(addsuffix .html,$(basename $(wildcard *.txt)))
 
 
 upload: all
-	rsync -av *html escudero.ubuntu.com:/srv/www.bazaar-ng.org/www/doc/
+	rsync -av \
+	./ \
+	escudero.ubuntu.com:/srv/www.bazaar-ng.org/www/doc/ \
+	--delete \
+	--include \*.html --exclude \* 
 
