@@ -235,26 +235,6 @@ those operations should be *extremely* easy.
 
 -----
 
-
-* Fix up diffs for files without a trailing newline
-
------
-
-* Directly import diffs!  It seems a bit redundant to need to rescan
-  the directory to work out what files diff added/deleted/changed when
-  all the information is there in the diff in the first place.
-  Getting the exact behaviour for added/deleted subdirectories etc
-  might be hard.
-
-  At the very least we could run diffstat over the diff, or perhaps
-  read the status output from patch.  Just knowing which files might
-  be modified would be enough to guide the add and commit.
-  
-  Given this we might be able to import patches at 1/second or better.
-
-
-----
-
 When sending patches by email (optionall) send each one as a separate
 mail, with a sequence number [%03d/%03d] at the start of the Subject.
 See mail from linus 2005-04-07.

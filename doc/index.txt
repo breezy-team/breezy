@@ -180,17 +180,9 @@ Comparisons to other systems
 Project management and organization
 -----------------------------------
 
-* `Development news <news.html>`__
-
 * `Notes on how to get a VCS adopted <adoption.html>`__
 
-* `Testing plan <testing.html>`__ -- very sketchy.
-
 * `Thanks <thanks.html>`__ to various people
-
-* `Roadmap <roadmap.html>`__: High-level order for implementing features.
-
-* `<work-order.html>`__: current tasks.
 
 * `Extra commands <extra-commands.html>`__ for
   internal/developer/debugger use.

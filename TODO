@@ -1,0 +1,78 @@
+(See also various low-level TODOs in the source code.)
+
+Small things
+------------
+
+* Add of a file that was present in the base revision should put back
+  the previous file-id.
+
+* Handle diff of files which do not have a trailing newline; probably
+  requires patching difflib to get it exactly right, or otherwise
+  calling out to GNU diff.
+
+* Import ElementTree update patch.
+
+
+Medium things
+-------------
+
+* Faster diff/status.  
+
+  Status should be handled differently because it needs to report on
+  deleted and unknown files.  diff only needs to deal with versioned
+  files.
+
+* Merge Aaron's merge code.
+
+* Merge revert patch.
+
+* Turn on stat cache code, and add optimization about avoiding
+  dangerous cache entries.
+
+* mv command?
+
+* More efficient diff of only selected files.
+
+* Fix up Inventory objects to represent root object as an entry.
+
+* Don't convert entire entry from 
+
+* Extract changes from one revision to the next to a text form
+  suitable for transmission over email.
+
+* More test cases.
+
+* Write a reproducible benchmark, perhaps importing various kernel versions.
+
+* Change test.sh from Bourne shell into something in pure Python so
+  that it can be more portable.
+
+* Directly import diffs!  It seems a bit redundant to need to rescan
+  the directory to work out what files diff added/deleted/changed when
+  all the information is there in the diff in the first place.
+  Getting the exact behaviour for added/deleted subdirectories etc
+  might be hard.
+
+  At the very least we could run diffstat over the diff, or perhaps
+  read the status output from patch.  Just knowing which files might
+  be modified would be enough to guide the add and commit.
+  
+  Given this we might be able to import patches at 1/second or better.
+
+* Get branch over http.
+
+* Pull pure updates over http.
+
+* revfile compression.
+
+* Split inventory into per-directory files.
+
+
+Large things
+------------
+
+* Web interface
+
+* GUI (maybe in Python GTK+?)
+
+* C library interface
