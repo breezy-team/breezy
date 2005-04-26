@@ -705,16 +705,21 @@ def cmd_is(pred, *rest):
         sys.exit(1)
 
 
-def cmd_whoami():
+def cmd_whoami(email=False):
     """Show bzr user id.
 
     usage: bzr whoami
 
-    TODO: Command to show only the email-address part as parsed out.
+    options:
+        --email             Show only the email address.
+    
     """
-    print bzrlib.osutils.username()
-
-
+    if email:
+        print bzrlib.osutils.user_email()
+    else:
+        print bzrlib.osutils.username()
+        
+        
 def cmd_gen_revision_id():
     print bzrlib.branch._gen_revision_id(time.time())
 
@@ -825,6 +830,7 @@ OPTIONS = {
     'timezone':               str,
     'verbose':                None,
     'version':                None,
+    'email':                  None,
     }
 
 SHORT_OPTIONS = {
@@ -846,6 +852,7 @@ cmd_options = {
     'ls':                     ['revision', 'verbose'],
     'remove':                 ['verbose'],
     'status':                 ['all'],
+    'whoami':                 ['email'],
     }
 
 

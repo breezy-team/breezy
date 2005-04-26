@@ -45,6 +45,10 @@ bzr version
 
 [ $(bzr help commands | wc -l) -gt 20 ]
 
+# user identification is set
+bzr whoami
+bzr whoami --email
+
 # invalid commands are detected
 ! bzr pants
 

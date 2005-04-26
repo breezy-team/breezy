@@ -1,3 +1,11 @@
+bzr-0.0.5  NOT RELEASED YET
+
+  ENHANCEMENTS:
+
+    * New 'bzr whoami --email' option shows only the email component
+      of the user identification, from Jo Vermeulen.
+
+
 bzr-0.0.4  2005-04-22
 
   ENHANCEMENTS:
