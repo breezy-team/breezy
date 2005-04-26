@@ -30,6 +30,8 @@ Small things
 * Smart rewrap text in help messages to fit in $COLUMNS (or equivalent
   on Windows)
 
+* -r option should take a revision-id as well as a revno.
+
 Medium things
 -------------
 
