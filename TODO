@@ -16,6 +16,8 @@ Small things
 
 * Syntax should be "bzr export -r REV".
 
+* "cat -rREV FILE"
+
 Medium things
 -------------
 

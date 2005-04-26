@@ -889,11 +889,7 @@ class Branch:
         >>> b.show_status()
         D       foo
         
-
         TODO: Get state for single files.
-
-        TODO: Perhaps show a slash at the end of directory names.        
-
         """
 
         # We have to build everything into a list first so that it can

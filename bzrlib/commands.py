@@ -109,15 +109,6 @@ EMPTY = 'empty'
 ## can be taken either from their parameters or their working
 ## directory.
 
-## TODO: rename command, needed soon: check destination doesn't exist
-## either in working copy or tree; move working copy; update
-## inventory; write out
-
-## TODO: move command; check destination is a directory and will not
-## clash; move it.
-
-## TODO: command to show renames, one per line, as to->from
-
 
 
 cmd_aliases = {
