@@ -1,3 +1,5 @@
+                                                 -*- indented-text -*-
+
 (See also various low-level TODOs in the source code.  Try looking in
 the list archive or on gmane.org for previous discussion of these
 issues, or )
@@ -17,6 +19,13 @@ Small things
 * Syntax should be "bzr export -r REV".
 
 * "cat -rREV FILE"
+
+* Plugins that provide commands.  By just installing a file into some
+  directory (e.g. /usr/share/bzr/plugins) it should be possible to
+  create new top-level commands ("bzr frob").  Extensions can be
+  written in either Python (in which case they use the bzrlib API) or
+  in a separate process (in sh, C, whatever).   It should be possible
+  to get help for plugin commands.
 
 Medium things
 -------------
