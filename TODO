@@ -32,6 +32,13 @@ Small things
 
 * -r option should take a revision-id as well as a revno.
 
+* "bzr info" could show space used by working tree, versioned files,
+  unknown and ignored files. 
+
+* "bzr info" should count only people with distinct email addresses as
+  different committers.  (Or perhaps only distinct userids?)
+
+
 Medium things
 -------------
 
