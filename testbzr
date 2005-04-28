@@ -75,6 +75,8 @@ def backtick(cmd, retcode=0):
     outd, errd = child.communicate()
     logfile.write(outd)
     actual_retcode = child.wait()
+
+    outd = outd.replace('\r', '')
     
     if retcode != actual_retcode:
         raise CommandFailed("test failed: %r returned %d, expected %d"
@@ -142,13 +144,13 @@ try:
     f.write('hello world!\n')
     f.close()
 
-    out = backtick("bzr unknowns").rstrip('\r\n')
-    assert out == 'test.txt'
+    out = backtick("bzr unknowns")
+    assert out == 'test.txt\n'
 
-    out = backtick("bzr status").replace('\r', '')
+    out = backtick("bzr status")
     assert out == '''?       test.txt\n'''
 
-    out = backtick("bzr status --all").replace('\r', '')
+    out = backtick("bzr status --all")
     assert out == "?       test.txt\n"
 
     progress("can't rename unversioned file")
@@ -158,12 +160,14 @@ try:
 
     runcmd("bzr add test.txt")
     assert backtick("bzr unknowns") == ''
-    assert backtick("bzr status --all").replace('\r', '') == "A       test.txt\n"
+    assert backtick("bzr status --all") == "A       test.txt\n"
 
     progress("rename newly-added file")
     runcmd("bzr rename test.txt hello.txt")
     assert os.path.exists("hello.txt")
     assert not os.path.exists("test.txt")
+
+    assert backtick("bzr revno") == '0'
 
     cd('..')
 
