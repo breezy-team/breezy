@@ -55,6 +55,8 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 Medium things
 -------------
 
+* Selective commit of only some files.
+
 * Faster diff/status.  
 
   Status should be handled differently because it needs to report on
@@ -114,13 +116,24 @@ Medium things
 
   - perhaps a pattern that matches only directories or non-directories
 
-* Expansion of $Id$ tags within working files.  Perhaps do this in
+* Expansion of $Id$ keywords within working files.  Perhaps do this in
   exports first as a simpler case because then we don't need to deal
   with removing the tags on the way back in.
 
 
 Large things
 ------------
+
+* Hooks for pre-commit, post-commit, etc.
+
+  Consider the security implications; probably should not enable hooks
+  for remotely-fetched branches by default.
+
+* Pre-commit check.  If this hook is defined, it needs to be handled
+  specially: create a temporary directory containing the tree as it
+  will be after the commit.  This means excluding any ignored/unknown
+  files, and respecting selective commits.  Run the pre-commit check
+  (e.g. compile and run test suite) in there.
 
 * Web interface
 
