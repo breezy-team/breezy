@@ -162,6 +162,8 @@ try:
 
     progress("rename newly-added file")
     runcmd("bzr rename test.txt hello.txt")
+    assert os.path.exists("hello.txt")
+    assert not os.path.exists("test.txt")
 
     cd('..')
 
