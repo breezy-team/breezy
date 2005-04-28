@@ -24,7 +24,7 @@ related to argument processing, startup, etc.
 
 This replaces the previous test.sh which was not very portable."""
 
-import sys, os
+import sys, os, traceback
 
 try:
     import shutil
@@ -33,6 +33,10 @@ except ImportError, e:
     sys.stderr.write("testbzr: sorry, this test suite requires modules from python2.4\n"
                      + '    ' + str(e))
     sys.exit(1)
+
+
+class CommandFailed(Exception):
+    pass
 
 
 def runcmd(cmd):
@@ -47,7 +51,7 @@ def runcmd(cmd):
     logfile.write('$ %r\n' % cmd)
     retcode = call(cmd, stdout=logfile, stderr=logfile)
     if retcode != 0:
-        raise Exception("test failed: %r returned %r" % (cmd, retcode))
+        raise CommandFailed("test failed: %r returned %r" % (cmd, retcode))
 
 
 def progress(msg):
@@ -65,13 +69,22 @@ if os.path.exists(TESTDIR):
 logfile = open('bzr-test.log', 'wt')
 
 
-os.mkdir(TESTDIR)
-os.chdir(TESTDIR)
+try: 
+    os.mkdir(TESTDIR)
+    os.chdir(TESTDIR)
 
 
-progress("testing introductory commands")
-runcmd("bzr version")
-runcmd("bzr help")
-runcmd("bzr --help")
+    progress("testing introductory commands")
+    runcmd("bzr version")
+    runcmd("bzr help")
+    runcmd("bzr --helpx")
 
-progress("all tests passed!")
+    progress("all tests passed!")
+except Exception, e:
+    sys.stderr.write('*' * 50 + '\n'
+                     + 'testbzr: tests failed\n'
+                     + 'see bzr-test.log for more information\n'
+                     + '*' * 50 + '\n')
+    logfile.write('tests failed!\n')
+    traceback.print_exc(None, logfile)
+    sys.exit(1)
