@@ -28,7 +28,7 @@ import sys, os, traceback
 
 try:
     import shutil
-    from subprocess import call, Popen
+    from subprocess import call, Popen, PIPE
 except ImportError, e:
     sys.stderr.write("testbzr: sorry, this test suite requires modules from python2.4\n"
                      + '    ' + str(e))
@@ -39,8 +39,10 @@ class CommandFailed(Exception):
     pass
 
 
-def runcmd(cmd, retcode=0):
+def runcmd(cmd, retcode=0, catchstdout=False):
     """Run one command and check the return code.
+
+    Returns a tuple of (stdout,stderr) strings.
 
     If a single string is based, it is split into words.
     For commands that are not simple space-separated words, please
@@ -52,10 +54,22 @@ def runcmd(cmd, retcode=0):
     else:
         logfile.write('$ %r\n' % cmd)
     log_linenumber()
-    actual_retcode = call(cmd, stdout=logfile, stderr=logfile)
+
+    if catchstdout:
+        stdout = PIPE
+    else:
+        stdout = logfile
+        
+    child = Popen(cmd, stdout=stdout, stderr=logfile)
+    outd, errd = child.communicate()
+
+    actual_retcode = child.wait()
+    
     if retcode != actual_retcode:
         raise CommandFailed("test failed: %r returned %d, expected %d"
                             % (cmd, actual_retcode, retcode))
+
+    return outd, errd
 
 
 def progress(msg):
@@ -99,6 +113,7 @@ try:
     # this should always identify something, if only "john@localhost"
     runcmd("bzr whoami")
     runcmd("bzr whoami --email")
+    assert runcmd("bzr whoami --email", catchstdout=True)[0].count('@') == 1
 
     progress("invalid commands")
     runcmd("bzr pants", retcode=1)
