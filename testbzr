@@ -44,6 +44,7 @@ def runcmd(cmd):
     
     if isinstance(cmd, basestring):
         cmd = cmd.split()
+    logfile.write('$ %r\n' % cmd)
     retcode = call(cmd, stdout=logfile, stderr=logfile)
     if retcode != 0:
         raise Exception("test failed: %r returned %r" % (cmd, retcode))
