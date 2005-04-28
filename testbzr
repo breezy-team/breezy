@@ -151,11 +151,17 @@ try:
     out = backtick("bzr status --all").replace('\r', '')
     assert out == "?       test.txt\n"
 
+    progress("can't rename unversioned file")
+    runcmd("bzr rename test.txt new-test.txt", 1)
+
     progress("adding a file")
 
     runcmd("bzr add test.txt")
     assert backtick("bzr unknowns") == ''
     assert backtick("bzr status --all").replace('\r', '') == "A       test.txt\n"
+
+    progress("rename newly-added file")
+    runcmd("bzr rename test.txt hello.txt")
 
     cd('..')
 
