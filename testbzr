@@ -1,0 +1,76 @@
+#! /usr/bin/python
+
+# Copyright (C) 2005 Canonical Ltd
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
+"""External black-box test for bzr.
+
+This always runs bzr as an external process to try to catch bugs
+related to argument processing, startup, etc.
+
+This replaces the previous test.sh which was not very portable."""
+
+import sys, os
+
+try:
+    import shutil
+    from subprocess import call, Popen
+except ImportError, e:
+    sys.stderr.write("testbzr: sorry, this test suite requires modules from python2.4\n"
+                     + '    ' + str(e))
+    sys.exit(1)
+
+
+def runcmd(cmd):
+    """run one command and check the output.
+
+    If a single string is based, it is split into words.
+    For commands that are not simple space-separated words, please
+    pass a list instead."""
+    
+    if isinstance(cmd, basestring):
+        cmd = cmd.split()
+    retcode = call(cmd, stdout=logfile, stderr=logfile)
+    if retcode != 0:
+        raise Exception("test failed: %r returned %r" % (cmd, retcode))
+
+
+def progress(msg):
+    print '* ' + msg
+    logfile.write('* '+ msg + '\n')
+
+
+TESTDIR = "bzr-test.tmp"
+
+# prepare an empty scratch directory
+if os.path.exists(TESTDIR):
+    shutil.rmtree(TESTDIR)
+
+
+logfile = open('bzr-test.log', 'wt')
+
+
+os.mkdir(TESTDIR)
+os.chdir(TESTDIR)
+
+
+progress("testing introductory commands")
+runcmd("bzr version")
+runcmd("bzr help")
+runcmd("bzr --help")
+
+progress("all tests passed!")
