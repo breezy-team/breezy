@@ -607,6 +607,7 @@ def cmd_ignore(name_pattern):
 
     b = Branch('.')
 
+    # XXX: This will fail if it's a hardlink; should use an AtomicFile class.
     f = open(b.abspath('.bzrignore'), 'at')
     f.write(name_pattern + '\n')
     f.close()
