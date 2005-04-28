@@ -57,6 +57,8 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * 'bzr help commands' should give a one-line summary of each command.
 
+* Are any sanity checks useful in 'bzr ignore'?
+
 Medium things
 -------------
 

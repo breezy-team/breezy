@@ -5,6 +5,8 @@ bzr-0.0.5  NOT RELEASED YET
     * New 'bzr whoami --email' option shows only the email component
       of the user identification, from Jo Vermeulen.
 
+    * New 'bzr ignore PATTERN' command.
+
   TESTING:
 
     * Converted black-box test suites from Bourne shell into Python.

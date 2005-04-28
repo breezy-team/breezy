@@ -602,6 +602,24 @@ def cmd_unknowns():
 
 
 
+def cmd_ignore(name_pattern):
+    """Ignore a command or pattern"""
+
+    b = Branch('.')
+
+    f = open(b.abspath('.bzrignore'), 'at')
+    f.write(name_pattern + '\n')
+    f.close()
+    
+    inv = b.working_tree().inventory
+    if inv.path2id('.bzrignore'):
+        mutter('.bzrignore is already versioned')
+    else:
+        mutter('need to make new .bzrignore file versioned')
+        b.add(['.bzrignore'])
+
+
+
 def cmd_ignored():
     """List ignored files and the patterns that matched them.
       """
@@ -869,6 +887,7 @@ cmd_args = {
     'get-revision':           ['revision_id'],
     'get-revision-inventory': ['revision_id'],
     'help':                   ['topic?'],
+    'ignore':                 ['name_pattern'],
     'init':                   [],
     'log':                    [],
     'lookup-revision':        ['revno'],
