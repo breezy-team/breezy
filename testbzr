@@ -39,7 +39,7 @@ class CommandFailed(Exception):
     pass
 
 
-def runcmd(cmd):
+def runcmd(cmd, retcode=0):
     """run one command and check the output.
 
     If a single string is based, it is split into words.
@@ -50,9 +50,10 @@ def runcmd(cmd):
         cmd = cmd.split()
     log_linenumber()
     logfile.write('$ %r\n' % cmd)
-    retcode = call(cmd, stdout=logfile, stderr=logfile)
-    if retcode != 0:
-        raise CommandFailed("test failed: %r returned %r" % (cmd, retcode))
+    actual_retcode = call(cmd, stdout=logfile, stderr=logfile)
+    if retcode != actual_retcode:
+        raise CommandFailed("test failed: %r returned %d, expected %d"
+                            % (cmd, actual_retcode, retcode))
 
 
 def progress(msg):
@@ -90,6 +91,11 @@ try:
     progress("testing user identity")
     # this should always identify something, if only "john@localhost"
     runcmd("bzr whoami")
+    runcmd("bzr whoami --email")
+
+    progress("testing invalid commands")
+    runcmd("bzr pants", retcode=1)
+    runcmd("bzr --pants off", retcode=1)
 
     progress("all tests passed!")
 except Exception, e:
