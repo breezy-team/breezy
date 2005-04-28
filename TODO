@@ -52,8 +52,20 @@ Small things
 
 __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
+* 'bzr ignore' command that just adds a line to the .bzrignore file
+  and makes it versioned.
+
+* 'bzr help commands' should give a one-line summary of each command.
+
 Medium things
 -------------
+
+* Display command grammar in help messages rather than hardcoding it.
+
+* Change command functions into Command() objects, like in hct, and
+  then the grammar can be described directly in there.  Since all
+  option definitions are global we can define them just once and
+  reference them from each command.
 
 * Selective commit of only some files.
 
