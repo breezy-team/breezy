@@ -48,6 +48,7 @@ def runcmd(cmd):
     
     if isinstance(cmd, basestring):
         cmd = cmd.split()
+    log_linenumber()
     logfile.write('$ %r\n' % cmd)
     retcode = call(cmd, stdout=logfile, stderr=logfile)
     if retcode != 0:
@@ -57,16 +58,23 @@ def runcmd(cmd):
 def progress(msg):
     print '* ' + msg
     logfile.write('* '+ msg + '\n')
+    log_linenumber()
 
 
-TESTDIR = "bzr-test.tmp"
+def log_linenumber():
+    """Log the stack frame location two things up."""
+    stack = traceback.extract_stack()[-3]
+    logfile.write('   at %s:%d\n' % stack[:2])
+
+
+TESTDIR = "testbzr.tmp"
 
 # prepare an empty scratch directory
 if os.path.exists(TESTDIR):
     shutil.rmtree(TESTDIR)
 
 
-logfile = open('bzr-test.log', 'wt')
+logfile = open('testbzr.log', 'wt', buffering=1)
 
 
 try: 
@@ -77,7 +85,11 @@ try:
     progress("testing introductory commands")
     runcmd("bzr version")
     runcmd("bzr help")
-    runcmd("bzr --helpx")
+    runcmd("bzr --help")
+
+    progress("testing user identity")
+    # this should always identify something, if only "john@localhost"
+    runcmd("bzr whoami")
 
     progress("all tests passed!")
 except Exception, e:
