@@ -768,6 +768,10 @@ class Branch:
 
 
     def rename_one(self, from_rel, to_rel):
+        """Rename one file.
+
+        This can change the directory or the filename or both.
+         """
         tree = self.working_tree()
         inv = tree.inventory
         if not tree.has_filename(from_rel):
