@@ -40,7 +40,7 @@ class CommandFailed(Exception):
 
 
 def runcmd(cmd, retcode=0):
-    """run one command and check the output.
+    """Run one command and check the return code.
 
     If a single string is based, it is split into words.
     For commands that are not simple space-separated words, please
@@ -69,6 +69,7 @@ def cd(dirname):
     os.chdir(dirname)
 
 
+
 def log_linenumber():
     """Log the stack frame location two things up."""
     stack = traceback.extract_stack()[-3]
@@ -85,23 +86,36 @@ if os.path.exists(TESTDIR):
 logfile = open('testbzr.log', 'wt', buffering=1)
 
 
-try: 
-    os.mkdir(TESTDIR)
+try:
+    runcmd(['mkdir', TESTDIR])
     cd(TESTDIR)
 
-    progress("testing introductory commands")
+    progress("introductory commands")
     runcmd("bzr version")
     runcmd("bzr help")
     runcmd("bzr --help")
 
-    progress("testing user identity")
+    progress("user identity")
     # this should always identify something, if only "john@localhost"
     runcmd("bzr whoami")
     runcmd("bzr whoami --email")
 
-    progress("testing invalid commands")
+    progress("invalid commands")
     runcmd("bzr pants", retcode=1)
     runcmd("bzr --pants off", retcode=1)
+
+    progress("basic branch creation")
+    runcmd(['mkdir', 'branch1'])
+    cd('branch1')
+    runcmd('bzr init')
+    
+    f = file('test.txt', 'wt')
+    f.write('hello world!\n')
+    f.close()
+
+    
+
+    cd('..')
 
     progress("all tests passed!")
 except Exception, e:
@@ -112,3 +126,4 @@ except Exception, e:
     logfile.write('tests failed!\n')
     traceback.print_exc(None, logfile)
     sys.exit(1)
+
