@@ -135,13 +135,21 @@ try:
     runcmd(['mkdir', 'branch1'])
     cd('branch1')
     runcmd('bzr init')
+
+    progress("status of new file")
     
     f = file('test.txt', 'wt')
     f.write('hello world!\n')
     f.close()
 
-    unknowns = backtick("bzr unknowns").rstrip('\r\n')
-    assert unknowns == 'test.txt'
+    out = backtick("bzr unknowns").rstrip('\r\n')
+    assert out == 'test.txt'
+
+    out = backtick("bzr status").replace('\r', '')
+    assert out == '''?       test.txt\n'''
+
+    out = backtick("bzr status --all").replace('\r', '')
+    assert out == '''?       test.txt\n'''
 
     cd('..')
 
@@ -154,4 +162,3 @@ except Exception, e:
     logfile.write('tests failed!\n')
     traceback.print_exc(None, logfile)
     sys.exit(1)
-
