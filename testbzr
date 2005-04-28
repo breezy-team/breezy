@@ -167,7 +167,7 @@ try:
     assert os.path.exists("hello.txt")
     assert not os.path.exists("test.txt")
 
-    assert backtick("bzr revno") == '0'
+    assert backtick("bzr revno") == '0\n'
 
     cd('..')
 
