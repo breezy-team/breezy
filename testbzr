@@ -47,9 +47,11 @@ def runcmd(cmd, retcode=0):
     pass a list instead."""
     
     if isinstance(cmd, basestring):
+        logfile.write('$ %s\n' % cmd)
         cmd = cmd.split()
+    else:
+        logfile.write('$ %r\n' % cmd)
     log_linenumber()
-    logfile.write('$ %r\n' % cmd)
     actual_retcode = call(cmd, stdout=logfile, stderr=logfile)
     if retcode != actual_retcode:
         raise CommandFailed("test failed: %r returned %d, expected %d"
@@ -60,6 +62,11 @@ def progress(msg):
     print '* ' + msg
     logfile.write('* '+ msg + '\n')
     log_linenumber()
+
+
+def cd(dirname):
+    logfile.write('$ cd %s\n' % dirname)
+    os.chdir(dirname)
 
 
 def log_linenumber():
@@ -80,8 +87,7 @@ logfile = open('testbzr.log', 'wt', buffering=1)
 
 try: 
     os.mkdir(TESTDIR)
-    os.chdir(TESTDIR)
-
+    cd(TESTDIR)
 
     progress("testing introductory commands")
     runcmd("bzr version")
