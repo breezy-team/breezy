@@ -38,6 +38,8 @@ Small things
 * "bzr info" should count only people with distinct email addresses as
   different committers.  (Or perhaps only distinct userids?)
 
+* Tidier error for EPIPE: should be just "bzr: broken pipe" with no
+  other details because debugging information is rarely interesting.
 
 Medium things
 -------------
