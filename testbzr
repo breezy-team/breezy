@@ -39,7 +39,17 @@ class CommandFailed(Exception):
     pass
 
 
-def runcmd(cmd, retcode=0, catchstdout=False):
+def formcmd(cmd):
+    if isinstance(cmd, basestring):
+        logfile.write('$ %s\n' % cmd)
+        cmd = cmd.split()
+    else:
+        logfile.write('$ %r\n' % cmd)
+
+    return cmd
+
+
+def runcmd(cmd, retcode=0):
     """Run one command and check the return code.
 
     Returns a tuple of (stdout,stderr) strings.
@@ -47,29 +57,31 @@ def runcmd(cmd, retcode=0, catchstdout=False):
     If a single string is based, it is split into words.
     For commands that are not simple space-separated words, please
     pass a list instead."""
-    
-    if isinstance(cmd, basestring):
-        logfile.write('$ %s\n' % cmd)
-        cmd = cmd.split()
-    else:
-        logfile.write('$ %r\n' % cmd)
+    cmd = formcmd(cmd)
     log_linenumber()
+    
+    actual_retcode = call(cmd, stdout=logfile, stderr=logfile)
+    
+    if retcode != actual_retcode:
+        raise CommandFailed("test failed: %r returned %d, expected %d"
+                            % (cmd, actual_retcode, retcode))
 
-    if catchstdout:
-        stdout = PIPE
-    else:
-        stdout = logfile
-        
-    child = Popen(cmd, stdout=stdout, stderr=logfile)
+
+
+def backtick(cmd, retcode=0):
+    cmd = formcmd(cmd)
+    log_linenumber()
+    child = Popen(cmd, stdout=PIPE, stderr=logfile)
     outd, errd = child.communicate()
-
+    logfile.write(outd)
     actual_retcode = child.wait()
     
     if retcode != actual_retcode:
         raise CommandFailed("test failed: %r returned %d, expected %d"
                             % (cmd, actual_retcode, retcode))
 
-    return outd, errd
+    return outd
+
 
 
 def progress(msg):
@@ -113,7 +125,7 @@ try:
     # this should always identify something, if only "john@localhost"
     runcmd("bzr whoami")
     runcmd("bzr whoami --email")
-    assert runcmd("bzr whoami --email", catchstdout=True)[0].count('@') == 1
+    assert backtick("bzr whoami --email").count('@') == 1
 
     progress("invalid commands")
     runcmd("bzr pants", retcode=1)
@@ -128,7 +140,8 @@ try:
     f.write('hello world!\n')
     f.close()
 
-    
+    unknowns = backtick("bzr unknowns").rstrip('\r\n')
+    assert unknowns == 'test.txt'
 
     cd('..')
 
@@ -136,7 +149,7 @@ try:
 except Exception, e:
     sys.stderr.write('*' * 50 + '\n'
                      + 'testbzr: tests failed\n'
-                     + 'see bzr-test.log for more information\n'
+                     + 'see testbzr.log for more information\n'
                      + '*' * 50 + '\n')
     logfile.write('tests failed!\n')
     traceback.print_exc(None, logfile)
