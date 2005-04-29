@@ -57,7 +57,10 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * 'bzr help commands' should give a one-line summary of each command.
 
-* Are any sanity checks useful in 'bzr ignore'?
+* Any useful sanity checks in 'bzr ignore'?  Perhaps give a warning if
+  they try to add a single file which is already versioned, or if they
+  add a pattern which already exists, or if it looks like they gave an
+  unquoted glob.
 
 Medium things
 -------------
@@ -134,6 +137,10 @@ Medium things
   exports first as a simpler case because then we don't need to deal
   with removing the tags on the way back in.
 
+* Consider using Python logging library as well as/instead of
+  bzrlib.trace.
+
+* Change to using gettext message localization.
 
 Large things
 ------------
