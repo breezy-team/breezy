@@ -142,6 +142,19 @@ Medium things
 
 * Change to using gettext message localization.
 
+* Make a clearer separation between internal and external bzrlib
+  interfaces.  Make internal interfaces use protected names.  Write at
+  least some documentation for those APIs, probably as docstrings.
+
+  Consider using ZopeInterface definitions for the external interface;
+  I think these are already used in PyBaz.  They allow automatic
+  checking of the interface but may be unfamiliar to general Python
+  developers.
+
+* Commands to dump out all command help into a manpage or HTML file or
+  whatever.
+
+
 Large things
 ------------
 
