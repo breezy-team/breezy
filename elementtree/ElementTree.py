@@ -1,16 +1,8 @@
 #
 # ElementTree
-# $Id: ElementTree.py 1862 2004-06-18 07:31:02Z Fredrik $
+# $Id: ElementTree.py 2326 2005-03-17 07:45:21Z fredrik $
 #
 # light-weight XML support for Python 1.5.2 and later.
-#
-# this is a stripped-down version of Secret Labs' effDOM library (part
-# of xmlToolkit).  compared to effDOM, this implementation has:
-#
-# - no support for observers
-# - no html-specific extensions (e.g. entity preload)
-# - no custom entities, doctypes, etc
-# - no accelerator module
 #
 # history:
 # 2001-10-20 fl   created (from various sources)
@@ -38,8 +30,11 @@
 # 2004-03-28 fl   added XMLID helper
 # 2004-06-02 fl   added default support to findtext
 # 2004-06-08 fl   fixed encoding of non-ascii element/attribute names
+# 2004-08-23 fl   take advantage of post-2.1 expat features
+# 2005-02-01 fl   added iterparse implementation
+# 2005-03-02 fl   fixed iterparse support for pre-2.2 versions
 #
-# Copyright (c) 1999-2004 by Fredrik Lundh.  All rights reserved.
+# Copyright (c) 1999-2005 by Fredrik Lundh.  All rights reserved.
 #
 # fredrik@pythonware.com
 # http://www.pythonware.com
@@ -47,7 +42,7 @@
 # --------------------------------------------------------------------
 # The ElementTree toolkit is
 #
-# Copyright (c) 1999-2004 by Fredrik Lundh
+# Copyright (c) 1999-2005 by Fredrik Lundh
 #
 # By obtaining, using, and/or copying this software and/or its
 # associated documentation, you agree that you have read, understood,
@@ -78,7 +73,7 @@ __all__ = [
     "dump",
     "Element", "ElementTree",
     "fromstring",
-    "iselement",
+    "iselement", "iterparse",
     "parse",
     "PI", "ProcessingInstruction",
     "QName",
@@ -143,7 +138,7 @@ except ImportError:
 # TODO: add support for custom namespace resolvers/default namespaces
 # TODO: add improved support for incremental parsing
 
-VERSION = "1.2"
+VERSION = "1.2.6"
 
 ##
 # Internal element class.  This class defines the Element interface,
@@ -701,7 +696,7 @@ class ElementTree:
                 for k, v in xmlns_items:
                     file.write(" %s=\"%s\"" % (_encode(k, encoding),
                                                _escape_attrib(v, encoding)))
-            if node.text or node:
+            if node.text or len(node):
                 file.write(">")
                 if node.text:
                     file.write(_escape_cdata(node.text, encoding))
@@ -865,6 +860,94 @@ def parse(source, parser=None):
     return tree
 
 ##
+# Parses an XML document into an element tree incrementally, and reports
+# what's going on to the user.
+#
+# @param source A filename or file object containing XML data.
+# @param events A list of events to report back.  If omitted, only "end"
+#     events are reported.
+# @return A (event, elem) iterator.
+
+class iterparse:
+
+    def __init__(self, source, events=None):
+        if not hasattr(source, "read"):
+            source = open(source, "rb")
+        self._file = source
+        self._events = []
+        self._index = 0
+        self.root = self._root = None
+        self._parser = XMLTreeBuilder()
+        # wire up the parser for event reporting
+        parser = self._parser._parser
+        append = self._events.append
+        if events is None:
+            events = ["end"]
+        for event in events:
+            if event == "start":
+                try:
+                    parser.ordered_attributes = 1
+                    parser.specified_attributes = 1
+                    def handler(tag, attrib_in, event=event, append=append,
+                                start=self._parser._start_list):
+                        append((event, start(tag, attrib_in)))
+                    parser.StartElementHandler = handler
+                except AttributeError:
+                    def handler(tag, attrib_in, event=event, append=append,
+                                start=self._parser._start):
+                        append((event, start(tag, attrib_in)))
+                    parser.StartElementHandler = handler
+            elif event == "end":
+                def handler(tag, event=event, append=append,
+                            end=self._parser._end):
+                    append((event, end(tag)))
+                parser.EndElementHandler = handler
+            elif event == "start-ns":
+                def handler(prefix, uri, event=event, append=append):
+                    try:
+                        uri = _encode(uri, "ascii")
+                    except UnicodeError:
+                        pass
+                    append((event, (prefix or "", uri)))
+                parser.StartNamespaceDeclHandler = handler
+            elif event == "end-ns":
+                def handler(prefix, event=event, append=append):
+                    append((event, None))
+                parser.EndNamespaceDeclHandler = handler
+
+    def next(self):
+        while 1:
+            try:
+                item = self._events[self._index]
+            except IndexError:
+                if self._parser is None:
+                    self.root = self._root
+                    try:
+                        raise StopIteration
+                    except NameError:
+                        raise IndexError
+                # load event buffer
+                del self._events[:]
+                self._index = 0
+                data = self._file.read(16384)
+                if data:
+                    self._parser.feed(data)
+                else:
+                    self._root = self._parser.close()
+                    self._parser = None
+            else:
+                self._index = self._index + 1
+                return item
+
+    try:
+        iter
+        def __iter__(self):
+            return self
+    except NameError:
+        def __getitem__(self, index):
+            return self.next()
+
+##
 # Parses an XML document from a string constant.  This function can
 # be used to embed "XML literals" in Python code.
 #
@@ -1025,16 +1108,34 @@ class TreeBuilder:
 class XMLTreeBuilder:
 
     def __init__(self, html=0, target=None):
-        from xml.parsers import expat
+        try:
+            from xml.parsers import expat
+        except ImportError:
+            raise ImportError(
+                "No module named expat; use SimpleXMLTreeBuilder instead"
+                )
         self._parser = parser = expat.ParserCreate(None, "}")
         if target is None:
             target = TreeBuilder()
         self._target = target
         self._names = {} # name memo cache
-        parser.DefaultHandler = self._default
+        # callbacks
+        parser.DefaultHandlerExpand = self._default
         parser.StartElementHandler = self._start
         parser.EndElementHandler = self._end
         parser.CharacterDataHandler = self._data
+        # let expat do the buffering, if supported
+        try:
+            self._parser.buffer_text = 1
+        except AttributeError:
+            pass
+        # use new-style attribute handling, if supported
+        try:
+            self._parser.ordered_attributes = 1
+            self._parser.specified_attributes = 1
+            parser.StartElementHandler = self._start_list
+        except AttributeError:
+            pass
         encoding = None
         if not parser.returns_unicode:
             encoding = "utf-8"
@@ -1045,7 +1146,7 @@ class XMLTreeBuilder:
     def _fixtext(self, text):
         # convert text string to ascii, if possible
         try:
-            return str(text) # what if the default encoding is changed?
+            return _encode(text, "ascii")
         except UnicodeError:
             return text
 
@@ -1066,6 +1167,15 @@ class XMLTreeBuilder:
         attrib = {}
         for key, value in attrib_in.items():
             attrib[fixname(key)] = self._fixtext(value)
+        return self._target.start(tag, attrib)
+
+    def _start_list(self, tag, attrib_in):
+        fixname = self._fixname
+        tag = fixname(tag)
+        attrib = {}
+        if attrib_in:
+            for i in range(0, len(attrib_in), 2):
+                attrib[fixname(attrib_in[i])] = self._fixtext(attrib_in[i+1])
         return self._target.start(tag, attrib)
 
     def _data(self, text):

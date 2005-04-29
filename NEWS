@@ -12,6 +12,10 @@ bzr-0.0.5  NOT RELEASED YET
     * Converted black-box test suites from Bourne shell into Python.
       Various structural improvements to the tests.
 
+  INTERNAL:
+
+    * Included ElementTree library upgraded to 1.2.6 by Fredrik Lundh.
+
 
 bzr-0.0.4  2005-04-22
 
