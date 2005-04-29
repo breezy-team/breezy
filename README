@@ -24,7 +24,8 @@ Dependencies
 This is mostly developed on Linux (Ubuntu); it should work on Unix,
 Windows, or OS X with relatively little trouble.
 
-The only dependency is Python, at least 2.3 and preferably 2.4.
+The only dependency is Python, at least 2.3 and preferably 2.4.  On
+Windows, Python2.4 is required.
 
 You may optionally install cElementTree to speed up some operations.
 
@@ -40,3 +41,8 @@ directory on your path.  For example::
 If you use a symlink for this, Python will be able to automatically
 find the bzr libraries.  Otherwise you must ensure they are listed on
 your $PYTHONPATH.
+
+If you use the setup.py script then bzr will be installed into the
+specified path.  In this case you must install ElementTree or
+cElementTree separately.
+
