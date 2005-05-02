@@ -84,21 +84,10 @@ def pumpfile(fromfile, tofile):
 
 def uuid():
     """Return a new UUID"""
-    
-    ## XXX: Could alternatively read /proc/sys/kernel/random/uuid on
-    ## Linux, but we need something portable for other systems;
-    ## preferably an implementation in Python.
     try:
-        return chomp(file('/proc/sys/kernel/random/uuid').readline())
+        return file('/proc/sys/kernel/random/uuid').readline().rstrip('\n')
     except IOError:
         return chomp(os.popen('uuidgen').readline())
-
-
-def chomp(s):
-    if s and (s[-1] == '\n'):
-        return s[:-1]
-    else:
-        return s
 
 
 def sha_file(f):

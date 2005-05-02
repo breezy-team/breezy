@@ -26,7 +26,7 @@ from inventory import Inventory
 from trace import mutter, note
 from tree import Tree, EmptyTree, RevisionTree, WorkingTree
 from inventory import InventoryEntry, Inventory
-from osutils import isdir, quotefn, isfile, uuid, sha_file, username, chomp, \
+from osutils import isdir, quotefn, isfile, uuid, sha_file, username, \
      format_date, compact_date, pumpfile, user_email, rand_bytes, splitpath, \
      joinpath, sha_string, file_kind, local_time_offset, appendpath
 from store import ImmutableStore
@@ -635,7 +635,7 @@ class Branch:
         >>> ScratchBranch().revision_history()
         []
         """
-        return [chomp(l) for l in self.controlfile('revision-history', 'r').readlines()]
+        return [l.rstrip('\r\n') for l in self.controlfile('revision-history', 'r').readlines()]
 
 
     def revno(self):
