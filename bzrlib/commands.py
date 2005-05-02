@@ -1106,15 +1106,17 @@ def run_bzr(argv):
 
 
 
-def _report_exception(e, summary):
+def _report_exception(e, summary, quiet=False):
     import traceback
     log_error('bzr: ' + summary)
     bzrlib.trace.log_exception(e)
-    tb = sys.exc_info()[2]
-    exinfo = traceback.extract_tb(tb)
-    if exinfo:
-        sys.stderr.write('  at %s:%d in %s()\n' % exinfo[-1][:3])
-    sys.stderr.write('  see ~/.bzr.log for debug information\n')
+
+    if not quiet:
+        tb = sys.exc_info()[2]
+        exinfo = traceback.extract_tb(tb)
+        if exinfo:
+            sys.stderr.write('  at %s:%d in %s()\n' % exinfo[-1][:3])
+        sys.stderr.write('  see ~/.bzr.log for debug information\n')
 
 
 def cmd_assert_fail():
@@ -1122,11 +1124,15 @@ def cmd_assert_fail():
 
 
 def main(argv):
+    import errno
+    
     bzrlib.trace.create_tracefile(argv)
 
     try:
         try:
             ret = run_bzr(argv)
+            # do this here to catch EPIPE
+            sys.stdout.flush()
             return ret
         except BzrError, e:
             _report_exception(e, 'error: ' + e.args[0])
@@ -1141,15 +1147,16 @@ def main(argv):
                 msg += ': ' + str(e)
             _report_exception(e, msg)
         except Exception, e:
-            _report_exception(e, 'exception: %s' % str(e).rstrip('\n'))
+            quiet = False
+            if isinstance(e, IOError) and e.errno == errno.EPIPE:
+                quiet = True
+                msg = 'broken pipe'
+            else:
+                msg = str(e).rstrip('\n')
+            _report_exception(e, msg, quiet)
             return 1
     finally:
         bzrlib.trace.close_trace()
-
-    ## TODO: Trap AssertionError
-
-    # TODO: Maybe nicer handling of IOError especially for broken pipe.
-
 
 
 if __name__ == '__main__':
