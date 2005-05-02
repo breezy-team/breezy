@@ -1,4 +1,4 @@
-.. -*- mode: rst; compile-command: "rest2html TODO >doc/todo.html" -*- 
+.. -*- mode: indented-text; compile-command: "rest2html TODO >doc/todo.html" -*- 
 
 
 *******************
@@ -26,13 +26,13 @@ Small things
 
 * Import ElementTree update patch.
 
-* Syntax should be "bzr export -r REV".
+* Syntax should be ``bzr export -r REV``.
 
 * "cat -rREV FILE"
 
 * Plugins that provide commands.  By just installing a file into some
-  directory (e.g. /usr/share/bzr/plugins) it should be possible to
-  create new top-level commands ("bzr frob").  Extensions can be
+  directory (e.g. ``/usr/share/bzr/plugins``) it should be possible to
+  create new top-level commands (``bzr frob``).  Extensions can be
   written in either Python (in which case they use the bzrlib API) or
   in a separate process (in sh, C, whatever).   It should be possible
   to get help for plugin commands.
@@ -42,16 +42,13 @@ Small things
 
 * -r option should take a revision-id as well as a revno.
 
-* "bzr info" could show space used by working tree, versioned files,
+* ``bzr info`` could show space used by working tree, versioned files,
   unknown and ignored files. 
 
-* "bzr info" should count only people with distinct email addresses as
+* ``bzr info`` should count only people with distinct email addresses as
   different committers.  (Or perhaps only distinct userids?)
 
-* Tidier error for EPIPE: should be just "bzr: broken pipe" with no
-  other details because debugging information is rarely interesting.
-
-* On Windows, command-line arguments should be glob-expanded__,
+* On Windows, command-line arguments should be `glob-expanded`__,
   because the shell doesn't do this.  However, there are probably some
   commands where this shouldn't be done, such as 'bzr ignore', because
   we want to accept globs.
