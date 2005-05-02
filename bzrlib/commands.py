@@ -1146,6 +1146,10 @@ def main(argv):
             if str(e):
                 msg += ': ' + str(e)
             _report_exception(e, msg)
+            return 2
+        except KeyboardInterrupt, e:
+            _report_exception(e, 'interrupted', quiet=True)
+            return 2
         except Exception, e:
             quiet = False
             if isinstance(e, IOError) and e.errno == errno.EPIPE:
@@ -1154,7 +1158,7 @@ def main(argv):
             else:
                 msg = str(e).rstrip('\n')
             _report_exception(e, msg, quiet)
-            return 1
+            return 2
     finally:
         bzrlib.trace.close_trace()
 

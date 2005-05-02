@@ -7,8 +7,8 @@ bzr-0.0.5  NOT RELEASED YET
 
     * New 'bzr ignore PATTERN' command.
 
-    * Nicer error message for broken pipe and similar conditions that
-      don't indicate an internal error.
+    * Nicer error message for broken pipe, interrupt and similar
+      conditions that don't indicate an internal error.
 
   TESTING:
 
