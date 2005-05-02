@@ -1,4 +1,10 @@
-                                                 -*- indented-text -*-
+.. -*- mode: rst; compile-command: "rest2html TODO >doc/todo.html" -*- 
+
+
+*******************
+Things to do in bzr
+*******************
+
 
 See also various low-level TODOs in the source code.  Try looking in
 the list archive or on gmane.org for previous discussion of these
@@ -133,10 +139,6 @@ Medium things
 
   - perhaps a pattern that matches only directories or non-directories
 
-* Expansion of $Id$ keywords within working files.  Perhaps do this in
-  exports first as a simpler case because then we don't need to deal
-  with removing the tags on the way back in.
-
 * Consider using Python logging library as well as/instead of
   bzrlib.trace.
 
@@ -149,7 +151,7 @@ Medium things
   Consider using ZopeInterface definitions for the external interface;
   I think these are already used in PyBaz.  They allow automatic
   checking of the interface but may be unfamiliar to general Python
-  developers.
+  developers, so I'm not really keen.
 
 * Commands to dump out all command help into a manpage or HTML file or
   whatever.
@@ -157,6 +159,24 @@ Medium things
 
 Large things
 ------------
+
+* Generate annotations from current file relative to previous
+  annotations.
+
+  - Is it necessary to store any kind of annotation where data was
+    deleted?
+
+* Update revfile format and make it active:
+
+  - Texts should be identified by something keyed on the revision, not
+    an individual text-id.  This is much more useful for annotate I
+    think; we want to map back to the revision that last changed it.
+
+  - Access revfile revisions through the Tree/Store classes.
+
+  - Check them from check commands.
+
+  - Store annotations.
 
 * Hooks for pre-commit, post-commit, etc.
 
@@ -174,3 +194,8 @@ Large things
 * GUI (maybe in Python GTK+?)
 
 * C library interface
+
+* Expansion of $Id$ keywords within working files.  Perhaps do this in
+  exports first as a simpler case because then we don't need to deal
+  with removing the tags on the way back in.
+

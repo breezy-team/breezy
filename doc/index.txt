@@ -107,6 +107,8 @@ Design of particular features
 
 * `Patch pools <pool.html>`__ to efficiently store related branches.
 
+* `Revfiles <revfile.html>`__ store the text history of files.
+
 * `Revision syntax <revision-syntax.html>`__ -- ``hello.c@12``, etc.
 
 * `Roll-up commits <rollup.html>`__ -- a single revision incorporates
