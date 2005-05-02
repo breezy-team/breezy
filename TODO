@@ -28,8 +28,6 @@ Small things
 
 * Syntax should be ``bzr export -r REV``.
 
-* "cat -rREV FILE"
-
 * Plugins that provide commands.  By just installing a file into some
   directory (e.g. ``/usr/share/bzr/plugins``) it should be possible to
   create new top-level commands (``bzr frob``).  Extensions can be
