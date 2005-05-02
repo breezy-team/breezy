@@ -1,3 +1,4 @@
+=======
 Merging
 =======
 
@@ -18,3 +19,173 @@ Merge should refuse to run (unless forced) if there are any
 uncommitted changes in your tree beforehand.  This has two purposes:
 if you mess up the merge you won't lose anything important; secondly
 this makes it more likely that the merge will be relatively pure.
+
+It is a good idea to commit as soon as a merge is complete and
+satisfactorily resolved, so as to protect the work you did in the
+merge and to keep it separate from later development.  (Mark suggests
+an option to automatically commit when the merge is complete.)
+
+
+Recording merges
+----------------
+
+bzr records what branches have been merged so far.  This is useful as
+historical information and also for later choosing a merge ancestor.
+
+For each revision we record all the other revisions which have come
+into this tree, either by being completely merged or as cherry-picks.
+
+(This design is similar to the PatchLogPruning__ draft from baz.)
+
+__ http://wiki.gnuarch.org/PatchLogPruning
+
+This list of merged revisions is generally append-only, but can be
+reduced if changes are taken back out.  Changes can be
+anti-cherry-picked, which causes any successors to change from being
+fully-merged to being cherry-picked.
+
+The list of merged patches is stored delta-compressed.
+
+
+``tla update``
+--------------
+
+``tla update`` performs a useful but slightly subtle change: it pulls
+in only changes that have been made on the other branch since you last
+merged.  That is to say, it sets the merge basis as the most recent
+merged-from point on the other branch.
+
+This means that any changes which were taken from your branch into the
+other and then reversed or modified will not be reversed.  Those
+changes will always be considered as new in your branch and will have
+precedence.
+
+The basic idea of a merge that only brings in remote work and doesn't
+revert your own changes is good.  It could be handled by a three way
+merge with a specified version but perhaps there is a better way.
+
+
+Merging tree shape
+------------------
+
+Merge is conducted at two levels: merging the tree shape, and merging
+the file contents.  Merging the tree shape means accounting for
+renames, adds, deletes, etc.  This is almost the same as merging the
+two inventories, but we need to do a smart merge on them to enforce
+structural invariants.
+
+
+
+Interrupting a merge
+--------------------
+
+Some tools insist that you complete the entire merge while the
+``merge`` command is running; you cannot exit the program or restart
+the computer because state is held in memory.  We should avoid that.
+At least when the tool is waiting for user input it should have
+written everything to disk sufficient to pick up and continue the
+merge from that point.
+
+This suggests that there should be a command to continue a merge;
+perhaps ``bzr resolve`` should look for any unresolved changes and
+start resolving them.  ``bzr merge`` can (by default) automatically
+start this process.
+
+One hard aspect is transformation of the tree state such as renames,
+directory creation, etc.  This might include files swapping place,
+etc.  We would like to do atomically but cannot.
+
+
+
+Aborting a merge
+----------------
+
+If a merge has been begun but not committed then ``bzr revert`` should
+put everything back as it was in the previous revision.  This includes
+resetting the tree state and texts, and also clearing the list of
+pending-merged revisions.
+
+
+
+Offline merge
+-------------
+
+It should be possible to download all the data necessary to do a merge
+from a remote branch, then disconnect and complete the merge.  It
+should be possible to interrupt and continue the merge during this
+process.
+
+This implies that all the data is pulled down and stored somewhere
+locally before the actual merge begins.  It could be pulled either
+into the revision history on non-trunk revisions, or into temporary
+files.
+
+It seems useful to move all revisions and texts from the other branch
+into the storage of this branch, in concordance with the general idea
+of every branch moving towards complete knowledge.  This allows the
+most options for an offline merge, and also for later looking back to
+see what was merged in and what decisions were made during the merge.
+
+
+
+Merge metadata
+--------------
+
+What does cherry-picking mean here?  It means we merged the changes
+from a revision relative to its predecessor?  But what if we actually
+want to merge the delta relative to something else?  Can that be
+represented?
+
+
+Rejected merges
+---------------
+
+ddaa says perhaps we should have three states: with respect to a
+branch any foreign revision can be *merged*, *not-merged*, or *rejected*.
+The difference between *not-merged* and *rejected* is that not-merged
+patches will try to merge in when you next sync from their
+branch, whereas rejected changes will not.
+
+'rejected' seems technically equivalent to it merged with the text
+changes not present.  But perhaps there should be something more?
+
+
+Excluded changes
+----------------
+
+Bitkeeper has the very interesting feature of *excluded* changesets,
+where something previously committed to or merged into this branch is
+treated as if it never occurred.  Because of their representation of
+changes as a weave they can do this without dependency problems on
+later merges.
+
+Although the later changes will not mechanically conflict, there is of
+course no guarantee that excluding the patch will generate anything
+semantically valid.
+
+Cool though this is, it seems that few people understand it well
+enough to use it confidently.  It complicates the merge algorithms and
+seems to have been a source of some bugs.  It may be better just to
+apply a reversed patch.
+
+
+
+Implementation
+--------------
+
+Each revision has a pointer to two sets, represented as lists of
+revision-ids:
+
+* ``merged-revisions``
+* ``picked-revisions``
+
+When a branch is merged in, its revision history plus merged-revisions
+are added to the merged-revisions file.  When changes are
+cherry-picked in they are added to the picked-revisions.
+
+These lists are stored in the text store and their sha1 and id is
+stored in the revision.
+
+While a merge is underway, these are stored in
+``.bzr/pending-merged-revisions`` and
+``.bzr/pending-picked-revisions``.
