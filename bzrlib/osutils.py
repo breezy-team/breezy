@@ -92,11 +92,15 @@ def uuid():
 
 def sha_file(f):
     import sha
-    ## TODO: Maybe read in chunks to handle big files
     if hasattr(f, 'tell'):
         assert f.tell() == 0
     s = sha.new()
-    s.update(f.read())
+    BUFSIZE = 128<<10
+    while True:
+        b = f.read(BUFSIZE)
+        if not b:
+            break
+        s.update(b)
     return s.hexdigest()
 
 
@@ -223,7 +227,6 @@ def user_email():
 
 def compare_files(a, b):
     """Returns true if equal in contents"""
-    # TODO: don't read the whole thing in one go.
     BUFSIZE = 4096
     while True:
         ai = a.read(BUFSIZE)
