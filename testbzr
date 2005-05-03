@@ -110,6 +110,7 @@ def log_linenumber():
     logfile.write('   at %s:%d\n' % stack[:2])
 
 
+
 # prepare an empty scratch directory
 if os.path.exists(TESTDIR):
     shutil.rmtree(TESTDIR)
@@ -207,9 +208,13 @@ try:
 
     cd('sub1/sub2')
     runcmd('bzr move ../hello.txt .')
-    assert exists('../hello.txt')
+    assert exists('./hello.txt')
     runcmd(['bzr', 'commit', '-m', 'move to parent directory'])
     cd('..')
+
+    runcmd('bzr move sub2/hello.txt .')
+    assert exists('hello.txt')
+    
     
     cd('..')
 

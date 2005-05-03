@@ -30,10 +30,6 @@ These are run by ``bzr.doctest``.
 >>> import bzrlib, os
 >>> from bzrlib import ScratchBranch
 >>> from bzrlib.osutils import isdir, isfile
->>> bzrlib.commands.cmd_rocks()
-it sure does!
-
-Hey, nice place to begin.
 
 The basic object is a Branch.  We have a special helper class
 ScratchBranch that automatically makes a directory and cleans itself
@@ -211,8 +207,6 @@ Renames, etc:
     foo => subdir/foo
     >>> b.show_status()
     R       foo => subdir/foo
-    >>> bzrlib.commands.cmd_renames(b.base)
-    foo => subdir/foo
     >>> b.commit("move foo to subdir")
     >>> isfile(b.abspath('foo'))
     False

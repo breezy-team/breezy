@@ -12,8 +12,9 @@ bzr-0.0.5  NOT RELEASED YET
 
   TESTING:
 
-    * Converted black-box test suites from Bourne shell into Python.
-      Various structural improvements to the tests.
+    * Converted black-box test suites from Bourne shell into Python;
+      now run using ``./testbzr``.  Various structural improvements to
+      the tests.
 
   INTERNAL:
 
