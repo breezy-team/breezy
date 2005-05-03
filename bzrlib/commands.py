@@ -155,9 +155,10 @@ class Command:
         This is invoked with the options and arguments bound to
         keyword parameters.
 
-        Return True if the command was successful, False if not.
+        Return 0 or None if the command was successful, or a shell
+        error code if not.
         """
-        return True
+        return 0
 
 
 
@@ -979,14 +980,13 @@ def run_bzr(argv):
             ## print_stats seems hardcoded to stdout
             stats.print_stats(20)
             
-            return ret
+            return ret.status
 
         finally:
             os.close(pffileno)
             os.remove(pfname)
     else:
-        cmdobj = cmd_class(cmdopts, cmdargs) or 0
-
+        cmdobj = cmd_class(cmdopts, cmdargs).status 
 
 
 def _report_exception(e, summary, quiet=False):
@@ -1010,10 +1010,11 @@ def main(argv):
 
     try:
         try:
-            ret = run_bzr(argv)
-            # do this here to catch EPIPE
-            sys.stdout.flush()
-            return ret
+            try:
+                return run_bzr(argv)
+            finally:
+                # do this here inside the exception wrappers to catch EPIPE
+                sys.stdout.flush()
         except BzrError, e:
             quiet = isinstance(e, (BzrCommandError))
             _report_exception(e, 'error: ' + e.args[0], quiet=quiet)
