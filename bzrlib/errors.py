@@ -29,6 +29,9 @@ class BzrCheckError(BzrError):
     pass
 
 
+class BzrCommandError(BzrError):
+    # Error from malformed user command
+    pass
 
 
 def bailout(msg, explanation=[]):

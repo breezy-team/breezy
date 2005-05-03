@@ -51,10 +51,10 @@ Small things
   commands where this shouldn't be done, such as 'bzr ignore', because
   we want to accept globs.
 
-* 'bzr ignore' command that just adds a line to the .bzrignore file
-  and makes it versioned.
+* ``bzr ignore`` command that just adds a line to the ``.bzrignore`` file
+  and makes it versioned.  Fix this to break symlinks.
 
-* 'bzr help commands' should give a one-line summary of each command.
+* ``bzr help commands`` should give a one-line summary of each command.
 
 * Any useful sanity checks in 'bzr ignore'?  Perhaps give a warning if
   they try to add a single file which is already versioned, or if they
@@ -66,6 +66,17 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 * Read and write locks on branch while it's open.
 
 * Separate read and write version checks?
+
+* ``bzr status FILE...``
+
+* Check all commands have decent help.
+
+* Autogenerate argument/option help.
+
+* ``bzr inventory -r REV`` and perhaps unify this with ``bzr ls``,
+  giving options to display ids, types, etc.
+
+* Atomic file class that renames into place when it's closed.
 
 
 Medium things
@@ -93,7 +104,7 @@ Medium things
 * Turn on stat cache code, and add optimization about avoiding
   dangerous cache entries.
 
-* mv command?
+* ``bzr mv`` that does either rename or move as in Unix.
 
 * More efficient diff of only selected files.
 
@@ -162,6 +173,14 @@ Medium things
 
   Eventually symlinks should be versioned.
 
+* Allow init in a subdirectory to create a nested repository, but only
+  if the subdirectory is not already versioned.   Perhaps also require
+  a ``--nested`` to protect against confusion.
+
+* Branch names? 
+
+
+
 
 Large things
 ------------
@@ -207,3 +226,4 @@ Large things
   exports first as a simpler case because then we don't need to deal
   with removing the tags on the way back in.
 
+* ``bzr find``

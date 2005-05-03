@@ -22,7 +22,7 @@ def show_status(state, kind, name):
         # use this even on windows?
         kind_ch = '/'
     else:
-        assert kind == 'file'
+        assert kind == 'file', ("can't handle file of type %r" % kind)
         kind_ch = ''
 
     assert len(state) == 1

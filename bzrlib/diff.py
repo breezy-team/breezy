@@ -21,9 +21,6 @@ from trace import mutter
 
 
 
-
-
-
 def diff_trees(old_tree, new_tree):
     """Compute diff between two trees.
 
@@ -140,5 +137,114 @@ def diff_trees(old_tree, new_tree):
 
             new_item = next(new_it)
             old_item = next(old_it)
+
+
+
+def show_diff(b, revision, file_list):
+    import difflib, sys
+    
+    if revision == None:
+        old_tree = b.basis_tree()
+    else:
+        old_tree = b.revision_tree(b.lookup_revision(revision))
+        
+    new_tree = b.working_tree()
+
+    # TODO: Options to control putting on a prefix or suffix, perhaps as a format string
+    old_label = ''
+    new_label = ''
+
+    DEVNULL = '/dev/null'
+    # Windows users, don't panic about this filename -- it is a
+    # special signal to GNU patch that the file should be created or
+    # deleted respectively.
+
+    # TODO: Generation of pseudo-diffs for added/deleted files could
+    # be usefully made into a much faster special case.
+
+    # TODO: Better to return them in sorted order I think.
+
+    if file_list:
+        file_list = [b.relpath(f) for f in file_list]
+
+    # FIXME: If given a file list, compare only those files rather
+    # than comparing everything and then throwing stuff away.
+    
+    for file_state, fid, old_name, new_name, kind in diff_trees(old_tree, new_tree):
+
+        if file_list and (new_name not in file_list):
+            continue
+        
+        # Don't show this by default; maybe do it if an option is passed
+        # idlabel = '      {%s}' % fid
+        idlabel = ''
+
+        # FIXME: Something about the diff format makes patch unhappy
+        # with newly-added files.
+
+        def diffit(oldlines, newlines, **kw):
+            
+            # FIXME: difflib is wrong if there is no trailing newline.
+            # The syntax used by patch seems to be "\ No newline at
+            # end of file" following the last diff line from that
+            # file.  This is not trivial to insert into the
+            # unified_diff output and it might be better to just fix
+            # or replace that function.
+
+            # In the meantime we at least make sure the patch isn't
+            # mangled.
+            
+
+            # Special workaround for Python2.3, where difflib fails if
+            # both sequences are empty.
+            if not oldlines and not newlines:
+                return
+
+            nonl = False
+
+            if oldlines and (oldlines[-1][-1] != '\n'):
+                oldlines[-1] += '\n'
+                nonl = True
+            if newlines and (newlines[-1][-1] != '\n'):
+                newlines[-1] += '\n'
+                nonl = True
+
+            ud = difflib.unified_diff(oldlines, newlines, **kw)
+            sys.stdout.writelines(ud)
+            if nonl:
+                print "\\ No newline at end of file"
+            sys.stdout.write('\n')
+        
+        if file_state in ['.', '?', 'I']:
+            continue
+        elif file_state == 'A':
+            print '*** added %s %r' % (kind, new_name)
+            if kind == 'file':
+                diffit([],
+                       new_tree.get_file(fid).readlines(),
+                       fromfile=DEVNULL,
+                       tofile=new_label + new_name + idlabel)
+        elif file_state == 'D':
+            assert isinstance(old_name, types.StringTypes)
+            print '*** deleted %s %r' % (kind, old_name)
+            if kind == 'file':
+                diffit(old_tree.get_file(fid).readlines(), [],
+                       fromfile=old_label + old_name + idlabel,
+                       tofile=DEVNULL)
+        elif file_state in ['M', 'R']:
+            if file_state == 'M':
+                assert kind == 'file'
+                assert old_name == new_name
+                print '*** modified %s %r' % (kind, new_name)
+            elif file_state == 'R':
+                print '*** renamed %s %r => %r' % (kind, old_name, new_name)
+
+            if kind == 'file':
+                diffit(old_tree.get_file(fid).readlines(),
+                       new_tree.get_file(fid).readlines(),
+                       fromfile=old_label + old_name + idlabel,
+                       tofile=new_label + new_name)
+        else:
+            bailout("can't represent state %s {%s}" % (file_state, fid))
 
 

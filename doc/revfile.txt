@@ -268,3 +268,4 @@ Open issues
   that full-texts cannot just simply be copied out but rather composed
   from chunks.  That seems inefficient since it is probably common to
   only want the text.
+

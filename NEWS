@@ -19,6 +19,11 @@ bzr-0.0.5  NOT RELEASED YET
 
     * Included ElementTree library upgraded to 1.2.6 by Fredrik Lundh.
 
+    * Refactor command functions into Command objects based on
+      mango-sorbet by Scott James Remnant.
+
+    * Better help messages for many commands.
+
 
 bzr-0.0.4  2005-04-22
 
