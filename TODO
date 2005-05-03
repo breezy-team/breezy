@@ -64,6 +64,7 @@ Small things
 __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 
+
 Medium things
 -------------
 
@@ -151,6 +152,12 @@ Medium things
 
 * Commands to dump out all command help into a manpage or HTML file or
   whatever.
+
+* Handle symlinks in the working directory; at the very least it
+  should be possible for them to be present and ignored/unknown
+  without causing assertion failures. 
+
+  Eventually symlinks should be versioned.
 
 
 Large things
