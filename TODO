@@ -1,4 +1,4 @@
-.. -*- mode: indented-text; compile-command: "rest2html TODO >doc/todo.html" -*- 
+.. -*- mode: indented-text; compile-command: "make -C doc" -*- 
 
 
 *******************
@@ -51,8 +51,6 @@ Small things
   commands where this shouldn't be done, such as 'bzr ignore', because
   we want to accept globs.
 
-__ http://mail.python.org/pipermail/python-list/2001-April/037847.html
-
 * 'bzr ignore' command that just adds a line to the .bzrignore file
   and makes it versioned.
 
@@ -62,6 +60,9 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
   they try to add a single file which is already versioned, or if they
   add a pattern which already exists, or if it looks like they gave an
   unquoted glob.
+
+__ http://mail.python.org/pipermail/python-list/2001-April/037847.html
+
 
 Medium things
 -------------
@@ -161,7 +162,7 @@ Large things
   - Is it necessary to store any kind of annotation where data was
     deleted?
 
-* Update revfile format and make it active:
+* Update revfile_ format and make it active:
 
   - Texts should be identified by something keyed on the revision, not
     an individual text-id.  This is much more useful for annotate I
@@ -172,6 +173,8 @@ Large things
   - Check them from check commands.
 
   - Store annotations.
+
+.. _revfile: revfile.html
 
 * Hooks for pre-commit, post-commit, etc.
 

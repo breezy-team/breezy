@@ -67,20 +67,98 @@ knowledge that a file is line-based in generating a diff.
 Files whose text does not change from one revision to the next are
 stored as just a single text in the revfile.  This can happen even if
 the file was renamed or other properties were changed in the
-inventory. 
+inventory.
+
+The revfile is held on disk as two files: an *index* and a *data*
+file.  The index file is short and always read completely into memory;
+the data file is much longer and only the relevant bits of it,
+identified by the index file, need to be read.
+
+  In previous versions, the  index file identified texts by their
+  SHA-1 digest.  This was unsatisfying for two reasons.  Firstly it
+  assumes that SHA-1 will not collide, which is not an assumption we
+  wish to make in long-lived files.  Secondly for annotations we need
+  to be able to map from file versions back to a revision.
+
+Texts are identified by the name of the revfile and a UUID
+corresponding to the first revision in which they were first
+introduced.  This means that given a text we can identify which
+revision it belongs to, and annotations can use the index within the
+revfile to identify where a region was first introduced.
+
+  We cannot identify texts by the integer revision number, because
+  that would limit us to only referring to a file in a particular
+  branch.
+
+  I'd like to just use the revision-id, but those are variable-length
+  strings, and I'd like the revfile index to be fixed-length and
+  relatively short.  UUIDs can be encoded in binary as only 16 bytes.
+  Perhaps we should just use UUIDs for revisions and be done?
+
+This is meant to scale to hold 100,000 revisions of a single file, by
+which time the index file will be ~4.8MB and a bit big to read
+sequentially.
+
+Some of the reserved fields could be used to implement a (semi?)
+balanced tree indexed by SHA1 so we can much more efficiently find the
+index associated with a particular hash.  For 100,000 revs we would be
+able to find it in about 17 random reads, which is not too bad.
+
+This performs pretty well except when trying to calculate deltas of
+really large files.  For that the main thing would be to plug in
+something faster than difflib, which is after all pure Python.
+Another approach is to just store the gzipped full text of big files,
+though perhaps that's too perverse?
+
+
 
 
 Skip-deltas
 -----------
 
 Because the basis of a delta does not need to be the text's logical
-predecessor, we can adjust the deltas 
+predecessor, we can adjust the deltas to avoid ever needing to apply
+too many deltas to reproduce a particular file.  
 
 
 Annotations
 -----------
 
-Storing
+Annotations indicate which revision of a file first inserted a line
+(or region of bytes).
+
+Given a string, we can write annotations on it like so: a sequence of
+*(index, length)* pairs, giving the *index* of the revision which
+introduced the next run of *length* bytes.  The sum of the lengths
+must equal the length of the string.  For text files the regions will
+typically fall on line breaks.  This can be transformed in memory to
+other structures, such as a list of *(index, content)* pairs.
+
+When a line was inserted from a merge revision then the annotation for
+that line should still be the source in the merged branch, rather than
+just being the revision in which the merge took place.
+
+They can cheaply be calculated when inserting a new text, but are
+expensive to calculate after the fact because that requires searching
+back through all previous text and all texts which were merged in.  It
+therefore seems sensible to calculate them once and store them.
+
+To do this we need two operators which update an existing annotated
+file:
+
+A. Given an annotated file and a working text, update the annotation to
+   mark regions inserted in the working file as new in this revision.
+
+B. Given two annotated files, merge them to produce an annotated
+   result.    When there are conflicts, both texts should be included
+   and annotated.
+
+These may be repeated: after a merge there may be another merge, or
+there may be manual fixups or conflict resolutions.
+
+So what we require is given a diff or a diff3 between two files, map
+the regions of bytes changed into corresponding updates to the origin
+annotations.
 
 
 Open issues
@@ -98,3 +176,17 @@ Open issues
   as when confidential information is accidentally added.  That could
   be fixed by creating the fixed repository as a separate branch, into
   which only the preserved revisions are exported.
+
+* Should annotations also indicate where text was deleted?
+
+* This design calls for only one annotation per line, which seems
+  standard.  However, this is lacking in at least two cases:
+
+  - Lines which originate in the same way in more than one revision,
+    through being independently introduced.  In this case we would
+    apparently have to make an arbitrary choice; I suppose branches
+    could prefer to assume lines originated in their own history.
+
+  - It might be useful to directly indicate which mergers included
+    which lines.  We do have that information in the revision history
+    though, so there seems no need to store it for every line.
