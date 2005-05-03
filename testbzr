@@ -26,6 +26,10 @@ This replaces the previous test.sh which was not very portable."""
 
 import sys, os, traceback
 
+TESTDIR = "testbzr.tmp"
+
+LOGFILENAME = 'testbzr.log'
+
 try:
     import shutil
     from subprocess import call, Popen, PIPE
@@ -104,14 +108,12 @@ def log_linenumber():
     logfile.write('   at %s:%d\n' % stack[:2])
 
 
-TESTDIR = "testbzr.tmp"
-
 # prepare an empty scratch directory
 if os.path.exists(TESTDIR):
     shutil.rmtree(TESTDIR)
 
 
-logfile = open('testbzr.log', 'wt', buffering=1)
+logfile = open(LOGFILENAME, 'wt', buffering=1)
 
 
 try:
@@ -120,6 +122,7 @@ try:
 
     progress("introductory commands")
     runcmd("bzr version")
+    runcmd("bzr --version")
     runcmd("bzr help")
     runcmd("bzr --help")
 
@@ -175,7 +178,7 @@ try:
 except Exception, e:
     sys.stderr.write('*' * 50 + '\n'
                      + 'testbzr: tests failed\n'
-                     + 'see testbzr.log for more information\n'
+                     + 'see ' + LOGFILENAME + ' for more information\n'
                      + '*' * 50 + '\n')
     logfile.write('tests failed!\n')
     traceback.print_exc(None, logfile)
