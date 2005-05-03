@@ -1,0 +1,11 @@
+#compdef bzr
+
+# Rudimentary zsh completion support for bzr.
+
+# -S means there are no options after a -- and that argument is ignored
+
+# To use this you must arrange for it to be in a directory that is on
+# your $fpath, and also for compinit to be run.
+
+
+_arguments -S "1::bzr command:($(bzr help commands | grep '^   '))"
