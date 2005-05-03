@@ -933,7 +933,7 @@ def run_bzr(argv):
                 help()
             return 0
         elif 'version' in opts:
-            cmd_version([], [])
+            show_version()
             return 0
         cmd = str(args.pop(0))
     except IndexError:
