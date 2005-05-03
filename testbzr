@@ -25,6 +25,8 @@ related to argument processing, startup, etc.
 This replaces the previous test.sh which was not very portable."""
 
 import sys, os, traceback
+from os import mkdir
+from os.path import exists
 
 TESTDIR = "testbzr.tmp"
 
@@ -172,6 +174,43 @@ try:
 
     assert backtick("bzr revno") == '0\n'
 
+    progress("add first revision")
+    runcmd(["bzr", "commit", "-m", 'add first revision'])
+
+    progress("more complex renames")
+    os.mkdir("sub1")
+    runcmd("bzr rename hello.txt sub1", 1)
+    runcmd("bzr rename hello.txt sub1/hello.txt", 1)
+    runcmd("bzr move hello.txt sub1", 1)
+
+    runcmd("bzr add sub1")
+    runcmd("bzr rename sub1 sub2")
+    runcmd("bzr move hello.txt sub2")
+
+    assert exists("sub2")
+    assert exists("sub2/hello.txt")
+    assert not exists("sub1")
+    assert not exists("hello.txt")
+
+    runcmd(['bzr', 'commit', '-m', 'commit with some things moved to subdirs'])
+
+    mkdir("sub1")
+    runcmd('bzr add sub1')
+    runcmd('bzr move sub2/hello.txt sub1')
+    assert not exists('sub2/hello.txt')
+    assert exists('sub1/hello.txt')
+    runcmd('bzr move sub2 sub1')
+    assert not exists('sub2')
+    assert exists('sub1/sub2')
+
+    runcmd(['bzr', 'commit', '-m', 'rename nested subdirectories'])
+
+    cd('sub1/sub2')
+    runcmd('bzr move ../hello.txt .')
+    assert exists('../hello.txt')
+    runcmd(['bzr', 'commit', '-m', 'move to parent directory'])
+    cd('..')
+    
     cd('..')
 
     progress("all tests passed!")

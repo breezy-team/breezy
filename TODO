@@ -185,6 +185,11 @@ Medium things
 
 * Branch names? 
 
+* More test framework:
+
+  - Class that describes the state of a working tree so we can just
+    assert it's equal.
+
 
 
 
