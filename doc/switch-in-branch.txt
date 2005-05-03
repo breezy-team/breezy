@@ -1,0 +1,5 @@
+Trees which are annoying to set up.  Want to switch to a different
+branch without needing to set everything up again.
+
+Uses for switch: keeps around unknown/ignored files and any local
+changes.
