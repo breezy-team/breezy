@@ -741,11 +741,22 @@ def help_on_command(cmdname):
     if rest:
         print rest
 
-    if cmdclass.takes_options:
-        print
-        print 'options:'
-        for on in cmdclass.takes_options:
-            print '    --%s' % on
+    help_on_option(cmdclass.takes_options)
+
+
+def help_on_option(options):
+    if not options:
+        return
+    
+    print
+    print 'options:'
+    for on in options:
+        l = '    --' + on
+        for shortname, longname in SHORT_OPTIONS.items():
+            if longname == on:
+                l += ', -' + shortname
+                break
+        print l
 
 
 def help_commands():
@@ -764,7 +775,7 @@ def help_commands():
         help = inspect.getdoc(cmdclass)
         if help:
             print "    " + help.split('\n', 1)[0]
-
+            
 
 ######################################################################
 # main routine
