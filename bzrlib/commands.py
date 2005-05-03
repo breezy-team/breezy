@@ -64,14 +64,10 @@ Interesting commands:
 
 
 
-import sys, os, time, types, shutil, tempfile, fnmatch, difflib, os.path
+import sys, os, time, os.path
 from sets import Set
-from pprint import pprint
-from stat import *
-from glob import glob
 
 import bzrlib
-from bzrlib.store import ImmutableStore
 from bzrlib.trace import mutter, note, log_error
 from bzrlib.errors import bailout, BzrError, BzrCheckError, BzrCommandError
 from bzrlib.osutils import quotefn, pumpfile, isdir, isfile
@@ -79,13 +75,6 @@ from bzrlib.tree import RevisionTree, EmptyTree, WorkingTree, Tree
 from bzrlib.revision import Revision
 from bzrlib import Branch, Inventory, InventoryEntry, ScratchBranch, BZRDIR, \
      format_date
-
-BZR_DIFF_FORMAT = "## Bazaar-NG diff, format 0 ##\n"
-BZR_PATCHNAME_FORMAT = 'cset:sha1:%s'
-
-## standard representation
-NONE_STRING = '(none)'
-EMPTY = 'empty'
 
 
 CMD_ALIASES = {
@@ -547,14 +536,15 @@ class cmd_lookup_revision(Command):
         bzr lookup-revision 33
         """
     hidden = True
+    takes_args = ['revno']
+    
     def run(self, revno):
         try:
             revno = int(revno)
         except ValueError:
-            raise BzrError("not a valid revision-number: %r" % revno)
+            raise BzrCommandError("not a valid revision-number: %r" % revno)
 
-        print Branch('.').lookup_revision(revno) or NONE_STRING
-
+        print Branch('.').lookup_revision(revno)
 
 
 class cmd_export(Command):
@@ -965,7 +955,7 @@ def run_bzr(argv):
         cmdopts[k.replace('-', '_')] = v
 
     if profile:
-        import hotshot
+        import hotshot, tempfile
         pffileno, pfname = tempfile.mkstemp()
         try:
             prof = hotshot.Profile(pfname)
