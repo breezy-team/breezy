@@ -52,22 +52,6 @@ Both the index and the text are only ever appended to; a consequence
 is that sequence numbers are stable references.  But not every
 repository in the world will assign the same sequence numbers,
 therefore the SHA-1 is the only universally unique reference.
-
-This is meant to scale to hold 100,000 revisions of a single file, by
-which time the index file will be ~4.8MB and a bit big to read
-sequentially.
-
-Some of the reserved fields could be used to implement a (semi?)
-balanced tree indexed by SHA1 so we can much more efficiently find the
-index associated with a particular hash.  For 100,000 revs we would be
-able to find it in about 17 random reads, which is not too bad.
-
-This performs pretty well except when trying to calculate deltas of
-really large files.  For that the main thing would be to plug in
-something faster than difflib, which is after all pure Python.
-Another approach is to just store the gzipped full text of big files,
-though perhaps that's too perverse?
-
 The iter method here will generally read through the whole index file
 in one go.  With readahead in the kernel and python/libc (typically
 128kB) this means that there should be no seeks and often only one

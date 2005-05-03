@@ -160,6 +160,75 @@ So what we require is given a diff or a diff3 between two files, map
 the regions of bytes changed into corresponding updates to the origin
 annotations.
 
+Annotations can also be delta-compressed; we only need to add new
+annotation data when there is a text insertion.
+
+    (It is possible in a merge to have a change of annotation when
+    there is no text change, though this seems unlikely.  This can
+    still be represented as a "pointless" delta, plus an update to the
+    annotations.)
+
+
+
+Tools
+-----
+
+The revfile module can be invoked as a program to give low-level
+access for data recovery, debugging, etc.
+
+
+
+Format
+======
+
+Index file
+----------
+
+The index file is a series of fixed-length records::
+
+  byte[16]     UUID of revision
+  byte[20]     SHA-1 of expanded text (as binary, not hex)
+  uint32       flags: 1=zlib compressed
+  uint32       sequence number this is based on, or -1 for full text
+  uint32       offset in text file of start
+  uint32       length of compressed delta in text file
+  uint32[3]    reserved
+
+Total 64 bytes.
+
+The header is also 64 bytes, for tidyness and easy calculation.  For
+this format the header must be ``bzr revfile v2\n`` padded with
+``\xff`` to 64 bytes.
+
+The first record after the header is index 0.  A record's base index
+must be less than its own index.
+
+The SHA-1 is redundant with the inventory but stored just as a check
+on the compression methods and so that the file can be validated
+without reference to any other information.
+
+Each byte in the text file should be included by at most one delta.
+
+
+Deltas
+------
+
+Deltas to the text are stored as a series of variable-length records::
+
+  uint32        idx
+  uint32        m
+  uint32        n
+  uint32        l
+  byte[l]       new
+
+This describes a change originally introduced in the revision
+described by *idx* in the index.
+
+This indicates that the region [m:n] of the input file should be
+replaced by the text *new*.  If m==n this is a pure insertion of l
+bytes.  If l==0 this is a pure deletion of (n-m) bytes.
+
+
 
 Open issues
 ===========
@@ -190,3 +259,12 @@ Open issues
   - It might be useful to directly indicate which mergers included
     which lines.  We do have that information in the revision history
     though, so there seems no need to store it for every line.
+
+* Should we also store full-texts as a transitional step?
+
+* Storing the annotations with the text is reasonably simple and
+  compact, but means that we always need to process the annotation
+  structure even when we only want the text.  In particular it means
+  that full-texts cannot just simply be copied out but rather composed
+  from chunks.  That seems inefficient since it is probably common to
+  only want the text.
