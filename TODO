@@ -78,6 +78,8 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * Atomic file class that renames into place when it's closed.
 
+* Don't abort if ``~/.bzr.log`` can't be used.
+
 
 Medium things
 -------------
@@ -152,6 +154,10 @@ Medium things
 
 * Consider using Python logging library as well as/instead of
   bzrlib.trace.
+
+* Commands should give some progress indication by default.
+
+  - But quieten this with ``--silent``.
 
 * Change to using gettext message localization.
 

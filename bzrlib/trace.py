@@ -26,9 +26,6 @@ import bzrlib
 ######################################################################
 # messages and logging
 
-## TODO: If --verbose is given then write to both stderr and
-## _tracefile; perhaps replace _tracefile with a tee thing.
-
 global _tracefile, _starttime
 _tracefile = None
 
@@ -38,10 +35,6 @@ _starttime = None
 # If false, notes also go to stdout; should replace this with --silent
 # at some point.
 silent = False
-
-
-# TODO: Somehow tie this to the --verbose option?
-verbose = False
 
 
 # fix this if we ever fork within python
@@ -73,10 +66,6 @@ def log_error(msg):
     _write_trace(msg)
 
 
-# TODO: Something to log exceptions in here.
-
-
-
 def _rollover_trace_maybe(trace_fname):
     try:
         size = os.stat(trace_fname)[stat.ST_SIZE]
@@ -101,10 +90,6 @@ def _rollover_trace_maybe(trace_fname):
 
 
 def create_tracefile(argv):
-    # TODO: Also show contents of /etc/lsb-release, if it can be parsed.
-    #       Perhaps that should eventually go into the platform library?
-    # TODO: If the file doesn't exist, add a note describing it.
-
     # Messages are always written to here, so that we have some
     # information if something goes wrong.  In a future version this
     # file will be removed on successful completion.
