@@ -29,6 +29,9 @@ def find_touching_revisions(branch, file_id):
 
     TODO: Perhaps some way to limit this to only particular revisions,
     or to traverse a non-branch set of revisions?
+
+    TODO: If a directory is given, then by default look for all
+    changes under that directory.
     """
     last_ie = None
     last_path = None
@@ -63,10 +66,17 @@ def find_touching_revisions(branch, file_id):
         revno += 1
 
 
-def show_log(branch, show_timezone='original', verbose=False,
+def show_log(branch,
+             filename=None,
+             show_timezone='original',
+             verbose=False,
              show_ids=False,
              to_file=None):
     """Write out human-readable log of commits to this branch.
+
+    filename
+        If true, list only the commits affecting the specified
+        file, rather than all commits.
 
     show_timezone
         'original' (committer's timezone),
@@ -90,11 +100,20 @@ def show_log(branch, show_timezone='original', verbose=False,
     if to_file == None:
         import sys
         to_file = sys.stdout
+
+    if filename:
+        file_id = branch.read_working_inventory().path2id(filename)
+        def which_revs():
+            for revno, revid, why in find_touching_revisions(branch, file_id):
+                yield revno, revid
+    else:
+        def which_revs():
+            for i, revid in enumerate(branch.revision_history()):
+                yield i+1, revid
         
     branch._need_readlock()
-    revno = 1
     precursor = None
-    for revision_id in branch.revision_history():
+    for revno, revision_id in which_revs():
         print >>to_file,  '-' * 60
         print >>to_file,  'revno:', revno
         rev = branch.get_revision(revision_id)
@@ -108,10 +127,6 @@ def show_log(branch, show_timezone='original', verbose=False,
             raise BzrCheckError("retrieved wrong revision: %r"
                                 % (revision_id, rev.revision_id))
 
-        ## opportunistic consistency check, same as check_patch_chaining
-        if rev.precursor != precursor:
-            raise BzrCheckError("mismatched precursor!")
-
         print >>to_file,  'message:'
         if not rev.message:
             print >>to_file,  '  (no message)'
@@ -119,7 +134,10 @@ def show_log(branch, show_timezone='original', verbose=False,
             for l in rev.message.split('\n'):
                 print >>to_file,  '  ' + l
 
-        if verbose and precursor:
+        # Don't show a list of changed files if we were asked about
+        # one specific file.
+
+        if verbose and precursor and not filename:
             # TODO: Group as added/deleted/renamed instead
             # TODO: Show file ids
             print >>to_file, 'changed files:'
@@ -136,5 +154,5 @@ def show_log(branch, show_timezone='original', verbose=False,
                     show_status(file_state, kind,
                         old_name + ' => ' + new_name)
 
-        revno += 1
         precursor = revision_id
+

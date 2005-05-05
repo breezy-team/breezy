@@ -419,14 +419,14 @@ class cmd_log(Command):
     TODO: Option to limit range.
 
     TODO: Perhaps show most-recent first with an option for last.
-
-    TODO: Option to limit to only a single file or to get log for a
-          different directory.
     """
+    takes_args = ['filename?']
     takes_options = ['timezone', 'verbose', 'show-ids']
-    def run(self, timezone='original', verbose=False, show_ids=False):
-        b = Branch('.', lock_mode='r')
-        bzrlib.show_log(b,
+    def run(self, filename=None, timezone='original', verbose=False, show_ids=False):
+        b = Branch((filename or '.'), lock_mode='r')
+        if filename:
+            filename = b.relpath(filename)
+        bzrlib.show_log(b, filename,
                         show_timezone=timezone,
                         verbose=verbose,
                         show_ids=show_ids)

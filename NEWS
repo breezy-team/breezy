@@ -17,6 +17,9 @@ bzr-0.0.5  NOT RELEASED YET
 
     * New option ``bzr log --show-ids``.
 
+    * New usage ``bzr log FILENAME`` shows only revisions that
+      affected that file.
+
   TESTING:
 
     * Converted black-box test suites from Bourne shell into Python;
