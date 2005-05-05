@@ -28,9 +28,11 @@ BZRDIR = ".bzr"
 
 DEFAULT_IGNORE = ['.bzr.log',
                   '*~', '#*#', '*$', '.#*',
+                  '.*.swp', '.*.tmp',
                   '*.tmp', '*.bak', '*.BAK', '*.orig',
                   '*.o', '*.obj', '*.a', '*.py[oc]', '*.so', '*.exe', '*.elc', 
                   '{arch}', 'CVS', '.svn', '_darcs', 'SCCS', 'RCS',
+                  '*,v',
                   'BitKeeper',
                   'TAGS', '.make.state', '.sconsign', '.tmp*']
 

@@ -1,5 +1,4 @@
 bzr-0.0.5  NOT RELEASED YET
-***************************
 
   ENHANCEMENTS:
 
@@ -10,6 +9,8 @@ bzr-0.0.5  NOT RELEASED YET
 
     * Nicer error message for broken pipe, interrupt and similar
       conditions that don't indicate an internal error.
+
+    * Add ``.*.swp .*.tmp *,v`` to default ignore patterns.
 
   TESTING:
 
@@ -31,7 +32,6 @@ bzr-0.0.5  NOT RELEASED YET
 
 
 bzr-0.0.4  2005-04-22
-*********************
 
   ENHANCEMENTS:
 
@@ -95,7 +95,6 @@ bzr-0.0.4  2005-04-22
 
 
 bzr-0.0.3  2005-04-06
-*********************
 
   ENHANCEMENTS:
 
@@ -136,7 +135,6 @@ bzr-0.0.3  2005-04-06
 
 
 bzr-0.0.2.1
-***********
 
   PORTABILITY:
 
@@ -144,7 +142,6 @@ bzr-0.0.2.1
 
 
 bzr-0.0.2  "black cube"  2005-03-31
-***********************************
 
   ENHANCEMENTS:
 
@@ -172,7 +169,6 @@ bzr-0.0.2  "black cube"  2005-03-31
 
 
 bzr-0.0.1  2005-03-26
-*********************
 
   ENHANCEMENTS:
 
@@ -199,7 +195,6 @@ bzr-0.0.1  2005-03-26
 
 
 bzr-0.0.0.69  2005-03-22
-************************
 
   ENHANCEMENTS:
 
