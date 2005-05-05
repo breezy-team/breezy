@@ -857,7 +857,7 @@ def run_bzr(argv):
     allowed = cmd_class.takes_options
     for oname in opts:
         if oname not in allowed:
-            raise BzrCommandError("option %r is not allowed for command %r"
+            raise BzrCommandError("option '--%s' is not allowed for command %r"
                                   % (oname, cmd))
 
     # mix arguments and options into one dictionary
