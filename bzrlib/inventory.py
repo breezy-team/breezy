@@ -371,13 +371,13 @@ class Inventory(XMLMixin):
         >>> inv['123123'].name
         'hello.c'
         """
-        if file_id == None:
-            raise BzrError("can't look up file_id None")
-            
         try:
             return self._byid[file_id]
         except KeyError:
-            raise BzrError("file_id {%s} not in inventory" % file_id)
+            if file_id == None:
+                raise BzrError("can't look up file_id None")
+            else:
+                raise BzrError("file_id {%s} not in inventory" % file_id)
 
 
     def get_child(self, parent_id, filename):
