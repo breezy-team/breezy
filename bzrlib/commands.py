@@ -174,7 +174,7 @@ class cmd_add(Command):
         bzrlib.add.smart_add(file_list, verbose)
 
 
-def Relpath(Command):
+class cmd_relpath(Command):
     """Show path of a file relative to root"""
     takes_args = ('filename')
     
