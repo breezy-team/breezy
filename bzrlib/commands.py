@@ -420,7 +420,7 @@ class cmd_log(Command):
     """
     takes_options = ['timezone', 'verbose']
     def run(self, timezone='original', verbose=False):
-        Branch('.').write_log(show_timezone=timezone, verbose=verbose)
+        Branch('.', lock_mode='r').write_log(show_timezone=timezone, verbose=verbose)
 
 
 class cmd_ls(Command):

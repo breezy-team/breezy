@@ -76,7 +76,9 @@ class Branch:
     base
         Base directory of the branch.
     """
-    def __init__(self, base, init=False, find_root=True):
+    _lockmode = None
+    
+    def __init__(self, base, init=False, find_root=True, lock_mode='w'):
         """Create new branch object at a particular location.
 
         base -- Base directory for the branch.
@@ -103,6 +105,7 @@ class Branch:
                         ['use "bzr init" to initialize a new working tree',
                          'current bzr can only operate from top-of-tree'])
         self._check_format()
+        self.lock(lock_mode)
 
         self.text_store = ImmutableStore(self.controlfilename('text-store'))
         self.revision_store = ImmutableStore(self.controlfilename('revision-store'))
@@ -114,6 +117,46 @@ class Branch:
 
 
     __repr__ = __str__
+
+
+
+    def lock(self, mode='w'):
+        """Lock the on-disk branch, excluding other processes."""
+        try:
+            import fcntl
+
+            if mode == 'w':
+                lm = fcntl.LOCK_EX
+                om = os.O_WRONLY | os.O_CREAT
+            elif mode == 'r':
+                lm = fcntl.LOCK_SH
+                om = os.O_RDONLY
+            else:
+                raise BzrError("invalid locking mode %r" % mode)
+
+            lockfile = os.open(self.controlfilename('branch-lock'), om)
+            fcntl.lockf(lockfile, lm)
+            def unlock(self):
+                fcntl.lockf(lockfile, fcntl.LOCK_UN)
+                os.close(lockfile)
+                self._lockmode = None
+            self.unlock = unlock
+            self._lockmode = mode
+        except ImportError:
+            warning("please write a locking method for platform %r" % sys.platform)
+            def unlock(self):
+                self._lockmode = None
+            self.unlock = unlock
+            self._lockmode = mode
+
+
+    def _need_readlock(self):
+        if self._lockmode not in ['r', 'w']:
+            raise BzrError('need read lock on branch, only have %r' % self._lockmode)
+
+    def _need_writelock(self):
+        if self._lockmode not in ['w']:
+            raise BzrError('need write lock on branch, only have %r' % self._lockmode)
 
 
     def abspath(self, name):
@@ -174,7 +217,8 @@ class Branch:
         for d in ('text-store', 'inventory-store', 'revision-store'):
             os.mkdir(self.controlfilename(d))
         for f in ('revision-history', 'merged-patches',
-                  'pending-merged-patches', 'branch-name'):
+                  'pending-merged-patches', 'branch-name',
+                  'branch-lock'):
             self.controlfile(f, 'w').write('')
         mutter('created control directory in ' + self.base)
         Inventory().write_xml(self.controlfile('inventory','w'))
@@ -201,6 +245,7 @@ class Branch:
 
     def read_working_inventory(self):
         """Read the working inventory."""
+        self._need_readlock()
         before = time.time()
         # ElementTree does its own conversion from UTF-8, so open in
         # binary.
@@ -216,6 +261,7 @@ class Branch:
         That is to say, the inventory describing changes underway, that
         will be committed to the next revision.
         """
+        self._need_writelock()
         ## TODO: factor out to atomicfile?  is rename safe on windows?
         ## TODO: Maybe some kind of clean/dirty marker on inventory?
         tmpfname = self.controlfilename('inventory.tmp')
@@ -275,6 +321,7 @@ class Branch:
         Traceback (most recent call last):
         BzrError: ('cannot add: not a regular file or directory: nothere', [])
         """
+        self._need_writelock()
 
         # TODO: Re-adding a file that is removed in the working copy
         # should probably put it back with the previous ID.
@@ -315,6 +362,7 @@ class Branch:
 
     def print_file(self, file, revno):
         """Print `file` to stdout."""
+        self._need_readlock()
         tree = self.revision_tree(self.lookup_revision(revno))
         # use inventory as it was in that revision
         file_id = tree.inventory.path2id(file)
@@ -361,6 +409,7 @@ class Branch:
         """
         ## TODO: Normalize names
         ## TODO: Remove nested loops; better scalability
+        self._need_writelock()
 
         if isinstance(files, types.StringTypes):
             files = [files]
@@ -427,6 +476,7 @@ class Branch:
         timestamp -- if not None, seconds-since-epoch for a
              postdated/predated commit.
         """
+        self._need_writelock()
 
         ## TODO: Show branch names
 
@@ -596,6 +646,7 @@ class Branch:
 
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
+        self._need_readlock()
         r = Revision.read_xml(self.revision_store[revision_id])
         assert r.revision_id == revision_id
         return r
@@ -607,12 +658,14 @@ class Branch:
         TODO: Perhaps for this and similar methods, take a revision
                parameter which can be either an integer revno or a
                string hash."""
+        self._need_readlock()
         i = Inventory.read_xml(self.inventory_store[inventory_id])
         return i
 
 
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""
+        self._need_readlock()
         if revision_id == None:
             return Inventory()
         else:
@@ -625,6 +678,7 @@ class Branch:
         >>> ScratchBranch().revision_history()
         []
         """
+        self._need_readlock()
         return [l.rstrip('\r\n') for l in self.controlfile('revision-history', 'r').readlines()]
 
 
@@ -674,7 +728,7 @@ class Branch:
 
         `revision_id` may be None for the null revision, in which case
         an `EmptyTree` is returned."""
-
+        self._need_readlock()
         if revision_id == None:
             return EmptyTree()
         else:
@@ -714,6 +768,7 @@ class Branch:
         """Write out human-readable log of commits to this branch
 
         utc -- If true, show dates in universal time, not local time."""
+        self._need_readlock()
         ## TODO: Option to choose either original, utc or local timezone
         revno = 1
         precursor = None
@@ -761,7 +816,8 @@ class Branch:
         """Rename one file.
 
         This can change the directory or the filename or both.
-         """
+        """
+        self._need_writelock()
         tree = self.working_tree()
         inv = tree.inventory
         if not tree.has_filename(from_rel):
@@ -816,6 +872,7 @@ class Branch:
         Note that to_name is only the last component of the new name;
         this doesn't change the directory.
         """
+        self._need_writelock()
         ## TODO: Option to move IDs only
         assert not isinstance(from_paths, basestring)
         tree = self.working_tree()
@@ -885,6 +942,7 @@ class Branch:
         
         TODO: Get state for single files.
         """
+        self._need_readlock()
 
         # We have to build everything into a list first so that it can
         # sorted by name, incorporating all the different sources.

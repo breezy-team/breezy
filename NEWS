@@ -12,6 +12,9 @@ bzr-0.0.5  NOT RELEASED YET
 
     * Add ``.*.swp .*.tmp *,v`` to default ignore patterns.
 
+    * Per-branch locks keyed on ``.bzr/branch-lock``, available in
+      either read or write mode.
+
   TESTING:
 
     * Converted black-box test suites from Bourne shell into Python;
