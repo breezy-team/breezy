@@ -774,11 +774,16 @@ class Branch:
 
 
     def write_log(self, show_timezone='original', verbose=False):
-        """Write out human-readable log of commits to this branch
+        """Write out human-readable log of commits to this branch.
 
-        utc -- If true, show dates in universal time, not local time."""
+        show_timezone -- may be 'original' (committer's timezone),
+            'utc' (universal time), or 'local' (local user's timezone)
+
+        verbose -- if true, also list which files were changed in each
+            revision.
+        """
+        
         self._need_readlock()
-        ## TODO: Option to choose either original, utc or local timezone
         revno = 1
         precursor = None
         for p in self.revision_history():
