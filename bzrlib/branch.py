@@ -804,7 +804,7 @@ class Branch:
 
             ## opportunistic consistency check, same as check_patch_chaining
             if rev.precursor != precursor:
-                bailout("mismatched precursor!")
+                raise BzrCheckError("mismatched precursor!")
 
             print 'message:'
             if not rev.message:
