@@ -426,9 +426,10 @@ class cmd_log(Command):
     takes_options = ['timezone', 'verbose', 'show-ids']
     def run(self, timezone='original', verbose=False, show_ids=False):
         b = Branch('.', lock_mode='r')
-        b.show_log(show_timezone=timezone,
-                   verbose=verbose,
-                   show_ids=show_ids)
+        bzrlib.show_log(b,
+                        show_timezone=timezone,
+                        verbose=verbose,
+                        show_ids=show_ids)
 
 
 class cmd_ls(Command):
