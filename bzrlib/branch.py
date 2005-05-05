@@ -134,6 +134,10 @@ class Branch:
             else:
                 raise BzrError("invalid locking mode %r" % mode)
 
+            # XXX: Old branches might not have the lock file, and
+            # won't get one until someone does a write-mode command on
+            # them or creates it by hand.
+
             lockfile = os.open(self.controlfilename('branch-lock'), om)
             fcntl.lockf(lockfile, lm)
             def unlock(self):
