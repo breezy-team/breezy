@@ -23,7 +23,7 @@ Nothing is actually logged unless you call bzrlib.open_tracefile().
 """
 
 
-import sys, os, time, socket, stat, codecs
+import sys, os
 import bzrlib
 
 ######################################################################
@@ -71,6 +71,7 @@ def log_error(msg):
 
 
 def _rollover_trace_maybe(trace_fname):
+    import stat
     try:
         size = os.stat(trace_fname)[stat.ST_SIZE]
         if size <= 4 << 20:
@@ -98,6 +99,7 @@ def open_tracefile(argv):
     # information if something goes wrong.  In a future version this
     # file will be removed on successful completion.
     global _starttime, _tracefile
+    import stat, codecs
 
     _starttime = os.times()[4]
 
@@ -132,7 +134,8 @@ def close_trace():
 
 
 
-def log_exception(e):
+def log_exception():
+    """Log the last exception into the trace file."""
     import traceback, cStringIO
     s = cStringIO.StringIO()
     traceback.print_exc(None, s)

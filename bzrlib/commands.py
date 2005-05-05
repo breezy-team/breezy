@@ -869,10 +869,10 @@ def run_bzr(argv):
         cmdobj = cmd_class(cmdopts, cmdargs).status 
 
 
-def _report_exception(e, summary, quiet=False):
+def _report_exception(summary, quiet=False):
     import traceback
     log_error('bzr: ' + summary)
-    bzrlib.trace.log_exception(e)
+    bzrlib.trace.log_exception()
 
     if not quiet:
         tb = sys.exc_info()[2]
@@ -897,7 +897,7 @@ def main(argv):
                 sys.stdout.flush()
         except BzrError, e:
             quiet = isinstance(e, (BzrCommandError))
-            _report_exception(e, 'error: ' + e.args[0], quiet=quiet)
+            _report_exception('error: ' + e.args[0], quiet=quiet)
             if len(e.args) > 1:
                 for h in e.args[1]:
                     # some explanation or hints
@@ -907,10 +907,10 @@ def main(argv):
             msg = 'assertion failed'
             if str(e):
                 msg += ': ' + str(e)
-            _report_exception(e, msg)
+            _report_exception(msg)
             return 2
         except KeyboardInterrupt, e:
-            _report_exception(e, 'interrupted', quiet=True)
+            _report_exception('interrupted', quiet=True)
             return 2
         except Exception, e:
             quiet = False
@@ -919,7 +919,7 @@ def main(argv):
                 msg = 'broken pipe'
             else:
                 msg = str(e).rstrip('\n')
-            _report_exception(e, msg, quiet)
+            _report_exception(msg, quiet)
             return 2
     finally:
         bzrlib.trace.close_trace()
