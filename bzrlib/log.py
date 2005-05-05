@@ -94,8 +94,9 @@ def show_log(branch,
     """
     from osutils import format_date
     from errors import BzrCheckError
-    from diff import diff_trees
+    from diff import compare_inventories
     from textui import show_status
+    from inventory import Inventory
 
     if to_file == None:
         import sys
@@ -113,6 +114,8 @@ def show_log(branch,
         
     branch._need_readlock()
     precursor = None
+    if verbose:
+        prev_inv = Inventory()
     for revno, revision_id in which_revs():
         print >>to_file,  '-' * 60
         print >>to_file,  'revno:', revno
@@ -137,22 +140,28 @@ def show_log(branch,
         # Don't show a list of changed files if we were asked about
         # one specific file.
 
-        if verbose and precursor and not filename:
-            # TODO: Group as added/deleted/renamed instead
-            # TODO: Show file ids
-            print >>to_file, 'changed files:'
-            tree = branch.revision_tree(revision_id)
-            prevtree = branch.revision_tree(precursor)
+        if verbose and not filename:
+            this_inv = branch.get_inventory(rev.inventory_id)
+            delta = compare_inventories(prev_inv, this_inv)
 
-            for file_state, fid, old_name, new_name, kind in \
-                                    diff_trees(prevtree, tree, ):
-                if file_state == 'A' or file_state == 'M':
-                    show_status(file_state, kind, new_name)
-                elif file_state == 'D':
-                    show_status(file_state, kind, old_name)
-                elif file_state == 'R':
-                    show_status(file_state, kind,
-                        old_name + ' => ' + new_name)
+            if delta.removed:
+                print >>to_file, 'removed files:'
+                for path, fid in delta.removed:
+                    print >>to_file, '  ' + path
+            if delta.added:
+                print >>to_file, 'added files:'
+                for path, fid in delta.added:
+                    print >>to_file, '  ' + path
+            if delta.renamed:
+                print >>to_file, 'renamed files:'
+                for oldpath, newpath, fid in delta.renamed:
+                    print >>to_file, '  %s => %s' % (oldpath, newpath)
+            if delta.modified:
+                print >>to_file, 'modified files:'
+                for path, fid in delta.modified:
+                    print >>to_file, '  ' + path
+
+            prev_inv = this_inv
 
         precursor = revision_id
 

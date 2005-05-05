@@ -20,6 +20,8 @@ bzr-0.0.5  NOT RELEASED YET
     * New usage ``bzr log FILENAME`` shows only revisions that
       affected that file.
 
+    * Changed format for describing changes in ``bzr log -v``.
+
   TESTING:
 
     * Converted black-box test suites from Bourne shell into Python;
@@ -40,6 +42,8 @@ bzr-0.0.5  NOT RELEASED YET
 
     * New internal function find_touching_revisions() and hidden
       command touching-revisions trace the changes to a given file.
+
+    * Simpler and faster compare_inventories() function.
 
 bzr-0.0.4  2005-04-22
 
