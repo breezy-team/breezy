@@ -31,10 +31,11 @@ DEFAULT_IGNORE = ['.bzr.log',
                   '.*.swp', '.*.tmp',
                   '*.tmp', '*.bak', '*.BAK', '*.orig',
                   '*.o', '*.obj', '*.a', '*.py[oc]', '*.so', '*.exe', '*.elc', 
-                  '{arch}', 'CVS', '.svn', '_darcs', 'SCCS', 'RCS',
+                  '{arch}', 'CVS', 'CVS.adm', '.svn', '_darcs', 'SCCS', 'RCS',
                   '*,v',
                   'BitKeeper',
-                  'TAGS', '.make.state', '.sconsign', '.tmp*']
+                  'TAGS', '.make.state', '.sconsign', '.tmp*',
+                  '.del-*']
 
 IGNORE_FILENAME = ".bzrignore"
 

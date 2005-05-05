@@ -13,3 +13,5 @@ bzr-test.log
 .#*
 testrev.*
 /tmp
+# do want this after all
++ CHANGELOG
