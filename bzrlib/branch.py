@@ -140,7 +140,7 @@ class Branch:
 
             lockfile = os.open(self.controlfilename('branch-lock'), om)
             fcntl.lockf(lockfile, lm)
-            def unlock(self):
+            def unlock():
                 fcntl.lockf(lockfile, fcntl.LOCK_UN)
                 os.close(lockfile)
                 self._lockmode = None
@@ -148,7 +148,7 @@ class Branch:
             self._lockmode = mode
         except ImportError:
             warning("please write a locking method for platform %r" % sys.platform)
-            def unlock(self):
+            def unlock():
                 self._lockmode = None
             self.unlock = unlock
             self._lockmode = mode
