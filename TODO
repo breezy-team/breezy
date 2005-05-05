@@ -203,6 +203,7 @@ Medium things
   maybe write a small Python program that specifies a header and foot
   for the pages and calls into the docutils libraries.
 
+* --format=xml for log, status and other commands.
 
 
 
