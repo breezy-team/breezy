@@ -73,18 +73,8 @@ def find_branch_root(f=None):
 class Branch:
     """Branch holding a history of revisions.
 
-    TODO: Perhaps use different stores for different classes of object,
-           so that we can keep track of how much space each one uses,
-           or garbage-collect them.
-
-    TODO: Add a RemoteBranch subclass.  For the basic case of read-only
-           HTTP access this should be very easy by, 
-           just redirecting controlfile access into HTTP requests.
-           We would need a RemoteStore working similarly.
-
-    TODO: Keep the on-disk branch locked while the object exists.
-
-    TODO: mkdir() method.
+    base
+        Base directory of the branch.
     """
     def __init__(self, base, init=False, find_root=True):
         """Create new branch object at a particular location.
