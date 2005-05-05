@@ -136,10 +136,9 @@ def close_trace():
 
 def log_exception():
     """Log the last exception into the trace file."""
-    import traceback, cStringIO
-    s = cStringIO.StringIO()
-    traceback.print_exc(None, s)
-    for l in s.getvalue().split('\n'):
+    import cgitb
+    s = cgitb.text(sys.exc_info())
+    for l in s.split('\n'):
         _write_trace(l)
         
     
