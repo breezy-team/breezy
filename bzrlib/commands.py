@@ -95,7 +95,7 @@ def get_cmd_class(cmd):
     try:
         cmd_class = globals()['cmd_' + cmd.replace('-', '_')]
     except KeyError:
-        raise BzrError("unknown command %r" % cmd)
+        raise BzrCommandError("unknown command %r" % cmd)
 
     return cmd, cmd_class
 
