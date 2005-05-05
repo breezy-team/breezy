@@ -205,6 +205,10 @@ Medium things
 
 * --format=xml for log, status and other commands.
 
+* Attempting to explicitly add a file that's already added should give
+  a warning; however there should be no warning for directories (since
+  we scan for new children) or files encountered in a directory that's
+  being scanned.
 
 
 Large things
