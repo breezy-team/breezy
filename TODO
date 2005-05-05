@@ -193,7 +193,11 @@ Medium things
     assert it's equal.
 
 * There are too many methods on Branch() that really manipulate the
-  WorkingTree.  They should be moved across.
+  WorkingTree.  They should be moved across.  
+
+  Also there are some methods which are duplicated on Tree and
+  Inventory objects, and it should be made more clear which ones are
+  proxies and which ones behave differently, and how.
 
 
 
