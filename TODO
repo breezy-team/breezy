@@ -80,6 +80,8 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * Don't abort if ``~/.bzr.log`` can't be used.
 
+* Split BzrError into various more specific subclasses for different
+  errors people might want to catch.
 
 Medium things
 -------------
