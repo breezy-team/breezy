@@ -18,7 +18,7 @@
 from sets import Set
 
 from trace import mutter
-
+from errors import BzrError
 
 
 def diff_trees(old_tree, new_tree):
@@ -141,7 +141,7 @@ def diff_trees(old_tree, new_tree):
 
 
 def show_diff(b, revision, file_list):
-    import difflib, sys
+    import difflib, sys, types
     
     if revision == None:
         old_tree = b.basis_tree()
@@ -245,6 +245,6 @@ def show_diff(b, revision, file_list):
                        fromfile=old_label + old_name + idlabel,
                        tofile=new_label + new_name)
         else:
-            bailout("can't represent state %s {%s}" % (file_state, fid))
+            raise BzrError("can't represent state %s {%s}" % (file_state, fid))
 
 
