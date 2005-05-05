@@ -15,7 +15,7 @@ bzr-0.0.5  NOT RELEASED YET
     * Per-branch locks keyed on ``.bzr/branch-lock``, available in
       either read or write mode.
 
-    * New option ``bzr log --show-ids``.
+    * New option ``bzr log --show-ids`` shows revision and file ids.
 
     * New usage ``bzr log FILENAME`` shows only revisions that
       affected that file.
