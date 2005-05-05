@@ -14,54 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Bazaar-NG -- a free distributed version-control tool
-http://bazaar-ng.org/
-
-**WARNING: THIS IS AN UNSTABLE DEVELOPMENT VERSION**
-
-* Metadata format is not stable yet -- you may need to
-  discard history in the future.
-
-* Many commands unimplemented or partially implemented.
-
-* Space-inefficient storage.
-
-* No merge operators yet.
-
-Interesting commands:
-
-  bzr help [COMMAND]
-      Show help screen
-  bzr version
-      Show software version/licence/non-warranty.
-  bzr init
-      Start versioning the current directory
-  bzr add FILE...
-      Make files versioned.
-  bzr log
-      Show revision history.
-  bzr rename FROM TO
-      Rename one file.
-  bzr move FROM... DESTDIR
-      Move one or more files to a different directory.
-  bzr diff [FILE...]
-      Show changes from last revision to working copy.
-  bzr commit -m 'MESSAGE'
-      Store current state as new revision.
-  bzr export [-r REVNO] DESTINATION
-      Export the branch state at a previous version.
-  bzr status
-      Show summary of pending changes.
-  bzr remove FILE...
-      Make a file not versioned.
-  bzr info
-      Show statistics about this branch.
-  bzr check
-      Verify history is stored safely. 
-  (for more type 'bzr help commands')
-"""
-
-
 
 
 import sys, os, time, os.path
@@ -85,13 +37,13 @@ def _unsquish_command_name(cmd):
     assert cmd.startswith("cmd_")
     return cmd[4:].replace('_','-')
 
-def _get_all_cmds():
+def get_all_cmds():
     """Return canonical name and class for all registered commands."""
     for k, v in globals().iteritems():
         if k.startswith("cmd_"):
             yield _unsquish_command_name(k), v
 
-def _get_cmd_class(cmd):
+def get_cmd_class(cmd):
     """Return the canonical name and command class for a command.
     """
     cmd = str(cmd)                      # not unicode
@@ -103,7 +55,7 @@ def _get_cmd_class(cmd):
         pass
 
     # look for any command which claims this as an alias
-    for cmdname, cmdclass in _get_all_cmds():
+    for cmdname, cmdclass in get_all_cmds():
         if cmd in cmdclass.aliases:
             return cmdname, cmdclass
     else:
@@ -702,83 +654,9 @@ class cmd_help(Command):
     aliases = ['?']
     
     def run(self, topic=None):
-        help(topic)
+        import help
+        help.help(topic)
 
-
-def help(topic=None):
-    if topic == None:
-        print __doc__
-    elif topic == 'commands':
-        help_commands()
-    else:
-        help_on_command(topic)
-
-
-def help_on_command(cmdname):
-    cmdname = str(cmdname)
-
-    from inspect import getdoc
-    topic, cmdclass = _get_cmd_class(cmdname)
-
-    doc = getdoc(cmdclass)
-    if doc == None:
-        raise NotImplementedError("sorry, no detailed help yet for %r" % cmdname)
-
-    if '\n' in doc:
-        short, rest = doc.split('\n', 1)
-    else:
-        short = doc
-        rest = ''
-
-    print 'usage: bzr ' + topic,
-    for aname in cmdclass.takes_args:
-        aname = aname.upper()
-        if aname[-1] in ['$', '+']:
-            aname = aname[:-1] + '...'
-        elif aname[-1] == '?':
-            aname = '[' + aname[:-1] + ']'
-        elif aname[-1] == '*':
-            aname = '[' + aname[:-1] + '...]'
-        print aname,
-    print 
-    print short
-    if rest:
-        print rest
-
-    help_on_option(cmdclass.takes_options)
-
-
-def help_on_option(options):
-    if not options:
-        return
-    
-    print
-    print 'options:'
-    for on in options:
-        l = '    --' + on
-        for shortname, longname in SHORT_OPTIONS.items():
-            if longname == on:
-                l += ', -' + shortname
-                break
-        print l
-
-
-def help_commands():
-    """List all commands"""
-    import inspect
-    
-    accu = []
-    for cmdname, cmdclass in _get_all_cmds():
-        accu.append((cmdname, cmdclass))
-    accu.sort()
-    for cmdname, cmdclass in accu:
-        if cmdclass.hidden:
-            continue
-        print cmdname
-        help = inspect.getdoc(cmdclass)
-        if help:
-            print "    " + help.split('\n', 1)[0]
-            
 
 ######################################################################
 # main routine
@@ -924,16 +802,16 @@ def run_bzr(argv):
     This is similar to main(), but without all the trappings for
     logging and error handling.  
     """
-
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
     
     try:
         args, opts = parse_args(argv[1:])
         if 'help' in opts:
+            import help
             if args:
-                help(args[0])
+                help.help(args[0])
             else:
-                help()
+                help.help()
             return 0
         elif 'version' in opts:
             show_version()
@@ -944,7 +822,7 @@ def run_bzr(argv):
         log_error('  try "bzr help"')
         return 1
 
-    canonical_cmd, cmd_class = _get_cmd_class(cmd)
+    canonical_cmd, cmd_class = get_cmd_class(cmd)
 
     # global option
     if 'profile' in opts:
