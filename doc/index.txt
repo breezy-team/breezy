@@ -32,9 +32,6 @@ User documentation
   documentation, and gives the best overview at the moment of what the
   system will feel like to use.  Fairly complete.
 
-* `Quick reference <quickref.html>`__ -- single page description of
-  how to use, intended to check it's adequately simple.  Incomplete.
-
 * `FAQ <faq.html>`__ -- mostly user-oriented FAQ.
 
 
