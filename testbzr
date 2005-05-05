@@ -138,6 +138,7 @@ try:
     progress("invalid commands")
     runcmd("bzr pants", retcode=1)
     runcmd("bzr --pants off", retcode=1)
+    runcmd("bzr diff --message foo", retcode=1)
 
     progress("basic branch creation")
     runcmd(['mkdir', 'branch1'])
