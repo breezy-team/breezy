@@ -1,0 +1,12 @@
+#! /bin/sh -e
+
+# Add a file that's version by bzr to baz with the same file-id
+
+if [ $# -ne 1 ]
+then
+    echo "usage: $0 FILE" >&2
+    exit 1
+fi
+
+baz add -i $( bzr file-id $1 ) $1
+
