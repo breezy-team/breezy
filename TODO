@@ -210,6 +210,22 @@ Medium things
   we scan for new children) or files encountered in a directory that's
   being scanned.
 
+* Better handling of possible collisions on case-losing filesystems;
+  make sure a single file does not get added twice under different
+  names.
+
+* Clean up XML inventory:
+
+  - Use nesting rather than parent_id pointers.
+
+  - Hold the ElementTree in memory in the Inventory object and work
+    directly on that, rather than converting into Python objects every
+    time it is read in.  Probably still expose it through some kind of
+    object interface though, but perhaps that should just be a proxy
+    for the elements.
+
+  - Less special cases for the root directory. 
+
 
 Large things
 ------------

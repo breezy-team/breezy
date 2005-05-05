@@ -15,9 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-# TODO: Maybe store inventory_id in the file?  Not really needed.
-
-
 # This should really be an id randomly assigned when the tree is
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"
@@ -289,22 +286,6 @@ class Inventory(XMLMixin):
     </inventory>
 
     """
-
-    ## TODO: Make sure only canonical filenames are stored.
-
-    ## TODO: Do something sensible about the possible collisions on
-    ## case-losing filesystems.  Perhaps we should just always forbid
-    ## such collisions.
-
-    ## TODO: No special cases for root, rather just give it a file id
-    ## like everything else.
-
-    ## TODO: Probably change XML serialization to use nesting rather
-    ## than parent_id pointers.
-
-    ## TODO: Perhaps hold the ElementTree in memory and work directly
-    ## on that rather than converting into Python objects every time?
-
     def __init__(self):
         """Create or read an inventory.
 
