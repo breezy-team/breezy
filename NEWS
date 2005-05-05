@@ -15,6 +15,8 @@ bzr-0.0.5  NOT RELEASED YET
     * Per-branch locks keyed on ``.bzr/branch-lock``, available in
       either read or write mode.
 
+    * New option ``bzr log --show-ids``.
+
   TESTING:
 
     * Converted black-box test suites from Bourne shell into Python;

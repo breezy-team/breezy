@@ -416,11 +416,19 @@ class cmd_root(Command):
 class cmd_log(Command):
     """Show log of this branch.
 
-    TODO: Options to show ids; to limit range; etc.
+    TODO: Option to limit range.
+
+    TODO: Perhaps show most-recent first with an option for last.
+
+    TODO: Option to limit to only a single file or to get log for a
+          different directory.
     """
-    takes_options = ['timezone', 'verbose']
-    def run(self, timezone='original', verbose=False):
-        Branch('.', lock_mode='r').write_log(show_timezone=timezone, verbose=verbose)
+    takes_options = ['timezone', 'verbose', 'show-ids']
+    def run(self, timezone='original', verbose=False, show_ids=False):
+        b = Branch('.', lock_mode='r')
+        b.write_log(show_timezone=timezone,
+                    verbose=verbose,
+                    show_ids=show_ids)
 
 
 class cmd_ls(Command):

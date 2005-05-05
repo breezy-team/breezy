@@ -773,14 +773,20 @@ class Branch:
 
 
 
-    def write_log(self, show_timezone='original', verbose=False):
+    def write_log(self, show_timezone='original', verbose=False,
+                  show_ids=False):
         """Write out human-readable log of commits to this branch.
 
-        show_timezone -- may be 'original' (committer's timezone),
-            'utc' (universal time), or 'local' (local user's timezone)
+        show_timezone
+            'original' (committer's timezone),
+            'utc' (universal time), or
+            'local' (local user's timezone)
 
-        verbose -- if true, also list which files were changed in each
-            revision.
+        verbose
+            If true show added/changed/deleted/renamed files.
+
+        show_ids
+            If true, show revision and file ids.
         """
         
         self._need_readlock()
@@ -789,9 +795,9 @@ class Branch:
         for p in self.revision_history():
             print '-' * 40
             print 'revno:', revno
-            ## TODO: Show hash if --id is given.
-            ##print 'revision-hash:', p
             rev = self.get_revision(p)
+            if show_ids:
+                print 'revision-id:', rev.revision_id
             print 'committer:', rev.committer
             print 'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0,
                                                  show_timezone))
@@ -808,6 +814,8 @@ class Branch:
                     print '  ' + l
 
             if verbose == True and precursor != None:
+                # TODO: Group as added/deleted/renamed instead
+                # TODO: Show file ids
                 print 'changed files:'
                 tree = self.revision_tree(p)
                 prevtree = self.revision_tree(precursor)
