@@ -46,13 +46,13 @@ def show_log(branch, show_timezone='original', verbose=False,
     revno = 1
     precursor = None
     for revision_id in branch.revision_history():
-        print '-' * 40
-        print 'revno:', revno
+        print >>to_file,  '-' * 60
+        print >>to_file,  'revno:', revno
         rev = branch.get_revision(revision_id)
         if show_ids:
-            print 'revision-id:', revision_id
-        print 'committer:', rev.committer
-        print 'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0,
+            print >>to_file,  'revision-id:', revision_id
+        print >>to_file,  'committer:', rev.committer
+        print >>to_file,  'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0,
                                              show_timezone))
 
         if revision_id != rev.revision_id:
@@ -63,17 +63,17 @@ def show_log(branch, show_timezone='original', verbose=False,
         if rev.precursor != precursor:
             raise BzrCheckError("mismatched precursor!")
 
-        print 'message:'
+        print >>to_file,  'message:'
         if not rev.message:
-            print '  (no message)'
+            print >>to_file,  '  (no message)'
         else:
             for l in rev.message.split('\n'):
-                print '  ' + l
+                print >>to_file,  '  ' + l
 
         if verbose and precursor:
             # TODO: Group as added/deleted/renamed instead
             # TODO: Show file ids
-            print 'changed files:'
+            print >>to_file, 'changed files:'
             tree = branch.revision_tree(revision_id)
             prevtree = branch.revision_tree(precursor)
 
