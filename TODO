@@ -192,6 +192,9 @@ Medium things
   - Class that describes the state of a working tree so we can just
     assert it's equal.
 
+* There are too many methods on Branch() that really manipulate the
+  WorkingTree.  They should be moved across.
+
 
 
 
