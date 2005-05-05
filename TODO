@@ -199,6 +199,10 @@ Medium things
   Inventory objects, and it should be made more clear which ones are
   proxies and which ones behave differently, and how.
 
+* Try using XSLT to add some formatting to REST-generated HTML.  Or
+  maybe write a small Python program that specifies a header and foot
+  for the pages and calls into the docutils libraries.
+
 
 
 
