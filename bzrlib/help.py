@@ -101,6 +101,10 @@ def help_on_command(cmdname):
         print aname,
     print 
     print short
+
+    if cmdclass.aliases:
+        print 'aliases: ' + ', '.join(cmdclass.aliases)
+    
     if rest:
         print rest
 

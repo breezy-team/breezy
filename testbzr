@@ -169,8 +169,10 @@ try:
     runcmd("bzr help st")
     runcmd("bzr help")
     runcmd("bzr help commands")
-    runcmd("bzr help ci")
-    runcmd("bzr help slartibartfast", 1)    
+    runcmd("bzr help slartibartfast", 1)
+
+    out = backtick("bzr help ci")
+    out.index('aliases: ')
 
     progress("can't rename unversioned file")
     runcmd("bzr rename test.txt new-test.txt", 1)
