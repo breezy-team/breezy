@@ -101,6 +101,9 @@ class InventoryEntry(XMLMixin):
 
     # TODO: split InventoryEntry into subclasses for files,
     # directories, etc etc.
+
+    text_sha1 = None
+    text_size = None
     
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
@@ -117,18 +120,14 @@ class InventoryEntry(XMLMixin):
         Traceback (most recent call last):
         BzrError: ("InventoryEntry name is not a simple filename: 'src/hello.c'", [])
         """
-        
-        if len(splitpath(name)) != 1:
-            bailout('InventoryEntry name is not a simple filename: %r'
-                    % name)
+        if '/' in name or '\\' in name:
+            raise BzrCheckError('InventoryEntry name %r is invalid' % name)
         
         self.file_id = file_id
         self.name = name
         self.kind = kind
         self.text_id = text_id
         self.parent_id = parent_id
-        self.text_sha1 = None
-        self.text_size = None
         if kind == 'directory':
             self.children = {}
         elif kind == 'file':
