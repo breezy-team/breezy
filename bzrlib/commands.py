@@ -432,6 +432,19 @@ class cmd_log(Command):
                         show_ids=show_ids)
 
 
+
+class cmd_touching_revisions(Command):
+    """Return revision-ids which affected a particular file."""
+    hidden = True
+    takes_args = ["filename"]
+    def run(self, filename):
+        b = Branch(filename, lock_mode='r')
+        inv = b.read_working_inventory()
+        file_id = inv.path2id(b.relpath(filename))
+        for revno, revision_id, what in bzrlib.log.find_touching_revisions(b, file_id):
+            print "%6d %s" % (revno, what)
+
+
 class cmd_ls(Command):
     """List files in a tree.
 

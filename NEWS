@@ -35,6 +35,8 @@ bzr-0.0.5  NOT RELEASED YET
     * Expose bzrlib.open_tracefile() to start the tracefile; until
       this is called trace messages are just discarded.
 
+    * New internal function find_touching_revisions() and hidden
+      command touching-revisions trace the changes to a given file.
 
 bzr-0.0.4  2005-04-22
 

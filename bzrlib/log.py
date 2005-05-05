@@ -14,6 +14,55 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
+
+
+def find_touching_revisions(branch, file_id):
+    """Yield a description of revisions which affect the file_id.
+
+    Each returned element is (revno, revision_id, description)
+
+    This is the list of revisions where the file is either added,
+    modified, renamed or deleted.
+
+    Revisions are returned in chronological order.
+
+    TODO: Perhaps some way to limit this to only particular revisions,
+    or to traverse a non-branch set of revisions?
+    """
+    last_ie = None
+    last_path = None
+    revno = 1
+    for revision_id in branch.revision_history():
+        this_inv = branch.get_revision_inventory(revision_id)
+        if file_id in this_inv:
+            this_ie = this_inv[file_id]
+            this_path = this_inv.id2path(file_id)
+        else:
+            this_ie = this_path = None
+
+        # now we know how it was last time, and how it is in this revision.
+        # are those two states effectively the same or not?
+
+        if not this_ie and not last_ie:
+            # not present in either
+            pass
+        elif this_ie and not last_ie:
+            yield revno, revision_id, "added " + this_path
+        elif not this_ie and last_ie:
+            # deleted here
+            yield revno, revision_id, "deleted " + last_path
+        elif this_path != last_path:
+            yield revno, revision_id, ("renamed %s => %s" % (last_path, this_path))
+        elif (this_ie.text_size != last_ie.text_size
+              or this_ie.text_sha1 != last_ie.text_sha1):
+            yield revno, revision_id, "modified " + this_path
+
+        last_ie = this_ie
+        last_path = this_path
+        revno += 1
+
+
 def show_log(branch, show_timezone='original', verbose=False,
              show_ids=False,
              to_file=None):
