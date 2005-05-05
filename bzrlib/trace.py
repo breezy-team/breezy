@@ -1,6 +1,3 @@
-#! /usr/bin/env python
-# -*- coding: UTF-8 -*-
-
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -18,6 +15,12 @@
 
 __copyright__ = "Copyright (C) 2005 Canonical Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
+
+
+"""Messages and logging for bazaar-ng
+
+Nothing is actually logged unless you call bzrlib.open_tracefile().
+"""
 
 
 import sys, os, time, socket, stat, codecs
@@ -43,7 +46,8 @@ _logprefix = '[%d] ' % _mypid
 
 
 def _write_trace(msg):
-    _tracefile.write(_logprefix + msg + '\n')
+    if _tracefile:
+        _tracefile.write(_logprefix + msg + '\n')
 
 
 def warning(msg):
@@ -89,7 +93,7 @@ def _rollover_trace_maybe(trace_fname):
 
 
 
-def create_tracefile(argv):
+def open_tracefile(argv):
     # Messages are always written to here, so that we have some
     # information if something goes wrong.  In a future version this
     # file will be removed on successful completion.

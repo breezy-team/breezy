@@ -996,7 +996,7 @@ def _report_exception(e, summary, quiet=False):
 def main(argv):
     import errno
     
-    bzrlib.trace.create_tracefile(argv)
+    bzrlib.open_tracefile(argv)
 
     try:
         try:
