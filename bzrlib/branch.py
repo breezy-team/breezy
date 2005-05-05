@@ -123,7 +123,7 @@ class Branch:
     def lock(self, mode='w'):
         """Lock the on-disk branch, excluding other processes."""
         try:
-            import fcntl
+            import fcntl, errno
 
             if mode == 'w':
                 lm = fcntl.LOCK_EX
@@ -134,11 +134,16 @@ class Branch:
             else:
                 raise BzrError("invalid locking mode %r" % mode)
 
-            # XXX: Old branches might not have the lock file, and
-            # won't get one until someone does a write-mode command on
-            # them or creates it by hand.
-
-            lockfile = os.open(self.controlfilename('branch-lock'), om)
+            try:
+                lockfile = os.open(self.controlfilename('branch-lock'), om)
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    # might not exist on branches from <0.0.4
+                    self.controlfile('branch-lock', 'w').close()
+                    lockfile = os.open(self.controlfilename('branch-lock'), om)
+                else:
+                    raise e
+            
             fcntl.lockf(lockfile, lm)
             def unlock():
                 fcntl.lockf(lockfile, fcntl.LOCK_UN)
