@@ -55,6 +55,10 @@ def show_log(branch, show_timezone='original', verbose=False,
         print 'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0,
                                              show_timezone))
 
+        if revision_id != rev.revision_id:
+            raise BzrCheckError("retrieved wrong revision: %r"
+                                % (revision_id, rev.revision_id))
+
         ## opportunistic consistency check, same as check_patch_chaining
         if rev.precursor != precursor:
             raise BzrCheckError("mismatched precursor!")
