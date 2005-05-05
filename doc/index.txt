@@ -32,8 +32,6 @@ User documentation
   documentation, and gives the best overview at the moment of what the
   system will feel like to use.  Fairly complete.
 
-* `FAQ <faq.html>`__ -- mostly user-oriented FAQ.
-
 
 Requirements and general design
 -------------------------------
