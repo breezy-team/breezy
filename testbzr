@@ -159,6 +159,19 @@ try:
     out = backtick("bzr status --all")
     assert out == "?       test.txt\n"
 
+    progress("command aliases")
+    out = backtick("bzr st --all")
+    assert out == "?       test.txt\n"
+    out = backtick("bzr stat")
+    assert out == "?       test.txt\n"
+
+    progress("command help")
+    runcmd("bzr help st")
+    runcmd("bzr help")
+    runcmd("bzr help commands")
+    runcmd("bzr help ci")
+    runcmd("bzr help slartibartfast", 1)    
+
     progress("can't rename unversioned file")
     runcmd("bzr rename test.txt new-test.txt", 1)
 

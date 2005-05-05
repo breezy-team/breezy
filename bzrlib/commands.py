@@ -77,28 +77,37 @@ from bzrlib import Branch, Inventory, InventoryEntry, ScratchBranch, BZRDIR, \
      format_date
 
 
-CMD_ALIASES = {
-    '?':         'help',
-    'ci':        'commit',
-    'checkin':   'commit',
-    'di':        'diff',
-    'st':        'status',
-    'stat':      'status',
-    }
+def _squish_command_name(cmd):
+    return 'cmd_' + cmd.replace('-', '_')
 
 
-def get_cmd_class(cmd):
-    cmd = str(cmd)
-    
-    cmd = CMD_ALIASES.get(cmd, cmd)
-    
+def _unsquish_command_name(cmd):
+    assert cmd.startswith("cmd_")
+    return cmd[4:].replace('_','-')
+
+def _get_all_cmds():
+    """Return canonical name and class for all registered commands."""
+    for k, v in globals().iteritems():
+        if k.startswith("cmd_"):
+            yield _unsquish_command_name(k), v
+
+def _get_cmd_class(cmd):
+    """Return the canonical name and command class for a command.
+    """
+    cmd = str(cmd)                      # not unicode
+
+    # first look up this command under the specified name
     try:
-        cmd_class = globals()['cmd_' + cmd.replace('-', '_')]
+        return cmd, globals()[_squish_command_name(cmd)]
     except KeyError:
+        pass
+
+    # look for any command which claims this as an alias
+    for cmdname, cmdclass in _get_all_cmds():
+        if cmd in cmdclass.aliases:
+            return cmdname, cmdclass
+    else:
         raise BzrCommandError("unknown command %r" % cmd)
-
-    return cmd, cmd_class
-
 
 
 class Command:
@@ -159,6 +168,7 @@ class cmd_status(Command):
     missing, in which case the old name is shown.
     """
     takes_options = ['all']
+    aliases = ['st', 'stat']
     
     def run(self, all=False):
         #import bzrlib.status
@@ -409,6 +419,7 @@ class cmd_diff(Command):
     
     takes_args = ['file*']
     takes_options = ['revision']
+    aliases = ['di']
 
     def run(self, revision=None, file_list=None):
         from bzrlib.diff import show_diff
@@ -594,7 +605,8 @@ class cmd_commit(Command):
     TODO: Strict commit that fails if there are unknown or deleted files.
     """
     takes_options = ['message', 'verbose']
-    
+    aliases = ['ci', 'checkin']
+
     def run(self, message=None, verbose=False):
         if not message:
             raise BzrCommandError("please specify a commit message")
@@ -687,6 +699,7 @@ class cmd_help(Command):
 
     For a list of all available commands, say 'bzr help commands'."""
     takes_args = ['topic?']
+    aliases = ['?']
     
     def run(self, topic=None):
         help(topic)
@@ -705,7 +718,7 @@ def help_on_command(cmdname):
     cmdname = str(cmdname)
 
     from inspect import getdoc
-    topic, cmdclass = get_cmd_class(cmdname)
+    topic, cmdclass = _get_cmd_class(cmdname)
 
     doc = getdoc(cmdclass)
     if doc == None:
@@ -755,9 +768,8 @@ def help_commands():
     import inspect
     
     accu = []
-    for k, v in globals().items():
-        if k.startswith('cmd_'):
-            accu.append((k[4:].replace('_','-'), v))
+    for cmdname, cmdclass in _get_all_cmds():
+        accu.append((cmdname, cmdclass))
     accu.sort()
     for cmdname, cmdclass in accu:
         if cmdclass.hidden:
@@ -932,7 +944,7 @@ def run_bzr(argv):
         log_error('  try "bzr help"')
         return 1
 
-    canonical_cmd, cmd_class = get_cmd_class(cmd)
+    canonical_cmd, cmd_class = _get_cmd_class(cmd)
 
     # global option
     if 'profile' in opts:
