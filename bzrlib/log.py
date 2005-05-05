@@ -147,19 +147,31 @@ def show_log(branch,
             if delta.removed:
                 print >>to_file, 'removed files:'
                 for path, fid in delta.removed:
-                    print >>to_file, '  ' + path
+                    if show_ids:
+                        print >>to_file, '  %-30s %s' % (path, fid)
+                    else:
+                        print >>to_file, ' ', path
             if delta.added:
                 print >>to_file, 'added files:'
                 for path, fid in delta.added:
-                    print >>to_file, '  ' + path
+                    if show_ids:
+                        print >>to_file, '  %-30s %s' % (path, fid)
+                    else:
+                        print >>to_file, '  ' + path
             if delta.renamed:
                 print >>to_file, 'renamed files:'
                 for oldpath, newpath, fid in delta.renamed:
-                    print >>to_file, '  %s => %s' % (oldpath, newpath)
+                    if show_ids:
+                        print >>to_file, '  %s => %s %s' % (oldpath, newpath, fid)
+                    else:
+                        print >>to_file, '  %s => %s' % (oldpath, newpath)
             if delta.modified:
                 print >>to_file, 'modified files:'
                 for path, fid in delta.modified:
-                    print >>to_file, '  ' + path
+                    if show_ids:
+                        print >>to_file, '  %-30s %s' % (path, fid)
+                    else:
+                        print >>to_file, '  ' + path
 
             prev_inv = this_inv
 
