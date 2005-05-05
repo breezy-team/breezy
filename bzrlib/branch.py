@@ -691,6 +691,28 @@ class Branch:
         return [l.rstrip('\r\n') for l in self.controlfile('revision-history', 'r').readlines()]
 
 
+    def enum_history(self, direction):
+        """Return (revno, revision_id) for history of branch.
+
+        direction
+            'forward' is from earliest to latest
+            'reverse' is from latest to earliest
+        """
+        rh = self.revision_history()
+        if direction == 'forward':
+            i = 1
+            for rid in rh:
+                yield i, rid
+                i += 1
+        elif direction == 'reverse':
+            i = len(rh)
+            while i > 0:
+                yield i, rh[i-1]
+                i -= 1
+        else:
+            raise BzrError('invalid history direction %r' % direction)
+
+
     def revno(self):
         """Return current revision number for this branch.
 
