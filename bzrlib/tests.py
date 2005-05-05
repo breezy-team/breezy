@@ -101,7 +101,7 @@ We can look back at history
   >>> r = b.get_revision(b.lookup_revision(1))
   >>> r.message
   'start hello world'
-  >>> b.write_log(show_timezone='utc')
+  >>> bzrlib.show_log(b, show_timezone='utc')
   ----------------------------------------
   revno: 1
   committer: foo@nowhere

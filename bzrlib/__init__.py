@@ -22,6 +22,7 @@ from osutils import format_date
 from tree import Tree
 from diff import diff_trees
 from trace import mutter, warning, open_tracefile
+from log import show_log
 import add
 
 BZRDIR = ".bzr"

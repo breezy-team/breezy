@@ -773,67 +773,6 @@ class Branch:
 
 
 
-    def write_log(self, show_timezone='original', verbose=False,
-                  show_ids=False):
-        """Write out human-readable log of commits to this branch.
-
-        show_timezone
-            'original' (committer's timezone),
-            'utc' (universal time), or
-            'local' (local user's timezone)
-
-        verbose
-            If true show added/changed/deleted/renamed files.
-
-        show_ids
-            If true, show revision and file ids.
-        """
-        
-        self._need_readlock()
-        revno = 1
-        precursor = None
-        for p in self.revision_history():
-            print '-' * 40
-            print 'revno:', revno
-            rev = self.get_revision(p)
-            if show_ids:
-                print 'revision-id:', rev.revision_id
-            print 'committer:', rev.committer
-            print 'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0,
-                                                 show_timezone))
-
-            ## opportunistic consistency check, same as check_patch_chaining
-            if rev.precursor != precursor:
-                raise BzrCheckError("mismatched precursor!")
-
-            print 'message:'
-            if not rev.message:
-                print '  (no message)'
-            else:
-                for l in rev.message.split('\n'):
-                    print '  ' + l
-
-            if verbose == True and precursor != None:
-                # TODO: Group as added/deleted/renamed instead
-                # TODO: Show file ids
-                print 'changed files:'
-                tree = self.revision_tree(p)
-                prevtree = self.revision_tree(precursor)
-                
-                for file_state, fid, old_name, new_name, kind in \
-                                        diff_trees(prevtree, tree, ):
-                    if file_state == 'A' or file_state == 'M':
-                        show_status(file_state, kind, new_name)
-                    elif file_state == 'D':
-                        show_status(file_state, kind, old_name)
-                    elif file_state == 'R':
-                        show_status(file_state, kind,
-                            old_name + ' => ' + new_name)
-                
-            revno += 1
-            precursor = p
-
-
     def rename_one(self, from_rel, to_rel):
         """Rename one file.
 
