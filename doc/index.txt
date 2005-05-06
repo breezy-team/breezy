@@ -104,6 +104,8 @@ Design of particular features
 
 * `Revfiles <revfile.html>`__ store the text history of files.
 
+* `Revfiles storing annotations <revfile-annotation.txt>`__
+
 * `Revision syntax <revision-syntax.html>`__ -- ``hello.c@12``, etc.
 
 * `Roll-up commits <rollup.html>`__ -- a single revision incorporates
