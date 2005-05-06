@@ -1,3 +1,4 @@
+*.diff
 ./doc/*.html
 *.py[oc]
 *~
