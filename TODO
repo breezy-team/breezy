@@ -226,6 +226,10 @@ Medium things
 
   - Less special cases for the root directory. 
 
+* Perhaps inventories should remember the revision in which each file
+  was last changed, as well as its current state?  This is a bit
+  redundant but might often be interested to know.
+
 
 Large things
 ------------
