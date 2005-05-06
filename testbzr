@@ -230,7 +230,16 @@ try:
 
     runcmd('bzr move sub2/hello.txt .')
     assert exists('hello.txt')
-    
+
+    f = file('hello.txt', 'wt')
+    f.write('some nice new content\n')
+    f.close()
+
+    f = file('msg.tmp', 'wt')
+    f.write('this is my new commit\n')
+    f.close()
+
+    runcmd('bzr commit -F msg.tmp')
     
     cd('..')
 

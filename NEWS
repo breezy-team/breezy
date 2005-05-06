@@ -22,6 +22,9 @@ bzr-0.0.5  NOT RELEASED YET
 
     * Changed format for describing changes in ``bzr log -v``.
 
+    * New option ``bzr commit --file`` to take a message from a file,
+      suggested by LarstiQ.
+
   TESTING:
 
     * Converted black-box test suites from Bourne shell into Python;
@@ -32,8 +35,8 @@ bzr-0.0.5  NOT RELEASED YET
 
     * Included ElementTree library upgraded to 1.2.6 by Fredrik Lundh.
 
-    * Refactor command functions into Command objects based on
-      mango-sorbet by Scott James Remnant.
+    * Refactor command functions into Command objects based on HCT by
+      Scott James Remnant.
 
     * Better help messages for many commands.
 

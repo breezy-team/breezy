@@ -578,12 +578,21 @@ class cmd_commit(Command):
 
     TODO: Strict commit that fails if there are unknown or deleted files.
     """
-    takes_options = ['message', 'verbose']
+    takes_options = ['message', 'file', 'verbose']
     aliases = ['ci', 'checkin']
 
-    def run(self, message=None, verbose=False):
-        if not message:
-            raise BzrCommandError("please specify a commit message")
+    def run(self, message=None, file=None, verbose=False):
+        ## Warning: shadows builtin file()
+        if not message and not file:
+            raise BzrCommandError("please specify a commit message",
+                                  ["use either --message or --file"])
+        elif message and file:
+            raise BzrCommandError("please specify either --message or --file")
+        
+        if file:
+            import codecs
+            message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
+
         Branch('.').commit(message, verbose=verbose)
 
 
@@ -690,6 +699,7 @@ class cmd_help(Command):
 OPTIONS = {
     'all':                    None,
     'help':                   None,
+    'file':                   unicode,
     'message':                unicode,
     'profile':                None,
     'revision':               int,
@@ -702,6 +712,7 @@ OPTIONS = {
 
 SHORT_OPTIONS = {
     'm':                      'message',
+    'F':                      'file', 
     'r':                      'revision',
     'v':                      'verbose',
 }
