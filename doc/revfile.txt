@@ -5,6 +5,9 @@ Revfiles
 The unit for compressed storage in bzr is a *revfile*, whose design
 was suggested by Matt Mackall.
 
+This document describes version 1 of the file, and has some notes on
+what might be done in version 2.
+
 
 Requirements
 ============
@@ -21,6 +24,9 @@ Compressed storage is a tradeoff between several goals:
 * Fast and precise annotations.
 
 * Storage of files of at least a few hundred MB.
+
+* Lossless in useful ways: we can extract a series of texts and write
+  them back out without losing any information.
 
 
 Design
@@ -74,11 +80,65 @@ file.  The index file is short and always read completely into memory;
 the data file is much longer and only the relevant bits of it,
 identified by the index file, need to be read.
 
-  In previous versions, the  index file identified texts by their
-  SHA-1 digest.  This was unsatisfying for two reasons.  Firstly it
-  assumes that SHA-1 will not collide, which is not an assumption we
-  wish to make in long-lived files.  Secondly for annotations we need
-  to be able to map from file versions back to a revision.
+  This design is similar to that of Netscape `mail summary files`_, in
+  that there is a small index which can always be read into memory and
+  that quickly identifies where to look in the main file.  They differ
+  in many other ways though, most particularly that the index is not
+  just a cache but holds precious data in its own right.
+
+.. _`mail summary files`: http://www.jwz.org/doc/mailsum.html
+
+This is meant to scale to hold 100,000 revisions of a single file, by
+which time the index file will be ~4.8MB and a bit big to read
+sequentially.
+
+Some of the reserved fields could be used to implement a (semi?)
+balanced tree indexed by SHA1 so we can much more efficiently find the
+index associated with a particular hash.  For 100,000 revs we would be
+able to find it in about 17 random reads, which is not too bad.  On
+the other hand that would compromise the append-only indexing, and
+100,000 revs is a fairly extreme case.
+
+This performs pretty well except when trying to calculate deltas of
+really large files.  For that the main thing would be to plug in
+something faster than difflib, which is after all pure Python.
+Another approach is to just store the gzipped full text of big files,
+though perhaps that's too perverse?
+
+
+Identifying texts
+-----------------
+
+In the current version, texts are identified by their SHA-1.  
+
+
+Skip-deltas
+-----------
+
+Because the basis of a delta does not need to be the text's logical
+predecessor, we can adjust the deltas to avoid ever needing to apply
+too many deltas to reproduce a particular file.  
+
+
+Tools
+-----
+
+The revfile module can be invoked as a program to give low-level
+access for data recovery, debugging, etc.
+
+
+
+Extension to store annotations
+==============================
+
+We might extend the revfile format in a future version to also store
+annotations.  *This is not implemented yet.*
+
+In previous versions, the  index file identified texts by their
+SHA-1 digest.  This was unsatisfying for two reasons.  Firstly it
+assumes that SHA-1 will not collide, which is not an assumption we
+wish to make in long-lived files.  Secondly for annotations we need
+to be able to map from file versions back to a revision.
 
 Texts are identified by the name of the revfile and a UUID
 corresponding to the first revision in which they were first
@@ -95,30 +155,6 @@ revfile to identify where a region was first introduced.
   relatively short.  UUIDs can be encoded in binary as only 16 bytes.
   Perhaps we should just use UUIDs for revisions and be done?
 
-This is meant to scale to hold 100,000 revisions of a single file, by
-which time the index file will be ~4.8MB and a bit big to read
-sequentially.
-
-Some of the reserved fields could be used to implement a (semi?)
-balanced tree indexed by SHA1 so we can much more efficiently find the
-index associated with a particular hash.  For 100,000 revs we would be
-able to find it in about 17 random reads, which is not too bad.
-
-This performs pretty well except when trying to calculate deltas of
-really large files.  For that the main thing would be to plug in
-something faster than difflib, which is after all pure Python.
-Another approach is to just store the gzipped full text of big files,
-though perhaps that's too perverse?
-
-
-
-
-Skip-deltas
------------
-
-Because the basis of a delta does not need to be the text's logical
-predecessor, we can adjust the deltas to avoid ever needing to apply
-too many deltas to reproduce a particular file.  
 
 
 Annotations
@@ -168,23 +204,11 @@ annotation data when there is a text insertion.
     still be represented as a "pointless" delta, plus an update to the
     annotations.)
 
-
-
-Tools
------
-
-The revfile module can be invoked as a program to give low-level
-access for data recovery, debugging, etc.
-
-
-
-Format
-======
-
 Index file
 ----------
 
-The index file is a series of fixed-length records::
+In a proposed (not implemented) storage with annotations, the index
+file is a series of fixed-length records::
 
   byte[16]     UUID of revision
   byte[20]     SHA-1 of expanded text (as binary, not hex)
@@ -213,7 +237,8 @@ Each byte in the text file should be included by at most one delta.
 Deltas
 ------
 
-Deltas to the text are stored as a series of variable-length records::
+In a proposed (not implemented) storage with annotations, deltas to
+the text are stored as a series of variable-length records::
 
   uint32        idx
   uint32        m
@@ -227,6 +252,8 @@ described by *idx* in the index.
 This indicates that the region [m:n] of the input file should be
 replaced by the text *new*.  If m==n this is a pure insertion of l
 bytes.  If l==0 this is a pure deletion of (n-m) bytes.
+
+
 
 
 
