@@ -176,10 +176,10 @@ class cmd_add(Command):
 
 class cmd_relpath(Command):
     """Show path of a file relative to root"""
-    takes_args = ('filename')
+    takes_args = ['filename']
     
-    def run(self):
-        print Branch(self.args['filename']).relpath(filename)
+    def run(self, filename):
+        print Branch(filename).relpath(filename)
 
 
 
