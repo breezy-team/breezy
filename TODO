@@ -83,6 +83,12 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 * Split BzrError into various more specific subclasses for different
   errors people might want to catch.
 
+* If the export destination ends in '.tar', '.tar.gz', etc then create
+  a tarball instead of a directory.  (Need to actually make a
+  temporary directory and then tar that up.)
+
+  http://www.gelato.unsw.edu.au/archives/git/0504/2194.html
+
 Medium things
 -------------
 
