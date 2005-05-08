@@ -29,7 +29,7 @@ except ImportError:
     from elementtree.ElementTree import Element, ElementTree, SubElement
 
 from xml import XMLMixin
-from errors import bailout, BzrError
+from errors import bailout, BzrError, BzrCheckError
 
 import bzrlib
 from bzrlib.osutils import uuid, quotefn, splitpath, joinpath, appendpath
@@ -115,7 +115,7 @@ class InventoryEntry(XMLMixin):
         '123'
         >>> e = InventoryEntry('123', 'src/hello.c', 'file', ROOT_ID)
         Traceback (most recent call last):
-        BzrError: ("InventoryEntry name is not a simple filename: 'src/hello.c'", [])
+        BzrCheckError: InventoryEntry name 'src/hello.c' is invalid
         """
         if '/' in name or '\\' in name:
             raise BzrCheckError('InventoryEntry name %r is invalid' % name)
