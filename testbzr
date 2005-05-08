@@ -244,6 +244,10 @@ try:
     f.close()
 
     runcmd('bzr commit -F msg.tmp')
+
+    assert backtick('bzr revno') == '5\n'
+    runcmd('bzr export -r 5 export-5.tmp')
+    runcmd('bzr export export.tmp')
     
     cd('..')
 

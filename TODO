@@ -89,6 +89,11 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
   http://www.gelato.unsw.edu.au/archives/git/0504/2194.html
 
+* testbzr should by default test the bzr binary in the same directory
+  as the testbzr script, or take a path to it as a first parameter.
+
+  Should show the version from bzr and the path name.
+
 Medium things
 -------------
 

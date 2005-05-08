@@ -538,12 +538,12 @@ class cmd_export(Command):
     If no revision is specified this exports the last committed revision."""
     takes_args = ['dest']
     takes_options = ['revision']
-    def run(self, dest, revno=None):
+    def run(self, dest, revision=None):
         b = Branch('.')
-        if revno == None:
-            rh = b.revision_history[-1]
+        if revision == None:
+            rh = b.revision_history()[-1]
         else:
-            rh = b.lookup_revision(int(revno))
+            rh = b.lookup_revision(int(revision))
         t = b.revision_tree(rh)
         t.export(dest)
 
