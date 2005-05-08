@@ -967,7 +967,7 @@ class ScratchBranch(Branch):
     >>> isdir(b.base)
     True
     >>> bd = b.base
-    >>> del b
+    >>> b.destroy()
     >>> isdir(bd)
     False
     """
@@ -987,16 +987,22 @@ class ScratchBranch(Branch):
 
 
     def __del__(self):
+        self.destroy()
+
+    def destroy(self):
         """Destroy the test branch, removing the scratch directory."""
         try:
+            mutter("delete ScratchBranch %s" % self.base)
             shutil.rmtree(self.base)
-        except OSError:
+        except OSError, e:
             # Work around for shutil.rmtree failing on Windows when
             # readonly files are encountered
+            mutter("hit exception in destroying ScratchBranch: %s" % e)
             for root, dirs, files in os.walk(self.base, topdown=False):
                 for name in files:
                     os.chmod(os.path.join(root, name), 0700)
             shutil.rmtree(self.base)
+        self.base = None
 
     
 
