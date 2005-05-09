@@ -17,17 +17,25 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+"""Proxy object for access to remote branches.
+
+At the moment remote branches are only for HTTP and only for read
+access.
+
+"""
+
+
 ## XXX: This is pretty slow on high-latency connections because it
 ## doesn't keep the HTTP connection alive.  If you have a smart local
 ## proxy it may be much better.  Eventually I want to switch to
 ## urlgrabber which should use HTTP much more efficiently.
 
 
-import urllib2, gzip, zlib
+import gzip
 from sets import Set
 from cStringIO import StringIO
 
-from errors import BzrError
+from errors import BzrError, BzrCheckError
 from revision import Revision
 from branch import Branch
 from inventory import Inventory
@@ -39,26 +47,39 @@ from inventory import Inventory
 # breaks keep-alive -- sucks!
 
 
-import urlgrabber.keepalive
-urlgrabber.keepalive.DEBUG = 2
 
-import urlgrabber
 
 # prefix = 'http://localhost:8000'
 BASE_URL = 'http://bazaar-ng.org/bzr/bzr.dev/'
 
-def get_url(path, compressed=False):
-    try:
-        url = path
-        if compressed:
-            url += '.gz'
-        url_f = urlgrabber.urlopen(url, keepalive=1, close_connection=0)
-        if not compressed:
-            return url_f
-        else:
-            return gzip.GzipFile(fileobj=StringIO(url_f.read()))
-    except urllib2.URLError, e:
-        raise BzrError("remote fetch failed: %r: %s" % (url, e))
+ENABLE_URLGRABBER = False
+
+def get_url(url, compressed=False):
+    import urllib2
+    if compressed:
+        url += '.gz'
+    url_f = urllib2.urlopen(url)
+    if compressed:
+        return gzip.GzipFile(fileobj=StringIO(url_f.read()))
+    else:
+        return url_f
+
+if ENABLE_URLGRABBER:
+    import urlgrabber
+    import urlgrabber.keepalive
+    urlgrabber.keepalive.DEBUG = 0
+    def get_url(path, compressed=False):
+        try:
+            url = path
+            if compressed:
+                url += '.gz'
+            url_f = urlgrabber.urlopen(url, keepalive=1, close_connection=0)
+            if not compressed:
+                return url_f
+            else:
+                return gzip.GzipFile(fileobj=StringIO(url_f.read()))
+        except urllib2.URLError, e:
+            raise BzrError("remote fetch failed: %r: %s" % (url, e))
 
 
 class RemoteBranch(Branch):
@@ -66,7 +87,6 @@ class RemoteBranch(Branch):
         """Create new proxy for a remote branch."""
         self.baseurl = baseurl
         self._check_format()
-
 
     def controlfile(self, filename, mode):
         if mode not in ('rb', 'rt', 'r'):
@@ -79,8 +99,17 @@ class RemoteBranch(Branch):
 
     def _need_writelock(self):
         raise BzrError("cannot get write lock on HTTP remote branch")
-    
 
+    def get_revision(self, revision_id):
+        from revision import Revision
+        revf = get_url(self.baseurl + '/.bzr/revision-store/' + revision_id,
+                       True)
+        r = Revision.read_xml(revf)
+        if r.revision_id != revision_id:
+            raise BzrCheckError('revision stored as {%s} actually contains {%s}'
+                                % (revision_id, r.revision_id))
+        return r
+    
 
 def simple_walk():
     got_invs = Set()
@@ -127,7 +156,9 @@ def simple_walk():
 
 def try_me():
     b = RemoteBranch(BASE_URL)
-    print '\n'.join(b.revision_history())
+    ## print '\n'.join(b.revision_history())
+    from log import show_log
+    show_log(b)
 
 
 if __name__ == '__main__':
