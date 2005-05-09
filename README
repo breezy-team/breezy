@@ -42,6 +42,11 @@ If you use a symlink for this, Python will be able to automatically
 find the bzr libraries.  Otherwise you must ensure they are listed on
 your $PYTHONPATH.
 
+After installing, please run the test suite to identify any problems
+on your platform::
+
+  ./testbzr
+
 If you use the setup.py script then bzr will be installed into the
 specified path.  In this case you must install ElementTree or
 cElementTree separately.
