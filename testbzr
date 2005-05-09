@@ -124,7 +124,7 @@ logfile = open(LOGFILENAME, 'wt', buffering=1)
 
 try:
     mypath = os.path.abspath(sys.argv[0])
-    print 'running tests from', mypath
+    print '%-30s %s' % ('running tests from', mypath)
 
     global BZRPATH
 
@@ -133,7 +133,8 @@ try:
     else:
         BZRPATH = os.path.join(os.path.split(mypath)[0], 'bzr')
 
-    print 'against bzr', BZRPATH
+    print '%-30s %s' % ('against bzr', BZRPATH)
+    print '%-30s %s' % ('in directory', os.getcwd())
     print
     print backtick([BZRPATH, 'version'])
     

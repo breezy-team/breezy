@@ -25,32 +25,17 @@ access.
 """
 
 
-## XXX: This is pretty slow on high-latency connections because it
-## doesn't keep the HTTP connection alive.  If you have a smart local
-## proxy it may be much better.  Eventually I want to switch to
-## urlgrabber which should use HTTP much more efficiently.
-
-
 import gzip
 from sets import Set
 from cStringIO import StringIO
 
 from errors import BzrError, BzrCheckError
-from revision import Revision
 from branch import Branch
-from inventory import Inventory
-
-# h = HTTPConnection('localhost:8000')
-# h = HTTPConnection('bazaar-ng.org')
 
 # velocitynet.com.au transparently proxies connections and thereby
 # breaks keep-alive -- sucks!
 
 
-
-
-# prefix = 'http://localhost:8000'
-BASE_URL = 'http://bazaar-ng.org/bzr/bzr.dev/'
 
 ENABLE_URLGRABBER = False
 
@@ -112,6 +97,10 @@ class RemoteBranch(Branch):
     
 
 def simple_walk():
+    from revision import Revision
+    from branch import Branch
+    from inventory import Inventory
+
     got_invs = Set()
     got_texts = Set()
 
@@ -155,6 +144,7 @@ def simple_walk():
 
 
 def try_me():
+    BASE_URL = 'http://bazaar-ng.org/bzr/bzr.dev/'
     b = RemoteBranch(BASE_URL)
     ## print '\n'.join(b.revision_history())
     from log import show_log
