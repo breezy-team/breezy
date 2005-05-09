@@ -24,7 +24,6 @@ Nothing is actually logged unless you call bzrlib.open_tracefile().
 
 
 import sys, os
-import bzrlib
 
 ######################################################################
 # messages and logging
@@ -94,7 +93,7 @@ def _rollover_trace_maybe(trace_fname):
 
 
 
-def open_tracefile(argv):
+def open_tracefile(argv=[], tracefilename='~/.bzr.log'):
     # Messages are always written to here, so that we have some
     # information if something goes wrong.  In a future version this
     # file will be removed on successful completion.
@@ -103,7 +102,7 @@ def open_tracefile(argv):
 
     _starttime = os.times()[4]
 
-    trace_fname = os.path.join(os.path.expanduser('~/.bzr.log'))
+    trace_fname = os.path.join(os.path.expanduser(tracefilename))
     _rollover_trace_maybe(trace_fname)
 
     # buffering=1 means line buffered
@@ -115,9 +114,7 @@ def open_tracefile(argv):
         t.write("you can delete or truncate this file, or include sections in\n")
         t.write("bug reports to bazaar-ng@lists.canonical.com\n\n")
 
-    # TODO: If we failed to create the file, perhaps give a warning
-    # but don't abort; send things to /dev/null instead?
-
+    import bzrlib
     _write_trace('bzr %s invoked on python %s (%s)'
                  % (bzrlib.__version__,
                     '.'.join(map(str, sys.version_info)),

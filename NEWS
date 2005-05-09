@@ -48,6 +48,8 @@ bzr-0.0.5  NOT RELEASED YET
 
     * Simpler and faster compare_inventories() function.
 
+    * bzrlib.open_tracefile() takes a tracefilename parameter.
+
 bzr-0.0.4  2005-04-22
 
   ENHANCEMENTS:
