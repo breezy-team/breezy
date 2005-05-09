@@ -48,7 +48,7 @@ def smart_add(file_list, verbose=False, recurse=True):
         kind = bzrlib.osutils.file_kind(f)
 
         if kind != 'file' and kind != 'directory':
-            bailout("can't add file of kind %r" % kind)
+            bailout("can't add file '%s' of kind %r" % (f, kind))
             
         versioned = (inv.path2id(rf) != None)
 
