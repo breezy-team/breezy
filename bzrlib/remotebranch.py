@@ -79,7 +79,7 @@ def _find_remote_root(url):
             ff = get_url(url + '/.bzr/branch-format')
             ff.close()
             return url
-        except urllib.URLError:
+        except urllib2.URLError:
             pass
 
         try:
