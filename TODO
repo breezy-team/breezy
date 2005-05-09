@@ -54,8 +54,6 @@ Small things
 * ``bzr ignore`` command that just adds a line to the ``.bzrignore`` file
   and makes it versioned.  Fix this to break symlinks.
 
-* ``bzr help commands`` should give a one-line summary of each command.
-
 * Any useful sanity checks in 'bzr ignore'?  Perhaps give a warning if
   they try to add a single file which is already versioned, or if they
   add a pattern which already exists, or if it looks like they gave an

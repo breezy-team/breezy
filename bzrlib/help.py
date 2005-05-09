@@ -29,38 +29,32 @@ http://bazaar-ng.org/
 
 * No merge operators yet.
 
-Interesting commands:
 
-  bzr help [COMMAND]
-      Show help screen
-  bzr version
-      Show software version/licence/non-warranty.
-  bzr init
-      Start versioning the current directory
-  bzr add FILE...
-      Make files versioned.
-  bzr log
-      Show revision history.
-  bzr rename FROM TO
-      Rename one file.
-  bzr move FROM... DESTDIR
-      Move one or more files to a different directory.
-  bzr diff [FILE...]
-      Show changes from last revision to working copy.
-  bzr commit -m 'MESSAGE'
-      Store current state as new revision.
-  bzr export [-r REVNO] DESTINATION
-      Export the branch state at a previous version.
-  bzr status
-      Show summary of pending changes.
-  bzr remove FILE...
-      Make a file not versioned.
-  bzr info
-      Show statistics about this branch.
-  bzr check
-      Verify history is stored safely. 
-  (for more type 'bzr help commands')
+To make a branch, use 'bzr init' in an existing directory, then 'bzr
+add' to make files versioned.  'bzr add .' will recursively add all
+non-ignored files.
+
+'bzr status' describes files that are unknown, ignored, or modified.
+'bzr diff' shows the text changes to the tree or named files.
+'bzr commit -m <MESSAGE>' commits all changes in that branch.
+
+'bzr move' and 'bzr rename' allow you to rename files or directories.
+'bzr remove' makes a file unversioned but keeps the working copy;
+to delete that too simply delete the file.
+
+'bzr log' shows a history of changes, and
+'bzr info' gives summary statistical information.
+'bzr check' validates all files are stored safely.
+
+Files can be ignored by giving a path or a glob in .bzrignore at the
+top of the tree.  Use 'bzr ignored' to see what files are ignored and
+why, and 'bzr unknowns' to see files that are neither versioned or
+ignored.
+
+For more help on any command, type 'bzr help COMMAND', or 'bzr help
+commands' for a list.
 """
+
 
 
 def help(topic=None):
