@@ -52,6 +52,9 @@ def formcmd(cmd):
     else:
         logfile.write('$ %r\n' % cmd)
 
+    if cmd[0] == 'bzr':
+        cmd[0] = BZRPATH
+
     return cmd
 
 
@@ -120,6 +123,20 @@ logfile = open(LOGFILENAME, 'wt', buffering=1)
 
 
 try:
+    mypath = os.path.abspath(sys.argv[0])
+    print 'running tests from', mypath
+
+    global BZRPATH
+
+    if len(sys.argv) > 1:
+        BZRPATH = sys.argv[1]
+    else:
+        BZRPATH = os.path.join(os.path.split(mypath)[0], 'bzr')
+
+    print 'against bzr', BZRPATH
+    print
+    print backtick([BZRPATH, 'version'])
+    
     runcmd(['mkdir', TESTDIR])
     cd(TESTDIR)
 

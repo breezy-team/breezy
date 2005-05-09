@@ -31,6 +31,10 @@ bzr-0.0.5  NOT RELEASED YET
       now run using ``./testbzr``.  Various structural improvements to
       the tests.
 
+    * testbzr by default runs the version of bzr found in the same
+      directory as the tests, or the one given as the first parameter.
+
+
   INTERNAL:
 
     * Included ElementTree library upgraded to 1.2.6 by Fredrik Lundh.
