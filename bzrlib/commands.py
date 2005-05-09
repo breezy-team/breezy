@@ -490,11 +490,12 @@ class cmd_ignore(Command):
         import codecs
 
         b = Branch('.')
+        ifn = b.abspath('.bzrignore')
 
         # FIXME: probably doesn't handle non-ascii patterns
 
-        if os.path.exists(b.controlfilename('.bzrignore')):
-            f = b.controlfile('.bzrignore', 'rt')
+        if os.path.exists(ifn):
+            f = b.controlfile(ifn, 'rt')
             igns = f.read()
             f.close()
         else:
@@ -504,7 +505,7 @@ class cmd_ignore(Command):
             igns += '\n'
         igns += name_pattern + '\n'
 
-        f = AtomicFile(b.controlfilename('.bzrignore'), 'wt')
+        f = AtomicFile(ifn, 'wt')
         f.write(igns)
         f.commit()
 

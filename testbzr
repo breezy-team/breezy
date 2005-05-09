@@ -286,6 +286,28 @@ try:
     runcmd('bzr export export.tmp')
     
     cd('..')
+    cd('..')
+
+    progress('ignore patterns')
+    mkdir('ignorebranch')
+    cd('ignorebranch')
+    runcmd('bzr init')
+    assert backtick('bzr unknowns') == ''
+
+    file('foo.tmp', 'wt').write('tmp files are ignored')
+    assert backtick('bzr unknowns') == ''
+
+    file('foo.c', 'wt').write('int main() {}')
+    assert backtick('bzr unknowns') == 'foo.c\n'
+    runcmd('bzr add foo.c')
+    assert backtick('bzr unknowns') == ''
+
+    file('foo.blah', 'wt').write('blah')
+    assert backtick('bzr unknowns') == 'foo.blah\n'
+    runcmd('bzr ignore *.blah')
+    assert backtick('bzr unknowns') == ''
+    assert file('.bzrignore', 'rt').read() == '*.blah\n'
+
 
     progress("all tests passed!")
 except Exception, e:

@@ -41,12 +41,15 @@ class AtomicFile:
         self.write = self.f.write
 
     def commit(self):
+        import sys, os
+        
         self.f.close()
         if sys.platform == 'win32':
             os.remove(self.realfilename)
         os.rename(self.tmpfilename, self.realfilename)
 
     def abort(self):
+        import os
         self.f.close()
         os.remove(self.tmpfilename)
         
