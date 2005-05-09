@@ -27,6 +27,9 @@ bzr-0.0.5  NOT RELEASED YET
 
     * New syntax ``bzr status [FILE...]`` contributed by Bartosz Oler.
 
+    * ``bzr log`` and ``bzr root`` can be given an http URL instead of
+      a filename.
+
 
   TESTING:
 

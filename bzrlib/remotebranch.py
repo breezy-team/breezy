@@ -67,9 +67,34 @@ if ENABLE_URLGRABBER:
             raise BzrError("remote fetch failed: %r: %s" % (url, e))
 
 
+
+def _find_remote_root(url):
+    """Return the prefix URL that corresponds to the branch root."""
+    orig_url = url
+    while True:
+        try:
+            ff = get_url(url + '/.bzr/branch-format')
+            ff.close()
+            return url
+        except urllib.URLError:
+            pass
+
+        try:
+            idx = url.rindex('/')
+        except ValueError:
+            raise BzrError('no branch root found for URL %s' % orig_url)
+
+        url = url[:idx]        
+        
+
+
 class RemoteBranch(Branch):
-    def __init__(self, baseurl):
+    def __init__(self, baseurl, find_root=False, lock_mode='r'):
         """Create new proxy for a remote branch."""
+        if lock_mode not in ('', 'r'):
+            raise BzrError('lock mode %r is not supported for remote branches'
+                           % lock_mode)
+        
         self.baseurl = baseurl
         self._check_format()
 
@@ -84,6 +109,13 @@ class RemoteBranch(Branch):
 
     def _need_writelock(self):
         raise BzrError("cannot get write lock on HTTP remote branch")
+
+    def relpath(self, path):
+        if not path.startswith(self.baseurl):
+            raise BzrError('path %r is not under base URL %r'
+                           % (path, self.baseurl))
+        pl = len(self.baseurl)
+        return path[pl:].lstrip('/')
 
     def get_revision(self, revision_id):
         from revision import Revision

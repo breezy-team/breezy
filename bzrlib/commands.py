@@ -409,8 +409,9 @@ class cmd_root(Command):
     takes_args = ['filename?']
     def run(self, filename=None):
         """Print the branch root."""
-        print bzrlib.branch.find_branch_root(filename)
-
+        from branch import find_branch
+        b = find_branch(filename)
+        print getattr(b, 'base', None) or getattr(b, 'baseurl')
 
 
 class cmd_log(Command):
@@ -423,7 +424,8 @@ class cmd_log(Command):
     takes_args = ['filename?']
     takes_options = ['timezone', 'verbose', 'show-ids']
     def run(self, filename=None, timezone='original', verbose=False, show_ids=False):
-        b = Branch((filename or '.'), lock_mode='r')
+        from branch import find_branch
+        b = find_branch((filename or '.'), lock_mode='r')
         if filename:
             filename = b.relpath(filename)
         bzrlib.show_log(b, filename,

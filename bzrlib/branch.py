@@ -40,8 +40,18 @@ BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 
 
 
+def find_branch(f, **args):
+    if f.startswith('http://') or f.startswith('https://'):
+        import remotebranch 
+        return remotebranch.RemoteBranch(f, **args)
+    else:
+        return Branch(f, **args)
+        
+
 def find_branch_root(f=None):
     """Find the branch root enclosing f, or pwd.
+
+    f may be a filename or a URL.
 
     It is not necessary that f exists.
 
