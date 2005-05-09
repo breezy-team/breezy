@@ -26,8 +26,6 @@ Small things
 
 * Import ElementTree update patch.
 
-* Syntax should be ``bzr export -r REV``.
-
 * Plugins that provide commands.  By just installing a file into some
   directory (e.g. ``/usr/share/bzr/plugins``) it should be possible to
   create new top-level commands (``bzr frob``).  Extensions can be
@@ -68,8 +66,6 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 * ``bzr status FILE...``
 
 * Check all commands have decent help.
-
-* Autogenerate argument/option help.
 
 * ``bzr inventory -r REV`` and perhaps unify this with ``bzr ls``,
   giving options to display ids, types, etc.
