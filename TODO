@@ -87,6 +87,12 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
   Should show the version from bzr and the path name.
 
+* RemoteBranch could maintain a cache either in memory or on disk.  We
+  know more than an external cache might about which files are
+  immutable and which can vary.  On the other hand, it's much simpler
+  to just use an external proxy cache.
+
+
 Medium things
 -------------
 
