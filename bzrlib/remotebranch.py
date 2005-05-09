@@ -28,9 +28,10 @@ access.
 import gzip
 from sets import Set
 from cStringIO import StringIO
+import urllib2
 
 from errors import BzrError, BzrCheckError
-from branch import Branch
+from branch import Branch, BZR_BRANCH_FORMAT
 from trace import mutter
 
 # velocitynet.com.au transparently proxies connections and thereby
@@ -77,7 +78,15 @@ def _find_remote_root(url):
     while True:
         try:
             ff = get_url(url + '/.bzr/branch-format')
+
+            fmt = ff.read()
             ff.close()
+
+            fmt = fmt.rstrip('\r\n')
+            if fmt != BZR_BRANCH_FORMAT.rstrip('\r\n'):
+                raise BzrError("sorry, branch format %r not supported at url %s"
+                               % (fmt, url))
+            
             return url
         except urllib2.URLError:
             pass
@@ -92,14 +101,17 @@ def _find_remote_root(url):
 
 
 class RemoteBranch(Branch):
-    def __init__(self, baseurl, find_root=False, lock_mode='r'):
+    def __init__(self, baseurl, find_root=True, lock_mode='r'):
         """Create new proxy for a remote branch."""
         if lock_mode not in ('', 'r'):
             raise BzrError('lock mode %r is not supported for remote branches'
                            % lock_mode)
-        
-        self.baseurl = baseurl
-        self._check_format()
+
+        if find_root:
+            self.baseurl = _find_remote_root(baseurl)
+        else:
+            self.baseurl = baseurl
+            self._check_format()
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.baseurl)

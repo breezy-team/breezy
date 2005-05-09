@@ -965,7 +965,9 @@ def main(argv):
             return 2
         except Exception, e:
             quiet = False
-            if isinstance(e, IOError) and e.errno == errno.EPIPE:
+            if (isinstance(e, IOError) 
+                and hasattr(e, 'errno')
+                and e.errno == errno.EPIPE):
                 quiet = True
                 msg = 'broken pipe'
             else:
