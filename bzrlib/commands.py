@@ -486,12 +486,27 @@ class cmd_ignore(Command):
     takes_args = ['name_pattern']
     
     def run(self, name_pattern):
+        from bzrlib.atomicfile import AtomicFile
+        import codecs
+
         b = Branch('.')
 
-        # XXX: This will fail if it's a hardlink; should use an AtomicFile class.
-        f = open(b.abspath('.bzrignore'), 'at')
-        f.write(name_pattern + '\n')
-        f.close()
+        # FIXME: probably doesn't handle non-ascii patterns
+
+        if os.path.exists(b.controlfilename('.bzrignore')):
+            f = b.controlfile('.bzrignore', 'rt')
+            igns = f.read()
+            f.close()
+        else:
+            igns = ''
+
+        if igns and igns[-1] != '\n':
+            igns += '\n'
+        igns += name_pattern + '\n'
+
+        f = AtomicFile(b.controlfilename('.bzrignore'), 'wt')
+        f.write(igns)
+        f.commit()
 
         inv = b.working_tree().inventory
         if inv.path2id('.bzrignore'):
