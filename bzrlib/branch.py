@@ -906,7 +906,7 @@ class Branch:
 
 
 
-    def show_status(self, show_all=False):
+    def show_status(self, show_all=False, file_list=None):
         """Display single-line status for non-ignored working files.
 
         The list is show sorted in order by file name.
@@ -922,8 +922,6 @@ class Branch:
         >>> os.unlink(b.abspath('foo'))
         >>> b.show_status()
         D       foo
-        
-        TODO: Get state for single files.
         """
         self._need_readlock()
 
@@ -939,7 +937,12 @@ class Branch:
         old = self.basis_tree()
         new = self.working_tree()
 
-        for fs, fid, oldname, newname, kind in diff_trees(old, new):
+        items = diff_trees(old, new)
+        # We want to filter out only if any file was provided in the file_list.
+        if isinstance(file_list, list) and len(file_list):
+            items = [item for item in items if item[3] in file_list]
+
+        for fs, fid, oldname, newname, kind in items:
             if fs == 'R':
                 show_status(fs, kind,
                             oldname + ' => ' + newname)

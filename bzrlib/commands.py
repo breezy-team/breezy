@@ -119,13 +119,14 @@ class cmd_status(Command):
     The name is that in the current revision unless it is deleted or
     missing, in which case the old name is shown.
     """
+    takes_args = ['file*']
     takes_options = ['all']
     aliases = ['st', 'stat']
     
-    def run(self, all=False):
+    def run(self, all=False, file_list=None):
         #import bzrlib.status
         #bzrlib.status.tree_status(Branch('.'))
-        Branch('.').show_status(show_all=all)
+        Branch('.').show_status(show_all=all, file_list=file_list)
 
 
 class cmd_cat_revision(Command):

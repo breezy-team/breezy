@@ -180,6 +180,22 @@ try:
     out = backtick("bzr status --all")
     assert out == "?       test.txt\n"
 
+    out = backtick("bzr status test.txt --all")
+    assert out == "?       test.txt\n"
+
+    f = file('test2.txt', 'wt')
+    f.write('goodbye cruel world...\n')
+    f.close()
+
+    out = backtick("bzr status test.txt")
+    assert out == "?       test.txt\n"
+
+    out = backtick("bzr status")
+    assert out == "?       test.txt\n" \
+                + "?       test2.txt\n"
+
+    os.unlink('test2.txt')
+
     progress("command aliases")
     out = backtick("bzr st --all")
     assert out == "?       test.txt\n"
