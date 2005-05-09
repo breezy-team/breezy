@@ -34,6 +34,9 @@ bzr-0.0.5  NOT RELEASED YET
     * testbzr by default runs the version of bzr found in the same
       directory as the tests, or the one given as the first parameter.
 
+    * testbzr also runs the internal tests, so the only command
+      required to check is just ``./testbzr``.
+
 
   INTERNAL:
 

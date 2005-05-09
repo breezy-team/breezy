@@ -146,6 +146,9 @@ try:
     runcmd("bzr help")
     runcmd("bzr --help")
 
+    progress("internal tests")
+    runcmd("bzr selftest")
+
     progress("user identity")
     # this should always identify something, if only "john@localhost"
     runcmd("bzr whoami")
