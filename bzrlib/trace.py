@@ -106,23 +106,25 @@ def open_tracefile(argv=[], tracefilename='~/.bzr.log'):
     _rollover_trace_maybe(trace_fname)
 
     # buffering=1 means line buffered
-    _tracefile = codecs.open(trace_fname, 'at', 'utf8', buffering=1)
-    t = _tracefile
+    try:
+        _tracefile = codecs.open(trace_fname, 'at', 'utf8', buffering=1)
+        t = _tracefile
 
-    if os.fstat(t.fileno())[stat.ST_SIZE] == 0:
-        t.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
-        t.write("you can delete or truncate this file, or include sections in\n")
-        t.write("bug reports to bazaar-ng@lists.canonical.com\n\n")
+        if os.fstat(t.fileno())[stat.ST_SIZE] == 0:
+            t.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
+            t.write("you can delete or truncate this file, or include sections in\n")
+            t.write("bug reports to bazaar-ng@lists.canonical.com\n\n")
 
-    import bzrlib
-    _write_trace('bzr %s invoked on python %s (%s)'
-                 % (bzrlib.__version__,
-                    '.'.join(map(str, sys.version_info)),
-                    sys.platform))
+        import bzrlib
+        _write_trace('bzr %s invoked on python %s (%s)'
+                     % (bzrlib.__version__,
+                        '.'.join(map(str, sys.version_info)),
+                        sys.platform))
 
-    _write_trace('  arguments: %r' % argv)
-    _write_trace('  working dir: ' + os.getcwdu())
-
+        _write_trace('  arguments: %r' % argv)
+        _write_trace('  working dir: ' + os.getcwdu())
+    except IOError, e:
+        warning("failed to open trace file: %s" % (e))
 
 def close_trace():
     times = os.times()
