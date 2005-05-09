@@ -5,7 +5,17 @@
 # -S means there are no options after a -- and that argument is ignored
 
 # To use this you must arrange for it to be in a directory that is on
-# your $fpath, and also for compinit to be run.
+# your $fpath, and also for compinit to be run.  I don't understand
+# how to get zsh to reload this file when it changes, other than by
+# starting a new zsh.
+
+# This is not very useful at the moment because it only completes on
+# commands and breaks filename expansion for other arguments.
 
 
-_arguments -S "1::bzr command:($(bzr help commands | grep '^   '))"
+_arguments -S "1::bzr command:($(bzr help commands | grep -v '^   '))"
+
+
+# Local variables:
+# mode: shell-script
+# End:
