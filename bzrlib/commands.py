@@ -124,9 +124,8 @@ class cmd_status(Command):
     aliases = ['st', 'stat']
     
     def run(self, all=False, file_list=None):
-        #import bzrlib.status
-        #bzrlib.status.tree_status(Branch('.'))
-        Branch('.').show_status(show_all=all, file_list=file_list)
+        b = Branch('.', lock_mode='r')
+        b.show_status(show_all=all, file_list=file_list)
 
 
 class cmd_cat_revision(Command):
