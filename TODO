@@ -96,8 +96,6 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 Medium things
 -------------
 
-* Display command grammar in help messages rather than hardcoding it.
-
 * Change command functions into Command() objects, like in hct, and
   then the grammar can be described directly in there.  Since all
   option definitions are global we can define them just once and
