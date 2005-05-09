@@ -31,6 +31,7 @@ from cStringIO import StringIO
 
 from errors import BzrError, BzrCheckError
 from branch import Branch
+from trace import mutter
 
 # velocitynet.com.au transparently proxies connections and thereby
 # breaks keep-alive -- sucks!
@@ -43,11 +44,13 @@ def get_url(url, compressed=False):
     import urllib2
     if compressed:
         url += '.gz'
+    mutter("get_url %s" % url)
     url_f = urllib2.urlopen(url)
     if compressed:
         return gzip.GzipFile(fileobj=StringIO(url_f.read()))
     else:
         return url_f
+
 
 if ENABLE_URLGRABBER:
     import urlgrabber
@@ -97,6 +100,11 @@ class RemoteBranch(Branch):
         
         self.baseurl = baseurl
         self._check_format()
+
+    def __str__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.baseurl)
+
+    __repr__ = __str__
 
     def controlfile(self, filename, mode):
         if mode not in ('rb', 'rt', 'r'):
