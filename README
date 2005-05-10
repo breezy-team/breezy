@@ -1,8 +1,8 @@
-***********************************
-Release notes for Bazaar-NG (pre-0)
-***********************************
+*********************************
+Release notes for Bazaar-NG 0.0.5
+*********************************
 
-mbp@sourcefrog.net, March 2005, Canberra
+mbp@sourcefrog.net, May 2005, Canberra
 
 
 
@@ -24,8 +24,7 @@ Dependencies
 This is mostly developed on Linux (Ubuntu); it should work on Unix,
 Windows, or OS X with relatively little trouble.
 
-The only dependency is Python, at least 2.3 and preferably 2.4.  On
-Windows, Python2.4 is required.
+The only dependency is Python, at least 2.3 and preferably 2.4.  
 
 You may optionally install cElementTree to speed up some operations.
 
