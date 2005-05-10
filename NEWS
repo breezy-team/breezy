@@ -36,6 +36,9 @@ bzr-0.0.5  NOT RELEASED YET
     * New "stat cache" avoids reading the contents of files if they 
       haven't changed since the previous time.
 
+    * If the Python interpreter is too old, try to find a better one
+      or give an error.  Based on a patch from Fredrik Lundh.
+
   
   BUG FIXES:
 

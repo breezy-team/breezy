@@ -1,6 +1,5 @@
 #! /usr/bin/env python
 
-# Copyright (C) 2004, 2005 by Martin Pool
 # Copyright (C) 2005 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
@@ -17,9 +16,32 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import sys, bzrlib, bzrlib.commands
+import os, sys
 
+try:
+    version_info = sys.version_info
+except AttributeError:
+    version_info = 1, 5 # 1.5 or older
+
+
+REINVOKE = "__BZR_REINVOKE"    
+NEED_VERS = (2, 3)
+
+if version_info < NEED_VERS:
+    if not os.environ.has_key(REINVOKE):
+        # mutating os.environ doesn't work in old Pythons
+        os.putenv(REINVOKE, "1")
+        for python in 'python2.4', 'python2.3':
+            try:
+                os.execvp(python, [python] + sys.argv)
+            except OSError:
+                pass
+    print >>sys.stderr, "bzr: error: cannot find a suitable python interpreter"
+    print >>sys.stderr, "  (need %d.%d or later)" % NEED_VERS
+    sys.exit(1)
+os.unsetenv(REINVOKE)
+
+import bzrlib, bzrlib.commands
 
 if __name__ == '__main__':
     sys.exit(bzrlib.commands.main(sys.argv))
-    
