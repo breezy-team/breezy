@@ -20,29 +20,37 @@ from binascii import b2a_qp, a2b_qp
 from trace import mutter
 
 
-# file fingerprints are: (path, size, mtime, ctime, ino, dev).
-#
-# if this is the same for this file as in the previous revision, we
-# assume the content is the same and the SHA-1 is the same.
+"""File stat cache to speed up tree comparisons.
 
-# This is stored in a fingerprint file that also contains the file-id
-# and the content SHA-1.
+This module basically gives a quick way to find the SHA-1 and related
+information of a file in the working directory, without actually
+reading and hashing the whole file.
 
-# Thus for any given file we can quickly get the SHA-1, either from
-# the cache or if the cache is out of date.
+This is done by maintaining a cache indexed by a file fingerprint of
+(path, size, mtime, ctime, ino, dev) pointing to the SHA-1.  If the
+fingerprint has changed, we assume the file content has not changed
+either and the SHA-1 is therefore the same.
 
-# At the moment this is stored in a simple textfile; it might be nice
-# to use a tdb instead.
+If any of the fingerprint fields have changed then the file content
+*may* have changed, or it may not have.  We need to reread the file
+contents to make sure, but this is not visible to the user or
+higher-level code (except as a delay of course).
 
+The mtime and ctime are stored with nanosecond fields, but not all
+filesystems give this level of precision.  There is therefore a
+possible race: the file might be modified twice within a second
+without changing the size or mtime, and a SHA-1 cached from the first
+version would be wrong.  We handle this by not recording a cached hash
+for any files which were modified in the current second and that
+therefore have the chance to change again before the second is up.
 
-# What we need:
+The only known hole in this design is if the system clock jumps
+backwards crossing invocations of bzr.  Please don't do that; use ntp
+to gradually adjust your clock or don't use bzr over the step.
 
-# build a new cache from scratch
-# load cache, incrementally update it
-
-# TODO: Have a paranoid mode where we always compare the texts and
-# always recalculate the digest, to trap modification without stat
-# change and SHA collisions.
+At the moment this is stored in a simple textfile; it might be nice
+to use a tdb instead.
+"""
 
 
 
