@@ -82,6 +82,13 @@ bzr-0.0.5  NOT RELEASED YET
 
     * New developer commands ``added``, ``modified``.
 
+
+  PORTABILITY:
+
+    * Cope on Windows on python2.3 by using the weaker random seed.
+      2.4 is now only recommended.
+
+
 bzr-0.0.4  2005-04-22
 
   ENHANCEMENTS:

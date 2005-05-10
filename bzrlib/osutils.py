@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, types, re, time, errno
+import os, types, re, time, errno, sys
 from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 
 from errors import bailout, BzrError
@@ -285,10 +285,17 @@ def filesize(f):
 
 if hasattr(os, 'urandom'): # python 2.4 and later
     rand_bytes = os.urandom
+elif sys.platform == 'linux2':
+    rand_bytes = file('/dev/urandom', 'rb').read
 else:
-    # FIXME: No good on non-Linux
-    _rand_file = file('/dev/urandom', 'rb')
-    rand_bytes = _rand_file.read
+    # not well seeded, but better than nothing
+    def rand_bytes(n):
+        import random
+        s = ''
+        while n:
+            s += chr(random.randint(0, 255))
+            n -= 1
+        return s
 
 
 ## TODO: We could later have path objects that remember their list
