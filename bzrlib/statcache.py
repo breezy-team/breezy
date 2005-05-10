@@ -57,6 +57,12 @@ sha1, path, size, mtime, ctime, ino, dev).
 """
 
 
+FP_SIZE  = 0
+FP_MTIME = 1
+FP_CTIME = 2
+FP_INO   = 3
+FP_DEV   = 4
+
 
 def fingerprint(path, abspath):
     try:
@@ -72,12 +78,14 @@ def fingerprint(path, abspath):
             fs.st_ctime, fs.st_ino, fs.st_dev)
 
 
-def _write_cache(branch, entry_iter):
+def _write_cache(branch, entry_iter, dangerfiles):
     from atomicfile import AtomicFile
     
     outf = AtomicFile(branch.controlfilename('stat-cache'), 'wb', 'utf-8')
     try:
         for entry in entry_iter:
+            if entry[0] in dangerfiles:
+                continue
             outf.write(entry[0] + ' ' + entry[1] + ' ')
             outf.write(b2a_qp(entry[2], True))
             outf.write(' %d %d %d %d %d\n' % entry[3:])
@@ -114,30 +122,48 @@ def _files_from_inventory(inv):
         yield ie.file_id, path
     
 
-def build_cache(branch):
-    inv = branch.read_working_inventory()
 
-    cache = {}
-    _update_cache_from_list(branch, cache, _files_from_inventory(inv))
+def update_cache(branch, flush=False):
+    """Update and return the cache for the branch.
+
+    The returned cache may contain entries that have not been written
+    to disk for files recently touched.
+
+    flush -- discard any previous cache and recalculate from scratch.
+    """
+
     
-
-
-def update_cache(branch, inv):
     # TODO: It's supposed to be faster to stat the files in order by inum.
     # We don't directly know the inum of the files of course but we do
     # know where they were last sighted, so we can sort by that.
 
-    cache = load_cache(branch)
+    if flush:
+        cache = {}
+    else:
+        cache = load_cache(branch)
+    inv = branch.read_working_inventory()
     return _update_cache_from_list(branch, cache, _files_from_inventory(inv))
 
 
 
 def _update_cache_from_list(branch, cache, to_update):
-    """Update the cache to have info on the named files.
+    """Update and return the cache for given files.
 
-    to_update is a sequence of (file_id, path) pairs.
+    cache -- Previously cached values to be validated.
+
+    to_update -- Sequence of (file_id, path) pairs to check.
     """
+
+    from sets import Set
+
     hardcheck = dirty = 0
+
+    # files that have been recently touched and can't be
+    # committed to a persistent cache yet.
+    
+    dangerfiles = Set()
+    now = int(time.time())
+    
     for file_id, path in to_update:
         fap = branch.abspath(path)
         fp = fingerprint(fap, path)
@@ -148,6 +174,9 @@ def _update_cache_from_list(branch, cache, to_update):
                 del cache[file_id]
                 dirty += 1
             continue
+
+        if (fp[FP_MTIME] >= now) or (fp[FP_CTIME] >= now):
+            dangerfiles.add(file_id)
 
         if cacheentry and (cacheentry[3:] == fp):
             continue                    # all stat fields unchanged
@@ -163,10 +192,12 @@ def _update_cache_from_list(branch, cache, to_update):
             cache[file_id] = cacheentry
             dirty += 1
 
-    mutter('statcache: read %d files, %d changed, %d in cache'
-           % (hardcheck, dirty, len(cache)))
+    mutter('statcache: read %d files, %d changed, %d dangerous, '
+           '%d in cache'
+           % (hardcheck, dirty, len(dangerfiles), len(cache)))
         
     if dirty:
-        _write_cache(branch, cache.itervalues())
+        mutter('updating on-disk statcache')
+        _write_cache(branch, cache.itervalues(), dangerfiles)
 
     return cache

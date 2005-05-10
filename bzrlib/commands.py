@@ -806,8 +806,7 @@ class cmd_update_stat_cache(Command):
     def run(self):
         import statcache
         b = Branch('.')
-        inv = b.read_working_inventory()
-        statcache.update_cache(b, inv)
+        statcache.update_cache(b)
 
 
 ######################################################################
