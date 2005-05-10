@@ -536,7 +536,9 @@ class cmd_ignore(Command):
 
 
 class cmd_ignored(Command):
-    """List ignored files and the patterns that matched them."""
+    """List ignored files and the patterns that matched them.
+
+    See also: bzr ignore"""
     def run(self):
         tree = Branch('.').working_tree()
         for path, file_class, kind, file_id in tree.list_files():
@@ -552,7 +554,7 @@ class cmd_lookup_revision(Command):
 
     example:
         bzr lookup-revision 33
-        """
+    """
     hidden = True
     takes_args = ['revno']
     
