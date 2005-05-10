@@ -24,11 +24,10 @@ class AtomicFile:
     Open this as for a regular file, then use commit() to move into
     place or abort() to cancel.
 
-    You may wish to wrap this in a codecs.EncodedFile to do unicode
-    encoding.
+    An encoding can be specified; otherwise the default is ascii.
     """
 
-    def __init__(self, filename, mode='wb'):
+    def __init__(self, filename, mode='wb', encoding=None):
         if mode != 'wb' and mode != 'wt':
             raise ValueError("invalid AtomicFile mode %r" % mode)
 
@@ -38,6 +37,11 @@ class AtomicFile:
         self.realfilename = filename
         
         self.f = open(self.tmpfilename, mode)
+
+        if encoding:
+            import codecs
+            self.f = codecs.EncodedFile(self.f, encoding)
+        
         self.write = self.f.write
         self.closed = property(self.f.closed)
 
