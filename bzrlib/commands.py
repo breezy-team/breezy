@@ -798,6 +798,18 @@ class cmd_help(Command):
         help.help(topic)
 
 
+class cmd_update_stat_cache(Command):
+    """Update stat-cache mapping inodes to SHA-1 hashes.
+
+    For testing only."""
+    hidden = True
+    def run(self):
+        import statcache
+        b = Branch('.')
+        inv = b.read_working_inventory()
+        statcache.update_cache(b, inv)
+
+
 ######################################################################
 # main routine
 
