@@ -213,6 +213,9 @@ class Branch:
         and binary.  binary files are untranslated byte streams.  Text
         control files are stored with Unix newlines and in UTF-8, even
         if the platform or locale defaults are different.
+
+        Controlfiles should almost never be opened in write mode but
+        rather should be atomically copied and replaced using atomicfile.
         """
 
         fn = self.controlfilename(file_or_path)
