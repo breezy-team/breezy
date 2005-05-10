@@ -145,6 +145,9 @@ class ExternalCommand(Command):
     def __init__(self, path):
         self.path = path
 
+        # TODO: If either of these fail, we should detect that and
+        # assume that path is not really a bzr plugin after all.
+
         pipe = os.popen('%s --bzr-usage' % path, 'r')
         self.takes_options = pipe.readline().split()
         self.takes_args = pipe.readline().split()
