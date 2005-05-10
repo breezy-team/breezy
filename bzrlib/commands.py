@@ -58,8 +58,12 @@ def get_cmd_class(cmd):
     for cmdname, cmdclass in get_all_cmds():
         if cmd in cmdclass.aliases:
             return cmdname, cmdclass
-    else:
-        raise BzrCommandError("unknown command %r" % cmd)
+
+    cmdclass = ExternalCommand.find_command(cmd)
+    if cmdclass:
+        return cmd, cmdclass
+
+    raise BzrCommandError("unknown command %r" % cmd)
 
 
 class Command:
@@ -110,6 +114,73 @@ class Command:
         """
         return 0
 
+
+class ExternalCommand(Command):
+    """Class to wrap external commands.
+
+    We cheat a little here, when get_cmd_class() calls us we actually give it back
+    an object we construct that has the appropriate path, help, options etc for the
+    specified command.
+
+    When run_bzr() tries to instantiate that 'class' it gets caught by the __call__
+    method, which we override to call the Command.__init__ method. That then calls
+    our run method which is pretty straight forward.
+
+    The only wrinkle is that we have to map bzr's dictionary of options and arguments
+    back into command line options and arguments for the script.
+    """
+
+    def find_command(cls, cmd):
+        bzrpath = os.environ.get('BZRPATH', '')
+
+        for dir in bzrpath.split(':'):
+            path = os.path.join(dir, cmd)
+            if os.path.isfile(path):
+                return ExternalCommand(path)
+
+        return None
+
+    find_command = classmethod(find_command)
+
+    def __init__(self, path):
+        self.path = path
+
+        pipe = os.popen('%s --bzr-usage' % path, 'r')
+        self.takes_options = pipe.readline().split()
+        self.takes_args = pipe.readline().split()
+        pipe.close()
+
+        pipe = os.popen('%s --bzr-help' % path, 'r')
+        self.__doc__ = pipe.read()
+        pipe.close()
+
+    def __call__(self, options, arguments):
+        Command.__init__(self, options, arguments)
+        return self
+
+    def run(self, **kargs):
+        opts = []
+        args = []
+
+        keys = kargs.keys()
+        keys.sort()
+        for name in keys:
+            value = kargs[name]
+            if OPTIONS.has_key(name):
+                # it's an option
+                opts.append('--%s' % name)
+                if value is not None and value is not True:
+                    opts.append(str(value))
+            else:
+                # it's an arg, or arg list
+                if type(value) is not list:
+                    value = [value]
+                for v in value:
+                    if v is not None:
+                        args.append(str(v))
+
+        self.status = os.spawnv(os.P_WAIT, self.path, [self.path] + opts + args)
+        return self.status
 
 
 class cmd_status(Command):

@@ -30,6 +30,9 @@ bzr-0.0.5  NOT RELEASED YET
     * ``bzr log`` and ``bzr root`` can be given an http URL instead of
       a filename.
 
+    * Commands can now be defined by external programs or scripts
+      in a directory on $BZRPATH.
+
 
   TESTING:
 
