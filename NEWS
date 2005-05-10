@@ -33,6 +33,9 @@ bzr-0.0.5  NOT RELEASED YET
     * Commands can now be defined by external programs or scripts
       in a directory on $BZRPATH.
 
+    * New "stat cache" avoids reading the contents of files if they 
+      haven't changed since the previous time.
+
 
   TESTING:
 
@@ -67,6 +70,9 @@ bzr-0.0.5  NOT RELEASED YET
     * bzrlib.open_tracefile() takes a tracefilename parameter.
 
     * New AtomicFile class.
+
+    * New developer commands ``added``, ``modified``.
+
 bzr-0.0.4  2005-04-22
 
   ENHANCEMENTS:
