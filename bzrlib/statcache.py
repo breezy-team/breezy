@@ -127,7 +127,7 @@ def _files_from_inventory(inv):
     
 
 
-def update_cache(branch, flush=False):
+def update_cache(branch, inv=None, flush=False):
     """Update and return the cache for the branch.
 
     The returned cache may contain entries that have not been written
@@ -141,11 +141,13 @@ def update_cache(branch, flush=False):
     # We don't directly know the inum of the files of course but we do
     # know where they were last sighted, so we can sort by that.
 
+    assert isinstance(flush, bool)
     if flush:
         cache = {}
     else:
         cache = load_cache(branch)
-    inv = branch.read_working_inventory()
+    if inv == None:
+        inv = branch.read_working_inventory()
     return _update_cache_from_list(branch, cache, _files_from_inventory(inv))
 
 

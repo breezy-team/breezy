@@ -485,17 +485,23 @@ class cmd_modified(Command):
     def run(self):
         import statcache
         b = Branch('.')
-        sc = statcache.update_cache(b)
+        inv = b.read_working_inventory()
+        sc = statcache.update_cache(b, inv)
         basis = b.basis_tree()
         basis_inv = basis.inventory
-        for path, ie in basis_inv.iter_entries():
-            if ie.kind != 'file':
+        
+        # We used to do this through iter_entries(), but that's slow
+        # when most of the files are unmodified, as is usually the
+        # case.  So instead we iterate by inventory entry, and only
+        # calculate paths as necessary.
+
+        for file_id in basis_inv:
+            cacheentry = sc.get(file_id)
+            if not cacheentry:                 # deleted
                 continue
-            cacheentry = sc.get(ie.file_id)
-            if not cacheentry:
-                # deleted
-                continue
+            ie = basis_inv[file_id]
             if cacheentry[statcache.SC_SHA1] != ie.text_sha1:
+                path = inv.id2path(file_id)
                 print path
                 
         
