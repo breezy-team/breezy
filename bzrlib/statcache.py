@@ -75,7 +75,7 @@ def fingerprint(path, abspath):
 def _write_cache(branch, entry_iter):
     from atomicfile import AtomicFile
     
-    outf = AtomicFile(branch.controlfilename('work-cache'), 'wb', 'utf-8')
+    outf = AtomicFile(branch.controlfilename('stat-cache'), 'wb', 'utf-8')
     try:
         for entry in entry_iter:
             outf.write(entry[0] + ' ' + entry[1] + ' ')
@@ -92,7 +92,7 @@ def load_cache(branch):
     cache = {}
 
     try:
-        cachefile = branch.controlfile('work-cache', 'r')
+        cachefile = branch.controlfile('stat-cache', 'r')
     except IOError:
         return cache
     
@@ -163,7 +163,7 @@ def _update_cache_from_list(branch, cache, to_update):
             cache[file_id] = cacheentry
             dirty += 1
 
-    mutter('work cache: read %d files, %d changed, %d in cache'
+    mutter('statcache: read %d files, %d changed, %d in cache'
            % (hardcheck, dirty, len(cache)))
         
     if dirty:
