@@ -64,6 +64,10 @@ FP_INO   = 3
 FP_DEV   = 4
 
 
+SC_FILE_ID = 0
+SC_SHA1    = 1 
+
+
 def fingerprint(path, abspath):
     try:
         fs = os.lstat(abspath)

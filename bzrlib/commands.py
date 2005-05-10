@@ -453,6 +453,9 @@ class cmd_diff(Command):
         show_diff(Branch('.'), revision, file_list)
 
 
+        
+
+
 class cmd_deleted(Command):
     """List files deleted in the working tree.
 
@@ -474,6 +477,28 @@ class cmd_deleted(Command):
                     print '%-50s %s' % (path, ie.file_id)
                 else:
                     print path
+
+
+class cmd_modified(Command):
+    """List files modified in working tree."""
+    hidden = True
+    def run(self):
+        import statcache
+        b = Branch('.')
+        sc = statcache.update_cache(b)
+        basis = b.basis_tree()
+        basis_inv = basis.inventory
+        for path, ie in basis_inv.iter_entries():
+            if ie.kind != 'file':
+                continue
+            cacheentry = sc.get(ie.file_id)
+            if not cacheentry:
+                # deleted
+                continue
+            if cacheentry[statcache.SC_SHA1] != ie.text_sha1:
+                print path
+                
+        
 
 class cmd_root(Command):
     """Show the tree root directory.
