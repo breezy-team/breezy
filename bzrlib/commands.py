@@ -503,6 +503,24 @@ class cmd_modified(Command):
             if cacheentry[statcache.SC_SHA1] != ie.text_sha1:
                 path = inv.id2path(file_id)
                 print path
+
+
+
+class cmd_added(Command):
+    """List files added in working tree."""
+    hidden = True
+    def run(self):
+        b = Branch('.')
+        wt = b.working_tree()
+        basis_inv = b.basis_tree().inventory
+        inv = wt.inventory
+        for file_id in inv:
+            if file_id in basis_inv:
+                continue
+            path = inv.id2path(file_id)
+            if not os.access(b.abspath(path), os.F_OK):
+                continue
+            print path
                 
         
 
