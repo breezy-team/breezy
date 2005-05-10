@@ -63,6 +63,9 @@ def find_branch_root(f=None):
         f = os.path.realpath(f)
     else:
         f = os.path.abspath(f)
+    if not os.path.exists(f):
+        raise BzrError('%r does not exist' % f)
+        
 
     orig_f = f
 
