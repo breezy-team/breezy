@@ -51,6 +51,9 @@ to gradually adjust your clock or don't use bzr over the step.
 
 At the moment this is stored in a simple textfile; it might be nice
 to use a tdb instead.
+
+The cache is represented as a map from file_id to a tuple of (file_id,
+sha1, path, size, mtime, ctime, ino, dev).
 """
 
 
@@ -69,7 +72,7 @@ def fingerprint(path, abspath):
             fs.st_ctime, fs.st_ino, fs.st_dev)
 
 
-def write_cache(branch, entry_iter):
+def _write_cache(branch, entry_iter):
     from atomicfile import AtomicFile
     
     outf = AtomicFile(branch.controlfilename('work-cache'), 'wb', 'utf-8')
@@ -164,6 +167,6 @@ def _update_cache_from_list(branch, cache, to_update):
            % (hardcheck, dirty, len(cache)))
         
     if dirty:
-        write_cache(branch, cache.itervalues())
+        _write_cache(branch, cache.itervalues())
 
     return cache
