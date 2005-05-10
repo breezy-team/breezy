@@ -160,7 +160,8 @@ def _update_cache_from_list(branch, cache, to_update):
             cache[file_id] = cacheentry
             dirty += 1
 
-    mutter('work cache: read %d files, %d changed' % (hardcheck, dirty))
+    mutter('work cache: read %d files, %d changed, %d in cache'
+           % (hardcheck, dirty, len(cache)))
         
     if dirty:
         write_cache(branch, cache.itervalues())
