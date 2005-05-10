@@ -484,7 +484,22 @@ class cmd_unknowns(Command):
 
 
 class cmd_ignore(Command):
-    """Ignore a command or pattern"""
+    """Ignore a command or pattern
+
+    To remove patterns from the ignore list, edit the .bzrignore file.
+
+    If the pattern contains a slash, it is compared to the whole path
+    from the branch root.  Otherwise, it is comapred to only the last
+    component of the path.
+
+    Ignore patterns are case-insensitive on case-insensitive systems.
+
+    Note: wildcards must be quoted from the shell on Unix.
+
+    examples:
+        bzr ignore ./Makefile
+        bzr ignore '*.class'
+    """
     takes_args = ['name_pattern']
     
     def run(self, name_pattern):

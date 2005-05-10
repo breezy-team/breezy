@@ -5,7 +5,7 @@ bzr-0.0.5  NOT RELEASED YET
     * New 'bzr whoami --email' option shows only the email component
       of the user identification, from Jo Vermeulen.
 
-    * New 'bzr ignore PATTERN' command.
+    * New ``bzr ignore PATTERN`` command.
 
     * Nicer error message for broken pipe, interrupt and similar
       conditions that don't indicate an internal error.
