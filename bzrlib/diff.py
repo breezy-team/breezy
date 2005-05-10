@@ -179,9 +179,6 @@ def show_diff(b, revision, file_list):
         # idlabel = '      {%s}' % fid
         idlabel = ''
 
-        # FIXME: Something about the diff format makes patch unhappy
-        # with newly-added files.
-
         def diffit(oldlines, newlines, **kw):
             
             # FIXME: difflib is wrong if there is no trailing newline.
@@ -210,6 +207,16 @@ def show_diff(b, revision, file_list):
                 nonl = True
 
             ud = difflib.unified_diff(oldlines, newlines, **kw)
+
+            # work-around for difflib being too smart for its own good
+            # if /dev/null is "1,0", patch won't recognize it as /dev/null
+            if not oldlines:
+                ud = list(ud)
+                ud[2] = ud[2].replace('-1,0', '-0,0')
+            elif not newlines:
+                ud = list(ud)
+                ud[2] = ud[2].replace('+1,0', '+0,0')
+            
             sys.stdout.writelines(ud)
             if nonl:
                 print "\\ No newline at end of file"
