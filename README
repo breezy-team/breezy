@@ -10,9 +10,6 @@ Caveats
 -------
 
 
-* There is little locking or transaction control here; if you
-  interrupt it the tree may be arbitrarily broken.  This will be
-  fixed.
 
 * Don't use this for critical data; at the very least keep separate
   regular snapshots of your tree.
