@@ -72,7 +72,7 @@ def fingerprint(path, abspath):
 def write_cache(branch, entry_iter):
     from atomicfile import AtomicFile
     
-    outf = AtomicFile(branch.controlfilename('work-cache'), 'w', 'utf-8')
+    outf = AtomicFile(branch.controlfilename('work-cache'), 'wb', 'utf-8')
     try:
         for entry in entry_iter:
             outf.write(entry[0] + ' ' + entry[1] + ' ')
