@@ -32,7 +32,7 @@ class AtomicFile:
             raise ValueError("invalid AtomicFile mode %r" % mode)
 
         import os, socket
-        self.tmpfilename = '%s.tmp.%d.%s' % (filename, os.getpid(),
+        self.tmpfilename = '%s.%d.%s.tmp' % (filename, os.getpid(),
                                              socket.gethostname())
         self.realfilename = filename
         
