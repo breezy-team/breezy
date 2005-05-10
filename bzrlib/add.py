@@ -28,6 +28,7 @@ def smart_add(file_list, verbose=False, recurse=True):
     For the specific behaviour see the help for cmd_add().
     """
     assert file_list
+    user_list = file_list[:]
     assert not isinstance(file_list, basestring)
     b = bzrlib.branch.Branch(file_list[0], find_root=True)
     inv = b.read_working_inventory()
@@ -35,6 +36,14 @@ def smart_add(file_list, verbose=False, recurse=True):
     count = 0
 
     for f in file_list:
+        kind = bzrlib.osutils.file_kind(f)
+
+        if kind != 'file' and kind != 'directory':
+            if f not in user_list:
+                print "Skipping %s (can't add file of kind '%s')" % (f, kind)
+                continue
+            bailout("can't add file of kind %r" % kind)
+
         rf = b.relpath(f)
         af = b.abspath(rf)
 

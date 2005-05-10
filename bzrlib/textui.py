@@ -21,6 +21,8 @@ def show_status(state, kind, name):
     if kind == 'directory':
         # use this even on windows?
         kind_ch = '/'
+    elif kind == 'symlink':
+        kind_ch = '->'
     else:
         assert kind == 'file', ("can't handle file of type %r" % kind)
         kind_ch = ''
