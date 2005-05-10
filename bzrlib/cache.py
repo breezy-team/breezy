@@ -18,6 +18,7 @@ import stat, os, sha, time
 from binascii import b2a_qp, a2b_qp
 
 from trace import mutter
+from errors import BzrError
 
 
 """File stat cache to speed up tree comparisons.
@@ -69,16 +70,19 @@ def fingerprint(path, abspath):
 
 
 def write_cache(branch, entry_iter):
-    outf = branch.controlfile('work-cache.tmp', 'wt')
-    for entry in entry_iter:
-        outf.write(entry[0] + ' ' + entry[1] + ' ')
-        outf.write(b2a_qp(entry[2], True))
-        outf.write(' %d %d %d %d %d\n' % entry[3:])
-        
-    outf.close()
-    os.rename(branch.controlfilename('work-cache.tmp'),
-              branch.controlfilename('work-cache'))
+    from atomicfile import AtomicFile
+    
+    outf = AtomicFile(branch.controlfilename('work-cache.tmp'), 'wt')
+    try:
+        for entry in entry_iter:
+            outf.write(entry[0] + ' ' + entry[1] + ' ')
+            outf.write(b2a_qp(entry[2], True))
+            outf.write(' %d %d %d %d %d\n' % entry[3:])
 
+        outf.commit()
+    finally:
+        if not outf.closed:
+            outf.abort()
         
         
 def load_cache(branch):

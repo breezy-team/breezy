@@ -39,6 +39,7 @@ class AtomicFile:
         
         self.f = open(self.tmpfilename, mode)
         self.write = self.f.write
+        self.closed = property(f.closed)
 
     def commit(self):
         import sys, os
@@ -52,4 +53,5 @@ class AtomicFile:
         import os
         self.f.close()
         os.remove(self.tmpfilename)
+        
         
