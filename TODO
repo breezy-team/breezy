@@ -248,6 +248,8 @@ Medium things
 
 * Should be a signature at the top of the cache file.
 
+* Paranoid mode where we never trust SHA-1 matches.
+
 
 Large things
 ------------

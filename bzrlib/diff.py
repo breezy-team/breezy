@@ -49,6 +49,8 @@ def diff_trees(old_tree, new_tree):
     ## XXX: This doesn't report on unknown files; that can be done
     ## from a separate method.
 
+    sha_match_cnt = modified_cnt = 0
+
     old_it = old_tree.list_files()
     new_it = new_tree.list_files()
 
@@ -77,9 +79,6 @@ def diff_trees(old_tree, new_tree):
         else:
             new_name = None
 
-        mutter("   diff pairwise %r" % (old_item,))
-        mutter("                 %r" % (new_item,))
-
         if old_item:
             # can't handle the old tree being a WorkingTree
             assert old_class == 'V'
@@ -88,7 +87,6 @@ def diff_trees(old_tree, new_tree):
             yield new_class, None, None, new_name, new_kind
             new_item = next(new_it)
         elif (not new_item) or (old_item and (old_name < new_name)):
-            mutter("     extra entry in old-tree sequence")
             if new_tree.has_id(old_id):
                 # will be mentioned as renamed under new name
                 pass
@@ -96,7 +94,6 @@ def diff_trees(old_tree, new_tree):
                 yield 'D', old_id, old_name, None, old_kind
             old_item = next(old_it)
         elif (not old_item) or (new_item and (new_name < old_name)):
-            mutter("     extra entry in new-tree sequence")
             if old_tree.has_id(new_id):
                 yield 'R', new_id, old_tree.id2path(new_id), new_name, new_kind
             else:
@@ -124,19 +121,19 @@ def diff_trees(old_tree, new_tree):
 
             if old_kind == 'directory':
                 yield '.', new_id, old_name, new_name, new_kind
-            elif old_tree.get_file_size(old_id) != new_tree.get_file_size(old_id):
-                mutter("    file size has changed, must be different")
-                yield 'M', new_id, old_name, new_name, new_kind
             elif old_tree.get_file_sha1(old_id) == new_tree.get_file_sha1(old_id):
-                mutter("      SHA1 indicates they're identical")
-                ## assert compare_files(old_tree.get_file(i), new_tree.get_file(i))
+                sha_match_cnt += 1
                 yield '.', new_id, old_name, new_name, new_kind
             else:
-                mutter("      quick compare shows different")
+                modified_cnt += 1
                 yield 'M', new_id, old_name, new_name, new_kind
 
             new_item = next(new_it)
             old_item = next(old_it)
+
+
+    mutter("diff finished: %d SHA matches, %d modified"
+           % (sha_match_cnt, modified_cnt))
 
 
 
