@@ -216,13 +216,26 @@ class cmd_status(Command):
 
     To see ignored files use 'bzr ignored'.  For details in the
     changes to file texts, use 'bzr diff'.
+
+    If no arguments are specified, the status of the entire working
+    directory is shown.  Otherwise, only the status of the specified
+    files or directories is reported.  If a directory is given, status
+    is reported for everything inside that directory.
     """
     takes_args = ['file*']
     takes_options = ['all', 'show-ids']
     aliases = ['st', 'stat']
     
     def run(self, all=False, show_ids=False, file_list=None):
-        b = Branch('.', lock_mode='r')
+        if file_list:
+            b = Branch(file_list[0], lock_mode='r')
+            file_list = [b.relpath(x) for x in file_list]
+            # special case: only one path was given and it's the root
+            # of the branch
+            if file_list == ['']:
+                file_list = None
+        else:
+            b = Branch('.', lock_mode='r')
         import status
         status.show_status(b, show_unchanged=all, show_ids=show_ids,
                            file_list=file_list)

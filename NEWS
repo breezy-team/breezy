@@ -36,7 +36,8 @@ bzr-0.0.5  NOT RELEASED YET
     * New option ``bzr commit --file`` to take a message from a file,
       suggested by LarstiQ.
 
-    * New syntax ``bzr status [FILE...]`` contributed by Bartosz Oler.
+    * New syntax ``bzr status [FILE...]`` contributed by Bartosz
+      Oler.  File may be in a branch other than the working directory.
 
     * ``bzr log`` and ``bzr root`` can be given an http URL instead of
       a filename.
