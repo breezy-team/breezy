@@ -53,7 +53,7 @@ def show_info(b):
     
     print
     print 'in the working tree:'
-    print '  %8s unchanged' % '?'
+    print '  %8s unchanged' % len(delta.unchanged)
     print '  %8d modified' % len(delta.modified)
     print '  %8d added' % len(delta.added)
     print '  %8d removed' % len(delta.removed)

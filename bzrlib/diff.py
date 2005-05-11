@@ -259,17 +259,22 @@ class TreeDelta:
         (oldpath, newpath, id, text_modified)
     modified
         (path, id)
+    unchanged
+        (path, id)
 
     Each id is listed only once.
 
     Files that are both modified and renamed are listed only in
     renamed, with the text_modified flag true.
+
+    The lists are normally sorted when the delta is created.
     """
     def __init__(self):
         self.added = []
         self.removed = []
         self.renamed = []
         self.modified = []
+        self.unchanged = []
 
     def show(self, to_file, show_ids):
         if self.removed:
@@ -327,6 +332,8 @@ def compare_trees(old_tree, new_tree):
                 delta.renamed.append((old_path, new_path, file_id, text_modified))
             elif text_modified:
                 delta.modified.append((new_path, file_id))
+            else:
+                delta.unchanged.append((new_path, file_id))
         else:
             delta.removed.append((old_inv.id2path(file_id), file_id))
     for file_id in new_inv:
