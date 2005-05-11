@@ -99,20 +99,13 @@ def help_on_command(cmdname):
     if doc == None:
         raise NotImplementedError("sorry, no detailed help yet for %r" % cmdname)
 
-    if '\n' in doc:
-        short, rest = doc.split('\n', 1)
-    else:
-        short = doc
-        rest = ''
-
     print 'usage:', command_usage(topic, cmdclass)
 
     if cmdclass.aliases:
         print 'aliases: ' + ', '.join(cmdclass.aliases)
     
-    if rest:
-        print rest
-
+    print doc
+    
     help_on_option(cmdclass.takes_options)
 
 
