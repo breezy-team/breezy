@@ -897,16 +897,6 @@ class cmd_update_stat_cache(Command):
         statcache.update_cache(b.base, b.read_working_inventory())
 
 
-class cmd_compare_trees(Command):
-    """Show quick calculation of status."""
-    hidden = True
-    def run(self):
-        import diff
-        b = Branch('.')
-        delta = diff.compare_trees(b.basis_tree(), b.working_tree())
-        delta.show(sys.stdout, False)
-
-
 ######################################################################
 # main routine
 

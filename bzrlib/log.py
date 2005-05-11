@@ -142,7 +142,7 @@ def show_log(branch,
 
         if verbose:
             this_tree = branch.revision_tree(revision_id)
-            delta = compare_trees(prev_tree, this_tree)
+            delta = compare_trees(prev_tree, this_tree, want_unchanged=False)
             delta.show(to_file, show_ids)
             prev_tree = this_tree
 

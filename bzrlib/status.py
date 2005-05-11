@@ -39,7 +39,7 @@ def show_status(branch, show_unchanged=False,
         raise NotImplementedError("sorry, status on selected files is not implemented "
                                   "at the moment")
 
-    delta = diff.compare_trees(old, new)
+    delta = diff.compare_trees(old, new, want_unchanged=show_unchanged)
 
     delta.show(sys.stdout, show_ids=show_ids,
                show_unchanged=show_unchanged)

@@ -310,7 +310,7 @@ class TreeDelta:
 
 
 
-def compare_trees(old_tree, new_tree):
+def compare_trees(old_tree, new_tree, want_unchanged):
     old_inv = old_tree.inventory
     new_inv = new_tree.inventory
     delta = TreeDelta()

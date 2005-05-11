@@ -49,7 +49,7 @@ def show_info(b):
     basis = b.basis_tree()
     working = b.working_tree()
     work_inv = working.inventory
-    delta = diff.compare_trees(basis, working)
+    delta = diff.compare_trees(basis, working, want_unchanged=True)
     
     print
     print 'in the working tree:'
