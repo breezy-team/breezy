@@ -68,7 +68,7 @@ SC_FILE_ID = 0
 SC_SHA1    = 1 
 
 
-def fingerprint(path, abspath):
+def fingerprint(abspath):
     try:
         fs = os.lstat(abspath)
     except OSError:
@@ -172,10 +172,10 @@ def _update_cache_from_list(basedir, cache, to_update):
     dangerfiles = Set()
     now = int(time.time())
 
-    mutter('update statcache under %r' % basedir)
+    ## mutter('update statcache under %r' % basedir)
     for file_id, path in to_update:
         abspath = os.path.join(basedir, path)
-        fp = fingerprint(abspath, path)
+        fp = fingerprint(abspath)
         stat_cnt += 1
         
         cacheentry = cache.get(file_id)
