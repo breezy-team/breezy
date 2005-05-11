@@ -239,6 +239,13 @@ Medium things
   doing them all up-front.  On the other hand, that disallows the
   opimization of stating them in inode order.
 
+* It'd be nice to pipeline multiple HTTP requests.  Often we can
+  predict what will be wanted in future: all revisions, or all texts
+  in a particular revision, etc.  
+
+  urlgrabber's docs say they are working on batched downloads; we
+  could perhaps ride on that or just create a background thread (ew).
+
 
 Large things
 ------------
