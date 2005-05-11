@@ -41,7 +41,7 @@ BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 
 
 def find_branch(f, **args):
-    if f.startswith('http://') or f.startswith('https://'):
+    if f and (f.startswith('http://') or f.startswith('https://')):
         import remotebranch 
         return remotebranch.RemoteBranch(f, **args)
     else:
