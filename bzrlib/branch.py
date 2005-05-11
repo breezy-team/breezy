@@ -923,62 +923,6 @@ class Branch:
 
 
 
-    def show_status(self, show_all=False, file_list=None):
-        """Display single-line status for non-ignored working files.
-
-        The list is show sorted in order by file name.
-
-        >>> b = ScratchBranch(files=['foo', 'foo~'])
-        >>> b.show_status()
-        ?       foo
-        >>> b.add('foo')
-        >>> b.show_status()
-        A       foo
-        >>> b.commit("add foo")
-        >>> b.show_status()
-        >>> os.unlink(b.abspath('foo'))
-        >>> b.show_status()
-        D       foo
-        """
-        self._need_readlock()
-
-        # We have to build everything into a list first so that it can
-        # sorted by name, incorporating all the different sources.
-
-        # FIXME: Rather than getting things in random order and then sorting,
-        # just step through in order.
-
-        # Interesting case: the old ID for a file has been removed,
-        # but a new file has been created under that name.
-
-        old = self.basis_tree()
-        new = self.working_tree()
-
-        items = diff_trees(old, new)
-        # We want to filter out only if any file was provided in the file_list.
-        if isinstance(file_list, list) and len(file_list):
-            items = [item for item in items if item[3] in file_list]
-
-        for fs, fid, oldname, newname, kind in items:
-            if fs == 'R':
-                show_status(fs, kind,
-                            oldname + ' => ' + newname)
-            elif fs == 'A' or fs == 'M':
-                show_status(fs, kind, newname)
-            elif fs == 'D':
-                show_status(fs, kind, oldname)
-            elif fs == '.':
-                if show_all:
-                    show_status(fs, kind, newname)
-            elif fs == 'I':
-                if show_all:
-                    show_status(fs, kind, newname)
-            elif fs == '?':
-                show_status(fs, kind, newname)
-            else:
-                bailout("weird file state %r" % ((fs, fid),))
-                
-
 
 class ScratchBranch(Branch):
     """Special test class: a branch that cleans up after itself.

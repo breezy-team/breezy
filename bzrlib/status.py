@@ -15,3 +15,39 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+
+def show_status(branch, show_unchanged=False,
+                file_list=None,
+                show_ids=False):
+    """Display single-line status for non-ignored working files.
+
+    show_all
+        If true, show unmodified files too.
+
+    file_list
+        If set, only show the status of files in this list.
+    """
+    import sys
+    import diff
+    
+    branch._need_readlock()
+    
+    old = branch.basis_tree()
+    new = branch.working_tree()
+
+    if file_list:
+        raise NotImplementedError("sorry, status on selected files is not implemented "
+                                  "at the moment")
+
+    delta = diff.compare_trees(old, new)
+
+    delta.show(sys.stdout, show_ids=show_ids,
+               show_unchanged=show_unchanged)
+
+    unknowns = new.unknowns()
+    done_header = False
+    for path in unknowns:
+        if not done_header:
+            print 'unknown files:'
+            done_header = True
+        print ' ', path

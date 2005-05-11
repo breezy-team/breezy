@@ -276,21 +276,22 @@ class TreeDelta:
         self.modified = []
         self.unchanged = []
 
-    def show(self, to_file, show_ids):
-        if self.removed:
-            print >>to_file, 'removed files:'
-            for path, fid in self.removed:
+    def show(self, to_file, show_ids=False, show_unchanged=False):
+        def show_list(files):
+            for path, fid in files:
                 if show_ids:
                     print >>to_file, '  %-30s %s' % (path, fid)
                 else:
                     print >>to_file, ' ', path
+            
+        if self.removed:
+            print >>to_file, 'removed files:'
+            show_list(self.removed)
+                
         if self.added:
             print >>to_file, 'added files:'
-            for path, fid in self.added:
-                if show_ids:
-                    print >>to_file, '  %-30s %s' % (path, fid)
-                else:
-                    print >>to_file, '  ' + path
+            show_list(self.added)
+
         if self.renamed:
             print >>to_file, 'renamed files:'
             for oldpath, newpath, fid, text_modified in self.renamed:
@@ -298,13 +299,14 @@ class TreeDelta:
                     print >>to_file, '  %s => %s %s' % (oldpath, newpath, fid)
                 else:
                     print >>to_file, '  %s => %s' % (oldpath, newpath)
+                    
         if self.modified:
             print >>to_file, 'modified files:'
-            for path, fid in self.modified:
-                if show_ids:
-                    print >>to_file, '  %-30s %s' % (path, fid)
-                else:
-                    print >>to_file, '  ' + path
+            show_list(self.modified)
+            
+        if show_unchanged and self.unchanged:
+            print >>to_file, 'unchanged files:'
+            show_list(self.unchanged)
 
 
 

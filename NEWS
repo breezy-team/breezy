@@ -5,6 +5,11 @@ bzr-0.0.5  NOT RELEASED YET
     * ``bzr`` with no command now shows help rather than giving an
       error.  Suggested by Michael Ellerman.
 
+    * ``bzr status`` output format changed, because svn-style output
+      doesn't really match the model of bzr.  Now files are grouped by
+      status and can be shown with their IDs.  ``bzr status --all``
+      shows all versioned files and unknown files but not ignored files.
+
 
   ENHANCEMENTS:
 

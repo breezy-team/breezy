@@ -194,12 +194,14 @@ class cmd_status(Command):
     missing, in which case the old name is shown.
     """
     takes_args = ['file*']
-    takes_options = ['all']
+    takes_options = ['all', 'show-ids']
     aliases = ['st', 'stat']
     
-    def run(self, all=False, file_list=None):
+    def run(self, all=False, show_ids=False, file_list=None):
         b = Branch('.', lock_mode='r')
-        b.show_status(show_all=all, file_list=file_list)
+        import status
+        status.show_status(b, show_unchanged=all, show_ids=show_ids,
+                           file_list=file_list)
 
 
 class cmd_cat_revision(Command):
