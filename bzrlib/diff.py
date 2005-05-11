@@ -301,46 +301,6 @@ class TreeDelta:
                 else:
                     print >>to_file, '  ' + path
 
-        
-
-def compare_inventories(old_inv, new_inv):
-    """Return a TreeDelta object describing changes between inventories.
-
-    This only describes changes in the shape of the tree, not the
-    actual texts.
-
-    This is an alternative to diff_trees() and should probably
-    eventually replace it.
-    """
-    old_ids = old_inv.id_set()
-    new_ids = new_inv.id_set()
-    delta = TreeDelta()
-
-    delta.removed = [(old_inv.id2path(fid), fid) for fid in (old_ids - new_ids)]
-    delta.removed.sort()
-
-    delta.added = [(new_inv.id2path(fid), fid) for fid in (new_ids - old_ids)]
-    delta.added.sort()
-
-    for fid in old_ids & new_ids:
-        old_ie = old_inv[fid]
-        new_ie = new_inv[fid]
-        old_path = old_inv.id2path(fid)
-        new_path = new_inv.id2path(fid)
-
-        text_modified = (old_ie.text_sha1 != new_ie.text_sha1)
-
-        if old_path != new_path:
-            delta.renamed.append((old_path, new_path, fid, text_modified))
-        elif text_modified:
-            delta.modified.append((new_path, fid))
-
-    delta.modified.sort()
-    delta.renamed.sort()    
-
-    return delta
-
-
 
 
 def compare_trees(old_tree, new_tree):

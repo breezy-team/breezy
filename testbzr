@@ -289,6 +289,9 @@ try:
     assert backtick('bzr revno') == '5\n'
     runcmd('bzr export -r 5 export-5.tmp')
     runcmd('bzr export export.tmp')
+
+    runcmd('bzr log')
+    runcmd('bzr log -v')
     
     cd('..')
     cd('..')

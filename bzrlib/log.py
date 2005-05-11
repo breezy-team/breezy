@@ -94,9 +94,8 @@ def show_log(branch,
     """
     from osutils import format_date
     from errors import BzrCheckError
-    from diff import compare_inventories
+    from diff import compare_trees
     from textui import show_status
-    from inventory import Inventory
 
     if to_file == None:
         import sys
@@ -115,7 +114,8 @@ def show_log(branch,
     branch._need_readlock()
     precursor = None
     if verbose:
-        prev_inv = Inventory()
+        from tree import EmptyTree
+        prev_tree = EmptyTree()
     for revno, revision_id in which_revs():
         print >>to_file,  '-' * 60
         print >>to_file,  'revno:', revno
@@ -140,11 +140,11 @@ def show_log(branch,
         # Don't show a list of changed files if we were asked about
         # one specific file.
 
-        if verbose and not filename:
-            this_inv = branch.get_inventory(rev.inventory_id)
-            delta = compare_inventories(prev_inv, this_inv)
+        if verbose:
+            this_tree = branch.revision_tree(revision_id)
+            delta = compare_trees(prev_tree, this_tree)
             delta.show(to_file, show_ids)
-            prev_inv = this_inv
+            prev_tree = this_tree
 
         precursor = revision_id
 
