@@ -20,7 +20,7 @@ from inventory import Inventory, InventoryEntry
 from branch import Branch, ScratchBranch
 from osutils import format_date
 from tree import Tree
-from diff import diff_trees
+from diff import compare_trees
 from trace import mutter, warning, open_tracefile
 from log import show_log
 import add
