@@ -24,6 +24,14 @@ Windows, or OS X with relatively little trouble.
 The only dependency is Python, at least 2.3 and preferably 2.4.  
 
 You may optionally install cElementTree to speed up some operations.
+This is strongly recommended if you are dealing with large trees.
+
+This package includes copies of two Python libraries, elementtree and
+urlgrabber.
+
+If you are building .deb or .rpm packages for bzr, please don't
+include these libraries but instead package them separately and depend
+on that.
 
 
 Installation
@@ -44,6 +52,6 @@ on your platform::
   ./testbzr
 
 If you use the setup.py script then bzr will be installed into the
-specified path.  In this case you must install ElementTree or
-cElementTree separately.
+specified path.  In this case you must install ElementTree and
+urlgrabber separately.
 
