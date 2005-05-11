@@ -19,10 +19,21 @@
 from sets import Set
 import time
 
-import bzrlib
 from osutils import format_date
 
+
+def _countiter(it):
+    # surely there's a builtin for this?
+    i = 0
+    for j in it:
+        i += 1
+    return i        
+
+
+
 def show_info(b):
+    import diff
+    
     print 'branch format:', b.controlfile('branch-format', 'r').readline().rstrip('\n')
 
     def plural(n, base='', pl=None):
@@ -35,22 +46,36 @@ def show_info(b):
 
     count_version_dirs = 0
 
-    count_status = {'A': 0, 'D': 0, 'M': 0, 'R': 0, '?': 0, 'I': 0, '.': 0}
-    for st_tup in bzrlib.diff_trees(b.basis_tree(), b.working_tree()):
-        fs = st_tup[0]
-        count_status[fs] += 1
-        if fs not in ['I', '?'] and st_tup[4] == 'directory':
-            count_version_dirs += 1
-
+    basis = b.basis_tree()
+    working = b.working_tree()
+    work_inv = working.inventory
+    delta = diff.compare_trees(basis, working)
+    
     print
     print 'in the working tree:'
-    for name, fs in (('unchanged', '.'),
-                     ('modified', 'M'), ('added', 'A'), ('removed', 'D'),
-                     ('renamed', 'R'), ('unknown', '?'), ('ignored', 'I'),
-                     ):
-        print '  %8d %s' % (count_status[fs], name)
-    print '  %8d versioned subdirector%s' % (count_version_dirs,
-                                             plural(count_version_dirs, 'y', 'ies'))
+    print '  %8s unchanged' % '?'
+    print '  %8d modified' % len(delta.modified)
+    print '  %8d added' % len(delta.added)
+    print '  %8d removed' % len(delta.removed)
+    print '  %8d renamed' % len(delta.renamed)
+
+    ignore_cnt = unknown_cnt = 0
+    for path in working.extras():
+        if working.is_ignored(path):
+            ignore_cnt += 1
+        else:
+            unknown_cnt += 1
+
+    print '  %8d unknown' % unknown_cnt
+    print '  %8d ignored' % ignore_cnt
+
+    dir_cnt = 0
+    for file_id in work_inv:
+        if work_inv.get_file_kind(file_id) == 'directory':
+            dir_cnt += 1
+    print '  %8d versioned %s' \
+          % (dir_cnt,
+             plural(dir_cnt, 'subdirectory', 'subdirectories'))
 
     print
     print 'branch history:'

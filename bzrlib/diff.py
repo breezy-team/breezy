@@ -307,8 +307,8 @@ def compare_trees(old_tree, new_tree):
     old_inv = old_tree.inventory
     new_inv = new_tree.inventory
     delta = TreeDelta()
-    for file_id in old_inv:
-        if file_id in new_inv:
+    for file_id in old_tree:
+        if file_id in new_tree:
             old_path = old_inv.id2path(file_id)
             new_path = new_inv.id2path(file_id)
 

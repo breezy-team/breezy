@@ -61,9 +61,14 @@ class Tree:
     def has_id(self, file_id):
         return self.inventory.has_id(file_id)
 
+    __contains__ = has_id
+
     def id_set(self):
         """Return set of all ids in this tree."""
         return self.inventory.id_set()
+
+    def __iter__(self):
+        return iter(self.inventory)
 
     def id2path(self, file_id):
         return self.inventory.id2path(file_id)

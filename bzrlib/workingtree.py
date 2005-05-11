@@ -38,6 +38,26 @@ class WorkingTree(bzrlib.tree.Tree):
         self.basedir = basedir
         self.path2id = inv.path2id
 
+    def __iter__(self):
+        """Iterate through file_ids for this tree.
+
+        file_ids are in a WorkingTree if they are in the working inventory
+        and the working file exists.
+        """
+        self._update_statcache()
+        inv = self._inventory
+        for file_id in self._inventory:
+            # TODO: This is slightly redundant; we should be able to just
+            # check the statcache but it only includes regular files.
+            # only include files which still exist on disk
+            ie = inv[file_id]
+            if ie.kind == 'file':
+                if ((file_id in self._statcache)
+                    or (os.path.exists(self.abspath(inv.id2path(file_id))))):
+                    yield file_id
+
+
+
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,
                                self.basedir)
@@ -58,12 +78,24 @@ class WorkingTree(bzrlib.tree.Tree):
         ## XXX: badly named; this isn't in the store at all
         return self.abspath(self.id2path(file_id))
 
+                
     def has_id(self, file_id):
         # files that have been deleted are excluded
         if not self.inventory.has_id(file_id):
             return False
-        import os
-        return os.access(self.abspath(self.inventory.id2path(file_id)), os.F_OK)
+        self._update_statcache()
+        if file_id in self._statcache:
+            return True
+        return os.path.exists(self.abspath(self.id2path(file_id)))
+
+
+    __contains__ = has_id
+    
+
+    def _update_statcache(self):
+        import statcache
+        if not self._statcache:
+            self._statcache = statcache.update_cache(self.basedir, self.inventory)
 
     def get_file_size(self, file_id):
         import os, stat
@@ -72,9 +104,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def get_file_sha1(self, file_id):
         import statcache
-        if not self._statcache:
-            self._statcache = statcache.update_cache(self.basedir, self.inventory)
-
+        self._update_statcache()
         return self._statcache[file_id][statcache.SC_SHA1]
 
 
