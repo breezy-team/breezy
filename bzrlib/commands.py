@@ -369,10 +369,15 @@ class cmd_renames(Command):
 
 
 class cmd_info(Command):
-    """Show statistical information for this branch"""
-    def run(self):
+    """Show statistical information about a branch."""
+    takes_args = ['branch?']
+    
+    def run(self, branch=None):
         import info
-        info.show_info(Branch('.'))        
+
+        from branch import find_branch
+        b = find_branch(branch)
+        info.show_info(b)
 
 
 class cmd_remove(Command):
