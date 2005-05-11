@@ -66,6 +66,28 @@ def help(topic=None):
         help_on_command(topic)
 
 
+def command_usage(cmdname, cmdclass):
+    """Return single-line grammar for command.
+
+    Only describes arguments, not options.
+    """
+    s = cmdname + ' '
+    for aname in cmdclass.takes_args:
+        aname = aname.upper()
+        if aname[-1] in ['$', '+']:
+            aname = aname[:-1] + '...'
+        elif aname[-1] == '?':
+            aname = '[' + aname[:-1] + ']'
+        elif aname[-1] == '*':
+            aname = '[' + aname[:-1] + '...]'
+        s += aname + ' '
+            
+    assert s[-1] == ' '
+    s = s[:-1]
+    
+    return s
+
+
 def help_on_command(cmdname):
     cmdname = str(cmdname)
 
@@ -83,18 +105,7 @@ def help_on_command(cmdname):
         short = doc
         rest = ''
 
-    print 'usage: bzr ' + topic,
-    for aname in cmdclass.takes_args:
-        aname = aname.upper()
-        if aname[-1] in ['$', '+']:
-            aname = aname[:-1] + '...'
-        elif aname[-1] == '?':
-            aname = '[' + aname[:-1] + ']'
-        elif aname[-1] == '*':
-            aname = '[' + aname[:-1] + '...]'
-        print aname,
-    print 
-    print short
+    print 'usage:', command_usage(topic, cmdclass)
 
     if cmdclass.aliases:
         print 'aliases: ' + ', '.join(cmdclass.aliases)
@@ -134,7 +145,7 @@ def help_commands():
     for cmdname, cmdclass in accu:
         if cmdclass.hidden:
             continue
-        print cmdname
+        print command_usage(cmdname, cmdclass)
         help = inspect.getdoc(cmdclass)
         if help:
             print "    " + help.split('\n', 1)[0]
