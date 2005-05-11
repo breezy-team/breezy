@@ -192,11 +192,12 @@ try:
     f.close()
 
     out = backtick("bzr status test.txt")
-    assert out == "?       test.txt\n"
+    assert out == "unknown:\n  test.txt\n"
 
     out = backtick("bzr status")
-    assert out == "?       test.txt\n" \
-                + "?       test2.txt\n"
+    assert out == ("unknown:\n"
+                   "  test.txt\n"
+                   "  test2.txt\n")
 
     os.unlink('test2.txt')
 
