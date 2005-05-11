@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from sets import Set
+from sets import Set, ImmutableSet
 
 from trace import mutter
 from errors import BzrError
@@ -70,9 +70,6 @@ def _diff_one(oldlines, newlines, to_file, **kw):
 def show_diff(b, revision, file_list):
     import sys
 
-    if file_list:
-        raise NotImplementedError('diff on restricted files broken at the moment')
-    
     if revision == None:
         old_tree = b.basis_tree()
     else:
@@ -92,7 +89,8 @@ def show_diff(b, revision, file_list):
     # TODO: Generation of pseudo-diffs for added/deleted files could
     # be usefully made into a much faster special case.
 
-    delta = compare_trees(old_tree, new_tree, want_unchanged=False)
+    delta = compare_trees(old_tree, new_tree, want_unchanged=False,
+                          file_list=file_list)
 
     for path, file_id, kind in delta.removed:
         print '*** removed %s %r' % (kind, path)
@@ -201,11 +199,30 @@ class TreeDelta:
 
 
 
-def compare_trees(old_tree, new_tree, want_unchanged):
+def compare_trees(old_tree, new_tree, want_unchanged, file_list=None):
+    """Describe changes from one tree to another.
+
+    Returns a TreeDelta with details of added, modified, renamed, and
+    deleted entries.
+
+    The root entry is specifically exempt.
+
+    This only considers versioned files.
+
+    want_unchanged
+        If true, also list files unchanged from one version to the next.
+
+    file_list
+        If true, only check for changes to specified files.        
+    """
     old_inv = old_tree.inventory
     new_inv = new_tree.inventory
     delta = TreeDelta()
     mutter('start compare_trees')
+
+    if file_list:
+        file_list = ImmutableSet(file_list)
+
     for file_id in old_tree:
         if file_id in new_tree:
             kind = old_inv.get_file_kind(file_id)
@@ -219,6 +236,11 @@ def compare_trees(old_tree, new_tree, want_unchanged):
             
             old_path = old_inv.id2path(file_id)
             new_path = new_inv.id2path(file_id)
+
+            if file_list:
+                if (old_path not in file_list
+                    and new_path not in file_list):
+                    continue
 
             if kind == 'file':
                 old_sha1 = old_tree.get_file_sha1(file_id)
@@ -247,8 +269,12 @@ def compare_trees(old_tree, new_tree, want_unchanged):
     for file_id in new_inv:
         if file_id in old_inv:
             continue
+        new_path = new_inv.id2path(file_id)
+        if file_list:
+            if new_path not in file_list:
+                continue
         kind = new_inv.get_file_kind(file_id)
-        delta.added.append((new_inv.id2path(file_id), file_id, kind))
+        delta.added.append((new_path, file_id, kind))
             
     delta.removed.sort()
     delta.added.sort()

@@ -103,19 +103,15 @@ Medium things
 
 * Selective commit of only some files.
 
-* Faster diff/status.  
-
-  Status should be handled differently because it needs to report on
-  deleted and unknown files.  diff only needs to deal with versioned
-  files.
-
 * Merge Aaron's merge code.
 
 * Merge revert patch.
 
 * ``bzr mv`` that does either rename or move as in Unix.
 
-* More efficient diff of only selected files.
+* More efficient diff of only selected files.  We should be able to
+  just get the id for the selected files, look up their location and
+  diff just those files.  No need to traverse the entire inventories.
 
 * Fix up Inventory objects to represent root object as an entry.
 
