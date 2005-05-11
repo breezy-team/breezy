@@ -329,12 +329,17 @@ def compare_trees(old_tree, new_tree, want_unchanged):
             else:
                 ## mutter("no text to check for %r %r" % (file_id, kind))
                 text_modified = False
+
+            # TODO: Can possibly avoid calculating path strings if the
+            # two files are unchanged and their names and parents are
+            # the same and the parents are unchanged all the way up.
+            # May not be worthwhile.
             
             if old_path != new_path:
                 delta.renamed.append((old_path, new_path, file_id, text_modified))
             elif text_modified:
                 delta.modified.append((new_path, file_id))
-            else:
+            elif want_unchanged:
                 delta.unchanged.append((new_path, file_id))
         else:
             delta.removed.append((old_inv.id2path(file_id), file_id))
