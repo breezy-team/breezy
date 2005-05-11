@@ -17,14 +17,14 @@
 
 
 def show_status(branch, show_unchanged=False,
-                file_list=None,
+                specific_files=None,
                 show_ids=False):
     """Display single-line status for non-ignored working files.
 
     show_all
         If true, show unmodified files too.
 
-    file_list
+    specific_files
         If set, only show the status of files in this list.
     """
     import sys
@@ -36,7 +36,7 @@ def show_status(branch, show_unchanged=False,
     new = branch.working_tree()
 
     delta = diff.compare_trees(old, new, want_unchanged=show_unchanged,
-                               file_list=file_list)
+                               specific_files=specific_files)
 
     delta.show(sys.stdout, show_ids=show_ids,
                show_unchanged=show_unchanged)
@@ -46,8 +46,8 @@ def show_status(branch, show_unchanged=False,
     for path in unknowns:
         # FIXME: Should also match if the unknown file is within a
         # specified directory.
-        if file_list:
-            if path not in file_list:
+        if specific_files:
+            if path not in specific_files:
                 continue
         if not done_header:
             print 'unknown:'

@@ -238,7 +238,7 @@ class cmd_status(Command):
             b = Branch('.', lock_mode='r')
         import status
         status.show_status(b, show_unchanged=all, show_ids=show_ids,
-                           file_list=file_list)
+                           specific_files=file_list)
 
 
 class cmd_cat_revision(Command):
@@ -494,7 +494,7 @@ class cmd_diff(Command):
     def run(self, revision=None, file_list=None):
         from bzrlib.diff import show_diff
     
-        show_diff(Branch('.'), revision, file_list)
+        show_diff(Branch('.'), revision, specific_files=file_list)
 
 
         
