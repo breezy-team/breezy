@@ -113,6 +113,9 @@ Medium things
   just get the id for the selected files, look up their location and
   diff just those files.  No need to traverse the entire inventories.
 
+* ``bzr status DIR`` or ``bzr diff DIR`` should report on all changes
+  under that directory.
+
 * Fix up Inventory objects to represent root object as an entry.
 
 * Don't convert entire entry from 
