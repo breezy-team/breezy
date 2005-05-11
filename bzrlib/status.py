@@ -44,6 +44,11 @@ def show_status(branch, show_unchanged=False,
     unknowns = new.unknowns()
     done_header = False
     for path in unknowns:
+        # FIXME: Should also match if the unknown file is within a
+        # specified directory.
+        if file_list:
+            if path not in file_list:
+                continue
         if not done_header:
             print 'unknown:'
             done_header = True
