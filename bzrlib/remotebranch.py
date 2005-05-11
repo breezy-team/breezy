@@ -21,7 +21,6 @@
 
 At the moment remote branches are only for HTTP and only for read
 access.
-
 """
 
 
@@ -38,19 +37,7 @@ from trace import mutter
 # breaks keep-alive -- sucks!
 
 
-
-ENABLE_URLGRABBER = False
-
-def get_url(url, compressed=False):
-    import urllib2
-    if compressed:
-        url += '.gz'
-    mutter("get_url %s" % url)
-    url_f = urllib2.urlopen(url)
-    if compressed:
-        return gzip.GzipFile(fileobj=StringIO(url_f.read()))
-    else:
-        return url_f
+ENABLE_URLGRABBER = True
 
 
 if ENABLE_URLGRABBER:
@@ -62,6 +49,7 @@ if ENABLE_URLGRABBER:
             url = path
             if compressed:
                 url += '.gz'
+            mutter("grab url %s" % url)
             url_f = urlgrabber.urlopen(url, keepalive=1, close_connection=0)
             if not compressed:
                 return url_f
@@ -69,6 +57,17 @@ if ENABLE_URLGRABBER:
                 return gzip.GzipFile(fileobj=StringIO(url_f.read()))
         except urllib2.URLError, e:
             raise BzrError("remote fetch failed: %r: %s" % (url, e))
+else:
+    def get_url(url, compressed=False):
+        import urllib2
+        if compressed:
+            url += '.gz'
+        mutter("get_url %s" % url)
+        url_f = urllib2.urlopen(url)
+        if compressed:
+            return gzip.GzipFile(fileobj=StringIO(url_f.read()))
+        else:
+            return url_f
 
 
 
