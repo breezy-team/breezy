@@ -164,23 +164,27 @@ def _update_cache_from_list(basedir, cache, to_update):
 
     from sets import Set
 
-    hardcheck = dirty = 0
+    stat_cnt = missing_cnt = hardcheck = change_cnt = 0
 
     # files that have been recently touched and can't be
     # committed to a persistent cache yet.
     
     dangerfiles = Set()
     now = int(time.time())
-    
+
+    mutter('update statcache under %r' % basedir)
     for file_id, path in to_update:
-        fap = os.path.join(basedir, path)
-        fp = fingerprint(fap, path)
+        abspath = os.path.join(basedir, path)
+        fp = fingerprint(abspath, path)
+        stat_cnt += 1
+        
         cacheentry = cache.get(file_id)
 
         if fp == None: # not here
             if cacheentry:
                 del cache[file_id]
-                dirty += 1
+                change_cnt += 1
+            missing_cnt += 1
             continue
 
         if (fp[FP_MTIME] >= now) or (fp[FP_CTIME] >= now):
@@ -191,20 +195,20 @@ def _update_cache_from_list(basedir, cache, to_update):
 
         hardcheck += 1
 
-        dig = sha.new(file(fap, 'rb').read()).hexdigest()
+        dig = sha.new(file(abspath, 'rb').read()).hexdigest()
 
         if cacheentry == None or dig != cacheentry[1]: 
             # if there was no previous entry for this file, or if the
             # SHA has changed, then update the cache
             cacheentry = (file_id, dig, path) + fp
             cache[file_id] = cacheentry
-            dirty += 1
+            change_cnt += 1
 
-    mutter('statcache: read %d files, %d changed, %d dangerous, '
+    mutter('statcache: statted %d files, read %d files, %d changed, %d dangerous, '
            '%d in cache'
-           % (hardcheck, dirty, len(dangerfiles), len(cache)))
+           % (stat_cnt, hardcheck, change_cnt, len(dangerfiles), len(cache)))
         
-    if dirty:
+    if change_cnt:
         mutter('updating on-disk statcache')
         _write_cache(basedir, cache.itervalues(), dangerfiles)
 
