@@ -140,6 +140,7 @@ try:
     
     runcmd(['mkdir', TESTDIR])
     cd(TESTDIR)
+    test_root = os.getcwd()
 
     progress("introductory commands")
     runcmd("bzr version")
@@ -165,6 +166,8 @@ try:
     runcmd(['mkdir', 'branch1'])
     cd('branch1')
     runcmd('bzr init')
+
+    assert backtick('bzr root')[:-1] == os.path.join(test_root, 'branch1')
 
     progress("status of new file")
     
@@ -261,6 +264,7 @@ try:
     runcmd(['bzr', 'commit', '-m', 'rename nested subdirectories'])
 
     cd('sub1/sub2')
+    assert backtick('bzr root')[:-1] == os.path.join(test_root, 'branch1')
     runcmd('bzr move ../hello.txt .')
     assert exists('./hello.txt')
     assert backtick('bzr relpath hello.txt') == 'sub1/sub2/hello.txt\n'
