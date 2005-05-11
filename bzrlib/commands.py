@@ -189,9 +189,33 @@ class ExternalCommand(Command):
 class cmd_status(Command):
     """Display status summary.
 
-    For each file there is a single line giving its file state and name.
-    The name is that in the current revision unless it is deleted or
-    missing, in which case the old name is shown.
+    This reports on versioned and unknown files, reporting them
+    grouped by state.  Possible states are:
+
+    added
+        Versioned in the working copy but not in the previous revision.
+
+    removed
+        Versioned in the previous revision but not versioned or deleted
+        in the working copy.
+
+    renamed
+        Path of this file changed from the previous revision;
+        the text may also have changed.  This includes files whose
+        parent directory was
+
+    modified
+        Text has changed since the previous revision.
+
+    unchanged
+        Nothing about this file has changed since the
+        previous revision.  Only shown with --all.
+
+    unknown
+        Not versioned and not matching an ignore pattern.
+
+    To see ignored files use 'bzr ignored'.  For details in the
+    changes to file texts, use 'bzr diff'.
     """
     takes_args = ['file*']
     takes_options = ['all', 'show-ids']
