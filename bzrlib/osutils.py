@@ -77,6 +77,25 @@ def isfile(f):
         return False
 
 
+def is_inside(dir, fname):
+    """True if fname is inside dir.
+    """
+    return os.path.commonprefix([dir, fname]) == dir
+
+
+def is_inside_any(dir_list, fname):
+    """True if fname is inside any of given dirs."""
+    # quick scan for perfect match
+    if fname in dir_list:
+        return True
+    
+    for dirname in dir_list:
+        if is_inside(dirname, fname):
+            return True
+    else:
+        return False
+
+
 def pumpfile(fromfile, tofile):
     """Copy contents of one file to another."""
     tofile.write(fromfile.read())

@@ -210,18 +210,23 @@ def compare_trees(old_tree, new_tree, want_unchanged, specific_files=None):
     This only considers versioned files.
 
     want_unchanged
-        If true, also list files unchanged from one version to the next.
+        If true, also list files unchanged from one version to
+        the next.
 
     specific_files
-        If true, only check for changes to specified files.
+        If true, only check for changes to specified names or
+        files within them.
     """
+
+    from osutils import is_inside_any
+    
     old_inv = old_tree.inventory
     new_inv = new_tree.inventory
     delta = TreeDelta()
     mutter('start compare_trees')
 
-    if specific_files:
-        specific_files = ImmutableSet(specific_files)
+    # TODO: match for specific files can be rather smarter by finding
+    # the IDs of those files up front and then considering only that.
 
     for file_id in old_tree:
         if file_id in new_tree:
@@ -238,8 +243,8 @@ def compare_trees(old_tree, new_tree, want_unchanged, specific_files=None):
             new_path = new_inv.id2path(file_id)
 
             if specific_files:
-                if (old_path not in specific_files
-                    and new_path not in specific_files):
+                if (not is_inside_any(specific_files, old_path) 
+                    and not is_inside_any(specific_files, new_path)):
                     continue
 
             if kind == 'file':
@@ -263,7 +268,11 @@ def compare_trees(old_tree, new_tree, want_unchanged, specific_files=None):
             elif want_unchanged:
                 delta.unchanged.append((new_path, file_id, kind))
         else:
-            delta.removed.append((old_inv.id2path(file_id), file_id, kind))
+            old_path = old_inv.id2path(file_id)
+            if specific_files:
+                if not is_inside_any(specific_files, old_path):
+                    continue
+            delta.removed.append((old_path, file_id, kind))
 
     mutter('start looking for new files')
     for file_id in new_inv:
@@ -271,7 +280,7 @@ def compare_trees(old_tree, new_tree, want_unchanged, specific_files=None):
             continue
         new_path = new_inv.id2path(file_id)
         if specific_files:
-            if new_path not in specific_files:
+            if not is_inside_any(specific_files, new_path):
                 continue
         kind = new_inv.get_file_kind(file_id)
         delta.added.append((new_path, file_id, kind))

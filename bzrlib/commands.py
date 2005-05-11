@@ -784,6 +784,8 @@ class cmd_commit(Command):
     aliases = ['ci', 'checkin']
 
     def run(self, message=None, file=None, verbose=False):
+        from bzrlib.commit import commit
+
         ## Warning: shadows builtin file()
         if not message and not file:
             raise BzrCommandError("please specify a commit message",
@@ -795,7 +797,8 @@ class cmd_commit(Command):
             import codecs
             message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
-        Branch('.').commit(message, verbose=verbose)
+        b = Branch('.')
+        commit(b, message, verbose=verbose)
 
 
 class cmd_check(Command):
