@@ -352,5 +352,6 @@ def compare_trees(old_tree, new_tree, want_unchanged):
     delta.added.sort()
     delta.renamed.sort()
     delta.modified.sort()
+    delta.unchanged.sort()
 
     return delta
