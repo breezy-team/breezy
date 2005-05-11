@@ -208,14 +208,18 @@ def compare_trees(old_tree, new_tree, want_unchanged):
     mutter('start compare_trees')
     for file_id in old_tree:
         if file_id in new_tree:
-            old_path = old_inv.id2path(file_id)
-            new_path = new_inv.id2path(file_id)
-
             kind = old_inv.get_file_kind(file_id)
             assert kind == new_inv.get_file_kind(file_id)
             
             assert kind in ('file', 'directory', 'symlink', 'root_directory'), \
                    'invalid file kind %r' % kind
+
+            if kind == 'root_directory':
+                continue
+            
+            old_path = old_inv.id2path(file_id)
+            new_path = new_inv.id2path(file_id)
+
             if kind == 'file':
                 old_sha1 = old_tree.get_file_sha1(file_id)
                 new_sha1 = new_tree.get_file_sha1(file_id)

@@ -179,13 +179,13 @@ try:
     assert out == 'test.txt\n'
 
     out = backtick("bzr status")
-    assert out == '''?       test.txt\n'''
+    assert out == 'unknown:\n  test.txt\n'
 
     out = backtick("bzr status --all")
-    assert out == "?       test.txt\n"
+    assert out == "unknown:\n  test.txt\n"
 
     out = backtick("bzr status test.txt --all")
-    assert out == "?       test.txt\n"
+    assert out == "unknown:\n  test.txt\n"
 
     f = file('test2.txt', 'wt')
     f.write('goodbye cruel world...\n')

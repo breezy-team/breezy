@@ -48,6 +48,6 @@ def show_status(branch, show_unchanged=False,
     done_header = False
     for path in unknowns:
         if not done_header:
-            print 'unknown files:'
+            print 'unknown:'
             done_header = True
         print ' ', path
