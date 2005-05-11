@@ -27,17 +27,13 @@ def diff_trees(old_tree, new_tree):
     They may be in different branches and may be working or historical
     trees.
 
+    This only compares the versioned files, paying no attention to
+    files which are ignored or unknown.  Those can only be present in
+    working trees and can be reported on separately.
+
     Yields a sequence of (state, id, old_name, new_name, kind).
     Each filename and each id is listed only once.
     """
-
-    ## TODO: Compare files before diffing; only mention those that have changed
-
-    ## TODO: Set nice names in the headers, maybe include diffstat
-
-    ## TODO: Perhaps make this a generator rather than using
-    ## a callback object?
-
     ## TODO: Allow specifying a list of files to compare, rather than
     ## doing the whole tree?  (Not urgent.)
 
@@ -45,9 +41,6 @@ def diff_trees(old_tree, new_tree):
     ## current one against one.  We mgiht need to specify two
     ## stores to look for the files if diffing two branches.  That
     ## might imply this shouldn't be primarily a Branch method.
-
-    ## XXX: This doesn't report on unknown files; that can be done
-    ## from a separate method.
 
     sha_match_cnt = modified_cnt = 0
 
@@ -263,15 +256,14 @@ class TreeDelta:
     removed
         (path, id)
     renamed
-        (oldpath, newpath, id)
+        (oldpath, newpath, id, text_modified)
     modified
         (path, id)
 
-    A path may occur in more than one list if it was e.g. deleted
-    under an old id and renamed into place in a new id.
+    Each id is listed only once.
 
-    Files are listed in either modified or renamed, not both.  In
-    other words, renamed files may also be modified.
+    Files that are both modified and renamed are listed only in
+    renamed, with the text_modified flag true.
     """
     def __init__(self):
         self.added = []
@@ -279,6 +271,37 @@ class TreeDelta:
         self.renamed = []
         self.modified = []
 
+    def show(self, to_file, show_ids):
+        if self.removed:
+            print >>to_file, 'removed files:'
+            for path, fid in self.removed:
+                if show_ids:
+                    print >>to_file, '  %-30s %s' % (path, fid)
+                else:
+                    print >>to_file, ' ', path
+        if self.added:
+            print >>to_file, 'added files:'
+            for path, fid in self.added:
+                if show_ids:
+                    print >>to_file, '  %-30s %s' % (path, fid)
+                else:
+                    print >>to_file, '  ' + path
+        if self.renamed:
+            print >>to_file, 'renamed files:'
+            for oldpath, newpath, fid, text_modified in self.renamed:
+                if show_ids:
+                    print >>to_file, '  %s => %s %s' % (oldpath, newpath, fid)
+                else:
+                    print >>to_file, '  %s => %s' % (oldpath, newpath)
+        if self.modified:
+            print >>to_file, 'modified files:'
+            for path, fid in self.modified:
+                if show_ids:
+                    print >>to_file, '  %-30s %s' % (path, fid)
+                else:
+                    print >>to_file, '  ' + path
+
+        
 
 def compare_inventories(old_inv, new_inv):
     """Return a TreeDelta object describing changes between inventories.
@@ -305,12 +328,55 @@ def compare_inventories(old_inv, new_inv):
         old_path = old_inv.id2path(fid)
         new_path = new_inv.id2path(fid)
 
+        text_modified = (old_ie.text_sha1 != new_ie.text_sha1)
+
         if old_path != new_path:
-            delta.renamed.append((old_path, new_path, fid))
-        elif old_ie.text_sha1 != new_ie.text_sha1:
+            delta.renamed.append((old_path, new_path, fid, text_modified))
+        elif text_modified:
             delta.modified.append((new_path, fid))
 
     delta.modified.sort()
     delta.renamed.sort()    
+
+    return delta
+
+
+
+
+def compare_trees(old_tree, new_tree):
+    old_inv = old_tree.inventory
+    new_inv = new_tree.inventory
+    delta = TreeDelta()
+    for file_id in old_inv:
+        if file_id in new_inv:
+            old_path = old_inv.id2path(file_id)
+            new_path = new_inv.id2path(file_id)
+
+            kind = old_inv.get_file_kind(file_id)
+            assert kind in ('file', 'directory', 'symlink', 'root_directory'), \
+                   'invalid file kind %r' % kind
+            if kind == 'file':
+                old_sha1 = old_tree.get_file_sha1(file_id)
+                new_sha1 = new_tree.get_file_sha1(file_id)
+                text_modified = (old_sha1 != new_sha1)
+            else:
+                ## mutter("no text to check for %r %r" % (file_id, kind))
+                text_modified = False
+            
+            if old_path != new_path:
+                delta.renamed.append((old_path, new_path, file_id, text_modified))
+            elif text_modified:
+                delta.modified.append((new_path, file_id))
+        else:
+            delta.removed.append((old_inv.id2path(file_id), file_id))
+    for file_id in new_inv:
+        if file_id in old_inv:
+            continue
+        delta.added.append((new_inv.id2path(file_id), file_id))
+            
+    delta.removed.sort()
+    delta.added.sort()
+    delta.renamed.sort()
+    delta.modified.sort()
 
     return delta

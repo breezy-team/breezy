@@ -380,6 +380,9 @@ class Inventory(XMLMixin):
                 raise BzrError("file_id {%s} not in inventory" % file_id)
 
 
+    def get_file_kind(self, file_id):
+        return self._byid[file_id].kind
+
     def get_child(self, parent_id, filename):
         return self[parent_id].children.get(filename)
 

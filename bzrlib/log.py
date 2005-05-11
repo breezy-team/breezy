@@ -143,36 +143,7 @@ def show_log(branch,
         if verbose and not filename:
             this_inv = branch.get_inventory(rev.inventory_id)
             delta = compare_inventories(prev_inv, this_inv)
-
-            if delta.removed:
-                print >>to_file, 'removed files:'
-                for path, fid in delta.removed:
-                    if show_ids:
-                        print >>to_file, '  %-30s %s' % (path, fid)
-                    else:
-                        print >>to_file, ' ', path
-            if delta.added:
-                print >>to_file, 'added files:'
-                for path, fid in delta.added:
-                    if show_ids:
-                        print >>to_file, '  %-30s %s' % (path, fid)
-                    else:
-                        print >>to_file, '  ' + path
-            if delta.renamed:
-                print >>to_file, 'renamed files:'
-                for oldpath, newpath, fid in delta.renamed:
-                    if show_ids:
-                        print >>to_file, '  %s => %s %s' % (oldpath, newpath, fid)
-                    else:
-                        print >>to_file, '  %s => %s' % (oldpath, newpath)
-            if delta.modified:
-                print >>to_file, 'modified files:'
-                for path, fid in delta.modified:
-                    if show_ids:
-                        print >>to_file, '  %-30s %s' % (path, fid)
-                    else:
-                        print >>to_file, '  ' + path
-
+            delta.show(to_file, show_ids)
             prev_inv = this_inv
 
         precursor = revision_id
