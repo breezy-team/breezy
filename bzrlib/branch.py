@@ -33,7 +33,6 @@ from store import ImmutableStore
 from revision import Revision
 from errors import bailout, BzrError
 from textui import show_status
-from diff import diff_trees
 
 BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?

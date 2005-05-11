@@ -130,8 +130,56 @@ def diff_trees(old_tree, new_tree):
 
 
 
+def _diff_one(oldlines, newlines, to_file, **kw):
+    import difflib
+    
+    # FIXME: difflib is wrong if there is no trailing newline.
+    # The syntax used by patch seems to be "\ No newline at
+    # end of file" following the last diff line from that
+    # file.  This is not trivial to insert into the
+    # unified_diff output and it might be better to just fix
+    # or replace that function.
+
+    # In the meantime we at least make sure the patch isn't
+    # mangled.
+
+
+    # Special workaround for Python2.3, where difflib fails if
+    # both sequences are empty.
+    if not oldlines and not newlines:
+        return
+
+    nonl = False
+
+    if oldlines and (oldlines[-1][-1] != '\n'):
+        oldlines[-1] += '\n'
+        nonl = True
+    if newlines and (newlines[-1][-1] != '\n'):
+        newlines[-1] += '\n'
+        nonl = True
+
+    ud = difflib.unified_diff(oldlines, newlines, **kw)
+
+    # work-around for difflib being too smart for its own good
+    # if /dev/null is "1,0", patch won't recognize it as /dev/null
+    if not oldlines:
+        ud = list(ud)
+        ud[2] = ud[2].replace('-1,0', '-0,0')
+    elif not newlines:
+        ud = list(ud)
+        ud[2] = ud[2].replace('+1,0', '+0,0')
+
+    to_file.writelines(ud)
+    if nonl:
+        print >>to_file, "\\ No newline at end of file"
+    print >>to_file
+
+
 def show_diff(b, revision, file_list):
-    import difflib, sys, types
+    import sys
+
+    if file_list:
+        raise NotImplementedError('diff on restricted files broken at the moment')
     
     if revision == None:
         old_tree = b.basis_tree()
@@ -152,97 +200,43 @@ def show_diff(b, revision, file_list):
     # TODO: Generation of pseudo-diffs for added/deleted files could
     # be usefully made into a much faster special case.
 
-    # TODO: Better to return them in sorted order I think.
+    delta = compare_trees(old_tree, new_tree, want_unchanged=False)
 
-    if file_list:
-        file_list = [b.relpath(f) for f in file_list]
+    for path, file_id, kind in delta.removed:
+        print '*** removed %s %r' % (kind, path)
+        if kind == 'file':
+            _diff_one(old_tree.get_file(file_id).readlines(),
+                   [],
+                   sys.stdout,
+                   fromfile=old_label + path,
+                   tofile=DEVNULL)
 
-    # FIXME: If given a file list, compare only those files rather
-    # than comparing everything and then throwing stuff away.
-    
-    for file_state, fid, old_name, new_name, kind in diff_trees(old_tree, new_tree):
+    for path, file_id, kind in delta.added:
+        print '*** added %s %r' % (kind, path)
+        if kind == 'file':
+            _diff_one([],
+                   new_tree.get_file(file_id).readlines(),
+                   sys.stdout,
+                   fromfile=DEVNULL,
+                   tofile=new_label + path)
 
-        if file_list and (new_name not in file_list):
-            continue
-        
-        # Don't show this by default; maybe do it if an option is passed
-        # idlabel = '      {%s}' % fid
-        idlabel = ''
+    for old_path, new_path, file_id, kind, text_modified in delta.renamed:
+        print '*** renamed %s %r => %r' % (kind, old_path, new_path)
+        if text_modified:
+            _diff_one(old_tree.get_file(file_id).readlines(),
+                   new_tree.get_file(file_id).readlines(),
+                   sys.stdout,
+                   fromfile=old_label + old_path,
+                   tofile=new_label + new_path)
 
-        def diffit(oldlines, newlines, **kw):
-            
-            # FIXME: difflib is wrong if there is no trailing newline.
-            # The syntax used by patch seems to be "\ No newline at
-            # end of file" following the last diff line from that
-            # file.  This is not trivial to insert into the
-            # unified_diff output and it might be better to just fix
-            # or replace that function.
-
-            # In the meantime we at least make sure the patch isn't
-            # mangled.
-            
-
-            # Special workaround for Python2.3, where difflib fails if
-            # both sequences are empty.
-            if not oldlines and not newlines:
-                return
-
-            nonl = False
-
-            if oldlines and (oldlines[-1][-1] != '\n'):
-                oldlines[-1] += '\n'
-                nonl = True
-            if newlines and (newlines[-1][-1] != '\n'):
-                newlines[-1] += '\n'
-                nonl = True
-
-            ud = difflib.unified_diff(oldlines, newlines, **kw)
-
-            # work-around for difflib being too smart for its own good
-            # if /dev/null is "1,0", patch won't recognize it as /dev/null
-            if not oldlines:
-                ud = list(ud)
-                ud[2] = ud[2].replace('-1,0', '-0,0')
-            elif not newlines:
-                ud = list(ud)
-                ud[2] = ud[2].replace('+1,0', '+0,0')
-            
-            sys.stdout.writelines(ud)
-            if nonl:
-                print "\\ No newline at end of file"
-            sys.stdout.write('\n')
-        
-        if file_state in ['.', '?', 'I']:
-            continue
-        elif file_state == 'A':
-            print '*** added %s %r' % (kind, new_name)
-            if kind == 'file':
-                diffit([],
-                       new_tree.get_file(fid).readlines(),
-                       fromfile=DEVNULL,
-                       tofile=new_label + new_name + idlabel)
-        elif file_state == 'D':
-            assert isinstance(old_name, types.StringTypes)
-            print '*** deleted %s %r' % (kind, old_name)
-            if kind == 'file':
-                diffit(old_tree.get_file(fid).readlines(), [],
-                       fromfile=old_label + old_name + idlabel,
-                       tofile=DEVNULL)
-        elif file_state in ['M', 'R']:
-            if file_state == 'M':
-                assert kind == 'file'
-                assert old_name == new_name
-                print '*** modified %s %r' % (kind, new_name)
-            elif file_state == 'R':
-                print '*** renamed %s %r => %r' % (kind, old_name, new_name)
-
-            if kind == 'file':
-                diffit(old_tree.get_file(fid).readlines(),
-                       new_tree.get_file(fid).readlines(),
-                       fromfile=old_label + old_name + idlabel,
-                       tofile=new_label + new_name)
-        else:
-            raise BzrError("can't represent state %s {%s}" % (file_state, fid))
+    for path, file_id, kind in delta.modified:
+        print '*** modified %s %r' % (kind, path)
+        if kind == 'file':
+            _diff_one(old_tree.get_file(file_id).readlines(),
+                   new_tree.get_file(file_id).readlines(),
+                   sys.stdout,
+                   fromfile=old_label + path,
+                   tofile=new_label + path)
 
 
 
@@ -252,15 +246,15 @@ class TreeDelta:
     Contains four lists:
 
     added
-        (path, id)
+        (path, id, kind)
     removed
-        (path, id)
+        (path, id, kind)
     renamed
-        (oldpath, newpath, id, text_modified)
+        (oldpath, newpath, id, kind, text_modified)
     modified
-        (path, id)
+        (path, id, kind)
     unchanged
-        (path, id)
+        (path, id, kind)
 
     Each id is listed only once.
 
@@ -278,34 +272,39 @@ class TreeDelta:
 
     def show(self, to_file, show_ids=False, show_unchanged=False):
         def show_list(files):
-            for path, fid in files:
+            for path, fid, kind in files:
+                if kind == 'directory':
+                    path += '/'
+                elif kind == 'symlink':
+                    path += '@'
+                    
                 if show_ids:
                     print >>to_file, '  %-30s %s' % (path, fid)
                 else:
                     print >>to_file, ' ', path
             
         if self.removed:
-            print >>to_file, 'removed files:'
+            print >>to_file, 'removed:'
             show_list(self.removed)
                 
         if self.added:
-            print >>to_file, 'added files:'
+            print >>to_file, 'added:'
             show_list(self.added)
 
         if self.renamed:
-            print >>to_file, 'renamed files:'
-            for oldpath, newpath, fid, text_modified in self.renamed:
+            print >>to_file, 'renamed:'
+            for oldpath, newpath, fid, kind, text_modified in self.renamed:
                 if show_ids:
                     print >>to_file, '  %s => %s %s' % (oldpath, newpath, fid)
                 else:
                     print >>to_file, '  %s => %s' % (oldpath, newpath)
                     
         if self.modified:
-            print >>to_file, 'modified files:'
+            print >>to_file, 'modified:'
             show_list(self.modified)
             
         if show_unchanged and self.unchanged:
-            print >>to_file, 'unchanged files:'
+            print >>to_file, 'unchanged:'
             show_list(self.unchanged)
 
 
@@ -314,12 +313,15 @@ def compare_trees(old_tree, new_tree, want_unchanged):
     old_inv = old_tree.inventory
     new_inv = new_tree.inventory
     delta = TreeDelta()
+    mutter('start compare_trees')
     for file_id in old_tree:
         if file_id in new_tree:
             old_path = old_inv.id2path(file_id)
             new_path = new_inv.id2path(file_id)
 
             kind = old_inv.get_file_kind(file_id)
+            assert kind == new_inv.get_file_kind(file_id)
+            
             assert kind in ('file', 'directory', 'symlink', 'root_directory'), \
                    'invalid file kind %r' % kind
             if kind == 'file':
@@ -336,17 +338,21 @@ def compare_trees(old_tree, new_tree, want_unchanged):
             # May not be worthwhile.
             
             if old_path != new_path:
-                delta.renamed.append((old_path, new_path, file_id, text_modified))
+                delta.renamed.append((old_path, new_path, file_id, kind,
+                                      text_modified))
             elif text_modified:
-                delta.modified.append((new_path, file_id))
+                delta.modified.append((new_path, file_id, kind))
             elif want_unchanged:
-                delta.unchanged.append((new_path, file_id))
+                delta.unchanged.append((new_path, file_id, kind))
         else:
-            delta.removed.append((old_inv.id2path(file_id), file_id))
+            delta.removed.append((old_inv.id2path(file_id), file_id, kind))
+
+    mutter('start looking for new files')
     for file_id in new_inv:
         if file_id in old_inv:
             continue
-        delta.added.append((new_inv.id2path(file_id), file_id))
+        kind = new_inv.get_file_kind(file_id)
+        delta.added.append((new_inv.id2path(file_id), file_id, kind))
             
     delta.removed.sort()
     delta.added.sort()

@@ -20,7 +20,7 @@
 from sets import Set
 import os.path, os, fnmatch
 
-from osutils import pumpfile, compare_files, filesize, quotefn, sha_file, \
+from osutils import pumpfile, filesize, quotefn, sha_file, \
      joinpath, splitpath, appendpath, isdir, isfile, file_kind, fingerprint_file
 import errno
 from stat import S_ISREG, S_ISDIR, ST_MODE, ST_SIZE
