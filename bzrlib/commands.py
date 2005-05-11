@@ -196,20 +196,20 @@ class cmd_status(Command):
         Versioned in the working copy but not in the previous revision.
 
     removed
-        Versioned in the previous revision but not versioned or deleted
+        Versioned in the previous revision but removed or deleted
         in the working copy.
 
     renamed
         Path of this file changed from the previous revision;
         the text may also have changed.  This includes files whose
-        parent directory was
+        parent directory was renamed.
 
     modified
         Text has changed since the previous revision.
 
     unchanged
-        Nothing about this file has changed since the
-        previous revision.  Only shown with --all.
+        Nothing about this file has changed since the previous revision.
+        Only shown with --all.
 
     unknown
         Not versioned and not matching an ignore pattern.
