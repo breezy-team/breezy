@@ -1020,9 +1020,10 @@ def run_bzr(argv):
             return 0
         cmd = str(args.pop(0))
     except IndexError:
-        log_error('usage: bzr COMMAND')
-        log_error('  try "bzr help"')
+        import help
+        help.help()
         return 1
+          
 
     canonical_cmd, cmd_class = get_cmd_class(cmd)
 

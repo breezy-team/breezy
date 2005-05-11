@@ -1,4 +1,10 @@
 bzr-0.0.5  NOT RELEASED YET
+  
+  CHANGES:
+
+    * ``bzr`` with no command now shows help rather than giving an
+      error.  Suggested by Michael Ellerman.
+
 
   ENHANCEMENTS:
 
