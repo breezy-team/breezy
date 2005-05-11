@@ -225,7 +225,7 @@ Medium things
 
   - Hold the ElementTree in memory in the Inventory object and work
     directly on that, rather than converting into Python objects every
-    time it is read in.  Probably still expose it through some kind of
+    time it is read in.  Probably still exposoe it through some kind of
     object interface though, but perhaps that should just be a proxy
     for the elements.
 
@@ -245,6 +245,8 @@ Medium things
 
   urlgrabber's docs say they are working on batched downloads; we
   could perhaps ride on that or just create a background thread (ew).
+
+* Should be a signature at the top of the cache file.
 
 
 Large things

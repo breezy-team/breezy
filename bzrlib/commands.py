@@ -23,7 +23,7 @@ import bzrlib
 from bzrlib.trace import mutter, note, log_error
 from bzrlib.errors import bailout, BzrError, BzrCheckError, BzrCommandError
 from bzrlib.osutils import quotefn, pumpfile, isdir, isfile
-from bzrlib.tree import RevisionTree, EmptyTree, WorkingTree, Tree
+from bzrlib.tree import RevisionTree, EmptyTree, Tree
 from bzrlib.revision import Revision
 from bzrlib import Branch, Inventory, InventoryEntry, ScratchBranch, BZRDIR, \
      format_date

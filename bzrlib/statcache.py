@@ -82,10 +82,11 @@ def fingerprint(path, abspath):
             fs.st_ctime, fs.st_ino, fs.st_dev)
 
 
-def _write_cache(branch, entry_iter, dangerfiles):
+def _write_cache(basedir, entry_iter, dangerfiles):
     from atomicfile import AtomicFile
-    
-    outf = AtomicFile(branch.controlfilename('stat-cache'), 'wb', 'utf-8')
+
+    cachefn = os.path.join(basedir, '.bzr', 'stat-cache')
+    outf = AtomicFile(cachefn, 'wb', 'utf-8')
     try:
         for entry in entry_iter:
             if entry[0] in dangerfiles:
@@ -100,11 +101,14 @@ def _write_cache(branch, entry_iter, dangerfiles):
             outf.abort()
         
         
-def load_cache(branch):
+def load_cache(basedir):
+    import codecs
+    
     cache = {}
 
     try:
-        cachefile = branch.controlfile('stat-cache', 'r')
+        cachefn = os.path.join(basedir, '.bzr', 'stat-cache')
+        cachefile = codecs.open(cachefn, 'r', 'utf-8')
     except IOError:
         return cache
     
@@ -127,7 +131,7 @@ def _files_from_inventory(inv):
     
 
 
-def update_cache(branch, inv=None, flush=False):
+def update_cache(basedir, inv, flush=False):
     """Update and return the cache for the branch.
 
     The returned cache may contain entries that have not been written
@@ -145,14 +149,12 @@ def update_cache(branch, inv=None, flush=False):
     if flush:
         cache = {}
     else:
-        cache = load_cache(branch)
-    if inv == None:
-        inv = branch.read_working_inventory()
-    return _update_cache_from_list(branch, cache, _files_from_inventory(inv))
+        cache = load_cache(basedir)
+    return _update_cache_from_list(basedir, cache, _files_from_inventory(inv))
 
 
 
-def _update_cache_from_list(branch, cache, to_update):
+def _update_cache_from_list(basedir, cache, to_update):
     """Update and return the cache for given files.
 
     cache -- Previously cached values to be validated.
@@ -171,7 +173,7 @@ def _update_cache_from_list(branch, cache, to_update):
     now = int(time.time())
     
     for file_id, path in to_update:
-        fap = branch.abspath(path)
+        fap = os.path.join(basedir, path)
         fp = fingerprint(fap, path)
         cacheentry = cache.get(file_id)
 
@@ -204,6 +206,6 @@ def _update_cache_from_list(branch, cache, to_update):
         
     if dirty:
         mutter('updating on-disk statcache')
-        _write_cache(branch, cache.itervalues(), dangerfiles)
+        _write_cache(basedir, cache.itervalues(), dangerfiles)
 
     return cache

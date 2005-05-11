@@ -24,7 +24,7 @@ from binascii import hexlify
 import bzrlib
 from inventory import Inventory
 from trace import mutter, note
-from tree import Tree, EmptyTree, RevisionTree, WorkingTree
+from tree import Tree, EmptyTree, RevisionTree
 from inventory import InventoryEntry, Inventory
 from osutils import isdir, quotefn, isfile, uuid, sha_file, username, \
      format_date, compact_date, pumpfile, user_email, rand_bytes, splitpath, \
@@ -785,6 +785,7 @@ class Branch:
 
     def working_tree(self):
         """Return a `Tree` for the working copy."""
+        from workingtree import WorkingTree
         return WorkingTree(self.base, self.read_working_inventory())
 
 
