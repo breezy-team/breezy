@@ -203,9 +203,12 @@ try:
 
     progress("command aliases")
     out = backtick("bzr st --all")
-    assert out == "?       test.txt\n"
+    assert out == ("unknown:\n"
+                   "  test.txt\n")
+    
     out = backtick("bzr stat")
-    assert out == "?       test.txt\n"
+    assert out == ("unknown:\n"
+                   "  test.txt\n")
 
     progress("command help")
     runcmd("bzr help st")
@@ -223,7 +226,8 @@ try:
 
     runcmd("bzr add test.txt")
     assert backtick("bzr unknowns") == ''
-    assert backtick("bzr status --all") == "A       test.txt\n"
+    assert backtick("bzr status --all") == ("added:\n"
+                                            "  test.txt\n")
 
     progress("rename newly-added file")
     runcmd("bzr rename test.txt hello.txt")
