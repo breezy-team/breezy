@@ -84,11 +84,6 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
   http://www.gelato.unsw.edu.au/archives/git/0504/2194.html
   
-* testbzr should by default test the bzr binary in the same directory
-  as the testbzr script, or take a path to it as a first parameter.
-
-  Should show the version from bzr and the path name.
-
 * RemoteBranch could maintain a cache either in memory or on disk.  We
   know more than an external cache might about which files are
   immutable and which can vary.  On the other hand, it's much simpler
@@ -105,8 +100,6 @@ Medium things
   then the grammar can be described directly in there.  Since all
   option definitions are global we can define them just once and
   reference them from each command.
-
-* Selective commit of only some files.
 
 * Merge Aaron's merge code.
 
@@ -129,6 +122,11 @@ Medium things
   suitable for transmission over email.
 
 * More test cases.
+
+  - Selected-file commit
+
+  - Impossible selected-file commit: adding things in non-versioned
+    directories, crossing renames, etc.
 
 * Write a reproducible benchmark, perhaps importing various kernel versions.
 

@@ -53,6 +53,8 @@ bzr-0.0.5  NOT RELEASED YET
 
     * New optional parameter ``bzr info [BRANCH]``.
 
+    * New form ``bzr commit SELECTED`` to commit only selected files.
+
   
   BUG FIXES:
 

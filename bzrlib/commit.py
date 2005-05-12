@@ -18,7 +18,8 @@
 
 def commit(branch, message, timestamp=None, timezone=None,
            committer=None,
-           verbose=False):
+           verbose=True,
+           specific_files=None):
     """Commit working copy as a new revision.
 
     The basic approach is to add all the file texts into the
@@ -37,18 +38,20 @@ def commit(branch, message, timestamp=None, timezone=None,
 
     timestamp -- if not None, seconds-since-epoch for a
          postdated/predated commit.
+
+    specific_files
+        If true, commit only those files.
     """
 
     import os, time, tempfile
 
     from inventory import Inventory
     from osutils import isdir, isfile, sha_string, quotefn, \
-         local_time_offset, username
+         local_time_offset, username, kind_marker, is_inside_any
     
     from branch import gen_file_id
     from errors import BzrError
     from revision import Revision
-    from textui import show_status
     from trace import mutter, note
 
     branch._need_writelock()
@@ -65,11 +68,14 @@ def commit(branch, message, timestamp=None, timezone=None,
     # detect missing/deleted files, and remove them from the
     # working inventory.
 
-    work_inv = branch.read_working_inventory()
+    work_tree = branch.working_tree()
+    work_inv = work_tree.inventory
     inv = Inventory()
     basis = branch.basis_tree()
     basis_inv = basis.inventory
     missing_ids = []
+
+    print 'looking for changes...'
     for path, entry in work_inv.iter_entries():
         ## TODO: Cope with files that have gone missing.
 
@@ -82,17 +88,20 @@ def commit(branch, message, timestamp=None, timezone=None,
         file_id = entry.file_id
         mutter('commit prep file %s, id %r ' % (p, file_id))
 
-        if not os.path.exists(p):
-            mutter("    file is missing, removing from inventory")
-            if verbose:
-                show_status('D', entry.kind, quotefn(path))
-            missing_ids.append(file_id)
+        if specific_files and not is_inside_any(specific_files, path):
+            if basis_inv.has_id(file_id):
+                # carry over with previous state
+                inv.add(basis_inv[file_id].copy())
+            else:
+                # omit this from committed inventory
+                pass
             continue
 
-        # TODO: Handle files that have been deleted
-
-        # TODO: Maybe a special case for empty files?  Seems a
-        # waste to store them many times.
+        if not work_tree.has_id(file_id):
+            note('deleted %s%s' % (path, kind_marker(entry.kind)))
+            mutter("    file is missing, removing from inventory")
+            missing_ids.append(file_id)
+            continue
 
         inv.add(entry)
 
@@ -104,41 +113,47 @@ def commit(branch, message, timestamp=None, timezone=None,
 
         if entry.kind == 'directory':
             if not isdir(p):
-                raise BzrError("%s is entered as directory but not a directory" % quotefn(p))
+                raise BzrError("%s is entered as directory but not a directory"
+                               % quotefn(p))
         elif entry.kind == 'file':
             if not isfile(p):
                 raise BzrError("%s is entered as file but is not a file" % quotefn(p))
 
-            content = file(p, 'rb').read()
-
-            entry.text_sha1 = sha_string(content)
-            entry.text_size = len(content)
+            new_sha1 = work_tree.get_file_sha1(file_id)
 
             old_ie = basis_inv.has_id(file_id) and basis_inv[file_id]
             if (old_ie
-                and (old_ie.text_size == entry.text_size)
-                and (old_ie.text_sha1 == entry.text_sha1)):
+                and old_ie.text_sha1 == new_sha1):
                 ## assert content == basis.get_file(file_id).read()
-                entry.text_id = basis_inv[file_id].text_id
+                entry.text_id = old_ie.text_id
+                entry.text_sha1 = new_sha1
+                entry.text_size = old_ie.text_size
                 mutter('    unchanged from previous text_id {%s}' %
                        entry.text_id)
-
             else:
+                content = file(p, 'rb').read()
+
+                entry.text_sha1 = sha_string(content)
+                entry.text_size = len(content)
+
                 entry.text_id = gen_file_id(entry.name)
                 branch.text_store.add(content, entry.text_id)
                 mutter('    stored with text_id {%s}' % entry.text_id)
-                if verbose:
-                    if not old_ie:
-                        state = 'A'
-                    elif (old_ie.name == entry.name
-                          and old_ie.parent_id == entry.parent_id):
-                        state = 'M'
-                    else:
-                        state = 'R'
+                if not old_ie:
+                    note('added %s' % path)
+                elif (old_ie.name == entry.name
+                      and old_ie.parent_id == entry.parent_id):
+                    note('modified %s' % path)
+                else:
+                    note('renamed %s' % path)
 
-                    show_status(state, entry.kind, quotefn(path))
 
     for file_id in missing_ids:
+        # Any files that have been deleted are now removed from the
+        # working inventory.  Files that were not selected for commit
+        # are left as they were in the working inventory and ommitted
+        # from the revision inventory.
+        
         # have to do this later so we don't mess up the iterator.
         # since parents may be removed before their children we
         # have to test.
@@ -196,8 +211,7 @@ def commit(branch, message, timestamp=None, timezone=None,
 
     branch.append_revision(rev_id)
 
-    if verbose:
-        note("commited r%d" % branch.revno())
+    note("commited r%d" % branch.revno())
 
 
 

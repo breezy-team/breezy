@@ -774,16 +774,23 @@ class cmd_local_time_offset(Command):
 class cmd_commit(Command):
     """Commit changes into a new revision.
 
-    TODO: Commit only selected files.
+    If selected files are specified, only changes to those files are
+    committed.  If a directory is specified then its contents are also
+    committed.
+
+    A selected-file commit may fail in some cases where the committed
+    tree would be invalid, such as trying to commit a file in a
+    newly-added directory that is not itself committed.
 
     TODO: Run hooks on tree to-be-committed, and after commit.
 
     TODO: Strict commit that fails if there are unknown or deleted files.
     """
+    takes_args = ['selected*']
     takes_options = ['message', 'file', 'verbose']
     aliases = ['ci', 'checkin']
 
-    def run(self, message=None, file=None, verbose=False):
+    def run(self, message=None, file=None, verbose=False, selected_list=None):
         from bzrlib.commit import commit
 
         ## Warning: shadows builtin file()
@@ -798,7 +805,7 @@ class cmd_commit(Command):
             message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
         b = Branch('.')
-        commit(b, message, verbose=verbose)
+        commit(b, message, verbose=verbose, specific_files=selected_list)
 
 
 class cmd_check(Command):
