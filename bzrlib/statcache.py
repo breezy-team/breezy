@@ -197,12 +197,12 @@ def _update_cache_from_list(basedir, cache, to_update):
 
         dig = sha.new(file(abspath, 'rb').read()).hexdigest()
 
-        if cacheentry == None or dig != cacheentry[1]: 
-            # if there was no previous entry for this file, or if the
-            # SHA has changed, then update the cache
-            cacheentry = (file_id, dig, path) + fp
-            cache[file_id] = cacheentry
-            change_cnt += 1
+        # We update the cache even if the digest has not changed from
+        # last time we looked, so that the fingerprint fields will
+        # match in future.
+        cacheentry = (file_id, dig, path) + fp
+        cache[file_id] = cacheentry
+        change_cnt += 1
 
     mutter('statcache: statted %d files, read %d files, %d changed, %d dangerous, '
            '%d in cache'
