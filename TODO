@@ -94,6 +94,9 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
   immutable and which can vary.  On the other hand, it's much simpler
   to just use an external proxy cache.
 
+* Maybe also store directories in the statcache so that we can quickly
+  identify that they still exist.
+
 
 Medium things
 -------------
