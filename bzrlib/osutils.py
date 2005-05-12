@@ -56,7 +56,18 @@ def file_kind(f):
     elif S_ISLNK(mode):
         return 'symlink'
     else:
-        raise BzrError("can't handle file kind with mode %o of %r" % (mode, f)) 
+        raise BzrError("can't handle file kind with mode %o of %r" % (mode, f))
+
+
+def kind_marker(kind):
+    if kind == 'file':
+        return ''
+    elif kind == 'directory':
+        return '/'
+    elif kind == 'symlink':
+        return '@'
+    else:
+        raise BzrError('invalid file kind %r' % kind)
 
 
 
