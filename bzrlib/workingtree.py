@@ -20,7 +20,7 @@ import os
 import bzrlib.tree
 from errors import BzrCheckError
 from trace import mutter
-
+import statcache
 
 class WorkingTree(bzrlib.tree.Tree):
     """Working copy tree.
@@ -37,6 +37,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self._inventory = inv
         self.basedir = basedir
         self.path2id = inv.path2id
+        self._update_statcache()
 
     def __iter__(self):
         """Iterate through file_ids for this tree.
@@ -44,7 +45,6 @@ class WorkingTree(bzrlib.tree.Tree):
         file_ids are in a WorkingTree if they are in the working inventory
         and the working file exists.
         """
-        self._update_statcache()
         inv = self._inventory
         for file_id in self._inventory:
             # TODO: This is slightly redundant; we should be able to just
@@ -83,7 +83,6 @@ class WorkingTree(bzrlib.tree.Tree):
         # files that have been deleted are excluded
         if not self.inventory.has_id(file_id):
             return False
-        self._update_statcache()
         if file_id in self._statcache:
             return True
         return os.path.exists(self.abspath(self.id2path(file_id)))
@@ -103,8 +102,6 @@ class WorkingTree(bzrlib.tree.Tree):
 
 
     def get_file_sha1(self, file_id):
-        import statcache
-        self._update_statcache()
         return self._statcache[file_id][statcache.SC_SHA1]
 
 
