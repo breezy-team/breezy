@@ -52,8 +52,6 @@ This is an alternative to the Arch ``--seal`` mechanism.
 Proposal: tags within a branch
 ------------------------------
 
-(This is probably "crack"; I don't think we'll do this.)
-
 You can place tags on a branch as shorthand for a particular
 revision::
 
@@ -78,6 +76,10 @@ I'm not sure if tags should be versioned objects or not.  Options:
 * Tags are added or changed by a commit; they mark previous revisions
   but are only visible when looking from a later commit.
 
+  This has the fairly strange effect that if you check out a previous
+  tag, you can't see the tag anymore (or you see the value it
+  previously had.)
+
 * Tags are not versioned; if you move them they're gone.
 
 * Tags exist within their own versioning space.
@@ -94,5 +96,12 @@ separate namespace, so
 
 as just STABLE it finds the most recent tag.
 
-(Is this kludgy?)
+Should tags propagate across merges, and if so how?
 
+
+
+Implementation Plan
+-------------------
+
+Add tags as non-versioned objects, that for the moment do not
+propagate across branches.
