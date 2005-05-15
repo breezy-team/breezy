@@ -303,7 +303,7 @@ class Branch:
                          """Inventory for the working copy.""")
 
 
-    def add(self, files, verbose=False):
+    def add(self, files, verbose=False, ids=None):
         """Make files versioned.
 
         Note that the command line normally calls smart_add instead.
@@ -328,10 +328,18 @@ class Branch:
         # TODO: Re-adding a file that is removed in the working copy
         # should probably put it back with the previous ID.
         if isinstance(files, types.StringTypes):
+            assert(ids is None or isinstance(ids, types.StringTypes))
             files = [files]
+            if ids is not None:
+                ids = [ids]
+
+        if ids is None:
+            ids = [None] * len(files)
+        else:
+            assert(len(ids) == len(files))
         
         inv = self.read_working_inventory()
-        for f in files:
+        for f,file_id in zip(files, ids):
             if is_control_file(f):
                 bailout("cannot add control file %s" % quotefn(f))
 
@@ -351,7 +359,8 @@ class Branch:
             if kind != 'file' and kind != 'directory':
                 bailout('cannot add: not a regular file or directory: %s' % quotefn(f))
 
-            file_id = gen_file_id(f)
+            if file_id is None:
+                file_id = gen_file_id(f)
             inv.add_path(f, kind=kind, file_id=file_id)
 
             if verbose:
@@ -412,6 +421,15 @@ class Branch:
                 show_status(new_status, inv[fid].kind, quotefn(f))
             del inv[fid]
 
+        self._write_inventory(inv)
+
+    def set_inventory(self, new_inventory_list):
+        inv = Inventory()
+        for path, file_id, parent, kind in new_inventory_list:
+            name = os.path.basename(path)
+            if name == "":
+                continue
+            inv.add(InventoryEntry(file_id, name, kind, parent))
         self._write_inventory(inv)
 
 

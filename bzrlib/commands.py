@@ -27,6 +27,7 @@ from bzrlib.tree import RevisionTree, EmptyTree, Tree
 from bzrlib.revision import Revision
 from bzrlib import Branch, Inventory, InventoryEntry, ScratchBranch, BZRDIR, \
      format_date
+from bzrlib import merge
 
 
 def _squish_command_name(cmd):
@@ -881,6 +882,25 @@ class cmd_rocks(Command):
     def run(self):
         print "it sure does!"
 
+def parse_spec(spec):
+    if '/@' in spec:
+        parsed = spec.split('/@')
+        assert len(parsed) == 2
+        if parsed[1] == "":
+            parsed[1] = -1
+        else:
+            parsed[1] = int(parsed[1])
+            assert parsed[1] >=0
+    else:
+        parsed = [spec, None]
+    return parsed
+
+class cmd_merge(Command):
+    """Perform a three-way merge of trees."""
+    takes_args = ['other_spec', 'base_spec']
+
+    def run(self, other_spec, base_spec):
+        merge.merge(parse_spec(other_spec), parse_spec(base_spec))
 
 class cmd_assert_fail(Command):
     """Test reporting of assertion failures"""

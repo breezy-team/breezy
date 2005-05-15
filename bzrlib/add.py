@@ -54,10 +54,6 @@ def smart_add(file_list, verbose=False, recurse=True):
         if bzrlib.branch.is_control_file(af):
             bailout("cannot add control file %r" % af)
 
-        kind = bzrlib.osutils.file_kind(f)
-
-        if kind != 'file' and kind != 'directory':
-            bailout("can't add file '%s' of kind %r" % (f, kind))
             
         versioned = (inv.path2id(rf) != None)
 
