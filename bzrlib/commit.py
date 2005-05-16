@@ -19,7 +19,8 @@
 def commit(branch, message, timestamp=None, timezone=None,
            committer=None,
            verbose=True,
-           specific_files=None):
+           specific_files=None,
+           rev_id=None):
     """Commit working copy as a new revision.
 
     The basic approach is to add all the file texts into the
@@ -164,7 +165,9 @@ def commit(branch, message, timestamp=None, timezone=None,
             del work_inv[file_id]
 
 
-    inv_id = rev_id = _gen_revision_id(time.time())
+    if rev_id is None:
+        rev_id = _gen_revision_id(time.time())
+    inv_id = rev_id
 
     inv_tmp = tempfile.TemporaryFile()
     inv.write_xml(inv_tmp)
