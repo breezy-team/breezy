@@ -143,12 +143,12 @@ def commit(branch, message, timestamp=None, timezone=None,
                 mutter('    stored with text_id {%s}' % entry.text_id)
                 if verbose:
                     if not old_ie:
-                        note('added %s' % path)
+                        print('added %s' % path)
                     elif (old_ie.name == entry.name
                           and old_ie.parent_id == entry.parent_id):
-                        note('modified %s' % path)
+                        print('modified %s' % path)
                     else:
-                        note('renamed %s' % path)
+                        print('renamed %s' % path)
 
 
     for file_id in missing_ids:
