@@ -324,6 +324,19 @@ try:
 
     runcmd('bzr log')
     runcmd('bzr log -v')
+
+
+
+    progress("file with spaces in name")
+    mkdir('sub directory')
+    file('sub directory/file with spaces ', 'wt').write('see how this works\n')
+    runcmd('bzr add .')
+    runcmd('bzr diff')
+    runcmd('bzr commit -m add-spaces')
+    runcmd('bzr check')
+
+    
+    
     
     cd('..')
     cd('..')
@@ -355,6 +368,8 @@ try:
     runcmd('bzr ignore garh')
     assert backtick('bzr unknowns') == ''
     assert file('.bzrignore', 'rb').read() == '*.blah\ngarh\n'
+
+
 
     progress("all tests passed!")
 except Exception, e:
