@@ -859,8 +859,10 @@ class cmd_selftest(Command):
         print '%-40s %3d tests' % ('total', tests),
         if failures:
             print '%3d FAILED!' % failures
+            return 1
         else:
             print
+            return 0
 
 
 
