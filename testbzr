@@ -315,12 +315,19 @@ try:
     runcmd('bzr add foo.c')
     assert backtick('bzr unknowns') == ''
 
+    # 'ignore' works when creating the .bzignore file
     file('foo.blah', 'wt').write('blah')
     assert backtick('bzr unknowns') == 'foo.blah\n'
     runcmd('bzr ignore *.blah')
     assert backtick('bzr unknowns') == ''
-    assert file('.bzrignore', 'rt').read() == '*.blah\n'
+    assert file('.bzrignore', 'rb').read() == '*.blah\n'
 
+    # 'ignore' works when then .bzrignore file already exists
+    file('garh', 'wt').write('garh')
+    assert backtick('bzr unknowns') == 'garh\n'
+    runcmd('bzr ignore garh')
+    assert backtick('bzr unknowns') == ''
+    assert file('.bzrignore', 'rb').read() == '*.blah\ngarh\n'
 
     progress("all tests passed!")
 except Exception, e:
