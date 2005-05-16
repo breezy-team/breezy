@@ -136,6 +136,8 @@ def log_linenumber():
 if os.path.exists(TESTDIR):
     shutil.rmtree(TESTDIR)
 
+start_dir = os.getcwd()
+
 
 logfile = open(LOGFILENAME, 'wt', buffering=1)
 
@@ -379,4 +381,9 @@ except Exception, e:
                      + '*' * 50 + '\n')
     logfile.write('tests failed!\n')
     traceback.print_exc(None, logfile)
+    logfile.close()
+
+    sys.stdout.writelines(file(os.path.join(start_dir, LOGFILENAME), 'rt').readlines()[-50:])
+    
     sys.exit(1)
+
