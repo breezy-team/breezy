@@ -677,12 +677,12 @@ class cmd_ignore(Command):
         b = Branch('.')
         ifn = b.abspath('.bzrignore')
 
-        # FIXME: probably doesn't handle non-ascii patterns
-
         if os.path.exists(ifn):
-            f = b.controlfile(ifn, 'rt')
-            igns = f.read()
-            f.close()
+            f = open(ifn, 'rt')
+            try:
+                igns = f.read().decode('utf-8')
+            finally:
+                f.close()
         else:
             igns = ''
 
@@ -690,9 +690,12 @@ class cmd_ignore(Command):
             igns += '\n'
         igns += name_pattern + '\n'
 
-        f = AtomicFile(ifn, 'wt')
-        f.write(igns)
-        f.commit()
+        try:
+            f = AtomicFile(ifn, 'wt')
+            f.write(igns.encode('utf-8'))
+            f.commit()
+        finally:
+            f.close()
 
         inv = b.working_tree().inventory
         if inv.path2id('.bzrignore'):
