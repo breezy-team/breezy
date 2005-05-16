@@ -42,6 +42,13 @@ def commit(branch, message, timestamp=None, timezone=None,
 
     specific_files
         If true, commit only those files.
+
+    rev_id
+        If set, use this as the new revision id.
+        Useful for test or import commands that need to tightly
+        control what revisions are assigned.  If you duplicate
+        a revision id that exists elsewhere it is your own fault.
+        If null (default), a time/random revision id is generated.
     """
 
     import os, time, tempfile
@@ -56,10 +63,6 @@ def commit(branch, message, timestamp=None, timezone=None,
     from trace import mutter, note
 
     branch._need_writelock()
-
-    ## TODO: Show branch names
-
-    # TODO: Don't commit if there are no changes, unless forced?
 
     # First walk over the working inventory; and both update that
     # and also build a new revision inventory.  The revision
