@@ -74,6 +74,9 @@ bzr-0.0.5  NOT RELEASED YET
     * testbzr also runs the internal tests, so the only command
       required to check is just ``./testbzr``.
 
+    * testbzr requires python2.4, but can be used to test bzr running
+      under a different version.
+
 
   INTERNAL:
 
