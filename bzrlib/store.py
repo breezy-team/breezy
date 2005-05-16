@@ -74,6 +74,7 @@ class ImmutableStore:
         self._basedir = basedir
 
     def _path(self, id):
+        assert '/' not in id
         return os.path.join(self._basedir, id)
 
     def __repr__(self):
