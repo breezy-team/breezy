@@ -1146,7 +1146,7 @@ def run_bzr(argv):
             os.close(pffileno)
             os.remove(pfname)
     else:
-        cmdobj = cmd_class(cmdopts, cmdargs).status 
+        return cmd_class(cmdopts, cmdargs).status 
 
 
 def _report_exception(summary, quiet=False):
