@@ -821,7 +821,7 @@ class cmd_check(Command):
     takes_args = ['dir?']
     def run(self, dir='.'):
         import bzrlib.check
-        bzrlib.check.check(Branch(dir, find_root=False))
+        bzrlib.check.check(Branch(dir))
 
 
 
