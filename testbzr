@@ -22,6 +22,21 @@
 This always runs bzr as an external process to try to catch bugs
 related to argument processing, startup, etc.
 
+usage:
+
+    testbzr [-p PYTHON] [BZR]
+
+By default this tests the copy of bzr found in the same directory as
+testbzr, or the first one found on the $PATH.  A copy of bzr may be
+given on the command line to override this, for example when applying
+a new test suite to an old copy of bzr or vice versa.
+
+testbzr normally invokes bzr using the same version of python as it
+would normally use to run -- that is, the system default python,
+unless that is older than 2.3.  The -p option allows specification of
+a different Python interpreter, such as when testing that bzr still
+works on python2.3.
+
 This replaces the previous test.sh which was not very portable."""
 
 import sys, os, traceback
@@ -29,6 +44,8 @@ from os import mkdir
 from os.path import exists
 
 TESTDIR = "testbzr.tmp"
+
+OVERRIDE_PYTHON = None
 
 LOGFILENAME = 'testbzr.log'
 
@@ -47,14 +64,15 @@ class CommandFailed(Exception):
 
 def formcmd(cmd):
     if isinstance(cmd, basestring):
-        logfile.write('$ %s\n' % cmd)
         cmd = cmd.split()
-    else:
-        logfile.write('$ %r\n' % cmd)
 
     if cmd[0] == 'bzr':
         cmd[0] = BZRPATH
+        if OVERRIDE_PYTHON:
+            cmd.insert(0, OVERRIDE_PYTHON)
 
+    logfile.write('$ %r\n' % cmd)
+    
     return cmd
 
 
@@ -123,18 +141,27 @@ logfile = open(LOGFILENAME, 'wt', buffering=1)
 
 
 try:
+    from getopt import getopt
+    opts, args = getopt(sys.argv[1:], 'p:')
+
+    for option, value in opts:
+        if option == '-p':
+            OVERRIDE_PYTHON = value
+            
+    
     mypath = os.path.abspath(sys.argv[0])
     print '%-30s %s' % ('running tests from', mypath)
 
     global BZRPATH
 
-    if len(sys.argv) > 1:
-        BZRPATH = sys.argv[1]
+    if args:
+        BZRPATH = args[1]
     else:
         BZRPATH = os.path.join(os.path.split(mypath)[0], 'bzr')
 
     print '%-30s %s' % ('against bzr', BZRPATH)
     print '%-30s %s' % ('in directory', os.getcwd())
+    print '%-30s %s' % ('with python', (OVERRIDE_PYTHON or '(default)'))
     print
     print backtick([BZRPATH, 'version'])
     
