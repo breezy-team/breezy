@@ -36,7 +36,10 @@ def smart_add(file_list, verbose=False, recurse=True):
     count = 0
 
     for f in file_list:
-        kind = bzrlib.osutils.file_kind(f)
+        rf = b.relpath(f)
+        af = b.abspath(rf)
+
+        kind = bzrlib.osutils.file_kind(af)
 
         if kind != 'file' and kind != 'directory':
             if f not in user_list:
@@ -44,16 +47,10 @@ def smart_add(file_list, verbose=False, recurse=True):
                 continue
             bailout("can't add file of kind %r" % kind)
 
-        rf = b.relpath(f)
-        af = b.abspath(rf)
-
-        ## TODO: It's OK to add root but only in recursive mode
-
-        bzrlib.mutter("smart add of %r" % f)
+        bzrlib.mutter("smart add of %r, abs=%r" % (f, af))
         
         if bzrlib.branch.is_control_file(af):
             bailout("cannot add control file %r" % af)
-
             
         versioned = (inv.path2id(rf) != None)
 
@@ -77,8 +74,8 @@ def smart_add(file_list, verbose=False, recurse=True):
                 elif tree.is_ignored(subp):
                     mutter("skip ignored sub-file %r" % subp)
                 else:
-                    mutter("queue to add sub-file %r" % (subp))
-                    file_list.append(subp)
+                    mutter("queue to add sub-file %r" % subp)
+                    file_list.append(b.abspath(subp))
 
     if count > 0:
         if verbose:
