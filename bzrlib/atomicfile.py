@@ -46,6 +46,7 @@ class AtomicFile:
         self.closed = property(self.f.closed)
 
     def commit(self):
+        """Close the file and move to final name."""
         import sys, os
         
         self.f.close()
@@ -54,8 +55,14 @@ class AtomicFile:
         os.rename(self.tmpfilename, self.realfilename)
 
     def abort(self):
+        """Discard temporary file without committing changes."""
         import os
         self.f.close()
         os.remove(self.tmpfilename)
+
+    def close(self):
+        """Discard the file unless already committed."""
+        if not self.closed:
+            self.abort()
         
         
