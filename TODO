@@ -258,6 +258,10 @@ Medium things
 
 * Generally, be a bit more verbose unless --silent is specified.
 
+* Tests need to run under Python2.4 to have the new subprocess
+  utilities, but there should be a way to run bzr itself under
+  Python2.3.  Can we?
+
 
 Large things
 ------------
