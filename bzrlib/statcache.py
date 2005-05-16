@@ -18,7 +18,7 @@ import stat, os, sha, time
 from binascii import b2a_qp, a2b_qp
 
 from trace import mutter
-from errors import BzrError
+from errors import BzrError, BzrCheckError
 
 
 """File stat cache to speed up tree comparisons.
@@ -26,6 +26,15 @@ from errors import BzrError
 This module basically gives a quick way to find the SHA-1 and related
 information of a file in the working directory, without actually
 reading and hashing the whole file.
+
+
+
+Implementation
+==============
+
+Users of this module should not need to know about how this is
+implemented, and in particular should not depend on the particular
+data which is stored or its format.
 
 This is done by maintaining a cache indexed by a file fingerprint of
 (path, size, mtime, ctime, ino, dev) pointing to the SHA-1.  If the
@@ -54,18 +63,29 @@ to use a tdb instead.
 
 The cache is represented as a map from file_id to a tuple of (file_id,
 sha1, path, size, mtime, ctime, ino, dev).
+
+The SHA-1 is stored in memory as a hexdigest.
+
+File names are written out as the quoted-printable encoding of their
+UTF-8 representation.
 """
 
-
+# order of fields returned by fingerprint()
 FP_SIZE  = 0
 FP_MTIME = 1
 FP_CTIME = 2
 FP_INO   = 3
 FP_DEV   = 4
 
-
+# order of fields in the statcache file and in the in-memory map
 SC_FILE_ID = 0
-SC_SHA1    = 1 
+SC_SHA1    = 1
+SC_PATH    = 2
+SC_SIZE    = 3
+SC_MTIME   = 4
+SC_CTIME   = 5
+SC_INO     = 6
+SC_DEV     = 7
 
 
 def fingerprint(abspath):
@@ -86,14 +106,22 @@ def _write_cache(basedir, entry_iter, dangerfiles):
     from atomicfile import AtomicFile
 
     cachefn = os.path.join(basedir, '.bzr', 'stat-cache')
-    outf = AtomicFile(cachefn, 'wb', 'utf-8')
+    outf = AtomicFile(cachefn, 'wb')
     try:
         for entry in entry_iter:
-            if entry[0] in dangerfiles:
-                continue
-            outf.write(entry[0] + ' ' + entry[1] + ' ')
-            outf.write(b2a_qp(entry[2], True))
-            outf.write(' %d %d %d %d %d\n' % entry[3:])
+            if len(entry) != 8:
+                raise ValueError("invalid statcache entry tuple %r" % entry)
+            
+            if entry[SC_FILE_ID] in dangerfiles:
+                continue                # changed too recently
+            outf.write(entry[0])        # file id
+            outf.write(' ')
+            outf.write(entry[1])        # hex sha1
+            outf.write(' ')
+            outf.write(b2a_qp(entry[2].encode('utf-8'), True)) # name
+            for nf in entry[3:]:
+                outf.write(' %d' % nf)
+            outf.write('\n')
 
         outf.commit()
     finally:
@@ -102,22 +130,33 @@ def _write_cache(basedir, entry_iter, dangerfiles):
         
         
 def load_cache(basedir):
-    import codecs
-    
+    from sets import Set
     cache = {}
+    seen_paths = Set()
 
     try:
         cachefn = os.path.join(basedir, '.bzr', 'stat-cache')
-        cachefile = codecs.open(cachefn, 'r', 'utf-8')
+        cachefile = open(cachefn, 'r')
     except IOError:
         return cache
     
     for l in cachefile:
         f = l.split(' ')
+
         file_id = f[0]
         if file_id in cache:
             raise BzrError("duplicated file_id in cache: {%s}" % file_id)
-        cache[file_id] = (f[0], f[1], a2b_qp(f[2])) + tuple([long(x) for x in f[3:]])
+        
+        path = a2b_qp(f[2]).decode('utf-8')
+        if path in seen_paths:
+            raise BzrCheckError("duplicated path in cache: %r" % path)
+        seen_paths.add(path)
+        
+        entry = (file_id, f[1], path) + tuple([long(x) for x in f[3:]])
+        if len(entry) != 8:
+            raise ValueError("invalid statcache entry tuple %r" % entry)
+
+        cache[file_id] = entry
     return cache
 
 
