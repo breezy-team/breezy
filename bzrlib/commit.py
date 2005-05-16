@@ -76,10 +76,10 @@ def commit(branch, message, timestamp=None, timezone=None,
     basis_inv = basis.inventory
     missing_ids = []
 
-    print 'looking for changes...'
+    if verbose:
+        note('looking for changes...')
+        
     for path, entry in work_inv.iter_entries():
-        ## TODO: Cope with files that have gone missing.
-
         ## TODO: Check that the file kind has not changed from the previous
         ## revision of this file (if any).
 
@@ -99,7 +99,8 @@ def commit(branch, message, timestamp=None, timezone=None,
             continue
 
         if not work_tree.has_id(file_id):
-            note('deleted %s%s' % (path, kind_marker(entry.kind)))
+            if verbose:
+                print('deleted %s%s' % (path, kind_marker(entry.kind)))
             mutter("    file is missing, removing from inventory")
             missing_ids.append(file_id)
             continue
@@ -140,13 +141,14 @@ def commit(branch, message, timestamp=None, timezone=None,
                 entry.text_id = gen_file_id(entry.name)
                 branch.text_store.add(content, entry.text_id)
                 mutter('    stored with text_id {%s}' % entry.text_id)
-                if not old_ie:
-                    note('added %s' % path)
-                elif (old_ie.name == entry.name
-                      and old_ie.parent_id == entry.parent_id):
-                    note('modified %s' % path)
-                else:
-                    note('renamed %s' % path)
+                if verbose:
+                    if not old_ie:
+                        note('added %s' % path)
+                    elif (old_ie.name == entry.name
+                          and old_ie.parent_id == entry.parent_id):
+                        note('modified %s' % path)
+                    else:
+                        note('renamed %s' % path)
 
 
     for file_id in missing_ids:
@@ -211,10 +213,10 @@ def commit(branch, message, timestamp=None, timezone=None,
     ## TODO: Also calculate and store the inventory SHA1
     mutter("committing patch r%d" % (branch.revno() + 1))
 
-
     branch.append_revision(rev_id)
 
-    note("commited r%d" % branch.revno())
+    if verbose:
+        note("commited r%d" % branch.revno())
 
 
 
