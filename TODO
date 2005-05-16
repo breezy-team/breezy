@@ -252,6 +252,12 @@ Medium things
 
 * Paranoid mode where we never trust SHA-1 matches.
 
+* Don't commit if there are no changes unless forced.
+
+* --dry-run mode for commit?  
+
+* Generally, be a bit more verbose unless --silent is specified.
+
 
 Large things
 ------------
