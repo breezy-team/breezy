@@ -794,7 +794,7 @@ class cmd_commit(Command):
     takes_options = ['message', 'file', 'verbose']
     aliases = ['ci', 'checkin']
 
-    def run(self, message=None, file=None, verbose=False, selected_list=None):
+    def run(self, message=None, file=None, verbose=True, selected_list=None):
         from bzrlib.commit import commit
 
         ## Warning: shadows builtin file()
