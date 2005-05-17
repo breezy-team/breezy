@@ -293,6 +293,27 @@ Large things
   files, and respecting selective commits.  Run the pre-commit check
   (e.g. compile and run test suite) in there.
 
+  Possibly this should be done by splitting the commit function into
+  several parts (under a single interface).  It is already rather
+  large.  Decomposition:
+
+   - find tree modifications and prepare in-memory inventory
+
+   - export that inventory to a temporary directory
+
+   - run the test in that temporary directory
+
+   - if that succeeded, continue to actually finish the commit
+
+  What should be done with the text of modified files while this is
+  underway?  I don't think we want to count on holding them in memory
+  and we can't trust the working files to stay in one place so I
+  suppose we need to move them into the text store, or otherwise into
+  a temporary directory.
+
+  If the commit does not actually complete, we would rather the
+  content was not left behind in the stores.  
+
 * Web interface
 
 * GUI (maybe in Python GTK+?)
