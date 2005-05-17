@@ -121,13 +121,10 @@ def show_log(branch,
         import sys
         to_file = sys.stdout
 
-    if specific_fileid:
-        raise NotImplementedError('sorry, option not implemented at the moment')
-    
     which_revs = branch.enum_history(direction)
 
-    if not verbose:
-        # no actual deltas generated
+    if not (verbose or specific_fileid):
+        # no need to know what changed between revisions
         with_deltas = deltas_for_log_dummy(branch, which_revs)
     elif direction == 'reverse':
         with_deltas = deltas_for_log_reverse(branch, which_revs)
@@ -135,8 +132,14 @@ def show_log(branch,
         raise NotImplementedError("sorry, verbose forward logs not done yet")
 
     for revno, rev, delta in with_deltas:
-        # TODO: if filename given, check if it's changed; if not
-        # changed, skip this one
+        if specific_fileid:
+            if not delta.touches_file_id(specific_fileid):
+                continue
+        
+        if not verbose:
+            # although we calculated it, throw it away without display
+            delta = None
+            
         show_one_log(revno, rev, delta, show_ids, to_file, show_timezone)
 
 
