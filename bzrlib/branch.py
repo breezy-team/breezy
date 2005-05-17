@@ -785,6 +785,9 @@ def gen_file_id(name):
     This should probably generate proper UUIDs, but for the moment we
     cope with just randomness because running uuidgen every time is
     slow."""
+    import re
+
+    # get last component
     idx = name.rfind('/')
     if idx != -1:
         name = name[idx+1 : ]
@@ -792,7 +795,12 @@ def gen_file_id(name):
     if idx != -1:
         name = name[idx+1 : ]
 
+    # make it not a hidden file
     name = name.lstrip('.')
+
+    # remove any wierd characters; we don't escape them but rather
+    # just pull them out
+    name = re.sub(r'[^\w.]', '', name)
 
     s = hexlify(rand_bytes(8))
     return '-'.join((name, compact_date(time.time()), s))
