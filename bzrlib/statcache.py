@@ -66,8 +66,9 @@ sha1, path, size, mtime, ctime, ino, dev).
 
 The SHA-1 is stored in memory as a hexdigest.
 
-File names are written out as the quoted-printable encoding of their
-UTF-8 representation.
+File names and file-ids are written out as the quoted-printable
+encoding of their UTF-8 representation.  (file-ids shouldn't contain
+wierd characters, but it might happen.)
 """
 
 # order of fields returned by fingerprint()
@@ -119,7 +120,7 @@ def _write_cache(basedir, entry_iter, dangerfiles):
             
             if entry[SC_FILE_ID] in dangerfiles:
                 continue                # changed too recently
-            outf.write(entry[0])        # file id
+            outf.write(b2a_qp(entry[0].encode('utf-8'))) # file id
             outf.write(' ')
             outf.write(entry[1])        # hex sha1
             outf.write(' ')
@@ -136,8 +137,11 @@ def _write_cache(basedir, entry_iter, dangerfiles):
         
 def load_cache(basedir):
     from sets import Set
+    import re
     cache = {}
     seen_paths = Set()
+
+    sha_re = re.compile(r'[a-f0-9]{40}')
 
     try:
         cachefn = os.path.join(basedir, '.bzr', 'stat-cache')
@@ -153,16 +157,20 @@ def load_cache(basedir):
     for l in cachefile:
         f = l.split(' ')
 
-        file_id = f[0]
+        file_id = a2b_qp(f[0]).decode('utf-8')
         if file_id in cache:
-            raise BzrError("duplicated file_id in cache: {%s}" % file_id)
+            raise BzrCheckError("duplicated file_id in cache: {%s}" % file_id)
+
+        text_sha = f[1]
+        if len(text_sha) != 40 or not sha_re.match(text_sha):
+            raise BzrCheckError("invalid file SHA-1 in cache: %r" % text_sha)
         
         path = a2b_qp(f[2]).decode('utf-8')
         if path in seen_paths:
             raise BzrCheckError("duplicated path in cache: %r" % path)
         seen_paths.add(path)
         
-        entry = (file_id, f[1], path) + tuple([long(x) for x in f[3:]])
+        entry = (file_id, text_sha, path) + tuple([long(x) for x in f[3:]])
         if len(entry) != 8:
             raise ValueError("invalid statcache entry tuple %r" % entry)
 
