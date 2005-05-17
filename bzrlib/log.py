@@ -16,6 +16,26 @@
 
 
 
+"""Code to show logs of changes.
+
+Various flavors of log can be produced:
+
+* for one file, or the whole tree, and (not done yet) for
+  files in a given directory
+
+* in "verbose" mode with a description of what changed from one
+  version to the next
+
+* with file-ids and revision-ids shown
+
+* from last to first or (not anymore) from first to last;
+  the default is "reversed" because it shows the likely most
+  relevant and interesting information first
+
+* (not yet) in XML format
+"""
+
+
 
 def find_touching_revisions(branch, file_id):
     """Yield a description of revisions which affect the file_id.
@@ -61,15 +81,17 @@ def find_touching_revisions(branch, file_id):
         revno += 1
 
 
+
 def show_log(branch,
-             filename=None,
+             specific_fileid=None,
              show_timezone='original',
              verbose=False,
              show_ids=False,
-             to_file=None):
+             to_file=None,
+             direction='reverse'):
     """Write out human-readable log of commits to this branch.
 
-    filename
+    specific_fileid
         If true, list only the commits affecting the specified
         file, rather than all commits.
 
@@ -86,6 +108,10 @@ def show_log(branch,
 
     to_file
         File to send log to; by default stdout.
+
+    direction
+        'reverse' (default) is latest to earliest;
+        'forward' is earliest to latest.
     """
     from osutils import format_date
     from errors import BzrCheckError
@@ -96,50 +122,64 @@ def show_log(branch,
         import sys
         to_file = sys.stdout
 
-    if filename:
-        file_id = branch.read_working_inventory().path2id(filename)
-        def which_revs():
-            for revno, revid, why in find_touching_revisions(branch, file_id):
-                yield revno, revid
-    else:
-        def which_revs():
-            for i, revid in enumerate(branch.revision_history()):
-                yield i+1, revid
-        
-    branch._need_readlock()
+    if specific_fileid or verbose:
+        raise NotImplementedError('sorry, option not implemented at the moment')
+    
+    which_revs = branch.enum_history(direction)
+
+    for revno, revision_id in which_revs:
+        # TODO: if filename given, check if it's changed; if not
+        # changed, skip this one
+
+        # TODO: if verbose, get a list of changes; if we're running
+        # forward then the delta is as compared to the previous
+        # version, otherwise as compared to the *next* version to be
+        # enumerated; in both cases must treat 0 specially as the
+        # empty tree.
+
+        rev = branch.get_revision(revision_id)
+        delta = None
+        show_one_log(revno, rev, delta, show_ids, to_file, show_timezone)
+
+
+def junk():
     precursor = None
     if verbose:
         from tree import EmptyTree
         prev_tree = EmptyTree()
-    for revno, revision_id in which_revs():
-        print >>to_file,  '-' * 60
-        print >>to_file,  'revno:', revno
-        rev = branch.get_revision(revision_id)
-        if show_ids:
-            print >>to_file,  'revision-id:', revision_id
-        print >>to_file,  'committer:', rev.committer
-        print >>to_file,  'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0,
-                                             show_timezone))
-
-        if revision_id != rev.revision_id:
-            raise BzrCheckError("retrieved wrong revision: %r"
-                                % (revision_id, rev.revision_id))
-
-        print >>to_file,  'message:'
-        if not rev.message:
-            print >>to_file,  '  (no message)'
-        else:
-            for l in rev.message.split('\n'):
-                print >>to_file,  '  ' + l
-
-        # Don't show a list of changed files if we were asked about
-        # one specific file.
-
-        if verbose:
-            this_tree = branch.revision_tree(revision_id)
-            delta = compare_trees(prev_tree, this_tree, want_unchanged=False)
-            delta.show(to_file, show_ids)
-            prev_tree = this_tree
-
+    for revno, revision_id in which_revs:
         precursor = revision_id
 
+    if revision_id != rev.revision_id:
+        raise BzrCheckError("retrieved wrong revision: %r"
+                            % (revision_id, rev.revision_id))
+
+    if verbose:
+        this_tree = branch.revision_tree(revision_id)
+        delta = compare_trees(prev_tree, this_tree, want_unchanged=False)
+        prev_tree = this_tree
+    else:
+        delta = None    
+
+
+
+def show_one_log(revno, rev, delta, show_ids, to_file, show_timezone):
+    from osutils import format_date
+    
+    print >>to_file,  '-' * 60
+    print >>to_file,  'revno:', revno
+    if show_ids:
+        print >>to_file,  'revision-id:', rev.revision_id
+    print >>to_file,  'committer:', rev.committer
+    print >>to_file,  'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0,
+                                         show_timezone))
+
+    print >>to_file,  'message:'
+    if not rev.message:
+        print >>to_file,  '  (no message)'
+    else:
+        for l in rev.message.split('\n'):
+            print >>to_file,  '  ' + l
+
+    if delta != None:
+        delta.show(to_file, show_ids)

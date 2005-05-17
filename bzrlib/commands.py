@@ -587,19 +587,26 @@ class cmd_log(Command):
 
     TODO: Option to limit range.
 
-    TODO: Perhaps show most-recent first with an option for last.
+    TODO: Option to show in forward order.
     """
     takes_args = ['filename?']
     takes_options = ['timezone', 'verbose', 'show-ids']
     def run(self, filename=None, timezone='original', verbose=False, show_ids=False):
-        from branch import find_branch
-        b = find_branch((filename or '.'), lock_mode='r')
+        from bzrlib import show_log, find_branch
+        
         if filename:
-            filename = b.relpath(filename)
-        bzrlib.show_log(b, filename,
-                        show_timezone=timezone,
-                        verbose=verbose,
-                        show_ids=show_ids)
+            b = find_branch(filename, lock_mode='r')
+            fp = b.relpath(filename)
+            file_id = b.read_working_inventory().path2id(fp)
+        else:
+            b = find_branch('.', lock_mode='r')
+            file_id = None
+
+        show_log(b, file_id,
+                 show_timezone=timezone,
+                 verbose=verbose,
+                 show_ids=show_ids,
+                 to_file=sys.stdout)
 
 
 
