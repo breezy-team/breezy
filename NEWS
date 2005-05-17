@@ -64,6 +64,9 @@ bzr-0.0.5  NOT RELEASED YET
     * Fixed diff format so that added and removed files will be
       handled properly by patch.  Fix from Lalo Martins.
 
+    * Various fixes for files whose names contain spaces or other
+      metacharacters.
+
 
   TESTING:
 
