@@ -115,31 +115,66 @@ def show_log(branch,
     """
     from osutils import format_date
     from errors import BzrCheckError
-    from diff import compare_trees
     from textui import show_status
 
     if to_file == None:
         import sys
         to_file = sys.stdout
 
-    if specific_fileid or verbose:
+    if specific_fileid:
         raise NotImplementedError('sorry, option not implemented at the moment')
     
     which_revs = branch.enum_history(direction)
 
-    for revno, revision_id in which_revs:
+    if not verbose:
+        # no actual deltas generated
+        with_deltas = deltas_for_log_dummy(branch, which_revs)
+    elif direction == 'reverse':
+        with_deltas = deltas_for_log_reverse(branch, which_revs)
+    else:        
+        raise NotImplementedError("sorry, verbose forward logs not done yet")
+
+    for revno, rev, delta in with_deltas:
         # TODO: if filename given, check if it's changed; if not
         # changed, skip this one
-
-        # TODO: if verbose, get a list of changes; if we're running
-        # forward then the delta is as compared to the previous
-        # version, otherwise as compared to the *next* version to be
-        # enumerated; in both cases must treat 0 specially as the
-        # empty tree.
-
-        rev = branch.get_revision(revision_id)
-        delta = None
         show_one_log(revno, rev, delta, show_ids, to_file, show_timezone)
+
+
+
+def deltas_for_log_dummy(branch, which_revs):
+    for revno, revision_id in which_revs:
+        yield revno, branch.get_revision(revision_id), None
+
+
+def deltas_for_log_reverse(branch, which_revs):
+    """Compute deltas for display in reverse log.
+
+    Given a sequence of (revno, revision_id) pairs, return
+    (revno, rev, delta).
+
+    The delta is from the given revision to the next one in the
+    sequence, which makes sense if the log is being displayed from
+    newest to oldest.
+    """
+    from tree import EmptyTree
+    from diff import compare_trees
+    
+    last_revno = last_revision_id = last_tree = None
+    for revno, revision_id in which_revs:
+        this_tree = branch.revision_tree(revision_id)
+        this_revision = branch.get_revision(revision_id)
+        
+        if last_revno:
+            yield last_revno, last_revision, compare_trees(this_tree, last_tree, False)
+
+        last_revno = revno
+        last_revision = this_revision
+        last_tree = this_tree
+
+    if last_revno:
+        this_tree = EmptyTree()
+        yield last_revno, last_revision, compare_trees(this_tree, last_tree, False)
+
 
 
 def junk():
