@@ -112,6 +112,9 @@ class RemoteBranch(Branch):
             self.baseurl = baseurl
             self._check_format()
 
+        self.inventory_store = RemoteStore(baseurl + '/.bzr/inventory-store/')
+        self.text_store = RemoteStore(baseurl + '/.bzr/text-store/')
+
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.baseurl)
 
@@ -145,9 +148,25 @@ class RemoteBranch(Branch):
             raise BzrCheckError('revision stored as {%s} actually contains {%s}'
                                 % (revision_id, r.revision_id))
         return r
+
+
+class RemoteStore:
+    def __init__(self, baseurl):
+        self._baseurl = baseurl
+        
+
+    def _path(self, name):
+        if '/' in name:
+            raise ValueError('invalid store id', name)
+        return self._baseurl + '/' + name
+        
+    def __getitem__(self, fileid):
+        p = self._path(fileid)
+        return get_url(p, compressed=True)
     
 
 def simple_walk():
+    """For experimental purposes, traverse many parts of a remote branch"""
     from revision import Revision
     from branch import Branch
     from inventory import Inventory
