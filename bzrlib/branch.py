@@ -528,7 +528,7 @@ class Branch:
                 yield i, rh[i-1]
                 i -= 1
         else:
-            raise BzrError('invalid history direction %r' % direction)
+            raise ValueError('invalid history direction', direction)
 
 
     def revno(self):
