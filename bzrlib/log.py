@@ -117,6 +117,10 @@ def show_log(branch,
     from errors import BzrCheckError
     from textui import show_status
 
+
+    if specific_fileid:
+        mutter('get log for file_id %r' % specific_fileid)
+
     if to_file == None:
         import sys
         to_file = sys.stdout

@@ -597,7 +597,10 @@ class cmd_log(Command):
         if filename:
             b = find_branch(filename, lock_mode='r')
             fp = b.relpath(filename)
-            file_id = b.read_working_inventory().path2id(fp)
+            if fp:
+                file_id = b.read_working_inventory().path2id(fp)
+            else:
+                file_id = None  # points to branch root
         else:
             b = find_branch('.', lock_mode='r')
             file_id = None
