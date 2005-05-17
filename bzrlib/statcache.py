@@ -88,6 +88,10 @@ SC_INO     = 6
 SC_DEV     = 7
 
 
+
+CACHE_HEADER = "### bzr statcache v2"
+
+
 def fingerprint(abspath):
     try:
         fs = os.lstat(abspath)
@@ -107,6 +111,7 @@ def _write_cache(basedir, entry_iter, dangerfiles):
 
     cachefn = os.path.join(basedir, '.bzr', 'stat-cache')
     outf = AtomicFile(cachefn, 'wb')
+    outf.write(CACHE_HEADER + '\n')
     try:
         for entry in entry_iter:
             if len(entry) != 8:
@@ -136,10 +141,15 @@ def load_cache(basedir):
 
     try:
         cachefn = os.path.join(basedir, '.bzr', 'stat-cache')
-        cachefile = open(cachefn, 'r')
+        cachefile = open(cachefn, 'rb')
     except IOError:
         return cache
-    
+
+    line1 = cachefile.readline().rstrip('\r\n')
+    if line1 != CACHE_HEADER:
+        mutter('cache header marker not found at top of %s' % cachefn)
+        return cache
+
     for l in cachefile:
         f = l.split(' ')
 
