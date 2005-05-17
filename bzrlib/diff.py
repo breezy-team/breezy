@@ -160,6 +160,19 @@ class TreeDelta:
         self.modified = []
         self.unchanged = []
 
+
+    def touches_file_id(self, file_id):
+        """Return True if file_id is modified by this delta."""
+        for l in self.added, self.removed, self.modified:
+            for v in l:
+                if v[1] == file_id:
+                    return True
+        for v in self.renamed:
+            if v[2] == file_id:
+                return True
+        return False
+            
+
     def show(self, to_file, show_ids=False, show_unchanged=False):
         def show_list(files):
             for path, fid, kind in files:
