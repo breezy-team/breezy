@@ -604,7 +604,9 @@ class cmd_log(Command):
 
 
 class cmd_touching_revisions(Command):
-    """Return revision-ids which affected a particular file."""
+    """Return revision-ids which affected a particular file.
+
+    A more user-friendly interface is "bzr log FILE"."""
     hidden = True
     takes_args = ["filename"]
     def run(self, filename):
