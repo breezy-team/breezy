@@ -16,7 +16,9 @@
 
 
 
-def commit(branch, message, timestamp=None, timezone=None,
+def commit(branch, message,
+           timestamp=None,
+           timezone=None,
            committer=None,
            verbose=True,
            specific_files=None,
