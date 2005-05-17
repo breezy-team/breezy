@@ -254,9 +254,13 @@ Medium things
 
 * Don't commit if there are no changes unless forced.
 
-* --dry-run mode for commit?  
+* --dry-run mode for commit?  (Or maybe just run with
+  check-command=false?)
 
 * Generally, be a bit more verbose unless --silent is specified.
+
+* Function that finds all changes to files under a given directory;
+  perhaps log should use this if a directory is given.
 
 
 Large things

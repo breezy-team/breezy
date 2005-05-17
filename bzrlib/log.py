@@ -25,13 +25,8 @@ def find_touching_revisions(branch, file_id):
     This is the list of revisions where the file is either added,
     modified, renamed or deleted.
 
-    Revisions are returned in chronological order.
-
     TODO: Perhaps some way to limit this to only particular revisions,
-    or to traverse a non-branch set of revisions?
-
-    TODO: If a directory is given, then by default look for all
-    changes under that directory.
+    or to traverse a non-mainline set of revisions?
     """
     last_ie = None
     last_path = None
