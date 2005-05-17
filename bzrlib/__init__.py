@@ -17,7 +17,7 @@
 """bzr library"""
 
 from inventory import Inventory, InventoryEntry
-from branch import Branch, ScratchBranch
+from branch import Branch, ScratchBranch, find_branch
 from osutils import format_date
 from tree import Tree
 from diff import compare_trees
