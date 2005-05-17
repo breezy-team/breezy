@@ -140,6 +140,8 @@ def commit(branch, message,
             else:
                 content = file(p, 'rb').read()
 
+                # calculate the sha again, just in case the file contents
+                # changed since we updated the cache
                 entry.text_sha1 = sha_string(content)
                 entry.text_size = len(content)
 
