@@ -851,7 +851,7 @@ class cmd_selftest(Command):
     def run(self):
         failures, tests = 0, 0
 
-        import doctest, bzrlib.store, bzrlib.tests
+        import doctest, bzrlib.store
         bzrlib.trace.verbose = False
 
         for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \
