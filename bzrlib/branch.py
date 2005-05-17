@@ -573,6 +573,8 @@ class Branch:
 
         `revision_id` may be None for the null revision, in which case
         an `EmptyTree` is returned."""
+        # TODO: refactor this to use an existing revision object
+        # so we don't need to read it in twice.
         self._need_readlock()
         if revision_id == None:
             return EmptyTree()
