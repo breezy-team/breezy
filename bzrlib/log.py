@@ -36,6 +36,7 @@ Various flavors of log can be produced:
 """
 
 
+from trace import mutter
 
 def find_touching_revisions(branch, file_id):
     """Yield a description of revisions which affect the file_id.
