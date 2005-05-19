@@ -110,7 +110,10 @@ DEBUG = 0
 def DBPRINT(*args): print ' '.join(args)
 
 import sys
-_python_version = map(int, sys.version.split()[0].split('.'))
+if hasattr(sys, 'version_info'):
+    _python_version = sys.version_info
+else:
+    _python_version = map(int, sys.version.split()[0].split('.'))
 if _python_version < [2, 4]: HANDLE_ERRORS = 1
 else: HANDLE_ERRORS = 0
     
