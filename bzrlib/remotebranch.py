@@ -25,7 +25,6 @@ access.
 
 
 import gzip
-from sets import Set
 from cStringIO import StringIO
 import urllib2
 
@@ -170,9 +169,10 @@ def simple_walk():
     from revision import Revision
     from branch import Branch
     from inventory import Inventory
+    from bzrlib import set
 
-    got_invs = Set()
-    got_texts = Set()
+    got_invs = set()
+    got_texts = set()
 
     print 'read history'
     history = get_url('/.bzr/revision-history').readlines()

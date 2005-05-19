@@ -42,8 +42,24 @@ IGNORE_FILENAME = ".bzrignore"
 
 import locale
 user_encoding = locale.getpreferredencoding()
+del locale
 
 __copyright__ = "Copyright 2005 Canonical Development Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
 __version__ = '0.0.5pre'
 
+
+# in python2.4 there is a 'set' builtin type; in 2.3 we need to use
+# the slower pure-python 'sets' module.
+import sys
+if sys.version_info < (2, 4):
+    import sets
+    set = sets.Set
+    frozenset = sets.ImmutableSet
+    del sets
+else:
+    import __builtin__
+    set = __builtin__.set
+    frozenset = __builtin__.frozenset
+    del __builtin__
+    

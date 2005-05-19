@@ -21,13 +21,14 @@
 # consistency checks
 
 import sys
-from sets import Set
 
 from trace import mutter
 from errors import bailout
 import osutils
 
 def check(branch, progress=True):
+    from bzrlib import set
+
     out = sys.stdout
 
     # TODO: factor out
@@ -45,7 +46,7 @@ def check(branch, progress=True):
 
     p('history of %r' % branch.base)
     last_ptr = None
-    checked_revs = Set()
+    checked_revs = set()
     
     history = branch.revision_history()
     revno = 0
@@ -70,8 +71,8 @@ def check(branch, progress=True):
         ## TODO: Check all the required fields are present on the revision.
 
         inv = branch.get_inventory(rev.inventory_id)
-        seen_ids = Set()
-        seen_names = Set()
+        seen_ids = set()
+        seen_names = set()
 
         p('revision %d/%d file ids' % (revno, revcount))
         for file_id in inv:

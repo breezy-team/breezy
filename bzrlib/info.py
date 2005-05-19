@@ -16,7 +16,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from sets import Set
 import time
 
 from osutils import format_date
@@ -82,9 +81,9 @@ def show_info(b):
     history = b.revision_history()
     revno = len(history)
     print '  %8d revision%s' % (revno, plural(revno))
-    committers = Set()
+    committers = {}
     for rev in history:
-        committers.add(b.get_revision(rev).committer)
+        committers[b.get_revision(rev).committer)] = True
     print '  %8d committer%s' % (len(committers), plural(len(committers)))
     if revno > 0:
         firstrev = b.get_revision(history[0])

@@ -17,7 +17,6 @@
 
 
 import sys, os, time, os.path
-from sets import Set
 
 import bzrlib
 from bzrlib.trace import mutter, note, log_error

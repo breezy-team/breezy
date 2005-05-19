@@ -136,10 +136,9 @@ def _write_cache(basedir, entry_iter, dangerfiles):
         
         
 def load_cache(basedir):
-    from sets import Set
     import re
     cache = {}
-    seen_paths = Set()
+    seen_paths = {}
 
     sha_re = re.compile(r'[a-f0-9]{40}')
 
@@ -168,7 +167,7 @@ def load_cache(basedir):
         path = a2b_qp(f[2]).decode('utf-8')
         if path in seen_paths:
             raise BzrCheckError("duplicated path in cache: %r" % path)
-        seen_paths.add(path)
+        seen_paths[path] = True
         
         entry = (file_id, text_sha, path) + tuple([long(x) for x in f[3:]])
         if len(entry) != 8:
@@ -218,15 +217,12 @@ def _update_cache_from_list(basedir, cache, to_update):
 
     to_update -- Sequence of (file_id, path) pairs to check.
     """
-
-    from sets import Set
-
     stat_cnt = missing_cnt = hardcheck = change_cnt = 0
 
-    # files that have been recently touched and can't be
+    # dangerfiles have been recently touched and can't be
     # committed to a persistent cache yet.
+    dangerfiles = {}
     
-    dangerfiles = Set()
     now = int(time.time())
 
     ## mutter('update statcache under %r' % basedir)
@@ -245,7 +241,7 @@ def _update_cache_from_list(basedir, cache, to_update):
             continue
 
         if (fp[FP_MTIME] >= now) or (fp[FP_CTIME] >= now):
-            dangerfiles.add(file_id)
+            dangerfiles[file_id] = True
 
         if cacheentry and (cacheentry[3:] == fp):
             continue                    # all stat fields unchanged

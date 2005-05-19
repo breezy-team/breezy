@@ -21,7 +21,6 @@ ROOT_ID = "TREE_ROOT"
 
 
 import sys, os.path, types, re
-from sets import Set
 
 try:
     from cElementTree import Element, ElementTree, SubElement
@@ -455,7 +454,8 @@ class Inventory(XMLMixin):
 
 
     def id_set(self):
-        return Set(self._byid)
+        from bzrlib import frozenset
+        return frozenset(self._byid)
 
 
     def to_element(self):

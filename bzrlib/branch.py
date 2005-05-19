@@ -15,8 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from sets import Set
-
 import sys, os, os.path, random, time, sha, sets, types, re, shutil, tempfile
 import traceback, socket, fnmatch, difflib, time
 from binascii import hexlify
@@ -679,7 +677,7 @@ class Branch:
         if to_dir_ie.kind not in ('directory', 'root_directory'):
             bailout("destination %r is not a directory" % to_abs)
 
-        to_idpath = Set(inv.get_idpath(to_dir_id))
+        to_idpath = inv.get_idpath(to_dir_id)
 
         for f in from_paths:
             if not tree.has_filename(f):
