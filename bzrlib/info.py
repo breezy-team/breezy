@@ -83,7 +83,7 @@ def show_info(b):
     print '  %8d revision%s' % (revno, plural(revno))
     committers = {}
     for rev in history:
-        committers[b.get_revision(rev).committer)] = True
+        committers[b.get_revision(rev).committer] = True
     print '  %8d committer%s' % (len(committers), plural(len(committers)))
     if revno > 0:
         firstrev = b.get_revision(history[0])
