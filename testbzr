@@ -337,6 +337,9 @@ try:
     runcmd('bzr commit -m add-spaces')
     runcmd('bzr check')
 
+    runcmd('bzr log')
+    runcmd('bzr log --forward')
+
     runcmd('bzr info')
     
     

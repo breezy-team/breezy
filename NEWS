@@ -11,7 +11,8 @@ bzr-0.0.5  NOT RELEASED YET
       shows all versioned files and unknown files but not ignored files.
 
     * ``bzr log`` runs from most-recent to least-recent, the reverse
-      of the previous order.
+      of the previous order.  The previous behaviour can be obtained
+      with the ``--forward`` option.
 
 
   ENHANCEMENTS:

@@ -585,13 +585,18 @@ class cmd_log(Command):
     """Show log of this branch.
 
     TODO: Option to limit range.
-
-    TODO: Option to show in forward order.
     """
+
     takes_args = ['filename?']
-    takes_options = ['timezone', 'verbose', 'show-ids']
-    def run(self, filename=None, timezone='original', verbose=False, show_ids=False):
+    takes_options = ['forward', 'timezone', 'verbose', 'show-ids']
+    
+    def run(self, filename=None, timezone='original',
+            verbose=False,
+            show_ids=False,
+            forward=False):
         from bzrlib import show_log, find_branch
+
+        direction = (forward and 'forward') or 'reverse'
         
         if filename:
             b = find_branch(filename, lock_mode='r')
@@ -608,7 +613,8 @@ class cmd_log(Command):
                  show_timezone=timezone,
                  verbose=verbose,
                  show_ids=show_ids,
-                 to_file=sys.stdout)
+                 to_file=sys.stdout,
+                 direction=direction)
 
 
 
@@ -959,6 +965,7 @@ OPTIONS = {
     'all':                    None,
     'help':                   None,
     'file':                   unicode,
+    'forward':                None,
     'message':                unicode,
     'profile':                None,
     'revision':               int,
