@@ -169,10 +169,9 @@ def simple_walk():
     from revision import Revision
     from branch import Branch
     from inventory import Inventory
-    from bzrlib import set
 
-    got_invs = set()
-    got_texts = set()
+    got_invs = {}
+    got_texts = {}
 
     print 'read history'
     history = get_url('/.bzr/revision-history').readlines()
@@ -206,9 +205,9 @@ def simple_walk():
                 print '  fetch %s text {%s}' % (path, text_id)
                 text_f = get_url('/.bzr/text-store/%s' % text_id,
                                  compressed=True)
-                got_texts.add(text_id)
+                got_texts[text_id] = True
 
-            got_invs.add(inv_id)
+            got_invs.add[inv_id] = True
 
         print '----'
 

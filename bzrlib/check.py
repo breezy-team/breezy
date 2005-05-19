@@ -27,8 +27,6 @@ from errors import bailout
 import osutils
 
 def check(branch, progress=True):
-    from bzrlib import set
-
     out = sys.stdout
 
     # TODO: factor out
@@ -46,7 +44,7 @@ def check(branch, progress=True):
 
     p('history of %r' % branch.base)
     last_ptr = None
-    checked_revs = set()
+    checked_revs = {}
     
     history = branch.revision_history()
     revno = 0
@@ -66,20 +64,20 @@ def check(branch, progress=True):
         last_ptr = rid
         if rid in checked_revs:
             bailout('repeated revision {%s}' % rid)
-        checked_revs.add(rid)
+        checked_revs[rid] = True
 
         ## TODO: Check all the required fields are present on the revision.
 
         inv = branch.get_inventory(rev.inventory_id)
-        seen_ids = set()
-        seen_names = set()
+        seen_ids = {}
+        seen_names = {}
 
         p('revision %d/%d file ids' % (revno, revcount))
         for file_id in inv:
             if file_id in seen_ids:
                 bailout('duplicated file_id {%s} in inventory for revision {%s}'
                         % (file_id, rid))
-            seen_ids.add(file_id)
+            seen_ids[file_id] = True
 
         i = 0
         len_inv = len(inv)
@@ -119,7 +117,7 @@ def check(branch, progress=True):
         for path, ie in inv.iter_entries():
             if path in seen_names:
                 bailout('duplicated path %r in inventory for revision {%s}' % (path, revid))
-            seen_names.add(path)
+            seen_names[path] = True
 
 
     p('done')

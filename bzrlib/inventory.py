@@ -453,11 +453,6 @@ class Inventory(XMLMixin):
         del self[ie.parent_id].children[ie.name]
 
 
-    def id_set(self):
-        from bzrlib import frozenset
-        return frozenset(self._byid)
-
-
     def to_element(self):
         """Convert to XML Element"""
         e = Element('inventory')
@@ -506,12 +501,23 @@ class Inventory(XMLMixin):
         if not isinstance(other, Inventory):
             return NotImplemented
 
-        if self.id_set() ^ other.id_set():
-            return 1
+        byid = self._byid
+        otherids = other._byid
 
-        for file_id in self._byid:
-            c = cmp(self[file_id], other[file_id])
+        if len(byid) != len(otherids):
+            # shortcut: obviously not the same
+            return 1                    
+        
+        for file_id in byid:
+            if file_id not in otherids:
+                return 1
+            
+            c = cmp(byid[file_id], otherids[file_id])
             if c: return c
+
+        for file_id in otherids:
+            if file_id not in byid:
+                return 1
 
         return 0
 
