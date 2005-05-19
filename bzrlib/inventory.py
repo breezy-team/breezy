@@ -210,19 +210,24 @@ class InventoryEntry(XMLMixin):
 
     from_element = classmethod(from_element)
 
-    def __cmp__(self, other):
-        if self is other:
-            return 0
+    def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
             return NotImplemented
 
-        return cmp(self.file_id, other.file_id) \
-               or cmp(self.name, other.name) \
-               or cmp(self.text_sha1, other.text_sha1) \
-               or cmp(self.text_size, other.text_size) \
-               or cmp(self.text_id, other.text_id) \
-               or cmp(self.parent_id, other.parent_id) \
-               or cmp(self.kind, other.kind)
+        return (self.file_id == other.file_id) \
+               and (self.name == other.name) \
+               and (self.text_sha1 == other.text_sha1) \
+               and (self.text_size == other.text_size) \
+               and (self.text_id == other.text_id) \
+               and (self.parent_id == other.parent_id) \
+               and (self.kind == other.kind)
+
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __hash__(self):
+        raise ValueError('not hashable')
 
 
 
@@ -234,13 +239,12 @@ class RootEntry(InventoryEntry):
         self.parent_id = None
         self.name = ''
 
-    def __cmp__(self, other):
-        if self is other:
-            return 0
+    def __eq__(self, other):
         if not isinstance(other, RootEntry):
             return NotImplemented
-        return cmp(self.file_id, other.file_id) \
-               or cmp(self.children, other.children)
+        
+        return (self.file_id == other.file_id) \
+               and (self.children == other.children)
 
 
 
@@ -481,7 +485,7 @@ class Inventory(XMLMixin):
     from_element = classmethod(from_element)
 
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         """Compare two sets by comparing their contents.
 
         >>> i1 = Inventory()
@@ -495,31 +499,23 @@ class Inventory(XMLMixin):
         >>> i1 == i2
         True
         """
-        if self is other:
-            return 0
-        
         if not isinstance(other, Inventory):
             return NotImplemented
 
-        byid = self._byid
-        otherids = other._byid
-
-        if len(byid) != len(otherids):
+        if len(self._byid) != len(other._byid):
             # shortcut: obviously not the same
-            return 1                    
-        
-        for file_id in byid:
-            if file_id not in otherids:
-                return 1
-            
-            c = cmp(byid[file_id], otherids[file_id])
-            if c: return c
+            return False
 
-        for file_id in otherids:
-            if file_id not in byid:
-                return 1
+        return self._byid == other._byid
 
-        return 0
+
+    def __ne__(self, other):
+        return not (self == other)
+
+
+    def __hash__(self):
+        raise ValueError('not hashable')
+
 
 
     def get_idpath(self, file_id):
