@@ -494,7 +494,7 @@ class cmd_diff(Command):
     def run(self, revision=None, file_list=None):
         from bzrlib.diff import show_diff
     
-        show_diff(Branch('.'), revision, specific_files=file_list)
+        show_diff(Branch('.', lock_mode='r'), revision, specific_files=file_list)
 
 
         
