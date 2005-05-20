@@ -493,8 +493,18 @@ class cmd_diff(Command):
 
     def run(self, revision=None, file_list=None):
         from bzrlib.diff import show_diff
+        from bzrlib import find_branch
+
+        if file_list:
+            b = find_branch(file_list[0], lock_mode='r')
+            file_list = [b.relpath(f) for f in file_list]
+            if file_list == ['']:
+                # just pointing to top-of-tree
+                file_list = None
+        else:
+            b = Branch('.', lock_mode='r')
     
-        show_diff(Branch('.', lock_mode='r'), revision, specific_files=file_list)
+        show_diff(b, revision, specific_files=file_list)
 
 
         
