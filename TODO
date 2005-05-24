@@ -262,6 +262,9 @@ Medium things
 * Function that finds all changes to files under a given directory;
   perhaps log should use this if a directory is given.
 
+* XML attributes might have trouble with filenames containing \n and
+  \r.  Do we really want to support this?  I think perhaps not.
+
 
 Large things
 ------------

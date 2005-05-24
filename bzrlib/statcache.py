@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import stat, os, sha, time
-from binascii import b2a_qp, a2b_qp
 
 from trace import mutter
 from errors import BzrError, BzrCheckError
@@ -66,9 +65,9 @@ sha1, path, size, mtime, ctime, ino, dev).
 
 The SHA-1 is stored in memory as a hexdigest.
 
-File names and file-ids are written out as the quoted-printable
-encoding of their UTF-8 representation.  (file-ids shouldn't contain
-wierd characters, but it might happen.)
+File names and file-ids are written out with non-ascii or whitespace
+characters given as python-style unicode escapes.  (file-ids shouldn't
+contain wierd characters, but it might happen.)
 """
 
 # order of fields returned by fingerprint()
@@ -90,7 +89,7 @@ SC_DEV     = 7
 
 
 
-CACHE_HEADER = "### bzr statcache v2"
+CACHE_HEADER = "### bzr statcache v3"
 
 
 def fingerprint(abspath):
@@ -107,6 +106,14 @@ def fingerprint(abspath):
             fs.st_ctime, fs.st_ino, fs.st_dev)
 
 
+
+def safe_quote(s):
+    return s.encode('unicode_escape') \
+           .replace('\n', '\\u000a')  \
+           .replace(' ', '\\u0020')   \
+           .replace('\r', '\\u000d')
+
+
 def _write_cache(basedir, entry_iter, dangerfiles):
     from atomicfile import AtomicFile
 
@@ -120,11 +127,11 @@ def _write_cache(basedir, entry_iter, dangerfiles):
             
             if entry[SC_FILE_ID] in dangerfiles:
                 continue                # changed too recently
-            outf.write(b2a_qp(entry[0].encode('utf-8'))) # file id
+            outf.write(safe_quote(entry[0])) # file id
             outf.write(' ')
-            outf.write(entry[1])        # hex sha1
+            outf.write(entry[1])             # hex sha1
             outf.write(' ')
-            outf.write(b2a_qp(entry[2].encode('utf-8'), True)) # name
+            outf.write(safe_quote(entry[2])) # name
             for nf in entry[3:]:
                 outf.write(' %d' % nf)
             outf.write('\n')
@@ -156,7 +163,7 @@ def load_cache(basedir):
     for l in cachefile:
         f = l.split(' ')
 
-        file_id = a2b_qp(f[0]).decode('utf-8')
+        file_id = f[0].decode('unicode_escape')
         if file_id in cache:
             raise BzrCheckError("duplicated file_id in cache: {%s}" % file_id)
 
@@ -164,7 +171,7 @@ def load_cache(basedir):
         if len(text_sha) != 40 or not sha_re.match(text_sha):
             raise BzrCheckError("invalid file SHA-1 in cache: %r" % text_sha)
         
-        path = a2b_qp(f[2]).decode('utf-8')
+        path = f[2].decode('unicode_escape')
         if path in seen_paths:
             raise BzrCheckError("duplicated path in cache: %r" % path)
         seen_paths[path] = True
