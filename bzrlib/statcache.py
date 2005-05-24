@@ -226,8 +226,8 @@ def _update_cache_from_list(basedir, cache, to_update):
     """
     stat_cnt = missing_cnt = hardcheck = change_cnt = 0
 
-    # dangerfiles have been recently touched and can't be
-    # committed to a persistent cache yet.
+    # dangerfiles have been recently touched and can't be committed to
+    # a persistent cache yet, but they are returned to the caller.
     dangerfiles = {}
     
     now = int(time.time())
