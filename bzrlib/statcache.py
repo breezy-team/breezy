@@ -210,28 +210,30 @@ def update_cache(basedir, inv, flush=False):
     flush -- discard any previous cache and recalculate from scratch.
     """
 
+    # load the existing cache; use information there to find a list of
+    # files ordered by inode, which is alleged to be the fastest order
+    # to stat the files.
     
-    # TODO: It's supposed to be faster to stat the files in order by inum.
-    # We don't directly know the inum of the files of course but we do
-    # know where they were last sighted, so we can sort by that.
+    to_update = _files_from_inventory(inv)
 
     assert isinstance(flush, bool)
     if flush:
         cache = {}
     else:
         cache = load_cache(basedir)
-    return _update_cache_from_list(basedir, cache, _files_from_inventory(inv))
 
+        by_inode = []
+        without_inode = []
+        for file_id, path in to_update:
+            if file_id in cache:
+                by_inode.append((cache[file_id][SC_INO], file_id, path))
+            else:
+                without_inode.append((file_id, path))
+        by_inode.sort()
 
-
-def _update_cache_from_list(basedir, cache, to_update):
-    """Update and return the cache for given files.
-
-    cache -- Previously cached values to be validated.
-
-    to_update -- Sequence of (file_id, path) pairs to check.
-    """
-    stat_cnt = missing_cnt = hardcheck = change_cnt = 0
+        to_update = [a[1:] for a in by_inode] + without_inode
+            
+    stat_cnt = missing_cnt = new_cnt = hardcheck = change_cnt = 0
 
     # dangerfiles have been recently touched and can't be committed to
     # a persistent cache yet, but they are returned to the caller.
@@ -253,6 +255,8 @@ def _update_cache_from_list(basedir, cache, to_update):
                 change_cnt += 1
             missing_cnt += 1
             continue
+        elif not cacheentry:
+            new_cnt += 1
 
         if (fp[FP_MTIME] >= now) or (fp[FP_CTIME] >= now):
             dangerfiles.append(file_id)
@@ -272,8 +276,10 @@ def _update_cache_from_list(basedir, cache, to_update):
         change_cnt += 1
 
     mutter('statcache: statted %d files, read %d files, %d changed, %d dangerous, '
+           '%d deleted, %d new, '
            '%d in cache'
-           % (stat_cnt, hardcheck, change_cnt, len(dangerfiles), len(cache)))
+           % (stat_cnt, hardcheck, change_cnt, len(dangerfiles),
+              missing_cnt, new_cnt, len(cache)))
         
     if change_cnt:
         mutter('updating on-disk statcache')
