@@ -307,7 +307,7 @@ class cmd_inventory(Command):
         else:
             inv = b.get_revision_inventory(b.lookup_revision(revision))
 
-        for path, entry in inv.iter_entries():
+        for path, entry in inv.entries():
             print '%-50s %s' % (entry.file_id, path)
 
 

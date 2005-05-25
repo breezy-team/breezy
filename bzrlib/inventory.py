@@ -336,17 +336,17 @@ class Inventory(XMLMixin):
 
         This may be faster than iter_entries.
         """
-        def accum(self, dir_ie, dir_path, a):
-            kids = from_dir.children.items()
+        def accum(dir_ie, dir_path, a):
+            kids = dir_ie.children.items()
             kids.sort()
             for name, ie in kids:
                 child_path = os.path.join(dir_path, name)
                 a.append((child_path, ie))
                 if ie.kind == 'directory':
-                    accum(ie, ie, child_path, a)
+                    accum(ie, child_path, a)
 
         a = []
-        accumt(self, self.root, a)
+        accum(self.root, '', a)
         return a
 
 
