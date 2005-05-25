@@ -65,6 +65,7 @@ def _diff_one(oldlines, newlines, to_file, **kw):
     print >>to_file
 
 
+
 def show_diff(b, revision, specific_files):
     import sys
 
@@ -74,6 +75,17 @@ def show_diff(b, revision, specific_files):
         old_tree = b.revision_tree(b.lookup_revision(revision))
         
     new_tree = b.working_tree()
+
+    show_diff_trees(old_tree, new_tree, sys.stdout, specific_files)
+
+
+
+def show_diff_trees(old_tree, new_tree, to_file, specific_files=None):
+    """Show in text form the changes from one tree to another.
+
+    to_files
+        If set, include only changes to these files.
+    """
 
     # TODO: Options to control putting on a prefix or suffix, perhaps as a format string
     old_label = ''
@@ -95,7 +107,7 @@ def show_diff(b, revision, specific_files):
         if kind == 'file':
             _diff_one(old_tree.get_file(file_id).readlines(),
                    [],
-                   sys.stdout,
+                   to_file,
                    fromfile=old_label + path,
                    tofile=DEVNULL)
 
@@ -104,7 +116,7 @@ def show_diff(b, revision, specific_files):
         if kind == 'file':
             _diff_one([],
                    new_tree.get_file(file_id).readlines(),
-                   sys.stdout,
+                   to_file,
                    fromfile=DEVNULL,
                    tofile=new_label + path)
 
@@ -113,7 +125,7 @@ def show_diff(b, revision, specific_files):
         if text_modified:
             _diff_one(old_tree.get_file(file_id).readlines(),
                    new_tree.get_file(file_id).readlines(),
-                   sys.stdout,
+                   to_file,
                    fromfile=old_label + old_path,
                    tofile=new_label + new_path)
 
@@ -122,7 +134,7 @@ def show_diff(b, revision, specific_files):
         if kind == 'file':
             _diff_one(old_tree.get_file(file_id).readlines(),
                    new_tree.get_file(file_id).readlines(),
-                   sys.stdout,
+                   to_file,
                    fromfile=old_label + path,
                    tofile=new_label + path)
 
