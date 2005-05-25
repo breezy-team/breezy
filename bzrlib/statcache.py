@@ -140,6 +140,16 @@ def _write_cache(basedir, entry_iter, dangerfiles):
     finally:
         if not outf.closed:
             outf.abort()
+
+
+def _write_cache_maybe(basedir, entry_iter, dangerfiles):
+    try:
+        return _write_cache(basedir, entry_iter, dangerfiles)
+    except IOError, e:
+        mutter("cannot update statcache in %s: %s" % (basedir, e))
+    except OSError, e:
+        mutter("cannot update statcache in %s: %s" % (basedir, e))
+        
         
         
 def load_cache(basedir):
@@ -270,6 +280,6 @@ def _update_cache_from_list(basedir, cache, to_update):
         
     if change_cnt:
         mutter('updating on-disk statcache')
-        _write_cache(basedir, cache.itervalues(), dangerfiles)
+        _write_cache_maybe(basedir, cache.itervalues(), dangerfiles)
 
     return cache
