@@ -329,7 +329,25 @@ class Inventory(XMLMixin):
             if ie.kind == 'directory':
                 for cn, cie in self.iter_entries(from_dir=ie.file_id):
                     yield os.path.join(name, cn), cie
-                    
+
+
+    def entries(self):
+        """Return list of (path, ie) for all entries except the root.
+
+        This may be faster than iter_entries.
+        """
+        def accum(self, dir_ie, dir_path, a):
+            kids = from_dir.children.items()
+            kids.sort()
+            for name, ie in kids:
+                child_path = os.path.join(dir_path, name)
+                a.append((child_path, ie))
+                if ie.kind == 'directory':
+                    accum(ie, ie, child_path, a)
+
+        a = []
+        accumt(self, self.root, a)
+        return a
 
 
     def directories(self):
