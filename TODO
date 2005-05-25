@@ -71,10 +71,6 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 * ``bzr inventory -r REV`` and perhaps unify this with ``bzr ls``,
   giving options to display ids, types, etc.
 
-* Atomic file class that renames into place when it's closed.
-
-* Don't abort if ``~/.bzr.log`` can't be used.
-
 * Split BzrError into various more specific subclasses for different
   errors people might want to catch.
 
@@ -96,13 +92,6 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 Medium things
 -------------
 
-* Change command functions into Command() objects, like in hct, and
-  then the grammar can be described directly in there.  Since all
-  option definitions are global we can define them just once and
-  reference them from each command.
-
-* Merge Aaron's merge code.
-
 * Merge revert patch.
 
 * ``bzr mv`` that does either rename or move as in Unix.
@@ -116,7 +105,9 @@ Medium things
 
 * Fix up Inventory objects to represent root object as an entry.
 
-* Don't convert entire entry from 
+* Don't convert entire entry from ElementTree to an object when it is
+  read in, but rather wait until the program actually wants to know
+  about that node.
 
 * Extract changes from one revision to the next to a text form
   suitable for transmission over email.
@@ -129,9 +120,6 @@ Medium things
     directories, crossing renames, etc.
 
 * Write a reproducible benchmark, perhaps importing various kernel versions.
-
-* Change test.sh from Bourne shell into something in pure Python so
-  that it can be more portable.
 
 * Directly import diffs!  It seems a bit redundant to need to rescan
   the directory to work out what files diff added/deleted/changed when
@@ -247,8 +235,6 @@ Medium things
 
   urlgrabber's docs say they are working on batched downloads; we
   could perhaps ride on that or just create a background thread (ew).
-
-* Should be a signature at the top of the cache file.
 
 * Paranoid mode where we never trust SHA-1 matches.
 
