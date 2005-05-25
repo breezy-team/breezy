@@ -114,19 +114,16 @@ def safe_quote(s):
            .replace('\r', '\\u000d')
 
 
-def _write_cache(basedir, entry_iter, dangerfiles):
+def _write_cache(basedir, entries):
     from atomicfile import AtomicFile
 
     cachefn = os.path.join(basedir, '.bzr', 'stat-cache')
     outf = AtomicFile(cachefn, 'wb')
     outf.write(CACHE_HEADER + '\n')
     try:
-        for entry in entry_iter:
+        for entry in entries:
             if len(entry) != 8:
                 raise ValueError("invalid statcache entry tuple %r" % entry)
-            
-            if entry[SC_FILE_ID] in dangerfiles:
-                continue                # changed too recently
             outf.write(safe_quote(entry[0])) # file id
             outf.write(' ')
             outf.write(entry[1])             # hex sha1
@@ -142,9 +139,9 @@ def _write_cache(basedir, entry_iter, dangerfiles):
             outf.abort()
 
 
-def _write_cache_maybe(basedir, entry_iter, dangerfiles):
+def _try_write_cache(basedir, entries):
     try:
-        return _write_cache(basedir, entry_iter, dangerfiles)
+        return _write_cache(basedir, entries)
     except IOError, e:
         mutter("cannot update statcache in %s: %s" % (basedir, e))
     except OSError, e:
@@ -238,7 +235,7 @@ def _update_cache_from_list(basedir, cache, to_update):
 
     # dangerfiles have been recently touched and can't be committed to
     # a persistent cache yet, but they are returned to the caller.
-    dangerfiles = {}
+    dangerfiles = []
     
     now = int(time.time())
 
@@ -258,7 +255,7 @@ def _update_cache_from_list(basedir, cache, to_update):
             continue
 
         if (fp[FP_MTIME] >= now) or (fp[FP_CTIME] >= now):
-            dangerfiles[file_id] = True
+            dangerfiles.append(file_id)
 
         if cacheentry and (cacheentry[3:] == fp):
             continue                    # all stat fields unchanged
@@ -280,6 +277,14 @@ def _update_cache_from_list(basedir, cache, to_update):
         
     if change_cnt:
         mutter('updating on-disk statcache')
-        _write_cache_maybe(basedir, cache.itervalues(), dangerfiles)
+
+        if dangerfiles:
+            safe_cache = cache.copy()
+            for file_id in dangerfiles:
+                del safe_cache[file_id]
+        else:
+            safe_cache = cache
+        
+        _try_write_cache(basedir, safe_cache.itervalues())
 
     return cache
