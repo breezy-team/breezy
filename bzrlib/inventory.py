@@ -336,40 +336,35 @@ class Inventory(XMLMixin):
 
         This may be faster than iter_entries.
         """
-        def accum(dir_ie, dir_path, a):
+        accum = []
+        def descend(dir_ie, dir_path):
             kids = dir_ie.children.items()
             kids.sort()
             for name, ie in kids:
                 child_path = os.path.join(dir_path, name)
-                a.append((child_path, ie))
+                accum.append((child_path, ie))
                 if ie.kind == 'directory':
-                    accum(ie, child_path, a)
+                    descend(ie, child_path)
 
-        a = []
-        accum(self.root, '', a)
-        return a
+        descend(self.root, '')
+        return accum
 
 
     def directories(self):
-        """Return (path, entry) pairs for all directories.
+        """Return (path, entry) pairs for all directories, including the root.
         """
-        def descend(parent_ie):
-            parent_name = parent_ie.name
-            yield parent_name, parent_ie
-
-            # directory children in sorted order
-            dn = []
-            for ie in parent_ie.children.itervalues():
-                if ie.kind == 'directory':
-                    dn.append((ie.name, ie))
-            dn.sort()
+        accum = []
+        def descend(parent_ie, parent_path):
+            accum.append((parent_path, parent_ie))
             
-            for name, child_ie in dn:
-                for sub_name, sub_ie in descend(child_ie):
-                    yield appendpath(parent_name, sub_name), sub_ie
+            kids = [(ie.name, ie) for ie in parent_ie.children.itervalues() if ie.kind == 'directory']
+            kids.sort()
 
-        for name, ie in descend(self.root):
-            yield name, ie
+            for name, child_ie in kids:
+                child_path = os.path.join(parent_path, name)
+                descend(child_ie, child_path)
+        descend(self.root, '')
+        return accum
         
 
 
