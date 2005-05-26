@@ -32,7 +32,7 @@ def invert_dict(dict):
     return newdict
 
 
-class PatchApply:
+class PatchApply(object):
     """Patch application as a kind of content change"""
     def __init__(self, contents):
         """Constructor.
@@ -81,7 +81,7 @@ class PatchApply:
             conflict_handler.failed_hunks(filename)
 
         
-class ChangeUnixPermissions:
+class ChangeUnixPermissions(object):
     """This is two-way change, suitable for file modification, creation,
     deletion"""
     def __init__(self, old_mode, new_mode):
@@ -163,7 +163,7 @@ def dir_create(filename, conflict_handler, reverse):
                 
             
 
-class SymlinkCreate:
+class SymlinkCreate(object):
     """Creates or deletes a symlink (for use with ReplaceContents)"""
     def __init__(self, contents):
         """Constructor.
@@ -202,7 +202,7 @@ class SymlinkCreate:
     def __ne__(self, other):
         return not (self == other)
 
-class FileCreate:
+class FileCreate(object):
     """Create or delete a file (for use with ReplaceContents)"""
     def __init__(self, contents):
         """Constructor
@@ -265,7 +265,7 @@ def reversed(sequence):
     for i in range(len(sequence)):
         yield sequence[max - i]
 
-class ReplaceContents:
+class ReplaceContents(object):
     """A contents-replacement framework.  It allows a file/directory/symlink to
     be created, deleted, or replaced with another file/directory/symlink.
     Arguments must be callable with (filename, reverse).
@@ -332,7 +332,7 @@ class ReplaceContents:
             if mode is not None:
                 os.chmod(filename, mode)
 
-class ApplySequence:
+class ApplySequence(object):
     def __init__(self, changes=None):
         self.changes = []
         if changes is not None:
@@ -362,7 +362,7 @@ class ApplySequence:
             change.apply(filename, conflict_handler, reverse)
 
 
-class Diff3Merge:
+class Diff3Merge(object):
     def __init__(self, base_file, other_file):
         self.base_file = base_file
         self.other_file = other_file
@@ -762,7 +762,7 @@ class IDPresent(Exception):
         Exception.__init__(self, msg)
         self.id = id
 
-class Changeset:
+class Changeset(object):
     """A set of changes to apply"""
     def __init__(self):
         self.entries = {}
@@ -1006,7 +1006,7 @@ class MissingForRename(Exception):
         Exception.__init__(self, msg)
         self.filename = filename
 
-class ExceptionConflictHandler:
+class ExceptionConflictHandler(object):
     def __init__(self, dir):
         self.dir = dir
     
@@ -1500,7 +1500,7 @@ def new_delete_entry(entry, tree, inventory, delete):
 
         
     
-class Inventory:
+class Inventory(object):
     def __init__(self, inventory):
         self.inventory = inventory
         self.rinventory = None

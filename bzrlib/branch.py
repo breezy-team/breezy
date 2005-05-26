@@ -80,7 +80,7 @@ def find_branch_root(f=None):
 ######################################################################
 # branch objects
 
-class Branch:
+class Branch(object):
     """Branch holding a history of revisions.
 
     base

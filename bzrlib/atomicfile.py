@@ -16,7 +16,7 @@
 
 
 
-class AtomicFile:
+class AtomicFile(object):
     """A file that does an atomic-rename to move into place.
 
     This also causes hardlinks to break when it's written out.

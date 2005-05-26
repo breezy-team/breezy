@@ -2,7 +2,7 @@ import changeset
 from changeset import Inventory, apply_changeset, invert_dict
 import os.path
 
-class ThreewayInventory:
+class ThreewayInventory(object):
     def __init__(self, this_inventory, base_inventory, other_inventory):
         self.this = this_inventory
         self.base = base_inventory
@@ -149,7 +149,7 @@ def get_merge_entry(entry, inventory, base, other, conflict_handler):
 
     return new_entry
 
-class PermissionsMerge:
+class PermissionsMerge(object):
     def __init__(self, base_path, other_path):
         self.base_path = base_path
         self.other_path = other_path
@@ -177,7 +177,7 @@ class PermissionsMerge:
 import unittest
 import tempfile
 import shutil
-class MergeTree:
+class MergeTree(object):
     def __init__(self, dir):
         self.dir = dir;
         os.mkdir(dir)
@@ -213,7 +213,7 @@ class MergeTree:
         os.rename(self.abs_path(self.inventory[id]), self.abs_path(path))
         self.inventory[id] = path
 
-class MergeBuilder:
+class MergeBuilder(object):
     def __init__(self):
         self.dir = tempfile.mkdtemp(prefix="BaZing")
         self.base = MergeTree(os.path.join(self.dir, "base"))

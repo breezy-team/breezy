@@ -66,7 +66,7 @@ def get_cmd_class(cmd):
     raise BzrCommandError("unknown command %r" % cmd)
 
 
-class Command:
+class Command(object):
     """Base class for commands.
 
     The docstring for an actual command should give a single-line

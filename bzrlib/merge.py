@@ -58,7 +58,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
         """Handle the case when the target file or dir exists"""
         self.add_suffix(target, ".moved")
             
-class SourceFile:
+class SourceFile(object):
     def __init__(self, path, id, present=None, isdir=None):
         self.path = path
         self.id = id

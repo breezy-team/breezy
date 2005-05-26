@@ -105,7 +105,7 @@ class RevfileError(Exception):
 class LimitHitException(Exception):
     pass
 
-class Revfile:
+class Revfile(object):
     def __init__(self, basename, mode):
         # TODO: Lock file  while open
 

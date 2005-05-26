@@ -149,7 +149,7 @@ class RemoteBranch(Branch):
         return r
 
 
-class RemoteStore:
+class RemoteStore(object):
     def __init__(self, baseurl):
         self._baseurl = baseurl
         

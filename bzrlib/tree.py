@@ -32,7 +32,7 @@ import branch
 
 import bzrlib
 
-class Tree:
+class Tree(object):
     """Abstract file tree.
 
     There are several subclasses:

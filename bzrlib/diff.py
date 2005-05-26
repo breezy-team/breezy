@@ -140,7 +140,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None):
 
 
 
-class TreeDelta:
+class TreeDelta(object):
     """Describes changes from one tree to another.
 
     Contains four lists:

@@ -34,7 +34,7 @@ class StoreError(Exception):
     pass
 
 
-class ImmutableStore:
+class ImmutableStore(object):
     """Store that holds files indexed by unique names.
 
     Files can be added, but not modified once they are in.  Typically
