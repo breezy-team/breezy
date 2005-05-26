@@ -51,7 +51,13 @@ class AtomicFile(object):
         
         self.f.close()
         if sys.platform == 'win32':
-            os.remove(self.realfilename)
+            # windows cannot rename over an existing file
+            try:
+                os.remove(self.realfilename)
+            except OSError, e:
+                import errno
+                if e.errno != errno.ENOENT:
+                    raise
         os.rename(self.tmpfilename, self.realfilename)
 
     def abort(self):
