@@ -605,6 +605,7 @@ class cmd_log(Command):
             show_ids=False,
             forward=False):
         from bzrlib import show_log, find_branch
+        import codecs
 
         direction = (forward and 'forward') or 'reverse'
         
@@ -619,11 +620,14 @@ class cmd_log(Command):
             b = find_branch('.', lock_mode='r')
             file_id = None
 
+        mutter('encoding log as %r' % bzrlib.user_encoding)
+        outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout)
+
         show_log(b, file_id,
                  show_timezone=timezone,
                  verbose=verbose,
                  show_ids=show_ids,
-                 to_file=sys.stdout,
+                 to_file=outf,
                  direction=direction)
 
 
