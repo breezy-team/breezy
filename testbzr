@@ -1,4 +1,5 @@
 #! /usr/bin/python
+# -*- coding: utf-8 -*-
 
 # Copyright (C) 2005 Canonical Ltd
 
@@ -341,9 +342,32 @@ try:
     runcmd('bzr log --forward')
 
     runcmd('bzr info')
-    
-    
+
+
+
     cd('..')
+    cd('..')
+
+    progress('status after remove')
+    mkdir('status-after-remove')
+    # see mail from William Dodé, 2005-05-25
+    # $ bzr init; touch a; bzr add a; bzr commit -m "add a"
+    #     * looking for changes...
+    #     added a
+    #     * commited r1
+    #     $ bzr remove a
+    #     $ bzr status
+    #     bzr: local variable 'kind' referenced before assignment
+    #     at /vrac/python/bazaar-ng/bzrlib/diff.py:286 in compare_trees()
+    #     see ~/.bzr.log for debug information
+    cd('status-after-remove')
+    runcmd('bzr init')
+    file('a', 'w').write('foo')
+    runcmd('bzr add a')
+    runcmd(['bzr', 'commit', '-m', 'add a'])
+    runcmd('bzr remove a')
+    runcmd('bzr status')
+
     cd('..')
 
     progress('ignore patterns')
