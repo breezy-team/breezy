@@ -37,6 +37,40 @@ def _unsquish_command_name(cmd):
     assert cmd.startswith("cmd_")
     return cmd[4:].replace('_','-')
 
+def _parse_revision_str(revstr):
+    """This handles a revision string -> revno. 
+
+    There are several possibilities:
+
+        '234'       -> 234
+        '234:345'   -> [234, 345]
+        ':234'      -> [None, 234]
+        '234:'      -> [234, None]
+
+    In the future we will also support:
+        'uuid:blah-blah-blah'   -> ?
+        'hash:blahblahblah'     -> ?
+        potentially:
+        'tag:mytag'             -> ?
+    """
+    if revstr.find(':') != -1:
+        revs = revstr.split(':')
+        if len(revs) > 2:
+            raise ValueError('More than 2 pieces not supported for --revision: %r' % revstr)
+
+        if not revs[0]:
+            revs[0] = None
+        else:
+            revs[0] = int(revs[0])
+
+        if not revs[1]:
+            revs[1] = None
+        else:
+            revs[1] = int(revs[1])
+    else:
+        revs = int(revstr)
+    return revs
+
 def get_all_cmds():
     """Return canonical name and class for all registered commands."""
     for k, v in globals().iteritems():
@@ -594,16 +628,22 @@ class cmd_root(Command):
 class cmd_log(Command):
     """Show log of this branch.
 
-    TODO: Option to limit range.
+    To request a range of logs, you can use the command -r begin:end
+    -r revision requests a specific revision, -r :end or -r begin: are
+    also valid.
+
+    TODO: Make --revision support uuid: and hash: [future tag:] notation.
+  
     """
 
     takes_args = ['filename?']
-    takes_options = ['forward', 'timezone', 'verbose', 'show-ids']
+    takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision']
     
     def run(self, filename=None, timezone='original',
             verbose=False,
             show_ids=False,
-            forward=False):
+            forward=False,
+            revision=None):
         from bzrlib import show_log, find_branch
         import codecs
 
@@ -620,6 +660,16 @@ class cmd_log(Command):
             b = find_branch('.', lock_mode='r')
             file_id = None
 
+        if revision == None:
+            revision = [None, None]
+        elif isinstance(revision, int):
+            revision = [revision, revision]
+        else:
+            # pair of revisions?
+            pass
+            
+        assert len(revision) == 2
+
         mutter('encoding log as %r' % bzrlib.user_encoding)
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout)
 
@@ -628,7 +678,9 @@ class cmd_log(Command):
                  verbose=verbose,
                  show_ids=show_ids,
                  to_file=outf,
-                 direction=direction)
+                 direction=direction,
+                 start_revision=revision[0],
+                 end_revision=revision[1])
 
 
 
@@ -982,7 +1034,7 @@ OPTIONS = {
     'forward':                None,
     'message':                unicode,
     'profile':                None,
-    'revision':               int,
+    'revision':               _parse_revision_str,
     'show-ids':               None,
     'timezone':               str,
     'verbose':                None,

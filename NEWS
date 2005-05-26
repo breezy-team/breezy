@@ -59,6 +59,9 @@ bzr-0.0.5  NOT RELEASED YET
 
     * New form ``bzr commit SELECTED`` to commit only selected files.
 
+    * New form ``bzr log -r FROM:TO`` shows changes in selected
+      range; contributed by John A Meinel.
+
   
   BUG FIXES:
 

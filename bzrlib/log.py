@@ -89,7 +89,9 @@ def show_log(branch,
              verbose=False,
              show_ids=False,
              to_file=None,
-             direction='reverse'):
+             direction='reverse',
+             start_revision=None,
+             end_revision=None):
     """Write out human-readable log of commits to this branch.
 
     specific_fileid
@@ -113,6 +115,12 @@ def show_log(branch,
     direction
         'reverse' (default) is latest to earliest;
         'forward' is earliest to latest.
+
+    start_revision
+        If not None, only show revisions >= start_revision
+
+    end_revision
+        If not None, only show revisions <= end_revision
     """
     from osutils import format_date
     from errors import BzrCheckError
@@ -140,6 +148,12 @@ def show_log(branch,
         if specific_fileid:
             if not delta.touches_file_id(specific_fileid):
                 continue
+
+        if start_revision is not None and revno < start_revision:
+            continue
+
+        if end_revision is not None and revno > end_revision:
+            continue
         
         if not verbose:
             # although we calculated it, throw it away without display
