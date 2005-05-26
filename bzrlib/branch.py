@@ -87,6 +87,7 @@ class Branch(object):
         Base directory of the branch.
     """
     _lockmode = None
+    base = None
     
     def __init__(self, base, init=False, find_root=True, lock_mode='w'):
         """Create new branch object at a particular location.
