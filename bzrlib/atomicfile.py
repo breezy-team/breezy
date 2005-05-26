@@ -16,6 +16,9 @@
 
 
 
+from warnings import warn
+
+
 class AtomicFile(object):
     """A file that does an atomic-rename to move into place.
 
@@ -36,20 +39,30 @@ class AtomicFile(object):
                                              socket.gethostname())
         self.realfilename = filename
         
-        self.f = open(self.tmpfilename, mode)
-
         if encoding:
             import codecs
-            self.f = codecs.EncodedFile(self.f, encoding)
-        
+            self.f = codecs.open(self.tmpfilename, mode, encoding)
+        else:
+            self.f = open(self.tmpfilename, mode)
+
         self.write = self.f.write
-        self.closed = property(self.f.closed)
+        self.closed = False
+
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__,
+                           self.realfilename)
+    
 
     def commit(self):
         """Close the file and move to final name."""
         import sys, os
         
+        if self.closed:
+            raise Exception('%r is already closed' % self)
+
         self.f.close()
+        self.closed = True
         if sys.platform == 'win32':
             # windows cannot rename over an existing file
             try:
@@ -60,15 +73,26 @@ class AtomicFile(object):
                     raise
         os.rename(self.tmpfilename, self.realfilename)
 
+
     def abort(self):
         """Discard temporary file without committing changes."""
         import os
+
+        if self.closed:
+            raise Exception('%r is already closed' % self)
+
         self.f.close()
+        self.closed = True
         os.remove(self.tmpfilename)
+
 
     def close(self):
         """Discard the file unless already committed."""
         if not self.closed:
             self.abort()
-        
+
+
+    def __del__(self):
+        if not self.closed:
+            warn("%r leaked" % self)
         
