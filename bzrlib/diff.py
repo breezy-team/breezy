@@ -291,6 +291,7 @@ def compare_trees(old_tree, new_tree, want_unchanged, specific_files=None):
             elif want_unchanged:
                 delta.unchanged.append((new_path, file_id, kind))
         else:
+            kind = old_inv.get_file_kind(file_id)
             old_path = old_inv.id2path(file_id)
             if specific_files:
                 if not is_inside_any(specific_files, old_path):
