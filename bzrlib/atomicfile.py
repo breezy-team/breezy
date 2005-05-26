@@ -61,8 +61,10 @@ class AtomicFile(object):
         if self.closed:
             raise Exception('%r is already closed' % self)
 
-        self.f.close()
         self.closed = True
+        self.f.close()
+        self.f = None
+        
         if sys.platform == 'win32':
             # windows cannot rename over an existing file
             try:
@@ -71,6 +73,7 @@ class AtomicFile(object):
                 import errno
                 if e.errno != errno.ENOENT:
                     raise
+                
         os.rename(self.tmpfilename, self.realfilename)
 
 
@@ -81,8 +84,9 @@ class AtomicFile(object):
         if self.closed:
             raise Exception('%r is already closed' % self)
 
-        self.f.close()
         self.closed = True
+        self.f.close()
+        self.f = None
         os.remove(self.tmpfilename)
 
 
