@@ -105,7 +105,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file):
 
 
 def diff_file(old_label, oldlines, new_label, newlines, to_file):
-    if True:
+    if False:
         differ = external_diff
     else:
         differ = internal_diff
