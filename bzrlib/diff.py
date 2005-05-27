@@ -89,8 +89,6 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file):
         # regular named file (e.g. in the working directory) then we can
         # compare directly to that, rather than copying it.
 
-        # TODO: Set the labels appropriately
-
         oldtmpf.writelines(oldlines)
         newtmpf.writelines(newlines)
 
