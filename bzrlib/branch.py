@@ -32,6 +32,8 @@ from revision import Revision
 from errors import BzrError
 from textui import show_status
 
+import lock
+
 BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
 
@@ -117,6 +119,7 @@ class Branch(object):
                                      ['use "bzr init" to initialize a new working tree',
                                       'current bzr can only operate from top-of-tree'])
         self._check_format()
+        self._lockfile = None
         self.lock(lock_mode)
 
         self.text_store = ImmutableStore(self.controlfilename('text-store'))
