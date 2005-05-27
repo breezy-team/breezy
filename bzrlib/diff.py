@@ -19,8 +19,7 @@ from trace import mutter
 from errors import BzrError
 
 
-
-def _diff_one(oldlines, newlines, to_file, **kw):
+def internal_diff(old_label, oldlines, new_label, newlines, to_file):
     import difflib
     
     # FIXME: difflib is wrong if there is no trailing newline.
@@ -48,7 +47,8 @@ def _diff_one(oldlines, newlines, to_file, **kw):
         newlines[-1] += '\n'
         nonl = True
 
-    ud = difflib.unified_diff(oldlines, newlines, **kw)
+    ud = difflib.unified_diff(oldlines, newlines,
+                              fromfile=old_label, tofile=new_label)
 
     # work-around for difflib being too smart for its own good
     # if /dev/null is "1,0", patch won't recognize it as /dev/null
@@ -63,6 +63,54 @@ def _diff_one(oldlines, newlines, to_file, **kw):
     if nonl:
         print >>to_file, "\\ No newline at end of file"
     print >>to_file
+
+
+
+
+def external_diff(old_label, oldlines, new_label, newlines, to_file):
+    """Display a diff by calling out to the external diff program."""
+    import sys
+    
+    if to_file != sys.stdout:
+        raise NotImplementedError("sorry, can't send external diff other than to stdout yet",
+                                  to_file)
+
+    from tempfile import NamedTemporaryFile
+    from os import system
+
+    oldtmpf = NamedTemporaryFile()
+    newtmpf = NamedTemporaryFile()
+
+    try:
+        # TODO: perhaps a special case for comparing to or from the empty
+        # sequence; can just use /dev/null on Unix
+
+        # TODO: if either of the files being compared already exists as a
+        # regular named file (e.g. in the working directory) then we can
+        # compare directly to that, rather than copying it.
+
+        # TODO: Set the labels appropriately
+
+        oldtmpf.writelines(oldlines)
+        newtmpf.writelines(newlines)
+
+        oldtmpf.flush()
+        newtmpf.flush()
+
+        system('diff -u --label %s %s --label %s %s' % (old_label, oldtmpf.name, new_label, newtmpf.name))
+    finally:
+        oldtmpf.close()                 # and delete
+        newtmpf.close()
+    
+
+
+def diff_file(old_label, oldlines, new_label, newlines, to_file):
+    if True:
+        differ = external_diff
+    else:
+        differ = internal_diff
+
+    differ(old_label, oldlines, new_label, newlines, to_file)
 
 
 
@@ -105,38 +153,38 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None):
     for path, file_id, kind in delta.removed:
         print '*** removed %s %r' % (kind, path)
         if kind == 'file':
-            _diff_one(old_tree.get_file(file_id).readlines(),
-                   [],
-                   to_file,
-                   fromfile=old_label + path,
-                   tofile=DEVNULL)
+            diff_file(old_label + path,
+                      old_tree.get_file(file_id).readlines(),
+                      DEVNULL, 
+                      [],
+                      to_file)
 
     for path, file_id, kind in delta.added:
         print '*** added %s %r' % (kind, path)
         if kind == 'file':
-            _diff_one([],
-                   new_tree.get_file(file_id).readlines(),
-                   to_file,
-                   fromfile=DEVNULL,
-                   tofile=new_label + path)
+            diff_file(DEVNULL,
+                      [],
+                      new_label + path,
+                      new_tree.get_file(file_id).readlines(),
+                      to_file)
 
     for old_path, new_path, file_id, kind, text_modified in delta.renamed:
         print '*** renamed %s %r => %r' % (kind, old_path, new_path)
         if text_modified:
-            _diff_one(old_tree.get_file(file_id).readlines(),
-                   new_tree.get_file(file_id).readlines(),
-                   to_file,
-                   fromfile=old_label + old_path,
-                   tofile=new_label + new_path)
+            diff_file(old_label + old_path,
+                      old_tree.get_file(file_id).readlines(),
+                      new_label + new_path,
+                      new_tree.get_file(file_id).readlines(),
+                      to_file)
 
     for path, file_id, kind in delta.modified:
         print '*** modified %s %r' % (kind, path)
         if kind == 'file':
-            _diff_one(old_tree.get_file(file_id).readlines(),
-                   new_tree.get_file(file_id).readlines(),
-                   to_file,
-                   fromfile=old_label + path,
-                   tofile=new_label + path)
+            diff_file(old_label + path,
+                      old_tree.get_file(file_id).readlines(),
+                      new_label + path,
+                      new_tree.get_file(file_id).readlines(),
+                      to_file)
 
 
 
