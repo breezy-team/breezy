@@ -32,8 +32,6 @@ from revision import Revision
 from errors import BzrError
 from textui import show_status
 
-import lock
-
 BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
 
@@ -87,9 +85,16 @@ class Branch(object):
 
     base
         Base directory of the branch.
+
+    _lock_mode
+        None, or a duple with 'r' or 'w' for the first element and a positive
+        count for the second.
+
+    _lockfile
+        Open file used for locking.
     """
-    _lockmode = None
     base = None
+    _lock_mode = None
     
     def __init__(self, base, init=False, find_root=True, lock_mode='w'):
         """Create new branch object at a particular location.
@@ -119,7 +124,7 @@ class Branch(object):
                                      ['use "bzr init" to initialize a new working tree',
                                       'current bzr can only operate from top-of-tree'])
         self._check_format()
-        self._lockfile = None
+        self._lockfile = self.controlfile('branch-lock', 'wb')
         self.lock(lock_mode)
 
         self.text_store = ImmutableStore(self.controlfilename('text-store'))
@@ -134,53 +139,44 @@ class Branch(object):
     __repr__ = __str__
 
 
+    def __del__(self):
+        if self._lock_mode:
+            from warnings import warn
+            warn("branch %r was not explicitly unlocked" % self)
+            self.unlock()
 
-    def lock(self, mode='w'):
-        """Lock the on-disk branch, excluding other processes."""
-        try:
-            import fcntl, errno
 
-            if mode == 'w':
-                lm = fcntl.LOCK_EX
-                om = os.O_WRONLY | os.O_CREAT
-            elif mode == 'r':
-                lm = fcntl.LOCK_SH
-                om = os.O_RDONLY
-            else:
-                raise BzrError("invalid locking mode %r" % mode)
+    def lock(self, mode):
+        if self._lock_mode:
+            raise BzrError('branch %r is already locked: %r' % (self, self._lock_mode))
 
-            try:
-                lockfile = os.open(self.controlfilename('branch-lock'), om)
-            except OSError, e:
-                if e.errno == errno.ENOENT:
-                    # might not exist on branches from <0.0.4
-                    self.controlfile('branch-lock', 'w').close()
-                    lockfile = os.open(self.controlfilename('branch-lock'), om)
-                else:
-                    raise e
-            
-            fcntl.lockf(lockfile, lm)
-            def unlock():
-                fcntl.lockf(lockfile, fcntl.LOCK_UN)
-                os.close(lockfile)
-                self._lockmode = None
-            self.unlock = unlock
-            self._lockmode = mode
-        except ImportError:
-            import warnings
-            warnings.warning("please write a locking method for platform %r" % sys.platform)
-            def unlock():
-                self._lockmode = None
-            self.unlock = unlock
-            self._lockmode = mode
+        from bzrlib.lock import lock, LOCK_SH, LOCK_EX
+        if mode == 'r':
+            m = LOCK_SH
+        elif mode == 'w':
+            m = LOCK_EX
+        else:
+            raise ValueError('invalid lock mode %r' % mode)
+        
+        lock(self._lockfile, m)
+        self._lock_mode = (mode, 1)
+
+
+    def unlock(self):
+        if not self._lock_mode:
+            raise BzrError('branch %r is not locked' % (self))
+        from bzrlib.lock import unlock
+        unlock(self._lockfile)
+        self._lock_mode = None
 
 
     def _need_readlock(self):
-        if self._lockmode not in ['r', 'w']:
+        if not self._lock_mode:
             raise BzrError('need read lock on branch, only have %r' % self._lockmode)
 
+
     def _need_writelock(self):
-        if self._lockmode not in ['w']:
+        if (self._lock_mode == None) or (self._lock_mode[0] != 'w'):
             raise BzrError('need write lock on branch, only have %r' % self._lockmode)
 
 
