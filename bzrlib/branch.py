@@ -29,7 +29,7 @@ from osutils import isdir, quotefn, isfile, uuid, sha_file, username, \
      joinpath, sha_string, file_kind, local_time_offset, appendpath
 from store import ImmutableStore
 from revision import Revision
-from errors import bailout, BzrError
+from errors import BzrError
 from textui import show_status
 
 BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
@@ -112,9 +112,10 @@ class Branch(object):
         else:
             self.base = os.path.realpath(base)
             if not isdir(self.controlfilename('.')):
-                bailout("not a bzr branch: %s" % quotefn(base),
-                        ['use "bzr init" to initialize a new working tree',
-                         'current bzr can only operate from top-of-tree'])
+                from errors import NotBranchError
+                raise NotBranchError("not a bzr branch: %s" % quotefn(base),
+                                     ['use "bzr init" to initialize a new working tree',
+                                      'current bzr can only operate from top-of-tree'])
         self._check_format()
         self.lock(lock_mode)
 
@@ -163,7 +164,8 @@ class Branch(object):
             self.unlock = unlock
             self._lockmode = mode
         except ImportError:
-            warning("please write a locking method for platform %r" % sys.platform)
+            import warnings
+            warnings.warning("please write a locking method for platform %r" % sys.platform)
             def unlock():
                 self._lockmode = None
             self.unlock = unlock
@@ -191,7 +193,8 @@ class Branch(object):
         rp = os.path.realpath(path)
         # FIXME: windows
         if not rp.startswith(self.base):
-            bailout("path %r is not within branch %r" % (rp, self.base))
+            from errors import NotBranchError
+            raise NotBranchError("path %r is not within branch %r" % (rp, self.base))
         rp = rp[len(self.base):]
         rp = rp.lstrip(os.sep)
         return rp
@@ -261,9 +264,9 @@ class Branch(object):
         fmt = self.controlfile('branch-format', 'r').read()
         fmt.replace('\r\n', '')
         if fmt != BZR_BRANCH_FORMAT:
-            bailout('sorry, branch format %r not supported' % fmt,
-                    ['use a different bzr version',
-                     'or remove the .bzr directory and "bzr init" again'])
+            raise BzrError('sorry, branch format %r not supported' % fmt,
+                           ['use a different bzr version',
+                            'or remove the .bzr directory and "bzr init" again'])
 
 
     def read_working_inventory(self):
@@ -340,12 +343,12 @@ class Branch(object):
         inv = self.read_working_inventory()
         for f,file_id in zip(files, ids):
             if is_control_file(f):
-                bailout("cannot add control file %s" % quotefn(f))
+                raise BzrError("cannot add control file %s" % quotefn(f))
 
             fp = splitpath(f)
 
             if len(fp) == 0:
-                bailout("cannot add top-level %r" % f)
+                raise BzrError("cannot add top-level %r" % f)
                 
             fullpath = os.path.normpath(self.abspath(f))
 
@@ -353,10 +356,10 @@ class Branch(object):
                 kind = file_kind(fullpath)
             except OSError:
                 # maybe something better?
-                bailout('cannot add: not a regular file or directory: %s' % quotefn(f))
+                raise BzrError('cannot add: not a regular file or directory: %s' % quotefn(f))
             
             if kind != 'file' and kind != 'directory':
-                bailout('cannot add: not a regular file or directory: %s' % quotefn(f))
+                raise BzrError('cannot add: not a regular file or directory: %s' % quotefn(f))
 
             if file_id is None:
                 file_id = gen_file_id(f)
@@ -377,7 +380,7 @@ class Branch(object):
         # use inventory as it was in that revision
         file_id = tree.inventory.path2id(file)
         if not file_id:
-            bailout("%r is not present in revision %d" % (file, revno))
+            raise BzrError("%r is not present in revision %d" % (file, revno))
         tree.print_file(file_id)
         
 
@@ -409,7 +412,7 @@ class Branch(object):
         for f in files:
             fid = inv.path2id(f)
             if not fid:
-                bailout("cannot remove unversioned file %s" % quotefn(f))
+                raise BzrError("cannot remove unversioned file %s" % quotefn(f))
             mutter("remove inventory entry %s {%s}" % (quotefn(f), fid))
             if verbose:
                 # having remove it, it must be either ignored or unknown
@@ -610,21 +613,21 @@ class Branch(object):
         tree = self.working_tree()
         inv = tree.inventory
         if not tree.has_filename(from_rel):
-            bailout("can't rename: old working file %r does not exist" % from_rel)
+            raise BzrError("can't rename: old working file %r does not exist" % from_rel)
         if tree.has_filename(to_rel):
-            bailout("can't rename: new working file %r already exists" % to_rel)
+            raise BzrError("can't rename: new working file %r already exists" % to_rel)
             
         file_id = inv.path2id(from_rel)
         if file_id == None:
-            bailout("can't rename: old name %r is not versioned" % from_rel)
+            raise BzrError("can't rename: old name %r is not versioned" % from_rel)
 
         if inv.path2id(to_rel):
-            bailout("can't rename: new name %r is already versioned" % to_rel)
+            raise BzrError("can't rename: new name %r is already versioned" % to_rel)
 
         to_dir, to_tail = os.path.split(to_rel)
         to_dir_id = inv.path2id(to_dir)
         if to_dir_id == None and to_dir != '':
-            bailout("can't determine destination directory id for %r" % to_dir)
+            raise BzrError("can't determine destination directory id for %r" % to_dir)
 
         mutter("rename_one:")
         mutter("  file_id    {%s}" % file_id)
@@ -642,7 +645,7 @@ class Branch(object):
         try:
             os.rename(from_abs, to_abs)
         except OSError, e:
-            bailout("failed to rename %r to %r: %s"
+            raise BzrError("failed to rename %r to %r: %s"
                     % (from_abs, to_abs, e[1]),
                     ["rename rolled back"])
 
@@ -668,30 +671,30 @@ class Branch(object):
         inv = tree.inventory
         to_abs = self.abspath(to_name)
         if not isdir(to_abs):
-            bailout("destination %r is not a directory" % to_abs)
+            raise BzrError("destination %r is not a directory" % to_abs)
         if not tree.has_filename(to_name):
-            bailout("destination %r not in working directory" % to_abs)
+            raise BzrError("destination %r not in working directory" % to_abs)
         to_dir_id = inv.path2id(to_name)
         if to_dir_id == None and to_name != '':
-            bailout("destination %r is not a versioned directory" % to_name)
+            raise BzrError("destination %r is not a versioned directory" % to_name)
         to_dir_ie = inv[to_dir_id]
         if to_dir_ie.kind not in ('directory', 'root_directory'):
-            bailout("destination %r is not a directory" % to_abs)
+            raise BzrError("destination %r is not a directory" % to_abs)
 
         to_idpath = inv.get_idpath(to_dir_id)
 
         for f in from_paths:
             if not tree.has_filename(f):
-                bailout("%r does not exist in working tree" % f)
+                raise BzrError("%r does not exist in working tree" % f)
             f_id = inv.path2id(f)
             if f_id == None:
-                bailout("%r is not versioned" % f)
+                raise BzrError("%r is not versioned" % f)
             name_tail = splitpath(f)[-1]
             dest_path = appendpath(to_name, name_tail)
             if tree.has_filename(dest_path):
-                bailout("destination %r already exists" % dest_path)
+                raise BzrError("destination %r already exists" % dest_path)
             if f_id in to_idpath:
-                bailout("can't move %r to a subdirectory of itself" % f)
+                raise BzrError("can't move %r to a subdirectory of itself" % f)
 
         # OK, so there's a race here, it's possible that someone will
         # create a file in this interval and then the rename might be
@@ -705,7 +708,7 @@ class Branch(object):
             try:
                 os.rename(self.abspath(f), self.abspath(dest_path))
             except OSError, e:
-                bailout("failed to rename %r to %r: %s" % (f, dest_path, e[1]),
+                raise BzrError("failed to rename %r to %r: %s" % (f, dest_path, e[1]),
                         ["rename rolled back"])
 
         self._write_inventory(inv)
