@@ -67,7 +67,8 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file):
 
 
 
-def external_diff(old_label, oldlines, new_label, newlines, to_file):
+def external_diff(old_label, oldlines, new_label, newlines, to_file,
+                  diff_opts):
     """Display a diff by calling out to the external diff program."""
     import sys
     
@@ -76,7 +77,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file):
                                   to_file)
 
     from tempfile import NamedTemporaryFile
-    from os import system
+    import os
 
     oldtmpf = NamedTemporaryFile()
     newtmpf = NamedTemporaryFile()
@@ -95,24 +96,55 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file):
         oldtmpf.flush()
         newtmpf.flush()
 
-        system('diff -u --label %s %s --label %s %s' % (old_label, oldtmpf.name, new_label, newtmpf.name))
+        if not diff_opts:
+            diff_opts = []
+        diffcmd = ['diff',
+                   '--label', old_label,
+                   oldtmpf.name,
+                   '--label', new_label,
+                   newtmpf.name]
+
+        # diff only allows one style to be specified; they don't override.
+        # note that some of these take optargs, and the optargs can be
+        # directly appended to the options.
+        # this is only an approximate parser; it doesn't properly understand
+        # the grammar.
+        for s in ['-c', '-u', '-C', '-U',
+                  '-e', '--ed',
+                  '-q', '--brief',
+                  '--normal',
+                  '-n', '--rcs',
+                  '-y', '--side-by-side',
+                  '-D', '--ifdef']:
+            for j in diff_opts:
+                if j.startswith(s):
+                    break
+            else:
+                continue
+            break
+        else:
+            diffcmd.append('-u')
+                  
+        if diff_opts:
+            diffcmd.extend(diff_opts)
+
+        rc = os.spawnvp(os.P_WAIT, 'diff', diffcmd)
+        
+        if rc != 0 and rc != 1:
+            # returns 1 if files differ; that's OK
+            if rc < 0:
+                msg = 'signal %d' % (-rc)
+            else:
+                msg = 'exit code %d' % rc
+                
+            raise BzrError('external diff failed with %s; command: %r' % (rc, diffcmd))
     finally:
         oldtmpf.close()                 # and delete
         newtmpf.close()
     
 
 
-def diff_file(old_label, oldlines, new_label, newlines, to_file):
-    if False:
-        differ = external_diff
-    else:
-        differ = internal_diff
-
-    differ(old_label, oldlines, new_label, newlines, to_file)
-
-
-
-def show_diff(b, revision, specific_files):
+def show_diff(b, revision, specific_files, external_diff_options=None):
     import sys
 
     if revision == None:
@@ -122,15 +154,20 @@ def show_diff(b, revision, specific_files):
         
     new_tree = b.working_tree()
 
-    show_diff_trees(old_tree, new_tree, sys.stdout, specific_files)
+    show_diff_trees(old_tree, new_tree, sys.stdout, specific_files,
+                    external_diff_options)
 
 
 
-def show_diff_trees(old_tree, new_tree, to_file, specific_files=None):
+def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
+                    external_diff_options=None):
     """Show in text form the changes from one tree to another.
 
     to_files
         If set, include only changes to these files.
+
+    external_diff_options
+        If set, use an external GNU diff and pass these options.
     """
 
     # TODO: Options to control putting on a prefix or suffix, perhaps as a format string
@@ -144,6 +181,15 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None):
 
     # TODO: Generation of pseudo-diffs for added/deleted files could
     # be usefully made into a much faster special case.
+
+    if external_diff_options:
+        assert isinstance(external_diff_options, basestring)
+        opts = external_diff_options.split()
+        def diff_file(olab, olines, nlab, nlines, to_file):
+            external_diff(olab, olines, nlab, nlines, to_file, opts)
+    else:
+        diff_file = internal_diff
+    
 
     delta = compare_trees(old_tree, new_tree, want_unchanged=False,
                           specific_files=specific_files)

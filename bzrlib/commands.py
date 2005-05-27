@@ -522,10 +522,10 @@ class cmd_diff(Command):
     """
     
     takes_args = ['file*']
-    takes_options = ['revision']
+    takes_options = ['revision', 'diff-options']
     aliases = ['di']
 
-    def run(self, revision=None, file_list=None):
+    def run(self, revision=None, file_list=None, diff_options=None):
         from bzrlib.diff import show_diff
         from bzrlib import find_branch
 
@@ -538,7 +538,8 @@ class cmd_diff(Command):
         else:
             b = Branch('.', lock_mode='r')
     
-        show_diff(b, revision, specific_files=file_list)
+        show_diff(b, revision, specific_files=file_list,
+                  external_diff_options=diff_options)
 
 
         
@@ -1029,6 +1030,7 @@ class cmd_update_stat_cache(Command):
 # the type.
 OPTIONS = {
     'all':                    None,
+    'diff-options':           str,
     'help':                   None,
     'file':                   unicode,
     'forward':                None,

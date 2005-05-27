@@ -62,6 +62,9 @@ bzr-0.0.5  NOT RELEASED YET
     * New form ``bzr log -r FROM:TO`` shows changes in selected
       range; contributed by John A Meinel.
 
+    * New option ``bzr diff --diff-options 'OPTS'`` allows passing
+      options through to an external GNU diff.
+
   
   BUG FIXES:
 
