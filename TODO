@@ -255,6 +255,8 @@ Medium things
 * XML attributes might have trouble with filenames containing \n and
   \r.  Do we really want to support this?  I think perhaps not.
 
+* Remember execute bits, so that exports will work OK.
+
 
 Large things
 ------------
