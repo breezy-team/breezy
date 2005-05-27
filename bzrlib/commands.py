@@ -757,7 +757,7 @@ class cmd_ignore(Command):
     
     def run(self, name_pattern):
         from bzrlib.atomicfile import AtomicFile
-        import codecs, os.path
+        import os.path
 
         b = Branch('.')
         ifn = b.abspath('.bzrignore')
@@ -770,6 +770,9 @@ class cmd_ignore(Command):
                 f.close()
         else:
             igns = ''
+
+        # TODO: If the file already uses crlf-style termination, maybe
+        # we should use that for the newly added lines?
 
         if igns and igns[-1] != '\n':
             igns += '\n'
