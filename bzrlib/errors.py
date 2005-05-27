@@ -34,6 +34,11 @@ class BzrCommandError(BzrError):
     pass
 
 
+class NotBranchError(BzrError):
+    """Specified path is not in a branch"""
+    pass
+
+
 def bailout(msg, explanation=[]):
     ex = BzrError(msg, explanation)
     import trace
