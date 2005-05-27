@@ -16,7 +16,7 @@
 
 
 
-import sys, os, time, os.path
+import sys, os
 
 import bzrlib
 from bzrlib.trace import mutter, note, log_error
@@ -165,6 +165,7 @@ class ExternalCommand(Command):
     """
 
     def find_command(cls, cmd):
+        import os.path
         bzrpath = os.environ.get('BZRPATH', '')
 
         for dir in bzrpath.split(':'):
@@ -756,7 +757,7 @@ class cmd_ignore(Command):
     
     def run(self, name_pattern):
         from bzrlib.atomicfile import AtomicFile
-        import codecs
+        import codecs, os.path
 
         b = Branch('.')
         ifn = b.abspath('.bzrignore')
