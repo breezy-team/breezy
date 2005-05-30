@@ -313,10 +313,10 @@ class cmd_add(Command):
     recursively add that parent, rather than giving an error?
     """
     takes_args = ['file+']
-    takes_options = ['verbose']
+    takes_options = ['verbose', 'no-recurse']
     
-    def run(self, file_list, verbose=False):
-        bzrlib.add.smart_add(file_list, verbose)
+    def run(self, file_list, verbose=False, no_recurse=False):
+        bzrlib.add.smart_add(file_list, verbose, not no_recurse)
 
 
 class cmd_relpath(Command):
@@ -1039,6 +1039,7 @@ OPTIONS = {
     'file':                   unicode,
     'forward':                None,
     'message':                unicode,
+    'no-recurse':             None,
     'profile':                None,
     'revision':               _parse_revision_str,
     'show-ids':               None,

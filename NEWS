@@ -69,6 +69,9 @@ bzr-0.0.5  NOT RELEASED YET
     * New option ``bzr diff --diff-options 'OPTS'`` allows passing
       options through to an external GNU diff.
 
+    * New option ``bzr add --no-recurse`` to add a directory but not
+      their contents.
+
   
   BUG FIXES:
 
@@ -93,6 +96,8 @@ bzr-0.0.5  NOT RELEASED YET
 
     * testbzr requires python2.4, but can be used to test bzr running
       under a different version.
+
+    * Tests added for many other changes in this release.
 
 
   INTERNAL:
