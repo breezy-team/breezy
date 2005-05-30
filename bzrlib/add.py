@@ -21,7 +21,7 @@ from errors import bailout
 from trace import mutter, note
 
 def smart_add(file_list, verbose=True, recurse=True):
-    """Add files to version, optionall recursing into directories.
+    """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
     For the specific behaviour see the help for cmd_add().
