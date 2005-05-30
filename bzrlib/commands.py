@@ -1046,8 +1046,9 @@ OPTIONS = {
     }
 
 SHORT_OPTIONS = {
-    'm':                      'message',
     'F':                      'file', 
+    'h':                      'help',
+    'm':                      'message',
     'r':                      'revision',
     'v':                      'verbose',
 }
