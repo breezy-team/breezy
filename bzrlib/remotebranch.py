@@ -101,10 +101,6 @@ def _find_remote_root(url):
 class RemoteBranch(Branch):
     def __init__(self, baseurl, find_root=True):
         """Create new proxy for a remote branch."""
-        if lock_mode not in ('', 'r'):
-            raise BzrError('lock mode %r is not supported for remote branches'
-                           % lock_mode)
-
         if find_root:
             self.baseurl = _find_remote_root(baseurl)
         else:
