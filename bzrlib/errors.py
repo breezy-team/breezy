@@ -39,6 +39,18 @@ class NotBranchError(BzrError):
     pass
 
 
+class BadFileKindError(BzrError):
+    """Specified file is of a kind that cannot be added.
+
+    (For example a symlink or device file.)"""
+    pass
+
+
+class ForbiddenFileError(BzrError):
+    """Cannot operate on a file because it is a control file."""
+    pass
+
+
 def bailout(msg, explanation=[]):
     ex = BzrError(msg, explanation)
     import trace

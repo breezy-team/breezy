@@ -17,7 +17,6 @@
 import os, sys
 import bzrlib
 
-from errors import bailout
 from trace import mutter, note
 
 def smart_add(file_list, verbose=True, recurse=True):
@@ -27,7 +26,8 @@ def smart_add(file_list, verbose=True, recurse=True):
     For the specific behaviour see the help for cmd_add().
     """
     from bzrlib.osutils import quotefn, kind_marker
-    
+    from bzrlib.errors import BadFileKindError, ForbiddenFileError
+
     assert file_list
     user_list = file_list[:]
     assert not isinstance(file_list, basestring)
@@ -43,15 +43,16 @@ def smart_add(file_list, verbose=True, recurse=True):
         kind = bzrlib.osutils.file_kind(af)
 
         if kind != 'file' and kind != 'directory':
-            if f not in user_list:
-                print "Skipping %s (can't add file of kind '%s')" % (f, kind)
+            if f in user_list:
+                raise BadFileKindError("cannot add %s of type %s" % (f, kind))
+            else:
+                print "skipping %s (can't add file of kind '%s')" % (f, kind)
                 continue
-            bailout("can't add file of kind %r" % kind)
 
         bzrlib.mutter("smart add of %r, abs=%r" % (f, af))
         
         if bzrlib.branch.is_control_file(af):
-            bailout("cannot add control file %r" % af)
+            raise ForbiddenFileError('cannot add control file %s' % f)
             
         versioned = (inv.path2id(rf) != None)
 
