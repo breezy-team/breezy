@@ -66,6 +66,34 @@ def with_readlock(method):
         finally:
             self.unlock()
     return d
+
+
+def _relpath(base, path):
+    """Return path relative to base, or raise exception.
+
+    The path may be either an absolute path or a path relative to the
+    current working directory.
+
+    Lifted out of Branch.relpath for ease of testing.
+
+    os.path.commonprefix (python2.4) has a bad bug that it works just
+    on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
+    avoids that problem."""
+    rp = os.path.abspath(path)
+
+    s = []
+    head = rp
+    while len(head) >= len(base):
+        if head == base:
+            break
+        head, tail = os.path.split(head)
+        if tail:
+            s.insert(0, tail)
+    else:
+        from errors import NotBranchError
+        raise NotBranchError("path %r is not within branch %r" % (rp, base))
+
+    return os.sep.join(s)
         
 
 def find_branch_root(f=None):
@@ -215,14 +243,7 @@ class Branch(object):
         """Return path relative to this branch of something inside it.
 
         Raises an error if path is not in this branch."""
-        rp = os.path.realpath(path)
-        # FIXME: windows
-        if not rp.startswith(self.base):
-            from errors import NotBranchError
-            raise NotBranchError("path %r is not within branch %r" % (rp, self.base))
-        rp = rp[len(self.base):]
-        rp = rp.lstrip(os.sep)
-        return rp
+        return _relpath(self.base, path)
 
 
     def controlfilename(self, file_or_path):
