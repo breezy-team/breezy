@@ -334,9 +334,9 @@ class cmd_relpath(Command):
 
 class cmd_inventory(Command):
     """Show inventory of the current working copy or a revision."""
-    takes_options = ['revision']
+    takes_options = ['revision', 'show-ids']
     
-    def run(self, revision=None):
+    def run(self, revision=None, show_ids=False):
         b = Branch('.')
         if revision == None:
             inv = b.read_working_inventory()
@@ -344,7 +344,10 @@ class cmd_inventory(Command):
             inv = b.get_revision_inventory(b.lookup_revision(revision))
 
         for path, entry in inv.entries():
-            print '%-50s %s' % (entry.file_id, path)
+            if show_ids:
+                print '%-50s %s' % (path, entry.file_id)
+            else:
+                print path
 
 
 class cmd_move(Command):

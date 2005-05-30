@@ -13,6 +13,10 @@ bzr-0.0.5  NOT RELEASED YET
     * ``bzr log`` runs from most-recent to least-recent, the reverse
       of the previous order.  The previous behaviour can be obtained
       with the ``--forward`` option.
+        
+    * ``bzr inventory`` by default shows only filenames, and also ids
+      if ``--show-ids`` is given, in which case the id is the second
+      field.
 
 
   ENHANCEMENTS:
