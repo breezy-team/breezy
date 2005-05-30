@@ -344,6 +344,9 @@ try:
     runcmd('bzr info')
 
 
+    
+
+
 
     cd('..')
     cd('..')
@@ -397,6 +400,34 @@ try:
     runcmd('bzr ignore garh')
     assert backtick('bzr unknowns') == ''
     assert file('.bzrignore', 'rb').read() == '*.blah\ngarh\n'
+
+    cd('..')
+
+
+
+
+    progress("recursive and non-recursive add")
+    mkdir('no-recurse')
+    cd('no-recurse')
+    runcmd('bzr init')
+    mkdir('foo')
+    fp = os.path.join('foo', 'test.txt')
+    f = file(fp, 'w')
+    f.write('hello!\n')
+    f.close()
+    runcmd('bzr add --no-recurse foo')
+    runcmd('bzr file-id foo')
+    runcmd('bzr file-id ' + fp, 1)      # not versioned yet
+    runcmd('bzr commit -m add-dir-only')
+
+    runcmd('bzr file-id ' + fp, 1)      # still not versioned 
+
+    runcmd('bzr add foo')
+    runcmd('bzr file-id ' + fp)
+    runcmd('bzr commit -m add-sub-file')
+    
+    cd('..')
+
 
 
 
