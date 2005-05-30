@@ -17,16 +17,17 @@
 import os, sys
 import bzrlib
 
-from osutils import quotefn, appendpath
 from errors import bailout
 from trace import mutter, note
 
-def smart_add(file_list, verbose=False, recurse=True):
+def smart_add(file_list, verbose=True, recurse=True):
     """Add files to version, optionall recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
     For the specific behaviour see the help for cmd_add().
     """
+    from bzrlib.osutils import quotefn, kind_marker
+    
     assert file_list
     user_list = file_list[:]
     assert not isinstance(file_list, basestring)
@@ -63,12 +64,12 @@ def smart_add(file_list, verbose=False, recurse=True):
             inv.add_path(rf, kind=kind, file_id=file_id)
             bzrlib.mutter("added %r kind %r file_id={%s}" % (rf, kind, file_id))
             count += 1 
-            if verbose:
-                bzrlib.textui.show_status('A', kind, quotefn(f))
+
+            print 'added', quotefn(f)
 
         if kind == 'directory' and recurse:
             for subf in os.listdir(af):
-                subp = appendpath(rf, subf)
+                subp = os.path.join(rf, subf)
                 if subf == bzrlib.BZRDIR:
                     mutter("skip control directory %r" % subp)
                 elif tree.is_ignored(subp):
