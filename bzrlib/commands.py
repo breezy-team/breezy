@@ -1025,9 +1025,6 @@ class cmd_update_stat_cache(Command):
         statcache.update_cache(b.base, b.read_working_inventory())
 
 
-######################################################################
-# main routine
-
 
 # list of all available options; the rhs can be either None for an
 # option that takes no argument, or a constructor function that checks
