@@ -115,7 +115,8 @@ class RemoteBranch(Branch):
         self.text_store = RemoteStore(baseurl + '/.bzr/text-store/')
 
     def __str__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.baseurl)
+        b = getattr(self, 'baseurl', 'undefined')
+        return '%s(%r)' % (self.__class__.__name__, b)
 
     __repr__ = __str__
 
