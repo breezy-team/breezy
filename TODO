@@ -96,6 +96,11 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
   can use the file itself; for files from a revision we should use the
   commit time of the revision.
 
+* Perhaps split command infrastructure from the actual command
+  definitions.
+
+* Cleaner support for negative boolean options like --no-recurse.
+
 
 Medium things
 -------------
