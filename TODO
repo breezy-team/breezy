@@ -257,6 +257,10 @@ Medium things
 
 * Remember execute bits, so that exports will work OK.
 
+* Unify smart_add and plain Branch.add(); perhaps smart_add should
+  just build a list of files to add and pass that to the regular add
+  function.
+
 
 Large things
 ------------
