@@ -76,6 +76,9 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
         raise NotImplementedError("sorry, can't send external diff other than to stdout yet",
                                   to_file)
 
+    # make sure our own output is properly ordered before the diff
+    to_file.flush()
+
     from tempfile import NamedTemporaryFile
     import os
 
