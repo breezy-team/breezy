@@ -43,6 +43,29 @@ def find_branch(f, **args):
         return remotebranch.RemoteBranch(f, **args)
     else:
         return Branch(f, **args)
+
+
+
+def with_writelock(method):
+    """Method decorator for functions run with the branch locked."""
+    def d(self, *a, **k):
+        # called with self set to the branch
+        self.lock('w')
+        try:
+            return method(self, *a, **k)
+        finally:
+            self.unlock()
+    return d
+
+
+def with_readlock(method):
+    def d(self, *a, **k):
+        self.lock('r')
+        try:
+            return method(self, *a, **k)
+        finally:
+            self.unlock()
+    return d
         
 
 def find_branch_root(f=None):
@@ -87,16 +110,20 @@ class Branch(object):
         Base directory of the branch.
 
     _lock_mode
-        None, or a duple with 'r' or 'w' for the first element and a positive
-        count for the second.
+        None, or 'r' or 'w'
+
+    _lock_count
+        If _lock_mode is true, a positive count of the number of times the
+        lock has been taken.
 
     _lockfile
         Open file used for locking.
     """
     base = None
     _lock_mode = None
+    _lock_count = None
     
-    def __init__(self, base, init=False, find_root=True, lock_mode='w'):
+    def __init__(self, base, init=False, find_root=True):
         """Create new branch object at a particular location.
 
         base -- Base directory for the branch.
@@ -125,7 +152,6 @@ class Branch(object):
                                       'current bzr can only operate from top-of-tree'])
         self._check_format()
         self._lockfile = self.controlfile('branch-lock', 'wb')
-        self.lock(lock_mode)
 
         self.text_store = ImmutableStore(self.controlfilename('text-store'))
         self.revision_store = ImmutableStore(self.controlfilename('revision-store'))
@@ -148,36 +174,36 @@ class Branch(object):
 
     def lock(self, mode):
         if self._lock_mode:
-            raise BzrError('branch %r is already locked: %r' % (self, self._lock_mode))
-
-        from bzrlib.lock import lock, LOCK_SH, LOCK_EX
-        if mode == 'r':
-            m = LOCK_SH
-        elif mode == 'w':
-            m = LOCK_EX
+            if mode == 'w' and cur_lm == 'r':
+                raise BzrError("can't upgrade to a write lock")
+            
+            assert self._lock_count >= 1
+            self._lock_count += 1
         else:
-            raise ValueError('invalid lock mode %r' % mode)
-        
-        lock(self._lockfile, m)
-        self._lock_mode = (mode, 1)
+            from bzrlib.lock import lock, LOCK_SH, LOCK_EX
+            if mode == 'r':
+                m = LOCK_SH
+            elif mode == 'w':
+                m = LOCK_EX
+            else:
+                raise ValueError('invalid lock mode %r' % mode)
+
+            lock(self._lockfile, m)
+            self._lock_mode = mode
+            self._lock_count = 1
 
 
     def unlock(self):
         if not self._lock_mode:
             raise BzrError('branch %r is not locked' % (self))
-        from bzrlib.lock import unlock
-        unlock(self._lockfile)
-        self._lock_mode = None
 
-
-    def _need_readlock(self):
-        if not self._lock_mode:
-            raise BzrError('need read lock on branch, only have %r' % self._lockmode)
-
-
-    def _need_writelock(self):
-        if (self._lock_mode == None) or (self._lock_mode[0] != 'w'):
-            raise BzrError('need write lock on branch, only have %r' % self._lockmode)
+        if self._lock_count > 1:
+            self._lock_count -= 1
+        else:
+            assert self._lock_count == 1
+            from bzrlib.lock import unlock
+            unlock(self._lockfile)
+            self._lock_mode = self._lock_count = None
 
 
     def abspath(self, name):
@@ -268,9 +294,10 @@ class Branch(object):
                             'or remove the .bzr directory and "bzr init" again'])
 
 
+
+    @with_readlock
     def read_working_inventory(self):
         """Read the working inventory."""
-        self._need_readlock()
         before = time.time()
         # ElementTree does its own conversion from UTF-8, so open in
         # binary.
@@ -278,7 +305,7 @@ class Branch(object):
         mutter("loaded inventory of %d items in %f"
                % (len(inv), time.time() - before))
         return inv
-
+            
 
     def _write_inventory(self, inv):
         """Update the working inventory.
@@ -286,7 +313,6 @@ class Branch(object):
         That is to say, the inventory describing changes underway, that
         will be committed to the next revision.
         """
-        self._need_writelock()
         ## TODO: factor out to atomicfile?  is rename safe on windows?
         ## TODO: Maybe some kind of clean/dirty marker on inventory?
         tmpfname = self.controlfilename('inventory.tmp')
@@ -298,12 +324,13 @@ class Branch(object):
             os.remove(inv_fname)
         os.rename(tmpfname, inv_fname)
         mutter('wrote working inventory')
-
+            
 
     inventory = property(read_working_inventory, _write_inventory, None,
                          """Inventory for the working copy.""")
 
 
+    @with_writelock
     def add(self, files, verbose=False, ids=None):
         """Make files versioned.
 
@@ -324,8 +351,6 @@ class Branch(object):
                add all non-ignored children.  Perhaps do that in a
                higher-level method.
         """
-        self._need_writelock()
-
         # TODO: Re-adding a file that is removed in the working copy
         # should probably put it back with the previous ID.
         if isinstance(files, types.StringTypes):
@@ -338,7 +363,7 @@ class Branch(object):
             ids = [None] * len(files)
         else:
             assert(len(ids) == len(files))
-        
+
         inv = self.read_working_inventory()
         for f,file_id in zip(files, ids):
             if is_control_file(f):
@@ -348,7 +373,7 @@ class Branch(object):
 
             if len(fp) == 0:
                 raise BzrError("cannot add top-level %r" % f)
-                
+
             fullpath = os.path.normpath(self.abspath(f))
 
             try:
@@ -356,7 +381,7 @@ class Branch(object):
             except OSError:
                 # maybe something better?
                 raise BzrError('cannot add: not a regular file or directory: %s' % quotefn(f))
-            
+
             if kind != 'file' and kind != 'directory':
                 raise BzrError('cannot add: not a regular file or directory: %s' % quotefn(f))
 
@@ -366,23 +391,23 @@ class Branch(object):
 
             if verbose:
                 show_status('A', kind, quotefn(f))
-                
-            mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
-            
-        self._write_inventory(inv)
 
+            mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
+
+        self._write_inventory(inv)
+            
 
     def print_file(self, file, revno):
         """Print `file` to stdout."""
-        self._need_readlock()
         tree = self.revision_tree(self.lookup_revision(revno))
         # use inventory as it was in that revision
         file_id = tree.inventory.path2id(file)
         if not file_id:
             raise BzrError("%r is not present in revision %d" % (file, revno))
         tree.print_file(file_id)
-        
 
+
+    @with_writelock
     def remove(self, files, verbose=False):
         """Mark nominated files for removal from the inventory.
 
@@ -399,11 +424,9 @@ class Branch(object):
         """
         ## TODO: Normalize names
         ## TODO: Remove nested loops; better scalability
-        self._need_writelock()
-
         if isinstance(files, types.StringTypes):
             files = [files]
-        
+
         tree = self.working_tree()
         inv = tree.inventory
 
@@ -423,6 +446,7 @@ class Branch(object):
             del inv[fid]
 
         self._write_inventory(inv)
+
 
     def set_inventory(self, new_inventory_list):
         inv = Inventory()
@@ -474,7 +498,6 @@ class Branch(object):
 
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
-        self._need_readlock()
         r = Revision.read_xml(self.revision_store[revision_id])
         assert r.revision_id == revision_id
         return r
@@ -486,27 +509,25 @@ class Branch(object):
         TODO: Perhaps for this and similar methods, take a revision
                parameter which can be either an integer revno or a
                string hash."""
-        self._need_readlock()
         i = Inventory.read_xml(self.inventory_store[inventory_id])
         return i
 
 
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""
-        self._need_readlock()
         if revision_id == None:
             return Inventory()
         else:
             return self.get_inventory(self.get_revision(revision_id).inventory_id)
 
 
+    @with_readlock
     def revision_history(self):
         """Return sequence of revision hashes on to this branch.
 
         >>> ScratchBranch().revision_history()
         []
         """
-        self._need_readlock()
         return [l.rstrip('\r\n') for l in self.controlfile('revision-history', 'r').readlines()]
 
 
@@ -576,7 +597,6 @@ class Branch(object):
         an `EmptyTree` is returned."""
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
-        self._need_readlock()
         if revision_id == None:
             return EmptyTree()
         else:
@@ -603,19 +623,19 @@ class Branch(object):
 
 
 
+    @with_writelock
     def rename_one(self, from_rel, to_rel):
         """Rename one file.
 
         This can change the directory or the filename or both.
         """
-        self._need_writelock()
         tree = self.working_tree()
         inv = tree.inventory
         if not tree.has_filename(from_rel):
             raise BzrError("can't rename: old working file %r does not exist" % from_rel)
         if tree.has_filename(to_rel):
             raise BzrError("can't rename: new working file %r already exists" % to_rel)
-            
+
         file_id = inv.path2id(from_rel)
         if file_id == None:
             raise BzrError("can't rename: old name %r is not versioned" % from_rel)
@@ -634,11 +654,11 @@ class Branch(object):
         mutter("  to_rel     %r" % to_rel)
         mutter("  to_dir     %r" % to_dir)
         mutter("  to_dir_id  {%s}" % to_dir_id)
-            
+
         inv.rename(file_id, to_dir_id, to_tail)
 
         print "%s => %s" % (from_rel, to_rel)
-        
+
         from_abs = self.abspath(from_rel)
         to_abs = self.abspath(to_rel)
         try:
@@ -649,9 +669,10 @@ class Branch(object):
                     ["rename rolled back"])
 
         self._write_inventory(inv)
-            
 
 
+
+    @with_writelock
     def move(self, from_paths, to_name):
         """Rename files.
 
@@ -663,7 +684,6 @@ class Branch(object):
         Note that to_name is only the last component of the new name;
         this doesn't change the directory.
         """
-        self._need_writelock()
         ## TODO: Option to move IDs only
         assert not isinstance(from_paths, basestring)
         tree = self.working_tree()

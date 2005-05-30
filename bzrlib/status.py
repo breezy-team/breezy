@@ -28,28 +28,32 @@ def show_status(branch, show_unchanged=False,
         If set, only show the status of files in this list.
     """
     import sys
-    import diff
+    from bzrlib.diff import compare_trees
     
-    branch._need_readlock()
-    
-    old = branch.basis_tree()
-    new = branch.working_tree()
+    branch.lock('r')
+    try:
 
-    delta = diff.compare_trees(old, new, want_unchanged=show_unchanged,
-                               specific_files=specific_files)
+        old = branch.basis_tree()
+        new = branch.working_tree()
 
-    delta.show(sys.stdout, show_ids=show_ids,
-               show_unchanged=show_unchanged)
+        delta = compare_trees(old, new, want_unchanged=show_unchanged,
+                              specific_files=specific_files)
 
-    unknowns = new.unknowns()
-    done_header = False
-    for path in unknowns:
-        # FIXME: Should also match if the unknown file is within a
-        # specified directory.
-        if specific_files:
-            if path not in specific_files:
-                continue
-        if not done_header:
-            print 'unknown:'
-            done_header = True
-        print ' ', path
+        delta.show(sys.stdout, show_ids=show_ids,
+                   show_unchanged=show_unchanged)
+
+        unknowns = new.unknowns()
+        done_header = False
+        for path in unknowns:
+            # FIXME: Should also match if the unknown file is within a
+            # specified directory.
+            if specific_files:
+                if path not in specific_files:
+                    continue
+            if not done_header:
+                print 'unknown:'
+                done_header = True
+            print ' ', path
+    finally:
+        branch.unlock()
+        

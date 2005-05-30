@@ -99,7 +99,7 @@ def _find_remote_root(url):
 
 
 class RemoteBranch(Branch):
-    def __init__(self, baseurl, find_root=True, lock_mode='r'):
+    def __init__(self, baseurl, find_root=True):
         """Create new proxy for a remote branch."""
         if lock_mode not in ('', 'r'):
             raise BzrError('lock mode %r is not supported for remote branches'
@@ -124,12 +124,14 @@ class RemoteBranch(Branch):
             raise BzrError("file mode %r not supported for remote branches" % mode)
         return get_url(self.baseurl + '/.bzr/' + filename, False)
 
-    def _need_readlock(self):
-        # remote branch always safe for read
-        pass
 
-    def _need_writelock(self):
-        raise BzrError("cannot get write lock on HTTP remote branch")
+    def lock(self, mode):
+        if mode != 'r':
+            raise BzrError('lock mode %r not supported for remote branch %r' % (mode, self))
+
+    def unlock(self):
+        pass
+    
 
     def relpath(self, path):
         if not path.startswith(self.baseurl):

@@ -263,14 +263,14 @@ class cmd_status(Command):
     
     def run(self, all=False, show_ids=False, file_list=None):
         if file_list:
-            b = Branch(file_list[0], lock_mode='r')
+            b = Branch(file_list[0])
             file_list = [b.relpath(x) for x in file_list]
             # special case: only one path was given and it's the root
             # of the branch
             if file_list == ['']:
                 file_list = None
         else:
-            b = Branch('.', lock_mode='r')
+            b = Branch('.')
         import status
         status.show_status(b, show_unchanged=all, show_ids=show_ids,
                            specific_files=file_list)
@@ -531,13 +531,13 @@ class cmd_diff(Command):
         from bzrlib import find_branch
 
         if file_list:
-            b = find_branch(file_list[0], lock_mode='r')
+            b = find_branch(file_list[0])
             file_list = [b.relpath(f) for f in file_list]
             if file_list == ['']:
                 # just pointing to top-of-tree
                 file_list = None
         else:
-            b = Branch('.', lock_mode='r')
+            b = Branch('.')
     
         show_diff(b, revision, specific_files=file_list,
                   external_diff_options=diff_options)
@@ -652,14 +652,14 @@ class cmd_log(Command):
         direction = (forward and 'forward') or 'reverse'
         
         if filename:
-            b = find_branch(filename, lock_mode='r')
+            b = find_branch(filename)
             fp = b.relpath(filename)
             if fp:
                 file_id = b.read_working_inventory().path2id(fp)
             else:
                 file_id = None  # points to branch root
         else:
-            b = find_branch('.', lock_mode='r')
+            b = find_branch('.')
             file_id = None
 
         if revision == None:
@@ -693,7 +693,7 @@ class cmd_touching_revisions(Command):
     hidden = True
     takes_args = ["filename"]
     def run(self, filename):
-        b = Branch(filename, lock_mode='r')
+        b = Branch(filename)
         inv = b.read_working_inventory()
         file_id = inv.path2id(b.relpath(filename))
         for revno, revision_id, what in bzrlib.log.find_touching_revisions(b, file_id):

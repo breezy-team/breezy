@@ -64,166 +64,169 @@ def commit(branch, message,
     from revision import Revision
     from trace import mutter, note
 
-    branch._need_writelock()
+    branch.lock('w')
 
-    # First walk over the working inventory; and both update that
-    # and also build a new revision inventory.  The revision
-    # inventory needs to hold the text-id, sha1 and size of the
-    # actual file versions committed in the revision.  (These are
-    # not present in the working inventory.)  We also need to
-    # detect missing/deleted files, and remove them from the
-    # working inventory.
+    try:
+        # First walk over the working inventory; and both update that
+        # and also build a new revision inventory.  The revision
+        # inventory needs to hold the text-id, sha1 and size of the
+        # actual file versions committed in the revision.  (These are
+        # not present in the working inventory.)  We also need to
+        # detect missing/deleted files, and remove them from the
+        # working inventory.
 
-    work_tree = branch.working_tree()
-    work_inv = work_tree.inventory
-    inv = Inventory()
-    basis = branch.basis_tree()
-    basis_inv = basis.inventory
-    missing_ids = []
+        work_tree = branch.working_tree()
+        work_inv = work_tree.inventory
+        inv = Inventory()
+        basis = branch.basis_tree()
+        basis_inv = basis.inventory
+        missing_ids = []
 
-    if verbose:
-        note('looking for changes...')
-        
-    for path, entry in work_inv.iter_entries():
-        ## TODO: Check that the file kind has not changed from the previous
-        ## revision of this file (if any).
+        if verbose:
+            note('looking for changes...')
 
-        entry = entry.copy()
+        for path, entry in work_inv.iter_entries():
+            ## TODO: Check that the file kind has not changed from the previous
+            ## revision of this file (if any).
 
-        p = branch.abspath(path)
-        file_id = entry.file_id
-        mutter('commit prep file %s, id %r ' % (p, file_id))
+            entry = entry.copy()
 
-        if specific_files and not is_inside_any(specific_files, path):
-            if basis_inv.has_id(file_id):
-                # carry over with previous state
-                inv.add(basis_inv[file_id].copy())
-            else:
-                # omit this from committed inventory
-                pass
-            continue
+            p = branch.abspath(path)
+            file_id = entry.file_id
+            mutter('commit prep file %s, id %r ' % (p, file_id))
 
-        if not work_tree.has_id(file_id):
-            if verbose:
-                print('deleted %s%s' % (path, kind_marker(entry.kind)))
-            mutter("    file is missing, removing from inventory")
-            missing_ids.append(file_id)
-            continue
+            if specific_files and not is_inside_any(specific_files, path):
+                if basis_inv.has_id(file_id):
+                    # carry over with previous state
+                    inv.add(basis_inv[file_id].copy())
+                else:
+                    # omit this from committed inventory
+                    pass
+                continue
 
-        inv.add(entry)
-
-        if basis_inv.has_id(file_id):
-            old_kind = basis_inv[file_id].kind
-            if old_kind != entry.kind:
-                raise BzrError("entry %r changed kind from %r to %r"
-                        % (file_id, old_kind, entry.kind))
-
-        if entry.kind == 'directory':
-            if not isdir(p):
-                raise BzrError("%s is entered as directory but not a directory"
-                               % quotefn(p))
-        elif entry.kind == 'file':
-            if not isfile(p):
-                raise BzrError("%s is entered as file but is not a file" % quotefn(p))
-
-            new_sha1 = work_tree.get_file_sha1(file_id)
-
-            old_ie = basis_inv.has_id(file_id) and basis_inv[file_id]
-            if (old_ie
-                and old_ie.text_sha1 == new_sha1):
-                ## assert content == basis.get_file(file_id).read()
-                entry.text_id = old_ie.text_id
-                entry.text_sha1 = new_sha1
-                entry.text_size = old_ie.text_size
-                mutter('    unchanged from previous text_id {%s}' %
-                       entry.text_id)
-            else:
-                content = file(p, 'rb').read()
-
-                # calculate the sha again, just in case the file contents
-                # changed since we updated the cache
-                entry.text_sha1 = sha_string(content)
-                entry.text_size = len(content)
-
-                entry.text_id = gen_file_id(entry.name)
-                branch.text_store.add(content, entry.text_id)
-                mutter('    stored with text_id {%s}' % entry.text_id)
+            if not work_tree.has_id(file_id):
                 if verbose:
-                    if not old_ie:
-                        print('added %s' % path)
-                    elif (old_ie.name == entry.name
-                          and old_ie.parent_id == entry.parent_id):
-                        print('modified %s' % path)
-                    else:
-                        print('renamed %s' % path)
+                    print('deleted %s%s' % (path, kind_marker(entry.kind)))
+                mutter("    file is missing, removing from inventory")
+                missing_ids.append(file_id)
+                continue
+
+            inv.add(entry)
+
+            if basis_inv.has_id(file_id):
+                old_kind = basis_inv[file_id].kind
+                if old_kind != entry.kind:
+                    raise BzrError("entry %r changed kind from %r to %r"
+                            % (file_id, old_kind, entry.kind))
+
+            if entry.kind == 'directory':
+                if not isdir(p):
+                    raise BzrError("%s is entered as directory but not a directory"
+                                   % quotefn(p))
+            elif entry.kind == 'file':
+                if not isfile(p):
+                    raise BzrError("%s is entered as file but is not a file" % quotefn(p))
+
+                new_sha1 = work_tree.get_file_sha1(file_id)
+
+                old_ie = basis_inv.has_id(file_id) and basis_inv[file_id]
+                if (old_ie
+                    and old_ie.text_sha1 == new_sha1):
+                    ## assert content == basis.get_file(file_id).read()
+                    entry.text_id = old_ie.text_id
+                    entry.text_sha1 = new_sha1
+                    entry.text_size = old_ie.text_size
+                    mutter('    unchanged from previous text_id {%s}' %
+                           entry.text_id)
+                else:
+                    content = file(p, 'rb').read()
+
+                    # calculate the sha again, just in case the file contents
+                    # changed since we updated the cache
+                    entry.text_sha1 = sha_string(content)
+                    entry.text_size = len(content)
+
+                    entry.text_id = gen_file_id(entry.name)
+                    branch.text_store.add(content, entry.text_id)
+                    mutter('    stored with text_id {%s}' % entry.text_id)
+                    if verbose:
+                        if not old_ie:
+                            print('added %s' % path)
+                        elif (old_ie.name == entry.name
+                              and old_ie.parent_id == entry.parent_id):
+                            print('modified %s' % path)
+                        else:
+                            print('renamed %s' % path)
 
 
-    for file_id in missing_ids:
-        # Any files that have been deleted are now removed from the
-        # working inventory.  Files that were not selected for commit
-        # are left as they were in the working inventory and ommitted
-        # from the revision inventory.
-        
-        # have to do this later so we don't mess up the iterator.
-        # since parents may be removed before their children we
-        # have to test.
+        for file_id in missing_ids:
+            # Any files that have been deleted are now removed from the
+            # working inventory.  Files that were not selected for commit
+            # are left as they were in the working inventory and ommitted
+            # from the revision inventory.
 
-        # FIXME: There's probably a better way to do this; perhaps
-        # the workingtree should know how to filter itbranch.
-        if work_inv.has_id(file_id):
-            del work_inv[file_id]
+            # have to do this later so we don't mess up the iterator.
+            # since parents may be removed before their children we
+            # have to test.
+
+            # FIXME: There's probably a better way to do this; perhaps
+            # the workingtree should know how to filter itbranch.
+            if work_inv.has_id(file_id):
+                del work_inv[file_id]
 
 
-    if rev_id is None:
-        rev_id = _gen_revision_id(time.time())
-    inv_id = rev_id
+        if rev_id is None:
+            rev_id = _gen_revision_id(time.time())
+        inv_id = rev_id
 
-    inv_tmp = tempfile.TemporaryFile()
-    inv.write_xml(inv_tmp)
-    inv_tmp.seek(0)
-    branch.inventory_store.add(inv_tmp, inv_id)
-    mutter('new inventory_id is {%s}' % inv_id)
+        inv_tmp = tempfile.TemporaryFile()
+        inv.write_xml(inv_tmp)
+        inv_tmp.seek(0)
+        branch.inventory_store.add(inv_tmp, inv_id)
+        mutter('new inventory_id is {%s}' % inv_id)
 
-    branch._write_inventory(work_inv)
+        branch._write_inventory(work_inv)
 
-    if timestamp == None:
-        timestamp = time.time()
+        if timestamp == None:
+            timestamp = time.time()
 
-    if committer == None:
-        committer = username()
+        if committer == None:
+            committer = username()
 
-    if timezone == None:
-        timezone = local_time_offset()
+        if timezone == None:
+            timezone = local_time_offset()
 
-    mutter("building commit log message")
-    rev = Revision(timestamp=timestamp,
-                   timezone=timezone,
-                   committer=committer,
-                   precursor = branch.last_patch(),
-                   message = message,
-                   inventory_id=inv_id,
-                   revision_id=rev_id)
+        mutter("building commit log message")
+        rev = Revision(timestamp=timestamp,
+                       timezone=timezone,
+                       committer=committer,
+                       precursor = branch.last_patch(),
+                       message = message,
+                       inventory_id=inv_id,
+                       revision_id=rev_id)
 
-    rev_tmp = tempfile.TemporaryFile()
-    rev.write_xml(rev_tmp)
-    rev_tmp.seek(0)
-    branch.revision_store.add(rev_tmp, rev_id)
-    mutter("new revision_id is {%s}" % rev_id)
+        rev_tmp = tempfile.TemporaryFile()
+        rev.write_xml(rev_tmp)
+        rev_tmp.seek(0)
+        branch.revision_store.add(rev_tmp, rev_id)
+        mutter("new revision_id is {%s}" % rev_id)
 
-    ## XXX: Everything up to here can simply be orphaned if we abort
-    ## the commit; it will leave junk files behind but that doesn't
-    ## matter.
+        ## XXX: Everything up to here can simply be orphaned if we abort
+        ## the commit; it will leave junk files behind but that doesn't
+        ## matter.
 
-    ## TODO: Read back the just-generated changeset, and make sure it
-    ## applies and recreates the right state.
+        ## TODO: Read back the just-generated changeset, and make sure it
+        ## applies and recreates the right state.
 
-    ## TODO: Also calculate and store the inventory SHA1
-    mutter("committing patch r%d" % (branch.revno() + 1))
+        ## TODO: Also calculate and store the inventory SHA1
+        mutter("committing patch r%d" % (branch.revno() + 1))
 
-    branch.append_revision(rev_id)
+        branch.append_revision(rev_id)
 
-    if verbose:
-        note("commited r%d" % branch.revno())
+        if verbose:
+            note("commited r%d" % branch.revno())
+    finally:
+        branch.unlock()
 
 
 
