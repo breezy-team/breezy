@@ -325,6 +325,7 @@ class cmd_add(Command):
 class cmd_relpath(Command):
     """Show path of a file relative to root"""
     takes_args = ['filename']
+    hidden = True
     
     def run(self, filename):
         print Branch(filename).relpath(filename)
@@ -466,6 +467,7 @@ class cmd_file_path(Command):
 
 class cmd_revision_history(Command):
     """Display list of revision ids on this branch."""
+    hidden = True
     def run(self):
         for patchid in Branch('.').revision_history():
             print patchid
