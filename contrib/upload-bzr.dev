@@ -10,7 +10,7 @@
 cd ~/work/bzr 
 
 bzr inventory |
-rsync -avvP							    \
+rsync -av							    \
     .								    \
     escudero.ubuntu.com:/srv/www.bazaar-ng.org/rsync/bzr/bzr.dev/   \
     --include-from -						    \
