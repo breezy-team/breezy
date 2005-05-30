@@ -26,7 +26,6 @@ from bzrlib.tree import RevisionTree, EmptyTree, Tree
 from bzrlib.revision import Revision
 from bzrlib import Branch, Inventory, InventoryEntry, ScratchBranch, BZRDIR, \
      format_date
-from bzrlib import merge
 
 
 def _squish_command_name(cmd):
@@ -998,7 +997,8 @@ class cmd_merge(Command):
     takes_args = ['other_spec', 'base_spec']
 
     def run(self, other_spec, base_spec):
-        merge.merge(parse_spec(other_spec), parse_spec(base_spec))
+        from bzrlib.merge import merge
+        merge(parse_spec(other_spec), parse_spec(base_spec))
 
 class cmd_assert_fail(Command):
     """Test reporting of assertion failures"""
