@@ -930,29 +930,11 @@ class cmd_selftest(Command):
     """Run internal test suite"""
     hidden = True
     def run(self):
-        failures, tests = 0, 0
-
-        import doctest, bzrlib.store
-        bzrlib.trace.verbose = False
-
-        for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \
-            bzrlib.tree, bzrlib.commands, bzrlib.add:
-            mf, mt = doctest.testmod(m)
-            failures += mf
-            tests += mt
-            print '%-40s %3d tests' % (m.__name__, mt),
-            if mf:
-                print '%3d FAILED!' % mf
-            else:
-                print
-
-        print '%-40s %3d tests' % ('total', tests),
-        if failures:
-            print '%3d FAILED!' % failures
-            return 1
-        else:
-            print
+        from bzrlib.selftest import selftest
+        if selftest():
             return 0
+        else:
+            return 1
 
 
 

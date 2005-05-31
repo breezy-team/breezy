@@ -71,7 +71,6 @@ class BranchPathTestCase(TestCase):
             os.chdir(savedir)
             shutil.rmtree(dtmp)
 
-
                               
 if __name__ == '__main__':
     unittest.main()
