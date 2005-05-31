@@ -58,16 +58,15 @@ backwards crossing invocations of bzr.  Please don't do that; use ntp
 to gradually adjust your clock or don't use bzr over the step.
 
 At the moment this is stored in a simple textfile; it might be nice
-to use a tdb instead.
+to use a tdb instead to allow faster lookup by file-id.
 
 The cache is represented as a map from file_id to a tuple of (file_id,
 sha1, path, size, mtime, ctime, ino, dev).
 
 The SHA-1 is stored in memory as a hexdigest.
 
-File names and file-ids are written out with non-ascii or whitespace
-characters given as python-style unicode escapes.  (file-ids shouldn't
-contain wierd characters, but it might happen.)
+This version of the file on disk has one line per record, and fields
+separated by \0 records.
 """
 
 # order of fields returned by fingerprint()
@@ -89,7 +88,7 @@ SC_DEV     = 7
 
 
 
-CACHE_HEADER = "### bzr statcache v3"
+CACHE_HEADER = "### bzr statcache v4"
 
 
 def fingerprint(abspath):
@@ -107,30 +106,24 @@ def fingerprint(abspath):
 
 
 
-def safe_quote(s):
-    return s.encode('unicode_escape') \
-           .replace('\n', '\\u000a')  \
-           .replace(' ', '\\u0020')   \
-           .replace('\r', '\\u000d')
-
-
 def _write_cache(basedir, entries):
     from atomicfile import AtomicFile
 
     cachefn = os.path.join(basedir, '.bzr', 'stat-cache')
     outf = AtomicFile(cachefn, 'wb')
-    outf.write(CACHE_HEADER + '\n')
     try:
+        outf.write(CACHE_HEADER + '\n')
+    
         for entry in entries:
             if len(entry) != 8:
                 raise ValueError("invalid statcache entry tuple %r" % entry)
-            outf.write(safe_quote(entry[0])) # file id
-            outf.write(' ')
+            outf.write(entry[0].encode('utf-8')) # file id
+            outf.write('\0')
             outf.write(entry[1])             # hex sha1
-            outf.write(' ')
-            outf.write(safe_quote(entry[2])) # name
+            outf.write('\0')
+            outf.write(entry[2].encode('utf-8')) # name
             for nf in entry[3:]:
-                outf.write(' %d' % nf)
+                outf.write('\0%d' % nf)
             outf.write('\n')
 
         outf.commit()
@@ -153,6 +146,7 @@ def load_cache(basedir):
     import re
     cache = {}
     seen_paths = {}
+    from bzrlib.trace import warning
 
     sha_re = re.compile(r'[a-f0-9]{40}')
 
@@ -164,23 +158,24 @@ def load_cache(basedir):
 
     line1 = cachefile.readline().rstrip('\r\n')
     if line1 != CACHE_HEADER:
-        mutter('cache header marker not found at top of %s' % cachefn)
+        mutter('cache header marker not found at top of %s; discarding cache'
+               % cachefn)
         return cache
 
     for l in cachefile:
-        f = l.split(' ')
+        f = l.split('\0')
 
-        file_id = f[0].decode('unicode_escape')
+        file_id = f[0].decode('utf-8')
         if file_id in cache:
-            raise BzrCheckError("duplicated file_id in cache: {%s}" % file_id)
+            warning("duplicated file_id in cache: {%s}" % file_id)
 
         text_sha = f[1]
         if len(text_sha) != 40 or not sha_re.match(text_sha):
             raise BzrCheckError("invalid file SHA-1 in cache: %r" % text_sha)
         
-        path = f[2].decode('unicode_escape')
+        path = f[2].decode('utf-8')
         if path in seen_paths:
-            raise BzrCheckError("duplicated path in cache: %r" % path)
+            warning("duplicated path in cache: %r" % path)
         seen_paths[path] = True
         
         entry = (file_id, text_sha, path) + tuple([long(x) for x in f[3:]])
@@ -189,7 +184,6 @@ def load_cache(basedir):
 
         cache[file_id] = entry
     return cache
-
 
 
 
