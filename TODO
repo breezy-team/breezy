@@ -272,6 +272,10 @@ Medium things
   just build a list of files to add and pass that to the regular add
   function.
 
+* Function to list a directory, saying in which revision each file was
+  last modified.  Useful for web and gui interfaces, and slow to
+  compute one file at a time.
+
 
 Large things
 ------------
