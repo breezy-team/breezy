@@ -50,7 +50,7 @@ def with_writelock(method):
     """Method decorator for functions run with the branch locked."""
     def d(self, *a, **k):
         # called with self set to the branch
-        self.lock('w')
+        self.lock_write()
         try:
             return method(self, *a, **k)
         finally:
@@ -60,7 +60,7 @@ def with_writelock(method):
 
 def with_readlock(method):
     def d(self, *a, **k):
-        self.lock('r')
+        self.lock_read()
         try:
             return method(self, *a, **k)
         finally:
@@ -200,30 +200,41 @@ class Branch(object):
             self.unlock()
 
 
-    def lock(self, mode):
+
+    def lock_write(self):
         if self._lock_mode:
-            if mode == 'w' and cur_lm == 'r':
-                raise BzrError("can't upgrade to a write lock")
-            
-            assert self._lock_count >= 1
+            if self._lock_mode != 'w':
+                from errors import LockError
+                raise LockError("can't upgrade to a write lock from %r" %
+                                self._lock_mode)
             self._lock_count += 1
         else:
-            from bzrlib.lock import lock, LOCK_SH, LOCK_EX
-            if mode == 'r':
-                m = LOCK_SH
-            elif mode == 'w':
-                m = LOCK_EX
-            else:
-                raise ValueError('invalid lock mode %r' % mode)
+            from bzrlib.lock import lock, LOCK_EX
 
-            lock(self._lockfile, m)
-            self._lock_mode = mode
+            lock(self._lockfile, LOCK_EX)
+            self._lock_mode = 'w'
             self._lock_count = 1
 
 
+
+    def lock_read(self):
+        if self._lock_mode:
+            assert self._lock_mode in ('r', 'w'), \
+                   "invalid lock mode %r" % self._lock_mode
+            self._lock_count += 1
+        else:
+            from bzrlib.lock import lock, LOCK_SH
+
+            lock(self._lockfile, LOCK_SH)
+            self._lock_mode = 'r'
+            self._lock_count = 1
+                        
+
+            
     def unlock(self):
         if not self._lock_mode:
-            raise BzrError('branch %r is not locked' % (self))
+            from errors import LockError
+            raise LockError('branch %r is not locked' % (self))
 
         if self._lock_count > 1:
             self._lock_count -= 1
@@ -794,8 +805,9 @@ class ScratchBranch(Branch):
     def destroy(self):
         """Destroy the test branch, removing the scratch directory."""
         try:
-            mutter("delete ScratchBranch %s" % self.base)
-            shutil.rmtree(self.base)
+            if self.base:
+                mutter("delete ScratchBranch %s" % self.base)
+                shutil.rmtree(self.base)
         except OSError, e:
             # Work around for shutil.rmtree failing on Windows when
             # readonly files are encountered

@@ -30,7 +30,7 @@ def show_status(branch, show_unchanged=False,
     import sys
     from bzrlib.diff import compare_trees
     
-    branch.lock('r')
+    branch.lock_read()
     try:
 
         old = branch.basis_tree()

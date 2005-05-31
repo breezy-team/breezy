@@ -675,7 +675,10 @@ class cmd_log(Command):
         assert len(revision) == 2
 
         mutter('encoding log as %r' % bzrlib.user_encoding)
-        outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout)
+
+        # use 'replace' so that we don't abort if trying to write out
+        # in e.g. the default C locale.
+        outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
         show_log(b, file_id,
                  show_timezone=timezone,

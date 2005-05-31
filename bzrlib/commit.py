@@ -64,7 +64,7 @@ def commit(branch, message,
     from revision import Revision
     from trace import mutter, note
 
-    branch.lock('w')
+    branch.lock_write()
 
     try:
         # First walk over the working inventory; and both update that

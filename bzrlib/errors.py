@@ -51,6 +51,10 @@ class ForbiddenFileError(BzrError):
     pass
 
 
+class LockError(BzrError):
+    pass
+
+
 def bailout(msg, explanation=[]):
     ex = BzrError(msg, explanation)
     import trace
