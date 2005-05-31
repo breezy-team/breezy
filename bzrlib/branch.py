@@ -478,7 +478,7 @@ class Branch(object):
             self.unlock()
 
 
-    # TODO: remove?
+    # FIXME: this doesn't need to be a branch method
     def set_inventory(self, new_inventory_list):
         inv = Inventory()
         for path, file_id, parent, kind in new_inventory_list:
