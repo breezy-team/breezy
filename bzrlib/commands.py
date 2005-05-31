@@ -964,12 +964,9 @@ class cmd_version(Command):
 def show_version():
     print "bzr (bazaar-ng) %s" % bzrlib.__version__
     # is bzrlib itself in a branch?
-    try:
-        branch = Branch(bzrlib.__path__[0])
-    except BzrError:
-        pass
-    else:
-        print "  (bzr checkout, revision %s)" % branch.revno()
+    bzrrev = bzrlib.get_bzr_revision()
+    if bzrrev:
+        print "  (bzr checkout, revision %d {%s})" % bzrrev
     print bzrlib.__copyright__
     print "http://bazaar-ng.org/"
     print
