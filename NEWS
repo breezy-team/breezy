@@ -72,6 +72,9 @@ bzr-0.0.5  NOT RELEASED YET
     * New option ``bzr add --no-recurse`` to add a directory but not
       their contents.
 
+    * ``bzr --version`` now shows more information if bzr is being run
+      from a branch.
+
   
   BUG FIXES:
 
