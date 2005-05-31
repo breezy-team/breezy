@@ -276,6 +276,9 @@ Medium things
   last modified.  Useful for web and gui interfaces, and slow to
   compute one file at a time.
 
+* unittest is standard, but the results are kind of ugly; would be
+  nice to make it cleaner.
+
 
 Large things
 ------------

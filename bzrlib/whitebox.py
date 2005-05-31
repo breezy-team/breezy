@@ -5,14 +5,6 @@ from bzrlib.errors import NotBranchError
 from unittest import TestCase
 import os, unittest
 
-def Reporter(TestResult):
-    def startTest(self, test):
-        super(Reporter, self).startTest(test)
-        print test.id(),
-
-    def stopTest(self, test):
-        print
-
 class BranchPathTestCase(TestCase):
     """test for branch path lookups
 
