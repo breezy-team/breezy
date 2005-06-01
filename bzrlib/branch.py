@@ -128,6 +128,7 @@ class Branch(object):
     base = None
     _lock_mode = None
     _lock_count = None
+    _lock = None
     
     def __init__(self, base, init=False, find_root=True):
         """Create new branch object at a particular location.
@@ -157,7 +158,6 @@ class Branch(object):
                                      ['use "bzr init" to initialize a new working tree',
                                       'current bzr can only operate from top-of-tree'])
         self._check_format()
-        self._lockfile = self.controlfile('branch-lock', 'wb')
 
         self.text_store = ImmutableStore(self.controlfilename('text-store'))
         self.revision_store = ImmutableStore(self.controlfilename('revision-store'))
@@ -172,10 +172,10 @@ class Branch(object):
 
 
     def __del__(self):
-        if self._lock_mode:
+        if self._lock_mode or self._lock:
             from warnings import warn
             warn("branch %r was not explicitly unlocked" % self)
-            self.unlock()
+            self._lock.unlock()
 
 
 
@@ -187,9 +187,9 @@ class Branch(object):
                                 self._lock_mode)
             self._lock_count += 1
         else:
-            from bzrlib.lock import lock, LOCK_EX
+            from bzrlib.lock import WriteLock
 
-            lock(self._lockfile, LOCK_EX)
+            self._lock = WriteLock(self.controlfilename('branch-lock'))
             self._lock_mode = 'w'
             self._lock_count = 1
 
@@ -201,9 +201,9 @@ class Branch(object):
                    "invalid lock mode %r" % self._lock_mode
             self._lock_count += 1
         else:
-            from bzrlib.lock import lock, LOCK_SH
+            from bzrlib.lock import ReadLock
 
-            lock(self._lockfile, LOCK_SH)
+            self._lock = ReadLock(self.controlfilename('branch-lock'))
             self._lock_mode = 'r'
             self._lock_count = 1
                         
@@ -217,9 +217,8 @@ class Branch(object):
         if self._lock_count > 1:
             self._lock_count -= 1
         else:
-            assert self._lock_count == 1
-            from bzrlib.lock import unlock
-            unlock(self._lockfile)
+            self._lock.unlock()
+            self._lock = None
             self._lock_mode = self._lock_count = None
 
 

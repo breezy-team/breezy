@@ -28,73 +28,147 @@ different threads in a single process.
 
 Eventually we may need to use some kind of lock representation that
 will work on a dumb filesystem without actual locking primitives.
+
+This defines two classes: ReadLock and WriteLock, which can be
+implemented in different ways on different platforms.  Both have an
+unlock() method.
 """
 
 
 import sys, os
 
-import bzrlib
 from trace import mutter, note, warning
 from errors import LockError
 
+class _base_Lock(object):
+    def _open(self, filename, filemode):
+        self.f = open(filename, filemode)
+        return self.f
+    
+
+    def __del__(self):
+        if self.f:
+            from warnings import warn
+            warn("lock on %r not released" % self.f)
+            self.unlock()
+
+    def unlock(self):
+        raise NotImplementedError()
+
+        
+
+
+
+
+############################################################
+# msvcrt locks
+
+
 try:
     import fcntl
-    LOCK_SH = fcntl.LOCK_SH
-    LOCK_EX = fcntl.LOCK_EX
-    LOCK_NB = fcntl.LOCK_NB
-    def lock(f, flags):
-        try:
-            fcntl.flock(f, flags)
-        except Exception, e:
-            raise LockError(e)
 
-    def unlock(f):
-        try:
-            fcntl.flock(f, fcntl.LOCK_UN)
-        except Exception, e:
-            raise LockError(e)
+    class _fcntl_FileLock(_base_Lock):
+        f = None
+
+        def unlock(self):
+            fcntl.flock(self.f, fcntl.LOCK_UN)
+            self.f.close()
+            del self.f 
+
+
+    class _fcntl_WriteLock(_fcntl_FileLock):
+        def __init__(self, filename):
+            try:
+                fcntl.flock(self._open(filename, 'wb'), fcntl.LOCK_EX)
+            except Exception, e:
+                raise LockError(e)
+
+
+    class _fcntl_ReadLock(_fcntl_FileLock):
+        def __init__(self, filename):
+            try:
+                fcntl.flock(self._open(filename, 'rb'), fcntl.LOCK_SH)
+            except Exception, e:
+                raise LockError(e)
+
+    WriteLock = _fcntl_WriteLock
+    ReadLock = _fcntl_ReadLock
 
 except ImportError:
     try:
         import win32con, win32file, pywintypes
-        LOCK_SH = 0 # the default
-        LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
-        LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
 
-        def lock(f, flags):
-            try:
-                if type(f) == file:
-                    hfile = win32file._get_osfhandle(f.fileno())
-                else:
-                    hfile = win32file._get_osfhandle(f)
-                overlapped = pywintypes.OVERLAPPED()
-                win32file.LockFileEx(hfile, flags, 0, 0x7fff0000, overlapped)
-            except Exception, e:
-                raise LockError(e)
 
-        def unlock(f):
-            try:
-                if type(f) == file:
-                    hfile = win32file._get_osfhandle(f.fileno())
-                else:
-                    hfile = win32file._get_osfhandle(f)
-                overlapped = pywintypes.OVERLAPPED()
-                win32file.UnlockFileEx(hfile, 0, 0x7fff0000, overlapped)
-            except Exception, e:
-                raise LockError(e)
+        #LOCK_SH = 0 # the default
+        #LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
+        #LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
+
+        class _w32c_FileLock(_base_Lock):
+            def _lock(self, filename, openmode, lockmode):
+                try:
+                    self._open(filename, openmode)
+                    self.hfile = win32file._get_osfhandle(self.f.fileno())
+                    overlapped = pywintypes.OVERLAPPED()
+                    win32file.LockFileEx(self.hfile, lockmode, 0, 0x7fff0000, overlapped)
+                except Exception, e:
+                    raise LockError(e)
+
+            def unlock(self):
+                try:
+                    overlapped = pywintypes.OVERLAPPED()
+                    win32file.UnlockFileEx(self.hfile, 0, 0x7fff0000, overlapped)
+                    self.f.close()
+                    self.f = None
+                except Exception, e:
+                    raise LockError(e)
+
+
+
+        class _w32c_ReadLock(_w32c_FileLock):
+            def __init__(self, filename):
+                _w32c_FileLock._lock(self, filename, 'rb', 0)
+
+        class _w32c_WriteLock(_w32c_FileLock):
+            def __init__(self, filename):
+                _w32c_FileLock._lock(self, filename, 'wb',
+                                     win32con.LOCKFILE_EXCLUSIVE_LOCK)
+
+
+
+        WriteLock = _w32c_WriteLock
+        ReadLock = _w32c_ReadLock
+
     except ImportError:
         try:
             import msvcrt
+
+
             # Unfortunately, msvcrt.locking() doesn't distinguish between
             # read locks and write locks. Also, the way the combinations
             # work to get non-blocking is not the same, so we
             # have to write extra special functions here.
 
-            LOCK_SH = 1
-            LOCK_EX = 2
-            LOCK_NB = 4
 
-            def lock(f, flags):
+            class _msvc_FileLock(_base_Lock):
+                LOCK_SH = 1
+                LOCK_EX = 2
+                LOCK_NB = 4
+                def unlock(self):
+                    _msvc_unlock(self.f)
+
+
+            class _msvc_ReadLock(_msvc_FileLock):
+                def __init__(self, filename):
+                    _msvc_lock(self._open(filename, 'rb'), self.LOCK_SH)
+
+
+            class _msvc_WriteLock(_msvc_FileLock):
+                def __init__(self, filename):
+                    _msvc_lock(self._open(filename, 'wb'), self.LOCK_EX)
+
+
+
+            def _msvc_lock(f, flags):
                 try:
                     # Unfortunately, msvcrt.LK_RLCK is equivalent to msvcrt.LK_LOCK
                     # according to the comments, LK_RLCK is open the lock for writing.
@@ -110,14 +184,14 @@ except ImportError:
                         fn = f
                         fpos = os.lseek(fn, 0,0)
                         os.lseek(fn, 0,0)
-                    
-                    if flags & LOCK_SH:
-                        if flags & LOCK_NB:
+
+                    if flags & self.LOCK_SH:
+                        if flags & self.LOCK_NB:
                             lock_mode = msvcrt.LK_NBLCK
                         else:
                             lock_mode = msvcrt.LK_LOCK
-                    elif flags & LOCK_EX:
-                        if flags & LOCK_NB:
+                    elif flags & self.LOCK_EX:
+                        if flags & self.LOCK_NB:
                             lock_mode = msvcrt.LK_NBRLCK
                         else:
                             lock_mode = msvcrt.LK_RLCK
@@ -130,7 +204,7 @@ except ImportError:
                 except Exception, e:
                     raise LockError(e)
 
-            def unlock(f):
+            def _msvc_unlock(f):
                 try:
                     if type(f) == file:
                         fpos = f.tell()
@@ -147,14 +221,18 @@ except ImportError:
                         os.lseek(fn, fpos, 0)
                 except Exception, e:
                     raise LockError(e)
-        except ImportError:
-            from warnings import Warning
-            
-            warning("please write a locking method for platform %r" % sys.platform)
 
-            # Creating no-op lock/unlock for now
-            def lock(f, flags):
-                pass
-            def unlock(f):
-                pass
+
+
+            WriteLock = _msvc_WriteLock
+            ReadLock = _msvc_ReadLock
+        except ImportError:
+            raise NotImplementedError("please write a locking method "
+                                      "for platform %r" % sys.platform)
+
+
+
+
+
+
 
