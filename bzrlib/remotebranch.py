@@ -109,6 +109,7 @@ class RemoteBranch(Branch):
 
         self.inventory_store = RemoteStore(baseurl + '/.bzr/inventory-store/')
         self.text_store = RemoteStore(baseurl + '/.bzr/text-store/')
+        self.revision_store = RemoteStore(baseurl + '/.bzr/revision-store/')
 
     def __str__(self):
         b = getattr(self, 'baseurl', 'undefined')
@@ -122,9 +123,14 @@ class RemoteBranch(Branch):
         return get_url(self.baseurl + '/.bzr/' + filename, False)
 
 
-    def lock(self, mode):
-        if mode != 'r':
-            raise BzrError('lock mode %r not supported for remote branch %r' % (mode, self))
+    def lock_read(self):
+        # no locking for remote branches yet
+        pass
+
+    def lock_write(self):
+        from errors import LockError
+        raise LockError("write lock not supported for remote branch %s"
+                        % self.baseurl)
 
     def unlock(self):
         pass
