@@ -122,8 +122,8 @@ class Branch(object):
         If _lock_mode is true, a positive count of the number of times the
         lock has been taken.
 
-    _lockfile
-        Open file used for locking.
+    _lock
+        Lock object from bzrlib.lock.
     """
     base = None
     _lock_mode = None

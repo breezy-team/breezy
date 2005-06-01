@@ -51,8 +51,18 @@ class ForbiddenFileError(BzrError):
     pass
 
 
-class LockError(BzrError):
-    pass
+class LockError(Exception):
+    """All exceptions from the lock/unlock functions should be from
+    this exception class.  They will be translated as necessary. The
+    original exception is available as e.original_error
+    """
+    def __init__(self, e=None):
+        self.original_error = e
+        if e:
+            Exception.__init__(self, e)
+        else:
+            Exception.__init__(self)
+
 
 
 def bailout(msg, explanation=[]):

@@ -27,24 +27,15 @@ taken repeatedly by a single process) or whether they exclude
 different threads in a single process.  
 
 Eventually we may need to use some kind of lock representation that
-will work on a dumb filesystem without actual locking primitives."""
+will work on a dumb filesystem without actual locking primitives.
+"""
 
 
 import sys, os
 
 import bzrlib
 from trace import mutter, note, warning
-
-class LockError(Exception):
-    """All exceptions from the lock/unlock functions should be from this exception class.
-    They will be translated as necessary. The original exception is available as e.original_error
-    """
-    def __init__(self, e=None):
-        self.original_error = e
-        if e:
-            Exception.__init__(self, e)
-        else:
-            Exception.__init__(self)
+from errors import LockError
 
 try:
     import fcntl
