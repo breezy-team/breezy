@@ -29,7 +29,7 @@ bzr-0.0.5  NOT RELEASED YET
     * Nicer error message for broken pipe, interrupt and similar
       conditions that don't indicate an internal error.
 
-    * Add ``.*.swp .*.tmp *,v`` to default ignore patterns.
+    * Add ``.*.sw[nop] .git .*.tmp *,v`` to default ignore patterns.
 
     * Per-branch locks keyed on ``.bzr/branch-lock``, available in
       either read or write mode.
