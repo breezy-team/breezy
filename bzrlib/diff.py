@@ -148,6 +148,17 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
 
 
 def show_diff(b, revision, specific_files, external_diff_options=None):
+    """Shortcut for showing the diff to the working tree.
+
+    b
+        Branch.
+
+    revision
+        None for each, or otherwise the old revision to compare against.
+    
+    The more general form is show_diff_trees(), where the caller
+    supplies any two trees.
+    """
     import sys
 
     if revision == None:
