@@ -565,6 +565,50 @@ class Branch(object):
             self.unlock()
 
 
+    def common_ancestor(self, other, self_revno=None, other_revno=None):
+        """
+        >>> import commit
+        >>> sb = ScratchBranch(files=['foo', 'foo~'])
+        >>> sb.common_ancestor(sb) == (None, None)
+        True
+        >>> commit.commit(sb, "Committing first revision", verbose=False)
+        >>> sb.common_ancestor(sb)[0]
+        1
+        >>> clone = sb.clone()
+        >>> commit.commit(sb, "Committing second revision", verbose=False)
+        >>> sb.common_ancestor(sb)[0]
+        2
+        >>> sb.common_ancestor(clone)[0]
+        1
+        >>> commit.commit(clone, "Committing divergent second revision", 
+        ...               verbose=False)
+        >>> sb.common_ancestor(clone)[0]
+        1
+        >>> sb.common_ancestor(clone) == clone.common_ancestor(sb)
+        True
+        >>> sb.common_ancestor(sb) != clone.common_ancestor(clone)
+        True
+        >>> clone2 = sb.clone()
+        >>> sb.common_ancestor(clone2)[0]
+        2
+        >>> sb.common_ancestor(clone2, self_revno=1)[0]
+        1
+        >>> sb.common_ancestor(clone2, other_revno=1)[0]
+        1
+        """
+        my_history = self.revision_history()
+        other_history = other.revision_history()
+        if self_revno is None:
+            self_revno = len(my_history)
+        if other_revno is None:
+            other_revno = len(other_history)
+        indices = range(min((self_revno, other_revno)))
+        indices.reverse()
+        for r in indices:
+            if my_history[r] == other_history[r]:
+                return r+1, my_history[r]
+        return None, None
+
     def enum_history(self, direction):
         """Return (revno, revision_id) for history of branch.
 
@@ -784,14 +828,18 @@ class ScratchBranch(Branch):
     >>> isdir(bd)
     False
     """
-    def __init__(self, files=[], dirs=[]):
+    def __init__(self, files=[], dirs=[], base=None):
         """Make a test branch.
 
         This creates a temporary directory and runs init-tree in it.
 
         If any files are listed, they are created in the working copy.
         """
-        Branch.__init__(self, tempfile.mkdtemp(), init=True)
+        init = False
+        if base is None:
+            base = tempfile.mkdtemp()
+            init = True
+        Branch.__init__(self, base, init=init)
         for d in dirs:
             os.mkdir(self.abspath(d))
             
@@ -799,6 +847,20 @@ class ScratchBranch(Branch):
             file(os.path.join(self.base, f), 'w').write('content of %s' % f)
 
 
+    def clone(self):
+        """
+        >>> orig = ScratchBranch(files=["file1", "file2"])
+        >>> clone = orig.clone()
+        >>> os.path.samefile(orig.base, clone.base)
+        False
+        >>> os.path.isfile(os.path.join(clone.base, "file1"))
+        True
+        """
+        base = tempfile.mkdtemp()
+        os.rmdir(base)
+        shutil.copytree(self.base, base, symlinks=True)
+        return ScratchBranch(base=base)
+        
     def __del__(self):
         self.destroy()
 

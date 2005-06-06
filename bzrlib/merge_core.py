@@ -28,8 +28,10 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
     cset = changeset_function(base, other, base_inventory, other_inventory)
     new_cset = make_merge_changeset(cset, inventory, this, base, other, 
                                     conflict_handler)
-    return apply_changeset(new_cset, invert_invent(this_inventory), this.root, 
-                           conflict_handler, False)
+    result = apply_changeset(new_cset, invert_invent(this_inventory),
+                             this.root, conflict_handler, False)
+    conflict_handler.finalize()
+    return result
 
     
 

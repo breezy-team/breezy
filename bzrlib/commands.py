@@ -967,6 +967,18 @@ class cmd_rocks(Command):
         print "it sure does!"
 
 def parse_spec(spec):
+    """
+    >>> parse_spec(None)
+    [None, None]
+    >>> parse_spec("./")
+    ['./', None]
+    >>> parse_spec("../@")
+    ['..', -1]
+    >>> parse_spec("../f/@35")
+    ['../f', 35]
+    """
+    if spec is None:
+        return [None, None]
     if '/@' in spec:
         parsed = spec.split('/@')
         assert len(parsed) == 2
@@ -980,12 +992,42 @@ def parse_spec(spec):
     return parsed
 
 class cmd_merge(Command):
-    """Perform a three-way merge of trees."""
-    takes_args = ['other_spec', 'base_spec']
+    """Perform a three-way merge of trees.
+    
+    The SPEC parameters are working tree or revision specifiers.  Working trees
+    are specified using standard paths or urls.  No component of a directory
+    path may begin with '@'.
+    
+    Working tree examples: '.', '..', 'foo@', but NOT 'foo/@bar'
 
-    def run(self, other_spec, base_spec):
+    Revisions are specified using a dirname/@revno pair, where dirname is the
+    branch directory and revno is the revision within that branch.  If no revno
+    is specified, the latest revision is used.
+
+    Revision examples: './@127', 'foo/@', '../@1'
+
+    The OTHER_SPEC parameter is required.  If the BASE_SPEC parameter is
+    not supplied, the common ancestor of OTHER_SPEC the current branch is used
+    as the BASE.
+    """
+    takes_args = ['other_spec', 'base_spec?']
+
+    def run(self, other_spec, base_spec=None):
         from bzrlib.merge import merge
         merge(parse_spec(other_spec), parse_spec(base_spec))
+
+
+class cmd_revert(Command):
+    """
+    Reverse all changes since the last commit.  Only versioned files are
+    affected.
+    """
+    takes_options = ['revision']
+
+    def run(self, revision=-1):
+        merge.merge(('.', revision), parse_spec('.'), no_changes=False,
+                    ignore_zero=True)
+
 
 class cmd_assert_fail(Command):
     """Test reporting of assertion failures"""

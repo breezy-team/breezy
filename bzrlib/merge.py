@@ -1,16 +1,30 @@
 from merge_core import merge_flex
 from changeset import generate_changeset, ExceptionConflictHandler
 from changeset import Inventory
-from bzrlib import Branch
+from bzrlib import find_branch
 import bzrlib.osutils
-from trace import mutter
+from bzrlib.errors import BzrCommandError
+from bzrlib.diff import compare_trees
+from trace import mutter, warning
 import os.path
 import tempfile
 import shutil
 import errno
 
+class UnrelatedBranches(BzrCommandError):
+    def __init__(self):
+        msg = "Branches have no common ancestor, and no base revision"\
+            " specified."
+        BzrCommandError.__init__(self, msg)
+
+
 class MergeConflictHandler(ExceptionConflictHandler):
     """Handle conflicts encountered while merging"""
+    def __init__(self, dir, ignore_zero=False):
+        ExceptionConflictHandler.__init__(self, dir)
+        self.conflicts = 0
+        self.ignore_zero = ignore_zero
+
     def copy(self, source, dest):
         """Copy the text and mode of a file
         :param source: The path of the file to copy
@@ -35,10 +49,16 @@ class MergeConflictHandler(ExceptionConflictHandler):
         new_name = last_new_name+suffix
         try:
             os.rename(name, new_name)
+            return new_name
         except OSError, e:
             if e.errno != errno.EEXIST and e.errno != errno.ENOTEMPTY:
                 raise
-            self.add_suffix(name, suffix, last_new_name=new_name)
+            return self.add_suffix(name, suffix, last_new_name=new_name)
+
+    def conflict(self, text):
+        warning(text)
+        self.conflicts += 1
+        
 
     def merge_conflict(self, new_file, this_path, base_path, other_path):
         """
@@ -53,10 +73,16 @@ class MergeConflictHandler(ExceptionConflictHandler):
         self.copy(base_path, this_path+".BASE")
         self.copy(other_path, this_path+".OTHER")
         os.rename(new_file, this_path)
+        self.conflict("Diff3 conflict encountered in %s" % this_path)
 
     def target_exists(self, entry, target, old_path):
         """Handle the case when the target file or dir exists"""
-        self.add_suffix(target, ".moved")
+        moved_path = self.add_suffix(target, ".moved")
+        self.conflict("Moved existing %s to %s" % (target, moved_path))
+
+    def finalize(self):
+        if not self.ignore_zero:
+            print "%d conflicts encountered.\n" % self.conflicts
             
 class SourceFile(object):
     def __init__(self, path, id, present=None, isdir=None):
@@ -70,8 +96,8 @@ class SourceFile(object):
         return "SourceFile(%s, %s)" % (self.path, self.id)
 
 def get_tree(treespec, temp_root, label):
-    dir, revno = treespec
-    branch = Branch(dir)
+    location, revno = treespec
+    branch = find_branch(location)
     if revno is None:
         base_tree = branch.working_tree()
     elif revno == -1:
@@ -80,7 +106,7 @@ def get_tree(treespec, temp_root, label):
         base_tree = branch.revision_tree(branch.lookup_revision(revno))
     temp_path = os.path.join(temp_root, label)
     os.mkdir(temp_path)
-    return MergeTree(base_tree, temp_path)
+    return branch, MergeTree(base_tree, temp_path)
 
 
 def abspath(tree, file_id):
@@ -129,13 +155,29 @@ class MergeTree(object):
                 self.cached[id] = path
             return self.cached[id]
 
-def merge(other_revision, base_revision):
+def merge(other_revision, base_revision, no_changes=True, ignore_zero=False):
     tempdir = tempfile.mkdtemp(prefix="bzr-")
     try:
-        this_branch = Branch('.') 
-        other_tree = get_tree(other_revision, tempdir, "other")
-        base_tree = get_tree(base_revision, tempdir, "base")
-        merge_inner(this_branch, other_tree, base_tree, tempdir)
+        this_branch = find_branch('.') 
+        if no_changes:
+            changes = compare_trees(this_branch.working_tree(), 
+                                    this_branch.basis_tree(), False)
+            if changes.has_changed():
+                raise BzrCommandError("Working tree has uncommitted changes.")
+        other_branch, other_tree = get_tree(other_revision, tempdir, "other")
+        if base_revision == [None, None]:
+            if other_revision[1] == -1:
+                o_revno = None
+            else:
+                o_revno = other_revision[1]
+            base_revno = this_branch.common_ancestor(other_branch, 
+                                                     other_revno=o_revno)[0]
+            if base_revno is None:
+                raise UnrelatedBranches()
+            base_revision = ['.', base_revno]
+        base_branch, base_tree = get_tree(base_revision, tempdir, "base")
+        merge_inner(this_branch, other_tree, base_tree, tempdir, 
+                    ignore_zero=ignore_zero)
     finally:
         shutil.rmtree(tempdir)
 
@@ -164,15 +206,17 @@ def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b):
     return cset
 
 
-def merge_inner(this_branch, other_tree, base_tree, tempdir):
-    this_tree = get_tree(('.', None), tempdir, "this")
+def merge_inner(this_branch, other_tree, base_tree, tempdir, 
+                ignore_zero=False):
+    this_tree = get_tree(('.', None), tempdir, "this")[1]
 
     def get_inventory(tree):
         return tree.inventory
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
                              generate_cset_optimized, get_inventory,
-                             MergeConflictHandler(base_tree.root))
+                             MergeConflictHandler(base_tree.root,
+                                                  ignore_zero=ignore_zero))
 
     adjust_ids = []
     for id, path in inv_changes.iteritems():

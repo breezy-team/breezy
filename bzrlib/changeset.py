@@ -1066,6 +1066,9 @@ class ExceptionConflictHandler(object):
     def missing_for_rename(self, filename):
         raise MissingForRename(filename)
 
+    def finalize():
+        pass
+
 def apply_changeset(changeset, inventory, dir, conflict_handler=None, 
                     reverse=False):
     """Apply a changeset to a directory.
