@@ -197,9 +197,6 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
         ## TODO: Check that the file kind has not changed from the previous
         ## revision of this file (if any).
 
-        ## TODO: Don't need to copy this unless we're going to change it
-        entry = entry.copy()
-
         p = branch.abspath(path)
         file_id = entry.file_id
         mutter('commit prep file %s, id %r ' % (p, file_id))
@@ -220,10 +217,15 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
             missing_ids.append(file_id)
             continue
 
+        # this is present in the new inventory; may be new, modified or
+        # unchanged.
+        old_ie = basis_inv.has_id(file_id) and basis_inv[file_id]
+        
+        entry = entry.copy()
         inv.add(entry)
 
-        if basis_inv.has_id(file_id):
-            old_kind = basis_inv[file_id].kind
+        if old_ie:
+            old_kind = old_ie.kind
             if old_kind != entry.kind:
                 raise BzrError("entry %r changed kind from %r to %r"
                         % (file_id, old_kind, entry.kind))
@@ -238,7 +240,6 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
 
             new_sha1 = work_tree.get_file_sha1(file_id)
 
-            old_ie = basis_inv.has_id(file_id) and basis_inv[file_id]
             if (old_ie
                 and old_ie.text_sha1 == new_sha1):
                 ## assert content == basis.get_file(file_id).read()
@@ -258,14 +259,19 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
                 entry.text_id = gen_file_id(entry.name)
                 branch.text_store.add(content, entry.text_id)
                 mutter('    stored with text_id {%s}' % entry.text_id)
-                if verbose:
-                    ## TODO: Also show these for directories!
-                    if not old_ie:
-                        print('added %s' % path)
-                    elif (old_ie.name == entry.name
-                          and old_ie.parent_id == entry.parent_id):
-                        print('modified %s' % path)
-                    else:
-                        print('renamed %s' % path)
+
+        if verbose:
+            marked = path + kind_marker(entry.kind)
+            if not old_ie:
+                print 'added', marked
+            elif old_ie == entry:
+                pass                    # unchanged
+            elif (old_ie.name == entry.name
+                  and old_ie.parent_id == entry.parent_id):
+                print 'modified', marked
+            else:
+                print 'renamed', marked
                         
     return missing_ids, inv
+
+
