@@ -158,7 +158,7 @@ try:
     global BZRPATH
 
     if args:
-        BZRPATH = args[1]
+        BZRPATH = args[0]
     else:
         BZRPATH = os.path.join(os.path.split(mypath)[0], 'bzr')
 
