@@ -46,7 +46,10 @@ from os.path import exists
 
 TESTDIR = "testbzr.tmp"
 
-OVERRIDE_PYTHON = None
+
+# we always invoke bzr as 'python bzr' (or e.g. 'python2.3 bzr')
+# partly so as to cope if the bzr binary is not marked executable
+OVERRIDE_PYTHON = 'python'
 
 LOGFILENAME = 'testbzr.log'
 
@@ -166,7 +169,7 @@ try:
     print '%-30s %s' % ('in directory', os.getcwd())
     print '%-30s %s' % ('with python', (OVERRIDE_PYTHON or '(default)'))
     print
-    print backtick([BZRPATH, 'version'])
+    print backtick('bzr version')
     
     runcmd(['mkdir', TESTDIR])
     cd(TESTDIR)
