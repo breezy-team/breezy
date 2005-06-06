@@ -839,7 +839,7 @@ class cmd_ls(Command):
 
 
 class cmd_unknowns(Command):
-    """List unknown files"""
+    """List unknown files."""
     def run(self):
         for f in Branch('.').unknowns():
             print quotefn(f)
@@ -847,7 +847,7 @@ class cmd_unknowns(Command):
 
 
 class cmd_ignore(Command):
-    """Ignore a command or pattern
+    """Ignore a command or pattern.
 
     To remove patterns from the ignore list, edit the .bzrignore file.
 
@@ -1047,7 +1047,7 @@ class cmd_selftest(Command):
 
 
 class cmd_version(Command):
-    """Show version of bzr"""
+    """Show version of bzr."""
     def run(self):
         show_version()
 
