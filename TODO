@@ -279,6 +279,8 @@ Medium things
 * unittest is standard, but the results are kind of ugly; would be
   nice to make it cleaner.
 
+* Check locking is correct during merge-related operations.
+
 
 Large things
 ------------
