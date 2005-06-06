@@ -107,6 +107,19 @@ class ImmutableStore(object):
         f.write(content)
         f.close()
 
+    def copy_multi(self, other, ids):
+        """Copy texts for ids from other into self.
+
+        If an id is present in self, it is skipped.  A count of copied
+        ids is returned, which may be less than len(ids).
+        """
+        count = 0
+        for id in ids:
+            if id in self:
+                continue
+            self.add(other[id], id)
+            count += 1
+        return count
 
     def __contains__(self, fileid):
         """"""
