@@ -1,6 +1,7 @@
 #! /bin/sh -e
 
-# Add a file that's version by bzr to baz with the same file-id
+# Take a file that is versioned by bzr and
+# add it to baz with the same file-id.
 
 if [ $# -ne 1 ]
 then
@@ -8,5 +9,5 @@ then
     exit 1
 fi
 
-baz add -i $( bzr file-id $1 ) $1
+baz add -i "$( bzr file-id "$1" )" "$1"
 

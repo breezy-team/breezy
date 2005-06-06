@@ -56,14 +56,18 @@ commands' for a list.
 """
 
 
+import sys
 
-def help(topic=None):
+
+def help(topic=None, outfile = None):
+    if outfile == None:
+        outfile = sys.stdout
     if topic == None:
-        print global_help
+        outfile.write(global_help)
     elif topic == 'commands':
-        help_commands()
+        help_commands(outfile = outfile)
     else:
-        help_on_command(topic)
+        help_on_command(topic, outfile = outfile)
 
 
 def command_usage(cmdname, cmdclass):
@@ -88,8 +92,11 @@ def command_usage(cmdname, cmdclass):
     return s
 
 
-def help_on_command(cmdname):
+def help_on_command(cmdname, outfile = None):
     cmdname = str(cmdname)
+
+    if outfile == None:
+        outfile = sys.stdout
 
     from inspect import getdoc
     import commands
@@ -99,37 +106,42 @@ def help_on_command(cmdname):
     if doc == None:
         raise NotImplementedError("sorry, no detailed help yet for %r" % cmdname)
 
-    print 'usage:', command_usage(topic, cmdclass)
+    outfile.write('usage: ' + command_usage(topic, cmdclass) + '\n')
 
     if cmdclass.aliases:
-        print 'aliases: ' + ', '.join(cmdclass.aliases)
+        outfile.write('aliases: ' + ', '.join(cmdclass.aliases) + '\n')
     
-    print doc
+    outfile.write(doc)
     
-    help_on_option(cmdclass.takes_options)
+    help_on_option(cmdclass.takes_options, outfile = None)
 
 
-def help_on_option(options):
+def help_on_option(options, outfile = None):
     import commands
     
     if not options:
         return
     
-    print
-    print 'options:'
+    if outfile == None:
+        outfile = sys.stdout
+
+    outfile.write('\noptions:\n')
     for on in options:
         l = '    --' + on
         for shortname, longname in commands.SHORT_OPTIONS.items():
             if longname == on:
                 l += ', -' + shortname
                 break
-        print l
+        outfile.write(l + '\n')
 
 
-def help_commands():
+def help_commands(outfile = None):
     """List all commands"""
     import inspect
     import commands
+
+    if outfile == None:
+        outfile = sys.stdout
     
     accu = []
     for cmdname, cmdclass in commands.get_all_cmds():
@@ -138,9 +150,10 @@ def help_commands():
     for cmdname, cmdclass in accu:
         if cmdclass.hidden:
             continue
-        print command_usage(cmdname, cmdclass)
+        outfile.write(command_usage(cmdname, cmdclass) + '\n')
         help = inspect.getdoc(cmdclass)
         if help:
-            print "    " + help.split('\n', 1)[0]
+            outfile.write("    " + help.split('\n', 1)[0] + '\n')
+
             
 
