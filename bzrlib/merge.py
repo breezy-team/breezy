@@ -155,11 +155,29 @@ class MergeTree(object):
                 self.cached[id] = path
             return self.cached[id]
 
-def merge(other_revision, base_revision, no_changes=True, ignore_zero=False):
+
+
+def merge(other_revision, base_revision,
+          check_clean=True, ignore_zero=False,
+          this_dir=None):
+    """Merge changes into a tree.
+
+    base_revision
+        Base for three-way merge.
+    other_revision
+        Other revision for three-way merge.
+    this_dir
+        Directory to merge changes into; '.' by default.
+    check_clean
+        If true, this_dir must have no uncommitted changes before the
+        merge begins.
+    """
     tempdir = tempfile.mkdtemp(prefix="bzr-")
     try:
-        this_branch = find_branch('.') 
-        if no_changes:
+        if this_dir is None:
+            this_dir = '.'
+        this_branch = find_branch(this_dir)
+        if check_clean:
             changes = compare_trees(this_branch.working_tree(), 
                                     this_branch.basis_tree(), False)
             if changes.has_changed():
@@ -208,7 +226,7 @@ def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b):
 
 def merge_inner(this_branch, other_tree, base_tree, tempdir, 
                 ignore_zero=False):
-    this_tree = get_tree(('.', None), tempdir, "this")[1]
+    this_tree = get_tree((this_branch.base, None), tempdir, "this")[1]
 
     def get_inventory(tree):
         return tree.inventory

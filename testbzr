@@ -353,6 +353,28 @@ try:
 
     cd('..')
     cd('..')
+    progress('branch')
+    # Can't create a branch if it already exists
+    runcmd('bzr branch branch1', retcode=1)
+    # Can't create a branch if its parent doesn't exist
+    runcmd('bzr branch /unlikely/to/exist', retcode=1)
+    runcmd('bzr branch branch1 branch2')
+
+    progress("pull")
+    cd('branch1')
+    runcmd('bzr pull', retcode=1)
+    runcmd('bzr pull ../branch2')
+    cd('.bzr')
+    runcmd('bzr pull')
+    runcmd('bzr commit -m empty')
+    runcmd('bzr pull')
+    cd('../../branch2')
+    runcmd('bzr pull')
+    runcmd('bzr commit -m empty')
+    cd('../branch1')
+    runcmd('bzr commit -m empty')
+    runcmd('bzr pull', retcode=1)
+    cd ('..')
 
     progress('status after remove')
     mkdir('status-after-remove')

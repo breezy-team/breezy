@@ -384,6 +384,111 @@ class cmd_rename(Command):
 
 
 
+
+
+class cmd_pull(Command):
+    """Pull any changes from another branch into the current one.
+
+    If the location is omitted, the last-used location will be used.
+    Both the revision history and the working directory will be
+    updated.
+
+    This command only works on branches that have not diverged.  Branches are
+    considered diverged if both branches have had commits without first
+    pulling from the other.
+
+    If branches have diverged, you can use 'bzr merge' to pull the text changes
+    from one into the other.
+    """
+    takes_args = ['location?']
+
+    def run(self, location=None):
+        from bzrlib.merge import merge
+        import errno
+        
+        br_to = Branch('.')
+        stored_loc = None
+        try:
+            stored_loc = br_to.controlfile("x-pull", "rb").read().rstrip('\n')
+        except IOError, e:
+            if errno == errno.ENOENT:
+                raise
+        if location is None:
+            location = stored_loc
+        if location is None:
+            raise BzrCommandError("No pull location known or specified.")
+        from branch import find_branch, DivergedBranches
+        br_from = find_branch(location)
+        location = pull_loc(br_from)
+        old_revno = br_to.revno()
+        try:
+            br_to.update_revisions(br_from)
+        except DivergedBranches:
+            raise BzrCommandError("These branches have diverged.  Try merge.")
+            
+        merge(('.', -1), ('.', old_revno))
+        if location != stored_loc:
+            br_to.controlfile("x-pull", "wb").write(location + "\n")
+
+
+
+class cmd_branch(Command):
+    """Create a new copy of a branch.
+
+    If the TO_LOCATION is omitted, the last component of the
+    FROM_LOCATION will be used.  In other words,
+    "branch ../foo/bar" will attempt to create ./bar.
+    """
+    takes_args = ['from_location', 'to_location?']
+
+    def run(self, from_location, to_location=None):
+        import errno
+        from bzrlib.merge import merge
+        
+        if to_location is None:
+            to_location = os.path.basename(from_location)
+            # FIXME: If there's a trailing slash, keep removing them
+            # until we find the right bit
+
+        try:
+            os.mkdir(to_location)
+        except OSError, e:
+            if e.errno == errno.EEXIST:
+                raise BzrCommandError('Target directory "%s" already exists.' %
+                                      to_location)
+            if e.errno == errno.ENOENT:
+                raise BzrCommandError('Parent of "%s" does not exist.' %
+                                      to_location)
+            else:
+                raise
+        br_to = Branch(to_location, init=True)
+        from branch import find_branch, DivergedBranches
+        try:
+            br_from = find_branch(from_location)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise BzrCommandError('Source location "%s" does not exist.' %
+                                      to_location)
+            else:
+                raise
+
+        from_location = pull_loc(br_from)
+        br_to.update_revisions(br_from)
+        merge((to_location, -1), (to_location, 0), this_dir=to_location,
+              check_clean=False)
+        br_to.controlfile("x-pull", "wb").write(from_location + "\n")
+
+
+def pull_loc(branch):
+    # TODO: Should perhaps just make attribute be 'base' in
+    # RemoteBranch and Branch?
+    if hasattr(branch, "baseurl"):
+        return branch.baseurl
+    else:
+        return branch.base
+
+
+
 class cmd_renames(Command):
     """Show list of renamed files.
 
@@ -991,6 +1096,8 @@ def parse_spec(spec):
         parsed = [spec, None]
     return parsed
 
+
+
 class cmd_merge(Command):
     """Perform a three-way merge of trees.
     
@@ -1009,24 +1116,33 @@ class cmd_merge(Command):
     The OTHER_SPEC parameter is required.  If the BASE_SPEC parameter is
     not supplied, the common ancestor of OTHER_SPEC the current branch is used
     as the BASE.
+
+    merge refuses to run if there are any uncommitted changes, unless
+    --force is given.
     """
     takes_args = ['other_spec', 'base_spec?']
+    takes_options = ['force']
 
-    def run(self, other_spec, base_spec=None):
+    def run(self, other_spec, base_spec=None, force=False):
         from bzrlib.merge import merge
-        merge(parse_spec(other_spec), parse_spec(base_spec))
+        merge(parse_spec(other_spec), parse_spec(base_spec),
+              check_clean=(not force))
 
 
 class cmd_revert(Command):
-    """
-    Reverse all changes since the last commit.  Only versioned files are
-    affected.
+    """Reverse all changes since the last commit.
+
+    Only versioned files are affected.
+
+    TODO: Store backups of any files that will be reverted, so
+          that the revert can be undone.          
     """
     takes_options = ['revision']
 
     def run(self, revision=-1):
-        merge.merge(('.', revision), parse_spec('.'), no_changes=False,
-                    ignore_zero=True)
+        merge(('.', revision), parse_spec('.'),
+              check_clean=False,
+              ignore_zero=True)
 
 
 class cmd_assert_fail(Command):
@@ -1068,6 +1184,7 @@ OPTIONS = {
     'diff-options':           str,
     'help':                   None,
     'file':                   unicode,
+    'force':                  None,
     'forward':                None,
     'message':                unicode,
     'no-recurse':             None,

@@ -104,7 +104,11 @@ def find_branch_root(f=None):
             raise BzrError('%r is not in a branch' % orig_f)
         f = head
     
-
+class DivergedBranches(Exception):
+    def __init__(self, branch1, branch2):
+        self.branch1 = branch1
+        self.branch2 = branch2
+        Exception.__init__(self, "These branches have diverged.")
 
 ######################################################################
 # branch objects
@@ -650,6 +654,94 @@ class Branch(object):
             return None
 
 
+    def missing_revisions(self, other):
+        """
+        If self and other have not diverged, return a list of the revisions
+        present in other, but missing from self.
+
+        >>> from bzrlib.commit import commit
+        >>> bzrlib.trace.silent = True
+        >>> br1 = ScratchBranch()
+        >>> br2 = ScratchBranch()
+        >>> br1.missing_revisions(br2)
+        []
+        >>> commit(br2, "lala!", rev_id="REVISION-ID-1")
+        >>> br1.missing_revisions(br2)
+        [u'REVISION-ID-1']
+        >>> br2.missing_revisions(br1)
+        []
+        >>> commit(br1, "lala!", rev_id="REVISION-ID-1")
+        >>> br1.missing_revisions(br2)
+        []
+        >>> commit(br2, "lala!", rev_id="REVISION-ID-2A")
+        >>> br1.missing_revisions(br2)
+        [u'REVISION-ID-2A']
+        >>> commit(br1, "lala!", rev_id="REVISION-ID-2B")
+        >>> br1.missing_revisions(br2)
+        Traceback (most recent call last):
+        DivergedBranches: These branches have diverged.
+        """
+        self_history = self.revision_history()
+        self_len = len(self_history)
+        other_history = other.revision_history()
+        other_len = len(other_history)
+        common_index = min(self_len, other_len) -1
+        if common_index >= 0 and \
+            self_history[common_index] != other_history[common_index]:
+            raise DivergedBranches(self, other)
+        if self_len < other_len:
+            return other_history[self_len:]
+        return []
+
+
+    def update_revisions(self, other):
+        """If self and other have not diverged, ensure self has all the
+        revisions in other
+
+        >>> from bzrlib.commit import commit
+        >>> bzrlib.trace.silent = True
+        >>> br1 = ScratchBranch(files=['foo', 'bar'])
+        >>> br1.add('foo')
+        >>> br1.add('bar')
+        >>> commit(br1, "lala!", rev_id="REVISION-ID-1", verbose=False)
+        >>> br2 = ScratchBranch()
+        >>> br2.update_revisions(br1)
+        Added 2 texts.
+        Added 1 inventories.
+        Added 1 revisions.
+        >>> br2.revision_history()
+        [u'REVISION-ID-1']
+        >>> br2.update_revisions(br1)
+        Added 0 texts.
+        Added 0 inventories.
+        Added 0 revisions.
+        >>> br1.text_store.total_size() == br2.text_store.total_size()
+        True
+        """
+        revision_ids = self.missing_revisions(other)
+        revisions = [other.get_revision(f) for f in revision_ids]
+        needed_texts = sets.Set()
+        for rev in revisions:
+            inv = other.get_inventory(str(rev.inventory_id))
+            for key, entry in inv.iter_entries():
+                if entry.text_id is None:
+                    continue
+                if entry.text_id not in self.text_store:
+                    needed_texts.add(entry.text_id)
+        count = self.text_store.copy_multi(other.text_store, needed_texts)
+        print "Added %d texts." % count 
+        inventory_ids = [ f.inventory_id for f in revisions ]
+        count = self.inventory_store.copy_multi(other.inventory_store, 
+                                                inventory_ids)
+        print "Added %d inventories." % count 
+        revision_ids = [ f.revision_id for f in revisions]
+        count = self.revision_store.copy_multi(other.revision_store, 
+                                               revision_ids)
+        for revision_id in revision_ids:
+            self.append_revision(revision_id)
+        print "Added %d revisions." % count
+                    
+        
     def commit(self, *args, **kw):
         """Deprecated"""
         from bzrlib.commit import commit
