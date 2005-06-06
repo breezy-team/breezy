@@ -53,11 +53,9 @@ def commit(branch, message,
         If null (default), a time/random revision id is generated.
     """
 
-    import os, time, tempfile
+    import time, tempfile
 
-    from inventory import Inventory
-    from osutils import isdir, isfile, sha_string, quotefn, \
-         local_time_offset, username, kind_marker, is_inside_any
+    from osutils import local_time_offset, username
     
     from branch import gen_file_id
     from errors import BzrError
@@ -77,87 +75,18 @@ def commit(branch, message,
 
         work_tree = branch.working_tree()
         work_inv = work_tree.inventory
-        inv = Inventory()
         basis = branch.basis_tree()
         basis_inv = basis.inventory
-        missing_ids = []
 
         if verbose:
             note('looking for changes...')
 
-        for path, entry in work_inv.iter_entries():
-            ## TODO: Check that the file kind has not changed from the previous
-            ## revision of this file (if any).
-
-            entry = entry.copy()
-
-            p = branch.abspath(path)
-            file_id = entry.file_id
-            mutter('commit prep file %s, id %r ' % (p, file_id))
-
-            if specific_files and not is_inside_any(specific_files, path):
-                if basis_inv.has_id(file_id):
-                    # carry over with previous state
-                    inv.add(basis_inv[file_id].copy())
-                else:
-                    # omit this from committed inventory
-                    pass
-                continue
-
-            if not work_tree.has_id(file_id):
-                if verbose:
-                    print('deleted %s%s' % (path, kind_marker(entry.kind)))
-                mutter("    file is missing, removing from inventory")
-                missing_ids.append(file_id)
-                continue
-
-            inv.add(entry)
-
-            if basis_inv.has_id(file_id):
-                old_kind = basis_inv[file_id].kind
-                if old_kind != entry.kind:
-                    raise BzrError("entry %r changed kind from %r to %r"
-                            % (file_id, old_kind, entry.kind))
-
-            if entry.kind == 'directory':
-                if not isdir(p):
-                    raise BzrError("%s is entered as directory but not a directory"
-                                   % quotefn(p))
-            elif entry.kind == 'file':
-                if not isfile(p):
-                    raise BzrError("%s is entered as file but is not a file" % quotefn(p))
-
-                new_sha1 = work_tree.get_file_sha1(file_id)
-
-                old_ie = basis_inv.has_id(file_id) and basis_inv[file_id]
-                if (old_ie
-                    and old_ie.text_sha1 == new_sha1):
-                    ## assert content == basis.get_file(file_id).read()
-                    entry.text_id = old_ie.text_id
-                    entry.text_sha1 = new_sha1
-                    entry.text_size = old_ie.text_size
-                    mutter('    unchanged from previous text_id {%s}' %
-                           entry.text_id)
-                else:
-                    content = file(p, 'rb').read()
-
-                    # calculate the sha again, just in case the file contents
-                    # changed since we updated the cache
-                    entry.text_sha1 = sha_string(content)
-                    entry.text_size = len(content)
-
-                    entry.text_id = gen_file_id(entry.name)
-                    branch.text_store.add(content, entry.text_id)
-                    mutter('    stored with text_id {%s}' % entry.text_id)
-                    if verbose:
-                        if not old_ie:
-                            print('added %s' % path)
-                        elif (old_ie.name == entry.name
-                              and old_ie.parent_id == entry.parent_id):
-                            print('modified %s' % path)
-                        else:
-                            print('renamed %s' % path)
-
+        missing_ids, new_inv = _gather_commit(branch,
+                                              work_tree,
+                                              work_inv,
+                                              basis_inv,
+                                              specific_files,
+                                              verbose)
 
         for file_id in missing_ids:
             # Any files that have been deleted are now removed from the
@@ -180,7 +109,7 @@ def commit(branch, message,
         inv_id = rev_id
 
         inv_tmp = tempfile.TemporaryFile()
-        inv.write_xml(inv_tmp)
+        new_inv.write_xml(inv_tmp)
         inv_tmp.seek(0)
         branch.inventory_store.add(inv_tmp, inv_id)
         mutter('new inventory_id is {%s}' % inv_id)
@@ -240,3 +169,103 @@ def _gen_revision_id(when):
     return s
 
 
+def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
+                   verbose):
+    """Build inventory preparatory to commit.
+
+    This adds any changed files into the text store, and sets their
+    test-id, sha and size in the returned inventory appropriately.
+
+    missing_ids
+        Modified to hold a list of files that have been deleted from
+        the working directory; these should be removed from the
+        working inventory.
+    """
+    from bzrlib.inventory import Inventory
+    from osutils import isdir, isfile, sha_string, quotefn, \
+         local_time_offset, username, kind_marker, is_inside_any
+    
+    from branch import gen_file_id
+    from errors import BzrError
+    from revision import Revision
+    from bzrlib.trace import mutter, note
+
+    inv = Inventory()
+    missing_ids = []
+    
+    for path, entry in work_inv.iter_entries():
+        ## TODO: Check that the file kind has not changed from the previous
+        ## revision of this file (if any).
+
+        ## TODO: Don't need to copy this unless we're going to change it
+        entry = entry.copy()
+
+        p = branch.abspath(path)
+        file_id = entry.file_id
+        mutter('commit prep file %s, id %r ' % (p, file_id))
+
+        if specific_files and not is_inside_any(specific_files, path):
+            if basis_inv.has_id(file_id):
+                # carry over with previous state
+                inv.add(basis_inv[file_id].copy())
+            else:
+                # omit this from committed inventory
+                pass
+            continue
+
+        if not work_tree.has_id(file_id):
+            if verbose:
+                print('deleted %s%s' % (path, kind_marker(entry.kind)))
+            mutter("    file is missing, removing from inventory")
+            missing_ids.append(file_id)
+            continue
+
+        inv.add(entry)
+
+        if basis_inv.has_id(file_id):
+            old_kind = basis_inv[file_id].kind
+            if old_kind != entry.kind:
+                raise BzrError("entry %r changed kind from %r to %r"
+                        % (file_id, old_kind, entry.kind))
+
+        if entry.kind == 'directory':
+            if not isdir(p):
+                raise BzrError("%s is entered as directory but not a directory"
+                               % quotefn(p))
+        elif entry.kind == 'file':
+            if not isfile(p):
+                raise BzrError("%s is entered as file but is not a file" % quotefn(p))
+
+            new_sha1 = work_tree.get_file_sha1(file_id)
+
+            old_ie = basis_inv.has_id(file_id) and basis_inv[file_id]
+            if (old_ie
+                and old_ie.text_sha1 == new_sha1):
+                ## assert content == basis.get_file(file_id).read()
+                entry.text_id = old_ie.text_id
+                entry.text_sha1 = new_sha1
+                entry.text_size = old_ie.text_size
+                mutter('    unchanged from previous text_id {%s}' %
+                       entry.text_id)
+            else:
+                content = file(p, 'rb').read()
+
+                # calculate the sha again, just in case the file contents
+                # changed since we updated the cache
+                entry.text_sha1 = sha_string(content)
+                entry.text_size = len(content)
+
+                entry.text_id = gen_file_id(entry.name)
+                branch.text_store.add(content, entry.text_id)
+                mutter('    stored with text_id {%s}' % entry.text_id)
+                if verbose:
+                    ## TODO: Also show these for directories!
+                    if not old_ie:
+                        print('added %s' % path)
+                    elif (old_ie.name == entry.name
+                          and old_ie.parent_id == entry.parent_id):
+                        print('modified %s' % path)
+                    else:
+                        print('renamed %s' % path)
+                        
+    return missing_ids, inv
