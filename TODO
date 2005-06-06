@@ -281,6 +281,9 @@ Medium things
 
 * Check locking is correct during merge-related operations.
 
+* Perhaps attempts to get locks should timeout after some period of
+  time, or at least display a progress message.
+
 
 Large things
 ------------
