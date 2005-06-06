@@ -39,6 +39,7 @@ def create_tar_gz(local_dir, output_dir=None, verbose=False):
 		if os.system('gzip "%s"' % tmp_path) != 0:
 			raise ValueError('Failed to compress')
 		tmp_path += '.gz'
+                os.chmod(tmp_path, 0644)
 		os.rename(tmp_path, final_path)
 	except:
 		os.remove(tmp_path)
@@ -66,6 +67,7 @@ def create_tar_bz2(local_dir, output_dir=None, verbose=False):
 		if os.system('bzip2 "%s"' % tmp_path) != 0:
 			raise ValueError('Failed to compress')
 		tmp_path += '.bz2'
+                os.chmod(tmp_path, 0644)
 		os.rename(tmp_path, final_path)
 	except:
 		os.remove(tmp_path)
@@ -94,6 +96,7 @@ def create_zip(local_dir, output_dir=None, verbose=False):
 		finally:
 			zip.close()
 
+                os.chmod(tmp_path, 0644)
 		os.rename(tmp_path, final_path)
 	except:
 		os.remove(tmp_path)
