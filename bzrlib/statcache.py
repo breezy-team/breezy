@@ -148,6 +148,8 @@ def load_cache(basedir):
     seen_paths = {}
     from bzrlib.trace import warning
 
+    assert isinstance(basedir, basestring)
+
     sha_re = re.compile(r'[a-f0-9]{40}')
 
     try:
