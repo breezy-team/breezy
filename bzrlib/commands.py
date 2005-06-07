@@ -1140,6 +1140,7 @@ class cmd_revert(Command):
     takes_options = ['revision']
 
     def run(self, revision=-1):
+        from bzrlib.merge import merge
         merge(('.', revision), parse_spec('.'),
               check_clean=False,
               ignore_zero=True)
