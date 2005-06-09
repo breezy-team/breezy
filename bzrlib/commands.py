@@ -631,7 +631,7 @@ class cmd_diff(Command):
     
     takes_args = ['file*']
     takes_options = ['revision', 'diff-options']
-    aliases = ['di']
+    aliases = ['di', 'dif']
 
     def run(self, revision=None, file_list=None, diff_options=None):
         from bzrlib.diff import show_diff
