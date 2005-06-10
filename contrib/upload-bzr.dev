@@ -9,6 +9,9 @@
 
 cd ~/work/bzr 
 
+echo "checking permissions..."
+chmod -Rv a+rX .
+
 bzr inventory |
 rsync -av							    \
     .								    \
