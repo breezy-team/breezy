@@ -63,60 +63,138 @@ def _supports_progress(f):
 
 
 
-class Progress(object):
-    """Description of progress through a task.
-
-    Basically just a fancy tuple holding:
-
-    units
-        noun string describing what is being traversed, e.g.
-        "balloons", "kB"
-
-    current
-        how many objects have been processed so far
-
-    total
-        total number of objects to process, if known.
-    """
-    
-    def __init__(self, units, current, total=None):
-        self.units = units
-        self.current = current
-        self.total = total
-
-    def _get_percent(self):
-        if self.total is not None and self.current is not None:
-            return 100.0 * self.current / self.total
-
-    percent = property(_get_percent)
-
-    def __str__(self):
-        if self.total is not None:
-            return "%i of %i %s %.1f%%" % (self.current, self.total, self.units,
-                                         self.percent)
-        else:
-            return "%i %s" (self.current, self.units)
-
-
-
 class ProgressBar(object):
-    def __init__(self, to_file=sys.stderr):
+    """Progress bar display object.
+
+    Several options are available to control the display.  These can
+    be passed as parameters to the constructor or assigned at any time:
+
+    show_pct
+        Show percentage complete.
+    show_spinner
+        Show rotating baton.  This ticks over on every update even
+        if the values don't change.
+    show_eta
+        Show predicted time-to-completion.
+    show_bar
+        Show bar graph.
+    show_count
+        Show numerical counts.
+
+    The output file should be in line-buffered or unbuffered mode.
+    """
+    SPIN_CHARS = r'/-\|'
+    
+    def __init__(self,
+                 to_file=sys.stderr,
+                 show_pct=False,
+                 show_spinner=False,
+                 show_eta=True,
+                 show_bar=True,
+                 show_count=True):
         object.__init__(self)
-        self.start = None
+        self.start_time = None
         self.to_file = to_file
         self.suppressed = not _supports_progress(self.to_file)
+        self.spin_pos = 0
+ 
+        self.show_pct = show_pct
+        self.show_spinner = show_spinner
+        self.show_eta = show_eta
+        self.show_bar = show_bar
+        self.show_count = show_count
 
 
-    def __call__(self, progress):
-        if self.start is None:
-            self.start = datetime.datetime.now()
-        if not self.suppressed:
-            draw_progress_bar(progress, start_time=self.start,
-                              to_file=self.to_file)
+    def tick(self):
+        self.update(self.last_msg, self.last_cnt, self.last_total)
+                 
+
+
+    def update(self, msg, current_cnt, total_cnt=None):
+        """Update and redraw progress bar."""
+        if self.start_time is None:
+            self.start_time = datetime.datetime.now()
+
+        # save these for the tick() function
+        self.last_msg = msg
+        self.last_cnt = current_cnt
+        self.last_total = total_cnt
+            
+        if self.suppressed:
+            return
+
+        width = _width()
+
+        if total_cnt:
+            assert current_cnt <= total_cnt
+        if current_cnt:
+            assert current_cnt >= 0
+        
+        if self.show_eta and self.start_time and total_cnt:
+            eta = get_eta(self.start_time, current_cnt, total_cnt)
+            eta_str = " " + str_tdelta(eta)
+        else:
+            eta_str = ""
+
+        if self.show_spinner:
+            spin_str = self.SPIN_CHARS[self.spin_pos % 4] + ' '            
+        else:
+            spin_str = ''
+
+        # always update this; it's also used for the bar
+        self.spin_pos += 1
+
+        if self.show_pct and total_cnt and current_cnt:
+            pct = 100.0 * current_cnt / total_cnt
+            pct_str = ' (%5.1f%%)' % pct
+        else:
+            pct_str = ''
+
+        if not self.show_count:
+            count_str = ''
+        elif current_cnt is None:
+            count_str = ''
+        elif total_cnt is None:
+            count_str = ' %i' % (current_cnt)
+        else:
+            # make both fields the same size
+            t = '%i' % (total_cnt)
+            c = '%*i' % (len(t), current_cnt)
+            count_str = ' ' + c + '/' + t 
+
+        if self.show_bar:
+            # progress bar, if present, soaks up all remaining space
+            cols = width - 1 - len(msg) - len(spin_str) - len(pct_str) \
+                   - len(eta_str) - len(count_str) - 3
+
+            if total_cnt:
+                # number of markers highlighted in bar
+                markers = int(round(float(cols) * current_cnt / total_cnt))
+                bar_str = '[' + ('=' * markers).ljust(cols) + '] '
+            else:
+                # don't know total, so can't show completion.
+                # so just show an expanded spinning thingy
+                m = self.spin_pos % cols
+                ms = ' ' * cols
+                ms[m] = '*'
+                
+                bar_str = '[' + ms + '] '
+        else:
+            bar_str = ''
+
+        m = spin_str + bar_str + msg + count_str + pct_str + eta_str
+
+        assert len(m) < width
+        self.to_file.write('\r' + m.ljust(width - 1))
+        #self.to_file.flush()
+            
 
     def clear(self):
-        if not self.suppressed:
-            clear_progress_bar(self.to_file)
+        if self.suppressed:
+            return
+        
+        self.to_file.write('\r%s\r' % (' ' * (_width() - 1)))
+        #self.to_file.flush()        
     
 
         
@@ -132,75 +210,20 @@ def str_tdelta(delt):
     return str(datetime.timedelta(delt.days, delt.seconds))
 
 
-def get_eta(start_time, progress, enough_samples=20):
-    if start_time is None or progress.current == 0:
+def get_eta(start_time, current, total, enough_samples=20):
+    if start_time is None or current == 0:
         return None
-    elif progress.current < enough_samples:
+    elif current < enough_samples:
+        # FIXME: No good if it's not a count
         return None
     elapsed = datetime.datetime.now() - start_time
-    total_duration = divide_timedelta((elapsed) * long(progress.total), 
-                                      progress.current)
+    total_duration = divide_timedelta(elapsed * long(total), 
+                                      current)
     if elapsed < total_duration:
         eta = total_duration - elapsed
     else:
         eta = total_duration - total_duration
     return eta
-
-
-def draw_progress_bar(progress, start_time=None, to_file=sys.stderr):
-    eta = get_eta(start_time, progress)
-    if start_time is not None:
-        eta_str = " "+str_tdelta(eta)
-    else:
-        eta_str = ""
-
-    fmt = " %i of %i %s (%.1f%%)"
-    f = fmt % (progress.total, progress.total, progress.units, 100.0)
-    cols = _width() - 3 - len(f)
-    if start_time is not None:
-        cols -= len(eta_str)
-    markers = int(round(float(cols) * progress.current / progress.total))
-    txt = fmt % (progress.current, progress.total, progress.units,
-                 progress.percent)
-    to_file.write("\r[%s%s]%s%s" % ('='*markers, ' '*(cols-markers), txt, 
-                                       eta_str))
-
-def clear_progress_bar(to_file=sys.stderr):
-    to_file.write('\r%s\r' % (' '*79))
-
-
-def spinner_str(progress, show_text=False):
-    """
-    Produces the string for a textual "spinner" progress indicator
-    :param progress: an object represinting current progress
-    :param show_text: If true, show progress text as well
-    :return: The spinner string
-
-    >>> spinner_str(Progress("baloons", 0))
-    '|'
-    >>> spinner_str(Progress("baloons", 5))
-    '/'
-    >>> spinner_str(Progress("baloons", 6), show_text=True)
-    '- 6 baloons'
-    """
-    positions = ('|', '/', '-', '\\')
-    text = positions[progress.current % 4]
-    if show_text:
-        text+=" %i %s" % (progress.current, progress.units)
-    return text
-
-
-def spinner(progress, show_text=False, output=sys.stderr):
-    """
-    Update a spinner progress indicator on an output
-    :param progress: The progress to display
-    :param show_text: If true, show text as well as spinner
-    :param output: The output to write to
-
-    >>> spinner(Progress("baloons", 6), show_text=True, output=sys.stdout)
-    \r- 6 baloons
-    """
-    output.write('\r%s' % spinner_str(progress, show_text))
 
 
 def run_tests():
@@ -215,10 +238,13 @@ def run_tests():
 
 def demo():
     from time import sleep
-    pb = ProgressBar()
+    pb = ProgressBar(show_pct=True, show_bar=True, show_spinner=False)
     for i in range(100):
-        pb(Progress('Elephanten', i, 100))
-        sleep(0.3)
+        pb.update('Elephanten', i, 99)
+        sleep(0.1)
+    sleep(2)
+    pb.clear()
+    sleep(1)
     print 'done!'
 
 if __name__ == "__main__":
