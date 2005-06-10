@@ -532,6 +532,8 @@ class Branch(object):
 
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
+        if not revision_id or not isinstance(revision_id, basestring):
+            raise ValueError('invalid revision-id: %r' % revision_id)
         r = Revision.read_xml(self.revision_store[revision_id])
         assert r.revision_id == revision_id
         return r
