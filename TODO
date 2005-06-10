@@ -112,6 +112,20 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 * Patches should probably use only forward slashes, even on Windows,
   otherwise Unix patch can't apply them. (?) 
 
+* Branch.update_revisions() inefficiently fetches revisions from the
+  remote server twice; once to find out what text and inventory they
+  need and then again to actually get the thing.  This is a bit
+  inefficient. 
+
+  One complicating factor here is that we don't really want to have
+  revisions present in the revision-store until all their constituent
+  parts are also stored.
+
+  The basic problem is that RemoteBranch.get_revision() and similar
+  methods return object, but what we really want is the raw XML, which
+  can be popped into our own store.  That needs to be refactored.
+  
+
 
 Medium things
 -------------
