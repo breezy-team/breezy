@@ -40,7 +40,7 @@ not to clutter log files.
 
 
 import sys
-import datetime
+import time
 
 
 def _width():
@@ -113,7 +113,7 @@ class ProgressBar(object):
     def update(self, msg, current_cnt, total_cnt=None):
         """Update and redraw progress bar."""
         if self.start_time is None:
-            self.start_time = datetime.datetime.now()
+            self.start_time = time.time()
 
         # save these for the tick() function
         self.last_msg = msg
@@ -198,32 +198,38 @@ class ProgressBar(object):
     
 
         
-def divide_timedelta(delt, divisor):
-    """Divides a timedelta object"""
-    return datetime.timedelta(float(delt.days)/divisor, 
-                              float(delt.seconds)/divisor, 
-                              float(delt.microseconds)/divisor)
-
 def str_tdelta(delt):
     if delt is None:
         return "-:--:--"
-    return str(datetime.timedelta(delt.days, delt.seconds))
+    delt = int(round(delt))
+    return '%d:%02d:%02d' % (delt/3600,
+                             (delt/60) % 60,
+                             delt % 60)
 
 
-def get_eta(start_time, current, total, enough_samples=20):
-    if start_time is None or current == 0:
+def get_eta(start_time, current, total, enough_samples=3):
+    if start_time is None:
         return None
-    elif current < enough_samples:
-        # FIXME: No good if it's not a count
+
+    if not total:
         return None
-    elapsed = datetime.datetime.now() - start_time
-    total_duration = divide_timedelta(elapsed * long(total), 
-                                      current)
-    if elapsed < total_duration:
-        eta = total_duration - elapsed
-    else:
-        eta = total_duration - total_duration
-    return eta
+
+    if current < enough_samples:
+        return None
+
+    if current > total:
+        return None                     # wtf?
+
+    elapsed = time.time() - start_time
+
+    if elapsed < 2.0:                   # not enough time to estimate
+        return None
+    
+    total_duration = float(elapsed) * float(total) / float(current)
+
+    assert total_duration >= elapsed
+
+    return total_duration - elapsed
 
 
 def run_tests():
