@@ -35,22 +35,35 @@ unlock() method.
 """
 
 
-import sys, os
+import sys
+import os
 
-from trace import mutter, note, warning
-from errors import LockError
+from bzrlib.trace import mutter, note, warning
+from bzrlib.errors import LockError
 
 class _base_Lock(object):
     def _open(self, filename, filemode):
-        self.f = open(filename, filemode)
-        return self.f
-    
+        import errno
+        try:
+            self.f = open(filename, filemode)
+            return self.f
+        except IOError, e:
+            if e.errno != errno.ENOENT:
+                raise
+
+            # maybe this is an old branch (before may 2005)
+            mutter("trying to create missing branch lock %r" % filename)
+            
+            self.f = open(filename, 'wb')
+            return self.f
+
 
     def __del__(self):
         if self.f:
             from warnings import warn
             warn("lock on %r not released" % self.f)
             self.unlock()
+            
 
     def unlock(self):
         raise NotImplementedError()
