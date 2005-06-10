@@ -31,6 +31,10 @@ not to clutter log files.
 
 # TODO: remove functions in favour of keeping everything in one class
 
+# TODO: should be a global option e.g. --silent that disables progress
+# indicators, preferably without needing to adjust all code that
+# potentially calls them.
+
 
 import sys
 import datetime
