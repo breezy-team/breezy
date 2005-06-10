@@ -103,6 +103,15 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * Statcache should possibly map all file paths to / separators
 
+* quotefn doubles all backslashes on Windows; this is probably not the
+  best thing to do.  What would be a better way to safely represent
+  filenames?  Perhaps we could doublequote things containing spaces,
+  on the principle that filenames containing quotes are unlikely?
+  Nice for humans; less good for machine parsing.
+
+* Patches should probably use only forward slashes, even on Windows,
+  otherwise Unix patch can't apply them. (?) 
+
 
 Medium things
 -------------
