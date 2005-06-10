@@ -72,7 +72,7 @@ def check(branch):
         len_inv = len(inv)
         for file_id in inv:
             i += 1
-            if (i % 100) == 99:
+            if i & 31 == 0:
                 pb.tick()
 
             ie = inv[file_id]
