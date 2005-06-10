@@ -35,6 +35,9 @@ not to clutter log files.
 # indicators, preferably without needing to adjust all code that
 # potentially calls them.
 
+# TODO: Perhaps don't write updates faster than a certain rate, say
+# 5/second.
+
 
 import sys
 import datetime
@@ -156,7 +159,7 @@ def draw_progress_bar(progress, start_time=None, to_file=sys.stderr):
     cols = _width() - 3 - len(f)
     if start_time is not None:
         cols -= len(eta_str)
-    markers = int (float(cols) * progress.current / progress.total)
+    markers = int(round(float(cols) * progress.current / progress.total))
     txt = fmt % (progress.current, progress.total, progress.units,
                  progress.percent)
     to_file.write("\r[%s%s]%s%s" % ('='*markers, ' '*(cols-markers), txt, 
