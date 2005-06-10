@@ -68,25 +68,107 @@ def _parse_revision_str(revstr):
         revs = int(revstr)
     return revs
 
-def get_all_cmds():
-    """Return canonical name and class for all registered commands."""
+def _find_plugins():
+    """Find all python files which are plugins, and load their commands
+    to add to the list of "all commands"
+
+    The environment variable BZRPATH is considered a delimited set of
+    paths to look through. Each entry is searched for *.py files.
+    If a directory is found, it is also searched, but they are 
+    not searched recursively. This allows you to revctl the plugins.
+    
+    Inside the plugin should be a series of cmd_* function, which inherit from
+    the bzrlib.commands.Command class.
+    """
+    bzrpath = os.environ.get('BZRPLUGINPATH', '')
+
+    plugin_cmds = {} 
+    if not bzrpath:
+        return plugin_cmds
+    _platform_extensions = {
+        'win32':'.pyd',
+        'cygwin':'.dll',
+        'darwin':'.dylib',
+        'linux2':'.so'
+        }
+    if _platform_extensions.has_key(sys.platform):
+        platform_extension = _platform_extensions[sys.platform]
+    else:
+        platform_extension = None
+    for d in bzrpath.split(os.pathsep):
+        plugin_names = {} # This should really be a set rather than a dict
+        for f in os.listdir(d):
+            if f.endswith('.py'):
+                f = f[:-3]
+            elif f.endswith('.pyc') or f.endswith('.pyo'):
+                f = f[:-4]
+            elif platform_extension and f.endswith(platform_extension):
+                f = f[:-len(platform_extension)]
+                if f.endswidth('module'):
+                    f = f[:-len('module')]
+            else:
+                continue
+            if not plugin_names.has_key(f):
+                plugin_names[f] = True
+
+        plugin_names = plugin_names.keys()
+        plugin_names.sort()
+        try:
+            sys.path.insert(0, d)
+            for name in plugin_names:
+                try:
+                    old_module = None
+                    try:
+                        if sys.modules.has_key(name):
+                            old_module = sys.modules[name]
+                            del sys.modules[name]
+                        plugin = __import__(name, locals())
+                        for k in dir(plugin):
+                            if k.startswith('cmd_'):
+                                k_unsquished = _unsquish_command_name(k)
+                                if not plugin_cmds.has_key(k_unsquished):
+                                    plugin_cmds[k_unsquished] = getattr(plugin, k)
+                                else:
+                                    log_error('Two plugins defined the same command: %r' % k)
+                                    log_error('Not loading the one in %r in dir %r' % (name, d))
+                    finally:
+                        if old_module:
+                            sys.modules[name] = old_module
+                except ImportError, e:
+                    log_error('Unable to load plugin: %r from %r\n%s' % (name, d, e))
+        finally:
+            sys.path.pop(0)
+    return plugin_cmds
+
+def _get_cmd_dict(include_plugins=True):
+    d = {}
     for k, v in globals().iteritems():
         if k.startswith("cmd_"):
-            yield _unsquish_command_name(k), v
+            d[_unsquish_command_name(k)] = v
+    if include_plugins:
+        d.update(_find_plugins())
+    return d
+    
+def get_all_cmds(include_plugins=True):
+    """Return canonical name and class for all registered commands."""
+    for k, v in _get_cmd_dict(include_plugins=include_plugins).iteritems():
+        yield k,v
 
-def get_cmd_class(cmd):
+
+def get_cmd_class(cmd,include_plugins=True):
     """Return the canonical name and command class for a command.
     """
     cmd = str(cmd)                      # not unicode
 
     # first look up this command under the specified name
+    cmds = _get_cmd_dict(include_plugins=include_plugins)
     try:
-        return cmd, globals()[_squish_command_name(cmd)]
+        return cmd, cmds[cmd]
     except KeyError:
         pass
 
     # look for any command which claims this as an alias
-    for cmdname, cmdclass in get_all_cmds():
+    for cmdname, cmdclass in cmds.iteritems():
         if cmd in cmdclass.aliases:
             return cmdname, cmdclass
 
@@ -165,7 +247,7 @@ class ExternalCommand(Command):
         import os.path
         bzrpath = os.environ.get('BZRPATH', '')
 
-        for dir in bzrpath.split(':'):
+        for dir in bzrpath.split(os.pathsep):
             path = os.path.join(dir, cmd)
             if os.path.isfile(path):
                 return ExternalCommand(path)
@@ -1326,6 +1408,7 @@ def run_bzr(argv):
     """
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
     
+    include_plugins=True
     try:
         args, opts = parse_args(argv[1:])
         if 'help' in opts:
@@ -1338,6 +1421,9 @@ def run_bzr(argv):
         elif 'version' in opts:
             show_version()
             return 0
+        elif args and args[0] == 'builtin':
+            include_plugins=False
+            args = args[1:]
         cmd = str(args.pop(0))
     except IndexError:
         import help
@@ -1345,7 +1431,7 @@ def run_bzr(argv):
         return 1
           
 
-    canonical_cmd, cmd_class = get_cmd_class(cmd)
+    canonical_cmd, cmd_class = get_cmd_class(cmd,include_plugins=include_plugins)
 
     # global option
     if 'profile' in opts:

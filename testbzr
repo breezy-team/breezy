@@ -145,6 +145,54 @@ start_dir = os.getcwd()
 
 logfile = open(LOGFILENAME, 'wt', buffering=1)
 
+def test_plugins():
+    """Run a test involving creating a plugin to load,
+    and making sure it is seen properly.
+    """
+    mkdir('plugin_test')
+    f = open(os.path.join('plugin_test', 'myplug.py'), 'wb')
+    f.write("""import bzrlib, bzrlib.commands
+class cmd_myplug(bzrlib.commands.Command):
+    '''Just a simple test plugin.'''
+    aliases = ['mplg']
+    def run(self):
+        print 'Hello from my plugin'
+""")
+    f.close()
+
+    os.environ['BZRPLUGINPATH'] = os.path.abspath('plugin_test')
+    help = backtick('bzr help commands')
+    assert help.find('myplug') != -1
+    assert help.find('Just a simple test plugin.') != -1
+
+    
+    assert backtick('bzr myplug') == 'Hello from my plugin\n'
+    assert backtick('bzr mplg') == 'Hello from my plugin\n'
+
+    f = open(os.path.join('plugin_test', 'override.py'), 'wb')
+    f.write("""import bzrlib, bzrlib.commands
+class cmd_commit(bzrlib.commands.cmd_commit):
+    '''Commit changes into a new revision.'''
+    def run(self, *args, **kwargs):
+        print "I'm sorry dave, you can't do that"
+
+class cmd_help(bzrlib.commands.cmd_help):
+    '''Show help on a command or other topic.'''
+    def run(self, *args, **kwargs):
+        print "You have been overridden"
+        bzrlib.commands.cmd_help.run(self, *args, **kwargs)
+
+""")
+    f.close()
+
+    newhelp = backtick('bzr help commands')
+    assert newhelp.startswith('You have been overridden\n')
+    # We added a line, but the rest should work
+    assert newhelp[25:] == help
+
+    assert backtick('bzr commit -m test') == "I'm sorry dave, you can't do that\n"
+    
+    shutil.rmtree('plugin_test')
 
 try:
     from getopt import getopt
@@ -455,6 +503,15 @@ try:
 
 
 
+
+    # Run any function in this 
+    g = globals()
+    funcs = g.keys()
+    funcs.sort()
+    for k in funcs:
+        if k.startswith('test_') and callable(g[k]):
+            progress(k[5:].replace('_', ' '))
+            g[k]()
 
     progress("all tests passed!")
 except Exception, e:
