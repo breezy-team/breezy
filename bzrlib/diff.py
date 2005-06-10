@@ -209,7 +209,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                           specific_files=specific_files)
 
     for path, file_id, kind in delta.removed:
-        print '*** removed %s %r' % (kind, path)
+        print >>to_file, '*** removed %s %r' % (kind, path)
         if kind == 'file':
             diff_file(old_label + path,
                       old_tree.get_file(file_id).readlines(),
@@ -218,7 +218,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                       to_file)
 
     for path, file_id, kind in delta.added:
-        print '*** added %s %r' % (kind, path)
+        print >>to_file, '*** added %s %r' % (kind, path)
         if kind == 'file':
             diff_file(DEVNULL,
                       [],
@@ -227,7 +227,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                       to_file)
 
     for old_path, new_path, file_id, kind, text_modified in delta.renamed:
-        print '*** renamed %s %r => %r' % (kind, old_path, new_path)
+        print >>to_file, '*** renamed %s %r => %r' % (kind, old_path, new_path)
         if text_modified:
             diff_file(old_label + old_path,
                       old_tree.get_file(file_id).readlines(),
@@ -236,7 +236,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                       to_file)
 
     for path, file_id, kind in delta.modified:
-        print '*** modified %s %r' % (kind, path)
+        print >>to_file, '*** modified %s %r' % (kind, path)
         if kind == 'file':
             diff_file(old_label + path,
                       old_tree.get_file(file_id).readlines(),
