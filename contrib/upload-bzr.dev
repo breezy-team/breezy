@@ -9,11 +9,10 @@
 
 cd ~/work/bzr 
 
-echo "checking permissions..."
-chmod -Rv a+rX .
+# note: don't use -a because that can mess up the permissions
 
 bzr inventory |
-rsync -av							    \
+rsync -rltv							    \
     .								    \
     escudero.ubuntu.com:/srv/www.bazaar-ng.org/rsync/bzr/bzr.dev/   \
     --include-from -						    \
