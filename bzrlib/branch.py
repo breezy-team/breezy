@@ -695,9 +695,8 @@ class Branch(object):
 
 
     def update_revisions(self, other):
-        """If self and other have not diverged, ensure self has all the
-        revisions in other
-
+        """Pull in all new revisions from other branch.
+        
         >>> from bzrlib.commit import commit
         >>> bzrlib.trace.silent = True
         >>> br1 = ScratchBranch(files=['foo', 'bar'])
