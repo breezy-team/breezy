@@ -276,6 +276,11 @@ class TreeDelta(object):
         self.modified = []
         self.unchanged = []
 
+    def __repr__(self):
+        return "TreeDelta(added=%r, removed=%r, renamed=%r, modified=%r," \
+            " unchanged=%r)" % (self.added, self.removed, self.renamed,
+            self.modified, self.unchanged)
+
     def has_changed(self):
         changes = len(self.added) + len(self.removed) + len(self.renamed)
         changes += len(self.modified) 
