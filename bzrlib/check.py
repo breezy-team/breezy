@@ -72,8 +72,7 @@ def check(branch):
         len_inv = len(inv)
         for file_id in inv:
             i += 1
-            #if (i % 100) == 0:
-            #    p('revision %d/%d file text %d/%d' % (revno, revcount, i, len_inv))
+            pb(Progress('file texts', i, len_inv))
 
             ie = inv[file_id]
 
@@ -102,7 +101,7 @@ def check(branch):
                     raise BzrCheckError('directory {%s} has text in revision {%s}'
                             % (file_id, rid))
 
-        # p('revision %d/%d file paths' % (revno, revcount))
+        pb(Progress('file paths', revno, revcount))
         for path, ie in inv.iter_entries():
             if path in seen_names:
                 raise BzrCheckError('duplicated path %r '
