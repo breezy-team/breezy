@@ -17,32 +17,20 @@
 
 
 
-######################################################################
-# consistency checks
 
-def check(branch, progress=True):
+def check(branch):
+    """Run consistency checks on a branch.
+    """
     import sys
 
     from bzrlib.trace import mutter
     from bzrlib.errors import BzrCheckError
     from bzrlib.osutils import fingerprint_file
+    from bzrlib.progress import ProgressBar, Progress
     
     out = sys.stdout
 
-    # TODO: factor out
-    if not (hasattr(out, 'isatty') and out.isatty()):
-        progress=False
-
-    if progress:
-        def p(m):
-            mutter('checking ' + m)
-            out.write('\rchecking: %-50.50s' % m)
-            out.flush()
-    else:
-        def p(m):
-            mutter('checking ' + m)
-
-    p('history of %r' % branch.base)
+    pb = ProgressBar()
     last_ptr = None
     checked_revs = {}
     
@@ -54,7 +42,7 @@ def check(branch, progress=True):
     
     for rid in history:
         revno += 1
-        p('revision %d/%d' % (revno, revcount))
+        pb(Progress('revision', revno, revcount))
         mutter('    revision {%s}' % rid)
         rev = branch.get_revision(rid)
         if rev.revision_id != rid:
@@ -72,19 +60,20 @@ def check(branch, progress=True):
         seen_ids = {}
         seen_names = {}
 
-        p('revision %d/%d file ids' % (revno, revcount))
+        ## p('revision %d/%d file ids' % (revno, revcount))
         for file_id in inv:
             if file_id in seen_ids:
-                raise BzrCheckError('duplicated file_id {%s} in inventory for revision {%s}'
-                        % (file_id, rid))
+                raise BzrCheckError('duplicated file_id {%s} '
+                                    'in inventory for revision {%s}'
+                                    % (file_id, rid))
             seen_ids[file_id] = True
 
         i = 0
         len_inv = len(inv)
         for file_id in inv:
             i += 1
-            if (i % 100) == 0:
-                p('revision %d/%d file text %d/%d' % (revno, revcount, i, len_inv))
+            #if (i % 100) == 0:
+            #    p('revision %d/%d file text %d/%d' % (revno, revcount, i, len_inv))
 
             ie = inv[file_id]
 
@@ -113,15 +102,15 @@ def check(branch, progress=True):
                     raise BzrCheckError('directory {%s} has text in revision {%s}'
                             % (file_id, rid))
 
-        p('revision %d/%d file paths' % (revno, revcount))
+        # p('revision %d/%d file paths' % (revno, revcount))
         for path, ie in inv.iter_entries():
             if path in seen_names:
-                raise BzrCheckError('duplicated path %r in inventory for revision {%s}' % (path, revid))
+                raise BzrCheckError('duplicated path %r '
+                                    'in inventory for revision {%s}'
+                                    % (path, revid))
             seen_names[path] = True
 
 
-    p('done')
-    if progress:
-        print 
+    pb.clear()
     print 'checked %d revisions, %d file texts' % (revcount, len(checked_texts))
 
