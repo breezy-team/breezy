@@ -84,6 +84,10 @@ class ProgressBar(object):
     The output file should be in line-buffered or unbuffered mode.
     """
     SPIN_CHARS = r'/-\|'
+    MIN_PAUSE = 0.1 # seconds
+
+    start_time = None
+    last_update = None
     
     def __init__(self,
                  to_file=sys.stderr,
@@ -93,7 +97,6 @@ class ProgressBar(object):
                  show_bar=True,
                  show_count=True):
         object.__init__(self)
-        self.start_time = None
         self.to_file = to_file
         self.suppressed = not _supports_progress(self.to_file)
         self.spin_pos = 0
@@ -112,17 +115,24 @@ class ProgressBar(object):
 
     def update(self, msg, current_cnt, total_cnt=None):
         """Update and redraw progress bar."""
-        if self.start_time is None:
-            self.start_time = time.time()
+        if self.suppressed:
+            return
 
         # save these for the tick() function
         self.last_msg = msg
         self.last_cnt = current_cnt
         self.last_total = total_cnt
             
-        if self.suppressed:
-            return
+        now = time.time()
+        if self.start_time is None:
+            self.start_time = now
+        else:
+            interval = now - self.last_update
+            if interval > 0 and interval < self.MIN_PAUSE:
+                return
 
+        self.last_update = now
+        
         width = _width()
 
         if total_cnt:
