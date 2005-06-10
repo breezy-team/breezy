@@ -20,13 +20,13 @@
 ######################################################################
 # consistency checks
 
-import sys
-
-from trace import mutter
-from bzrlib.errors import BzrCheckError
-import osutils
-
 def check(branch, progress=True):
+    import sys
+
+    from bzrlib.trace import mutter
+    from bzrlib.errors import BzrCheckError
+    from bzrlib.osutils import fingerprint_file
+    
     out = sys.stdout
 
     # TODO: factor out
@@ -101,7 +101,7 @@ def check(branch, progress=True):
                         raise BzrCheckError('text {%s} not in text_store' % ie.text_id)
 
                     tf = branch.text_store[ie.text_id]
-                    fp = osutils.fingerprint_file(tf)
+                    fp = fingerprint_file(tf)
                     checked_texts[ie.text_id] = fp
 
                 if ie.text_size != fp['size']:
