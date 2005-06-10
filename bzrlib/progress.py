@@ -113,7 +113,7 @@ class ProgressBar(object):
                  
 
 
-    def update(self, msg, current_cnt, total_cnt=None):
+    def update(self, msg, current_cnt=None, total_cnt=None):
         """Update and redraw progress bar."""
         if self.suppressed:
             return
