@@ -426,7 +426,7 @@ class cmd_pull(Command):
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged.  Try merge.")
             
-        merge(('.', -1), ('.', old_revno))
+        merge(('.', -1), ('.', old_revno), check_clean=False)
         if location != stored_loc:
             br_to.controlfile("x-pull", "wb").write(location + "\n")
 
