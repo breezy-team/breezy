@@ -23,7 +23,7 @@
 import sys
 
 from trace import mutter
-from errors import bailout
+from bzrlib.errors import BzrCheckError
 import osutils
 
 def check(branch, progress=True):
@@ -58,12 +58,12 @@ def check(branch, progress=True):
         mutter('    revision {%s}' % rid)
         rev = branch.get_revision(rid)
         if rev.revision_id != rid:
-            bailout('wrong internal revision id in revision {%s}' % rid)
+            raise BzrCheckError('wrong internal revision id in revision {%s}' % rid)
         if rev.precursor != last_ptr:
-            bailout('mismatched precursor in revision {%s}' % rid)
+            raise BzrCheckError('mismatched precursor in revision {%s}' % rid)
         last_ptr = rid
         if rid in checked_revs:
-            bailout('repeated revision {%s}' % rid)
+            raise BzrCheckError('repeated revision {%s}' % rid)
         checked_revs[rid] = True
 
         ## TODO: Check all the required fields are present on the revision.
@@ -75,7 +75,7 @@ def check(branch, progress=True):
         p('revision %d/%d file ids' % (revno, revcount))
         for file_id in inv:
             if file_id in seen_ids:
-                bailout('duplicated file_id {%s} in inventory for revision {%s}'
+                raise BzrCheckError('duplicated file_id {%s} in inventory for revision {%s}'
                         % (file_id, rid))
             seen_ids[file_id] = True
 
@@ -90,7 +90,7 @@ def check(branch, progress=True):
 
             if ie.parent_id != None:
                 if ie.parent_id not in seen_ids:
-                    bailout('missing parent {%s} in inventory for revision {%s}'
+                    raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
                             % (ie.parent_id, rid))
 
             if ie.kind == 'file':
@@ -98,25 +98,25 @@ def check(branch, progress=True):
                     fp = checked_texts[ie.text_id]
                 else:
                     if not ie.text_id in branch.text_store:
-                        bailout('text {%s} not in text_store' % ie.text_id)
+                        raise BzrCheckError('text {%s} not in text_store' % ie.text_id)
 
                     tf = branch.text_store[ie.text_id]
                     fp = osutils.fingerprint_file(tf)
                     checked_texts[ie.text_id] = fp
 
                 if ie.text_size != fp['size']:
-                    bailout('text {%s} wrong size' % ie.text_id)
+                    raise BzrCheckError('text {%s} wrong size' % ie.text_id)
                 if ie.text_sha1 != fp['sha1']:
-                    bailout('text {%s} wrong sha1' % ie.text_id)
+                    raise BzrCheckError('text {%s} wrong sha1' % ie.text_id)
             elif ie.kind == 'directory':
                 if ie.text_sha1 != None or ie.text_size != None or ie.text_id != None:
-                    bailout('directory {%s} has text in revision {%s}'
+                    raise BzrCheckError('directory {%s} has text in revision {%s}'
                             % (file_id, rid))
 
         p('revision %d/%d file paths' % (revno, revcount))
         for path, ie in inv.iter_entries():
             if path in seen_names:
-                bailout('duplicated path %r in inventory for revision {%s}' % (path, revid))
+                raise BzrCheckError('duplicated path %r in inventory for revision {%s}' % (path, revid))
             seen_names[path] = True
 
 
