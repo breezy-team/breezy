@@ -185,8 +185,7 @@ class ProgressBar(object):
                 # don't know total, so can't show completion.
                 # so just show an expanded spinning thingy
                 m = self.spin_pos % cols
-                ms = ' ' * cols
-                ms[m] = '*'
+                ms = (' ' * m + '*').ljust(cols)
                 
                 bar_str = '[' + ms + '] '
         else:
