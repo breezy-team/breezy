@@ -61,6 +61,21 @@ def _supports_progress(f):
 
 
 class Progress(object):
+    """Description of progress through a task.
+
+    Basically just a fancy tuple holding:
+
+    units
+        noun string describing what is being traversed, e.g.
+        "balloons", "kB"
+
+    current
+        how many objects have been processed so far
+
+    total
+        total number of objects to process, if known.
+    """
+    
     def __init__(self, units, current, total=None):
         self.units = units
         self.current = current
