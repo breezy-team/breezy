@@ -60,7 +60,9 @@ class Revision(XMLMixin):
                        revision_id = self.revision_id,
                        inventory_id = self.inventory_id,
                        inventory_sha1 = self.inventory_sha1,
-                       timezone = str(self.timezone))
+                       )
+        if self.timezone:
+            root.set('timezone', str(self.timezone))
         if self.precursor:
             root.set('precursor', self.precursor)
             if self.precursor_sha1:
