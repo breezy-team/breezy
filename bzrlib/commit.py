@@ -114,6 +114,17 @@ def commit(branch, message,
         branch.inventory_store.add(inv_tmp, inv_id)
         mutter('new inventory_id is {%s}' % inv_id)
 
+        # We could also just sha hash the inv_tmp file
+        # however, in the case that branch.inventory_store.add()
+        # ever actually does anything special
+        inv_sha1 = branch.get_inventory_sha1(inv_id)
+
+        precursor = branch.last_patch()
+        if precursor:
+            precursor_sha1 = branch.get_revision_sha1(precursor)
+        else:
+            precursor_sha1 = None
+
         branch._write_inventory(work_inv)
 
         if timestamp == None:
@@ -129,9 +140,11 @@ def commit(branch, message,
         rev = Revision(timestamp=timestamp,
                        timezone=timezone,
                        committer=committer,
-                       precursor = branch.last_patch(),
+                       precursor = precursor,
+                       precursor_sha1 = precursor_sha1,
                        message = message,
                        inventory_id=inv_id,
+                       inventory_sha1=inv_sha1,
                        revision_id=rev_id)
 
         rev_tmp = tempfile.TemporaryFile()

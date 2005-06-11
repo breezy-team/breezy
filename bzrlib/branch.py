@@ -26,7 +26,7 @@ from tree import Tree, EmptyTree, RevisionTree
 from inventory import InventoryEntry, Inventory
 from osutils import isdir, quotefn, isfile, uuid, sha_file, username, \
      format_date, compact_date, pumpfile, user_email, rand_bytes, splitpath, \
-     joinpath, sha_string, file_kind, local_time_offset, appendpath
+     joinpath, sha_file, sha_string, file_kind, local_time_offset, appendpath
 from store import ImmutableStore
 from revision import Revision
 from errors import BzrError
@@ -538,6 +538,16 @@ class Branch(object):
         assert r.revision_id == revision_id
         return r
 
+    def get_revision_sha1(self, revision_id):
+        """Hash the stored value of a revision, and return it."""
+        # In the future, revision entries will be signed. At that
+        # point, it is probably best *not* to include the signature
+        # in the revision hash. Because that lets you re-sign
+        # the revision, (add signatures/remove signatures) and still
+        # have all hash pointers stay consistent.
+        # But for now, just hash the contents.
+        return sha_file(self.revision_store[revision_id])
+
 
     def get_inventory(self, inventory_id):
         """Get Inventory object by hash.
@@ -547,6 +557,11 @@ class Branch(object):
                string hash."""
         i = Inventory.read_xml(self.inventory_store[inventory_id])
         return i
+
+    def get_inventory_sha1(self, inventory_id):
+        """Return the sha1 hash of the inventory entry
+        """
+        return sha_file(self.inventory_store[inventory_id])
 
 
     def get_revision_inventory(self, revision_id):

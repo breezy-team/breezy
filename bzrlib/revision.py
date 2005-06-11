@@ -38,12 +38,14 @@ class Revision(XMLMixin):
     """
     def __init__(self, **args):
         self.inventory_id = None
+        self.inventory_sha1 = None
         self.revision_id = None
         self.timestamp = None
         self.message = None
         self.timezone = None
         self.committer = None
         self.precursor = None
+        self.precursor_sha1 = None
         self.__dict__.update(args)
 
 
@@ -57,9 +59,12 @@ class Revision(XMLMixin):
                        timestamp = '%.9f' % self.timestamp,
                        revision_id = self.revision_id,
                        inventory_id = self.inventory_id,
+                       inventory_sha1 = self.inventory_sha1,
                        timezone = str(self.timezone))
         if self.precursor:
             root.set('precursor', self.precursor)
+            if self.precursor_sha1:
+                root.set('precursor_sha1', self.precursor_sha1)
         root.text = '\n'
         
         msg = SubElement(root, 'message')
@@ -77,8 +82,11 @@ class Revision(XMLMixin):
         cs = cls(committer = elt.get('committer'),
                  timestamp = float(elt.get('timestamp')),
                  precursor = elt.get('precursor'),
+                 precursor_sha1 = elt.get('precursor_sha1'),
                  revision_id = elt.get('revision_id'),
-                 inventory_id = elt.get('inventory_id'))
+                 inventory_id = elt.get('inventory_id'),
+                 inventory_sha1 = elt.get('inventory_sha1')
+                 )
 
         v = elt.get('timezone')
         cs.timezone = v and int(v)
