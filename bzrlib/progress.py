@@ -181,13 +181,15 @@ class ProgressBar(object):
                 # number of markers highlighted in bar
                 markers = int(round(float(cols) * current_cnt / total_cnt))
                 bar_str = '[' + ('=' * markers).ljust(cols) + '] '
-            else:
+            elif False:
                 # don't know total, so can't show completion.
                 # so just show an expanded spinning thingy
                 m = self.spin_pos % cols
                 ms = (' ' * m + '*').ljust(cols)
                 
                 bar_str = '[' + ms + '] '
+            else:
+                bar_str = ''
         else:
             bar_str = ''
 
