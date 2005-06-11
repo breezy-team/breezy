@@ -526,7 +526,16 @@ class cmd_branch(Command):
     def run(self, from_location, to_location=None):
         import errno
         from bzrlib.merge import merge
-        
+        from branch import find_branch, DivergedBranches
+        try:
+            br_from = find_branch(from_location)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise BzrCommandError('Source location "%s" does not exist.' %
+                                      to_location)
+            else:
+                raise
+
         if to_location is None:
             to_location = os.path.basename(from_location)
             # FIXME: If there's a trailing slash, keep removing them
@@ -544,15 +553,6 @@ class cmd_branch(Command):
             else:
                 raise
         br_to = Branch(to_location, init=True)
-        from branch import find_branch, DivergedBranches
-        try:
-            br_from = find_branch(from_location)
-        except OSError, e:
-            if e.errno == errno.ENOENT:
-                raise BzrCommandError('Source location "%s" does not exist.' %
-                                      to_location)
-            else:
-                raise
 
         from_location = pull_loc(br_from)
         br_to.update_revisions(br_from)
