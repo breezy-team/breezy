@@ -112,6 +112,8 @@ def help_on_command(cmdname, outfile = None):
         outfile.write('aliases: ' + ', '.join(cmdclass.aliases) + '\n')
     
     outfile.write(doc)
+    if doc[-1] != '\n':
+        outfile.write('\n')
     
     help_on_option(cmdclass.takes_options, outfile = None)
 
