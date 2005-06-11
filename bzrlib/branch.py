@@ -719,16 +719,29 @@ class Branch(object):
         >>> br1.text_store.total_size() == br2.text_store.total_size()
         True
         """
+        from bzrlib.progress import ProgressBar
+
+        pb = ProgressBar()
+
+        pb.update('comparing histories')
         revision_ids = self.missing_revisions(other)
-        revisions = [other.get_revision(f) for f in revision_ids]
+        revisions = []
         needed_texts = sets.Set()
-        for rev in revisions:
+        i = 0
+        for rev_id in revision_ids:
+            i += 1
+            pb.update('fetching revision', i, len(revision_ids))
+            rev = other.get_revision(rev_id)
+            revisions.append(rev)
             inv = other.get_inventory(str(rev.inventory_id))
             for key, entry in inv.iter_entries():
                 if entry.text_id is None:
                     continue
                 if entry.text_id not in self.text_store:
                     needed_texts.add(entry.text_id)
+
+        pb.clear()
+                    
         count = self.text_store.copy_multi(other.text_store, needed_texts)
         print "Added %d texts." % count 
         inventory_ids = [ f.inventory_id for f in revisions ]

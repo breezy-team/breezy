@@ -107,19 +107,26 @@ class ImmutableStore(object):
         f.write(content)
         f.close()
 
+
     def copy_multi(self, other, ids):
         """Copy texts for ids from other into self.
 
         If an id is present in self, it is skipped.  A count of copied
         ids is returned, which may be less than len(ids).
         """
+        from bzrlib.progress import ProgressBar
+        pb = ProgressBar()
+        pb.update('preparing to copy')
+        to_copy = [id for id in ids if id not in self]
         count = 0
-        for id in ids:
-            if id in self:
-                continue
-            self.add(other[id], id)
+        for id in to_copy:
             count += 1
+            pb.update('copy', count, len(to_copy))
+            self.add(other[id], id)
+        assert count == len(to_copy)
+        pb.clear()
         return count
+    
 
     def __contains__(self, fileid):
         """"""
