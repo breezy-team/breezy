@@ -1097,11 +1097,16 @@ class cmd_check(Command):
 
     This command checks various invariants about the branch storage to
     detect data corruption or bzr bugs.
+
+    If given the --update flag, it will update some optional fields
+    to help ensure data consistency.
     """
     takes_args = ['dir?']
-    def run(self, dir='.'):
+    takes_options = ['update']
+
+    def run(self, dir='.', update=False):
         import bzrlib.check
-        bzrlib.check.check(Branch(dir))
+        bzrlib.check.check(Branch(dir), update=update)
 
 
 
@@ -1278,6 +1283,7 @@ OPTIONS = {
     'verbose':                None,
     'version':                None,
     'email':                  None,
+    'update':                 None,
     }
 
 SHORT_OPTIONS = {
