@@ -1021,17 +1021,21 @@ class cmd_lookup_revision(Command):
 class cmd_export(Command):
     """Export past revision to destination directory.
 
-    If no revision is specified this exports the last committed revision."""
+    If no revision is specified this exports the last committed revision.
+
+    Format may be an "exporter" name, such as tar, tgz, tbz2.  If none is
+    given, exports to a directory (equivalent to --format=dir)."""
+    # TODO: list known exporters
     takes_args = ['dest']
-    takes_options = ['revision']
-    def run(self, dest, revision=None):
+    takes_options = ['revision', 'format']
+    def run(self, dest, revision=None, format='dir'):
         b = Branch('.')
         if revision == None:
             rh = b.revision_history()[-1]
         else:
             rh = b.lookup_revision(int(revision))
         t = b.revision_tree(rh)
-        t.export(dest)
+        t.export(dest, format)
 
 
 class cmd_cat(Command):
@@ -1273,6 +1277,7 @@ OPTIONS = {
     'help':                   None,
     'file':                   unicode,
     'force':                  None,
+    'format':                 unicode,
     'forward':                None,
     'message':                unicode,
     'no-recurse':             None,

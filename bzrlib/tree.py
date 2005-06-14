@@ -18,7 +18,7 @@
 """
 
 from sets import Set
-import os.path, os, fnmatch
+import os.path, os, fnmatch, time
 
 from osutils import pumpfile, filesize, quotefn, sha_file, \
      joinpath, splitpath, appendpath, isdir, isfile, file_kind, fingerprint_file
@@ -31,6 +31,8 @@ from errors import bailout
 import branch
 
 import bzrlib
+
+exporters = {}
 
 class Tree(object):
     """Abstract file tree.
@@ -99,31 +101,13 @@ class Tree(object):
         pumpfile(self.get_file(fileid), sys.stdout)
         
         
-    def export(self, dest):        
-        """Export this tree to a new directory.
-
-        `dest` should not exist, and will be created holding the
-        contents of this tree.
-
-        TODO: To handle subdirectories we need to create the
-               directories first.
-
-        :note: If the export fails, the destination directory will be
-               left in a half-assed state.
-        """
-        os.mkdir(dest)
-        mutter('export version %r' % self)
-        inv = self.inventory
-        for dp, ie in inv.iter_entries():
-            kind = ie.kind
-            fullpath = appendpath(dest, dp)
-            if kind == 'directory':
-                os.mkdir(fullpath)
-            elif kind == 'file':
-                pumpfile(self.get_file(ie.file_id), file(fullpath, 'wb'))
-            else:
-                bailout("don't know how to export {%s} of kind %r" % (ie.file_id, kind))
-            mutter("  export {%s} kind %s to %s" % (ie.file_id, kind, fullpath))
+    def export(self, dest, format='dir'):
+        """Export this tree."""
+        try:
+            exporter = exporters[format]
+        except KeyError:
+            raise BzrCommandError("export format %r not supported" % format)
+        exporter(self, dest)
 
 
 
@@ -241,3 +225,104 @@ def find_renames(old_inv, new_inv):
         if old_name != new_name:
             yield (old_name, new_name)
             
+
+
+######################################################################
+# export
+
+def dir_exporter(tree, dest):
+    """Export this tree to a new directory.
+
+    `dest` should not exist, and will be created holding the
+    contents of this tree.
+
+    TODO: To handle subdirectories we need to create the
+           directories first.
+
+    :note: If the export fails, the destination directory will be
+           left in a half-assed state.
+    """
+    os.mkdir(dest)
+    mutter('export version %r' % tree)
+    inv = tree.inventory
+    for dp, ie in inv.iter_entries():
+        kind = ie.kind
+        fullpath = appendpath(dest, dp)
+        if kind == 'directory':
+            os.mkdir(fullpath)
+        elif kind == 'file':
+            pumpfile(tree.get_file(ie.file_id), file(fullpath, 'wb'))
+        else:
+            bailout("don't know how to export {%s} of kind %r" % (ie.file_id, kind))
+        mutter("  export {%s} kind %s to %s" % (ie.file_id, kind, fullpath))
+exporters['dir'] = dir_exporter
+
+try:
+    import tarfile
+except ImportError:
+    pass
+else:
+    def tar_exporter(tree, dest, compression=None):
+        """Export this tree to a new tar file.
+
+        `dest` will be created holding the contents of this tree; if it
+        already exists, it will be clobbered, like with "tar -c".
+        """
+        now = time.time()
+        compression = str(compression or '')
+        try:
+            ball = tarfile.open(dest, 'w:' + compression)
+        except tarfile.CompressionError, e:
+            bailout(str(e))
+        mutter('export version %r' % tree)
+        inv = tree.inventory
+        for dp, ie in inv.iter_entries():
+            mutter("  export {%s} kind %s to %s" % (ie.file_id, ie.kind, dest))
+            item = tarfile.TarInfo(dp)
+            # TODO: would be cool to actually set it to the timestamp of the
+            # revision it was last changed
+            item.mtime = now
+            if ie.kind == 'directory':
+                item.type = tarfile.DIRTYPE
+                fileobj = None
+                item.name += '/'
+                item.size = 0
+                item.mode = 0755
+            elif ie.kind == 'file':
+                item.type = tarfile.REGTYPE
+                fileobj = tree.get_file(ie.file_id)
+                item.size = _find_file_size(fileobj)
+                item.mode = 0644
+            else:
+                bailout("don't know how to export {%s} of kind %r" %
+                        (ie.file_id, ie.kind))
+
+            ball.addfile(item, fileobj)
+        ball.close()
+    exporters['tar'] = tar_exporter
+
+    def tgz_exporter(tree, dest):
+        tar_exporter(tree, dest, compression='gz')
+    exporters['tgz'] = tgz_exporter
+
+    def tbz_exporter(tree, dest):
+        tar_exporter(tree, dest, compression='bz2')
+    exporters['tbz2'] = tbz_exporter
+
+
+def _find_file_size(fileobj):
+    offset = fileobj.tell()
+    try:
+        fileobj.seek(0, 2)
+        size = fileobj.tell()
+    except TypeError:
+        # gzip doesn't accept second argument to seek()
+        fileobj.seek(0)
+        size = 0
+        while True:
+            nread = len(fileobj.read())
+            if nread == 0:
+                break
+            size += nread
+    fileobj.seek(offset)
+    return size
