@@ -276,7 +276,7 @@ class Branch(object):
         os.mkdir(self.controlfilename([]))
         self.controlfile('README', 'w').write(
             "This is a Bazaar-NG control directory.\n"
-            "Do not change any files in this directory.")
+            "Do not change any files in this directory.\n")
         self.controlfile('branch-format', 'w').write(BZR_BRANCH_FORMAT)
         for d in ('text-store', 'inventory-store', 'revision-store'):
             os.mkdir(self.controlfilename(d))
