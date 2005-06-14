@@ -101,6 +101,9 @@ class ProgressBar(object):
         self.suppressed = not _supports_progress(self.to_file)
         self.spin_pos = 0
  
+        self.last_msg = None
+        self.last_cnt = None
+        self.last_total = None
         self.show_pct = show_pct
         self.show_spinner = show_spinner
         self.show_eta = show_eta
