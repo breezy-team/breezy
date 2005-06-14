@@ -28,7 +28,7 @@ def selftest():
     suite.addTest(TestLoader().loadTestsFromModule(bzrlib.whitebox))
     
     for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \
-            bzrlib.tree, bzrlib.commands, bzrlib.add:
+            bzrlib.commands:
         suite.addTest(DocTestSuite(m))
 
     result = tr.run(suite)
