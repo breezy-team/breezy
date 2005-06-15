@@ -19,6 +19,21 @@ import bzrlib
 
 from trace import mutter, note
 
+def glob_expand_for_win32(file_list):
+    import glob
+    
+    expanded_file_list = []
+    for possible_glob in file_list:
+        glob_files = glob.glob(possible_glob)
+       
+        if glob_files == []:
+            # special case to let the normal code path handle
+            # files that do not exists
+            expanded_file_list.append(possible_glob)
+        else:
+            expanded_file_list += glob_files
+    return expanded_file_list
+
 def smart_add(file_list, verbose=True, recurse=True):
     """Add files to version, optionally recursing into directories.
 
@@ -29,6 +44,10 @@ def smart_add(file_list, verbose=True, recurse=True):
     from bzrlib.errors import BadFileKindError, ForbiddenFileError
 
     assert file_list
+    
+    if sys.platform == 'win32':
+        file_list = glob_expand_for_win32(file_list)
+    
     user_list = file_list[:]
     assert not isinstance(file_list, basestring)
     b = bzrlib.branch.Branch(file_list[0], find_root=True)
