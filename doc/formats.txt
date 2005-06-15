@@ -191,10 +191,6 @@ comment
 timestamp
   As floating-point seconds since epoch.
 
-precursor
-  ID of the previous revision on this branch.  May be absent (null) if
-  this is the start of a new branch.
-
 branch name
   Name of the branch to which this was originally committed.    
 
@@ -204,6 +200,17 @@ branch name
 
 inventory_hash
   Acts as a pointer to the inventory for this revision.
+
+parents
+  Zero, one, or more references to parent revisions.   For each 
+  the revision-id and the revision file's hash are given.  The first
+  parent is by convention the revision in whose working tree the
+  new revision was created.
+
+precursor
+  Must be equal to the first parent, if any are given.  For
+  compatibility with bzr 0.0.5 and earlier; eventually will be
+  removed. 
 
 merged-branches
   Revision ids of complete branches merged into this revision.  If a
