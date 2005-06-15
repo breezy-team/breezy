@@ -517,16 +517,20 @@ class cmd_pull(Command):
 class cmd_branch(Command):
     """Create a new copy of a branch.
 
-    If the TO_LOCATION is omitted, the last component of the
-    FROM_LOCATION will be used.  In other words,
-    "branch ../foo/bar" will attempt to create ./bar.
+    If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will
+    be used.  In other words, "branch ../foo/bar" will attempt to create ./bar.
+
+    To retrieve the branch as of a particular revision, supply the --revision
+    parameter, as in "branch foo/bar -r 5".
     """
     takes_args = ['from_location', 'to_location?']
+    takes_options = ['revision']
 
-    def run(self, from_location, to_location=None):
+    def run(self, from_location, to_location=None, revision=None):
         import errno
         from bzrlib.merge import merge
-        from branch import find_branch, DivergedBranches
+        from branch import find_branch, DivergedBranches, NoSuchRevision
+        from shutil import rmtree
         try:
             br_from = find_branch(from_location)
         except OSError, e:
@@ -552,10 +556,16 @@ class cmd_branch(Command):
                 raise
         br_to = Branch(to_location, init=True)
 
-        from_location = pull_loc(br_from)
-        br_to.update_revisions(br_from)
+        try:
+            br_to.update_revisions(br_from, stop_revision=revision)
+        except NoSuchRevision:
+            rmtree(to_location)
+            msg = "The branch %s has no revision %d." % (from_location,
+                                                         revision)
+            raise BzrCommandError(msg)
         merge((to_location, -1), (to_location, 0), this_dir=to_location,
               check_clean=False)
+        from_location = pull_loc(br_from)
         br_to.controlfile("x-pull", "wb").write(from_location + "\n")
 
 

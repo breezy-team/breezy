@@ -110,6 +110,15 @@ class DivergedBranches(Exception):
         self.branch2 = branch2
         Exception.__init__(self, "These branches have diverged.")
 
+
+class NoSuchRevision(BzrError):
+    def __init__(self, branch, revision):
+        self.branch = branch
+        self.revision = revision
+        msg = "Branch %s has no revision %d" % (branch, revision)
+        BzrError.__init__(self, msg)
+
+
 ######################################################################
 # branch objects
 
@@ -671,7 +680,7 @@ class Branch(object):
             return None
 
 
-    def missing_revisions(self, other):
+    def missing_revisions(self, other, stop_revision=None):
         """
         If self and other have not diverged, return a list of the revisions
         present in other, but missing from self.
@@ -706,12 +715,16 @@ class Branch(object):
         if common_index >= 0 and \
             self_history[common_index] != other_history[common_index]:
             raise DivergedBranches(self, other)
-        if self_len < other_len:
-            return other_history[self_len:]
-        return []
+
+        if stop_revision is None:
+            stop_revision = other_len
+        elif stop_revision > other_len:
+            raise NoSuchRevision(self, stop_revision)
+        
+        return other_history[self_len:stop_revision]
 
 
-    def update_revisions(self, other):
+    def update_revisions(self, other, stop_revision=None):
         """Pull in all new revisions from other branch.
         
         >>> from bzrlib.commit import commit
@@ -739,7 +752,7 @@ class Branch(object):
         pb = ProgressBar()
 
         pb.update('comparing histories')
-        revision_ids = self.missing_revisions(other)
+        revision_ids = self.missing_revisions(other, stop_revision)
         revisions = []
         needed_texts = sets.Set()
         i = 0
