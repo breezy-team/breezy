@@ -124,6 +124,8 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
   The basic problem is that RemoteBranch.get_revision() and similar
   methods return object, but what we really want is the raw XML, which
   can be popped into our own store.  That needs to be refactored.
+
+* ``bzr status FOO`` where foo is ignored should say so.
   
 
 
