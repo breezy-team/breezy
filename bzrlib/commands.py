@@ -259,17 +259,24 @@ class ExternalCommand(Command):
     def __init__(self, path):
         self.path = path
 
-        # TODO: If either of these fail, we should detect that and
-        # assume that path is not really a bzr plugin after all.
-
         pipe = os.popen('%s --bzr-usage' % path, 'r')
         self.takes_options = pipe.readline().split()
+
+        for opt in self.takes_options:
+            if not opt in OPTIONS:
+                bailout("Unknown option '%s' returned by external command %s"
+                    % (opt, path))
+
+        # TODO: Is there any way to check takes_args is valid here?
         self.takes_args = pipe.readline().split()
-        pipe.close()
+
+        if pipe.close() is not None:
+            bailout("Failed funning '%s --bzr-usage'" % path)
 
         pipe = os.popen('%s --bzr-help' % path, 'r')
         self.__doc__ = pipe.read()
-        pipe.close()
+        if pipe.close() is not None:
+            bailout("Failed funning '%s --bzr-help'" % path)
 
     def __call__(self, options, arguments):
         Command.__init__(self, options, arguments)
