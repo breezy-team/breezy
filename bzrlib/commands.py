@@ -537,9 +537,7 @@ class cmd_branch(Command):
                 raise
 
         if to_location is None:
-            to_location = os.path.basename(from_location)
-            # FIXME: If there's a trailing slash, keep removing them
-            # until we find the right bit
+            to_location = os.path.basename(from_location.rstrip("/\\"))
 
         try:
             os.mkdir(to_location)
