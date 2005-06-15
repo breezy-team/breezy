@@ -1316,6 +1316,16 @@ def parse_args(argv):
     (['status'], {'all': True})
     >>> parse_args('commit --message=biter'.split())
     (['commit'], {'message': u'biter'})
+    >>> parse_args('log -r 500'.split())
+    (['log'], {'revision': 500})
+    >>> parse_args('log -r500:600'.split())
+    (['log'], {'revision': [500, 600]})
+    >>> parse_args('log -vr500:600'.split())
+    (['log'], {'verbose': True, 'revision': [500, 600]})
+    >>> parse_args('log -rv500:600'.split()) #the r takes an argument
+    Traceback (most recent call last):
+    ...
+    ValueError: invalid literal for int(): v500
     """
     args = []
     opts = {}
@@ -1338,9 +1348,34 @@ def parse_args(argv):
                     bailout('unknown long option %r' % a)
             else:
                 shortopt = a[1:]
-                if shortopt not in SHORT_OPTIONS:
-                    bailout('unknown short option %r' % a)
-                optname = SHORT_OPTIONS[shortopt]
+                if shortopt in SHORT_OPTIONS:
+                    # Multi-character options must have a space to delimit
+                    # their value
+                    optname = SHORT_OPTIONS[shortopt]
+                else:
+                    # Single character short options, can be chained,
+                    # and have their value appended to their name
+                    shortopt = a[1:2]
+                    if shortopt not in SHORT_OPTIONS:
+                        # We didn't find the multi-character name, and we
+                        # didn't find the single char name
+                        bailout('unknown short option %r' % a)
+                    optname = SHORT_OPTIONS[shortopt]
+
+                    if a[2:]:
+                        # There are extra things on this option
+                        # see if it is the value, or if it is another
+                        # short option
+                        optargfn = OPTIONS[optname]
+                        if optargfn is None:
+                            # This option does not take an argument, so the
+                            # next entry is another short option, pack it back
+                            # into the list
+                            argv.insert(0, '-' + a[2:])
+                        else:
+                            # This option takes an argument, so pack it
+                            # into the array
+                            optarg = a[2:]
             
             if optname in opts:
                 # XXX: Do we ever want to support this, e.g. for -r?
