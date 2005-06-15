@@ -47,7 +47,7 @@ del locale
 
 __copyright__ = "Copyright 2005 Canonical Development Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
-__version__ = '0.0.5pre'
+__version__ = '0.0.5'
 
 
 def get_bzr_revision():
