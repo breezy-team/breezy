@@ -289,10 +289,11 @@ class ExternalCommand(Command):
         keys = kargs.keys()
         keys.sort()
         for name in keys:
+            optname = name.replace('_','-')
             value = kargs[name]
-            if OPTIONS.has_key(name):
+            if OPTIONS.has_key(optname):
                 # it's an option
-                opts.append('--%s' % name)
+                opts.append('--%s' % optname)
                 if value is not None and value is not True:
                     opts.append(str(value))
             else:
