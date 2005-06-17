@@ -59,7 +59,15 @@ def _width():
 
 
 def _supports_progress(f):
-    return hasattr(f, 'isatty') and f.isatty()
+    if not hasattr(f, 'isatty'):
+        return False
+    if not f.isatty():
+        return False
+    import os
+    if os.environ.get('TERM') == 'dumb':
+        # e.g. emacs compile window
+        return False
+    return True
 
 
 
