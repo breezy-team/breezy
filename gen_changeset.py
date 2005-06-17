@@ -118,6 +118,10 @@ class MetaInfoHeader(object):
             else:
                 to_file.write('# ' + txt + '\n')
 
+        write('Bazaar-NG (bzr) changeset v0.0.5')
+        write('This changeset can be applied with bzr apply-changeset')
+        write('')
+
         write(username(), key='committer')
 
         if self.base_revision:
@@ -130,7 +134,44 @@ class MetaInfoHeader(object):
                     write(rev.revision_id, key='revisions')
                     first = False
                 else:
-                    write('\t' + rev.revision_id)
+                    write(' '*11 + rev.revision_id)
+
+        if self.revision_list[-1].revision_id is None:
+            final_tree = self.branch.working_tree()
+        else:
+            final_tree = self.branch.revision_tree(
+                    self.revision_list[-1])
+
+        class _write_file(object):
+            first = True
+            def __call__(self, info):
+                if self.first:
+                    self.first = False
+                    to_file.write('# file ids: ')
+                else:
+                    to_file.write('#           ')
+                to_file.write(info[0].encode('utf-8'))
+                to_file.write('\t')
+                to_file.write(info[1].encode('utf-8'))
+                inv = final_tree.inventory[info[1]]
+                if inv.parent_id:
+                    to_file.write('\t')
+                    to_file.write(inv.parent_id)
+                to_file.write('\n')
+        write_file = _write_file()
+
+        for info in self.delta.removed:
+            if info[2] == 'file':
+                write_file(info)
+        for info in self.delta.added:
+            if info[2] == 'file':
+                write_file(info)
+        for info in self.delta.renamed:
+            if info[3] == 'file':
+                write_file(info[1:2])
+        for info in self.delta.modified:
+            if info[2] == 'file':
+                write_file(info)
 
 
 def show_changeset(branch, revision=None, specific_files=None,
@@ -141,7 +182,6 @@ def show_changeset(branch, revision=None, specific_files=None,
         import sys
         to_file = sys.stdout
     revisions = _canonicalize_revision(branch, revision)
-    print "Canonicalized revisions: %s" % (revisions,)
 
     old_tree, new_tree = _get_trees(branch, revisions)
 
