@@ -27,6 +27,30 @@ except ImportError:
 from errors import BzrError
 
 
+class RevisionReference:
+    """
+    Reference to a stored revision.
+
+    Includes the revision_id and revision_sha1.
+    """
+    revision_id = None
+    revision_sha1 = None
+    def __init__(self, revision_id, revision_sha1):
+        if revision_id == None \
+           or isinstance(revision_id, basestring):
+            self.revision_id = revision_id
+        else:
+            raise ValueError('bad revision_id %r' % revision_id)
+
+        if revision_sha1 != None:
+            if isinstance(revision_sha1, basestring) \
+               and len(revision_sha1) == 40:
+                self.revision_sha1 = revision_sha1
+            else:
+                raise ValueError('bad revision_sha1 %r' % revision_sha1)
+                
+
+
 class Revision(XMLMixin):
     """Single revision on a branch.
 
@@ -34,19 +58,42 @@ class Revision(XMLMixin):
     written out.  This is not stored because you cannot write the hash
     into the file it describes.
 
-    TODO: Perhaps make predecessor be a child element, not an attribute?
+    TODO: Perhaps make precursor be a child element, not an attribute?
+
+    parents
+        List of parent revisions; 
     """
+    inventory_id = None
+    inventory_sha1 = None
+    revision_id = None
+    timestamp = None
+    message = None
+    timezone = None
+    committer = None
+    
     def __init__(self, **args):
-        self.inventory_id = None
-        self.inventory_sha1 = None
-        self.revision_id = None
-        self.timestamp = None
-        self.message = None
-        self.timezone = None
-        self.committer = None
-        self.precursor = None
-        self.precursor_sha1 = None
         self.__dict__.update(args)
+        self.parents = []
+
+    def _get_precursor(self):
+        ##from warnings import warn
+        ##warn("Revision.precursor is deprecated")
+        if self.parents:
+            return self.parents[0].revision_id
+        else:
+            return None
+
+
+    def _get_precursor_sha1(self):
+        ##from warnings import warn
+        ##warn("Revision.precursor_sha1 is deprecated")
+        if self.parents:
+            return self.parents[0].revision_sha1
+        else:
+            return None    
+
+    precursor = property(_get_precursor)
+    precursor_sha1 = property(_get_precursor_sha1)
 
 
     def __repr__(self):
@@ -77,24 +124,45 @@ class Revision(XMLMixin):
 
 
     def from_element(cls, elt):
-        # <changeset> is deprecated...
-        if elt.tag not in ('revision', 'changeset'):
-            raise BzrError("unexpected tag in revision file: %r" % elt)
-
-        cs = cls(committer = elt.get('committer'),
-                 timestamp = float(elt.get('timestamp')),
-                 precursor = elt.get('precursor'),
-                 precursor_sha1 = elt.get('precursor_sha1'),
-                 revision_id = elt.get('revision_id'),
-                 inventory_id = elt.get('inventory_id'),
-                 inventory_sha1 = elt.get('inventory_sha1')
-                 )
-
-        v = elt.get('timezone')
-        cs.timezone = v and int(v)
-
-        cs.message = elt.findtext('message') # text of <message>
-        return cs
+        return unpack_revision(elt)
 
     from_element = classmethod(from_element)
 
+
+
+def unpack_revision(elt):
+    """Convert XML element into Revision object."""
+    # <changeset> is deprecated...
+    if elt.tag not in ('revision', 'changeset'):
+        raise BzrError("unexpected tag in revision file: %r" % elt)
+
+    rev = Revision(committer = elt.get('committer'),
+                   timestamp = float(elt.get('timestamp')),
+                   revision_id = elt.get('revision_id'),
+                   inventory_id = elt.get('inventory_id'),
+                   inventory_sha1 = elt.get('inventory_sha1')
+                   )
+
+    precursor = elt.get('precursor')
+    precursor_sha1 = elt.get('precursor_sha1')
+
+    pelts = elt.find('parents')
+
+    if precursor:
+        # revisions written prior to 0.0.5 have a single precursor
+        # give as an attribute
+        rev_ref = RevisionReference(precursor, precursor_sha1)
+        rev.parents.append(rev_ref)
+    elif pelts:
+        for p in pelts:
+            assert p.tag == 'revisionref', \
+                   "bad parent node tag %r" % p.tag
+            rev_ref = RevisionReference(p.get('revision_id'),
+                                        p.get('revision_sha1'))
+            rev.parents.append(rev_ref)
+
+    v = elt.get('timezone')
+    rev.timezone = v and int(v)
+
+    rev.message = elt.findtext('message') # text of <message>
+    return rev
