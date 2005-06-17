@@ -87,7 +87,6 @@ class MetaInfoHeader(object):
         self.branch = branch
         self.delta = delta
         self._get_revision_list(revisions)
-        self._get_all_meta_info()
 
     def _get_revision_list(self, revisions):
         """This generates the list of all revisions from->to.
@@ -104,6 +103,7 @@ class MetaInfoHeader(object):
         if old_revno is None:
             raise bzrlib.errors.BzrError('Could not find revision for %s' % revisions[0])
 
+        self.revision_list = []
         if new_revno is not None:
             for rev_id in rh[old_revno:new_revno+1]:
                 self.revision_list.append(self.branch.get_revision(rev_id))
