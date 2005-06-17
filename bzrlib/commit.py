@@ -55,12 +55,11 @@ def commit(branch, message,
 
     import time, tempfile
 
-    from osutils import local_time_offset, username
-    
-    from branch import gen_file_id
-    from errors import BzrError
-    from revision import Revision
-    from trace import mutter, note
+    from bzrlib.osutils import local_time_offset, username
+    from bzrlib.branch import gen_file_id
+    from bzrlib.errors import BzrError
+    from bzrlib.revision import Revision, RevisionReference
+    from bzrlib.trace import mutter, note
 
     branch.lock_write()
 
@@ -119,11 +118,12 @@ def commit(branch, message,
         # ever actually does anything special
         inv_sha1 = branch.get_inventory_sha1(inv_id)
 
-        precursor = branch.last_patch()
-        if precursor:
-            precursor_sha1 = branch.get_revision_sha1(precursor)
+        precursor_id = branch.last_patch()
+        if precursor_id:
+            precursor_sha1 = branch.get_revision_sha1(precursor_id)
         else:
             precursor_sha1 = None
+        parent = RevisionReference(precursor_id, precursor_sha1)
 
         branch._write_inventory(work_inv)
 
@@ -140,12 +140,11 @@ def commit(branch, message,
         rev = Revision(timestamp=timestamp,
                        timezone=timezone,
                        committer=committer,
-                       precursor = precursor,
-                       precursor_sha1 = precursor_sha1,
                        message = message,
                        inventory_id=inv_id,
                        inventory_sha1=inv_sha1,
                        revision_id=rev_id)
+        rev.parents = [parent]
 
         rev_tmp = tempfile.TemporaryFile()
         rev.write_xml(rev_tmp)

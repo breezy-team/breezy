@@ -58,7 +58,10 @@ class Revision(XMLMixin):
     written out.  This is not stored because you cannot write the hash
     into the file it describes.
 
-    TODO: Perhaps make precursor be a child element, not an attribute?
+    After bzr 0.0.5 revisions are allowed to have multiple parents.
+    To support old clients this is written out in a slightly redundant
+    form: the first parent as the predecessor.  This will eventually
+    be dropped.
 
     parents
         List of parent revisions; 
@@ -92,8 +95,14 @@ class Revision(XMLMixin):
         else:
             return None    
 
-    precursor = property(_get_precursor)
-    precursor_sha1 = property(_get_precursor_sha1)
+
+    def _fail(self):
+        raise Exception("can't assign to precursor anymore")
+
+
+    precursor = property(_get_precursor, _fail, _fail)
+    precursor_sha1 = property(_get_precursor_sha1, _fail, _fail)
+
 
 
     def __repr__(self):
@@ -119,6 +128,15 @@ class Revision(XMLMixin):
         msg = SubElement(root, 'message')
         msg.text = self.message
         msg.tail = '\n'
+
+        if self.parents:
+            pelts = SubElement(root, 'parents')
+            for rr in self.parents:
+                assert isinstance(rr, RevisionReference)
+                p = SubElement(pelts, 'revision_ref')
+                p.set('revision_id', rr.revision_id)
+                if rr.revision_sha1:
+                    p.set('revision_sha1', rr.revision_sha1)
 
         return root
 
@@ -155,7 +173,7 @@ def unpack_revision(elt):
         rev.parents.append(rev_ref)
     elif pelts:
         for p in pelts:
-            assert p.tag == 'revisionref', \
+            assert p.tag == 'revision_ref', \
                    "bad parent node tag %r" % p.tag
             rev_ref = RevisionReference(p.get('revision_id'),
                                         p.get('revision_sha1'))
