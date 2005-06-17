@@ -20,7 +20,7 @@ import sys, os
 
 import bzrlib
 from bzrlib.trace import mutter, note, log_error
-from bzrlib.errors import bailout, BzrError, BzrCheckError, BzrCommandError
+from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
 from bzrlib.osutils import quotefn
 from bzrlib import Branch, Inventory, InventoryEntry, BZRDIR, \
      format_date
@@ -264,19 +264,19 @@ class ExternalCommand(Command):
 
         for opt in self.takes_options:
             if not opt in OPTIONS:
-                bailout("Unknown option '%s' returned by external command %s"
-                    % (opt, path))
+                raise BzrError("Unknown option '%s' returned by external command %s"
+                               % (opt, path))
 
         # TODO: Is there any way to check takes_args is valid here?
         self.takes_args = pipe.readline().split()
 
         if pipe.close() is not None:
-            bailout("Failed funning '%s --bzr-usage'" % path)
+            raise BzrError("Failed funning '%s --bzr-usage'" % path)
 
         pipe = os.popen('%s --bzr-help' % path, 'r')
         self.__doc__ = pipe.read()
         if pipe.close() is not None:
-            bailout("Failed funning '%s --bzr-help'" % path)
+            raise BzrError("Failed funning '%s --bzr-help'" % path)
 
     def __call__(self, options, arguments):
         Command.__init__(self, options, arguments)
@@ -646,7 +646,7 @@ class cmd_file_id(Command):
         b = Branch(filename)
         i = b.inventory.path2id(b.relpath(filename))
         if i == None:
-            bailout("%r is not a versioned file" % filename)
+            raise BzrError("%r is not a versioned file" % filename)
         else:
             print i
 
@@ -663,7 +663,7 @@ class cmd_file_path(Command):
         inv = b.inventory
         fid = inv.path2id(b.relpath(filename))
         if fid == None:
-            bailout("%r is not a versioned file" % filename)
+            raise BzrError("%r is not a versioned file" % filename)
         for fip in inv.get_idpath(fid):
             print fip
 
@@ -1361,7 +1361,7 @@ def parse_args(argv):
                 else:
                     optname = a[2:]
                 if optname not in OPTIONS:
-                    bailout('unknown long option %r' % a)
+                    raise BzrError('unknown long option %r' % a)
             else:
                 shortopt = a[1:]
                 if shortopt in SHORT_OPTIONS:
@@ -1375,7 +1375,7 @@ def parse_args(argv):
                     if shortopt not in SHORT_OPTIONS:
                         # We didn't find the multi-character name, and we
                         # didn't find the single char name
-                        bailout('unknown short option %r' % a)
+                        raise BzrError('unknown short option %r' % a)
                     optname = SHORT_OPTIONS[shortopt]
 
                     if a[2:]:
@@ -1395,19 +1395,19 @@ def parse_args(argv):
             
             if optname in opts:
                 # XXX: Do we ever want to support this, e.g. for -r?
-                bailout('repeated option %r' % a)
+                raise BzrError('repeated option %r' % a)
                 
             optargfn = OPTIONS[optname]
             if optargfn:
                 if optarg == None:
                     if not argv:
-                        bailout('option %r needs an argument' % a)
+                        raise BzrError('option %r needs an argument' % a)
                     else:
                         optarg = argv.pop(0)
                 opts[optname] = optargfn(optarg)
             else:
                 if optarg != None:
-                    bailout('option %r takes no argument' % optname)
+                    raise BzrError('option %r takes no argument' % optname)
                 opts[optname] = True
         else:
             args.append(a)

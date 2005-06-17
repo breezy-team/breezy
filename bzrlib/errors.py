@@ -62,12 +62,3 @@ class LockError(Exception):
             Exception.__init__(self, e)
         else:
             Exception.__init__(self)
-
-
-
-def bailout(msg, explanation=[]):
-    ex = BzrError(msg, explanation)
-    import trace
-    trace._tracefile.write('* raising %s\n' % ex)
-    raise ex
-

@@ -19,8 +19,8 @@
 import os, types, re, time, errno, sys
 from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 
-from errors import bailout, BzrError
-from trace import mutter
+from bzrlib.errors import BzrError
+from bzrlib.trace import mutter
 import bzrlib
 
 def make_readonly(filename):
@@ -248,7 +248,7 @@ def user_email():
     if e:
         m = _EMAIL_RE.search(e)
         if not m:
-            bailout("%r doesn't seem to contain a reasonable email address" % e)
+            raise BzrError("%r doesn't seem to contain a reasonable email address" % e)
         return m.group(0)
 
     return _auto_user_id()[1]
@@ -296,7 +296,7 @@ def format_date(t, offset=0, timezone='original'):
         tt = time.localtime(t)
         offset = local_time_offset(t)
     else:
-        bailout("unsupported timezone format %r",
+        raise BzrError("unsupported timezone format %r",
                 ['options are "utc", "original", "local"'])
 
     return (time.strftime("%a %Y-%m-%d %H:%M:%S", tt)
@@ -345,7 +345,7 @@ def splitpath(p):
     >>> splitpath('a/../b')
     Traceback (most recent call last):
     ...
-    BzrError: ("sorry, '..' not allowed in path", [])
+    BzrError: sorry, '..' not allowed in path
     """
     assert isinstance(p, types.StringTypes)
 
@@ -356,7 +356,7 @@ def splitpath(p):
     rps = []
     for f in ps:
         if f == '..':
-            bailout("sorry, %r not allowed in path" % f)
+            raise BzrError("sorry, %r not allowed in path" % f)
         elif (f == '.') or (f == ''):
             pass
         else:
@@ -367,7 +367,7 @@ def joinpath(p):
     assert isinstance(p, list)
     for f in p:
         if (f == '..') or (f == None) or (f == ''):
-            bailout("sorry, %r not allowed in path" % f)
+            raise BzrError("sorry, %r not allowed in path" % f)
     return os.path.join(*p)
 
 
@@ -382,5 +382,5 @@ def extern_command(cmd, ignore_errors = False):
     mutter('external command: %s' % `cmd`)
     if os.system(cmd):
         if not ignore_errors:
-            bailout('command failed')
+            raise BzrError('command failed')
 

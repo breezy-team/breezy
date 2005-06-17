@@ -25,9 +25,9 @@ from osutils import pumpfile, filesize, quotefn, sha_file, \
 import errno
 from stat import S_ISREG, S_ISDIR, ST_MODE, ST_SIZE
 
-from inventory import Inventory
-from trace import mutter, note
-from errors import bailout
+from bzrlib.inventory import Inventory
+from bzrlib.trace import mutter, note
+from bzrlib.errors import BzrError
 import branch
 
 import bzrlib
@@ -83,13 +83,13 @@ class Tree(object):
         
         if ie.text_size != None:
             if ie.text_size != fp['size']:
-                bailout("mismatched size for file %r in %r" % (ie.file_id, self._store),
+                raise BzrError("mismatched size for file %r in %r" % (ie.file_id, self._store),
                         ["inventory expects %d bytes" % ie.text_size,
                          "file is actually %d bytes" % fp['size'],
                          "store is probably damaged/corrupt"])
 
         if ie.text_sha1 != fp['sha1']:
-            bailout("wrong SHA-1 for file %r in %r" % (ie.file_id, self._store),
+            raise BzrError("wrong SHA-1 for file %r in %r" % (ie.file_id, self._store),
                     ["inventory expects %s" % ie.text_sha1,
                      "file is actually %s" % fp['sha1'],
                      "store is probably damaged/corrupt"])
@@ -253,7 +253,7 @@ def dir_exporter(tree, dest):
         elif kind == 'file':
             pumpfile(tree.get_file(ie.file_id), file(fullpath, 'wb'))
         else:
-            bailout("don't know how to export {%s} of kind %r" % (ie.file_id, kind))
+            raise BzrError("don't know how to export {%s} of kind %r" % (ie.file_id, kind))
         mutter("  export {%s} kind %s to %s" % (ie.file_id, kind, fullpath))
 exporters['dir'] = dir_exporter
 
@@ -273,7 +273,7 @@ else:
         try:
             ball = tarfile.open(dest, 'w:' + compression)
         except tarfile.CompressionError, e:
-            bailout(str(e))
+            raise BzrError(str(e))
         mutter('export version %r' % tree)
         inv = tree.inventory
         for dp, ie in inv.iter_entries():
@@ -294,7 +294,7 @@ else:
                 item.size = _find_file_size(fileobj)
                 item.mode = 0644
             else:
-                bailout("don't know how to export {%s} of kind %r" %
+                raise BzrError("don't know how to export {%s} of kind %r" %
                         (ie.file_id, ie.kind))
 
             ball.addfile(item, fileobj)

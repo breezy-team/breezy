@@ -38,7 +38,7 @@ def write_inventory(inv, f):
             if ie.text_size != None:
                 el.set('text_size', ('%d' % ie.text_size))
         elif kind != 'directory':
-            bailout('unknown InventoryEntry kind %r' % kind)
+            raise BzrError('unknown InventoryEntry kind %r' % kind)
 
         el.tail = '\n'
         parent_el.append(el)
@@ -97,7 +97,7 @@ def write_slacker_inventory(inv, f):
 
             f.write('</directory>\n')
         else:
-            bailout('unknown InventoryEntry kind %r' % kind)
+            raise BzrError('unknown InventoryEntry kind %r' % kind)
 
     f.write('<inventory>\n')
     f.write('<root_directory id="%s">\n' % escape_attr(inv.root.file_id))
@@ -132,7 +132,7 @@ def read_new_inventory(f):
             ie.text_size = v and int(v)
             ie.text_sha1 = el.get('text_sha1')
         else:
-            bailout("unknown inventory entry %r" % kind)
+            raise BzrError("unknown inventory entry %r" % kind)
 
     inv_el = ElementTree().parse(f)
     assert inv_el.tag == 'inventory'

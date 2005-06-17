@@ -27,8 +27,8 @@ try:
 except ImportError:
     from elementtree.ElementTree import Element, ElementTree, SubElement
 
-from xml import XMLMixin
-from errors import bailout, BzrError, BzrCheckError
+from bzrlib.xml import XMLMixin
+from bzrlib.errors import BzrError, BzrCheckError
 
 import bzrlib
 from bzrlib.osutils import uuid, quotefn, splitpath, joinpath, appendpath
@@ -68,7 +68,7 @@ class InventoryEntry(XMLMixin):
     >>> i.add(InventoryEntry('2323', 'bye.c', 'file', '123'))
     Traceback (most recent call last):
     ...
-    BzrError: ('inventory already contains entry with id {2323}', [])
+    BzrError: inventory already contains entry with id {2323}
     >>> i.add(InventoryEntry('2324', 'bye.c', 'file', '123'))
     >>> i.add(InventoryEntry('2325', 'wibble', 'directory', '123'))
     >>> i.path2id('src/wibble')
@@ -411,15 +411,15 @@ class Inventory(XMLMixin):
         To add  a file to a branch ready to be committed, use Branch.add,
         which calls this."""
         if entry.file_id in self._byid:
-            bailout("inventory already contains entry with id {%s}" % entry.file_id)
+            raise BzrError("inventory already contains entry with id {%s}" % entry.file_id)
 
         try:
             parent = self._byid[entry.parent_id]
         except KeyError:
-            bailout("parent_id {%s} not in inventory" % entry.parent_id)
+            raise BzrError("parent_id {%s} not in inventory" % entry.parent_id)
 
         if parent.children.has_key(entry.name):
-            bailout("%s is already versioned" %
+            raise BzrError("%s is already versioned" %
                     appendpath(self.id2path(parent.file_id), entry.name))
 
         self._byid[entry.file_id] = entry
@@ -432,7 +432,7 @@ class Inventory(XMLMixin):
         The immediate parent must already be versioned"""
         parts = bzrlib.osutils.splitpath(relpath)
         if len(parts) == 0:
-            bailout("cannot re-add root of inventory")
+            raise BzrError("cannot re-add root of inventory")
 
         if file_id == None:
             file_id = bzrlib.branch.gen_file_id(relpath)
@@ -544,7 +544,7 @@ class Inventory(XMLMixin):
             try:
                 ie = self._byid[file_id]
             except KeyError:
-                bailout("file_id {%s} not found in inventory" % file_id)
+                raise BzrError("file_id {%s} not found in inventory" % file_id)
             p.insert(0, ie.file_id)
             file_id = ie.parent_id
         return p
@@ -604,15 +604,15 @@ class Inventory(XMLMixin):
 
         This does not move the working file."""
         if not is_valid_name(new_name):
-            bailout("not an acceptable filename: %r" % new_name)
+            raise BzrError("not an acceptable filename: %r" % new_name)
 
         new_parent = self._byid[new_parent_id]
         if new_name in new_parent.children:
-            bailout("%r already exists in %r" % (new_name, self.id2path(new_parent_id)))
+            raise BzrError("%r already exists in %r" % (new_name, self.id2path(new_parent_id)))
 
         new_parent_idpath = self.get_idpath(new_parent_id)
         if file_id in new_parent_idpath:
-            bailout("cannot move directory %r into a subdirectory of itself, %r"
+            raise BzrError("cannot move directory %r into a subdirectory of itself, %r"
                     % (self.id2path(file_id), self.id2path(new_parent_id)))
 
         file_ie = self._byid[file_id]
