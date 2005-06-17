@@ -14,7 +14,7 @@ class cmd_changeset(bzrlib.commands.Command):
     This changeset contains all of the meta-information of a
     diff, rather than just containing the patch information.
     """
-    takes_opts = ['revision', 'diff-options']
+    takes_options = ['revision', 'diff-options']
     takes_args = ['file*']
     aliases = ['cset']
 

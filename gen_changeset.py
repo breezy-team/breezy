@@ -9,7 +9,9 @@ def _canonicalize_revision(branch, revision=None):
     """Turn some sort of revision information into a single
     set of from-to revision ids.
 
-    A revision id can be none if there is no associated revison.
+    A revision id can be None if there is no associated revison.
+
+    :return: (old, new)
     """
     # This is a little clumsy because revision parsing may return
     # a single entry, or a list
@@ -33,17 +35,10 @@ def _canonicalize_revision(branch, revision=None):
 
     if new is not None:
         new = branch.lookup_revision(new)
-        if old is None:
-            # Get the ancestor previous version
-            rev = branch.get_revision(new)
-            old = rev.precursor
-        else:
-            old = branch.lookup_revision(old)
+    if old is None:
+        old = branch.last_patch()
     else:
-        if old is None:
-            old = branch.last_patch()
-        else:
-            old = branch.lookup_revision(old)
+        old = branch.lookup_revision(old)
 
     return old, new
 
@@ -100,25 +95,42 @@ class MetaInfoHeader(object):
             if rev == revisions[1]:
                 new_revno = revno
 
-        if old_revno is None:
-            raise bzrlib.errors.BzrError('Could not find revision for %s' % revisions[0])
-
         self.revision_list = []
+        if old_revno is None:
+            self.base_revision = None
+            old_revno = 1
+        else:
+            self.base_revision = self.branch.get_revision(rh[old_revno])
         if new_revno is not None:
-            for rev_id in rh[old_revno:new_revno+1]:
+            for rev_id in rh[old_revno+1:new_revno+1]:
                 self.revision_list.append(self.branch.get_revision(rev_id))
         else:
-            for rev_id in rh[old_revno:]:
+            for rev_id in rh[old_revno+1:]:
                 self.revision_list.append(self.branch.get_revision(rev_id))
             self.revision_list.append(_fake_working_revision(self.branch))
 
     def write_meta_info(self, to_file):
         """Write out the meta-info portion to the supplied file."""
         from bzrlib.osutils import username
-        def write(key, value):
-            to_file.write('# ' + key + ': ' + value + '\n')
+        def write(txt, key=None):
+            if key:
+                to_file.write('# ' + key + ': ' + txt + '\n')
+            else:
+                to_file.write('# ' + txt + '\n')
 
-        write('committer', username())
+        write(username(), key='committer')
+
+        if self.base_revision:
+            write(self.base_revision.revision_id, key='precursor')
+
+        first = True
+        for rev in self.revision_list:
+            if rev.revision_id is not None:
+                if first:
+                    write(rev.revision_id, key='revisions')
+                    first = False
+                else:
+                    write('\t' + rev.revision_id)
 
 
 def show_changeset(branch, revision=None, specific_files=None,
