@@ -160,6 +160,10 @@ class MetaInfoHeader(object):
                 else:
                     write(' '*11 + rev.revision_id)
 
+        self._write_diffs(to_file)
+        self._write_ids(to_file)
+
+    def _write_ids(self, to_file):
         seen_ids = set(['TREE_ROOT'])
         need_ids = set()
 
@@ -227,7 +231,6 @@ class MetaInfoHeader(object):
                 to_file.write('#             ')
             _write_entry(file_id)
 
-        self._write_diffs(to_file)
 
     def _write_diffs(self, to_file):
         """Write out the specific diffs"""
