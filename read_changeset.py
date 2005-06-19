@@ -44,9 +44,12 @@ class ChangesetInfo(object):
     def create_maps(self):
         """Go through the individual id sections, and generate the id2path and path2id maps.
         """
-        self.id2path[self.tree_root_id] = ''
-        self.path2id[''] = self.tree_root_id
-        self.id2parent[self.tree_root_id] = None # There is no parent for the tree_root_id
+        # Rather than use an empty path, the changeset code seems 
+        # to like to use "./." for the tree root.
+        self.id2path[self.tree_root_id] = './.'
+        self.path2id['./.'] = self.tree_root_id
+        self.id2parent[self.tree_root_id] = bzrlib.changeset.NULL_ID
+
         for var in (self.file_ids, self.directory_ids, self.parent_ids):
             if var is not None:
                 for info in var:
@@ -155,6 +158,12 @@ class ChangesetReader(object):
 
     def _read_patches(self):
         for line in self.from_file:
+            if line[:3] == '***': # This is a bzr meta field
+                self._parse_meta(line)
+            elif line[:3] == '---': # This is the 'pre' line for a pre+post patch
+                pass
+            elif line[:3] == '+++': # This is the 'post' line for the pre+post patch
+                pass
             if line[0] == '#':
                 return line
 
