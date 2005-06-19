@@ -271,6 +271,9 @@ class MetaInfoHeader(object):
         _write_all('file')
         _write_all('directory')
 
+        # All files must be traceable back to the ROOT_ID
+        # Since we may not have modified some of the parent
+        # directories, add a new set of fields for "parent ids"
         first = True
         while len(need_ids) > 0:
             file_id = need_ids.pop()
@@ -278,10 +281,9 @@ class MetaInfoHeader(object):
                 continue
             seen_ids.add(file_id)
             if first:
-                self.to_file.write('# parent ids: ')
+                self.to_file.write('# parent ids:\n')
                 first = False
-            else:
-                to_file.write('#             ')
+            to_file.write('#    ')
             _write_entry(file_id)
 
 

@@ -6,16 +6,15 @@ Read in a changeset output, and process it into a Changeset object.
 import bzrlib, bzrlib.changeset
 import common
 
-class BadChangeset(Exception):
-    pass
-class MalformedHeader(BadChangeset):
-    pass
-class MalformedFooter(BadChangeset):
-    pass
+class BadChangeset(Exception): pass
+class MalformedHeader(BadChangeset): pass
+class MalformedPatches(BadChangeset): pass
+class MalformedFooter(BadChangeset): pass
 
 
 class ChangesetInfo(object):
-    """This is the intermediate class that gets filled out as the file is read.
+    """This is the intermediate class that gets filled out as
+    the file is read.
     """
     def __init__(self):
         self.committer = None
@@ -42,7 +41,8 @@ class ChangesetInfo(object):
         return pprint.pformat(self.__dict__)
 
     def create_maps(self):
-        """Go through the individual id sections, and generate the id2path and path2id maps.
+        """Go through the individual id sections, and generate the 
+        id2path and path2id maps.
         """
         # Rather than use an empty path, the changeset code seems 
         # to like to use "./." for the tree root.
@@ -58,10 +58,9 @@ class ChangesetInfo(object):
                     self.path2id[path] = f_id
                     self.id2parent[f_id] = parent_id
 
-
 class ChangesetReader(object):
-    """This class reads in a changeset from a file, and returns a Changeset object,
-    which can then be applied against a tree.
+    """This class reads in a changeset from a file, and returns
+    a Changeset object, which can then be applied against a tree.
     """
     def __init__(self, from_file):
         """Read in the changeset from the file.
@@ -78,7 +77,8 @@ class ChangesetReader(object):
         # can create a proper changeset.
         self._read_header()
         next_line = self._read_patches()
-        self._read_footer(next_line)
+        if next_line is not None:
+            self._read_footer(next_line)
 
     def get_changeset(self):
         """Create the actual changeset object.
@@ -90,8 +90,11 @@ class ChangesetReader(object):
         """Read the bzr header"""
         header = common.get_header()
         for head_line, line in zip(header, self.from_file):
-            if line[:2] != '# ' or line[-1] != '\n' or line[2:-1] != head_line:
-                raise MalformedHeader('Did not read the opening header information.')
+            if (line[:2] != '# '
+                    or line[-1] != '\n'
+                    or line[2:-1] != head_line):
+                raise MalformedHeader('Did not read the opening'
+                    ' header information.')
 
         for line in self.from_file:
             if self._handle_info_line(line) is not None:
@@ -100,10 +103,11 @@ class ChangesetReader(object):
     def _handle_info_line(self, line, in_footer=False):
         """Handle reading a single line.
 
-        This may call itself, in the case that we read_multi, and then had a dangling
-        line on the end.
+        This may call itself, in the case that we read_multi,
+        and then had a dangling line on the end.
         """
-        # The bzr header is terminated with a blank line which does not start with #
+        # The bzr header is terminated with a blank line
+        # which does not start with #
         next_line = None
         if line[:1] == '\n':
             return 'break'
@@ -121,12 +125,15 @@ class ChangesetReader(object):
         if loc != -1:
             key = line[:loc]
             value = line[loc+2:]
+            if not value:
+                value, next_line = self._read_many()
         else:
             if line[-1:] == ':':
                 key = line[:-1]
                 value, next_line = self._read_many()
             else:
-                raise MalformedHeader('While looking for key: value pairs, did not find the : %r' % (line))
+                raise MalformedHeader('While looking for key: value pairs,'
+                        ' did not find the colon %r' % (line))
 
         key = key.replace(' ', '_')
         if hasattr(self.info, key):
@@ -142,12 +149,12 @@ class ChangesetReader(object):
             self._handle_info_line(next_line, in_footer=in_footer)
 
     def _read_many(self):
-        """If a line ends with no entry, that means that it should be followed with
-        multiple lines of values.
+        """If a line ends with no entry, that means that it should be
+        followed with multiple lines of values.
 
-        This detects the end of the list, because it will be a line that does not
-        start with '#    '. Because it has to read that extra line, it returns the
-        tuple: (values, next_line)
+        This detects the end of the list, because it will be a line that
+        does not start with '#    '. Because it has to read that extra
+        line, it returns the tuple: (values, next_line)
         """
         values = []
         for line in self.from_file:
@@ -156,25 +163,63 @@ class ChangesetReader(object):
             values.append(line[5:-1])
         return values, None
 
-    def _read_patches(self):
+    def _read_one_patch(self, first_line=None):
+        """Read in one patch, return the complete patch, along with
+        the next line.
+
+        :return: action, lines, next_line, do_continue
+        """
+        first = True
+        action = None
+
+        def parse_firstline(line):
+            if line[:1] == '#':
+                return None
+            if line[:3] != '***':
+                raise MalformedPatches('The first line of all patches'
+                    ' should be a bzr meta line "***"')
+            return line[4:-1]
+
+        if first_line is not None:
+            action = parse_firstline(first_line)
+            first = False
+            if action is None:
+                return None, [], first_line, False
+
+        lines = []
         for line in self.from_file:
-            if line[:3] == '***': # This is a bzr meta field
-                self._parse_meta(line)
-            elif line[:3] == '---': # This is the 'pre' line for a pre+post patch
-                pass
-            elif line[:3] == '+++': # This is the 'post' line for the pre+post patch
-                pass
-            if line[0] == '#':
-                return line
+            if first:
+                action = parse_firstline(line)
+                first = False
+                if action is None:
+                    return None, [], line, False
+            else:
+                if line[:3] == '***':
+                    return action, lines, line, True
+                elif line[:1] == '#':
+                    return action, lines, line, False
+                lines.append(line)
+        return action, lines, None, False
+            
+    def _read_patches(self):
+        next_line = None
+        do_continue = True
+        while do_continue:
+            action, lines, next_line, do_continue = \
+                    self._read_one_patch(next_line)
+            if action is not None:
+                self.info.actions.append((action, lines))
+        return next_line
 
     def _read_footer(self, first_line=None):
         """Read the rest of the meta information.
 
-        :param first_line:  The previous step may iterate passed what it can handle.
-                            That extra line can be passed here.
+        :param first_line:  The previous step iterates past what it
+                            can handle. That extra line is given here.
         """
         if first_line is not None:
-            self._handle_info_line(first_line, in_footer=True)
+            if self._handle_info_line(first_line, in_footer=True) is not None:
+                return
         for line in self.from_file:
             if self._handle_info_line(line, in_footer=True) is not None:
                 break
