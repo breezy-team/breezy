@@ -13,6 +13,11 @@ class cmd_changeset(bzrlib.commands.Command):
 
     This changeset contains all of the meta-information of a
     diff, rather than just containing the patch information.
+
+    Right now, rollup changesets, or working tree changesets are
+    not supported. This will only generate a changeset that has been
+    committed. You can use "--revision" to specify a certain change
+    to display.
     """
     takes_options = ['revision', 'diff-options']
     takes_args = ['file*']
@@ -23,6 +28,10 @@ class cmd_changeset(bzrlib.commands.Command):
         import gen_changeset
         import sys
 
+        if isinstance(revision, (list, tuple)):
+            if len(revision) > 1:
+                raise BzrCommandError('We do not support rollup-changesets yet.')
+            revision = revision[0]
         if file_list:
             b = find_branch(file_list[0])
             file_list = [b.relpath(f) for f in file_list]
@@ -37,6 +46,23 @@ class cmd_changeset(bzrlib.commands.Command):
                 external_diff_options=diff_options,
                 to_file=sys.stdout)
 
-        
+class cmd_verify_changeset(bzrlib.commands.Command):
+    """Read a written changeset, and make sure it is valid.
 
+    """
+    takes_args = ['filename?']
+
+    def run(self, filename=None):
+        import sys, read_changeset
+        if filename is None or filename == '-':
+            f = sys.stdin
+        else:
+            f = open(filename, 'rb')
+
+        cset = read_changeset.read_changeset(f)
+
+
+if hasattr(bzrlib.commands, 'register_plugin_cmd'):
+    bzrlib.commands.register_plugin_cmd(cmd_changeset)
+    bzrlib.commands.register_plugin_cmd(cmd_verify_changeset)
 
