@@ -224,7 +224,7 @@ class MetaInfoHeader(object):
             if file_id in self.new_tree.inventory:
                 ie = self.new_tree.inventory[file_id]
             elif file_id in self.old_tree.inventory:
-                ie = self.new_tree.inventory[file_id]
+                ie = self.old_tree.inventory[file_id]
             else:
                 ie = None
             if not path and ie:
