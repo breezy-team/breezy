@@ -15,19 +15,20 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import unittest
+from unittest import TestResult, TestCase
 
-class _MyResult(unittest.TestResult):
+class _MyResult(TestResult):
 #     def startTest(self, test):
 #         print str(test).ljust(50),
-#         unittest.TestResult.startTest(self, test)
+#         TestResult.startTest(self, test)
 
 #     def stopTest(self, test):
 #         print
-#         unittest.TestResult.stopTest(self, test)
+#         TestResult.stopTest(self, test)
 
 
     pass
+
 
 
 
@@ -35,12 +36,15 @@ def selftest():
      from unittest import TestLoader, TestSuite
      import bzrlib
      import bzrlib.whitebox
+     import bzrlib.blackbox
      from doctest import DocTestSuite
     
      suite = TestSuite()
+     tl = TestLoader()
 
-     suite.addTest(TestLoader().loadTestsFromModule(bzrlib.whitebox))
-    
+     for m in bzrlib.whitebox, bzrlib.blackbox:
+         suite.addTest(tl.loadTestsFromModule(m))
+
      for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \
              bzrlib.commands:
          suite.addTest(DocTestSuite(m))
