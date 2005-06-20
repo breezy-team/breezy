@@ -68,7 +68,8 @@ class ImmutableStore(object):
         self._basedir = basedir
 
     def _path(self, id):
-        assert '/' not in id
+        if '\\' in id or '/' in id:
+            raise ValueError("invalid store id %r" % id)
         return os.path.join(self._basedir, id)
 
     def __repr__(self):
