@@ -20,6 +20,8 @@
 
 def check(branch):
     """Run consistency checks on a branch.
+
+    TODO: Also check non-mailine revisions mentioned as parents.
     """
     from bzrlib.trace import mutter
     from bzrlib.errors import BzrCheckError
@@ -30,15 +32,16 @@ def check(branch):
 
     try:
         pb = ProgressBar(show_spinner=True)
-        last_ptr = None
-        checked_revs = {}
+        last_rev_id = None
 
         missing_inventory_sha_cnt = 0
+        missing_revision_sha_cnt = 0
 
         history = branch.revision_history()
         revno = 0
         revcount = len(history)
 
+        # for all texts checked, text_id -> sha1
         checked_texts = {}
 
         for rev_id in history:
@@ -47,13 +50,38 @@ def check(branch):
             mutter('    revision {%s}' % rev_id)
             rev = branch.get_revision(rev_id)
             if rev.revision_id != rev_id:
-                raise BzrCheckError('wrong internal revision id in revision {%s}' % rev_id)
-            if rev.precursor != last_ptr:
-                raise BzrCheckError('mismatched precursor in revision {%s}' % rev_id)
-            last_ptr = rev_id
-            if rev_id in checked_revs:
-                raise BzrCheckError('repeated revision {%s}' % rev_id)
-            checked_revs[rev_id] = True
+                raise BzrCheckError('wrong internal revision id in revision {%s}'
+                                    % rev_id)
+
+            # check the previous history entry is a parent of this entry
+            if rev.parents:
+                if last_rev_id is None:
+                    raise BzrCheckError("revision {%s} has %d parents, but is the "
+                                        "start of the branch"
+                                        % (rev_id, len(rev.parents)))
+                for prr in rev.parents:
+                    if prr.revision_id == last_rev_id:
+                        break
+                else:
+                    raise BzrCheckError("previous revision {%s} not listed among "
+                                        "parents of {%s}"
+                                        % (last_rev_id, rev_id))
+
+                for prr in rev.parents:
+                    if prr.revision_sha1 is None:
+                        missing_revision_sha_cnt += 1
+                        continue
+                    prid = prr.revision_id
+                    actual_sha = branch.get_revision_sha1(prid)
+                    if prr.revision_sha1 != actual_sha:
+                        raise BzrCheckError("mismatched revision sha1 for "
+                                            "parent {%s} of {%s}: %s vs %s"
+                                            % (prid, rev_id,
+                                               prr.revision_sha1, actual_sha))
+            elif last_rev_id:
+                raise BzrCheckError("revision {%s} has no parents listed but preceded "
+                                    "by {%s}"
+                                    % (rev_id, last_rev_id))
 
             ## TODO: Check all the required fields are present on the revision.
 
@@ -126,6 +154,7 @@ def check(branch):
                                         'in inventory for revision {%s}'
                                         % (path, rev_id))
             seen_names[path] = True
+            last_rev_id = rev_id
 
     finally:
         branch.unlock()
@@ -133,6 +162,13 @@ def check(branch):
     pb.clear()
 
     print 'checked %d revisions, %d file texts' % (revcount, len(checked_texts))
+    
     if missing_inventory_sha_cnt:
         print '%d revisions are missing inventory_sha1' % missing_inventory_sha_cnt
+
+    if missing_revision_sha_cnt:
+        print '%d parent links are missing revision_sha1' % missing_revision_sha_cnt
+
+    if (missing_inventory_sha_cnt
+        or missing_revision_sha_cnt):
         print '  (use "bzr upgrade" to fix them)'
