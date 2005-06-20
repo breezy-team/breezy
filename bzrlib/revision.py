@@ -119,16 +119,20 @@ class Revision(XMLMixin):
                        )
         if self.timezone:
             root.set('timezone', str(self.timezone))
-        if self.precursor:
-            root.set('precursor', self.precursor)
-            if self.precursor_sha1:
-                root.set('precursor_sha1', self.precursor_sha1)
         root.text = '\n'
         
         msg = SubElement(root, 'message')
         msg.text = self.message
         msg.tail = '\n'
 
+        if self.parents:
+            # first parent stored as precursor for compatability with 0.0.5 and
+            # earlier
+            pr = self.parents[0]
+            root.set('precursor', pr.revision_id)
+            if pr.revision_sha1:
+                root.set('precursor_sha1', pr.revision_sha1)
+                
         if self.parents:
             pelts = SubElement(root, 'parents')
             pelts.tail = pelts.text = '\n'
