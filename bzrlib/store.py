@@ -78,26 +78,35 @@ class ImmutableStore(object):
         """Add contents of a file into the store.
 
         f -- An open file, or file-like object."""
-        # FIXME: Only works on smallish files
-        # TODO: Can be optimized by copying at the same time as
-        # computing the sum.
+        # FIXME: Only works on files that will fit in memory
+        
+        from bzrlib.atomicfile import AtomicFile
+        
         mutter("add store entry %r" % (fileid))
         if isinstance(f, types.StringTypes):
             content = f
         else:
             content = f.read()
-
+            
         p = self._path(fileid)
         if os.access(p, os.F_OK) or os.access(p + '.gz', os.F_OK):
             raise BzrError("store %r already contains id %r" % (self._basedir, fileid))
 
+        fn = p
         if compressed:
-            f = gzip.GzipFile(p + '.gz', 'wb')
-        else:
-            f = file(p, 'wb')
+            fn = fn + '.gz'
             
-        f.write(content)
-        f.close()
+        af = AtomicFile(fn, 'wb')
+        try:
+            if compressed:
+                gf = gzip.GzipFile(mode='wb', fileobj=af)
+                gf.write(content)
+                gf.close()
+            else:
+                af.write(content)
+            af.commit()
+        finally:
+            af.close()
 
 
     def copy_multi(self, other, ids):
