@@ -15,21 +15,42 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+import unittest
+
+class _MyResult(unittest.TestResult):
+#     def startTest(self, test):
+#         print str(test).ljust(50),
+#         unittest.TestResult.startTest(self, test)
+
+#     def stopTest(self, test):
+#         print
+#         unittest.TestResult.stopTest(self, test)
+
+
+    pass
+
+
+
 def selftest():
-    import unittest
-    from unittest import TestLoader
-    import bzrlib
-    from doctest import DocTestSuite
+     from unittest import TestLoader, TestSuite
+     import bzrlib
+     import bzrlib.whitebox
+     from doctest import DocTestSuite
     
-    tr = unittest.TextTestRunner(verbosity=2)
-    suite = unittest.TestSuite()
-    import bzrlib.whitebox
+     suite = TestSuite()
 
-    suite.addTest(TestLoader().loadTestsFromModule(bzrlib.whitebox))
+     suite.addTest(TestLoader().loadTestsFromModule(bzrlib.whitebox))
     
-    for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \
-            bzrlib.commands:
-        suite.addTest(DocTestSuite(m))
+     for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \
+             bzrlib.commands:
+         suite.addTest(DocTestSuite(m))
 
-    result = tr.run(suite)
-    return result.wasSuccessful()
+     result = _MyResult()
+     suite.run(result)
+
+     print '%4d tests run' % result.testsRun
+     print '%4d errors' % len(result.errors)
+     print '%4d failures' % len(result.failures)
+
+     return result.wasSuccessful()
+
