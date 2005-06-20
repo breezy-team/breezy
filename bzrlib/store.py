@@ -64,7 +64,6 @@ class ImmutableStore(object):
     """
 
     def __init__(self, basedir):
-        """ImmutableStore constructor."""
         self._basedir = basedir
 
     def _path(self, id):
