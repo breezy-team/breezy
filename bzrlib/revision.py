@@ -80,7 +80,7 @@ class Revision(XMLMixin):
 
     def _get_precursor(self):
         from warnings import warn
-        warn("Revision.precursor is deprecated")
+        warn("Revision.precursor is deprecated", stacklevel=2)
         if self.parents:
             return self.parents[0].revision_id
         else:
@@ -89,7 +89,7 @@ class Revision(XMLMixin):
 
     def _get_precursor_sha1(self):
         from warnings import warn
-        warn("Revision.precursor_sha1 is deprecated")
+        warn("Revision.precursor_sha1 is deprecated", stacklevel=2)
         if self.parents:
             return self.parents[0].revision_sha1
         else:
