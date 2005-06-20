@@ -1,0 +1,36 @@
+#! /bin/sh -pe
+
+# take patches from patchwork into bzr
+
+# authentication must be in ~/.netrc
+
+
+PWK_ROOT='http://patchwork.ozlabs.org/bazaar-ng'
+PWK_AUTH_ROOT='https://patchwork.ozlabs.org/bazaar-ng'
+
+usage() {
+    echo "usage: pwk cat PATCH-ID" >&2
+}
+
+catpatch() {
+    curl --get -d id=$1 $PWK_ROOT/patchcontent
+}
+
+if [ $# -ne 2 ]
+then
+    usage
+    exit 1
+fi
+
+
+case "$1" in
+cat)
+    catpatch $2
+    ;;
+try)
+    catpatch $2 | patch -p0 --dry-run
+    ;;
+*)
+    usage
+    exit 1
+esac
