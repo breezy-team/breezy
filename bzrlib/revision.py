@@ -129,6 +129,7 @@ class Revision(XMLMixin):
             # first parent stored as precursor for compatability with 0.0.5 and
             # earlier
             pr = self.parents[0]
+            assert pr.revision_id
             root.set('precursor', pr.revision_id)
             if pr.revision_sha1:
                 root.set('precursor_sha1', pr.revision_sha1)
@@ -140,6 +141,7 @@ class Revision(XMLMixin):
                 assert isinstance(rr, RevisionReference)
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
+                assert rr.revision_id
                 p.set('revision_id', rr.revision_id)
                 if rr.revision_sha1:
                     p.set('revision_sha1', rr.revision_sha1)
