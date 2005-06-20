@@ -309,6 +309,9 @@ Medium things
 * Perhaps attempts to get locks should timeout after some period of
   time, or at least display a progress message.
 
+* Split out upgrade functionality from check command into a separate
+  ``bzr upgrade``.
+
 
 Large things
 ------------
