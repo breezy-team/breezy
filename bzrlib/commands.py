@@ -572,7 +572,7 @@ class cmd_branch(Command):
                                                          revision)
             raise BzrCommandError(msg)
         merge((to_location, -1), (to_location, 0), this_dir=to_location,
-              check_clean=False)
+              check_clean=False, ignore_zero=True)
         from_location = pull_loc(br_from)
         br_to.controlfile("x-pull", "wb").write(from_location + "\n")
 
