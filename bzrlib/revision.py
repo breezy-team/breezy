@@ -64,7 +64,7 @@ class Revision(XMLMixin):
     be dropped.
 
     parents
-        List of parent revisions; 
+        List of parent revisions, each is a RevisionReference.
     """
     inventory_id = None
     inventory_sha1 = None
