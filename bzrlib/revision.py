@@ -131,9 +131,11 @@ class Revision(XMLMixin):
 
         if self.parents:
             pelts = SubElement(root, 'parents')
+            pelts.tail = pelts.text = '\n'
             for rr in self.parents:
                 assert isinstance(rr, RevisionReference)
                 p = SubElement(pelts, 'revision_ref')
+                p.tail = '\n'
                 p.set('revision_id', rr.revision_id)
                 if rr.revision_sha1:
                     p.set('revision_sha1', rr.revision_sha1)
