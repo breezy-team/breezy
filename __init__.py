@@ -59,7 +59,10 @@ class cmd_verify_changeset(bzrlib.commands.Command):
         else:
             f = open(filename, 'rb')
 
-        cset = read_changeset.read_changeset(f)
+        cset_info = read_changeset.read_changeset(f)
+        print cset_info
+        cset = cset_info.get_changeset()
+        print cset.entries
 
 class cmd_apply_changeset(bzrlib.commands.Command):
     """Read in the given changeset, and apply it to the
@@ -69,10 +72,10 @@ class cmd_apply_changeset(bzrlib.commands.Command):
     takes_args = ['filename?']
     takes_options = []
 
-    def run(self, filename=None, reverse=False):
+    def run(self, filename=None, reverse=False, auto_commit=True):
         from bzrlib import find_branch
-        from bzrlib.changeset import apply_changeset
-        import sys, read_changeset
+        import sys
+        import apply_changeset
 
         b = find_branch('.') # Make sure we are in a branch
         if filename is None or filename == '-':
@@ -80,9 +83,8 @@ class cmd_apply_changeset(bzrlib.commands.Command):
         else:
             f = open(filename, 'rb')
 
-        cset = read_changeset.read_changeset(f)
-        apply_changeset(cset, branch.inventory, branch.base,
-                reverse=reverse)
+        apply_changeset.apply_changeset(b, f, reverse=reverse,
+                auto_commit=auto_commit)
 
 
 if hasattr(bzrlib.commands, 'register_plugin_cmd'):
@@ -91,5 +93,7 @@ if hasattr(bzrlib.commands, 'register_plugin_cmd'):
     bzrlib.commands.register_plugin_cmd(cmd_apply_changeset)
 
     bzrlib.commands.OPTIONS['reverse'] = None
+    bzrlib.commands.OPTIONS['auto-commit'] = None
     cmd_apply_changeset.takes_options.append('reverse')
+    cmd_apply_changeset.takes_options.append('auto-commit')
 

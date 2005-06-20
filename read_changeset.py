@@ -36,12 +36,16 @@ class ChangesetInfo(object):
     def __init__(self):
         self.committer = None
         self.date = None
+        self.message = None
         self.revno = None
         self.revision = None
         self.revision_sha1 = None
         self.precursor = None
         self.precursor_sha1 = None
         self.precursor_revno = None
+
+        self.timestamp = None
+        self.timezone = None
 
         self.tree_root_id = None
         self.file_ids = None
@@ -86,14 +90,13 @@ class ChangesetInfo(object):
                 self.old_path2id[path] = f_id
                 self.old_id2parent[f_id] = parent_id
 
-    def create_changeset(self):
+    def get_changeset(self):
         """Create a changeset from the data contained within."""
         from bzrlib.changeset import Changeset, ChangesetEntry, \
             PatchApply, ReplaceContents
         cset = Changeset()
         
         for info, lines in self.actions:
-            print 'handling action', info
             parts = info.split(' ')
             action = parts[0]
             kind = parts[1]
@@ -181,11 +184,11 @@ class ChangesetReader(object):
         if next_line is not None:
             self._read_footer(next_line)
 
-    def get_changeset(self):
+    def get_info(self):
         """Create the actual changeset object.
         """
         self.info.create_maps()
-        return self.info.create_changeset()
+        return self.info
 
     def _read_header(self):
         """Read the bzr header"""
@@ -331,8 +334,6 @@ def read_changeset(from_file):
     parse it into a Changeset object.
     """
     cr = ChangesetReader(from_file)
-    cset = cr.get_changeset()
-    for file_id in cset.entries:
-        print file_id
-        print cset.entries[file_id]
+    info = cr.get_info()
+    return info
 

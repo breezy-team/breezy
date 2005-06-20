@@ -138,9 +138,9 @@ class MetaInfoHeader(object):
 
     def _write(self, txt, key=None):
         if key:
-            self.to_file.write('# ' + key + ': ' + txt + '\n')
+            self.to_file.write('# %s: %s\n' % (key, txt))
         else:
-            self.to_file.write('# ' + txt + '\n')
+            self.to_file.write('# %s\n' % (txt,))
 
     def write_meta_info(self, to_file):
         """Write out the meta-info portion to the supplied file.
@@ -170,6 +170,10 @@ class MetaInfoHeader(object):
         write(rev.committer, key='committer')
         write(format_date(rev.timestamp, offset=rev.timezone), key='date')
         write(str(self.revno), key='revno')
+        if rev.message:
+            self.to_file.write('# message:\n')
+            for line in rev.message.split('\n'):
+                self.to_file.write('#    %s\n' % line)
         write(rev.revision_id, key='revision')
 
         if self.base_revision:
@@ -191,9 +195,16 @@ class MetaInfoHeader(object):
         write('BEGIN BZR FOOTER')
 
         assert len(self.revision_list) == 1 # We only handle single revision entries
-        write(self.branch.get_revision_sha1(self.revision_list[0].revision_id), key='revision sha1')
+        rev = self.revision_list[0]
+        write(self.branch.get_revision_sha1(rev.revision_id),
+                key='revision sha1')
         if self.base_revision:
-            write(self.branch.get_revision_sha1(self.base_revision.revision_id), 'precursor sha1')
+            rev_id = self.base_revision.revision_id
+            write(self.branch.get_revision_sha1(rev_id),
+                    key='precursor sha1')
+
+        write('%.9f' % rev.timestamp, key='timestamp')
+        write(str(rev.timezone), key='timezone')
 
         self._write_ids()
 
