@@ -27,6 +27,8 @@ def upgrade(branch):
     If they change, their SHA-1 will of course change, which might
     break any later signatures, or backreferences that check the
     SHA-1.
+
+    TODO: Check non-mainline revisions.
     """
     import sys
 
@@ -38,8 +40,7 @@ def upgrade(branch):
 
     try:
         pb = ProgressBar(show_spinner=True)
-        last_ptr = None
-        checked_revs = {}
+        last_rev_id = None
 
         history = branch.revision_history()
         revno = 0
@@ -51,51 +52,36 @@ def upgrade(branch):
         # was updated, since this will affect future revision entries
         updated_previous_revision = False
 
-        for rid in history:
+        for rev_id in history:
             revno += 1
             pb.update('upgrading revision', revno, revcount)
-            mutter('    revision {%s}' % rid)
-            rev = branch.get_revision(rid)
-            if rev.revision_id != rid:
-                raise BzrCheckError('wrong internal revision id in revision {%s}' % rid)
-            if rev.precursor != last_ptr:
-                raise BzrCheckError('mismatched precursor in revision {%s}' % rid)
-            last_ptr = rid
-            if rid in checked_revs:
-                raise BzrCheckError('repeated revision {%s}' % rid)
-            checked_revs[rid] = True
+            rev = branch.get_revision(rev_id)
+            if rev.revision_id != rev_id:
+                raise BzrCheckError('wrong internal revision id in revision {%s}'
+                                    % rev_id)
 
-            ## TODO: Check all the required fields are present on the revision.
+            last_rev_id = rev_id
 
+            # if set to true, revision must be written out
             updated = False
-            if rev.inventory_sha1:
-                #mutter('    checking inventory hash {%s}' % rev.inventory_sha1)
-                inv_sha1 = branch.get_inventory_sha1(rev.inventory_id)
-                if inv_sha1 != rev.inventory_sha1:
-                    raise BzrCheckError('Inventory sha1 hash doesn\'t match'
-                        ' value in revision {%s}' % rid)
-            else:
-                inv_sha1 = branch.get_inventory_sha1(rev.inventory_id)
-                rev.inventory_sha1 = inv_sha1
-                updated = True
 
-            if rev.precursor:
-                if rev.precursor_sha1:
-                    precursor_sha1 = branch.get_revision_sha1(rev.precursor)
-                    if updated_previous_revision: 
-                        # we don't expect the hashes to match, because
-                        # we had to modify the previous revision_history entry.
-                        rev.precursor_sha1 = precursor_sha1
+            if rev.inventory_sha1 is None:
+                rev.inventory_sha1 = branch.get_inventory_sha1(rev.inventory_id)
+                updated = True
+                mutter("  set inventory_sha1 on {%s}" % rev_id)
+
+            for prr in rev.parents:
+                actual_sha1 = branch.get_revision_sha1(prr.revision_id)
+                if (updated_previous_revision
+                    or prr.revision_sha1 is None):
+                    if prr.revision_sha1 != actual_sha1:
+                        prr.revision_sha1 = actual_sha1
                         updated = True
-                    else:
-                        #mutter('    checking precursor hash {%s}' % rev.precursor_sha1)
-                        if rev.precursor_sha1 != precursor_sha1:
-                            raise BzrCheckError('Precursor sha1 hash doesn\'t match'
-                                ' value in revision {%s}' % rid)
-                else:
-                    precursor_sha1 = branch.get_revision_sha1(rev.precursor)
-                    rev.precursor_sha1 = precursor_sha1
-                    updated = True
+                elif actual_sha1 != prr.revision_sha1:
+                    raise BzrCheckError("parent {%s} of {%s} sha1 mismatch: "
+                                        "%s vs %s"
+                                        % (prr.revision_id, rev_id,
+                                           actual_sha1, prr.revision_sha1))
 
             if updated:
                 updated_previous_revision = True
@@ -110,7 +96,7 @@ def upgrade(branch):
                 rev.write_xml(rev_tmp)
                 rev_tmp.seek(0)
 
-                tmpfd, tmp_path = tempfile.mkstemp(prefix=rid, suffix='.gz',
+                tmpfd, tmp_path = tempfile.mkstemp(prefix=rev_id, suffix='.gz',
                     dir=branch.controlfilename('revision-store'))
                 os.close(tmpfd)
                 def special_rename(p1, p2):
@@ -127,17 +113,17 @@ def upgrade(branch):
                     # entry was not compressed (and thus did not end with .gz)
 
                     # Remove the old revision entry out of the way
-                    rev_path = branch.controlfilename(['revision-store', rid+'.gz'])
+                    rev_path = branch.controlfilename(['revision-store', rev_id+'.gz'])
                     special_rename(rev_path, tmp_path)
-                    branch.revision_store.add(rev_tmp, rid) # Add the new one
+                    branch.revision_store.add(rev_tmp, rev_id) # Add the new one
                     os.remove(tmp_path) # Remove the old name
-                    mutter('    Updated revision entry {%s}' % rid)
+                    mutter('    Updated revision entry {%s}' % rev_id)
                 except:
                     # On any exception, restore the old entry
                     special_rename(tmp_path, rev_path)
                     raise
                 rev_tmp.close()
-                updated_revisions.append(rid)
+                updated_revisions.append(rev_id)
             else:
                 updated_previous_revision = False
 
