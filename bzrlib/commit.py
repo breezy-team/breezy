@@ -118,13 +118,6 @@ def commit(branch, message,
         # ever actually does anything special
         inv_sha1 = branch.get_inventory_sha1(inv_id)
 
-        precursor_id = branch.last_patch()
-        if precursor_id:
-            precursor_sha1 = branch.get_revision_sha1(precursor_id)
-        else:
-            precursor_sha1 = None
-        parent = RevisionReference(precursor_id, precursor_sha1)
-
         branch._write_inventory(work_inv)
 
         if timestamp == None:
@@ -144,7 +137,11 @@ def commit(branch, message,
                        inventory_id=inv_id,
                        inventory_sha1=inv_sha1,
                        revision_id=rev_id)
-        rev.parents = [parent]
+
+        precursor_id = branch.last_patch()
+        if precursor_id:
+            precursor_sha1 = branch.get_revision_sha1(precursor_id)
+            rev.parents = [RevisionReference(precursor_id, precursor_sha1)]
 
         rev_tmp = tempfile.TemporaryFile()
         rev.write_xml(rev_tmp)
