@@ -1,0 +1,643 @@
+#!/usr/bin/perl -w
+#
+# Patchwork - automated patch tracking system
+# Copyright (C) 2005 Jeremy Kerr <jk@ozlabs.org>
+#
+# This file is part of the Patchwork package.
+#
+# Patchwork is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# Patchwork is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Patchwork; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+use strict;
+use lib '../lib';
+
+use SOAP::Lite;
+use Getopt::Std;
+
+my $uri = 'urn:SOAPInterface';
+# this URI has the address of the soap.pl script, followed by the project name
+my $proxy = 'http://patchwork.ozlabs.org/soap.pl/bazaar-ng';
+my $soap;
+my ($rows, $cols);
+
+my %actions = (
+	list   => 'List all patches (restrict to a state with -s <state>)',
+	view   => 'View a patch',
+	get    => 'Download a patch and save it locally',
+	apply  => 'Apply a patch (in the current dir, using -p1)',
+	search => 'Search for patches (by name)'
+);
+
+sub page($@)
+{
+	my $str = shift;
+	my $lines;
+	if (@_) {
+		($lines) = @_;
+	} else {
+		my @l = split(/\n/, $str);
+		$lines = $#l;
+	}
+	if ($rows && $lines >= $rows) {
+		my $pager = $ENV{PAGER} || 'more';
+		open(FH, "|-", $pager) || die "Couldn't run pager '$pager': $!";
+		print FH $str;
+		close(FH);
+	} else {
+		print $str;
+	}
+}
+
+sub patch_list(@)
+{
+	my @patches = @_;
+	my $states = 
+	return "No patches\n" unless @patches;
+	my $str = list_header();
+	my $max = $cols - 9;
+	$max = 10 if $max < 10;
+	foreach my $patch (@patches) {
+		my $name = $patch->name();
+		if ($cols && length($name) > $max) {
+			$name = substr($name, 0, $max - 1).'$';
+		}
+		$str .= sprintf "%4d %3s %s\n", $patch->id(),
+				substr(states($patch->state()), 0, 3),
+				$name;
+	}
+	return $str;
+}
+
+sub _get_patch($)
+{
+	my ($id) = @_;
+	unless ($id) {
+		print STDERR "No id given to retrieve a patch\n";
+		exit 1;
+	}
+
+	unless ($id =~ m/^[0-9]+$/) {
+		print STDERR "Invalid patch id '$id'\n'";
+		exit 1;
+	}
+
+	my $res = $soap->get_patch($id);
+	die "SOAP fault: ".$res->faultstring if $res->fault;
+	my $patch = $res->result;
+	unless ($patch) {
+		print STDERR "Patch not found\n";
+		exit 1;
+	}
+	return $patch;
+}
+
+sub list()
+{
+	my %opts;
+	my $res;
+	getopts('s:', \%opts);
+	if ($opts{s}) {
+		$res = $soap->get_patches_by_state(state_from_name($opts{s}));
+	} else {
+		$res = $soap->get_patches();
+	}
+	die "SOAP fault: ".$res->faultstring if $res->fault;
+	my $patches = $res->result;
+	page(patch_list(@$patches), $#{$patches} + 2);
+	return 1;
+}
+
+sub search()
+{
+	my $query = join(' ', map { '"'.$_.'"' } @ARGV);
+	my $res = $soap->search($query);
+	die "SOAP fault: ".$res->faultstring if $res->fault;
+	my $patches = $res->result;
+	my $str = '';
+	unless ($patches && @{$patches}) {
+		print "No patches found\n";
+		return 1;
+	}
+	
+	$str .= list_header();
+	page(patch_list(@$patches), $#{$patches});
+	return 1;
+}
+
+sub view()
+{
+	my ($id) = @ARGV;
+	my $patch = _get_patch($id);
+	page($patch->content());
+	return 1;
+}
+
+sub get()
+{
+	my ($id) = @ARGV;
+	my $patch = _get_patch($id);
+	if (-e $patch->filename()) {
+		printf STDERR "Patch file:\n\t%s\nalready exists\n",
+			$patch->filename();
+		exit 1;
+	}
+	open(FH, ">", $patch->filename())
+		or die "Couldn't open ".$patch->filename()." for writing: $!";
+	print FH $patch->content;
+	close(FH);
+	printf "Saved '%s'\n\tto: %s\n", $patch->name, $patch->filename();
+	return 1;
+}
+
+sub apply()
+{
+	my ($id) = @ARGV;
+	my $patch = _get_patch($id);
+	open(FH, "|-", "patch", "-p1")
+		or die "Couldn't execute 'patch -p1'";
+	print FH $patch->content;
+	close(FH);
+	return 1;
+}
+
+sub usage()
+{
+	printf STDERR "Usage: %s <action> [options]\n", $0;
+	printf STDERR "Where <action> is one of:\n";
+	printf STDERR "\t%-6s : %s\n", $_, $actions{$_} for sort keys %actions;
+}
+
+sub list_header()
+{
+	return sprintf "%4s %3s %s\n", 'ID', 'Sta', 'Name';
+}
+
+my %_states;
+sub states(@)
+{
+	my $state = @_ ? shift : undef;
+	unless (%_states) {
+		my $res = $soap->get_states();
+		die "SOAP fault: ".$res->faultstring if $res->fault;
+		my $stateref = $res->result;
+		%_states = %$stateref;
+	}
+	return $state ? $_states{$state} : %_states;
+}
+
+sub state_from_name($)
+{
+	my ($name) = @_;
+	my @matches;
+	my %states = states();
+	foreach my $id (keys(%states)) {
+		push(@matches, $id) if ($states{$id} =~ m/^$name/i);
+	}
+	if ($#matches < 0) {
+		print STDERR "No such state '$name'\n";
+		exit 1;
+	} elsif ($#matches > 0) {
+		printf STDERR "Multiple states match '$name':\n";
+		printf STDERR "\t%s\n", $states{$_} for @matches;
+		exit 1;
+	}
+	return $matches[0];
+}
+
+my $action = shift;
+unless ($action) {
+	usage();
+	exit 1;
+}
+
+if (eval "require Term::Size") {
+	($cols, $rows) = Term::Size::chars(*STDOUT);
+} else {
+	($cols, $rows) = (0,0);
+}
+
+$soap = new SOAP::Lite(uri => $uri, proxy => $proxy);
+
+foreach (sort(keys(%actions))) {
+	if ($_ eq $action) {
+		eval "return &$action()" or die $@;
+		exit 0;
+	}
+}
+printf STDERR "No such action '%s'\n", $action;
+usage();
+exit 1;
+
+# Patchwork - automated patch tracking system
+# Copyright (C) 2005 Jeremy Kerr <jk@ozlabs.org>
+#
+# This file is part of the Patchwork package.
+#
+# Patchwork is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# Patchwork is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Patchwork; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+package PatchWork::Comment;
+
+use strict;
+
+# internal variables
+#  id
+#  msgid
+#  submitter
+#  content
+#  date
+#  @refs
+
+sub new($)
+{
+	my ($cls) = @_;
+	my $obj = {};
+	bless($obj, $cls);
+	return $obj;
+}
+
+sub id(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{id} = shift }
+	return $obj->{id};
+}
+
+sub submitter(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{submitter} = shift }
+	return $obj->{submitter};
+}
+
+sub msgid(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{msgid} = shift }
+	return $obj->{msgid};
+}
+
+sub date(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{date} = shift }
+	return $obj->{date};
+}
+
+sub content(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{content} = shift }
+	return $obj->{content};
+}
+
+sub refs(@)
+{
+	my ($obj) = shift;
+	push(@{$obj->{refs}}, @_) if @_;
+	return $obj->{refs};
+}
+
+1;
+
+# Patchwork - automated patch tracking system
+# Copyright (C) 2005 Jeremy Kerr <jk@ozlabs.org>
+#
+# This file is part of the Patchwork package.
+#
+# Patchwork is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# Patchwork is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Patchwork; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+package PatchWork::Person;
+
+use strict;
+
+# internal variables
+#   email
+#   name
+
+sub new(@)
+{
+	my $cls = shift;
+	my $obj = {};
+	bless($obj, $cls);
+	$obj->{email} = shift;
+	$obj->{name} = shift;
+	return $obj;
+}
+
+sub parse_from($$)
+{
+	my ($obj, $str) = @_;
+
+	if ($str =~ m/"?(.*?)"?\s*<([^>]+)>/) {
+		$obj->{email} = $2;
+		$obj->{name} = $1;
+	
+	} elsif ($str =~ m/"?(.*?)"?\s*\(([^\)]+)\)/) {
+		$obj->{email} = $1;
+		$obj->{name} = $2;
+	
+	} else {
+		$obj->{email} = $str;
+	}
+}
+
+sub id(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{id} = shift }
+	return $obj->{id};
+}
+
+sub email(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{email} = shift }
+	return $obj->{email};
+}
+
+sub name(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{name} = shift }
+	return $obj->{name};
+}
+
+sub username(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{username} = shift }
+	return $obj->{username};
+}
+
+1;
+
+# Patchwork - automated patch tracking system
+# Copyright (C) 2005 Jeremy Kerr <jk@ozlabs.org>
+#
+# This file is part of the Patchwork package.
+#
+# Patchwork is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# Patchwork is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Patchwork; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+package PatchWork::Patch;
+
+use strict;
+
+# internal variables
+#  id
+#  msgid
+#  date
+#  name
+#  content
+#  filename
+#  submitter
+#  comments
+#  @trees
+
+sub new($)
+{
+	my ($cls) = @_;
+	my $obj = {};
+	bless($obj, $cls);
+	$obj->{comments} = [];
+	$obj->{trees} = {};
+	$obj->{archived} = 0;
+	$obj->{state} = 1;
+	return $obj;
+}
+
+sub id(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{id} = shift }
+	return $obj->{id};
+}
+
+sub msgid(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{msgid} = shift }
+	return $obj->{msgid};
+}
+
+sub date(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{date} = shift }
+	return $obj->{date};
+}
+
+sub state(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{state} = shift }
+	return $obj->{state};
+}
+
+sub name(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{name} = shift }
+	return $obj->{name};
+}
+
+sub filename(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{filename} = shift }
+	return $obj->{filename};
+}
+
+sub submitter(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{submitter} = shift }
+	return $obj->{submitter};
+}
+
+sub content(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{content} = shift }
+	return $obj->{content};
+}
+
+sub archived(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{archived} = shift }
+	return $obj->{archived};
+}
+
+sub add_comment($$)
+{
+	my ($obj, $comment) = @_;
+	push(@{$obj->{comments}}, $comment);
+}
+
+sub comments($)
+{
+	my ($obj) = @_;
+	return $obj->{comments};
+}
+
+sub trees(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{trees} = shift }
+	return $obj->{trees};
+}
+
+1;
+
+# Patchwork - automated patch tracking system
+# Copyright (C) 2005 Jeremy Kerr <jk@ozlabs.org>
+#
+# This file is part of the Patchwork package.
+#
+# Patchwork is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# Patchwork is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Patchwork; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+package PatchWork::Tree;
+
+use strict;
+
+# internal variables
+#   id
+#   name
+#   url
+
+sub new($$)
+{
+	my ($cls, $id) = @_;
+	my $obj = {};
+	bless($obj, $cls);
+	$obj->{id} = $id;
+	return $obj;
+}
+
+sub id($)
+{
+	my ($obj) = @_;
+	return $obj->{id};
+
+}
+
+sub name(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{name} = shift }
+	return $obj->{name};
+}
+
+sub url(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{url} = shift }
+	return $obj->{url};
+}
+
+1;
+
+# Patchwork - automated patch tracking system
+# Copyright (C) 2005 Jeremy Kerr <jk@ozlabs.org>
+#
+# This file is part of the Patchwork package.
+#
+# Patchwork is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# Patchwork is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Patchwork; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+package PatchWork::User;
+@PatchWork::User::ISA = ('PatchWork::Person');
+
+use strict;
+
+# internal variables
+#   username
+
+sub new($$)
+{
+	my ($cls, $id) = @_;
+	my $obj = {};
+	bless($obj, $cls);
+	$obj->{id} = $id;
+	return $obj;
+}
+
+sub username(@)
+{
+	my ($obj) = shift;
+	if (@_) { $obj->{username} = shift }
+	return $obj->{username};
+}
+
+1;
+
