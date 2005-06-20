@@ -94,14 +94,6 @@ def check(branch):
                 missing_inventory_sha_cnt += 1
                 mutter("no inventory_sha1 on revision {%s}" % rev_id)
 
-            if rev.precursor:
-                if rev.precursor_sha1:
-                    precursor_sha1 = branch.get_revision_sha1(rev.precursor)
-                    #mutter('    checking precursor hash {%s}' % rev.precursor_sha1)
-                    if rev.precursor_sha1 != precursor_sha1:
-                        raise BzrCheckError('Precursor sha1 hash doesn\'t match'
-                            ' value in revision {%s}' % rev_id)
-
             inv = branch.get_inventory(rev.inventory_id)
             seen_ids = {}
             seen_names = {}
