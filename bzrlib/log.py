@@ -199,26 +199,6 @@ def deltas_for_log_reverse(branch, which_revs):
 
 
 
-def junk():
-    precursor = None
-    if verbose:
-        from tree import EmptyTree
-        prev_tree = EmptyTree()
-    for revno, revision_id in which_revs:
-        precursor = revision_id
-
-    if revision_id != rev.revision_id:
-        raise BzrCheckError("retrieved wrong revision: %r"
-                            % (revision_id, rev.revision_id))
-
-    if verbose:
-        this_tree = branch.revision_tree(revision_id)
-        delta = compare_trees(prev_tree, this_tree, want_unchanged=False)
-        prev_tree = this_tree
-    else:
-        delta = None    
-
-
 
 def show_one_log(revno, rev, delta, show_ids, to_file, show_timezone):
     from osutils import format_date
