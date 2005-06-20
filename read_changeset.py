@@ -11,6 +11,23 @@ class MalformedHeader(BadChangeset): pass
 class MalformedPatches(BadChangeset): pass
 class MalformedFooter(BadChangeset): pass
 
+def _unescape(name):
+    """Now we want to find the filename effected.
+    Unfortunately the filename is written out as
+    repr(filename), which means that it surrounds
+    the name with quotes which may be single or double
+    (single is preferred unless there is a single quote in
+    the filename). And some characters will be escaped.
+
+    TODO:   There has to be some pythonic way of undo-ing the
+            representation of a string rather than using eval.
+    """
+    delimiter = name[0]
+    if name[-1] != delimiter:
+        raise BadChangeset('Could not properly parse the'
+                ' filename: %r' % name)
+    # We need to handle escaped hexadecimals too.
+    return name[1:-1].replace('\"', '"').replace("\'", "'")
 
 class ChangesetInfo(object):
     """This is the intermediate class that gets filled out as
@@ -84,6 +101,19 @@ class ChangesetReader(object):
         """Create the actual changeset object.
         """
         self.info.create_maps()
+        cset = bzrlib.changeset.Changeset()
+        
+        for info, lines in self.info.actions:
+            parts = info.split(' ')
+            action = parts[0]
+            kind = parts[1]
+            extra = ' '.join(parts[2:])
+            if action == 'renamed':
+                old_name, new_name = extra.split(' => ')
+                old_name = _unescape(old_name)
+                new_name = _unescape(new_name)
+            else:
+                new_name = _unescape(extra)
         return self.info
 
     def _read_header(self):

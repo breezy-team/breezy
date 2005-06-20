@@ -81,7 +81,7 @@ class MetaInfoHeader(object):
     """
 
     def __init__(self, branch, revisions, delta,
-            full_remove=False, full_rename=False,
+            full_remove=True, full_rename=False,
             external_diff_options = None,
             new_tree=None, old_tree=None,
             old_label = '', new_label = ''):
@@ -221,23 +221,34 @@ class MetaInfoHeader(object):
         to_file = self.to_file
 
         def _write_entry(file_id, path=None):
+            old_ie = None
+            new_ie = None
             if file_id in self.new_tree.inventory:
-                ie = self.new_tree.inventory[file_id]
-            elif file_id in self.old_tree.inventory:
-                ie = self.old_tree.inventory[file_id]
-            else:
-                ie = None
-            if not path and ie:
-                path = ie.name
+                new_ie = self.new_tree.inventory[file_id]
+            if file_id in self.old_tree.inventory:
+                old_ie = self.old_tree.inventory[file_id]
+            if not path:
+                if new_ie:
+                    path = new_ie.name
+                elif old_ie:
+                    path = old_ie.name
             to_file.write(path.encode('utf-8'))
             to_file.write('\t')
             to_file.write(file_id.encode('utf-8'))
-            if ie and ie.parent_id:
+            if new_ie and new_ie.parent_id:
                 to_file.write('\t')
-                to_file.write(ie.parent_id.encode('utf-8'))
-                if ie.parent_id not in seen_ids:
-                    need_ids.add(ie.parent_id)
-            seen_ids.add(ie.file_id)
+                to_file.write(new_ie.parent_id.encode('utf-8'))
+                if new_ie.parent_id not in seen_ids:
+                    need_ids.add(new_ie.parent_id)
+            elif old_ie and old_ie.parent_id:
+                to_file.write('\t')
+                to_file.write(old_ie.parent_id.encode('utf-8'))
+                if old_ie.parent_id not in seen_ids:
+                    need_ids.add(old_ie.parent_id)
+            if old_ie and new_ie and old_ie.parent_id != new_ie.parent_id:
+                need_ids.add(old_ie.parent_id)
+                need_ids.add(new_ie.parent_id)
+            seen_ids.add(file_id)
             to_file.write('\n')
 
         class _write_kind(object):
