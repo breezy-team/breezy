@@ -93,10 +93,8 @@ class ImmutableStore(object):
 
         if compressed:
             f = gzip.GzipFile(p + '.gz', 'wb')
-            os.chmod(p + '.gz', 0444)
         else:
             f = file(p, 'wb')
-            os.chmod(p, 0444)
             
         f.write(content)
         f.close()

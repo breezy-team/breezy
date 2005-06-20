@@ -5,6 +5,8 @@ DEVELOPMENT HEAD
     * New ``bzr upgrade`` command to upgrade the format of a branch,
       replacing ``bzr check --update``.
 
+    * Files within store directories are no longer marked readonly on
+      disk.
 
 
 bzr-0.0.5  2005-06-15
