@@ -1,4 +1,4 @@
-
+# Copyright (C) 2005 by Canonical Development Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,13 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Stores are the main data-storage mechanism for Bazaar-NG.
+"""
+Stores are the main data-storage mechanism for Bazaar-NG.
 
 A store is a simple write-once container indexed by a universally
-unique ID, which is typically the SHA-1 of the content."""
-
-__copyright__ = "Copyright (C) 2005 Canonical Ltd."
-__author__ = "Martin Pool <mbp@canonical.com>"
+unique ID.
+"""
 
 import os, tempfile, types, osutils, gzip, errno
 from stat import ST_SIZE
@@ -59,14 +58,9 @@ class ImmutableStore(object):
 
     TODO: Atomic add by writing to a temporary file and renaming.
 
-    TODO: Perhaps automatically transform to/from XML in a method?
-           Would just need to tell the constructor what class to
-           use...
-
-    TODO: Even within a simple disk store like this, we could
-           gzip the files.  But since many are less than one disk
-           block, that might not help a lot.
-
+    In bzr 0.0.5 and earlier, files within the store were marked
+    readonly on disk.  This is no longer done but existing stores need
+    to be accomodated.
     """
 
     def __init__(self, basedir):
@@ -182,7 +176,7 @@ class ImmutableScratchStore(ImmutableStore):
     """Self-destructing test subclass of ImmutableStore.
 
     The Store only exists for the lifetime of the Python object.
-    Obviously you should not put anything precious in it.
+ Obviously you should not put anything precious in it.
     """
     def __init__(self):
         ImmutableStore.__init__(self, tempfile.mkdtemp())
