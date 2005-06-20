@@ -61,8 +61,35 @@ class cmd_verify_changeset(bzrlib.commands.Command):
 
         cset = read_changeset.read_changeset(f)
 
+class cmd_apply_changeset(bzrlib.commands.Command):
+    """Read in the given changeset, and apply it to the
+    current tree.
+
+    """
+    takes_args = ['filename?']
+    takes_options = []
+
+    def run(self, filename=None, reverse=False):
+        from bzrlib import find_branch
+        from bzrlib.changeset import apply_changeset
+        import sys, read_changeset
+
+        b = find_branch('.') # Make sure we are in a branch
+        if filename is None or filename == '-':
+            f = sys.stdin
+        else:
+            f = open(filename, 'rb')
+
+        cset = read_changeset.read_changeset(f)
+        apply_changeset(cset, branch.inventory, branch.base,
+                reverse=reverse)
+
 
 if hasattr(bzrlib.commands, 'register_plugin_cmd'):
     bzrlib.commands.register_plugin_cmd(cmd_changeset)
     bzrlib.commands.register_plugin_cmd(cmd_verify_changeset)
+    bzrlib.commands.register_plugin_cmd(cmd_apply_changeset)
+
+    bzrlib.commands.OPTIONS['reverse'] = None
+    cmd_apply_changeset.takes_options.append('reverse')
 

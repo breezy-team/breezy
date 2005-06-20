@@ -45,13 +45,16 @@ class ChangesetInfo(object):
 
         self.tree_root_id = None
         self.file_ids = None
-        self.directory_ids = None
-        self.parent_ids = None
+        self.old_file_ids = None
 
         self.actions = [] #this is the list of things that happened
         self.id2path = {} # A mapping from file id to path name
         self.path2id = {} # The reverse mapping
         self.id2parent = {} # A mapping from a given id to it's parent id
+
+        self.old_id2path = {}
+        self.old_path2id = {}
+        self.old_id2parent = {}
 
     def __str__(self):
         import pprint
@@ -66,14 +69,95 @@ class ChangesetInfo(object):
         self.id2path[self.tree_root_id] = './.'
         self.path2id['./.'] = self.tree_root_id
         self.id2parent[self.tree_root_id] = bzrlib.changeset.NULL_ID
+        self.old_id2path = self.id2path.copy()
+        self.old_path2id = self.path2id.copy()
+        self.old_id2parent = self.id2parent.copy()
 
-        for var in (self.file_ids, self.directory_ids, self.parent_ids):
-            if var is not None:
-                for info in var:
-                    path, f_id, parent_id = info.split('\t')
-                    self.id2path[f_id] = path
-                    self.path2id[path] = f_id
-                    self.id2parent[f_id] = parent_id
+        if self.file_ids:
+            for info in self.file_ids:
+                path, f_id, parent_id = info.split('\t')
+                self.id2path[f_id] = path
+                self.path2id[path] = f_id
+                self.id2parent[f_id] = parent_id
+        if self.old_file_ids:
+            for info in self.old_file_ids:
+                path, f_id, parent_id = info.split('\t')
+                self.old_id2path[f_id] = path
+                self.old_path2id[path] = f_id
+                self.old_id2parent[f_id] = parent_id
+
+    def create_changeset(self):
+        """Create a changeset from the data contained within."""
+        from bzrlib.changeset import Changeset, ChangesetEntry, \
+            PatchApply, ReplaceContents
+        cset = Changeset()
+        
+        for info, lines in self.actions:
+            print 'handling action', info
+            parts = info.split(' ')
+            action = parts[0]
+            kind = parts[1]
+            extra = ' '.join(parts[2:])
+            if action == 'renamed':
+                old_path, new_path = extra.split(' => ')
+                old_path = _unescape(old_path)
+                new_path = _unescape(new_path)
+
+                new_id = self.path2id[new_path]
+                old_id = self.old_path2id[old_path]
+                assert old_id == new_id
+
+                new_parent = self.id2parent[new_id]
+                old_parent = self.old_id2parent[old_id]
+
+                entry = ChangesetEntry(old_id, old_parent, old_path)
+                entry.new_path = new_path
+                entry.new_parent = new_parent
+                if lines:
+                    entry.contents_change = PatchApply(''.join(lines))
+            elif action == 'removed':
+                old_path = _unescape(extra)
+                old_id = self.old_path2id[old_path]
+                old_parent = self.old_id2parent[old_id]
+                entry = ChangesetEntry(old_id, old_parent, old_path)
+                entry.new_path = None
+                entry.new_parent = None
+                if lines:
+                    # Technically a removed should be a ReplaceContents()
+                    # Where you need to have the old contents
+                    # But at most we have a remove style patch.
+                    #entry.contents_change = ReplaceContents()
+                    pass
+            elif action == 'added':
+                new_path = _unescape(extra)
+                new_id = self.path2id[new_path]
+                new_parent = self.id2parent[new_id]
+                entry = ChangesetEntry(new_id, new_parent, new_path)
+                entry.path = None
+                entry.parent = None
+                if lines:
+                    # Technically an added should be a ReplaceContents()
+                    # Where you need to have the old contents
+                    # But at most we have an add style patch.
+                    #entry.contents_change = ReplaceContents()
+                    entry.contents_change = PatchApply(''.join(lines))
+            elif action == 'modified':
+                new_path = _unescape(extra)
+                new_id = self.path2id[new_path]
+                new_parent = self.id2parent[new_id]
+                entry = ChangesetEntry(new_id, new_parent, new_path)
+                entry.path = None
+                entry.parent = None
+                if lines:
+                    # Technically an added should be a ReplaceContents()
+                    # Where you need to have the old contents
+                    # But at most we have an add style patch.
+                    #entry.contents_change = ReplaceContents()
+                    entry.contents_change = PatchApply(''.join(lines))
+            else:
+                raise BadChangeset('Unrecognized action: %r' % action)
+            cset.add_entry(entry)
+        return cset
 
 class ChangesetReader(object):
     """This class reads in a changeset from a file, and returns
@@ -101,20 +185,7 @@ class ChangesetReader(object):
         """Create the actual changeset object.
         """
         self.info.create_maps()
-        cset = bzrlib.changeset.Changeset()
-        
-        for info, lines in self.info.actions:
-            parts = info.split(' ')
-            action = parts[0]
-            kind = parts[1]
-            extra = ' '.join(parts[2:])
-            if action == 'renamed':
-                old_name, new_name = extra.split(' => ')
-                old_name = _unescape(old_name)
-                new_name = _unescape(new_name)
-            else:
-                new_name = _unescape(extra)
-        return self.info
+        return self.info.create_changeset()
 
     def _read_header(self):
         """Read the bzr header"""
@@ -260,5 +331,8 @@ def read_changeset(from_file):
     parse it into a Changeset object.
     """
     cr = ChangesetReader(from_file)
-    print cr.get_changeset()
+    cset = cr.get_changeset()
+    for file_id in cset.entries:
+        print file_id
+        print cset.entries[file_id]
 

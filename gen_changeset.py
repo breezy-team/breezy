@@ -215,88 +215,40 @@ class MetaInfoHeader(object):
             root_id = self.branch.get_root_id()
         else:
             root_id = ROOT_ID
-        seen_ids = set([root_id])
-        need_ids = set()
 
-        to_file = self.to_file
+        old_ids = set()
+        new_ids = set()
 
-        def _write_entry(file_id, path=None):
-            old_ie = None
-            new_ie = None
-            if file_id in self.new_tree.inventory:
-                new_ie = self.new_tree.inventory[file_id]
-            if file_id in self.old_tree.inventory:
-                old_ie = self.old_tree.inventory[file_id]
-            if not path:
-                if new_ie:
-                    path = new_ie.name
-                elif old_ie:
-                    path = old_ie.name
-            to_file.write(path.encode('utf-8'))
-            to_file.write('\t')
-            to_file.write(file_id.encode('utf-8'))
-            if new_ie and new_ie.parent_id:
-                to_file.write('\t')
-                to_file.write(new_ie.parent_id.encode('utf-8'))
-                if new_ie.parent_id not in seen_ids:
-                    need_ids.add(new_ie.parent_id)
-            elif old_ie and old_ie.parent_id:
-                to_file.write('\t')
-                to_file.write(old_ie.parent_id.encode('utf-8'))
-                if old_ie.parent_id not in seen_ids:
-                    need_ids.add(old_ie.parent_id)
-            if old_ie and new_ie and old_ie.parent_id != new_ie.parent_id:
-                need_ids.add(old_ie.parent_id)
-                need_ids.add(new_ie.parent_id)
-            seen_ids.add(file_id)
-            to_file.write('\n')
-
-        class _write_kind(object):
-            def __init__(self, kind):
-                self.first = True
-                self.kind = kind
-            def __call__(self, info):
-                if self.first:
-                    self.first = False
-                    to_file.write('# %s ids:\n' % self.kind)
-                to_file.write('#    ')
-                _write_entry(info[1], info[0])
-
-        def _write_all(kind):
-            writer = _write_kind(kind)
-            for info in self.delta.removed:
-                if info[2] == kind:
-                    writer(info)
-            for info in self.delta.added:
-                if info[2] == kind:
-                    writer(info)
-            for info in self.delta.renamed:
-                if info[3] == kind:
-                    writer(info[1:3])
-            for info in self.delta.modified:
-                if info[2] == kind:
-                    writer(info)
+        for path, file_id, kind in self.delta.removed:
+            old_ids.add(file_id)
+        for path, file_id, kind in self.delta.added:
+            new_ids.add(file_id)
+        for old_path, new_path, file_id, kind, text_modified in self.delta.renamed:
+            old_ids.add(file_id)
+            new_ids.add(file_id)
+        for path, file_id, kind in self.delta.modified:
+            new_ids.add(file_id)
 
         self._write(root_id, key='tree root id')
 
-        _write_all('file')
-        _write_all('directory')
-
-        # All files must be traceable back to the ROOT_ID
-        # Since we may not have modified some of the parent
-        # directories, add a new set of fields for "parent ids"
-        first = True
-        while len(need_ids) > 0:
-            file_id = need_ids.pop()
-            if file_id in seen_ids:
-                continue
-            seen_ids.add(file_id)
-            if first:
-                self.to_file.write('# parent ids:\n')
-                first = False
-            to_file.write('#    ')
-            _write_entry(file_id)
-
+        def write_ids(tree, id_set, name):
+            if len(id_set) > 0:
+                self.to_file.write('# %s ids:\n' % name)
+            seen_ids = set([root_id])
+            while len(id_set) > 0:
+                file_id = id_set.pop()
+                if file_id in seen_ids:
+                    continue
+                seen_ids.add(file_id)
+                ie = tree.inventory[file_id]
+                if ie.parent_id not in seen_ids:
+                    id_set.add(ie.parent_id)
+                path = tree.inventory.id2path(file_id)
+                self.to_file.write('#    %s\t%s\t%s\n'
+                        % (path.encode('utf8'), file_id.encode('utf8'),
+                            ie.parent_id.encode('utf8')))
+        write_ids(self.new_tree, new_ids, 'file')
+        write_ids(self.old_tree, old_ids, 'old file')
 
     def _write_diffs(self):
         """Write out the specific diffs"""
