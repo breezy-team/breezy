@@ -1122,11 +1122,24 @@ class cmd_check(Command):
     to help ensure data consistency.
     """
     takes_args = ['dir?']
-    takes_options = ['update']
 
-    def run(self, dir='.', update=False):
+    def run(self, dir='.'):
         import bzrlib.check
-        bzrlib.check.check(Branch(dir), update=update)
+        bzrlib.check.check(Branch(dir))
+
+
+
+class cmd_upgrade(Command):
+    """Upgrade branch storage to current format.
+
+    This should normally be used only after the check command tells
+    you to run it.
+    """
+    takes_args = ['dir?']
+
+    def run(self, dir='.'):
+        from bzrlib.upgrade import upgrade
+        upgrade(Branch(dir))
 
 
 

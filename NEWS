@@ -1,3 +1,12 @@
+DEVELOPMENT HEAD
+
+  CHANGES:
+
+    * New ``bzr upgrade`` command to upgrade the format of a branch,
+      replacing ``bzr check --update``.
+
+
+
 bzr-0.0.5  2005-06-15
   
   CHANGES:
