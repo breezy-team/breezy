@@ -24,14 +24,21 @@ command-line interface.
 # this code was previously in testbzr
 
 from unittest import TestCase
+from bzrlib.selftest import TestBase
 
-
-
-class TestVersion(TestCase):
+class TestVersion(TestBase):
     def runTest(self):
-        from os import system
-        rc = system('bzr version')
-        if rc != 0:
-            fail("command returned status %d" % rc)
-            
-            
+        # output is intentionally passed through to stdout so that we
+        # can see the version being tested
+        self.runcmd(['bzr', 'version'])
+
+
+# class InTempBranch(TestBase):
+#     """Base class for tests run in a temporary branch."""
+#     def setUp():
+#     def tearDown()
+
+
+# class InitBranch(TestBase):
+#     def runTest(self):
+        
