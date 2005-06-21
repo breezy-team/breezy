@@ -19,6 +19,10 @@
 
 These check that it behaves properly when it's invoked through the regular
 command-line interface.
+
+This always reinvokes bzr through a new Python interpreter, which is a
+bit inefficient but arguably tests in a way more representative of how
+it's normally invoked.
 """
 
 # this code was previously in testbzr
