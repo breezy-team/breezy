@@ -34,15 +34,42 @@ class TestVersion(TestBase):
     def runTest(self):
         # output is intentionally passed through to stdout so that we
         # can see the version being tested
+        print
         self.runcmd(['bzr', 'version'])
+        print
 
 
-# class InTempBranch(TestBase):
-#     """Base class for tests run in a temporary branch."""
-#     def setUp():
-#     def tearDown()
 
-
-# class InitBranch(TestBase):
-#     def runTest(self):
+class InTempBranch(TestBase):
+    """Base class for tests run in a temporary branch."""
+    def setUp(self):
+        import os
+        self.branch_dir = os.path.join(self.TEST_DIR, self.__class__.__name__)
+        os.mkdir(self.branch_dir)
+        os.chdir(self.branch_dir)
         
+    def tearDown(self):
+        import os
+        os.chdir(self.TEST_DIR)
+
+
+class InitBranch(InTempBranch):
+    def runTest(self):
+        import os
+        print "%s running in %s" % (self, os.getcwdu())
+        self.runcmd(['bzr', 'init'])
+        
+        
+
+
+# lists all tests from this module in the best order to run them.  we
+# do it this way rather than just discovering them all because it
+# allows us to test more basic functions first where failures will be
+# easiest to understand.
+
+def suite():
+    from unittest import TestSuite
+    s = TestSuite()
+    s.addTests([TestVersion(),
+                InitBranch()])
+    return s

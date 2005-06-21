@@ -44,6 +44,7 @@ class TestBase(TestCase):
             buf = pipe.read()
             if buf:
                 out += buf
+                self.log(buf)
             else:
                 break
         rc = pipe.close()
@@ -55,7 +56,7 @@ class TestBase(TestCase):
 
     def log(self, msg):
         """Log a message to a progress file"""
-        print >>TEST_LOG, msg
+        print >>self.TEST_LOG, msg
                
 
 
@@ -96,8 +97,10 @@ def selftest():
     suite = TestSuite()
     tl = TestLoader()
 
-    for m in bzrlib.selftest.whitebox, bzrlib.selftest.blackbox:
+    for m in bzrlib.selftest.whitebox, :
         suite.addTest(tl.loadTestsFromModule(m))
+
+    suite.addTest(bzrlib.selftest.blackbox.suite())
 
     for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \
             bzrlib.commands:
@@ -115,11 +118,10 @@ def _setup_test_log():
     import time
     import os
     
-    global TEST_LOG
     log_filename = os.path.abspath('testbzr.log')
-    TEST_LOG = open(log_filename, 'wt', buffering=1) # line buffered
+    TestBase.TEST_LOG = open(log_filename, 'wt', buffering=1) # line buffered
 
-    print >>TEST_LOG, "bzr tests run at " + time.ctime()
+    print >>TestBase.TEST_LOG, "bzr tests run at " + time.ctime()
     print '%-30s %s' % ('test log', log_filename)
 
 
@@ -127,16 +129,19 @@ def _setup_test_dir():
     import os
     import shutil
     
-    global ORIG_DIR, TEST_DIR
-    ORIG_DIR = os.getcwdu()
-    TEST_DIR = os.path.abspath("testbzr.tmp")
+    TestBase.ORIG_DIR = os.getcwdu()
+    TestBase.TEST_DIR = os.path.abspath("testbzr.tmp")
 
-    print '%-30s %s' % ('running tests in', TEST_DIR)
+    print '%-30s %s' % ('running tests in', TestBase.TEST_DIR)
 
-    if os.path.exists(TEST_DIR):
-        shutil.rmtree(TEST_DIR)
-    os.mkdir(TEST_DIR)
-    os.chdir(TEST_DIR)    
+    if os.path.exists(TestBase.TEST_DIR):
+        shutil.rmtree(TestBase.TEST_DIR)
+    os.mkdir(TestBase.TEST_DIR)
+    os.chdir(TestBase.TEST_DIR)
+
+    # make a fake bzr directory there to prevent any tests propagating
+    # up onto the source directory's real branch
+    os.mkdir(os.path.join(TestBase.TEST_DIR, '.bzr'))
 
     
 
