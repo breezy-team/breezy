@@ -83,8 +83,8 @@ class _MyResult(TestResult):
 def selftest():
     from unittest import TestLoader, TestSuite
     import bzrlib
-    import bzrlib.whitebox
-    import bzrlib.blackbox
+    import bzrlib.selftest.whitebox
+    import bzrlib.selftest.blackbox
     from doctest import DocTestSuite
     import os
     import shutil
@@ -96,7 +96,7 @@ def selftest():
     suite = TestSuite()
     tl = TestLoader()
 
-    for m in bzrlib.whitebox, bzrlib.blackbox:
+    for m in bzrlib.selftest.whitebox, bzrlib.selftest.blackbox:
         suite.addTest(tl.loadTestsFromModule(m))
 
     for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \

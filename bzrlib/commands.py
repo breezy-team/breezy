@@ -1159,11 +1159,7 @@ class cmd_selftest(Command):
     hidden = True
     def run(self):
         from bzrlib.selftest import selftest
-        if selftest():
-            return 0
-        else:
-            return 1
-
+        return int(not selftest())
 
 
 class cmd_version(Command):
