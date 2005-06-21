@@ -40,6 +40,15 @@ class TestVersion(TestBase):
 
 
 
+class HelpCommands(TestBase):
+    def runTest(self):
+        self.runcmd('bzr --help')
+        self.runcmd('bzr help')
+        self.runcmd('bzr help commands')
+        self.runcmd('bzr help help')
+        self.runcmd('bzr commit -h')
+
+
 class InTempBranch(TestBase):
     """Base class for tests run in a temporary branch."""
     def setUp(self):
@@ -71,5 +80,6 @@ def suite():
     from unittest import TestSuite
     s = TestSuite()
     s.addTests([TestVersion(),
-                InitBranch()])
+                InitBranch(),
+                HelpCommands()])
     return s

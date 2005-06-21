@@ -62,8 +62,6 @@ except ImportError, e:
     sys.exit(1)
 
 
-class CommandFailed(Exception):
-    pass
 
 
 def formcmd(cmd):

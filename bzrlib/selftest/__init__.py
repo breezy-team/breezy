@@ -17,6 +17,18 @@
 
 from unittest import TestResult, TestCase
 
+try:
+    import shutil
+    from subprocess import call, Popen, PIPE
+except ImportError, e:
+    sys.stderr.write("testbzr: sorry, this test suite requires the subprocess module\n"
+                     "this is shipped with python2.4 and available separately for 2.3\n")
+    raise
+
+
+class CommandFailed(Exception):
+    pass
+
 
 class TestBase(TestCase):
     """Base class for bzr test cases.
@@ -24,35 +36,46 @@ class TestBase(TestCase):
     Just defines some useful helper functions; doesn't actually test
     anything.
     """
-    # TODO: Special methods to invoke bzr
     
-    def runcmd(self, cmd, expected=0):
-        self.log('$ ' + ' '.join(cmd))
-        from os import spawnvp, P_WAIT
-        rc = spawnvp(P_WAIT, cmd[0], cmd)
-        if rc != expected:
-            self.fail("command %r returned status %d" % (cmd, rc))
+    # TODO: Special methods to invoke bzr, so that we can run it
+    # through a specified Python intepreter
+
+    OVERRIDE_PYTHON = None # to run with alternative python 'python'
+    BZRPATH = 'bzr'
+    
+
+    def formcmd(self, cmd):
+        if isinstance(cmd, basestring):
+            cmd = cmd.split()
+
+        if cmd[0] == 'bzr':
+            cmd[0] = self.BZRPATH
+            if self.OVERRIDE_PYTHON:
+                cmd.insert(0, self.OVERRIDE_PYTHON)
+
+        self.log('$ %r' % cmd)
+
+        return cmd
 
 
-    def backtick(self, cmd):
-        """Run a command and return its output"""
-        from os import popen
+    def runcmd(self, cmd, retcode=0):
+        """Run one command and check the return code.
+
+        Returns a tuple of (stdout,stderr) strings.
+
+        If a single string is based, it is split into words.
+        For commands that are not simple space-separated words, please
+        pass a list instead."""
+        cmd = self.formcmd(cmd)
+
         self.log('$ ' + ' '.join(cmd))
-        pipe = popen(cmd)
-        out = ''
-        while True:
-            buf = pipe.read()
-            if buf:
-                out += buf
-                self.log(buf)
-            else:
-                break
-        rc = pipe.close()
-        if rc:
-            self.fail("command %r returned status %d" % (cmd, rc))
-        else:
-            return out
-            
+        actual_retcode = call(cmd, stdout=self.TEST_LOG, stderr=self.TEST_LOG)
+
+        if retcode != actual_retcode:
+            raise CommandFailed("test failed: %r returned %d, expected %d"
+                                % (cmd, actual_retcode, retcode))
+
+
 
     def log(self, msg):
         """Log a message to a progress file"""
