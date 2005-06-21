@@ -72,7 +72,7 @@ class cmd_apply_changeset(bzrlib.commands.Command):
     takes_args = ['filename?']
     takes_options = []
 
-    def run(self, filename=None, reverse=False, auto_commit=True):
+    def run(self, filename=None, reverse=False, auto_commit=False):
         from bzrlib import find_branch
         import sys
         import apply_changeset

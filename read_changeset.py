@@ -96,6 +96,9 @@ class ChangesetInfo(object):
             PatchApply, ReplaceContents
         cset = Changeset()
         
+        entry = ChangesetEntry(self.tree_root_id, 
+                bzrlib.changeset.NULL_ID, './.')
+        cset.add_entry(entry)
         for info, lines in self.actions:
             parts = info.split(' ')
             action = parts[0]

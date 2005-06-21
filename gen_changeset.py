@@ -39,6 +39,7 @@ def _canonicalize_revision(branch, revno):
 def _get_trees(branch, revisions):
     """Get the old and new trees based on revision.
     """
+    from bzrlib.tree import EmptyTree
     if revisions[0] is None:
         if hasattr(branch, 'get_root_id'): # Watch out for trees with labeled ROOT ids
             old_tree = EmptyTree(branch.get_root_id) 
@@ -122,7 +123,7 @@ class MetaInfoHeader(object):
         self.revision_list = []
         if old_revno is None:
             self.base_revision = None # Effectively the EmptyTree()
-            old_revno = 0
+            old_revno = -1
         else:
             self.base_revision = self.branch.get_revision(rh[old_revno])
         if new_revno is None:

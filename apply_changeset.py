@@ -6,7 +6,7 @@ This contains the apply changset function for bzr
 import bzrlib
 
 def apply_changeset(branch, from_file, reverse=False, auto_commit=False):
-    from bzrlib.changeset import apply_changeset
+    from bzrlib.changeset import apply_changeset as _apply_changeset
     from bzrlib.merge import regen_inventory
     import sys, read_changeset
 
@@ -16,7 +16,7 @@ def apply_changeset(branch, from_file, reverse=False, auto_commit=False):
     inv = {}
     for file_id in branch.inventory:
         inv[file_id] = branch.inventory.id2path(file_id)
-    changes = apply_changeset(cset, inv, branch.base,
+    changes = _apply_changeset(cset, inv, branch.base,
             reverse=reverse)
 
     adjust_ids = []
