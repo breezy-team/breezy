@@ -1,0 +1,14 @@
+## *.diff
+./doc/*.html
+*.py[oc]
+*~
+.arch-ids
+.bzr.profile
+.arch-inventory
+{arch}
+CHANGELOG
+bzr-test.log
+bzr.1
+,,*
+testbzr.log
+api
