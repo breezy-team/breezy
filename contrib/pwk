@@ -4,19 +4,29 @@
 
 # authentication must be in ~/.netrc
 
+# TODO: Scan all pending patches and say which ones apply cleanly.
 
+# these should be moved into some kind of per-project configuration
 PWK_ROOT='http://patchwork.ozlabs.org/bazaar-ng'
 PWK_AUTH_ROOT='https://patchwork.ozlabs.org/bazaar-ng'
 
+# bzr uses -p0 style; others use -p1
+PATCH_OPTS='-p0'
+
 usage() {
-    echo "usage: pwk cat PATCH-ID" >&2
+    cat <<EOF
+usage: 
+   pwk show PATCH-ID       show the patch text
+   pwk try PATCH-ID        see if the patch applies cleanly
+   pwk apply PATCH-ID      apply patch into current directory
+EOF
 }
 
 catpatch() {
-    curl --get -d id=$1 $PWK_ROOT/patchcontent
+    curl --silent --show-error --get -d id=$1 $PWK_ROOT/patchcontent
 }
 
-if [ $# -ne 2 ]
+if [ $# -lt 1 ]
 then
     usage
     exit 1
@@ -24,11 +34,18 @@ fi
 
 
 case "$1" in
+help|-h|--help)
+    usage
+    exit 0
+    ;;
 cat)
-    catpatch $2
+    catpatch $2 | ${PAGER:-less}
     ;;
 try)
     catpatch $2 | patch -p0 --dry-run
+    ;;
+apply)
+    catpatch $2 | patch -p0
     ;;
 *)
     usage
