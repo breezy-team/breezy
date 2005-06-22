@@ -430,6 +430,8 @@ class Inventory(XMLMixin):
         """Add entry from a path.
 
         The immediate parent must already be versioned"""
+        from bzrlib.errors import NotVersionedError
+        
         parts = bzrlib.osutils.splitpath(relpath)
         if len(parts) == 0:
             raise BzrError("cannot re-add root of inventory")
@@ -437,8 +439,11 @@ class Inventory(XMLMixin):
         if file_id == None:
             file_id = bzrlib.branch.gen_file_id(relpath)
 
-        parent_id = self.path2id(parts[:-1])
-        assert parent_id != None
+        parent_path = parts[:-1]
+        parent_id = self.path2id(parent_path)
+        if parent_id == None:
+            raise NotVersionedError(parent_path)
+
         ie = InventoryEntry(file_id, parts[-1],
                             kind=kind, parent_id=parent_id)
         return self.add(ie)

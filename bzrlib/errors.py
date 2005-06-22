@@ -39,6 +39,10 @@ class NotBranchError(BzrError):
     pass
 
 
+class NotVersionedError(BzrError):
+    """Specified object is not versioned."""
+
+
 class BadFileKindError(BzrError):
     """Specified file is of a kind that cannot be added.
 
