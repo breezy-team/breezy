@@ -337,7 +337,7 @@ class TreeDelta(object):
 
 
 
-def compare_trees(old_tree, new_tree, want_unchanged, specific_files=None):
+def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None):
     """Describe changes from one tree to another.
 
     Returns a TreeDelta with details of added, modified, renamed, and
