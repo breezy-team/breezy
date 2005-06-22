@@ -1,5 +1,10 @@
 DEVELOPMENT HEAD
 
+  NEW FEATURES:
+
+    * Python plugins, automatically loaded from the directories on
+      BZR_PLUGIN_PATH or ~/.bzr.conf/plugins by default.
+
   CHANGES:
 
     * New ``bzr upgrade`` command to upgrade the format of a branch,
