@@ -121,17 +121,26 @@ class _MyResult(TestResult):
 
     No special behaviour for now.
     """
-#     def startTest(self, test):
-#         print str(test).ljust(50),
-#         TestResult.startTest(self, test)
+    def startTest(self, test):
+        print str(test).ljust(60),
+        TestResult.startTest(self, test)
 
-#     def stopTest(self, test):
-#         print
-#         TestResult.stopTest(self, test)
+    def stopTest(self, test):
+        # print
+        TestResult.stopTest(self, test)
 
 
-    pass
+    def addError(self, test, err):
+        print 'ERROR'
+        TestResult.addError(self, test, err)
 
+    def addFailure(self, test, err):
+        print 'FAILURE'
+        TestResult.addFailure(self, test, err)
+
+    def addSuccess(self, test):
+        print 'OK'
+        TestResult.addSuccess(self, test)
 
 
 
