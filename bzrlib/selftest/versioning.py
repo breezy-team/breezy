@@ -42,3 +42,25 @@ class Mkdir(InTempDir):
         self.assertEquals(delta.added[0][0], 'foo')
         self.failIf(delta.modified)
 
+
+
+class AddInUnversioned(InTempDir):
+    def runTest(self):
+        """Try to add a file in an unversioned directory.
+
+        smart_add may eventually add the parent as necessary, but simple
+        branch add doesn't do that.
+        """
+        from bzrlib.branch import Branch
+        import os
+        from bzrlib.errors import NotVersionedError
+
+        b = Branch('.', init=True)
+
+        self.build_tree(['foo/',
+                         'foo/hello'])
+
+        self.assertRaises(NotVersionedError,
+                          b.add,
+                          'foo/hello')
+        
