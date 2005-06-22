@@ -504,9 +504,11 @@ class cmd_pull(Command):
             if errno == errno.ENOENT:
                 raise
         if location is None:
-            location = stored_loc
-        if location is None:
-            raise BzrCommandError("No pull location known or specified.")
+            if stored_loc is None:
+                raise BzrCommandError("No pull location known or specified.")
+            else:
+                print "Using last location: %s" % stored_loc
+                location = stored_loc
         from branch import find_branch, DivergedBranches
         br_from = find_branch(location)
         location = pull_loc(br_from)
