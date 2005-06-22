@@ -1270,6 +1270,15 @@ class cmd_update_stat_cache(Command):
 
 
 
+class cmd_plugins(Command):
+    """List plugins"""
+    hidden = True
+    def run(self):
+        import bzrlib.plugin
+        print dir(bzrlib.plugin)
+
+
+
 # list of all available options; the rhs can be either None for an
 # option that takes no argument, or a constructor function that checks
 # the type.
@@ -1530,7 +1539,7 @@ def run_bzr(argv):
     try:
         # some options like --builtin and --no-plugins have special effects
         argv, master_opts = _parse_master_args(argv)
-        if 'no-plugins' not in master_opts:
+        if not master_opts['no-plugins']:
             bzrlib.load_plugins()
 
         args, opts = parse_args(argv)
