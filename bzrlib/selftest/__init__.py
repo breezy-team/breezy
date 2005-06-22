@@ -103,13 +103,13 @@ class InTempDir(TestBase):
     """Base class for tests run in a temporary branch."""
     def setUp(self):
         import os
-        self.branch_dir = os.path.join(self.TEST_DIR, self.__class__.__name__)
-        os.mkdir(self.branch_dir)
-        os.chdir(self.branch_dir)
+        self.test_dir = os.path.join(self.TEST_ROOT, self.__class__.__name__)
+        os.mkdir(self.test_dir)
+        os.chdir(self.test_dir)
         
     def tearDown(self):
         import os
-        os.chdir(self.TEST_DIR)
+        os.chdir(self.TEST_ROOT)
 
 
 
@@ -193,18 +193,18 @@ def _setup_test_dir():
     import shutil
     
     TestBase.ORIG_DIR = os.getcwdu()
-    TestBase.TEST_DIR = os.path.abspath("testbzr.tmp")
+    TestBase.TEST_ROOT = os.path.abspath("testbzr.tmp")
 
-    print '%-30s %s' % ('running tests in', TestBase.TEST_DIR)
+    print '%-30s %s' % ('running tests in', TestBase.TEST_ROOT)
 
-    if os.path.exists(TestBase.TEST_DIR):
-        shutil.rmtree(TestBase.TEST_DIR)
-    os.mkdir(TestBase.TEST_DIR)
-    os.chdir(TestBase.TEST_DIR)
+    if os.path.exists(TestBase.TEST_ROOT):
+        shutil.rmtree(TestBase.TEST_ROOT)
+    os.mkdir(TestBase.TEST_ROOT)
+    os.chdir(TestBase.TEST_ROOT)
 
     # make a fake bzr directory there to prevent any tests propagating
     # up onto the source directory's real branch
-    os.mkdir(os.path.join(TestBase.TEST_DIR, '.bzr'))
+    os.mkdir(os.path.join(TestBase.TEST_ROOT, '.bzr'))
 
     
 
