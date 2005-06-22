@@ -121,9 +121,13 @@ class _MyResult(TestResult):
 
     No special behaviour for now.
     """
+    def __init__(self, out):
+        self.out = out
+        TestResult.__init__(self)
+
     def startTest(self, test):
         # TODO: Maybe show test.shortDescription somewhere?
-        print '%-60.60s' % test.id(),
+        print >>self.out, '%-60.60s' % test.id(),
         TestResult.startTest(self, test)
 
     def stopTest(self, test):
@@ -132,15 +136,15 @@ class _MyResult(TestResult):
 
 
     def addError(self, test, err):
-        print 'ERROR'
+        print >>self.out, 'ERROR'
         TestResult.addError(self, test, err)
 
     def addFailure(self, test, err):
-        print 'FAILURE'
+        print >>self.out, 'FAILURE'
         TestResult.addFailure(self, test, err)
 
     def addSuccess(self, test):
-        print 'OK'
+        print >>self.out, 'OK'
         TestResult.addSuccess(self, test)
 
 
@@ -155,6 +159,7 @@ def selftest():
     import os
     import shutil
     import time
+    import sys
 
     _setup_test_log()
     _setup_test_dir()
@@ -173,12 +178,22 @@ def selftest():
             bzrlib.commands:
         suite.addTest(DocTestSuite(m))
 
-    result = _MyResult()
-    suite.run(result)
+    # save stdout & stderr so there's no leakage from code-under-test
+    real_stdout = sys.stdout
+    real_stderr = sys.stderr
+    sys.stdout = sys.stderr = TestBase.TEST_LOG
+    try:
+        result = _MyResult(real_stdout)
+        suite.run(result)
+    finally:
+        sys.stdout = real_stdout
+        sys.stderr = real_stderr
 
     _show_results(result)
 
     return result.wasSuccessful()
+
+
 
 
 def _setup_test_log():
