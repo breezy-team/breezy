@@ -363,6 +363,27 @@ class cmd_add(Command):
         bzrlib.add.smart_add(file_list, verbose, not no_recurse)
 
 
+
+class cmd_mkdir(Command):
+    """Create a new versioned directory.
+
+    This is equivalent to creating the directory and then adding it.
+    """
+    takes_args = ['dir+']
+
+    def run(self, dir_list):
+        import os
+        import bzrlib.branch
+        
+        b = None
+        
+        for d in dir_list:
+            os.mkdir(d)
+            if not b:
+                b = bzrlib.branch.Branch(d)
+            b.add([d], verbose=True)
+
+
 class cmd_relpath(Command):
     """Show path of a file relative to root"""
     takes_args = ['filename']

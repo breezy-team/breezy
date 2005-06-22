@@ -5,6 +5,8 @@ DEVELOPMENT HEAD
     * Python plugins, automatically loaded from the directories on
       BZR_PLUGIN_PATH or ~/.bzr.conf/plugins by default.
 
+    * New 'bzr mkdir' command.
+
   CHANGES:
 
     * New ``bzr upgrade`` command to upgrade the format of a branch,
