@@ -76,11 +76,42 @@ class TestBase(TestCase):
                                 % (cmd, actual_retcode, retcode))
 
 
+    def backtick(self, cmd, retcode=0):
+        cmd = self.formcmd(cmd)
+        child = Popen(cmd, stdout=PIPE, stderr=self.TEST_LOG)
+        outd, errd = child.communicate()
+        self.log(outd)
+        actual_retcode = child.wait()
+
+        outd = outd.replace('\r', '')
+
+        if retcode != actual_retcode:
+            raise CommandFailed("test failed: %r returned %d, expected %d"
+                                % (cmd, actual_retcode, retcode))
+
+        return outd
+
+
+
 
     def log(self, msg):
         """Log a message to a progress file"""
         print >>self.TEST_LOG, msg
                
+
+class InTempDir(TestBase):
+    """Base class for tests run in a temporary branch."""
+    def setUp(self):
+        import os
+        self.branch_dir = os.path.join(self.TEST_DIR, self.__class__.__name__)
+        os.mkdir(self.branch_dir)
+        os.chdir(self.branch_dir)
+        
+    def tearDown(self):
+        import os
+        os.chdir(self.TEST_DIR)
+
+
 
 
 

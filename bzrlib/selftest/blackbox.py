@@ -28,7 +28,7 @@ it's normally invoked.
 # this code was previously in testbzr
 
 from unittest import TestCase
-from bzrlib.selftest import TestBase
+from bzrlib.selftest import TestBase, InTempDir
 
 class TestVersion(TestBase):
     def runTest(self):
@@ -49,25 +49,21 @@ class HelpCommands(TestBase):
         self.runcmd('bzr commit -h')
 
 
-class InTempBranch(TestBase):
-    """Base class for tests run in a temporary branch."""
-    def setUp(self):
-        import os
-        self.branch_dir = os.path.join(self.TEST_DIR, self.__class__.__name__)
-        os.mkdir(self.branch_dir)
-        os.chdir(self.branch_dir)
-        
-    def tearDown(self):
-        import os
-        os.chdir(self.TEST_DIR)
-
-
-class InitBranch(InTempBranch):
+class InitBranch(InTempDir):
     def runTest(self):
         import os
         print "%s running in %s" % (self, os.getcwdu())
         self.runcmd(['bzr', 'init'])
-        
+
+
+
+class UserIdentity(InTempDir):
+    def runTest(self):
+        # this should always identify something, if only "john@localhost"
+        self.runcmd("bzr whoami")
+        self.runcmd("bzr whoami --email")
+        self.assertEquals(self.backtick("bzr whoami --email").count('@'),
+                          1)    
         
 
 
@@ -81,5 +77,6 @@ def suite():
     s = TestSuite()
     s.addTests([TestVersion(),
                 InitBranch(),
-                HelpCommands()])
+                HelpCommands(),
+                UserIdentity()])
     return s
