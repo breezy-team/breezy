@@ -122,7 +122,8 @@ class _MyResult(TestResult):
     No special behaviour for now.
     """
     def startTest(self, test):
-        print str(test).ljust(60),
+        # TODO: Maybe show test.shortDescription somewhere?
+        print '%-60.60s' % test.id(),
         TestResult.startTest(self, test)
 
     def stopTest(self, test):
@@ -157,6 +158,7 @@ def selftest():
 
     _setup_test_log()
     _setup_test_dir()
+    print
 
     suite = TestSuite()
     tl = TestLoader()
@@ -227,6 +229,9 @@ def _show_results(result):
 def _show_test_failure(kind, case, tb):
      print (kind + '! ').ljust(60, '-')
      print case
+     desc = test.shortDescription()
+     if desc:
+         print '   (%s)' % desc
      print tb
      print ''.ljust(60, '-')
     

@@ -22,6 +22,7 @@ from bzrlib.selftest import InTempDir
 
 class Mkdir(InTempDir):
     def runTest(self): 
+        """Basic 'bzr mkdir' operation"""
         from bzrlib.commands import run_bzr
         import os
 
