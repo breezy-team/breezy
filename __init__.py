@@ -87,10 +87,10 @@ class cmd_apply_changeset(bzrlib.commands.Command):
                 auto_commit=auto_commit)
 
 
-if hasattr(bzrlib.commands, 'register_plugin_cmd'):
-    bzrlib.commands.register_plugin_cmd(cmd_changeset)
-    bzrlib.commands.register_plugin_cmd(cmd_verify_changeset)
-    bzrlib.commands.register_plugin_cmd(cmd_apply_changeset)
+if hasattr(bzrlib.commands, 'register_plugin_command'):
+    bzrlib.commands.register_plugin_command(cmd_changeset)
+    bzrlib.commands.register_plugin_command(cmd_verify_changeset)
+    bzrlib.commands.register_plugin_command(cmd_apply_changeset)
 
     bzrlib.commands.OPTIONS['reverse'] = None
     bzrlib.commands.OPTIONS['auto-commit'] = None
