@@ -26,8 +26,11 @@ import sys, os, imp
 try:
     set
 except NameError:
-    from sets import Set as set
+    from sets import Set as set         # python2.3
 from bzrlib.trace import log_error
+
+
+DEFAULT_PLUGIN_PATH = '~/.bzr.conf/plugins'
 
 
 def load_plugins():
@@ -37,7 +40,7 @@ def load_plugins():
     paths to look through. Each entry is searched for *.py files (and whatever
     other extensions are used in the platform, such as *.pyd).
     """
-    bzrpath = os.environ.get('BZR_PLUGIN_PATH', os.path.expanduser('~/.bzr/plugins'))
+    bzrpath = os.environ.get('BZR_PLUGIN_PATH', os.path.expanduser())
 
     # The problem with imp.get_suffixes() is that it doesn't include
     # .pyo which is technically valid

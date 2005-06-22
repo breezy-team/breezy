@@ -314,6 +314,9 @@ Medium things
 * Split out upgrade functionality from check command into a separate
   ``bzr upgrade``.
 
+* Don't pass around command classes but rather pass objects.  This'd
+  make it cleaner to construct objects wrapping external commands.
+
 
 Large things
 ------------
