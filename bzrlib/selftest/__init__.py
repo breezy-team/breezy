@@ -149,6 +149,7 @@ def selftest():
     import bzrlib
     import bzrlib.selftest.whitebox
     import bzrlib.selftest.blackbox
+    import bzrlib.selftest.versioning
     from doctest import DocTestSuite
     import os
     import shutil
@@ -160,7 +161,8 @@ def selftest():
     suite = TestSuite()
     tl = TestLoader()
 
-    for m in bzrlib.selftest.whitebox, :
+    for m in bzrlib.selftest.whitebox, \
+            bzrlib.selftest.versioning:
         suite.addTest(tl.loadTestsFromModule(m))
 
     suite.addTest(bzrlib.selftest.blackbox.suite())
