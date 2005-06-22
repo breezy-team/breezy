@@ -29,7 +29,7 @@ from bzrlib import Branch, Inventory, InventoryEntry, BZRDIR, \
 plugin_cmds = {}
 
 
-def register_plugin_command(cmd):
+def register_command(cmd):
     "Utility function to help register a command"
     global plugin_cmds
     k = cmd.__name__
