@@ -34,10 +34,7 @@ class TestVersion(TestBase):
     def runTest(self):
         # output is intentionally passed through to stdout so that we
         # can see the version being tested
-        print
         self.runcmd(['bzr', 'version'])
-        print
-
 
 
 class HelpCommands(TestBase):
@@ -52,7 +49,6 @@ class HelpCommands(TestBase):
 class InitBranch(InTempDir):
     def runTest(self):
         import os
-        print "%s running in %s" % (self, os.getcwdu())
         self.runcmd(['bzr', 'init'])
 
 
