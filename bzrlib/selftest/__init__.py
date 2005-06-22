@@ -103,6 +103,7 @@ class TestBase(TestCase):
         This doesn't add anything to a branch.
         """
         # XXX: It's OK to just create them using forward slashes on windows?
+        import os
         for name in shape:
             assert isinstance(name, basestring)
             if name[-1] == '/':
