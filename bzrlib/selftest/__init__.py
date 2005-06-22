@@ -77,6 +77,7 @@ class TestBase(TestCase):
 
 
     def backtick(self, cmd, retcode=0):
+        """Run a command and return its output"""
         cmd = self.formcmd(cmd)
         child = Popen(cmd, stdout=PIPE, stderr=self.TEST_LOG)
         outd, errd = child.communicate()
@@ -92,6 +93,24 @@ class TestBase(TestCase):
         return outd
 
 
+
+    def build_tree(self, shape):
+        """Build a test tree according to a pattern.
+
+        shape is a sequence of file specifications.  If the final
+        character is '/', a directory is created.
+
+        This doesn't add anything to a branch.
+        """
+        # XXX: It's OK to just create them using forward slashes on windows?
+        for name in shape:
+            assert isinstance(name, basestring)
+            if name[-1] == '/':
+                os.mkdir(name[:-1])
+            else:
+                f = file(name, 'wt')
+                print >>f, "contents of", name
+                f.close()
 
 
     def log(self, msg):
