@@ -40,7 +40,9 @@ def load_plugins():
     paths to look through. Each entry is searched for *.py files (and whatever
     other extensions are used in the platform, such as *.pyd).
     """
-    bzrpath = os.environ.get('BZR_PLUGIN_PATH', os.path.expanduser())
+    bzrpath = os.environ.get('BZR_PLUGIN_PATH')
+    if not bzrpath:
+        bzrpath = os.path.expanduser(DEFAULT_PLUGIN_PATH)
 
     # The problem with imp.get_suffixes() is that it doesn't include
     # .pyo which is technically valid
