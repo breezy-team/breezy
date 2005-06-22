@@ -14,6 +14,9 @@ class cmd_changeset(bzrlib.commands.Command):
     This changeset contains all of the meta-information of a
     diff, rather than just containing the patch information.
 
+    If a file is specified, only changes affecting that file are
+    specified; this gives a changeset that is probably not useful.
+
     Right now, rollup changesets, or working tree changesets are
     not supported. This will only generate a changeset that has been
     committed. You can use "--revision" to specify a certain change
