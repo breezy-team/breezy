@@ -276,6 +276,18 @@ class TreeDelta(object):
         self.modified = []
         self.unchanged = []
 
+    def __eq__(self, other):
+        if not isinstance(other, TreeDelta):
+            return False
+        return self.added == other.added \
+               and self.removed == other.removed \
+               and self.renamed == other.renamed \
+               and self.modified == other.modified \
+               and self.unchanged == other.unchanged
+
+    def __ne__(self, other):
+        return not (self == other)
+
     def __repr__(self):
         return "TreeDelta(added=%r, removed=%r, renamed=%r, modified=%r," \
             " unchanged=%r)" % (self.added, self.removed, self.renamed,
