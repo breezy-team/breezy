@@ -26,6 +26,24 @@ from bzrlib import Branch, Inventory, InventoryEntry, BZRDIR, \
      format_date
 
 
+plugin_cmds = {}
+
+
+def register_plugin_command(cmd):
+    "Utility function to help register a command"
+    global plugin_cmds
+    k = cmd.__name__
+    if k.startswith("cmd_"):
+        k_unsquished = _unsquish_command_name(k)
+    else:
+        k_unsquished = k
+    if not plugin_cmds.has_key(k_unsquished):
+        plugin_cmds[k_unsquished] = cmd
+    else:
+        log_error('Two plugins defined the same command: %r' % k)
+        log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
+
+
 def _squish_command_name(cmd):
     return 'cmd_' + cmd.replace('-', '_')
 
@@ -68,100 +86,36 @@ def _parse_revision_str(revstr):
         revs = int(revstr)
     return revs
 
-def _find_plugins():
-    """Find all python files which are plugins, and load their commands
-    to add to the list of "all commands"
 
-    The environment variable BZRPATH is considered a delimited set of
-    paths to look through. Each entry is searched for *.py files.
-    If a directory is found, it is also searched, but they are 
-    not searched recursively. This allows you to revctl the plugins.
-    
-    Inside the plugin should be a series of cmd_* function, which inherit from
-    the bzrlib.commands.Command class.
-    """
-    bzrpath = os.environ.get('BZRPLUGINPATH', '')
 
-    plugin_cmds = {} 
-    if not bzrpath:
-        return plugin_cmds
-    _platform_extensions = {
-        'win32':'.pyd',
-        'cygwin':'.dll',
-        'darwin':'.dylib',
-        'linux2':'.so'
-        }
-    if _platform_extensions.has_key(sys.platform):
-        platform_extension = _platform_extensions[sys.platform]
-    else:
-        platform_extension = None
-    for d in bzrpath.split(os.pathsep):
-        plugin_names = {} # This should really be a set rather than a dict
-        for f in os.listdir(d):
-            if f.endswith('.py'):
-                f = f[:-3]
-            elif f.endswith('.pyc') or f.endswith('.pyo'):
-                f = f[:-4]
-            elif platform_extension and f.endswith(platform_extension):
-                f = f[:-len(platform_extension)]
-                if f.endswidth('module'):
-                    f = f[:-len('module')]
-            else:
-                continue
-            if not plugin_names.has_key(f):
-                plugin_names[f] = True
-
-        plugin_names = plugin_names.keys()
-        plugin_names.sort()
-        try:
-            sys.path.insert(0, d)
-            for name in plugin_names:
-                try:
-                    old_module = None
-                    try:
-                        if sys.modules.has_key(name):
-                            old_module = sys.modules[name]
-                            del sys.modules[name]
-                        plugin = __import__(name, locals())
-                        for k in dir(plugin):
-                            if k.startswith('cmd_'):
-                                k_unsquished = _unsquish_command_name(k)
-                                if not plugin_cmds.has_key(k_unsquished):
-                                    plugin_cmds[k_unsquished] = getattr(plugin, k)
-                                else:
-                                    log_error('Two plugins defined the same command: %r' % k)
-                                    log_error('Not loading the one in %r in dir %r' % (name, d))
-                    finally:
-                        if old_module:
-                            sys.modules[name] = old_module
-                except ImportError, e:
-                    log_error('Unable to load plugin: %r from %r\n%s' % (name, d, e))
-        finally:
-            sys.path.pop(0)
-    return plugin_cmds
-
-def _get_cmd_dict(include_plugins=True):
+def _get_cmd_dict(plugins_override=True):
     d = {}
     for k, v in globals().iteritems():
         if k.startswith("cmd_"):
             d[_unsquish_command_name(k)] = v
-    if include_plugins:
-        d.update(_find_plugins())
+    # If we didn't load plugins, the plugin_cmds dict will be empty
+    if plugins_override:
+        d.update(plugin_cmds)
+    else:
+        d2 = plugin_cmds.copy()
+        d2.update(d)
+        d = d2
     return d
+
     
-def get_all_cmds(include_plugins=True):
+def get_all_cmds(plugins_override=True):
     """Return canonical name and class for all registered commands."""
-    for k, v in _get_cmd_dict(include_plugins=include_plugins).iteritems():
+    for k, v in _get_cmd_dict(plugins_override=plugins_override).iteritems():
         yield k,v
 
 
-def get_cmd_class(cmd,include_plugins=True):
+def get_cmd_class(cmd, plugins_override=True):
     """Return the canonical name and command class for a command.
     """
     cmd = str(cmd)                      # not unicode
 
     # first look up this command under the specified name
-    cmds = _get_cmd_dict(include_plugins=include_plugins)
+    cmds = _get_cmd_dict(plugins_override=plugins_override)
     try:
         return cmd, cmds[cmd]
     except KeyError:
@@ -1472,6 +1426,77 @@ def _match_argform(cmd, takes_args, args):
     return argdict
 
 
+def _parse_master_args(argv):
+    """Parse the arguments that always go with the original command.
+    These are things like bzr --no-plugins, etc.
+
+    There are now 2 types of option flags. Ones that come *before* the command,
+    and ones that come *after* the command.
+    Ones coming *before* the command are applied against all possible commands.
+    And are generally applied before plugins are loaded.
+
+    The current list are:
+        --builtin   Allow plugins to load, but don't let them override builtin commands,
+                    they will still be allowed if they do not override a builtin.
+        --no-plugins    Don't load any plugins. This lets you get back to official source
+                        behavior.
+        --profile   Enable the hotspot profile before running the command.
+                    For backwards compatibility, this is also a non-master option.
+        --version   Spit out the version of bzr that is running and exit.
+                    This is also a non-master option.
+        --help      Run help and exit, also a non-master option (I think that should stay, though)
+
+    >>> argv, opts = _parse_master_args(['bzr', '--test'])
+    Traceback (most recent call last):
+    ...
+    BzrCommandError: Invalid master option: 'test'
+    >>> argv, opts = _parse_master_args(['bzr', '--version', 'command'])
+    >>> print argv
+    ['command']
+    >>> print opts['version']
+    True
+    >>> argv, opts = _parse_master_args(['bzr', '--profile', 'command', '--more-options'])
+    >>> print argv
+    ['command', '--more-options']
+    >>> print opts['profile']
+    True
+    >>> argv, opts = _parse_master_args(['bzr', '--no-plugins', 'command'])
+    >>> print argv
+    ['command']
+    >>> print opts['no-plugins']
+    True
+    >>> print opts['profile']
+    False
+    >>> argv, opts = _parse_master_args(['bzr', 'command', '--profile'])
+    >>> print argv
+    ['command', '--profile']
+    >>> print opts['profile']
+    False
+    """
+    master_opts = {'builtin':False,
+        'no-plugins':False,
+        'version':False,
+        'profile':False,
+        'help':False
+    }
+
+    # This is the point where we could hook into argv[0] to determine
+    # what front-end is supposed to be run
+    # For now, we are just ignoring it.
+    cmd_name = argv.pop(0)
+    for arg in argv[:]:
+        if arg[:2] != '--': # at the first non-option, we return the rest
+            break
+        arg = arg[2:] # Remove '--'
+        if arg not in master_opts:
+            # We could say that this is not an error, that we should
+            # just let it be handled by the main section instead
+            raise BzrCommandError('Invalid master option: %r' % arg)
+        argv.pop(0) # We are consuming this entry
+        master_opts[arg] = True
+    return argv, master_opts
+
+
 
 def run_bzr(argv):
     """Execute a command.
@@ -1481,15 +1506,28 @@ def run_bzr(argv):
     """
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
     
-    include_plugins=True
     try:
-        args, opts = parse_args(argv[1:])
-        if 'help' in opts:
-            import help
-            if args:
-                help.help(args[0])
+        # some options like --builtin and --no-plugins have special effects
+        argv, master_opts = _parse_master_args(argv)
+        if 'no-plugins' not in master_opts:
+            bzrlib.load_plugins()
+
+        args, opts = parse_args(argv)
+
+        if master_opts['help']:
+            from bzrlib.help import help
+            if argv:
+                help(argv[0])
             else:
-                help.help()
+                help()
+            return 0            
+            
+        if 'help' in opts:
+            from bzrlib.help import help
+            if args:
+                help(args[0])
+            else:
+                help()
             return 0
         elif 'version' in opts:
             show_version()
@@ -1504,14 +1542,15 @@ def run_bzr(argv):
         return 1
           
 
-    canonical_cmd, cmd_class = get_cmd_class(cmd,include_plugins=include_plugins)
+    plugins_override = not (master_opts['builtin'])
+    canonical_cmd, cmd_class = get_cmd_class(cmd, plugins_override=plugins_override)
 
-    # global option
+    profile = master_opts['profile']
+    # For backwards compatibility, I would rather stick with --profile being a
+    # master/global option
     if 'profile' in opts:
         profile = True
         del opts['profile']
-    else:
-        profile = False
 
     # check options are reasonable
     allowed = cmd_class.takes_options

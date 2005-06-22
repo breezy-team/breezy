@@ -153,6 +153,7 @@ def test_plugins():
     """Run a test involving creating a plugin to load,
     and making sure it is seen properly.
     """
+    orig_help = backtick('bzr help commands') # No plugins yet
     mkdir('plugin_test')
     f = open(os.path.join('plugin_test', 'myplug.py'), 'wb')
     f.write("""import bzrlib, bzrlib.commands
@@ -225,6 +226,9 @@ try:
     
     runcmd(['mkdir', TESTDIR])
     cd(TESTDIR)
+    # This means that any command that is naively run in this directory
+    # Won't affect the parent directory.
+    runcmd('bzr init')
     test_root = os.getcwd()
 
     progress("introductory commands")

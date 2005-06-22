@@ -23,6 +23,7 @@ from tree import Tree
 from diff import compare_trees
 from trace import mutter, warning, open_tracefile
 from log import show_log
+from plugin import load_plugins
 import add
 
 BZRDIR = ".bzr"
