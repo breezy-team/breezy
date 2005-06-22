@@ -98,7 +98,7 @@ def load_plugins():
                         break
                 else:
                     continue
-            mutter('add plugin name' + f)
+            mutter('add plugin name %s' % f)
             plugin_names.add(f)
 
         plugin_names = list(plugin_names)
