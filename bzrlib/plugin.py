@@ -22,27 +22,45 @@
 # commands, import bzrlib.commands and add your new command to the
 # plugin_cmds variable.
 
-import sys, os, imp
-try:
-    set
-except NameError:
-    from sets import Set as set         # python2.3
-from bzrlib.trace import log_error
-
 
 DEFAULT_PLUGIN_PATH = '~/.bzr.conf/plugins'
 
+all_plugins = []
+
 
 def load_plugins():
-    """Find all python files which are plugins, and load them
-
-    The environment variable BZR_PLUGIN_PATH is considered a delimited set of
-    paths to look through. Each entry is searched for *.py files (and whatever
-    other extensions are used in the platform, such as *.pyd).
     """
+    Find all python plugins and load them.
+
+    Loading a plugin means importing it into the python interpreter.
+    The plugin is expected to make calls to register commands when
+    it's loaded (or perhaps access other hooks in future.)
+
+    A list of plugs is stored in bzrlib.plugin.all_plugins for future
+    reference.
+
+    The environment variable BZR_PLUGIN_PATH is considered a delimited
+    set of paths to look through. Each entry is searched for *.py
+    files (and whatever other extensions are used in the platform,
+    such as *.pyd).
+    """
+
+    import sys, os, imp
+    try:
+        set
+    except NameError:
+        from sets import Set as set         # python2.3
+
+    from bzrlib.trace import log_error, mutter, log_exception
+    from bzrlib.errors import BzrError
+
     bzrpath = os.environ.get('BZR_PLUGIN_PATH')
     if not bzrpath:
         bzrpath = os.path.expanduser(DEFAULT_PLUGIN_PATH)
+
+    global all_plugins
+    if all_plugins:
+        raise BzrError("plugins already initialized")
 
     # The problem with imp.get_suffixes() is that it doesn't include
     # .pyo which is technically valid
@@ -53,8 +71,9 @@ def load_plugins():
     suffixes.append(('.pyo', 'rb', imp.PY_COMPILED))
     package_entries = ['__init__.py', '__init__.pyc', '__init__.pyo']
     for d in bzrpath.split(os.pathsep):
-        # going trough them one by one allows different plugins with the same
+        # going through them one by one allows different plugins with the same
         # filename in different directories in the path
+        mutter('looking for plugins in %s' % d)
         if not d:
             continue
         plugin_names = set()
@@ -79,6 +98,7 @@ def load_plugins():
                         break
                 else:
                     continue
+            mutter('add plugin name' + f)
             plugin_names.add(f)
 
         plugin_names = list(plugin_names)
@@ -86,12 +106,16 @@ def load_plugins():
         for name in plugin_names:
             try:
                 plugin_info = imp.find_module(name, [d])
+                mutter('load plugin %r' % (plugin_info,))
                 try:
                     plugin = imp.load_module('bzrlib.plugin.' + name,
                                              *plugin_info)
+                    all_plugins.append(plugin_info)
                 finally:
                     if plugin_info[0] is not None:
                         plugin_info[0].close()
             except Exception, e:
-                log_error('Unable to load plugin: %r from %r\n%s' % (name, d, e))
+                log_error('Unable to load plugin %r from %r' % (name, d))
+                log_error(str(e))
+                log_exception()
 

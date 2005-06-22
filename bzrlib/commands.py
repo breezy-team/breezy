@@ -1275,7 +1275,8 @@ class cmd_plugins(Command):
     hidden = True
     def run(self):
         import bzrlib.plugin
-        print dir(bzrlib.plugin)
+        from pprint import pprint
+        pprint(bzrlib.plugin.all_plugins)
 
 
 
