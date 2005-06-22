@@ -30,3 +30,15 @@ class Mkdir(InTempDir):
         run_bzr(['bzr', 'mkdir', 'foo'])
         self.assert_(os.path.isdir('foo'))
 
+        self.assertRaises(OSError, run_bzr, ['bzr', 'mkdir', 'foo'])
+
+        from bzrlib.diff import compare_trees, TreeDelta
+        from bzrlib.branch import Branch
+        b = Branch('.')
+        
+        delta = compare_trees(b.basis_tree(), b.working_tree())
+
+        self.assertEquals(len(delta.added), 1)
+        self.assertEquals(delta.added[0][0], 'foo')
+        self.failIf(delta.modified)
+
