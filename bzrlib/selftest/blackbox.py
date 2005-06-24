@@ -98,7 +98,7 @@ class OldTests(InTempDir):
         f.close()
 
         out = backtick("bzr unknowns")
-        assert out == 'test.txt\n'
+        self.assertEquals(out, 'test.txt\n')
 
         out = backtick("bzr status")
         assert out == 'unknown:\n  test.txt\n'
