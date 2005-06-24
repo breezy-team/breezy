@@ -39,12 +39,15 @@ def make_writable(filename):
 
 _QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/_~-])')
 def quotefn(f):
-    """Return shell-quoted filename"""
-    ## We could be a bit more terse by using double-quotes etc
-    f = _QUOTE_RE.sub(r'\\\1', f)
-    if f[0] == '~':
-        f[0:1] = r'\~' 
-    return f
+    """Return a quoted filename filename
+
+    This previously used backslash quoting, but that works poorly on
+    Windows."""
+    # TODO: I'm not really sure this is the best format either.x
+    if _QUOTE_RE.search(f):
+        return '"' + f + '"'
+    else:
+        return f
 
 
 def file_kind(f):
@@ -68,6 +71,33 @@ def kind_marker(kind):
         return '@'
     else:
         raise BzrError('invalid file kind %r' % kind)
+
+
+
+def backup_file(fn):
+    """Copy a file to a backup.
+
+    Backups are named in GNU-style, with a ~ suffix.
+
+    If the file is already a backup, it's not copied.
+    """
+    import os
+    if fn[-1] == '~':
+        return
+    bfn = fn + '~'
+
+    inf = file(fn, 'rb')
+    try:
+        content = inf.read()
+    finally:
+        inf.close()
+    
+    outf = file(bfn, 'wb')
+    try:
+        outf.write(content)
+    finally:
+        outf.close()
+
 
 
 
