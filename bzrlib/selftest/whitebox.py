@@ -40,10 +40,12 @@ class Revert(InTempDir):
         # revert file modified since last revision
         b.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
+        self.check_file_contents('hello.txt~', 'new hello')
 
-        # reverting again causes no change
+        # reverting again clobbers the backup
         b.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
+        self.check_file_contents('hello.txt~', 'initial hello')
 
 
 
