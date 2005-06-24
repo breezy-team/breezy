@@ -338,16 +338,19 @@ class Branch(object):
         That is to say, the inventory describing changes underway, that
         will be committed to the next revision.
         """
-        ## TODO: factor out to atomicfile?  is rename safe on windows?
-        ## TODO: Maybe some kind of clean/dirty marker on inventory?
-        tmpfname = self.controlfilename('inventory.tmp')
-        tmpf = file(tmpfname, 'wb')
-        inv.write_xml(tmpf)
-        tmpf.close()
-        inv_fname = self.controlfilename('inventory')
-        if sys.platform == 'win32':
-            os.remove(inv_fname)
-        os.rename(tmpfname, inv_fname)
+        self.lock_write()
+        try:
+            from bzrlib.atomicfile import AtomicFile
+
+            f = AtomicFile(self.controlfilename('inventory'), 'wb')
+            try:
+                inv.write_xml(f)
+                f.commit()
+            finally:
+                f.close()
+        finally:
+            self.unlock()
+        
         mutter('wrote working inventory')
             
 
