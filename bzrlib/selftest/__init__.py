@@ -183,10 +183,12 @@ class _MyResult(TestResult):
     def addError(self, test, err):
         print >>self.out, 'ERROR'
         TestResult.addError(self, test, err)
+        _show_test_failure('error', test, err, self.out)
 
     def addFailure(self, test, err):
         print >>self.out, 'FAILURE'
         TestResult.addFailure(self, test, err)
+        _show_test_failure('failure', test, err, self.out)
 
     def addSuccess(self, test):
         print >>self.out, 'OK'
@@ -273,12 +275,6 @@ def _setup_test_dir():
     
 
 def _show_results(result):
-     for case, tb in result.errors:
-         _show_test_failure('ERROR', case, tb)
-
-     for case, tb in result.failures:
-         _show_test_failure('FAILURE', case, tb)
-         
      print
      print '%4d tests run' % result.testsRun
      print '%4d errors' % len(result.errors)
@@ -286,19 +282,19 @@ def _show_results(result):
 
 
 
-def _show_test_failure(kind, case, tb):
-     print (kind + '! ').ljust(60, '-')
-     print case
+def _show_test_failure(kind, case, tb, out):
+     print >>out, (kind + '! ').ljust(60, '-')
+     print >>out, case
      desc = case.shortDescription()
      if desc:
-         print '   (%s)' % desc
-     print tb
+         print >>out, '   (%s)' % desc
+     print >>out, tb
 
      if isinstance(case, TestBase):
-         print
-         print 'log from this test:'
-         print case._log_buf
+         print >>out
+         print >>out, 'log from this test:'
+         print >>out, case._log_buf
          
-     print ''.ljust(60, '-')
+     print >>out, ''.ljust(60, '-')
     
 
