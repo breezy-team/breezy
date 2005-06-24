@@ -1234,7 +1234,7 @@ class cmd_merge(Command):
 
 
 
-class cmd_simple_revert(Command):
+class cmd_revert(Command):
     """Restore selected files from a previous revision.
     """
     takes_args = ['file+']
@@ -1247,7 +1247,7 @@ class cmd_simple_revert(Command):
         b.revert([b.relpath(f) for f in file_list])
 
 
-class cmd_revert(Command):
+class cmd_merge_revert(Command):
     """Reverse all changes since the last commit.
 
     Only versioned files are affected.
