@@ -139,9 +139,19 @@ class TestBase(TestCase):
             else:
                 extras.append(name)
         if shape:
-            self.fail("expcted paths not found in inventory: %r" % shape)
+            self.fail("expected paths not found in inventory: %r" % shape)
         if extras:
             self.fail("unexpected paths found in inventory: %r" % extras)
+
+
+    def check_file_contents(self, filename, expect):
+        self.log("check contents of file %s" % filename)
+        contents = file(filename, 'r').read()
+        if contents != expect:
+            self.log("expected: %r" % expected)
+            self.log("actually: %r" % contents)
+            self.fail("contents of %s not as expected")
+            
 
 
 class InTempDir(TestBase):
