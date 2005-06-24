@@ -120,8 +120,29 @@ class TestBase(TestCase):
         """Log a message to a progress file"""
         self._log_buf = self._log_buf + str(msg) + '\n'
         print >>self.TEST_LOG, msg
-        
-               
+
+
+    def check_inventory_shape(self, inv, shape):
+        """
+        Compare an inventory to a list of expected names.
+
+        Fail if they are not precisely equal.
+        """
+        extras = []
+        shape = list(shape)             # copy
+        for path, ie in inv.entries():
+            name = path.replace('\\', '/')
+            if ie.kind == 'dir':
+                name = name + '/'
+            if name in shape:
+                shape.remove(name)
+            else:
+                extras.append(name)
+        if shape:
+            self.fail("expcted paths not found in inventory: %r" % shape)
+        if extras:
+            self.fail("unexpected paths found in inventory: %r" % extras)
+
 
 class InTempDir(TestBase):
     """Base class for tests run in a temporary branch."""
