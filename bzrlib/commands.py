@@ -1233,6 +1233,20 @@ class cmd_merge(Command):
               check_clean=(not force))
 
 
+
+class cmd_simple_revert(Command):
+    """Restore selected files from a previous revision.
+    """
+    takes_args = ['file+']
+    def run(self, file_list):
+        if not file_list:
+            file_list = ['.']
+            
+        b = find_branch(file_list[0])
+
+        b.revert([b.relpath(f) for f in file_list])
+
+
 class cmd_revert(Command):
     """Reverse all changes since the last commit.
 

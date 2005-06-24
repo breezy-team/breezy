@@ -5,14 +5,40 @@ import unittest
 
 from bzrlib.selftest import InTempDir, TestBase
 from bzrlib.branch import ScratchBranch, Branch
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, NotVersionedError
+
+
+class Revert(InTempDir):
+    """Test selected-file revert"""
+    def runTest(self):
+        b = Branch('.', init=True)
+
+        self.build_tree(['hello.txt'])
+        file('hello.txt', 'w').write('initial hello')
+
+        self.assertRaises(NotVersionedError,
+                          b.revert, ['hello.txt'])
+        
+        b.add(['hello.txt'])
+        b.commit('create initial hello.txt')
+
+        self.check_file_contents('hello.txt', 'initial hello')
+        file('hello.txt', 'w').write('new hello')
+        self.check_file_contents('hello.txt', 'new hello')
+
+        # revert file modified since last revision
+        b.revert(['hello.txt'])
+        self.check_file_contents('hello.txt', 'initial hello')
+
+        # reverting again causes no change
+        b.revert(['hello.txt'])
+        self.check_file_contents('hello.txt', 'initial hello')
+
 
 
 class RenameDirs(InTempDir):
     """Test renaming directories and the files within them."""
     def runTest(self):
-        from bzrlib.commit import commit
-
         b = Branch('.', init=True)
         self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
         b.add(['dir', 'dir/sub', 'dir/sub/file'])

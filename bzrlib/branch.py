@@ -948,6 +948,43 @@ class Branch(object):
             self.unlock()
 
 
+    def revert(self, filenames, old_tree=None):
+        """Restore selected files to the versions from a previous tree.
+        """
+        from bzrlib.errors import NotVersionedError, BzrError
+        from bzrlib.atomicfile import AtomicFile
+        
+        inv = self.read_working_inventory()
+        if old_tree is None:
+            old_tree = self.basis_tree()
+        old_inv = old_tree.inventory
+
+        nids = []
+        for fn in filenames:
+            file_id = inv.path2id(fn)
+            if not file_id:
+                raise NotVersionedError("not a versioned file", fn)
+            nids.append((fn, file_id))
+            
+        # TODO: Rename back if it was previously at a different location
+
+        # TODO: If given a directory, restore the entire contents from
+        # the previous version.
+
+        # TODO: Make a backup to a temporary file.
+
+        # TODO: If the file previously didn't exist, delete it?
+        for fn, file_id in nids:
+            if not old_inv.has_id(file_id):
+                raise BzrError("file not present in old tree", fn, file_id)
+            f = AtomicFile(fn, 'wb')
+            try:
+                f.write(old_tree.get_file(file_id).read())
+                f.commit()
+            finally:
+                f.close()
+
+
 
 class ScratchBranch(Branch):
     """Special test class: a branch that cleans up after itself.
