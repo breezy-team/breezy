@@ -425,7 +425,7 @@ class Branch(object):
                 inv.add_path(f, kind=kind, file_id=file_id)
 
                 if verbose:
-                    show_status('A', kind, quotefn(f))
+                    print 'added', quotefn(f)
 
                 mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
 
