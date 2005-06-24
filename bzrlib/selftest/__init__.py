@@ -42,7 +42,9 @@ class TestBase(TestCase):
 
     OVERRIDE_PYTHON = None # to run with alternative python 'python'
     BZRPATH = 'bzr'
-    
+
+    _log_buf = ""
+
 
     def formcmd(self, cmd):
         if isinstance(cmd, basestring):
@@ -116,7 +118,9 @@ class TestBase(TestCase):
 
     def log(self, msg):
         """Log a message to a progress file"""
+        self._log_buf = self._log_buf + str(msg) + '\n'
         print >>self.TEST_LOG, msg
+        
                
 
 class InTempDir(TestBase):
@@ -268,5 +272,12 @@ def _show_test_failure(kind, case, tb):
      if desc:
          print '   (%s)' % desc
      print tb
+
+     if isinstance(case, TestBase):
+         print
+         print 'log from this test:'
+         print case._log_buf
+         
      print ''.ljust(60, '-')
     
+
