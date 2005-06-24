@@ -785,7 +785,6 @@ class Branch(object):
                     
         
     def commit(self, *args, **kw):
-        """Deprecated"""
         from bzrlib.commit import commit
         commit(self, *args, **kw)
         
