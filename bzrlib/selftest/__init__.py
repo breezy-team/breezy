@@ -183,6 +183,7 @@ class _MyResult(TestResult):
     def startTest(self, test):
         # TODO: Maybe show test.shortDescription somewhere?
         print >>self.out, '%-60.60s' % test.id(),
+        self.out.flush()
         TestResult.startTest(self, test)
 
     def stopTest(self, test):
