@@ -230,11 +230,11 @@ def selftest():
             bzrlib.selftest.versioning:
         suite.addTest(tl.loadTestsFromModule(m))
 
-    suite.addTest(bzrlib.selftest.blackbox.suite())
-
     for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \
             bzrlib.commands:
         suite.addTest(DocTestSuite(m))
+
+    suite.addTest(bzrlib.selftest.blackbox.suite())
 
     # save stdout & stderr so there's no leakage from code-under-test
     real_stdout = sys.stdout
