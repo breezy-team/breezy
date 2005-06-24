@@ -8,6 +8,17 @@ from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
 
 
+class Unknowns(InTempDir):
+    def runTest(self):
+        b = Branch('.', init=True)
+
+        self.build_tree(['hello.txt',
+                         'hello.txt~'])
+
+        self.assertEquals(list(b.unknowns()),
+                          ['hello.txt'])
+
+
 class Revert(InTempDir):
     """Test selected-file revert"""
     def runTest(self):
