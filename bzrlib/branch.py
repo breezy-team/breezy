@@ -521,22 +521,18 @@ class Branch(object):
 
 
     def append_revision(self, revision_id):
+        from bzrlib.atomicfile import AtomicFile
+
         mutter("add {%s} to revision-history" % revision_id)
-        rev_history = self.revision_history()
+        rev_history = self.revision_history() + [revision_id]
 
-        tmprhname = self.controlfilename('revision-history.tmp')
-        rhname = self.controlfilename('revision-history')
-        
-        f = file(tmprhname, 'wt')
-        rev_history.append(revision_id)
-        f.write('\n'.join(rev_history))
-        f.write('\n')
-        f.close()
-
-        if sys.platform == 'win32':
-            os.remove(rhname)
-        os.rename(tmprhname, rhname)
-        
+        f = AtomicFile(self.controlfilename('revision-history'))
+        try:
+            for rev_id in rev_history:
+                print >>f, rev_id
+            f.commit()
+        finally:
+            f.close()
 
 
     def get_revision(self, revision_id):
