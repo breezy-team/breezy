@@ -145,8 +145,7 @@ class RemoteBranch(Branch):
 
     def get_revision(self, revision_id):
         from revision import Revision
-        revf = get_url(self.baseurl + '/.bzr/revision-store/' + revision_id,
-                       True)
+        revf = self.revision_store[revision_id]
         r = Revision.read_xml(revf)
         if r.revision_id != revision_id:
             raise BzrCheckError('revision stored as {%s} actually contains {%s}'
