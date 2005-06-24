@@ -293,19 +293,23 @@ def _show_results(result):
 
 
 
-def _show_test_failure(kind, case, tb, out):
-     print >>out, (kind + '! ').ljust(60, '-')
-     print >>out, case
-     desc = case.shortDescription()
-     if desc:
-         print >>out, '   (%s)' % desc
-     print >>out, tb
-
-     if isinstance(case, TestBase):
-         print >>out
-         print >>out, 'log from this test:'
-         print >>out, case._log_buf
+def _show_test_failure(kind, case, exc_info, out):
+    from traceback import print_exception
+    
+    print >>out, '-' * 60
+    print >>out, case
+    
+    desc = case.shortDescription()
+    if desc:
+        print >>out, '   (%s)' % desc
          
-     print >>out, ''.ljust(60, '-')
+    print_exception(exc_info[0], exc_info[1], exc_info[2], None, out)
+        
+    if isinstance(case, TestBase):
+        print >>out
+        print >>out, 'log from this test:'
+        print >>out, case._log_buf
+         
+    print >>out, '-' * 60
     
 
