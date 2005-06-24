@@ -345,6 +345,18 @@ class OldTests(InTempDir):
 
 
 
+class RevertCommand(InTempDir):
+    def runTest(self):
+        self.runcmd('bzr init')
+
+        file('hello', 'wt').write('foo')
+        self.runcmd('bzr add hello')
+        self.runcmd('bzr commit -m setup hello')
+        
+        file('hello', 'wt').write('bar')
+        self.runcmd('bzr revert hello')
+        self.check_file_contents('hello', 'foo')
+
     
         
 
@@ -362,5 +374,7 @@ def suite():
                 HelpCommands(),
                 UserIdentity(),
                 InvalidCommands(),
-                OldTests()])
+                RevertCommand(),
+                OldTests(),
+                ])
     return s
