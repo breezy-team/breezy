@@ -7,6 +7,9 @@ DEVELOPMENT HEAD
 
     * New 'bzr mkdir' command.
 
+    * Commit mesage is fetched from an editor if not given on the
+      command line; patch from Torsten Marek.
+
   CHANGES:
 
     * New ``bzr upgrade`` command to upgrade the format of a branch,

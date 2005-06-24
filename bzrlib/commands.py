@@ -1073,11 +1073,22 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=True, selected_list=None):
         from bzrlib.commit import commit
+        from bzrlib.osutils import get_text_message
 
         ## Warning: shadows builtin file()
         if not message and not file:
-            raise BzrCommandError("please specify a commit message",
-                                  ["use either --message or --file"])
+            import cStringIO
+            stdout = sys.stdout
+            catcher = cStringIO.StringIO()
+            sys.stdout = catcher
+            cmd_status({"file_list":selected_list}, {})
+            info = catcher.getvalue()
+            sys.stdout = stdout
+            message = get_text_message(info)
+            
+            if message is None:
+                raise BzrCommandError("please specify a commit message",
+                                      ["use either --message or --file"])
         elif message and file:
             raise BzrCommandError("please specify either --message or --file")
         
