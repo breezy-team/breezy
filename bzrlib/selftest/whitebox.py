@@ -1,18 +1,47 @@
 #! /usr/bin/python
 
-from bzrlib.branch import ScratchBranch
-from bzrlib.errors import NotBranchError
-from unittest import TestCase
-import os, unittest
+import os
+import unittest
 
-class BranchPathTestCase(TestCase):
+from bzrlib.selftest import InTempDir, TestBase
+from bzrlib.branch import ScratchBranch, Branch
+from bzrlib.errors import NotBranchError
+
+
+class RenameDirs(InTempDir):
+    """Test renaming directories and the files within them."""
+    def runTest(self):
+        from bzrlib.commit import commit
+
+        b = Branch('.', init=True)
+        self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
+        b.add(['dir', 'dir/sub', 'dir/sub/file'])
+
+        b.commit('create initial state')
+
+        # TODO: lift out to a test helper that checks the shape of
+        # an inventory
+        
+        revid = b.revision_history()[0]
+        self.log('first revision_id is {%s}' % revid)
+        
+        inv = b.get_revision_inventory(revid)
+        self.log('contents of inventory: %r' % inv.entries())
+
+        self.check_inventory_shape(inv,
+                                   ['dir', 'dir/sub', 'dir/sub/file'])
+
+        
+
+
+class BranchPathTestCase(TestBase):
     """test for branch path lookups
 
     Branch.relpath and bzrlib.branch._relpath do a simple but subtle
     job: given a path (either relative to cwd or absolute), work out
     if it is inside a branch and return the path relative to the base.
     """
-    
+
     def runTest(self):
         from bzrlib.branch import _relpath
         import tempfile, shutil
@@ -62,8 +91,3 @@ class BranchPathTestCase(TestCase):
         finally:
             os.chdir(savedir)
             shutil.rmtree(dtmp)
-
-                              
-if __name__ == '__main__':
-    unittest.main()
-    
