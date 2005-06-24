@@ -19,6 +19,10 @@ from trace import mutter
 from errors import BzrError
 
 
+# TODO: Rather than building a changeset object, we should probably
+# invoke callbacks on an object.  That object can either accumulate a
+# list, write them out directly, etc etc.
+
 def internal_diff(old_label, oldlines, new_label, newlines, to_file):
     import difflib
     
@@ -267,6 +271,10 @@ class TreeDelta(object):
     Files that are both modified and renamed are listed only in
     renamed, with the text_modified flag true.
 
+    Files are only considered renamed if their name has changed or
+    their parent directory has changed.  Renaming a directory
+    does not count as renaming all its contents.
+
     The lists are normally sorted when the delta is created.
     """
     def __init__(self):
@@ -392,6 +400,9 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
             old_path = old_inv.id2path(file_id)
             new_path = new_inv.id2path(file_id)
 
+            old_ie = old_inv[file_id]
+            new_ie = new_inv[file_id]
+
             if specific_files:
                 if (not is_inside_any(specific_files, old_path) 
                     and not is_inside_any(specific_files, new_path)):
@@ -410,7 +421,8 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
             # the same and the parents are unchanged all the way up.
             # May not be worthwhile.
             
-            if old_path != new_path:
+            if (old_ie.name != new_ie.name
+                or old_ie.parent_id != new_ie.parent_id):
                 delta.renamed.append((old_path, new_path, file_id, kind,
                                       text_modified))
             elif text_modified:
