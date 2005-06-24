@@ -31,6 +31,16 @@ class RenameDirs(InTempDir):
         self.check_inventory_shape(inv,
                                    ['dir', 'dir/sub', 'dir/sub/file'])
 
+        b.rename_one('dir', 'newdir')
+
+        self.check_inventory_shape(b.inventory,
+                                   ['newdir', 'newdir/sub', 'newdir/sub/file'])
+
+        b.rename_one('newdir/sub', 'newdir/newsub')
+        self.check_inventory_shape(b.inventory,
+                                   ['newdir', 'newdir/newsub',
+                                    'newdir/newsub/file'])
+
         
 
 
