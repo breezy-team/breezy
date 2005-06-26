@@ -1,0 +1,8 @@
+## *.diff
+*.py[oc]
+*.sw[pon]
+*~
+.arch-ids
+.arch-inventory
+{arch}
+,*
