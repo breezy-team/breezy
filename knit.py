@@ -65,6 +65,8 @@ class Knit(object):
         """Yield list of (index-id, line) pairs for the specified version.
 
         The index indicates when the line originated in the weave."""
+        self._v[index]                  # check index is valid
+
         for origin, line in self._l:
             if origin == index:
                 yield origin, line
@@ -72,11 +74,8 @@ class Knit(object):
 
     def getiter(self, index):
         """Yield lines for the specified version."""
-        self._v[index]                  # check index is valid
-
-        for idx, line in self._l:
-            if idx == index:
-                yield line
+        for origin, line in self.annotate_iter(index):
+            yield line
 
 
     def get(self, index):
