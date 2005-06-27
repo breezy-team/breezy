@@ -144,6 +144,17 @@ class InsertLines(TestBase):
                           (3, 'middle line'),
                           (1, 'line 2')])
 
+        # now multiple insertions at different places
+        k.add([0, 1, 3],
+              ['line 1', 'aaa', 'middle line', 'bbb', 'line 2', 'ccc'])
+
+        self.assertEqual(k.annotate(4), 
+                         [(0, 'line 1'),
+                          (4, 'aaa'),
+                          (3, 'middle line'),
+                          (4, 'bbb'),
+                          (1, 'line 2'),
+                          (4, 'ccc')])
 
 class DeleteLines(TestBase):
     """Test recording revisions that delete lines.

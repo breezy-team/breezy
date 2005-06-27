@@ -77,6 +77,11 @@ class Knit(object):
             parents = frozenset(parents)
             delta = self._delta(parents, text)
 
+            # offset gives the number of lines that have been inserted
+            # into the weave up to the current point; if the original edit instruction
+            # says to change line A then we actually change (A+offset)
+            offset = 0
+
             for i1, i2, newlines in delta:
                 assert 0 <= i1
                 assert i1 <= i2
@@ -92,7 +97,9 @@ class Knit(object):
                 for line in newlines:
                     to_insert.append((idx, line))
                 
-                self._l[i1:i1] = to_insert
+                self._l[(i1+offset):(i1+offset)] = to_insert
+
+                offset += len(newlines)
 
             self._v.append(VerInfo(parents))
         else:
