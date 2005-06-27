@@ -21,6 +21,7 @@
 
 """knit - a weave-like structure"""
 
+# TODO: Perhaps have copy and comparison methods?
 
 
 class VerInfo(object):
@@ -252,15 +253,10 @@ class Knit(object):
             real_i1 = basis[i1][0]
             real_i2 = basis[i2][0]
 
-            # find the text identified by j:
-            if j1 == j2:
-                newlines = []
-            else:
-                assert 0 <= j1
-                assert j1 <= j2
-                assert j2 <= len(lines)
-                newlines = lines[j1:j2]
+            assert 0 <= j1
+            assert j1 <= j2
+            assert j2 <= len(lines)
 
-            yield real_i1, real_i2, newlines
+            yield real_i1, real_i2, lines[j1:j2]
 
 
