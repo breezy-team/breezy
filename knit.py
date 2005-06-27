@@ -57,6 +57,19 @@ class Knit(object):
         return idx
 
     
+    def annotate(self, index):
+        return list(self.annotate_iter(index))
+
+
+    def annotate_iter(self, index):
+        """Yield list of (index-id, line) pairs for the specified version.
+
+        The index indicates when the line originated in the weave."""
+        for origin, line in self._l:
+            if origin == index:
+                yield origin, line
+
+
     def getiter(self, index):
         """Yield lines for the specified version."""
         self._v[index]                  # check index is valid

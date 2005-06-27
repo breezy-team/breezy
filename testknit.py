@@ -44,6 +44,15 @@ class StoreText(TestBase):
         self.assertEqual(idx, 0)
 
 
+
+class AnnotateOne(TestBase):
+    def runTest(self):
+        k = Knit()
+        k.add(TEXT_0)
+        self.assertEqual(k.annotate(0),
+                         [(0, TEXT_0[0])])
+
+
 class StoreTwo(TestBase):
     def runTest(self):
         k = Knit()
