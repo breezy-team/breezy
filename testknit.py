@@ -145,6 +145,31 @@ class InsertLines(TestBase):
                           (1, 'line 2')])
 
 
+class DeleteLines(TestBase):
+    """Test recording revisions that delete lines.
+
+    This relies on the weave having a way to represent lines knocked
+    out by a later revision."""
+    def runTest(self):
+        k = Knit()
+
+        k.add([], ["line the first",
+                   "line 2",
+                   "line 3",
+                   "fine"])
+
+        self.assertEqual(len(k.get(0)), 4)
+
+        return ################################## SKIPPED
+
+        k.add([0], ["line the first",
+                   "fine"])
+
+        self.assertEqual(k.get(1),
+                         ["line the first",
+                          "fine"])
+
+
 
 class IncludeVersions(TestBase):
     """Check texts that are stored across multiple revisions.
