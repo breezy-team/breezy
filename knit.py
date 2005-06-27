@@ -149,14 +149,14 @@ class Knit(object):
         pure delete.  (Similar to difflib.)
         """
 
-        from pprint import pprint
+        ##from pprint import pprint
 
         # first get basis for comparison
         # basis holds (lineno, origin, line)
         basis = []
 
-        print 'my lines:'
-        pprint(self._l)
+        ##print 'my lines:'
+        ##pprint(self._l)
         
         lineno = 0
         for origin, line in self._l:
@@ -178,11 +178,11 @@ class Knit(object):
         from difflib import SequenceMatcher
         s = SequenceMatcher(None, basis_lines, lines)
 
-        print 'basis sequence:'
-        pprint(basis)
+        ##print 'basis sequence:'
+        ##pprint(basis)
 
         for tag, i1, i2, j1, j2 in s.get_opcodes():
-            print tag, i1, i2, j1, j2
+            ##print tag, i1, i2, j1, j2
 
             if tag == 'equal':
                 continue
@@ -196,8 +196,8 @@ class Knit(object):
             if j1 == j2:
                 newlines = []
             else:
-                assert j1 >= 0
-                assert j2 >= j1
+                assert 0 <= j1
+                assert j1 <= j2
                 assert j2 <= len(lines)
                 newlines = lines[j1:j2]
 
