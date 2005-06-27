@@ -26,15 +26,19 @@ class Knit(object):
     the version-id is used to reference it in the larger world.
 
     _l
-        List of lines.
+        List of edit instructions.
+
+        Each line is stored as a tuple of (index-id, text).  The line
+        is present in the version equal to index-id.
 
     _v
         List of versions, indexed by index number.  Each one is an empty
-        tuple.
+        tuple because the version_id isn't stored yet.
     """
     def __init__(self):
         self._l = []
         self._v = []
+
         
     def add(self, text):
         """Add a single text on top of the weave.
@@ -44,15 +48,26 @@ class Knit(object):
             raise ValueError("text should be a list, not %s" % type(text))
 
         idx = len(self._v)
-        self._l = text
+
+        # all of the previous texts are turned off; just append lines at the bottom
+        for line in text:
+            self._l.append((idx, line))
+
         self._v.append(())
         return idx
 
     
-    def get(self, index):
+    def getiter(self, index):
+        """Yield lines for the specified version."""
         self._v[index]                  # check index is valid
-        
-        return self._l[:]
+
+        for idx, line in self._l:
+            if idx == index:
+                yield line
+
+
+    def get(self, index):
+        return list(self.getiter(index))
 
 
 text1 = [(0, "hello world", True)]

@@ -44,6 +44,20 @@ class StoreText(TestBase):
         self.assertEqual(idx, 0)
 
 
+class StoreTwo(TestBase):
+    def runTest(self):
+        k = Knit()
+
+        idx = k.add(TEXT_0)
+        self.assertEqual(idx, 0)
+
+        idx = k.add(TEXT_1)
+        self.assertEqual(idx, 1)
+
+        self.assertEqual(k.get(0), TEXT_0)
+        self.assertEqual(k.get(1), TEXT_1)
+
+
 def testknit():
     import testsweet
     from unittest import TestSuite, TestLoader
