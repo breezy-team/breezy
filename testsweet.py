@@ -286,7 +286,7 @@ def _setup_test_log():
     log_filename = os.path.abspath('test.log')
     TestBase.TEST_LOG = open(log_filename, 'wt', buffering=1) # line buffered
 
-    print >>TestBase.TEST_LOG, "bzr tests run at " + time.ctime()
+    print >>TestBase.TEST_LOG, "tests run at " + time.ctime()
     print '%-30s %s' % ('test log', log_filename)
 
 
