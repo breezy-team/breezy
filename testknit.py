@@ -78,11 +78,15 @@ class Delta1(TestBase):
         k = Knit()
         k.add(['line 1'])
 
-        changes = k._delta(set([0]),
-                           ['line 1',
-                            'new line'])
+        changes = list(k._delta(set([0]),
+                                ['line 1',
+                                 'new line']))
 
         self.log('raw changes: ' + pformat(changes))
+
+        # should be one inserted line after line 0
+        self.assertEquals(changes,
+                          [(1, 1, ['new line'])])
 
 
 class MatchedLine(TestBase):

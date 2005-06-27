@@ -85,10 +85,10 @@ class Knit(object):
         vi = self._v[index]
         included = set(vi.included)
         included.add(index)
-        return iter(self.extract(included))
+        return iter(self._extract(included))
 
 
-    def extract(self, included):
+    def _extract(self, included):
         """Yield annotation of lines in included set.
 
         The set typically but not necessarily corresponds to a version.
@@ -137,9 +137,71 @@ class Knit(object):
         The old text for comparison is the union of included revisions.
 
         This is used in inserting a new text.
+
+        Delta is returned as a sequence of (line1, line2, newlines),
+        indicating that line1 through line2 of the old weave should be
+        replaced by the sequence of lines in newlines.  Note that
+        these line numbers are positions in the total weave and don't
+        correspond to the lines in any extracted version, or even the
+        extracted union of included versions.
+
+        If line1=line2, this is a pure insert; if newlines=[] this is a
+        pure delete.  (Similar to difflib.)
         """
 
+        from pprint import pprint
 
+        # first get basis for comparison
+        # basis holds (lineno, origin, line)
+        basis = []
+
+        print 'my lines:'
+        pprint(self._l)
+        
+        lineno = 0
+        for origin, line in self._l:
+            if origin in included:
+                basis.append((lineno, line))
+            lineno += 1
+
+        assert lineno == len(self._l)
+
+        # now make a parallel list with only the text, to pass to the differ
+        basis_lines = [line for (lineno, line) in basis]
+
+        # add a sentinal, because we can also match against the final line
+        basis.append((len(self._l), None))
+
+        # XXX: which line of the weave should we really consider matches the end of the file?
+        # the current code says it's the last line of the weave?
+
+        from difflib import SequenceMatcher
+        s = SequenceMatcher(None, basis_lines, lines)
+
+        print 'basis sequence:'
+        pprint(basis)
+
+        for tag, i1, i2, j1, j2 in s.get_opcodes():
+            print tag, i1, i2, j1, j2
+
+            if tag == 'equal':
+                continue
+
+            # i1,i2 are given in offsets within basis_lines; we need to map them
+            # back to offsets within the entire weave
+            real_i1 = basis[i1][0]
+            real_i2 = basis[i2][0]
+
+            # find the text identified by j:
+            if j1 == j2:
+                newlines = []
+            else:
+                assert j1 >= 0
+                assert j2 >= j1
+                assert j2 <= len(lines)
+                newlines = lines[j1:j2]
+
+            yield real_i1, real_i2, newlines
 
 
 def update_knit(knit, new_vers, new_lines):
