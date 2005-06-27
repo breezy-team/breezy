@@ -16,6 +16,13 @@ class VerInfo(object):
         if included:
             self.included = set(included)
 
+    def __repr__(self):
+        s = self.__class__.__name__ + '('
+        if self.included:
+            s += 'included=%r' % (list(self.included))
+        s += ')'
+        return s
+
 
 class Knit(object):
     """knit - versioned text file storage.
@@ -94,8 +101,10 @@ class Knit(object):
 
     def dump(self, to_file):
         from pprint import pprint
-        print >>to_file, "knit lines:"
+        print >>to_file, "Knit._l = ",
         pprint(self._l, to_file)
+        print >>to_file, "Knit._v = ",
+        pprint(self._v, to_file)
 
 
     def check(self):
@@ -109,7 +118,7 @@ class Knit(object):
                     raise ValueError("repeated included version %d for index %d"
                                      % (vi, index))
                 included.add(vi)
-            
+
 
 
 
