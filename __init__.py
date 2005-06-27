@@ -27,7 +27,7 @@ class cmd_uncommit(bzrlib.commands.Command):
     def run(self, location=None, remove=False,
             dry_run=False, verbose=False):
         from bzrlib.branch import find_branch
-        from bzrlib.log import show_one_log
+        from bzrlib.log import log_formatter
         import uncommit, sys
 
         if location is None:
@@ -39,8 +39,8 @@ class cmd_uncommit(bzrlib.commands.Command):
         if rev_id is None:
             print 'No revisions to uncommit.'
 
-        show_one_log(revno, b.get_revision(rev_id),
-                None, False, sys.stdout, 'original')
+        lf = log_formatter('short', to_file=sys.stdout)
+        lf.show(revno, b.get_revision(rev_id), None)
 
         print 'The above revision will be removed.'
         val = raw_input('Are you sure [y/N]? ')
