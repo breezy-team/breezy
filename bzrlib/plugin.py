@@ -47,6 +47,10 @@ def load_plugins():
     such as *.pyd).
     """
 
+    global all_plugins
+    if all_plugins:
+        return # plugins already initialized
+
     import sys, os, imp
     try:
         set
@@ -59,10 +63,6 @@ def load_plugins():
     bzrpath = os.environ.get('BZR_PLUGIN_PATH')
     if bzrpath is None:
         bzrpath = DEFAULT_PLUGIN_PATH
-
-    global all_plugins
-    if all_plugins:
-        raise BzrError("plugins already initialized")
 
     # The problem with imp.get_suffixes() is that it doesn't include
     # .pyo which is technically valid
