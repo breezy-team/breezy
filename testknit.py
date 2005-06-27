@@ -84,9 +84,17 @@ class Delta1(TestBase):
 
         self.log('raw changes: ' + pformat(changes))
 
-        # should be one inserted line after line 0
+        # should be one inserted line after line 0q
         self.assertEquals(changes,
                           [(1, 1, ['new line'])])
+
+        changes = k._delta(set([0]),
+                           ['top line',
+                            'line 1'])
+        
+        self.assertEquals(list(changes),
+                          [(0, 0, ['top line'])])
+
 
 
 class MatchedLine(TestBase):
