@@ -70,13 +70,6 @@ class Knit(object):
         return list(self.getiter(index))
 
 
-text1 = [(0, "hello world", True)]
-
-knit2 = [(0, "hello world", True),
-         (1, "hello boys", True)
-         ]
-
-
 
 def show_annotated(knit):
     """Show a knit in 'blame' style"""
