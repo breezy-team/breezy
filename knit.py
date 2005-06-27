@@ -82,6 +82,12 @@ class Knit(object):
         return list(self.getiter(index))
 
 
+    def dump(self, to_file):
+        from pprint import pprint
+        print >>to_file, "knit lines:"
+        pprint(self._l, to_file)
+
+
 
 def update_knit(knit, new_vers, new_lines):
     """Return a new knit whose text matches new_lines.
