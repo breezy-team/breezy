@@ -69,13 +69,29 @@ class StoreTwo(TestBase):
         k.dump(self.TEST_LOG)
 
 
+
+class Delta1(TestBase):
+    """Detection of changes prior to inserting new revision."""
+    def runTest(self):
+        from pprint import pformat
+
+        k = Knit()
+        k.add(['line 1'])
+
+        changes = k._delta(set([0]),
+                           ['line 1',
+                            'new line'])
+
+        self.log('raw changes: ' + pformat(changes))
+
+
 class MatchedLine(TestBase):
     """Store a revision that adds one line to the original.
 
     Look at the annotations to make sure that the first line is matched
     and not stored repeatedly."""
     def runTest(self):
-        return
+        return ########################## SKIPPED
         k = Knit()
 
         k.add(['line 1'])

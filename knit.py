@@ -131,6 +131,16 @@ class Knit(object):
 
 
 
+    def _delta(self, included, lines):
+        """Return changes from basis to new revision.
+
+        The old text for comparison is the union of included revisions.
+
+        This is used in inserting a new text.
+        """
+
+
+
 
 def update_knit(knit, new_vers, new_lines):
     """Return a new knit whose text matches new_lines.
