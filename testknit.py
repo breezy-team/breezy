@@ -25,9 +25,9 @@ from knit import Knit
 
 
 # texts for use in testing
-TEXTS = [
-    ["This is my text"], 
-]
+TEXT_0 = ["Hello world"]
+TEXT_1 = ["Hello world",
+          "A second line"]
 
 
 class Easy(TestBase):
@@ -39,8 +39,8 @@ class StoreText(TestBase):
     """Store and retrieve a simple text."""
     def runTest(self):
         k = Knit()
-        k.add(TEXTS[0])
-        self.assertEqual(k.get(), TEXTS[0])
+        k.add(TEXT_0)
+        self.assertEqual(k.get(), TEXT_0)
 
 
 def testknit():
