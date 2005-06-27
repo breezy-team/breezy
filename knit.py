@@ -16,28 +16,42 @@ class Knit(object):
     A Knit manages versions of line-based text files, keeping track of the
     originating version for each line.
 
-    Versions are referenced by nonnegative integers.  In a full system
-    this will be just a local shorthand for some universally-unique
-    version identifier.
+    Texts can be identified in either of two ways:
 
-    Texts are represented as a seqence of (version, text, live) tuples.
-    An empty sequence represents an empty text.  The version is the
-    version in which the line was introduced.  The *live* flag is false if
-    the line is no longer present and being tracked only for the purposes
-    of merging.
+    * a nonnegative index number.
+
+    * a version-id string.
+
+    Typically the index number will be valid only inside this knit and
+    the version-id is used to reference it in the larger world.
 
     _l
-        Stores the actual weave.
+        List of lines.
+
+    _v
+        List of versions, indexed by index number.  Each one is an empty
+        tuple.
     """
+    def __init__(self):
+        self._l = []
+        self._v = []
         
     def add(self, text):
-        """Add a single text on top of the weave."""
+        """Add a single text on top of the weave.
+
+        Returns the index number of the newly added version."""
         if not isinstance(text, list):
             raise ValueError("text should be a list, not %s" % type(text))
+
+        idx = len(self._v)
         self._l = text
+        self._v.append(())
+        return idx
 
     
-    def get(self):
+    def get(self, index):
+        self._v[index]                  # check index is valid
+        
         return self._l[:]
 
 

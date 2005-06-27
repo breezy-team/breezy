@@ -39,8 +39,9 @@ class StoreText(TestBase):
     """Store and retrieve a simple text."""
     def runTest(self):
         k = Knit()
-        k.add(TEXT_0)
-        self.assertEqual(k.get(), TEXT_0)
+        idx = k.add(TEXT_0)
+        self.assertEqual(k.get(idx), TEXT_0)
+        self.assertEqual(idx, 0)
 
 
 def testknit():
