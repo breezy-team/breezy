@@ -83,10 +83,20 @@ class Knit(object):
 
         The index indicates when the line originated in the weave."""
         vi = self._v[index]
+        included = set(vi.included)
+        included.add(index)
+        return iter(self.extract(included))
 
+
+    def extract(self, included):
+        """Yield annotation of lines in included set.
+
+        The set typically but not necessarily corresponds to a version.
+        """
         for origin, line in self._l:
-            if (origin == index) or (origin in vi.included):
+            if origin in included:
                 yield origin, line
+        
 
 
     def getiter(self, index):
