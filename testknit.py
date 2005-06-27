@@ -66,6 +66,55 @@ class StoreTwo(TestBase):
         self.assertEqual(k.get(0), TEXT_0)
         self.assertEqual(k.get(1), TEXT_1)
 
+        k.dump(self.TEST_LOG)
+
+
+class MatchedLine(TestBase):
+    """Store a revision that adds one line to the original.
+
+    Look at the annotations to make sure that the first line is matched
+    and not stored repeatedly."""
+    def runTest(self):
+        return #################################### SKIPPED
+        k = Knit()
+
+        k.add(['line 1'])
+        k.add(['line 1', 'line 2'])
+
+        self.assertEqual(k.annotate(0),
+                         [(0, 'line 1')])
+
+        self.assertEqual(k.annotate(1),
+                         [(0, 'line 1'),
+                          (1, 'line 2')])
+
+
+class IncludeVersions(TestBase):
+    """Check texts that are stored across multiple revisions.
+
+    Here we manually create a knit with particular encoding and make
+    sure it unpacks properly.
+
+    Text 0 includes nothing; text 1 includes text 0 and adds some
+    lines.
+    """
+
+    def runTest(self):
+        k = Knit()
+
+        k._v = [((),), ((0,),)]
+        k._l = [(0, "first line"),
+                (1, "second line")]
+
+        self.assertEqual(k.get(1),
+                         ["first line",
+                          "second line"])
+
+        self.assertEqual(k.get(0),
+                         ["first line"])
+
+        k.dump(self.TEST_LOG)
+
 
 def testknit():
     import testsweet

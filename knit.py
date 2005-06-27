@@ -32,8 +32,10 @@ class Knit(object):
         is present in the version equal to index-id.
 
     _v
-        List of versions, indexed by index number.  Each one is an empty
-        tuple because the version_id isn't stored yet.
+        List of versions, indexed by index number.
+
+        For each version we store the tuple (included_versions), which
+        lists the previous versions also considered active.
     """
     def __init__(self):
         self._l = []
@@ -53,7 +55,9 @@ class Knit(object):
         for line in text:
             self._l.append((idx, line))
 
-        self._v.append(())
+        included = ()
+        vers_info = (included,)
+        self._v.append(vers_info)
         return idx
 
     
@@ -65,10 +69,13 @@ class Knit(object):
         """Yield list of (index-id, line) pairs for the specified version.
 
         The index indicates when the line originated in the weave."""
-        self._v[index]                  # check index is valid
+        vers_info = self._v[index]
+
+        included = set(vers_info[0])
+        included.add(index)
 
         for origin, line in self._l:
-            if origin == index:
+            if origin in included:
                 yield origin, line
 
 
@@ -86,6 +93,20 @@ class Knit(object):
         from pprint import pprint
         print >>to_file, "knit lines:"
         pprint(self._l, to_file)
+
+
+    def check(self):
+        for vers_info in self._v:
+            included = set()
+            for vi in vers_info[0]:
+                if vi < 0 or vi >= index:
+                    raise ValueError("invalid included_version %d for index %d"
+                                     % (vi, index))
+                if vi in included:
+                    raise ValueError("repeated included_version %d for index %d"
+                                     % (vi, index))
+                included.add(vi)
+            
 
 
 
