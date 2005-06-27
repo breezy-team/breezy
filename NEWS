@@ -18,6 +18,9 @@ DEVELOPMENT HEAD
     * Files within store directories are no longer marked readonly on
       disk.
 
+    * Changed ``bzr log`` output to a more compact form suggested by
+      John A Meinel.
+
 
 bzr-0.0.5  2005-06-15
   
