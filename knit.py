@@ -78,11 +78,15 @@ class Knit(object):
             delta = self._delta(parents, text)
 
             for i1, i2, newlines in delta:
-                # TODO: handle lines being offset as we insert stuff
+                assert 0 <= i1
+                assert i1 <= i2
+                assert i2 <= len(self._l)
+                
                 if i1 != i2:
-                    raise NotImplementedError("can't handle replacing weave lines %d-%d yet"
+                    raise NotImplementedError("can't handle replacing weave [%d:%d] yet"
                                               % (i1, i2))
 
+                # TODO: handle lines being offset as we insert stuff
                 # a pure insertion
                 to_insert = []
                 for line in newlines:
