@@ -10,6 +10,13 @@
 """knit - a weave-like structure"""
 
 
+class VerInfo(object):
+    included = frozenset()
+    def __init__(self, included=None):
+        if included:
+            self.included = set(included)
+
+
 class Knit(object):
     """knit - versioned text file storage.
     
@@ -55,9 +62,8 @@ class Knit(object):
         for line in text:
             self._l.append((idx, line))
 
-        included = ()
-        vers_info = (included,)
-        self._v.append(vers_info)
+        vi = VerInfo()
+        self._v.append(vi)
         return idx
 
     
@@ -69,13 +75,10 @@ class Knit(object):
         """Yield list of (index-id, line) pairs for the specified version.
 
         The index indicates when the line originated in the weave."""
-        vers_info = self._v[index]
-
-        included = set(vers_info[0])
-        included.add(index)
+        vi = self._v[index]
 
         for origin, line in self._l:
-            if origin in included:
+            if (origin == index) or (origin in vi.included):
                 yield origin, line
 
 

@@ -21,7 +21,7 @@
 
 
 from testsweet import TestBase
-from knit import Knit
+from knit import Knit, VerInfo
 
 
 # texts for use in testing
@@ -75,7 +75,7 @@ class MatchedLine(TestBase):
     Look at the annotations to make sure that the first line is matched
     and not stored repeatedly."""
     def runTest(self):
-        return #################################### SKIPPED
+        return
         k = Knit()
 
         k.add(['line 1'])
@@ -102,7 +102,7 @@ class IncludeVersions(TestBase):
     def runTest(self):
         k = Knit()
 
-        k._v = [((),), ((0,),)]
+        k._v = [VerInfo(), VerInfo(included=[0])]
         k._l = [(0, "first line"),
                 (1, "second line")]
 
@@ -122,9 +122,10 @@ class DivergedIncludes(TestBase):
     def runTest(self):
         k = Knit()
 
-        k._v = [((),),
-                ((0,),),
-                ((0,),),]
+        k._v = [VerInfo(),
+                VerInfo(included=[0]),
+                VerInfo(included=[0]),
+                ]
         k._l = [(0, "first line"),
                 (1, "second line"),
                 (2, "alternative second line"),]
