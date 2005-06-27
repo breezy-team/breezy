@@ -1239,6 +1239,8 @@ class cmd_revert(Command):
     """
     takes_args = ['file+']
     def run(self, file_list):
+        from bzrlib.branch import find_branch
+        
         if not file_list:
             file_list = ['.']
             
