@@ -56,18 +56,24 @@ class Knit(object):
         self._v = []
 
         
-    def add(self, text, basis=None):
+    def add(self, parents, text):
         """Add a single text on top of the weave.
 
-        Returns the index number of the newly added version."""
+        Returns the index number of the newly added version.
+
+        parents
+            List or set of parent version numbers.
+
+        text
+            Sequence of lines to be added in the new version."""
         if not isinstance(text, list):
             raise ValueError("text should be a list, not %s" % type(text))
 
         idx = len(self._v)
 
-        if basis:
-            basis = frozenset(basis)
-            delta = self._delta(basis, text)
+        if parents:
+            parents = frozenset(parents)
+            delta = self._delta(parents, text)
 
             for i1, i2, newlines in delta:
                 # TODO: handle lines being offset as we insert stuff
@@ -82,9 +88,9 @@ class Knit(object):
                 
                 self._l[i1:i1] = to_insert
 
-            self._v.append(VerInfo(basis))
+            self._v.append(VerInfo(parents))
         else:
-            # special case; adding with no basis revision; can do this
+            # special case; adding with no parents revision; can do this
             # more quickly by just appending unconditionally
             for line in text:
                 self._l.append((idx, line))

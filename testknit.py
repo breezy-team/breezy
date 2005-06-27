@@ -39,7 +39,7 @@ class StoreText(TestBase):
     """Store and retrieve a simple text."""
     def runTest(self):
         k = Knit()
-        idx = k.add(TEXT_0)
+        idx = k.add([], TEXT_0)
         self.assertEqual(k.get(idx), TEXT_0)
         self.assertEqual(idx, 0)
 
@@ -48,7 +48,7 @@ class StoreText(TestBase):
 class AnnotateOne(TestBase):
     def runTest(self):
         k = Knit()
-        k.add(TEXT_0)
+        k.add([], TEXT_0)
         self.assertEqual(k.annotate(0),
                          [(0, TEXT_0[0])])
 
@@ -57,10 +57,10 @@ class StoreTwo(TestBase):
     def runTest(self):
         k = Knit()
 
-        idx = k.add(TEXT_0)
+        idx = k.add([], TEXT_0)
         self.assertEqual(idx, 0)
 
-        idx = k.add(TEXT_1)
+        idx = k.add([], TEXT_1)
         self.assertEqual(idx, 1)
 
         self.assertEqual(k.get(0), TEXT_0)
@@ -76,7 +76,7 @@ class Delta1(TestBase):
         from pprint import pformat
 
         k = Knit()
-        k.add(['line 1'])
+        k.add([], ['line 1'])
 
         changes = list(k._delta(set([0]),
                                 ['line 1',
@@ -97,7 +97,7 @@ class Delta1(TestBase):
 
 
 
-class MatchedLine(TestBase):
+class InsertLines(TestBase):
     """Store a revision that adds one line to the original.
 
     Look at the annotations to make sure that the first line is matched
@@ -105,9 +105,8 @@ class MatchedLine(TestBase):
     def runTest(self):
         k = Knit()
 
-        k.add(['line 1'])
-        k.add(['line 1', 'line 2'],
-              [0])
+        k.add([], ['line 1'])
+        k.add([0], ['line 1', 'line 2'])
 
         self.assertEqual(k.annotate(0),
                          [(0, 'line 1')])
@@ -119,6 +118,7 @@ class MatchedLine(TestBase):
         self.assertEqual(k.annotate(1),
                          [(0, 'line 1'),
                           (1, 'line 2')])
+
 
 
 class IncludeVersions(TestBase):
