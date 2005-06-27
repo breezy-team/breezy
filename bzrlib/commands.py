@@ -476,7 +476,7 @@ class cmd_pull(Command):
         try:
             stored_loc = br_to.controlfile("x-pull", "rb").read().rstrip('\n')
         except IOError, e:
-            if errno == errno.ENOENT:
+            if e.errno != errno.ENOENT:
                 raise
         if location is None:
             if stored_loc is None:
