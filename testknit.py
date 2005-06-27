@@ -116,6 +116,30 @@ class IncludeVersions(TestBase):
         k.dump(self.TEST_LOG)
 
 
+class DivergedIncludes(TestBase):
+    """Knit with two diverged texts based on version 0.
+    """
+    def runTest(self):
+        k = Knit()
+
+        k._v = [((),),
+                ((0,),),
+                ((0,),),]
+        k._l = [(0, "first line"),
+                (1, "second line"),
+                (2, "alternative second line"),]
+
+        self.assertEqual(k.get(0),
+                         ["first line"])
+
+        self.assertEqual(k.get(1),
+                         ["first line",
+                          "second line"])
+
+        self.assertEqual(k.get(2),
+                         ["first line",
+                          "alternative second line"])
+
 def testknit():
     import testsweet
     from unittest import TestSuite, TestLoader
