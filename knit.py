@@ -83,20 +83,6 @@ class Knit(object):
 
 
 
-def show_annotated(knit):
-    """Show a knit in 'blame' style"""
-    for vers, text, live in knit:
-        if not live:
-            continue
-        print '%6d | %s' % (vers, text)
-
-
-def knit2text(knit):
-    """Return a sequence of lines containing just the live text from a knit."""
-    return [text for (vers, text, live) in knit if live]
-
-
-
 def update_knit(knit, new_vers, new_lines):
     """Return a new knit whose text matches new_lines.
 
@@ -133,25 +119,4 @@ def update_knit(knit, new_vers, new_lines):
 
     return new_knit
         
-
-
-def main(): 
-    print '***** annotated:'
-    show_annotated(knit2)
-
-    print '***** plain text:'
-    print '\n'.join(knit2text(knit2))
-
-    text3 = """hello world
-    an inserted line
-    hello boys""".split('\n')
-
-    print repr(knit2text(knit2))
-    print repr(text3)
-    knit3 = update_knit(knit2, 3, text3)
-
-    print '***** result of update:'
-    show_annotated(knit3)
-
-
 
