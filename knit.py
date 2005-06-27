@@ -100,10 +100,10 @@ class Knit(object):
             included = set()
             for vi in vers_info[0]:
                 if vi < 0 or vi >= index:
-                    raise ValueError("invalid included_version %d for index %d"
+                    raise ValueError("invalid included version %d for index %d"
                                      % (vi, index))
                 if vi in included:
-                    raise ValueError("repeated included_version %d for index %d"
+                    raise ValueError("repeated included version %d for index %d"
                                      % (vi, index))
                 included.add(vi)
             
