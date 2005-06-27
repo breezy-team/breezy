@@ -23,7 +23,9 @@
 # plugin_cmds variable.
 
 
-DEFAULT_PLUGIN_PATH = '~/.bzr.conf/plugins'
+import os
+from bzrlib.osutils import config_dir
+DEFAULT_PLUGIN_PATH = os.path.join(config_dir(), 'plugins')
 
 all_plugins = []
 
@@ -55,8 +57,8 @@ def load_plugins():
     from bzrlib.errors import BzrError
 
     bzrpath = os.environ.get('BZR_PLUGIN_PATH')
-    if not bzrpath:
-        bzrpath = os.path.expanduser(DEFAULT_PLUGIN_PATH)
+    if bzrpath is None:
+        bzrpath = DEFAULT_PLUGIN_PATH
 
     global all_plugins
     if all_plugins:
