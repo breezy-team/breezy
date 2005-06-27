@@ -149,7 +149,7 @@ def testknit():
     suite = TestSuite()
     suite.addTest(tl.loadTestsFromModule(testknit))
     
-    return testsweet.run_suite(suite)
+    return int(not testsweet.run_suite(suite)) # for shell 0=true
 
 
 if __name__ == '__main__':
