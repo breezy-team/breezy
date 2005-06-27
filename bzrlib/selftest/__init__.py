@@ -219,6 +219,9 @@ def selftest():
     import time
     import sys
 
+    TestBase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
+    print '%-30s %s' % ('bzr binary', TestBase.BZRPATH)
+
     _setup_test_log()
     _setup_test_dir()
     print
