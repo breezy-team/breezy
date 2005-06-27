@@ -130,6 +130,20 @@ class InsertLines(TestBase):
                          [(0, 'line 1'),
                           (1, 'line 2')])
 
+        k.add([0], ['line 1', 'diverged line'])
+
+        self.assertEqual(k.annotate(2),
+                         [(0, 'line 1'),
+                          (2, 'diverged line')])
+
+        k.add([0, 1],
+              ['line 1', 'middle line', 'line 2'])
+
+        self.assertEqual(k.annotate(3),
+                         [(0, 'line 1'),
+                          (3, 'middle line'),
+                          (1, 'line 2')])
+
 
 
 class IncludeVersions(TestBase):
