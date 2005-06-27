@@ -14,7 +14,7 @@ cd ~/work/bzr
 chmod a+rX `bzr inventory`
 
 bzr inventory | 
-rsync -rltvv							    \
+rsync -rltv							    \
     .								    \
     escudero.ubuntu.com:/srv/www.bazaar-ng.org/rsync/bzr/bzr.dev/   \
     --include .bzr						    \
