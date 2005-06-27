@@ -842,6 +842,7 @@ class cmd_log(Command):
             forward=False,
             revision=None):
         from bzrlib import show_log, find_branch
+        from bzrlib.log import log_formatter
         import codecs
 
         direction = (forward and 'forward') or 'reverse'
@@ -873,11 +874,15 @@ class cmd_log(Command):
         # in e.g. the default C locale.
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
-        show_log(b, file_id,
-                 show_timezone=timezone,
+        lf = log_formatter('short',
+                           show_ids=show_ids,
+                           to_file=outf,
+                           show_timezone=timezone)
+
+        show_log(b,
+                 lf,
+                 file_id,
                  verbose=verbose,
-                 show_ids=show_ids,
-                 to_file=outf,
                  direction=direction,
                  start_revision=revision[0],
                  end_revision=revision[1])

@@ -84,33 +84,23 @@ def find_touching_revisions(branch, file_id):
 
 
 def show_log(branch,
+             lf,
              specific_fileid=None,
-             show_timezone='original',
              verbose=False,
-             show_ids=False,
-             to_file=None,
              direction='reverse',
              start_revision=None,
              end_revision=None):
     """Write out human-readable log of commits to this branch.
 
+    lf
+        LogFormatter object to show the output.
+
     specific_fileid
         If true, list only the commits affecting the specified
         file, rather than all commits.
 
-    show_timezone
-        'original' (committer's timezone),
-        'utc' (universal time), or
-        'local' (local user's timezone)
-
     verbose
         If true show added/changed/deleted/renamed files.
-
-    show_ids
-        If true, show revision and file ids.
-
-    to_file
-        File to send log to; by default stdout.
 
     direction
         'reverse' (default) is latest to earliest;
@@ -122,17 +112,17 @@ def show_log(branch,
     end_revision
         If not None, only show revisions <= end_revision
     """
-    from osutils import format_date
-    from errors import BzrCheckError
-    from textui import show_status
+    from bzrlib.osutils import format_date
+    from bzrlib.errors import BzrCheckError
+    from bzrlib.textui import show_status
+    
+    from warnings import warn
 
+    if not isinstance(lf, LogFormatter):
+        warn("not a LogFormatter instance: %r" % lf)
 
     if specific_fileid:
         mutter('get log for file_id %r' % specific_fileid)
-
-    if to_file == None:
-        import sys
-        to_file = sys.stdout
 
     which_revs = branch.enum_history(direction)
 
@@ -158,8 +148,8 @@ def show_log(branch,
         if not verbose:
             # although we calculated it, throw it away without display
             delta = None
-            
-        show_one_log(revno, rev, delta, show_ids, to_file, show_timezone)
+
+        lf.show(revno, rev, delta)
 
 
 
@@ -200,23 +190,76 @@ def deltas_for_log_reverse(branch, which_revs):
 
 
 
-def show_one_log(revno, rev, delta, show_ids, to_file, show_timezone):
-    from osutils import format_date
+class LogFormatter(object):
+    """Abstract class to display log messages."""
+    def __init__(self, to_file, show_ids=False, show_timezone=False):
+        self.to_file = to_file
+        self.show_ids = show_ids
+        self.show_timezone = show_timezone
+        
+
+
+
+
+
+class LongLogFormatter(LogFormatter):
+    def show(self, revno, rev, delta):
+        from osutils import format_date
+
+        to_file = self.to_file
+
+        print >>to_file,  '-' * 60
+        print >>to_file,  'revno:', revno
+        if self.show_ids:
+            print >>to_file,  'revision-id:', rev.revision_id
+        print >>to_file,  'committer:', rev.committer
+        print >>to_file,  'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0,
+                                             self.show_timezone))
+
+        print >>to_file,  'message:'
+        if not rev.message:
+            print >>to_file,  '  (no message)'
+        else:
+            for l in rev.message.split('\n'):
+                print >>to_file,  '  ' + l
+
+        if delta != None:
+            delta.show(to_file, self.show_ids)
+
+
+
+class ShortLogFormatter(LogFormatter):
+    def show(self, revno, rev, delta):
+        from bzrlib.osutils import format_date
+
+        to_file = self.to_file
+
+        print >>to_file, "%5d %s\t%s" % (revno, rev.committer,
+                format_date(rev.timestamp, rev.timezone or 0,
+                            self.show_timezone))
+        if self.show_ids:
+            print >>to_file,  '      revision-id:', rev.revision_id
+        if not rev.message:
+            print >>to_file,  '      (no message)'
+        else:
+            for l in rev.message.split('\n'):
+                print >>to_file,  '      ' + l
+
+        if delta != None:
+            delta.show(to_file, self.show_ids)
+        print
+
+
+
+FORMATTERS = {'long': LongLogFormatter,
+              'short': ShortLogFormatter,
+              }
+
+
+def log_formatter(name, *args, **kwargs):
+    from bzrlib.errors import BzrCommandError
     
-    print >>to_file,  '-' * 60
-    print >>to_file,  'revno:', revno
-    if show_ids:
-        print >>to_file,  'revision-id:', rev.revision_id
-    print >>to_file,  'committer:', rev.committer
-    print >>to_file,  'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0,
-                                         show_timezone))
-
-    print >>to_file,  'message:'
-    if not rev.message:
-        print >>to_file,  '  (no message)'
-    else:
-        for l in rev.message.split('\n'):
-            print >>to_file,  '  ' + l
-
-    if delta != None:
-        delta.show(to_file, show_ids)
+    try:
+        return FORMATTERS[name](*args, **kwargs)
+    except IndexError:
+        raise BzrCommandError("unknown log formatter: %r" % name)
