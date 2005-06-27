@@ -30,6 +30,12 @@ class CommandFailed(Exception):
     pass
 
 
+
+class TestSkipped(Exception):
+    """Indicates that a test was intentionally skipped, rather than failing."""
+    # XXX: Not used yet
+
+
 class TestBase(TestCase):
     """Base class for bzr test cases.
 
