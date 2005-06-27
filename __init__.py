@@ -39,7 +39,7 @@ class cmd_uncommit(bzrlib.commands.Command):
         if rev_id is None:
             print 'No revisions to uncommit.'
 
-        lf = log_formatter('short', to_file=sys.stdout,timezone='original')
+        lf = log_formatter('short', to_file=sys.stdout,show_timezone='original')
         lf.show(revno, b.get_revision(rev_id), None)
 
         print 'The above revision will be removed.'
