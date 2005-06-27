@@ -90,16 +90,10 @@ class Knit(object):
                 if i1 != i2:
                     raise NotImplementedError("can't handle replacing weave [%d:%d] yet"
                                               % (i1, i2))
-
-                # TODO: handle lines being offset as we insert stuff
-                # a pure insertion
-                to_insert = []
-                for line in newlines:
-                    to_insert.append((idx, line))
                 
-                self._l[(i1+offset):(i1+offset)] = to_insert
-
-                offset += len(newlines)
+                for line in newlines:
+                    self._l.insert(i1 + offset, (idx, line))
+                    offset += 1
 
             self._v.append(VerInfo(parents))
         else:
