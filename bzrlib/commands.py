@@ -469,6 +469,8 @@ class cmd_pull(Command):
 
     def run(self, location=None):
         from bzrlib.merge import merge
+        import tempfile
+        from shutil import rmtree
         import errno
         
         br_to = Branch('.')
@@ -484,18 +486,23 @@ class cmd_pull(Command):
             else:
                 print "Using last location: %s" % stored_loc
                 location = stored_loc
-        from branch import find_branch, DivergedBranches
-        br_from = find_branch(location)
-        location = pull_loc(br_from)
-        old_revno = br_to.revno()
+        cache_root = tempfile.mkdtemp()
         try:
-            br_to.update_revisions(br_from)
-        except DivergedBranches:
-            raise BzrCommandError("These branches have diverged.  Try merge.")
-            
-        merge(('.', -1), ('.', old_revno), check_clean=False)
-        if location != stored_loc:
-            br_to.controlfile("x-pull", "wb").write(location + "\n")
+            from branch import find_cached_branch, DivergedBranches
+            br_from = find_cached_branch(location, cache_root)
+            location = pull_loc(br_from)
+            old_revno = br_to.revno()
+            try:
+                br_to.update_revisions(br_from)
+            except DivergedBranches:
+                raise BzrCommandError("These branches have diverged."
+                    "  Try merge.")
+                
+            merge(('.', -1), ('.', old_revno), check_clean=False)
+            if location != stored_loc:
+                br_to.controlfile("x-pull", "wb").write(location + "\n")
+        finally:
+            rmtree(cache_root)
 
 
 
@@ -514,44 +521,50 @@ class cmd_branch(Command):
     def run(self, from_location, to_location=None, revision=None):
         import errno
         from bzrlib.merge import merge
-        from branch import find_branch, DivergedBranches, NoSuchRevision
+        from branch import find_cached_branch, DivergedBranches, NoSuchRevision
         from shutil import rmtree
+        from meta_store import CachedStore
+        import tempfile
+        cache_root = tempfile.mkdtemp()
         try:
-            br_from = find_branch(from_location)
-        except OSError, e:
-            if e.errno == errno.ENOENT:
-                raise BzrCommandError('Source location "%s" does not exist.' %
-                                      to_location)
-            else:
-                raise
+            try:
+                br_from = find_cached_branch(from_location, cache_root)
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    raise BzrCommandError('Source location "%s" does not'
+                                          ' exist.' % to_location)
+                else:
+                    raise
 
-        if to_location is None:
-            to_location = os.path.basename(from_location.rstrip("/\\"))
+            if to_location is None:
+                to_location = os.path.basename(from_location.rstrip("/\\"))
 
-        try:
-            os.mkdir(to_location)
-        except OSError, e:
-            if e.errno == errno.EEXIST:
-                raise BzrCommandError('Target directory "%s" already exists.' %
-                                      to_location)
-            if e.errno == errno.ENOENT:
-                raise BzrCommandError('Parent of "%s" does not exist.' %
-                                      to_location)
-            else:
-                raise
-        br_to = Branch(to_location, init=True)
+            try:
+                os.mkdir(to_location)
+            except OSError, e:
+                if e.errno == errno.EEXIST:
+                    raise BzrCommandError('Target directory "%s" already'
+                                          ' exists.' % to_location)
+                if e.errno == errno.ENOENT:
+                    raise BzrCommandError('Parent of "%s" does not exist.' %
+                                          to_location)
+                else:
+                    raise
+            br_to = Branch(to_location, init=True)
 
-        try:
-            br_to.update_revisions(br_from, stop_revision=revision)
-        except NoSuchRevision:
-            rmtree(to_location)
-            msg = "The branch %s has no revision %d." % (from_location,
-                                                         revision)
-            raise BzrCommandError(msg)
-        merge((to_location, -1), (to_location, 0), this_dir=to_location,
-              check_clean=False, ignore_zero=True)
-        from_location = pull_loc(br_from)
-        br_to.controlfile("x-pull", "wb").write(from_location + "\n")
+            try:
+                br_to.update_revisions(br_from, stop_revision=revision)
+            except NoSuchRevision:
+                rmtree(to_location)
+                msg = "The branch %s has no revision %d." % (from_location,
+                                                             revision)
+                raise BzrCommandError(msg)
+            merge((to_location, -1), (to_location, 0), this_dir=to_location,
+                  check_clean=False, ignore_zero=True)
+            from_location = pull_loc(br_from)
+            br_to.controlfile("x-pull", "wb").write(from_location + "\n")
+        finally:
+            rmtree(cache_root)
 
 
 def pull_loc(branch):

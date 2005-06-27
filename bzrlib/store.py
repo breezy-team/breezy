@@ -119,11 +119,34 @@ class ImmutableStore(object):
         pb = ProgressBar()
         pb.update('preparing to copy')
         to_copy = [id for id in ids if id not in self]
+        if isinstance(other, ImmutableStore):
+            return self.copy_multi_immutable(other, to_copy, pb)
         count = 0
         for id in to_copy:
             count += 1
             pb.update('copy', count, len(to_copy))
             self.add(other[id], id)
+        assert count == len(to_copy)
+        pb.clear()
+        return count
+
+
+    def copy_multi_immutable(self, other, to_copy, pb):
+        from shutil import copyfile
+        count = 0
+        for id in to_copy:
+            p = self._path(id)
+            other_p = other._path(id)
+            try:
+                copyfile(other_p, p)
+            except IOError, e:
+                if e.errno == errno.ENOENT:
+                    copyfile(other_p+".gz", p+".gz")
+                else:
+                    raise
+            
+            count += 1
+            pb.update('copy', count, len(to_copy))
         assert count == len(to_copy)
         pb.clear()
         return count

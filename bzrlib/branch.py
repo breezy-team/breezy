@@ -45,6 +45,22 @@ def find_branch(f, **args):
         return Branch(f, **args)
 
 
+def find_cached_branch(f, cache_root, **args):
+    from remotebranch import RemoteBranch
+    br = find_branch(f, **args)
+    def cacheify(br, store_name):
+        from meta_store import CachedStore
+        cache_path = os.path.join(cache_root, store_name)
+        os.mkdir(cache_path)
+        new_store = CachedStore(getattr(br, store_name), cache_path)
+        setattr(br, store_name, new_store)
+
+    if isinstance(br, RemoteBranch):
+        cacheify(br, 'inventory_store')
+        cacheify(br, 'text_store')
+        cacheify(br, 'revision_store')
+    return br
+
 
 def _relpath(base, path):
     """Return path relative to base, or raise exception.
@@ -752,6 +768,14 @@ class Branch(object):
 
         pb.update('comparing histories')
         revision_ids = self.missing_revisions(other, stop_revision)
+
+        if hasattr(other.revision_store, "prefetch"):
+            other.revision_store.prefetch(revision_ids)
+        if hasattr(other.inventory_store, "prefetch"):
+            inventory_ids = [other.get_revision(r).inventory_id
+                             for r in revision_ids]
+            other.inventory_store.prefetch(inventory_ids)
+                
         revisions = []
         needed_texts = sets.Set()
         i = 0
