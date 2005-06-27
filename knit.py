@@ -22,6 +22,7 @@
 """knit - a weave-like structure"""
 
 
+
 class VerInfo(object):
     included = frozenset()
     def __init__(self, included=None):
@@ -262,41 +263,4 @@ class Knit(object):
 
             yield real_i1, real_i2, newlines
 
-
-def update_knit(knit, new_vers, new_lines):
-    """Return a new knit whose text matches new_lines.
-
-    First of all the knit is diffed against the new lines, considering
-    only the text of the lines from the knit.  This identifies lines
-    unchanged from the knit, plus insertions and deletions.
-
-    The deletions are marked as deleted.  The insertions are added
-    with their new values.
-
-    
-    """
-    if not isinstance(new_vers, int):
-        raise TypeError('new version-id must be an int: %r' % new_vers)
-    
-    from difflib import SequenceMatcher
-    knit_lines = knit2text(knit)
-    m = SequenceMatcher(None, knit_lines, new_lines)
-
-    for block in m.get_matching_blocks():
-        print "a[%d] and b[%d] match for %d elements" % block
-    
-    new_knit = []
-    for tag, i1, i2, j1, j2 in m.get_opcodes():
-        print ("%7s a[%d:%d] (%s) b[%d:%d] (%s)" %
-               (tag, i1, i2, knit_lines[i1:i2], j1, j2, new_lines[j1:j2]))
-
-        if tag == 'equal':
-            new_knit.extend(knit[i1:i2])
-        elif tag == 'delete':
-            for i in range(i1, i2):
-                kl = knit[i]
-                new_knit.append((kl[0], kl[1], False))
-
-    return new_knit
-        
 
