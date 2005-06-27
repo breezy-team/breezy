@@ -46,6 +46,17 @@ class TestBase(TestCase):
     _log_buf = ""
 
 
+    def setUp(self):
+        super(TestBase, self).setUp()
+        self.log("%s setup" % self.id())
+
+
+    def tearDown(self):
+        super(TestBase, self).tearDown()
+        self.log("%s teardown" % self.id())
+        self.log('')
+        
+
     def formcmd(self, cmd):
         if isinstance(cmd, basestring):
             cmd = cmd.split()
