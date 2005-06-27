@@ -14,7 +14,7 @@ class VerInfo(object):
     included = frozenset()
     def __init__(self, included=None):
         if included:
-            self.included = set(included)
+            self.included = frozenset(included)
 
     def __repr__(self):
         s = self.__class__.__name__ + '('
@@ -56,7 +56,7 @@ class Knit(object):
         self._v = []
 
         
-    def add(self, text):
+    def add(self, text, basis=None):
         """Add a single text on top of the weave.
 
         Returns the index number of the newly added version."""
@@ -65,12 +65,32 @@ class Knit(object):
 
         idx = len(self._v)
 
-        # all of the previous texts are turned off; just append lines at the bottom
-        for line in text:
-            self._l.append((idx, line))
+        if basis:
+            basis = frozenset(basis)
+            delta = self._delta(basis, text)
 
-        vi = VerInfo()
-        self._v.append(vi)
+            for i1, i2, newlines in delta:
+                # TODO: handle lines being offset as we insert stuff
+                if i1 != i2:
+                    raise NotImplementedError("can't handle replacing weave lines %d-%d yet"
+                                              % (i1, i2))
+
+                # a pure insertion
+                to_insert = []
+                for line in newlines:
+                    to_insert.append((idx, line))
+                
+                self._l[i1:i1] = to_insert
+
+            self._v.append(VerInfo(basis))
+        else:
+            # special case; adding with no basis revision; can do this
+            # more quickly by just appending unconditionally
+            for line in text:
+                self._l.append((idx, line))
+
+            self._v.append(VerInfo())
+            
         return idx
 
     
@@ -82,7 +102,10 @@ class Knit(object):
         """Yield list of (index-id, line) pairs for the specified version.
 
         The index indicates when the line originated in the weave."""
-        vi = self._v[index]
+        try:
+            vi = self._v[index]
+        except IndexError:
+            raise IndexError('version index %d out of range' % index)
         included = set(vi.included)
         included.add(index)
         return iter(self._extract(included))

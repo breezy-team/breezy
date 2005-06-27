@@ -103,14 +103,18 @@ class MatchedLine(TestBase):
     Look at the annotations to make sure that the first line is matched
     and not stored repeatedly."""
     def runTest(self):
-        return ########################## SKIPPED
         k = Knit()
 
         k.add(['line 1'])
-        k.add(['line 1', 'line 2'])
+        k.add(['line 1', 'line 2'],
+              [0])
 
         self.assertEqual(k.annotate(0),
                          [(0, 'line 1')])
+
+        self.assertEqual(k.get(1),
+                         ['line 1',
+                          'line 2'])
 
         self.assertEqual(k.annotate(1),
                          [(0, 'line 1'),
