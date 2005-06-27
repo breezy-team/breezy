@@ -69,6 +69,8 @@ class Knit(object):
         if not isinstance(text, list):
             raise ValueError("text should be a list, not %s" % type(text))
 
+        self._check_versions(parents)
+
         idx = len(self._v)
 
         if parents:
@@ -98,6 +100,15 @@ class Knit(object):
             self._v.append(VerInfo())
             
         return idx
+
+
+    def _check_versions(self, indexes):
+        """Check everything in the sequence of indexes is valid"""
+        for i in indexes:
+            try:
+                self._v[i]
+            except IndexError:
+                raise IndexError("invalid version number %r" % i)
 
     
     def annotate(self, index):
@@ -177,6 +188,8 @@ class Knit(object):
         If line1=line2, this is a pure insert; if newlines=[] this is a
         pure delete.  (Similar to difflib.)
         """
+
+        self._check_versions(included)
 
         ##from pprint import pprint
 

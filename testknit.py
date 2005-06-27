@@ -97,6 +97,17 @@ class Delta1(TestBase):
 
 
 
+class InvalidAdd(TestBase):
+    """Try to use invalid version number during add."""
+    def runTest(self):
+        k = Knit()
+
+        self.assertRaises(IndexError,
+                          k.add,
+                          [69],
+                          ['new text!'])
+
+
 class InsertLines(TestBase):
     """Store a revision that adds one line to the original.
 
