@@ -14,14 +14,14 @@ cd ~/work/bzr
 chmod a+rX `bzr inventory`
 
 bzr inventory | 
-rsync -rltv							    \
+rsync -rltvv							    \
     .								    \
     escudero.ubuntu.com:/srv/www.bazaar-ng.org/rsync/bzr/bzr.dev/   \
-    --include-from -						    \
     --include .bzr						    \
     --include '.bzr/**'						    \
     --exclude-from .rsyncexclude				    \
     --exclude-from .bzrignore					    \
+    --include-from -						    \
     --exclude \*						    \
     --exclude '.*'						    \
     --delete-excluded --delete					    \
