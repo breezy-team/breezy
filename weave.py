@@ -154,10 +154,10 @@ class Weave(object):
                     raise NotImplementedError("can't handle replacing weave [%d:%d] yet"
                                               % (i1, i2))
 
-                self._l.insert(i1 + offset, ('{', idx))
-                i = i1 + offset + 1
-                self._l[i:i] = newlines
-                self._l.insert(i + 1, ('}', idx))
+                i = i1 + offset
+                self._l[i:i] = [('{', idx)] \
+                               + newlines \
+                               + [('}', idx)]
                 offset += 2 + len(newlines)
 
             self._v.append(VerInfo(parents))
@@ -350,13 +350,14 @@ class Weave(object):
         ##print 'my lines:'
         ##pprint(self._l)
 
+        # basis a list of (origin, lineno, line)
         basis = list(self._extract(included))
 
         # now make a parallel list with only the text, to pass to the differ
         basis_lines = [line for (origin, lineno, line) in basis]
 
         # add a sentinal, because we can also match against the final line
-        basis.append((len(self._l), None))
+        basis.append((None, len(self._l), None))
 
         # XXX: which line of the weave should we really consider matches the end of the file?
         # the current code says it's the last line of the weave?
@@ -375,8 +376,8 @@ class Weave(object):
 
             # i1,i2 are given in offsets within basis_lines; we need to map them
             # back to offsets within the entire weave
-            real_i1 = basis[i1][0]
-            real_i2 = basis[i2][0]
+            real_i1 = basis[i1][1]
+            real_i2 = basis[i2][1]
 
             assert 0 <= j1
             assert j1 <= j2

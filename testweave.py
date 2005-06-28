@@ -103,7 +103,7 @@ class Delta1(TestBase):
                             'line 1'])
         
         self.assertEquals(list(changes),
-                          [(0, 0, ['top line'])])
+                          [(1, 1, ['top line'])])
 
 
 
@@ -124,8 +124,6 @@ class InsertLines(TestBase):
     Look at the annotations to make sure that the first line is matched
     and not stored repeatedly."""
     def runTest(self):
-        return ########################## SKIPPED
-        
         k = Weave()
 
         k.add([], ['line 1'])
@@ -148,8 +146,15 @@ class InsertLines(TestBase):
                          [(0, 'line 1'),
                           (2, 'diverged line')])
 
+        text3 = ['line 1', 'middle line', 'line 2']
         k.add([0, 1],
-              ['line 1', 'middle line', 'line 2'])
+              text3)
+
+        from pprint import pformat
+
+        self.log("changes to text3: " + pformat(list(k._delta(set([0, 1]), text3))))
+
+        self.log("k._l=" + pformat(k._l))
 
         self.assertEqual(k.annotate(3),
                          [(0, 'line 1'),
