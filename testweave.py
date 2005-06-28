@@ -161,6 +161,26 @@ class InsertLines(TestBase):
 
 
 
+class SuicideDelete(TestBase):
+    def runTest(self):
+        k = Weave()
+
+        k._v = [VerInfo([]),
+                ]
+        k._l = [('{', 0),
+                'first line',
+                ('[', 0),
+                'deleted in 0',
+                (']', 0),
+                ('}', 0),
+                ]
+
+        self.assertRaises(WeaveFormatError,
+                          k.get,
+                          0)        
+
+
+
 class CannedDelete(TestBase):
     """Unpack canned weave with deleted lines."""
     def runTest(self):

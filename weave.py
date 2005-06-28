@@ -102,6 +102,11 @@ class Weave(object):
     * Lines are enabled if the most recent enclosing insertion is
       active and none of the enclosing deletions are active.
 
+    * There is no point having a deletion directly inside its own
+      insertion; you might as well just not write it.  And there
+      should be no way to get an earlier version deleting a later
+      version.
+
 
     _l
         Text of the weave. 
@@ -245,7 +250,10 @@ class Weave(object):
                     if v in dset:
                         raise WeaveFormatError("repeated deletion marker for version %d on line %d"
                                                % (v, lineno))
-                    else:
+                    if istack:
+                        if istack[-1] == v:
+                            raise WeaveFormatError("version %d deletes own text on line %d"
+                                                   % (v, lineno))
                         dset.add(v)
                 elif c == ']':
                     if v in dset:
