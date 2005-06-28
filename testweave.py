@@ -160,6 +160,32 @@ class InsertLines(TestBase):
                           (4, 'ccc')])
 
 
+
+class CannedDelete(TestBase):
+    """Unpack canned weave with deleted lines."""
+    def runTest(self):
+        k = Weave()
+
+        k._v = [VerInfo([]),
+                VerInfo([0]),
+                ]
+        k._l = [('{', 0),
+                'first line',
+                ('[', 1),
+                'line to be deleted',
+                (']', 1),
+                'last line',
+                ('}', 0),
+                ]
+
+        self.assertEqual(k.get(0),
+                         ['first line',
+                          'line to be deleted',
+                          'last line',
+                          ])
+
+
+
 class BadWeave(TestBase):
     """Test that we trap an insert which should not occur."""
     def runTest(self):

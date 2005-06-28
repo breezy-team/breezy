@@ -215,24 +215,44 @@ class Weave(object):
 
         The set typically but not necessarily corresponds to a version.
         """
-        istack = []
+        istack = []          # versions for which an insertion block is current
+
+        dset = set()         # versions for which a deletion block is current
+
         isactive = False
-        lineno = 0
+
+        lineno = 0         # line of weave, 0-based
         
         for l in self._l:
             if isinstance(l, tuple):
                 c, v = l
                 if c == '{':
-                    if istack and (istack[-1][1] >= v):
+                    if istack and (istack[-1] >= v):
                         raise WeaveFormatError("improperly nested insertions %d>=%d on line %d" 
-                                               % (istack[-1][1], v, lineno))
-                    istack.append(l)
-                    isactive = (v in included)
+                                               % (istack[-1], v, lineno))
+                    istack.append(v)
                 elif c == '}':
-                    oldc, oldv = istack.pop()
-                    assert oldc == '{'
-                    assert oldv == v
-                    isactive = istack and (istack[-1][1] in included)
+                    try:
+                        oldv = istack.pop()
+                    except IndexError:
+                        raise WeaveFormatError("unmatched close of insertion %d on line %d"
+                                               % (v, lineno))
+                    if oldv != v:
+                        raise WeaveFormatError("mismatched close of insertion %d!=%d on line %d"
+                                               % (oldv, v, lineno))
+                elif c == '[':
+                    # block deleted in v
+                    if v in dset:
+                        raise WeaveFormatError("repeated deletion marker for version %d on line %d"
+                                               % (v, lineno))
+                    else:
+                        dset.add(v)
+                elif c == ']':
+                    if v in dset:
+                        dset.remove(v)
+                    else:
+                        raise WeaveFormatError("unmatched close of deletion %d on line %d"
+                                               % (v, lineno))
                 else:
                     raise WeaveFormatError("invalid processing instruction %r on line %d"
                                            % (l, lineno))
@@ -241,14 +261,18 @@ class Weave(object):
                 if not istack:
                     raise WeaveFormatError("literal at top level on line %d"
                                            % lineno)
+                isactive = istack[-1] in included
                 if isactive:
-                    origin = istack[-1][1]
+                    origin = istack[-1]
                     yield origin, lineno, l
             lineno += 1
 
         if istack:
             raise WeaveFormatError("unclosed insertion blocks at end of weave",
                                    istack)
+        if dset:
+            raise WeaveFormatError("unclosed deletion blocks at end of weave",
+                                   dset)
 
 
     def getiter(self, index):
