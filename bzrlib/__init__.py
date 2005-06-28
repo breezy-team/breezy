@@ -16,15 +16,8 @@
 
 """bzr library"""
 
-from inventory import Inventory, InventoryEntry
 from branch import Branch, ScratchBranch, find_branch
-from osutils import format_date
-from tree import Tree
-from diff import compare_trees
-from trace import mutter, warning, open_tracefile
-from log import show_log
-from plugin import load_plugins
-import add
+from errors import BzrError
 
 BZRDIR = ".bzr"
 
@@ -53,7 +46,6 @@ __version__ = '0.0.5'
 
 def get_bzr_revision():
     """If bzr is run from a branch, return (revno,revid) or None"""
-    from errors import BzrError
     try:
         branch = Branch(__path__[0])
         rh = branch.revision_history()

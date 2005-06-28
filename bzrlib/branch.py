@@ -15,22 +15,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import sys, os, os.path, random, time, sha, sets, types, re, shutil, tempfile
-import traceback, socket, fnmatch, difflib, time
-from binascii import hexlify
+import sys, os
 
 import bzrlib
-from inventory import Inventory
-from trace import mutter, note
-from tree import Tree, EmptyTree, RevisionTree
-from inventory import InventoryEntry, Inventory
-from osutils import isdir, quotefn, isfile, uuid, sha_file, username, \
-     format_date, compact_date, pumpfile, user_email, rand_bytes, splitpath, \
-     joinpath, sha_file, sha_string, file_kind, local_time_offset, appendpath
-from store import ImmutableStore
-from revision import Revision
-from errors import BzrError
-from textui import show_status
+from bzrlib.trace import mutter, note
+from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, splitpath, \
+     sha_file, appendpath, file_kind
+from bzrlib.errors import BzrError
 
 BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
@@ -174,6 +165,7 @@ class Branch(object):
         In the test suite, creation of new trees is tested using the
         `ScratchBranch` class.
         """
+        from bzrlib.store import ImmutableStore
         if init:
             self.base = os.path.realpath(base)
             self._make_control()
@@ -265,7 +257,7 @@ class Branch(object):
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
-        if isinstance(file_or_path, types.StringTypes):
+        if isinstance(file_or_path, basestring):
             file_or_path = [file_or_path]
         return os.path.join(self.base, bzrlib.BZRDIR, *file_or_path)
 
@@ -298,6 +290,7 @@ class Branch(object):
 
 
     def _make_control(self):
+        from bzrlib.inventory import Inventory
         os.mkdir(self.controlfilename([]))
         self.controlfile('README', 'w').write(
             "This is a Bazaar-NG control directory.\n"
@@ -335,14 +328,16 @@ class Branch(object):
 
     def read_working_inventory(self):
         """Read the working inventory."""
-        before = time.time()
+        from bzrlib.inventory import Inventory
+        from time import time
+        before = time()
         # ElementTree does its own conversion from UTF-8, so open in
         # binary.
         self.lock_read()
         try:
             inv = Inventory.read_xml(self.controlfile('inventory', 'rb'))
             mutter("loaded inventory of %d items in %f"
-                   % (len(inv), time.time() - before))
+                   % (len(inv), time() - before))
             return inv
         finally:
             self.unlock()
@@ -400,10 +395,11 @@ class Branch(object):
               add all non-ignored children.  Perhaps do that in a
               higher-level method.
         """
+        from bzrlib.textui import show_status
         # TODO: Re-adding a file that is removed in the working copy
         # should probably put it back with the previous ID.
-        if isinstance(files, types.StringTypes):
-            assert(ids is None or isinstance(ids, types.StringTypes))
+        if isinstance(files, basestring):
+            assert(ids is None or isinstance(ids, basestring))
             files = [files]
             if ids is not None:
                 ids = [ids]
@@ -478,9 +474,10 @@ class Branch(object):
         is the opposite of add.  Removing it is consistent with most
         other tools.  Maybe an option.
         """
+        from bzrlib.textui import show_status
         ## TODO: Normalize names
         ## TODO: Remove nested loops; better scalability
-        if isinstance(files, types.StringTypes):
+        if isinstance(files, basestring):
             files = [files]
 
         self.lock_write()
@@ -511,6 +508,7 @@ class Branch(object):
 
     # FIXME: this doesn't need to be a branch method
     def set_inventory(self, new_inventory_list):
+        from bzrlib.inventory import Inventory, InventoryEntry
         inv = Inventory()
         for path, file_id, parent, kind in new_inventory_list:
             name = os.path.basename(path)
@@ -556,6 +554,7 @@ class Branch(object):
 
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
+        from bzrlib.revision import Revision
         if not revision_id or not isinstance(revision_id, basestring):
             raise ValueError('invalid revision-id: %r' % revision_id)
         r = Revision.read_xml(self.revision_store[revision_id])
@@ -579,6 +578,7 @@ class Branch(object):
         TODO: Perhaps for this and similar methods, take a revision
                parameter which can be either an integer revno or a
                string hash."""
+        from bzrlib.inventory import Inventory
         i = Inventory.read_xml(self.inventory_store[inventory_id])
         return i
 
@@ -591,6 +591,7 @@ class Branch(object):
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""
         if revision_id == None:
+            from bzrlib.inventory import Inventory
             return Inventory()
         else:
             return self.get_inventory(self.get_revision(revision_id).inventory_id)
@@ -763,6 +764,10 @@ class Branch(object):
         True
         """
         from bzrlib.progress import ProgressBar
+        try:
+            set
+        except NameError:
+            from sets import Set as set
 
         pb = ProgressBar()
 
@@ -777,7 +782,7 @@ class Branch(object):
             other.inventory_store.prefetch(inventory_ids)
                 
         revisions = []
-        needed_texts = sets.Set()
+        needed_texts = set()
         i = 0
         for rev_id in revision_ids:
             i += 1
@@ -829,6 +834,7 @@ class Branch(object):
 
         `revision_id` may be None for the null revision, in which case
         an `EmptyTree` is returned."""
+        from bzrlib.tree import EmptyTree, RevisionTree
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id == None:
@@ -849,6 +855,7 @@ class Branch(object):
 
         If there are no revisions yet, return an `EmptyTree`.
         """
+        from bzrlib.tree import EmptyTree, RevisionTree
         r = self.last_patch()
         if r == None:
             return EmptyTree()
@@ -1035,9 +1042,10 @@ class ScratchBranch(Branch):
 
         If any files are listed, they are created in the working copy.
         """
+        from tempfile import mkdtemp
         init = False
         if base is None:
-            base = tempfile.mkdtemp()
+            base = mkdtemp()
             init = True
         Branch.__init__(self, base, init=init)
         for d in dirs:
@@ -1056,9 +1064,11 @@ class ScratchBranch(Branch):
         >>> os.path.isfile(os.path.join(clone.base, "file1"))
         True
         """
-        base = tempfile.mkdtemp()
+        from shutil import copytree
+        from tempfile import mkdtemp
+        base = mkdtemp()
         os.rmdir(base)
-        shutil.copytree(self.base, base, symlinks=True)
+        copytree(self.base, base, symlinks=True)
         return ScratchBranch(base=base)
         
     def __del__(self):
@@ -1066,10 +1076,11 @@ class ScratchBranch(Branch):
 
     def destroy(self):
         """Destroy the test branch, removing the scratch directory."""
+        from shutil import rmtree
         try:
             if self.base:
                 mutter("delete ScratchBranch %s" % self.base)
-                shutil.rmtree(self.base)
+                rmtree(self.base)
         except OSError, e:
             # Work around for shutil.rmtree failing on Windows when
             # readonly files are encountered
@@ -1077,7 +1088,7 @@ class ScratchBranch(Branch):
             for root, dirs, files in os.walk(self.base, topdown=False):
                 for name in files:
                     os.chmod(os.path.join(root, name), 0700)
-            shutil.rmtree(self.base)
+            rmtree(self.base)
         self.base = None
 
     
@@ -1108,6 +1119,8 @@ def gen_file_id(name):
     cope with just randomness because running uuidgen every time is
     slow."""
     import re
+    from binascii import hexlify
+    from time import time
 
     # get last component
     idx = name.rfind('/')
@@ -1125,4 +1138,4 @@ def gen_file_id(name):
     name = re.sub(r'[^\w.]', '', name)
 
     s = hexlify(rand_bytes(8))
-    return '-'.join((name, compact_date(time.time()), s))
+    return '-'.join((name, compact_date(time()), s))

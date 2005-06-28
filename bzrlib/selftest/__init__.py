@@ -209,7 +209,8 @@ class _MyResult(TestResult):
 
 def selftest():
     from unittest import TestLoader, TestSuite
-    import bzrlib
+    import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, bzrlib.commands
+
     import bzrlib.selftest.whitebox
     import bzrlib.selftest.blackbox
     import bzrlib.selftest.versioning

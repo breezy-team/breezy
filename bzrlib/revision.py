@@ -17,12 +17,7 @@
 
 
 
-from xml import XMLMixin
-
-try:
-    from cElementTree import Element, ElementTree, SubElement
-except ImportError:
-    from elementtree.ElementTree import Element, ElementTree, SubElement
+from xml import XMLMixin, Element, SubElement
 
 from errors import BzrError
 

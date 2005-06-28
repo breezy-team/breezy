@@ -28,6 +28,7 @@ from bzrlib.osutils import config_dir
 DEFAULT_PLUGIN_PATH = os.path.join(config_dir(), 'plugins')
 
 all_plugins = []
+_loaded = False
 
 
 def load_plugins():
@@ -47,9 +48,12 @@ def load_plugins():
     such as *.pyd).
     """
 
-    global all_plugins
-    if all_plugins:
-        return # plugins already initialized
+    global all_plugins, _loaded
+    if _loaded:
+        # People can make sure plugins are loaded, they just won't be twice
+        return
+        #raise BzrError("plugins already initialized")
+    _loaded = True
 
     import sys, os, imp
     try:

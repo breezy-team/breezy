@@ -22,15 +22,10 @@ ROOT_ID = "TREE_ROOT"
 
 import sys, os.path, types, re
 
-try:
-    from cElementTree import Element, ElementTree, SubElement
-except ImportError:
-    from elementtree.ElementTree import Element, ElementTree, SubElement
-
-from bzrlib.xml import XMLMixin
+import bzrlib
+from bzrlib.xml import XMLMixin, Element
 from bzrlib.errors import BzrError, BzrCheckError
 
-import bzrlib
 from bzrlib.osutils import uuid, quotefn, splitpath, joinpath, appendpath
 from bzrlib.trace import mutter
 
@@ -437,7 +432,8 @@ class Inventory(XMLMixin):
             raise BzrError("cannot re-add root of inventory")
 
         if file_id == None:
-            file_id = bzrlib.branch.gen_file_id(relpath)
+            from bzrlib.branch import gen_file_id
+            file_id = gen_file_id(relpath)
 
         parent_path = parts[:-1]
         parent_id = self.path2id(parent_path)

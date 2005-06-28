@@ -24,10 +24,40 @@
 __copyright__ = "Copyright (C) 2005 Canonical Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
 
-try:
-    from cElementTree import Element, ElementTree, SubElement
-except ImportError:
-    from elementtree.ElementTree import Element, ElementTree, SubElement
+_ElementTree = None
+def ElementTree(*args, **kwargs):
+    global _ElementTree
+    if _ElementTree is None:
+        try:
+            from cElementTree import ElementTree
+        except ImportError:
+            from elementtree.ElementTree import ElementTree
+        _ElementTree = ElementTree
+    return _ElementTree(*args, **kwargs)
+
+_Element = None
+def Element(*args, **kwargs):
+    global _Element
+    if _Element is None:
+        try:
+            from cElementTree import Element
+        except ImportError:
+            from elementtree.ElementTree import Element
+        _Element = Element
+    return _Element(*args, **kwargs)
+
+
+_SubElement = None
+def SubElement(*args, **kwargs):
+    global _SubElement
+    if _SubElement is None:
+        try:
+            from cElementTree import SubElement
+        except ImportError:
+            from elementtree.ElementTree import SubElement
+        _SubElement = SubElement
+    return _SubElement(*args, **kwargs)
+
 
 import os, time
 from trace import mutter
@@ -44,6 +74,4 @@ class XMLMixin:
         return cls.from_element(ElementTree().parse(f))
 
     read_xml = classmethod(read_xml)
-
-
 

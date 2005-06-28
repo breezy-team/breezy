@@ -21,9 +21,8 @@ import sys, os
 import bzrlib
 from bzrlib.trace import mutter, note, log_error
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
-from bzrlib.osutils import quotefn
-from bzrlib import Branch, Inventory, InventoryEntry, BZRDIR, \
-     format_date
+from bzrlib.branch import find_branch
+from bzrlib import BZRDIR
 
 
 plugin_cmds = {}
@@ -304,14 +303,14 @@ class cmd_status(Command):
     
     def run(self, all=False, show_ids=False, file_list=None):
         if file_list:
-            b = Branch(file_list[0])
+            b = find_branch(file_list[0])
             file_list = [b.relpath(x) for x in file_list]
             # special case: only one path was given and it's the root
             # of the branch
             if file_list == ['']:
                 file_list = None
         else:
-            b = Branch('.')
+            b = find_branch('.')
         import status
         status.show_status(b, show_unchanged=all, show_ids=show_ids,
                            specific_files=file_list)
@@ -324,7 +323,7 @@ class cmd_cat_revision(Command):
     takes_args = ['revision_id']
     
     def run(self, revision_id):
-        Branch('.').get_revision(revision_id).write_xml(sys.stdout)
+        find_branch('.').get_revision(revision_id).write_xml(sys.stdout)
 
 
 class cmd_revno(Command):
@@ -332,7 +331,7 @@ class cmd_revno(Command):
 
     This is equal to the number of revisions on this branch."""
     def run(self):
-        print Branch('.').revno()
+        print find_branch('.').revno()
 
     
 class cmd_add(Command):
@@ -360,7 +359,8 @@ class cmd_add(Command):
     takes_options = ['verbose', 'no-recurse']
     
     def run(self, file_list, verbose=False, no_recurse=False):
-        bzrlib.add.smart_add(file_list, verbose, not no_recurse)
+        from bzrlib.add import smart_add
+        smart_add(file_list, verbose, not no_recurse)
 
 
 
@@ -372,15 +372,12 @@ class cmd_mkdir(Command):
     takes_args = ['dir+']
 
     def run(self, dir_list):
-        import os
-        import bzrlib.branch
-        
         b = None
         
         for d in dir_list:
             os.mkdir(d)
             if not b:
-                b = bzrlib.branch.Branch(d)
+                b = find_branch(d)
             b.add([d], verbose=True)
 
 
@@ -390,7 +387,7 @@ class cmd_relpath(Command):
     hidden = True
     
     def run(self, filename):
-        print Branch(filename).relpath(filename)
+        print find_branch(filename).relpath(filename)
 
 
 
@@ -399,7 +396,7 @@ class cmd_inventory(Command):
     takes_options = ['revision', 'show-ids']
     
     def run(self, revision=None, show_ids=False):
-        b = Branch('.')
+        b = find_branch('.')
         if revision == None:
             inv = b.read_working_inventory()
         else:
@@ -422,7 +419,7 @@ class cmd_move(Command):
     """
     takes_args = ['source$', 'dest']
     def run(self, source_list, dest):
-        b = Branch('.')
+        b = find_branch('.')
 
         b.move([b.relpath(s) for s in source_list], b.relpath(dest))
 
@@ -444,7 +441,7 @@ class cmd_rename(Command):
     takes_args = ['from_name', 'to_name']
     
     def run(self, from_name, to_name):
-        b = Branch('.')
+        b = find_branch('.')
         b.rename_one(b.relpath(from_name), b.relpath(to_name))
 
 
@@ -473,7 +470,7 @@ class cmd_pull(Command):
         from shutil import rmtree
         import errno
         
-        br_to = Branch('.')
+        br_to = find_branch('.')
         stored_loc = None
         try:
             stored_loc = br_to.controlfile("x-pull", "rb").read().rstrip('\n')
@@ -487,6 +484,10 @@ class cmd_pull(Command):
                 print "Using last location: %s" % stored_loc
                 location = stored_loc
         cache_root = tempfile.mkdtemp()
+        from bzrlib.branch import DivergedBranches
+        br_from = find_branch(location)
+        location = pull_loc(br_from)
+        old_revno = br_to.revno()
         try:
             from branch import find_cached_branch, DivergedBranches
             br_from = find_cached_branch(location, cache_root)
@@ -521,7 +522,8 @@ class cmd_branch(Command):
     def run(self, from_location, to_location=None, revision=None):
         import errno
         from bzrlib.merge import merge
-        from branch import find_cached_branch, DivergedBranches, NoSuchRevision
+        from bzrlib.branch import DivergedBranches, NoSuchRevision, \
+             find_cached_branch, Branch
         from shutil import rmtree
         from meta_store import CachedStore
         import tempfile
@@ -587,7 +589,7 @@ class cmd_renames(Command):
     takes_args = ['dir?']
 
     def run(self, dir='.'):
-        b = Branch(dir)
+        b = find_branch(dir)
         old_inv = b.basis_tree().inventory
         new_inv = b.read_working_inventory()
 
@@ -604,7 +606,6 @@ class cmd_info(Command):
     def run(self, branch=None):
         import info
 
-        from branch import find_branch
         b = find_branch(branch)
         info.show_info(b)
 
@@ -619,7 +620,7 @@ class cmd_remove(Command):
     takes_options = ['verbose']
     
     def run(self, file_list, verbose=False):
-        b = Branch(file_list[0])
+        b = find_branch(file_list[0])
         b.remove([b.relpath(f) for f in file_list], verbose=verbose)
 
 
@@ -633,7 +634,7 @@ class cmd_file_id(Command):
     hidden = True
     takes_args = ['filename']
     def run(self, filename):
-        b = Branch(filename)
+        b = find_branch(filename)
         i = b.inventory.path2id(b.relpath(filename))
         if i == None:
             raise BzrError("%r is not a versioned file" % filename)
@@ -649,7 +650,7 @@ class cmd_file_path(Command):
     hidden = True
     takes_args = ['filename']
     def run(self, filename):
-        b = Branch(filename)
+        b = find_branch(filename)
         inv = b.inventory
         fid = inv.path2id(b.relpath(filename))
         if fid == None:
@@ -662,14 +663,14 @@ class cmd_revision_history(Command):
     """Display list of revision ids on this branch."""
     hidden = True
     def run(self):
-        for patchid in Branch('.').revision_history():
+        for patchid in find_branch('.').revision_history():
             print patchid
 
 
 class cmd_directories(Command):
     """Display list of versioned directories in this branch."""
     def run(self):
-        for name, ie in Branch('.').read_working_inventory().directories():
+        for name, ie in find_branch('.').read_working_inventory().directories():
             if name == '':
                 print '.'
             else:
@@ -690,6 +691,7 @@ class cmd_init(Command):
         bzr commit -m 'imported project'
     """
     def run(self):
+        from bzrlib.branch import Branch
         Branch('.', init=True)
 
 
@@ -723,7 +725,6 @@ class cmd_diff(Command):
 
     def run(self, revision=None, file_list=None, diff_options=None):
         from bzrlib.diff import show_diff
-        from bzrlib import find_branch
 
         if file_list:
             b = find_branch(file_list[0])
@@ -732,7 +733,7 @@ class cmd_diff(Command):
                 # just pointing to top-of-tree
                 file_list = None
         else:
-            b = Branch('.')
+            b = find_branch('.')
     
         show_diff(b, revision, specific_files=file_list,
                   external_diff_options=diff_options)
@@ -747,7 +748,7 @@ class cmd_deleted(Command):
     TODO: Show files deleted since a previous revision, or between two revisions.
     """
     def run(self, show_ids=False):
-        b = Branch('.')
+        b = find_branch('.')
         old = b.basis_tree()
         new = b.working_tree()
 
@@ -769,7 +770,7 @@ class cmd_modified(Command):
     hidden = True
     def run(self):
         import statcache
-        b = Branch('.')
+        b = find_branch('.')
         inv = b.read_working_inventory()
         sc = statcache.update_cache(b, inv)
         basis = b.basis_tree()
@@ -795,7 +796,7 @@ class cmd_added(Command):
     """List files added in working tree."""
     hidden = True
     def run(self):
-        b = Branch('.')
+        b = find_branch('.')
         wt = b.working_tree()
         basis_inv = b.basis_tree().inventory
         inv = wt.inventory
@@ -817,7 +818,6 @@ class cmd_root(Command):
     takes_args = ['filename?']
     def run(self, filename=None):
         """Print the branch root."""
-        from branch import find_branch
         b = find_branch(filename)
         print getattr(b, 'base', None) or getattr(b, 'baseurl')
 
@@ -841,8 +841,8 @@ class cmd_log(Command):
             show_ids=False,
             forward=False,
             revision=None):
-        from bzrlib import show_log, find_branch
-        from bzrlib.log import log_formatter
+        from bzrlib.branch import find_branch
+        from bzrlib.log import log_formatter, show_log
         import codecs
 
         direction = (forward and 'forward') or 'reverse'
@@ -896,7 +896,7 @@ class cmd_touching_revisions(Command):
     hidden = True
     takes_args = ["filename"]
     def run(self, filename):
-        b = Branch(filename)
+        b = find_branch(filename)
         inv = b.read_working_inventory()
         file_id = inv.path2id(b.relpath(filename))
         for revno, revision_id, what in bzrlib.log.find_touching_revisions(b, file_id):
@@ -910,7 +910,7 @@ class cmd_ls(Command):
     """
     hidden = True
     def run(self, revision=None, verbose=False):
-        b = Branch('.')
+        b = find_branch('.')
         if revision == None:
             tree = b.working_tree()
         else:
@@ -934,7 +934,8 @@ class cmd_ls(Command):
 class cmd_unknowns(Command):
     """List unknown files."""
     def run(self):
-        for f in Branch('.').unknowns():
+        from bzrlib.osutils import quotefn
+        for f in find_branch('.').unknowns():
             print quotefn(f)
 
 
@@ -962,7 +963,7 @@ class cmd_ignore(Command):
         from bzrlib.atomicfile import AtomicFile
         import os.path
 
-        b = Branch('.')
+        b = find_branch('.')
         ifn = b.abspath('.bzrignore')
 
         if os.path.exists(ifn):
@@ -1002,7 +1003,7 @@ class cmd_ignored(Command):
 
     See also: bzr ignore"""
     def run(self):
-        tree = Branch('.').working_tree()
+        tree = find_branch('.').working_tree()
         for path, file_class, kind, file_id in tree.list_files():
             if file_class != 'I':
                 continue
@@ -1026,7 +1027,7 @@ class cmd_lookup_revision(Command):
         except ValueError:
             raise BzrCommandError("not a valid revision-number: %r" % revno)
 
-        print Branch('.').lookup_revision(revno)
+        print find_branch('.').lookup_revision(revno)
 
 
 class cmd_export(Command):
@@ -1040,7 +1041,7 @@ class cmd_export(Command):
     takes_args = ['dest']
     takes_options = ['revision', 'format']
     def run(self, dest, revision=None, format='dir'):
-        b = Branch('.')
+        b = find_branch('.')
         if revision == None:
             rh = b.revision_history()[-1]
         else:
@@ -1058,7 +1059,7 @@ class cmd_cat(Command):
     def run(self, filename, revision=None):
         if revision == None:
             raise BzrCommandError("bzr cat requires a revision number")
-        b = Branch('.')
+        b = find_branch('.')
         b.print_file(b.relpath(filename), int(revision))
 
 
@@ -1114,7 +1115,7 @@ class cmd_commit(Command):
             import codecs
             message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
-        b = Branch('.')
+        b = find_branch('.')
         commit(b, message, verbose=verbose, specific_files=selected_list)
 
 
@@ -1130,8 +1131,8 @@ class cmd_check(Command):
     takes_args = ['dir?']
 
     def run(self, dir='.'):
-        import bzrlib.check
-        bzrlib.check.check(Branch(dir))
+        from bzrlib.check import check
+        check(find_branch(dir))
 
 
 
@@ -1145,7 +1146,7 @@ class cmd_upgrade(Command):
 
     def run(self, dir='.'):
         from bzrlib.upgrade import upgrade
-        upgrade(Branch(dir))
+        upgrade(find_branch(dir))
 
 
 
@@ -1310,7 +1311,7 @@ class cmd_update_stat_cache(Command):
     hidden = True
     def run(self):
         import statcache
-        b = Branch('.')
+        b = find_branch('.')
         statcache.update_cache(b.base, b.read_working_inventory())
 
 
@@ -1586,7 +1587,8 @@ def run_bzr(argv):
         # some options like --builtin and --no-plugins have special effects
         argv, master_opts = _parse_master_args(argv)
         if not master_opts['no-plugins']:
-            bzrlib.load_plugins()
+            from bzrlib.plugin import load_plugins
+            load_plugins()
 
         args, opts = parse_args(argv)
 
@@ -1681,9 +1683,8 @@ def _report_exception(summary, quiet=False):
 
 
 def main(argv):
-    import errno
     
-    bzrlib.open_tracefile(argv)
+    bzrlib.trace.open_tracefile(argv)
 
     try:
         try:
@@ -1710,6 +1711,7 @@ def main(argv):
             _report_exception('interrupted', quiet=True)
             return 2
         except Exception, e:
+            import errno
             quiet = False
             if (isinstance(e, IOError) 
                 and hasattr(e, 'errno')

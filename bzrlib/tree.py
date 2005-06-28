@@ -17,18 +17,10 @@
 """Tree classes, representing directory at point in time.
 """
 
-from sets import Set
-import os.path, os, fnmatch, time
+from osutils import pumpfile, appendpath, fingerprint_file
 
-from osutils import pumpfile, filesize, quotefn, sha_file, \
-     joinpath, splitpath, appendpath, isdir, isfile, file_kind, fingerprint_file
-import errno
-from stat import S_ISREG, S_ISDIR, ST_MODE, ST_SIZE
-
-from bzrlib.inventory import Inventory
 from bzrlib.trace import mutter, note
 from bzrlib.errors import BzrError
-import branch
 
 import bzrlib
 
@@ -150,6 +142,7 @@ class RevisionTree(Tree):
 
 class EmptyTree(Tree):
     def __init__(self):
+        from bzrlib.inventory import Inventory
         self._inventory = Inventory()
 
     def has_filename(self, filename):
@@ -242,6 +235,7 @@ def dir_exporter(tree, dest):
     :note: If the export fails, the destination directory will be
            left in a half-assed state.
     """
+    import os
     os.mkdir(dest)
     mutter('export version %r' % tree)
     inv = tree.inventory
@@ -268,7 +262,8 @@ else:
         `dest` will be created holding the contents of this tree; if it
         already exists, it will be clobbered, like with "tar -c".
         """
-        now = time.time()
+        from time import time
+        now = time()
         compression = str(compression or '')
         try:
             ball = tarfile.open(dest, 'w:' + compression)

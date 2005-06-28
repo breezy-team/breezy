@@ -68,7 +68,7 @@ def smart_add(file_list, verbose=True, recurse=True):
                 print "skipping %s (can't add file of kind '%s')" % (f, kind)
                 continue
 
-        bzrlib.mutter("smart add of %r, abs=%r" % (f, af))
+        mutter("smart add of %r, abs=%r" % (f, af))
         
         if bzrlib.branch.is_control_file(af):
             raise ForbiddenFileError('cannot add control file %s' % f)
@@ -82,7 +82,7 @@ def smart_add(file_list, verbose=True, recurse=True):
         else:
             file_id = bzrlib.branch.gen_file_id(rf)
             inv.add_path(rf, kind=kind, file_id=file_id)
-            bzrlib.mutter("added %r kind %r file_id={%s}" % (rf, kind, file_id))
+            mutter("added %r kind %r file_id={%s}" % (rf, kind, file_id))
             count += 1 
 
             print 'added', quotefn(f)
