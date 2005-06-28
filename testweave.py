@@ -204,6 +204,11 @@ class CannedDelete(TestBase):
                           'last line',
                           ])
 
+        self.assertEqual(k.get(1),
+                         ['first line',
+                          'last line',
+                          ])
+
 
 
 class BadWeave(TestBase):

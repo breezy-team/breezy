@@ -269,7 +269,8 @@ class Weave(object):
                 if not istack:
                     raise WeaveFormatError("literal at top level on line %d"
                                            % lineno)
-                isactive = istack[-1] in included
+                isactive = (istack[-1] in included) \
+                           and not included.intersection(dset)
                 if isactive:
                     origin = istack[-1]
                     yield origin, lineno, l
