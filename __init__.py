@@ -72,26 +72,35 @@ class cmd_changeset(bzrlib.commands.Command):
     This changeset contains all of the meta-information of a
     diff, rather than just containing the patch information.
 
+    It will store it into FILENAME if supplied, otherwise it writes
+    to stdout
+
     Right now, rollup changesets, or working tree changesets are
     not supported. This will only generate a changeset that has been
     committed. You can use "--revision" to specify a certain change
     to display.
     """
     takes_options = ['revision']
-    takes_args = []
+    takes_args = ['filename?']
     aliases = ['cset']
 
-    def run(self, revision=None):
+    def run(self, revision=None, filename=None):
         from bzrlib import find_branch
         import gen_changeset
         import sys
+        import codecs
+
+        if filename is None or filename == '-':
+            outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
+        else:
+            f = open(filename, 'wb')
+            outf = codecs.getwriter(bzrlib.user_encoding)(f, errors='replace')
 
         if not isinstance(revision, (list, tuple)):
             revision = [revision]
         b = find_branch('.')
 
-        gen_changeset.show_changeset(b, revision,
-                to_file=sys.stdout)
+        gen_changeset.show_changeset(b, revision, to_file=outf)
 
 class cmd_verify_changeset(bzrlib.commands.Command):
     """Read a written changeset, and make sure it is valid.
@@ -128,7 +137,7 @@ class cmd_apply_changeset(bzrlib.commands.Command):
         if filename is None or filename == '-':
             f = sys.stdin
         else:
-            f = open(filename, 'rb')
+            f = open(filename, 'U') # Universal newlines
 
         apply_changeset.apply_changeset(b, f, reverse=reverse,
                 auto_commit=auto_commit)
