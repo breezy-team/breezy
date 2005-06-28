@@ -23,6 +23,10 @@
 from testsweet import TestBase
 from weave import Weave, VerInfo, WeaveFormatError
 
+# XXX: If we do weaves this way, will a merge still behave the same
+# way if it's done in a different order?  That's a pretty desirable
+# property.
+
 
 # texts for use in testing
 TEXT_0 = ["Hello world"]
@@ -73,11 +77,16 @@ class StoreTwo(TestBase):
 class Delta1(TestBase):
     """Detection of changes prior to inserting new revision."""
     def runTest(self):
-        return ########################## SKIPPED
         from pprint import pformat
 
         k = Weave()
         k.add([], ['line 1'])
+
+        self.assertEqual(k._l,
+                         [('{', 0),
+                          'line 1',
+                          ('}', 0),
+                          ])
 
         changes = list(k._delta(set([0]),
                                 ['line 1',
@@ -85,9 +94,9 @@ class Delta1(TestBase):
 
         self.log('raw changes: ' + pformat(changes))
 
-        # should be one inserted line after line 0q
+        # currently there are 3 lines in the weave, and we insert after them
         self.assertEquals(changes,
-                          [(1, 1, ['new line'])])
+                          [(3, 3, ['new line'])])
 
         changes = k._delta(set([0]),
                            ['top line',

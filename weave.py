@@ -107,7 +107,6 @@ class Weave(object):
       should be no way to get an earlier version deleting a later
       version.
 
-
     _l
         Text of the weave. 
 
