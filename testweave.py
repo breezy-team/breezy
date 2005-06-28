@@ -1,3 +1,5 @@
+#! /usr/bin/python2.4
+
 # Copyright (C) 2005 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
@@ -74,7 +76,7 @@ class StoreTwo(TestBase):
 
 
 
-class Delta1(TestBase):
+class DeltaAdd(TestBase):
     """Detection of changes prior to inserting new revision."""
     def runTest(self):
         from pprint import pformat
@@ -176,6 +178,7 @@ class InsertLines(TestBase):
 
 
 class SuicideDelete(TestBase):
+    """Invalid weave which tries to add and delete simultaneously."""
     def runTest(self):
         k = Weave()
 

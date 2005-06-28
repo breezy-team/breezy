@@ -328,8 +328,10 @@ class Weave(object):
 
         This is used in inserting a new text.
 
-        Delta is returned as a sequence of (line1, line2, newlines),
-        indicating that line1 through line2 of the old weave should be
+        Delta is returned as a sequence of
+        (weave1, weave2, newlines).
+
+        This indicates that weave1:weave2 of the old weave should be
         replaced by the sequence of lines in newlines.  Note that
         these line numbers are positions in the total weave and don't
         correspond to the lines in any extracted version, or even the
@@ -367,6 +369,8 @@ class Weave(object):
 
         ##print 'basis sequence:'
         ##pprint(basis)
+
+        # TODO: Perhaps return line numbers from composed weave as well?
 
         for tag, i1, i2, j1, j2 in s.get_opcodes():
             ##print tag, i1, i2, j1, j2
