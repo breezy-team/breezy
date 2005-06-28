@@ -226,6 +226,12 @@ class Weave(object):
         isactive = False
 
         lineno = 0         # line of weave, 0-based
+
+        # TODO: Probably only need to put included revisions in the istack
+
+        # TODO: Could split this into two functions, one that updates
+        # the stack and the other that processes the results -- but
+        # I'm not sure it's really needed.
         
         for l in self._l:
             if isinstance(l, tuple):
