@@ -14,20 +14,26 @@ class cmd_send_changeset(bzrlib.commands.Command):
     If no revision has been specified, the last commited change will
     be sent.
 
-    Subject of the mail can be specified by the --subject option,
+    Subject of the mail can be specified by the --message option,
     otherwise information from the changeset log will be used.
+
+    A editor will be spawned where the user may enter a description
+    of the changeset.  The description can be read from a file with
+    the --file FILE option.
     """
-    takes_options = ['revision', 'subject', 'diff-options']
+    takes_options = ['revision', 'message', 'file', 'diff-options']
     takes_args = ['to?']
 
-    def run(self, to=None, subject=None, revision=None, diff_options=None):
+    def run(self, to=None, message=None, revision=None, file=None,
+            diff_options=None):
         from tempfile import TemporaryFile
         from bzrlib import find_branch
         from bzrlib.commands import BzrCommandError
         import gen_changeset
         import send_changeset
         import sys
-
+        import StringIO
+        
         if isinstance(revision, (list, tuple)):
             if len(revision) > 1:
                 raise BzrCommandError('We do not support rollup-changesets yet.')
@@ -44,27 +50,8 @@ class cmd_send_changeset(bzrlib.commands.Command):
         if not revision:
             revision = b.revno()
 
-        rev = b.get_revision(b.lookup_revision(revision))
-        if not subject:
-            subject = rev.message.split('\n')[0]
-
-        info = "Changset for revision %d by %s\n" % (revision, rev.committer)
-        info += "with the following message:\n"
-        for line in rev.message.split('\n'):
-            info += "  " + line + "\n"
-
-        message = bzrlib.osutils.get_text_message(info)
-
-        # FIXME: StringIO instead of temporary file
-        changeset_fp = TemporaryFile()
-        gen_changeset.show_changeset(b, revision,
-                                     external_diff_options=diff_options,
-                                     to_file=changeset_fp)
-        
-        changeset_fp.seek(0)
-        send_changeset.send_changeset(to, bzrlib.osutils._get_user_id(),
-                                      subject, changeset_fp, message)
-
+        send_changeset.send_changeset(b, revision, to, message, file,
+                                      diff_options)
 
 class cmd_changeset(bzrlib.commands.Command):
     """Generate a bundled up changeset.
@@ -148,7 +135,6 @@ bzrlib.commands.register_command(cmd_verify_changeset)
 bzrlib.commands.register_command(cmd_apply_changeset)
 bzrlib.commands.register_command(cmd_send_changeset)
 
-bzrlib.commands.OPTIONS['subject'] = str
 bzrlib.commands.OPTIONS['reverse'] = None
 bzrlib.commands.OPTIONS['auto-commit'] = None
 cmd_apply_changeset.takes_options.append('reverse')
