@@ -272,48 +272,50 @@ class Weave(object):
         # TODO: Could split this into two functions, one that updates
         # the stack and the other that processes the results -- but
         # I'm not sure it's really needed.
+
+        WFE = WeaveFormatError
         
         for l in self._l:
             if isinstance(l, tuple):
                 c, v = l
                 if c == '{':
                     if istack and (istack[-1] >= v):
-                        raise WeaveFormatError("improperly nested insertions %d>=%d on line %d" 
-                                               % (istack[-1], v, lineno))
+                        raise WFE("improperly nested insertions %d>=%d on line %d" 
+                                  % (istack[-1], v, lineno))
                     istack.append(v)
                 elif c == '}':
                     try:
                         oldv = istack.pop()
                     except IndexError:
-                        raise WeaveFormatError("unmatched close of insertion %d on line %d"
-                                               % (v, lineno))
+                        raise WFE("unmatched close of insertion %d on line %d"
+                                  % (v, lineno))
                     if oldv != v:
-                        raise WeaveFormatError("mismatched close of insertion %d!=%d on line %d"
-                                               % (oldv, v, lineno))
+                        raise WFE("mismatched close of insertion %d!=%d on line %d"
+                                  % (oldv, v, lineno))
                 elif c == '[':
                     # block deleted in v
                     if v in dset:
-                        raise WeaveFormatError("repeated deletion marker for version %d on line %d"
-                                               % (v, lineno))
+                        raise WFE("repeated deletion marker for version %d on line %d"
+                                  % (v, lineno))
                     if istack:
                         if istack[-1] == v:
-                            raise WeaveFormatError("version %d deletes own text on line %d"
-                                                   % (v, lineno))
+                            raise WFE("version %d deletes own text on line %d"
+                                      % (v, lineno))
                         dset.add(v)
                 elif c == ']':
                     if v in dset:
                         dset.remove(v)
                     else:
-                        raise WeaveFormatError("unmatched close of deletion %d on line %d"
-                                               % (v, lineno))
+                        raise WFE("unmatched close of deletion %d on line %d"
+                                  % (v, lineno))
                 else:
-                    raise WeaveFormatError("invalid processing instruction %r on line %d"
-                                           % (l, lineno))
+                    raise WFE("invalid processing instruction %r on line %d"
+                              % (l, lineno))
             else:
                 assert isinstance(l, basestring)
                 if not istack:
-                    raise WeaveFormatError("literal at top level on line %d"
-                                           % lineno)
+                    raise WFE("literal at top level on line %d"
+                              % lineno)
                 isactive = (istack[-1] in included) \
                            and not included.intersection(dset)
                 if isactive:
@@ -322,10 +324,10 @@ class Weave(object):
             lineno += 1
 
         if istack:
-            raise WeaveFormatError("unclosed insertion blocks at end of weave",
+            raise WFE("unclosed insertion blocks at end of weave",
                                    istack)
         if dset:
-            raise WeaveFormatError("unclosed deletion blocks at end of weave",
+            raise WFE("unclosed deletion blocks at end of weave",
                                    dset)
 
 
@@ -401,8 +403,9 @@ class Weave(object):
         # add a sentinal, because we can also match against the final line
         basis.append((None, len(self._l), None))
 
-        # XXX: which line of the weave should we really consider matches the end of the file?
-        # the current code says it's the last line of the weave?
+        # XXX: which line of the weave should we really consider
+        # matches the end of the file?  the current code says it's the
+        # last line of the weave?
 
         from difflib import SequenceMatcher
         s = SequenceMatcher(None, basis_lines, lines)
