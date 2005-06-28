@@ -21,7 +21,7 @@
 
 
 from testsweet import TestBase
-from weave import Weave, VerInfo
+from weave import Weave, VerInfo, WeaveFormatError
 
 
 # texts for use in testing
@@ -180,7 +180,7 @@ class BadWeave(TestBase):
                 '}',
                 ('}', 0)]
 
-        self.assertRaises(ValueError,
+        self.assertRaises(WeaveFormatError,
                           k.get,
                           0)
 
@@ -205,11 +205,11 @@ class BadInsert(TestBase):
                 ('}', 1),
                 ('}', 0)]
 
-        self.assertRaises(AssertionError,
+        self.assertRaises(WeaveFormatError,
                           k.get,
                           0)
 
-        self.assertRaises(AssertionError,
+        self.assertRaises(WeaveFormatError,
                           k.get,
                           1)
 

@@ -39,6 +39,14 @@ class VerInfo(object):
         return s
 
 
+class WeaveError(Exception):
+    """Exception in processing weave"""
+
+
+class WeaveFormatError(WeaveError):
+    """Weave invariant violated"""
+    
+
 class Weave(object):
     """weave - versioned text file storage.
     
@@ -215,10 +223,9 @@ class Weave(object):
             if isinstance(l, tuple):
                 c, v = l
                 if c == '{':
-                    if istack:
-                        assert istack[-1][1] < v, \
-                               ("improperly nested insertions %d>=%d on line %d" 
-                                % (istack[-1][1], v, lineno))
+                    if istack and (istack[-1][1] >= v):
+                        raise WeaveFormatError("improperly nested insertions %d>=%d on line %d" 
+                                               % (istack[-1][1], v, lineno))
                     istack.append(l)
                     isactive = (v in included)
                 elif c == '}':
@@ -227,21 +234,21 @@ class Weave(object):
                     assert oldv == v
                     isactive = istack and (istack[-1][1] in included)
                 else:
-                    raise ValueError("invalid processing instruction %r on line %d"
-                                     % (l, lineno))
+                    raise WeaveFormatError("invalid processing instruction %r on line %d"
+                                           % (l, lineno))
             else:
                 assert isinstance(l, basestring)
                 if not istack:
-                    raise ValueError("literal at top level on line %d"
-                                     % lineno)
+                    raise WeaveFormatError("literal at top level on line %d"
+                                           % lineno)
                 if isactive:
                     origin = istack[-1][1]
                     yield origin, lineno, l
             lineno += 1
 
         if istack:
-            raise ValueError("unclosed insertion blocks at end of weave",
-                             istack)
+            raise WeaveFormatError("unclosed insertion blocks at end of weave",
+                                   istack)
 
 
     def getiter(self, index):
@@ -267,11 +274,11 @@ class Weave(object):
             included = set()
             for vi in vers_info[0]:
                 if vi < 0 or vi >= index:
-                    raise ValueError("invalid included version %d for index %d"
-                                     % (vi, index))
+                    raise WeaveFormatError("invalid included version %d for index %d"
+                                               % (vi, index))
                 if vi in included:
-                    raise ValueError("repeated included version %d for index %d"
-                                     % (vi, index))
+                    raise WeaveFormatError("repeated included version %d for index %d"
+                                               % (vi, index))
                 included.add(vi)
 
 
