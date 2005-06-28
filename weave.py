@@ -149,16 +149,21 @@ class Weave(object):
                 assert 0 <= i1
                 assert i1 <= i2
                 assert i2 <= len(self._l)
-                
-                if i1 != i2:
-                    raise NotImplementedError("can't handle replacing weave [%d:%d] yet"
-                                              % (i1, i2))
 
-                i = i1 + offset
-                self._l[i:i] = [('{', idx)] \
-                               + newlines \
-                               + [('}', idx)]
-                offset += 2 + len(newlines)
+                # the deletion and insertion are handled separately.
+                # first delete the region.
+                if i1 != i2:
+                    self._l.insert(i1+offset, ('[', idx))
+                    self._l.insert(i2+offset+1, (']', idx))
+                    offset += 2
+                    # is this OK???
+
+                if newlines:
+                    i = i1 + offset
+                    self._l[i:i] = [('{', idx)] \
+                                   + newlines \
+                                   + [('}', idx)]
+                    offset += 2 + len(newlines)
 
             self._v.append(VerInfo(parents))
         else:

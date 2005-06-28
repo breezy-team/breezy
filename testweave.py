@@ -177,6 +177,37 @@ class InsertLines(TestBase):
 
 
 
+class DeleteLines(TestBase):
+    """Deletion of lines from existing text.
+
+    Try various texts all based on a common ancestor."""
+    def runTest(self):
+        k = Weave()
+
+        base_text = ['one', 'two', 'three', 'four']
+
+        k.add([], base_text)
+        
+        texts = [['one', 'two', 'three'],
+                 ['two', 'three', 'four'],
+                 ['one', 'four'],
+                 ['one', 'two', 'three', 'four'],
+                 ]
+
+        for t in texts:
+            ver = k.add([0], t)
+
+        from pprint import pformat
+        self.log('final weave:')
+        self.log('k._l=' + pformat(k._l))
+
+        for i in range(len(texts)):
+            self.assertEqual(k.get(i+1),
+                             texts[i])
+            
+
+
+
 class SuicideDelete(TestBase):
     """Invalid weave which tries to add and delete simultaneously."""
     def runTest(self):
@@ -362,7 +393,7 @@ class InsertNested(TestBase):
                          
 
 
-class DeleteLines(TestBase):
+class DeleteLines2(TestBase):
     """Test recording revisions that delete lines.
 
     This relies on the weave having a way to represent lines knocked
@@ -377,14 +408,16 @@ class DeleteLines(TestBase):
 
         self.assertEqual(len(k.get(0)), 4)
 
-        return ################################## SKIPPED
-
         k.add([0], ["line the first",
                    "fine"])
 
         self.assertEqual(k.get(1),
                          ["line the first",
                           "fine"])
+
+        self.assertEqual(k.annotate(1),
+                         [(0, "line the first"),
+                          (0, "fine")])
 
 
 
