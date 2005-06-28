@@ -21,7 +21,7 @@
 
 """Weave - storage of related text file versions"""
 
-# TODO: Perhaps have copy and comparison methods?
+# TODO: Perhaps have copy and comparison methods of Weave instances?
 
 
 class VerInfo(object):
@@ -54,11 +54,31 @@ class Weave(object):
     Typically the index number will be valid only inside this weave and
     the version-id is used to reference it in the larger world.
 
-    _l
-        List of edit instructions.
+    The weave is represented as a list mixing edit instructions and
+    literal text.  Each entry in _l can be either a string (or
+    unicode), or a tuple.  If a string, it means that the given line
+    should be output in the currently active revisions.
 
-        Each line is stored as a tuple of (index-id, text).  The line
-        is present in the version equal to index-id.
+    If a tuple, it gives a processing instruction saying in which
+    revisions the enclosed lines are active.  The tuple has the form
+    (instruction, version).
+
+    The instruction can be '{' or '}' for an insertion block, and '['
+    and ']' for a deletion block respectively.  The version is the
+    integer version index.
+
+    Constraints:
+
+    * A later version can delete lines that were introduced by any
+      number of ancestor versions; this implies that deletion
+      instructions can span insertion blocks without regard to the
+      insertion block's nesting.
+
+    * Similarly, deletions need not be properly nested.
+
+
+    _l
+        Text of the weave. 
 
     _v
         List of versions, indexed by index number.
@@ -81,10 +101,8 @@ class Weave(object):
 
         text
             Sequence of lines to be added in the new version."""
-        if not isinstance(text, list):
-            raise ValueError("text should be a list, not %s" % type(text))
-
         self._check_versions(parents)
+        self._check_lines(text)
 
         idx = len(self._v)
 
@@ -105,21 +123,34 @@ class Weave(object):
                 if i1 != i2:
                     raise NotImplementedError("can't handle replacing weave [%d:%d] yet"
                                               % (i1, i2))
-                
-                for line in newlines:
-                    self._l.insert(i1 + offset, (idx, line))
-                    offset += 1
+
+                self._l.insert(i1 + offset, ('{', idx))
+                i = i1 + offset + 1
+                self._l[i:i] = newlines
+                self._l.insert(i + 1, ('}', idx))
+                offset += 2 + len(newlines)
 
             self._v.append(VerInfo(parents))
         else:
             # special case; adding with no parents revision; can do this
             # more quickly by just appending unconditionally
-            for line in text:
-                self._l.append((idx, line))
+            self._l.append(('{', idx))
+            self._l += text
+            self._l.append(('}', idx))
 
             self._v.append(VerInfo())
             
         return idx
+
+
+    def _check_lines(self, text):
+        if not isinstance(text, list):
+            raise ValueError("text should be a list, not %s" % type(text))
+
+        for l in text:
+            if not isinstance(l, basestring):
+                raise ValueError("text line should be a string or unicode, not %s" % type(l))
+        
 
 
     def _check_versions(self, indexes):
@@ -145,18 +176,42 @@ class Weave(object):
             raise IndexError('version index %d out of range' % index)
         included = set(vi.included)
         included.add(index)
-        return iter(self._extract(included))
+        for origin, lineno, text in self._extract(included):
+            yield origin, text
 
 
     def _extract(self, included):
         """Yield annotation of lines in included set.
 
+        Yields a sequence of tuples (origin, lineno, text), where
+        origin is the origin version, lineno the index in the weave,
+        and text the text of the line.
+
         The set typically but not necessarily corresponds to a version.
         """
-        for origin, line in self._l:
-            if origin in included:
-                yield origin, line
+        stack = []
+        isactive = False
+        lineno = 0
         
+        for l in self._l:
+            if isinstance(l, tuple):
+                c, v = l
+                if c == '{':
+                    stack.append(l)
+                    isactive = (v in included)
+                elif c == '}':
+                    oldc, oldv = stack.pop()
+                    assert oldc == '{'
+                    assert oldv == v
+                    isactive == stack and (stack[-1][1] in included)
+                else:
+                    raise ValueError("invalid processing instruction %r" % (l,))
+            else:
+                assert isinstance(l, basestring)
+                if isactive:
+                    origin = stack[-1][1]
+                    yield origin, lineno, l
+            lineno += 1
 
 
     def getiter(self, index):
@@ -219,17 +274,11 @@ class Weave(object):
 
         ##print 'my lines:'
         ##pprint(self._l)
-        
-        lineno = 0
-        for origin, line in self._l:
-            if origin in included:
-                basis.append((lineno, line))
-            lineno += 1
 
-        assert lineno == len(self._l)
+        basis = list(self._extract(included))
 
         # now make a parallel list with only the text, to pass to the differ
-        basis_lines = [line for (lineno, line) in basis]
+        basis_lines = [line for (origin, lineno, line) in basis]
 
         # add a sentinal, because we can also match against the final line
         basis.append((len(self._l), None))
