@@ -496,6 +496,7 @@ class ReplaceLine(TestBase):
 
 
 class Merge(TestBase):
+    """Versions that merge diverged parents"""
     def runTest(self):
         k = Weave()
 
@@ -523,6 +524,30 @@ class Merge(TestBase):
 
         self.log('k._l=' + pformat(k._l))
 
+
+
+class AutoMerge(TestBase):
+    def runTest(self):
+        k = Weave()
+
+        texts = [['header', 'aaa', 'bbb'],
+                 ['header', 'aaa', 'line from 1', 'bbb'],
+                 ['header', 'aaa', 'bbb', 'line from 2', 'more from 2'],
+                 ]
+
+        k.add([], texts[0])
+        k.add([0], texts[1])
+        k.add([0], texts[2])
+
+        self.log('k._l=' + pformat(k._l))
+
+        m = list(k.merge_iter([0, 1, 2]))
+
+        self.assertEqual(m,
+                         ['header', 'aaa',
+                          'line from 1',
+                          'bbb',
+                          'line from 2', 'more from 2'])
         
 
 

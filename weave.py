@@ -342,6 +342,13 @@ class Weave(object):
         return list(self.getiter(index))
 
 
+    def merge_iter(self, included):
+        """Return composed version of multiple included versions."""
+        included = frozenset(included)
+        for origin, lineno, text in self._extract(included):
+            yield text
+
+
     def dump(self, to_file):
         from pprint import pprint
         print >>to_file, "Weave._l = ",
