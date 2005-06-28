@@ -13,16 +13,17 @@ from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 
 
-def send_changeset(b, revno, to_address, message, file, diff_options):
+def send_changeset(branch, revisions, to_address, message, file):
     from bzrlib import find_branch
     from bzrlib.commands import BzrCommandError
     import gen_changeset
     import send_changeset
-    import StringIO
+    from cStringIO import StringIO
 
-    revision = b.get_revision(b.lookup_revision(revno))
+    base_rev_id, target_rev_id = gen_changeset._canonicalize_revision(branch, revisions)
+    rev = branch.get_revision(target_rev_id)
     if not message:
-        message = revision.message.split('\n')[0]
+        message = rev.message.split('\n')[0]
 
     from_address = bzrlib.osutils._get_user_id()
 
@@ -34,12 +35,12 @@ def send_changeset(b, revno, to_address, message, file, diff_options):
     # Either read the mail body from the specified file, or spawn
     # an editor and let the user type a description.
     if file:
-        mail_body = open(file, "rt").read()
+        mail_body = open(file, "U").read()
     else:
-        info = "Changset for revision %d by %s\n" % (revno,
-                                                     revision.committer)
+        info = "Changeset by %s\n" % rev.committer
+        info += "From %s\n" % base_rev_id
         info += "with the following message:\n"
-        for line in revision.message.split('\n'):
+        for line in rev.message.split('\n'):
             info += "  " + line + "\n"
 
         mail_body = bzrlib.osutils.get_text_message(info)
@@ -47,14 +48,12 @@ def send_changeset(b, revno, to_address, message, file, diff_options):
             raise BzrCommandError("aborted")
     outer.attach(MIMEText(mail_body))
     
-    changeset_fp = StringIO.StringIO()
-    gen_changeset.show_changeset(b, revno,
-                                 external_diff_options=diff_options,
-                                 to_file=changeset_fp)
+    changeset_fp = StringIO()
+    gen_changeset.show_changeset(branch, revisions, to_file=changeset_fp)
     outer.attach(MIMEText(changeset_fp.getvalue()))
 
     try:
-        fp = open(os.path.join(bzrlib.osutils.config_dir(), 'smtp-host'), 'rt')
+        fp = open(os.path.join(bzrlib.osutils.config_dir(), 'smtp-host'), 'U')
         smtpconn = smtplib.SMTP(fp.readline().strip('\n'))
     except:
         smtpconn = smtplib.SMTP()

@@ -21,18 +21,13 @@ class cmd_send_changeset(bzrlib.commands.Command):
     of the changeset.  The description can be read from a file with
     the --file FILE option.
     """
-    takes_options = ['revision', 'message', 'file', 'diff-options']
+    takes_options = ['revision', 'message', 'file']
     takes_args = ['to?']
 
-    def run(self, to=None, message=None, revision=None, file=None,
-            diff_options=None):
-        from tempfile import TemporaryFile
+    def run(self, to=None, message=None, revision=None, file=None):
         from bzrlib import find_branch
         from bzrlib.commands import BzrCommandError
-        import gen_changeset
-        import send_changeset
-        import sys
-        import StringIO
+        from send_changeset import send_changeset
         
         if isinstance(revision, (list, tuple)):
             if len(revision) > 1:
@@ -47,11 +42,10 @@ class cmd_send_changeset(bzrlib.commands.Command):
             except:
                 raise BzrCommandError('destination address is not known')
 
-        if not revision:
-            revision = b.revno()
+        if not isinstance(revision, (list, tuple)):
+            revision = [revision]
 
-        send_changeset.send_changeset(b, revision, to, message, file,
-                                      diff_options)
+        send_changeset(b, revision, to, message, file)
 
 class cmd_changeset(bzrlib.commands.Command):
     """Generate a bundled up changeset.
