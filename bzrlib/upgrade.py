@@ -92,8 +92,10 @@ def upgrade(branch):
                 # there should be *some* way of making old entries have
                 # the full meta information.
                 import tempfile, os, errno
+                from bzrlib.xml import pack_xml
+                
                 rev_tmp = tempfile.TemporaryFile()
-                rev.write_xml(rev_tmp)
+                pack_xml(rev, rev_tmp)
                 rev_tmp.seek(0)
 
                 tmpfd, tmp_path = tempfile.mkstemp(prefix=rev_id, suffix='.gz',

@@ -60,6 +60,7 @@ def commit(branch, message,
     from bzrlib.errors import BzrError
     from bzrlib.revision import Revision, RevisionReference
     from bzrlib.trace import mutter, note
+    from bzrlib.xml import pack_xml
 
     branch.lock_write()
 
@@ -108,7 +109,7 @@ def commit(branch, message,
         inv_id = rev_id
 
         inv_tmp = tempfile.TemporaryFile()
-        new_inv.write_xml(inv_tmp)
+        pack_xml(new_inv, inv_tmp)
         inv_tmp.seek(0)
         branch.inventory_store.add(inv_tmp, inv_id)
         mutter('new inventory_id is {%s}' % inv_id)
@@ -144,7 +145,7 @@ def commit(branch, message,
             rev.parents = [RevisionReference(precursor_id, precursor_sha1)]
 
         rev_tmp = tempfile.TemporaryFile()
-        rev.write_xml(rev_tmp)
+        pack_xml(rev, rev_tmp)
         rev_tmp.seek(0)
         branch.revision_store.add(rev_tmp, rev_id)
         mutter("new revision_id is {%s}" % rev_id)

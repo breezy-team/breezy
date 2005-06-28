@@ -143,10 +143,12 @@ class RemoteBranch(Branch):
         pl = len(self.baseurl)
         return path[pl:].lstrip('/')
 
+
     def get_revision(self, revision_id):
-        from revision import Revision
+        from bzrlib.revision import Revision
+        from bzrlib.xml import unpack_xml
         revf = self.revision_store[revision_id]
-        r = Revision.read_xml(revf)
+        r = unpack_xml(Revision, revf)
         if r.revision_id != revision_id:
             raise BzrCheckError('revision stored as {%s} actually contains {%s}'
                                 % (revision_id, r.revision_id))
@@ -170,9 +172,10 @@ class RemoteStore(object):
 
 def simple_walk():
     """For experimental purposes, traverse many parts of a remote branch"""
-    from revision import Revision
-    from branch import Branch
-    from inventory import Inventory
+    from bzrlib.revision import Revision
+    from bzrlib.branch import Branch
+    from bzrlib.inventory import Inventory
+    from bzrlib.xml import unpack_xml
 
     got_invs = {}
     got_texts = {}
@@ -190,7 +193,7 @@ def simple_walk():
         rev_f = get_url('/.bzr/revision-store/%s' % rev_id,
                         compressed=True)
 
-        rev = Revision.read_xml(rev_f)
+        rev = unpack_xml(Revision, rev_f)
         print rev.message
         inv_id = rev.inventory_id
         if inv_id not in got_invs:

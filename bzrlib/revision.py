@@ -17,12 +17,7 @@
 
 
 
-from xml import XMLMixin, Element, SubElement
-
-from errors import BzrError
-
-
-class RevisionReference:
+class RevisionReference(object):
     """
     Reference to a stored revision.
 
@@ -46,7 +41,7 @@ class RevisionReference:
                 
 
 
-class Revision(XMLMixin):
+class Revision(object):
     """Single revision on a branch.
 
     Revisions may know their revision_hash, but only once they've been
@@ -105,6 +100,8 @@ class Revision(XMLMixin):
 
         
     def to_element(self):
+        from bzrlib.xml import Element, SubElement
+        
         root = Element('revision',
                        committer = self.committer,
                        timestamp = '%.9f' % self.timestamp,
@@ -154,6 +151,8 @@ class Revision(XMLMixin):
 def unpack_revision(elt):
     """Convert XML element into Revision object."""
     # <changeset> is deprecated...
+    from bzrlib.errors import BzrError
+    
     if elt.tag not in ('revision', 'changeset'):
         raise BzrError("unexpected tag in revision file: %r" % elt)
 

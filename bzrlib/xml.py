@@ -20,55 +20,21 @@
 # "XML is like violence: if it doesn't solve your problem, you aren't
 # using enough of it." -- various
 
-
-__copyright__ = "Copyright (C) 2005 Canonical Ltd."
-__author__ = "Martin Pool <mbp@canonical.com>"
-
-_ElementTree = None
-def ElementTree(*args, **kwargs):
-    global _ElementTree
-    if _ElementTree is None:
-        try:
-            from cElementTree import ElementTree
-        except ImportError:
-            from elementtree.ElementTree import ElementTree
-        _ElementTree = ElementTree
-    return _ElementTree(*args, **kwargs)
-
-_Element = None
-def Element(*args, **kwargs):
-    global _Element
-    if _Element is None:
-        try:
-            from cElementTree import Element
-        except ImportError:
-            from elementtree.ElementTree import Element
-        _Element = Element
-    return _Element(*args, **kwargs)
+# importing this module is fairly slow because it has to load several ElementTree bits
+try:
+    from cElementTree import ElementTree, SubElement, Element
+except ImportError:
+    from elementtree.ElementTree import ElementTree, SubElement, Element
 
 
-_SubElement = None
-def SubElement(*args, **kwargs):
-    global _SubElement
-    if _SubElement is None:
-        try:
-            from cElementTree import SubElement
-        except ImportError:
-            from elementtree.ElementTree import SubElement
-        _SubElement = SubElement
-    return _SubElement(*args, **kwargs)
+def pack_xml(o, f):
+    """Write object o to file f as XML.
+
+    o must provide a to_element method.
+    """
+    ElementTree(o.to_element()).write(f, 'utf-8')
+    f.write('\n')
 
 
-class XMLMixin:
-    def to_element(self):
-        raise Exception("XMLMixin.to_element must be overridden in concrete classes")
-    
-    def write_xml(self, f):
-        ElementTree(self.to_element()).write(f, 'utf-8')
-        f.write('\n')
-
-    def read_xml(cls, f):
-        return cls.from_element(ElementTree().parse(f))
-
-    read_xml = classmethod(read_xml)
-
+def unpack_xml(cls, f):
+    return cls.from_element(ElementTree().parse(f))

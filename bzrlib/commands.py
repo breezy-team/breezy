@@ -323,7 +323,8 @@ class cmd_cat_revision(Command):
     takes_args = ['revision_id']
     
     def run(self, revision_id):
-        find_branch('.').get_revision(revision_id).write_xml(sys.stdout)
+        from bzrlib.xml import pack_xml
+        pack_xml(find_branch('.').get_revision(revision_id), sys.stdout)
 
 
 class cmd_revno(Command):

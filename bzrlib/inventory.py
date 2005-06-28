@@ -23,13 +23,12 @@ ROOT_ID = "TREE_ROOT"
 import sys, os.path, types, re
 
 import bzrlib
-from bzrlib.xml import XMLMixin, Element
 from bzrlib.errors import BzrError, BzrCheckError
 
 from bzrlib.osutils import uuid, quotefn, splitpath, joinpath, appendpath
 from bzrlib.trace import mutter
 
-class InventoryEntry(XMLMixin):
+class InventoryEntry(object):
     """Description of a versioned file.
 
     An InventoryEntry has the following fields, which are also
@@ -155,6 +154,8 @@ class InventoryEntry(XMLMixin):
     
     def to_element(self):
         """Convert to XML element"""
+        from bzrlib.xml import Element
+        
         e = Element('entry')
 
         e.set('name', self.name)
@@ -243,7 +244,7 @@ class RootEntry(InventoryEntry):
 
 
 
-class Inventory(XMLMixin):
+class Inventory(object):
     """Inventory of versioned files in a tree.
 
     This describes which file_id is present at each point in the tree,
@@ -261,9 +262,6 @@ class Inventory(XMLMixin):
     inserted, other than through the Inventory API.
 
     >>> inv = Inventory()
-    >>> inv.write_xml(sys.stdout)
-    <inventory>
-    </inventory>
     >>> inv.add(InventoryEntry('123-123', 'hello.c', 'file', ROOT_ID))
     >>> inv['123-123'].name
     'hello.c'
@@ -279,12 +277,6 @@ class Inventory(XMLMixin):
 
     >>> [x[0] for x in inv.iter_entries()]
     ['hello.c']
-    
-    >>> inv.write_xml(sys.stdout)
-    <inventory>
-    <entry file_id="123-123" kind="file" name="hello.c" />
-    </inventory>
-
     """
     def __init__(self):
         """Create or read an inventory.
@@ -473,6 +465,8 @@ class Inventory(XMLMixin):
 
     def to_element(self):
         """Convert to XML Element"""
+        from bzrlib.xml import Element
+        
         e = Element('inventory')
         e.text = '\n'
         for path, ie in self.iter_entries():

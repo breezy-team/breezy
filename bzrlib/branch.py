@@ -291,6 +291,8 @@ class Branch(object):
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
+        from bzrlib.xml import pack_xml
+        
         os.mkdir(self.controlfilename([]))
         self.controlfile('README', 'w').write(
             "This is a Bazaar-NG control directory.\n"
@@ -303,7 +305,8 @@ class Branch(object):
                   'branch-lock'):
             self.controlfile(f, 'w').write('')
         mutter('created control directory in ' + self.base)
-        Inventory().write_xml(self.controlfile('inventory','w'))
+
+        pack_xml(Inventory(), self.controlfile('inventory','w'))
 
 
     def _check_format(self):
@@ -329,13 +332,15 @@ class Branch(object):
     def read_working_inventory(self):
         """Read the working inventory."""
         from bzrlib.inventory import Inventory
+        from bzrlib.xml import unpack_xml
         from time import time
         before = time()
-        # ElementTree does its own conversion from UTF-8, so open in
-        # binary.
         self.lock_read()
         try:
-            inv = Inventory.read_xml(self.controlfile('inventory', 'rb'))
+            # ElementTree does its own conversion from UTF-8, so open in
+            # binary.
+            inv = unpack_xml(Inventory,
+                                  self.controlfile('inventory', 'rb'))
             mutter("loaded inventory of %d items in %f"
                    % (len(inv), time() - before))
             return inv
@@ -349,13 +354,14 @@ class Branch(object):
         That is to say, the inventory describing changes underway, that
         will be committed to the next revision.
         """
+        from bzrlib.atomicfile import AtomicFile
+        from bzrlib.xml import pack_xml
+        
         self.lock_write()
         try:
-            from bzrlib.atomicfile import AtomicFile
-
             f = AtomicFile(self.controlfilename('inventory'), 'wb')
             try:
-                inv.write_xml(f)
+                pack_xml(inv, f)
                 f.commit()
             finally:
                 f.close()
@@ -555,11 +561,19 @@ class Branch(object):
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
         from bzrlib.revision import Revision
-        if not revision_id or not isinstance(revision_id, basestring):
-            raise ValueError('invalid revision-id: %r' % revision_id)
-        r = Revision.read_xml(self.revision_store[revision_id])
+        from bzrlib.xml import unpack_xml
+
+        self.lock_read()
+        try:
+            if not revision_id or not isinstance(revision_id, basestring):
+                raise ValueError('invalid revision-id: %r' % revision_id)
+            r = unpack_xml(Revision, self.revision_store[revision_id])
+        finally:
+            self.unlock()
+            
         assert r.revision_id == revision_id
         return r
+        
 
     def get_revision_sha1(self, revision_id):
         """Hash the stored value of a revision, and return it."""
@@ -579,8 +593,10 @@ class Branch(object):
                parameter which can be either an integer revno or a
                string hash."""
         from bzrlib.inventory import Inventory
-        i = Inventory.read_xml(self.inventory_store[inventory_id])
-        return i
+        from bzrlib.xml import unpack_xml
+
+        return unpack_xml(Inventory, self.inventory_store[inventory_id])
+            
 
     def get_inventory_sha1(self, inventory_id):
         """Return the sha1 hash of the inventory entry
