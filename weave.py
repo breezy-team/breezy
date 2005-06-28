@@ -125,6 +125,18 @@ class Weave(object):
         self._l = []
         self._v = []
 
+
+
+    def __eq__(self, other):
+        if not isinstance(other, Weave):
+            return False
+        return self._v == other._v \
+               and self._l == other._l
+    
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
         
     def add(self, parents, text):
         """Add a single text on top of the weave.
