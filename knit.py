@@ -25,6 +25,7 @@
 
 
 class VerInfo(object):
+    """Information about a version in a Knit."""
     included = frozenset()
     def __init__(self, included=None):
         if included:
@@ -72,7 +73,7 @@ class Knit(object):
         
     def add(self, parents, text):
         """Add a single text on top of the weave.
-
+  
         Returns the index number of the newly added version.
 
         parents
