@@ -169,6 +169,7 @@ class InsertNested(TestBase):
         k._v = [VerInfo([]),
                 VerInfo([0]),
                 VerInfo([0]),
+                VerInfo([0,1,2]),
                 ]
         k._l = [('{', 0),
                 'foo {',
@@ -191,6 +192,19 @@ class InsertNested(TestBase):
                           '  added in version 1',
                           '  also from v1',
                           '}'])
+                       
+        self.assertEqual(k.get(2),
+                         ['foo {',
+                          '  added in v2',
+                          '}'])
+
+        self.assertEqual(k.get(3),
+                         ['foo {',
+                          '  added in version 1',
+                          '  added in v2',
+                          '  also from v1',
+                          '}'])
+                         
                        
         
 
