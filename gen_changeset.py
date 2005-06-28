@@ -32,7 +32,7 @@ def _canonicalize_revision(branch, revno):
     if new is None:
         raise BzrCommandError('Cannot generate a changset with no commits in tree.')
 
-    old = branch.get_revision(new).precursor
+    old = branch.get_revision(new).parents[0].revision_id
 
     return old, new
 
@@ -89,6 +89,7 @@ class MetaInfoHeader(object):
         """
         :param full_remove: Include the full-text for a delete
         :param full_rename: Include an add+delete patch for a rename
+
         """
         self.branch = branch
         self.delta = delta
@@ -163,9 +164,7 @@ class MetaInfoHeader(object):
         for line in common.get_header():
             write(line)
 
-        # This grabs the current username, what we really want is the
-        # username from the actual patches.
-        #write(username(), key='committer')
+        # For now, we only support 1 revision, but we can support more in the future
         assert len(self.revision_list) == 1
         rev = self.revision_list[0]
         write(rev.committer, key='committer')
@@ -177,9 +176,10 @@ class MetaInfoHeader(object):
                 self.to_file.write('#    %s\n' % line)
         write(rev.revision_id, key='revision')
 
+        # Base revision is the revision this changeset is against
         if self.base_revision:
-            write(self.base_revision.revision_id, key='precursor')
-            write(str(self.precursor_revno), key='precursor revno')
+            write(self.base_revision.revision_id, key='base')
+            write(str(self.precursor_revno), key='base revno')
 
 
         write('')
@@ -195,17 +195,12 @@ class MetaInfoHeader(object):
 
         write('BEGIN BZR FOOTER')
 
-        assert len(self.revision_list) == 1 # We only handle single revision entries
-        rev = self.revision_list[0]
-        write(self.branch.get_revision_sha1(rev.revision_id),
-                key='revision sha1')
         if self.base_revision:
             rev_id = self.base_revision.revision_id
             write(self.branch.get_revision_sha1(rev_id),
-                    key='precursor sha1')
+                    key='base sha1')
 
-        write('%.9f' % rev.timestamp, key='timestamp')
-        write(str(rev.timezone), key='timezone')
+        self._write_revisions()
 
         self._write_ids()
 
@@ -213,13 +208,23 @@ class MetaInfoHeader(object):
 
     def _write_revisions(self):
         """Not used. Used for writing multiple revisions."""
-        first = True
         for rev in self.revision_list:
-            if rev.revision_id is not None:
-                if first:
-                    self._write('revisions:')
-                    first = False
-                self._write(' '*4 + rev.revision_id + '\t' + self.branch.get_revision_sha1(rev.revision_id))
+            rev_id = rev.revision_id
+            self.to_file.write('# revision: %s\n' % rev_id)
+            self.to_file.write('#    sha1: %s\n' % 
+                self.branch.get_revision_sha1(rev_id))
+            self.to_file.write('#    committer: %s\n' % rev.committer)
+            self.to_file.write('#    timestamp: %.9f\n' % rev.timestamp)
+            self.to_file.write('#    timezone: %.9f\n' % rev.timezone)
+            self.to_file.write('#    inventory id: %s\n' % rev.inventory_id)
+            self.to_file.write('#    inventory sha1: %s\n' % rev.inventory_sha1)
+            self.to_file.write('#    parents:\n')
+            for parent in rev.parents:
+                self.to_file.write('#        %s\t%s\n' % (
+                    parent.revision_id,
+                    parent.revision_sha1))
+
+
 
 
     def _write_ids(self):
@@ -257,8 +262,8 @@ class MetaInfoHeader(object):
                     id_set.add(ie.parent_id)
                 path = tree.inventory.id2path(file_id)
                 self.to_file.write('#    %s\t%s\t%s\n'
-                        % (path.encode('utf8'), file_id.encode('utf8'),
-                            ie.parent_id.encode('utf8')))
+                        % (path, file_id,
+                            ie.parent_id))
         write_ids(self.new_tree, new_ids, 'file')
         write_ids(self.old_tree, old_ids, 'old file')
 
