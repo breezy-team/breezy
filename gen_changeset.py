@@ -223,6 +223,9 @@ class MetaInfoHeader(object):
                 self.to_file.write('#        %s\t%s\n' % (
                     parent.revision_id,
                     parent.revision_sha1))
+            self.to_file.write('#    message:\n')
+            for line in rev.message.split('\n'):
+                self.to_file.write('#        %s\n' % line)
 
 
 
