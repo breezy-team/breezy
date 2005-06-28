@@ -14,6 +14,7 @@ from email.MIMEText import MIMEText
 
 
 def send_changeset(branch, revisions, to_address, message, file):
+    import bzrlib.osutils
     from bzrlib import find_branch
     from bzrlib.commands import BzrCommandError
     import gen_changeset
