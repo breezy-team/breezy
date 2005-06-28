@@ -137,8 +137,8 @@ class MetaInfoHeader(object):
         else:
             for rev_id in rh[old_revno+1:new_revno+1]:
                 self.revision_list.append(self.branch.get_revision(rev_id))
-        self.precursor_revno = old_revno
-        self.revno = new_revno
+        self.precursor_revno = old_revno+1
+        self.revno = new_revno+1
 
     def _write(self, txt, key=None):
         if key:
