@@ -160,6 +160,59 @@ class InsertLines(TestBase):
                           (4, 'ccc')])
 
 
+class BadWeave(TestBase):
+    """Test that we trap an insert which should not occur."""
+    def runTest(self):
+        k = Weave()
+
+        k._v = [VerInfo([]),
+                ]
+        k._l = ['bad line',
+                ('{', 0),
+                'foo {',
+                ('{', 1),
+                '  added in version 1',
+                ('{', 2),
+                '  added in v2',
+                ('}', 2),
+                '  also from v1',
+                ('}', 1),
+                '}',
+                ('}', 0)]
+
+        self.assertRaises(ValueError,
+                          k.get,
+                          0)
+
+
+class BadInsert(TestBase):
+    """Test that we trap an insert which should not occur."""
+    def runTest(self):
+        k = Weave()
+
+        k._v = [VerInfo([]),
+                VerInfo([0]),
+                VerInfo([0]),
+                VerInfo([0,1,2]),
+                ]
+        k._l = [('{', 0),
+                'foo {',
+                ('{', 1),
+                '  added in version 1',
+                ('{', 1),
+                '  more in 1',
+                ('}', 1),
+                ('}', 1),
+                ('}', 0)]
+
+        self.assertRaises(AssertionError,
+                          k.get,
+                          0)
+
+        self.assertRaises(AssertionError,
+                          k.get,
+                          1)
+
 
 class InsertNested(TestBase):
     """Insertion with nested instructions."""

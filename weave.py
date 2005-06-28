@@ -207,7 +207,7 @@ class Weave(object):
 
         The set typically but not necessarily corresponds to a version.
         """
-        stack = []
+        istack = []
         isactive = False
         lineno = 0
         
@@ -215,29 +215,33 @@ class Weave(object):
             if isinstance(l, tuple):
                 c, v = l
                 if c == '{':
-                    stack.append(l)
+                    if istack:
+                        assert istack[-1][1] < v, \
+                               ("improperly nested insertions %d>=%d on line %d" 
+                                % (istack[-1][1], v, lineno))
+                    istack.append(l)
                     isactive = (v in included)
                 elif c == '}':
-                    oldc, oldv = stack.pop()
+                    oldc, oldv = istack.pop()
                     assert oldc == '{'
                     assert oldv == v
-                    isactive = stack and (stack[-1][1] in included)
+                    isactive = istack and (istack[-1][1] in included)
                 else:
                     raise ValueError("invalid processing instruction %r on line %d"
                                      % (l, lineno))
             else:
                 assert isinstance(l, basestring)
-                if not stack:
+                if not istack:
                     raise ValueError("literal at top level on line %d"
                                      % lineno)
                 if isactive:
-                    origin = stack[-1][1]
+                    origin = istack[-1][1]
                     yield origin, lineno, l
             lineno += 1
 
-        if stack:
-            raise ValueError("unclosed blocks at end of weave",
-                             stack)
+        if istack:
+            raise ValueError("unclosed insertion blocks at end of weave",
+                             istack)
 
 
     def getiter(self, index):
