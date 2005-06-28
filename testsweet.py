@@ -17,14 +17,10 @@
 
 from unittest import TestResult, TestCase
 
-try:
-    import shutil
-    from subprocess import call, Popen, PIPE
-except ImportError, e:
+def _need_subprocess():
     sys.stderr.write("sorry, this test suite requires the subprocess module\n"
                      "this is shipped with python2.4 and available separately for 2.3\n")
-    raise
-
+    
 
 class CommandFailed(Exception):
     pass
@@ -85,6 +81,13 @@ class TestBase(TestCase):
         If a single string is based, it is split into words.
         For commands that are not simple space-separated words, please
         pass a list instead."""
+        try:
+            from subprocess import call, Popen, PIPE
+        except ImportError, e:
+            _need_subprocess
+            raise
+
+
         cmd = self.formcmd(cmd)
 
         self.log('$ ' + ' '.join(cmd))
@@ -97,6 +100,12 @@ class TestBase(TestCase):
 
     def backtick(self, cmd, retcode=0):
         """Run a command and return its output"""
+        try:
+            from subprocess import call, Popen, PIPE
+        except ImportError, e:
+            _need_subprocess()
+            raise
+
         cmd = self.formcmd(cmd)
         child = Popen(cmd, stdout=PIPE, stderr=self.TEST_LOG)
         outd, errd = child.communicate()

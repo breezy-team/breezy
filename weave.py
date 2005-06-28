@@ -51,7 +51,7 @@ except NameError:
     from sets import Set, ImmutableSet
     set = Set
     frozenset = ImmutableSet
-    del Set, FrozenSet
+    del Set, ImmutableSet
 
 
 class VerInfo(object):
