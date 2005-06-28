@@ -205,8 +205,7 @@ class InsertNested(TestBase):
                           '  also from v1',
                           '}'])
                          
-                       
-        
+
 
 class DeleteLines(TestBase):
     """Test recording revisions that delete lines.
