@@ -27,6 +27,21 @@
 # way if it's done in a different order?  That's a pretty desirable
 # property.
 
+# TODO: How to write these to disk?  One option is cPickle, which
+# would be fast but less friendly to C, and perhaps not portable.  Another is
+
+# TODO: Nothing here so far assumes the lines are really \n newlines,
+# rather than being split up in some other way.  We could accomodate
+# binaries, perhaps by naively splitting on \n or perhaps using
+# something like a rolling checksum.
+
+# TODO: Perhaps track SHA-1 in the header for protection?  This would
+# be redundant with it being stored in the inventory, but perhaps
+# usefully so?
+
+# TODO: Track version names as well as indexes. 
+
+# TODO: Probably do transitive expansion when specifying parents?
 
 
 class VerInfo(object):
@@ -415,3 +430,45 @@ class Weave(object):
             yield real_i1, real_i2, lines[j1:j2]
 
 
+
+
+def main(argv):
+    import sys
+    import os
+    from cPickle import dump, load
+    cmd = argv[1]
+    if cmd == 'add':
+        w = load(file(argv[2], 'rb'))
+        # at the moment, based on everything in the file
+        parents = set(range(len(w._v)))
+        ver = w.add(parents, sys.stdin.readlines())
+        dump(w, file(argv[2], 'wb'))
+        print 'added %d' % ver
+    elif cmd == 'init':
+        fn = argv[2]
+        if os.path.exists(fn):
+            raise IOError("file exists")
+        w = Weave()
+        dump(w, file(fn, 'wb'))
+    elif cmd == 'get':
+        w = load(file(argv[2], 'rb'))
+        sys.stdout.writelines(w.get(int(argv[3])))
+    elif cmd == 'annotate':
+        w = load(file(argv[2], 'rb'))
+        # assumes lines are ended
+        lasto = None
+        for origin, text in w.annotate(int(argv[3])):
+            if text[-1] == '\n':
+                text = text[:-1]
+            if origin == lasto:
+                print '      | %s' % (text)
+            else:
+                print '%5d | %s' % (origin, text)
+                lasto = origin
+    else:
+        raise ValueError('unknown command %r' % cmd)
+    
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main(sys.argv))
