@@ -60,9 +60,7 @@ def load_plugins():
     from bzrlib.trace import log_error, mutter, log_exception
     from bzrlib.errors import BzrError
 
-    bzrpath = os.environ.get('BZR_PLUGIN_PATH')
-    if bzrpath is None:
-        bzrpath = DEFAULT_PLUGIN_PATH
+    bzrpath = os.environ.get('BZR_PLUGIN_PATH', DEFAULT_PLUGIN_PATH)
 
     # The problem with imp.get_suffixes() is that it doesn't include
     # .pyo which is technically valid
