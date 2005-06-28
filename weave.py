@@ -19,13 +19,13 @@
 # Author: Martin Pool <mbp@canonical.com>
 
 
-"""knit - a weave-like structure"""
+"""Weave - storage of related text file versions"""
 
 # TODO: Perhaps have copy and comparison methods?
 
 
 class VerInfo(object):
-    """Information about a version in a Knit."""
+    """Information about a version in a Weave."""
     included = frozenset()
     def __init__(self, included=None):
         if included:
@@ -39,10 +39,10 @@ class VerInfo(object):
         return s
 
 
-class Knit(object):
-    """knit - versioned text file storage.
+class Weave(object):
+    """weave - versioned text file storage.
     
-    A Knit manages versions of line-based text files, keeping track of the
+    A Weave manages versions of line-based text files, keeping track of the
     originating version for each line.
 
     Texts can be identified in either of two ways:
@@ -51,7 +51,7 @@ class Knit(object):
 
     * a version-id string.
 
-    Typically the index number will be valid only inside this knit and
+    Typically the index number will be valid only inside this weave and
     the version-id is used to reference it in the larger world.
 
     _l
@@ -171,9 +171,9 @@ class Knit(object):
 
     def dump(self, to_file):
         from pprint import pprint
-        print >>to_file, "Knit._l = ",
+        print >>to_file, "Weave._l = ",
         pprint(self._l, to_file)
-        print >>to_file, "Knit._v = ",
+        print >>to_file, "Weave._v = ",
         pprint(self._v, to_file)
 
 

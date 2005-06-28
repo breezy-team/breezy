@@ -17,11 +17,11 @@
 
 
 
-"""test case for knit/weave algorithm"""
+"""test suite for weave algorithm"""
 
 
 from testsweet import TestBase
-from knit import Knit, VerInfo
+from weave import Weave, VerInfo
 
 
 # texts for use in testing
@@ -32,13 +32,13 @@ TEXT_1 = ["Hello world",
 
 class Easy(TestBase):
     def runTest(self):
-        k = Knit()
+        k = Weave()
 
 
 class StoreText(TestBase):
     """Store and retrieve a simple text."""
     def runTest(self):
-        k = Knit()
+        k = Weave()
         idx = k.add([], TEXT_0)
         self.assertEqual(k.get(idx), TEXT_0)
         self.assertEqual(idx, 0)
@@ -47,7 +47,7 @@ class StoreText(TestBase):
 
 class AnnotateOne(TestBase):
     def runTest(self):
-        k = Knit()
+        k = Weave()
         k.add([], TEXT_0)
         self.assertEqual(k.annotate(0),
                          [(0, TEXT_0[0])])
@@ -55,7 +55,7 @@ class AnnotateOne(TestBase):
 
 class StoreTwo(TestBase):
     def runTest(self):
-        k = Knit()
+        k = Weave()
 
         idx = k.add([], TEXT_0)
         self.assertEqual(idx, 0)
@@ -75,7 +75,7 @@ class Delta1(TestBase):
     def runTest(self):
         from pprint import pformat
 
-        k = Knit()
+        k = Weave()
         k.add([], ['line 1'])
 
         changes = list(k._delta(set([0]),
@@ -100,7 +100,7 @@ class Delta1(TestBase):
 class InvalidAdd(TestBase):
     """Try to use invalid version number during add."""
     def runTest(self):
-        k = Knit()
+        k = Weave()
 
         self.assertRaises(IndexError,
                           k.add,
@@ -114,7 +114,7 @@ class InsertLines(TestBase):
     Look at the annotations to make sure that the first line is matched
     and not stored repeatedly."""
     def runTest(self):
-        k = Knit()
+        k = Weave()
 
         k.add([], ['line 1'])
         k.add([0], ['line 1', 'line 2'])
@@ -162,7 +162,7 @@ class DeleteLines(TestBase):
     This relies on the weave having a way to represent lines knocked
     out by a later revision."""
     def runTest(self):
-        k = Knit()
+        k = Weave()
 
         k.add([], ["line the first",
                    "line 2",
@@ -185,7 +185,7 @@ class DeleteLines(TestBase):
 class IncludeVersions(TestBase):
     """Check texts that are stored across multiple revisions.
 
-    Here we manually create a knit with particular encoding and make
+    Here we manually create a weave with particular encoding and make
     sure it unpacks properly.
 
     Text 0 includes nothing; text 1 includes text 0 and adds some
@@ -193,7 +193,7 @@ class IncludeVersions(TestBase):
     """
 
     def runTest(self):
-        k = Knit()
+        k = Weave()
 
         k._v = [VerInfo(), VerInfo(included=[0])]
         k._l = [(0, "first line"),
@@ -210,10 +210,10 @@ class IncludeVersions(TestBase):
 
 
 class DivergedIncludes(TestBase):
-    """Knit with two diverged texts based on version 0.
+    """Weave with two diverged texts based on version 0.
     """
     def runTest(self):
-        k = Knit()
+        k = Weave()
 
         k._v = [VerInfo(),
                 VerInfo(included=[0]),
@@ -234,19 +234,19 @@ class DivergedIncludes(TestBase):
                          ["first line",
                           "alternative second line"])
 
-def testknit():
+def testweave():
     import testsweet
     from unittest import TestSuite, TestLoader
-    import testknit
+    import testweave
 
     tl = TestLoader()
     suite = TestSuite()
-    suite.addTest(tl.loadTestsFromModule(testknit))
+    suite.addTest(tl.loadTestsFromModule(testweave))
     
     return int(not testsweet.run_suite(suite)) # for shell 0=true
 
 
 if __name__ == '__main__':
     import sys
-    sys.exit(testknit())
+    sys.exit(testweave())
     
