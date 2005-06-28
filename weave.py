@@ -159,7 +159,10 @@ class Weave(object):
                     # is this OK???
 
                 if newlines:
-                    i = i1 + offset
+                    # there may have been a deletion spanning up to
+                    # i2; we want to insert after this region to make sure
+                    # we don't destroy ourselves
+                    i = i2 + offset
                     self._l[i:i] = [('{', idx)] \
                                    + newlines \
                                    + [('}', idx)]

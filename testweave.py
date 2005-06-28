@@ -24,6 +24,7 @@
 
 from testsweet import TestBase
 from weave import Weave, VerInfo, WeaveFormatError
+from pprint import pformat
 
 # XXX: If we do weaves this way, will a merge still behave the same
 # way if it's done in a different order?  That's a pretty desirable
@@ -79,8 +80,6 @@ class StoreTwo(TestBase):
 class DeltaAdd(TestBase):
     """Detection of changes prior to inserting new revision."""
     def runTest(self):
-        from pprint import pformat
-
         k = Weave()
         k.add([], ['line 1'])
 
@@ -152,8 +151,6 @@ class InsertLines(TestBase):
         k.add([0, 1],
               text3)
 
-        from pprint import pformat
-
         self.log("changes to text3: " + pformat(list(k._delta(set([0, 1]), text3))))
 
         self.log("k._l=" + pformat(k._l))
@@ -197,7 +194,6 @@ class DeleteLines(TestBase):
         for t in texts:
             ver = k.add([0], t)
 
-        from pprint import pformat
         self.log('final weave:')
         self.log('k._l=' + pformat(k._l))
 
@@ -484,11 +480,57 @@ class DivergedIncludes(TestBase):
                          ["first line",
                           "alternative second line"])
 
+
+
+class ReplaceLine(TestBase):
+    def runTest(self):
+        k = Weave()
+
+        text0 = ['cheddar', 'stilton', 'gruyere']
+        text1 = ['cheddar', 'blue vein', 'neufchatel', 'chevre']
+        
+        k.add([], text0)
+        k.add([0], text1)
+
+        self.log('k._l=' + pformat(k._l))
+
+        self.assertEqual(k.get(1), text1)
+
+        
+
+
+class Khayyam(TestBase):
+    def runTest(self):
+        rawtexts = [
+            """A Book of Verses underneath the Bough,
+            A Jug of Wine, a Loaf of Bread, -- and Thou
+            Beside me singing in the Wilderness --
+            Oh, Wilderness were Paradise enow!""",
+            
+            """A Book of Verses underneath the Bough,
+            A Jug of Wine, a Loaf of Bread, -- and Thou
+            Beside me singing in the Wilderness --
+            Oh, Wilderness were Paradise now!""",
+            ]
+        texts = [[l.strip() for l in t.split('\n')] for t in rawtexts]
+
+        k = Weave()
+        parents = set()
+        for t in texts:
+            ver = k.add(parents, t)
+            parents.add(ver)
+
+        for i, t in enumerate(texts):
+            self.assertEqual(k.get(i),
+                             t)            
+
+
+
 def testweave():
     import testsweet
     from unittest import TestSuite, TestLoader
     import testweave
-
+ 
     tl = TestLoader()
     suite = TestSuite()
     suite.addTest(tl.loadTestsFromModule(testweave))
