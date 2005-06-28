@@ -25,18 +25,19 @@ def _canonicalize_revision(branch, revnos):
     """
     # If only 1 entry is given, then we assume we want just the
     # changeset between that entry and it's base (we assume parents[0])
-    if len(revnos) <= 1:
-        if not revnos or revnos[0] is None:
-            new = branch.last_patch()
-        else:
-            new = branch.lookup_revision(revnos[0])
-        old = branch.get_revision(new).parents[0].revision_id
-        return old, new
-    elif len(revnos) == 2:
-        old = branch.lookup_revision(revnos[0])
-        new = branch.lookup_revision(revnos[1])
+    if len(revnos) == 0:
+        revnos = [None, None]
+    elif len(revnos) == 1:
+        revnos = [None, revnos[0]]
+
+    if revnos[1] is None:
+        new = branch.last_patch()
     else:
-        raise BzrCommandError('bzr changeset takes at most 2 revisions a base & a target')
+        new = branch.lookup_revision(revnos[1])
+    if revnos[0] is None:
+        old = branch.get_revision(new).parents[0].revision_id
+    else:
+        old = branch.lookup_revision(revnos[0])
 
     return old, new
 
