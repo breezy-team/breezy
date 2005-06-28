@@ -59,9 +59,6 @@ def SubElement(*args, **kwargs):
     return _SubElement(*args, **kwargs)
 
 
-import os, time
-from trace import mutter
-
 class XMLMixin:
     def to_element(self):
         raise Exception("XMLMixin.to_element must be overridden in concrete classes")
