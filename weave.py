@@ -203,7 +203,7 @@ class Weave(object):
                     oldc, oldv = stack.pop()
                     assert oldc == '{'
                     assert oldv == v
-                    isactive == stack and (stack[-1][1] in included)
+                    isactive = stack and (stack[-1][1] in included)
                 else:
                     raise ValueError("invalid processing instruction %r" % (l,))
             else:
@@ -212,6 +212,10 @@ class Weave(object):
                     origin = stack[-1][1]
                     yield origin, lineno, l
             lineno += 1
+
+        if stack:
+            raise ValueError("unclosed blocks at end of weave",
+                             stack)
 
 
     def getiter(self, index):

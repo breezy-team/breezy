@@ -159,6 +159,36 @@ class InsertLines(TestBase):
                           (1, 'line 2'),
                           (4, 'ccc')])
 
+
+
+class InsertNested(TestBase):
+    """Insertion with nested instructions."""
+    def runTest(self):
+        k = Weave()
+
+        k._v = [VerInfo([]),
+                VerInfo([0]),
+                VerInfo([0]),
+                ]
+        k._l = [('{', 0),
+                'foo {',
+                ('{', 1),
+                '  added in version 1',
+                ('}', 1),
+                '}',
+                ('}', 0)]
+
+        self.assertEqual(k.get(0),
+                         ['foo {',
+                          '}'])
+
+        self.assertEqual(k.get(1),
+                         ['foo {',
+                          '  added in version 1',
+                          '}'])
+                       
+        
+
 class DeleteLines(TestBase):
     """Test recording revisions that delete lines.
 
