@@ -159,7 +159,8 @@ class Weave(object):
         Returns the index number of the newly added version.
 
         parents
-            List or set of parent version numbers.
+            List or set of parent version numbers.  This must normally include
+            the parents and the parent's parents, or wierd things might happen.
 
         text
             Sequence of lines to be added in the new version."""

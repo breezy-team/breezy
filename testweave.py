@@ -493,6 +493,36 @@ class ReplaceLine(TestBase):
         self.assertEqual(k.get(0), text0)
         self.assertEqual(k.get(1), text1)
 
+
+
+class Merge(TestBase):
+    def runTest(self):
+        k = Weave()
+
+        texts = [['header'],
+                 ['header', '', 'line from 1'],
+                 ['header', '', 'line from 2', 'more from 2'],
+                 ['header', '', 'line from 1', 'fixup line', 'line from 2'],
+                 ]
+
+        k.add([], texts[0])
+        k.add([0], texts[1])
+        k.add([0], texts[2])
+        k.add([0, 1, 2], texts[3])
+
+        for i, t in enumerate(texts):
+            self.assertEqual(k.get(i), t)
+
+        self.assertEqual(k.annotate(3),
+                         [(0, 'header'),
+                          (1, ''),
+                          (1, 'line from 1'),
+                          (3, 'fixup line'),
+                          (2, 'line from 2'),
+                          ])
+
+        self.log('k._l=' + pformat(k._l))
+
         
 
 
