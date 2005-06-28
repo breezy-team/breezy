@@ -174,6 +174,10 @@ class InsertNested(TestBase):
                 'foo {',
                 ('{', 1),
                 '  added in version 1',
+                ('{', 2),
+                '  added in v2',
+                ('}', 2),
+                '  also from v1',
                 ('}', 1),
                 '}',
                 ('}', 0)]
@@ -185,6 +189,7 @@ class InsertNested(TestBase):
         self.assertEqual(k.get(1),
                          ['foo {',
                           '  added in version 1',
+                          '  also from v1',
                           '}'])
                        
         
