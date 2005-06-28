@@ -94,7 +94,7 @@ class cmd_verify_changeset(bzrlib.commands.Command):
         if filename is None or filename == '-':
             f = sys.stdin
         else:
-            f = open(filename, 'rb')
+            f = open(filename, 'U')
 
         cset_info = read_changeset.read_changeset(f)
         print cset_info
