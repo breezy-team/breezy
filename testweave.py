@@ -27,6 +27,18 @@ from weave import Weave, VerInfo, WeaveFormatError
 from pprint import pformat
 
 
+
+try:
+    set
+    frozenset
+except NameError:
+    from sets import Set, ImmutableSet
+    set = Set
+    frozenset = ImmutableSet
+    del Set, FrozenSet
+
+
+
 # texts for use in testing
 TEXT_0 = ["Hello world"]
 TEXT_1 = ["Hello world",

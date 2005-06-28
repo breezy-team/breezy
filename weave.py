@@ -44,6 +44,16 @@
 # TODO: Probably do transitive expansion when specifying parents?
 
 
+try:
+    set
+    frozenset
+except NameError:
+    from sets import Set, ImmutableSet
+    set = Set
+    frozenset = ImmutableSet
+    del Set, FrozenSet
+
+
 class VerInfo(object):
     """Information about a version in a Weave."""
     included = frozenset()
