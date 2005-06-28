@@ -21,7 +21,7 @@
 
 """Weave - storage of related text file versions"""
 
-# TODO: Perhaps have copy and comparison methods of Weave instances?
+# TODO: Perhaps have copy method for Weave instances?
 
 # XXX: If we do weaves this way, will a merge still behave the same
 # way if it's done in a different order?  That's a pretty desirable
