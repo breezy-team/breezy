@@ -217,9 +217,13 @@ class Weave(object):
                     assert oldv == v
                     isactive = stack and (stack[-1][1] in included)
                 else:
-                    raise ValueError("invalid processing instruction %r" % (l,))
+                    raise ValueError("invalid processing instruction %r on line %d"
+                                     % (l, lineno))
             else:
                 assert isinstance(l, basestring)
+                if not stack:
+                    raise ValueError("literal at top level on line %d"
+                                     % lineno)
                 if isactive:
                     origin = stack[-1][1]
                     yield origin, lineno, l
