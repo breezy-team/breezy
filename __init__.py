@@ -77,31 +77,20 @@ class cmd_changeset(bzrlib.commands.Command):
     committed. You can use "--revision" to specify a certain change
     to display.
     """
-    takes_options = ['revision', 'diff-options']
-    takes_args = ['file*']
+    takes_options = ['revision']
+    takes_args = []
     aliases = ['cset']
 
-    def run(self, revision=None, file_list=None, diff_options=None):
+    def run(self, revision=None):
         from bzrlib import find_branch
         import gen_changeset
         import sys
 
-        if isinstance(revision, (list, tuple)):
-            if len(revision) > 1:
-                raise BzrCommandError('We do not support rollup-changesets yet.')
-            revision = revision[0]
-        if file_list:
-            b = find_branch(file_list[0])
-            file_list = [b.relpath(f) for f in file_list]
-            if file_list == ['']:
-                # just pointing to top-of-tree
-                file_list = None
-        else:
-            b = find_branch('.')
+        if not isinstance(revision, (list, tuple)):
+            revision = [revision]
+        b = find_branch('.')
 
         gen_changeset.show_changeset(b, revision,
-                specific_files=file_list,
-                external_diff_options=diff_options,
                 to_file=sys.stdout)
 
 class cmd_verify_changeset(bzrlib.commands.Command):

@@ -14,25 +14,29 @@ try:
 except NameError:
     from sets import Set as set
 
-def _canonicalize_revision(branch, revno):
+def _canonicalize_revision(branch, revnos):
     """Turn some sort of revision information into a single
     set of from-to revision ids.
 
     A revision id can be None if there is no associated revison.
 
+    :param revnos:  A list of revisions to lookup, should be at most 2 long
     :return: (old, new)
     """
-    # This is a little clumsy because revision parsing may return
-    # a single entry, or a list
-    if revno is None:
-        new = branch.last_patch()
+    # If only 1 entry is given, then we assume we want just the
+    # changeset between that entry and it's base (we assume parents[0])
+    if len(revnos) <= 1:
+        if not revnos or revnos[0] is None:
+            new = branch.last_patch()
+        else:
+            new = branch.lookup_revision(revnos[0])
+        old = branch.get_revision(new).parents[0].revision_id
+        return old, new
+    elif len(revnos) == 2:
+        old = branch.lookup_revision(revnos[0])
+        new = branch.lookup_revision(revnos[1])
     else:
-        new = branch.lookup_revision(revno)
-
-    if new is None:
-        raise BzrCommandError('Cannot generate a changset with no commits in tree.')
-
-    old = branch.get_revision(new).parents[0].revision_id
+        raise BzrCommandError('bzr changeset takes at most 2 revisions a base & a target')
 
     return old, new
 
@@ -49,9 +53,7 @@ def _get_trees(branch, revisions):
         old_tree = branch.revision_tree(revisions[0])
 
     if revisions[1] is None:
-        # This is for the future, once we support rollup revisions
-        # Or working tree revisions
-        new_tree = branch.working_tree()
+        raise BzrCommandError('Cannot form a bzr changeset with no committed revisions')
     else:
         new_tree = branch.revision_tree(revisions[1])
     return old_tree, new_tree
@@ -109,8 +111,7 @@ class MetaInfoHeader(object):
     def _get_revision_list(self, revisions):
         """This generates the list of all revisions from->to.
 
-        This is for the future, when we support having a rollup changeset.
-        For now, the list should only be one long.
+        This is for having a rollup changeset.
         """
         old_revno = None
         new_revno = None
@@ -164,9 +165,8 @@ class MetaInfoHeader(object):
         for line in common.get_header():
             write(line)
 
-        # For now, we only support 1 revision, but we can support more in the future
-        assert len(self.revision_list) == 1
-        rev = self.revision_list[0]
+        # Print out the basic information about the 'target' revision
+        rev = self.revision_list[-1]
         write(rev.committer, key='committer')
         write(format_date(rev.timestamp, offset=rev.timezone), key='date')
         write(str(self.revno), key='revno')
@@ -330,24 +330,19 @@ class MetaInfoHeader(object):
                           self.new_tree.get_file(file_id).readlines(),
                           self.to_file)
 
-def show_changeset(branch, revision=None, specific_files=None,
-        external_diff_options=None, to_file=None,
-        include_full_diff=False):
+def show_changeset(branch, revisions=None, to_file=None, include_full_diff=False):
     from bzrlib.diff import compare_trees
 
     if to_file is None:
         import sys
         to_file = sys.stdout
-    revisions = _canonicalize_revision(branch, revision)
+    revisions = _canonicalize_revision(branch, revisions)
 
     old_tree, new_tree = _get_trees(branch, revisions)
 
-    delta = compare_trees(old_tree, new_tree, want_unchanged=False,
-                          specific_files=specific_files)
+    delta = compare_trees(old_tree, new_tree, want_unchanged=False)
 
     meta = MetaInfoHeader(branch, revisions, delta,
-            external_diff_options=external_diff_options,
             old_tree=old_tree, new_tree=new_tree)
     meta.write_meta_info(to_file)
-
 
