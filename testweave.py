@@ -494,6 +494,7 @@ class ReplaceLine(TestBase):
 
         self.log('k._l=' + pformat(k._l))
 
+        self.assertEqual(k.get(0), text0)
         self.assertEqual(k.get(1), text1)
 
         
@@ -511,6 +512,21 @@ class Khayyam(TestBase):
             A Jug of Wine, a Loaf of Bread, -- and Thou
             Beside me singing in the Wilderness --
             Oh, Wilderness were Paradise now!""",
+
+            """A Book of poems underneath the tree,
+            A Jug of Wine, a Loaf of Bread,
+            and Thou
+            Beside me singing in the Wilderness --
+            Oh, Wilderness were Paradise now!
+
+            -- O. Khayyam""",
+
+            """A Book of Verses underneath the Bough,
+            A Jug of Wine, a Loaf of Bread,
+            and Thou
+            Beside me singing in the Wilderness --
+            Oh, Wilderness were Paradise now!
+            """,
             ]
         texts = [[l.strip() for l in t.split('\n')] for t in rawtexts]
 
@@ -519,6 +535,8 @@ class Khayyam(TestBase):
         for t in texts:
             ver = k.add(parents, t)
             parents.add(ver)
+
+        self.log("k._l=" + pformat(k._l))
 
         for i, t in enumerate(texts):
             self.assertEqual(k.get(i),
