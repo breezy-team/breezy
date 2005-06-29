@@ -91,6 +91,7 @@ class cmd_verify_changeset(bzrlib.commands.Command):
 
     def run(self, filename=None):
         import sys, read_changeset
+        from bzrlib.xml import pack_xml
         if filename is None or filename == '-':
             f = sys.stdin
         else:
@@ -100,6 +101,9 @@ class cmd_verify_changeset(bzrlib.commands.Command):
         print cset_info
         cset = cset_info.get_changeset()
         print cset.entries
+        for rev_info in cset_info.revisions:
+            rev = rev_info.as_revision()
+            pack_xml(rev, sys.stdout)
 
 class cmd_apply_changeset(bzrlib.commands.Command):
     """Read in the given changeset, and apply it to the

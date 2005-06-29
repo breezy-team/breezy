@@ -48,6 +48,24 @@ class RevisionInfo(object):
     def __str__(self):
         return pprint.pformat(self.__dict__)
 
+    def as_revision(self):
+        from bzrlib.revision import Revision, RevisionReference
+        rev = Revision(revision_id=self.rev_id,
+            committer=self.committer,
+            timestamp=float(self.timestamp),
+            timezone=int(self.timezone),
+            inventory_id=self.inventory_id,
+            inventory_sha1=self.inventory_sha1,
+            message='\n'.join(self.message))
+
+        for parent in self.parents:
+            rev_id, sha1 = parent.split('\t')
+            rev.parents.append(RevisionReference(rev_id, sha1))
+
+        return rev
+
+
+
 
 class ChangesetInfo(object):
     """This is the intermediate class that gets filled out as
