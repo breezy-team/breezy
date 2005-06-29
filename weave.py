@@ -45,6 +45,11 @@
 
 # TODO: Separate out some code to read and write weaves.
 
+# TODO: End marker for each version?
+
+# TODO: Check that no insertion occurs inside a deletion that was
+# active in the version of the insertion.
+
 
 try:
     set
@@ -458,31 +463,31 @@ class Weave(object):
 def main(argv):
     import sys
     import os
-    from cPickle import dump, load
+    from weavefile import write_weave_v1, read_weave_v1
     cmd = argv[1]
     if cmd == 'add':
-        w = load(file(argv[2], 'rb'))
+        w = read_weave_v1(file(argv[2], 'rb'))
         # at the moment, based on everything in the file
         parents = set(range(len(w._v)))
-        ver = w.add(parents, sys.stdin.readlines())
-        dump(w, file(argv[2], 'wb'))
+        lines = [x.rstrip('\n') for x in sys.stdin.xreadlines()]
+        ver = w.add(parents, lines)
+        write_weave_v1(w, file(argv[2], 'wb'))
         print 'added %d' % ver
     elif cmd == 'init':
         fn = argv[2]
         if os.path.exists(fn):
             raise IOError("file exists")
         w = Weave()
-        dump(w, file(fn, 'wb'))
+        write_weave_v1(w, file(fn, 'wb'))
     elif cmd == 'get':
-        w = load(file(argv[2], 'rb'))
+        w = read_weave_v1(file(argv[2], 'rb'))
         sys.stdout.writelines(w.get(int(argv[3])))
     elif cmd == 'annotate':
-        w = load(file(argv[2], 'rb'))
+        w = read_weave_v1(file(argv[2], 'rb'))
         # assumes lines are ended
         lasto = None
         for origin, text in w.annotate(int(argv[3])):
-            if text[-1] == '\n':
-                text = text[:-1]
+            assert '\n' not in text
             if origin == lasto:
                 print '      | %s' % (text)
             else:
