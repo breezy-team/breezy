@@ -43,6 +43,8 @@
 
 # TODO: Probably do transitive expansion when specifying parents?
 
+# TODO: Separate out some code to read and write weaves.
+
 
 try:
     set
