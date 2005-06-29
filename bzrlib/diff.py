@@ -63,7 +63,8 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file):
         ud = list(ud)
         ud[2] = ud[2].replace('+1,0', '+0,0')
 
-    to_file.writelines(ud)
+    for line in ud:
+        to_file.write(line)
     if nonl:
         print >>to_file, "\\ No newline at end of file"
     print >>to_file
