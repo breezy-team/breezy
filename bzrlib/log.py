@@ -125,6 +125,9 @@ def show_log(branch,
         mutter('get log for file_id %r' % specific_fileid)
 
     which_revs = branch.enum_history(direction)
+    which_revs = [x for x in which_revs if (
+            (start_revision is None or x[0] >= start_revision)
+            and (end_revision is None or x[0] <= end_revision))]
 
     if not (verbose or specific_fileid):
         # no need to know what changed between revisions
@@ -132,19 +135,13 @@ def show_log(branch,
     elif direction == 'reverse':
         with_deltas = deltas_for_log_reverse(branch, which_revs)
     else:        
-        raise NotImplementedError("sorry, verbose forward logs not done yet")
+        with_deltas = deltas_for_log_forward(branch, which_revs)
 
     for revno, rev, delta in with_deltas:
         if specific_fileid:
             if not delta.touches_file_id(specific_fileid):
                 continue
 
-        if start_revision is not None and revno < start_revision:
-            continue
-
-        if end_revision is not None and revno > end_revision:
-            continue
-        
         if not verbose:
             # although we calculated it, throw it away without display
             delta = None
@@ -184,10 +181,46 @@ def deltas_for_log_reverse(branch, which_revs):
         last_tree = this_tree
 
     if last_revno:
-        this_tree = EmptyTree()
+        if last_revno == 1:
+            this_tree = EmptyTree()
+        else:
+            this_revno = last_revno - 1
+            this_revision_id = branch.revision_history()[this_revno]
+            this_tree = branch.revision_tree(this_revision_id)
         yield last_revno, last_revision, compare_trees(this_tree, last_tree, False)
 
 
+def deltas_for_log_forward(branch, which_revs):
+    """Compute deltas for display in forward log.
+
+    Given a sequence of (revno, revision_id) pairs, return
+    (revno, rev, delta).
+
+    The delta is from the given revision to the next one in the
+    sequence, which makes sense if the log is being displayed from
+    newest to oldest.
+    """
+    from tree import EmptyTree
+    from diff import compare_trees
+
+    last_revno = last_revision_id = last_tree = None
+    for revno, revision_id in which_revs:
+        this_tree = branch.revision_tree(revision_id)
+        this_revision = branch.get_revision(revision_id)
+
+        if not last_revno:
+            if revno == 1:
+                last_tree = EmptyTree()
+            else:
+                last_revno = revno - 1
+                last_revision_id = branch.revision_history()[last_revno]
+                last_tree = branch.revision_tree(last_revision_id)
+
+        yield revno, this_revision, compare_trees(last_tree, this_tree, False)
+
+        last_revno = revno
+        last_revision = this_revision
+        last_tree = this_tree
 
 
 class LogFormatter(object):
