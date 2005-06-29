@@ -21,7 +21,7 @@ def send_changeset(branch, revisions, to_address, message, file):
     import send_changeset
     from cStringIO import StringIO
 
-    base_rev_id, target_rev_id = gen_changeset._canonicalize_revision(branch, revisions)
+    base_rev_id, target_rev_id = common.canonicalize_revision(branch, revisions)
     rev = branch.get_revision(target_rev_id)
     if not message:
         message = rev.message.split('\n')[0]

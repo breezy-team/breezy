@@ -14,33 +14,6 @@ try:
 except NameError:
     from sets import Set as set
 
-def _canonicalize_revision(branch, revnos):
-    """Turn some sort of revision information into a single
-    set of from-to revision ids.
-
-    A revision id can be None if there is no associated revison.
-
-    :param revnos:  A list of revisions to lookup, should be at most 2 long
-    :return: (old, new)
-    """
-    # If only 1 entry is given, then we assume we want just the
-    # changeset between that entry and it's base (we assume parents[0])
-    if len(revnos) == 0:
-        revnos = [None, None]
-    elif len(revnos) == 1:
-        revnos = [None, revnos[0]]
-
-    if revnos[1] is None:
-        new = branch.last_patch()
-    else:
-        new = branch.lookup_revision(revnos[1])
-    if revnos[0] is None:
-        old = branch.get_revision(new).parents[0].revision_id
-    else:
-        old = branch.lookup_revision(revnos[0])
-
-    return old, new
-
 def _get_trees(branch, revisions):
     """Get the old and new trees based on revision.
     """
@@ -170,18 +143,10 @@ class MetaInfoHeader(object):
         rev = self.revision_list[-1]
         write(rev.committer, key='committer')
         write(format_date(rev.timestamp, offset=rev.timezone), key='date')
-        write(str(self.revno), key='revno')
         if rev.message:
             self.to_file.write('# message:\n')
             for line in rev.message.split('\n'):
                 self.to_file.write('#    %s\n' % line)
-        write(rev.revision_id, key='revision')
-
-        # Base revision is the revision this changeset is against
-        if self.base_revision:
-            write(self.base_revision.revision_id, key='base')
-            write(str(self.precursor_revno), key='base revno')
-
 
         write('')
         self.to_file.write('\n')
@@ -196,7 +161,10 @@ class MetaInfoHeader(object):
 
         write('BEGIN BZR FOOTER')
 
+        # Base revision is the revision this changeset is against
         if self.base_revision:
+            write(self.base_revision.revision_id, key='base')
+
             rev_id = self.base_revision.revision_id
             write(self.branch.get_revision_sha1(rev_id),
                     key='base sha1')
@@ -221,12 +189,12 @@ class MetaInfoHeader(object):
             self.to_file.write('#    inventory sha1: %s\n' % rev.inventory_sha1)
             self.to_file.write('#    parents:\n')
             for parent in rev.parents:
-                self.to_file.write('#        %s\t%s\n' % (
+                self.to_file.write('#       %s\t%s\n' % (
                     parent.revision_id,
                     parent.revision_sha1))
             self.to_file.write('#    message:\n')
             for line in rev.message.split('\n'):
-                self.to_file.write('#        %s\n' % line)
+                self.to_file.write('#       %s\n' % line)
 
 
 
@@ -337,7 +305,7 @@ def show_changeset(branch, revisions=None, to_file=None, include_full_diff=False
     if to_file is None:
         import sys
         to_file = sys.stdout
-    revisions = _canonicalize_revision(branch, revisions)
+    revisions = common.canonicalize_revision(branch, revisions)
 
     old_tree, new_tree = _get_trees(branch, revisions)
 

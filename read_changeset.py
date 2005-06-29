@@ -4,6 +4,7 @@ Read in a changeset output, and process it into a Changeset object.
 """
 
 import bzrlib, bzrlib.changeset
+import pprint
 import common
 
 class BadChangeset(Exception): pass
@@ -29,6 +30,25 @@ def _unescape(name):
     # We need to handle escaped hexadecimals too.
     return name[1:-1].replace('\"', '"').replace("\'", "'")
 
+class RevisionInfo(object):
+    """Gets filled out for each revision object that is read.
+    """
+    def __init__(self, rev_id):
+        self.rev_id = rev_id
+        self.sha1 = None
+        self.committer = None
+        self.timestamp = None
+        self.timezone = None
+        self.inventory_id = None
+        self.inventory_sha1 = None
+
+        self.parents = None
+        self.message = None
+
+    def __str__(self):
+        return pprint.pformat(self.__dict__)
+
+
 class ChangesetInfo(object):
     """This is the intermediate class that gets filled out as
     the file is read.
@@ -37,12 +57,10 @@ class ChangesetInfo(object):
         self.committer = None
         self.date = None
         self.message = None
-        self.revno = None
-        self.revision = None
-        self.revision_sha1 = None
-        self.precursor = None
-        self.precursor_sha1 = None
-        self.precursor_revno = None
+        self.base = None
+        self.base_sha1 = None
+
+        self.revisions = []
 
         self.timestamp = None
         self.timezone = None
@@ -61,7 +79,6 @@ class ChangesetInfo(object):
         self.old_id2parent = {}
 
     def __str__(self):
-        import pprint
         return pprint.pformat(self.__dict__)
 
     def create_maps(self):
@@ -176,6 +193,7 @@ class ChangesetReader(object):
         """
         object.__init__(self)
         self.from_file = from_file
+        self._next_line = None
         
         self.info = ChangesetInfo()
         # We put the actual inventory ids in the footer, so that the patch
@@ -183,9 +201,18 @@ class ChangesetReader(object):
         # Unfortunately, that means we need to read everything before we
         # can create a proper changeset.
         self._read_header()
-        next_line = self._read_patches()
-        if next_line is not None:
-            self._read_footer(next_line)
+        self._read_patches()
+        self._read_footer()
+
+    def _next(self):
+        """yield the next line, but secretly
+        keep 1 extra line for peeking.
+        """
+        for line in self.from_file:
+            last = self._next_line
+            self._next_line = line
+            if last is not None:
+                yield last
 
     def get_info(self):
         """Create the actual changeset object.
@@ -196,54 +223,70 @@ class ChangesetReader(object):
     def _read_header(self):
         """Read the bzr header"""
         header = common.get_header()
-        for head_line, line in zip(header, self.from_file):
-            if (line[:2] != '# '
-                    or line[-1] != '\n'
-                    or line[2:-1] != head_line):
-                raise MalformedHeader('Did not read the opening'
-                    ' header information.')
+        found = False
+        for line in self._next():
+            if found:
+                if (line[:2] != '# ' or line[-1:] != '\n'
+                        or line[2:-1] != header[0]):
+                    raise MalformedHeader('Found a header, but it'
+                        ' was improperly formatted')
+                header.pop(0) # We read this line.
+                if not header:
+                    break # We found everything.
+            elif (line[:1] == '#' and line[-1:] == '\n'):
+                line = line[1:-1].strip()
+                if line[:len(common.header_str)] == common.header_str:
+                    if line == header[0]:
+                        found = True
+                    else:
+                        raise MalformedHeader('Found what looks like'
+                                ' a header, but did not match')
+                    header.pop(0)
+        else:
+            raise MalformedHeader('Did not find an opening header')
 
-        for line in self.from_file:
-            if self._handle_info_line(line) is not None:
+        for line in self._next():
+            # The bzr header is terminated with a blank line
+            # which does not start with '#'
+            if line == '\n':
                 break
+            self._handle_next(line)
 
-    def _handle_info_line(self, line, in_footer=False):
-        """Handle reading a single line.
-
-        This may call itself, in the case that we read_multi,
-        and then had a dangling line on the end.
+    def _read_next_entry(self, line, indent=1):
+        """Read in a key-value pair
         """
-        # The bzr header is terminated with a blank line
-        # which does not start with #
-        next_line = None
-        if line[:1] == '\n':
-            return 'break'
-        if line[:2] != '# ':
-            raise MalformedHeader('Opening bzr header did not start with #')
-
-        line = line[2:-1] # Remove the '# '
+        if line[:1] != '#':
+            raise MalformedHeader('Bzr header did not start with #')
+        line = line[1:-1] # Remove the '#' and '\n'
+        if line[:indent] == ' '*indent:
+            line = line[indent:]
         if not line:
-            return # Ignore blank lines
-
-        if in_footer and line in ('BEGIN BZR FOOTER', 'END BZR FOOTER'):
-            return
+            return None, None# Ignore blank lines
 
         loc = line.find(': ')
         if loc != -1:
             key = line[:loc]
             value = line[loc+2:]
             if not value:
-                value, next_line = self._read_many()
+                value = self._read_many(indent=indent+3)
+        elif line[-1:] == ':':
+            key = line[:-1]
+            value = self._read_many(indent=indent+3)
         else:
-            if line[-1:] == ':':
-                key = line[:-1]
-                value, next_line = self._read_many()
-            else:
-                raise MalformedHeader('While looking for key: value pairs,'
-                        ' did not find the colon %r' % (line))
+            raise MalformedHeader('While looking for key: value pairs,'
+                    ' did not find the colon %r' % (line))
 
         key = key.replace(' ', '_')
-        if hasattr(self.info, key):
+        return key, value
+
+    def _handle_next(self, line):
+        key, value = self._read_next_entry(line, indent=1)
+        if key is None:
+            return
+
+        if key == 'revision':
+            self._read_revision(value)
+        elif hasattr(self.info, key):
             if getattr(self.info, key) is None:
                 setattr(self.info, key, value)
             else:
@@ -252,85 +295,95 @@ class ChangesetReader(object):
             # What do we do with a key we don't recognize
             raise MalformedHeader('Unknown Key: %s' % key)
         
-        if next_line:
-            self._handle_info_line(next_line, in_footer=in_footer)
-
-    def _read_many(self):
+    def _read_many(self, indent):
         """If a line ends with no entry, that means that it should be
         followed with multiple lines of values.
 
         This detects the end of the list, because it will be a line that
-        does not start with '#    '. Because it has to read that extra
-        line, it returns the tuple: (values, next_line)
+        does not start properly indented.
         """
         values = []
-        for line in self.from_file:
-            if line[:5] != '#    ':
-                return values, line
-            values.append(line[5:-1])
-        return values, None
+        start = '#' + (' '*indent)
 
-    def _read_one_patch(self, first_line=None):
+        if self._next_line[:len(start)] != start:
+            return values
+
+        for line in self._next():
+            values.append(line[len(start):-1])
+            if self._next_line[:len(start)] != start:
+                break
+        return values
+
+    def _read_one_patch(self):
         """Read in one patch, return the complete patch, along with
         the next line.
 
-        :return: action, lines, next_line, do_continue
+        :return: action, lines, do_continue
         """
-        first = True
-        action = None
+        # Peek and see if there are no patches
+        if self._next_line[:1] == '#':
+            return None, [], False
 
-        def parse_firstline(line):
-            if line[:1] == '#':
-                return None
-            if line[:3] != '***':
-                raise MalformedPatches('The first line of all patches'
-                    ' should be a bzr meta line "***"')
-            return line[4:-1]
-
-        if first_line is not None:
-            action = parse_firstline(first_line)
-            first = False
-            if action is None:
-                return None, [], first_line, False
+        line = self._next().next()
+        if line[:3] != '***':
+            raise MalformedPatches('The first line of all patches'
+                ' should be a bzr meta line "***"')
+        action = line[4:-1]
 
         lines = []
-        for line in self.from_file:
-            if first:
-                action = parse_firstline(line)
-                first = False
-                if action is None:
-                    return None, [], line, False
-            else:
-                if line[:3] == '***':
-                    return action, lines, line, True
-                elif line[:1] == '#':
-                    return action, lines, line, False
-                lines.append(line)
-        return action, lines, None, False
+        for line in self._next():
+            lines.append(line)
+
+            if self._next_line[:3] == '***':
+                return action, lines, True
+            elif self._next_line[:1] == '#':
+                return action, lines, False
+        return action, lines, False
             
     def _read_patches(self):
-        next_line = None
         do_continue = True
         while do_continue:
-            action, lines, next_line, do_continue = \
-                    self._read_one_patch(next_line)
+            action, lines, do_continue = self._read_one_patch()
             if action is not None:
                 self.info.actions.append((action, lines))
-        return next_line
 
-    def _read_footer(self, first_line=None):
+    def _read_revision(self, rev_id):
+        """Revision entries have extra information associated.
+        """
+        rev_info = RevisionInfo(rev_id)
+        start = '#    '
+        for line in self._next():
+            key,value = self._read_next_entry(line, indent=4)
+            #if key is None:
+            #    continue
+            if hasattr(rev_info, key):
+                if getattr(rev_info, key) is None:
+                    setattr(rev_info, key, value)
+                else:
+                    raise MalformedHeader('Duplicated Key: %s' % key)
+            else:
+                # What do we do with a key we don't recognize
+                raise MalformedHeader('Unknown Key: %s' % key)
+
+            if self._next_line[:len(start)] != start:
+                break
+
+        self.info.revisions.append(rev_info)
+
+    def _read_footer(self):
         """Read the rest of the meta information.
 
         :param first_line:  The previous step iterates past what it
                             can handle. That extra line is given here.
         """
-        if first_line is not None:
-            if self._handle_info_line(first_line, in_footer=True) is not None:
-                return
-        for line in self.from_file:
-            if self._handle_info_line(line, in_footer=True) is not None:
-                break
+        line = self._next().next()
+        if line != '# BEGIN BZR FOOTER\n':
+            raise MalformedFooter('Footer did not begin with BEGIN BZR FOOTER')
 
+        for line in self._next():
+            if line == '# END BZR FOOTER\n':
+                return
+            self._handle_next(line)
 
 def read_changeset(from_file):
     """Read in a changeset from a filelike object (must have "readline" support), and
@@ -340,3 +393,6 @@ def read_changeset(from_file):
     info = cr.get_info()
     return info
 
+if __name__ == '__main__':
+    import sys
+    print read_changeset(sys.stdin)
