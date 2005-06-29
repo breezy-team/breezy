@@ -216,7 +216,7 @@ class MetaInfoHeader(object):
                 self.branch.get_revision_sha1(rev_id))
             self.to_file.write('#    committer: %s\n' % rev.committer)
             self.to_file.write('#    timestamp: %.9f\n' % rev.timestamp)
-            self.to_file.write('#    timezone: %.9f\n' % rev.timezone)
+            self.to_file.write('#    timezone: %s\n' % rev.timezone)
             self.to_file.write('#    inventory id: %s\n' % rev.inventory_id)
             self.to_file.write('#    inventory sha1: %s\n' % rev.inventory_sha1)
             self.to_file.write('#    parents:\n')
