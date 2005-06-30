@@ -427,14 +427,14 @@ class Weave(object):
         ##pprint(self._l)
 
         # basis a list of (origin, lineno, line)
-        basis = []
+        basis_lineno = []
         basis_lines = []
-        for t in self._extract(included):
-            basis.append(t)
-            basis_lines.append(t[2])
+        for origin, lineno, line in self._extract(included):
+            basis_lineno.append(lineno)
+            basis_lines.append(line)
 
         # add a sentinal, because we can also match against the final line
-        basis.append((None, len(self._l), None))
+        basis_lineno.append(len(self._l))
 
         # XXX: which line of the weave should we really consider
         # matches the end of the file?  the current code says it's the
@@ -442,9 +442,6 @@ class Weave(object):
 
         from difflib import SequenceMatcher
         s = SequenceMatcher(None, basis_lines, lines)
-
-        ##print 'basis sequence:'
-        ##pprint(basis)
 
         # TODO: Perhaps return line numbers from composed weave as well?
 
@@ -456,8 +453,8 @@ class Weave(object):
 
             # i1,i2 are given in offsets within basis_lines; we need to map them
             # back to offsets within the entire weave
-            real_i1 = basis[i1][1]
-            real_i2 = basis[i2][1]
+            real_i1 = basis_lineno[i1]
+            real_i2 = basis_lineno[i2]
 
             assert 0 <= j1
             assert j1 <= j2
