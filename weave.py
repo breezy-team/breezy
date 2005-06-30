@@ -140,8 +140,11 @@ class Weave(object):
     _v
         List of versions, indexed by index number.
 
-        For each version we store the tuple (included_versions), which
-        lists the previous versions also considered active.
+        For each version we store the set (included_versions), which
+        lists the previous versions also considered active; the
+        versions included in those versions are included transitively.
+        So new versions created from nothing list []; most versions
+        have a single entry; some have more.
     """
     def __init__(self):
         self._l = []
@@ -219,6 +222,20 @@ class Weave(object):
             self._addversion(None)
             
         return idx
+
+
+    def get_included(self, version):
+        """Return a set with all included versions for version."""
+        i = set()
+        x = [version]
+        while x:
+            v = x.pop()
+            if v in i:
+                continue
+            i.add(v)
+            for u in self._v[v]:
+                x.append(u)
+        return i
 
 
     def _addversion(self, parents):

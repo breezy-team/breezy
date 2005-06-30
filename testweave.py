@@ -510,6 +510,9 @@ class DivergedIncludes(TestBase):
                          ["first line",
                           "alternative second line"])
 
+        self.assertEqual(k.get_included(2),
+                         set([0, 2]))
+
 
 
 class ReplaceLine(TestBase):
@@ -555,6 +558,9 @@ class Merge(TestBase):
                           (3, 'fixup line'),
                           (2, 'line from 2'),
                           ])
+
+        self.assertEqual(k.get_included(3),
+                         set([0, 1, 2, 3]))
 
         self.log('k._l=' + pformat(k._l))
 
