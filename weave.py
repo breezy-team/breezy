@@ -427,10 +427,11 @@ class Weave(object):
         ##pprint(self._l)
 
         # basis a list of (origin, lineno, line)
-        basis = list(self._extract(included))
-
-        # now make a parallel list with only the text, to pass to the differ
-        basis_lines = [line for (origin, lineno, line) in basis]
+        basis = []
+        basis_lines = []
+        for t in self._extract(included):
+            basis.append(t)
+            basis_lines.append(t[2])
 
         # add a sentinal, because we can also match against the final line
         basis.append((None, len(self._l), None))
