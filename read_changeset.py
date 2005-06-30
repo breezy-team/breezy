@@ -448,16 +448,21 @@ class ChangesetTree:
         old_path = self._renamed.get(new_path)
         if old_path is not None:
             return old_path
-        if self._renamed_r.has_key(new_path):
-            return None
         dirname,basename = os.path.split(new_path)
-        if dirname is not "":
+        if dirname is not '':
             old_dir = self.old_path(dirname)
             if old_dir is None:
-                return None
-            return os.path.join(old_dir, basename)
+                old_path = None
+            else:
+                old_path = os.path.join(old_dir, basename)
         else:
-            return new_path
+            old_path = new_path
+        #If the new path wasn't in renamed, the old one shouldn't be in
+        #renamed_r
+        if self._renamed_r.has_key(old_path):
+            return None
+        return old_path 
+
 
     def new_path(self, old_path):
         import os.path
@@ -470,10 +475,16 @@ class ChangesetTree:
         if dirname is not '':
             new_dir = self.new_path(dirname)
             if new_dir is None:
-                return None
-            return os.path.join(new_dir, basename)
+                new_path = None
+            else:
+                new_path = os.path.join(new_dir, basename)
         else:
-            return old_path
+            new_path = old_path
+        #If the old path wasn't in renamed, the new one shouldn't be in
+        #renamed_r
+        if self._renamed.has_key(new_path):
+            return None
+        return new_path 
 
     def path2id(self, path):
         file_id = self._new_id.get(path)
@@ -562,7 +573,6 @@ def test():
             mtree.add_dir("b", "grandparent/parent")
             mtree.add_file("c", "grandparent/parent/file", "Hello")
             ctree = ChangesetTree(mtree)
-            print ctree.id2path("a")
             assert ctree.old_path("grandparent") == "grandparent"
             assert ctree.old_path("grandparent/parent") == "grandparent/parent"
             assert ctree.old_path("grandparent/parent/file") ==\
