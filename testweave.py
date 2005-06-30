@@ -510,7 +510,7 @@ class DivergedIncludes(TestBase):
                          ["first line",
                           "alternative second line"])
 
-        self.assertEqual(k.get_included(2),
+        self.assertEqual(k.inclusions([2]),
                          set([0, 2]))
 
 
@@ -559,7 +559,7 @@ class Merge(TestBase):
                           (2, 'line from 2'),
                           ])
 
-        self.assertEqual(k.get_included(3),
+        self.assertEqual(k.inclusions([3]),
                          set([0, 1, 2, 3]))
 
         self.log('k._l=' + pformat(k._l))
@@ -625,7 +625,7 @@ class Khayyam(TestBase):
         k = Weave()
         parents = set()
         for t in texts:
-            ver = k.add(parents, t)
+            ver = k.add(list(parents), t)
             parents.add(ver)
 
         self.log("k._l=" + pformat(k._l))

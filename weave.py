@@ -180,8 +180,7 @@ class Weave(object):
         idx = len(self._v)
 
         if parents:
-            parents = frozenset(parents)
-            delta = self._delta(parents, text)
+            delta = self._delta(self.inclusions(parents), text)
 
             # offset gives the number of lines that have been inserted
             # into the weave up to the current point; if the original edit instruction
@@ -211,6 +210,9 @@ class Weave(object):
                                    + [('}', idx)]
                     offset += 2 + len(newlines)
 
+            # TODO: Could eliminate any parents that are implied by
+            # the others
+                    
             self._addversion(parents)
         else:
             # special case; adding with no parents revision; can do this
@@ -224,17 +226,11 @@ class Weave(object):
         return idx
 
 
-    def get_included(self, version):
-        """Return a set with all included versions for version."""
-        i = set()
-        x = [version]
-        while x:
-            v = x.pop()
-            if v in i:
-                continue
-            i.add(v)
-            for u in self._v[v]:
-                x.append(u)
+    def inclusions(self, versions):
+        """Expand out everything included by versions."""
+        i = set(versions)
+        for v in versions:
+            i.update(self._v[v])
         return i
 
 
@@ -268,16 +264,11 @@ class Weave(object):
         return list(self.annotate_iter(index))
 
 
-    def annotate_iter(self, index):
+    def annotate_iter(self, version):
         """Yield list of (index-id, line) pairs for the specified version.
 
         The index indicates when the line originated in the weave."""
-        try:
-            vi = self._v[index]
-        except IndexError:
-            raise IndexError('version index %d out of range' % index)
-        included = set(vi)
-        included.add(index)
+        included = self.inclusions([version])
         for origin, lineno, text in self._extract(included):
             yield origin, text
 
@@ -363,14 +354,14 @@ class Weave(object):
                                    dset)
 
 
-    def getiter(self, index):
+    def get_iter(self, version):
         """Yield lines for the specified version."""
-        for origin, line in self.annotate_iter(index):
+        for origin, lineno, line in self._extract(self.inclusions([version])):
             yield line
 
 
     def get(self, index):
-        return list(self.getiter(index))
+        return list(self.get_iter(index))
 
 
     def merge_iter(self, included):
