@@ -171,7 +171,7 @@ class MetaInfoHeader(object):
 
         self._write_revisions()
 
-        self._write_ids()
+        #self._write_ids()
 
         write('END BZR FOOTER')
 
@@ -195,8 +195,6 @@ class MetaInfoHeader(object):
             self.to_file.write('#    message:\n')
             for line in rev.message.split('\n'):
                 self.to_file.write('#       %s\n' % line)
-
-
 
 
     def _write_ids(self):
@@ -239,6 +237,9 @@ class MetaInfoHeader(object):
         write_ids(self.new_tree, new_ids, 'file')
         write_ids(self.old_tree, old_ids, 'old file')
 
+    def _write_text_ids(self):
+        pass
+
     def _write_diffs(self):
         """Write out the specific diffs"""
         from bzrlib.diff import internal_diff, external_diff
@@ -262,7 +263,7 @@ class MetaInfoHeader(object):
                           self.to_file)
     
         for path, file_id, kind in self.delta.added:
-            print >>self.to_file, '*** added %s %r' % (kind, path)
+            print >>self.to_file, '*** added %s %r id:%s' % (kind, path, file_id)
             if kind == 'file':
                 diff_file(DEVNULL,
                           [],
