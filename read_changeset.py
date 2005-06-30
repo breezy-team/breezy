@@ -106,7 +106,7 @@ class ChangesetInfo(object):
             self.base_sha1 = rev.parents[0].revision_sha1
 
         for rev in self.revisions:
-
+            pass
 
     def create_maps(self):
         """Go through the individual id sections, and generate the 

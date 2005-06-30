@@ -64,15 +64,20 @@ class ChangesetTree(object):
         """Build the final description of the tree, based on
         the changeset_info object.
         """
+        self.base_tree = self.branch.revision_tree(self.changeset_info.base)
         
 def format_highres_date(t, offset=0):
     """Format a date, such that it includes higher precision in the
     seconds field.
 
-    :param t:   UTC time in fractional seconds
+    :param t:   The local time in fractional seconds since the epoch
     :type t: float
     :param offset:  The timezone offset in integer seconds
     :type offset: int
+
+    Example: format_highres_date(time.time(), -time.timezone)
+    this will return a date stamp for right now,
+    formatted for the local timezone.
 
     >>> from bzrlib.osutils import format_date
     >>> format_date(1120153132.350850105, 0)
@@ -83,8 +88,9 @@ def format_highres_date(t, offset=0):
     'Thu 2005-06-30 12:38:52 -0500'
     >>> format_highres_date(1120153132.350850105, -5*3600)
     'Thu 2005-06-30 12:38:52.350850105 -0500'
+    >>> format_highres_date(1120153132.350850105, 7200)
+    'Thu 2005-06-30 19:38:52.350850105 +0200'
     """
-    from bzrlib.errors import BzrError
     import time
     assert isinstance(t, float)
     
@@ -107,8 +113,56 @@ def unpack_highres_date(date):
     :param date: A date formated by format_highres_date
     :type date: string
 
+    >>> import time, random
+    >>> unpack_highres_date('Thu 2005-06-30 12:38:52.350850105 -0500')
+    (1120153132.3508501, -18000)
+    >>> unpack_highres_date('Thu 2005-06-30 17:38:52.350850105 +0000')
+    (1120153132.3508501, 0)
+    >>> unpack_highres_date('Thu 2005-06-30 19:38:52.350850105 +0200')
+    (1120153132.3508501, 7200)
+    >>> from bzrlib.osutils import local_time_offset
+    >>> t = time.time()
+    >>> o = local_time_offset()
+    >>> t2, o2 = unpack_highres_date(format_highres_date(t, o))
+    >>> t == t2
+    True
+    >>> o == o2
+    True
+    >>> for count in xrange(500):
+    ...   t += random.random()*24*3600*365*2 - 24*3600*364 # Random time within +/- 1 year
+    ...   o = random.randint(-12,12)*3600 # Random timezone
+    ...   date = format_highres_date(t, o)
+    ...   t2, o2 = unpack_highres_date(date)
+    ...   if t != t2 or o != o2:
+    ...      print 'Failed on date %r, %s,%s diff:%s' % (date, t, o, t2-t)
+
     """
+    #from bzrlib.errors import BzrError
+    from bzrlib.osutils import local_time_offset
+    import time
+    # Up until the first period is a datestamp that is generated
+    # as normal from time.strftime, so use time.strptime to
+    # parse it
+    dot_loc = date.find('.')
+    if dot_loc == -1:
+        raise ValueError('Date string does not contain high-precision seconds: %r' % date)
+    base_time = time.strptime(date[:dot_loc], "%a %Y-%m-%d %H:%M:%S")
+    fract_seconds, offset = date[dot_loc:].split()
+    fract_seconds = float(fract_seconds)
+    offset = int(offset)
+    offset = int(offset / 100) * 3600 + offset % 100
+    
+    # mktime returns the a local timestamp, not the timestamp based
+    # on the offset given in the file, so we need to adjust based
+    # on what the local offset is, and then re-adjust based on
+    # offset read
+    timestamp = time.mktime(base_time)
+    timestamp += local_time_offset(timestamp) - offset
+    # Add back in the fractional seconds
+    timestamp += fract_seconds
+    return (timestamp, offset)
 
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
+
