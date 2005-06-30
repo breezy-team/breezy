@@ -536,6 +536,9 @@ class Merge(TestBase):
 
         self.log('k._l=' + pformat(k._l))
 
+        from weavefile import write_weave_v1
+        self.log('weave:')
+        write_weave_v1(k, self.TEST_LOG)
 
 
 class AutoMerge(TestBase):
