@@ -420,6 +420,199 @@ def read_changeset(from_file):
     info = cr.get_info()
     return info
 
+
+class ChangesetTree:
+    def __init__(self, base_tree):
+        self.base_tree = base_tree
+        self._renamed = {}
+        self._renamed_r = {}
+        self._new_id = {}
+        self._new_id_r = {}
+        self.patches = {}
+
+    def note_rename(self, old_path, new_path):
+        assert not self._renamed.has_key(old_path)
+        assert not self._renamed_r.has_key(new_path)
+        self._renamed[new_path] = old_path
+        self._renamed_r[old_path] = new_path
+
+    def note_id(self, new_path, new_id):
+        self._new_id[new_path] = new_id
+        self._new_id_r[new_id] = new_path
+
+    def note_patch(new_path, patch):
+        self._patches[new_path] = patch
+
+    def old_path(self, new_path):
+        import os.path
+        old_path = self._renamed.get(new_path)
+        if old_path is not None:
+            return old_path
+        if self._renamed_r.has_key(new_path):
+            return None
+        dirname,basename = os.path.split(new_path)
+        if dirname is not "":
+            old_dir = self.old_path(dirname)
+            if old_dir is None:
+                return None
+            return os.path.join(old_dir, basename)
+        else:
+            return new_path
+
+    def new_path(self, old_path):
+        import os.path
+        new_path = self._renamed_r.get(old_path)
+        if new_path is not None:
+            return new_path
+        if self._renamed.has_key(new_path):
+            return None
+        dirname,basename = os.path.split(old_path)
+        if dirname is not '':
+            new_dir = self.new_path(dirname)
+            if new_dir is None:
+                return None
+            return os.path.join(new_dir, basename)
+        else:
+            return old_path
+
+    def path2id(self, path):
+        file_id = self._new_id.get(path)
+        if file_id is not None:
+            return file_id
+        return self.base_tree.path2id(self.old_path(path))
+
+    def id2path(self, file_id):
+        path = self._new_id_r.get(file_id)
+        if path is not None:
+            return path
+        return self.new_path(self.base_tree.id2path(file_id))
+
+    def get_file(self, file_id):
+        if self.base_tree.has_id(file_id):
+            patch_original = self.base_tree.get_file(file_id)
+        else:
+            patch_original = None
+        file_patch = patches.get(self.id2path(id))
+        if file_patch is None:
+            return patch_base
+        return patched_file(file_patch, patch_original)
+
+def patched_file(file_patch, original):
+    from bzrlib.patch import patch
+    from tempfile import mkdtemp
+    from shutil import rmtree
+    from StringIO import StringIO
+    from osutils import pumpfile
+    temp_dir = mkdtemp()
+    try:
+        if original is None:
+            original_path = "/dev/null"
+        else:
+            original_path = os.path.join(temp_dir, "originalfile")
+            temp_original = file(original_path, "wb")
+            pumpfile(original, temp_original)
+            temp_original.close()
+        patched_path = os.path.join(temp_dir, "patchfile")
+        patch(file_patch, original_path, patched_path)
+        result = StringIO()
+        temp_patched = file(patched_file, "rb")
+        pumpfile(temp_patched, result)
+        temp_patched.close()
+        result.seek(0,0)
+
+    finally:
+        rmtree(temp_dir)
+
+    return result
+
+def test():
+    import unittest
+    from StringIO import StringIO
+    class MockTree(object):
+        def __init__(self):
+            object.__init__(self)
+            self.paths = {}
+            self.ids = {}
+            self.contents = {}
+
+        def add_dir(self, file_id, path):
+            self.paths[file_id] = path
+            self.ids[path] = file_id
+        
+        def add_file(self, file_id, path, contents):
+            self.add_dir(file_id, path)
+            self.contents[file_id] = contents
+
+        def path2id(self, path):
+            return self.ids.get(path)
+
+        def id2path(self, file_id):
+            return self.paths.get(file_id)
+
+        def get_file(file_id):
+            result = StringIO()
+            result.write(self.contents[file_id])
+            result.seek(0,0)
+            return result
+
+    class CTreeTester(unittest.TestCase):
+        def testRenames(self):
+            mtree = MockTree()
+            mtree.add_dir("a", "grandparent")
+            mtree.add_dir("b", "grandparent/parent")
+            mtree.add_file("c", "grandparent/parent/file", "Hello")
+            ctree = ChangesetTree(mtree)
+            print ctree.id2path("a")
+            assert ctree.old_path("grandparent") == "grandparent"
+            assert ctree.old_path("grandparent/parent") == "grandparent/parent"
+            assert ctree.old_path("grandparent/parent/file") ==\
+                "grandparent/parent/file"
+
+            assert ctree.id2path("a") == "grandparent"
+            assert ctree.id2path("b") == "grandparent/parent"
+            assert ctree.id2path("c") == "grandparent/parent/file"
+
+            assert ctree.path2id("grandparent") == "a"
+            assert ctree.path2id("grandparent/parent") == "b"
+            assert ctree.path2id("grandparent/parent/file") == "c"
+
+            assert ctree.path2id("grandparent2") is None
+            assert ctree.path2id("grandparent2/parent") is None
+            assert ctree.path2id("grandparent2/parent/file") is None
+
+            ctree.note_rename("grandparent", "grandparent2")
+            assert ctree.old_path("grandparent") is None 
+            assert ctree.old_path("grandparent/parent") is None 
+            assert ctree.old_path("grandparent/parent/file") is None 
+
+            assert ctree.id2path("a") == "grandparent2"
+            assert ctree.id2path("b") == "grandparent2/parent"
+            assert ctree.id2path("c") == "grandparent2/parent/file"
+
+            assert ctree.path2id("grandparent2") == "a"
+            assert ctree.path2id("grandparent2/parent") == "b"
+            assert ctree.path2id("grandparent2/parent/file") == "c"
+
+            assert ctree.path2id("grandparent") is None
+            assert ctree.path2id("grandparent/parent") is None
+            assert ctree.path2id("grandparent/parent/file") is None
+
+            ctree.note_rename("grandparent/parent", "grandparent2/parent2")
+            assert ctree.id2path("a") == "grandparent2"
+            assert ctree.id2path("b") == "grandparent2/parent2"
+            assert ctree.id2path("c") == "grandparent2/parent2/file"
+
+            assert ctree.path2id("grandparent2") == "a"
+            assert ctree.path2id("grandparent2/parent2") == "b"
+            assert ctree.path2id("grandparent2/parent2/file") == "c"
+
+            assert ctree.path2id("grandparent2/parent") is None
+            assert ctree.path2id("grandparent2/parent/file") is None
+        
+    patchesTestSuite = unittest.makeSuite(CTreeTester,'test')
+    runner = unittest.TextTestRunner()
+    runner.run(patchesTestSuite)
+
 if __name__ == '__main__':
     import sys
     print read_changeset(sys.stdin)

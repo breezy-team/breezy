@@ -133,6 +133,9 @@ bzrlib.commands.register_command(cmd_verify_changeset)
 bzrlib.commands.register_command(cmd_apply_changeset)
 bzrlib.commands.register_command(cmd_send_changeset)
 
+from test import cmd_test_plugins
+bzrlib.commands.register_command(cmd_test_plugins)
+
 bzrlib.commands.OPTIONS['reverse'] = None
 bzrlib.commands.OPTIONS['auto-commit'] = None
 cmd_apply_changeset.takes_options.append('reverse')
