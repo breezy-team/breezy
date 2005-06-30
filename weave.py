@@ -174,8 +174,8 @@ class Weave(object):
 
         text
             Sequence of lines to be added in the new version."""
-        self._check_versions(parents)
-        self._check_lines(text)
+        ## self._check_versions(parents)
+        ## self._check_lines(text)
 
         idx = len(self._v)
 
@@ -286,7 +286,7 @@ class Weave(object):
 
         dset = set()         # versions for which a deletion block is current
 
-        isactive = False
+        isactive = None
 
         lineno = 0         # line of weave, 0-based
 
@@ -300,6 +300,7 @@ class Weave(object):
         
         for l in self._l:
             if isinstance(l, tuple):
+                isactive = None         # recalculate
                 c, v = l
                 if c == '{':
                     if istack and (istack[-1] >= v):
@@ -339,8 +340,9 @@ class Weave(object):
                 if not istack:
                     raise WFE("literal at top level on line %d"
                               % lineno)
-                isactive = (istack[-1] in included) \
-                           and not included.intersection(dset)
+                if isactive == None:
+                    isactive = (istack[-1] in included) \
+                               and not included.intersection(dset)
                 if isactive:
                     origin = istack[-1]
                     yield origin, lineno, l
@@ -413,7 +415,7 @@ class Weave(object):
         pure delete.  (Similar to difflib.)
         """
 
-        self._check_versions(included)
+        ## self._check_versions(included)
 
         ##from pprint import pprint
 
