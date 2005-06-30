@@ -39,9 +39,11 @@ def convert():
 
     fid = b.read_working_inventory().path2id(sys.argv[1])
 
+    last_lines = None
     parents = set()
-    revno = 1
+    revno = 0
     for rev_id in b.revision_history():
+        revno += 1
         print revno
         tree = b.revision_tree(rev_id)
         inv = tree.inventory
@@ -51,9 +53,13 @@ def convert():
             continue
 
         text = tree.get_file(fid).readlines()
+
+        if text == last_lines:
+            continue
+        last_lines = text
+        
         weave_id = wf.add(parents, text)
         parents.add(weave_id)
-        revno += 1
 
         print '  %4d lines' % len(text)
 
