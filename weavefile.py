@@ -41,6 +41,12 @@ FORMAT_1 = '# bzr weave file v1\n'
 
 
 
+def write_weave(weave, f, format=None):
+    if format == None or format == 1:
+        return write_weave_v1(weave, f)
+    else:
+        raise ValueError("unknown weave format %r" % format)
+
 
 def write_weave_v1(weave, f):
     """Write weave to file f."""
@@ -78,6 +84,11 @@ def write_weave_v1(weave, f):
                 print >>f, ',', l
 
     print >>f, 'W'
+
+
+
+def read_weave(f):
+    return read_weave_v1(f)
 
 
 def read_weave_v1(f):
