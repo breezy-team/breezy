@@ -61,21 +61,6 @@ except NameError:
     del Set, ImmutableSet
 
 
-class VerInfo(object):
-    """Information about a version in a Weave."""
-    included = frozenset()
-    def __init__(self, included=None):
-        if included:
-            self.included = frozenset(included)
-
-    def __repr__(self):
-        s = self.__class__.__name__ + '('
-        if self.included:
-            s += 'included=%r' % (list(self.included))
-        s += ')'
-        return s
-
-
 class WeaveError(Exception):
     """Exception in processing weave"""
 
@@ -223,7 +208,7 @@ class Weave(object):
                                    + [('}', idx)]
                     offset += 2 + len(newlines)
 
-            self._v.append(VerInfo(parents))
+            self._addversion(parents)
         else:
             # special case; adding with no parents revision; can do this
             # more quickly by just appending unconditionally
@@ -231,9 +216,16 @@ class Weave(object):
             self._l += text
             self._l.append(('}', idx))
 
-            self._v.append(VerInfo())
+            self._addversion(None)
             
         return idx
+
+
+    def _addversion(self, parents):
+        if parents:
+            self._v.append(frozenset(parents))
+        else:
+            self._v.append(frozenset())
 
 
     def _check_lines(self, text):
@@ -267,7 +259,7 @@ class Weave(object):
             vi = self._v[index]
         except IndexError:
             raise IndexError('version index %d out of range' % index)
-        included = set(vi.included)
+        included = set(vi)
         included.add(index)
         for origin, lineno, text in self._extract(included):
             yield origin, text

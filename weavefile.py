@@ -52,10 +52,10 @@ def write_weave_v1(weave, f):
     """Write weave to file f."""
     print >>f, FORMAT_1,
 
-    for version, verinfo in enumerate(weave._v):
+    for version, included in enumerate(weave._v):
         print >>f, 'v', version
-        if verinfo.included:
-            included = list(verinfo.included)
+        if included:
+            included = list(included)
             included.sort()
             assert included[0] >= 0
             assert included[-1] < version
@@ -92,7 +92,7 @@ def read_weave(f):
 
 
 def read_weave_v1(f):
-    from weave import Weave, VerInfo, WeaveFormatError
+    from weave import Weave, WeaveFormatError
     w = Weave()
 
     wfe = WeaveFormatError
@@ -115,9 +115,9 @@ def read_weave_v1(f):
                 raise WeaveFormatError('unexpected line %r' % l)
             if len(l) > 2:
                 included = map(int, l[2:].split(' '))
-                w._v.append(VerInfo(included))
+                w._addversion(included)
             else:
-                w._v.append(VerInfo())
+                w._addversion(None)
             assert f.readline() == '\n'
         elif l == 'w\n':
             break

@@ -22,8 +22,8 @@
 """test suite for weave algorithm"""
 
 
-from testsweet import TestBase
-from weave import Weave, VerInfo, WeaveFormatError
+import testsweet
+from weave import Weave, WeaveFormatError
 from pprint import pformat
 
 
@@ -43,6 +43,27 @@ except NameError:
 TEXT_0 = ["Hello world"]
 TEXT_1 = ["Hello world",
           "A second line"]
+
+
+
+class TestBase(testsweet.TestBase):
+    def check_read_write(self, k):
+        """Check the weave k can be written & re-read."""
+        from tempfile import TemporaryFile
+        from weavefile import write_weave, read_weave
+        tf = TemporaryFile()
+
+        write_weave(k, tf)
+        tf.seek(0)
+        k2 = read_weave(tf)
+
+        if k != k2:
+            tf.seek(0)
+            self.log('serialized weave:')
+            self.log(tf.read())
+            self.fail('read/write check failed')
+        
+        
 
 
 class Easy(TestBase):
@@ -114,6 +135,7 @@ class DeltaAdd(TestBase):
         self.assertEquals(list(changes),
                           [(1, 1, ['top line'])])
 
+        self.check_read_write(k)
 
 
 class InvalidAdd(TestBase):
@@ -217,7 +239,7 @@ class SuicideDelete(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [VerInfo([]),
+        k._v = [(),
                 ]
         k._l = [('{', 0),
                 'first line',
@@ -238,8 +260,8 @@ class CannedDelete(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [VerInfo([]),
-                VerInfo([0]),
+        k._v = [(),
+                frozenset([0]),
                 ]
         k._l = [('{', 0),
                 'first line',
@@ -268,8 +290,8 @@ class CannedReplacement(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [VerInfo([]),
-                VerInfo([0]),
+        k._v = [frozenset(),
+                frozenset([0]),
                 ]
         k._l = [('{', 0),
                 'first line',
@@ -302,7 +324,7 @@ class BadWeave(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [VerInfo([]),
+        k._v = [frozenset(),
                 ]
         k._l = ['bad line',
                 ('{', 0),
@@ -327,10 +349,10 @@ class BadInsert(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [VerInfo([]),
-                VerInfo([0]),
-                VerInfo([0]),
-                VerInfo([0,1,2]),
+        k._v = [frozenset(),
+                frozenset([0]),
+                frozenset([0]),
+                frozenset([0,1,2]),
                 ]
         k._l = [('{', 0),
                 'foo {',
@@ -356,10 +378,10 @@ class InsertNested(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [VerInfo([]),
-                VerInfo([0]),
-                VerInfo([0]),
-                VerInfo([0,1,2]),
+        k._v = [frozenset(),
+                frozenset([0]),
+                frozenset([0]),
+                frozenset([0,1,2]),
                 ]
         k._l = [('{', 0),
                 'foo {',
@@ -438,7 +460,7 @@ class IncludeVersions(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [VerInfo(), VerInfo(included=[0])]
+        k._v = [frozenset(), frozenset([0])]
         k._l = [('{', 0),
                 "first line",
                 ('}', 0),
@@ -462,9 +484,9 @@ class DivergedIncludes(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [VerInfo(),
-                VerInfo(included=[0]),
-                VerInfo(included=[0]),
+        k._v = [frozenset(),
+                frozenset([0]),
+                frozenset([0]),
                 ]
         k._l = [('{', 0),
                 "first line",
@@ -536,9 +558,7 @@ class Merge(TestBase):
 
         self.log('k._l=' + pformat(k._l))
 
-        from weavefile import write_weave_v1
-        self.log('weave:')
-        write_weave_v1(k, self.TEST_LOG)
+        self.check_read_write(k)
 
 
 class AutoMerge(TestBase):
@@ -567,6 +587,7 @@ class AutoMerge(TestBase):
 
 
 class Khayyam(TestBase):
+    """Test changes to multi-line texts, and read/write"""
     def runTest(self):
         rawtexts = [
             """A Book of Verses underneath the Bough,
@@ -591,8 +612,7 @@ class Khayyam(TestBase):
             A Jug of Wine, a Loaf of Bread,
             and Thou
             Beside me singing in the Wilderness --
-            Oh, Wilderness were Paradise now!
-            """,
+            Oh, Wilderness were Paradise now!""",
             ]
         texts = [[l.strip() for l in t.split('\n')] for t in rawtexts]
 
@@ -605,9 +625,9 @@ class Khayyam(TestBase):
         self.log("k._l=" + pformat(k._l))
 
         for i, t in enumerate(texts):
-            self.assertEqual(k.get(i),
-                             t)            
+            self.assertEqual(k.get(i), t)
 
+        self.check_read_write(k)
 
 
 def testweave():
