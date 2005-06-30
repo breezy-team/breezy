@@ -36,7 +36,7 @@ DEFAULT_IGNORE = ['.bzr.log',
 IGNORE_FILENAME = ".bzrignore"
 
 import locale
-user_encoding = locale.getpreferredencoding()
+user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
 __copyright__ = "Copyright 2005 Canonical Development Ltd."
