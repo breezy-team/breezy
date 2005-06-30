@@ -419,18 +419,6 @@ class Weave(object):
         If line1=line2, this is a pure insert; if newlines=[] this is a
         pure delete.  (Similar to difflib.)
         """
-
-        ## self._check_versions(included)
-
-        ##from pprint import pprint
-
-        # first get basis for comparison
-        # basis holds (lineno, origin, line)
-        basis = []
-
-        ##print 'my lines:'
-        ##pprint(self._l)
-
         # basis a list of (origin, lineno, line)
         basis_lineno = []
         basis_lines = []
