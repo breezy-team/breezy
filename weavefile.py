@@ -37,15 +37,14 @@ line contains a newline, or ',' if not.
 # TODO: When extracting a single version it'd be enough to just pass
 # an iterator returning the weave lines...
 
-FORMAT_1 = '# bzr weave file v1'
+FORMAT_1 = '# bzr weave file v1\n'
 
 
 
 
 def write_weave_v1(weave, f):
     """Write weave to file f."""
-    print >>f, FORMAT_1
-    print >>f
+    print >>f, FORMAT_1,
 
     for version, verinfo in enumerate(weave._v):
         print >>f, 'v', version
@@ -66,52 +65,61 @@ def write_weave_v1(weave, f):
 
     for l in weave._l:
         if isinstance(l, tuple):
-            assert len(l) == 2
             assert l[0] in '{}[]'
             print >>f, '%s %d' % l
         else: # text line
             if not l:
                 print >>f, ', '
             elif l[-1] == '\n':
-                assert '\n' not in l[:-1]
+                assert l.find('\n', 0, -1) == -1
                 print >>f, '.', l,
             else:
+                assert l.find('\n') == -1
                 print >>f, ',', l
 
     print >>f, 'W'
 
 
 def read_weave_v1(f):
-    from weave import Weave, VerInfo
+    from weave import Weave, VerInfo, WeaveFormatError
     w = Weave()
 
-    assert f.readline() == FORMAT_1+'\n'
-    assert f.readline() == '\n'
+    wfe = WeaveFormatError
+    l = f.readline()
+    if l != FORMAT_1:
+        raise WeaveFormatError('invalid weave file header: %r' % l)
 
+    v_cnt = 0
     while True:
         l = f.readline()
-        if l[0] == 'v':
+        if l.startswith('v '):
+            ver = int(l[2:])
+            if ver != v_cnt:
+                raise WeaveFormatError('version %d!=%d out of order'
+                                       % (ver, v_cnt))
+            v_cnt += 1
+            
             l = f.readline()[:-1]
             if l[0] != 'i':
-                raise Exception(`l`)
+                raise WeaveFormatError('unexpected line %r' % l)
             if len(l) > 2:
                 included = map(int, l[2:].split(' '))
                 w._v.append(VerInfo(included))
             else:
                 w._v.append(VerInfo())
             assert f.readline() == '\n'
-        elif l[0] == 'w':
+        elif l == 'w\n':
             break
         else:
-            assert 0, l
+            raise WeaveFormatError('unexpected line %r' % l)
 
     while True:
         l = f.readline()
         if l == 'W\n':
             break
-        elif l[:2] == '. ':
+        elif l.startswith('. '):
             w._l.append(l[2:])           # include newline
-        elif l[:2] == ', ':
+        elif l.startswith(', '):
             w._l.append(l[2:-1])        # exclude newline
         else:
             assert l[0] in '{}[]', l
