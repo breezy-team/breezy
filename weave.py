@@ -45,10 +45,14 @@
 
 # TODO: Separate out some code to read and write weaves.
 
-# TODO: End marker for each version?
+# TODO: End marker for each version so we can stop reading?
 
 # TODO: Check that no insertion occurs inside a deletion that was
 # active in the version of the insertion.
+
+# TODO: Perhaps a special slower check() method that verifies more
+# nesting constraints and the MD5 of each version?
+
 
 
 try:
@@ -210,9 +214,6 @@ class Weave(object):
                                    + [('}', idx)]
                     offset += 2 + len(newlines)
 
-            # TODO: Could eliminate any parents that are implied by
-            # the others
-                    
             self._addversion(parents)
         else:
             # special case; adding with no parents revision; can do this
@@ -295,6 +296,10 @@ class Weave(object):
         # TODO: Could split this into two functions, one that updates
         # the stack and the other that processes the results -- but
         # I'm not sure it's really needed.
+
+        # TODO: In fact, I think we only need to store the *count* of
+        # active insertions and deletions, and we can maintain that by
+        # just by just counting as we go along.
 
         WFE = WeaveFormatError
         
