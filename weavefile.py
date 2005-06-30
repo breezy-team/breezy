@@ -22,6 +22,16 @@
 
 
 """Store and retrieve weaves in files.
+
+There is one format marker followed by a blank line, followed by a
+series of version headers, followed by the weave itself.
+
+Each version marker has 'v' and the version, then 'i' and the included
+previous versions.
+
+The weave is bracketed by 'w' and 'W' lines, and includes the '{}[]'
+processing instructions.  Lines of text are prefixed by '.' if the
+line contains a newline, or ',' if not.
 """
 
 # TODO: When extracting a single version it'd be enough to just pass
@@ -39,12 +49,17 @@ def write_weave_v1(weave, f):
 
     for version, verinfo in enumerate(weave._v):
         print >>f, 'v', version
-        included = list(verinfo.included)
-        included.sort()
-        print >>f, 'i',
-        for i in included:
-            print >>f, i,
-        print >>f
+        if verinfo.included:
+            included = list(verinfo.included)
+            included.sort()
+            assert included[0] >= 0
+            assert included[-1] < version
+            print >>f, 'i',
+            for i in included:
+                print >>f, i,
+            print >>f
+        else:
+            print >>f, 'i'
         print >>f
 
     print >>f, 'w'
@@ -54,9 +69,14 @@ def write_weave_v1(weave, f):
             assert len(l) == 2
             assert l[0] in '{}[]'
             print >>f, '%s %d' % l
-        else:
-            assert '\n' not in l
-            print >>f, '.', l
+        else: # text line
+            if not l:
+                print >>f, ', '
+            elif l[-1] == '\n':
+                assert '\n' not in l[:-1]
+                print >>f, '.', l,
+            else:
+                print >>f, ',', l
 
     print >>f, 'W'
 
@@ -90,7 +110,9 @@ def read_weave_v1(f):
         if l == 'W\n':
             break
         elif l[:2] == '. ':
-            w._l.append(l[2:-1])
+            w._l.append(l[2:])           # include newline
+        elif l[:2] == ', ':
+            w._l.append(l[2:-1])        # exclude newline
         else:
             assert l[0] in '{}[]', l
             assert l[1] == ' ', l

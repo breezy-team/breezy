@@ -87,8 +87,13 @@ class WeaveFormatError(WeaveError):
 class Weave(object):
     """weave - versioned text file storage.
     
-    A Weave manages versions of line-based text files, keeping track of the
-    originating version for each line.
+    A Weave manages versions of line-based text files, keeping track
+    of the originating version for each line.
+
+    To clients the "lines" of the file are represented as a list of strings.
+    These strings  will typically have terminal newline characters, but
+    this is not required.  In particular files commonly do not have a newline
+    at the end of the file.
 
     Texts can be identified in either of two ways:
 
@@ -469,7 +474,7 @@ def main(argv):
         w = read_weave_v1(file(argv[2], 'rb'))
         # at the moment, based on everything in the file
         parents = set(range(len(w._v)))
-        lines = [x.rstrip('\n') for x in sys.stdin.xreadlines()]
+        lines = sys.stdin.readlines()
         ver = w.add(parents, lines)
         write_weave_v1(w, file(argv[2], 'wb'))
         print 'added %d' % ver
@@ -481,13 +486,14 @@ def main(argv):
         write_weave_v1(w, file(fn, 'wb'))
     elif cmd == 'get':
         w = read_weave_v1(file(argv[2], 'rb'))
-        sys.stdout.writelines(w.get(int(argv[3])))
+        sys.stdout.writelines(w.getiter(int(argv[3])))
     elif cmd == 'annotate':
         w = read_weave_v1(file(argv[2], 'rb'))
-        # assumes lines are ended
+        # newline is added to all lines regardless; too hard to get
+        # reasonable formatting otherwise
         lasto = None
         for origin, text in w.annotate(int(argv[3])):
-            assert '\n' not in text
+            text = text.rstrip('\r\n')
             if origin == lasto:
                 print '      | %s' % (text)
             else:
