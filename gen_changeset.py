@@ -163,11 +163,9 @@ class MetaInfoHeader(object):
 
         # Base revision is the revision this changeset is against
         if self.base_revision:
-            write(self.base_revision.revision_id, key='base')
-
             rev_id = self.base_revision.revision_id
-            write(self.branch.get_revision_sha1(rev_id),
-                    key='base sha1')
+            write(rev_id, key='base')
+            write(self.branch.get_revision_sha1(rev_id), key='base sha1')
 
         self._write_revisions()
 

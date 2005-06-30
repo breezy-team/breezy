@@ -37,6 +37,7 @@ class RevisionInfo(object):
         self.rev_id = rev_id
         self.sha1 = None
         self.committer = None
+        self.date = None
         self.timestamp = None
         self.timezone = None
         self.inventory_id = None
@@ -64,9 +65,6 @@ class RevisionInfo(object):
 
         return rev
 
-
-
-
 class ChangesetInfo(object):
     """This is the intermediate class that gets filled out as
     the file is read.
@@ -78,26 +76,37 @@ class ChangesetInfo(object):
         self.base = None
         self.base_sha1 = None
 
+        # A list of RevisionInfo objects
         self.revisions = []
+        # Tuples of (new_file_id, new_file_path)
+        self.new_file_ids = []
 
-        self.timestamp = None
-        self.timezone = None
+        # This is a mapping from file_id to text_id
+        self.text_ids = {}
 
         self.tree_root_id = None
         self.file_ids = None
         self.old_file_ids = None
 
         self.actions = [] #this is the list of things that happened
-        self.id2path = {} # A mapping from file id to path name
-        self.path2id = {} # The reverse mapping
-        self.id2parent = {} # A mapping from a given id to it's parent id
-
-        self.old_id2path = {}
-        self.old_path2id = {}
-        self.old_id2parent = {}
 
     def __str__(self):
         return pprint.pformat(self.__dict__)
+
+    def complete_info(self):
+        """This makes sure that all information is properly
+        split up, based on the assumptions that can be made
+        when information is missing.
+        """
+        if self.base is None:
+            # When we don't have a base, then the real base
+            # is the first parent of the last revision listed
+            rev = self.revisions[-1]
+            self.base = rev.parents[0].revision_id
+            self.base_sha1 = rev.parents[0].revision_sha1
+
+        for rev in self.revisions:
+
 
     def create_maps(self):
         """Go through the individual id sections, and generate the 
@@ -235,7 +244,7 @@ class ChangesetReader(object):
     def get_info(self):
         """Create the actual changeset object.
         """
-        self.info.create_maps()
+        self.info.complete_info()
         return self.info
 
     def _read_header(self):
