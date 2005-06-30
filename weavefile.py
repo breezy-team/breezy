@@ -27,7 +27,8 @@ There is one format marker followed by a blank line, followed by a
 series of version headers, followed by the weave itself.
 
 Each version marker has 'v' and the version, then 'i' and the included
-previous versions.
+previous versions.  The inclusions do not need to list versions
+included by a parent.
 
 The weave is bracketed by 'w' and 'W' lines, and includes the '{}[]'
 processing instructions.  Lines of text are prefixed by '.' if the
@@ -55,12 +56,24 @@ def write_weave_v1(weave, f):
     for version, included in enumerate(weave._v):
         print >>f, 'v', version
         if included:
-            included = list(included)
-            included.sort()
-            assert included[0] >= 0
-            assert included[-1] < version
+            # find a minimal expression of it; bias towards using
+            # later revisions
+            li = list(included)
+            li.sort()
+            li.reverse()
+
+            mininc = []
+            gotit = set()
+
+            for pv in li:
+                if pv not in gotit:
+                    mininc.append(pv)
+                    gotit.update(weave._v[pv])
+
+            assert mininc[0] >= 0
+            assert mininc[-1] < version
             print >>f, 'i',
-            for i in included:
+            for i in mininc:
                 print >>f, i,
             print >>f
         else:
@@ -115,7 +128,11 @@ def read_weave_v1(f):
                 raise WeaveFormatError('unexpected line %r' % l)
             if len(l) > 2:
                 included = map(int, l[2:].split(' '))
-                w._addversion(included)
+                full = set()
+                for pv in included:
+                    full.add(pv)
+                    full.update(w._v[pv])
+                w._addversion(full)
             else:
                 w._addversion(None)
             assert f.readline() == '\n'
