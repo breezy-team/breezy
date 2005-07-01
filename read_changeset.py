@@ -422,13 +422,14 @@ def read_changeset(from_file):
 
 
 class ChangesetTree:
-    def __init__(self, base_tree):
+    def __init__(self, base_tree=None):
         self.base_tree = base_tree
         self._renamed = {}
         self._renamed_r = {}
         self._new_id = {}
         self._new_id_r = {}
         self.patches = {}
+        self.deleted = []
 
     def note_rename(self, old_path, new_path):
         assert not self._renamed.has_key(old_path)
@@ -442,6 +443,9 @@ class ChangesetTree:
 
     def note_patch(self, new_path, patch):
         self.patches[new_path] = patch
+
+    def note_deletion(self, old_path):
+        self.deleted.append(old_path)
 
     def old_path(self, new_path):
         import os.path
@@ -493,6 +497,8 @@ class ChangesetTree:
         old_path = self.old_path(path)
         if old_path is None:
             return None
+        if old_path in self.deleted:
+            return None
         return self.base_tree.path2id(old_path)
 
     def id2path(self, file_id):
@@ -501,6 +507,8 @@ class ChangesetTree:
             return path
         old_path = self.base_tree.id2path(file_id)
         if old_path is None:
+            return None
+        if old_path in self.deleted:
             return None
         return self.new_path(old_path)
 
@@ -687,6 +695,14 @@ def test():
             ctree.note_patch("grandparent/alt_parent/stopping", mod_patch)
             assert ctree.get_file("c").read() == "Hello"
             assert ctree.get_file("e").read() == "Lemon\n"
+
+        def test_delete(self):
+            "Deletion by changeset"
+            ctree = self.make_tree_1()[0]
+            assert ctree.get_file("c").read() == "Hello"
+            ctree.note_deletion("grandparent/parent/file")
+            assert ctree.id2path("c") is None
+            assert ctree.path2id("grandparent/parent/file") is None
 
     patchesTestSuite = unittest.makeSuite(CTreeTester,'test_')
     runner = unittest.TextTestRunner()
