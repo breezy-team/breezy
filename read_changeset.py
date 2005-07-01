@@ -440,8 +440,8 @@ class ChangesetTree:
         self._new_id[new_path] = new_id
         self._new_id_r[new_id] = new_path
 
-    def note_patch(new_path, patch):
-        self._patches[new_path] = patch
+    def note_patch(self, new_path, patch):
+        self.patches[new_path] = patch
 
     def old_path(self, new_path):
         import os.path
@@ -509,9 +509,9 @@ class ChangesetTree:
             patch_original = self.base_tree.get_file(file_id)
         else:
             patch_original = None
-        file_patch = patches.get(self.id2path(id))
+        file_patch = self.patches.get(self.id2path(file_id))
         if file_patch is None:
-            return patch_base
+            return patch_original
         return patched_file(file_patch, patch_original)
 
 def patched_file(file_patch, original):
@@ -519,20 +519,19 @@ def patched_file(file_patch, original):
     from tempfile import mkdtemp
     from shutil import rmtree
     from StringIO import StringIO
-    from osutils import pumpfile
+    from bzrlib.osutils import pumpfile
+    import os.path
     temp_dir = mkdtemp()
     try:
-        if original is None:
-            original_path = "/dev/null"
-        else:
-            original_path = os.path.join(temp_dir, "originalfile")
-            temp_original = file(original_path, "wb")
+        original_path = os.path.join(temp_dir, "originalfile")
+        temp_original = file(original_path, "wb")
+        if original is not None:
             pumpfile(original, temp_original)
-            temp_original.close()
+        temp_original.close()
         patched_path = os.path.join(temp_dir, "patchfile")
         patch(file_patch, original_path, patched_path)
         result = StringIO()
-        temp_patched = file(patched_file, "rb")
+        temp_patched = file(patched_path, "rb")
         pumpfile(temp_patched, result)
         temp_patched.close()
         result.seek(0,0)
@@ -545,6 +544,7 @@ def patched_file(file_patch, original):
 def test():
     import unittest
     from StringIO import StringIO
+    from bzrlib.diff import internal_diff
     class MockTree(object):
         def __init__(self):
             object.__init__(self)
@@ -565,6 +565,9 @@ def test():
 
         def id2path(self, file_id):
             return self.paths.get(file_id)
+
+        def has_id(self, file_id):
+            return self.id2path(file_id) is not None
 
         def get_file(file_id):
             result = StringIO()
@@ -652,6 +655,12 @@ def test():
             assert ctree.path2id("grandparent/alt_parent/file") == "c"
             assert ctree.path2id("grandparent/parent/file") == None
 
+        def unified_diff(self, old, new):
+            out = StringIO()
+            internal_diff("old", old, "new", new, out)
+            out.seek(0,0)
+            return out.read()
+
         def testAdds(self):
             """Ensure that inventory adds work"""
             ctree = self.make_tree_1()[0]
@@ -660,9 +669,12 @@ def test():
             assert ctree.id2path("e") is None
             assert ctree.path2id("grandparent/parent/file") is None
             ctree.note_id("e", "grandparent/parent/file")
+            add_patch = self.unified_diff([], ["Extra cheese"])
+            ctree.note_patch("grandparent/parent/file", add_patch)
+
             assert ctree.id2path("e") == "grandparent/parent/file"
             assert ctree.path2id("grandparent/parent/file") == "e"
-            
+            assert ctree.get_file("e").read() == "Extra cheese"
         
     patchesTestSuite = unittest.makeSuite(CTreeTester,'test')
     runner = unittest.TextTestRunner()
