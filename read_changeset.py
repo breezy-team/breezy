@@ -619,72 +619,72 @@ def test():
         def test_renames(self):
             """Ensure that file renames have the proper effect on children"""
             ctree = self.make_tree_1()[0]
-            assert ctree.old_path("grandparent") == "grandparent"
-            assert ctree.old_path("grandparent/parent") == "grandparent/parent"
-            assert ctree.old_path("grandparent/parent/file") ==\
-                "grandparent/parent/file"
+            self.assertEqual(ctree.old_path("grandparent"), "grandparent")
+            self.assertEqual(ctree.old_path("grandparent/parent"), "grandparent/parent")
+            self.assertEqual(ctree.old_path("grandparent/parent/file"),
+                "grandparent/parent/file")
 
-            assert ctree.id2path("a") == "grandparent"
-            assert ctree.id2path("b") == "grandparent/parent"
-            assert ctree.id2path("c") == "grandparent/parent/file"
+            self.assertEqual(ctree.id2path("a"), "grandparent")
+            self.assertEqual(ctree.id2path("b"), "grandparent/parent")
+            self.assertEqual(ctree.id2path("c"), "grandparent/parent/file")
 
-            assert ctree.path2id("grandparent") == "a"
-            assert ctree.path2id("grandparent/parent") == "b"
-            assert ctree.path2id("grandparent/parent/file") == "c"
+            self.assertEqual(ctree.path2id("grandparent"), "a")
+            self.assertEqual(ctree.path2id("grandparent/parent"), "b")
+            self.assertEqual(ctree.path2id("grandparent/parent/file"), "c")
 
-            assert ctree.path2id("grandparent2") is None
-            assert ctree.path2id("grandparent2/parent") is None
-            assert ctree.path2id("grandparent2/parent/file") is None
+            self.assertEqual(ctree.path2id("grandparent2"), None)
+            self.assertEqual(ctree.path2id("grandparent2/parent"), None)
+            self.assertEqual(ctree.path2id("grandparent2/parent/file"), None)
 
             ctree.note_rename("grandparent", "grandparent2")
-            assert ctree.old_path("grandparent") is None 
-            assert ctree.old_path("grandparent/parent") is None 
-            assert ctree.old_path("grandparent/parent/file") is None 
+            self.assertEqual(ctree.old_path("grandparent"), None)
+            self.assertEqual(ctree.old_path("grandparent/parent"), None)
+            self.assertEqual(ctree.old_path("grandparent/parent/file"), None)
 
-            assert ctree.id2path("a") == "grandparent2"
-            assert ctree.id2path("b") == "grandparent2/parent"
-            assert ctree.id2path("c") == "grandparent2/parent/file"
+            self.assertEqual(ctree.id2path("a"), "grandparent2")
+            self.assertEqual(ctree.id2path("b"), "grandparent2/parent")
+            self.assertEqual(ctree.id2path("c"), "grandparent2/parent/file")
 
-            assert ctree.path2id("grandparent2") == "a"
-            assert ctree.path2id("grandparent2/parent") == "b"
-            assert ctree.path2id("grandparent2/parent/file") == "c"
+            self.assertEqual(ctree.path2id("grandparent2"), "a")
+            self.assertEqual(ctree.path2id("grandparent2/parent"), "b")
+            self.assertEqual(ctree.path2id("grandparent2/parent/file"), "c")
 
-            assert ctree.path2id("grandparent") is None
-            assert ctree.path2id("grandparent/parent") is None
-            assert ctree.path2id("grandparent/parent/file") is None
+            self.assertEqual(ctree.path2id("grandparent"), None)
+            self.assertEqual(ctree.path2id("grandparent/parent"), None)
+            self.assertEqual(ctree.path2id("grandparent/parent/file"), None)
 
             ctree.note_rename("grandparent/parent", "grandparent2/parent2")
-            assert ctree.id2path("a") == "grandparent2"
-            assert ctree.id2path("b") == "grandparent2/parent2"
-            assert ctree.id2path("c") == "grandparent2/parent2/file"
+            self.assertEqual(ctree.id2path("a"), "grandparent2")
+            self.assertEqual(ctree.id2path("b"), "grandparent2/parent2")
+            self.assertEqual(ctree.id2path("c"), "grandparent2/parent2/file")
 
-            assert ctree.path2id("grandparent2") == "a"
-            assert ctree.path2id("grandparent2/parent2") == "b"
-            assert ctree.path2id("grandparent2/parent2/file") == "c"
+            self.assertEqual(ctree.path2id("grandparent2"), "a")
+            self.assertEqual(ctree.path2id("grandparent2/parent2"), "b")
+            self.assertEqual(ctree.path2id("grandparent2/parent2/file"), "c")
 
-            assert ctree.path2id("grandparent2/parent") is None
-            assert ctree.path2id("grandparent2/parent/file") is None
+            self.assertEqual(ctree.path2id("grandparent2/parent"), None)
+            self.assertEqual(ctree.path2id("grandparent2/parent/file"), None)
 
             ctree.note_rename("grandparent/parent/file", 
                               "grandparent2/parent2/file2")
-            assert ctree.id2path("a") == "grandparent2"
-            assert ctree.id2path("b") == "grandparent2/parent2"
-            assert ctree.id2path("c") == "grandparent2/parent2/file2"
+            self.assertEqual(ctree.id2path("a"), "grandparent2")
+            self.assertEqual(ctree.id2path("b"), "grandparent2/parent2")
+            self.assertEqual(ctree.id2path("c"), "grandparent2/parent2/file2")
 
-            assert ctree.path2id("grandparent2") == "a"
-            assert ctree.path2id("grandparent2/parent2") == "b"
-            assert ctree.path2id("grandparent2/parent2/file2") == "c"
+            self.assertEqual(ctree.path2id("grandparent2"), "a")
+            self.assertEqual(ctree.path2id("grandparent2/parent2"), "b")
+            self.assertEqual(ctree.path2id("grandparent2/parent2/file2"), "c")
 
-            assert ctree.path2id("grandparent2/parent2/file") is None
+            self.assertEqual(ctree.path2id("grandparent2/parent2/file"), None)
 
         def test_moves(self):
             """Ensure that file moves have the proper effect on children"""
             ctree = self.make_tree_1()[0]
             ctree.note_rename("grandparent/parent/file", 
                               "grandparent/alt_parent/file")
-            assert ctree.id2path("c") == "grandparent/alt_parent/file"
-            assert ctree.path2id("grandparent/alt_parent/file") == "c"
-            assert ctree.path2id("grandparent/parent/file") == None
+            self.assertEqual(ctree.id2path("c"), "grandparent/alt_parent/file")
+            self.assertEqual(ctree.path2id("grandparent/alt_parent/file"), "c")
+            self.assertEqual(ctree.path2id("grandparent/parent/file"), None)
 
         def unified_diff(self, old, new):
             out = StringIO()
@@ -696,8 +696,8 @@ def test():
             ctree = self.make_tree_1()[0]
             ctree.note_rename("grandparent/parent/file", 
                               "grandparent/alt_parent/file")
-            assert ctree.id2path("e") is None
-            assert ctree.path2id("grandparent/parent/file") is None
+            self.assertEqual(ctree.id2path("e"), None)
+            self.assertEqual(ctree.path2id("grandparent/parent/file"), None)
             ctree.note_id("e", "grandparent/parent/file")
             return ctree
 
@@ -709,9 +709,9 @@ def test():
             self.adds_test(ctree)
 
         def adds_test(self, ctree):
-            assert ctree.id2path("e") == "grandparent/parent/file"
-            assert ctree.path2id("grandparent/parent/file") == "e"
-            assert ctree.get_file("e").read() == "Extra cheese\n"
+            self.assertEqual(ctree.id2path("e"), "grandparent/parent/file")
+            self.assertEqual(ctree.path2id("grandparent/parent/file"), "e")
+            self.assertEqual(ctree.get_file("e").read(), "Extra cheese\n")
 
         def test_adds2(self):
             """File/inventory adds, with patch-compatibile renames"""
@@ -731,8 +731,8 @@ def test():
             return ctree
 
         def get_file_test(self, ctree):
-            assert ctree.get_file("e").read() == "Lemon\n"
-            assert ctree.get_file("c").read() == "Hello\n"
+            self.assertEqual(ctree.get_file("e").read(), "Lemon\n")
+            self.assertEqual(ctree.get_file("c").read(), "Hello\n")
 
         def test_get_file(self):
             """Get file contents"""
@@ -754,10 +754,10 @@ def test():
         def test_delete(self):
             "Deletion by changeset"
             ctree = self.make_tree_1()[0]
-            assert ctree.get_file("c").read() == "Hello\n"
+            self.assertEqual(ctree.get_file("c").read(), "Hello\n")
             ctree.note_deletion("grandparent/parent/file")
-            assert ctree.id2path("c") is None
-            assert ctree.path2id("grandparent/parent/file") is None
+            self.assertEqual(ctree.id2path("c"), None)
+            self.assertEqual(ctree.path2id("grandparent/parent/file"), None)
 
         def sorted_ids(self, tree):
             ids = list(tree)
@@ -767,16 +767,13 @@ def test():
         def test_iteration(self):
             """Ensure that iteration through ids works properly"""
             ctree = self.make_tree_1()[0]
-            assert self.sorted_ids(ctree) == ['a', 'b', 'c', 'd']
+            self.assertEqual(self.sorted_ids(ctree), ['a', 'b', 'c', 'd'])
             ctree.note_deletion("grandparent/parent/file")
             ctree.note_id("e", "grandparent/alt_parent/fool")
-            assert self.sorted_ids(ctree) == ['a', 'b', 'd', 'e']
+            self.assertEqual(self.sorted_ids(ctree), ['a', 'b', 'd', 'e'])
             
 
     patchesTestSuite = unittest.makeSuite(CTreeTester,'test_')
     runner = unittest.TextTestRunner()
     runner.run(patchesTestSuite)
 
-if __name__ == '__main__':
-    import sys
-    print read_changeset(sys.stdin)
