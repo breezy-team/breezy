@@ -585,7 +585,7 @@ def test():
             mtree.add_dir("d", "grandparent/alt_parent")
             return ChangesetTree(mtree), mtree
             
-        def testRenames(self):
+        def test_renames(self):
             """Ensure that file renames have the proper effect on children"""
             ctree = self.make_tree_1()[0]
             assert ctree.old_path("grandparent") == "grandparent"
@@ -646,7 +646,7 @@ def test():
 
             assert ctree.path2id("grandparent2/parent2/file") is None
 
-        def testMoves(self):
+        def test_moves(self):
             """Ensure that file moves have the proper effect on children"""
             ctree = self.make_tree_1()[0]
             ctree.note_rename("grandparent/parent/file", 
@@ -661,7 +661,7 @@ def test():
             out.seek(0,0)
             return out.read()
 
-        def testAdds(self):
+        def test_adds(self):
             """Ensure that inventory adds work"""
             ctree = self.make_tree_1()[0]
             ctree.note_rename("grandparent/parent/file", 
@@ -675,8 +675,8 @@ def test():
             assert ctree.id2path("e") == "grandparent/parent/file"
             assert ctree.path2id("grandparent/parent/file") == "e"
             assert ctree.get_file("e").read() == "Extra cheese"
-        
-    patchesTestSuite = unittest.makeSuite(CTreeTester,'test')
+
+    patchesTestSuite = unittest.makeSuite(CTreeTester,'test_')
     runner = unittest.TextTestRunner()
     runner.run(patchesTestSuite)
 
