@@ -457,6 +457,30 @@ class Weave(object):
 
 
 
+def weave_info(filename, out):
+    """Show some text information about the weave."""
+    from weavefile import read_weave
+    wf = file(filename, 'rb')
+    w = read_weave(wf)
+    # FIXME: doesn't work on pipes
+    weave_size = wf.tell()
+    print >>out, "weave file size %d bytes" % weave_size
+    print >>out, "weave contains %d versions" % len(w._v)
+
+    total = 0
+    print ' %8s %8s %8s' % ('version', 'lines', 'bytes')
+    print ' -------- -------- --------'
+    for i in range(len(w._v)):
+        text = w.get(i)
+        lines = len(text)
+        bytes = sum((len(a) for a in text))
+        print ' %8d %8d %8d' % (i, lines, bytes)
+        total += bytes
+
+    print >>out, "versions total %d bytes" % total
+    print >>out, "compression ratio %.3f" % (float(total)/float(weave_size))
+    
+
 
 def main(argv):
     import sys
@@ -492,6 +516,8 @@ def main(argv):
             else:
                 print '%5d | %s' % (origin, text)
                 lasto = origin
+    elif cmd == 'info':
+        weave_info(argv[2], sys.stdout)
     else:
         raise ValueError('unknown command %r' % cmd)
     
