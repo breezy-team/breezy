@@ -430,6 +430,7 @@ class ChangesetTree:
         self._new_id_r = {}
         self.patches = {}
         self.deleted = []
+        self.contents_by_id = True
 
     def note_rename(self, old_path, new_path):
         assert not self._renamed.has_key(old_path)
@@ -512,14 +513,22 @@ class ChangesetTree:
             return None
         return self.new_path(old_path)
 
-    def get_file(self, file_id):
+    def old_contents_id(self, file_id):
+        if self.contents_by_id:
+            if self.base_tree.has_id(file_id):
+                return file_id
+            else:
+                return None
         new_path = self.id2path(file_id)
-        base_id = self.base_tree.path2id(new_path)
+        return self.base_tree.path2id(new_path)
+        
+    def get_file(self, file_id):
+        base_id = self.old_contents_id(file_id)
         if base_id is not None:
             patch_original = self.base_tree.get_file(base_id)
         else:
             patch_original = None
-        file_patch = self.patches.get(new_path)
+        file_patch = self.patches.get(self.id2path(file_id))
         if file_patch is None:
             return patch_original
         return patched_file(file_patch, patch_original)
@@ -683,34 +692,64 @@ def test():
             out.seek(0,0)
             return out.read()
 
-        def test_adds(self):
-            """Ensure that inventory adds work"""
+        def make_tree_2(self):
             ctree = self.make_tree_1()[0]
             ctree.note_rename("grandparent/parent/file", 
                               "grandparent/alt_parent/file")
             assert ctree.id2path("e") is None
             assert ctree.path2id("grandparent/parent/file") is None
             ctree.note_id("e", "grandparent/parent/file")
-            add_patch = self.unified_diff(["Hello\n"], ["Extra cheese\n"])
-            ctree.note_patch("grandparent/parent/file", add_patch)
+            return ctree
 
+        def test_adds(self):
+            """File/inventory adds"""
+            ctree = self.make_tree_2()
+            add_patch = self.unified_diff([], ["Extra cheese\n"])
+            ctree.note_patch("grandparent/parent/file", add_patch)
+            self.adds_test(ctree)
+
+        def adds_test(self, ctree):
             assert ctree.id2path("e") == "grandparent/parent/file"
             assert ctree.path2id("grandparent/parent/file") == "e"
             assert ctree.get_file("e").read() == "Extra cheese\n"
 
-        def test_get(self):
+        def test_adds2(self):
+            """File/inventory adds, with patch-compatibile renames"""
+            ctree = self.make_tree_2()
+            ctree.contents_by_id = False
+            add_patch = self.unified_diff(["Hello\n"], ["Extra cheese\n"])
+            ctree.note_patch("grandparent/parent/file", add_patch)
+            self.adds_test(ctree)
+
+        def make_tree_3(self):
             ctree, mtree = self.make_tree_1()
             mtree.add_file("e", "grandparent/parent/topping", "Anchovies\n")
             ctree.note_rename("grandparent/parent/file", 
                               "grandparent/alt_parent/file")
             ctree.note_rename("grandparent/parent/topping", 
                               "grandparent/alt_parent/stopping")
+            return ctree
+
+        def get_file_test(self, ctree):
+            assert ctree.get_file("e").read() == "Lemon\n"
+            assert ctree.get_file("c").read() == "Hello\n"
+
+        def test_get_file(self):
+            """Get file contents"""
+            ctree = self.make_tree_3()
+            mod_patch = self.unified_diff(["Anchovies\n"], ["Lemon\n"])
+            ctree.note_patch("grandparent/alt_parent/stopping", mod_patch)
+            self.get_file_test(ctree)
+
+        def test_get_file2(self):
+            """Get file contents, with patch-compatibile renames"""
+            ctree = self.make_tree_3()
+            ctree.contents_by_id = False
             mod_patch = self.unified_diff([], ["Lemon\n"])
             ctree.note_patch("grandparent/alt_parent/stopping", mod_patch)
             mod_patch = self.unified_diff([], ["Hello\n"])
             ctree.note_patch("grandparent/alt_parent/file", mod_patch)
-            assert ctree.get_file("e").read() == "Lemon\n"
-            assert ctree.get_file("c").read() == "Hello\n"
+            self.get_file_test(ctree)
 
         def test_delete(self):
             "Deletion by changeset"
