@@ -436,7 +436,7 @@ class ChangesetTree:
         self._renamed[new_path] = old_path
         self._renamed_r[old_path] = new_path
 
-    def note_id(self, new_path, new_id):
+    def note_id(self, new_id, new_path):
         self._new_id[new_path] = new_id
         self._new_id_r[new_id] = new_path
 
@@ -490,13 +490,19 @@ class ChangesetTree:
         file_id = self._new_id.get(path)
         if file_id is not None:
             return file_id
-        return self.base_tree.path2id(self.old_path(path))
+        old_path = self.old_path(path)
+        if old_path is None:
+            return None
+        return self.base_tree.path2id(old_path)
 
     def id2path(self, file_id):
         path = self._new_id_r.get(file_id)
         if path is not None:
             return path
-        return self.new_path(self.base_tree.id2path(file_id))
+        old_path = self.base_tree.id2path(file_id)
+        if old_path is None:
+            return None
+        return self.new_path(old_path)
 
     def get_file(self, file_id):
         if self.base_tree.has_id(file_id):
@@ -567,12 +573,18 @@ def test():
             return result
 
     class CTreeTester(unittest.TestCase):
-        def testRenames(self):
+
+        def make_tree_1(self):
             mtree = MockTree()
             mtree.add_dir("a", "grandparent")
             mtree.add_dir("b", "grandparent/parent")
             mtree.add_file("c", "grandparent/parent/file", "Hello")
-            ctree = ChangesetTree(mtree)
+            mtree.add_dir("d", "grandparent/alt_parent")
+            return ChangesetTree(mtree), mtree
+            
+        def testRenames(self):
+            """Ensure that file renames have the proper effect on children"""
+            ctree = self.make_tree_1()[0]
             assert ctree.old_path("grandparent") == "grandparent"
             assert ctree.old_path("grandparent/parent") == "grandparent/parent"
             assert ctree.old_path("grandparent/parent/file") ==\
@@ -618,6 +630,39 @@ def test():
 
             assert ctree.path2id("grandparent2/parent") is None
             assert ctree.path2id("grandparent2/parent/file") is None
+
+            ctree.note_rename("grandparent/parent/file", 
+                              "grandparent2/parent2/file2")
+            assert ctree.id2path("a") == "grandparent2"
+            assert ctree.id2path("b") == "grandparent2/parent2"
+            assert ctree.id2path("c") == "grandparent2/parent2/file2"
+
+            assert ctree.path2id("grandparent2") == "a"
+            assert ctree.path2id("grandparent2/parent2") == "b"
+            assert ctree.path2id("grandparent2/parent2/file2") == "c"
+
+            assert ctree.path2id("grandparent2/parent2/file") is None
+
+        def testMoves(self):
+            """Ensure that file moves have the proper effect on children"""
+            ctree = self.make_tree_1()[0]
+            ctree.note_rename("grandparent/parent/file", 
+                              "grandparent/alt_parent/file")
+            assert ctree.id2path("c") == "grandparent/alt_parent/file"
+            assert ctree.path2id("grandparent/alt_parent/file") == "c"
+            assert ctree.path2id("grandparent/parent/file") == None
+
+        def testAdds(self):
+            """Ensure that inventory adds work"""
+            ctree = self.make_tree_1()[0]
+            ctree.note_rename("grandparent/parent/file", 
+                              "grandparent/alt_parent/file")
+            assert ctree.id2path("e") is None
+            assert ctree.path2id("grandparent/parent/file") is None
+            ctree.note_id("e", "grandparent/parent/file")
+            assert ctree.id2path("e") == "grandparent/parent/file"
+            assert ctree.path2id("grandparent/parent/file") == "e"
+            
         
     patchesTestSuite = unittest.makeSuite(CTreeTester,'test')
     runner = unittest.TextTestRunner()
