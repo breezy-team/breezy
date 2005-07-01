@@ -132,7 +132,8 @@ def read_weave_v1(f):
             assert l.startswith('1 ')
             w._sha1s.append(l[2:])
                 
-            assert f.readline() == '\n'
+            l = f.readline()
+            assert l == '\n'
         elif l == 'w\n':
             break
         else:
