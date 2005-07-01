@@ -33,11 +33,14 @@ def convert():
 
     wf = Weave()
 
-    b = bzrlib.branch.find_branch('.')
+    toconvert = sys.argv[1]
+    
+    b = bzrlib.branch.find_branch(toconvert)
+    rp = b.relpath(toconvert)
 
     print 'converting...'
 
-    fid = b.read_working_inventory().path2id(sys.argv[1])
+    fid = b.read_working_inventory().path2id(rp)
 
     last_lines = None
     parents = set()
