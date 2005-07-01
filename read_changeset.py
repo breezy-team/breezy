@@ -522,6 +522,15 @@ class ChangesetTree:
             return patch_original
         return patched_file(file_patch, patch_original)
 
+    def __iter__(self):
+        for file_id in self._new_id_r.iterkeys():
+            yield file_id
+        for file_id in self.base_tree:
+            if self.id2path(file_id) is None:
+                continue
+            yield file_id
+
+
 def patched_file(file_patch, original):
     from bzrlib.patch import patch
     from tempfile import mkdtemp
@@ -559,6 +568,9 @@ def test():
             self.paths = {}
             self.ids = {}
             self.contents = {}
+
+        def __iter__(self):
+            return self.paths.iterkeys()
 
         def add_dir(self, file_id, path):
             self.paths[file_id] = path
@@ -703,6 +715,20 @@ def test():
             ctree.note_deletion("grandparent/parent/file")
             assert ctree.id2path("c") is None
             assert ctree.path2id("grandparent/parent/file") is None
+
+        def sorted_ids(self, tree):
+            ids = list(tree)
+            ids.sort()
+            return ids
+
+        def test_iteration(self):
+            """Ensure that iteration through ids works properly"""
+            ctree = self.make_tree_1()[0]
+            assert self.sorted_ids(ctree) == ['a', 'b', 'c', 'd']
+            ctree.note_deletion("grandparent/parent/file")
+            ctree.note_id("e", "grandparent/alt_parent/fool")
+            assert self.sorted_ids(ctree) == ['a', 'b', 'd', 'e']
+            
 
     patchesTestSuite = unittest.makeSuite(CTreeTester,'test_')
     runner = unittest.TextTestRunner()
