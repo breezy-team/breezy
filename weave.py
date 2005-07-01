@@ -534,7 +534,7 @@ def main(argv):
         write_weave_v1(w, file(fn, 'wb'))
     elif cmd == 'get':
         w = read_weave(file(argv[2], 'rb'))
-        sys.stdout.writelines(w.getiter(int(argv[3])))
+        sys.stdout.writelines(w.get_iter(int(argv[3])))
     elif cmd == 'annotate':
         w = read_weave(file(argv[2], 'rb'))
         # newline is added to all lines regardless; too hard to get
