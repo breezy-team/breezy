@@ -569,7 +569,7 @@ def test():
         def has_id(self, file_id):
             return self.id2path(file_id) is not None
 
-        def get_file(file_id):
+        def get_file(self, file_id):
             result = StringIO()
             result.write(self.contents[file_id])
             result.seek(0,0)
@@ -675,6 +675,18 @@ def test():
             assert ctree.id2path("e") == "grandparent/parent/file"
             assert ctree.path2id("grandparent/parent/file") == "e"
             assert ctree.get_file("e").read() == "Extra cheese"
+
+        def test_get(self):
+            ctree, mtree = self.make_tree_1()
+            mtree.add_file("e", "grandparent/parent/topping", "Anchovies\n")
+            ctree.note_rename("grandparent/parent/file", 
+                              "grandparent/alt_parent/file")
+            ctree.note_rename("grandparent/parent/topping", 
+                              "grandparent/alt_parent/stopping")
+            mod_patch = self.unified_diff(["Anchovies\n"], ["Lemon\n"])
+            ctree.note_patch("grandparent/alt_parent/stopping", mod_patch)
+            assert ctree.get_file("c").read() == "Hello"
+            assert ctree.get_file("e").read() == "Lemon\n"
 
     patchesTestSuite = unittest.makeSuite(CTreeTester,'test_')
     runner = unittest.TextTestRunner()
