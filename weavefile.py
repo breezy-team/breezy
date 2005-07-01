@@ -26,9 +26,9 @@
 There is one format marker followed by a blank line, followed by a
 series of version headers, followed by the weave itself.
 
-Each version marker has 'v' and the version, then 'i' and the included
-previous versions, then '1' and the SHA-1 of the text, if known.  The
-inclusions do not need to list versions included by a parent.
+Each version marker has 'i' and the included previous versions, then
+'1' and the SHA-1 of the text, if known.  The inclusions do not need
+to list versions included by a parent.
 
 The weave is bracketed by 'w' and 'W' lines, and includes the '{}[]'
 processing instructions.  Lines of text are prefixed by '.' if the
@@ -38,7 +38,7 @@ line contains a newline, or ',' if not.
 # TODO: When extracting a single version it'd be enough to just pass
 # an iterator returning the weave lines...
 
-FORMAT_1 = '# bzr weave file v2\n'
+FORMAT_1 = '# bzr weave file v3\n'
 
 
 def write_weave(weave, f, format=None):
@@ -53,7 +53,6 @@ def write_weave_v1(weave, f):
     print >>f, FORMAT_1,
 
     for version, included in enumerate(weave._v):
-        print >>f, 'v', version
         if included:
             # find a minimal expression of it; bias towards using
             # later revisions
@@ -113,19 +112,12 @@ def read_weave_v1(f):
     if l != FORMAT_1:
         raise WeaveFormatError('invalid weave file header: %r' % l)
 
-    v_cnt = 0
+    ver = 0
     while True:
         l = f.readline()
-        if l.startswith('v '):
-            ver = int(l[2:])
-            if ver != v_cnt:
-                raise WeaveFormatError('version %d!=%d out of order'
-                                       % (ver, v_cnt))
-            v_cnt += 1
-            
-            l = f.readline()[:-1]
-            if l[0] != 'i':
-                raise WeaveFormatError('unexpected line %r' % l)
+        if l[0] == 'i':
+            ver += 1
+
             if len(l) > 2:
                 included = map(int, l[2:].split(' '))
                 full = set()
