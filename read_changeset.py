@@ -529,7 +529,7 @@ def patched_file(file_patch, original):
             pumpfile(original, temp_original)
         temp_original.close()
         patched_path = os.path.join(temp_dir, "patchfile")
-        patch(file_patch, original_path, patched_path)
+        assert patch(file_patch, original_path, patched_path) == 0
         result = StringIO()
         temp_patched = file(patched_path, "rb")
         pumpfile(temp_patched, result)
