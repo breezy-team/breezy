@@ -397,17 +397,36 @@ class Weave(object):
         pprint(self._v, to_file)
 
 
+
+    def numversions(self):
+        l = len(self._v)
+        assert l == len(self._sha1s)
+        return l
+
+
     def check(self):
-        for vers_info in self._v:
-            included = set()
-            for vi in vers_info[0]:
-                if vi < 0 or vi >= index:
+        # check no circular inclusions
+        for version in range(self.numversions()):
+            inclusions = list(self._v[version])
+            if inclusions:
+                inclusions.sort()
+                if inclusions[-1] >= version:
                     raise WeaveFormatError("invalid included version %d for index %d"
-                                               % (vi, index))
-                if vi in included:
-                    raise WeaveFormatError("repeated included version %d for index %d"
-                                               % (vi, index))
-                included.add(vi)
+                                           % (inclusions[-1], version))
+
+        # try extracting all versions; this is a bit slow and parallel
+        # extraction could be used
+        import sha
+        for version in range(self.numversions()):
+            s = sha.new()
+            for l in self.get_iter(version):
+                s.update(l)
+            hd = s.hexdigest()
+            expected = self._sha1s[version]
+            if hd != expected:
+                raise WeaveError("mismatched sha1 for version %d; "
+                                 "got %s, expected %s"
+                                 % (version, hd, expected))
 
 
 
@@ -479,13 +498,14 @@ def weave_info(filename, out):
     print >>out, "weave contains %d versions" % len(w._v)
 
     total = 0
-    print ' %8s %8s %8s' % ('version', 'lines', 'bytes')
-    print ' -------- -------- --------'
+    print ' %8s %8s %8s %s' % ('version', 'lines', 'bytes', 'sha1')
+    print ' -------- -------- -------- ----------------------------------------'
     for i in range(len(w._v)):
         text = w.get(i)
         lines = len(text)
         bytes = sum((len(a) for a in text))
-        print ' %8d %8d %8d' % (i, lines, bytes)
+        sha1 = w._sha1s[i]
+        print ' %8d %8d %8d %s' % (i, lines, bytes, sha1)
         total += bytes
 
     print >>out, "versions total %d bytes" % total
@@ -496,10 +516,10 @@ def weave_info(filename, out):
 def main(argv):
     import sys
     import os
-    from weavefile import write_weave_v1, read_weave_v1
+    from weavefile import write_weave_v1, read_weave
     cmd = argv[1]
     if cmd == 'add':
-        w = read_weave_v1(file(argv[2], 'rb'))
+        w = read_weave(file(argv[2], 'rb'))
         # at the moment, based on everything in the file
         parents = set(range(len(w._v)))
         lines = sys.stdin.readlines()
@@ -513,10 +533,10 @@ def main(argv):
         w = Weave()
         write_weave_v1(w, file(fn, 'wb'))
     elif cmd == 'get':
-        w = read_weave_v1(file(argv[2], 'rb'))
+        w = read_weave(file(argv[2], 'rb'))
         sys.stdout.writelines(w.getiter(int(argv[3])))
     elif cmd == 'annotate':
-        w = read_weave_v1(file(argv[2], 'rb'))
+        w = read_weave(file(argv[2], 'rb'))
         # newline is added to all lines regardless; too hard to get
         # reasonable formatting otherwise
         lasto = None
@@ -529,6 +549,9 @@ def main(argv):
                 lasto = origin
     elif cmd == 'info':
         weave_info(argv[2], sys.stdout)
+    elif cmd == 'check':
+        w = read_weave(file(argv[2], 'rb'))
+        w.check()
     else:
         raise ValueError('unknown command %r' % cmd)
     
