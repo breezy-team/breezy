@@ -27,8 +27,8 @@ There is one format marker followed by a blank line, followed by a
 series of version headers, followed by the weave itself.
 
 Each version marker has 'v' and the version, then 'i' and the included
-previous versions.  The inclusions do not need to list versions
-included by a parent.
+previous versions, then '1' and the SHA-1 of the text, if known.  The
+inclusions do not need to list versions included by a parent.
 
 The weave is bracketed by 'w' and 'W' lines, and includes the '{}[]'
 processing instructions.  Lines of text are prefixed by '.' if the
@@ -38,8 +38,7 @@ line contains a newline, or ',' if not.
 # TODO: When extracting a single version it'd be enough to just pass
 # an iterator returning the weave lines...
 
-FORMAT_1 = '# bzr weave file v1\n'
-
+FORMAT_1 = '# bzr weave file v2\n'
 
 
 def write_weave(weave, f, format=None):
@@ -78,6 +77,7 @@ def write_weave_v1(weave, f):
             print >>f
         else:
             print >>f, 'i'
+        print >>f, '1', weave._sha1s[version]
         print >>f
 
     print >>f, 'w'
@@ -135,6 +135,11 @@ def read_weave_v1(f):
                 w._addversion(full)
             else:
                 w._addversion(None)
+
+            l = f.readline()[:-1]
+            assert l.startswith('1 ')
+            w._sha1s.append(l[2:])
+                
             assert f.readline() == '\n'
         elif l == 'w\n':
             break

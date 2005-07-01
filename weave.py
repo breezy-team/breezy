@@ -149,11 +149,14 @@ class Weave(object):
         versions included in those versions are included transitively.
         So new versions created from nothing list []; most versions
         have a single entry; some have more.
+
+    _sha1s
+        List of hex SHA-1 of each version, or None if not recorded.
     """
     def __init__(self):
         self._l = []
         self._v = []
-
+        self._sha1s = []
 
 
     def __eq__(self, other):
@@ -180,8 +183,14 @@ class Weave(object):
             Sequence of lines to be added in the new version."""
         ## self._check_versions(parents)
         ## self._check_lines(text)
-
         idx = len(self._v)
+
+        import sha
+        s = sha.new()
+        for l in text:
+            s.update(l)
+        sha1 = s.hexdigest()
+        del s
 
         if parents:
             delta = self._delta(self.inclusions(parents), text)
@@ -223,6 +232,8 @@ class Weave(object):
             self._l.append(('}', idx))
 
             self._addversion(None)
+
+        self._sha1s.append(sha1)
             
         return idx
 
