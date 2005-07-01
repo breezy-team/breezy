@@ -515,7 +515,6 @@ class ChangesetTree:
     def get_file(self, file_id):
         new_path = self.id2path(file_id)
         base_id = self.base_tree.path2id(new_path)
-        print base_id
         if base_id is not None:
             patch_original = self.base_tree.get_file(base_id)
         else:
@@ -697,7 +696,6 @@ def test():
 
             assert ctree.id2path("e") == "grandparent/parent/file"
             assert ctree.path2id("grandparent/parent/file") == "e"
-            print ctree.get_file("e").read() == "Extra cheese\nHello"
             assert ctree.get_file("e").read() == "Extra cheese\n"
 
         def test_get(self):
