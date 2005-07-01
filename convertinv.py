@@ -22,22 +22,45 @@
 import bzrlib.branch
 from weave import Weave
 from weavefile import write_weave
+import tempfile
+import hotshot
 
-WEAVE_NAME = "inventory.weave"
+def convert():
+    WEAVE_NAME = "inventory.weave"
 
-wf = Weave()
+    wf = Weave()
 
-b = bzrlib.branch.find_branch('.')
+    b = bzrlib.branch.find_branch('.')
 
-print 'converting...'
+    print 'converting...'
 
-parents = set()
-revno = 1
-for rev_id in b.revision_history():
-    print revno
-    inv_xml = b.inventory_store[rev_id].readlines()
-    weave_id = wf.add(parents, inv_xml)
-    parents.add(weave_id)
-    revno += 1
+    parents = set()
+    revno = 1
+    for rev_id in b.revision_history():
+        print revno
+        inv_xml = b.inventory_store[rev_id].readlines()
+        weave_id = wf.add(parents, inv_xml)
+        parents.add(weave_id)
+        revno += 1
 
-write_weave(wf, file(WEAVE_NAME, 'wb'))
+    write_weave(wf, file(WEAVE_NAME, 'wb'))
+
+
+
+
+prof_f = tempfile.NamedTemporaryFile()
+
+prof = hotshot.Profile(prof_f.name)
+
+prof.runcall(convert) 
+prof.close()
+
+import hotshot.stats
+stats = hotshot.stats.load(prof_f.name)
+#stats.strip_dirs()
+stats.sort_stats('time')
+## XXX: Might like to write to stderr or the trace file instead but
+## print_stats seems hardcoded to stdout
+stats.print_stats(20)
+            
+
