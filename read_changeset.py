@@ -143,8 +143,6 @@ class ChangesetInfo(object):
                     assert self.base_sha1 == rev.parents[0].revision_sha1
                 self.base_sha1 = rev.parents[0].revision_sha1
 
-
-
 class ChangesetReader(object):
     """This class reads in a changeset from a file, and returns
     a Changeset object, which can then be applied against a tree.
@@ -224,56 +222,125 @@ class ChangesetReader(object):
         that we can.
         """
         rev_to_sha = {}
-        def add_sha(rev_id, sha1):
+        inv_to_sha = {}
+        def add_sha(d, rev_id, sha1):
             if rev_id is None:
                 if sha1 is not None:
                     raise BzrError('A Null revision should always'
                         'have a null sha1 hash')
                 return
-            if rev_id in rev_to_sha:
+            if rev_id in d:
                 # This really should have been validated as part
                 # of _validate_revisions but lets do it again
-                if sha1 != rev_to_sha[rev_id]:
+                if sha1 != d[rev_id]:
                     raise BzrError('** Revision %r referenced with 2 different'
                             ' sha hashes %s != %s' % (rev_id,
-                                sha1, rev_to_sha[rev_id]))
+                                sha1, d[rev_id]))
             else:
-                rev_to_sha[rev_id] = sha1
+                d[rev_id] = sha1
 
-        add_sha(self.info.base, self.info.base_sha1)
+        add_sha(rev_to_sha, self.info.base, self.info.base_sha1)
         # All of the contained revisions were checked
         # in _validate_revisions
         checked = {}
         for rev_info in self.info.revisions:
             checked[rev_info.rev_id] = True
-            add_sha(rev_info.rev_id, rev_info.sha1)
+            add_sha(rev_to_sha, rev_info.rev_id, rev_info.sha1)
                 
         for rev in self.info.real_revisions:
+            add_sha(inv_to_sha, rev_info.inventory_id, rev_info.inventory_sha1)
             for parent in rev.parents:
-                add_sha(parent.revision_id, parent.revision_sha1)
+                add_sha(rev_to_sha, parent.revision_id, parent.revision_sha1)
 
+        count = 0
         missing = {}
         for rev_id, sha1 in rev_to_sha.iteritems():
             if rev_id in branch.revision_store:
                 local_sha1 = branch.get_revision_sha1(rev_id)
                 if sha1 != local_sha1:
-                    raise BzrError('sha1 mismatch. For revision_id {%s}' 
+                    raise BzrError('sha1 mismatch. For revision id {%s}' 
                             'local: %s, cset: %s' % (rev_id, local_sha1, sha1))
+                else:
+                    count += 1
             elif rev_id not in checked:
                 missing[rev_id] = sha1
+
+        for inv_id, sha1 in inv_to_sha.iteritems():
+            if inv_id in branch.inventory_store:
+                local_sha1 = branch.get_inventory_sha1(inv_id)
+                if sha1 != local_sha1:
+                    raise BzrError('sha1 mismatch. For inventory id {%s}' 
+                            'local: %s, cset: %s' % (inv_id, local_sha1, sha1))
+                else:
+                    count += 1
 
         if len(missing) > 0:
             # I don't know if this is an error yet
             from bzrlib.trace import warning
             warning('Not all revision hashes could be validated.'
                     ' Unable validate %d hashes' % len(missing))
+        mutter('Verified %d sha hashes for the changeset.' % count)
 
-    def _validate_inventory(self, branch, tree):
+    def _create_inventory(self, tree):
+        """Build up the inventory entry for the ChangesetTree.
+
+        TODO: This sort of thing should probably end up part of
+        ChangesetTree, but since it doesn't handle meta-information
+        yet, we need to do it here. (We need the ChangesetInfo,
+        specifically the text_ids)
+        """
+        from os.path import dirname, basename
+        from bzrlib.inventory import Inventory, InventoryEntry, ROOT_ID
+
+        # TODO: deal with trees having a unique ROOT_ID
+        root_id = ROOT_ID
+        inv = Inventory()
+        for file_id in tree:
+            if file_id == root_id:
+                continue
+            path = tree.id2path(file_id)
+            parent_path = dirname(path)
+            if path == '':
+                parent_id = root_id
+            else:
+                parent_id = tree.path2id(parent_path)
+
+            if self.info.text_ids.has_key(file_id):
+                text_id = self.info.text_ids[file_id]
+            else:
+                # If we don't have the text_id in the local map
+                # that means the file didn't exist in the changeset
+                # so we just use the old text_id.
+                text_id = tree.base_tree.inventory[file_id].text_id
+            name = basename(path)
+            kind = tree.get_kind(file_id)
+            ie = InventoryEntry(file_id, name, kind, parent_id, text_id=text_id)
+            ie.text_size, ie.text_sha1 = tree.get_size_and_sha1(file_id)
+            if ie.text_size is None:
+                raise BzrError('Got a text_size of None for file_id %r' % file_id)
+            inv.add(ie)
+        return inv
+
+    def _validate_inventory(self, inv):
         """At this point we should have generated the ChangesetTree,
         so build up an inventory, and make sure the hashes match.
         """
+        from bzrlib.xml import pack_xml
+        from cStringIO import StringIO
+        from bzrlib.osutils import sha_file, pumpfile
+
+        # Now we should have a complete inventory entry.
+        sio = StringIO()
+        pack_xml(inv, sio)
+        sio.seek(0)
+        sha1 = sha_file(sio)
+        # Target revision is the last entry in the real_revisions list
+        rev = self.info.real_revisions[-1]
+        if sha1 != rev.inventory_sha1:
+            raise BzrError('Inventory sha hash mismatch.')
+
         
-    def get_info_and_tree(self, branch):
+    def get_info_tree_inv(self, branch):
         """Return the meta information, and a Changeset tree which can
         be used to populate the local stores and working tree, respectively.
         """
@@ -281,9 +348,10 @@ class ChangesetReader(object):
         tree = ChangesetTree(branch.revision_tree(self.info.base))
         self._update_tree(tree)
 
-        self._validate_inventory(branch, tree)
+        inv = self._create_inventory(tree)
+        self._validate_inventory(inv)
 
-        return self.info, tree
+        return self.info, tree, inv
 
     def _next(self):
         """yield the next line, but secretly
@@ -523,7 +591,7 @@ class ChangesetReader(object):
                 text_id = get_text_id(None, file_id)
             tree.note_rename(old_path, new_path)
             if lines:
-                tree.note_patch(new_path, lines)
+                tree.note_patch(new_path, ''.join(lines))
 
         def removed(kind, extra, lines):
             info = extra.split('\t')
@@ -553,8 +621,8 @@ class ChangesetReader(object):
                 text_id = get_text_id(info[2], file_id)
             else:
                 text_id = get_text_id(None, file_id)
-            tree.note_id(file_id, path)
-            tree.note_patch(path, lines)
+            tree.note_id(file_id, path, kind)
+            tree.note_patch(path, ''.join(lines))
 
         def modified(kind, extra, lines):
             info = extra.split('\t')
@@ -568,7 +636,7 @@ class ChangesetReader(object):
                 text_id = get_text_id(info[1], file_id)
             else:
                 text_id = get_text_id(None, file_id)
-            tree.note_patch(path, lines)
+            tree.note_patch(path, ''.join(lines))
             
 
         valid_actions = {
@@ -607,7 +675,7 @@ def read_changeset(from_file, branch):
                    won't know about until after the changeset is parsed.)
     """
     cr = ChangesetReader(from_file)
-    return cr.get_info_and_tree(branch)
+    return cr.get_info_tree_inv(branch)
 
 class ChangesetTree:
     def __init__(self, base_tree=None):
@@ -616,6 +684,7 @@ class ChangesetTree:
         self._renamed_r = {} # new_path => old_path
         self._new_id = {} # new_path => new_id
         self._new_id_r = {} # new_id => new_path
+        self._kinds = {} # new_id => kind
         self.patches = {}
         self.deleted = []
         self.contents_by_id = True
@@ -630,10 +699,11 @@ class ChangesetTree:
         self._renamed[new_path] = old_path
         self._renamed_r[old_path] = new_path
 
-    def note_id(self, new_id, new_path):
+    def note_id(self, new_id, new_path, kind='file'):
         """Files that don't exist in base need a new id."""
         self._new_id[new_path] = new_id
         self._new_id_r[new_id] = new_path
+        self._kinds[new_id] = kind
 
     def note_patch(self, new_path, patch):
         """There is a patch for a given filename."""
@@ -666,7 +736,6 @@ class ChangesetTree:
         if self._renamed_r.has_key(old_path):
             return None
         return old_path 
-
 
     def new_path(self, old_path):
         """Get the new_path (path in the target_tree) for the file at old_path
@@ -751,6 +820,31 @@ class ChangesetTree:
         if file_patch is None:
             return patch_original
         return patched_file(file_patch, patch_original)
+
+    def get_kind(self, file_id):
+        if file_id in self._kinds:
+            return self._kinds[file_id]
+        return self.base_tree.inventory[file_id].kind
+
+    def get_size_and_sha1(self, file_id):
+        """Return the size and sha1 hash of the given file id.
+        If the file was not locally modified, this is extracted
+        from the base_tree. Rather than re-reading the file.
+        """
+        from bzrlib.osutils import sha_string
+
+        new_path = self.id2path(file_id)
+        if new_path is None:
+            return None, None
+        if new_path not in self.patches:
+            # If the entry does not have a patch, then the
+            # contents must be the same as in the base_tree
+            ie = self.base_tree.inventory[file_id]
+            return int(ie.text_size), ie.text_sha1
+        content = self.get_file(file_id).read()
+        return len(content), sha_string(content)
+
+        
 
     def __iter__(self):
         for file_id in self._new_id_r.iterkeys():

@@ -103,9 +103,10 @@ class cmd_verify_changeset(bzrlib.commands.Command):
         else:
             f = open(filename, 'U')
 
-        cset_info, cset_tree = read_changeset.read_changeset(f, b)
+        cset_info, cset_tree, cset_inv = read_changeset.read_changeset(f, b)
         print cset_info
         print cset_tree
+        print cset_inv
 
 
 
