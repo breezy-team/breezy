@@ -8,6 +8,7 @@ import pprint
 import common
 
 from bzrlib.trace import mutter
+from bzrlib.errors import BzrError
 
 class BadChangeset(Exception): pass
 class MalformedHeader(BadChangeset): pass
@@ -162,15 +163,66 @@ class ChangesetReader(object):
         # is easier to read for humans.
         # Unfortunately, that means we need to read everything before we
         # can create a proper changeset.
+        self._read()
+        self._validate()
+
+    def _read(self):
         self._read_header()
         self._read_patches()
         self._read_footer()
+
+    def _validate(self):
+        """Make sure that the information read in makes sense
+        and passes appropriate checksums.
+        """
+        # Fill in all the missing blanks for the revisions
+        # and generate the real_revisions list.
+        self.info.complete_info()
+        self._validate_revisions()
+
+    def _validate_revisions(self):
+        """Make sure all revision entries match their checksum."""
+        from bzrlib.xml import pack_xml
+        from cStringIO import StringIO
+        from bzrlib.osutils import sha_file
+
+        # This is a mapping from each revision id to it's sha hash
+        rev_to_sha1 = {}
+
+        for rev, rev_info in zip(self.info.real_revisions, self.info.revisions):
+            sio = StringIO()
+            pack_xml(rev, sio)
+            sio.seek(0)
+            sha1 = sha_file(sio)
+            if sha1 != rev_info.sha1:
+                raise BzrError('Revision checksum mismatch.'
+                    ' For rev_id {%s} supplied sha1 (%s) != measured (%s)'
+                    % (rev.revision_id, rev_info.sha1, sha1))
+            if rev_to_sha1.has_key(rev.revision_id):
+                raise BzrError('Revision {%s} given twice in the list'
+                        % (rev.revision_id))
+            rev_to_sha1[rev.revision_id] = sha1
+
+        # Now that we've checked all the sha1 sums, we can make sure that
+        # at least for the small list we have, all of the references are
+        # valid.
+        for rev in self.info.real_revisions:
+            for parent in rev.parents:
+                if parent.revision_id in rev_to_sha1:
+                    if parent.revision_sha1 != rev_to_sha1[parent.revision_id]:
+                        raise BzrError('Parent revision checksum mismatch.'
+                                ' A parent was referenced with an incorrect checksum'
+                                ': {%r} %s != %s' % (parent.revision_id,
+                                                    parent.revision_sha1,
+                                                    rev_to_sha1[parent.revision_id]))
+
+
+
 
     def get_info_and_tree(self, branch):
         """Return the meta information, and a Changeset tree which can
         be used to populate the local stores and working tree, respectively.
         """
-        self.info.complete_info()
         if self.info.base:
             store_base_sha1 = branch.get_revision_sha1(self.info.base) 
         else:
@@ -371,7 +423,6 @@ class ChangesetReader(object):
 
         :param tree: A ChangesetTree to update with the new information.
         """
-        from bzrlib.errors import BzrError
         from common import decode
 
         def get_text_id(info, file_id):

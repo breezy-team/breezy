@@ -104,19 +104,52 @@ class cmd_verify_changeset(bzrlib.commands.Command):
             f = open(filename, 'U')
 
         cset_info, cset_tree = read_changeset.read_changeset(f, b)
-        print cset_info
-        print cset_tree
-        for rev_info, rev in zip(cset_info.revisions, cset_info.real_revisions):
-            sio = StringIO()
-            pack_xml(rev, sio)
-            sio.seek(0)
-            sha1 = sha_file(sio)
-            sio.seek(0)
-            pumpfile(sio, sys.stdout)
-            if sha1 == rev_info.sha1:
-                print 'sha1 match'
+        #print cset_info
+        #print cset_tree
+
+        failed = False
+        rev_to_sha = {}
+        def add_sha(rev_id, sha1):
+            if rev_id in rev_to_sha:
+                # This really should have been validated as part
+                # of read_changeset, but lets do it again
+                if sha1 != rev_to_sha[rev_id]:
+                    print ('** Revision %r referenced with 2 different'
+                            ' sha hashes %s != %s' % (rev_id,
+                                sha1, rev_to_sha[rev_id]))
+                    failed = True
             else:
-                print '** sha1 mismatch %s != %s' % (sha1, rev_info.sha1)
+                rev_to_sha[rev_id] = sha1
+
+        for rev_info in cset_info.revisions:
+            add_sha(rev_info.rev_id, rev_info.sha1)
+                
+        for rev in cset_info.real_revisions:
+            for parent in rev.parents:
+                add_sha(parent.revision_id, parent.revision_sha1)
+
+        missing = {}
+        for rev_id, sha1 in rev_to_sha.iteritems():
+            if rev_id in b.revision_store:
+                local_sha1 = b.get_revision_sha1(rev_id)
+                if sha1 != local_sha1:
+                    print '** sha1 mismatch. For revision_id {%s}' % rev_id
+                    print '**     local: %s' % local_sha1
+                    print '** changeset: %s' % sha1
+                    failed = True
+            else:
+                missing[rev_id] = sha1
+        
+        # Entries in missing do not exist in the local branch,
+        # so we cannot validate them.
+        if len(missing) > 0:
+            print '** Unable to verify %d checksums' % len(missing)
+
+        if failed:
+            print '** Changeset did not validate.'
+        else:
+            print 'Changeset is valid'
+            print 'validated %d revision sha hashes.' % (len(rev_to_sha) - len(missing))
 
 
 class cmd_apply_changeset(bzrlib.commands.Command):
