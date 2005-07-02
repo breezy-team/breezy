@@ -190,6 +190,7 @@ class ChangesetReader(object):
         rev_to_sha1 = {}
 
         for rev, rev_info in zip(self.info.real_revisions, self.info.revisions):
+            assert rev.revision_id == rev_info.rev_id
             sio = StringIO()
             pack_xml(rev, sio)
             sio.seek(0)
@@ -211,28 +212,76 @@ class ChangesetReader(object):
                 if parent.revision_id in rev_to_sha1:
                     if parent.revision_sha1 != rev_to_sha1[parent.revision_id]:
                         raise BzrError('Parent revision checksum mismatch.'
-                                ' A parent was referenced with an incorrect checksum'
+                                ' A parent was referenced with an'
+                                ' incorrect checksum'
                                 ': {%r} %s != %s' % (parent.revision_id,
-                                                    parent.revision_sha1,
-                                                    rev_to_sha1[parent.revision_id]))
+                                            parent.revision_sha1,
+                                            rev_to_sha1[parent.revision_id]))
 
+    def _validate_references_from_branch(self, branch):
+        """Now that we have a branch which should have some of the
+        revisions we care about, go through and validate all of them
+        that we can.
+        """
+        rev_to_sha = {}
+        def add_sha(rev_id, sha1):
+            if rev_id is None:
+                if sha1 is not None:
+                    raise BzrError('A Null revision should always'
+                        'have a null sha1 hash')
+                return
+            if rev_id in rev_to_sha:
+                # This really should have been validated as part
+                # of _validate_revisions but lets do it again
+                if sha1 != rev_to_sha[rev_id]:
+                    raise BzrError('** Revision %r referenced with 2 different'
+                            ' sha hashes %s != %s' % (rev_id,
+                                sha1, rev_to_sha[rev_id]))
+            else:
+                rev_to_sha[rev_id] = sha1
 
+        add_sha(self.info.base, self.info.base_sha1)
+        # All of the contained revisions were checked
+        # in _validate_revisions
+        checked = {}
+        for rev_info in self.info.revisions:
+            checked[rev_info.rev_id] = True
+            add_sha(rev_info.rev_id, rev_info.sha1)
+                
+        for rev in self.info.real_revisions:
+            for parent in rev.parents:
+                add_sha(parent.revision_id, parent.revision_sha1)
 
+        missing = {}
+        for rev_id, sha1 in rev_to_sha.iteritems():
+            if rev_id in branch.revision_store:
+                local_sha1 = branch.get_revision_sha1(rev_id)
+                if sha1 != local_sha1:
+                    raise BzrError('sha1 mismatch. For revision_id {%s}' 
+                            'local: %s, cset: %s' % (rev_id, local_sha1, sha1))
+            elif rev_id not in checked:
+                missing[rev_id] = sha1
 
+        if len(missing) > 0:
+            # I don't know if this is an error yet
+            from bzrlib.trace import warning
+            warning('Not all revision hashes could be validated.'
+                    ' Unable validate %d hashes' % len(missing))
+
+    def _validate_inventory(self, branch, tree):
+        """At this point we should have generated the ChangesetTree,
+        so build up an inventory, and make sure the hashes match.
+        """
+        
     def get_info_and_tree(self, branch):
         """Return the meta information, and a Changeset tree which can
         be used to populate the local stores and working tree, respectively.
         """
-        if self.info.base:
-            store_base_sha1 = branch.get_revision_sha1(self.info.base) 
-        else:
-            store_base_sha1 = None
-        if store_base_sha1 != self.info.base_sha1:
-            raise BzrError('Base revision sha1 hash in store'
-                    ' does not match the one read in the changeset'
-                    ' (%s != %s)' % (store_base_sha1, self.info.base_sha1))
+        self._validate_references_from_branch(branch)
         tree = ChangesetTree(branch.revision_tree(self.info.base))
         self._update_tree(tree)
+
+        self._validate_inventory(branch, tree)
 
         return self.info, tree
 
