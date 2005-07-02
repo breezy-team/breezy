@@ -92,17 +92,19 @@ class cmd_verify_changeset(bzrlib.commands.Command):
     def run(self, filename=None):
         import sys, read_changeset
         from bzrlib.xml import pack_xml
+        from bzrlib.branch import find_branch
+
+        b = find_branch('.')
+
         if filename is None or filename == '-':
             f = sys.stdin
         else:
             f = open(filename, 'U')
 
-        cset_info = read_changeset.read_changeset(f)
+        cset_info, cset_tree = read_changeset.read_changeset(f, b)
         print cset_info
-        cset = cset_info.get_changeset()
-        print cset.entries
-        for rev_info in cset_info.revisions:
-            rev = rev_info.as_revision()
+        print cset_tree
+        for rev in cset_info.real_revisions:
             pack_xml(rev, sys.stdout)
 
 class cmd_apply_changeset(bzrlib.commands.Command):

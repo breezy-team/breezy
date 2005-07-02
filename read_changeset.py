@@ -78,9 +78,15 @@ class ChangesetInfo(object):
 
         # A list of RevisionInfo objects
         self.revisions = []
-        self.text_ids = {} # file_id => text_id
 
         self.actions = []
+
+        # The next entries are created during complete_info() and
+        # other post-read functions.
+
+        # A list of real Revision objects
+        self.real_revisions = []
+        self.text_ids = {} # file_id => text_id
 
         self.timestamp = None
         self.timezone = None
@@ -93,20 +99,11 @@ class ChangesetInfo(object):
         split up, based on the assumptions that can be made
         when information is missing.
         """
-        if self.base is None:
-            # When we don't have a base, then the real base
-            # is the first parent of the last revision listed
-            rev = self.revisions[-1]
-            self.base = rev.parents[0].revision_id
-            # In general, if self.base is None, self.base_sha1 should
-            # also be None
-            if self.base_sha1 is not None:
-                assert self.base_sha1 == rev.parent[0].revision_sha1
-            self.base_sha1 = rev.parents[0].revision_sha1
-
+        # Put in all of the guessable information.
         if not self.timestamp and self.date:
             self.timestamp, self.timezone = common.unpack_highres_date(self.date)
 
+        self.real_revisions = []
         for rev in self.revisions:
             if rev.timestamp is None and self.timestamp is not None:
                 rev.timestamp = self.timestamp
@@ -115,6 +112,22 @@ class ChangesetInfo(object):
                 rev.message = self.message
             if rev.committer is None and self.committer:
                 rev.committer = self.committer
+            if rev.inventory_id is None:
+                rev.inventory_id = rev.rev_id
+            self.real_revisions.append(rev.as_revision())
+
+        if self.base is None:
+            # When we don't have a base, then the real base
+            # is the first parent of the first revision listed
+            rev = self.real_revisions[0]
+            self.base = rev.parents[0].revision_id
+            # In general, if self.base is None, self.base_sha1 should
+            # also be None
+            if self.base_sha1 is not None:
+                assert self.base_sha1 == rev.parents[0].revision_sha1
+            self.base_sha1 = rev.parents[0].revision_sha1
+
+
 
 class ChangesetReader(object):
     """This class reads in a changeset from a file, and returns
@@ -151,17 +164,23 @@ class ChangesetReader(object):
         tree = ChangesetTree(branch.revision_tree(self.info.base))
         self._update_tree(tree)
 
-        return self.info, self.tree
+        return self.info, tree
 
     def _next(self):
         """yield the next line, but secretly
         keep 1 extra line for peeking.
         """
+        from bzrlib.trace import mutter
         for line in self.from_file:
             last = self._next_line
             self._next_line = line
             if last is not None:
+                mutter('yielding line: %r' % last)
                 yield last
+        last = self._next_line
+        self._next_line = None
+        mutter('yielding line: %r' % last)
+        yield last
 
     def _read_header(self):
         """Read the bzr header"""
@@ -198,6 +217,7 @@ class ChangesetReader(object):
     def _read_next_entry(self, line, indent=1):
         """Read in a key-value pair
         """
+        from bzrlib.trace import mutter
         if line[:1] != '#':
             raise MalformedHeader('Bzr header did not start with #')
         line = line[1:-1] # Remove the '#' and '\n'
@@ -220,6 +240,7 @@ class ChangesetReader(object):
                     ' did not find the colon %r' % (line))
 
         key = key.replace(' ', '_')
+        mutter('found %s: %s' % (key, value))
         return key, value
 
     def _handle_next(self, line):
@@ -245,15 +266,16 @@ class ChangesetReader(object):
         This detects the end of the list, because it will be a line that
         does not start properly indented.
         """
+        from bzrlib.trace import mutter
         values = []
         start = '#' + (' '*indent)
 
-        if self._next_line[:len(start)] != start:
+        if self._next_line is None or self._next_line[:len(start)] != start:
             return values
 
         for line in self._next():
             values.append(line[len(start):-1])
-            if self._next_line[:len(start)] != start:
+            if self._next_line is None or self._next_line[:len(start)] != start:
                 break
         return values
 
@@ -264,22 +286,23 @@ class ChangesetReader(object):
         :return: action, lines, do_continue
         """
         # Peek and see if there are no patches
-        if self._next_line[:1] == '#':
+        if self._next_line is None or self._next_line[:1] == '#':
             return None, [], False
 
         line = self._next().next()
         if line[:3] != '***':
             raise MalformedPatches('The first line of all patches'
-                ' should be a bzr meta line "***"')
+                ' should be a bzr meta line "***"'
+                ': %r' % line)
         action = line[4:-1]
 
         lines = []
         for line in self._next():
             lines.append(line)
 
-            if self._next_line[:3] == '***':
+            if self._next_line is not None and self._next_line[:3] == '***':
                 return action, lines, True
-            elif self._next_line[:1] == '#':
+            elif self._next_line is None or self._next_line[:1] == '#':
                 return action, lines, False
         return action, lines, False
             
@@ -308,7 +331,7 @@ class ChangesetReader(object):
                 # What do we do with a key we don't recognize
                 raise MalformedHeader('Unknown Key: %s' % key)
 
-            if self._next_line[:len(start)] != start:
+            if self._next_line is None or self._next_line[:len(start)] != start:
                 break
 
         self.info.revisions.append(rev_info)
@@ -322,7 +345,7 @@ class ChangesetReader(object):
         line = self._next().next()
         for line in self._next():
             self._handle_next(line)
-            if self._next_line[:1] != '#':
+            if self._next_line is None or self._next_line[:1] != '#':
                 break
 
     def _update_tree(self, tree):
@@ -442,7 +465,7 @@ class ChangesetReader(object):
             if first == -1:
                 raise BzrError('Bogus action line'
                         ' (no opening space): %r' % action_line)
-            second = action_line.find(' ', first)
+            second = action_line.find(' ', first+1)
             if second == -1:
                 raise BzrError('Bogus action line'
                         ' (missing second space): %r' % action_line)
@@ -450,7 +473,7 @@ class ChangesetReader(object):
             kind = action_line[first+1:second]
             if kind not in ('file', 'directory'):
                 raise BzrError('Bogus action line'
-                        ' (invalid object kind): %r' % action_line)
+                        ' (invalid object kind %r): %r' % (kind, action_line))
             extra = action_line[second+1:]
 
             if action not in valid_actions:
@@ -458,14 +481,16 @@ class ChangesetReader(object):
                         ' (unrecognized action): %r' % action_line)
             valid_actions[action](kind, extra, lines)
 
-def read_changeset(from_file):
-    """Read in a changeset from a filelike object (must have "readline" support), and
-    parse it into a Changeset object.
+def read_changeset(from_file, branch):
+    """Read in a changeset from a iterable object (such as a file object)
+
+    :param from_file: A file-like object to read the changeset information.
+    :param branch: This will be used to build the changeset tree, it needs
+                   to contain the base of the changeset. (Which you probably
+                   won't know about until after the changeset is parsed.)
     """
     cr = ChangesetReader(from_file)
-    info = cr.get_info()
-    return info
-
+    return cr.get_info_and_tree(branch)
 
 class ChangesetTree:
     def __init__(self, base_tree=None):
@@ -508,7 +533,10 @@ class ChangesetTree:
         if old_path is not None:
             return old_path
         dirname,basename = os.path.split(new_path)
-        if dirname is not '':
+        # dirname is not '' doesn't work, because
+        # dirname may be a unicode entry, and is
+        # requires the objects to be identical
+        if dirname != '':
             old_dir = self.old_path(dirname)
             if old_dir is None:
                 old_path = None
@@ -558,7 +586,7 @@ class ChangesetTree:
             return None
         if old_path in self.deleted:
             return None
-        return self.base_tree.path2id(old_path)
+        return self.base_tree.inventory.path2id(old_path)
 
     def id2path(self, file_id):
         """Return the new path in the target tree of the file with id file_id"""
