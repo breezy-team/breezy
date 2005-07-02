@@ -106,7 +106,7 @@ class cmd_verify_changeset(bzrlib.commands.Command):
         cset_info, cset_tree, cset_inv = read_changeset.read_changeset(f, b)
         print cset_info
         print cset_tree
-        print cset_inv
+        pack_xml(cset_inv, sys.stdout)
 
 
 
