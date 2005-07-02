@@ -168,19 +168,12 @@ class MetaInfoHeader(object):
         """
         write = self._write
 
-        # Base revision is the revision this changeset is against
-        # We probably should write some sort of
-        # base: None
-        # for base revisions of EmptyTree, rather than
-        # just looking like we left it off.
-        # Besides, we might leave it off in the trivial case
-        # that the base is the first parent of the target revision.
-        # In which case having it missing doesn't mean that we
-        # should use the empty tree.
-        if self.base_revision:
-            rev_id = self.base_revision.revision_id
-            write(rev_id, key='base')
-            write(self.branch.get_revision_sha1(rev_id), key='base sha1')
+        # What should we print out for an Empty base revision?
+        assumed_base = self.revision_list[0].parents[0].revision_id
+        if self.base_revision.revision_id != assumed_base:
+            base = self.base_revision.revision_id
+            write(base, key='base')
+            write(self.branch.get_revision_sha1(base), key='base sha1')
 
         self._write_revisions()
 

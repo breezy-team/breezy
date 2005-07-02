@@ -7,6 +7,8 @@ import bzrlib, bzrlib.changeset
 import pprint
 import common
 
+from bzrlib.trace import mutter
+
 class BadChangeset(Exception): pass
 class MalformedHeader(BadChangeset): pass
 class MalformedPatches(BadChangeset): pass
@@ -170,16 +172,15 @@ class ChangesetReader(object):
         """yield the next line, but secretly
         keep 1 extra line for peeking.
         """
-        from bzrlib.trace import mutter
         for line in self.from_file:
             last = self._next_line
             self._next_line = line
             if last is not None:
-                mutter('yielding line: %r' % last)
+                #mutter('yielding line: %r' % last)
                 yield last
         last = self._next_line
         self._next_line = None
-        mutter('yielding line: %r' % last)
+        #mutter('yielding line: %r' % last)
         yield last
 
     def _read_header(self):
@@ -217,7 +218,6 @@ class ChangesetReader(object):
     def _read_next_entry(self, line, indent=1):
         """Read in a key-value pair
         """
-        from bzrlib.trace import mutter
         if line[:1] != '#':
             raise MalformedHeader('Bzr header did not start with #')
         line = line[1:-1] # Remove the '#' and '\n'
@@ -240,7 +240,7 @@ class ChangesetReader(object):
                     ' did not find the colon %r' % (line))
 
         key = key.replace(' ', '_')
-        mutter('found %s: %s' % (key, value))
+        #mutter('found %s: %s' % (key, value))
         return key, value
 
     def _handle_next(self, line):
@@ -266,7 +266,6 @@ class ChangesetReader(object):
         This detects the end of the list, because it will be a line that
         does not start properly indented.
         """
-        from bzrlib.trace import mutter
         values = []
         start = '#' + (' '*indent)
 
@@ -285,6 +284,7 @@ class ChangesetReader(object):
 
         :return: action, lines, do_continue
         """
+        #mutter('_read_one_patch: %r' % self._next_line)
         # Peek and see if there are no patches
         if self._next_line is None or self._next_line[:1] == '#':
             return None, [], False
@@ -342,7 +342,6 @@ class ChangesetReader(object):
         :param first_line:  The previous step iterates past what it
                             can handle. That extra line is given here.
         """
-        line = self._next().next()
         for line in self._next():
             self._handle_next(line)
             if self._next_line is None or self._next_line[:1] != '#':
