@@ -108,9 +108,13 @@ class ChangesetInfo(object):
 
         self.real_revisions = []
         for rev in self.revisions:
-            if rev.timestamp is None and self.timestamp is not None:
-                rev.timestamp = self.timestamp
-                rev.timezone = self.timezone
+            if rev.timestamp is None:
+                if rev.date is not None:
+                    rev.timestamp, rev.timezone = \
+                            common.unpack_highres_date(rev.date)
+                else:
+                    rev.timestamp = self.timestamp
+                    rev.timezone = self.timezone
             if rev.message is None and self.message:
                 rev.message = self.message
             if rev.committer is None and self.committer:
