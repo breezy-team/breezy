@@ -91,8 +91,10 @@ class cmd_verify_changeset(bzrlib.commands.Command):
 
     def run(self, filename=None):
         import sys, read_changeset
+        from cStringIO import StringIO
         from bzrlib.xml import pack_xml
         from bzrlib.branch import find_branch
+        from bzrlib.osutils import sha_file, pumpfile
 
         b = find_branch('.')
 
@@ -104,8 +106,18 @@ class cmd_verify_changeset(bzrlib.commands.Command):
         cset_info, cset_tree = read_changeset.read_changeset(f, b)
         print cset_info
         print cset_tree
-        for rev in cset_info.real_revisions:
-            pack_xml(rev, sys.stdout)
+        for rev_info, rev in zip(cset_info.revisions, cset_info.real_revisions):
+            sio = StringIO()
+            pack_xml(rev, sio)
+            sio.seek(0)
+            sha1 = sha_file(sio)
+            sio.seek(0)
+            pumpfile(sio, sys.stdout)
+            if sha1 == rev_info.sha1:
+                print 'sha1 match'
+            else:
+                print '** sha1 mismatch %s != %s' % (sha1, rev_info.sha1)
+
 
 class cmd_apply_changeset(bzrlib.commands.Command):
     """Read in the given changeset, and apply it to the
