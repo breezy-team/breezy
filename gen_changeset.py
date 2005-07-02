@@ -170,8 +170,12 @@ class MetaInfoHeader(object):
         write = self._write
 
         # What should we print out for an Empty base revision?
-        assumed_base = self.revision_list[0].parents[0].revision_id
-        if self.base_revision.revision_id != assumed_base:
+        if len(self.revision_list[0].parents) == 0:
+            assumed_base = None
+        else:
+            assumed_base = self.revision_list[0].parents[0].revision_id
+        if (self.base_revision is not None 
+                and self.base_revision.revision_id != assumed_base):
             base = self.base_revision.revision_id
             write(base, key='base')
             write(self.branch.get_revision_sha1(base), key='base sha1')
@@ -198,11 +202,12 @@ class MetaInfoHeader(object):
             if rev.inventory_id != rev_id:
                 self.to_file.write('#    inventory id: %s\n' % rev.inventory_id)
             self.to_file.write('#    inventory sha1: %s\n' % rev.inventory_sha1)
-            self.to_file.write('#    parents:\n')
-            for parent in rev.parents:
-                self.to_file.write('#       %s\t%s\n' % (
-                    parent.revision_id,
-                    parent.revision_sha1))
+            if len(rev.parents) > 0:
+                self.to_file.write('#    parents:\n')
+                for parent in rev.parents:
+                    self.to_file.write('#       %s\t%s\n' % (
+                        parent.revision_id,
+                        parent.revision_sha1))
             if rev.message and rev.message != self.message:
                 self.to_file.write('#    message:\n')
                 for line in rev.message.split('\n'):

@@ -36,7 +36,11 @@ def canonicalize_revision(branch, revnos):
         if new is None:
             old = None
         else:
-            old = branch.get_revision(new).parents[0].revision_id
+            oldrev = branch.get_revision(new)
+            if len(oldrev.parents) == 0:
+                old = None
+            else:
+                old = oldrev.parents[0].revision_id
     else:
         old = branch.lookup_revision(revnos[0])
 

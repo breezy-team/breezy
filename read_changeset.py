@@ -61,9 +61,10 @@ class RevisionInfo(object):
             inventory_sha1=self.inventory_sha1,
             message='\n'.join(self.message))
 
-        for parent in self.parents:
-            rev_id, sha1 = parent.split('\t')
-            rev.parents.append(RevisionReference(rev_id, sha1))
+        if self.parents:
+            for parent in self.parents:
+                rev_id, sha1 = parent.split('\t')
+                rev.parents.append(RevisionReference(rev_id, sha1))
 
         return rev
 
@@ -122,12 +123,20 @@ class ChangesetInfo(object):
             # When we don't have a base, then the real base
             # is the first parent of the first revision listed
             rev = self.real_revisions[0]
-            self.base = rev.parents[0].revision_id
-            # In general, if self.base is None, self.base_sha1 should
-            # also be None
-            if self.base_sha1 is not None:
-                assert self.base_sha1 == rev.parents[0].revision_sha1
-            self.base_sha1 = rev.parents[0].revision_sha1
+            if len(rev.parents) == 0:
+                # There is no base listed, and
+                # the lowest revision doesn't have a parent
+                # so this is probably against the empty tree
+                # and thus base truly is None
+                self.base = None
+                self.base_sha1 = None
+            else:
+                self.base = rev.parents[0].revision_id
+                # In general, if self.base is None, self.base_sha1 should
+                # also be None
+                if self.base_sha1 is not None:
+                    assert self.base_sha1 == rev.parents[0].revision_sha1
+                self.base_sha1 = rev.parents[0].revision_sha1
 
 
 
@@ -158,7 +167,10 @@ class ChangesetReader(object):
         be used to populate the local stores and working tree, respectively.
         """
         self.info.complete_info()
-        store_base_sha1 = branch.get_revision_sha1(self.info.base) 
+        if self.info.base:
+            store_base_sha1 = branch.get_revision_sha1(self.info.base) 
+        else:
+            store_base_sha1 = None
         if store_base_sha1 != self.info.base_sha1:
             raise BzrError('Base revision sha1 hash in store'
                     ' does not match the one read in the changeset'
@@ -296,6 +308,8 @@ class ChangesetReader(object):
                 ': %r' % line)
         action = line[4:-1]
 
+        if self._next_line is None or self._next_line[:1] == '#':
+            return action, [], False
         lines = []
         for line in self._next():
             lines.append(line)
@@ -426,7 +440,7 @@ class ChangesetReader(object):
                 raise BzrError('add action lines have fewer than 3 entries.'
                         ': %r' % extra)
             path = decode(info[0])
-            if info[1][:8] == 'file-id:':
+            if info[1][:8] != 'file-id:':
                 raise BzrError('The file-id should follow the path for an add'
                         ': %r' % extra)
             file_id = decode(info[1][8:])
