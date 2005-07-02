@@ -66,8 +66,8 @@ class RevisionInfo(object):
         return rev
 
 class ChangesetInfo(object):
-    """This is the intermediate class that gets filled out as
-    the file is read.
+    """This contains the meta information. Stuff that allows you to
+    recreate the revision or inventory XML.
     """
     def __init__(self):
         self.committer = None
@@ -78,17 +78,12 @@ class ChangesetInfo(object):
 
         # A list of RevisionInfo objects
         self.revisions = []
-        # Tuples of (new_file_id, new_file_path)
-        self.new_file_ids = []
+        self.text_ids = {} # file_id => text_id
 
-        # This is a mapping from file_id to text_id
-        self.text_ids = {}
+        self.actions = []
 
-        self.tree_root_id = None
-        self.file_ids = None
-        self.old_file_ids = None
-
-        self.actions = [] #this is the list of things that happened
+        self.timestamp = None
+        self.timezone = None
 
     def __str__(self):
         return pprint.pformat(self.__dict__)
@@ -103,111 +98,23 @@ class ChangesetInfo(object):
             # is the first parent of the last revision listed
             rev = self.revisions[-1]
             self.base = rev.parents[0].revision_id
+            # In general, if self.base is None, self.base_sha1 should
+            # also be None
+            if self.base_sha1 is not None:
+                assert self.base_sha1 == rev.parent[0].revision_sha1
             self.base_sha1 = rev.parents[0].revision_sha1
 
+        if not self.timestamp and self.date:
+            self.timestamp, self.timezone = common.unpack_highres_date(self.date)
+
         for rev in self.revisions:
-            pass
-
-    def create_maps(self):
-        """Go through the individual id sections, and generate the 
-        id2path and path2id maps.
-        """
-        # Rather than use an empty path, the changeset code seems 
-        # to like to use "./." for the tree root.
-        self.id2path[self.tree_root_id] = './.'
-        self.path2id['./.'] = self.tree_root_id
-        self.id2parent[self.tree_root_id] = bzrlib.changeset.NULL_ID
-        self.old_id2path = self.id2path.copy()
-        self.old_path2id = self.path2id.copy()
-        self.old_id2parent = self.id2parent.copy()
-
-        if self.file_ids:
-            for info in self.file_ids:
-                path, f_id, parent_id = info.split('\t')
-                self.id2path[f_id] = path
-                self.path2id[path] = f_id
-                self.id2parent[f_id] = parent_id
-        if self.old_file_ids:
-            for info in self.old_file_ids:
-                path, f_id, parent_id = info.split('\t')
-                self.old_id2path[f_id] = path
-                self.old_path2id[path] = f_id
-                self.old_id2parent[f_id] = parent_id
-
-    def get_changeset(self):
-        """Create a changeset from the data contained within."""
-        from bzrlib.changeset import Changeset, ChangesetEntry, \
-            PatchApply, ReplaceContents
-        cset = Changeset()
-        
-        entry = ChangesetEntry(self.tree_root_id, 
-                bzrlib.changeset.NULL_ID, './.')
-        cset.add_entry(entry)
-        for info, lines in self.actions:
-            parts = info.split(' ')
-            action = parts[0]
-            kind = parts[1]
-            extra = ' '.join(parts[2:])
-            if action == 'renamed':
-                old_path, new_path = extra.split(' => ')
-                old_path = _unescape(old_path)
-                new_path = _unescape(new_path)
-
-                new_id = self.path2id[new_path]
-                old_id = self.old_path2id[old_path]
-                assert old_id == new_id
-
-                new_parent = self.id2parent[new_id]
-                old_parent = self.old_id2parent[old_id]
-
-                entry = ChangesetEntry(old_id, old_parent, old_path)
-                entry.new_path = new_path
-                entry.new_parent = new_parent
-                if lines:
-                    entry.contents_change = PatchApply(''.join(lines))
-            elif action == 'removed':
-                old_path = _unescape(extra)
-                old_id = self.old_path2id[old_path]
-                old_parent = self.old_id2parent[old_id]
-                entry = ChangesetEntry(old_id, old_parent, old_path)
-                entry.new_path = None
-                entry.new_parent = None
-                if lines:
-                    # Technically a removed should be a ReplaceContents()
-                    # Where you need to have the old contents
-                    # But at most we have a remove style patch.
-                    #entry.contents_change = ReplaceContents()
-                    pass
-            elif action == 'added':
-                new_path = _unescape(extra)
-                new_id = self.path2id[new_path]
-                new_parent = self.id2parent[new_id]
-                entry = ChangesetEntry(new_id, new_parent, new_path)
-                entry.path = None
-                entry.parent = None
-                if lines:
-                    # Technically an added should be a ReplaceContents()
-                    # Where you need to have the old contents
-                    # But at most we have an add style patch.
-                    #entry.contents_change = ReplaceContents()
-                    entry.contents_change = PatchApply(''.join(lines))
-            elif action == 'modified':
-                new_path = _unescape(extra)
-                new_id = self.path2id[new_path]
-                new_parent = self.id2parent[new_id]
-                entry = ChangesetEntry(new_id, new_parent, new_path)
-                entry.path = None
-                entry.parent = None
-                if lines:
-                    # Technically an added should be a ReplaceContents()
-                    # Where you need to have the old contents
-                    # But at most we have an add style patch.
-                    #entry.contents_change = ReplaceContents()
-                    entry.contents_change = PatchApply(''.join(lines))
-            else:
-                raise BadChangeset('Unrecognized action: %r' % action)
-            cset.add_entry(entry)
-        return cset
+            if rev.timestamp is None and self.timestamp is not None:
+                rev.timestamp = self.timestamp
+                rev.timezone = self.timezone
+            if rev.message is None and self.message:
+                rev.message = self.message
+            if rev.committer is None and self.committer:
+                rev.committer = self.committer
 
 class ChangesetReader(object):
     """This class reads in a changeset from a file, and returns
@@ -231,6 +138,21 @@ class ChangesetReader(object):
         self._read_patches()
         self._read_footer()
 
+    def get_info_and_tree(self, branch):
+        """Return the meta information, and a Changeset tree which can
+        be used to populate the local stores and working tree, respectively.
+        """
+        self.info.complete_info()
+        store_base_sha1 = branch.get_revision_sha1(self.info.base) 
+        if store_base_sha1 != self.info.base_sha1:
+            raise BzrError('Base revision sha1 hash in store'
+                    ' does not match the one read in the changeset'
+                    ' (%s != %s)' % (store_base_sha1, self.info.base_sha1))
+        tree = ChangesetTree(branch.revision_tree(self.info.base))
+        self._update_tree(tree)
+
+        return self.info, self.tree
+
     def _next(self):
         """yield the next line, but secretly
         keep 1 extra line for peeking.
@@ -240,12 +162,6 @@ class ChangesetReader(object):
             self._next_line = line
             if last is not None:
                 yield last
-
-    def get_info(self):
-        """Create the actual changeset object.
-        """
-        self.info.complete_info()
-        return self.info
 
     def _read_header(self):
         """Read the bzr header"""
@@ -404,13 +320,143 @@ class ChangesetReader(object):
                             can handle. That extra line is given here.
         """
         line = self._next().next()
-        if line != '# BEGIN BZR FOOTER\n':
-            raise MalformedFooter('Footer did not begin with BEGIN BZR FOOTER')
-
         for line in self._next():
-            if line == '# END BZR FOOTER\n':
-                return
             self._handle_next(line)
+            if self._next_line[:1] != '#':
+                break
+
+    def _update_tree(self, tree):
+        """This fills out a ChangesetTree based on the information
+        that was read in.
+
+        :param tree: A ChangesetTree to update with the new information.
+        """
+        from bzrlib.errors import BzrError
+        from common import decode
+
+        def get_text_id(info, file_id):
+            if info is not None:
+                if info[:8] != 'text-id:':
+                    raise BzrError("Text ids should be prefixed with 'text-id:'"
+                        ': %r' % info)
+                text_id = decode(info[8:])
+            elif self.info.text_ids.has_key(file_id):
+                return self.info.text_ids[file_id]
+            else:
+                # If text_id was not explicitly supplied
+                # then it should be whatever we would guess it to be
+                # based on the base revision, and what we know about
+                # the target revision
+                text_id = common.guess_text_id(tree.base_tree, 
+                        file_id, self.info.base, True)
+            if (self.info.text_ids.has_key(file_id)
+                    and self.info.text_ids[file_id] != text_id):
+                raise BzrError('Mismatched text_ids for file_id {%s}'
+                        ': %s != %s' % (file_id,
+                                        self.info.text_ids[file_id],
+                                        text_id))
+            # The Info object makes more sense for where
+            # to store something like text_id, since it is
+            # what will be used to generate stored inventory
+            # entries.
+            # The problem is that we are parsing the
+            # ChangesetTree right now, we really modifying
+            # the ChangesetInfo object
+            self.info.text_ids[file_id] = text_id
+            return text_id
+
+        def renamed(kind, extra, lines):
+            info = extra.split('\t')
+            if len(info) < 2:
+                raise BzrError('renamed action lines need both a from and to'
+                        ': %r' % extra)
+            old_path = decode(info[0])
+            if info[1][:3] == '=> ':
+                new_path = decode(info[1][3:])
+            else:
+                new_path = decode(info[1][3:])
+
+            file_id = tree.path2id(new_path)
+            if len(info) > 2:
+                text_id = get_text_id(info[2], file_id)
+            else:
+                text_id = get_text_id(None, file_id)
+            tree.note_rename(old_path, new_path)
+            if lines:
+                tree.note_patch(new_path, lines)
+
+        def removed(kind, extra, lines):
+            info = extra.split('\t')
+            if len(info) > 1:
+                # TODO: in the future we might allow file ids to be
+                # given for removed entries
+                raise BzrError('removed action lines should only have the path'
+                        ': %r' % extra)
+            path = decode(info[0])
+            tree.note_deletion(path)
+
+        def added(kind, extra, lines):
+            info = extra.split('\t')
+            if len(info) <= 1:
+                raise BzrError('add action lines require the path and file id'
+                        ': %r' % extra)
+            elif len(info) > 3:
+                raise BzrError('add action lines have fewer than 3 entries.'
+                        ': %r' % extra)
+            path = decode(info[0])
+            if info[1][:8] == 'file-id:':
+                raise BzrError('The file-id should follow the path for an add'
+                        ': %r' % extra)
+            file_id = decode(info[1][8:])
+
+            if len(info) > 2:
+                text_id = get_text_id(info[2], file_id)
+            else:
+                text_id = get_text_id(None, file_id)
+            tree.note_id(file_id, path)
+            tree.note_patch(path, lines)
+
+        def modified(kind, extra, lines):
+            info = extra.split('\t')
+            if len(info) < 1:
+                raise BzrError('modified action lines have at least'
+                        'the path in them: %r' % extra)
+            path = decode(info[0])
+
+            file_id = tree.path2id(path)
+            if len(info) > 1:
+                text_id = get_text_id(info[1], file_id)
+            else:
+                text_id = get_text_id(None, file_id)
+            tree.note_patch(path, lines)
+            
+
+        valid_actions = {
+            'renamed':renamed,
+            'removed':removed,
+            'added':added,
+            'modified':modified
+        }
+        for action_line, lines in self.info.actions:
+            first = action_line.find(' ')
+            if first == -1:
+                raise BzrError('Bogus action line'
+                        ' (no opening space): %r' % action_line)
+            second = action_line.find(' ', first)
+            if second == -1:
+                raise BzrError('Bogus action line'
+                        ' (missing second space): %r' % action_line)
+            action = action_line[:first]
+            kind = action_line[first+1:second]
+            if kind not in ('file', 'directory'):
+                raise BzrError('Bogus action line'
+                        ' (invalid object kind): %r' % action_line)
+            extra = action_line[second+1:]
+
+            if action not in valid_actions:
+                raise BzrError('Bogus action line'
+                        ' (unrecognized action): %r' % action_line)
+            valid_actions[action](kind, extra, lines)
 
 def read_changeset(from_file):
     """Read in a changeset from a filelike object (must have "readline" support), and
@@ -424,31 +470,39 @@ def read_changeset(from_file):
 class ChangesetTree:
     def __init__(self, base_tree=None):
         self.base_tree = base_tree
-        self._renamed = {}
-        self._renamed_r = {}
-        self._new_id = {}
-        self._new_id_r = {}
+        self._renamed = {} # Mapping from old_path => new_path
+        self._renamed_r = {} # new_path => old_path
+        self._new_id = {} # new_path => new_id
+        self._new_id_r = {} # new_id => new_path
         self.patches = {}
         self.deleted = []
         self.contents_by_id = True
 
+    def __str__(self):
+        return pprint.pformat(self.__dict__)
+
     def note_rename(self, old_path, new_path):
+        """A file/directory has been renamed from old_path => new_path"""
         assert not self._renamed.has_key(old_path)
         assert not self._renamed_r.has_key(new_path)
         self._renamed[new_path] = old_path
         self._renamed_r[old_path] = new_path
 
     def note_id(self, new_id, new_path):
+        """Files that don't exist in base need a new id."""
         self._new_id[new_path] = new_id
         self._new_id_r[new_id] = new_path
 
     def note_patch(self, new_path, patch):
+        """There is a patch for a given filename."""
         self.patches[new_path] = patch
 
     def note_deletion(self, old_path):
+        """The file at old_path has been deleted."""
         self.deleted.append(old_path)
 
     def old_path(self, new_path):
+        """Get the old_path (path in the base_tree) for the file at new_path"""
         import os.path
         old_path = self._renamed.get(new_path)
         if old_path is not None:
@@ -470,6 +524,9 @@ class ChangesetTree:
 
 
     def new_path(self, old_path):
+        """Get the new_path (path in the target_tree) for the file at old_path
+        in the base tree.
+        """
         import os.path
         new_path = self._renamed_r.get(old_path)
         if new_path is not None:
@@ -492,6 +549,7 @@ class ChangesetTree:
         return new_path 
 
     def path2id(self, path):
+        """Return the id of the file present at path in the target tree."""
         file_id = self._new_id.get(path)
         if file_id is not None:
             return file_id
@@ -503,6 +561,7 @@ class ChangesetTree:
         return self.base_tree.path2id(old_path)
 
     def id2path(self, file_id):
+        """Return the new path in the target tree of the file with id file_id"""
         path = self._new_id_r.get(file_id)
         if path is not None:
             return path
@@ -514,6 +573,14 @@ class ChangesetTree:
         return self.new_path(old_path)
 
     def old_contents_id(self, file_id):
+        """Return the id in the base_tree for the given file_id,
+        or None if the file did not exist in base.
+
+        FIXME:  Something doesn't seem right here. It seems like this function
+                should always either return None or file_id. Even if
+                you are doing the by-path lookup, you are doing a
+                id2path lookup, just to do the reverse path2id lookup.
+        """
         if self.contents_by_id:
             if self.base_tree.has_id(file_id):
                 return file_id
@@ -523,6 +590,13 @@ class ChangesetTree:
         return self.base_tree.path2id(new_path)
         
     def get_file(self, file_id):
+        """Return a file-like object containing the new contents of the
+        file given by file_id.
+
+        TODO:   It might be nice if this actually generated an entry
+                in the text-store, so that the file contents would
+                then be cached.
+        """
         base_id = self.old_contents_id(file_id)
         if base_id is not None:
             patch_original = self.base_tree.get_file(base_id)

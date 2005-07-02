@@ -66,6 +66,74 @@ class ChangesetTree(object):
         """
         self.base_tree = self.branch.revision_tree(self.changeset_info.base)
         
+def guess_text_id(tree, file_id, rev_id, modified=True):
+    """This returns the estimated text_id for a given file.
+    The idea is that in general the text_id should be the id last
+    revision which modified the file.
+
+    :param tree: This should be the base tree for a changeset, since that
+                 is all the target has for guessing.
+    :param file_id: The file id to guess the text_id for.
+    :param rev_id: The target revision id
+    :param modified: Was the file modified between base and target?
+    """
+    from bzrlib.errors import BzrError
+    if modified:
+        # If the file was modified in an intermediate stage
+        # (not in the final target), this won't be correct
+        # but it is our best guess.
+        # TODO: In the current code, text-ids are randomly generated
+        # using the filename as the base. In the future they will
+        # probably follow this format.
+        return file_id + '-' + rev_id
+    # The file was not actually modified in this changeset
+    # so the text_id should be equal to it's previous value
+    if not file_id in tree.inventory:
+        raise BzrError('Unable to generate text_id for file_id {%s}'
+            ', file does not exist in tree.' % file_id)
+    # This is the last known text_id for this file
+    # so assume that it is being used.
+    text_id = tree.inventory[file_id].text_id
+
+def encode(s):
+    """Take a unicode string, and make sure to escape it for
+    use in a changeset.
+
+    Note: It can be either a normal, or a unicode string
+
+    >>> encode(u'abcdefg')
+    'abcdefg'
+    >>> encode(u'a b\tc\\nd\\\\e')
+    'a b\\\\tc\\\\nd\\\\e'
+    >>> encode('a b\tc\\nd\\e')
+    'a b\\\\tc\\\\nd\\\\e'
+    >>> encode(u'\\u1234\\u0020')
+    '\\\\u1234 '
+    >>> encode('abcdefg')
+    'abcdefg'
+    >>> encode(u'')
+    ''
+    >>> encode('')
+    ''
+    """
+    return s.encode('unicode_escape')
+
+def decode(s):
+    """Undo the encode operation, returning a unicode string.
+
+    >>> decode('abcdefg')
+    u'abcdefg'
+    >>> decode('a b\\\\tc\\\\nd\\\\e')
+    u'a b\tc\\nd\\\\e'
+    >>> decode('\\\\u1234\\\\u0020')
+    u'\\u1234 '
+    >>> for s in ('test', 'strings'):
+    ...   if decode(encode(s)) != s:
+    ...     print 'Failed: %r' % s # There should be no failures
+
+    """
+    return s.decode('unicode_escape')
+
 def format_highres_date(t, offset=0):
     """Format a date, such that it includes higher precision in the
     seconds field.

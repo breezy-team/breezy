@@ -59,7 +59,6 @@ class MetaInfoHeader(object):
 
     def __init__(self, branch, revisions, delta,
             full_remove=True, full_rename=False,
-            external_diff_options = None,
             new_tree=None, old_tree=None,
             old_label = '', new_label = ''):
         """
@@ -71,14 +70,20 @@ class MetaInfoHeader(object):
         self.delta = delta
         self.full_remove=full_remove
         self.full_rename=full_rename
-        self.external_diff_options = external_diff_options
         self.old_label = old_label
         self.new_label = new_label
         self.old_tree = old_tree
         self.new_tree = new_tree
         self.to_file = None
-        self.revno = None
-        self.precursor_revno = None
+        #self.revno = None
+        #self.parent_revno = None
+
+        # These are entries in the header.
+        # They will be repeated in the footer,
+        # only if they have changed
+        self.date = None
+        self.committer = None
+        self.message = None
 
         self._get_revision_list(revisions)
 
@@ -110,8 +115,8 @@ class MetaInfoHeader(object):
         else:
             for rev_id in rh[old_revno+1:new_revno+1]:
                 self.revision_list.append(self.branch.get_revision(rev_id))
-        self.precursor_revno = old_revno+1
-        self.revno = new_revno+1
+        #self.parent_revno = old_revno+1
+        #self.revno = new_revno+1
 
     def _write(self, txt, key=None):
         if key:
@@ -133,7 +138,8 @@ class MetaInfoHeader(object):
 
     def _write_header(self):
         """Write the stuff that comes before the patches."""
-        from bzrlib.osutils import username, format_date
+        from bzrlib.osutils import username
+        from common import format_highres_date
         write = self._write
 
         for line in common.get_header():
@@ -142,11 +148,14 @@ class MetaInfoHeader(object):
         # Print out the basic information about the 'target' revision
         rev = self.revision_list[-1]
         write(rev.committer, key='committer')
-        write(format_date(rev.timestamp, offset=rev.timezone), key='date')
+        self.committer = rev.committer
+        self.date = format_highres_date(rev.timestamp, offset=rev.timezone)
+        write(self.date, key='date')
         if rev.message:
             self.to_file.write('# message:\n')
             for line in rev.message.split('\n'):
                 self.to_file.write('#    %s\n' % line)
+            self.message = rev.message
 
         write('')
         self.to_file.write('\n')
@@ -159,9 +168,15 @@ class MetaInfoHeader(object):
         """
         write = self._write
 
-        write('BEGIN BZR FOOTER')
-
         # Base revision is the revision this changeset is against
+        # We probably should write some sort of
+        # base: None
+        # for base revisions of EmptyTree, rather than
+        # just looking like we left it off.
+        # Besides, we might leave it off in the trivial case
+        # that the base is the first parent of the target revision.
+        # In which case having it missing doesn't mean that we
+        # should use the empty tree.
         if self.base_revision:
             rev_id = self.base_revision.revision_id
             write(rev_id, key='base')
@@ -170,29 +185,34 @@ class MetaInfoHeader(object):
         self._write_revisions()
 
         #self._write_ids()
-
-        write('END BZR FOOTER')
+        self._write_text_ids()
 
     def _write_revisions(self):
         """Not used. Used for writing multiple revisions."""
+        from common import format_highres_date
+
         for rev in self.revision_list:
             rev_id = rev.revision_id
             self.to_file.write('# revision: %s\n' % rev_id)
             self.to_file.write('#    sha1: %s\n' % 
                 self.branch.get_revision_sha1(rev_id))
-            self.to_file.write('#    committer: %s\n' % rev.committer)
-            self.to_file.write('#    timestamp: %.9f\n' % rev.timestamp)
-            self.to_file.write('#    timezone: %s\n' % rev.timezone)
-            self.to_file.write('#    inventory id: %s\n' % rev.inventory_id)
+            if rev.committer != self.committer:
+                self.to_file.write('#    committer: %s\n' % rev.committer)
+            date = format_highres_date(rev.timestamp, rev.timezone)
+            if date != self.date:
+                self.to_file.write('#    date: %s\n' % date)
+            if rev.inventory_id != rev_id:
+                self.to_file.write('#    inventory id: %s\n' % rev.inventory_id)
             self.to_file.write('#    inventory sha1: %s\n' % rev.inventory_sha1)
             self.to_file.write('#    parents:\n')
             for parent in rev.parents:
                 self.to_file.write('#       %s\t%s\n' % (
                     parent.revision_id,
                     parent.revision_sha1))
-            self.to_file.write('#    message:\n')
-            for line in rev.message.split('\n'):
-                self.to_file.write('#       %s\n' % line)
+            if rev.message and rev.message != self.message:
+                self.to_file.write('#    message:\n')
+                for line in rev.message.split('\n'):
+                    self.to_file.write('#       %s\n' % line)
 
 
     def _write_ids(self):
@@ -241,18 +261,34 @@ class MetaInfoHeader(object):
     def _write_diffs(self):
         """Write out the specific diffs"""
         from bzrlib.diff import internal_diff, external_diff
+        from common import encode
         DEVNULL = '/dev/null'
 
-        if self.external_diff_options:
-            assert isinstance(self.external_diff_options, basestring)
-            opts = self.external_diff_options.split()
-            def diff_file(olab, olines, nlab, nlines, to_file):
-                external_diff(olab, olines, nlab, nlines, to_file, opts)
-        else:
-            diff_file = internal_diff
+        diff_file = internal_diff
+        # Get the target tree so that we can check for
+        # Appropriate text ids.
+        rev_id = self.revision_list[-1].revision_id
+        tree = self.branch.revision_tree(rev_id)
+
+
+        def get_text_id_str(file_id, modified=True):
+            """This returns an empty string if guess_text_id == real_text_id.
+            Otherwise it returns a string suitable for printing, indicating
+            the file's id.
+            """
+            guess_id = common.guess_text_id(tree, file_id, rev_id,
+                    modified=modified)
+            real_id = tree.inventory[file_id].text_id
+            if guess_id != real_id:
+                return '\ttext-id:' + encode(real_id)
+            else:
+                return ''
+
 
         for path, file_id, kind in self.delta.removed:
-            print >>self.to_file, '*** removed %s %r' % (kind, path)
+            # We don't care about text ids for removed files
+            print >>self.to_file, '*** removed %s %s' % (kind,
+                    encode(path))
             if kind == 'file' and self.full_remove:
                 diff_file(self.old_label + path,
                           self.old_tree.get_file(file_id).readlines(),
@@ -261,7 +297,10 @@ class MetaInfoHeader(object):
                           self.to_file)
     
         for path, file_id, kind in self.delta.added:
-            print >>self.to_file, '*** added %s %r id:%s' % (kind, path, file_id)
+            print >>self.to_file, '*** added %s %s\tfile-id:%s%s' % (kind,
+                    encode(path),
+                    encode(file_id),
+                    get_text_id_str(file_id))
             if kind == 'file':
                 diff_file(DEVNULL,
                           [],
@@ -270,7 +309,9 @@ class MetaInfoHeader(object):
                           self.to_file)
     
         for old_path, new_path, file_id, kind, text_modified in self.delta.renamed:
-            print >>self.to_file, '*** renamed %s %r => %r' % (kind, old_path, new_path)
+            print >>self.to_file, '*** renamed %s %s\t=> %s%s' % (kind,
+                    encode(old_path), encode(new_path),
+                    get_text_id_str(file_id, text_modified))
             if self.full_rename and kind == 'file':
                 diff_file(self.old_label + old_path,
                           self.old_tree.get_file(file_id).readlines(),
@@ -290,7 +331,8 @@ class MetaInfoHeader(object):
                               self.to_file)
     
         for path, file_id, kind in self.delta.modified:
-            print >>self.to_file, '*** modified %s %r' % (kind, path)
+            print >>self.to_file, '*** modified %s %s%s' % (kind,
+                    encode(path), get_text_id_str(file_id))
             if kind == 'file':
                 diff_file(self.old_label + path,
                           self.old_tree.get_file(file_id).readlines(),
