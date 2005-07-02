@@ -8,6 +8,7 @@ import bzrlib, bzrlib.errors
 import common
 
 from bzrlib.inventory import ROOT_ID
+from bzrlib.errors import BzrCommandError
 
 try:
     set
