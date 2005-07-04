@@ -16,6 +16,8 @@
 
 
 
+# FIXME: "bzr commit doc/format" commits doc/format.txt!
+
 def commit(branch, message,
            timestamp=None,
            timezone=None,
@@ -80,6 +82,8 @@ def commit(branch, message,
 
         if verbose:
             note('looking for changes...')
+
+        pending_merges = branch.pending_merges()
 
         missing_ids, new_inv = _gather_commit(branch,
                                               work_tree,

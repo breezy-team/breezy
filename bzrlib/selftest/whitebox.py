@@ -45,6 +45,27 @@ class ValidateRevisionId(TestBase):
 
 
 
+class PendingMerges(InTempDir):
+    """Tracking pending-merged revisions."""
+    def runTest(self):
+        b = Branch('.', init=True)
+
+        self.assertEquals(b.pending_merges(), [])
+        
+        b.add_pending_merge('foo@azkhazan-123123-abcabc')
+        
+        self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
+    
+        b.add_pending_merge('foo@azkhazan-123123-abcabc')
+        
+        self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
+
+        b.add_pending_merge('wibble@fofof--20050401--1928390812')
+        self.assertEquals(b.pending_merges(),
+                          ['foo@azkhazan-123123-abcabc',
+                           'wibble@fofof--20050401--1928390812'])
+        
+
 class Revert(InTempDir):
     """Test selected-file revert"""
     def runTest(self):

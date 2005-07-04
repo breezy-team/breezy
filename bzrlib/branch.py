@@ -302,7 +302,8 @@ class Branch(object):
             os.mkdir(self.controlfilename(d))
         for f in ('revision-history', 'merged-patches',
                   'pending-merged-patches', 'branch-name',
-                  'branch-lock'):
+                  'branch-lock',
+                  'pending-merges'):
             self.controlfile(f, 'w').write('')
         mutter('created control directory in ' + self.base)
 
@@ -1037,6 +1038,48 @@ class Branch(object):
                 f.commit()
             finally:
                 f.close()
+
+
+    def pending_merges(self):
+        """Return a list of pending merges.
+
+        These are revisions that have been merged into the working
+        directory but not yet committed.
+        """
+        cfn = self.controlfilename('pending-merges')
+        if not os.path.exists(cfn):
+            return []
+        p = []
+        for l in self.controlfile('pending-merges', 'r').readlines():
+            p.append(l.rstrip('\n'))
+        return p
+
+
+    def add_pending_merge(self, revision_id):
+        from bzrlib.revision import validate_revision_id
+
+        validate_revision_id(revision_id)
+
+        p = self.pending_merges()
+        if revision_id in p:
+            return
+        p.append(revision_id)
+        self.set_pending_merges(p)
+
+
+    def set_pending_merges(self, rev_list):
+        from bzrlib.atomicfile import AtomicFile
+        self.lock_write()
+        try:
+            f = AtomicFile(self.controlfilename('pending-merges'))
+            try:
+                for l in rev_list:
+                    print >>f, l
+                f.commit()
+            finally:
+                f.close()
+        finally:
+            self.unlock()
 
 
 
