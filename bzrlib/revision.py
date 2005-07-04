@@ -196,7 +196,7 @@ def validate_revision_id(rid):
     global REVISION_ID_RE
     if not REVISION_ID_RE:
         import re
-        REVISION_ID_RE = re.compile('[\w.-]+@[\w.-]+-+\d+-[0-9a-f]+\Z')
+        REVISION_ID_RE = re.compile('[\w.-]+@[\w.-]+--?\d+--?[0-9a-f]+\Z')
 
     if not REVISION_ID_RE.match(rid):
         raise ValueError("malformed revision-id %r" % rid)
