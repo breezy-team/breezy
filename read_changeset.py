@@ -143,6 +143,15 @@ class ChangesetInfo(object):
                     assert self.base_sha1 == rev.parents[0].revision_sha1
                 self.base_sha1 = rev.parents[0].revision_sha1
 
+    def _get_target(self):
+        if len(self.real_revisions) > 0:
+            return self.real_revisions[-1].revision_id
+        elif len(self.revisions) > 0:
+            return self.revisions[-1].rev_id
+        return None
+
+    target = property(_get_target, doc='The target revision id')
+
 class ChangesetReader(object):
     """This class reads in a changeset from a file, and returns
     a Changeset object, which can then be applied against a tree.
