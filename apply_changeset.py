@@ -5,28 +5,12 @@ This contains the apply changset function for bzr
 
 import bzrlib
 
-def apply_changeset(branch, from_file, reverse=False, auto_commit=False):
-    from bzrlib.changeset import apply_changeset as _apply_changeset
-    from bzrlib.merge import regen_inventory
+def apply_changeset(branch, from_file, auto_commit=False):
+    from bzrlib.merge import merge_inner
     import sys, read_changeset
 
 
-    cset_info = read_changeset.read_changeset(from_file)
-    cset = cset_info.get_changeset()
-    inv = {}
-    for file_id in branch.inventory:
-        inv[file_id] = branch.inventory.id2path(file_id)
-    changes = _apply_changeset(cset, inv, branch.base,
-            reverse=reverse)
-
-    adjust_ids = []
-    for id, path in changes.iteritems():
-        if path is not None:
-            if path == '.':
-                path = ''
-        adjust_ids.append((path, id))
-
-    branch.set_inventory(regen_inventory(branch, branch.base, adjust_ids))
+    cset_info, cset_tree, cset_inv = read_changeset.read_changeset(from_file)
 
     if auto_commit:
         from bzrlib.commit import commit
