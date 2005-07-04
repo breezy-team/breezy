@@ -19,7 +19,8 @@ DEVELOPMENT HEAD
       disk.
 
     * Changed ``bzr log`` output to a more compact form suggested by
-      John A Meinel.
+      John A Meinel.  Old format is available with the ``--long`` or
+      ``-l`` option, patched by William Dodé.
 
 
 bzr-0.0.5  2005-06-15
