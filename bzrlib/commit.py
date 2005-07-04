@@ -169,6 +169,8 @@ def commit(branch, message,
 
         branch.append_revision(rev_id)
 
+        branch.set_pending_merges([])
+
         if verbose:
             note("commited r%d" % branch.revno())
     finally:

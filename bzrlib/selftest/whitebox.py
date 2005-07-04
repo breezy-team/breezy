@@ -73,6 +73,10 @@ class PendingMerges(InTempDir):
                           'foo@azkhazan-123123-abcabc')
         self.assertEquals(rev.parents[1].revision_id,
                            'wibble@fofof--20050401--1928390812')
+
+        # list should be cleared when we do a commit
+        self.assertEquals(b.pending_merges(), [])
+        
         
         
 

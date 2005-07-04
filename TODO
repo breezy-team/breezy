@@ -111,6 +111,8 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 * ``bzr status FOO`` where foo is ignored should say so.
 
 * ``bzr mkdir A...`` should just create and add A.
+
+* Guard against repeatedly merging any particular patch.
   
 
 
@@ -299,6 +301,8 @@ Medium things
 
 * Don't pass around command classes but rather pass objects.  This'd
   make it cleaner to construct objects wrapping external commands.
+
+* Track all merged-in revisions in a versioned add-only metafile.
 
 
 Large things
