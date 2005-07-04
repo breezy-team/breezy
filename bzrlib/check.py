@@ -42,6 +42,7 @@ def check(branch):
         history = branch.revision_history()
         revno = 0
         revcount = len(history)
+        mismatch_inv_id = []
 
         # for all texts checked, text_id -> sha1
         checked_texts = {}
@@ -84,6 +85,9 @@ def check(branch):
                 raise BzrCheckError("revision {%s} has no parents listed but preceded "
                                     "by {%s}"
                                     % (rev_id, last_rev_id))
+
+            if rev.inventory_id != rev_id:
+                mismatch_inv_id.append(rev_id)
 
             ## TODO: Check all the required fields are present on the revision.
 
@@ -166,3 +170,8 @@ def check(branch):
     if (missing_inventory_sha_cnt
         or missing_revision_sha_cnt):
         print '  (use "bzr upgrade" to fix them)'
+
+    if mismatch_inv_id:
+        print '%d revisions have mismatched inventory ids:' % len(mismatch_inv_id)
+        for rev_id in mismatch_inv_id:
+            print '  ', rev_id
