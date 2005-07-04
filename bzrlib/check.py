@@ -21,7 +21,9 @@
 def check(branch):
     """Run consistency checks on a branch.
 
-    TODO: Also check non-mailine revisions mentioned as parents.
+    TODO: Also check non-mainline revisions mentioned as parents.
+
+    TODO: Check for extra files in the control directory.
     """
     from bzrlib.trace import mutter
     from bzrlib.errors import BzrCheckError
