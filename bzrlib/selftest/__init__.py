@@ -214,6 +214,7 @@ def selftest():
     import bzrlib.selftest.whitebox
     import bzrlib.selftest.blackbox
     import bzrlib.selftest.versioning
+    import bzrlib.merge_core
     from doctest import DocTestSuite
     import os
     import shutil
@@ -229,6 +230,9 @@ def selftest():
 
     suite = TestSuite()
     tl = TestLoader()
+
+    # should also test bzrlib.merge_core, but they seem to be out of date with
+    # the code.
 
     for m in bzrlib.selftest.whitebox, \
             bzrlib.selftest.versioning:
