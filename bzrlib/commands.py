@@ -835,13 +835,14 @@ class cmd_log(Command):
     """
 
     takes_args = ['filename?']
-    takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision']
+    takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision','long']
     
     def run(self, filename=None, timezone='original',
             verbose=False,
             show_ids=False,
             forward=False,
-            revision=None):
+            revision=None,
+            long=False):
         from bzrlib.branch import find_branch
         from bzrlib.log import log_formatter, show_log
         import codecs
@@ -875,7 +876,11 @@ class cmd_log(Command):
         # in e.g. the default C locale.
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
-        lf = log_formatter('short',
+        if long:
+            log_format = 'long'
+        else:
+            log_format = 'short'
+        lf = log_formatter(log_format,
                            show_ids=show_ids,
                            to_file=outf,
                            show_timezone=timezone)
@@ -1348,6 +1353,7 @@ OPTIONS = {
     'version':                None,
     'email':                  None,
     'update':                 None,
+    'long':                   None,
     }
 
 SHORT_OPTIONS = {
@@ -1356,6 +1362,7 @@ SHORT_OPTIONS = {
     'm':                      'message',
     'r':                      'revision',
     'v':                      'verbose',
+    'l':                      'long',
 }
 
 
