@@ -143,10 +143,13 @@ def commit(branch, message,
                        inventory_sha1=inv_sha1,
                        revision_id=rev_id)
 
+        rev.parents = []
         precursor_id = branch.last_patch()
         if precursor_id:
             precursor_sha1 = branch.get_revision_sha1(precursor_id)
-            rev.parents = [RevisionReference(precursor_id, precursor_sha1)]
+            rev.parents.append(RevisionReference(precursor_id, precursor_sha1))
+        for merge_rev in pending_merges:
+            rev.parents.append(RevisionReference(merge_rev))            
 
         rev_tmp = tempfile.TemporaryFile()
         pack_xml(rev, rev_tmp)

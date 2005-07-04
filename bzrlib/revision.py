@@ -25,7 +25,7 @@ class RevisionReference(object):
     """
     revision_id = None
     revision_sha1 = None
-    def __init__(self, revision_id, revision_sha1):
+    def __init__(self, revision_id, revision_sha1=None):
         if revision_id == None \
            or isinstance(revision_id, basestring):
             self.revision_id = revision_id
@@ -49,9 +49,6 @@ class Revision(object):
     into the file it describes.
 
     After bzr 0.0.5 revisions are allowed to have multiple parents.
-    To support old clients this is written out in a slightly redundant
-    form: the first parent as the predecessor.  This will eventually
-    be dropped.
 
     parents
         List of parent revisions, each is a RevisionReference.
@@ -67,32 +64,6 @@ class Revision(object):
     def __init__(self, **args):
         self.__dict__.update(args)
         self.parents = []
-
-    def _get_precursor(self):
-        from warnings import warn
-        warn("Revision.precursor is deprecated", stacklevel=2)
-        if self.parents:
-            return self.parents[0].revision_id
-        else:
-            return None
-
-
-    def _get_precursor_sha1(self):
-        from warnings import warn
-        warn("Revision.precursor_sha1 is deprecated", stacklevel=2)
-        if self.parents:
-            return self.parents[0].revision_sha1
-        else:
-            return None    
-
-
-    def _fail(self):
-        raise Exception("can't assign to precursor anymore")
-
-
-    precursor = property(_get_precursor, _fail, _fail)
-    precursor_sha1 = property(_get_precursor_sha1, _fail, _fail)
-
 
 
     def __repr__(self):
@@ -117,15 +88,6 @@ class Revision(object):
         msg.text = self.message
         msg.tail = '\n'
 
-        if self.parents:
-            # first parent stored as precursor for compatability with 0.0.5 and
-            # earlier
-            pr = self.parents[0]
-            assert pr.revision_id
-            root.set('precursor', pr.revision_id)
-            if pr.revision_sha1:
-                root.set('precursor_sha1', pr.revision_sha1)
-                
         if self.parents:
             pelts = SubElement(root, 'parents')
             pelts.tail = pelts.text = '\n'
@@ -168,18 +130,23 @@ def unpack_revision(elt):
 
     pelts = elt.find('parents')
 
-    if precursor:
-        # revisions written prior to 0.0.5 have a single precursor
-        # give as an attribute
-        rev_ref = RevisionReference(precursor, precursor_sha1)
-        rev.parents.append(rev_ref)
-    elif pelts:
+    if pelts:
         for p in pelts:
             assert p.tag == 'revision_ref', \
                    "bad parent node tag %r" % p.tag
             rev_ref = RevisionReference(p.get('revision_id'),
                                         p.get('revision_sha1'))
             rev.parents.append(rev_ref)
+
+        if precursor:
+            # must be consistent
+            prec_parent = rev.parents[0].revision_id
+            assert prec_parent == precursor
+    elif precursor:
+        # revisions written prior to 0.0.5 have a single precursor
+        # give as an attribute
+        rev_ref = RevisionReference(precursor, precursor_sha1)
+        rev.parents.append(rev_ref)
 
     v = elt.get('timezone')
     rev.timezone = v and int(v)
