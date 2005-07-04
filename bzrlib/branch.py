@@ -607,11 +607,13 @@ class Branch(object):
 
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""
+        # bzr 0.0.6 imposes the constraint that the inventory_id
+        # must be the same as its revision, so this is trivial.
         if revision_id == None:
             from bzrlib.inventory import Inventory
             return Inventory()
         else:
-            return self.get_inventory(self.get_revision(revision_id).inventory_id)
+            return self.get_inventory(revision_id)
 
 
     def revision_history(self):
