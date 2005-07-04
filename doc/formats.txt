@@ -98,9 +98,9 @@ All inside ``.bzr``
   include merges add to this file; lines are never removed or
   reordered.
 
-``pending-merge-patches``
-  List of foreign patches that have been merged and are waiting to be
-  committed. 
+``pending-merges`` 
+  List (one per line) of non-mainline revisions that
+  have been merged and are waiting to be committed.
 
 ``branch-name``
   User-qualified name of the branch, for the purpose of describing the
