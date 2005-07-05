@@ -37,6 +37,9 @@ class NoChanges(TestBase):
         self.assertEquals(list(m3.merge_regions()),
                           [('unchanged', 0, 2)])
 
+        self.assertEquals(list(m3.merge_groups()),
+                          [('unchanged', ['aaa', 'bbb'])])
+
 
 class FrontInsert(TestBase):
     def runTest(self):
@@ -53,6 +56,10 @@ class FrontInsert(TestBase):
         self.assertEquals(list(m3.merge_regions()),
                           [('a', 0, 2),
                            ('unchanged', 0, 1)])
+
+        self.assertEquals(list(m3.merge_groups()),
+                          [('a', ['aaa', 'bbb']),
+                           ('unchanged', ['zz'])])
         
     
 
@@ -112,8 +119,14 @@ class InsertClash(TestBase):
 
         self.assertEquals(list(m3.merge_regions()),
                           [('unchanged', 0,1),
-                           ('conflict', 1,2, 1,2),
+                           ('conflict', 1,1, 1,2, 1,2),
                            ('unchanged', 1,2)])
+
+        self.assertEquals(list(m3.merge_groups()),
+                          [('unchanged', ['aaa']),
+                           ('conflict', [], ['111'], ['222']),
+                           ('unchanged', ['bbb']),
+                           ])
 
 
 
