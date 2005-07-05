@@ -69,6 +69,38 @@ class Merge3(object):
 
 
 
+    def merge_lines(self,
+                    start_marker='<<<<<<<<\n',
+                    mid_marker='========\n',
+                    end_marker='>>>>>>>>\n'):
+        """Return merge in cvs-like form.
+        """
+        for t in self.merge_regions():
+            what = t[0]
+            if what == 'unchanged':
+                for i in range(t[1], t[2]):
+                    yield self.base[i]
+            elif what == 'a':
+                for i in range(t[1], t[2]):
+                    yield self.a[i]
+            elif what == 'b':
+                for i in range(t[1], t[2]):
+                    yield self.b[i]
+            elif what == 'conflict':
+                yield start_marker
+                for i in range(t[3], t[4]):
+                    yield self.a[i]
+                yield mid_marker
+                for i in range(t[5], t[6]):
+                    yield self.b[i]
+                yield end_marker
+            else:
+                raise ValueError(what)
+        
+        
+
+
+
     def merge_groups(self):
         """Yield sequence of line groups.  Each one is a tuple:
 

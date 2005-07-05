@@ -76,6 +76,9 @@ class NullInsert(TestBase):
 
         self.assertEquals(list(m3.merge_regions()),
                           [('a', 0, 2)])
+
+        self.assertEquals(list(m3.merge_lines()),
+                          ['aaa', 'bbb'])
         
     
 
@@ -127,6 +130,15 @@ class InsertClash(TestBase):
                            ('conflict', [], ['111'], ['222']),
                            ('unchanged', ['bbb']),
                            ])
+
+        self.assertEquals(list(m3.merge_lines('<<', '--', '>>')),
+                          ['aaa',
+                           '<<',
+                           '111',
+                           '--',
+                           '222',
+                           '>>',
+                           'bbb'])
 
 
 
