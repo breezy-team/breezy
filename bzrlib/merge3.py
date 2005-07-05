@@ -214,10 +214,13 @@ class Merge3(object):
                 lines_a = self.a[ia:amatch]
                 lines_b = self.b[ib:bmatch]
 
-                # TODO: check the len just as a shortcut
-                equal_a = (lines_a == lines_base)
-                equal_b = (lines_b == lines_base)
-                same = lines_a == lines_b
+                # we check the len just as a shortcut
+                equal_a = (len_a == len_base
+                           and lines_a == lines_base)
+                equal_b = (len_b == len_base
+                           and lines_b == lines_base)
+                same = (len_a == len_b
+                        and lines_a == lines_b)
 
                 if same:
                     yield 'same', ia, amatch
