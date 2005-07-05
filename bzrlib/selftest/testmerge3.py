@@ -31,8 +31,45 @@ class NoChanges(TestBase):
         self.assertEquals(list(m3.find_sync_regions()),
                           [(0, 2,
                             0, 2,
-                            0, 2)])
+                            0, 2),
+                           (2,2, 2,2, 2,2)])
 
+        self.assertEquals(list(m3.merge_regions()),
+                          [('unchanged', 0, 2)])
+
+
+class FrontInsert(TestBase):
+    def runTest(self):
+        m3 = Merge3(['zz'],
+                    ['aaa', 'bbb', 'zz'],
+                    ['zz'])
+
+        # todo: should use a sentinal at end as from get_matching_blocks
+        # to match without zz
+        self.assertEquals(list(m3.find_sync_regions()),
+                          [(0,1, 2,3, 0,1),
+                           (1,1, 3,3, 1,1),])
+
+        self.assertEquals(list(m3.merge_regions()),
+                          [('a', 0, 2),
+                           ('unchanged', 0, 1)])
+        
+    
+
+class NullInsert(TestBase):
+    def runTest(self):
+        m3 = Merge3([],
+                    ['aaa', 'bbb'],
+                    [])
+
+        # todo: should use a sentinal at end as from get_matching_blocks
+        # to match without zz
+        self.assertEquals(list(m3.find_sync_regions()),
+                          [(0,0, 2,2, 0,0)])
+
+        self.assertEquals(list(m3.merge_regions()),
+                          [('a', 0, 2)])
+        
     
 
 class NoConflicts(TestBase):
@@ -45,11 +82,12 @@ class NoConflicts(TestBase):
         self.assertEquals(m3.find_unconflicted(),
                           [(0, 1), (1, 2)])
 
-
-
         self.assertEquals(list(m3.find_sync_regions()),
-                          [(0, 1, 0, 1, 0, 1),
-                           (1, 2, 2, 3, 1, 2)])
+                          [(0,1, 0,1, 0,1),
+                           (1,2, 2,3, 1,2),
+                           (2,2, 3,3, 2,2),])
+
+
 
 
 class InsertClash(TestBase):
@@ -63,8 +101,9 @@ class InsertClash(TestBase):
                           [(0, 1), (1, 2)])
 
         self.assertEquals(list(m3.find_sync_regions()),
-                          [(0, 1, 0, 1, 0, 1),
-                           (1, 2, 2, 3, 2, 3)])
+                          [(0,1, 0,1, 0,1),
+                           (1,2, 2,3, 2,3),
+                           (2,2, 3,3, 3,3),])
 
 
 
@@ -79,8 +118,9 @@ class ReplaceClash(TestBase):
                           [(0, 1), (2, 3)])
 
         self.assertEquals(list(m3.find_sync_regions()),
-                          [(0, 1, 0, 1, 0, 1),
-                           (2, 3, 2, 3, 2, 3)])
+                          [(0,1, 0,1, 0,1),
+                           (2,3, 2,3, 2,3),
+                           (3,3, 3,3, 3,3),])
 
 
 
@@ -96,8 +136,9 @@ class ReplaceMulti(TestBase):
 
 
         self.assertEquals(list(m3.find_sync_regions()),
-                          [(0, 1, 0, 1, 0, 1),
-                           (3, 4, 4, 5, 5, 6)])
+                          [(0,1, 0,1, 0,1),
+                           (3,4, 4,5, 5,6),
+                           (4,4, 5,5, 6,6),])
 
         
         

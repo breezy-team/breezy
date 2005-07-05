@@ -68,8 +68,17 @@ class Merge3(object):
         self.b_ops = SequenceMatcher(None, base, b).get_opcodes()
 
 
-    def merge(self):
+    def merge_regions(self):
         """Return sequences of matching and conflicting regions.
+
+        This returns tuples, where the first value says what kind we
+        have:
+
+        'unchanged', start, end
+             Take a region of base[start:end]
+
+        'a', start, end
+             Non-clashing insertion from a[start:end]
 
         Method is as follows:
 
@@ -82,13 +91,42 @@ class Merge3(object):
         The regions in between can be in any of three cases:
         conflicted, or changed on only one side.
         """
+
+        # section a[0:ia] has been disposed of, etc
+        iz = ia = ib = 0
+        
+        for zmatch, zend, amatch, aend, bmatch, bend in self.find_sync_regions():
+            matchlen = zend - zmatch
+            assert matchlen >= 0
+            assert matchlen == (aend - amatch)
+            assert matchlen == (bend - bmatch)
+            
+            if amatch > ia:   # or bmatch > ib:
+                # got an unmatched region; work out if either
+                # alternative is the same as the base
+
+                # kludge: return the whole thing as inserted into A
+                yield 'a', ia, amatch
+                ia = amatch
+
+                
+            if matchlen > 0:
+                assert ia == amatch
+                assert ib == bmatch
+                assert iz == zmatch
+                
+                yield 'unchanged', zmatch, zend
+                iz = zend
+                ia = aend
+                ib = bend
         
 
         
     def find_sync_regions(self):
         """Return a list of sync regions, where both descendents match the base.
 
-        Generates a list of (base1, base2, a1, a2, b1, b2). 
+        Generates a list of (base1, base2, a1, a2, b1, b2).  There is
+        always a zero-length sync region at the end of all the files.
         """
         from difflib import SequenceMatcher
         aiter = iter(SequenceMatcher(None, self.base, self.a).get_matching_blocks())
@@ -132,6 +170,11 @@ class Merge3(object):
                 abase, amatch, alen = aiter.next()
             else:
                 bbase, bmatch, blen = biter.next()
+
+        intbase = len(self.base)
+        abase = len(self.a)
+        bbase = len(self.b)
+        yield (intbase, intbase, abase, abase, bbase, bbase)
 
 
 
