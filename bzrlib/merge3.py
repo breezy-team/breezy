@@ -43,14 +43,6 @@ def intersect(ra, rb):
         return None
 
 
-def threeway(baseline, aline, bline):
-    if baseline == aline:
-        return bline
-    elif baseline == bline:
-        return aline
-    else:
-        return [aline, bline]
-
 
 
 class Merge3(object):
@@ -102,6 +94,37 @@ class Merge3(object):
                 for i in range(t[5], t[6]):
                     yield self.b[i]
                 yield end_marker + '\n'
+            else:
+                raise ValueError(what)
+        
+        
+
+
+
+    def merge_annotated(self):
+        """Return merge with conflicts, showing origin of lines.
+
+        Most useful for debugging merge.        
+        """
+        for t in self.merge_regions():
+            what = t[0]
+            if what == 'unchanged':
+                for i in range(t[1], t[2]):
+                    yield 'u | ' + self.base[i]
+            elif what == 'a' or what == 'same':
+                for i in range(t[1], t[2]):
+                    yield what[0] + ' | ' + self.a[i]
+            elif what == 'b':
+                for i in range(t[1], t[2]):
+                    yield 'b | ' + self.b[i]
+            elif what == 'conflict':
+                yield '<<<<\n'
+                for i in range(t[3], t[4]):
+                    yield 'A | ' + self.a[i]
+                yield '----\n'
+                for i in range(t[5], t[6]):
+                    yield 'B | ' + self.b[i]
+                yield '>>>>\n'
             else:
                 raise ValueError(what)
         
@@ -319,7 +342,8 @@ def main(argv):
 
     m3 = Merge3(base, a, b)
 
-    sys.stdout.writelines(m3.merge_lines(name_a=argv[1], name_b=argv[3]))
+    # sys.stdout.writelines(m3.merge_lines(name_a=argv[1], name_b=argv[3]))
+    sys.stdout.writelines(m3.merge_annotated())
 
 
 if __name__ == '__main__':
