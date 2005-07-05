@@ -206,6 +206,10 @@ def split_lines(t):
     return StringIO(t).readlines()
 
 
+
+############################################################
+# test case from the gnu diffutils manual
+
 # common base
 TZU = split_lines("""     The Nameless is the origin of Heaven and Earth;
      The named is the mother of all things.
