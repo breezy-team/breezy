@@ -18,6 +18,10 @@
 from bzrlib.selftest import InTempDir, TestBase
 from bzrlib.merge3 import Merge3
 
+
+
+
+
 class NoChanges(TestBase):
     """No conflicts because nothing changed"""
     def runTest(self):
@@ -193,3 +197,88 @@ class ReplaceMulti(TestBase):
 
         
         
+
+
+
+
+def split_lines(t):
+    from cStringIO import StringIO
+    return StringIO(t).readlines()
+
+
+# common base
+TZU = split_lines("""     The Nameless is the origin of Heaven and Earth;
+     The named is the mother of all things.
+     
+     Therefore let there always be non-being,
+       so we may see their subtlety,
+     And let there always be being,
+       so we may see their outcome.
+     The two are the same,
+     But after they are produced,
+       they have different names.
+     They both may be called deep and profound.
+     Deeper and more profound,
+     The door of all subtleties!
+""")
+
+LAO = split_lines("""     The Way that can be told of is not the eternal Way;
+     The name that can be named is not the eternal name.
+     The Nameless is the origin of Heaven and Earth;
+     The Named is the mother of all things.
+     Therefore let there always be non-being,
+       so we may see their subtlety,
+     And let there always be being,
+       so we may see their outcome.
+     The two are the same,
+     But after they are produced,
+       they have different names.
+""")
+
+
+TAO = split_lines("""     The Way that can be told of is not the eternal Way;
+     The name that can be named is not the eternal name.
+     The Nameless is the origin of Heaven and Earth;
+     The named is the mother of all things.
+     
+     Therefore let there always be non-being,
+       so we may see their subtlety,
+     And let there always be being,
+       so we may see their result.
+     The two are the same,
+     But after they are produced,
+       they have different names.
+     
+       -- The Way of Lao-Tzu, tr. Wing-tsit Chan
+
+""")
+
+MERGED_RESULT = split_lines("""     The Way that can be told of is not the eternal Way;
+     The name that can be named is not the eternal name.
+     The Nameless is the origin of Heaven and Earth;
+     The Named is the mother of all things.
+     Therefore let there always be non-being,
+       so we may see their subtlety,
+     And let there always be being,
+       so we may see their result.
+     The two are the same,
+     But after they are produced,
+       they have different names.
+<<<<<<<< LAO
+========
+     
+       -- The Way of Lao-Tzu, tr. Wing-tsit Chan
+
+>>>>>>>> TAO
+""")
+
+
+
+class MergePoem(TestBase):
+    """Test case from diff3 manual"""
+    def runTest(self):
+        m3 = Merge3(TZU, LAO, TAO)
+        ml = list(m3.merge_lines('LAO', 'TAO'))
+        self.log('merge result:')
+        self.log(''.join(ml))
+        self.assertEquals(ml, MERGED_RESULT)
