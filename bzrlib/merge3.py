@@ -39,6 +39,16 @@ def intersect(ra, rb):
         return None
 
 
+def threeway(baseline, aline, bline):
+    if baseline == aline:
+        return bline
+    elif baseline == bline:
+        return aline
+    else:
+        return [aline, bline]
+
+
+
 class Merge3(object):
     """3-way merge of texts.
 
@@ -49,21 +59,75 @@ class Merge3(object):
         self.base = base
         self.a = a
         self.b = b
+        from difflib import SequenceMatcher
+        self.a_ops = SequenceMatcher(None, base, a).get_opcodes()
+        self.b_ops = SequenceMatcher(None, base, b).get_opcodes()
 
-        #from difflib import SequenceMatcher
 
-        #self.a_ops = SequenceMatcher(None, self.base, self.a).get_opcodes()
-        #self.b_ops = SequenceMatcher(None, self.base, self.b).get_opcodes()
+    def merge(self):
+        """Return sequences of matching and conflicting regions.
+
+        Method is as follows:
+
+        The two sequences align only on regions which match the base
+        and both descendents.  These are found by doing a two-way diff
+        of each one against the base, and then finding the
+        intersections between those regions.  These "sync regions"
+        are by definition unchanged in both and easily dealt with.
+
+        The regions in between can be in any of three cases:
+        conflicted, or changed on only one side.
+        """
 
         
-    def find_conflicts(self):
-        """Return a list of conflict regions.
+    def find_sync_regions(self):
+        """Return a list of sync regions, where both descendents match the base.
 
-        Each entry is given as (base1, base2, a1, a2, b1, b2).
-
-        This indicates that the range [base1,base2] can be replaced by either
-        [a1,a2] or [b1,b2].
+        Generates a list of ((base1, base2), (a1, a2), (b1, b2)). 
         """
+        from difflib import SequenceMatcher
+        aiter = iter(SequenceMatcher(None, self.base, self.a).get_matching_blocks())
+        biter = iter(SequenceMatcher(None, self.base, self.b).get_matching_blocks())
+
+        abase, amatch, alen = aiter.next()
+        bbase, bmatch, blen = biter.next()
+
+        while aiter and biter:
+            # there is an unconflicted block at i; how long does it
+            # extend?  until whichever one ends earlier.
+            i = intersect((abase, abase+alen), (bbase, bbase+blen))
+            if i:
+                intbase = i[0]
+                intend = i[1]
+                intlen = intend - intbase
+
+                # found a match of base[i[0], i[1]]; this may be less than
+                # the region that matches in either one
+                assert intlen <= alen
+                assert intlen <= blen
+                assert abase <= intbase
+                assert bbase <= intbase
+
+                asub = amatch + (intbase - abase)
+                bsub = bmatch + (intbase - bbase)
+                aend = asub + intlen
+                bend = bsub + intlen
+
+                assert self.base[intbase:intend] == self.a[asub:aend], \
+                       (self.base[intbase:intend], self.a[asub:aend])
+                
+                assert self.base[intbase:intend] == self.b[bsub:bend]
+
+                yield ((intbase, intend),
+                       (asub, aend),
+                       (bsub, bend))
+
+            # advance whichever one ends first in the base text
+            if (abase + alen) < (bbase + blen):
+                abase, amatch, alen = aiter.next()
+            else:
+                bbase, bmatch, blen = biter.next()
+
 
 
     def find_unconflicted(self):

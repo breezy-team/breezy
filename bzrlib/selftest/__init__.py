@@ -214,7 +214,7 @@ def selftest():
     import bzrlib.selftest.whitebox
     import bzrlib.selftest.blackbox
     import bzrlib.selftest.versioning
-    import bzrlib.selftest.merge3
+    import bzrlib.selftest.testmerge3
     import bzrlib.merge_core
     from doctest import DocTestSuite
     import os
@@ -237,7 +237,7 @@ def selftest():
 
     for m in bzrlib.selftest.whitebox, \
             bzrlib.selftest.versioning, \
-            bzrlib.selftest.merge3:
+            bzrlib.selftest.testmerge3:
         suite.addTest(tl.loadTestsFromModule(m))
 
     for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \

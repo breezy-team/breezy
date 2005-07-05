@@ -18,17 +18,6 @@
 from bzrlib.selftest import InTempDir, TestBase
 from bzrlib.merge3 import Merge3
 
-class NoConflicts(TestBase):
-    """No conflicts because only one side changed"""
-    def runTest(self):
-        m3 = Merge3(['aaa', 'bbb'],
-                    ['aaa', '111', 'bbb'],
-                    ['aaa', 'bbb'])
-
-        self.assertEquals(m3.find_unconflicted(),
-                          [(0, 1), (1, 2)])
-
-    
 class NoChanges(TestBase):
     """No conflicts because nothing changed"""
     def runTest(self):
@@ -39,7 +28,26 @@ class NoChanges(TestBase):
         self.assertEquals(m3.find_unconflicted(),
                           [(0, 2)])
 
+        self.assertEquals(list(m3.find_sync_regions()),
+                          [((0, 2), (0, 2), (0, 2))])
+
     
+
+class NoConflicts(TestBase):
+    """No conflicts because only one side changed"""
+    def runTest(self):
+        m3 = Merge3(['aaa', 'bbb'],
+                    ['aaa', '111', 'bbb'],
+                    ['aaa', 'bbb'])
+
+        self.assertEquals(m3.find_unconflicted(),
+                          [(0, 1), (1, 2)])
+
+
+        self.assertEquals(list(m3.find_sync_regions()),
+                          [((0, 1), (0, 1), (0, 1)),
+                           ((1, 2), (2, 3), (1, 2))])
+
 
 class InsertClash(TestBase):
     """Both try to insert lines in the same place."""
@@ -51,7 +59,9 @@ class InsertClash(TestBase):
         self.assertEquals(m3.find_unconflicted(),
                           [(0, 1), (1, 2)])
 
-        
+        self.assertEquals(list(m3.find_sync_regions()),
+                          [((0, 1), (0, 1), (0, 1)),
+                           ((1, 2), (2, 3), (2, 3))])
 
 
 
@@ -65,4 +75,26 @@ class ReplaceClash(TestBase):
         self.assertEquals(m3.find_unconflicted(),
                           [(0, 1), (2, 3)])
 
+        self.assertEquals(list(m3.find_sync_regions()),
+                          [((0, 1), (0, 1), (0, 1)),
+                           ((2, 3), (2, 3), (2, 3))])
+
+
+
+class ReplaceMulti(TestBase):
+    """Replacement with regions of different size."""
+    def runTest(self):
+        m3 = Merge3(['aaa', '000', '000', 'bbb'],
+                    ['aaa', '111', '111', '111', 'bbb'],
+                    ['aaa', '222', '222', '222', '222', 'bbb'])
+
+        self.assertEquals(m3.find_unconflicted(),
+                          [(0, 1), (3, 4)])
+
+
+        self.assertEquals(list(m3.find_sync_regions()),
+                          [((0, 1), (0, 1), (0, 1)),
+                           ((3, 4), (4, 5), (5, 6))])
+
+        
         
