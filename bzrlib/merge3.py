@@ -15,6 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+# mbp: "you know that thing where cvs gives you conflict markers?"
+# s: "i hate that."
+
+
 
 def intersect(ra, rb):
     """Given two ranges return the range where they intersect or None.
