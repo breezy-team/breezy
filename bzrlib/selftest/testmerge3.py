@@ -29,7 +29,9 @@ class NoChanges(TestBase):
                           [(0, 2)])
 
         self.assertEquals(list(m3.find_sync_regions()),
-                          [((0, 2), (0, 2), (0, 2))])
+                          [(0, 2,
+                            0, 2,
+                            0, 2)])
 
     
 
@@ -44,9 +46,10 @@ class NoConflicts(TestBase):
                           [(0, 1), (1, 2)])
 
 
+
         self.assertEquals(list(m3.find_sync_regions()),
-                          [((0, 1), (0, 1), (0, 1)),
-                           ((1, 2), (2, 3), (1, 2))])
+                          [(0, 1, 0, 1, 0, 1),
+                           (1, 2, 2, 3, 1, 2)])
 
 
 class InsertClash(TestBase):
@@ -60,8 +63,8 @@ class InsertClash(TestBase):
                           [(0, 1), (1, 2)])
 
         self.assertEquals(list(m3.find_sync_regions()),
-                          [((0, 1), (0, 1), (0, 1)),
-                           ((1, 2), (2, 3), (2, 3))])
+                          [(0, 1, 0, 1, 0, 1),
+                           (1, 2, 2, 3, 2, 3)])
 
 
 
@@ -76,8 +79,8 @@ class ReplaceClash(TestBase):
                           [(0, 1), (2, 3)])
 
         self.assertEquals(list(m3.find_sync_regions()),
-                          [((0, 1), (0, 1), (0, 1)),
-                           ((2, 3), (2, 3), (2, 3))])
+                          [(0, 1, 0, 1, 0, 1),
+                           (2, 3, 2, 3, 2, 3)])
 
 
 
@@ -93,8 +96,8 @@ class ReplaceMulti(TestBase):
 
 
         self.assertEquals(list(m3.find_sync_regions()),
-                          [((0, 1), (0, 1), (0, 1)),
-                           ((3, 4), (4, 5), (5, 6))])
+                          [(0, 1, 0, 1, 0, 1),
+                           (3, 4, 4, 5, 5, 6)])
 
         
         

@@ -82,12 +82,13 @@ class Merge3(object):
         The regions in between can be in any of three cases:
         conflicted, or changed on only one side.
         """
+        
 
         
     def find_sync_regions(self):
         """Return a list of sync regions, where both descendents match the base.
 
-        Generates a list of ((base1, base2), (a1, a2), (b1, b2)). 
+        Generates a list of (base1, base2, a1, a2, b1, b2). 
         """
         from difflib import SequenceMatcher
         aiter = iter(SequenceMatcher(None, self.base, self.a).get_matching_blocks())
@@ -122,9 +123,9 @@ class Merge3(object):
                 
                 assert self.base[intbase:intend] == self.b[bsub:bend]
 
-                yield ((intbase, intend),
-                       (asub, aend),
-                       (bsub, bend))
+                yield (intbase, intend,
+                       asub, aend,
+                       bsub, bend)
 
             # advance whichever one ends first in the base text
             if (abase + alen) < (bbase + blen):
