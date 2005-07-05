@@ -70,11 +70,19 @@ class Merge3(object):
 
 
     def merge_lines(self,
-                    start_marker='<<<<<<<<\n',
-                    mid_marker='========\n',
-                    end_marker='>>>>>>>>\n'):
+                    name_a=None,
+                    name_b=None,
+                    start_marker='<<<<<<<<',
+                    mid_marker='========',
+                    end_marker='>>>>>>>>',
+                    show_base=False):
         """Return merge in cvs-like form.
         """
+        if name_a:
+            start_marker = start_marker + ' ' + name_a
+        if name_b:
+            end_marker = end_marker + ' ' + name_b
+            
         for t in self.merge_regions():
             what = t[0]
             if what == 'unchanged':
@@ -87,13 +95,13 @@ class Merge3(object):
                 for i in range(t[1], t[2]):
                     yield self.b[i]
             elif what == 'conflict':
-                yield start_marker
+                yield start_marker + '\n'
                 for i in range(t[3], t[4]):
                     yield self.a[i]
-                yield mid_marker
+                yield mid_marker + '\n'
                 for i in range(t[5], t[6]):
                     yield self.b[i]
-                yield end_marker
+                yield end_marker + '\n'
             else:
                 raise ValueError(what)
         
@@ -292,3 +300,18 @@ class Merge3(object):
                 del bm[0]
                 
         return unc
+
+
+def main(argv):
+    base = file(argv[1], 'rt').readlines()
+    a = file(argv[2], 'rt').readlines()
+    b = file(argv[3], 'rt').readlines()
+
+    m3 = Merge3(base, a, b)
+
+    sys.stdout.writelines(m3.merge_lines(argv[2], argv[3]))
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main(sys.argv))

@@ -108,9 +108,9 @@ class NoConflicts(TestBase):
 class InsertClash(TestBase):
     """Both try to insert lines in the same place."""
     def runTest(self):
-        m3 = Merge3(['aaa', 'bbb'],
-                    ['aaa', '111', 'bbb'],
-                    ['aaa', '222', 'bbb'])
+        m3 = Merge3(['aaa\n', 'bbb\n'],
+                    ['aaa\n', '111\n', 'bbb\n'],
+                    ['aaa\n', '222\n', 'bbb\n'])
 
         self.assertEquals(m3.find_unconflicted(),
                           [(0, 1), (1, 2)])
@@ -126,19 +126,25 @@ class InsertClash(TestBase):
                            ('unchanged', 1,2)])
 
         self.assertEquals(list(m3.merge_groups()),
-                          [('unchanged', ['aaa']),
-                           ('conflict', [], ['111'], ['222']),
-                           ('unchanged', ['bbb']),
+                          [('unchanged', ['aaa\n']),
+                           ('conflict', [], ['111\n'], ['222\n']),
+                           ('unchanged', ['bbb\n']),
                            ])
 
-        self.assertEquals(list(m3.merge_lines('<<', '--', '>>')),
-                          ['aaa',
-                           '<<',
-                           '111',
-                           '--',
-                           '222',
-                           '>>',
-                           'bbb'])
+        ml = m3.merge_lines(name_a='a',
+                            name_b='b',
+                            start_marker='<<',
+                            mid_marker='--',
+                            end_marker='>>')
+        self.assertEquals(''.join(ml),
+'''aaa
+<< a
+111
+--
+222
+>> b
+bbb
+''')
 
 
 
