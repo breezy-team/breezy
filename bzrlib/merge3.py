@@ -101,13 +101,37 @@ class Merge3(object):
             assert matchlen == (aend - amatch)
             assert matchlen == (bend - bmatch)
             
-            if amatch > ia:   # or bmatch > ib:
-                # got an unmatched region; work out if either
-                # alternative is the same as the base
+            len_a = amatch - ia
+            len_b = bmatch - ib
+            len_base = zmatch - iz
+            assert len_a >= 0
+            assert len_b >= 0
+            assert len_base >= 0
 
-                # kludge: return the whole thing as inserted into A
-                yield 'a', ia, amatch
+            if len_a or len_b:
+                lines_base = self.base[iz:zmatch]
+                lines_a = self.a[ia:amatch]
+                lines_b = self.b[ib:bmatch]
+
+                # TODO: check the len just as a shortcut
+                equal_a = (lines_a == lines_base)
+                equal_b = (lines_b == lines_base)
+
+                if equal_a and not equal_b:
+                    yield 'b', ib, bmatch
+                elif equal_b and not equal_a:
+                    yield 'a', ia, amatch
+                elif not equal_a and not equal_b:
+                    yield 'conflict', ia, amatch, ib, bmatch
+                else:
+                    assert 0
+
                 ia = amatch
+                ib = bmatch
+            iz = zmatch
+
+            # if the same part of the base was deleted on both sides
+            # that's OK, we can just skip it.
 
                 
             if matchlen > 0:

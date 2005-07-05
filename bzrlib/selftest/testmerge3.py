@@ -87,6 +87,11 @@ class NoConflicts(TestBase):
                            (1,2, 2,3, 1,2),
                            (2,2, 3,3, 2,2),])
 
+        self.assertEquals(list(m3.merge_regions()),
+                          [('unchanged', 0, 1),
+                           ('a', 1, 2),
+                           ('unchanged', 1, 2),])
+
 
 
 
@@ -104,6 +109,11 @@ class InsertClash(TestBase):
                           [(0,1, 0,1, 0,1),
                            (1,2, 2,3, 2,3),
                            (2,2, 3,3, 3,3),])
+
+        self.assertEquals(list(m3.merge_regions()),
+                          [('unchanged', 0,1),
+                           ('conflict', 1,2, 1,2),
+                           ('unchanged', 1,2)])
 
 
 
