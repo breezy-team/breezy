@@ -104,6 +104,16 @@ class NoConflicts(TestBase):
 
 
 
+class InsertAgreement(TestBase):
+    def runTest(self):
+        m3 = Merge3(['aaa\n', 'bbb\n'],
+                    ['aaa\n', '222\n', 'bbb\n'],
+                    ['aaa\n', '222\n', 'bbb\n'])
+
+        self.assertEquals(''.join(m3.merge_lines()),
+                          'aaa\n222\nbbb\n')
+
+
 
 class InsertClash(TestBase):
     """Both try to insert lines in the same place."""

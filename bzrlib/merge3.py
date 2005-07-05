@@ -88,7 +88,7 @@ class Merge3(object):
             if what == 'unchanged':
                 for i in range(t[1], t[2]):
                     yield self.base[i]
-            elif what == 'a':
+            elif what == 'a' or what == 'same':
                 for i in range(t[1], t[2]):
                     yield self.a[i]
             elif what == 'b':
@@ -118,6 +118,9 @@ class Merge3(object):
         'a', lines
              Lines taken from a
 
+        'same', lines
+             Lines taken from a (and equal to b)
+
         'b', lines
              Lines taken from b
 
@@ -128,7 +131,7 @@ class Merge3(object):
             what = t[0]
             if what == 'unchanged':
                 yield what, self.base[t[1]:t[2]]
-            elif what == 'a':
+            elif what == 'a' or what == 'same':
                 yield what, self.a[t[1]:t[2]]
             elif what == 'b':
                 yield what, self.b[t[1]:t[2]]
@@ -149,6 +152,9 @@ class Merge3(object):
 
         'unchanged', start, end
              Take a region of base[start:end]
+
+        'same', astart, aend
+             b and a are different from base but give the same result
 
         'a', start, end
              Non-clashing insertion from a[start:end]
@@ -189,8 +195,11 @@ class Merge3(object):
                 # TODO: check the len just as a shortcut
                 equal_a = (lines_a == lines_base)
                 equal_b = (lines_b == lines_base)
+                same = lines_a == lines_b
 
-                if equal_a and not equal_b:
+                if same:
+                    yield 'same', ia, amatch
+                elif equal_a and not equal_b:
                     yield 'b', ib, bmatch
                 elif equal_b and not equal_a:
                     yield 'a', ia, amatch
@@ -303,13 +312,14 @@ class Merge3(object):
 
 
 def main(argv):
-    base = file(argv[1], 'rt').readlines()
-    a = file(argv[2], 'rt').readlines()
+    # as for diff3 and meld the syntax is "MINE BASE OTHER"
+    a = file(argv[1], 'rt').readlines()
+    base = file(argv[2], 'rt').readlines()
     b = file(argv[3], 'rt').readlines()
 
     m3 = Merge3(base, a, b)
 
-    sys.stdout.writelines(m3.merge_lines(argv[2], argv[3]))
+    sys.stdout.writelines(m3.merge_lines(name_a=argv[1], name_b=argv[3]))
 
 
 if __name__ == '__main__':
