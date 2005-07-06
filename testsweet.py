@@ -80,7 +80,7 @@ class TestBase(TestCase):
         super(TestBase, self).tearDown()
         self.log("%s teardown" % self.id())
         self.log('')
-        
+
 
     def formcmd(self, cmd):
         if isinstance(cmd, basestring):
@@ -233,7 +233,12 @@ class _MyResult(TestResult):
 
     def startTest(self, test):
         # TODO: Maybe show test.shortDescription somewhere?
-        print >>self.out, '%-60.60s' % test.id(),
+        what = test.id()
+        # python2.3 has the bad habit of just "runit" for doctests
+        if what == 'runit':
+            what = test.shortDescription()
+        
+        print >>self.out, '%-60.60s' % what,
         self.out.flush()
         TestResult.startTest(self, test)
 
