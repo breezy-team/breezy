@@ -21,6 +21,7 @@ try:
     import shutil
     from subprocess import call, Popen, PIPE
 except ImportError, e:
+    import sys
     sys.stderr.write("testbzr: sorry, this test suite requires the subprocess module\n"
                      "this is shipped with python2.4 and available separately for 2.3\n")
     raise
