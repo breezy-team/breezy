@@ -43,6 +43,19 @@ def intersect(ra, rb):
         return None
 
 
+def compare_range(a, astart, aend, b, bstart, bend):
+    """Compare a[astart:aend] == b[bstart:bend], without slicing.
+    """
+    if (aend-astart) != (bend-bstart):
+        return False
+    for ia, ib in zip(xrange(astart, aend), xrange(bstart, bend)):
+        if a[ia] != b[ib]:
+            return False
+    else:
+        return True
+        
+
+
 
 class Merge3(object):
     """3-way merge of texts.
@@ -214,17 +227,13 @@ class Merge3(object):
             #print 'unmatched a=%d, b=%d' % (len_a, len_b)
 
             if len_a or len_b:
-                lines_base = self.base[iz:zmatch]
-                lines_a = self.a[ia:amatch]
-                lines_b = self.b[ib:bmatch]
-
-                # we check the len just as a shortcut
-                equal_a = (len_a == len_base
-                           and lines_a == lines_base)
-                equal_b = (len_b == len_base
-                           and lines_b == lines_base)
-                same = (len_a == len_b
-                        and lines_a == lines_b)
+                # try to avoid actually slicing the lists
+                equal_a = compare_range(self.a, ia, amatch,
+                                        self.base, iz, zmatch)
+                equal_b = compare_range(self.b, ib, bmatch,
+                                        self.base, iz, zmatch)
+                same = compare_range(self.a, ia, amatch,
+                                     self.b, ib, bmatch)
 
                 if same:
                     yield 'same', ia, amatch
@@ -235,7 +244,7 @@ class Merge3(object):
                 elif not equal_a and not equal_b:
                     yield 'conflict', iz, zmatch, ia, amatch, ib, bmatch
                 else:
-                    assert 0
+                    raise AssertionError("can't handle a=b=base but unmatched")
 
                 ia = amatch
                 ib = bmatch
