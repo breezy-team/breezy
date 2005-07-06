@@ -201,3 +201,14 @@ class BranchPathTestCase(TestBase):
         finally:
             os.chdir(savedir)
             shutil.rmtree(dtmp)
+
+
+
+
+TEST_CLASSES = [Unknowns,
+                ValidateRevisionId,
+                PendingMerges,
+                Revert,
+                RenameDirs,
+                BranchPathTestCase,
+                ]

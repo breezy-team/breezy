@@ -64,3 +64,9 @@ class AddInUnversioned(InTempDir):
                           b.add,
                           'foo/hello')
         
+
+
+TEST_CLASSES = [
+    Mkdir,
+    AddInUnversioned,
+    ]

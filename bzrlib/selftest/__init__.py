@@ -39,22 +39,26 @@ def selftest():
     print
 
     suite = TestSuite()
-    tl = TestLoader()
 
     # should also test bzrlib.merge_core, but they seem to be out of date with
     # the code.
 
-    for m in bzrlib.selftest.whitebox, \
-            bzrlib.selftest.versioning, \
-            bzrlib.selftest.testmerge3:
-        suite.addTest(tl.loadTestsFromModule(m))
 
-    for m in bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, \
-            bzrlib.commands, \
-            bzrlib.merge3:
+    # python2.3's TestLoader() doesn't seem to work well; don't know why
+
+    for m in (bzrlib.store,
+              bzrlib.inventory,
+              bzrlib.branch,
+              bzrlib.osutils, 
+              bzrlib.commands, 
+              bzrlib.merge3):
         suite.addTest(DocTestSuite(m))
 
-    suite.addTest(bzrlib.selftest.blackbox.suite())
+    for cl in (bzrlib.selftest.whitebox.TEST_CLASSES 
+               + bzrlib.selftest.versioning.TEST_CLASSES
+               + bzrlib.selftest.testmerge3.TEST_CLASSES
+               + bzrlib.selftest.blackbox.TEST_CLASSES):
+        suite.addTest(cl())
 
     return run_suite(suite)
 

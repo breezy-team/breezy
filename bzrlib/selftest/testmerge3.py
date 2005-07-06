@@ -342,3 +342,21 @@ class MergePoem(TestBase):
         self.log('merge result:')
         self.log(''.join(ml))
         self.assertEquals(ml, MERGED_RESULT)
+
+
+
+TEST_CLASSES = [
+    NoChanges,
+    FrontInsert,
+    NullInsert,
+    NoConflicts,
+    AppendA,
+    AppendB,
+    AppendAgreement,
+    AppendClash,
+    InsertAgreement,
+    InsertClash,
+    ReplaceClash,
+    ReplaceMulti,
+    MergePoem,
+    ]

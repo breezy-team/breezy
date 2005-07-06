@@ -365,16 +365,11 @@ class RevertCommand(InTempDir):
 # do it this way rather than just discovering them all because it
 # allows us to test more basic functions first where failures will be
 # easiest to understand.
-
-def suite():
-    from unittest import TestSuite
-    s = TestSuite()
-    s.addTests([TestVersion(),
-                InitBranch(),
-                HelpCommands(),
-                UserIdentity(),
-                InvalidCommands(),
-                RevertCommand(),
-                OldTests(),
-                ])
-    return s
+TEST_CLASSES = [TestVersion,
+                InitBranch,
+                HelpCommands,
+                UserIdentity,
+                InvalidCommands,
+                RevertCommand,
+                OldTests,
+                ]
