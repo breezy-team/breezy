@@ -24,7 +24,12 @@ from errors import BzrError, BzrCheckError
 
 This module basically gives a quick way to find the SHA-1 and related
 information of a file in the working directory, without actually
-reading and hashing the whole file.
+reading and hashing the whole file.  The information is validated by
+checking the size, mtime, ctime, etc of the file as returned by the
+stat() system call.
+
+This has no relation to the deprecated standard Python module called
+statcache (vs bzrlib.statcache).
 
 
 
