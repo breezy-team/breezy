@@ -108,14 +108,70 @@ class NoConflicts(TestBase):
 
 
 
+class AppendA(TestBase):
+    def runTest(self):
+        m3 = Merge3(['aaa\n', 'bbb\n'],
+                    ['aaa\n', 'bbb\n', '222\n'],
+                    ['aaa\n', 'bbb\n'])
+
+        self.assertEquals(''.join(m3.merge_lines()),
+                          'aaa\nbbb\n222\n')
+
+class AppendB(TestBase):
+    def runTest(self):
+        m3 = Merge3(['aaa\n', 'bbb\n'],
+                    ['aaa\n', 'bbb\n'],
+                    ['aaa\n', 'bbb\n', '222\n'])
+
+        self.assertEquals(''.join(m3.merge_lines()),
+                          'aaa\nbbb\n222\n')
+
+class AppendAgreement(TestBase):
+    def runTest(self):
+        m3 = Merge3(['aaa\n', 'bbb\n'],
+                    ['aaa\n', 'bbb\n', '222\n'],
+                    ['aaa\n', 'bbb\n', '222\n'])
+
+        self.assertEquals(''.join(m3.merge_lines()),
+                          'aaa\nbbb\n222\n')
+
+class AppendClash(TestBase):
+    def runTest(self):
+        m3 = Merge3(['aaa\n', 'bbb\n'],
+                    ['aaa\n', 'bbb\n', '222\n'],
+                    ['aaa\n', 'bbb\n', '333\n'])
+
+        ml = m3.merge_lines(name_a='a',
+                            name_b='b',
+                            start_marker='<<',
+                            mid_marker='--',
+                            end_marker='>>')
+        self.assertEquals(''.join(ml),
+'''\
+aaa
+bbb
+<< a
+222
+--
+333
+>> b
+''')
+
+
 class InsertAgreement(TestBase):
     def runTest(self):
         m3 = Merge3(['aaa\n', 'bbb\n'],
                     ['aaa\n', '222\n', 'bbb\n'],
                     ['aaa\n', '222\n', 'bbb\n'])
 
+        ml = m3.merge_lines(name_a='a',
+                            name_b='b',
+                            start_marker='<<',
+                            mid_marker='--',
+                            end_marker='>>')
         self.assertEquals(''.join(m3.merge_lines()),
                           'aaa\n222\nbbb\n')
+
 
 
 
