@@ -26,6 +26,7 @@ def selftest():
     import bzrlib.selftest.blackbox
     import bzrlib.selftest.versioning
     import bzrlib.selftest.testmerge3
+    import bzrlib.selftest.testhashcache
     import bzrlib.merge_core
     from doctest import DocTestSuite
     import os
@@ -57,10 +58,11 @@ def selftest():
     for cl in (bzrlib.selftest.whitebox.TEST_CLASSES 
                + bzrlib.selftest.versioning.TEST_CLASSES
                + bzrlib.selftest.testmerge3.TEST_CLASSES
+               + bzrlib.selftest.testhashcache.TEST_CLASSES
                + bzrlib.selftest.blackbox.TEST_CLASSES):
         suite.addTest(cl())
 
-    return run_suite(suite)
+    return run_suite(suite, 'testbzr')
 
 
 

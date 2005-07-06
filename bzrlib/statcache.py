@@ -40,6 +40,14 @@ Users of this module should not need to know about how this is
 implemented, and in particular should not depend on the particular
 data which is stored or its format.
 
+The cache maintains a mapping from filename to the SHA-1 of the
+content of the file.
+
+The cache also stores a fingerprint of (size, mtime, ctime, ino, dev)
+which is used to validate that the entry is up-to-date.
+
+
+
 This is done by maintaining a cache indexed by a file fingerprint of
 (path, size, mtime, ctime, ino, dev) pointing to the SHA-1.  If the
 fingerprint has changed, we assume the file content has not changed
