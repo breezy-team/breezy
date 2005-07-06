@@ -20,7 +20,6 @@ import os
 import bzrlib.tree
 from errors import BzrCheckError
 from trace import mutter
-import statcache
 
 class WorkingTree(bzrlib.tree.Tree):
     """Working copy tree.
@@ -92,9 +91,9 @@ class WorkingTree(bzrlib.tree.Tree):
     
 
     def _update_statcache(self):
-        import statcache
         if not self._statcache:
-            self._statcache = statcache.update_cache(self.basedir, self.inventory)
+            from bzrlib.statcache import update_cache
+            self._statcache = update_cache(self.basedir, self.inventory)
 
     def get_file_size(self, file_id):
         import os, stat
@@ -102,7 +101,8 @@ class WorkingTree(bzrlib.tree.Tree):
 
 
     def get_file_sha1(self, file_id):
-        return self._statcache[file_id][statcache.SC_SHA1]
+        from bzrlib.statcache import SC_SHA1
+        return self._statcache[file_id][SC_SHA1]
 
 
     def file_class(self, filename):

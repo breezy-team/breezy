@@ -770,10 +770,10 @@ class cmd_modified(Command):
     """List files modified in working tree."""
     hidden = True
     def run(self):
-        import statcache
+        from bzrlib.statcache import update_cache, SC_SHA1
         b = find_branch('.')
         inv = b.read_working_inventory()
-        sc = statcache.update_cache(b, inv)
+        sc = update_cache(b, inv)
         basis = b.basis_tree()
         basis_inv = basis.inventory
         
@@ -787,7 +787,7 @@ class cmd_modified(Command):
             if not cacheentry:                 # deleted
                 continue
             ie = basis_inv[file_id]
-            if cacheentry[statcache.SC_SHA1] != ie.text_sha1:
+            if cacheentry[SC_SHA1] != ie.text_sha1:
                 path = inv.id2path(file_id)
                 print path
 
@@ -1316,9 +1316,9 @@ class cmd_update_stat_cache(Command):
     For testing only."""
     hidden = True
     def run(self):
-        import statcache
+        from bzrlib.statcache import update_cache
         b = find_branch('.')
-        statcache.update_cache(b.base, b.read_working_inventory())
+        update_cache(b.base, b.read_working_inventory())
 
 
 
