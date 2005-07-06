@@ -197,6 +197,8 @@ class Merge3(object):
         iz = ia = ib = 0
         
         for zmatch, zend, amatch, aend, bmatch, bend in self.find_sync_regions():
+            #print 'match base [%d:%d]' % (zmatch, zend)
+            
             matchlen = zend - zmatch
             assert matchlen >= 0
             assert matchlen == (aend - amatch)
@@ -208,6 +210,8 @@ class Merge3(object):
             assert len_a >= 0
             assert len_b >= 0
             assert len_base >= 0
+
+            #print 'unmatched a=%d, b=%d' % (len_a, len_b)
 
             if len_a or len_b:
                 lines_base = self.base[iz:zmatch]
@@ -260,13 +264,19 @@ class Merge3(object):
         always a zero-length sync region at the end of all the files.
         """
         from difflib import SequenceMatcher
-        aiter = iter(SequenceMatcher(None, self.base, self.a).get_matching_blocks())
-        biter = iter(SequenceMatcher(None, self.base, self.b).get_matching_blocks())
 
-        abase, amatch, alen = aiter.next()
-        bbase, bmatch, blen = biter.next()
+        ia = ib = 0
+        amatches = SequenceMatcher(None, self.base, self.a).get_matching_blocks()
+        bmatches = SequenceMatcher(None, self.base, self.b).get_matching_blocks()
+        len_a = len(amatches)
+        len_b = len(bmatches)
 
-        while aiter and biter:
+        sl = []
+
+        while ia < len_a and ib < len_b:
+            abase, amatch, alen = amatches[ia]
+            bbase, bmatch, blen = bmatches[ib]
+
             # there is an unconflicted block at i; how long does it
             # extend?  until whichever one ends earlier.
             i = intersect((abase, abase+alen), (bbase, bbase+blen))
@@ -289,23 +299,25 @@ class Merge3(object):
 
                 assert self.base[intbase:intend] == self.a[asub:aend], \
                        (self.base[intbase:intend], self.a[asub:aend])
-                
+
                 assert self.base[intbase:intend] == self.b[bsub:bend]
 
-                yield (intbase, intend,
-                       asub, aend,
-                       bsub, bend)
+                sl.append((intbase, intend,
+                           asub, aend,
+                           bsub, bend))
 
             # advance whichever one ends first in the base text
             if (abase + alen) < (bbase + blen):
-                abase, amatch, alen = aiter.next()
+                ia += 1
             else:
-                bbase, bmatch, blen = biter.next()
-
+                ib += 1
+            
         intbase = len(self.base)
         abase = len(self.a)
         bbase = len(self.b)
-        yield (intbase, intbase, abase, abase, bbase, bbase)
+        sl.append((intbase, intbase, abase, abase, bbase, bbase))
+
+        return sl
 
 
 
@@ -349,6 +361,9 @@ def main(argv):
     b = file(argv[3], 'rt').readlines()
 
     m3 = Merge3(base, a, b)
+
+    #for sr in m3.find_sync_regions():
+    #    print sr
 
     # sys.stdout.writelines(m3.merge_lines(name_a=argv[1], name_b=argv[3]))
     sys.stdout.writelines(m3.merge_annotated())
