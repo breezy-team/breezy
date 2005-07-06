@@ -476,7 +476,7 @@ class Inventory(object):
 
     def from_element(cls, elt):
         """Construct from XML Element
-
+        
         >>> inv = Inventory()
         >>> inv.add(InventoryEntry('foo.c-123981239', 'foo.c', 'file', ROOT_ID))
         >>> elt = inv.to_element()
@@ -484,6 +484,7 @@ class Inventory(object):
         >>> inv2 == inv
         True
         """
+        # XXXX: doctest doesn't run this properly under python2.3
         assert elt.tag == 'inventory'
         o = cls()
         for e in elt:

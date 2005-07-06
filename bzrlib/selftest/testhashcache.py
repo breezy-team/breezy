@@ -81,7 +81,7 @@ class TestStatCache(InTempDir):
         self.assertEquals(hc.danger_count, 1)
 
         self.assertEquals(hc.get_sha1('subdir'), None)
-        
+
 
 
 TEST_CLASSES = [
