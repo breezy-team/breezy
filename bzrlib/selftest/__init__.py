@@ -17,10 +17,14 @@
 
 from testsweet import TestBase, run_suite, InTempDir
 
+MODULES_TO_TEST = []
+MODULES_TO_DOCTEST = []
 
 def selftest():
     from unittest import TestLoader, TestSuite
-    import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch, bzrlib.osutils, bzrlib.commands
+    import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
+    import bzrlib.osutils, bzrlib.commands, bzrlib.merge3
+    global MODULES_TO_TEST, MODULES_TO_DOCTEST
 
     import bzrlib.selftest.whitebox
     import bzrlib.selftest.blackbox
@@ -35,6 +39,17 @@ def selftest():
     import sys
     import unittest
 
+    for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
+              bzrlib.osutils, bzrlib.commands, bzrlib.merge3):
+        if m not in MODULES_TO_DOCTEST:
+            MODULES_TO_DOCTEST.append(m)
+    for m in (bzrlib.selftest.whitebox,
+              bzrlib.selftest.versioning,
+              bzrlib.selftest.testmerge3):
+        if m not in MODULES_TO_TEST:
+            MODULES_TO_TEST.append(m)
+
+
     TestBase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
     print '%-30s %s' % ('bzr binary', TestBase.BZRPATH)
 
@@ -47,21 +62,18 @@ def selftest():
 
 
     # python2.3's TestLoader() doesn't seem to work well; don't know why
+    for m in MODULES_TO_TEST:
+         suite.addTest(TestLoader().loadTestsFromModule(m))
 
-    for m in (bzrlib.store,
-              bzrlib.inventory,
-              bzrlib.branch,
-              bzrlib.osutils, 
-              bzrlib.commands, 
-              bzrlib.merge3):
+    for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
 
-    for cl in (bzrlib.selftest.whitebox.TEST_CLASSES 
-               + bzrlib.selftest.versioning.TEST_CLASSES
-               + bzrlib.selftest.testmerge3.TEST_CLASSES
-               + bzrlib.selftest.testhashcache.TEST_CLASSES
-               + bzrlib.selftest.blackbox.TEST_CLASSES):
-        suite.addTest(cl())
+#     for cl in (bzrlib.selftest.whitebox.TEST_CLASSES 
+#                + bzrlib.selftest.versioning.TEST_CLASSES
+#                + bzrlib.selftest.testmerge3.TEST_CLASSES
+#                + bzrlib.selftest.testhashcache.TEST_CLASSES
+#                + bzrlib.selftest.blackbox.TEST_CLASSES):
+#         suite.addTest(cl())
 
     suite.addTest(unittest.makeSuite(bzrlib.merge_core.MergeTest, 'test_'))
 
