@@ -1042,19 +1042,32 @@ class cmd_export(Command):
     If no revision is specified this exports the last committed revision.
 
     Format may be an "exporter" name, such as tar, tgz, tbz2.  If none is
-    given, exports to a directory (equivalent to --format=dir).
+    given, try to find the format with the extension. If no extension
+    is found exports to a directory (equivalent to --format=dir).
 
-    Root may be the top directory for tar, tgz and tbz2 formats."""
+    Root may be the top directory for tar, tgz and tbz2 formats. If none
+    is given, the top directory will be the root name of the file."""
     # TODO: list known exporters
     takes_args = ['dest']
     takes_options = ['revision', 'format', 'root']
-    def run(self, dest, revision=None, format='dir', root=None):
+    def run(self, dest, revision=None, format=None, root=None):
+        import os.path
         b = find_branch('.')
         if revision == None:
             rh = b.revision_history()[-1]
         else:
             rh = b.lookup_revision(int(revision))
         t = b.revision_tree(rh)
+        root, ext = os.path.splitext(dest)
+        if not format:
+            if ext in (".tar",):
+                format = "tar"
+            elif ext in (".gz", ".tgz"):
+                format = "tgz"
+            elif ext in (".bz2", ".tbz2"):
+                format = "tbz2"
+            else:
+                format = "dir"
         t.export(dest, format, root)
 
 
