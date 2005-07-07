@@ -17,6 +17,10 @@ less, and several days or more.
 Small things
 ------------
 
+* Merge should ignore the destination's working directory, otherwise
+  we get an error about the statcache when pulling from a remote
+  branch.
+
 * Add of a file that was present in the base revision should put back
   the previous file-id.
 

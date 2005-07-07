@@ -80,6 +80,12 @@ class MergeConflictHandler(ExceptionConflictHandler):
         moved_path = self.add_suffix(target, ".moved")
         self.conflict("Moved existing %s to %s" % (target, moved_path))
 
+    def rmdir_non_empty(self, filename):
+        """Handle the case where the dir to be removed still has contents"""
+        self.conflict("Directory %s not removed because it is not empty"\
+            % filename)
+        return "skip"
+
     def finalize(self):
         if not self.ignore_zero:
             print "%d conflicts encountered.\n" % self.conflicts
@@ -121,8 +127,6 @@ def file_exists(tree, file_id):
 def inventory_map(tree):
     inventory = {}
     for file_id in tree.inventory:
-        if not file_exists(tree, file_id):
-            continue
         path = abspath(tree, file_id)
         inventory[path] = SourceFile(path, file_id)
     return inventory
@@ -142,6 +146,8 @@ class MergeTree(object):
         self.cached = {}
 
     def readonly_path(self, id):
+        if id not in self.tree:
+            return None
         if self.root is not None:
             return self.tree.abspath(self.tree.id2path(id))
         else:

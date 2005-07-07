@@ -24,7 +24,10 @@ __docformat__ = "restructuredtext"
 
 NULL_ID = "!NULL"
 
-
+class OldFailedTreeOp(Exception):
+    def __init__(self):
+        Exception.__init__(self, "bzr-tree-change contains files from a"
+                           " previous failed merge operation.")
 def invert_dict(dict):
     newdict = {}
     for (key,value) in dict.iteritems():
@@ -826,10 +829,10 @@ def get_rename_entries(changeset, inventory, reverse):
     my_sort(target_entries, shortest_to_longest)
     return (source_entries, target_entries)
 
-def rename_to_temp_delete(source_entries, inventory, dir, conflict_handler,
-                          reverse):
+def rename_to_temp_delete(source_entries, inventory, dir, temp_dir, 
+                          conflict_handler, reverse):
     """Delete and rename entries as appropriate.  Entries are renamed to temp
-    names.  A map of id -> temp name is returned.
+    names.  A map of id -> temp name (or None, for deletions) is returned.
 
     :param source_entries: The entries to rename and delete
     :type source_entries: List of `ChangesetEntry`
@@ -842,16 +845,16 @@ def rename_to_temp_delete(source_entries, inventory, dir, conflict_handler,
     :return: a mapping of id to temporary name
     :rtype: Dictionary
     """
-    temp_dir = os.path.join(dir, "temp")
     temp_name = {}
     for i in range(len(source_entries)):
         entry = source_entries[i]
         if entry.is_deletion(reverse):
             path = os.path.join(dir, inventory[entry.id])
             entry.apply(path, conflict_handler, reverse)
+            temp_name[entry.id] = None
 
         else:
-            to_name = temp_dir+"/"+str(i)
+            to_name = os.path.join(temp_dir, str(i))
             src_path = inventory.get(entry.id)
             if src_path is not None:
                 src_path = os.path.join(dir, src_path)
@@ -867,12 +870,12 @@ def rename_to_temp_delete(source_entries, inventory, dir, conflict_handler,
     return temp_name
 
 
-def rename_to_new_create(temp_name, target_entries, inventory, changeset, dir,
-                         conflict_handler, reverse):
+def rename_to_new_create(changed_inventory, target_entries, inventory, 
+                         changeset, dir, conflict_handler, reverse):
     """Rename entries with temp names to their final names, create new files.
 
-    :param temp_name: A mapping of id to temporary name
-    :type temp_name: Dictionary
+    :param changed_inventory: A mapping of id to temporary name
+    :type changed_inventory: Dictionary
     :param target_entries: The entries to apply changes to
     :type target_entries: List of `ChangesetEntry`
     :param changeset: The changeset to apply
@@ -883,22 +886,24 @@ def rename_to_new_create(temp_name, target_entries, inventory, changeset, dir,
     :type reverse: bool
     """
     for entry in target_entries:
-        new_path = entry.get_new_path(inventory, changeset, reverse)
-        if new_path is None:
+        new_tree_path = entry.get_new_path(inventory, changeset, reverse)
+        if new_tree_path is None:
             continue
-        new_path = os.path.join(dir, new_path)
-        old_path = temp_name.get(entry.id)
+        new_path = os.path.join(dir, new_tree_path)
+        old_path = changed_inventory.get(entry.id)
         if os.path.exists(new_path):
             if conflict_handler.target_exists(entry, new_path, old_path) == \
                 "skip":
                 continue
         if entry.is_creation(reverse):
             entry.apply(new_path, conflict_handler, reverse)
+            changed_inventory[entry.id] = new_tree_path
         else:
             if old_path is None:
                 continue
             try:
                 os.rename(old_path, new_path)
+                changed_inventory[entry.id] = new_tree_path
             except OSError, e:
                 raise Exception ("%s is missing" % new_path)
 
@@ -1006,6 +1011,19 @@ class MissingForRename(Exception):
         Exception.__init__(self, msg)
         self.filename = filename
 
+class NewContentsConflict(Exception):
+    def __init__(self, filename):
+        msg = "Conflicting contents for new file %s" % (filename)
+        Exception.__init__(self, msg)
+
+
+class MissingForMerge(Exception):
+    def __init__(self, filename):
+        msg = "The file %s was modified, but does not exist in this tree"\
+            % (filename)
+        Exception.__init__(self, msg)
+
+
 class ExceptionConflictHandler(object):
     def __init__(self, dir):
         self.dir = dir
@@ -1066,6 +1084,12 @@ class ExceptionConflictHandler(object):
     def missing_for_rename(self, filename):
         raise MissingForRename(filename)
 
+    def missing_for_merge(self, file_id, inventory):
+        raise MissingForMerge(inventory.other.get_path(file_id))
+
+    def new_contents_conflict(self, filename, other_contents):
+        raise NewContentsConflict(filename)
+
     def finalize():
         pass
 
@@ -1086,8 +1110,19 @@ def apply_changeset(changeset, inventory, dir, conflict_handler=None,
     """
     if conflict_handler is None:
         conflict_handler = ExceptionConflictHandler(dir)
-    temp_dir = dir+"/temp"
-    os.mkdir(temp_dir)
+    temp_dir = os.path.join(dir, "bzr-tree-change")
+    try:
+        os.mkdir(temp_dir)
+    except OSError, e:
+        if e.errno == errno.EEXIST:
+            try:
+                os.rmdir(temp_dir)
+            except OSError, e:
+                if e.errno == errno.ENOTEMPTY:
+                    raise OldFailedTreeOp()
+            os.mkdir(temp_dir)
+        else:
+            raise
     
     #apply changes that don't affect filenames
     for entry in changeset.entries.itervalues():
@@ -1102,21 +1137,14 @@ def apply_changeset(changeset, inventory, dir, conflict_handler=None,
     (source_entries, target_entries) = get_rename_entries(changeset, inventory,
                                                           reverse)
 
-    temp_name = rename_to_temp_delete(source_entries, inventory, dir,
-                                      conflict_handler, reverse)
+    changed_inventory = rename_to_temp_delete(source_entries, inventory, dir,
+                                              temp_dir, conflict_handler,
+                                              reverse)
 
-    rename_to_new_create(temp_name, target_entries, inventory, changeset, dir,
-                         conflict_handler, reverse)
+    rename_to_new_create(changed_inventory, target_entries, inventory,
+                         changeset, dir, conflict_handler, reverse)
     os.rmdir(temp_dir)
-    r_inventory = invert_dict(inventory)
-    new_entries, removed_entries = get_inventory_change(inventory,
-    r_inventory, changeset, reverse)
-    new_inventory = {}
-    for path, file_id in new_entries.iteritems():
-        new_inventory[file_id] = path
-    for file_id in removed_entries:
-        new_inventory[file_id] = None
-    return new_inventory
+    return changed_inventory
 
 
 def apply_changeset_tree(cset, tree, reverse=False):
@@ -1133,17 +1161,13 @@ def apply_changeset_tree(cset, tree, reverse=False):
 def get_inventory_change(inventory, new_inventory, cset, reverse=False):
     new_entries = {}
     remove_entries = []
-    r_inventory = invert_dict(inventory)
-    r_new_inventory = invert_dict(new_inventory)
     for entry in cset.entries.itervalues():
         if entry.needs_rename():
-            old_path = r_inventory.get(entry.id)
-            if old_path is not None:
-                remove_entries.append(old_path)
+            new_path = entry.get_new_path(inventory, cset)
+            if new_path is None:
+                remove_entries.append(entry.id)
             else:
-                new_path = entry.get_new_path(inventory, cset)
-                if new_path is not None:
-                    new_entries[new_path] = entry.id
+                new_entries[new_path] = entry.id
     return new_entries, remove_entries
 
 
@@ -1517,15 +1541,23 @@ class Inventory(object):
         return self.inventory.get(id)
 
     def get_name(self, id):
-        return os.path.basename(self.get_path(id))
+        path = self.get_path(id)
+        if path is None:
+            return None
+        else:
+            return os.path.basename(path)
 
     def get_dir(self, id):
         path = self.get_path(id)
         if path == "":
             return None
+        if path is None:
+            return None
         return os.path.dirname(path)
 
     def get_parent(self, id):
+        if self.get_path(id) is None:
+            return None
         directory = self.get_dir(id)
         if directory == '.':
             directory = './.'

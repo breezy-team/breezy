@@ -48,55 +48,22 @@ def make_merge_changeset(cset, inventory, this, base, other,
     for entry in cset.entries.itervalues():
         if entry.is_boring():
             new_cset.add_entry(entry)
-        elif entry.is_creation(False):
-            if inventory.this.get_path(entry.id) is None:
-                new_cset.add_entry(entry)
-            else:
-                this_contents = get_this_contents(entry.id)
-                other_contents = entry.contents_change.new_contents
-                if other_contents == this_contents:
-                    boring_entry = changeset.ChangesetEntry(entry.id, 
-                                                            entry.new_parent, 
-                                                            entry.new_path)
-                    new_cset.add_entry(boring_entry)
-                else:
-                    conflict_handler.contents_conflict(this_contents, 
-                                                       other_contents)
-
-        elif entry.is_deletion(False):
-            if inventory.this.get_path(entry.id) is None:
-                boring_entry = changeset.ChangesetEntry(entry.id, entry.parent, 
-                                                        entry.path)
-                new_cset.add_entry(boring_entry)
-            elif entry.contents_change is not None:
-                this_contents = get_this_contents(entry.id) 
-                base_contents = entry.contents_change.old_contents
-                if base_contents == this_contents:
-                    new_cset.add_entry(entry)
-                else:
-                    entry_path = inventory.this.get_path(entry.id)
-                    conflict_handler.rem_contents_conflict(entry_path,
-                                                           this_contents, 
-                                                           base_contents)
-
-            else:
-                new_cset.add_entry(entry)
         else:
-            entry = get_merge_entry(entry, inventory, base, other, 
-                                    conflict_handler)
-            if entry is not None:
-                new_cset.add_entry(entry)
+            new_entry = make_merged_entry(entry, inventory, conflict_handler)
+            new_contents = make_merged_contents(entry, this, base, other,
+                                                conflict_handler)
+            new_entry.contents_change = new_contents
+            new_entry.metadata_change = make_merged_metadata(entry, base, other)
+            new_cset.add_entry(new_entry)
+
     return new_cset
 
-
-def get_merge_entry(entry, inventory, base, other, conflict_handler):
+def make_merged_entry(entry, inventory, conflict_handler):
     this_name = inventory.this.get_name(entry.id)
     this_parent = inventory.this.get_parent(entry.id)
     this_dir = inventory.this.get_dir(entry.id)
     if this_dir is None:
         this_dir = ""
-    if this_name is None:
-        return conflict_handler.merge_missing(entry.id, inventory)
 
     base_name = inventory.base.get_name(entry.id)
     base_parent = inventory.base.get_parent(entry.id)
@@ -133,17 +100,65 @@ def get_merge_entry(entry, inventory, base, other, conflict_handler):
             old_dir = this_dir
             new_parent = other_parent
             new_dir = other_dir
-    old_path = os.path.join(old_dir, old_name)
+    if old_name is not None and old_parent is not None:
+        old_path = os.path.join(old_dir, old_name)
+    else:
+        old_path = None
     new_entry = changeset.ChangesetEntry(entry.id, old_parent, old_name)
-    if new_name is not None or new_parent is not None:
+    if new_name is not None and new_parent is not None:
         new_entry.new_path = os.path.join(new_dir, new_name)
     else:
         new_entry.new_path = None
     new_entry.new_parent = new_parent
+    return new_entry
 
-    base_path = base.readonly_path(entry.id)
-    other_path = other.readonly_path(entry.id)
+
+def make_merged_contents(entry, this, base, other, conflict_handler):
+    contents = entry.contents_change
+    if contents is None:
+        return None
+    this_path = this.readonly_path(entry.id)
+    def make_diff3():
+        if this_path is None:
+            return conflict_handler.missing_for_merge(entry.id, inventory)
+        base_path = base.readonly_path(entry.id)
+        other_path = other.readonly_path(entry.id)    
+        return changeset.Diff3Merge(base_path, other_path)
+
+    if isinstance(contents, changeset.PatchApply):
+        return make_diff3()
+    if isinstance(contents, changeset.ReplaceContents):
+        if contents.old_contents is None and contents.new_contents is None:
+            return None
+        if contents.new_contents is None:
+            if this_path is not None and os.path.exists(this_path):
+                return contents
+            else:
+                return None
+        elif contents.old_contents is None:
+            if this_path is None or not os.path.exists(this_path):
+                return contents
+            else:
+                this_contents = file(this_path, "rb").read()
+                if this_contents == contents.new_contents:
+                    return None
+                else:
+                    other_path = other.readonly_path(entry.id)    
+                    conflict_handler.new_contents_conflict(this_path, 
+                                                           other_path)
+        elif isinstance(contents.old_contents, changeset.FileCreate) and \
+            isinstance(contents.new_contents, changeset.FileCreate):
+            return make_diff3()
+        else:
+            raise Exception("Unhandled merge scenario")
+
+def make_merged_metadata(entry, base, other):
+    if entry.metadata_change is not None:
+        base_path = base.readonly_path(entry.id)
+        other_path = other.readonly_path(entry.id)    
+        return PermissionsMerge(base_path, other_path)
     
+def get_merge_entry(entry, inventory, base, other, conflict_handler):
     if entry.contents_change is not None:
         new_entry.contents_change = changeset.Diff3Merge(base_path, other_path)
     if entry.metadata_change is not None:
@@ -209,6 +224,9 @@ class MergeTree(object):
 
     def full_path(self, id):
         return self.abs_path(self.inventory[id])
+
+    def readonly_path(self, id):
+        return self.full_path(id)
 
     def change_path(self, id, path):
         new = os.path.join(self.dir, self.inventory[id])
@@ -329,14 +347,60 @@ class MergeBuilder(object):
                                           Inventory(self.base.inventory), 
                                           Inventory(self.other.inventory))
         conflict_handler = changeset.ExceptionConflictHandler(self.this.dir)
-        return make_merge_changeset(self.cset, all_inventory, self.this.dir,
-                                    self.base.dir, self.other.dir, 
-                                    conflict_handler)
+        return make_merge_changeset(self.cset, all_inventory, self.this,
+                                    self.base, self.other, conflict_handler)
+
+    def apply_inv_change(self, inventory_change, orig_inventory):
+        orig_inventory_by_path = {}
+        for file_id, path in orig_inventory.iteritems():
+            orig_inventory_by_path[path] = file_id
+
+        def parent_id(file_id):
+            try:
+                parent_dir = os.path.dirname(orig_inventory[file_id])
+            except:
+                print file_id
+                raise
+            if parent_dir == "":
+                return None
+            return orig_inventory_by_path[parent_dir]
+        
+        def new_path(file_id):
+            if inventory_change.has_key(file_id):
+                return inventory_change[file_id]
+            else:
+                parent = parent_id(file_id)
+                if parent is None:
+                    return orig_inventory[file_id]
+                dirname = new_path(parent)
+                return os.path.join(dirname, orig_inventory[file_id])
+
+        new_inventory = {}
+        for file_id in orig_inventory.iterkeys():
+            path = new_path(file_id)
+            if path is None:
+                continue
+            new_inventory[file_id] = path
+
+        for file_id, path in inventory_change.iteritems():
+            if orig_inventory.has_key(file_id):
+                continue
+            new_inventory[file_id] = path
+        return new_inventory
+
+        
+
     def apply_changeset(self, cset, conflict_handler=None, reverse=False):
-        self.this.inventory = \
-            changeset.apply_changeset(cset, self.this.inventory,
-                                      self.this.dir, conflict_handler,
-                                      reverse)
+        inventory_change = changeset.apply_changeset(cset,
+                                                     self.this.inventory,
+                                                     self.this.dir,
+                                                     conflict_handler, reverse)
+        self.this.inventory =  self.apply_inv_change(inventory_change, 
+                                                     self.this.inventory)
+
+                    
+        
+
         
     def cleanup(self):
         shutil.rmtree(self.dir)
