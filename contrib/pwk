@@ -16,7 +16,7 @@ PATCH_OPTS='-p0'
 usage() {
     cat <<EOF
 usage: 
-   pwk show PATCH-ID       show the patch text
+   pwk cat PATCH-ID       show the patch text
    pwk try PATCH-ID        see if the patch applies cleanly
    pwk apply PATCH-ID      apply patch into current directory
 EOF
