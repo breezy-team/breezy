@@ -33,6 +33,7 @@ def selftest():
     import shutil
     import time
     import sys
+    import unittest
 
     TestBase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
     print '%-30s %s' % ('bzr binary', TestBase.BZRPATH)
@@ -61,6 +62,8 @@ def selftest():
                + bzrlib.selftest.testhashcache.TEST_CLASSES
                + bzrlib.selftest.blackbox.TEST_CLASSES):
         suite.addTest(cl())
+
+    suite.addTest(unittest.makeSuite(bzrlib.merge_core.MergeTest, 'test_'))
 
     return run_suite(suite, 'testbzr')
 
