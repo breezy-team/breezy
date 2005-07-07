@@ -533,7 +533,7 @@ class ReplaceLine(TestBase):
 
 
 class Merge(TestBase):
-    """Versions that merge diverged parents"""
+    """Storage of versions that merge diverged parents"""
     def runTest(self):
         k = Weave()
 
@@ -567,6 +567,44 @@ class Merge(TestBase):
         self.check_read_write(k)
 
 
+class Conflicts(TestBase):
+    """Test detection of conflicting regions during a merge.
+
+    A base version is inserted, then two descendents try to
+    insert different lines in the same place.  These should be
+    reported as a possible conflict and forwarded to the user."""
+    def runTest(self):
+        return  # NOT RUN
+        k = Weave()
+
+        k.add([], ['aaa', 'bbb'])
+        k.add([0], ['aaa', '111', 'bbb'])
+        k.add([1], ['aaa', '222', 'bbb'])
+
+        merged = k.merge([1, 2])
+
+        self.assertEquals([[['aaa']],
+                           [['111'], ['222']],
+                           [['bbb']]])
+
+
+
+class NonConflict(TestBase):
+    """Two descendants insert compatible changes.
+
+    No conflict should be reported."""
+    def runTest(self):
+        return  # NOT RUN
+        k = Weave()
+
+        k.add([], ['aaa', 'bbb'])
+        k.add([0], ['111', 'aaa', 'ccc', 'bbb'])
+        k.add([1], ['aaa', 'ccc', 'bbb', '222'])
+
+    
+    
+
+
 class AutoMerge(TestBase):
     def runTest(self):
         k = Weave()
@@ -582,7 +620,7 @@ class AutoMerge(TestBase):
 
         self.log('k._l=' + pformat(k._l))
 
-        m = list(k.merge_iter([0, 1, 2]))
+        m = list(k.mash_iter([0, 1, 2]))
 
         self.assertEqual(m,
                          ['header', 'aaa',

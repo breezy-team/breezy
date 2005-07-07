@@ -144,13 +144,13 @@ def read_weave_v1(f):
         if l == 'W\n':
             break
         elif l.startswith('. '):
-            w._l.append(l[2:])           # include newline
+            w._l.append(intern(l[2:]))  # include newline
         elif l.startswith(', '):
             w._l.append(l[2:-1])        # exclude newline
         else:
             assert l[0] in '{}[]', l
             assert l[1] == ' ', l
-            w._l.append((l[0], int(l[2:])))
+            w._l.append((intern(l[0]), int(l[2:])))
 
     return w
     

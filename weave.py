@@ -313,7 +313,7 @@ class Weave(object):
         # just by just counting as we go along.
 
         WFE = WeaveFormatError
-        
+
         for l in self._l:
             if isinstance(l, tuple):
                 isactive = None         # recalculate
@@ -341,6 +341,7 @@ class Weave(object):
                         if istack[-1] == v:
                             raise WFE("version %d deletes own text on line %d"
                                       % (v, lineno))
+                        # XXX
                         dset.add(v)
                 elif c == ']':
                     if v in dset:
@@ -382,7 +383,7 @@ class Weave(object):
         return list(self.get_iter(index))
 
 
-    def merge_iter(self, included):
+    def mash_iter(self, included):
         """Return composed version of multiple included versions."""
         included = frozenset(included)
         for origin, lineno, text in self._extract(included):
@@ -427,6 +428,23 @@ class Weave(object):
                 raise WeaveError("mismatched sha1 for version %d; "
                                  "got %s, expected %s"
                                  % (version, hd, expected))
+
+
+
+    def merge(self, merge_versions):
+        """Automerge and mark conflicts between versions.
+
+        This returns a sequence, each entry describing alternatives
+        for a chunk of the file.  Each of the alternatives is given as
+        a list of lines.
+
+        If there is a chunk of the file where there's no diagreement,
+        only one alternative is given.
+        """
+
+        # approach: find the included versions common to all the
+        # merged versions
+        raise NotImplementedError()
 
 
 
