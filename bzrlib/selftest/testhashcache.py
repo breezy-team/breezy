@@ -96,7 +96,12 @@ class TestHashCache(InTempDir):
         del hc
 
         hc = HashCache('.')
-        # hc.read('stat-cache')
+        hc.read('stat-cache')
+
+        self.assertEquals(len(hc._cache), 1)
+        self.assertEquals(hc.get_sha1('foo'), sha1('g00dbye'))
+        self.assertEquals(hc.hit_count, 1)
+        self.assertEquals(hc.miss_count, 0)
         
 
         

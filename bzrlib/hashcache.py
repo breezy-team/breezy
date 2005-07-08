@@ -17,7 +17,7 @@
 
 
 
-CACHE_HEADER = "### bzr statcache v5"    
+CACHE_HEADER = "### bzr statcache v5\n"
 
 
 def _fingerprint(abspath):
@@ -137,7 +137,7 @@ class HashCache(object):
 
         outf = AtomicFile(cachefn, 'wb')
         try:
-            outf.write(CACHE_HEADER + '\n')
+            print >>outf, CACHE_HEADER,
 
             for path, c  in self._cache.iteritems():
                 assert '//' not in path, path
@@ -145,11 +145,55 @@ class HashCache(object):
                 outf.write('// ')
                 print >>outf, c[0],     # hex sha1
                 for fld in c[1]:
-                    print >>outf, fld,
+                    print >>outf, "%d" % fld,
                 print >>outf
 
             outf.commit()
         finally:
             if not outf.closed:
                 outf.abort()
+        
+
+
+    def read(self, cachefn):
+        """Reinstate cache from file.
+
+        Overwrites existing cache.
+
+        If the cache file has the wrong version marker, this just clears 
+        the cache."""
+        from bzrlib.trace import mutter, warning
+
+        inf = file(cachefn, 'rb')
+        self._cache = {}
+
+        hdr = inf.readline()
+        if hdr != CACHE_HEADER:
+            mutter('cache header marker not found at top of %s; discarding cache'
+                   % cachefn)
+            return
+
+        for l in inf:
+            pos = l.index('// ')
+            path = l[:pos].decode('utf-8')
+            if path in self._cache:
+                warning('duplicated path %r in cache' % path)
+                continue
+
+            pos += 3
+            fields = l[pos:].split(' ')
+            if len(fields) != 6:
+                warning("bad line in hashcache: %r" % l)
+                continue
+
+            sha1 = fields[0]
+            if len(sha1) != 40:
+                warning("bad sha1 in hashcache: %r" % sha1)
+                continue
+
+            fp = tuple(map(long, fields[1:]))
+
+            self._cache[path] = (sha1, fp)
+
+
         
