@@ -75,20 +75,27 @@ class TestHashCache(InTempDir):
         file('foo', 'wb').write('g00dbye')
         self.assertEquals(hc.get_sha1('foo'),
                           sha1('g00dbye'))
-        
-        # this is not quite guaranteed to be true; we might have
-        # crossed a 1s boundary before
-        self.assertEquals(hc.danger_count, 1)
-        self.assertEquals(len(hc._cache), 0)
+
+        file('foo2', 'wb').write('other file')
+        self.assertEquals(hc.get_sha1('foo2'), sha1('other file'))
+
+        os.remove('foo2')
+        self.assertEquals(hc.get_sha1('foo2'), None)
+
+        file('foo2', 'wb').write('new content')
+        self.assertEquals(hc.get_sha1('foo2'), sha1('new content'))
 
         self.assertEquals(hc.get_sha1('subdir'), None)
 
+        # it's likely neither are cached at the moment because they 
+        # changed recently, but we can't be sure
         pause()
 
-        # should now be safe to cache it
-        self.assertEquals(hc.get_sha1('foo'),
-                          sha1('g00dbye'))
+        # should now be safe to cache it if we reread them
+        self.assertEquals(hc.get_sha1('foo'), sha1('g00dbye'))
         self.assertEquals(len(hc._cache), 1)
+        self.assertEquals(hc.get_sha1('foo2'), sha1('new content'))
+        self.assertEquals(len(hc._cache), 2)
 
         # write out, read back in and check that we don't need to
         # re-read any files
@@ -98,10 +105,12 @@ class TestHashCache(InTempDir):
         hc = HashCache('.')
         hc.read('stat-cache')
 
-        self.assertEquals(len(hc._cache), 1)
+        self.assertEquals(len(hc._cache), 2)
         self.assertEquals(hc.get_sha1('foo'), sha1('g00dbye'))
         self.assertEquals(hc.hit_count, 1)
         self.assertEquals(hc.miss_count, 0)
+        self.assertEquals(hc.get_sha1('foo2'), sha1('new content'))
+
         
 
         
