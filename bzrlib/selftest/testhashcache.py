@@ -32,7 +32,7 @@ def pause():
     
 
 
-class TestStatCache(InTempDir):
+class TestHashCache(InTempDir):
     """Functional tests for statcache"""
     def runTest(self):
         from bzrlib.hashcache import HashCache
@@ -69,6 +69,8 @@ class TestStatCache(InTempDir):
                           '3c8ec4874488f6090a157b014ce3397ca8e06d4f')
         self.assertEquals(hc.miss_count, 2)
 
+        hc.write('stat-cache')
+
         # quickly write new file of same size and make sure it is seen
         # this may rely on detection of timestamps that are too close
         # together to be safe
@@ -82,12 +84,4 @@ class TestStatCache(InTempDir):
 
         self.assertEquals(hc.get_sha1('subdir'), None)
 
-        #hc.write('stat-cache')
-        #del hc
         
-
-
-
-TEST_CLASSES = [
-    TestStatCache,
-    ]

@@ -17,6 +17,9 @@
 
 
 
+CACHE_HEADER = "### bzr statcache v5"    
+
+
 def _fingerprint(abspath):
     import os, stat
 
@@ -125,3 +128,27 @@ class HashCache(object):
 
             return digest
 
+
+
+    def write(self, cachefn):
+        """Write contents of cache to file."""
+        from atomicfile import AtomicFile
+
+        outf = AtomicFile(cachefn, 'wb')
+        try:
+            outf.write(CACHE_HEADER + '\n')
+
+            for path in self.cache_sha1:
+                assert '//' not in path, path
+                outf.write(path.encode('utf-8'))
+                outf.write('// ')
+                print >>outf, self.cache_sha1[path],
+                for fld in self.validator[path]:
+                    print >>outf, fld,
+                print >>outf
+
+            outf.commit()
+        finally:
+            if not outf.closed:
+                outf.abort()
+        
