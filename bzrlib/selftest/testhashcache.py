@@ -69,8 +69,6 @@ class TestHashCache(InTempDir):
                           '3c8ec4874488f6090a157b014ce3397ca8e06d4f')
         self.assertEquals(hc.miss_count, 2)
 
-        hc.write('stat-cache')
-
         # quickly write new file of same size and make sure it is seen
         # this may rely on detection of timestamps that are too close
         # together to be safe
@@ -81,7 +79,25 @@ class TestHashCache(InTempDir):
         # this is not quite guaranteed to be true; we might have
         # crossed a 1s boundary before
         self.assertEquals(hc.danger_count, 1)
+        self.assertEquals(len(hc._cache), 0)
 
         self.assertEquals(hc.get_sha1('subdir'), None)
 
+        pause()
+
+        # should now be safe to cache it
+        self.assertEquals(hc.get_sha1('foo'),
+                          sha1('g00dbye'))
+        self.assertEquals(len(hc._cache), 1)
+
+        # write out, read back in and check that we don't need to
+        # re-read any files
+        hc.write('stat-cache')
+        del hc
+
+        hc = HashCache('.')
+        # hc.read('stat-cache')
         
+
+        
+
