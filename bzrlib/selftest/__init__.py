@@ -43,9 +43,11 @@ def selftest():
               bzrlib.osutils, bzrlib.commands, bzrlib.merge3):
         if m not in MODULES_TO_DOCTEST:
             MODULES_TO_DOCTEST.append(m)
+            
     for m in (bzrlib.selftest.whitebox,
               bzrlib.selftest.versioning,
-              bzrlib.selftest.testmerge3):
+              bzrlib.selftest.testmerge3,
+              bzrlib.selftest.testhashcache):
         if m not in MODULES_TO_TEST:
             MODULES_TO_TEST.append(m)
 
@@ -61,7 +63,8 @@ def selftest():
     # the code.
 
 
-    # python2.3's TestLoader() doesn't seem to work well; don't know why
+    # XXX: python2.3's TestLoader() doesn't seem to find all the
+    # tests; don't know why
     for m in MODULES_TO_TEST:
          suite.addTest(TestLoader().loadTestsFromModule(m))
 

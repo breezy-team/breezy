@@ -82,6 +82,10 @@ class TestStatCache(InTempDir):
 
         self.assertEquals(hc.get_sha1('subdir'), None)
 
+        #hc.write('stat-cache')
+        #del hc
+        
+
 
 
 TEST_CLASSES = [
