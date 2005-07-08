@@ -16,6 +16,17 @@
 
 
 
+# TODO: Perhaps have a way to stat all the files in inode order, and
+# then remember that they're all fresh for the lifetime of the object?
+
+# TODO: Keep track of whether there are in-memory updates that need to
+# be flushed.
+
+# TODO: Perhaps return more details on the file to avoid statting it
+# again: nonexistent, file type, size, etc
+
+
+
 
 CACHE_HEADER = "### bzr statcache v5\n"
 
