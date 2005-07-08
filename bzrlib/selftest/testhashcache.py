@@ -33,7 +33,7 @@ def pause():
 
 
 class TestHashCache(InTempDir):
-    """Functional tests for statcache"""
+    """Functional tests for hashcache"""
     def runTest(self):
         from bzrlib.hashcache import HashCache
         import os

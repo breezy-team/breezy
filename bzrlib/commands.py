@@ -771,25 +771,13 @@ class cmd_modified(Command):
     hidden = True
     def run(self):
         from bzrlib.statcache import update_cache, SC_SHA1
-        b = find_branch('.')
-        inv = b.read_working_inventory()
-        sc = update_cache(b, inv)
-        basis = b.basis_tree()
-        basis_inv = basis.inventory
-        
-        # We used to do this through iter_entries(), but that's slow
-        # when most of the files are unmodified, as is usually the
-        # case.  So instead we iterate by inventory entry, and only
-        # calculate paths as necessary.
+        from bzrlib.diff import compare_trees
 
-        for file_id in basis_inv:
-            cacheentry = sc.get(file_id)
-            if not cacheentry:                 # deleted
-                continue
-            ie = basis_inv[file_id]
-            if cacheentry[SC_SHA1] != ie.text_sha1:
-                path = inv.id2path(file_id)
-                print path
+        b = find_branch('.')
+        td = compare_trees(b.basis_tree(), b.working_tree())
+
+        for path, id, kind in td.modified:
+            print path
 
 
 
