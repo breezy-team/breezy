@@ -56,11 +56,9 @@ class HashCache(object):
     This does not canonicalize the paths passed in; that should be
     done by the caller.
 
-    cache_sha1
-        Indexed by path, gives the SHA-1 of the file.
-
-    validator
-        Indexed by path, gives the fingerprint of the file last time it was read.
+    _cache
+        Indexed by path, points to a two-tuple of the SHA-1 of the file.
+        and its fingerprint.
 
     stat_count
         number of times files have been statted
@@ -78,14 +76,15 @@ class HashCache(object):
         self.miss_count = 0
         self.stat_count = 0
         self.danger_count = 0
-        self.cache_sha1 = {}
-        self.validator = {}
+
+        self._cache = {}
 
 
     def clear(self):
-        """Discard all cached information."""
-        self.validator = {}
-        self.cache_sha1 = {}
+        """Discard all cached information.
+
+        This does not reset the counters."""
+        self._cache_sha1 = {}
 
 
     def get_sha1(self, path):
@@ -99,7 +98,11 @@ class HashCache(object):
         
         abspath = os.path.join(self.basedir, path)
         fp = _fingerprint(abspath)
-        cache_fp = self.validator.get(path)
+        c = self._cache.get(path)
+        if c:
+            cache_sha1, cache_fp = c
+        else:
+            cache_sha1, cache_fp = None, None
 
         self.stat_count += 1
 
@@ -108,7 +111,7 @@ class HashCache(object):
             return None
         elif cache_fp and (cache_fp == fp):
             self.hit_count += 1
-            return self.cache_sha1[path]
+            return cache_sha1
         else:
             self.miss_count += 1
             digest = sha_file(file(abspath, 'rb'))
@@ -120,11 +123,9 @@ class HashCache(object):
                 # next time.
                 self.danger_count += 1 
                 if cache_fp:
-                    del self.validator[path]
-                    del self.cache_sha1[path]
+                    del self._cache[path]
             else:
-                self.validator[path] = fp
-                self.cache_sha1[path] = digest
+                self._cache[path] = (digest, fp)
 
             return digest
 
@@ -138,12 +139,12 @@ class HashCache(object):
         try:
             outf.write(CACHE_HEADER + '\n')
 
-            for path in self.cache_sha1:
+            for path, c  in self._cache.iteritems():
                 assert '//' not in path, path
                 outf.write(path.encode('utf-8'))
                 outf.write('// ')
-                print >>outf, self.cache_sha1[path],
-                for fld in self.validator[path]:
+                print >>outf, c[0],     # hex sha1
+                for fld in c[1]:
                     print >>outf, fld,
                 print >>outf
 
