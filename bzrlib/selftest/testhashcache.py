@@ -39,6 +39,8 @@ class TestHashCache(InTempDir):
         import os
         import time
 
+        # make a dummy bzr directory just to hold the cache
+        os.mkdir('.bzr')
         hc = HashCache('.')
 
         file('foo', 'wb').write('hello')
@@ -99,11 +101,11 @@ class TestHashCache(InTempDir):
 
         # write out, read back in and check that we don't need to
         # re-read any files
-        hc.write('stat-cache')
+        hc.write()
         del hc
 
         hc = HashCache('.')
-        hc.read('stat-cache')
+        hc.read()
 
         self.assertEquals(len(hc._cache), 2)
         self.assertEquals(hc.get_sha1('foo'), sha1('g00dbye'))

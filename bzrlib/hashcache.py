@@ -28,7 +28,7 @@
 
 
 
-CACHE_HEADER = "### bzr statcache v5\n"
+CACHE_HEADER = "### bzr hashcache v5\n"
 
 
 def _fingerprint(abspath):
@@ -43,8 +43,10 @@ def _fingerprint(abspath):
     if stat.S_ISDIR(fs.st_mode):
         return None
 
-    return (fs.st_size, fs.st_mtime,
-            fs.st_ctime, fs.st_ino, fs.st_dev)
+    # we discard any high precision because it's not reliable; perhaps we
+    # could do better on some systems?
+    return (fs.st_size, long(fs.st_mtime),
+            long(fs.st_ctime), fs.st_ino, fs.st_dev)
 
 
 class HashCache(object):
@@ -81,21 +83,32 @@ class HashCache(object):
     miss_count
         number of misses (times files have been completely re-read)
     """
+    needs_write = False
+
     def __init__(self, basedir):
         self.basedir = basedir
         self.hit_count = 0
         self.miss_count = 0
         self.stat_count = 0
         self.danger_count = 0
-
         self._cache = {}
+
+
+
+    def cache_file_name(self):
+        import os.path
+        return os.path.join(self.basedir, '.bzr', 'stat-cache')
+
+
 
 
     def clear(self):
         """Discard all cached information.
 
         This does not reset the counters."""
-        self._cache_sha1 = {}
+        if self._cache:
+            self.needs_write = True
+            self._cache = {}
 
 
     def get_sha1(self, path):
@@ -106,6 +119,7 @@ class HashCache(object):
 
         import os, time
         from bzrlib.osutils import sha_file
+        from bzrlib.trace import mutter
         
         abspath = os.path.join(self.basedir, path)
         fp = _fingerprint(abspath)
@@ -134,19 +148,25 @@ class HashCache(object):
                 # next time.
                 self.danger_count += 1 
                 if cache_fp:
+                    mutter("remove outdated entry for %s" % path)
+                    self.needs_write = True
                     del self._cache[path]
-            else:
+            elif (fp != cache_fp) or (digest != cache_sha1):
+                mutter("update entry for %s" % path)
+                mutter("  %r" % (fp,))
+                mutter("  %r" % (cache_fp,))
+                self.needs_write = True
                 self._cache[path] = (digest, fp)
 
             return digest
 
 
 
-    def write(self, cachefn):
+    def write(self):
         """Write contents of cache to file."""
         from atomicfile import AtomicFile
 
-        outf = AtomicFile(cachefn, 'wb')
+        outf = AtomicFile(self.cache_file_name(), 'wb')
         try:
             print >>outf, CACHE_HEADER,
 
@@ -160,13 +180,14 @@ class HashCache(object):
                 print >>outf
 
             outf.commit()
+            self.needs_write = False
         finally:
             if not outf.closed:
                 outf.abort()
         
 
 
-    def read(self, cachefn):
+    def read(self):
         """Reinstate cache from file.
 
         Overwrites existing cache.
@@ -175,8 +196,15 @@ class HashCache(object):
         the cache."""
         from bzrlib.trace import mutter, warning
 
-        inf = file(cachefn, 'rb')
         self._cache = {}
+
+        fn = self.cache_file_name()
+        try:
+            inf = file(fn, 'rb')
+        except IOError, e:
+            mutter("failed to open %s: %s" % (fn, e))
+            return
+
 
         hdr = inf.readline()
         if hdr != CACHE_HEADER:
@@ -205,6 +233,9 @@ class HashCache(object):
             fp = tuple(map(long, fields[1:]))
 
             self._cache[path] = (sha1, fp)
+
+        self.needs_write = False
+           
 
 
         

@@ -770,7 +770,6 @@ class cmd_modified(Command):
     """List files modified in working tree."""
     hidden = True
     def run(self):
-        from bzrlib.statcache import update_cache, SC_SHA1
         from bzrlib.diff import compare_trees
 
         b = find_branch('.')
@@ -1312,16 +1311,6 @@ class cmd_help(Command):
         import help
         help.help(topic)
 
-
-class cmd_update_stat_cache(Command):
-    """Update stat-cache mapping inodes to SHA-1 hashes.
-
-    For testing only."""
-    hidden = True
-    def run(self):
-        from bzrlib.statcache import update_cache
-        b = find_branch('.')
-        update_cache(b.base, b.read_working_inventory())
 
 
 

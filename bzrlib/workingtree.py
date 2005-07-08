@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: Don't allow WorkingTrees to be constructed for remote branches.
 
 import os
     
@@ -30,13 +31,26 @@ class WorkingTree(bzrlib.tree.Tree):
     It is possible for a `WorkingTree` to have a filename which is
     not listed in the Inventory and vice versa.
     """
-    _statcache = None
-    
     def __init__(self, basedir, inv):
+        from bzrlib.hashcache import HashCache
+        from bzrlib.trace import note, mutter
+
         self._inventory = inv
         self.basedir = basedir
         self.path2id = inv.path2id
-        self._update_statcache()
+
+        # update the whole cache up front and write to disk if anything changed;
+        # in the future we might want to do this more selectively
+        hc = self._hashcache = HashCache(basedir)
+        hc.read()
+        for path, ie in inv.iter_entries():
+            hc.get_sha1(path)
+
+        if hc.needs_write:
+            mutter("write hc")
+            hc.write()
+
+
 
     def __iter__(self):
         """Iterate through file_ids for this tree.
@@ -45,21 +59,16 @@ class WorkingTree(bzrlib.tree.Tree):
         and the working file exists.
         """
         inv = self._inventory
-        for file_id in self._inventory:
-            # TODO: This is slightly redundant; we should be able to just
-            # check the statcache but it only includes regular files.
-            # only include files which still exist on disk
-            ie = inv[file_id]
-            if ie.kind == 'file':
-                if ((file_id in self._statcache)
-                    or (os.path.exists(self.abspath(inv.id2path(file_id))))):
-                    yield file_id
-
+        for path, ie in inv.iter_entries():
+            if os.path.exists(self.abspath(path)):
+                yield ie.file_id
 
 
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,
                                self.basedir)
+
+
 
     def abspath(self, filename):
         return os.path.join(self.basedir, filename)
@@ -80,29 +89,24 @@ class WorkingTree(bzrlib.tree.Tree):
                 
     def has_id(self, file_id):
         # files that have been deleted are excluded
-        if not self.inventory.has_id(file_id):
+        inv = self._inventory
+        if not inv.has_id(file_id):
             return False
-        if file_id in self._statcache:
-            return True
-        return os.path.exists(self.abspath(self.id2path(file_id)))
+        path = inv.id2path(file_id)
+        return os.path.exists(self.abspath(path))
 
 
     __contains__ = has_id
     
 
-    def _update_statcache(self):
-        if not self._statcache:
-            from bzrlib.statcache import update_cache
-            self._statcache = update_cache(self.basedir, self.inventory)
-
     def get_file_size(self, file_id):
-        import os, stat
-        return os.stat(self._get_store_filename(file_id))[stat.ST_SIZE]
+        # is this still called?
+        raise NotImplementedError()
 
 
     def get_file_sha1(self, file_id):
-        from bzrlib.statcache import SC_SHA1
-        return self._statcache[file_id][SC_SHA1]
+        path = self._inventory.id2path(file_id)
+        return self._hashcache.get_sha1(path)
 
 
     def file_class(self, filename):
@@ -127,7 +131,7 @@ class WorkingTree(bzrlib.tree.Tree):
         from osutils import appendpath, file_kind
         import os
 
-        inv = self.inventory
+        inv = self._inventory
 
         def descend(from_dir_relpath, from_dir_id, dp):
             ls = os.listdir(dp)
