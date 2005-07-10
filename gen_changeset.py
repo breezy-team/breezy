@@ -9,6 +9,7 @@ import common
 
 from bzrlib.inventory import ROOT_ID
 from bzrlib.errors import BzrCommandError
+from bzrlib.trace import warning, mutter
 
 try:
     set
@@ -293,7 +294,7 @@ class MetaInfoHeader(object):
                 and self.base_revision.revision_id != assumed_base):
             base = self.base_revision.revision_id
             write(base, key='base')
-            write(self.target_branch.get_revision_sha1(base), key='base sha1')
+            write(self.base_branch.get_revision_sha1(base), key='base sha1')
 
         self._write_revisions()
 
@@ -317,9 +318,13 @@ class MetaInfoHeader(object):
             if len(rev.parents) > 0:
                 self.to_file.write('#    parents:\n')
                 for parent in rev.parents:
-                    self.to_file.write('#       %s\t%s\n' % (
-                        parent.revision_id,
-                        parent.revision_sha1))
+                    p_id = parent.revision_id
+                    p_sha1 = parent.revision_sha1
+                    if p_sha1 is None:
+                        warning('Rev id {%s} parent {%s} missing sha hash.'
+                                % (rev_id, p_id))
+                        p_sha1 = self.target_branch.get_revision_sha1(p_id)
+                    self.to_file.write('#       %s\t%s\n' % (p_id, p_sha1))
             if rev.message and rev.message != self.message:
                 self.to_file.write('#    message:\n')
                 for line in rev.message.split('\n'):
