@@ -81,19 +81,19 @@ class cmd_changeset(bzrlib.commands.Command):
         if target is None:
             target = './@'
         b_target_path, target_revno = parse_spec(target)
-        b_target = find_branch(b_target_path)
+        target_branch = find_branch(b_target_path)
         if target_revno is None or target_revno == -1:
-            target_rev_id = b_target.last_patch()
+            target_rev_id = target_branch.last_patch()
         else:
-            target_rev_id = b_target.lookup_revision(target_revno)
+            target_rev_id = target_branch.lookup_revision(target_revno)
 
         if base is None:
-            b_base = b_target
-            target_rev = b_target.get_revision(target_rev_id)
-            base_rev_id = target_rev_id.parents[0].revision_id
+            base_branch = target_branch
+            target_rev = target_branch.get_revision(target_rev_id)
+            base_rev_id = target_rev.parents[0].revision_id
         else:
             base_path, base_revno = parse_spec(base)
-            b_base = find_branch(base_path)
+            base_branch = find_branch(base_path)
             if base_revno is None or base_revno == -1:
                 base_rev_id = base_branch.last_patch()
             else:
@@ -144,7 +144,7 @@ class cmd_apply_changeset(bzrlib.commands.Command):
 
     """
     takes_args = ['filename?']
-    takes_options = []
+    takes_options = ['reverse', 'auto-commit']
 
     def run(self, filename=None, reverse=False, auto_commit=False):
         from bzrlib import find_branch
@@ -179,5 +179,3 @@ bzrlib.commands.register_command(cmd_test_plugins)
 
 bzrlib.commands.OPTIONS['reverse'] = None
 bzrlib.commands.OPTIONS['auto-commit'] = None
-cmd_apply_changeset.takes_options.append('reverse')
-cmd_apply_changeset.takes_options.append('auto-commit')
