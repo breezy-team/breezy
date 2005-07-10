@@ -325,7 +325,7 @@ class ChangesetReader(object):
             kind = tree.get_kind(file_id)
             ie = InventoryEntry(file_id, name, kind, parent_id, text_id=text_id)
             ie.text_size, ie.text_sha1 = tree.get_size_and_sha1(file_id)
-            if ie.text_size is None:
+            if (ie.text_size is None) and (kind != 'directory'):
                 raise BzrError('Got a text_size of None for file_id %r' % file_id)
             inv.add(ie)
         return inv
@@ -383,6 +383,9 @@ class ChangesetReader(object):
         found = False
         for line in self._next():
             if found:
+                # not all mailers will keep trailing whitespace
+                if line == '#\n':
+                    line = '# \n'
                 if (line[:2] != '# ' or line[-1:] != '\n'
                         or line[2:-1] != header[0]):
                     raise MalformedHeader('Found a header, but it'
@@ -852,6 +855,8 @@ class ChangesetTree:
             # If the entry does not have a patch, then the
             # contents must be the same as in the base_tree
             ie = self.base_tree.inventory[file_id]
+            if ie.text_size is None:
+                return ie.text_size, ie.text_sha1
             return int(ie.text_size), ie.text_sha1
         content = self.get_file(file_id).read()
         return len(content), sha_string(content)
@@ -861,10 +866,10 @@ class ChangesetTree:
     def __iter__(self):
         for file_id in self._new_id_r.iterkeys():
             yield file_id
-        for file_id in self.base_tree:
-            if self.id2path(file_id) is None:
+        for path, entry in self.base_tree.inventory.iter_entries():
+            if self.id2path(entry.file_id) is None:
                 continue
-            yield file_id
+            yield entry.file_id
 
 
 def patched_file(file_patch, original):

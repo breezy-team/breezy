@@ -81,11 +81,14 @@ def merge_revs(branch, rev_base, rev_other,
         shutil.rmtree(tempdir)
 
 
-def apply_changeset(branch, from_file, auto_commit=False):
+def apply_changeset(branch, from_file, reverse=False, auto_commit=False):
     import sys, read_changeset
 
+    if reverse:
+        raise Exception('reverse not implemented yet')
+        
     cset_info, cset_tree, cset_inv = \
-            read_changeset.read_changeset(from_file)
+            read_changeset.read_changeset(from_file, branch)
 
     _install_info(branch, cset_info, cset_tree, cset_inv)
 
