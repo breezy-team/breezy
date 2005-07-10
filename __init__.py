@@ -26,7 +26,7 @@ class cmd_send_changeset(bzrlib.commands.Command):
 
     def run(self, to=None, message=None, revision=None, file=None):
         from bzrlib import find_branch
-        from bzrlib.commands import BzrCommandError
+        from bzrlib.errors import BzrCommandError
         from send_changeset import send_changeset
         
         if isinstance(revision, (list, tuple)):
@@ -53,35 +53,58 @@ class cmd_changeset(bzrlib.commands.Command):
     This changeset contains all of the meta-information of a
     diff, rather than just containing the patch information.
 
-    It will store it into FILENAME if supplied, otherwise it writes
-    to stdout
+    BASE - This is the target tree with which you want to merge.
+           It will be used as the base for all patches. Anyone
+           wanting to merge the changeset will be required to have BASE
+    TARGET - This is the final revision which is desired to be in the
+             changeset. It defaults to the last committed revision. './@'
+    STARTING-REV-ID - All revisions between STARTING-REV and TARGET will
+                      be bundled up in the changeset. By default this is
+                      chosen as the merge root.
+                      (NOT Implemented yet)
 
-    Right now, rollup changesets, or working tree changesets are
-    not supported. This will only generate a changeset that has been
-    committed. You can use "--revision" to specify a certain change
-    to display.
+
+    If --verbose, renames will be given as an 'add + delete' style patch.
     """
-    takes_options = ['revision']
-    takes_args = ['filename?']
+    takes_options = ['verbose']
+    takes_args = ['base', 'target?', 'starting-rev-id?']
     aliases = ['cset']
 
-    def run(self, revision=None, filename=None):
+    def run(self, base=None, target=None, starting_rev_id=None, verbose=False):
         from bzrlib import find_branch
+        from bzrlib.commands import parse_spec
+        from bzrlib.errors import BzrCommandError
         import gen_changeset
         import sys
         import codecs
 
-        if filename is None or filename == '-':
-            outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
+        base_path, base_revno = parse_spec(base)
+        b_base = find_branch(base_path)
+        if base_revno is None or base_revno == -1:
+            base_rev_id = base_branch.last_patch()
         else:
-            f = open(filename, 'wb')
-            outf = codecs.getwriter(bzrlib.user_encoding)(f, errors='replace')
+            base_rev_id = base_branch.last_patch()
 
-        if not isinstance(revision, (list, tuple)):
-            revision = [revision]
-        b = find_branch('.')
+        if target is None:
+            target = './@'
+        b_target_path, target_revno = parse_spec(target)
+        b_target = find_branch(b_target_path)
+        if target_revno is None or target_revno == -1:
+            target_rev_id = b_target.last_patch()
+        else:
+            target_rev_id = b_target.lookup_revision(target_revno)
 
-        gen_changeset.show_changeset(b, revision, to_file=outf)
+        outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout,
+                errors='replace')
+
+        if starting_rev_id is not None:
+            raise BzrCommandError('Specifying the STARTING-REV-ID'
+                    ' not yet supported')
+
+        gen_changeset.show_changeset(base_branch, base_rev_id,
+                target_branch, target_rev_id,
+                starting_rev_id,
+                to_file=outf, include_full_diff=verbose)
 
 class cmd_verify_changeset(bzrlib.commands.Command):
     """Read a written changeset, and make sure it is valid.
