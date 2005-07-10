@@ -67,7 +67,7 @@ class cmd_changeset(bzrlib.commands.Command):
     If --verbose, renames will be given as an 'add + delete' style patch.
     """
     takes_options = ['verbose']
-    takes_args = ['base', 'target?', 'starting-rev-id?']
+    takes_args = ['base?', 'target?', 'starting-rev-id?']
     aliases = ['cset']
 
     def run(self, base=None, target=None, starting_rev_id=None, verbose=False):
@@ -78,13 +78,6 @@ class cmd_changeset(bzrlib.commands.Command):
         import sys
         import codecs
 
-        base_path, base_revno = parse_spec(base)
-        b_base = find_branch(base_path)
-        if base_revno is None or base_revno == -1:
-            base_rev_id = base_branch.last_patch()
-        else:
-            base_rev_id = base_branch.last_patch()
-
         if target is None:
             target = './@'
         b_target_path, target_revno = parse_spec(target)
@@ -93,6 +86,18 @@ class cmd_changeset(bzrlib.commands.Command):
             target_rev_id = b_target.last_patch()
         else:
             target_rev_id = b_target.lookup_revision(target_revno)
+
+        if base is None:
+            b_base = b_target
+            target_rev = b_target.get_revision(target_rev_id)
+            base_rev_id = target_rev_id.parents[0].revision_id
+        else:
+            base_path, base_revno = parse_spec(base)
+            b_base = find_branch(base_path)
+            if base_revno is None or base_revno == -1:
+                base_rev_id = base_branch.last_patch()
+            else:
+                base_rev_id = base_branch.last_patch()
 
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout,
                 errors='replace')
