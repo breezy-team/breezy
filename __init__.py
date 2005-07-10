@@ -155,7 +155,11 @@ class cmd_apply_changeset(bzrlib.commands.Command):
         if filename is None or filename == '-':
             f = sys.stdin
         else:
-            f = open(filename, 'U') # Universal newlines
+            # Actually, we should not use Universal newlines
+            # as this potentially modifies the patch.
+            # though it seems mailers save attachments with their
+            # own format of the files.
+            f = open(filename, 'rb')
 
         apply_changeset.apply_changeset(b, f, reverse=reverse,
                 auto_commit=auto_commit)
