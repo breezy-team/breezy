@@ -221,13 +221,14 @@ class MetaInfoHeader(object):
                     self.target_rev_id,
                     self.base_branch, self.base_rev_id)
 
-
-        # print 'target: %s' % self.target_rev_id
-        # print 'base:   %s' % self.base_rev_id
-        # print 'start:  %s' % self.starting_rev_id
-
         rev_id_list = _create_ancestry_to_rev(self.target_branch,
                 self.starting_rev_id, self.target_rev_id)
+
+        assert rev_id_list[-1] == self.starting_rev_id
+        # The last entry should be starting_rev_id which should
+        # exist in both base and target, so we don't need to
+        # include it in the changeset
+        rev_id_list.pop()
         rev_id_list.reverse()
 
         self.revision_list = [self.target_branch.get_revision(rid) 
@@ -333,8 +334,8 @@ class MetaInfoHeader(object):
         diff_file = internal_diff
         # Get the target tree so that we can check for
         # Appropriate text ids.
-        rev_id = self.revision_list[-1].revision_id
-        tree = self.target_branch.revision_tree(rev_id)
+        rev_id = self.target_rev_id
+        tree = self.target_tree
 
 
         def get_text_id_str(file_id, modified=True):

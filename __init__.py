@@ -97,7 +97,7 @@ class cmd_changeset(bzrlib.commands.Command):
             if base_revno is None or base_revno == -1:
                 base_rev_id = base_branch.last_patch()
             else:
-                base_rev_id = base_branch.last_patch()
+                base_rev_id = base_branch.lookup_revision(base_revno)
 
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout,
                 errors='replace')
