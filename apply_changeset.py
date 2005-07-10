@@ -36,19 +36,6 @@ def _install_info(branch, cset_info, cset_tree, cset_inv):
             branch.inventory_store.add(sio.getvalue(), rev.revision_id)
             del sio
 
-def get_tree(treespec, temp_root, label):
-    location, revno = treespec
-    branch = find_branch(location)
-    if revno is None:
-        base_tree = branch.working_tree()
-    elif revno == -1:
-        base_tree = branch.basis_tree()
-    else:
-        base_tree = branch.revision_tree(branch.lookup_revision(revno))
-    temp_path = os.path.join(temp_root, label)
-    os.mkdir(temp_path)
-    return branch, MergeTree(base_tree, temp_path)
-
 def merge_revs(branch, rev_base, rev_other,
         ignore_zero=False, check_clean=True):
     """This will merge the tree of rev_other into 
