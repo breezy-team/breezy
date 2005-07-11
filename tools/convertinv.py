@@ -20,8 +20,8 @@
 
 
 import bzrlib.branch
-from weave import Weave
-from weavefile import write_weave
+from bzrlib.weave import Weave
+from bzrlib.weavefile import write_weave
 import tempfile
 import hotshot
 
