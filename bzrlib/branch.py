@@ -178,7 +178,7 @@ class Branch(object):
 
 
     def __str__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.base)
+        return '%s(%r)' % (self.__class__.__name__, self._transport.base)
 
 
     __repr__ = __str__
@@ -239,14 +239,14 @@ class Branch(object):
 
     def abspath(self, name):
         """Return absolute filename for something in the branch"""
-        return os.path.join(self.base, name)
+        return self._transport.abspath(name)
 
 
     def relpath(self, path):
         """Return path relative to this branch of something inside it.
 
         Raises an error if path is not in this branch."""
-        return _relpath(self.base, path)
+        return _relpath(self._transport.base, path)
 
 
     def _rel_controlfilename(self, file_or_path):
@@ -307,7 +307,7 @@ class Branch(object):
                   'branch-lock',
                   'pending-merges'):
             self.transport.put(self._rel_controlfilename(f), '')
-        mutter('created control directory in ' + self.base)
+        mutter('created control directory in ' + self._transport.base)
 
         # TODO: Try and do this with self.transport.put() instead
         pack_xml(Inventory(), self.controlfile('inventory','w'))
@@ -1023,7 +1023,8 @@ class Branch(object):
     def working_tree(self):
         """Return a `Tree` for the working copy."""
         from workingtree import WorkingTree
-        return WorkingTree(self.base, self.read_working_inventory())
+        # TODO: In the future, WorkingTree should utilize Transport
+        return WorkingTree(self._transport.base, self.read_working_inventory())
 
 
     def basis_tree(self):
@@ -1264,11 +1265,17 @@ class ScratchBranch(Branch):
             base = mkdtemp()
             init = True
         Branch.__init__(self, base, init=init)
+        # I'm giving ScratchBranch a base object, since most of the
+        # tests use it. Perhaps in the future the test functions
+        # should be updated to be aware of _transport
+        # Especially since it would be nice to use the same tests
+        # to test remote branches.
+        self.base = base
         for d in dirs:
-            os.mkdir(self.abspath(d))
+            self.transport.mkdir(d)
             
         for f in files:
-            file(os.path.join(self.base, f), 'w').write('content of %s' % f)
+            self.transport.put(f, 'content of %s' % f)
 
 
     def clone(self):
