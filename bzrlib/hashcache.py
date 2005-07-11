@@ -209,7 +209,7 @@ class HashCache(object):
         hdr = inf.readline()
         if hdr != CACHE_HEADER:
             mutter('cache header marker not found at top of %s; discarding cache'
-                   % cachefn)
+                   % fn)
             return
 
         for l in inf:
