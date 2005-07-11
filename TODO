@@ -37,6 +37,8 @@ Small things
 
 * -r option should take a revision-id as well as a revno.
 
+* allow ``bzr st -r 300`` to show a summary of changes since then.
+
 * ``bzr info`` should count only people with distinct email addresses as
   different committers.  (Or perhaps only distinct userids?)
 
