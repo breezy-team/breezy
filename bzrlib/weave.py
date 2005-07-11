@@ -146,9 +146,6 @@ class Weave(object):
         It is only necessary to store the minimal set of parents for
         each version; the parent's parents are implied.
 
-    _i
-        Full set of inclusions for each revision.
-
     _sha1s
         List of hex SHA-1 of each version, or None if not recorded.
     """
@@ -156,7 +153,6 @@ class Weave(object):
         self._l = []
         self._v = []
         self._sha1s = []
-        self._i = {}
 
 
     def __eq__(self, other):
@@ -238,26 +234,19 @@ class Weave(object):
         return idx
 
 
-    def _expand(self, version):
-        if version in self._i:
-            return self._i[version]
-        else:
-            i = set([version])
-            for pv in self._v[version]:
-                i.update(self._expand(pv))
-            self._i[version] = i
-            return i
-
-
     def inclusions(self, versions):
-        """Expand out everything included by versions."""
+        """Return set of all ancestors of given version(s)."""
         i = set(versions)
+        v = max(versions)
         try:
-            for v in versions:
-                i.update(self._expand(v))
+            while v >= 0:
+                if v in i:
+                    # include all its parents
+                    i.update(self._v[v])
+                v -= 1
+            return i
         except IndexError:
             raise ValueError("version %d not present in weave" % v)
-        return i
 
 
     def minimal_parents(self, version):
@@ -267,8 +256,7 @@ class Weave(object):
             return []
         
         li = list(included)
-        li.sort()
-        li.reverse()
+        li.sort(reverse=True)
 
         mininc = []
         gotit = set()
@@ -276,7 +264,7 @@ class Weave(object):
         for pv in li:
             if pv not in gotit:
                 mininc.append(pv)
-                gotit.update(self._v[pv])
+                gotit.update(self.inclusions(pv))
 
         assert mininc[0] >= 0
         assert mininc[-1] < version
@@ -318,12 +306,11 @@ class Weave(object):
         """Yield list of (index-id, line) pairs for the specified version.
 
         The index indicates when the line originated in the weave."""
-        included = self.inclusions([version])
-        for origin, lineno, text in self._extract(self.inclusions(included)):
+        for origin, lineno, text in self._extract([version]):
             yield origin, text
 
 
-    def _extract(self, included):
+    def _extract(self, versions):
         """Yield annotation of lines in included set.
 
         Yields a sequence of tuples (origin, lineno, text), where
@@ -332,6 +319,7 @@ class Weave(object):
 
         The set typically but not necessarily corresponds to a version.
         """
+        included = self.inclusions(versions)
 
         istack = []
         dset = set()
@@ -381,7 +369,7 @@ class Weave(object):
 
     def get_iter(self, version):
         """Yield lines for the specified version."""
-        for origin, lineno, line in self._extract(self.inclusions([version])):
+        for origin, lineno, line in self._extract([version]):
             yield line
 
 
@@ -392,7 +380,7 @@ class Weave(object):
     def mash_iter(self, included):
         """Return composed version of multiple included versions."""
         included = frozenset(included)
-        for origin, lineno, text in self._extract(self.inclusions(included)):
+        for origin, lineno, text in self._extract(included):
             yield text
 
 
@@ -480,7 +468,7 @@ class Weave(object):
         # basis a list of (origin, lineno, line)
         basis_lineno = []
         basis_lines = []
-        for origin, lineno, line in self._extract(self.inclusions(included)):
+        for origin, lineno, line in self._extract(included):
             basis_lineno.append(lineno)
             basis_lines.append(line)
 

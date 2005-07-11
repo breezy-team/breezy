@@ -24,7 +24,7 @@ from bzrlib.weave import Weave
 from bzrlib.weavefile import write_weave
 from bzrlib.progress import ProgressBar
 import tempfile
-import hotshot
+import hotshot, hotshot.stats
 import sys
 
 def convert():
@@ -60,7 +60,6 @@ def profile_convert():
     prof.runcall(convert) 
     prof.close()
 
-    import hotshot.stats
     stats = hotshot.stats.load(prof_f.name)
     #stats.strip_dirs()
     stats.sort_stats('time')
