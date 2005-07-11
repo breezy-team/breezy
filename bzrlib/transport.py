@@ -98,6 +98,13 @@ class Transport(object):
         """
         raise NotImplementedError
 
+    def is_remote(self):
+        """Return True if the connection is not local.
+        This would indicate that files should be cached, etc.
+        """
+        # Most transport mechanisms are going to be Remote.
+        return True
+
     def _pump(self, from_file, to_file):
         """Most children will need to copy from one file-like 
         object or string to another one.

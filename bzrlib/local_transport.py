@@ -15,6 +15,9 @@ class LocalTransport(Transport):
         from os.path import realpath
         super(LocalTransport, self).__init__(realpath(base))
 
+    def is_remote(self):
+        return False
+
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
         Because the local filesystem does not require a connection, 
@@ -45,8 +48,8 @@ class LocalTransport(Transport):
         """
         if decode:
             import codecs
-            codecs.open(self.abspath(relpath), 'rb', encoding='utf-8',
-                    buffering=60000)
+            return codecs.open(self.abspath(relpath), 'rb',
+                    encoding='utf-8', buffering=60000)
         else:
             return open(self.abspath(relpath), 'rb')
 
@@ -57,7 +60,6 @@ class LocalTransport(Transport):
         :param f:       File-like or string object.
         :param encode:  If True, translate the contents into utf-8 encoded text.
         """
-        raise NotImplementedError
         from bzrlib.atomicfile import AtomicFile
 
         if encode:

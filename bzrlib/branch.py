@@ -337,7 +337,8 @@ class Branch(object):
         # TODO: Try and do this with self._transport.put() instead
         sio = StringIO()
         pack_xml(Inventory(), sio)
-        self.put_controlfile('inventory', sio)
+        sio.seek(0)
+        self.put_controlfile('inventory', sio, encode=False)
 
 
     def _check_format(self):

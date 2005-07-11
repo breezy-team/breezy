@@ -1678,6 +1678,7 @@ def run_bzr(argv):
     This is similar to main(), but without all the trappings for
     logging and error handling.  
     """
+    import bzrlib
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
 
     # Load all of the transport methods
