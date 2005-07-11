@@ -47,7 +47,8 @@ def selftest():
     for m in (bzrlib.selftest.whitebox,
               bzrlib.selftest.versioning,
               bzrlib.selftest.testmerge3,
-              bzrlib.selftest.testhashcache):
+              bzrlib.selftest.testhashcache,
+              bzrlib.selftest.blackbox):
         if m not in MODULES_TO_TEST:
             MODULES_TO_TEST.append(m)
 
