@@ -591,6 +591,8 @@ class cmd_branch(Command):
         if revision is not None:
             if len(revision) > 1:
                 raise BzrCommandError('bzr branch --revision takes exactly 1 revision value')
+        else:
+            revision = [None]
         try:
             try:
                 br_from = find_cached_branch(from_location, cache_root)
