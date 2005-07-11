@@ -184,6 +184,8 @@ def deltas_for_log_reverse(branch, which_revs):
         if last_revno:
             yield last_revno, last_revision, compare_trees(this_tree, last_tree, False)
 
+        this_tree = EmptyTree(branch.get_root_id())
+
         last_revno = revno
         last_revision = this_revision
         last_tree = this_tree
@@ -212,6 +214,8 @@ def deltas_for_log_forward(branch, which_revs):
     from diff import compare_trees
 
     last_revno = last_revision_id = last_tree = None
+    prev_tree = EmptyTree(branch.get_root_id())
+
     for revno, revision_id in which_revs:
         this_tree = branch.revision_tree(revision_id)
         this_revision = branch.get_revision(revision_id)

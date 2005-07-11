@@ -220,7 +220,7 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
     from bzrlib.trace import mutter, note
 
     any_changes = False
-    inv = Inventory()
+    inv = Inventory(work_inv.root.file_id)
     missing_ids = []
     
     for path, entry in work_inv.iter_entries():

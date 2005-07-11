@@ -90,6 +90,7 @@ class ImmutableStore(object):
             
         p = self._path(fileid)
         if os.access(p, os.F_OK) or os.access(p + '.gz', os.F_OK):
+            from bzrlib.errors import bailout
             raise BzrError("store %r already contains id %r" % (self._basedir, fileid))
 
         fn = p

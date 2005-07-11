@@ -98,6 +98,17 @@ def backup_file(fn):
     finally:
         outf.close()
 
+def rename(path_from, path_to):
+    """Basically the same as os.rename() just special for win32"""
+    if sys.platform == 'win32':
+        try:
+            os.remove(path_to)
+        except OSError, e:
+            if e.errno != e.ENOENT:
+                raise
+    os.rename(path_from, path_to)
+
+
 
 
 

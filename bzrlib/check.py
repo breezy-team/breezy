@@ -16,7 +16,62 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+def _update_store_entry(obj, obj_id, branch, store_name, store):
+    """This is just a meta-function, which handles both revision entries
+    and inventory entries.
+    """
+    from bzrlib.trace import mutter
+    import tempfile, os, errno
+    from osutils import rename
+    obj_tmp = tempfile.TemporaryFile()
+    obj.write_xml(obj_tmp)
+    obj_tmp.seek(0)
 
+    tmpfd, tmp_path = tempfile.mkstemp(prefix=obj_id, suffix='.gz',
+        dir=branch.controlfilename(store_name))
+    os.close(tmpfd)
+    try:
+        orig_obj_path = branch.controlfilename([store_name, obj_id+'.gz'])
+        # Remove the old entry out of the way
+        rename(orig_obj_path, tmp_path)
+        try:
+            # TODO: We may need to handle the case where the old
+            # entry was not compressed (and thus did not end with .gz)
+
+            store.add(obj_tmp, obj_id) # Add the new one
+            os.remove(tmp_path) # Remove the old name
+            mutter('    Updated %s entry {%s}' % (store_name, obj_id))
+        except:
+            # On any exception, restore the old entry
+            rename(tmp_path, orig_obj_path)
+            raise
+    finally:
+        if os.path.exists(tmp_path):
+            # Unfortunately, the next command might throw
+            # an exception, which will mask a previous exception.
+            os.remove(tmp_path)
+        obj_tmp.close()
+
+def _update_revision_entry(rev, branch):
+    """After updating the values in a revision, make sure to
+    write out the data, but try to do it in an atomic manner.
+
+    :param rev:    The Revision object to store
+    :param branch: The Branch object where this Revision is to be stored.
+    """
+    _update_store_entry(rev, rev.revision_id, branch,
+            'revision-store', branch.revision_store)
+
+def _update_inventory_entry(inv, inv_id, branch):
+    """When an inventory has been modified (such as by adding a unique tree root)
+    this atomically re-generates the file.
+
+    :param inv:     The Inventory
+    :param inv_id:  The inventory id for this inventory
+    :param branch:  The Branch where this entry will be stored.
+    """
+    _update_store_entry(inv, inv_id, branch,
+            'inventory-store', branch.inventory_store)
 
 def check(branch):
     """Run consistency checks on a branch.
@@ -29,6 +84,8 @@ def check(branch):
     from bzrlib.errors import BzrCheckError
     from bzrlib.osutils import fingerprint_file
     from bzrlib.progress import ProgressBar
+    from bzrlib.inventory import ROOT_ID
+    from bzrlib.branch import gen_root_id
 
     branch.lock_read()
 

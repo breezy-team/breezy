@@ -617,14 +617,18 @@ class cmd_branch(Command):
                     raise
             br_to = Branch(to_location, init=True)
 
-            revno = br_to.lookup_revision(revision[0])
-            try:
-                br_to.update_revisions(br_from, stop_revision=revno)
-            except NoSuchRevision:
-                rmtree(to_location)
-                msg = "The branch %s has no revision %d." % (from_location,
-                                                             revno)
-                raise BzrCommandError(msg)
+            br_to.set_root_id(br_from.get_root_id())
+
+            if revision:
+                revno = br_to.lookup_revision(revision[0])
+                try:
+                    br_to.update_revisions(br_from, stop_revision=revno)
+                except NoSuchRevision:
+                    rmtree(to_location)
+                    msg = "The branch %s has no revision %d." % (from_location,
+                                                                 revno)
+                    raise BzrCommandError(msg)
+            
             merge((to_location, -1), (to_location, 0), this_dir=to_location,
                   check_clean=False, ignore_zero=True)
             from_location = pull_loc(br_from)

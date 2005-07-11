@@ -139,6 +139,6 @@ def read_new_inventory(f):
     root_el = inv_el[0]
     assert root_el.tag == 'root_directory'
 
-    inv = Inventory()
+    inv = Inventory(inv_el.get('file_id'))
     for el in root_el:
         descend(inv.root, el)

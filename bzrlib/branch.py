@@ -312,7 +312,7 @@ class Branch(object):
             self.controlfile(f, 'w').write('')
         mutter('created control directory in ' + self.base)
 
-        pack_xml(Inventory(), self.controlfile('inventory','w'))
+        pack_xml(Inventory(gen_root_id()), self.controlfile('inventory','w'))
 
 
     def _check_format(self):
@@ -333,7 +333,22 @@ class Branch(object):
                            ['use a different bzr version',
                             'or remove the .bzr directory and "bzr init" again'])
 
+    def get_root_id(self):
+        """Return the id of this branches root"""
+        inv = self.read_working_inventory()
+        return inv.root.file_id
 
+    def set_root_id(self, file_id):
+        inv = self.read_working_inventory()
+        orig_root_id = inv.root.file_id
+        del inv._byid[inv.root.file_id]
+        inv.root.file_id = file_id
+        inv._byid[inv.root.file_id] = inv.root
+        for fid in inv:
+            entry = inv[fid]
+            if entry.parent_id in (None, orig_root_id):
+                entry.parent_id = inv.root.file_id
+        self._write_inventory(inv)
 
     def read_working_inventory(self):
         """Read the working inventory."""
@@ -521,7 +536,7 @@ class Branch(object):
     # FIXME: this doesn't need to be a branch method
     def set_inventory(self, new_inventory_list):
         from bzrlib.inventory import Inventory, InventoryEntry
-        inv = Inventory()
+        inv = Inventory(self.get_root_id())
         for path, file_id, parent, kind in new_inventory_list:
             name = os.path.basename(path)
             if name == "":
@@ -619,7 +634,7 @@ class Branch(object):
         # must be the same as its revision, so this is trivial.
         if revision_id == None:
             from bzrlib.inventory import Inventory
-            return Inventory()
+            return Inventory(self.get_root_id())
         else:
             return self.get_inventory(revision_id)
 
@@ -1011,7 +1026,7 @@ class Branch(object):
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id == None:
-            return EmptyTree()
+            return EmptyTree(self.get_root_id())
         else:
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self.text_store, inv)
@@ -1031,7 +1046,7 @@ class Branch(object):
         from bzrlib.tree import EmptyTree, RevisionTree
         r = self.last_patch()
         if r == None:
-            return EmptyTree()
+            return EmptyTree(self.get_root_id())
         else:
             return RevisionTree(self.text_store, self.get_revision_inventory(r))
 
@@ -1354,3 +1369,9 @@ def gen_file_id(name):
 
     s = hexlify(rand_bytes(8))
     return '-'.join((name, compact_date(time()), s))
+
+
+def gen_root_id():
+    """Return a new tree-root file id."""
+    return gen_file_id('TREE_ROOT')
+

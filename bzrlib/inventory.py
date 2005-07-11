@@ -277,8 +277,10 @@ class Inventory(object):
 
     >>> [x[0] for x in inv.iter_entries()]
     ['hello.c']
+    >>> inv = Inventory('TREE_ROOT-12345678-12345678')
+    >>> inv.add(InventoryEntry('123-123', 'hello.c', 'file', ROOT_ID))
     """
-    def __init__(self):
+    def __init__(self, root_id=ROOT_ID):
         """Create or read an inventory.
 
         If a working directory is specified, the inventory is read
@@ -288,7 +290,11 @@ class Inventory(object):
         The inventory is created with a default root directory, with
         an id of None.
         """
-        self.root = RootEntry(ROOT_ID)
+        # We are letting Branch(init=True) create a unique inventory
+        # root id. Rather than generating a random one here.
+        #if root_id is None:
+        #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
+        self.root = RootEntry(root_id)
         self._byid = {self.root.file_id: self.root}
 
 
@@ -400,6 +406,9 @@ class Inventory(object):
         if entry.file_id in self._byid:
             raise BzrError("inventory already contains entry with id {%s}" % entry.file_id)
 
+        if entry.parent_id == ROOT_ID or entry.parent_id is None:
+            entry.parent_id = self.root.file_id
+
         try:
             parent = self._byid[entry.parent_id]
         except KeyError:
@@ -469,6 +478,8 @@ class Inventory(object):
         
         e = Element('inventory')
         e.text = '\n'
+        if self.root.file_id not in (None, ROOT_ID):
+            e.set('file_id', self.root.file_id)
         for path, ie in self.iter_entries():
             e.append(ie.to_element())
         return e
@@ -486,9 +497,13 @@ class Inventory(object):
         """
         # XXXX: doctest doesn't run this properly under python2.3
         assert elt.tag == 'inventory'
-        o = cls()
+        root_id = elt.get('file_id') or ROOT_ID
+        o = cls(root_id)
         for e in elt:
-            o.add(InventoryEntry.from_element(e))
+            ie = InventoryEntry.from_element(e)
+            if ie.parent_id == ROOT_ID:
+                ie.parent_id = root_id
+            o.add(ie)
         return o
         
     from_element = classmethod(from_element)

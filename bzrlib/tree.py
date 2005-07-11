@@ -143,9 +143,9 @@ class RevisionTree(Tree):
 
 
 class EmptyTree(Tree):
-    def __init__(self):
+    def __init__(self, root_id):
         from bzrlib.inventory import Inventory
-        self._inventory = Inventory()
+        self._inventory = Inventory(root_id)
 
     def has_filename(self, filename):
         return False
