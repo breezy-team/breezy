@@ -522,8 +522,9 @@ class cmd_pull(Command):
     from one into the other.
     """
     takes_args = ['location?']
+    takes_options = ['revision']
 
-    def run(self, location=None):
+    def run(self, location=None, revision=None):
         from bzrlib.merge import merge
         import errno
         
@@ -541,13 +542,20 @@ class cmd_pull(Command):
                 print "Using last location: %s" % stored_loc
                 location = stored_loc
 
+        if revision is None:
+            revision = [None]
+        else:
+            if len(revision) > 1:
+                raise BzrCommandError('bzr pull --revision takes exactly 1 revision value')
+
         from bzrlib.branch import DivergedBranches
         br_from = find_branch(location)
         location = br_from.base
         old_revno = br_to.revno()
         try:
+            revno, rev_id = br_from.get_revision_info(revision[0])
             try:
-                br_to.update_revisions(br_from)
+                br_to.update_revisions(br_from, stop_revision=revno)
             except DivergedBranches:
                 raise BzrCommandError("These branches have diverged."
                     "  Try merge.")
