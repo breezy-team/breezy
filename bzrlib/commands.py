@@ -525,8 +525,6 @@ class cmd_pull(Command):
 
     def run(self, location=None):
         from bzrlib.merge import merge
-        import tempfile
-        from shutil import rmtree
         import errno
         
         br_to = find_branch('.')
@@ -542,28 +540,26 @@ class cmd_pull(Command):
             else:
                 print "Using last location: %s" % stored_loc
                 location = stored_loc
-        cache_root = tempfile.mkdtemp()
+
         from bzrlib.branch import DivergedBranches
         br_from = find_branch(location)
         location = br_from.base
         old_revno = br_to.revno()
         try:
-            from branch import find_cached_branch, DivergedBranches
-            br_from = find_cached_branch(location, cache_root)
-            location = br_from.base
-            old_revno = br_to.revno()
             try:
                 br_to.update_revisions(br_from)
             except DivergedBranches:
                 raise BzrCommandError("These branches have diverged."
                     "  Try merge.")
-                
+                    
             merge(('.', -1), ('.', old_revno), check_clean=False)
             if location != stored_loc:
                 br_to.put_controlfile('x-pull', location+'\n')
         finally:
-            rmtree(cache_root)
-
+            if br_from.cache_root is not None:
+                import shutil
+                shutil.rmtree(br_from.cache_root)
+                br_from.cache_root = None
 
 
 class cmd_branch(Command):
@@ -582,20 +578,18 @@ class cmd_branch(Command):
         import errno
         from bzrlib.merge import merge
         from bzrlib.branch import DivergedBranches, NoSuchRevision, \
-             find_cached_branch, find_branch
-        from shutil import rmtree
-        from meta_store import CachedStore
-        import tempfile
-        cache_root = tempfile.mkdtemp()
+             find_branch
 
         if revision is None:
             revision = [None]
         else:
             if len(revision) > 1:
                 raise BzrCommandError('bzr branch --revision takes exactly 1 revision value')
+
+        br_from = None
         try:
             try:
-                br_from = find_cached_branch(from_location, cache_root)
+                br_from = find_branch(from_location)
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     raise BzrCommandError('Source location "%s" does not'
@@ -632,7 +626,10 @@ class cmd_branch(Command):
             from_location = br_from.base
             br_to.put_controlfile('x-pull', from_location+'\n')
         finally:
-            rmtree(cache_root)
+            if br_from and br_from.cache_root is not None:
+                import shutil
+                shutil.rmtree(br_from.cache_root)
+                br_from.cache_root = None
 
 
 class cmd_renames(Command):

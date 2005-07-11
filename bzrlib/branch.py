@@ -43,23 +43,6 @@ def find_branch(f, **args):
             t = transport(root)
     return Branch(t, **args)
 
-def find_cached_branch(f, cache_root, **args):
-    from remotebranch import RemoteBranch
-    br = find_branch(f, **args)
-    def cacheify(br, store_name):
-        from meta_store import CachedStore
-        cache_path = os.path.join(cache_root, store_name)
-        os.mkdir(cache_path)
-        new_store = CachedStore(getattr(br, store_name), cache_path)
-        setattr(br, store_name, new_store)
-
-    if isinstance(br, RemoteBranch):
-        cacheify(br, 'inventory_store')
-        cacheify(br, 'text_store')
-        cacheify(br, 'revision_store')
-    return br
-
-
 def _relpath(base, path):
     """Return path relative to base, or raise exception.
 
@@ -197,6 +180,22 @@ class Branch(object):
             from warnings import warn
             warn("branch %r was not explicitly unlocked" % self)
             self._lock.unlock()
+
+        # TODO: It might be best to do this somewhere else,
+        # but it is nice for a Branch object to automatically
+        # cache it's information.
+        # Alternatively, we could have the Transport objects cache requests
+        # See the earlier discussion about how major objects (like Branch)
+        # should never expect their __del__ function to run.
+        if self.cache_root is not None:
+            from warnings import warn
+            warn("branch %r auto-cleanup of cache files" % self)
+            try:
+                import shutil
+                shutil.rmtree(self.cache_root)
+            except:
+                pass
+            self.cache_root = None
 
     def _get_base(self):
         if self._transport:
@@ -363,9 +362,21 @@ class Branch(object):
         # So create the rest of the entries.
         from bzrlib.store import CompressedTextStore
 
+        if self._transport.is_remote():
+            import tempfile
+            self.cache_root = tempfile.mkdtemp()
+        else:
+            self.cache_root = None
+
         def get_store(name):
             relpath = self._rel_controlfilename(name)
-            return CompressedTextStore(self._transport.clone(relpath))
+            store = CompressedTextStore(self._transport.clone(relpath))
+            if self._transport.is_remote():
+                from meta_store import CachedStore
+                cache_path = os.path.join(self.cache_root, store_name)
+                os.mkdir(cache_path)
+                store = CachedStore(store, cache_path)
+            return store
 
         self.text_store = get_store('text-store')
         self.revision_store = get_store('revision-store')
