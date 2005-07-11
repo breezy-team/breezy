@@ -50,7 +50,12 @@ def _get_revision_set(branch, target_rev_id=None):
         if rev_id in this_revs:
             continue
         this_revs.add(rev_id)
-        rev = branch.get_revision(rev_id)
+        if rev_id in branch.revision_store:
+            rev = branch.get_revision(rev_id)
+        else:
+            warning('Could not find revision for rev: {%s}'
+                    % rev_id)
+            continue
         for parent in rev.parents:
             if parent.revision_id not in this_revs:
                 to_search.append(parent.revision_id)
