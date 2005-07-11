@@ -32,6 +32,7 @@ def selftest():
     import bzrlib.selftest.testmerge3
     import bzrlib.selftest.testhashcache
     import bzrlib.selftest.testrevisionnamespaces
+    import bzrlib.selftest.testbranch
     import bzrlib.merge_core
     from doctest import DocTestSuite
     import os
@@ -52,6 +53,7 @@ def selftest():
               bzrlib.selftest.blackbox,
               bzrlib.selftest.testhashcache,
               bzrlib.selftest.testrevisionnamespaces,
+              bzrlib.selftest.testbranch,
               ):
         if m not in MODULES_TO_TEST:
             MODULES_TO_TEST.append(m)
@@ -75,13 +77,6 @@ def selftest():
 
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
-
-#     for cl in (bzrlib.selftest.whitebox.TEST_CLASSES 
-#                + bzrlib.selftest.versioning.TEST_CLASSES
-#                + bzrlib.selftest.testmerge3.TEST_CLASSES
-#                + bzrlib.selftest.testhashcache.TEST_CLASSES
-#                + bzrlib.selftest.blackbox.TEST_CLASSES):
-#         suite.addTest(cl())
 
     suite.addTest(unittest.makeSuite(bzrlib.merge_core.MergeTest, 'test_'))
 

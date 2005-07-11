@@ -549,11 +549,14 @@ class Branch(object):
         return self.working_tree().unknowns()
 
 
-    def append_revision(self, revision_id):
+    def append_revision(self, *revision_ids):
         from bzrlib.atomicfile import AtomicFile
 
-        mutter("add {%s} to revision-history" % revision_id)
-        rev_history = self.revision_history() + [revision_id]
+        for revision_id in revision_ids:
+            mutter("add {%s} to revision-history" % revision_id)
+
+        rev_history = self.revision_history()
+        rev_history.extend(revision_ids)
 
         f = AtomicFile(self.controlfilename('revision-history'))
         try:
