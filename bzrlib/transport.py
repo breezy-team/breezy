@@ -96,7 +96,7 @@ class Transport(object):
         This just gives them something easy to call.
         """
         if isinstance(from_file, basestring):
-            to_file.write(basestring)
+            to_file.write(from_file)
         else:
             from bzrlib.osutils import pumpfile
             pumpfile(from_file, to_file)
@@ -141,9 +141,9 @@ class Transport(object):
         """
         raise NotImplementedError
 
-    def abspath(self, *args):
+    def abspath(self, relpath):
         """Return the full url to the given relative path.
-        This can be supplied with multiple arguments
+        This can be supplied with a string or a list
         """
         raise NotImplementedError
 
@@ -163,7 +163,6 @@ class Transport(object):
             self._update_pb(pb, msg, count, total)
             yield self.get(relpath)
             count += 1
-        return files
 
     def put(self, relpath, f):
         """Copy the file-like or string object into the location.

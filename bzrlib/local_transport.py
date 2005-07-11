@@ -25,11 +25,13 @@ class LocalTransport(Transport):
         else:
             return LocalTransport(self.abspath(offset))
 
-    def abspath(self, *args):
+    def abspath(self, relpath):
         """Return the full url to the given relative path.
-        This can be supplied with multiple arguments
+        This can be supplied with a string or a list
         """
-        return os.path.join(self.base, *args)
+        if isinstance(relpath, basestring):
+            relpath = [relpath]
+        return os.path.join(self.base, *relpath)
 
     def has(self, relpath):
         return os.access(self.abspath(relpath), os.F_OK)

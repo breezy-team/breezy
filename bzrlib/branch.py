@@ -164,13 +164,11 @@ class Branch(object):
         In the test suite, creation of new trees is tested using the
         `ScratchBranch` class.
         """
-        from bzrlib.store import CompressedTextStore
-
         if isinstance(transport, basestring):
             from transport import transport as get_transport
             transport = get_transport(transport)
 
-        self.transport = transport
+        self._transport = transport
         if init:
             self._make_control()
 
@@ -256,7 +254,7 @@ class Branch(object):
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
-        return self.transport.abspath(self._rel_controlfilename(file_or_path))
+        return self._transport.abspath(self._rel_controlfilename(file_or_path))
 
 
     def controlfile(self, file_or_path, mode='r'):
@@ -278,14 +276,14 @@ class Branch(object):
 
         # TODO: Try to use transport.put() rather than branch.controlfile(mode='w')
         if mode == 'rb': 
-            return self.transport.get(relpath)
+            return self._transport.get(relpath)
         elif mode == 'wb':
-            return self.transport.open(relpath)
+            return self._transport.open(relpath)
         elif mode == 'r':
-            return codecs.getreader('utf-8')(self.transport.get(relpath))
+            return codecs.getreader('utf-8')(self._transport.get(relpath))
         elif mode == 'w':
             return codecs.getwriter(bzrlib.user_encoding)(
-                    self.transport.open(relpath), errors='replace')
+                    self._transport.open(relpath), errors='replace')
         else:
             raise BzrError("invalid controlfile mode %r" % mode)
 
@@ -294,22 +292,22 @@ class Branch(object):
         from bzrlib.inventory import Inventory
         from bzrlib.xml import pack_xml
         
-        self.transport.mkdir(self.controlfilename([]))
-        self.transport.put(self._rel_controlfilename('README'),
+        self._transport.mkdir(self.controlfilename([]))
+        self._transport.put(self._rel_controlfilename('README'),
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.\n")
-        self.transport.put(self._rel_controlfilename('branch-format'),
+        self._transport.put(self._rel_controlfilename('branch-format'),
             BZR_BRANCH_FORMAT)
         for d in ('text-store', 'inventory-store', 'revision-store'):
-            self.transport.mkdir(self._rel_controlfilename(d))
+            self._transport.mkdir(self._rel_controlfilename(d))
         for f in ('revision-history', 'merged-patches',
                   'pending-merged-patches', 'branch-name',
                   'branch-lock',
                   'pending-merges'):
-            self.transport.put(self._rel_controlfilename(f), '')
+            self._transport.put(self._rel_controlfilename(f), '')
         mutter('created control directory in ' + self._transport.base)
 
-        # TODO: Try and do this with self.transport.put() instead
+        # TODO: Try and do this with self._transport.put() instead
         pack_xml(Inventory(), self.controlfile('inventory','w'))
 
 
@@ -333,9 +331,11 @@ class Branch(object):
 
         # We know that the format is the currently supported one.
         # So create the rest of the entries.
+        from bzrlib.store import CompressedTextStore
+
         def get_store(name):
             relpath = self._rel_controlfilename(name)
-            return CompressedTextStore(self.transport.clone(relpath))
+            return CompressedTextStore(self._transport.clone(relpath))
 
         self.text_store = get_store('text-store')
         self.revision_store = get_store('revision-store')
@@ -377,7 +377,7 @@ class Branch(object):
             sio = StringIO()
             pack_xml(inv, sio)
             sio.seek(0)
-            self.transport.put(self._rel_controlfilename('inventory'), sio)
+            self._transport.put(self._rel_controlfilename('inventory'), sio)
         finally:
             self.unlock()
         
@@ -565,7 +565,7 @@ class Branch(object):
 
         self.lock_write()
         try:
-            self.transport.put(self._rel_controlfilename('revision-history'),
+            self._transport.put(self._rel_controlfilename('revision-history'),
                     '\n'.join(rev_history))
         finally:
             self.unlock()
@@ -1207,7 +1207,7 @@ class Branch(object):
         directory but not yet committed.
         """
         cfn = self._rel_controlfilename('pending-merges')
-        if not self.transport.has(cfn):
+        if not self._transport.has(cfn):
             return []
         p = []
         for l in self.controlfile('pending-merges', 'r').readlines():
@@ -1234,7 +1234,7 @@ class Branch(object):
     def set_pending_merges(self, rev_list):
         self.lock_write()
         try:
-            self.transport.put(self._rel_controlfilename('pending-merges'),
+            self._transport.put(self._rel_controlfilename('pending-merges'),
                     '\n'.join(rev_list))
         finally:
             self.unlock()
@@ -1272,10 +1272,10 @@ class ScratchBranch(Branch):
         # to test remote branches.
         self.base = base
         for d in dirs:
-            self.transport.mkdir(d)
+            self._transport.mkdir(d)
             
         for f in files:
-            self.transport.put(f, 'content of %s' % f)
+            self._transport.put(f, 'content of %s' % f)
 
 
     def clone(self):
