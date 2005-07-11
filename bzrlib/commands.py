@@ -613,7 +613,7 @@ class cmd_branch(Command):
                     raise
             br_to = find_branch(to_location, init=True)
 
-            revno = br_to.lookup_revision(revision[0])
+            revno = br_from.lookup_revision(revision[0])
             try:
                 br_to.update_revisions(br_from, stop_revision=revno)
             except NoSuchRevision:

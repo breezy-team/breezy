@@ -110,7 +110,7 @@ class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):
         self.branch = branch
         self.revision = revision
-        msg = "Branch %s has no revision %d" % (branch, revision)
+        msg = "Branch %s has no revision %s" % (branch, revision)
         BzrError.__init__(self, msg)
 
 
