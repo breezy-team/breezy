@@ -16,10 +16,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""
-Simple text-mode progress indicator.
-
-Everyone loves ascii art!
+"""Simple text-mode progress indicator.
 
 To display an indicator, create a ProgressBar object.  Call it,
 passing Progress objects indicating the current state.  When done,
