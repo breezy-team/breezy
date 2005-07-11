@@ -66,3 +66,7 @@ class LockError(Exception):
             Exception.__init__(self, e)
         else:
             Exception.__init__(self)
+
+
+class EmptyCommit(Exception):
+    """Commit failed because nothing was changed."""

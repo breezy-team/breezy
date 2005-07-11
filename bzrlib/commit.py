@@ -24,7 +24,8 @@ def commit(branch, message,
            committer=None,
            verbose=True,
            specific_files=None,
-           rev_id=None):
+           rev_id=None,
+           allow_empty=True):
     """Commit working copy as a new revision.
 
     The basic approach is to add all the file texts into the
@@ -40,6 +41,9 @@ def commit(branch, message,
     of the whole directory at an instant.  This would also have to
     be robust against files disappearing, moving, etc.  So the
     whole thing is a bit hard.
+
+    This raises EmptyCommit if there are no changes, no new merges,
+    and allow_empty is false.
 
     timestamp -- if not None, seconds-since-epoch for a
          postdated/predated commit.
@@ -59,7 +63,7 @@ def commit(branch, message,
 
     from bzrlib.osutils import local_time_offset, username
     from bzrlib.branch import gen_file_id
-    from bzrlib.errors import BzrError
+    from bzrlib.errors import BzrError, EmptyCommit
     from bzrlib.revision import Revision, RevisionReference
     from bzrlib.trace import mutter, note
     from bzrlib.xml import pack_xml
@@ -85,12 +89,16 @@ def commit(branch, message,
 
         pending_merges = branch.pending_merges()
 
-        missing_ids, new_inv = _gather_commit(branch,
-                                              work_tree,
-                                              work_inv,
-                                              basis_inv,
-                                              specific_files,
-                                              verbose)
+        missing_ids, new_inv, any_changes = \
+                     _gather_commit(branch,
+                                    work_tree,
+                                    work_inv,
+                                    basis_inv,
+                                    specific_files,
+                                    verbose)
+
+        if not (any_changes or allow_empty or pending_merges):
+            raise EmptyCommit()
 
         for file_id in missing_ids:
             # Any files that have been deleted are now removed from the
@@ -192,6 +200,8 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
                    verbose):
     """Build inventory preparatory to commit.
 
+    Returns missing_ids, new_inv, any_changes.
+
     This adds any changed files into the text store, and sets their
     test-id, sha and size in the returned inventory appropriately.
 
@@ -209,6 +219,7 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
     from revision import Revision
     from bzrlib.trace import mutter, note
 
+    any_changes = False
     inv = Inventory()
     missing_ids = []
     
@@ -233,6 +244,7 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
         if not work_tree.has_id(file_id):
             if verbose:
                 print('deleted %s%s' % (path, kind_marker(entry.kind)))
+                any_changes = True
             mutter("    file is missing, removing from inventory")
             missing_ids.append(file_id)
             continue
@@ -284,14 +296,17 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
             marked = path + kind_marker(entry.kind)
             if not old_ie:
                 print 'added', marked
+                any_changes = True
             elif old_ie == entry:
                 pass                    # unchanged
             elif (old_ie.name == entry.name
                   and old_ie.parent_id == entry.parent_id):
                 print 'modified', marked
+                any_changes = True
             else:
                 print 'renamed', marked
+                any_changes = True
                         
-    return missing_ids, inv
+    return missing_ids, inv, any_changes
 
 

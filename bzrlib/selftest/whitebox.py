@@ -20,6 +20,22 @@ class Unknowns(InTempDir):
 
 
 
+class NoChanges(InTempDir):
+    def runTest(self):
+        from bzrlib.errors import EmptyCommit
+        
+        b = Branch('.', init=True)
+
+        self.build_tree(['hello.txt'])
+
+        self.assertRaises(EmptyCommit,
+                          b.commit,
+                          'commit without adding',
+                          allow_empty=False)
+
+
+
+
 class ValidateRevisionId(TestBase):
     def runTest(self):
         from bzrlib.revision import validate_revision_id
