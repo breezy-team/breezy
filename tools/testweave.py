@@ -23,7 +23,8 @@
 
 
 import testsweet
-from weave import Weave, WeaveFormatError
+from bzrlib.weave import Weave, WeaveFormatError
+from bzrlib.weavefile import write_weave, read_weave
 from pprint import pformat
 
 
@@ -50,7 +51,6 @@ class TestBase(testsweet.TestBase):
     def check_read_write(self, k):
         """Check the weave k can be written & re-read."""
         from tempfile import TemporaryFile
-        from weavefile import write_weave, read_weave
         tf = TemporaryFile()
 
         write_weave(k, tf)
@@ -143,7 +143,7 @@ class InvalidAdd(TestBase):
     def runTest(self):
         k = Weave()
 
-        self.assertRaises(IndexError,
+        self.assertRaises(ValueError,
                           k.add,
                           [69],
                           ['new text!'])
