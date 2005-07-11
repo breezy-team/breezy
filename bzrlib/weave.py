@@ -326,35 +326,33 @@ class Weave(object):
 
         lineno = 0         # line of weave, 0-based
 
-        isactive = False
+        isactive = None
 
         WFE = WeaveFormatError
 
         for l in self._l:
             if isinstance(l, tuple):
                 c, v = l
+                isactive = None
                 if c == '{':
                     assert v not in istack
                     istack.append(v)
-                    if not dset:
-                        isactive = (v in included)
                 elif c == '}':
                     oldv = istack.pop()
                     assert oldv == v
-                    isactive = (not dset) and (istack and istack[-1] in included)
                 elif c == '[':
                     if v in included:
                         assert v not in dset
                         dset.add(v)
-                        isactive = False
                 else:
                     assert c == ']'
                     if v in included:
                         assert v in dset
                         dset.remove(v)
-                        isactive = (not dset) and (istack and istack[-1] in included)
             else:
                 assert isinstance(l, basestring)
+                if isactive is None:
+                    isactive = (not dset) and istack and (istack[-1] in included)
                 if isactive:
                     yield istack[-1], lineno, l
             lineno += 1
@@ -399,7 +397,7 @@ class Weave(object):
         return l
 
 
-    def check(self):
+    def check(self, progress_bar=None):
         # check no circular inclusions
         for version in range(self.numversions()):
             inclusions = list(self._v[version])
@@ -412,7 +410,10 @@ class Weave(object):
         # try extracting all versions; this is a bit slow and parallel
         # extraction could be used
         import sha
-        for version in range(self.numversions()):
+        nv = self.numversions()
+        for version in range(nv):
+            if progress_bar:
+                progress_bar.update('checking text', version, nv)
             s = sha.new()
             for l in self.get_iter(version):
                 s.update(l)
@@ -586,6 +587,11 @@ def main(argv):
     import sys
     import os
     from weavefile import write_weave, read_weave
+    from bzrlib.progress import ProgressBar
+
+    #import psyco
+    #psyco.full()
+
     cmd = argv[1]
 
     def readit():
@@ -633,7 +639,9 @@ def main(argv):
         
     elif cmd == 'check':
         w = readit()
-        w.check()
+        pb = ProgressBar()
+        w.check(pb)
+        pb.clear()
 
     elif cmd == 'inclusions':
         w = readit()
