@@ -25,7 +25,7 @@ def commit(branch, message,
            verbose=True,
            specific_files=None,
            rev_id=None,
-           allow_empty=True):
+           allow_pointless=True):
     """Commit working copy as a new revision.
 
     The basic approach is to add all the file texts into the
@@ -42,8 +42,8 @@ def commit(branch, message,
     be robust against files disappearing, moving, etc.  So the
     whole thing is a bit hard.
 
-    This raises EmptyCommit if there are no changes, no new merges,
-    and allow_empty is false.
+    This raises PointlessCommit if there are no changes, no new merges,
+    and allow_pointless  is false.
 
     timestamp -- if not None, seconds-since-epoch for a
          postdated/predated commit.
@@ -63,7 +63,7 @@ def commit(branch, message,
 
     from bzrlib.osutils import local_time_offset, username
     from bzrlib.branch import gen_file_id
-    from bzrlib.errors import BzrError, EmptyCommit
+    from bzrlib.errors import BzrError, PointlessCommit
     from bzrlib.revision import Revision, RevisionReference
     from bzrlib.trace import mutter, note
     from bzrlib.xml import pack_xml
@@ -97,8 +97,8 @@ def commit(branch, message,
                                     specific_files,
                                     verbose)
 
-        if not (any_changes or allow_empty or pending_merges):
-            raise EmptyCommit()
+        if not (any_changes or allow_pointless or pending_merges):
+            raise PointlessCommit()
 
         for file_id in missing_ids:
             # Any files that have been deleted are now removed from the

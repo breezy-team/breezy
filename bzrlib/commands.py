@@ -1095,11 +1095,12 @@ class cmd_commit(Command):
     TODO: Strict commit that fails if there are unknown or deleted files.
     """
     takes_args = ['selected*']
-    takes_options = ['message', 'file', 'verbose']
+    takes_options = ['message', 'file', 'verbose', 'unchanged']
     aliases = ['ci', 'checkin']
 
-    def run(self, message=None, file=None, verbose=True, selected_list=None):
-        from bzrlib.commit import commit
+    def run(self, message=None, file=None, verbose=True, selected_list=None,
+            unchanged=False):
+        from bzrlib.errors import PointlessCommit
         from bzrlib.osutils import get_text_message
 
         ## Warning: shadows builtin file()
@@ -1124,7 +1125,14 @@ class cmd_commit(Command):
             message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
         b = find_branch('.')
-        commit(b, message, verbose=verbose, specific_files=selected_list)
+
+        try:
+            b.commit(message, verbose=verbose,
+                     specific_files=selected_list,
+                     allow_pointless=unchanged)
+        except PointlessCommit:
+            raise BzrCommandError("no changes to commit",
+                                  ["use --unchanged to commit anyhow"])
 
 
 class cmd_check(Command):
@@ -1344,6 +1352,7 @@ OPTIONS = {
     'verbose':                None,
     'version':                None,
     'email':                  None,
+    'unchanged':              None,
     'update':                 None,
     'long':                   None,
     'root':                   str,

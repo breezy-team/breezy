@@ -27,6 +27,9 @@ DEVELOPMENT HEAD
       John A Meinel.  Old format is available with the ``--long`` or
       ``-l`` option, patched by William Dodé.
 
+    * By default the commit command refuses to record a revision with
+      no changes unless the ``--unchanged`` option is given.
+
 
 bzr-0.0.5  2005-06-15
   

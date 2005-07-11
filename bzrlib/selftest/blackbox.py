@@ -72,6 +72,16 @@ class InvalidCommands(InTempDir):
 
 
 
+class EmptyCommit(InTempDir):
+    def runTest(self):
+        self.runcmd("bzr init")
+        self.build_tree(['hello.txt'])
+        self.runcmd("bzr commit -m empty", retcode=1)
+        self.runcmd("bzr add hello.txt")
+        self.runcmd("bzr commit -m added")
+
+
+
 class OldTests(InTempDir):
     # old tests moved from ./testbzr
     def runTest(self):
@@ -256,13 +266,13 @@ class OldTests(InTempDir):
         runcmd('bzr pull ../branch2')
         chdir('.bzr')
         runcmd('bzr pull')
-        runcmd('bzr commit -m empty')
+        runcmd('bzr commit --unchanged -m empty')
         runcmd('bzr pull')
         chdir('../../branch2')
         runcmd('bzr pull')
-        runcmd('bzr commit -m empty')
+        runcmd('bzr commit --unchanged -m empty')
         chdir('../branch1')
-        runcmd('bzr commit -m empty')
+        runcmd('bzr commit --unchanged -m empty')
         runcmd('bzr pull', retcode=1)
         chdir ('..')
 
@@ -372,4 +382,5 @@ TEST_CLASSES = [TestVersion,
                 InvalidCommands,
                 RevertCommand,
                 OldTests,
+                EmptyCommit,
                 ]

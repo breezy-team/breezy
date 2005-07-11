@@ -22,36 +22,36 @@ class Unknowns(InTempDir):
 
 class NoChanges(InTempDir):
     def runTest(self):
-        from bzrlib.errors import EmptyCommit
+        from bzrlib.errors import PointlessCommit
         
         b = Branch('.', init=True)
 
         self.build_tree(['hello.txt'])
 
-        self.assertRaises(EmptyCommit,
+        self.assertRaises(PointlessCommit,
                           b.commit,
                           'commit without adding',
-                          allow_empty=False)
+                          allow_pointless=False)
 
-        b.commit('commit empty tree',
-                 allow_empty=True)
+        b.commit('commit pointless tree',
+                 allow_pointless=True)
 
         b.add('hello.txt')
         
         b.commit('commit first added file',
-                 allow_empty=False)
+                 allow_pointless=False)
         
-        self.assertRaises(EmptyCommit,
+        self.assertRaises(PointlessCommit,
                           b.commit,
                           'commit after adding file',
-                          allow_empty=False)
+                          allow_pointless=False)
         
         b.commit('commit pointless revision with one file',
-                 allow_empty=True)
+                 allow_pointless=True)
 
         b.add_pending_merge('mbp@892739123-2005-123123')
         b.commit('commit new merge with no text changes',
-                 allow_empty=False)
+                 allow_pointless=False)
         
 
 

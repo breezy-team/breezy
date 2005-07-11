@@ -68,5 +68,5 @@ class LockError(Exception):
             Exception.__init__(self)
 
 
-class EmptyCommit(Exception):
+class PointlessCommit(Exception):
     """Commit failed because nothing was changed."""
