@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from trace import mutter
-from bzrlib.store import ImmutableStore
+from bzrlib.store import CompressedTextStore
 
 class CachedStore:
     """A store that caches data locally, to avoid repeated downloads.
@@ -24,7 +24,7 @@ class CachedStore:
     """
     def __init__(self, store, cache_dir):
         self.source_store = store
-        self.cache_store = ImmutableStore(cache_dir)
+        self.cache_store = CompressedTextStore(cache_dir)
 
     def __getitem__(self, id):
         mutter("Cache add %s" % id)
