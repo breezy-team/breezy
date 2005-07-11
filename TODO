@@ -19,7 +19,7 @@ Small things
 
 * Merging add of a new file clashing with an existing file doesn't
   work; add gets an error that it's already versioned and the merge
-  aborts.
+  aborts.  
 
 * Merge should ignore the destination's working directory, otherwise
   we get an error about the statcache when pulling from a remote
