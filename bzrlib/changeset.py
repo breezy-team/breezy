@@ -17,6 +17,7 @@ import os.path
 import errno
 import patch
 import stat
+from bzrlib.trace import mutter
 """
 Represent and apply a changeset
 """
@@ -693,6 +694,7 @@ class ChangesetEntry(object):
         :type reverse: bool
         :rtype: str
         """
+        mutter("Finding new path for %s" % self.summarize_name(changeset))
         if reverse:
             parent = self.parent
             to_dir = self.dir
@@ -717,6 +719,7 @@ class ChangesetEntry(object):
         if from_dir == to_dir:
             dir = os.path.dirname(id_map[self.id])
         else:
+            mutter("path, new_path: %r %r" % (self.path, self.new_path))
             parent_entry = changeset.entries[parent]
             dir = parent_entry.get_new_path(id_map, changeset, reverse)
         if from_name == to_name:
