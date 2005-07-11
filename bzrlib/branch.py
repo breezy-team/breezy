@@ -1214,17 +1214,21 @@ class Branch(object):
         return p
 
 
-    def add_pending_merge(self, revision_id):
+    def add_pending_merge(self, *revision_ids):
         from bzrlib.revision import validate_revision_id
 
-        validate_revision_id(revision_id)
+        for rev_id in revision_ids:
+            validate_revision_id(rev_id)
 
         p = self.pending_merges()
-        if revision_id in p:
-            return
-        p.append(revision_id)
-        self.set_pending_merges(p)
-
+        updated = False
+        for rev_id in revision_ids:
+            if rev_id in p:
+                continue
+            p.append(rev_id)
+            updated = True
+        if updated:
+            self.set_pending_merges(p)
 
     def set_pending_merges(self, rev_list):
         self.lock_write()
