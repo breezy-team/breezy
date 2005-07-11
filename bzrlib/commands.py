@@ -1679,6 +1679,9 @@ def run_bzr(argv):
     logging and error handling.  
     """
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
+
+    # Load all of the transport methods
+    import bzrlib.local_transport, bzrlib.http_transport
     
     try:
         # some options like --builtin and --no-plugins have special effects
