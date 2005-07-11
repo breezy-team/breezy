@@ -755,8 +755,8 @@ class cmd_init(Command):
         bzr commit -m 'imported project'
     """
     def run(self):
-        from bzrlib.branch import Branch
-        Branch('.', init=True)
+        from bzrlib.branch import find_branch
+        find_branch('.', init=True)
 
 
 class cmd_diff(Command):
