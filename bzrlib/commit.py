@@ -221,6 +221,7 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
         mutter('commit prep file %s, id %r ' % (p, file_id))
 
         if specific_files and not is_inside_any(specific_files, path):
+            mutter('  skipping file excluded from commit')
             if basis_inv.has_id(file_id):
                 # carry over with previous state
                 inv.add(basis_inv[file_id].copy())
