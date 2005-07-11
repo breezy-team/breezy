@@ -166,10 +166,10 @@ class Transport(object):
         # TODO: Consider having this actually buffer the requests,
         # in the default mode, it probably won't give worse performance,
         # and all children wouldn't have to implement buffering
-        total = self._get_total(multi)
+        total = self._get_total(relpaths)
         count = 0
         for relpath in relpaths:
-            self._update_pb(pb, msg, count, total)
+            self._update_pb(pb, 'get', count, total)
             yield self.get(relpath)
             count += 1
 

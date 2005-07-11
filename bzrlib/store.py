@@ -85,7 +85,7 @@ class Storage(object):
         from bzrlib.progress import ProgressBar
         pb = ProgressBar()
         pb.update('preparing to copy')
-        to_copy = [fileid for fileid in text_ids if fileid not in self]
+        to_copy = [fileid for fileid in ids if fileid not in self]
         return self._do_copy(other, to_copy, pb)
 
     def _do_copy(self, other, to_copy, pb):
@@ -258,7 +258,7 @@ class CompressedTextStore(Storage):
         return count, total
 
 class ScratchCompressedTextStore(CompressedTextStore):
-    """Self-destructing test subclass of ImmutableStore.
+    """Self-destructing test subclass of CompressedTextStore.
 
     The Store only exists for the lifetime of the Python object.
     Obviously you should not put anything precious in it.
