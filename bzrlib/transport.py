@@ -175,6 +175,11 @@ class Transport(object):
         """
         raise NotImplementedError
 
+    def relpath(self, abspath):
+        """Return the local path portion from a given absolute path.
+        """
+        raise NotImplementedError
+
     def get_multi(self, relpaths, decode=False, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
 
@@ -312,6 +317,23 @@ class Transport(object):
         it if at all possible.
         """
         raise NotImplementedError
+
+    def lock_read(self, relpath):
+        """Lock the given file for shared (read) access.
+        WARNING: many transports do not support this, so trying avoid using it
+
+        :return: A lock object, which should contain an unlock() function.
+        """
+        raise NotImplementedError
+
+    def lock_write(self, relpath):
+        """Lock the given file for exclusive (write) access.
+        WARNING: many transports do not support this, so trying avoid using it
+
+        :return: A lock object, which should contain an unlock() function.
+        """
+        raise NotImplementedError
+
 
 def transport(base):
     if base is None:

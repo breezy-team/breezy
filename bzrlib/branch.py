@@ -137,6 +137,7 @@ class Branch(object):
     _lock_mode = None
     _lock_count = None
     _lock = None
+    cache_root = None
     
     # Map some sort of prefix into a namespace
     # stuff like "revno:10", "revid:", etc.
@@ -188,8 +189,8 @@ class Branch(object):
         # See the earlier discussion about how major objects (like Branch)
         # should never expect their __del__ function to run.
         if self.cache_root is not None:
-            from warnings import warn
-            warn("branch %r auto-cleanup of cache files" % self)
+            #from warnings import warn
+            #warn("branch %r auto-cleanup of cache files" % self)
             try:
                 import shutil
                 shutil.rmtree(self.cache_root)
@@ -215,9 +216,8 @@ class Branch(object):
                                 self._lock_mode)
             self._lock_count += 1
         else:
-            from bzrlib.lock import WriteLock
-
-            self._lock = WriteLock(self.controlfilename('branch-lock'))
+            self._lock = self._transport.lock_write(
+                    self._rel_controlfilename('branch-lock'))
             self._lock_mode = 'w'
             self._lock_count = 1
 
@@ -229,9 +229,8 @@ class Branch(object):
                    "invalid lock mode %r" % self._lock_mode
             self._lock_count += 1
         else:
-            from bzrlib.lock import ReadLock
-
-            self._lock = ReadLock(self.controlfilename('branch-lock'))
+            self._lock = self._transport.lock_read(
+                    self._rel_controlfilename('branch-lock'))
             self._lock_mode = 'r'
             self._lock_count = 1
                         
@@ -259,7 +258,7 @@ class Branch(object):
         """Return path relative to this branch of something inside it.
 
         Raises an error if path is not in this branch."""
-        return _relpath(self._transport.base, path)
+        return self._transport.relpath(path)
 
 
     def _rel_controlfilename(self, file_or_path):
@@ -365,6 +364,7 @@ class Branch(object):
         if self._transport.is_remote():
             import tempfile
             self.cache_root = tempfile.mkdtemp()
+            mutter('Branch %r using caching in %r' % (self, self.cache_root))
         else:
             self.cache_root = None
 
@@ -373,7 +373,7 @@ class Branch(object):
             store = CompressedTextStore(self._transport.clone(relpath))
             if self._transport.is_remote():
                 from meta_store import CachedStore
-                cache_path = os.path.join(self.cache_root, store_name)
+                cache_path = os.path.join(self.cache_root, name)
                 os.mkdir(cache_path)
                 store = CachedStore(store, cache_path)
             return store

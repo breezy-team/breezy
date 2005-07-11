@@ -35,12 +35,19 @@ class StoreError(Exception):
 class Storage(object):
     """This class represents the abstract storage layout for saving information.
     """
+    _transport = None
+    _max_buffered_requests = 10
+
     def __init__(self, transport):
+        from transport import Transport
+        assert isinstance(transport, Transport)
         self._transport = transport
-        self._max_buffered_requests = 10
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self._transport.base)
+        if self._transport is None:
+            return "%s(None)" % (self.__class__.__name__)
+        else:
+            return "%s(%r)" % (self.__class__.__name__, self._transport.base)
 
     __str__ = __repr__
 
@@ -167,9 +174,6 @@ class CompressedTextStore(Storage):
         self._check_fileid(fileid)
         return fileid + '.gz'
 
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self._transport.base)
-
     def add(self, fileid, f):
         """Add contents of a file into the store.
 
@@ -196,7 +200,10 @@ class CompressedTextStore(Storage):
         gf = gzip.GzipFile(mode='wb', fileobj=sio)
         # if pumpfile handles files that don't fit in ram,
         # so will this function
-        pumpfile(f, gf)
+        if isinstance(f, basestring):
+            gf.write(f)
+        else:
+            pumpfile(f, gf)
         gf.close()
         sio.seek(0)
         self._transport.put(fn, sio)
@@ -241,7 +248,17 @@ class CompressedTextStore(Storage):
         """Returns a file reading from a particular entry."""
         fn = self._relpath(fileid)
         f = self._transport.get(fn)
-        return gzip.GzipFile(mode='rb', fileobj=f)
+
+        # gzip.GzipFile.read() requires a tell() function
+        # but some transports return objects that cannot seek
+        # so buffer them in a StringIO instead
+        if hasattr(f, 'tell'):
+            return gzip.GzipFile(mode='rb', fileobj=f)
+        else:
+            from cStringIO import StringIO
+            sio = StringIO(f.read())
+            return gzip.GzipFile(mode='rb', fileobj=sio)
+            
 
     def total_size(self):
         """Return (count, bytes)

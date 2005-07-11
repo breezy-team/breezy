@@ -36,6 +36,12 @@ class LocalTransport(Transport):
             relpath = [relpath]
         return os.path.join(self.base, *relpath)
 
+    def relpath(self, abspath):
+        """Return the local path portion from a given absolute path.
+        """
+        from branch import _relpath
+        return _relpath(self.base, abspath)
+
     def has(self, relpath):
         return os.access(self.abspath(relpath), os.F_OK)
 
@@ -120,6 +126,22 @@ class LocalTransport(Transport):
         """Return the stat information for a file.
         """
         return os.stat(self.abspath(relpath))
+
+    def lock_read(self, relpath):
+        """Lock the given file for shared (read) access.
+        :return: A lock object, which should be passed to Transport.unlock()
+        """
+        from bzrlib.lock import ReadLock
+        return ReadLock(self.abspath(relpath))
+
+    def lock_write(self, relpath):
+        """Lock the given file for exclusive (write) access.
+        WARNING: many transports do not support this, so trying avoid using it
+
+        :return: A lock object, which should be passed to Transport.unlock()
+        """
+        from bzrlib.lock import WriteLock
+        return WriteLock(self.abspath(relpath))
 
 # If nothing else matches, try the LocalTransport
 protocol_handlers[None] = LocalTransport

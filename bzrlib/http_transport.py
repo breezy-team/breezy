@@ -102,7 +102,14 @@ class HttpTransport(Transport):
         """
         if isinstance(relpath, basestring):
             relpath = [relpath]
-        return '/'.join(self.base, *relpath)
+        return '/'.join([self.base] + relpath)
+
+    def relpath(self, abspath):
+        if not abspath.startswith(self.base):
+            raise BzrError('path %r is not under base URL %r'
+                           % (abspath, self.base))
+        pl = len(self.base)
+        return abspath[pl:].lstrip('/')
 
     def has(self, relpath):
         try:
@@ -120,7 +127,7 @@ class HttpTransport(Transport):
         """
         if decode:
             import codecs
-            return codecs.get_reader('utf-8')(get_url(self.abspath(relpath)))
+            return codecs.getreader('utf-8')(get_url(self.abspath(relpath)))
         else:
             return get_url(self.abspath(relpath))
 
@@ -174,6 +181,27 @@ class HttpTransport(Transport):
         """Return the stat information for a file.
         """
         raise TransportNotPossibleError('http does not support stat()')
+
+    def lock_read(self, relpath):
+        """Lock the given file for shared (read) access.
+        :return: A lock object, which should be passed to Transport.unlock()
+        """
+        # The old RemoteBranch ignore lock for reading, so we will
+        # continue that tradition and return a bogus lock object.
+        class BogusLock(object):
+            def __init__(self, path):
+                self.path = path
+            def unlock(self):
+                pass
+        return BogusLock(relpath)
+
+    def lock_write(self, relpath):
+        """Lock the given file for exclusive (write) access.
+        WARNING: many transports do not support this, so trying avoid using it
+
+        :return: A lock object, which should be passed to Transport.unlock()
+        """
+        raise TransportNotPossibleError('http does not support lock_write()')
 
 # If nothing else matches, try the LocalTransport
 protocol_handlers['http://'] = HttpTransport
