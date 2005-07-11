@@ -27,31 +27,22 @@
 # way if it's done in a different order?  That's a pretty desirable
 # property.
 
-# TODO: How to write these to disk?  One option is cPickle, which
-# would be fast but less friendly to C, and perhaps not portable.  Another is
-
 # TODO: Nothing here so far assumes the lines are really \n newlines,
 # rather than being split up in some other way.  We could accomodate
 # binaries, perhaps by naively splitting on \n or perhaps using
 # something like a rolling checksum.
 
-# TODO: Perhaps track SHA-1 in the header for protection?  This would
-# be redundant with it being stored in the inventory, but perhaps
-# usefully so?
-
 # TODO: Track version names as well as indexes. 
-
-# TODO: Probably do transitive expansion when specifying parents?
-
-# TODO: Separate out some code to read and write weaves.
 
 # TODO: End marker for each version so we can stop reading?
 
 # TODO: Check that no insertion occurs inside a deletion that was
 # active in the version of the insertion.
 
-# TODO: Perhaps a special slower check() method that verifies more
-# nesting constraints and the MD5 of each version?
+# TODO: In addition to the SHA-1 check, perhaps have some code that
+# checks structural constraints of the weave: ie that insertions are
+# properly nested, that there is no text outside of an insertion, that
+# insertions or deletions are not repeated, etc.
 
 
 
