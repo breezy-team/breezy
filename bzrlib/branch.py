@@ -199,7 +199,9 @@ class Branch(object):
             self._lock.unlock()
 
     def _get_base(self):
-        return self._transport.base
+        if self._transport:
+            return self._transport.base
+        return None
 
     base = property(_get_base)
 
@@ -1279,12 +1281,6 @@ class ScratchBranch(Branch):
             base = mkdtemp()
             init = True
         Branch.__init__(self, base, init=init)
-        # I'm giving ScratchBranch a base object, since most of the
-        # tests use it. Perhaps in the future the test functions
-        # should be updated to be aware of _transport
-        # Especially since it would be nice to use the same tests
-        # to test remote branches.
-        self.base = base
         for d in dirs:
             self._transport.mkdir(d)
             
@@ -1326,7 +1322,7 @@ class ScratchBranch(Branch):
                 for name in files:
                     os.chmod(os.path.join(root, name), 0700)
             rmtree(self.base)
-        self.base = None
+        self._transport = None
 
     
 
