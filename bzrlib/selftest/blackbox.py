@@ -33,8 +33,8 @@ from bzrlib.selftest import TestBase, InTempDir
 
 
 
-class ExternalBase(TestBase):
-    def runbzr(self, args):
+class ExternalBase(InTempDir):
+    def runbzr(self, args, retcode=0):
         try:
             import shutil
             from subprocess import call
@@ -45,11 +45,12 @@ class ExternalBase(TestBase):
         if isinstance(args, basestring):
             args = args.split()
             
-        return self.runcmd(['python', self.BZRPATH,] + args)
+        return self.runcmd(['python', self.BZRPATH,] + args,
+                           retcode=retcode)
 
 
 
-class TestVersion(TestBase):
+class TestVersion(ExternalBase):
     def runTest(self):
         # output is intentionally passed through to stdout so that we
         # can see the version being tested
@@ -57,7 +58,7 @@ class TestVersion(TestBase):
 
 
 
-class HelpCommands(TestBase):
+class HelpCommands(ExternalBase):
     def runTest(self):
         self.runbzr('--help')
         self.runbzr('help')
@@ -66,14 +67,14 @@ class HelpCommands(TestBase):
         self.runbzr('commit -h')
 
 
-class InitBranch(InTempDir):
+class InitBranch(ExternalBase):
     def runTest(self):
         import os
         self.runbzr(['init'])
 
 
 
-class UserIdentity(InTempDir):
+class UserIdentity(ExternalBase):
     def runTest(self):
         # this should always identify something, if only "john@localhost"
         self.runbzr("whoami")
@@ -82,7 +83,7 @@ class UserIdentity(InTempDir):
                           1)
 
 
-class InvalidCommands(InTempDir):
+class InvalidCommands(ExternalBase):
     def runTest(self):
         self.runbzr("pants", retcode=1)
         self.runbzr("--pants off", retcode=1)
@@ -90,7 +91,7 @@ class InvalidCommands(InTempDir):
 
 
 
-class EmptyCommit(InTempDir):
+class EmptyCommit(ExternalBase):
     def runTest(self):
         self.runbzr("init")
         self.build_tree(['hello.txt'])
@@ -100,19 +101,19 @@ class EmptyCommit(InTempDir):
 
 
 
-class OldTests(InTempDir):
+class OldTests(ExternalBase):
     # old tests moved from ./testbzr
     def runTest(self):
         from os import chdir, mkdir
         from os.path import exists
         import os
 
-        runcmd = self.runcmd
+        runbzr = self.runbzr
         backtick = self.backtick
         progress = self.log
 
         progress("basic branch creation")
-        runcmd(['mkdir', 'branch1'])
+        mkdir('branch1')
         chdir('branch1')
         runbzr('init')
 
@@ -187,7 +188,7 @@ class OldTests(InTempDir):
         assert backtick("bzr revno") == '0\n'
 
         progress("add first revision")
-        runcmd(["bzr", "commit", "-m", 'add first revision'])
+        runbzr(['commit', '-m', 'add first revision'])
 
         progress("more complex renames")
         os.mkdir("sub1")
@@ -363,17 +364,17 @@ class OldTests(InTempDir):
         runbzr('file-id ' + fp, 1)      # not versioned yet
         runbzr('commit -m add-dir-only')
 
-        runbzr('file-id ' + fp, 1)      # still not versioned 
+        self.runbzr('file-id ' + fp, 1)      # still not versioned 
 
-        runbzr('add foo')
-        runbzr('file-id ' + fp)
-        runbzr('commit -m add-sub-file')
+        self.runbzr('add foo')
+        self.runbzr('file-id ' + fp)
+        self.runbzr('commit -m add-sub-file')
 
         chdir('..')
 
 
 
-class RevertCommand(InTempDir):
+class RevertCommand(ExternalBase):
     def runTest(self):
         self.runbzr('init')
 
@@ -397,6 +398,7 @@ TEST_CLASSES = [TestVersion,
                 InitBranch,
                 HelpCommands,
                 UserIdentity,
+                AddWithId,
                 InvalidCommands,
                 RevertCommand,
                 OldTests,
