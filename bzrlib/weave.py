@@ -331,7 +331,7 @@ class Weave(object):
             else:
                 assert isinstance(l, basestring)
                 if isactive:
-                    yield origin, lineno, l
+                    yield istack[-1], lineno, l
             lineno += 1
 
         if istack:
