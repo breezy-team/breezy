@@ -19,7 +19,7 @@
 import sys, os
 
 import bzrlib
-from bzrlib.trace import mutter, note, log_error
+from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
 from bzrlib.branch import find_branch
 from bzrlib import BZRDIR
@@ -54,35 +54,68 @@ def _unsquish_command_name(cmd):
 def _parse_revision_str(revstr):
     """This handles a revision string -> revno. 
 
-    There are several possibilities:
+    It supports integers directly, but everything else it
+    defers for passing to Branch.get_revision_info()
 
-        '234'       -> 234
-        '234:345'   -> [234, 345]
-        ':234'      -> [None, 234]
-        '234:'      -> [234, None]
-
-    In the future we will also support:
-        'uuid:blah-blah-blah'   -> ?
-        'hash:blahblahblah'     -> ?
-        potentially:
-        'tag:mytag'             -> ?
+    >>> _parse_revision_str('234')
+    [234]
+    >>> _parse_revision_str('234..567')
+    [234, 567]
+    >>> _parse_revision_str('..')
+    [None, None]
+    >>> _parse_revision_str('..234')
+    [None, 234]
+    >>> _parse_revision_str('234..')
+    [234, None]
+    >>> _parse_revision_str('234..456..789') # Maybe this should be an error
+    [234, 456, 789]
+    >>> _parse_revision_str('234....789') # Error?
+    [234, None, 789]
+    >>> _parse_revision_str('revid:test@other.com-234234')
+    ['revid:test@other.com-234234']
+    >>> _parse_revision_str('revid:test@other.com-234234..revid:test@other.com-234235')
+    ['revid:test@other.com-234234', 'revid:test@other.com-234235']
+    >>> _parse_revision_str('revid:test@other.com-234234..23')
+    ['revid:test@other.com-234234', 23]
+    >>> _parse_revision_str('date:2005-04-12')
+    ['date:2005-04-12']
+    >>> _parse_revision_str('date:2005-04-12 12:24:33')
+    ['date:2005-04-12 12:24:33']
+    >>> _parse_revision_str('date:2005-04-12T12:24:33')
+    ['date:2005-04-12T12:24:33']
+    >>> _parse_revision_str('date:2005-04-12,12:24:33')
+    ['date:2005-04-12,12:24:33']
+    >>> _parse_revision_str('-5..23')
+    [-5, 23]
+    >>> _parse_revision_str('-5')
+    [-5]
+    >>> _parse_revision_str('123a')
+    ['123a']
+    >>> _parse_revision_str('abc')
+    ['abc']
     """
-    if revstr.find(':') != -1:
-        revs = revstr.split(':')
-        if len(revs) > 2:
-            raise ValueError('More than 2 pieces not supported for --revision: %r' % revstr)
-
-        if not revs[0]:
-            revs[0] = None
+    import re
+    old_format_re = re.compile('\d*:\d*')
+    m = old_format_re.match(revstr)
+    if m:
+        warning('Colon separator for revision numbers is deprecated.'
+                ' Use .. instead')
+        revs = []
+        for rev in revstr.split(':'):
+            if rev:
+                revs.append(int(rev))
+            else:
+                revs.append(None)
+        return revs
+    revs = []
+    for x in revstr.split('..'):
+        if not x:
+            revs.append(None)
         else:
-            revs[0] = int(revs[0])
-
-        if not revs[1]:
-            revs[1] = None
-        else:
-            revs[1] = int(revs[1])
-    else:
-        revs = int(revstr)
+            try:
+                revs.append(int(x))
+            except ValueError:
+                revs.append(x)
     return revs
 
 
@@ -334,6 +367,28 @@ class cmd_revno(Command):
     def run(self):
         print find_branch('.').revno()
 
+class cmd_revision_info(Command):
+    """Show revision number and revision id for a given revision identifier.
+    """
+    hidden = True
+    takes_args = ['revision_info*']
+    takes_options = ['revision']
+    def run(self, revision=None, revision_info_list=None):
+        from bzrlib.branch import find_branch
+
+        revs = []
+        if revision is not None:
+            revs.extend(revision)
+        if revision_info_list is not None:
+            revs.extend(revision_info_list)
+        if len(revs) == 0:
+            raise BzrCommandError('You must supply a revision identifier')
+
+        b = find_branch('.')
+
+        for rev in revs:
+            print '%4d %s' % b.get_revision_info(rev)
+
     
 class cmd_add(Command):
     """Add specified files or directories.
@@ -401,7 +456,10 @@ class cmd_inventory(Command):
         if revision == None:
             inv = b.read_working_inventory()
         else:
-            inv = b.get_revision_inventory(b.lookup_revision(revision))
+            if len(revision) > 1:
+                raise BzrCommandError('bzr inventory --revision takes'
+                    ' exactly one revision identifier')
+            inv = b.get_revision_inventory(b.lookup_revision(revision[0]))
 
         for path, entry in inv.entries():
             if show_ids:
@@ -529,6 +587,10 @@ class cmd_branch(Command):
         from meta_store import CachedStore
         import tempfile
         cache_root = tempfile.mkdtemp()
+
+        if revision is not None:
+            if len(revision) > 1:
+                raise BzrCommandError('bzr branch --revision takes exactly 1 revision value')
         try:
             try:
                 br_from = find_cached_branch(from_location, cache_root)
@@ -555,12 +617,13 @@ class cmd_branch(Command):
                     raise
             br_to = Branch(to_location, init=True)
 
+            revno = br_to.lookup_revision(revision[0])
             try:
-                br_to.update_revisions(br_from, stop_revision=revision)
+                br_to.update_revisions(br_from, stop_revision=revno)
             except NoSuchRevision:
                 rmtree(to_location)
                 msg = "The branch %s has no revision %d." % (from_location,
-                                                             revision)
+                                                             revno)
                 raise BzrCommandError(msg)
             merge((to_location, -1), (to_location, 0), this_dir=to_location,
                   check_clean=False, ignore_zero=True)
@@ -735,8 +798,15 @@ class cmd_diff(Command):
                 file_list = None
         else:
             b = find_branch('.')
+
+        # TODO: Make show_diff support taking 2 arguments
+        base_rev = None
+        if revision is not None:
+            if len(revision) != 1:
+                raise BzrCommandError('bzr diff --revision takes exactly one revision identifier')
+            base_rev = revision[0]
     
-        show_diff(b, revision, specific_files=file_list,
+        show_diff(b, base_rev, specific_files=file_list,
                   external_diff_options=diff_options)
 
 
@@ -847,15 +917,21 @@ class cmd_log(Command):
             b = find_branch('.')
             file_id = None
 
-        if revision == None:
-            revision = [None, None]
-        elif isinstance(revision, int):
-            revision = [revision, revision]
+        if revision is None:
+            rev1 = None
+            rev2 = None
+        elif len(revision) == 1:
+            rev1 = rev2 = b.get_revision_info(revision[0])[0]
+        elif len(revision) == 2:
+            rev1 = b.get_revision_info(revision[0])[0]
+            rev2 = b.get_revision_info(revision[1])[0]
         else:
-            # pair of revisions?
-            pass
-            
-        assert len(revision) == 2
+            raise BzrCommandError('bzr log --revision takes one or two values.')
+
+        if rev1 == 0:
+            rev1 = None
+        if rev2 == 0:
+            rev2 = None
 
         mutter('encoding log as %r' % bzrlib.user_encoding)
 
@@ -877,8 +953,8 @@ class cmd_log(Command):
                  file_id,
                  verbose=verbose,
                  direction=direction,
-                 start_revision=revision[0],
-                 end_revision=revision[1])
+                 start_revision=rev1,
+                 end_revision=rev2)
 
 
 
@@ -1040,11 +1116,13 @@ class cmd_export(Command):
     def run(self, dest, revision=None, format=None, root=None):
         import os.path
         b = find_branch('.')
-        if revision == None:
-            rh = b.revision_history()[-1]
+        if revision is None:
+            rev_id = b.last_patch()
         else:
-            rh = b.lookup_revision(int(revision))
-        t = b.revision_tree(rh)
+            if len(revision) != 1:
+                raise BzrError('bzr export --revision takes exactly 1 argument')
+            revno, rev_id = b.get_revision_info(revision[0])
+        t = b.revision_tree(rev_id)
         root, ext = os.path.splitext(dest)
         if not format:
             if ext in (".tar",):
@@ -1067,8 +1145,10 @@ class cmd_cat(Command):
     def run(self, filename, revision=None):
         if revision == None:
             raise BzrCommandError("bzr cat requires a revision number")
+        elif len(revision) != 1:
+            raise BzrCommandError("bzr cat --revision takes exactly one number")
         b = find_branch('.')
-        b.print_file(b.relpath(filename), int(revision))
+        b.print_file(b.relpath(filename), revision[0])
 
 
 class cmd_local_time_offset(Command):
@@ -1222,6 +1302,8 @@ def parse_spec(spec):
     ['..', -1]
     >>> parse_spec("../f/@35")
     ['../f', 35]
+    >>> parse_spec('./@revid:john@arbash-meinel.com-20050711044610-3ca0327c6a222f67')
+    ['.', 'revid:john@arbash-meinel.com-20050711044610-3ca0327c6a222f67']
     """
     if spec is None:
         return [None, None]
@@ -1231,8 +1313,12 @@ def parse_spec(spec):
         if parsed[1] == "":
             parsed[1] = -1
         else:
-            parsed[1] = int(parsed[1])
-            assert parsed[1] >=0
+            try:
+                parsed[1] = int(parsed[1])
+            except ValueError:
+                pass # We can allow stuff like ./@revid:blahblahblah
+            else:
+                assert parsed[1] >=0
     else:
         parsed = [spec, None]
     return parsed
@@ -1296,9 +1382,13 @@ class cmd_merge_revert(Command):
     """
     takes_options = ['revision']
 
-    def run(self, revision=-1):
+    def run(self, revision=None):
         from bzrlib.merge import merge
-        merge(('.', revision), parse_spec('.'),
+        if revision is None:
+            revision = -1
+        elif len(revision) != 1:
+            raise BzrCommandError('bzr merge-revert --revision takes exactly 1 argument')
+        merge(('.', revision[0]), parse_spec('.'),
               check_clean=False,
               ignore_zero=True)
 
@@ -1387,15 +1477,13 @@ def parse_args(argv):
     >>> parse_args('commit --message=biter'.split())
     (['commit'], {'message': u'biter'})
     >>> parse_args('log -r 500'.split())
-    (['log'], {'revision': 500})
-    >>> parse_args('log -r500:600'.split())
+    (['log'], {'revision': [500]})
+    >>> parse_args('log -r500..600'.split())
     (['log'], {'revision': [500, 600]})
-    >>> parse_args('log -vr500:600'.split())
+    >>> parse_args('log -vr500..600'.split())
     (['log'], {'verbose': True, 'revision': [500, 600]})
-    >>> parse_args('log -rv500:600'.split()) #the r takes an argument
-    Traceback (most recent call last):
-    ...
-    ValueError: invalid literal for int(): v500
+    >>> parse_args('log -rv500..600'.split()) #the r takes an argument
+    (['log'], {'revision': ['v500', 600]})
     """
     args = []
     opts = {}

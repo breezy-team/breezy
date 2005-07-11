@@ -150,6 +150,11 @@ class Branch(object):
     _lock_count = None
     _lock = None
     
+    # Map some sort of prefix into a namespace
+    # stuff like "revno:10", "revid:", etc.
+    # This should match a prefix with a function which accepts
+    REVISION_NAMESPACES = {}
+
     def __init__(self, base, init=False, find_root=True):
         """Create new branch object at a particular location.
 
@@ -461,7 +466,7 @@ class Branch(object):
             # use inventory as it was in that revision
             file_id = tree.inventory.path2id(file)
             if not file_id:
-                raise BzrError("%r is not present in revision %d" % (file, revno))
+                raise BzrError("%r is not present in revision %s" % (file, revno))
             tree.print_file(file_id)
         finally:
             self.unlock()
@@ -836,17 +841,162 @@ class Branch(object):
         commit(self, *args, **kw)
         
 
-    def lookup_revision(self, revno):
-        """Return revision hash for revision number."""
-        if revno == 0:
-            return None
+    def lookup_revision(self, revision):
+        """Return the revision identifier for a given revision information."""
+        revno, info = self.get_revision_info(revision)
+        return info
 
+    def get_revision_info(self, revision):
+        """Return (revno, revision id) for revision identifier.
+
+        revision can be an integer, in which case it is assumed to be revno (though
+            this will translate negative values into positive ones)
+        revision can also be a string, in which case it is parsed for something like
+            'date:' or 'revid:' etc.
+        """
+        if revision is None:
+            return 0, None
+        revno = None
+        try:# Convert to int if possible
+            revision = int(revision)
+        except ValueError:
+            pass
+        revs = self.revision_history()
+        if isinstance(revision, int):
+            if revision == 0:
+                return 0, None
+            # Mabye we should do this first, but we don't need it if revision == 0
+            if revision < 0:
+                revno = len(revs) + revision + 1
+            else:
+                revno = revision
+        elif isinstance(revision, basestring):
+            for prefix, func in Branch.REVISION_NAMESPACES.iteritems():
+                if revision.startswith(prefix):
+                    revno = func(self, revs, revision)
+                    break
+            else:
+                raise BzrError('No namespace registered for string: %r' % revision)
+
+        if revno is None or revno <= 0 or revno > len(revs):
+            raise BzrError("no such revision %s" % revision)
+        return revno, revs[revno-1]
+
+    def _namespace_revno(self, revs, revision):
+        """Lookup a revision by revision number"""
+        assert revision.startswith('revno:')
         try:
-            # list is 0-based; revisions are 1-based
-            return self.revision_history()[revno-1]
-        except IndexError:
-            raise BzrError("no such revision %s" % revno)
+            return int(revision[6:])
+        except ValueError:
+            return None
+    REVISION_NAMESPACES['revno:'] = _namespace_revno
 
+    def _namespace_revid(self, revs, revision):
+        assert revision.startswith('revid:')
+        try:
+            return revs.index(revision[6:]) + 1
+        except ValueError:
+            return None
+    REVISION_NAMESPACES['revid:'] = _namespace_revid
+
+    def _namespace_last(self, revs, revision):
+        assert revision.startswith('last:')
+        try:
+            offset = int(revision[5:])
+        except ValueError:
+            return None
+        else:
+            if offset <= 0:
+                raise BzrError('You must supply a positive value for --revision last:XXX')
+            return len(revs) - offset + 1
+    REVISION_NAMESPACES['last:'] = _namespace_last
+
+    def _namespace_tag(self, revs, revision):
+        assert revision.startswith('tag:')
+        raise BzrError('tag: namespace registered, but not implemented.')
+    REVISION_NAMESPACES['tag:'] = _namespace_tag
+
+    def _namespace_date(self, revs, revision):
+        assert revision.startswith('date:')
+        import datetime
+        # Spec for date revisions:
+        #   date:value
+        #   value can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
+        #   it can also start with a '+/-/='. '+' says match the first
+        #   entry after the given date. '-' is match the first entry before the date
+        #   '=' is match the first entry after, but still on the given date.
+        #
+        #   +2005-05-12 says find the first matching entry after May 12th, 2005 at 0:00
+        #   -2005-05-12 says find the first matching entry before May 12th, 2005 at 0:00
+        #   =2005-05-12 says find the first match after May 12th, 2005 at 0:00 but before
+        #       May 13th, 2005 at 0:00
+        #
+        #   So the proper way of saying 'give me all entries for today' is:
+        #       -r {date:+today}:{date:-tomorrow}
+        #   The default is '=' when not supplied
+        val = revision[5:]
+        match_style = '='
+        if val[:1] in ('+', '-', '='):
+            match_style = val[:1]
+            val = val[1:]
+
+        today = datetime.datetime.today().replace(hour=0,minute=0,second=0,microsecond=0)
+        if val.lower() == 'yesterday':
+            dt = today - datetime.timedelta(days=1)
+        elif val.lower() == 'today':
+            dt = today
+        elif val.lower() == 'tomorrow':
+            dt = today + datetime.timedelta(days=1)
+        else:
+            # This should be done outside the function to avoid recompiling it.
+            _date_re = re.compile(
+                    r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
+                    r'(,|T)?\s*'
+                    r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
+                )
+            m = _date_re.match(val)
+            if not m or (not m.group('date') and not m.group('time')):
+                raise BzrError('Invalid revision date %r' % revision)
+
+            if m.group('date'):
+                year, month, day = int(m.group('year')), int(m.group('month')), int(m.group('day'))
+            else:
+                year, month, day = today.year, today.month, today.day
+            if m.group('time'):
+                hour = int(m.group('hour'))
+                minute = int(m.group('minute'))
+                if m.group('second'):
+                    second = int(m.group('second'))
+                else:
+                    second = 0
+            else:
+                hour, minute, second = 0,0,0
+
+            dt = datetime.datetime(year=year, month=month, day=day,
+                    hour=hour, minute=minute, second=second)
+        first = dt
+        last = None
+        reversed = False
+        if match_style == '-':
+            reversed = True
+        elif match_style == '=':
+            last = dt + datetime.timedelta(days=1)
+
+        if reversed:
+            for i in range(len(revs)-1, -1, -1):
+                r = self.get_revision(revs[i])
+                # TODO: Handle timezone.
+                dt = datetime.datetime.fromtimestamp(r.timestamp)
+                if first >= dt and (last is None or dt >= last):
+                    return i+1
+        else:
+            for i in range(len(revs)):
+                r = self.get_revision(revs[i])
+                # TODO: Handle timezone.
+                dt = datetime.datetime.fromtimestamp(r.timestamp)
+                if first <= dt and (last is None or dt <= last):
+                    return i+1
+    REVISION_NAMESPACES['date:'] = _namespace_date
 
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
