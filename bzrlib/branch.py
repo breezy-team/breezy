@@ -27,7 +27,6 @@ BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
 
 
-
 def find_branch(f, **args):
     if f and (f.startswith('http://') or f.startswith('https://')):
         import remotebranch 
