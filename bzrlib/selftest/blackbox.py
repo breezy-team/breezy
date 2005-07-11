@@ -309,6 +309,8 @@ class OldTests(ExternalBase):
         chdir('..')
         chdir('..')
         progress('branch')
+        assert os.path.exists('branch1')
+        assert not os.path.exists('branch2')
         # Can't create a branch if it already exists
         runbzr('branch branch1', retcode=1)
         # Can't create a branch if its parent doesn't exist
