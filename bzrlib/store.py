@@ -168,7 +168,7 @@ class CompressedTextStore(Storage):
         return fileid + '.gz'
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self._location)
+        return "%s(%r)" % (self.__class__.__name__, self._transport.base)
 
     def add(self, fileid, f):
         """Add contents of a file into the store.

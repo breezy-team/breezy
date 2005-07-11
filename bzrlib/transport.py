@@ -115,20 +115,29 @@ class Transport(object):
         and total available, total may be None if it was
         not possible to determine.
         """
+        if pb is None:
+            return
         if total is None:
             pb.update(msg, count, count+1)
         else:
             pb.update(msg, count, total)
 
-    def _iterate_over(self, multi, func, pb, msg):
+    def _iterate_over(self, multi, func, pb, msg, expand=True):
         """Iterate over all entries in multi, passing them to func,
         and update the progress bar as you go along.
+
+        :param expand:  If True, the entries will be passed to the function
+                        by expanding the tuple. If False, it will be passed
+                        as a single parameter.
         """
         total = self._get_total(multi)
         count = 0
         for entry in multi:
             self._update_pb(pb, msg, count, total)
-            func(*entry)
+            if expand:
+                func(*entry)
+            else:
+                func(entry)
             count += 1
         return count
 
@@ -176,7 +185,7 @@ class Transport(object):
         :param pb:  An optional ProgressBar for indicating percent done.
         :return: The number of files copied.
         """
-        return self._iterate_over(files, self.put, pb, 'put')
+        return self._iterate_over(files, self.put, pb, 'put', expand=True)
 
     def mkdir(self, relpath):
         """Create a directory at the given path."""
@@ -202,7 +211,7 @@ class Transport(object):
         :param files: A set of (path, f) entries
         :param pb:  An optional ProgressBar for indicating percent done.
         """
-        return self._iterate_over(files, self.append, pb, 'append')
+        return self._iterate_over(files, self.append, pb, 'append', expand=True)
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
@@ -215,7 +224,7 @@ class Transport(object):
         """
         # This is the non-pipelined implementation, so that
         # implementors don't have to implement everything.
-        return self._iterate_over(relpaths, self.copy, pb, 'copy')
+        return self._iterate_over(relpaths, self.copy, pb, 'copy', expand=True)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -226,7 +235,7 @@ class Transport(object):
         
         :param relpaths: A list of tuples of the form [(from1, to1), (from2, to2),...]
         """
-        return self._iterate_over(relpaths, self.move, pb, 'move')
+        return self._iterate_over(relpaths, self.move, pb, 'move', expand=True)
 
     def move_multi_to(self, relpaths, rel_to):
         """Move a bunch of entries to a single location.
@@ -247,7 +256,7 @@ class Transport(object):
     def delete_multi(self, relpaths):
         """Queue up a bunch of deletes to be done.
         """
-        return self._iterate_over(relpaths, self.delete, pb, 'delete')
+        return self._iterate_over(relpaths, self.delete, pb, 'delete', expand=False)
 
     def stat(self, relpath):
         """Return the stat information for a file.
@@ -265,7 +274,7 @@ class Transport(object):
         def gather(path):
             stats.append(self.stat(path))
 
-        count = self._iterate_over(relpaths, gather, pb, 'stat')
+        count = self._iterate_over(relpaths, gather, pb, 'stat', expand=False)
         return stats
 
 
