@@ -110,8 +110,8 @@ class Storage(object):
         # then queue up 11-20, copy 11-20
         # or to queue up 1-10, copy 1, queue 11, copy 2, etc?
         # sort of pipeline versus batch.
-        count = 0
         def buffer_requests():
+            count = 0
             buffered_requests = []
             for fileid in to_copy:
                 buffered_requests.append((fileid, other[fileid]))
@@ -125,11 +125,12 @@ class Storage(object):
                 count += 1
                 pb.update('copy', count, len(to_copy))
 
+            assert count == len(to_copy)
+
         self.add_multi(buffer_requests())
 
-        assert count == len(to_copy)
         pb.clear()
-        return count
+        return len(to_copy)
 
 class CompressedTextStore(Storage):
     """Store that holds files indexed by unique names.

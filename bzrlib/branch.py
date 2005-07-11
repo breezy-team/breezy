@@ -363,7 +363,7 @@ class Branch(object):
 
         if self._transport.is_remote():
             import tempfile
-            self.cache_root = tempfile.mkdtemp()
+            self.cache_root = tempfile.mkdtemp(prefix='bzr-cache')
             mutter('Branch %r using caching in %r' % (self, self.cache_root))
         else:
             self.cache_root = None

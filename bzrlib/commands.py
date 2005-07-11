@@ -576,6 +576,7 @@ class cmd_branch(Command):
 
     def run(self, from_location, to_location=None, revision=None):
         import errno
+        from shutil import rmtree
         from bzrlib.merge import merge
         from bzrlib.branch import DivergedBranches, NoSuchRevision, \
              find_branch
@@ -613,12 +614,12 @@ class cmd_branch(Command):
                     raise
             br_to = find_branch(to_location, init=True)
 
-            revno = br_from.lookup_revision(revision[0])
+            revno, rev_id = br_from.get_revision_info(revision[0])
             try:
                 br_to.update_revisions(br_from, stop_revision=revno)
             except NoSuchRevision:
                 rmtree(to_location)
-                msg = "The branch %s has no revision %d." % (from_location,
+                msg = "The branch %s has no revision %s." % (from_location,
                                                              revno)
                 raise BzrCommandError(msg)
             merge((to_location, -1), (to_location, 0), this_dir=to_location,
@@ -627,8 +628,7 @@ class cmd_branch(Command):
             br_to.put_controlfile('x-pull', from_location+'\n')
         finally:
             if br_from and br_from.cache_root is not None:
-                import shutil
-                shutil.rmtree(br_from.cache_root)
+                rmtree(br_from.cache_root)
                 br_from.cache_root = None
 
 
