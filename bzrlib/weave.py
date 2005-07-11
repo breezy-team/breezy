@@ -520,14 +520,17 @@ def weave_info(filename, out):
     print >>out, "weave contains %d versions" % len(w._v)
 
     total = 0
-    print ' %8s %8s %8s %s' % ('version', 'lines', 'bytes', 'sha1')
-    print ' -------- -------- -------- ----------------------------------------'
+    print '%6s %6s %8s %40s %20s' % ('ver', 'lines', 'bytes', 'sha1', 'parents')
+    for i in (6, 6, 8, 40, 20):
+        print '-' * i,
+    print
     for i in range(len(w._v)):
         text = w.get(i)
         lines = len(text)
         bytes = sum((len(a) for a in text))
         sha1 = w._sha1s[i]
-        print ' %8d %8d %8d %s' % (i, lines, bytes, sha1)
+        print '%6d %6d %8d %40s' % (i, lines, bytes, sha1),
+        print ', '.join(map(str, w._v[i]))
         total += bytes
 
     print >>out, "versions total %d bytes" % total
