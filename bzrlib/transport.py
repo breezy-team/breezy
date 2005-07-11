@@ -10,6 +10,12 @@ protocol_handlers = {
 class AsyncError(Exception):
     pass
 
+class TransportNotPossibleError(Exception):
+    """This is for transports where a specific function is explicitly not
+    possible. Such as pushing files to an HTTP server.
+    """
+    pass
+
 class AsyncFile(object):
     """This will be returned from a Transport object,
     whenever an asyncronous get is requested.
@@ -78,6 +84,8 @@ class Transport(object):
 
     TODO: Worry about file encodings. For instance bzr control files should
           all be encoded in utf-8, but read as local encoding.
+
+    TODO: Consider adding a lock/unlock functions.
     """
 
     def __init__(self, base):
