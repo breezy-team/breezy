@@ -42,7 +42,7 @@ class Storage(object):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._transport.base)
 
-    __str__ == __repr__
+    __str__ = __repr__
 
     def __len__(self):
         raise NotImplementedError('Children should define their length')
@@ -251,7 +251,6 @@ class CompressedTextStore(Storage):
         total = 0
         count = 0
         relpaths = [self._relpath(fid) for fid in self]
-        stats = 
         for st in self._transport.stat_multi(relpaths):
             count += 1
             total += st[ST_SIZE]
