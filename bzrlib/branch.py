@@ -948,6 +948,7 @@ class Branch(object):
         elif val.lower() == 'tomorrow':
             dt = today + datetime.timedelta(days=1)
         else:
+            import re
             # This should be done outside the function to avoid recompiling it.
             _date_re = re.compile(
                     r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
