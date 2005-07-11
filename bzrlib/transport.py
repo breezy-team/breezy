@@ -153,8 +153,12 @@ class Transport(object):
         """Does the target location exist?"""
         raise NotImplementedError
 
-    def get(self, relpath):
+    def get(self, relpath, decode=False):
         """Get the file at the given relative path.
+
+        :param relpath: The relative path to the file
+        :param decode:  If True, assume the file is utf-8 encoded and
+                        decode it into Unicode
         """
         raise NotImplementedError
 
@@ -164,10 +168,12 @@ class Transport(object):
         """
         raise NotImplementedError
 
-    def get_multi(self, relpaths, pb=None):
+    def get_multi(self, relpaths, decode=False, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
 
         :param relpaths: A list of relative paths.
+        :param decode:  If True, assume the file is utf-8 encoded and
+                        decode it into Unicode
         :param pb:  An optional ProgressBar for indicating percent done.
         :return: A list or generator of file-like objects
         """
@@ -178,32 +184,31 @@ class Transport(object):
         count = 0
         for relpath in relpaths:
             self._update_pb(pb, 'get', count, total)
-            yield self.get(relpath)
+            yield self.get(relpath, decode=decode)
             count += 1
 
-    def put(self, relpath, f):
+    def put(self, relpath, f, encode=False):
         """Copy the file-like or string object into the location.
+
+        :param relpath: Location to put the contents, relative to base.
+        :param f:       File-like or string object.
+        :param encode:  If True, translate the contents into utf-8 encoded text.
         """
         raise NotImplementedError
 
-    def put_multi(self, files, pb=None):
+    def put_multi(self, files, encode=False, pb=None):
         """Put a set of files or strings into the location.
 
         :param files: A list of tuples of relpath, file object [(path1, file1), (path2, file2),...]
         :param pb:  An optional ProgressBar for indicating percent done.
         :return: The number of files copied.
         """
-        return self._iterate_over(files, self.put, pb, 'put', expand=True)
+        def put(relpath, f):
+            self.put(relpath, f, encode=encode)
+        return self._iterate_over(files, put, pb, 'put', expand=True)
 
     def mkdir(self, relpath):
         """Create a directory at the given path."""
-        raise NotImplementedError
-
-    def open(self, relpath, mode='wb'):
-        """Open a remote file for writing.
-        This may return a proxy object, which is written to locally, and
-        then when the file is closed, it is uploaded using put()
-        """
         raise NotImplementedError
 
     def append(self, relpath, f):

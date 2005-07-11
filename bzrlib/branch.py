@@ -294,19 +294,30 @@ class Branch(object):
         if mode == 'rb': 
             return self._transport.get(relpath)
         elif mode == 'wb':
-            return self._transport.open(relpath)
+            raise BzrError("Branch.controlfile(mode='wb') is not supported, use put_controlfile")
         elif mode == 'r':
-            return codecs.getreader('utf-8')(self._transport.get(relpath))
+            return self._transport.get(relpath, decode=True)
         elif mode == 'w':
-            return codecs.getwriter(bzrlib.user_encoding)(
-                    self._transport.open(relpath), errors='replace')
+            raise BzrError("Branch.controlfile(mode='w') is not supported, use put_controlfile")
+            #return codecs.getwriter('utf-8')(
+            #        self._transport.open(relpath), errors='replace')
         else:
             raise BzrError("invalid controlfile mode %r" % mode)
 
+    def put_controlfile(self, file_or_path, f, encode=True):
+        """Write an entry as a controlfile.
+
+        :param file_or_path: This is the sub-path underneath the bzr control directory
+        :param f: A file-like or string object whose contents should be placed
+                  in the appropriate location.
+        :param encode:  If true, encode the contents as utf-8
+        """
+        self._transport.put(self._rel_controlfilename(file_or_path), f, encode=encode)
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
         from bzrlib.xml import pack_xml
+        from cStringIO import StringIO
         
         self._transport.mkdir(self.controlfilename([]))
         self._transport.put(self._rel_controlfilename('README'),
@@ -324,7 +335,9 @@ class Branch(object):
         mutter('created control directory in ' + self._transport.base)
 
         # TODO: Try and do this with self._transport.put() instead
-        pack_xml(Inventory(), self.controlfile('inventory','w'))
+        sio = StringIO()
+        pack_xml(Inventory(), sio)
+        self.put_controlfile('inventory', sio)
 
 
     def _check_format(self):

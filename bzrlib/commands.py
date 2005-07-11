@@ -560,7 +560,7 @@ class cmd_pull(Command):
                 
             merge(('.', -1), ('.', old_revno), check_clean=False)
             if location != stored_loc:
-                br_to.controlfile("x-pull", "wb").write(location + "\n")
+                br_to.put_controlfile('x-pull', location+'\n')
         finally:
             rmtree(cache_root)
 
@@ -630,7 +630,7 @@ class cmd_branch(Command):
             merge((to_location, -1), (to_location, 0), this_dir=to_location,
                   check_clean=False, ignore_zero=True)
             from_location = br_from.base
-            br_to.controlfile("x-pull", "wb").write(from_location + "\n")
+            br_to.put_controlfile('x-pull', from_location+'\n')
         finally:
             rmtree(cache_root)
 

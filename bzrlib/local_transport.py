@@ -36,17 +36,34 @@ class LocalTransport(Transport):
     def has(self, relpath):
         return os.access(self.abspath(relpath), os.F_OK)
 
-    def get(self, relpath):
+    def get(self, relpath, decode=False):
         """Get the file at the given relative path.
-        """
-        return open(self.abspath(relpath), 'rb')
 
-    def put(self, relpath, f):
-        """Copy the file-like object into the location.
+        :param relpath: The relative path to the file
+        :param decode:  If True, assume the file is utf-8 encoded and
+                        decode it into Unicode
         """
+        if decode:
+            import codecs
+            codecs.open(self.abspath(relpath), 'rb', encoding='utf-8',
+                    buffering=60000)
+        else:
+            return open(self.abspath(relpath), 'rb')
+
+    def put(self, relpath, f, encode=False):
+        """Copy the file-like or string object into the location.
+
+        :param relpath: Location to put the contents, relative to base.
+        :param f:       File-like or string object.
+        :param encode:  If True, translate the contents into utf-8 encoded text.
+        """
+        raise NotImplementedError
         from bzrlib.atomicfile import AtomicFile
 
-        fp = AtomicFile(self.abspath(relpath), 'wb')
+        if encode:
+            fp = AtomicFile(self.abspath(relpath), 'wb', encoding='utf-8')
+        else:
+            fp = AtomicFile(self.abspath(relpath), 'wb')
         try:
             self._pump(f, fp)
             fp.commit()
@@ -56,13 +73,6 @@ class LocalTransport(Transport):
     def mkdir(self, relpath):
         """Create a directory at the given path."""
         os.mkdir(self.abspath(relpath))
-
-    def open(self, relpath, mode='wb'):
-        """Open a remote file for writing.
-        This may return a proxy object, which is written to locally, and
-        then when the file is closed, it is uploaded using put()
-        """
-        return open(self.abspath(relpath), mode)
 
     def append(self, relpath, f):
         """Append the text in the file-like object into the final
