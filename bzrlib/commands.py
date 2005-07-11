@@ -582,7 +582,7 @@ class cmd_branch(Command):
         import errno
         from bzrlib.merge import merge
         from bzrlib.branch import DivergedBranches, NoSuchRevision, \
-             find_cached_branch, Branch
+             find_cached_branch, find_branch
         from shutil import rmtree
         from meta_store import CachedStore
         import tempfile
@@ -615,7 +615,7 @@ class cmd_branch(Command):
                                           to_location)
                 else:
                     raise
-            br_to = Branch(to_location, init=True)
+            br_to = find_branch(to_location, init=True)
 
             revno = br_to.lookup_revision(revision[0])
             try:

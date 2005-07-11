@@ -50,7 +50,7 @@ def smart_add(file_list, verbose=True, recurse=True):
     
     user_list = file_list[:]
     assert not isinstance(file_list, basestring)
-    b = bzrlib.branch.Branch(file_list[0], find_root=True)
+    b = bzrlib.branch.find_branch(file_list[0])
     inv = b.read_working_inventory()
     tree = b.working_tree()
     count = 0
