@@ -114,7 +114,7 @@ def load_plugins():
                 try:
                     plugin = imp.load_module('bzrlib.plugin.' + name,
                                              *plugin_info)
-                    all_plugins.append(plugin_info)
+                    all_plugins.append(plugin)
                 finally:
                     if plugin_info[0] is not None:
                         plugin_info[0].close()

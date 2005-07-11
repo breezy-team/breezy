@@ -23,7 +23,7 @@ MODULES_TO_DOCTEST = []
 def selftest():
     from unittest import TestLoader, TestSuite
     import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
-    import bzrlib.osutils, bzrlib.commands, bzrlib.merge3
+    import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
     global MODULES_TO_TEST, MODULES_TO_DOCTEST
 
     import bzrlib.selftest.whitebox
@@ -77,6 +77,10 @@ def selftest():
 
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
+
+    for p in bzrlib.plugin.all_plugins:
+        if hasattr(p, 'test_suite'):
+            suite.addTest(p.test_suite())
 
     suite.addTest(unittest.makeSuite(bzrlib.merge_core.MergeTest, 'test_'))
 
