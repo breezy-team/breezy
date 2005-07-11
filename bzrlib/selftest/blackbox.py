@@ -101,6 +101,42 @@ class EmptyCommit(ExternalBase):
 
 
 
+class IgnorePatterns(ExternalBase):
+    def runTest(self):
+        from bzrlib.branch import Branch
+        
+        b = Branch('.', init=True)
+        self.assertEquals(list(b.unknowns()), [])
+
+        file('foo.tmp', 'wt').write('tmp files are ignored')
+        self.assertEquals(list(b.unknowns()), [])
+        assert self.backtick('bzr unknowns') == ''
+
+        file('foo.c', 'wt').write('int main() {}')
+        self.assertEquals(list(b.unknowns()), ['foo.c'])
+        assert self.backtick('bzr unknowns') == 'foo.c\n'
+
+        self.runbzr(['add', 'foo.c'])
+        assert self.backtick('bzr unknowns') == ''
+
+        # 'ignore' works when creating the .bzignore file
+        file('foo.blah', 'wt').write('blah')
+        self.assertEquals(list(b.unknowns()), ['foo.blah'])
+        self.runbzr('ignore *.blah')
+        self.assertEquals(list(b.unknowns()), [])
+        assert file('.bzrignore', 'rb').read() == '*.blah\n'
+
+        # 'ignore' works when then .bzrignore file already exists
+        file('garh', 'wt').write('garh')
+        self.assertEquals(list(b.unknowns()), ['garh'])
+        assert self.backtick('bzr unknowns') == 'garh\n'
+        self.runbzr('ignore garh')
+        self.assertEquals(list(b.unknowns()), [])
+        assert file('.bzrignore', 'rb').read() == '*.blah\ngarh\n'
+        
+
+
+
 class OldTests(ExternalBase):
     # old tests moved from ./testbzr
     def runTest(self):
@@ -317,37 +353,6 @@ class OldTests(ExternalBase):
 
         chdir('..')
 
-        progress('ignore patterns')
-        mkdir('ignorebranch')
-        chdir('ignorebranch')
-        runbzr('init')
-        assert backtick('bzr unknowns') == ''
-
-        file('foo.tmp', 'wt').write('tmp files are ignored')
-        assert backtick('bzr unknowns') == ''
-
-        file('foo.c', 'wt').write('int main() {}')
-        assert backtick('bzr unknowns') == 'foo.c\n'
-        runbzr('add foo.c')
-        assert backtick('bzr unknowns') == ''
-
-        # 'ignore' works when creating the .bzignore file
-        file('foo.blah', 'wt').write('blah')
-        assert backtick('bzr unknowns') == 'foo.blah\n'
-        runbzr('ignore *.blah')
-        assert backtick('bzr unknowns') == ''
-        assert file('.bzrignore', 'rb').read() == '*.blah\n'
-
-        # 'ignore' works when then .bzrignore file already exists
-        file('garh', 'wt').write('garh')
-        assert backtick('bzr unknowns') == 'garh\n'
-        runbzr('ignore garh')
-        assert backtick('bzr unknowns') == ''
-        assert file('.bzrignore', 'rb').read() == '*.blah\ngarh\n'
-
-        chdir('..')
-
-
 
 
         progress("recursive and non-recursive add")
@@ -386,20 +391,3 @@ class RevertCommand(ExternalBase):
         self.runbzr('revert hello')
         self.check_file_contents('hello', 'foo')
 
-    
-        
-
-
-# lists all tests from this module in the best order to run them.  we
-# do it this way rather than just discovering them all because it
-# allows us to test more basic functions first where failures will be
-# easiest to understand.
-TEST_CLASSES = [TestVersion,
-                InitBranch,
-                HelpCommands,
-                UserIdentity,
-                InvalidCommands,
-                RevertCommand,
-                OldTests,
-                EmptyCommit,
-                ]
