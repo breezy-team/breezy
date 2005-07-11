@@ -1131,6 +1131,8 @@ class cmd_commit(Command):
                      specific_files=selected_list,
                      allow_pointless=unchanged)
         except PointlessCommit:
+            # FIXME: This should really happen before the file is read in;
+            # perhaps prepare the commit; get the message; then actually commit
             raise BzrCommandError("no changes to commit",
                                   ["use --unchanged to commit anyhow"])
 
