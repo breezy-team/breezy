@@ -538,7 +538,10 @@ def weave_info(filename, out):
 
 
 def usage():
-    print """bzr weave tool:
+    print """bzr weave tool
+
+Experimental tool for weave algorithm.
+
 usage:
     weave init WEAVEFILE
         Create an empty weave file
@@ -556,6 +559,29 @@ usage:
         Display composite of all selected versions.
     weave merge WEAVEFILE VERSION1 VERSION2 > OUT
         Auto-merge two versions and display conflicts.
+
+example:
+
+    % weave init foo.weave
+    % vi foo.txt
+    % weave add foo.weave < foo.txt
+    added version 0
+
+    (create updated version)
+    % vi foo.txt
+    % weave get foo.weave 0 | diff -u - foo.txt
+    % weave add foo.weave 0 < foo.txt
+    added version 1
+
+    % weave get foo.weave 0 > foo.txt       (create forked version)
+    % vi foo.txt
+    % weave add foo.weave 0 < foo.txt
+    added version 2
+
+    % weave merge foo.weave 1 2 > foo.txt   (merge them)
+    % vi foo.txt                            (resolve conflicts)
+    % weave add foo.weave 1 2 < foo.txt     (commit merged version)     
+    
 """
     
 
@@ -605,11 +631,34 @@ def main(argv):
             else:
                 print '%5d | %s' % (origin, text)
                 lasto = origin
+                
     elif cmd == 'info':
         weave_info(argv[2], sys.stdout)
+        
     elif cmd == 'check':
         w = readit()
         w.check()
+
+    elif cmd == 'merge':
+        if len(argv) != 5:
+            usage()
+            return 1
+
+        w = readit()
+        v1, v2 = map(int, argv[3:5])
+
+        basis = w.inclusions([v1]).intersection(w.inclusions([v2]))
+
+        base_lines = list(w.mash_iter(basis))
+        a_lines = list(w.get(v1))
+        b_lines = list(w.get(v2))
+
+        from bzrlib.merge3 import Merge3
+        m3 = Merge3(base_lines, a_lines, b_lines)
+
+        name_a = 'version %d' % v1
+        name_b = 'version %d' % v2
+        sys.stdout.writelines(m3.merge_lines(name_a=name_a, name_b=name_b))
     else:
         raise ValueError('unknown command %r' % cmd)
     
