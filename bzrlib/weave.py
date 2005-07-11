@@ -249,6 +249,29 @@ class Weave(object):
         return i
 
 
+    def minimal_parents(self, version):
+        """Find the minimal set of parents for the version."""
+        included = self._v[version]
+        if not included:
+            return []
+        
+        li = list(included)
+        li.sort()
+        li.reverse()
+
+        mininc = []
+        gotit = set()
+
+        for pv in li:
+            if pv not in gotit:
+                mininc.append(pv)
+                gotit.update(self._v[pv])
+
+        assert mininc[0] >= 0
+        assert mininc[-1] < version
+        return mininc
+
+
     def _addversion(self, parents):
         if parents:
             self._v.append(frozenset(parents))
@@ -499,7 +522,7 @@ def weave_info(filename, out):
         bytes = sum((len(a) for a in text))
         sha1 = w._sha1s[i]
         print '%6d %6d %8d %40s' % (i, lines, bytes, sha1),
-        print ', '.join(map(str, w._v[i]))
+        print ', '.join(map(str, w.minimal_parents(i)))
         total += bytes
 
     print >>out, "versions total %d bytes" % total

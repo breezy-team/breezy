@@ -43,7 +43,7 @@ def convert():
         pb.update('converting inventory', revno, len(rev_history))
         inv_xml = b.inventory_store[rev_id].readlines()
         weave_id = wf.add(parents, inv_xml)
-        parents.add(weave_id)
+        parents = set([weave_id])       # always just one parent
         revno += 1
 
     pb.update('write weave', None, None)
