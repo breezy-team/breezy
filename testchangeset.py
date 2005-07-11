@@ -3,6 +3,8 @@ import bzrlib
 import unittest
 from StringIO import StringIO
 
+from bzrlib.selftest import InTempDir
+
 from bzrlib.diff import internal_diff
 from read_changeset import ChangesetTree
 
@@ -206,9 +208,38 @@ class CTreeTester(unittest.TestCase):
         ctree.note_id("e", "grandparent/alt_parent/fool")
         self.assertEqual(self.sorted_ids(ctree), ['a', 'b', 'd', 'e'])
 
-def test():
-    patchesTestSuite = unittest.makeSuite(CTreeTester,'test_')
-    runner = unittest.TextTestRunner()
-    runner.run(patchesTestSuite)
+class CSetTester(InTempDir):
+    def test_add(self):
+        from bzrlib.branch import find_branch
+        from gen_changeset import show_changeset
+        from read_changeset import read_changeset
+        import common
 
+        import os
+        from cStringIO import StringIO
+        pjoin = os.path.join
+
+        os.mkdir('b1')
+        os.mkdir('b2')
+        self.b1 = find_branch('b1', init=True)
+        self.b2 = find_branch('b2', init=True)
+
+        open(pjoin('b1/one'), 'wb').write('one\n')
+        self.b1.add('one')
+        self.b1.commit('add one', rev_id='a@cset-0-1')
+
+        cset_txt = StringIO()
+        show_changeset(self.b1, None, self.b1, 'a@cset-0-1', to_file=cset_txt)
+        cset_txt.seek(0)
+        self.assertEqual(cset_txt.readline(), '# Bazaar-NG changeset v0.0.5\n')
+        self.assertEqual(cset_txt.readline(), '# \n')
+
+        cset_txt.seek(0)
+        # This should also validate the generate changeset
+        info, tree, inv = read_changeset(cset_txt, self.b1)
+
+TEST_CLASSES = [
+    CTreeTester,
+    CSetTester
+]
 

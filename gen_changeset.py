@@ -65,6 +65,9 @@ def _find_best_base(target_branch, target_rev_id, base_branch, base_rev_id):
     """Find the best base revision based on ancestry.
     All revisions should already be pulled into the local tree.
     """
+    if base_rev_id is None:
+        # We have a complete changeset, None has to be the best base
+        return None
     this_revs = _get_revision_set(target_branch, target_rev_id)
 
     # This does a breadth first search through history, looking for
@@ -105,6 +108,11 @@ def _create_ancestry_to_rev(branch, ancestor_rev_id, this_rev_id):
     # exist in the revision history, we should already have
     # a valid listing of revision ancestry.
     rh = branch.revision_history()
+    if ancestor_rev_id is None:
+        rh.reverse()
+        rh.append(None)
+        return rh
+
     if ancestor_rev_id in rh and this_rev_id in rh:
         ancestor_idx = rh.index(ancestor_rev_id)
         this_rev_idx = rh.index(this_rev_id)
@@ -188,7 +196,10 @@ class MetaInfoHeader(object):
         self.base_branch = base_branch
         self.base_rev_id = base_rev_id
         self.base_tree = base_tree
-        self.base_revision = self.base_branch.get_revision(self.base_rev_id)
+        if self.base_rev_id is not None:
+            self.base_revision = self.base_branch.get_revision(self.base_rev_id)
+        else:
+            self.base_revision = None
 
         self.target_branch = target_branch
         self.target_rev_id = target_rev_id

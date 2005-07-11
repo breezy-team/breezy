@@ -164,22 +164,17 @@ class cmd_apply_changeset(bzrlib.commands.Command):
         apply_changeset.apply_changeset(b, f, reverse=reverse,
                 auto_commit=auto_commit)
 
-class cmd_test_plugins(bzrlib.commands.Command):
-    """Test every plugin that supports tests.
-
-    """
-    takes_args = []
-    takes_options = []
-
-    def run(self):
-        import test
-        test.test()
-
 bzrlib.commands.register_command(cmd_changeset)
 bzrlib.commands.register_command(cmd_verify_changeset)
 bzrlib.commands.register_command(cmd_apply_changeset)
 bzrlib.commands.register_command(cmd_send_changeset)
-bzrlib.commands.register_command(cmd_test_plugins)
 
 bzrlib.commands.OPTIONS['reverse'] = None
 bzrlib.commands.OPTIONS['auto-commit'] = None
+
+def test_suite():
+    import unittest
+    import testchangeset
+
+    return unittest.TestLoader().loadTestsFromModule(testchangeset)
+
