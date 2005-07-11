@@ -89,7 +89,8 @@ def show_log(branch,
              verbose=False,
              direction='reverse',
              start_revision=None,
-             end_revision=None):
+             end_revision=None,
+             search=None):
     """Write out human-readable log of commits to this branch.
 
     lf
@@ -124,6 +125,12 @@ def show_log(branch,
     if specific_fileid:
         mutter('get log for file_id %r' % specific_fileid)
 
+    if search is not None:
+        import re
+        searchRE = re.compile(search, re.IGNORECASE)
+    else:
+        searchRE = None
+
     which_revs = branch.enum_history(direction)
     which_revs = [x for x in which_revs if (
             (start_revision is None or x[0] >= start_revision)
@@ -146,7 +153,8 @@ def show_log(branch,
             # although we calculated it, throw it away without display
             delta = None
 
-        lf.show(revno, rev, delta)
+        if searchRE is None or searchRE.search(rev.message):
+            lf.show(revno, rev, delta)
 
 
 

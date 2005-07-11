@@ -887,18 +887,22 @@ class cmd_log(Command):
     -r revision requests a specific revision, -r :end or -r begin: are
     also valid.
 
+    --message allows you to give a regular expression, which will be evaluated
+    so that only matching entries will be displayed.
+
     TODO: Make --revision support uuid: and hash: [future tag:] notation.
   
     """
 
     takes_args = ['filename?']
-    takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision','long']
+    takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision','long', 'message']
     
     def run(self, filename=None, timezone='original',
             verbose=False,
             show_ids=False,
             forward=False,
             revision=None,
+            message=None,
             long=False):
         from bzrlib.branch import find_branch
         from bzrlib.log import log_formatter, show_log
@@ -954,7 +958,8 @@ class cmd_log(Command):
                  verbose=verbose,
                  direction=direction,
                  start_revision=rev1,
-                 end_revision=rev2)
+                 end_revision=rev2,
+                 search=message)
 
 
 

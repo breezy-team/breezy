@@ -10,6 +10,9 @@ DEVELOPMENT HEAD
     * Commit mesage is fetched from an editor if not given on the
       command line; patch from Torsten Marek.
 
+    * ``bzr log -m FOO`` displays commits whose message matches regexp 
+      FOO.
+
   CHANGES:
 
     * When exporting to a tarball with ``bzr export --format tgz``, put 
