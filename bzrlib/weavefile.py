@@ -54,22 +54,7 @@ def write_weave_v1(weave, f):
 
     for version, included in enumerate(weave._v):
         if included:
-            # find a minimal expression of it; bias towards using
-            # later revisions
-            li = list(included)
-            li.sort()
-            li.reverse()
-
-            mininc = []
-            gotit = set()
-
-            for pv in li:
-                if pv not in gotit:
-                    mininc.append(pv)
-                    gotit.update(weave._v[pv])
-
-            assert mininc[0] >= 0
-            assert mininc[-1] < version
+            mininc = weave.minimal_parents(version)
             print >>f, 'i',
             for i in mininc:
                 print >>f, i,

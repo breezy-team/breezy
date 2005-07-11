@@ -326,6 +326,7 @@ class Weave(object):
         dset = set()
 
         lineno = 0         # line of weave, 0-based
+
         isactive = False
 
         WFE = WeaveFormatError
@@ -333,24 +334,26 @@ class Weave(object):
         for l in self._l:
             if isinstance(l, tuple):
                 c, v = l
-                if v in included:       # only active blocks are interesting
-                    if c == '{':
-                        assert v not in istack
-                        istack.append(v)
-                        isactive = not dset
-                    elif c == '}':
-                        oldv = istack.pop()
-                        assert oldv == v
-                        isactive = istack and not dset
-                    elif c == '[':
+                if c == '{':
+                    assert v not in istack
+                    istack.append(v)
+                    if not dset:
+                        isactive = (v in included)
+                elif c == '}':
+                    oldv = istack.pop()
+                    assert oldv == v
+                    isactive = (not dset) and (istack and istack[-1] in included)
+                elif c == '[':
+                    if v in included:
                         assert v not in dset
                         dset.add(v)
                         isactive = False
-                    else:
-                        assert c == ']'
+                else:
+                    assert c == ']'
+                    if v in included:
                         assert v in dset
                         dset.remove(v)
-                        isactive = istack and not dset
+                        isactive = (not dset) and (istack and istack[-1] in included)
             else:
                 assert isinstance(l, basestring)
                 if isactive:
