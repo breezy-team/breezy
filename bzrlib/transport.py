@@ -73,10 +73,22 @@ class Transport(object):
     multiple requests. They generally have a dumb base implementation 
     which just iterates over the arguments, but smart Transport
     implementations can do pipelining.
+    In general implementations should support having a generator or a list
+    as an argument (ie always iterate, never index)
+
+    TODO: Worry about file encodings. For instance bzr control files should
+          all be encoded in utf-8, but read as local encoding.
     """
 
     def __init__(self, base):
         self.base = base
+
+    def clone(self, offset=None):
+        """Return a new Transport object, cloned from the current location,
+        using a subdirectory. This allows connections to be pooled,
+        rather than a new one needed for each subdir.
+        """
+        raise NotImplementedError
 
     def _pump(self, from_file, to_file):
         """Most children will need to copy from one file-like 
@@ -89,6 +101,37 @@ class Transport(object):
             from bzrlib.osutils import pumpfile
             pumpfile(from_file, to_file)
 
+    def _get_total(self, multi):
+        """Try to figure out how many entries are in multi,
+        but if not possible, return None.
+        """
+        try:
+            return len(multi)
+        except TypeError: # We can't tell how many, because relpaths is a generator
+            return None
+
+    def _update_pb(self, pb, msg, count, total):
+        """Update the progress bar based on the current count
+        and total available, total may be None if it was
+        not possible to determine.
+        """
+        if total is None:
+            pb.update(msg, count, count+1)
+        else:
+            pb.update(msg, count, total)
+
+    def _iterate_over(self, multi, func, pb, msg):
+        """Iterate over all entries in multi, passing them to func,
+        and update the progress bar as you go along.
+        """
+        total = self._get_total(multi)
+        count = 0
+        for entry in multi:
+            self._update_pb(pb, msg, count, total)
+            func(*entry)
+            count += 1
+        return count
+
     def has(self, relpath):
         """Does the target location exist?"""
         raise NotImplementedError
@@ -98,15 +141,28 @@ class Transport(object):
         """
         raise NotImplementedError
 
-    def get_multi(self, relpaths):
+    def abspath(self, *args):
+        """Return the full url to the given relative path.
+        This can be supplied with multiple arguments
+        """
+        raise NotImplementedError
+
+    def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
 
         :param relpaths: A list of relative paths.
-        :return: A list of file-like objects.
+        :param pb:  An optional ProgressBar for indicating percent done.
+        :return: A list or generator of file-like objects
         """
-        files = []
+        # TODO: Consider having this actually buffer the requests,
+        # in the default mode, it probably won't give worse performance,
+        # and all children wouldn't have to implement buffering
+        total = self._get_total(multi)
+        count = 0
         for relpath in relpaths:
-            files.append(self.get(relpath))
+            self._update_pb(pb, msg, count, total)
+            yield self.get(relpath)
+            count += 1
         return files
 
     def put(self, relpath, f):
@@ -114,13 +170,25 @@ class Transport(object):
         """
         raise NotImplementedError
 
-    def put_multi(self, files):
+    def put_multi(self, files, pb=None):
         """Put a set of files or strings into the location.
 
         :param files: A list of tuples of relpath, file object [(path1, file1), (path2, file2),...]
+        :param pb:  An optional ProgressBar for indicating percent done.
+        :return: The number of files copied.
         """
-        for path, f in files:
-            self.put(path, f)
+        return self._iterate_over(files, self.put, pb, 'put')
+
+    def mkdir(self, relpath):
+        """Create a directory at the given path."""
+        raise NotImplementedError
+
+    def open(self, relpath, mode='wb'):
+        """Open a remote file for writing.
+        This may return a proxy object, which is written to locally, and
+        then when the file is closed, it is uploaded using put()
+        """
+        raise NotImplementedError
 
     def append(self, relpath, f):
         """Append the text in the file-like or string object to 
@@ -131,9 +199,11 @@ class Transport(object):
     def append_multi(self, files):
         """Append the text in each file-like or string object to
         the supplied location.
+
+        :param files: A set of (path, f) entries
+        :param pb:  An optional ProgressBar for indicating percent done.
         """
-        for path, f in files:
-            self.append(path, f)
+        return self._iterate_over(files, self.append, pb, 'append')
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
@@ -146,8 +216,7 @@ class Transport(object):
         """
         # This is the non-pipelined implementation, so that
         # implementors don't have to implement everything.
-        for rel_from, rel_to in relpaths:
-            self.copy(rel_from, rel_to)
+        return self._iterate_over(relpaths, self.copy, pb, 'copy')
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -158,8 +227,7 @@ class Transport(object):
         
         :param relpaths: A list of tuples of the form [(from1, to1), (from2, to2),...]
         """
-        for rel_from, rel_to in relpaths:
-            self.move(rel_from, rel_to)
+        return self._iterate_over(relpaths, self.move, pb, 'move')
 
     def move_multi_to(self, relpaths, rel_to):
         """Move a bunch of entries to a single location.
@@ -180,8 +248,27 @@ class Transport(object):
     def delete_multi(self, relpaths):
         """Queue up a bunch of deletes to be done.
         """
-        for relpath in relpaths:
-            self.delete(relpath)
+        return self._iterate_over(relpaths, self.delete, pb, 'delete')
+
+    def stat(self, relpath):
+        """Return the stat information for a file.
+        WARNING: This may not be implementable for all protocols, so use
+        sparingly.
+        """
+        raise NotImplementedError
+
+    def stat_multi(self, relpaths, pb=None):
+        """Stat multiple files and return the information.
+        """
+        #TODO:  Is it worth making this a generator instead of a
+        #       returning a list?
+        stats = []
+        def gather(path):
+            stats.append(self.stat(path))
+
+        count = self._iterate_over(relpaths, gather, pb, 'stat')
+        return stats
+
 
     def async_get(self, relpath):
         """Make a request for an file at the given location, but

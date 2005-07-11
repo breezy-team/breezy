@@ -58,45 +58,71 @@ class Storage(object):
     def __iter__(self):
         raise NotImplementedError
 
-    def add(self, f, fileid):
+    def add(self, fileid, f):
         """Add a file object f to the store accessible from the given fileid"""
         raise NotImplementedError('Children of Storage must define their method of adding entries.')
+
+    def add_multi(self, entries):
+        """Add a series of file-like or string objects to the store with the given
+        identities.
+        
+        :param entries: A list of tuples of id,file pairs [(id1, file1), (id2, file2), ...]
+                        This could also be a generator yielding (id,file) pairs.
+        """
+        for fileid, f in entries:
+            self.add(fileid, f)
 
     def copy_multi(self, other, ids):
         """Copy texts for ids from other into self.
 
         If an id is present in self, it is skipped.  A count of copied
         ids is returned, which may be less than len(ids).
+
+        :param other: Another Storage object
+        :param ids: A list of entry ids to be copied
+        :return: The number of entries copied
         """
         from bzrlib.progress import ProgressBar
         pb = ProgressBar()
         pb.update('preparing to copy')
-        to_copy = [fileid for fileid in ids if fileid not in self]
+        to_copy = [fileid for fileid in text_ids if fileid not in self]
         return self._do_copy(other, to_copy, pb)
 
     def _do_copy(self, other, to_copy, pb):
         """This is the standard copying mechanism, just get them one at
         a time from remote, and store them locally.
+
+        :param other: Another Storage object
+        :param to_copy: A list of entry ids to copy
+        :param pb: A ProgressBar object to display completion status.
+        :return: The number of entries copied.
         """
+        # This should be updated to use add_multi() rather than
+        # the current methods of buffering requests.
+        # One question, is it faster to queue up 1-10 and then copy 1-10
+        # then queue up 11-20, copy 11-20
+        # or to queue up 1-10, copy 1, queue 11, copy 2, etc?
+        # sort of pipeline versus batch.
         count = 0
-        buffered_requests = []
-        for fileid in to_copy:
-            buffered_requests.append((other[fileid], fileid))
-            if len(buffered_requests) > self._max_buffered_requests:
-                self.add(*buffered_requests.pop(0))
+        def buffer_requests():
+            buffered_requests = []
+            for fileid in to_copy:
+                buffered_requests.append((fileid, other[fileid]))
+                if len(buffered_requests) > self._max_buffered_requests:
+                    yield buffered_requests.pop(0)
+                    count += 1
+                    pb.update('copy', count, len(to_copy))
+
+            for req in buffered_requests:
+                yield req
                 count += 1
                 pb.update('copy', count, len(to_copy))
 
-        for req in buffered_requests:
-            self.add(*req)
-            count += 1
-            pb.update('copy', count, len(to_copy))
+        self.add_multi(buffer_requests())
 
         assert count == len(to_copy)
         pb.clear()
         return count
-
-
 
 class CompressedTextStore(Storage):
     """Store that holds files indexed by unique names.
@@ -107,9 +133,9 @@ class CompressedTextStore(Storage):
 
     Files are stored gzip compressed, with no delta compression.
 
-    >>> st = ScratchFlatTextStore()
+    >>> st = ScratchCompressedTextStore()
 
-    >>> st.add(StringIO('hello'), 'aa')
+    >>> st.add('aa', StringIO('hello'))
     >>> 'aa' in st
     True
     >>> 'foo' in st
@@ -119,7 +145,7 @@ class CompressedTextStore(Storage):
 
     Entries can be retrieved as files, which may then be read.
 
-    >>> st.add(StringIO('goodbye'), '123123')
+    >>> st.add('123123', StringIO('goodbye'))
     >>> st['123123'].read()
     'goodbye'
 
@@ -133,42 +159,45 @@ class CompressedTextStore(Storage):
     def __init__(self, basedir):
         super(CompressedTextStore, self).__init__(basedir)
 
-    def _path(self, fileid):
+    def _check_fileid(self, fileid):
         if '\\' in fileid or '/' in fileid:
             raise ValueError("invalid store id %r" % fileid)
-        return self._transport.get_filename(fileid)
+
+    def _relpath(self, fileid):
+        self._check_fileid(fileid)
+        return fileid + '.gz'
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._location)
 
-    def add(self, f, fileid, compressed=True):
+    def add(self, fileid, f):
         """Add contents of a file into the store.
 
         f -- An open file, or file-like object."""
-        # FIXME: Only works on files that will fit in memory
-        
+        # TODO: implement an add_multi which can do some of it's
+        #       own piplelining, and possible take advantage of
+        #       transport.put_multi(). The problem is that
+        #       entries potentially need to be compressed as they
+        #       are received, which implies translation, which
+        #       means it isn't as straightforward as we would like.
         from cStringIO import StringIO
+        from bzrlib.osutils import pumpfile
         
         mutter("add store entry %r" % (fileid))
         if isinstance(f, basestring):
-            content = f
-        else:
-            content = f.read()
+            f = StringIO(f)
             
-        if self._transport.has(fileid) or self._transport.has(fileid + '.gz'):
-            raise BzrError("store %r already contains id %r" % (self._location, fileid))
+        fn = self._relpath(fileid)
+        if self._transport.has(fn):
+            raise BzrError("store %r already contains id %r" % (self._transport.base, fileid))
 
-        fn = fileid
-        if compressed:
-            fn = fn + '.gz'
-            
+
         sio = StringIO()
-        if compressed:
-            gf = gzip.GzipFile(mode='wb', fileobj=sio)
-            gf.write(content)
-            gf.close()
-        else:
-            sio.write(content)
+        gf = gzip.GzipFile(mode='wb', fileobj=sio)
+        # if pumpfile handles files that don't fit in ram,
+        # so will this function
+        pumpfile(f, gf)
+        gf.close()
         sio.seek(0)
         self._transport.put(fn, sio)
 
@@ -177,57 +206,42 @@ class CompressedTextStore(Storage):
             return self._copy_multi_text(other, to_copy, pb)
         return super(CompressedTextStore, self)._do_copy(other, to_copy, pb)
 
-
     def _copy_multi_text(self, other, to_copy, pb):
-        from shutil import copyfile
-        count = 0
-        for id in to_copy:
-            p = self._path(id)
-            other_p = other._path(id)
-            try:
-                copyfile(other_p, p)
-            except IOError, e:
-                if e.errno == errno.ENOENT:
-                    copyfile(other_p+".gz", p+".gz")
-                else:
-                    raise
-            
-            count += 1
-            pb.update('copy', count, len(to_copy))
+        # Because of _transport, we can no longer assume
+        # that they are on the same filesystem, we can, however
+        # assume that we only need to copy the exact bytes,
+        # we don't need to process the files.
+
+        paths = [self._relpath(fileid) for fileid in to_copy]
+        count = self._transport.put_multi(
+                zip(paths, other._transport.get_multi(paths, pb=pb)))
         assert count == len(to_copy)
         pb.clear()
         return count
-    
 
     def __contains__(self, fileid):
         """"""
-        p = self._path(fileid)
-        return (os.access(p, os.R_OK)
-                or os.access(p + '.gz', os.R_OK))
+        fn = self._relpath(fileid)
+        return self._transport.has(fn)
 
     # TODO: Guard against the same thing being stored twice, compressed and uncompresse
 
     def __iter__(self):
-        for f in os.listdir(self._location):
+        # TODO: case-insensitive?
+        for f in self._transport.list_dir('.'):
             if f[-3:] == '.gz':
-                # TODO: case-insensitive?
                 yield f[:-3]
             else:
                 yield f
 
     def __len__(self):
-        return len(os.listdir(self._location))
+        return len([f for f in self._transport.list_dir('.')])
 
     def __getitem__(self, fileid):
         """Returns a file reading from a particular entry."""
-        p = self._path(fileid)
-        try:
-            return gzip.GzipFile(p + '.gz', 'rb')
-        except IOError, e:
-            if e.errno == errno.ENOENT:
-                return file(p, 'rb')
-            else:
-                raise e
+        fn = self._relpath(fileid)
+        f = self._transport.get(fn)
+        return gzip.GzipFile(mode='rb', fileobj=f)
 
     def total_size(self):
         """Return (count, bytes)
@@ -236,33 +250,26 @@ class CompressedTextStore(Storage):
         the content."""
         total = 0
         count = 0
-        for fid in self:
+        relpaths = [self._relpath(fid) for fid in self]
+        stats = 
+        for st in self._transport.stat_multi(relpaths):
             count += 1
-            p = self._path(fid)
-            try:
-                total += os.stat(p)[ST_SIZE]
-            except OSError:
-                total += os.stat(p + '.gz')[ST_SIZE]
+            total += st[ST_SIZE]
                 
         return count, total
 
-
-
-
-class ScratchFlatTextStore(CompressedTextStore):
+class ScratchCompressedTextStore(CompressedTextStore):
     """Self-destructing test subclass of ImmutableStore.
 
     The Store only exists for the lifetime of the Python object.
     Obviously you should not put anything precious in it.
     """
     def __init__(self):
-        super(ScratchFlatTextStore, self).__init__(tempfile.mkdtemp())
+        from transport import transport
+        super(ScratchCompressedTextStore, self).__init__(transport(tempfile.mkdtemp()))
 
     def __del__(self):
-        for f in os.listdir(self._location):
-            fpath = os.path.join(self._location, f)
-            # needed on windows, and maybe some other filesystems
-            os.chmod(fpath, 0600)
-            os.remove(fpath)
-        os.rmdir(self._location)
+        self._transport.delete_multi(self._transport.list_dir('.'))
+        os.rmdir(self._transport.base)
         mutter("%r destroyed" % self)
+

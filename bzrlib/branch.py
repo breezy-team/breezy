@@ -28,12 +28,8 @@ BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 
 
 def find_branch(f, **args):
-    if f and (f.startswith('http://') or f.startswith('https://')):
-        import remotebranch 
-        return remotebranch.RemoteBranch(f, **args)
-    else:
-        return Branch(f, **args)
-
+    from transport import transport
+    return Branch(transport(f), **args)
 
 def find_cached_branch(f, cache_root, **args):
     from remotebranch import RemoteBranch
@@ -154,39 +150,31 @@ class Branch(object):
     # This should match a prefix with a function which accepts
     REVISION_NAMESPACES = {}
 
-    def __init__(self, base, init=False, find_root=True):
+    def __init__(self, transport, init=False):
         """Create new branch object at a particular location.
 
-        base -- Base directory for the branch.
+        transport -- A Transport object, defining how to access files.
+                (If a string, transport.transport() will be used to
+                create a Transport object)
         
         init -- If True, create new control files in a previously
              unversioned directory.  If False, the branch must already
              be versioned.
 
-        find_root -- If true and init is false, find the root of the
-             existing branch containing base.
-
         In the test suite, creation of new trees is tested using the
         `ScratchBranch` class.
         """
-        from bzrlib.store import ImmutableStore
-        if init:
-            self.base = os.path.realpath(base)
-            self._make_control()
-        elif find_root:
-            self.base = find_branch_root(base)
-        else:
-            self.base = os.path.realpath(base)
-            if not isdir(self.controlfilename('.')):
-                from errors import NotBranchError
-                raise NotBranchError("not a bzr branch: %s" % quotefn(base),
-                                     ['use "bzr init" to initialize a new working tree',
-                                      'current bzr can only operate from top-of-tree'])
-        self._check_format()
+        from bzrlib.store import CompressedTextStore
 
-        self.text_store = ImmutableStore(self.controlfilename('text-store'))
-        self.revision_store = ImmutableStore(self.controlfilename('revision-store'))
-        self.inventory_store = ImmutableStore(self.controlfilename('inventory-store'))
+        if isinstance(transport, basestring):
+            from transport import transport as get_transport
+            transport = get_transport(transport)
+
+        self.transport = transport
+        if init:
+            self._make_control()
+
+        self._check_format()
 
 
     def __str__(self):
@@ -205,6 +193,8 @@ class Branch(object):
 
 
     def lock_write(self):
+        # TODO: Upgrade locking to support using a Transport,
+        # and potentially a remote locking protocol
         if self._lock_mode:
             if self._lock_mode != 'w':
                 from errors import LockError
@@ -259,11 +249,14 @@ class Branch(object):
         return _relpath(self.base, path)
 
 
-    def controlfilename(self, file_or_path):
-        """Return location relative to branch."""
+    def _rel_controlfilename(self, file_or_path):
         if isinstance(file_or_path, basestring):
             file_or_path = [file_or_path]
-        return os.path.join(self.base, bzrlib.BZRDIR, *file_or_path)
+        return [bzrlib.BZRDIR] + file_or_path
+
+    def controlfilename(self, file_or_path):
+        """Return location relative to branch."""
+        return self.transport.abspath(self._rel_controlfilename(file_or_path))
 
 
     def controlfile(self, file_or_path, mode='r'):
@@ -277,40 +270,46 @@ class Branch(object):
         Controlfiles should almost never be opened in write mode but
         rather should be atomically copied and replaced using atomicfile.
         """
+        import codecs
 
-        fn = self.controlfilename(file_or_path)
+        relpath = self._rel_controlfilename(file_or_path)
+        #TODO: codecs.open() buffers linewise, so it was overloaded with
+        # a much larger buffer, do we need to do the same for getreader/getwriter?
 
-        if mode == 'rb' or mode == 'wb':
-            return file(fn, mode)
-        elif mode == 'r' or mode == 'w':
-            # open in binary mode anyhow so there's no newline translation;
-            # codecs uses line buffering by default; don't want that.
-            import codecs
-            return codecs.open(fn, mode + 'b', 'utf-8',
-                               buffering=60000)
+        # TODO: Try to use transport.put() rather than branch.controlfile(mode='w')
+        if mode == 'rb': 
+            return self.transport.get(relpath)
+        elif mode == 'wb':
+            return self.transport.open(relpath)
+        elif mode == 'r':
+            return codecs.getreader('utf-8')(self.transport.get(relpath))
+        elif mode == 'w':
+            return codecs.getwriter(bzrlib.user_encoding)(
+                    self.transport.open(relpath), errors='replace')
         else:
             raise BzrError("invalid controlfile mode %r" % mode)
-
 
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
         from bzrlib.xml import pack_xml
         
-        os.mkdir(self.controlfilename([]))
-        self.controlfile('README', 'w').write(
+        self.transport.mkdir(self.controlfilename([]))
+        self.transport.put(self._rel_controlfilename('README'),
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.\n")
-        self.controlfile('branch-format', 'w').write(BZR_BRANCH_FORMAT)
+        self.transport.put(self._rel_controlfilename('branch-format'),
+            BZR_BRANCH_FORMAT)
         for d in ('text-store', 'inventory-store', 'revision-store'):
-            os.mkdir(self.controlfilename(d))
+            self.transport.mkdir(self._rel_controlfilename(d))
         for f in ('revision-history', 'merged-patches',
                   'pending-merged-patches', 'branch-name',
                   'branch-lock',
                   'pending-merges'):
-            self.controlfile(f, 'w').write('')
+            self.transport.put(self._rel_controlfilename(f), '')
         mutter('created control directory in ' + self.base)
 
+        # TODO: Try and do this with self.transport.put() instead
         pack_xml(Inventory(), self.controlfile('inventory','w'))
 
 
@@ -331,6 +330,16 @@ class Branch(object):
             raise BzrError('sorry, branch format %r not supported' % fmt,
                            ['use a different bzr version',
                             'or remove the .bzr directory and "bzr init" again'])
+
+        # We know that the format is the currently supported one.
+        # So create the rest of the entries.
+        def get_store(name):
+            relpath = self._rel_controlfilename(name)
+            return CompressedTextStore(self.transport.clone(relpath))
+
+        self.text_store = get_store('text-store')
+        self.revision_store = get_store('revision-store')
+        self.inventory_store = get_store('inventory-store')
 
 
 
@@ -359,17 +368,16 @@ class Branch(object):
         That is to say, the inventory describing changes underway, that
         will be committed to the next revision.
         """
-        from bzrlib.atomicfile import AtomicFile
         from bzrlib.xml import pack_xml
-        
+        from cStringIO import StringIO
         self.lock_write()
         try:
-            f = AtomicFile(self.controlfilename('inventory'), 'wb')
-            try:
-                pack_xml(inv, f)
-                f.commit()
-            finally:
-                f.close()
+            # Transport handles atomicity
+
+            sio = StringIO()
+            pack_xml(inv, sio)
+            sio.seek(0)
+            self.transport.put(self._rel_controlfilename('inventory'), sio)
         finally:
             self.unlock()
         
@@ -549,21 +557,18 @@ class Branch(object):
 
 
     def append_revision(self, *revision_ids):
-        from bzrlib.atomicfile import AtomicFile
-
         for revision_id in revision_ids:
             mutter("add {%s} to revision-history" % revision_id)
 
         rev_history = self.revision_history()
         rev_history.extend(revision_ids)
 
-        f = AtomicFile(self.controlfilename('revision-history'))
+        self.lock_write()
         try:
-            for rev_id in rev_history:
-                print >>f, rev_id
-            f.commit()
+            self.transport.put(self._rel_controlfilename('revision-history'),
+                    '\n'.join(rev_history))
         finally:
-            f.close()
+            self.unlock()
 
 
     def get_revision(self, revision_id):
@@ -833,8 +838,7 @@ class Branch(object):
         revision_ids = [ f.revision_id for f in revisions]
         count = self.revision_store.copy_multi(other.revision_store, 
                                                revision_ids)
-        for revision_id in revision_ids:
-            self.append_revision(revision_id)
+        self.append_revision(*revision_ids)
         print "Added %d revisions." % count
                     
         
@@ -1201,8 +1205,8 @@ class Branch(object):
         These are revisions that have been merged into the working
         directory but not yet committed.
         """
-        cfn = self.controlfilename('pending-merges')
-        if not os.path.exists(cfn):
+        cfn = self._rel_controlfilename('pending-merges')
+        if not self.transport.has(cfn):
             return []
         p = []
         for l in self.controlfile('pending-merges', 'r').readlines():
