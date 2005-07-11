@@ -298,74 +298,39 @@ class Weave(object):
 
         The set typically but not necessarily corresponds to a version.
         """
-        istack = []          # versions for which an insertion block is current
 
-        dset = set()         # versions for which a deletion block is current
-
-        isactive = None
+        istack = []
+        dset = set()
 
         lineno = 0         # line of weave, 0-based
-
-        # TODO: Probably only need to put included revisions in the istack
-
-        # TODO: Could split this into two functions, one that updates
-        # the stack and the other that processes the results -- but
-        # I'm not sure it's really needed.
-
-        # TODO: In fact, I think we only need to store the *count* of
-        # active insertions and deletions, and we can maintain that by
-        # just by just counting as we go along.
+        isactive = False
 
         WFE = WeaveFormatError
 
         for l in self._l:
             if isinstance(l, tuple):
-                isactive = None         # recalculate
                 c, v = l
-                if c == '{':
-                    if istack and (istack[-1] >= v):
-                        raise WFE("improperly nested insertions %d>=%d on line %d" 
-                                  % (istack[-1], v, lineno))
-                    istack.append(v)
-                elif c == '}':
-                    try:
+                if v in included:       # only active blocks are interesting
+                    if c == '{':
+                        assert v not in istack
+                        istack.append(v)
+                        isactive = not dset
+                    elif c == '}':
                         oldv = istack.pop()
-                    except IndexError:
-                        raise WFE("unmatched close of insertion %d on line %d"
-                                  % (v, lineno))
-                    if oldv != v:
-                        raise WFE("mismatched close of insertion %d!=%d on line %d"
-                                  % (oldv, v, lineno))
-                elif c == '[':
-                    # block deleted in v
-                    if v in dset:
-                        raise WFE("repeated deletion marker for version %d on line %d"
-                                  % (v, lineno))
-                    if istack:
-                        if istack[-1] == v:
-                            raise WFE("version %d deletes own text on line %d"
-                                      % (v, lineno))
-                        # XXX
+                        assert oldv == v
+                        isactive = istack and not dset
+                    elif c == '[':
+                        assert v not in dset
                         dset.add(v)
-                elif c == ']':
-                    if v in dset:
-                        dset.remove(v)
+                        isactive = False
                     else:
-                        raise WFE("unmatched close of deletion %d on line %d"
-                                  % (v, lineno))
-                else:
-                    raise WFE("invalid processing instruction %r on line %d"
-                              % (l, lineno))
+                        assert c == ']'
+                        assert v in dset
+                        dset.remove(v)
+                        isactive = istack and not dset
             else:
                 assert isinstance(l, basestring)
-                if not istack:
-                    raise WFE("literal at top level on line %d"
-                              % lineno)
-                if isactive == None:
-                    isactive = (istack[-1] in included) \
-                               and not included.intersection(dset)
                 if isactive:
-                    origin = istack[-1]
                     yield origin, lineno, l
             lineno += 1
 
@@ -432,6 +397,10 @@ class Weave(object):
                 raise WeaveError("mismatched sha1 for version %d; "
                                  "got %s, expected %s"
                                  % (version, hd, expected))
+
+        # TODO: check insertions are properly nested, that there are
+        # no lines outside of insertion blocks, that deletions are
+        # properly paired, etc.
 
 
 
