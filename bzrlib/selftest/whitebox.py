@@ -193,6 +193,8 @@ class BranchPathTestCase(TestBase):
         
         savedir = os.getcwdu()
         dtmp = tempfile.mkdtemp()
+        # On Mac OSX, /tmp actually expands to /private/tmp
+        dtmp = os.path.realpath(dtmp)
 
         def rp(p):
             return _relpath(dtmp, p)
