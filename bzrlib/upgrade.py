@@ -117,7 +117,7 @@ def upgrade(branch):
                     # Remove the old revision entry out of the way
                     rev_path = branch.controlfilename(['revision-store', rev_id+'.gz'])
                     special_rename(rev_path, tmp_path)
-                    branch.revision_store.add(rev_tmp, rev_id) # Add the new one
+                    branch.revision_store.add(rev_id, rev_tmp) # Add the new one
                     os.remove(tmp_path) # Remove the old name
                     mutter('    Updated revision entry {%s}' % rev_id)
                 except:
