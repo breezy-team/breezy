@@ -32,6 +32,9 @@ Small things
   requires patching difflib to get it exactly right, or otherwise
   calling out to GNU diff.
 
+* Should be able to copy files between branches to preserve their
+  file-id (and perhaps eventually parentage.)
+
 * -r option should take a revision-id as well as a revno.
 
 * ``bzr info`` should count only people with distinct email addresses as
