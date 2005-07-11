@@ -33,7 +33,26 @@ class NoChanges(InTempDir):
                           'commit without adding',
                           allow_empty=False)
 
+        b.commit('commit empty tree',
+                 allow_empty=True)
 
+        b.add('hello.txt')
+        
+        b.commit('commit first added file',
+                 allow_empty=False)
+        
+        self.assertRaises(EmptyCommit,
+                          b.commit,
+                          'commit after adding file',
+                          allow_empty=False)
+        
+        b.commit('commit pointless revision with one file',
+                 allow_empty=True)
+
+        b.add_pending_merge('mbp@892739123-2005-123123')
+        b.commit('commit new merge with no text changes',
+                 allow_empty=False)
+        
 
 
 class ValidateRevisionId(TestBase):
