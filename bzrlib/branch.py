@@ -29,7 +29,16 @@ BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 
 def find_branch(f, **args):
     from transport import transport
-    return Branch(transport(f), **args)
+    from local_transport import LocalTransport
+    t = transport(f)
+    # FIXME: This is a hack around transport so that
+    #        We can search the local directories for
+    #        a branch root.
+    if isinstance(t, LocalTransport):
+        root = find_branch_root(f)
+        if root != f:
+            t = transport(root)
+    return Branch(t, **args)
 
 def find_cached_branch(f, cache_root, **args):
     from remotebranch import RemoteBranch
@@ -87,10 +96,8 @@ def find_branch_root(f=None):
     run into the root."""
     if f == None:
         f = os.getcwd()
-    elif hasattr(os.path, 'realpath'):
-        f = os.path.realpath(f)
     else:
-        f = os.path.abspath(f)
+        f = os.path.realpath(f)
     if not os.path.exists(f):
         raise BzrError('%r does not exist' % f)
         
