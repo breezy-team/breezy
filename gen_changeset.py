@@ -179,7 +179,7 @@ class MetaInfoHeader(object):
             delta,
             starting_rev_id=None,
             full_remove=False, full_rename=False,
-            base_label = 'BASE', target_label = 'TARGET'):
+            base_label = '', target_label = ''):
         """
         :param full_remove: Include the full-text for a delete
         :param full_rename: Include an add+delete patch for a rename
