@@ -545,12 +545,12 @@ class cmd_pull(Command):
         cache_root = tempfile.mkdtemp()
         from bzrlib.branch import DivergedBranches
         br_from = find_branch(location)
-        location = pull_loc(br_from)
+        location = br_from.base
         old_revno = br_to.revno()
         try:
             from branch import find_cached_branch, DivergedBranches
             br_from = find_cached_branch(location, cache_root)
-            location = pull_loc(br_from)
+            location = br_from.base
             old_revno = br_to.revno()
             try:
                 br_to.update_revisions(br_from)
@@ -588,7 +588,9 @@ class cmd_branch(Command):
         import tempfile
         cache_root = tempfile.mkdtemp()
 
-        if revision is not None:
+        if revision is None:
+            revision = [None]
+        else:
             if len(revision) > 1:
                 raise BzrCommandError('bzr branch --revision takes exactly 1 revision value')
         try:
@@ -627,20 +629,10 @@ class cmd_branch(Command):
                 raise BzrCommandError(msg)
             merge((to_location, -1), (to_location, 0), this_dir=to_location,
                   check_clean=False, ignore_zero=True)
-            from_location = pull_loc(br_from)
+            from_location = br_from.base
             br_to.controlfile("x-pull", "wb").write(from_location + "\n")
         finally:
             rmtree(cache_root)
-
-
-def pull_loc(branch):
-    # TODO: Should perhaps just make attribute be 'base' in
-    # RemoteBranch and Branch?
-    if hasattr(branch, "baseurl"):
-        return branch.baseurl
-    else:
-        return branch.base
-
 
 
 class cmd_renames(Command):
@@ -877,7 +869,7 @@ class cmd_root(Command):
     def run(self, filename=None):
         """Print the branch root."""
         b = find_branch(filename)
-        print b._transport.base
+        print b.base
 
 
 class cmd_log(Command):

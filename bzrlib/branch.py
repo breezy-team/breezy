@@ -198,6 +198,10 @@ class Branch(object):
             warn("branch %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
+    def _get_base(self):
+        return self._transport.base
+
+    base = property(_get_base)
 
 
     def lock_write(self):
