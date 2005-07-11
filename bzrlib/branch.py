@@ -1227,16 +1227,10 @@ class Branch(object):
 
 
     def set_pending_merges(self, rev_list):
-        from bzrlib.atomicfile import AtomicFile
         self.lock_write()
         try:
-            f = AtomicFile(self.controlfilename('pending-merges'))
-            try:
-                for l in rev_list:
-                    print >>f, l
-                f.commit()
-            finally:
-                f.close()
+            self.transport.put(self._rel_controlfilename('pending-merges'),
+                    '\n'.join(rev_list))
         finally:
             self.unlock()
 
