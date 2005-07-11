@@ -54,7 +54,8 @@ def write_weave_v1(weave, f):
 
     for version, included in enumerate(weave._v):
         if included:
-            mininc = weave.minimal_parents(version)
+            # mininc = weave.minimal_parents(version)
+            mininc = included
             print >>f, 'i',
             for i in mininc:
                 print >>f, i,
@@ -105,11 +106,7 @@ def read_weave_v1(f):
 
             if len(l) > 2:
                 included = map(int, l[2:].split(' '))
-                full = set()
-                for pv in included:
-                    full.add(pv)
-                    full.update(w._v[pv])
-                w._addversion(full)
+                w._addversion(included)
             else:
                 w._addversion(None)
 

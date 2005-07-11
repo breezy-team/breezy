@@ -139,16 +139,15 @@ class Weave(object):
       version.
 
     _l
-        Text of the weave. 
+        Text of the weave.
 
     _v
-        List of versions, indexed by index number.
+        List of parents, indexed by version number.
+        It is only necessary to store the minimal set of parents for
+        each version; the parent's parents are implied.
 
-        For each version we store the set (included_versions), which
-        lists the previous versions also considered active; the
-        versions included in those versions are included transitively.
-        So new versions created from nothing list []; most versions
-        have a single entry; some have more.
+    _i
+        Full set of inclusions for each revision.
 
     _sha1s
         List of hex SHA-1 of each version, or None if not recorded.
@@ -157,6 +156,7 @@ class Weave(object):
         self._l = []
         self._v = []
         self._sha1s = []
+        self._i = {}
 
 
     def __eq__(self, other):
@@ -176,9 +176,8 @@ class Weave(object):
         Returns the index number of the newly added version.
 
         parents
-            List or set of parent version numbers.  This must normally include
-            the parents and the parent's parents, or wierd things might happen.
-
+            List or set of direct parent version numbers.
+            
         text
             Sequence of lines to be added in the new version."""
         ## self._check_versions(parents)
@@ -193,7 +192,8 @@ class Weave(object):
         del s
 
         if parents:
-            delta = self._delta(self.inclusions(parents), text)
+            ancestors = self.inclusions(parents)
+            delta = self._delta(ancestors, text)
 
             # offset gives the number of lines that have been inserted
             # into the weave up to the current point; if the original edit instruction
@@ -238,14 +238,25 @@ class Weave(object):
         return idx
 
 
+    def _expand(self, version):
+        if version in self._i:
+            return self._i[version]
+        else:
+            i = set([version])
+            for pv in self._v[version]:
+                i.update(self._expand(pv))
+            self._i[version] = i
+            return i
+
+
     def inclusions(self, versions):
         """Expand out everything included by versions."""
         i = set(versions)
-        for v in versions:
-            try:
-                i.update(self._v[v])
-            except IndexError:
-                raise ValueError("version %d not present in weave" % v)
+        try:
+            for v in versions:
+                i.update(self._expand(v))
+        except IndexError:
+            raise ValueError("version %d not present in weave" % v)
         return i
 
 
@@ -274,7 +285,7 @@ class Weave(object):
 
     def _addversion(self, parents):
         if parents:
-            self._v.append(frozenset(parents))
+            self._v.append(parents)
         else:
             self._v.append(frozenset())
 
@@ -308,7 +319,7 @@ class Weave(object):
 
         The index indicates when the line originated in the weave."""
         included = self.inclusions([version])
-        for origin, lineno, text in self._extract(included):
+        for origin, lineno, text in self._extract(self.inclusions(included)):
             yield origin, text
 
 
@@ -381,7 +392,7 @@ class Weave(object):
     def mash_iter(self, included):
         """Return composed version of multiple included versions."""
         included = frozenset(included)
-        for origin, lineno, text in self._extract(included):
+        for origin, lineno, text in self._extract(self.inclusions(included)):
             yield text
 
 
@@ -469,7 +480,7 @@ class Weave(object):
         # basis a list of (origin, lineno, line)
         basis_lineno = []
         basis_lines = []
-        for origin, lineno, line in self._extract(included):
+        for origin, lineno, line in self._extract(self.inclusions(included)):
             basis_lineno.append(lineno)
             basis_lines.append(line)
 
@@ -525,7 +536,9 @@ def weave_info(filename, out):
         bytes = sum((len(a) for a in text))
         sha1 = w._sha1s[i]
         print '%6d %6d %8d %40s' % (i, lines, bytes, sha1),
-        print ', '.join(map(str, w.minimal_parents(i)))
+        for pv in w._v[i]:
+            print pv,
+        print
         total += bytes
 
     print >>out, "versions total %d bytes" % total
@@ -633,6 +646,14 @@ def main(argv):
     elif cmd == 'check':
         w = readit()
         w.check()
+
+    elif cmd == 'inclusions':
+        w = readit()
+        print ' '.join(map(str, w.inclusions([int(argv[3])])))
+
+    elif cmd == 'parents':
+        w = readit()
+        print ' '.join(map(str, w._v[int(argv[3])]))
 
     elif cmd == 'merge':
         if len(argv) != 5:
