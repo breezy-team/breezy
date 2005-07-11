@@ -877,7 +877,7 @@ class cmd_root(Command):
     def run(self, filename=None):
         """Print the branch root."""
         b = find_branch(filename)
-        print getattr(b, 'base', None) or getattr(b, 'baseurl')
+        print b._transport.base
 
 
 class cmd_log(Command):

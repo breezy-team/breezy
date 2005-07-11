@@ -285,6 +285,8 @@ class Transport(object):
         raise NotImplementedError
 
 def transport(base):
+    if base is None:
+        base = '.'
     for proto, klass in protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
             return klass(base)

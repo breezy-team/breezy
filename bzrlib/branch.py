@@ -34,6 +34,9 @@ def find_branch(f, **args):
     # FIXME: This is a hack around transport so that
     #        We can search the local directories for
     #        a branch root.
+    if args.has_key('init') and args['init']:
+        # Don't search if we are init-ing
+        return Branch(t, **args)
     if isinstance(t, LocalTransport):
         root = find_branch_root(f)
         if root != f:
