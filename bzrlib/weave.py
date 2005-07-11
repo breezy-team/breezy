@@ -242,7 +242,10 @@ class Weave(object):
         """Expand out everything included by versions."""
         i = set(versions)
         for v in versions:
-            i.update(self._v[v])
+            try:
+                i.update(self._v[v])
+            except IndexError:
+                raise ValueError("version %d not present in weave" % v)
         return i
 
 
@@ -259,7 +262,8 @@ class Weave(object):
 
         for l in text:
             if not isinstance(l, basestring):
-                raise ValueError("text line should be a string or unicode, not %s" % type(l))
+                raise ValueError("text line should be a string or unicode, not %s"
+                                 % type(l))
         
 
 
@@ -528,33 +532,66 @@ def weave_info(filename, out):
 
     print >>out, "versions total %d bytes" % total
     print >>out, "compression ratio %.3f" % (float(total)/float(weave_size))
+
+
+def usage():
+    print """bzr weave tool:
+usage:
+    weave init WEAVEFILE
+        Create an empty weave file
+    weave get WEAVEFILE VERSION
+        Write out specified version.
+    weave check WEAVEFILE
+        Check consistency of all versions.
+    weave info WEAVEFILE
+        Display table of contents.
+    weave add WEAVEFILE [BASE...] < NEWTEXT
+        Add NEWTEXT, with specified parent versions.
+    weave annotate WEAVEFILE VERSION
+        Display origin of each line.
+    weave mash WEAVEFILE VERSION...
+        Display composite of all selected versions.
+    weave merge WEAVEFILE VERSION1 VERSION2 > OUT
+        Auto-merge two versions and display conflicts.
+"""
     
 
 
 def main(argv):
     import sys
     import os
-    from weavefile import write_weave_v1, read_weave
+    from weavefile import write_weave, read_weave
     cmd = argv[1]
-    if cmd == 'add':
-        w = read_weave(file(argv[2], 'rb'))
+
+    def readit():
+        return read_weave(file(argv[2], 'rb'))
+    
+    if cmd == 'help':
+        usage()
+    elif cmd == 'add':
+        w = readit()
         # at the moment, based on everything in the file
-        parents = set(range(len(w._v)))
+        parents = map(int, argv[3:])
         lines = sys.stdin.readlines()
         ver = w.add(parents, lines)
-        write_weave_v1(w, file(argv[2], 'wb'))
-        print 'added %d' % ver
+        write_weave(w, file(argv[2], 'wb'))
+        print 'added version %d' % ver
     elif cmd == 'init':
         fn = argv[2]
         if os.path.exists(fn):
             raise IOError("file exists")
         w = Weave()
-        write_weave_v1(w, file(fn, 'wb'))
-    elif cmd == 'get':
-        w = read_weave(file(argv[2], 'rb'))
+        write_weave(w, file(fn, 'wb'))
+    elif cmd == 'get': # get one version
+        w = readit()
         sys.stdout.writelines(w.get_iter(int(argv[3])))
+        
+    elif cmd == 'mash': # get composite
+        w = readit()
+        sys.stdout.writelines(w.mash_iter(map(int, argv[3:])))
+
     elif cmd == 'annotate':
-        w = read_weave(file(argv[2], 'rb'))
+        w = readit()
         # newline is added to all lines regardless; too hard to get
         # reasonable formatting otherwise
         lasto = None
@@ -568,7 +605,7 @@ def main(argv):
     elif cmd == 'info':
         weave_info(argv[2], sys.stdout)
     elif cmd == 'check':
-        w = read_weave(file(argv[2], 'rb'))
+        w = readit()
         w.check()
     else:
         raise ValueError('unknown command %r' % cmd)
