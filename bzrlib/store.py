@@ -110,6 +110,9 @@ class Storage(object):
         # then queue up 11-20, copy 11-20
         # or to queue up 1-10, copy 1, queue 11, copy 2, etc?
         # sort of pipeline versus batch.
+
+        # We can't use self._transport.copy_to because we don't know
+        # whether the local tree is in the same format as other
         def buffer_requests():
             count = 0
             buffered_requests = []
@@ -221,8 +224,7 @@ class CompressedTextStore(Storage):
         # we don't need to process the files.
 
         paths = [self._relpath(fileid) for fileid in to_copy]
-        count = self._transport.put_multi(
-                zip(paths, other._transport.get_multi(paths, pb=pb)))
+        count = other._transport.copy_to(paths, self._transport, pb=pb)
         assert count == len(to_copy)
         pb.clear()
         return count
