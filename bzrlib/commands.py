@@ -1425,8 +1425,15 @@ class cmd_plugins(Command):
     hidden = True
     def run(self):
         import bzrlib.plugin
+        from inspect import getdoc
         from pprint import pprint
-        pprint(bzrlib.plugin.all_plugins)
+        for plugin in bzrlib.plugin.all_plugins:
+            print plugin.__path__[0]
+            d = getdoc(plugin)
+            if d:
+                print '\t', d.split('\n')[0]
+
+        #pprint(bzrlib.plugin.all_plugins)
 
 
 
