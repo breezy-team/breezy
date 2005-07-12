@@ -150,7 +150,7 @@ class HttpTransport(Transport):
         """Create a directory at the given path."""
         raise TransportNotPossibleError('http does not support mkdir()')
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, encode=False):
         """Append the text in the file-like object into the final
         location.
         """

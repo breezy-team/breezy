@@ -221,7 +221,7 @@ class Transport(object):
         """Create a directory at the given path."""
         raise NotImplementedError
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, encode=False):
         """Append the text in the file-like or string object to 
         the supplied location.
         """

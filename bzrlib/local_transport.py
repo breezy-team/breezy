@@ -82,11 +82,15 @@ class LocalTransport(Transport):
         """Create a directory at the given path."""
         os.mkdir(self.abspath(relpath))
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, encode=False):
         """Append the text in the file-like object into the final
         location.
         """
-        fp = open(self.abspath(relpath), 'a+b')
+        if encode:
+            fp = codecs.open(self.abspath(relpath), 'rb',
+                    encoding='utf-8', buffering=60000)
+        else:
+            fp = open(self.abspath(relpath), 'a+b')
         self._pump(f, fp)
 
     def copy(self, rel_from, rel_to):
