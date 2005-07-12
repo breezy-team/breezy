@@ -70,6 +70,10 @@ def selftest():
     # the code.
 
 
+    for p in bzrlib.plugin.all_plugins:
+        if hasattr(p, 'test_suite'):
+            suite.addTest(p.test_suite())
+
     # XXX: python2.3's TestLoader() doesn't seem to find all the
     # tests; don't know why
     for m in MODULES_TO_TEST:
@@ -77,10 +81,6 @@ def selftest():
 
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
-
-    for p in bzrlib.plugin.all_plugins:
-        if hasattr(p, 'test_suite'):
-            suite.addTest(p.test_suite())
 
     suite.addTest(unittest.makeSuite(bzrlib.merge_core.MergeTest, 'test_'))
 
