@@ -33,6 +33,7 @@ def selftest():
     import bzrlib.selftest.testhashcache
     import bzrlib.selftest.testrevisionnamespaces
     import bzrlib.selftest.testbranch
+    import bzrlib.selftest.teststatus
     import bzrlib.merge_core
     from doctest import DocTestSuite
     import os
@@ -50,6 +51,7 @@ def selftest():
               bzrlib.selftest.versioning,
               bzrlib.selftest.testmerge3,
               bzrlib.selftest.testhashcache,
+              bzrlib.selftest.teststatus,
               bzrlib.selftest.blackbox,
               bzrlib.selftest.testhashcache,
               bzrlib.selftest.testrevisionnamespaces,

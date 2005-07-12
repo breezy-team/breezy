@@ -18,7 +18,8 @@
 
 def show_status(branch, show_unchanged=False,
                 specific_files=None,
-                show_ids=False):
+                show_ids=False,
+                to_file=None):
     """Display single-line status for non-ignored working files.
 
     show_all
@@ -26,9 +27,15 @@ def show_status(branch, show_unchanged=False,
 
     specific_files
         If set, only show the status of files in this list.
+
+    to_file
+        If set, write to this file (default stdout.)
     """
     import sys
     from bzrlib.diff import compare_trees
+
+    if to_file == None:
+        to_file = sys.stdout
     
     branch.lock_read()
     try:
@@ -39,7 +46,8 @@ def show_status(branch, show_unchanged=False,
         delta = compare_trees(old, new, want_unchanged=show_unchanged,
                               specific_files=specific_files)
 
-        delta.show(sys.stdout, show_ids=show_ids,
+        delta.show(to_file,
+                   show_ids=show_ids,
                    show_unchanged=show_unchanged)
 
         unknowns = new.unknowns()
@@ -51,9 +59,9 @@ def show_status(branch, show_unchanged=False,
                 if path not in specific_files:
                     continue
             if not done_header:
-                print 'unknown:'
+                print >>to_file, 'unknown:'
                 done_header = True
-            print ' ', path
+            print >>to_file, ' ', path
     finally:
         branch.unlock()
         
