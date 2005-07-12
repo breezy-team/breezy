@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from trace import mutter
-from bzrlib.store import Store, CompressedTextStore
+from bzrlib.store import Storage, CompressedTextStore
 from bzrlib.local_transport import LocalTransport
 
 try:
@@ -23,7 +23,7 @@ try:
 except NameError:
     from sets import Set as set
 
-class CachedStore(Store):
+class CachedStore(Storage):
     """A store that caches data locally, to avoid repeated downloads.
     The precacache method should be used to avoid server round-trips for
     every piece of data.
@@ -46,7 +46,7 @@ class CachedStore(Store):
             return True
         return False
 
-    def get(self, fileids):
+    def get(self, fileids, pb=None):
         fileids = list(fileids)
         hasids = self.cache_store.has(fileids)
         needs = set()
@@ -55,7 +55,7 @@ class CachedStore(Store):
                 needs.add(fileid)
         if needs:
             self.cache_store.copy_multi(self.source_store, needs)
-        return self.cache_store.get(fileids)
+        return self.cache_store.get(fileids, pb=pb)
 
     def prefetch(self, ids):
         """Copy a series of ids into the cache, before they are used.
