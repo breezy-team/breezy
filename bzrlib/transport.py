@@ -242,7 +242,7 @@ class Transport(object):
         """Copy the item at rel_from to the location at rel_to"""
         raise NotImplementedError
 
-    def copy_multi(self, relpaths):
+    def copy_multi(self, relpaths, pb=None):
         """Copy a bunch of entries.
         
         :param relpaths: A list of tuples of the form [(from, to), (from, to),...]
@@ -251,11 +251,23 @@ class Transport(object):
         # implementors don't have to implement everything.
         return self._iterate_over(relpaths, self.copy, pb, 'copy', expand=True)
 
+    def copy_to(self, relpaths, other, pb=None):
+        """Copy a set of entries from self into another Transport.
+
+        :param relpaths: A list/generator of entries to be copied.
+        """
+        # The dummy implementation just does a simple get + put
+        def copy_entry(path):
+            other.put(path, self.get(path, decode=False), encode=False)
+
+        return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
+
+
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         raise NotImplementedError
 
-    def move_multi(self, relpaths):
+    def move_multi(self, relpaths, pb=None):
         """Move a bunch of entries.
         
         :param relpaths: A list of tuples of the form [(from1, to1), (from2, to2),...]
@@ -278,7 +290,7 @@ class Transport(object):
         """Delete the item at relpath"""
         raise NotImplementedError
 
-    def delete_multi(self, relpaths):
+    def delete_multi(self, relpaths, pb=None):
         """Queue up a bunch of deletes to be done.
         """
         return self._iterate_over(relpaths, self.delete, pb, 'delete', expand=False)

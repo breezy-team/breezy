@@ -154,6 +154,16 @@ class HttpTransport(Transport):
         """Copy the item at rel_from to the location at rel_to"""
         raise TransportNotPossibleError('http does not support copy()')
 
+    def copy_to(self, relpaths, other, pb=None):
+        """Copy a set of entries from self into another Transport.
+
+        :param relpaths: A list/generator of entries to be copied.
+        """
+        if isinstance(other, HttpTransport):
+            raise TransportNotPossibleError('http cannot be the target of copy_to()')
+        else:
+            return super(LocalTransport, self).copy_to(relpaths, other, pb=pb)
+
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         raise TransportNotPossibleError('http does not support move()')

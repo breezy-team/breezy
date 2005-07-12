@@ -107,6 +107,28 @@ class LocalTransport(Transport):
         """Delete the item at relpath"""
         os.remove(self.abspath(relpath))
 
+    def copy_to(self, relpaths, other, pb=None):
+        """Copy a set of entries from self into another Transport.
+
+        :param relpaths: A list/generator of entries to be copied.
+        """
+        if isinstance(other, LocalTransport):
+            # Both from & to are on the local filesystem
+            # Unfortunately, I can't think of anything faster than just
+            # copying them across, one by one :(
+            import shutil
+
+            total = self._get_total(relpaths)
+            count = 0
+            for path in relpaths:
+                self._update_pb(pb, 'copy-to', count, total)
+                shutil.copy(self.abspath(path), other.abspath(path))
+                count += 1
+            return count
+        else:
+            return super(LocalTransport, self).copy_to(relpaths, other, pb=pb)
+
+
     def async_get(self, relpath):
         """Make a request for an file at the given location, but
         don't worry about actually getting it yet.
