@@ -118,11 +118,23 @@ class HttpTransport(Transport):
         return abspath[pl:].lstrip('/')
 
     def has(self, relpath):
+        """Does the target location exist?
+
+        TODO: HttpTransport.has() should use a HEAD request,
+        not a full GET request.
+        """
         try:
             f = get_url(self.abspath(relpath))
             return True
         except urllib2.URLError:
             return False
+
+    def has_multi(self, relpaths):
+        """Return True/False for each entry in relpaths
+
+        TODO: Implement HttpTransport.has_multi()
+        """
+        return super(HttpTransport, self).has_multi(relpaths)
 
     def get(self, relpath, decode=False):
         """Get the file at the given relative path.
