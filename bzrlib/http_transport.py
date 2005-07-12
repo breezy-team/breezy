@@ -159,10 +159,13 @@ class HttpTransport(Transport):
 
         :param relpaths: A list/generator of entries to be copied.
         """
+        # At this point HttpTransport might be able to check and see if
+        # the remote location is the same, and rather than download, and
+        # then upload, it could just issue a remote copy_this command.
         if isinstance(other, HttpTransport):
             raise TransportNotPossibleError('http cannot be the target of copy_to()')
         else:
-            return super(LocalTransport, self).copy_to(relpaths, other, pb=pb)
+            return super(HttpTransport, self).copy_to(relpaths, other, pb=pb)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
