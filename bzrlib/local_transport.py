@@ -87,10 +87,10 @@ class LocalTransport(Transport):
         location.
         """
         if encode:
-            fp = codecs.open(self.abspath(relpath), 'rb',
+            fp = codecs.open(self.abspath(relpath), 'ab',
                     encoding='utf-8', buffering=60000)
         else:
-            fp = open(self.abspath(relpath), 'a+b')
+            fp = open(self.abspath(relpath), 'ab')
         self._pump(f, fp)
 
     def copy(self, rel_from, rel_to):

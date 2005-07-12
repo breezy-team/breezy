@@ -154,19 +154,6 @@ class Transport(object):
             count += 1
         return count
 
-    def has(self, relpath):
-        """Does the target location exist?"""
-        raise NotImplementedError
-
-    def get(self, relpath, decode=False):
-        """Get the file at the given relative path.
-
-        :param relpath: The relative path to the file
-        :param decode:  If True, assume the file is utf-8 encoded and
-                        decode it into Unicode
-        """
-        raise NotImplementedError
-
     def abspath(self, relpath):
         """Return the full url to the given relative path.
         This can be supplied with a string or a list
@@ -175,6 +162,28 @@ class Transport(object):
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
+        """
+        raise NotImplementedError
+
+    def has(self, relpath):
+        """Does the target location exist?"""
+        raise NotImplementedError
+
+    def has_multi(self, relpaths):
+        """Return True/False for each entry in relpaths"""
+        total = self._get_total(relpaths)
+        count = 0
+        for relpath in relpaths:
+            self._update_pb(pb, 'get', count, total)
+            yield self.has(relpath)
+            count += 1
+
+    def get(self, relpath, decode=False):
+        """Get the file at the given relative path.
+
+        :param relpath: The relative path to the file
+        :param decode:  If True, assume the file is utf-8 encoded and
+                        decode it into Unicode
         """
         raise NotImplementedError
 
