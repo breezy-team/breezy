@@ -192,7 +192,7 @@ def deltas_for_log_reverse(branch, which_revs):
 
     if last_revno:
         if last_revno == 1:
-            this_tree = EmptyTree()
+            this_tree = EmptyTree(branch.get_root_id())
         else:
             this_revno = last_revno - 1
             this_revision_id = branch.revision_history()[this_revno]

@@ -51,8 +51,11 @@ def _unsquish_command_name(cmd):
     assert cmd.startswith("cmd_")
     return cmd[4:].replace('_','-')
 
+
 def _parse_revision_str(revstr):
-    """This handles a revision string -> revno. 
+    """This handles a revision string -> revno.
+
+    This always returns a list.  The list will have one element for 
 
     It supports integers directly, but everything else it
     defers for passing to Branch.get_revision_info()
@@ -329,9 +332,11 @@ class cmd_status(Command):
     directory is shown.  Otherwise, only the status of the specified
     files or directories is reported.  If a directory is given, status
     is reported for everything inside that directory.
+
+    If a revision is specified, the changes since that revision are shown.
     """
     takes_args = ['file*']
-    takes_options = ['all', 'show-ids']
+    takes_options = ['all', 'show-ids', 'revision']
     aliases = ['st', 'stat']
     
     def run(self, all=False, show_ids=False, file_list=None):
@@ -344,9 +349,10 @@ class cmd_status(Command):
                 file_list = None
         else:
             b = find_branch('.')
-        import status
-        status.show_status(b, show_unchanged=all, show_ids=show_ids,
-                           specific_files=file_list)
+            
+        from bzrlib.status import show_status
+        show_status(b, show_unchanged=all, show_ids=show_ids,
+                    specific_files=file_list)
 
 
 class cmd_cat_revision(Command):

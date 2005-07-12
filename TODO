@@ -28,6 +28,10 @@ Small things
 * Add of a file that was present in the base revision should put back
   the previous file-id.
 
+* Not sure I'm happy with needing to pass a root id to EmptyTree;
+  comparing anything against an EmptyTree with no root should have the
+  same effect(?)
+
 * Handle diff of files which do not have a trailing newline; probably
   requires patching difflib to get it exactly right, or otherwise
   calling out to GNU diff.
