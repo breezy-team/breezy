@@ -627,7 +627,19 @@ class Branch(object):
             
         assert r.revision_id == revision_id
         return r
-        
+
+    def get_revisions(self, revision_ids. pb=None):
+        """Return the Revision object for a set of named revisions"""
+        from bzrlib.revision import Revision
+        from bzrlib.xml import unpack_xml
+
+        self.lock_read()
+        try:
+            for f in self.revision_store.get(revision_ids, pb=pb):
+                yield unpack_xml(Revision, f)
+        finally:
+            self.unlock()
+            
 
     def get_revision_sha1(self, revision_id):
         """Hash the stored value of a revision, and return it."""
@@ -649,7 +661,24 @@ class Branch(object):
         from bzrlib.inventory import Inventory
         from bzrlib.xml import unpack_xml
 
-        return unpack_xml(Inventory, self.inventory_store[inventory_id])
+        self.lock_read()
+        try:
+            return unpack_xml(Inventory, self.inventory_store[inventory_id])
+        finally:
+            self.unlock()
+
+    def get_inventories(self, inventory_ids, pb=None):
+        """Get Inventory objects by id
+        """
+        from bzrlib.inventory import Inventory
+        from bzrlib.xml import unpack_xml
+
+        self.lock_read()
+        try:
+            for f in self.inventory_store.get(inventory_ids, pb=pb):
+                yield unpack_xml(Inventory, f)
+        finally:
+            self.unlock()
             
 
     def get_inventory_sha1(self, inventory_id):
@@ -849,24 +878,25 @@ class Branch(object):
         if hasattr(other.revision_store, "prefetch"):
             other.revision_store.prefetch(revision_ids)
         if hasattr(other.inventory_store, "prefetch"):
-            inventory_ids = [other.get_revision(r).inventory_id
-                             for r in revision_ids]
-            other.inventory_store.prefetch(inventory_ids)
+            other.inventory_store.prefetch(revision_ids)
                 
-        revisions = []
+        revisions = self.get_revisions(revision_ids, pb=pb)
+        inventories = self.get_inventories(revision_ids, pb=pb)
         needed_texts = set()
         i = 0
-        for rev_id in revision_ids:
+
+        for rev, inv in zip(revisions, inventories):
             i += 1
             pb.update('fetching revision', i, len(revision_ids))
-            rev = other.get_revision(rev_id)
-            revisions.append(rev)
-            inv = other.get_inventory(str(rev.inventory_id))
+            text_ids = []
             for key, entry in inv.iter_entries():
                 if entry.text_id is None:
                     continue
-                if entry.text_id not in self.text_store:
-                    needed_texts.add(entry.text_id)
+                text_ids.append(entry.text_id)
+            has_ids = self.text_store.has(text_ids)
+            for has, text_id in zip(has_ids, text_ids):
+                if not has:
+                    needed_texts.add(text_id)
 
         pb.clear()
                     

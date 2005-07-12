@@ -79,6 +79,23 @@ class Storage(object):
         for fileid, f in entries:
             self.add(fileid, f)
 
+    def has(self, fileids):
+        """Return True/False for each entry in fileids.
+
+        :param fileids: A List or generator yielding file ids.
+        :return: A generator or list returning True/False for each entry.
+        """
+        for fileid in fileids:
+            if fileid in self:
+                yield True
+            else:
+                yield False
+
+    def get(self, fileids, pb=None):
+        """Return a set of files, one for each requested entry."""
+        for fileid in fileids:
+            yield self[fileid]
+
     def copy_multi(self, other, ids):
         """Copy texts for ids from other into self.
 
@@ -234,7 +251,25 @@ class CompressedTextStore(Storage):
         fn = self._relpath(fileid)
         return self._transport.has(fn)
 
-    # TODO: Guard against the same thing being stored twice, compressed and uncompresse
+    def has(self, fileids, pb=None):
+        """Return True/False for each entry in fileids.
+
+        :param fileids: A List or generator yielding file ids.
+        :return: A generator or list returning True/False for each entry.
+        """
+        relpaths = [self._relpath(fid) for fid in fileids]
+        return self._transport.has_multi(relpaths, pb=pb)
+
+    def get(self, fileids, pb=None):
+        """Return a set of files, one for each requested entry."""
+        rel_paths = [self._relpath(fid) for fid in fileids]
+        for f in self._transport.get_multi(rel_paths, pb=pb):
+            if hasattr(f, 'tell'):
+                yield gzip.GzipFile(mode='rb', fileobj=f)
+            else:
+                from cStringIO import StringIO
+                sio = StringIO(f.read())
+                yield gzip.GzipFile(mode='rb', fileobj=sio)
 
     def __iter__(self):
         # TODO: case-insensitive?

@@ -76,7 +76,10 @@ def _find_remote_root(url):
         
 
 class HttpTransport(Transport):
-    """This is the transport agent for local filesystem access."""
+    """This is the transport agent for http:// access.
+    
+    TODO: Implement pipelined versions of all of the *_multi() functions.
+    """
 
     def __init__(self, base):
         """Set the base path where files will be stored."""
@@ -128,13 +131,6 @@ class HttpTransport(Transport):
             return True
         except urllib2.URLError:
             return False
-
-    def has_multi(self, relpaths):
-        """Return True/False for each entry in relpaths
-
-        TODO: Implement HttpTransport.has_multi()
-        """
-        return super(HttpTransport, self).has_multi(relpaths)
 
     def get(self, relpath, decode=False):
         """Get the file at the given relative path.

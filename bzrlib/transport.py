@@ -169,12 +169,12 @@ class Transport(object):
         """Does the target location exist?"""
         raise NotImplementedError
 
-    def has_multi(self, relpaths):
+    def has_multi(self, relpaths, pb=None):
         """Return True/False for each entry in relpaths"""
         total = self._get_total(relpaths)
         count = 0
         for relpath in relpaths:
-            self._update_pb(pb, 'get', count, total)
+            self._update_pb(pb, 'has', count, total)
             yield self.has(relpath)
             count += 1
 
