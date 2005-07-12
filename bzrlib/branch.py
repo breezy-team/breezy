@@ -361,7 +361,7 @@ class Branch(object):
         # So create the rest of the entries.
         from bzrlib.store import CompressedTextStore
 
-        if self._transport.is_remote():
+        if self._transport.should_cache():
             import tempfile
             self.cache_root = tempfile.mkdtemp(prefix='bzr-cache')
             mutter('Branch %r using caching in %r' % (self, self.cache_root))
@@ -371,7 +371,7 @@ class Branch(object):
         def get_store(name):
             relpath = self._rel_controlfilename(name)
             store = CompressedTextStore(self._transport.clone(relpath))
-            if self._transport.is_remote():
+            if self._transport.should_cache():
                 from meta_store import CachedStore
                 cache_path = os.path.join(self.cache_root, name)
                 os.mkdir(cache_path)

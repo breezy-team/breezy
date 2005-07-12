@@ -86,6 +86,11 @@ class HttpTransport(Transport):
         # rather than using get_url
         # self._connection = None
 
+    def should_cache(self):
+        """Return True if the data pulled across should be cached locally.
+        """
+        return True
+
     def clone(self, offset=None):
         """Return a new HttpTransport with root at self.base + offset
         For now HttpTransport does not actually connect, so just return
@@ -102,7 +107,8 @@ class HttpTransport(Transport):
         """
         if isinstance(relpath, basestring):
             relpath = [relpath]
-        return '/'.join([self.base] + relpath)
+        baseurl = self.base.rstrip('/')
+        return '/'.join([baseurl] + relpath)
 
     def relpath(self, abspath):
         if not abspath.startswith(self.base):

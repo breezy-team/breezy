@@ -15,7 +15,7 @@ class LocalTransport(Transport):
         from os.path import realpath
         super(LocalTransport, self).__init__(realpath(base))
 
-    def is_remote(self):
+    def should_cache(self):
         return False
 
     def clone(self, offset=None):
