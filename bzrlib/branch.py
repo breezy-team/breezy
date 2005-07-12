@@ -628,17 +628,27 @@ class Branch(object):
         assert r.revision_id == revision_id
         return r
 
-    def get_revisions(self, revision_ids. pb=None):
+    def get_revisions(self, revision_ids, pb=None):
         """Return the Revision object for a set of named revisions"""
         from bzrlib.revision import Revision
         from bzrlib.xml import unpack_xml
 
+        # TODO: We need to decide what to do here
+        # we cannot use a generator with a try/finally, because
+        # you cannot guarantee that the caller will iterate through
+        # all entries.
+        # in the past, get_inventory wasn't even wrapped in a
+        # try/finally locking block.
+        # We could either lock without the try/finally, or just
+        # not lock at all. We are reading entries that should
+        # never be updated.
+        # I prefer locking with no finally, so that if someone
+        # asks for a list of revisions, but doesn't consume them,
+        # that is their problem, and they will suffer the consequences
         self.lock_read()
-        try:
-            for f in self.revision_store.get(revision_ids, pb=pb):
-                yield unpack_xml(Revision, f)
-        finally:
-            self.unlock()
+        for f in self.revision_store.get(revision_ids, pb=pb):
+            yield unpack_xml(Revision, f)
+        self.unlock()
             
 
     def get_revision_sha1(self, revision_id):
@@ -673,13 +683,12 @@ class Branch(object):
         from bzrlib.inventory import Inventory
         from bzrlib.xml import unpack_xml
 
+        # See the discussion in get_revisions for why
+        # we don't use a try/finally block here
         self.lock_read()
-        try:
-            for f in self.inventory_store.get(inventory_ids, pb=pb):
-                yield unpack_xml(Inventory, f)
-        finally:
-            self.unlock()
-            
+        for f in self.inventory_store.get(inventory_ids, pb=pb):
+            yield unpack_xml(Inventory, f)
+        self.unlock()
 
     def get_inventory_sha1(self, inventory_id):
         """Return the sha1 hash of the inventory entry
@@ -880,19 +889,23 @@ class Branch(object):
         if hasattr(other.inventory_store, "prefetch"):
             other.inventory_store.prefetch(revision_ids)
                 
-        revisions = self.get_revisions(revision_ids, pb=pb)
-        inventories = self.get_inventories(revision_ids, pb=pb)
+        # This entire next section is generally done
+        # with either generators, or bulk updates
+        inventories = other.get_inventories(revision_ids)
         needed_texts = set()
-        i = 0
 
-        for rev, inv in zip(revisions, inventories):
+        i = 0
+        for inv in inventories:
             i += 1
-            pb.update('fetching revision', i, len(revision_ids))
+            pb.update('fetching inventory', i, len(revision_ids))
             text_ids = []
             for key, entry in inv.iter_entries():
                 if entry.text_id is None:
                     continue
                 text_ids.append(entry.text_id)
+            # TODO: Instead of group by group, this could be
+            # updated en masse after checking all of the inventories
+            # can't say which would be faster
             has_ids = self.text_store.has(text_ids)
             for has, text_id in zip(has_ids, text_ids):
                 if not has:
@@ -902,11 +915,9 @@ class Branch(object):
                     
         count = self.text_store.copy_multi(other.text_store, needed_texts)
         print "Added %d texts." % count 
-        inventory_ids = [ f.inventory_id for f in revisions ]
         count = self.inventory_store.copy_multi(other.inventory_store, 
-                                                inventory_ids)
+                                                revision_ids)
         print "Added %d inventories." % count 
-        revision_ids = [ f.revision_id for f in revisions]
         count = self.revision_store.copy_multi(other.revision_store, 
                                                revision_ids)
         self.append_revision(*revision_ids)

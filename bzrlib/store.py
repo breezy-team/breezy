@@ -257,6 +257,10 @@ class CompressedTextStore(Storage):
         :param fileids: A List or generator yielding file ids.
         :return: A generator or list returning True/False for each entry.
         """
+        # I would love to use a generator syntax here
+        # relpaths = (self._relpath(fid) for fid in fileids)
+        # But unfortunately that is a python2.4 trick, not a 2.3 one.
+        # There are no generator comprehensions in python2.4
         relpaths = [self._relpath(fid) for fid in fileids]
         return self._transport.has_multi(relpaths, pb=pb)
 
