@@ -554,6 +554,8 @@ class cmd_pull(Command):
         old_revno = br_to.revno()
         try:
             revno, rev_id = br_from.get_revision_info(revision[0])
+            if revno == 0:
+                revno = None
             try:
                 br_to.update_revisions(br_from, stop_revision=revno)
             except DivergedBranches:
@@ -623,6 +625,8 @@ class cmd_branch(Command):
             br_to = find_branch(to_location, init=True)
 
             revno, rev_id = br_from.get_revision_info(revision[0])
+            if revno == 0:
+                revno = None
             try:
                 br_to.update_revisions(br_from, stop_revision=revno)
             except NoSuchRevision:
