@@ -203,6 +203,7 @@ class ChangesetReader(object):
             sio.seek(0)
             sha1 = sha_file(sio)
             if sha1 != rev_info.sha1:
+                open(',,bogus-rev', 'wb').write(sio.getvalue())
                 raise BzrError('Revision checksum mismatch.'
                     ' For rev_id {%s} supplied sha1 (%s) != measured (%s)'
                     % (rev.revision_id, rev_info.sha1, sha1))

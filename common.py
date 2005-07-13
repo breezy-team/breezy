@@ -3,6 +3,8 @@
 Common entries, like strings, etc, for the changeset reading + writing code.
 """
 
+import bzrlib
+
 header_str = 'Bazaar-NG changeset v'
 version = (0, 0, 5)
 
@@ -109,9 +111,9 @@ def encode(s):
 
     >>> encode(u'abcdefg')
     'abcdefg'
-    >>> encode(u'a b\tc\\nd\\\\e')
+    >>> encode(u'a b\\tc\\nd\\\\e')
     'a b\\\\tc\\\\nd\\\\e'
-    >>> encode('a b\tc\\nd\\e')
+    >>> encode('a b\\tc\\nd\\e')
     'a b\\\\tc\\\\nd\\\\e'
     >>> encode(u'\\u1234\\u0020')
     '\\\\u1234 '
@@ -130,7 +132,7 @@ def decode(s):
     >>> decode('abcdefg')
     u'abcdefg'
     >>> decode('a b\\\\tc\\\\nd\\\\e')
-    u'a b\tc\\nd\\\\e'
+    u'a b\\tc\\nd\\\\e'
     >>> decode('\\\\u1234\\\\u0020')
     u'\\u1234 '
     >>> for s in ('test', 'strings'):
@@ -181,7 +183,7 @@ def format_highres_date(t, offset=0):
 def unpack_highres_date(date):
     """This takes the high-resolution date stamp, and
     converts it back into the tuple (timestamp, timezone)
-    Where timestamp is in real seconds, and timezone is an integer
+    Where timestamp is in real UTC since epoch seconds, and timezone is an integer
     number of seconds offset.
 
     :param date: A date formated by format_highres_date
@@ -209,11 +211,12 @@ def unpack_highres_date(date):
     ...   t2, o2 = unpack_highres_date(date)
     ...   if t != t2 or o != o2:
     ...      print 'Failed on date %r, %s,%s diff:%s' % (date, t, o, t2-t)
+    ...      break
 
     """
     #from bzrlib.errors import BzrError
     from bzrlib.osutils import local_time_offset
-    import time
+    import time, calendar
     # Up until the first period is a datestamp that is generated
     # as normal from time.strftime, so use time.strptime to
     # parse it
@@ -226,12 +229,9 @@ def unpack_highres_date(date):
     offset = int(offset)
     offset = int(offset / 100) * 3600 + offset % 100
     
-    # mktime returns the a local timestamp, not the timestamp based
-    # on the offset given in the file, so we need to adjust based
-    # on what the local offset is, and then re-adjust based on
-    # offset read
-    timestamp = time.mktime(base_time)
-    timestamp += local_time_offset(timestamp) - offset
+    # time.mktime returns localtime, but calendar.timegm returns UTC time
+    timestamp = calendar.timegm(base_time)
+    timestamp -= offset
     # Add back in the fractional seconds
     timestamp += fract_seconds
     return (timestamp, offset)

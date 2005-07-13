@@ -173,8 +173,16 @@ bzrlib.commands.OPTIONS['reverse'] = None
 bzrlib.commands.OPTIONS['auto-commit'] = None
 
 def test_suite():
-    import unittest
+    from doctest import DocTestSuite
+    from unittest import TestSuite, TestLoader
     import testchangeset
+    import common
 
-    return unittest.TestLoader().loadTestsFromModule(testchangeset)
+    suite = TestSuite()
+
+    suite.addTest(TestLoader().loadTestsFromModule(testchangeset))
+    suite.addTest(DocTestSuite(common))
+
+    return suite
+
 
