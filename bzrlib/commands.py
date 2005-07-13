@@ -1402,7 +1402,7 @@ class cmd_merge_revert(Command):
     def run(self, revision=None):
         from bzrlib.merge import merge
         if revision is None:
-            revision = -1
+            revision = [-1]
         elif len(revision) != 1:
             raise BzrCommandError('bzr merge-revert --revision takes exactly 1 argument')
         merge(('.', revision[0]), parse_spec('.'),
