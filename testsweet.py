@@ -199,7 +199,7 @@ class TestBase(TestCase):
         self.log("check contents of file %s" % filename)
         contents = file(filename, 'r').read()
         if contents != expect:
-            self.log("expected: %r" % expected)
+            self.log("expected: %r" % expect)
             self.log("actually: %r" % contents)
             self.fail("contents of %s not as expected")
             
