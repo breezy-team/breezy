@@ -21,6 +21,8 @@ A store is a simple write-once container indexed by a universally
 unique ID.
 """
 
+import bzrlib
+
 import os, tempfile, osutils, gzip, errno
 from stat import ST_SIZE
 from StringIO import StringIO
@@ -214,6 +216,7 @@ class CompressedTextStore(Storage):
             
         fn = self._relpath(fileid)
         if self._transport.has(fn):
+            from bzrlib.errors import BzrError
             raise BzrError("store %r already contains id %r" % (self._transport.base, fileid))
 
 
