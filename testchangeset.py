@@ -209,35 +209,137 @@ class CTreeTester(unittest.TestCase):
         self.assertEqual(self.sorted_ids(ctree), ['a', 'b', 'd', 'e'])
 
 class CSetTester(InTempDir):
-    def test_add(self):
-        from bzrlib.branch import find_branch
+
+    def get_valid_cset(self, base_rev_id, rev_id):
+        """Create a changeset from base_rev_id -> rev_id in built-in branch.
+        Make sure that the text generated is valid, and that it
+        can be applied against the base, and generate the same information.
+        
+        :return: The in-memory changeset
+        """
+        from cStringIO import StringIO
         from gen_changeset import show_changeset
         from read_changeset import read_changeset
+
+        cset_txt = StringIO()
+        show_changeset(self.b1, base_rev_id, self.b1, rev_id, to_file=cset_txt)
+        cset_txt.seek(0)
+        self.assertEqual(cset_txt.readline(), '# Bazaar-NG changeset v0.0.5\n')
+        self.assertEqual(cset_txt.readline(), '# \n')
+
+        rev = self.b1.get_revision(rev_id)
+        self.assertEqual(cset_txt.readline(), '# committer: %s\n' % rev.committer)
+
+        cset_txt.seek(0)
+        # This should also validate the generate changeset
+        cset = read_changeset(cset_txt, self.b1)
+        info, tree, inv = cset
+        for cset_rev in info.real_revisions:
+            # These really should have already been checked in read_changeset
+            # since it computes the sha1 hash for the revision, which
+            # only will match if everything is okay, but lets be
+            # explicit about it
+            branch_rev = self.b1.get_revision(cset_rev.revision_id)
+            for a in ('inventory_id', 'inventory_sha1', 'revision_id',
+                    'timestamp', 'timezone', 'message', 'committer'):
+                self.assertEqual(getattr(branch_rev, a), getattr(cset_rev, a))
+            self.assertEqual(len(branch_rev.parents), len(cset_rev.parents))
+            for b_par, c_par in zip(branch_rev.parents, cset_rev.parents):
+                self.assertEqual(b_par.revision_id, c_par.revision_id)
+                # Foolishly, pending-merges generates parents which
+                # may not have revision entries
+                if b_par.revision_sha1 is None:
+                    if b_par.revision_id in self.b1.revision_store:
+                        sha1 = self.b1.get_revision_sha1(b_par.revision_id)
+                    else:
+                        sha1 = None
+                else:
+                    sha1 = b_par.revision_sha1
+                if sha1 is not None:
+                    self.assertEqual(sha1, c_par.revision_sha1)
+
+        self.valid_apply_changeset(base_rev_id, cset)
+
+        return info, tree, inv
+
+    def get_checkout(self, rev_id):
+        """Get a new tree, with the specified revision in it.
+        """
+        from bzrlib.branch import find_branch
+        import tempfile
+        from bzrlib.merge import merge
+
+        dirname = tempfile.mkdtemp(prefix='test-branch-', dir='.')
+        to_branch = find_branch(dirname, init=True)
+        # TODO: Once root ids are established, remove this if
+        if hasattr(self.b1, 'get_root_id'):
+            to_branch.set_root_id(self.b1.get_root_id())
+        if rev_id is not None:
+            # TODO Worry about making the root id of the branch
+            # the same
+            rh = self.b1.revision_history()
+            self.assert_(rev_id in rh, 'Missing revision %s in base tree' % rev_id)
+            revno = self.b1.revision_history().index(rev_id) + 1
+            to_branch.update_revisions(self.b1, stop_revision=revno)
+            merge((dirname, -1), (dirname, 0), this_dir=dirname,
+                    check_clean=False, ignore_zero=True)
+        return to_branch
+
+    def valid_apply_changeset(self, base_rev_id, cset):
+        """Get the base revision, apply the changes, and make
+        sure everything matches the builtin branch.
+        """
+        from apply_changeset import _apply_cset
+
+        to_branch = self.get_checkout(base_rev_id)
+        _apply_cset(to_branch, cset)
+
+        info = cset[0]
+        for rev in info.real_revisions:
+            self.assert_(rev.revision_id in to_branch.revision_store,
+                'Missing revision {%s} after applying changeset' 
+                % rev.revision_id)
+
+        rev = info.real_revisions[-1]
+        base_tree = self.b1.revision_tree(rev.revision_id)
+        to_tree = to_branch.revision_tree(rev.revision_id)
+        
+        # TODO: make sure the target tree is identical to base tree
+
+    def test_add(self):
+        from bzrlib.branch import find_branch
         import common
 
-        import os
-        from cStringIO import StringIO
+        import os, sys
         pjoin = os.path.join
 
         os.mkdir('b1')
-        os.mkdir('b2')
         self.b1 = find_branch('b1', init=True)
-        self.b2 = find_branch('b2', init=True)
 
         open(pjoin('b1/one'), 'wb').write('one\n')
         self.b1.add('one')
         self.b1.commit('add one', rev_id='a@cset-0-1')
 
-        cset_txt = StringIO()
-        show_changeset(self.b1, None, self.b1, 'a@cset-0-1', to_file=cset_txt)
-        cset_txt.seek(0)
-        self.assertEqual(cset_txt.readline(), '# Bazaar-NG changeset v0.0.5\n')
-        self.assertEqual(cset_txt.readline(), '# \n')
+        cset = self.get_valid_cset(None, 'a@cset-0-1')
 
-        cset_txt.seek(0)
-        # This should also validate the generate changeset
-        info, tree, inv = read_changeset(cset_txt, self.b1)
+        # Make sure we can handle files with spaces, tabs, other
+        # bogus characters
+        files = ['with space.txt',
+                'dir/',
+                'dir/filein subdir.c',
+                'dir/WithCaps.txt'
+                ]
+        if sys.platform not in ('win32', 'cygwin'):
+            # Tabs are not valid in filenames on windows
+            files.append('with\ttab.txt')
+        self.build_tree(['b1/' + f for f in files])
+        self.b1.add(files)
+        self.b1.commit('add whitespace', rev_id='a@cset-0-2')
 
+        cset = self.get_valid_cset('a@cset-0-1', 'a@cset-0-2')
+        # Check a rollup changeset
+        cset = self.get_valid_cset(None, 'a@cset-0-2')
+        
 TEST_CLASSES = [
     CTreeTester,
     CSetTester

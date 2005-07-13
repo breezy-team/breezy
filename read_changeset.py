@@ -347,6 +347,7 @@ class ChangesetReader(object):
         # Target revision is the last entry in the real_revisions list
         rev = self.info.real_revisions[-1]
         if sha1 != rev.inventory_sha1:
+            open(',,bogus-inv', 'wb').write(sio.getvalue())
             raise BzrError('Inventory sha hash mismatch.')
 
         

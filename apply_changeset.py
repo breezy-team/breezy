@@ -6,6 +6,8 @@ This contains the apply changset function for bzr
 import bzrlib
 import os
 
+from bzrlib.trace import mutter, warning
+
 def _install_info(branch, cset_info, cset_tree, cset_inv):
     """Make sure that there is a text entry for each 
     file in the changeset.
@@ -22,10 +24,13 @@ def _install_info(branch, cset_info, cset_tree, cset_inv):
     if cset_info.target not in branch.inventory_store:
         # bzrlib.commit uses a temporary file, but store.add
         # reads in the entire file anyway
-        sio = StringIO()
-        pack_xml(cset_inv, sio)
-        branch.inventory_store.add(sio.getvalue(), cset_info.target)
-        del sio
+        if cset_info.target in branch.inventory_store:
+            warning('Target inventory already exists in destination.')
+        else:
+            sio = StringIO()
+            pack_xml(cset_inv, sio)
+            branch.inventory_store.add(sio.getvalue(), cset_info.target)
+            del sio
 
     # Now that we have installed the inventory and texts
     # install the revision entries.
@@ -33,7 +38,7 @@ def _install_info(branch, cset_info, cset_tree, cset_inv):
         if rev.revision_id not in branch.revision_store:
             sio = StringIO()
             pack_xml(rev, sio)
-            branch.inventory_store.add(sio.getvalue(), rev.revision_id)
+            branch.revision_store.add(sio.getvalue(), rev.revision_id)
             del sio
 
 def merge_revs(branch, rev_base, rev_other,
@@ -57,9 +62,11 @@ def merge_revs(branch, rev_base, rev_other,
                 raise BzrCommandError("Working tree has uncommitted changes.")
 
         other_dir = os.path.join(tempdir, 'other')
+        os.mkdir(other_dir)
         other_tree = MergeTree(branch.revision_tree(rev_other), other_dir)
 
         base_dir = os.path.join(tempdir, 'base')
+        os.mkdir(base_dir)
         base_tree = MergeTree(branch.revision_tree(rev_base), base_dir)
 
         merge_inner(branch, other_tree, base_tree, tempdir,
@@ -67,15 +74,24 @@ def merge_revs(branch, rev_base, rev_other,
     finally:
         shutil.rmtree(tempdir)
 
-
 def apply_changeset(branch, from_file, reverse=False, auto_commit=False):
+    """Read in a changeset from the given file, and apply it to
+    the supplied branch.
+    """
     import sys, read_changeset
 
     if reverse:
         raise Exception('reverse not implemented yet')
+
+    cset = read_changeset.read_changeset(from_file, branch)
+
+    _apply_cset(branch, cset, reverse=reverse, auto_commit=auto_commit)
         
-    cset_info, cset_tree, cset_inv = \
-            read_changeset.read_changeset(from_file, branch)
+def _apply_cset(branch, cset, reverse=False, auto_commit=False):
+    """Apply an in-memory changeset to a given branch.
+    """
+
+    cset_info, cset_tree, cset_inv = cset
 
     _install_info(branch, cset_info, cset_tree, cset_inv)
 
