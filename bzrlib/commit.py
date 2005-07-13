@@ -123,7 +123,7 @@ def commit(branch, message,
         inv_tmp = tempfile.TemporaryFile()
         pack_xml(new_inv, inv_tmp)
         inv_tmp.seek(0)
-        branch.inventory_store.add(inv_id, inv_tmp)
+        branch.inventory_store.add(inv_tmp, inv_id)
         mutter('new inventory_id is {%s}' % inv_id)
 
         # We could also just sha hash the inv_tmp file
@@ -162,7 +162,7 @@ def commit(branch, message,
         rev_tmp = tempfile.TemporaryFile()
         pack_xml(rev, rev_tmp)
         rev_tmp.seek(0)
-        branch.revision_store.add(rev_id, rev_tmp)
+        branch.revision_store.add(rev_tmp, rev_id)
         mutter("new revision_id is {%s}" % rev_id)
 
         ## XXX: Everything up to here can simply be orphaned if we abort
@@ -289,7 +289,7 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
                 entry.text_size = len(content)
 
                 entry.text_id = gen_file_id(entry.name)
-                branch.text_store.add(entry.text_id, content)
+                branch.text_store.add(content, entry.text_id)
                 mutter('    stored with text_id {%s}' % entry.text_id)
 
         if verbose:

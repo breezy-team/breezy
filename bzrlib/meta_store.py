@@ -35,7 +35,7 @@ class CachedStore(Storage):
     def __getitem__(self, id):
         mutter("Cache add %s" % id)
         if id not in self.cache_store:
-            self.cache_store.add(id, self.source_store[id])
+            self.cache_store.add(self.source_store[id], id)
         return self.cache_store[id]
 
     def __contains__(self, fileid):

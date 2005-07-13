@@ -65,7 +65,7 @@ class Storage(object):
     def __iter__(self):
         raise NotImplementedError
 
-    def add(self, fileid, f):
+    def add(self, f, fileid):
         """Add a file object f to the store accessible from the given fileid"""
         raise NotImplementedError('Children of Storage must define their method of adding entries.')
 
@@ -73,11 +73,11 @@ class Storage(object):
         """Add a series of file-like or string objects to the store with the given
         identities.
         
-        :param entries: A list of tuples of id,file pairs [(id1, file1), (id2, file2), ...]
-                        This could also be a generator yielding (id,file) pairs.
+        :param entries: A list of tuples of file,id pairs [(file1, id1), (file2, id2), ...]
+                        This could also be a generator yielding (file,id) pairs.
         """
-        for fileid, f in entries:
-            self.add(fileid, f)
+        for f, fileid in entries:
+            self.add(f, fileid)
 
     def has(self, fileids):
         """Return True/False for each entry in fileids.
@@ -134,7 +134,7 @@ class Storage(object):
             count = 0
             buffered_requests = []
             for fileid in to_copy:
-                buffered_requests.append((fileid, other[fileid]))
+                buffered_requests.append((other[fileid], fileid))
                 if len(buffered_requests) > self._max_buffered_requests:
                     yield buffered_requests.pop(0)
                     count += 1
@@ -163,7 +163,7 @@ class CompressedTextStore(Storage):
 
     >>> st = ScratchCompressedTextStore()
 
-    >>> st.add('aa', StringIO('hello'))
+    >>> st.add(StringIO('hello'), 'aa')
     >>> 'aa' in st
     True
     >>> 'foo' in st
@@ -173,7 +173,7 @@ class CompressedTextStore(Storage):
 
     Entries can be retrieved as files, which may then be read.
 
-    >>> st.add('123123', StringIO('goodbye'))
+    >>> st.add(StringIO('goodbye'), '123123')
     >>> st['123123'].read()
     'goodbye'
 
@@ -195,7 +195,7 @@ class CompressedTextStore(Storage):
         self._check_fileid(fileid)
         return fileid + '.gz'
 
-    def add(self, fileid, f):
+    def add(self, f, fileid):
         """Add contents of a file into the store.
 
         f -- An open file, or file-like object."""
