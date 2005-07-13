@@ -74,7 +74,7 @@ class ChangesetTree(object):
         """
         self.base_tree = self.branch.revision_tree(self.changeset_info.base)
         
-def guess_text_id(tree, file_id, rev_id, modified=True):
+def guess_text_id(tree, file_id, rev_id, kind, modified=True):
     """This returns the estimated text_id for a given file.
     The idea is that in general the text_id should be the id last
     revision which modified the file.
@@ -86,6 +86,8 @@ def guess_text_id(tree, file_id, rev_id, modified=True):
     :param modified: Was the file modified between base and target?
     """
     from bzrlib.errors import BzrError
+    if kind == 'directory':
+        return None
     if modified:
         # If the file was modified in an intermediate stage
         # (not in the final target), this won't be correct
@@ -101,7 +103,7 @@ def guess_text_id(tree, file_id, rev_id, modified=True):
             ', file does not exist in tree.' % file_id)
     # This is the last known text_id for this file
     # so assume that it is being used.
-    text_id = tree.inventory[file_id].text_id
+    return tree.inventory[file_id].text_id
 
 def encode(s):
     """Take a unicode string, and make sure to escape it for
@@ -214,8 +216,6 @@ def unpack_highres_date(date):
     ...      break
 
     """
-    #from bzrlib.errors import BzrError
-    from bzrlib.osutils import local_time_offset
     import time, calendar
     # Up until the first period is a datestamp that is generated
     # as normal from time.strftime, so use time.strptime to

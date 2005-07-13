@@ -3,9 +3,7 @@
 Just some work for generating a changeset.
 """
 
-import bzrlib, bzrlib.errors
-
-import common
+import bzrlib
 
 from bzrlib.inventory import ROOT_ID
 from bzrlib.errors import BzrCommandError
@@ -97,7 +95,6 @@ def _find_best_base(target_branch, target_rev_id, base_branch, base_rev_id):
         for parent in rev.parents:
             if parent.revision_id not in checked:
                 to_check.append(parent.revision_id)
-
     return None
 
 def _create_ancestry_to_rev(branch, ancestor_rev_id, this_rev_id):
@@ -271,11 +268,10 @@ class MetaInfoHeader(object):
 
     def _write_header(self):
         """Write the stuff that comes before the patches."""
-        from bzrlib.osutils import username
-        from common import format_highres_date
+        from common import format_highres_date, get_header
         write = self._write
 
-        for line in common.get_header():
+        for line in get_header():
             write(line)
 
         # Print out the basic information about the 'target' revision
@@ -348,8 +344,8 @@ class MetaInfoHeader(object):
 
     def _write_diffs(self):
         """Write out the specific diffs"""
-        from bzrlib.diff import internal_diff, external_diff
-        from common import encode
+        from bzrlib.diff import internal_diff
+        from common import encode, guess_text_id
         DEVNULL = '/dev/null'
 
         diff_file = internal_diff
@@ -359,13 +355,13 @@ class MetaInfoHeader(object):
         tree = self.target_tree
 
 
-        def get_text_id_str(file_id, modified=True):
+        def get_text_id_str(file_id, kind, modified=True):
             """This returns an empty string if guess_text_id == real_text_id.
             Otherwise it returns a string suitable for printing, indicating
             the file's id.
             """
-            guess_id = common.guess_text_id(tree, file_id, rev_id,
-                    modified=modified)
+            guess_id = guess_text_id(tree, file_id, rev_id,
+                    kind, modified=modified)
             real_id = tree.inventory[file_id].text_id
             if guess_id != real_id:
                 return '\ttext-id:' + encode(real_id)
@@ -388,7 +384,7 @@ class MetaInfoHeader(object):
             print >>self.to_file, '*** added %s %s\tfile-id:%s%s' % (kind,
                     encode(path),
                     encode(file_id),
-                    get_text_id_str(file_id))
+                    get_text_id_str(file_id, kind))
             if kind == 'file':
                 diff_file(DEVNULL,
                           [],
@@ -399,7 +395,7 @@ class MetaInfoHeader(object):
         for old_path, new_path, file_id, kind, text_modified in self.delta.renamed:
             print >>self.to_file, '*** renamed %s %s\t=> %s%s' % (kind,
                     encode(old_path), encode(new_path),
-                    get_text_id_str(file_id, text_modified))
+                    get_text_id_str(file_id, kind, modified=text_modified))
             if self.full_rename and kind == 'file':
                 diff_file(self.base_label + old_path,
                           self.base_tree.get_file(file_id).readlines(),
@@ -420,7 +416,7 @@ class MetaInfoHeader(object):
     
         for path, file_id, kind in self.delta.modified:
             print >>self.to_file, '*** modified %s %s%s' % (kind,
-                    encode(path), get_text_id_str(file_id))
+                    encode(path), get_text_id_str(file_id, kind))
             if kind == 'file':
                 diff_file(self.base_label + path,
                           self.base_tree.get_file(file_id).readlines(),

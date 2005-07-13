@@ -6,9 +6,9 @@ This should have commands for both generating a changeset,
 and for applying a changeset.
 """
 
-import bzrlib, bzrlib.commands
+from bzrlib.commands import Command, register_command, OPTIONS
 
-class cmd_send_changeset(bzrlib.commands.Command):
+class cmd_send_changeset(Command):
     """Send a bundled up changset via mail.
 
     If no revision has been specified, the last commited change will
@@ -47,7 +47,7 @@ class cmd_send_changeset(bzrlib.commands.Command):
 
         send_changeset(b, revision, to, message, file)
 
-class cmd_changeset(bzrlib.commands.Command):
+class cmd_changeset(Command):
     """Generate a bundled up changeset.
 
     This changeset contains all of the meta-information of a
@@ -71,9 +71,10 @@ class cmd_changeset(bzrlib.commands.Command):
     aliases = ['cset']
 
     def run(self, base=None, target=None, starting_rev_id=None, verbose=False):
-        from bzrlib import find_branch
+        from bzrlib.branch import find_branch
         from bzrlib.commands import parse_spec
         from bzrlib.errors import BzrCommandError
+        from bzrlib import user_encoding
         import gen_changeset
         import sys
         import codecs
@@ -99,7 +100,7 @@ class cmd_changeset(bzrlib.commands.Command):
             else:
                 base_rev_id = base_branch.lookup_revision(base_revno)
 
-        outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout,
+        outf = codecs.getwriter(user_encoding)(sys.stdout,
                 errors='replace')
 
         if starting_rev_id is not None:
@@ -111,18 +112,17 @@ class cmd_changeset(bzrlib.commands.Command):
                 starting_rev_id,
                 to_file=outf, include_full_diff=verbose)
 
-class cmd_verify_changeset(bzrlib.commands.Command):
+class cmd_verify_changeset(Command):
     """Read a written changeset, and make sure it is valid.
 
     """
     takes_args = ['filename?']
 
     def run(self, filename=None):
-        import sys, read_changeset
-        from cStringIO import StringIO
-        from bzrlib.xml import pack_xml
+        import sys
+        from read_changeset import read_changeset
         from bzrlib.branch import find_branch
-        from bzrlib.osutils import sha_file, pumpfile
+        from bzrlib.xml import pack_xml
 
         b = find_branch('.')
 
@@ -138,7 +138,7 @@ class cmd_verify_changeset(bzrlib.commands.Command):
 
 
 
-class cmd_apply_changeset(bzrlib.commands.Command):
+class cmd_apply_changeset(Command):
     """Read in the given changeset, and apply it to the
     current tree.
 
@@ -147,7 +147,7 @@ class cmd_apply_changeset(bzrlib.commands.Command):
     takes_options = ['reverse', 'auto-commit']
 
     def run(self, filename=None, reverse=False, auto_commit=False):
-        from bzrlib import find_branch
+        from bzrlib.branch import find_branch
         import sys
         import apply_changeset
 
@@ -164,13 +164,13 @@ class cmd_apply_changeset(bzrlib.commands.Command):
         apply_changeset.apply_changeset(b, f, reverse=reverse,
                 auto_commit=auto_commit)
 
-bzrlib.commands.register_command(cmd_changeset)
-bzrlib.commands.register_command(cmd_verify_changeset)
-bzrlib.commands.register_command(cmd_apply_changeset)
-bzrlib.commands.register_command(cmd_send_changeset)
+register_command(cmd_changeset)
+register_command(cmd_verify_changeset)
+register_command(cmd_apply_changeset)
+register_command(cmd_send_changeset)
 
-bzrlib.commands.OPTIONS['reverse'] = None
-bzrlib.commands.OPTIONS['auto-commit'] = None
+OPTIONS['reverse'] = None
+OPTIONS['auto-commit'] = None
 
 def test_suite():
     from doctest import DocTestSuite

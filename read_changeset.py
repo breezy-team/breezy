@@ -5,7 +5,6 @@ Read in a changeset output, and process it into a Changeset object.
 
 import bzrlib, bzrlib.changeset
 import pprint
-import common
 
 from bzrlib.trace import mutter
 from bzrlib.errors import BzrError
@@ -103,16 +102,17 @@ class ChangesetInfo(object):
         split up, based on the assumptions that can be made
         when information is missing.
         """
+        from common import unpack_highres_date
         # Put in all of the guessable information.
         if not self.timestamp and self.date:
-            self.timestamp, self.timezone = common.unpack_highres_date(self.date)
+            self.timestamp, self.timezone = unpack_highres_date(self.date)
 
         self.real_revisions = []
         for rev in self.revisions:
             if rev.timestamp is None:
                 if rev.date is not None:
                     rev.timestamp, rev.timezone = \
-                            common.unpack_highres_date(rev.date)
+                            unpack_highres_date(rev.date)
                 else:
                     rev.timestamp = self.timestamp
                     rev.timezone = self.timezone
@@ -144,6 +144,7 @@ class ChangesetInfo(object):
                 self.base_sha1 = rev.parents[0].revision_sha1
 
     def _get_target(self):
+        """Return the target revision."""
         if len(self.real_revisions) > 0:
             return self.real_revisions[-1].revision_id
         elif len(self.revisions) > 0:
@@ -203,7 +204,6 @@ class ChangesetReader(object):
             sio.seek(0)
             sha1 = sha_file(sio)
             if sha1 != rev_info.sha1:
-                open(',,bogus-rev', 'wb').write(sio.getvalue())
                 raise BzrError('Revision checksum mismatch.'
                     ' For rev_id {%s} supplied sha1 (%s) != measured (%s)'
                     % (rev.revision_id, rev_info.sha1, sha1))
@@ -337,7 +337,7 @@ class ChangesetReader(object):
         """
         from bzrlib.xml import pack_xml
         from cStringIO import StringIO
-        from bzrlib.osutils import sha_file, pumpfile
+        from bzrlib.osutils import sha_file
 
         # Now we should have a complete inventory entry.
         sio = StringIO()
@@ -347,7 +347,6 @@ class ChangesetReader(object):
         # Target revision is the last entry in the real_revisions list
         rev = self.info.real_revisions[-1]
         if sha1 != rev.inventory_sha1:
-            open(',,bogus-inv', 'wb').write(sio.getvalue())
             raise BzrError('Inventory sha hash mismatch.')
 
         
@@ -381,6 +380,7 @@ class ChangesetReader(object):
 
     def _read_header(self):
         """Read the bzr header"""
+        import common
         header = common.get_header()
         found = False
         for line in self._next():
@@ -554,9 +554,9 @@ class ChangesetReader(object):
 
         :param tree: A ChangesetTree to update with the new information.
         """
-        from common import decode
+        from common import decode, guess_text_id
 
-        def get_text_id(info, file_id):
+        def get_text_id(info, file_id, kind):
             if info is not None:
                 if info[:8] != 'text-id:':
                     raise BzrError("Text ids should be prefixed with 'text-id:'"
@@ -569,8 +569,8 @@ class ChangesetReader(object):
                 # then it should be whatever we would guess it to be
                 # based on the base revision, and what we know about
                 # the target revision
-                text_id = common.guess_text_id(tree.base_tree, 
-                        file_id, self.info.base, True)
+                text_id = guess_text_id(tree.base_tree, 
+                        file_id, self.info.base, kind, modified=True)
             if (self.info.text_ids.has_key(file_id)
                     and self.info.text_ids[file_id] != text_id):
                 raise BzrError('Mismatched text_ids for file_id {%s}'
@@ -600,9 +600,9 @@ class ChangesetReader(object):
 
             file_id = tree.path2id(new_path)
             if len(info) > 2:
-                text_id = get_text_id(info[2], file_id)
+                text_id = get_text_id(info[2], file_id, kind)
             else:
-                text_id = get_text_id(None, file_id)
+                text_id = get_text_id(None, file_id, kind)
             tree.note_rename(old_path, new_path)
             if lines:
                 tree.note_patch(new_path, ''.join(lines))
@@ -632,9 +632,9 @@ class ChangesetReader(object):
             file_id = decode(info[1][8:])
 
             if len(info) > 2:
-                text_id = get_text_id(info[2], file_id)
+                text_id = get_text_id(info[2], file_id, kind)
             else:
-                text_id = get_text_id(None, file_id)
+                text_id = get_text_id(None, file_id, kind)
             tree.note_id(file_id, path, kind)
             tree.note_patch(path, ''.join(lines))
 
@@ -647,9 +647,9 @@ class ChangesetReader(object):
 
             file_id = tree.path2id(path)
             if len(info) > 1:
-                text_id = get_text_id(info[1], file_id)
+                text_id = get_text_id(info[1], file_id, kind)
             else:
-                text_id = get_text_id(None, file_id)
+                text_id = get_text_id(None, file_id, kind)
             tree.note_patch(path, ''.join(lines))
             
 
@@ -762,7 +762,7 @@ class ChangesetTree:
         if self._renamed.has_key(new_path):
             return None
         dirname,basename = os.path.split(old_path)
-        if dirname is not '':
+        if dirname != '':
             new_dir = self.new_path(dirname)
             if new_dir is None:
                 new_path = None

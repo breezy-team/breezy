@@ -306,7 +306,7 @@ class CSetTester(InTempDir):
         
         # TODO: make sure the target tree is identical to base tree
 
-    def test_add(self):
+    def runTest(self):
         from bzrlib.branch import find_branch
         import common
 
