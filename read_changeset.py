@@ -290,46 +290,6 @@ class ChangesetReader(object):
                     ' Unable validate %d hashes' % len(missing))
         mutter('Verified %d sha hashes for the changeset.' % count)
 
-    def _create_inventory(self, tree):
-        """Build up the inventory entry for the ChangesetTree.
-
-        TODO: This sort of thing should probably end up part of
-        ChangesetTree, but since it doesn't handle meta-information
-        yet, we need to do it here. (We need the ChangesetInfo,
-        specifically the text_ids)
-        """
-        from os.path import dirname, basename
-        from bzrlib.inventory import Inventory, InventoryEntry, ROOT_ID
-
-        # TODO: deal with trees having a unique ROOT_ID
-        root_id = ROOT_ID
-        inv = Inventory()
-        for file_id in tree:
-            if file_id == root_id:
-                continue
-            path = tree.id2path(file_id)
-            parent_path = dirname(path)
-            if path == '':
-                parent_id = root_id
-            else:
-                parent_id = tree.path2id(parent_path)
-
-            if self.info.text_ids.has_key(file_id):
-                text_id = self.info.text_ids[file_id]
-            else:
-                # If we don't have the text_id in the local map
-                # that means the file didn't exist in the changeset
-                # so we just use the old text_id.
-                text_id = tree.base_tree.inventory[file_id].text_id
-            name = basename(path)
-            kind = tree.get_kind(file_id)
-            ie = InventoryEntry(file_id, name, kind, parent_id, text_id=text_id)
-            ie.text_size, ie.text_sha1 = tree.get_size_and_sha1(file_id)
-            if (ie.text_size is None) and (kind != 'directory'):
-                raise BzrError('Got a text_size of None for file_id %r' % file_id)
-            inv.add(ie)
-        return inv
-
     def _validate_inventory(self, inv):
         """At this point we should have generated the ChangesetTree,
         so build up an inventory, and make sure the hashes match.
@@ -348,10 +308,11 @@ class ChangesetReader(object):
         # Target revision is the last entry in the real_revisions list
         rev = self.info.real_revisions[-1]
         if sha1 != rev.inventory_sha1:
+            open(',,bogus-inv', 'wb').write(sio.getvalue())
             raise BzrError('Inventory sha hash mismatch.')
 
         
-    def get_info_tree_inv(self, branch):
+    def get_changeset(self, branch):
         """Return the meta information, and a Changeset tree which can
         be used to populate the local stores and working tree, respectively.
         """
@@ -362,7 +323,7 @@ class ChangesetReader(object):
         inv = tree.inventory
         self._validate_inventory(inv)
 
-        return self.info, tree, inv
+        return self.info, tree
 
     def _next(self):
         """yield the next line, but secretly
@@ -489,23 +450,25 @@ class ChangesetReader(object):
         if self._next_line is None or self._next_line[:1] == '#':
             return None, [], False
 
-        line = self._next().next()
-        if line[:3] != '***':
-            raise MalformedPatches('The first line of all patches'
-                ' should be a bzr meta line "***"'
-                ': %r' % line)
-        action = line[4:-1]
-
-        if self._next_line is None or self._next_line[:1] == '#':
-            return action, [], False
+        first = True
         lines = []
         for line in self._next():
-            lines.append(line)
-
+            if first:
+                if line[:3] != '***':
+                    raise MalformedPatches('The first line of all patches'
+                        ' should be a bzr meta line "***"'
+                        ': %r' % line)
+                action = line[4:-1]
             if self._next_line is not None and self._next_line[:3] == '***':
                 return action, lines, True
             elif self._next_line is None or self._next_line[:1] == '#':
                 return action, lines, False
+
+            if first:
+                first = False
+            else:
+                lines.append(line)
+
         return action, lines, False
             
     def _read_patches(self):
@@ -619,11 +582,13 @@ class ChangesetReader(object):
                         ': %r' % extra)
             file_id = decode(info[1][8:])
 
+            tree.note_id(file_id, path, kind)
+            if kind == 'directory':
+                return
             if len(info) > 2:
                 text_id = get_text_id(info[2], file_id, kind)
             else:
                 text_id = get_text_id(None, file_id, kind)
-            tree.note_id(file_id, path, kind)
             tree.note_patch(path, ''.join(lines))
 
         def modified(kind, extra, lines):
@@ -677,7 +642,7 @@ def read_changeset(from_file, branch):
                    won't know about until after the changeset is parsed.)
     """
     cr = ChangesetReader(from_file)
-    return cr.get_info_tree_inv(branch)
+    return cr.get_changeset(branch)
 
 class ChangesetTree(Tree):
     def __init__(self, base_tree):
@@ -886,26 +851,27 @@ class ChangesetTree(Tree):
             inv = Inventory()
 
         def add_entry(file_id):
-            if file_id in inv:
-                return
             path = self.id2path(file_id)
             if path is None:
                 return
             parent_path = dirname(path)
-            if path == '':
+            if parent_path == '':
                 parent_id = root_id
             else:
                 parent_id = self.path2id(parent_path)
 
-            if parent_id not in inv:
-                add_entry(parent_id)
-
-            text_id = self.get_text_id(file_id)
+            kind = self.get_kind(file_id)
+            if kind == 'directory':
+                text_id = None
+            else:
+                text_id = self.get_text_id(file_id)
 
             name = basename(path)
-            kind = self.get_kind(file_id)
             ie = InventoryEntry(file_id, name, kind, parent_id, text_id=text_id)
-            ie.text_size, ie.text_sha1 = self.get_size_and_sha1(file_id)
+            if kind == 'directory':
+                ie.text_size, ie.text_sha1 = None, None
+            else:
+                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(file_id)
             if (ie.text_size is None) and (kind != 'directory'):
                 raise BzrError('Got a text_size of None for file_id %r' % file_id)
             inv.add(ie)
@@ -913,6 +879,15 @@ class ChangesetTree(Tree):
         for path, ie in base_inv.iter_entries():
             add_entry(ie.file_id)
         for file_id in self._new_id_r.iterkeys():
+            if file_id in inv:
+                continue
+            path = self.id2path(file_id)
+            parent_path = dirname(path)
+            if parent_path != '':
+                parent_id = self.path2id(parent_path)
+                if parent_id not in inv:
+                    add_entry(parent_id)
+
             add_entry(file_id)
 
         return inv

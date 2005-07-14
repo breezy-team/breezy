@@ -230,10 +230,11 @@ class CSetTester(InTempDir):
         rev = self.b1.get_revision(rev_id)
         self.assertEqual(cset_txt.readline(), '# committer: %s\n' % rev.committer)
 
+        open(',,cset', 'wb').write(cset_txt.getvalue())
         cset_txt.seek(0)
         # This should also validate the generate changeset
         cset = read_changeset(cset_txt, self.b1)
-        info, tree, inv = cset
+        info, tree = cset
         for cset_rev in info.real_revisions:
             # These really should have already been checked in read_changeset
             # since it computes the sha1 hash for the revision, which
@@ -260,7 +261,7 @@ class CSetTester(InTempDir):
 
         self.valid_apply_changeset(base_rev_id, cset)
 
-        return info, tree, inv
+        return cset
 
     def get_checkout(self, rev_id):
         """Get a new tree, with the specified revision in it.

@@ -8,16 +8,17 @@ import os
 
 from bzrlib.trace import mutter, warning
 
-def _install_info(branch, cset_info, cset_tree, cset_inv):
+def _install_info(branch, cset_info, cset_tree):
     """Make sure that there is a text entry for each 
     file in the changeset.
     """
     from bzrlib.xml import pack_xml
     from cStringIO import StringIO
 
+    inv = cset_tree.inventory
     # First, install all required texts
-    for path, ie in cset_tree.inventory.iter_entries():
-        if ie.text_id not in branch.text_store:
+    for path, ie in inv.iter_entries():
+        if ie.text_id is not None and ie.text_id not in branch.text_store:
             branch.text_store.add(cset_tree.get_file(ie.file_id), ie.text_id)
 
     # Now install the final inventory
@@ -28,7 +29,7 @@ def _install_info(branch, cset_info, cset_tree, cset_inv):
             warning('Target inventory already exists in destination.')
         else:
             sio = StringIO()
-            pack_xml(cset_inv, sio)
+            pack_xml(inv, sio)
             branch.inventory_store.add(sio.getvalue(), cset_info.target)
             del sio
 
@@ -91,9 +92,9 @@ def _apply_cset(branch, cset, reverse=False, auto_commit=False):
     """Apply an in-memory changeset to a given branch.
     """
 
-    cset_info, cset_tree, cset_inv = cset
+    cset_info, cset_tree = cset
 
-    _install_info(branch, cset_info, cset_tree, cset_inv)
+    _install_info(branch, cset_info, cset_tree)
 
     # We could technically optimize more, by using the ChangesetTree
     # we already have in memory, but after installing revisions
