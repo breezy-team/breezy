@@ -3,7 +3,7 @@
 An implementation of the Transport object for http access.
 """
 
-from bzrlib.transport import Transport, protocol_handlers, TransportNotPossibleError
+from bzrlib.transport import Transport, register_transport, TransportNotPossibleError
 import os
 from cStringIO import StringIO
 import urllib2
@@ -231,6 +231,6 @@ class HttpTransport(Transport):
         raise TransportNotPossibleError('http does not support lock_write()')
 
 # If nothing else matches, try the LocalTransport
-protocol_handlers['http://'] = HttpTransport
-protocol_handlers['https://'] = HttpTransport
+register_transport('http://', HttpTransport)
+register_transport('https://', HttpTransport)
 

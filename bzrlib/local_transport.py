@@ -4,7 +4,7 @@ An implementation of the Transport object for local
 filesystem access.
 """
 
-from bzrlib.transport import Transport, protocol_handlers
+from bzrlib.transport import Transport, register_transport
 import os
 
 class LocalTransport(Transport):
@@ -170,5 +170,4 @@ class LocalTransport(Transport):
         return WriteLock(self.abspath(relpath))
 
 # If nothing else matches, try the LocalTransport
-protocol_handlers[None] = LocalTransport
-
+register_transport(None, LocalTransport)

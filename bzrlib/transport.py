@@ -4,8 +4,21 @@ This module contains the basic class handling transport of
 information.
 """
 
-protocol_handlers = {
+from bzrlib.trace import mutter
+
+_protocol_handlers = {
 }
+
+def register_transport(prefix, klass, override=True):
+    global _protocol_handlers
+
+    if _protocol_handlers.has_key(prefix):
+        if override:
+            mutter('overriding transport: %s => %s' % (prefix, klass.__name__))
+            _protocol_handlers[prefix] = klass
+    else:
+        mutter('registering transport: %s => %s' % (prefix, klass.__name__))
+        _protocol_handlers[prefix] = klass
 
 class AsyncError(Exception):
     pass
@@ -355,15 +368,15 @@ class Transport(object):
 
 
 def transport(base):
+    global _protocol_handlers
     if base is None:
         base = '.'
-    for proto, klass in protocol_handlers.iteritems():
+    for proto, klass in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
             return klass(base)
     # The default handler is the filesystem handler
     # which has a lookup of None
-    return protocol_handlers[None](base)
-
+    return _protocol_handlers[None](base)
 
 # Local transport should always be initialized
 import local_transport
