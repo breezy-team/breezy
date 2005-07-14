@@ -587,7 +587,6 @@ class Weave(object):
                 killed_a = bool(deleteset & inc_a)
                 killed_b = bool(deleteset & inc_b)
                 if killed_a and killed_b:
-                    # killed in both
                     yield 'killed-both', line
                 elif killed_a:
                     yield 'killed-a', line
@@ -609,6 +608,60 @@ class Weave(object):
             else:
                 # not in either revision
                 yield 'irrelevant', line
+
+        yield 'unchanged', ''           # terminator
+
+
+
+    def weave_merge(self, plan):
+        lines_a = []
+        lines_b = []
+        ch_a = ch_b = False
+
+        for state, line in plan:
+            if state == 'unchanged' or state == 'killed-both':
+                # resync and flush queued conflicts changes if any
+                if not lines_a and not lines_b:
+                    pass
+                elif ch_a and not ch_b:
+                    # one-sided change:                    
+                    for l in lines_a: yield l
+                elif ch_b and not ch_a:
+                    for l in lines_b: yield l
+                elif lines_a == lines_b:
+                    for l in lines_a: yield l
+                else:
+                    yield '<<<<\n'
+                    for l in lines_a: yield l
+                    yield '====\n'
+                    for l in lines_b: yield l
+                    yield '>>>>\n'
+
+                del lines_a[:]
+                del lines_b[:]
+                ch_a = ch_b = False
+                
+            if state == 'unchanged':
+                if line:
+                    yield line
+            elif state == 'killed-a':
+                ch_a = True
+                lines_b.append(line)
+            elif state == 'killed-b':
+                ch_b = True
+                lines_a.append(line)
+            elif state == 'new-a':
+                ch_a = True
+                lines_a.append(line)
+            elif state == 'new-b':
+                ch_b = True
+                lines_b.append(line)
+            else:
+                assert state in ('irrelevant', 'ghost-a', 'ghost-b', 'killed-base'), \
+                       state
+
+                
+
 
 
 
@@ -763,9 +816,15 @@ def main(argv):
     elif cmd == 'plan-merge':
         w = readit()
         for state, line in w.plan_merge(int(argv[3]), int(argv[4])):
-            print '%14s | %s' % (state, line),
+            if line:
+                print '%14s | %s' % (state, line),
 
     elif cmd == 'merge':
+        w = readit()
+        p = w.plan_merge(int(argv[3]), int(argv[4]))
+        sys.stdout.writelines(w.weave_merge(p))
+            
+    elif cmd == 'mash-merge':
         if len(argv) != 5:
             usage()
             return 1
