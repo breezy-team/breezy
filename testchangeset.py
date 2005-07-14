@@ -324,16 +324,20 @@ class CSetTester(InTempDir):
 
         # Make sure we can handle files with spaces, tabs, other
         # bogus characters
-        files = ['with space.txt',
-                'dir/',
+        self.build_tree([
+                'b1/with space.txt',
+                'b1/dir/',
+                'b1/dir/filein subdir.c',
+                'b1/dir/WithCaps.txt'
+                # Tabs are not valid in filenames on windows
+                #'b1/with\ttab.txt'
+                ])
+        self.b1.add([
+                'with space.txt',
+                'dir',
                 'dir/filein subdir.c',
                 'dir/WithCaps.txt'
-                ]
-        if sys.platform not in ('win32', 'cygwin'):
-            # Tabs are not valid in filenames on windows
-            files.append('with\ttab.txt')
-        self.build_tree(['b1/' + f for f in files])
-        self.b1.add(files)
+                ])
         self.b1.commit('add whitespace', rev_id='a@cset-0-2')
 
         cset = self.get_valid_cset('a@cset-0-1', 'a@cset-0-2')

@@ -16,9 +16,9 @@ def _install_info(branch, cset_info, cset_tree, cset_inv):
     from cStringIO import StringIO
 
     # First, install all required texts
-    for file_id, text_id in cset_info.text_ids.iteritems():
-        if text_id not in branch.text_store:
-            branch.text_store.add(cset_tree.get_file(file_id), text_id)
+    for path, ie in cset_tree.inventory.iter_entries():
+        if ie.text_id not in branch.text_store:
+            branch.text_store.add(cset_tree.get_file(ie.file_id), ie.text_id)
 
     # Now install the final inventory
     if cset_info.target not in branch.inventory_store:

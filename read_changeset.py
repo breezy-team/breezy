@@ -3,7 +3,7 @@
 Read in a changeset output, and process it into a Changeset object.
 """
 
-import bzrlib, bzrlib.changeset
+from bzrlib.tree import Tree
 import pprint
 
 from bzrlib.trace import mutter
@@ -63,7 +63,7 @@ class RevisionInfo(object):
 
         if self.parents:
             for parent in self.parents:
-                rev_id, sha1 = parent.split('\t')
+                rev_id, sha1 = parent.split()
                 rev.parents.append(RevisionReference(rev_id, sha1))
 
         return rev
@@ -89,7 +89,6 @@ class ChangesetInfo(object):
 
         # A list of real Revision objects
         self.real_revisions = []
-        self.text_ids = {} # file_id => text_id
 
         self.timestamp = None
         self.timezone = None
@@ -339,6 +338,8 @@ class ChangesetReader(object):
         from cStringIO import StringIO
         from bzrlib.osutils import sha_file
 
+        assert inv is not None
+
         # Now we should have a complete inventory entry.
         sio = StringIO()
         pack_xml(inv, sio)
@@ -358,7 +359,7 @@ class ChangesetReader(object):
         tree = ChangesetTree(branch.revision_tree(self.info.base))
         self._update_tree(tree)
 
-        inv = self._create_inventory(tree)
+        inv = tree.inventory
         self._validate_inventory(inv)
 
         return self.info, tree, inv
@@ -562,8 +563,8 @@ class ChangesetReader(object):
                     raise BzrError("Text ids should be prefixed with 'text-id:'"
                         ': %r' % info)
                 text_id = decode(info[8:])
-            elif self.info.text_ids.has_key(file_id):
-                return self.info.text_ids[file_id]
+            elif tree._text_ids.has_key(file_id):
+                return tree._text_ids[file_id]
             else:
                 # If text_id was not explicitly supplied
                 # then it should be whatever we would guess it to be
@@ -571,24 +572,11 @@ class ChangesetReader(object):
                 # the target revision
                 text_id = guess_text_id(tree.base_tree, 
                         file_id, self.info.base, kind, modified=True)
-            if (self.info.text_ids.has_key(file_id)
-                    and self.info.text_ids[file_id] != text_id):
-                raise BzrError('Mismatched text_ids for file_id {%s}'
-                        ': %s != %s' % (file_id,
-                                        self.info.text_ids[file_id],
-                                        text_id))
-            # The Info object makes more sense for where
-            # to store something like text_id, since it is
-            # what will be used to generate stored inventory
-            # entries.
-            # The problem is that we are parsing the
-            # ChangesetTree right now, we really modifying
-            # the ChangesetInfo object
-            self.info.text_ids[file_id] = text_id
+            tree.note_text_id(file_id, text_id)
             return text_id
 
         def renamed(kind, extra, lines):
-            info = extra.split('\t')
+            info = extra.split(' // ')
             if len(info) < 2:
                 raise BzrError('renamed action lines need both a from and to'
                         ': %r' % extra)
@@ -603,22 +591,22 @@ class ChangesetReader(object):
                 text_id = get_text_id(info[2], file_id, kind)
             else:
                 text_id = get_text_id(None, file_id, kind)
-            tree.note_rename(old_path, new_path)
+            tree.note_rename(old_path, new_path, text_id)
             if lines:
-                tree.note_patch(new_path, ''.join(lines))
+                tree.note_patch(new_path, ''.join(lines), text_id)
 
         def removed(kind, extra, lines):
-            info = extra.split('\t')
+            info = extra.split(' // ')
             if len(info) > 1:
                 # TODO: in the future we might allow file ids to be
                 # given for removed entries
                 raise BzrError('removed action lines should only have the path'
                         ': %r' % extra)
             path = decode(info[0])
-            tree.note_deletion(path)
+            tree.note_deletion(path, text_id)
 
         def added(kind, extra, lines):
-            info = extra.split('\t')
+            info = extra.split(' // ')
             if len(info) <= 1:
                 raise BzrError('add action lines require the path and file id'
                         ': %r' % extra)
@@ -639,7 +627,7 @@ class ChangesetReader(object):
             tree.note_patch(path, ''.join(lines))
 
         def modified(kind, extra, lines):
-            info = extra.split('\t')
+            info = extra.split(' // ')
             if len(info) < 1:
                 raise BzrError('modified action lines have at least'
                         'the path in them: %r' % extra)
@@ -691,17 +679,19 @@ def read_changeset(from_file, branch):
     cr = ChangesetReader(from_file)
     return cr.get_info_tree_inv(branch)
 
-class ChangesetTree:
-    def __init__(self, base_tree=None):
+class ChangesetTree(Tree):
+    def __init__(self, base_tree):
         self.base_tree = base_tree
         self._renamed = {} # Mapping from old_path => new_path
         self._renamed_r = {} # new_path => old_path
         self._new_id = {} # new_path => new_id
         self._new_id_r = {} # new_id => new_path
         self._kinds = {} # new_id => kind
+        self._text_ids = {} # new_id => text_id
         self.patches = {}
         self.deleted = []
         self.contents_by_id = True
+        self._inventory = None
 
     def __str__(self):
         return pprint.pformat(self.__dict__)
@@ -718,6 +708,15 @@ class ChangesetTree:
         self._new_id[new_path] = new_id
         self._new_id_r[new_id] = new_path
         self._kinds[new_id] = kind
+
+    def note_text_id(self, file_id, text_id):
+        if (self._text_ids.has_key(file_id)
+                and self._text_ids[file_id] != text_id):
+            raise BzrError('Mismatched text_ids for file_id {%s}'
+                    ': %s != %s' % (file_id,
+                                    self._text_ids[file_id],
+                                    text_id))
+        self._text_ids[file_id] = text_id
 
     def note_patch(self, new_path, patch):
         """There is a patch for a given filename."""
@@ -843,6 +842,11 @@ class ChangesetTree:
             return self._kinds[file_id]
         return self.base_tree.inventory[file_id].kind
 
+    def get_text_id(self, file_id):
+        if file_id in self._text_ids:
+            return self._text_ids[file_id]
+        return self.base_tree.inventory[file_id].text_id
+
     def get_size_and_sha1(self, file_id):
         """Return the size and sha1 hash of the given file id.
         If the file was not locally modified, this is extracted
@@ -863,14 +867,65 @@ class ChangesetTree:
         content = self.get_file(file_id).read()
         return len(content), sha_string(content)
 
-        
+
+    def _get_inventory(self):
+        """Build up the inventory entry for the ChangesetTree.
+
+        This need to be called before ever accessing self.inventory
+        """
+        from os.path import dirname, basename
+        from bzrlib.inventory import Inventory, InventoryEntry
+
+        assert self.base_tree is not None
+        base_inv = self.base_tree.inventory
+        root_id = base_inv.root.file_id
+        try:
+            # New inventories have a unique root_id
+            inv = Inventory(root_id)
+        except TypeError:
+            inv = Inventory()
+
+        def add_entry(file_id):
+            if file_id in inv:
+                return
+            path = self.id2path(file_id)
+            if path is None:
+                return
+            parent_path = dirname(path)
+            if path == '':
+                parent_id = root_id
+            else:
+                parent_id = self.path2id(parent_path)
+
+            if parent_id not in inv:
+                add_entry(parent_id)
+
+            text_id = self.get_text_id(file_id)
+
+            name = basename(path)
+            kind = self.get_kind(file_id)
+            ie = InventoryEntry(file_id, name, kind, parent_id, text_id=text_id)
+            ie.text_size, ie.text_sha1 = self.get_size_and_sha1(file_id)
+            if (ie.text_size is None) and (kind != 'directory'):
+                raise BzrError('Got a text_size of None for file_id %r' % file_id)
+            inv.add(ie)
+
+        for path, ie in base_inv.iter_entries():
+            add_entry(ie.file_id)
+        for file_id in self._new_id_r.iterkeys():
+            add_entry(file_id)
+
+        return inv
+
+    # Have to overload the inherited inventory property
+    # because _get_inventory is only called in the parent.
+    # Reading the docs, property() objects do not use
+    # overloading, they use the function as it was defined
+    # at that instant
+    inventory = property(_get_inventory)
 
     def __iter__(self):
-        for file_id in self._new_id_r.iterkeys():
-            yield file_id
-        for path, entry in self.base_tree.inventory.iter_entries():
-            if self.id2path(entry.file_id) is None:
-                continue
+        for path, entry in self.inventory.iter_entries():
             yield entry.file_id
 
 

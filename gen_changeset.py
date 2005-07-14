@@ -184,7 +184,7 @@ class MetaInfoHeader(object):
             delta,
             starting_rev_id=None,
             full_remove=False, full_rename=False,
-            base_label = '', target_label = ''):
+            base_label = 'orig', target_label = 'mod'):
         """
         :param full_remove: Include the full-text for a delete
         :param full_rename: Include an add+delete patch for a rename
@@ -346,6 +346,7 @@ class MetaInfoHeader(object):
         """Write out the specific diffs"""
         from bzrlib.diff import internal_diff
         from common import encode, guess_text_id
+        from os.path import join as pjoin
         DEVNULL = '/dev/null'
 
         diff_file = internal_diff
@@ -364,7 +365,7 @@ class MetaInfoHeader(object):
                     kind, modified=modified)
             real_id = tree.inventory[file_id].text_id
             if guess_id != real_id:
-                return '\ttext-id:' + encode(real_id)
+                return ' // text-id:' + encode(real_id)
             else:
                 return ''
 
@@ -374,43 +375,43 @@ class MetaInfoHeader(object):
             print >>self.to_file, '*** removed %s %s' % (kind,
                     encode(path))
             if kind == 'file' and self.full_remove:
-                diff_file(self.base_label + path,
+                diff_file(pjoin(self.base_label, path),
                           self.base_tree.get_file(file_id).readlines(),
                           DEVNULL, 
                           [],
                           self.to_file)
     
         for path, file_id, kind in self.delta.added:
-            print >>self.to_file, '*** added %s %s\tfile-id:%s%s' % (kind,
+            print >>self.to_file, '*** added %s %s // file-id:%s%s' % (kind,
                     encode(path),
                     encode(file_id),
                     get_text_id_str(file_id, kind))
             if kind == 'file':
                 diff_file(DEVNULL,
                           [],
-                          self.target_label + path,
+                          pjoin(self.target_label, path),
                           self.target_tree.get_file(file_id).readlines(),
                           self.to_file)
     
         for old_path, new_path, file_id, kind, text_modified in self.delta.renamed:
-            print >>self.to_file, '*** renamed %s %s\t=> %s%s' % (kind,
+            print >>self.to_file, '*** renamed %s %s // %s%s' % (kind,
                     encode(old_path), encode(new_path),
                     get_text_id_str(file_id, kind, modified=text_modified))
             if self.full_rename and kind == 'file':
-                diff_file(self.base_label + old_path,
+                diff_file(pjoin(self.base_label, old_path),
                           self.base_tree.get_file(file_id).readlines(),
                           DEVNULL, 
                           [],
                           self.to_file)
                 diff_file(DEVNULL,
                           [],
-                          self.target_label + new_path,
+                          pjoin(self.target_label, new_path),
                           self.target_tree.get_file(file_id).readlines(),
                           self.to_file)
             elif text_modified:
-                    diff_file(self.base_label + old_path,
+                    diff_file(pjoin(self.base_label, old_path),
                               self.base_tree.get_file(file_id).readlines(),
-                              self.target_label + new_path,
+                              pjoin(self.target_label, new_path),
                               self.target_tree.get_file(file_id).readlines(),
                               self.to_file)
     
@@ -418,9 +419,9 @@ class MetaInfoHeader(object):
             print >>self.to_file, '*** modified %s %s%s' % (kind,
                     encode(path), get_text_id_str(file_id, kind))
             if kind == 'file':
-                diff_file(self.base_label + path,
+                diff_file(pjoin(self.base_label, path),
                           self.base_tree.get_file(file_id).readlines(),
-                          self.target_label + path,
+                          pjoin(self.target_label, path),
                           self.target_tree.get_file(file_id).readlines(),
                           self.to_file)
 
