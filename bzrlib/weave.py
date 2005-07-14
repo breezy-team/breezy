@@ -44,6 +44,17 @@
 # properly nested, that there is no text outside of an insertion, that
 # insertions or deletions are not repeated, etc.
 
+# TODO: Make the info command just show info, not extract everything:
+# it can be much faster.
+
+# TODO: Perhaps use long integers as sets instead of set objects; may
+# be faster.
+
+# TODO: Parallel-extract that passes back each line along with a
+# description of which revisions include it.  Nice for checking all
+# shas in parallel.
+
+
 
 
 try:
@@ -178,6 +189,10 @@ class Weave(object):
         sha1 = s.hexdigest()
         del s
 
+        # TODO: It'd probably be faster to append things on to a new
+        # list rather than modifying the existing one, which is likely
+        # to cause a lot of copying.
+
         if parents:
             ancestors = self.inclusions(parents)
             delta = self._delta(ancestors, text)
@@ -223,6 +238,20 @@ class Weave(object):
         self._sha1s.append(sha1)
             
         return idx
+
+
+    def inclusions_bitset(self, versions):
+        i = 0
+        for v in versions:
+            i |= (1L << v)
+        v = max(versions)
+        while v >= 0:
+            if i & (1L << v):
+                # if v is included, include all its parents
+                for pv in self._v[v]:
+                    i |= (1L << pv)
+            v -= 1
+        return i
 
 
     def inclusions(self, versions):
@@ -299,6 +328,46 @@ class Weave(object):
         The index indicates when the line originated in the weave."""
         for origin, lineno, text in self._extract([version]):
             yield origin, text
+
+
+    def _walk(self):
+        """Walk the weave.
+
+        Yields sequence of
+        (lineno, insert, deletes, text)
+        for each literal line.
+        """
+        
+        istack = []
+        dset = 0L
+
+        lineno = 0         # line of weave, 0-based
+
+        for l in self._l:
+            if isinstance(l, tuple):
+                c, v = l
+                isactive = None
+                if c == '{':
+                    istack.append(v)
+                elif c == '}':
+                    oldv = istack.pop()
+                elif c == '[':
+                    vs = (1L << v)
+                    assert not (dset & vs)
+                    dset |= vs
+                elif c == ']':
+                    vs = (1L << v)
+                    assert dset & vs
+                    dset ^= vs
+                else:
+                    raise WeaveFormatError('unexpected instruction %r'
+                                           % v)
+            else:
+                assert isinstance(l, basestring)
+                assert istack
+                yield lineno, istack[-1], dset, l
+            lineno += 1
+
 
 
     def _extract(self, versions):
@@ -494,6 +563,55 @@ class Weave(object):
             yield real_i1, real_i2, lines[j1:j2]
 
 
+            
+    def plan_merge(self, ver_a, ver_b):
+        """Return pseudo-annotation indicating how the two versions merge.
+
+        This is computed between versions a and b and their common
+        base.
+
+        Weave lines present in none of them are skipped entirely.
+        """
+        inc_a = self.inclusions_bitset([ver_a])
+        inc_b = self.inclusions_bitset([ver_b])
+        inc_c = inc_a & inc_b
+
+        for lineno, insert, deleteset, line in self._walk():
+            insertset = (1L << insert)
+            if deleteset & inc_c:
+                # killed in parent; can't be in either a or b
+                # not relevant to our work
+                yield 'killed-base', line
+            elif insertset & inc_c:
+                # was inserted in base
+                killed_a = bool(deleteset & inc_a)
+                killed_b = bool(deleteset & inc_b)
+                if killed_a and killed_b:
+                    # killed in both
+                    yield 'killed-both', line
+                elif killed_a:
+                    yield 'killed-a', line
+                elif killed_b:
+                    yield 'killed-b', line
+                else:
+                    yield 'unchanged', line
+            elif insertset & inc_a:
+                if deleteset & inc_a:
+                    yield 'ghost-a', line
+                else:
+                    # new in A; not in B
+                    yield 'new-a', line
+            elif insertset & inc_b:
+                if deleteset & inc_b:
+                    yield 'ghost-b', line
+                else:
+                    yield 'new-b', line
+            else:
+                # not in either revision
+                yield 'irrelevant', line
+
+
+
 
 def weave_info(filename, out):
     """Show some text information about the weave."""
@@ -641,6 +759,11 @@ def main(argv):
     elif cmd == 'parents':
         w = readit()
         print ' '.join(map(str, w._v[int(argv[3])]))
+
+    elif cmd == 'plan-merge':
+        w = readit()
+        for state, line in w.plan_merge(int(argv[3]), int(argv[4])):
+            print '%14s | %s' % (state, line),
 
     elif cmd == 'merge':
         if len(argv) != 5:
