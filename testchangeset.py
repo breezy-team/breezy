@@ -326,25 +326,52 @@ class CSetTester(InTempDir):
         # Make sure we can handle files with spaces, tabs, other
         # bogus characters
         self.build_tree([
-                'b1/with space.txt',
-                'b1/dir/',
-                'b1/dir/filein subdir.c',
-                'b1/dir/WithCaps.txt'
+                'b1/with space.txt'
+                , 'b1/dir/'
+                , 'b1/dir/filein subdir.c'
+                , 'b1/dir/WithCaps.txt'
+                , 'b1/sub/'
+                , 'b1/sub/sub/'
+                , 'b1/sub/sub/nonempty.txt'
                 # Tabs are not valid in filenames on windows
                 #'b1/with\ttab.txt'
                 ])
+        open('b1/sub/sub/emptyfile.txt', 'wb').close()
         self.b1.add([
-                'with space.txt',
-                'dir',
-                'dir/filein subdir.c',
-                'dir/WithCaps.txt'
+                'with space.txt'
+                , 'dir'
+                , 'dir/filein subdir.c'
+                , 'dir/WithCaps.txt'
+                , 'sub'
+                , 'sub/sub'
+                , 'sub/sub/nonempty.txt'
+                , 'sub/sub/emptyfile.txt'
                 ])
         self.b1.commit('add whitespace', rev_id='a@cset-0-2')
 
         cset = self.get_valid_cset('a@cset-0-1', 'a@cset-0-2')
         # Check a rollup changeset
         cset = self.get_valid_cset(None, 'a@cset-0-2')
+
+        # Now delete entries
+        self.b1.remove(['sub/sub/nonempty.txt'
+                , 'sub/sub/emptyfile.txt'
+                , 'sub/sub'])
+        self.b1.commit('removed', rev_id='a@cset-0-3')
         
+        cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-3')
+        # Check a rollup changeset
+        cset = self.get_valid_cset(None, 'a@cset-0-3')
+
+
+        # Now move the directory
+        self.b1.rename_one('dir', 'sub/dir')
+        self.b1.commit('rename dir', 'a@cset-0-4')
+
+        cset = self.get_valid_cset('a@cset-0-3', 'a@cset-0-4')
+        # Check a rollup changeset
+        cset = self.get_valid_cset(None, 'a@cset-0-4')
+
 TEST_CLASSES = [
     CTreeTester,
     CSetTester

@@ -566,7 +566,7 @@ class ChangesetReader(object):
                 raise BzrError('removed action lines should only have the path'
                         ': %r' % extra)
             path = decode(info[0])
-            tree.note_deletion(path, text_id)
+            tree.note_deletion(path)
 
         def added(kind, extra, lines):
             info = extra.split(' // ')
