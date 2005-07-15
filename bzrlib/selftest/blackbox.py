@@ -285,7 +285,13 @@ class OldTests(ExternalBase):
 
         runbzr('log')
         runbzr('log -v')
-
+        runbzr('log -v --forward')
+        runbzr('log -m', retcode=1)
+        log_out = backtick('bzr log -m commit')
+        assert "this is my new commit" in log_out
+        assert "rename nested" not in log_out
+        assert 'revision-id' not in log_out
+        assert 'revision-id' in backtick('bzr log --show-ids -m commit')
 
 
         progress("file with spaces in name")
