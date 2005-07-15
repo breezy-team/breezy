@@ -588,7 +588,9 @@ class cmd_branch(Command):
         import tempfile
         cache_root = tempfile.mkdtemp()
 
-        if revision is not None:
+        if revision is None:
+            revision = [None]
+        else:
             if len(revision) > 1:
                 raise BzrCommandError('bzr branch --revision takes exactly 1 revision value')
         try:
@@ -620,7 +622,10 @@ class cmd_branch(Command):
             br_to.set_root_id(br_from.get_root_id())
 
             if revision:
-                revno = br_to.lookup_revision(revision[0])
+                if revision[0] is None:
+                    revno = br_from.revno()
+                else:
+                    revno, rev_id = br_from.get_revision_info(revision[0])
                 try:
                     br_to.update_revisions(br_from, stop_revision=revno)
                 except NoSuchRevision:
