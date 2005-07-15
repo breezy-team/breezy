@@ -10,13 +10,53 @@ from read_changeset import ChangesetTree
 
 class MockTree(object):
     def __init__(self):
+        from bzrlib.inventory import RootEntry, ROOT_ID
         object.__init__(self)
-        self.paths = {}
-        self.ids = {}
+        self.paths = {ROOT_ID: ""}
+        self.ids = {"": ROOT_ID}
         self.contents = {}
+        self.root = RootEntry(ROOT_ID)
+
+    inventory = property(lambda x:x)
 
     def __iter__(self):
         return self.paths.iterkeys()
+
+    def __getitem__(self, file_id):
+        if file_id == self.root.file_id:
+            return self.root
+        else:
+            return self.make_entry(file_id, self.paths[file_id])
+
+    def parent_id(self, file_id):
+        from os.path import dirname
+        parent_dir = dirname(self.paths[file_id])
+        if parent_dir == "":
+            return None
+        return self.ids[parent_dir]
+
+    def iter_entries(self):
+        for path, file_id in self.ids.iteritems():
+            yield path, self[file_id]
+
+    def get_file_kind(self, file_id):
+        if file_id in self.contents:
+            kind = 'file'
+        else:
+            kind = 'directory'
+        return kind
+
+    def make_entry(self, file_id, path):
+        from os.path import basename
+        from bzrlib.inventory import InventoryEntry
+        name = basename(path)
+        kind = self.get_file_kind(file_id)
+        parent_id = self.parent_id(file_id)
+        text_sha_1, text_size = self.contents_stats(file_id)
+        ie = InventoryEntry(file_id, name, kind, parent_id)
+        ie.text_sha_1 = text_sha_1
+        ie.text_size = text_size
+        return ie
 
     def add_dir(self, file_id, path):
         self.paths[file_id] = path
@@ -40,6 +80,14 @@ class MockTree(object):
         result.write(self.contents[file_id])
         result.seek(0,0)
         return result
+
+    def contents_stats(self, file_id):
+        from bzrlib.osutils import sha_file
+        if file_id not in self.contents:
+            return None, None
+        text_sha1 = sha_file(self.get_file(file_id))
+        return text_sha1, len(self.contents[file_id])
+
 
 class CTreeTester(unittest.TestCase):
     """A simple unittest tester for the ChangesetTree class."""
@@ -205,7 +253,7 @@ class CTreeTester(unittest.TestCase):
         ctree = self.make_tree_1()[0]
         self.assertEqual(self.sorted_ids(ctree), ['a', 'b', 'c', 'd'])
         ctree.note_deletion("grandparent/parent/file")
-        ctree.note_id("e", "grandparent/alt_parent/fool")
+        ctree.note_id("e", "grandparent/alt_parent/fool", kind="directory")
         self.assertEqual(self.sorted_ids(ctree), ['a', 'b', 'd', 'e'])
 
 class CSetTester(InTempDir):
@@ -366,7 +414,7 @@ class CSetTester(InTempDir):
 
         # Now move the directory
         self.b1.rename_one('dir', 'sub/dir')
-        self.b1.commit('rename dir', 'a@cset-0-4')
+        self.b1.commit('rename dir', rev_id='a@cset-0-4')
 
         cset = self.get_valid_cset('a@cset-0-3', 'a@cset-0-4')
         # Check a rollup changeset

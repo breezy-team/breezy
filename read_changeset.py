@@ -547,14 +547,14 @@ class ChangesetReader(object):
             if info[1][:3] == '=> ':
                 new_path = decode(info[1][3:])
             else:
-                new_path = decode(info[1][3:])
+                new_path = decode(info[1])
 
             file_id = tree.path2id(new_path)
             if len(info) > 2:
                 text_id = get_text_id(info[2], file_id, kind)
             else:
                 text_id = get_text_id(None, file_id, kind)
-            tree.note_rename(old_path, new_path, text_id)
+            tree.note_rename(old_path, new_path)
             if lines:
                 tree.note_patch(new_path, ''.join(lines), text_id)
 
@@ -694,6 +694,7 @@ class ChangesetTree(Tree):
     def old_path(self, new_path):
         """Get the old_path (path in the base_tree) for the file at new_path"""
         import os.path
+        assert new_path[:1] not in ('\\', '/')
         old_path = self._renamed.get(new_path)
         if old_path is not None:
             return old_path
@@ -720,6 +721,7 @@ class ChangesetTree(Tree):
         in the base tree.
         """
         import os.path
+        assert old_path[:1] not in ('\\', '/')
         new_path = self._renamed_r.get(old_path)
         if new_path is not None:
             return new_path
@@ -775,6 +777,8 @@ class ChangesetTree(Tree):
                 should always either return None or file_id. Even if
                 you are doing the by-path lookup, you are doing a
                 id2path lookup, just to do the reverse path2id lookup.
+
+        Notice that you're doing the path2id on a different tree!
         """
         if self.contents_by_id:
             if self.base_tree.has_id(file_id):
@@ -808,6 +812,8 @@ class ChangesetTree(Tree):
         return self.base_tree.inventory[file_id].kind
 
     def get_text_id(self, file_id):
+        if self.get_kind(file_id) in ('root_directory', 'directory'):
+            return None
         if file_id in self._text_ids:
             return self._text_ids[file_id]
         return self.base_tree.inventory[file_id].text_id
@@ -876,18 +882,10 @@ class ChangesetTree(Tree):
                 raise BzrError('Got a text_size of None for file_id %r' % file_id)
             inv.add(ie)
 
-        for path, ie in base_inv.iter_entries():
-            add_entry(ie.file_id)
-        for file_id in self._new_id_r.iterkeys():
-            if file_id in inv:
+        sorted_entries = self.sorted_path_id()
+        for path, file_id in sorted_entries:
+            if file_id == inv.root.file_id:
                 continue
-            path = self.id2path(file_id)
-            parent_path = dirname(path)
-            if parent_path != '':
-                parent_id = self.path2id(parent_path)
-                if parent_id not in inv:
-                    add_entry(parent_id)
-
             add_entry(file_id)
 
         return inv
@@ -902,6 +900,18 @@ class ChangesetTree(Tree):
     def __iter__(self):
         for path, entry in self.inventory.iter_entries():
             yield entry.file_id
+
+    def sorted_path_id(self):
+        paths = []
+        for result in self._new_id.iteritems():
+            paths.append(result)
+        for id in self.base_tree:
+            path = self.id2path(id)
+            if path is None:
+                continue
+            paths.append((path, id))
+        paths.sort()
+        return paths
 
 
 def patched_file(file_patch, original):
