@@ -686,6 +686,83 @@ class Khayyam(TestBase):
         self.check_read_write(k)
 
 
+
+class MergeCases(TestBase):
+    def doMerge(self, base, a, b, mp):
+        from cStringIO import StringIO
+        from textwrap import dedent
+
+        def addcrlf(x):
+            return x + '\n'
+        
+        w = Weave()
+        w.add([], map(addcrlf, base))
+        w.add([0], map(addcrlf, a))
+        w.add([0], map(addcrlf, b))
+
+        self.log('merge plan:')
+        p = list(w.plan_merge(1, 2))
+        for state, line in p:
+            if line:
+                self.log('%12s | %s' % (state, line[:-1]))
+
+        self.log('merge:')
+        mt = StringIO()
+        mt.writelines(w.weave_merge(p))
+        mt.seek(0)
+        self.log(mt.getvalue())
+
+        mp = map(addcrlf, mp)
+        self.assertEqual(mt.readlines(), mp)
+        
+        
+    def testOneInsert(self):
+        self.doMerge([],
+                     ['aa'],
+                     [],
+                     ['aa'])
+
+    def testSeparateInserts(self):
+        self.doMerge(['aaa', 'bbb', 'ccc'],
+                     ['aaa', 'xxx', 'bbb', 'ccc'],
+                     ['aaa', 'bbb', 'yyy', 'ccc'],
+                     ['aaa', 'xxx', 'bbb', 'yyy', 'ccc'])
+
+    def testSameInsert(self):
+        self.doMerge(['aaa', 'bbb', 'ccc'],
+                     ['aaa', 'xxx', 'bbb', 'ccc'],
+                     ['aaa', 'xxx', 'bbb', 'yyy', 'ccc'],
+                     ['aaa', 'xxx', 'bbb', 'yyy', 'ccc'])
+
+    def testOverlappedInsert(self):
+        self.doMerge(['aaa', 'bbb'],
+                     ['aaa', 'xxx', 'yyy', 'bbb'],
+                     ['aaa', 'xxx', 'bbb'],
+                     ['aaa', '<<<<', 'xxx', 'yyy', '====', 'xxx', '>>>>', 'bbb'])
+
+        # really it ought to reduce this to 
+        # ['aaa', 'xxx', 'yyy', 'bbb']
+
+
+    def testClashReplace(self):
+        self.doMerge(['aaa'],
+                     ['xxx'],
+                     ['yyy', 'zzz'],
+                     ['<<<<', 'xxx', '====', 'yyy', 'zzz', '>>>>'])
+
+    def testNonClashInsert(self):
+        self.doMerge(['aaa'],
+                     ['xxx', 'aaa'],
+                     ['yyy', 'zzz'],
+                     ['<<<<', 'xxx', 'aaa', '====', 'yyy', 'zzz', '>>>>'])
+
+        self.doMerge(['aaa'],
+                     ['aaa'],
+                     ['yyy', 'zzz'],
+                     ['yyy', 'zzz'])
+    
+
+
 def testweave():
     import testsweet
     from unittest import TestSuite, TestLoader

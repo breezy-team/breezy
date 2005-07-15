@@ -657,7 +657,8 @@ class Weave(object):
                 ch_b = True
                 lines_b.append(line)
             else:
-                assert state in ('irrelevant', 'ghost-a', 'ghost-b', 'killed-base'), \
+                assert state in ('irrelevant', 'ghost-a', 'ghost-b', 'killed-base',
+                                 'killed-both'), \
                        state
 
                 
