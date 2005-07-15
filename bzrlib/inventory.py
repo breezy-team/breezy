@@ -565,7 +565,7 @@ class Inventory(object):
         """Return as a list the path to file_id."""
 
         # get all names, skipping root
-        p = [self[fid].name for fid in self.get_idpath(file_id)[1:]]
+        p = [self._byid[fid].name for fid in self.get_idpath(file_id)[1:]]
         return os.sep.join(p)
             
 
