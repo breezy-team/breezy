@@ -59,6 +59,7 @@ def make_merge_changeset(cset, inventory, this, base, other,
     return new_cset
 
 def make_merged_entry(entry, inventory, conflict_handler):
+    from bzrlib.trace import mutter
     this_name = inventory.this.get_name(entry.id)
     this_parent = inventory.this.get_parent(entry.id)
     this_dir = inventory.this.get_dir(entry.id)
@@ -75,7 +76,8 @@ def make_merged_entry(entry, inventory, conflict_handler):
     other_dir = inventory.base.get_dir(entry.id)
     if other_dir is None:
         other_dir = ""
-
+    mutter("Dirs: this, base, other %r %r %r" % (this_dir, base_dir, other_dir))
+    mutter("Names: this, base, other %r %r %r" % (this_name, base_name, other_name))
     if base_name == other_name:
         old_name = this_name
         new_name = this_name
@@ -104,12 +106,13 @@ def make_merged_entry(entry, inventory, conflict_handler):
         old_path = os.path.join(old_dir, old_name)
     else:
         old_path = None
-    new_entry = changeset.ChangesetEntry(entry.id, old_parent, old_name)
+    new_entry = changeset.ChangesetEntry(entry.id, old_parent, old_path)
     if new_name is not None and new_parent is not None:
         new_entry.new_path = os.path.join(new_dir, new_name)
     else:
         new_entry.new_path = None
     new_entry.new_parent = new_parent
+    mutter(repr(new_entry))
     return new_entry
 
 
