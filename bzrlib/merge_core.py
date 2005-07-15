@@ -50,8 +50,8 @@ def make_merge_changeset(cset, inventory, this, base, other,
             new_cset.add_entry(entry)
         else:
             new_entry = make_merged_entry(entry, inventory, conflict_handler)
-            new_contents = make_merged_contents(entry, this, base, other,
-                                                conflict_handler)
+            new_contents = make_merged_contents(entry, this, base, other, 
+                                                inventory, conflict_handler)
             new_entry.contents_change = new_contents
             new_entry.metadata_change = make_merged_metadata(entry, base, other)
             new_cset.add_entry(new_entry)
@@ -116,7 +116,7 @@ def make_merged_entry(entry, inventory, conflict_handler):
     return new_entry
 
 
-def make_merged_contents(entry, this, base, other, conflict_handler):
+def make_merged_contents(entry, this, base, other, inventory, conflict_handler):
     contents = entry.contents_change
     if contents is None:
         return None
@@ -214,6 +214,10 @@ class MergeTree(object):
         os.chmod(self.abs_path(path), mode)
         self.inventory[id] = path
 
+    def remove_file(self, id):
+        os.unlink(self.full_path(id))
+        del self.inventory[id]
+
     def add_dir(self, id, parent, name, mode):
         path = self.child_path(parent, name)
         full_path = self.abs_path(path)
@@ -226,7 +230,11 @@ class MergeTree(object):
         return os.path.join(self.dir, path)
 
     def full_path(self, id):
-        return self.abs_path(self.inventory[id])
+        try:
+            tree_path = self.inventory[id]
+        except KeyError:
+            return None
+        return self.abs_path(tree_path)
 
     def readonly_path(self, id):
         return self.full_path(id)
@@ -258,6 +266,22 @@ class MergeBuilder(object):
         self.other.add_file(id, parent, name, contents, mode)
         path = self.get_cset_path(parent, name)
         self.cset.add_entry(changeset.ChangesetEntry(id, parent, path))
+
+    def remove_file(self, id, base=False, this=False, other=False):
+        for option, tree in ((base, self.base), (this, self.this), 
+                             (other, self.other)):
+            if option:
+                tree.remove_file(id)
+            if other or base:
+                change = self.cset.entries[id].contents_change
+                assert isinstance(change, changeset.ReplaceContents)
+                if other:
+                    change.new_contents=None
+                if base:
+                    change.old_contents=None
+                if change.old_contents is None and change.new_contents is None:
+                    change = None
+
 
     def add_dir(self, id, parent, name, mode):
         path = self.get_cset_path(parent, name)
@@ -503,6 +527,21 @@ class MergeTest(unittest.TestCase):
         cset = builder.merge_changeset()
         self.assertRaises(changeset.MergeConflict, builder.apply_changeset,
                           cset)
+        builder.cleanup()
+
+        builder = MergeBuilder()
+        builder.add_file("1", "0", "name1", "text1", 0755)
+        builder.change_contents("1", other="text4", base="text3")
+        builder.remove_file("1", base=True)
+        self.assertRaises(changeset.NewContentsConflict,
+                          builder.merge_changeset)
+        builder.cleanup()
+
+        builder = MergeBuilder()
+        builder.add_file("1", "0", "name1", "text1", 0755)
+        builder.change_contents("1", other="text4", base="text3")
+        builder.remove_file("1", this=True)
+        self.assertRaises(changeset.MissingForMerge, builder.merge_changeset)
         builder.cleanup()
 
     def test_perms_merge(self):
