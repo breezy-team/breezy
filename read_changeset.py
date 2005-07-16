@@ -342,8 +342,8 @@ class ChangesetReader(object):
 
     def _read_header(self):
         """Read the bzr header"""
-        import common
-        header = common.get_header()
+        from common import decode, get_header, header_str
+        header = get_header()
         found = False
         for line in self._next():
             if found:
@@ -351,15 +351,15 @@ class ChangesetReader(object):
                 if line == '#\n':
                     line = '# \n'
                 if (line[:2] != '# ' or line[-1:] != '\n'
-                        or line[2:-1] != header[0]):
+                        or decode(line[2:-1]) != header[0]):
                     raise MalformedHeader('Found a header, but it'
                         ' was improperly formatted')
                 header.pop(0) # We read this line.
                 if not header:
                     break # We found everything.
             elif (line[:1] == '#' and line[-1:] == '\n'):
-                line = line[1:-1].strip()
-                if line[:len(common.header_str)] == common.header_str:
+                line = decode(line[1:-1].strip())
+                if line[:len(header_str)] == header_str:
                     if line == header[0]:
                         found = True
                     else:
@@ -379,9 +379,10 @@ class ChangesetReader(object):
     def _read_next_entry(self, line, indent=1):
         """Read in a key-value pair
         """
+        from common import decode
         if line[:1] != '#':
             raise MalformedHeader('Bzr header did not start with #')
-        line = line[1:-1] # Remove the '#' and '\n'
+        line = decode(line[1:-1]) # Remove the '#' and '\n'
         if line[:indent] == ' '*indent:
             line = line[indent:]
         if not line:
@@ -427,6 +428,7 @@ class ChangesetReader(object):
         This detects the end of the list, because it will be a line that
         does not start properly indented.
         """
+        from common import decode
         values = []
         start = '#' + (' '*indent)
 
@@ -434,7 +436,7 @@ class ChangesetReader(object):
             return values
 
         for line in self._next():
-            values.append(line[len(start):-1])
+            values.append(decode(line[len(start):-1]))
             if self._next_line is None or self._next_line[:len(start)] != start:
                 break
         return values
@@ -445,6 +447,7 @@ class ChangesetReader(object):
 
         :return: action, lines, do_continue
         """
+        from common import decode
         #mutter('_read_one_patch: %r' % self._next_line)
         # Peek and see if there are no patches
         if self._next_line is None or self._next_line[:1] == '#':
@@ -458,7 +461,7 @@ class ChangesetReader(object):
                     raise MalformedPatches('The first line of all patches'
                         ' should be a bzr meta line "***"'
                         ': %r' % line)
-                action = line[4:-1]
+                action = decode(line[4:-1])
             if self._next_line is not None and self._next_line[:3] == '***':
                 return action, lines, True
             elif self._next_line is None or self._next_line[:1] == '#':
@@ -543,11 +546,11 @@ class ChangesetReader(object):
             if len(info) < 2:
                 raise BzrError('renamed action lines need both a from and to'
                         ': %r' % extra)
-            old_path = decode(info[0])
+            old_path = info[0]
             if info[1][:3] == '=> ':
-                new_path = decode(info[1][3:])
+                new_path = info[1][3:]
             else:
-                new_path = decode(info[1])
+                new_path = info[1]
 
             file_id = tree.path2id(new_path)
             if len(info) > 2:
@@ -556,7 +559,7 @@ class ChangesetReader(object):
                 text_id = get_text_id(None, file_id, kind)
             tree.note_rename(old_path, new_path)
             if lines:
-                tree.note_patch(new_path, ''.join(lines), text_id)
+                tree.note_patch(new_path, ''.join(lines))
 
         def removed(kind, extra, lines):
             info = extra.split(' // ')
@@ -565,7 +568,7 @@ class ChangesetReader(object):
                 # given for removed entries
                 raise BzrError('removed action lines should only have the path'
                         ': %r' % extra)
-            path = decode(info[0])
+            path = info[0]
             tree.note_deletion(path)
 
         def added(kind, extra, lines):
@@ -576,11 +579,11 @@ class ChangesetReader(object):
             elif len(info) > 3:
                 raise BzrError('add action lines have fewer than 3 entries.'
                         ': %r' % extra)
-            path = decode(info[0])
+            path = info[0]
             if info[1][:8] != 'file-id:':
                 raise BzrError('The file-id should follow the path for an add'
                         ': %r' % extra)
-            file_id = decode(info[1][8:])
+            file_id = info[1][8:]
 
             tree.note_id(file_id, path, kind)
             if kind == 'directory':
@@ -596,7 +599,7 @@ class ChangesetReader(object):
             if len(info) < 1:
                 raise BzrError('modified action lines have at least'
                         'the path in them: %r' % extra)
-            path = decode(info[0])
+            path = info[0]
 
             file_id = tree.path2id(path)
             if len(info) > 1:

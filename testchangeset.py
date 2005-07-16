@@ -276,7 +276,8 @@ class CSetTester(InTempDir):
         self.assertEqual(cset_txt.readline(), '# \n')
 
         rev = self.b1.get_revision(rev_id)
-        self.assertEqual(cset_txt.readline(), '# committer: %s\n' % rev.committer)
+        self.assertEqual(cset_txt.readline().decode('utf-8'),
+                u'# committer: %s\n' % rev.committer)
 
         open(',,cset', 'wb').write(cset_txt.getvalue())
         cset_txt.seek(0)
@@ -414,6 +415,7 @@ class CSetTester(InTempDir):
                 , 'b1/dir/'
                 , 'b1/dir/filein subdir.c'
                 , 'b1/dir/WithCaps.txt'
+                , 'b1/dir/trailing space '
                 , 'b1/sub/'
                 , 'b1/sub/sub/'
                 , 'b1/sub/sub/nonempty.txt'
@@ -426,6 +428,7 @@ class CSetTester(InTempDir):
                 , 'dir'
                 , 'dir/filein subdir.c'
                 , 'dir/WithCaps.txt'
+                , 'dir/trailing space '
                 , 'sub'
                 , 'sub/sub'
                 , 'sub/sub/nonempty.txt'
@@ -463,6 +466,31 @@ class CSetTester(InTempDir):
         cset = self.get_valid_cset('a@cset-0-1', 'a@cset-0-4', auto_commit=True)
         cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-4', auto_commit=True)
         cset = self.get_valid_cset('a@cset-0-3', 'a@cset-0-4', auto_commit=True)
+
+        # Modified files
+        open('b1/sub/dir/WithCaps.txt', 'ab').write('\nAdding some text\n')
+        #open('b1/sub/dir/trailing space ', 'ab').write('\nAdding some\nDOS format lines\n')
+        #self.b1.rename_one('sub/dir/trailing space ', 'sub/start and end space')
+        self.b1.commit('Modified files', rev_id='a@cset-0-5')
+        cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5')
+        cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5', auto_commit=True)
+        cset = self.get_valid_cset(None, 'a@cset-0-5', auto_commit=True)
+
+        # Handle international characters
+        f = open(u'b1/with Dod\xe9', 'wb')
+        f.write((u'A file\n'
+            u'With international man of mystery\n'
+            u'William Dod\xe9\n').encode('utf-8'))
+        self.b1.add([u'with Dod\xe9'])
+        # BUG: (sort of) You must set verbose=False, so that python doesn't try
+        #       and print the name of William Dode as part of the commit
+        self.b1.commit(u'i18n commit from William Dod\xe9', rev_id='a@cset-0-6',
+                committer=u'William Dod\xe9', verbose=False)
+        cset = self.get_valid_cset('a@cset-0-5', 'a@cset-0-6')
+        cset = self.get_valid_cset('a@cset-0-5', 'a@cset-0-6', auto_commit=True)
+        cset = self.get_valid_cset(None, 'a@cset-0-6', auto_commit=True)
+
+
 
 TEST_CLASSES = [
     CTreeTester,

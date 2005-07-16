@@ -248,11 +248,23 @@ class MetaInfoHeader(object):
         self.revision_list = [self.target_branch.get_revision(rid) 
                                 for rid in rev_id_list]
 
-    def _write(self, txt, key=None):
-        if key:
-            self.to_file.write('# %s: %s\n' % (key, txt))
+    def _write(self, txt, key=None, encode=True, indent=1):
+        from common import encode as _encode
+        if encode:
+            def write(txt):
+                self.to_file.write(_encode(txt))
         else:
-            self.to_file.write('# %s\n' % (txt,))
+            def write(txt):
+                self.to_file.write(txt)
+        if indent > 0:
+            write('#' + (' ' * indent))
+        if key:
+            if txt:
+                write('%s: %s\n' % (key, txt))
+            else:
+                write('%s:\n' % key)
+        else:
+            write('%s\n' % (txt,))
 
     def write_meta_info(self, to_file):
         """Write out the meta-info portion to the supplied file.
@@ -281,13 +293,13 @@ class MetaInfoHeader(object):
         self.date = format_highres_date(rev.timestamp, offset=rev.timezone)
         write(self.date, key='date')
         if rev.message:
-            self.to_file.write('# message:\n')
+            write('', key='message')
             for line in rev.message.split('\n'):
-                self.to_file.write('#    %s\n' % line)
+                write(txt=line, indent=4)
             self.message = rev.message
 
-        write('')
-        self.to_file.write('\n')
+        write('') # line with just '#'
+        write('', indent=0) # Empty line
 
     def _write_footer(self):
         """Write the stuff that comes after the patches.
@@ -312,23 +324,25 @@ class MetaInfoHeader(object):
 
     def _write_revisions(self):
         """Not used. Used for writing multiple revisions."""
-        from common import format_highres_date
+        from common import format_highres_date, encode
+
+        write = self._write
 
         for rev in self.revision_list:
             rev_id = rev.revision_id
-            self.to_file.write('# revision: %s\n' % rev_id)
-            self.to_file.write('#    sha1: %s\n' % 
-                self.target_branch.get_revision_sha1(rev_id))
+            write(rev_id, key='revision')
+            write(self.target_branch.get_revision_sha1(rev_id),
+                    key = 'sha1', indent=4)
             if rev.committer != self.committer:
-                self.to_file.write('#    committer: %s\n' % rev.committer)
+                write(rev.committer, key='committer', indent=4)
             date = format_highres_date(rev.timestamp, rev.timezone)
             if date != self.date:
-                self.to_file.write('#    date: %s\n' % date)
+                write(date, key='date', indent=4)
             if rev.inventory_id != rev_id:
-                self.to_file.write('#    inventory id: %s\n' % rev.inventory_id)
-            self.to_file.write('#    inventory sha1: %s\n' % rev.inventory_sha1)
+                write(rev.inventory_id, key='inventory id', indent=4)
+            write(rev.inventory_sha1, key='inventory sha1', indent=4)
             if len(rev.parents) > 0:
-                self.to_file.write('#    parents:\n')
+                write(txt='', key='parents', indent=4)
                 for parent in rev.parents:
                     p_id = parent.revision_id
                     p_sha1 = parent.revision_sha1
@@ -336,16 +350,16 @@ class MetaInfoHeader(object):
                         warning('Rev id {%s} parent {%s} missing sha hash.'
                                 % (rev_id, p_id))
                         p_sha1 = self.target_branch.get_revision_sha1(p_id)
-                    self.to_file.write('#       %s\t%s\n' % (p_id, p_sha1))
+                    write(p_id + '\t' + p_sha1, indent=7)
             if rev.message and rev.message != self.message:
-                self.to_file.write('#    message:\n')
+                write('', key='message', indent=4)
                 for line in rev.message.split('\n'):
-                    self.to_file.write('#       %s\n' % line)
+                    write(line, indent=7)
 
     def _write_diffs(self):
         """Write out the specific diffs"""
         from bzrlib.diff import internal_diff
-        from common import encode, guess_text_id
+        from common import guess_text_id
         from os.path import join as pjoin
         DEVNULL = '/dev/null'
 
@@ -354,6 +368,8 @@ class MetaInfoHeader(object):
         # Appropriate text ids.
         rev_id = self.target_rev_id
         tree = self.target_tree
+
+        write = self._write
 
 
         def get_text_id_str(file_id, kind, modified=True):
@@ -365,15 +381,14 @@ class MetaInfoHeader(object):
                     kind, modified=modified)
             real_id = tree.inventory[file_id].text_id
             if guess_id != real_id:
-                return ' // text-id:' + encode(real_id)
+                return ' // text-id:' + real_id
             else:
                 return ''
 
 
         for path, file_id, kind in self.delta.removed:
             # We don't care about text ids for removed files
-            print >>self.to_file, '*** removed %s %s' % (kind,
-                    encode(path))
+            write('*** removed %s %s' % (kind, path), indent=0)
             if kind == 'file' and self.full_remove:
                 diff_file(pjoin(self.base_label, path),
                           self.base_tree.get_file(file_id).readlines(),
@@ -382,10 +397,9 @@ class MetaInfoHeader(object):
                           self.to_file)
     
         for path, file_id, kind in self.delta.added:
-            print >>self.to_file, '*** added %s %s // file-id:%s%s' % (kind,
-                    encode(path),
-                    encode(file_id),
-                    get_text_id_str(file_id, kind))
+            write('*** added %s %s // file-id:%s%s' % (kind,
+                    path, file_id, get_text_id_str(file_id, kind)),
+                    indent=0)
             if kind == 'file':
                 diff_file(DEVNULL,
                           [],
@@ -394,9 +408,10 @@ class MetaInfoHeader(object):
                           self.to_file)
     
         for old_path, new_path, file_id, kind, text_modified in self.delta.renamed:
-            print >>self.to_file, '*** renamed %s %s // %s%s' % (kind,
-                    encode(old_path), encode(new_path),
-                    get_text_id_str(file_id, kind, modified=text_modified))
+            write('*** renamed %s %s // %s%s' % (kind,
+                    old_path, new_path,
+                    get_text_id_str(file_id, kind, modified=text_modified)),
+                    indent=0)
             if self.full_rename and kind == 'file':
                 diff_file(pjoin(self.base_label, old_path),
                           self.base_tree.get_file(file_id).readlines(),
@@ -416,8 +431,9 @@ class MetaInfoHeader(object):
                               self.to_file)
     
         for path, file_id, kind in self.delta.modified:
-            print >>self.to_file, '*** modified %s %s%s' % (kind,
-                    encode(path), get_text_id_str(file_id, kind))
+            write('*** modified %s %s%s' % (kind,
+                    path, get_text_id_str(file_id, kind)),
+                    indent=0)
             if kind == 'file':
                 diff_file(pjoin(self.base_label, path),
                           self.base_tree.get_file(file_id).readlines(),

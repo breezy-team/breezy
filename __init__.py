@@ -100,8 +100,8 @@ class cmd_changeset(Command):
             else:
                 base_rev_id = base_branch.lookup_revision(base_revno)
 
-        outf = codecs.getwriter(user_encoding)(sys.stdout,
-                errors='replace')
+        # outf = codecs.getwriter(user_encoding)(sys.stdout,
+        #         errors='replace')
 
         if starting_rev_id is not None:
             raise BzrCommandError('Specifying the STARTING-REV-ID'
@@ -110,7 +110,7 @@ class cmd_changeset(Command):
         gen_changeset.show_changeset(base_branch, base_rev_id,
                 target_branch, target_rev_id,
                 starting_rev_id,
-                to_file=outf, include_full_diff=verbose)
+                to_file=sys.stdout, include_full_diff=verbose)
 
 class cmd_verify_changeset(Command):
     """Read a written changeset, and make sure it is valid.

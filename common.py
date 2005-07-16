@@ -114,11 +114,11 @@ def encode(s):
     >>> encode(u'abcdefg')
     'abcdefg'
     >>> encode(u'a b\\tc\\nd\\\\e')
-    'a b\\\\tc\\\\nd\\\\e'
+    'a b\\tc\\nd\\\\e'
     >>> encode('a b\\tc\\nd\\e')
-    'a b\\\\tc\\\\nd\\\\e'
+    'a b\\tc\\nd\\\\e'
     >>> encode(u'\\u1234\\u0020')
-    '\\\\u1234 '
+    '\\xe1\\x88\\xb4 '
     >>> encode('abcdefg')
     'abcdefg'
     >>> encode(u'')
@@ -126,23 +126,23 @@ def encode(s):
     >>> encode('')
     ''
     """
-    return s.encode('unicode_escape')
+    return s.encode('utf-8')
 
 def decode(s):
     """Undo the encode operation, returning a unicode string.
 
     >>> decode('abcdefg')
     u'abcdefg'
-    >>> decode('a b\\\\tc\\\\nd\\\\e')
+    >>> decode('a b\\tc\\nd\\\\e')
     u'a b\\tc\\nd\\\\e'
-    >>> decode('\\\\u1234\\\\u0020')
+    >>> decode('\\xe1\\x88\\xb4 ')
     u'\\u1234 '
     >>> for s in ('test', 'strings'):
     ...   if decode(encode(s)) != s:
     ...     print 'Failed: %r' % s # There should be no failures
 
     """
-    return s.decode('unicode_escape')
+    return s.decode('utf-8')
 
 def format_highres_date(t, offset=0):
     """Format a date, such that it includes higher precision in the
