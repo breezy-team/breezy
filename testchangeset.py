@@ -258,7 +258,7 @@ class CTreeTester(unittest.TestCase):
 
 class CSetTester(InTempDir):
 
-    def get_valid_cset(self, base_rev_id, rev_id, auto_commit=False):
+    def get_valid_cset(self, base_rev_id, rev_id, auto_commit=False, checkout_dir=None):
         """Create a changeset from base_rev_id -> rev_id in built-in branch.
         Make sure that the text generated is valid, and that it
         can be applied against the base, and generate the same information.
@@ -308,19 +308,21 @@ class CSetTester(InTempDir):
                 if sha1 is not None:
                     self.assertEqual(sha1, c_par.revision_sha1)
 
-        self.valid_apply_changeset(base_rev_id, cset, auto_commit=auto_commit)
+        self.valid_apply_changeset(base_rev_id, cset,
+                auto_commit=auto_commit, checkout_dir=checkout_dir)
 
         return cset
 
-    def get_checkout(self, rev_id):
+    def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.
         """
         from bzrlib.branch import find_branch
         import tempfile
         from bzrlib.merge import merge
 
-        dirname = tempfile.mkdtemp(prefix='test-branch-', dir='.')
-        to_branch = find_branch(dirname, init=True)
+        if checkout_dir is None:
+            checkout_dir = tempfile.mkdtemp(prefix='test-branch-', dir='.')
+        to_branch = find_branch(checkout_dir, init=True)
         # TODO: Once root ids are established, remove this if
         if hasattr(self.b1, 'get_root_id'):
             to_branch.set_root_id(self.b1.get_root_id())
@@ -331,17 +333,18 @@ class CSetTester(InTempDir):
             self.assert_(rev_id in rh, 'Missing revision %s in base tree' % rev_id)
             revno = self.b1.revision_history().index(rev_id) + 1
             to_branch.update_revisions(self.b1, stop_revision=revno)
-            merge((dirname, -1), (dirname, 0), this_dir=dirname,
+            merge((checkout_dir, -1), (checkout_dir, 0), this_dir=checkout_dir,
                     check_clean=False, ignore_zero=True)
         return to_branch
 
-    def valid_apply_changeset(self, base_rev_id, cset, auto_commit=False):
+    def valid_apply_changeset(self, base_rev_id, cset,
+            auto_commit=False, checkout_dir=None):
         """Get the base revision, apply the changes, and make
         sure everything matches the builtin branch.
         """
         from apply_changeset import _apply_cset
 
-        to_branch = self.get_checkout(base_rev_id)
+        to_branch = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
         auto_committed = _apply_cset(to_branch, cset, auto_commit=auto_commit)
 
         info = cset[0]
@@ -469,10 +472,10 @@ class CSetTester(InTempDir):
 
         # Modified files
         open('b1/sub/dir/WithCaps.txt', 'ab').write('\nAdding some text\n')
-        #open('b1/sub/dir/trailing space ', 'ab').write('\nAdding some\nDOS format lines\n')
-        #self.b1.rename_one('sub/dir/trailing space ', 'sub/start and end space')
+        open('b1/sub/dir/trailing space ', 'ab').write('\nAdding some\nDOS format lines\n')
+        self.b1.rename_one('sub/dir/trailing space ', 'sub/ start and end space ')
         self.b1.commit('Modified files', rev_id='a@cset-0-5')
-        cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5')
+        cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5', checkout_dir='Broken')
         cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5', auto_commit=True)
         cset = self.get_valid_cset(None, 'a@cset-0-5', auto_commit=True)
 

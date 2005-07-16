@@ -131,10 +131,10 @@ class cmd_verify_changeset(Command):
         else:
             f = open(filename, 'U')
 
-        cset_info, cset_tree, cset_inv = read_changeset.read_changeset(f, b)
+        cset_info, cset_tree = read_changeset(f, b)
         print cset_info
         print cset_tree
-        pack_xml(cset_inv, sys.stdout)
+        pack_xml(cset_tree.inventory, sys.stdout)
 
 
 

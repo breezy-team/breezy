@@ -552,11 +552,13 @@ class ChangesetReader(object):
             else:
                 new_path = info[1]
 
-            file_id = tree.path2id(new_path)
+            file_id = tree.path2id(old_path)
+            print '%r %r %r' % (old_path, new_path, file_id)
             if len(info) > 2:
                 text_id = get_text_id(info[2], file_id, kind)
             else:
                 text_id = get_text_id(None, file_id, kind)
+            print '%r %r %r %r %r' % (old_path, new_path, file_id, text_id, tree._text_ids[file_id])
             tree.note_rename(old_path, new_path)
             if lines:
                 tree.note_patch(new_path, ''.join(lines))
@@ -876,6 +878,7 @@ class ChangesetTree(Tree):
                 text_id = self.get_text_id(file_id)
 
             name = basename(path)
+            print '%r %r %r %r' % (path, name, file_id, text_id)
             ie = InventoryEntry(file_id, name, kind, parent_id, text_id=text_id)
             if kind == 'directory':
                 ie.text_size, ie.text_sha1 = None, None
