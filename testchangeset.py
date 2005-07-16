@@ -258,7 +258,7 @@ class CTreeTester(unittest.TestCase):
 
 class CSetTester(InTempDir):
 
-    def get_valid_cset(self, base_rev_id, rev_id):
+    def get_valid_cset(self, base_rev_id, rev_id, auto_commit=False):
         """Create a changeset from base_rev_id -> rev_id in built-in branch.
         Make sure that the text generated is valid, and that it
         can be applied against the base, and generate the same information.
@@ -307,7 +307,7 @@ class CSetTester(InTempDir):
                 if sha1 is not None:
                     self.assertEqual(sha1, c_par.revision_sha1)
 
-        self.valid_apply_changeset(base_rev_id, cset)
+        self.valid_apply_changeset(base_rev_id, cset, auto_commit=auto_commit)
 
         return cset
 
@@ -334,14 +334,14 @@ class CSetTester(InTempDir):
                     check_clean=False, ignore_zero=True)
         return to_branch
 
-    def valid_apply_changeset(self, base_rev_id, cset):
+    def valid_apply_changeset(self, base_rev_id, cset, auto_commit=False):
         """Get the base revision, apply the changes, and make
         sure everything matches the builtin branch.
         """
         from apply_changeset import _apply_cset
 
         to_branch = self.get_checkout(base_rev_id)
-        _apply_cset(to_branch, cset)
+        auto_committed = _apply_cset(to_branch, cset, auto_commit=auto_commit)
 
         info = cset[0]
         for rev in info.real_revisions:
@@ -349,11 +349,47 @@ class CSetTester(InTempDir):
                 'Missing revision {%s} after applying changeset' 
                 % rev.revision_id)
 
+        self.assert_(info.target in to_branch.inventory_store)
+        for file_id, ie in to_branch.get_inventory(info.target).iter_entries():
+            if hasattr(ie, 'text_id') and ie.text_id is not None:
+                self.assert_(ie.text_id in to_branch.text_store)
+
+
+        # Don't call get_valid_cset(auto_commit=True) unless you
+        # expect the auto-commit to succeed.
+        self.assertEqual(auto_commit, auto_committed)
+
+        if auto_committed:
+            # We might also check that all revisions are in the
+            # history for some changeset applications which
+            # merge multiple revisions.
+            self.assertEqual(to_branch.last_patch(), info.target)
+        else:
+            self.assert_(info.target in to_branch.pending_merges())
+
+
         rev = info.real_revisions[-1]
         base_tree = self.b1.revision_tree(rev.revision_id)
         to_tree = to_branch.revision_tree(rev.revision_id)
         
         # TODO: make sure the target tree is identical to base tree
+        #       we might also check the working tree.
+
+        base_files = list(base_tree.list_files())
+        to_files = list(to_tree.list_files())
+        self.assertEqual(len(base_files), len(to_files))
+        self.assertEqual(base_files, to_files)
+
+        for path, status, kind, fileid in base_files:
+            # Check that the meta information is the same
+            self.assertEqual(base_tree.get_file_size(fileid),
+                    to_tree.get_file_size(fileid))
+            self.assertEqual(base_tree.get_file_sha1(fileid),
+                    to_tree.get_file_sha1(fileid))
+            # Check that the contents are the same
+            # This is pretty expensive
+            # self.assertEqual(base_tree.get_file(fileid).read(),
+            #         to_tree.get_file(fileid).read())
 
     def runTest(self):
         from bzrlib.branch import find_branch
@@ -398,8 +434,10 @@ class CSetTester(InTempDir):
         self.b1.commit('add whitespace', rev_id='a@cset-0-2')
 
         cset = self.get_valid_cset('a@cset-0-1', 'a@cset-0-2')
+        cset = self.get_valid_cset('a@cset-0-1', 'a@cset-0-2', auto_commit=True)
         # Check a rollup changeset
         cset = self.get_valid_cset(None, 'a@cset-0-2')
+        cset = self.get_valid_cset(None, 'a@cset-0-2', auto_commit=True)
 
         # Now delete entries
         self.b1.remove(['sub/sub/nonempty.txt'
@@ -408,8 +446,10 @@ class CSetTester(InTempDir):
         self.b1.commit('removed', rev_id='a@cset-0-3')
         
         cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-3')
+        cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-3', auto_commit=True)
         # Check a rollup changeset
         cset = self.get_valid_cset(None, 'a@cset-0-3')
+        cset = self.get_valid_cset(None, 'a@cset-0-3', auto_commit=True)
 
 
         # Now move the directory
@@ -419,6 +459,10 @@ class CSetTester(InTempDir):
         cset = self.get_valid_cset('a@cset-0-3', 'a@cset-0-4')
         # Check a rollup changeset
         cset = self.get_valid_cset(None, 'a@cset-0-4')
+        cset = self.get_valid_cset(None, 'a@cset-0-4', auto_commit=True)
+        cset = self.get_valid_cset('a@cset-0-1', 'a@cset-0-4', auto_commit=True)
+        cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-4', auto_commit=True)
+        cset = self.get_valid_cset('a@cset-0-3', 'a@cset-0-4', auto_commit=True)
 
 TEST_CLASSES = [
     CTreeTester,
