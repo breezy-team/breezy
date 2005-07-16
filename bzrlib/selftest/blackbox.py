@@ -285,7 +285,13 @@ class OldTests(ExternalBase):
 
         runbzr('log')
         runbzr('log -v')
-
+        runbzr('log -v --forward')
+        runbzr('log -m', retcode=1)
+        log_out = backtick('bzr log -m commit')
+        assert "this is my new commit" in log_out
+        assert "rename nested" not in log_out
+        assert 'revision-id' not in log_out
+        assert 'revision-id' in backtick('bzr log --show-ids -m commit')
 
 
         progress("file with spaces in name")
@@ -316,6 +322,13 @@ class OldTests(ExternalBase):
         # Can't create a branch if its parent doesn't exist
         runbzr('branch /unlikely/to/exist', retcode=1)
         runbzr('branch branch1 branch2')
+        assert exists('branch2')
+        assert exists('branch2/sub1')
+        assert exists('branch2/sub1/hello.txt')
+        
+        runbzr('branch --revision 0 branch1 branch3')
+        assert not exists('branch3/sub1/hello.txt')
+        runbzr('branch --revision 0..3 branch1 branch4', retcode=1)
 
         progress("pull")
         chdir('branch1')

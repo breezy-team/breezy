@@ -222,7 +222,7 @@ def deltas_for_log_forward(branch, which_revs):
 
         if not last_revno:
             if revno == 1:
-                last_tree = EmptyTree()
+                last_tree = EmptyTree(branch.get_root_id())
             else:
                 last_revno = revno - 1
                 last_revision_id = branch.revision_history()[last_revno]
