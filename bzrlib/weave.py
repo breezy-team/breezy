@@ -56,15 +56,7 @@
 
 
 
-
-try:
-    set
-    frozenset
-except NameError:
-    from sets import Set, ImmutableSet
-    set = Set
-    frozenset = ImmutableSet
-    del Set, ImmutableSet
+from bzrlib.intset import IntSet
 
 
 
@@ -241,24 +233,8 @@ class Weave(object):
         return idx
 
 
-    def inclusions_bitset(self, versions):
-        i = 0
-        for v in versions:
-            i |= (1L << v)
-        v = max(versions)
-        while v >= 0:
-            if i & (1L << v):
-                # if v is included, include all its parents
-                for pv in self._v[v]:
-                    i |= (1L << pv)
-            v -= 1
-        return i
-
-
     def inclusions(self, versions):
         """Return set of all ancestors of given version(s)."""
-        from bzrlib.intset import IntSet
-        
         i = IntSet(versions)
         v = max(versions)
         try:
@@ -274,8 +250,6 @@ class Weave(object):
 
     def minimal_parents(self, version):
         """Find the minimal set of parents for the version."""
-        from bzrlib.intset import IntSet
-        
         included = self._v[version]
         if not included:
             return []
@@ -300,7 +274,7 @@ class Weave(object):
         if parents:
             self._v.append(parents)
         else:
-            self._v.append(frozenset())
+            self._v.append(IntSet())
 
 
     def _check_lines(self, text):
@@ -344,7 +318,7 @@ class Weave(object):
         """
         
         istack = []
-        dset = 0L
+        dset = IntSet()
 
         lineno = 0         # line of weave, 0-based
 
@@ -357,13 +331,10 @@ class Weave(object):
                 elif c == '}':
                     oldv = istack.pop()
                 elif c == '[':
-                    vs = (1L << v)
-                    assert not (dset & vs)
-                    dset |= vs
+                    assert v not in dset
+                    dset.add(v)
                 elif c == ']':
-                    vs = (1L << v)
-                    assert dset & vs
-                    dset ^= vs
+                    dset.remove(v)
                 else:
                     raise WeaveFormatError('unexpected instruction %r'
                                            % v)
@@ -387,7 +358,7 @@ class Weave(object):
         included = self.inclusions(versions)
 
         istack = []
-        dset = set()
+        dset = IntSet()
 
         lineno = 0         # line of weave, 0-based
 
@@ -442,7 +413,6 @@ class Weave(object):
 
     def mash_iter(self, included):
         """Return composed version of multiple included versions."""
-        included = frozenset(included)
         for origin, lineno, text in self._extract(included):
             yield text
 
@@ -577,17 +547,16 @@ class Weave(object):
 
         Weave lines present in none of them are skipped entirely.
         """
-        inc_a = self.inclusions_bitset([ver_a])
-        inc_b = self.inclusions_bitset([ver_b])
+        inc_a = self.inclusions([ver_a])
+        inc_b = self.inclusions([ver_b])
         inc_c = inc_a & inc_b
 
         for lineno, insert, deleteset, line in self._walk():
-            insertset = (1L << insert)
             if deleteset & inc_c:
                 # killed in parent; can't be in either a or b
                 # not relevant to our work
                 yield 'killed-base', line
-            elif insertset & inc_c:
+            elif insert in inc_c:
                 # was inserted in base
                 killed_a = bool(deleteset & inc_a)
                 killed_b = bool(deleteset & inc_b)
@@ -599,13 +568,13 @@ class Weave(object):
                     yield 'killed-b', line
                 else:
                     yield 'unchanged', line
-            elif insertset & inc_a:
+            elif insert in inc_a:
                 if deleteset & inc_a:
                     yield 'ghost-a', line
                 else:
                     # new in A; not in B
                     yield 'new-a', line
-            elif insertset & inc_b:
+            elif insert in inc_b:
                 if deleteset & inc_b:
                     yield 'ghost-b', line
                 else:
