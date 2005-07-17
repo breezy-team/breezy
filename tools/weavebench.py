@@ -29,10 +29,10 @@ import hotshot, hotshot.stats
 import sys
 
 WEAVE_NAME = "bench.weave"
-NUM_REVS = 10000
+NUM_REVS = 2000
 
 def build():
-    pb = ProgressBar()
+    pb = ProgressBar(show_eta=False)
 
     wf = Weave()
     lines = []
@@ -89,6 +89,15 @@ def profileit(fn):
             
 
 if '-p' in sys.argv[1:]:
+    opt_p = True
+    sys.argv.remove('-p')
+else:
+    opt_p = False
+
+if len(sys.argv) > 1:
+    NUM_REVS = int(sys.argv[1])
+
+if opt_p:
     profileit(build)
 else:
     build()
