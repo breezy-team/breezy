@@ -19,6 +19,11 @@
 # Author: Martin Pool <mbp@canonical.com>
 
 
+# Somewhat surprisingly, it turns out that this is much slower than
+# simply storing the ints in a set() type.  Python's performance model
+# is very different to that of C.
+
+
 class IntSet(Exception):
     """Faster set-like class storing only whole numbers.
 
@@ -59,7 +64,7 @@ class IntSet(Exception):
     [10]
     
     """
-    # __slots__ = ['_val']
+    __slots__ = ['_val']
 
     def __init__(self, values=None, bitmask=0L):
         """Create a new intset.
