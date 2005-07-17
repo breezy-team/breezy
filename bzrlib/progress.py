@@ -115,6 +115,8 @@ class ProgressBar(object):
         self.show_bar = show_bar
         self.show_count = show_count
 
+        self.width = _width()
+        
 
     def tick(self):
         self.update(self.last_msg, self.last_cnt, self.last_total)
@@ -141,8 +143,6 @@ class ProgressBar(object):
 
         self.last_update = now
         
-        width = _width()
-
         if total_cnt:
             assert current_cnt <= total_cnt
         if current_cnt:
@@ -182,7 +182,7 @@ class ProgressBar(object):
 
         if self.show_bar:
             # progress bar, if present, soaks up all remaining space
-            cols = width - 1 - len(msg) - len(spin_str) - len(pct_str) \
+            cols = self.width - 1 - len(msg) - len(spin_str) - len(pct_str) \
                    - len(eta_str) - len(count_str) - 3
 
             if total_cnt:
@@ -203,8 +203,8 @@ class ProgressBar(object):
 
         m = spin_str + bar_str + msg + count_str + pct_str + eta_str
 
-        assert len(m) < width
-        self.to_file.write('\r' + m.ljust(width - 1))
+        assert len(m) < self.width
+        self.to_file.write('\r' + m.ljust(self.width - 1))
         #self.to_file.flush()
             
 
@@ -212,7 +212,7 @@ class ProgressBar(object):
         if self.suppressed:
             return
         
-        self.to_file.write('\r%s\r' % (' ' * (_width() - 1)))
+        self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
         #self.to_file.flush()        
     
 
