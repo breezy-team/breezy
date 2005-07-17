@@ -61,13 +61,13 @@ class IntSet(Exception):
     """
     # __slots__ = ['_val']
 
-    def __init__(self, values=None):
+    def __init__(self, values=None, bitmask=0L):
         """Create a new intset.
 
         values
             If specified, an initial collection of values.
         """
-        self._val = 0
+        self._val = bitmask
         if values != None:
             self.update(values)
 
@@ -84,8 +84,57 @@ class IntSet(Exception):
         return bool(self._val)
 
 
+    def __len__(self):
+        """Number of elements in set.
+
+        >>> len(IntSet(xrange(20000)))
+        20000
+        """
+        v = self._val
+        c = 0
+        while v:
+            if v & 1:
+                c += 1
+            v = v >> 1
+        return c
+
+
+    def __and__(self, other):
+        """Set intersection.
+
+        >>> a = IntSet(range(10))
+        >>> len(a)
+        10
+        >>> b = a & a
+        >>> b == a
+        True
+        >>> a = a & IntSet([5, 7, 11, 13])
+        >>> list(a)
+        [5, 7]
+        """
+        if not isinstance(other, IntSet):
+            raise NotImplementedError(type(other))
+        return IntSet(bitmask=(self._val & other._val))
+
+
+    def __or__(self, other):
+        """Set union.
+
+        >>> a = IntSet(range(10)) | IntSet([5, 15, 25])
+        >>> len(a)
+        12
+        """
+        if not isinstance(other, IntSet):
+            raise NotImplementedError(type(other))
+        return IntSet(bitmask=(self._val | other._val))        
+
+
     def __eq__(self, other):
-        """Comparison."""
+        """Comparison.
+
+        >>> IntSet(range(3)) == IntSet([2, 0, 1])
+        True
+        """
         if isinstance(other, IntSet):
             return self._val == other._val
         else:
