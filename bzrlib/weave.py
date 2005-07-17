@@ -25,6 +25,9 @@
 # with intset (r926) 2000 versions in 93s !!!
 # better to just use plain sets.
 
+# making _extract build and return a list, rather than being a generator
+# takes 37.94s
+
 # TODO: Perhaps have copy method for Weave instances?
 
 # XXX: If we do weaves this way, will a merge still behave the same
@@ -365,6 +368,8 @@ class Weave(object):
 
         isactive = None
 
+        result = []
+
         WFE = WeaveFormatError
 
         for l in self._l:
@@ -391,7 +396,7 @@ class Weave(object):
                 if isactive is None:
                     isactive = (not dset) and istack and (istack[-1] in included)
                 if isactive:
-                    yield istack[-1], lineno, l
+                    result.append((istack[-1], lineno, l))
             lineno += 1
 
         if istack:
@@ -400,6 +405,9 @@ class Weave(object):
         if dset:
             raise WFE("unclosed deletion blocks at end of weave",
                                    dset)
+
+        return result
+    
 
 
     def get_iter(self, version):
