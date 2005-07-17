@@ -67,6 +67,7 @@ except NameError:
     del Set, ImmutableSet
 
 
+
 class WeaveError(Exception):
     """Exception in processing weave"""
 
@@ -256,7 +257,9 @@ class Weave(object):
 
     def inclusions(self, versions):
         """Return set of all ancestors of given version(s)."""
-        i = set(versions)
+        from bzrlib.intset import IntSet
+        
+        i = IntSet(versions)
         v = max(versions)
         try:
             while v >= 0:
@@ -271,6 +274,8 @@ class Weave(object):
 
     def minimal_parents(self, version):
         """Find the minimal set of parents for the version."""
+        from bzrlib.intset import IntSet
+        
         included = self._v[version]
         if not included:
             return []
@@ -279,7 +284,7 @@ class Weave(object):
         li.sort(reverse=True)
 
         mininc = []
-        gotit = set()
+        gotit = IntSet()
 
         for pv in li:
             if pv not in gotit:

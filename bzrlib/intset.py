@@ -1,0 +1,167 @@
+#! /usr/bin/python
+
+# Copyright (C) 2005 Canonical Ltd
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+# Author: Martin Pool <mbp@canonical.com>
+
+
+class IntSet(Exception):
+    """Faster set-like class storing only whole numbers.
+
+    Despite the name this stores long integers happily, but negative
+    values are not allowed.
+
+    >>> a = IntSet([0, 2, 5])
+    >>> bool(a)
+    True
+    >>> 2 in a
+    True
+    >>> 4 in a
+    False
+    >>> a.add(4)
+    >>> 4 in a
+    True
+
+    >>> b = IntSet()
+    >>> not b
+    True
+    >>> b.add(10)
+    >>> 10 in a
+    False
+    >>> a.update(b)
+    >>> 10 in a
+    True
+    >>> a.update(range(5))
+    >>> 3 in a
+    True
+
+    Being a set, duplicates are ignored:
+    >>> a = IntSet()
+    >>> a.add(10)
+    >>> a.add(10)
+    >>> 10 in a
+    True
+    >>> list(a)
+    [10]
+    
+    """
+    # __slots__ = ['_val']
+
+    def __init__(self, values=None):
+        """Create a new intset.
+
+        values
+            If specified, an initial collection of values.
+        """
+        self._val = 0
+        if values != None:
+            self.update(values)
+
+
+    def __nonzero__(self):
+        """IntSets are false if empty, otherwise True.
+
+        >>> bool(IntSet())
+        False
+        
+        >>> bool(IntSet([0]))
+        True
+        """
+        return bool(self._val)
+
+
+    def __eq__(self, other):
+        """Comparison."""
+        if isinstance(other, IntSet):
+            return self._val == other._val
+        else:
+            return False
+
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+
+    def __contains__(self, i):
+        assert i >= 0
+        return self._val & (1L << i)
+
+
+    def __iter__(self):
+        """Return contents of set.
+
+        >>> list(IntSet())
+        []
+        >>> list(IntSet([0, 1, 5, 7]))
+        [0, 1, 5, 7]
+        """
+        v = self._val
+        o = 0
+        # XXX: This is a bit slow
+        while v:
+            if v & 1:
+                yield o
+            v = v >> 1
+            o = o + 1
+
+        
+    def update(self, to_add):
+        """Add all the values from the sequence or intset to_add"""
+        if isinstance(to_add, IntSet):
+            self._val |= to_add._val
+        else:
+            for i in to_add:
+                assert i >= 0
+                self._val |= (1L << i)
+
+
+    def add(self, to_add):
+        assert 0 <= to_add
+        self._val |= (1L << to_add)
+
+
+    def remove(self, to_remove):
+        """Remove one value from the set.
+
+        Raises KeyError if the value is not present.
+
+        >>> a = IntSet([10])
+        >>> a.remove(9)
+        Traceback (most recent call last):
+          File "/usr/lib/python2.4/doctest.py", line 1243, in __run
+            compileflags, 1) in test.globs
+          File "<doctest __main__.IntSet.remove[1]>", line 1, in ?
+            a.remove(9)
+        KeyError: 9
+        >>> a.remove(10)
+        >>> not a
+        True
+        """
+        assert 0 <= to_remove
+        m = 1L << to_remove
+        if not self._val & m:
+            raise KeyError(to_remove)
+        self._val ^= m
+        
+        
+            
+    
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
+    

@@ -26,7 +26,7 @@ import testsweet
 from bzrlib.weave import Weave, WeaveFormatError
 from bzrlib.weavefile import write_weave, read_weave
 from pprint import pformat
-
+from bzrlib.intset import IntSet
 
 
 try:
@@ -118,7 +118,7 @@ class DeltaAdd(TestBase):
                           ('}', 0),
                           ])
 
-        changes = list(k._delta(set([0]),
+        changes = list(k._delta(IntSet([0]),
                                 ['line 1',
                                  'new line']))
 
@@ -522,8 +522,8 @@ class DivergedIncludes(TestBase):
                          ["first line",
                           "alternative second line"])
 
-        self.assertEqual(k.inclusions([2]),
-                         set([0, 2]))
+        self.assertEqual(list(k.inclusions([2])),
+                         [0, 2])
 
 
 
@@ -571,8 +571,8 @@ class Merge(TestBase):
                           (2, 'line from 2'),
                           ])
 
-        self.assertEqual(k.inclusions([3]),
-                         set([0, 1, 2, 3]))
+        self.assertEqual(list(k.inclusions([3])),
+                         [0, 1, 2, 3])
 
         self.log('k._l=' + pformat(k._l))
 
