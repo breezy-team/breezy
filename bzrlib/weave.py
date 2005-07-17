@@ -21,6 +21,10 @@
 
 """Weave - storage of related text file versions"""
 
+# before intset (r923) 2000 versions in 41.5s
+# with intset (r926) 2000 versions in 93s !!!
+# better to just use plain sets.
+
 # TODO: Perhaps have copy method for Weave instances?
 
 # XXX: If we do weaves this way, will a merge still behave the same
@@ -54,9 +58,6 @@
 # description of which revisions include it.  Nice for checking all
 # shas in parallel.
 
-
-
-from bzrlib.intset import IntSet
 
 
 
@@ -235,7 +236,7 @@ class Weave(object):
 
     def inclusions(self, versions):
         """Return set of all ancestors of given version(s)."""
-        i = IntSet(versions)
+        i = set(versions)
         v = max(versions)
         try:
             while v >= 0:
@@ -258,7 +259,7 @@ class Weave(object):
         li.sort(reverse=True)
 
         mininc = []
-        gotit = IntSet()
+        gotit = set()
 
         for pv in li:
             if pv not in gotit:
@@ -274,7 +275,7 @@ class Weave(object):
         if parents:
             self._v.append(parents)
         else:
-            self._v.append(IntSet())
+            self._v.append(set())
 
 
     def _check_lines(self, text):
@@ -318,7 +319,7 @@ class Weave(object):
         """
         
         istack = []
-        dset = IntSet()
+        dset = set()
 
         lineno = 0         # line of weave, 0-based
 
@@ -358,7 +359,7 @@ class Weave(object):
         included = self.inclusions(versions)
 
         istack = []
-        dset = IntSet()
+        dset = set()
 
         lineno = 0         # line of weave, 0-based
 
