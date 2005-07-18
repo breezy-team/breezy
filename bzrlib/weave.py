@@ -226,9 +226,11 @@ class Weave(object):
         
             return new_version
 
-        if len(parents) == 1 and sha1 == self._sha1s[parents[0]]:
-            # special case: same as the single parent
-            return new_version
+        if len(parents) == 1:
+            pv = list(parents)[0]
+            if sha1 == self._sha1s[pv]:
+                # special case: same as the single parent
+                return new_version
             
 
         ancestors = self.inclusions(parents)
@@ -274,7 +276,6 @@ class Weave(object):
             i1 = basis_lineno[i1]
             i2 = basis_lineno[i2]
 
-            assert 0 <= i1 <= i2 <= len(old_l)
             assert 0 <= j1 <= j2 <= len(text)
 
             #print tag, i1, i2, j1, j2
