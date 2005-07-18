@@ -5,6 +5,7 @@ information.
 """
 
 from bzrlib.trace import mutter
+from bzrlib.errors import BzrError
 
 _protocol_handlers = {
 }
@@ -20,10 +21,13 @@ def register_transport(prefix, klass, override=True):
         mutter('registering transport: %s => %s' % (prefix, klass.__name__))
         _protocol_handlers[prefix] = klass
 
-class AsyncError(Exception):
+class TransportError(BzrError):
     pass
 
-class TransportNotPossibleError(Exception):
+class AsyncError(TransportError):
+    pass
+
+class TransportNotPossibleError(TransportError):
     """This is for transports where a specific function is explicitly not
     possible. Such as pushing files to an HTTP server.
     """
@@ -243,6 +247,10 @@ class Transport(object):
         """Create a directory at the given path."""
         raise NotImplementedError
 
+    def mkdir_multi(self, relpaths, pb=None):
+        """Create a group of directories"""
+        return self._iterate_over(relpaths, self.mkdir, pb, 'mkdir', expand=False)
+
     def append(self, relpath, f, encode=False):
         """Append the text in the file-like or string object to 
         the supplied location.
@@ -377,6 +385,120 @@ def transport(base):
     # The default handler is the filesystem handler
     # which has a lookup of None
     return _protocol_handlers[None](base)
+
+def transport_test(tester, t):
+    """Test a transport object. Basically, it assumes that the
+    Transport object is connected to the current working directory.
+    So that whatever is done through the transport, should show
+    up in the working directory, and vice-versa.
+
+    This also tests to make sure that the functions work with both
+    generators and lists (assuming iter(list) is effectively a generator)
+    """
+    import tempfile, os
+    from local_transport import LocalTransport
+
+    # Test has
+    files = ['a', 'b', 'e', 'g']
+    tester.build_tree(files)
+    tester.assertEqual(t.has('a'), True)
+    tester.assertEqual(t.has('c'), False)
+    tester.assertEqual(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']),
+            [True, True, False, False, True, False, True, False])
+    tester.assertEqual(t.has_multi(iter(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
+            [True, True, False, False, True, False, True, False])
+
+    # Test get
+    tester.assertEqual(t.get('a').read(), open('a').read())
+    content_f = t.get_multi(files)
+    for path,f in zip(files, content_f):
+        tester.assertEqual(open(path).read(), f.read())
+
+    content_f = t.get_multi(iter(files))
+    for path,f in zip(files, content_f):
+        tester.assertEqual(open(path).read(), f.read())
+
+    tester.assertRaises(TransportError, t.get, 'c')
+    try:
+        files = list(t.get_multi(['a', 'b', 'c']))
+    except TransportError:
+        pass
+    else:
+        tester.fail('Failed to raise TransportError for missing file in get_multi')
+    try:
+        files = list(t.get_multi(iter(['a', 'b', 'c', 'e'])))
+    except TransportError:
+        pass
+    else:
+        tester.fail('Failed to raise TransportError for missing file in get_multi')
+
+    # Test put
+    t.put('c', 'some text for c\n')
+    tester.assert_(os.path.exists('c'))
+    tester.assertEqual(open('c').read(), 'some text for c\n')
+    # Make sure 'has' is updated
+    tester.assertEqual(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']),
+            [True, True, True, False, True, False, True, False])
+    # Put also replaces contents
+    tester.assertEqual(t.put_multi([('a', 'new\ncontents for\na\n'),
+                                  ('d', 'contents\nfor d\n')]),
+                     2)
+    tester.assertEqual(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']),
+            [True, True, True, True, True, False, True, False])
+    tester.assertEqual(open('a').read(), 'new\ncontents for\na\n')
+    tester.assertEqual(open('d').read(), 'contents\nfor d\n')
+
+    tester.assertEqual(t.put_multi(iter([('a', 'diff\ncontents for\na\n'),
+                                  ('d', 'another contents\nfor d\n')])),
+                     2)
+    tester.assertEqual(open('a').read(), 'diff\ncontents for\na\n')
+    tester.assertEqual(open('d').read(), 'another contents\nfor d\n')
+
+    tester.assertRaises(TransportError, t.put, 'path/doesnt/exist/c')
+
+    # Test mkdir
+    os.mkdir('dir_a')
+    tester.assertEqual(t.has('dir_a'), True)
+    tester.assertEqual(t.has('dir_b'), False)
+
+    t.mkdir('dir_b')
+    tester.assertEqual(t.has('dir_b'), True)
+    tester.assert_(os.path.isdir('dir_b'))
+
+    t.mkdir_multi(['dir_c', 'dir_d'])
+    tester.assertEqual(t.has_multi(['dir_a', 'dir_b', 'dir_c', 'dir_d', 'dir_e', 'dir_b']),
+            [True, True, True, True, False, True])
+    for d in ['dir_a', 'dir_b', 'dir_c', 'dir_d']:
+        tester.assert_(os.path.isdir(d))
+
+    tester.assertRaises(TransportError, t.mkdir, 'path/doesnt/exist')
+    tester.assertRaises(TransportError, t.mkdir, 'dir_a') # Creating a directory again should fail
+
+    # This one may fail for some transports.
+    # Specifically, I know RsyncTransport doesn't check for the directory
+    # existing, before it creates it. The reason is that it seems to
+    # expensive, it does check to see if the local directory already exists,
+    # and will throw an exception for that
+    # FIXME: Make this work everywhere
+    #os.mkdir('dir_e')
+    #tester.assertRaises(TransportError, t.mkdir, 'dir_e')
+
+    # Test get/put in sub-directories
+    tester.assertEqual(t.put_multi([('dir_a/a', 'contents of dir_a/a'),
+                                    ('dir_b/b', 'contents of dir_b/b')]
+                      , 2))
+    for f in ('dir_a/a', 'dir_b/b'):
+        tester.assertEqual(t.get(f).read(), open(f).read())
+
+    # Test copy_to
+    dtmp = tempfile.mkdtemp(dir='.', prefix='test-transport-')
+    dtmp_base = os.path.basename(dtmp)
+    local_t = LocalTransport(dtmp)
+
+    files = ['a', 'b', 'c', 'd']
+    t.copy_to(files, local_t)
+    for f in files:
+        tester.assertEquals(open(f).read(), open(os.path.join(dtmp_base, f)).read())
 
 # Local transport should always be initialized
 import local_transport

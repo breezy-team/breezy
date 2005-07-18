@@ -317,27 +317,26 @@ class Branch(object):
         from bzrlib.xml import pack_xml
         from cStringIO import StringIO
         
-        self._transport.mkdir(self._rel_controlfilename([]))
-        self._transport.put(self._rel_controlfilename('README'),
-            "This is a Bazaar-NG control directory.\n"
-            "Do not change any files in this directory.\n")
-        self._transport.put(self._rel_controlfilename('branch-format'),
-            BZR_BRANCH_FORMAT)
-        for d in ('text-store', 'inventory-store', 'revision-store'):
-            self._transport.mkdir(self._rel_controlfilename(d))
-        for f in ('revision-history', 'merged-patches',
-                  'pending-merged-patches', 'branch-name',
-                  'branch-lock',
-                  'pending-merges'):
-            self._transport.put(self._rel_controlfilename(f), '')
-        mutter('created control directory in ' + self._transport.base)
-
-        # TODO: Try and do this with self._transport.put() instead
+        # Create an empty inventory to store
         sio = StringIO()
         pack_xml(Inventory(), sio)
-        sio.seek(0)
-        self.put_controlfile('inventory', sio, encode=False)
 
+        dirs = [[], 'text-store', 'inventory-store', 'revision-store']
+        files = [('README', 
+            "This is a Bazaar-NG control directory.\n"
+            "Do not change any files in this directory.\n"),
+            ('branch-format', BZR_BRANCH_FORMAT),
+            ('revision-history', ''),
+            ('merged-patches', ''),
+            ('pending-merged-patches', ''),
+            ('branch-name', ''),
+            ('branch-lock', ''),
+            ('pending-merges', ''),
+            ('inventory', sio.getvalue())
+        ]
+        self._transport.mkdir_multi([self._rel_controlfilename(d) for d in dirs])
+        self._transport.put_multi([(self._rel_controlfilename(f[0]),f[1]) for f in files])
+        mutter('created control directory in ' + self._transport.base)
 
     def _check_format(self):
         """Check this branch format is supported.
