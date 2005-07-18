@@ -169,7 +169,7 @@ class Weave(object):
         List of hex SHA-1 of each version, or None if not recorded.
     """
 
-    ## __slots__ = ['_l', '_v', '_sha1s']
+    __slots__ = ['_l', '_v', '_sha1s']
     
     def __init__(self):
         self._l = []
