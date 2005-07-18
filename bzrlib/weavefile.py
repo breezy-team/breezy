@@ -125,7 +125,7 @@ def read_weave_v1(f):
         if l == 'W\n':
             break
         elif l.startswith('. '):
-            w._l.append(intern(l[2:]))  # include newline
+            w._l.append(l[2:])  # include newline
         elif l.startswith(', '):
             w._l.append(l[2:-1])        # exclude newline
         else:
