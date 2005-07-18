@@ -23,13 +23,15 @@ import bzrlib.branch
 from bzrlib.weave import Weave
 from bzrlib.weavefile import write_weave
 from bzrlib.progress import ProgressBar
-from random import randrange, randint
+from random import randrange, randint, seed
 import tempfile
 import hotshot, hotshot.stats
 import sys
 
 WEAVE_NAME = "bench.weave"
 NUM_REVS = 2000
+
+seed(0)
 
 def build():
     pb = ProgressBar(show_eta=False)
