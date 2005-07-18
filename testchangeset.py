@@ -322,6 +322,10 @@ class CSetTester(InTempDir):
 
         if checkout_dir is None:
             checkout_dir = tempfile.mkdtemp(prefix='test-branch-', dir='.')
+        else:
+            import os
+            if not os.path.exists(checkout_dir):
+                os.mkdir(checkout_dir)
         to_branch = find_branch(checkout_dir, init=True)
         # TODO: Once root ids are established, remove this if
         if hasattr(self.b1, 'get_root_id'):
@@ -475,7 +479,7 @@ class CSetTester(InTempDir):
         open('b1/sub/dir/trailing space ', 'ab').write('\nAdding some\nDOS format lines\n')
         self.b1.rename_one('sub/dir/trailing space ', 'sub/ start and end space ')
         self.b1.commit('Modified files', rev_id='a@cset-0-5')
-        cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5', checkout_dir='Broken')
+        cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5')
         cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5', auto_commit=True)
         cset = self.get_valid_cset(None, 'a@cset-0-5', auto_commit=True)
 
