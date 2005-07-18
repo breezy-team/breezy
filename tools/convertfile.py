@@ -21,8 +21,8 @@
 
 import sys
 import bzrlib.branch
-from weave import Weave
-from weavefile import write_weave
+from bzrlib.weave import Weave
+from bzrlib.weavefile import write_weave
 
 import hotshot
 import tempfile
@@ -62,7 +62,7 @@ def convert():
         last_lines = text
         
         weave_id = wf.add(parents, text)
-        parents.add(weave_id)
+        parents = [weave_id]
 
         print '  %4d lines' % len(text)
 
