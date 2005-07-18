@@ -317,7 +317,7 @@ class Branch(object):
         from bzrlib.xml import pack_xml
         from cStringIO import StringIO
         
-        self._transport.mkdir(self.controlfilename([]))
+        self._transport.mkdir(self._rel_controlfilename([]))
         self._transport.put(self._rel_controlfilename('README'),
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.\n")
