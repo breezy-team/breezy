@@ -526,12 +526,15 @@ class cmd_pull(Command):
 
     def run(self, location=None, revision=None):
         from bzrlib.merge import merge
+        from bzrlib.transport import TransportError
         import errno
         
         br_to = find_branch('.')
         stored_loc = None
         try:
             stored_loc = br_to.controlfile("x-pull", "rb").read().rstrip('\n')
+        except TransportError, e:
+            pass
         except IOError, e:
             if e.errno != errno.ENOENT:
                 raise
@@ -1810,24 +1813,25 @@ def main(argv):
             finally:
                 # do this here inside the exception wrappers to catch EPIPE
                 sys.stdout.flush()
-        except BzrError, e:
-            quiet = isinstance(e, (BzrCommandError))
-            _report_exception('error: ' + e.args[0], quiet=quiet)
-            if len(e.args) > 1:
-                for h in e.args[1]:
-                    # some explanation or hints
-                    log_error('  ' + h)
-            return 1
-        except AssertionError, e:
-            msg = 'assertion failed'
-            if str(e):
-                msg += ': ' + str(e)
-            _report_exception(msg)
-            return 2
-        except KeyboardInterrupt, e:
-            _report_exception('interrupted', quiet=True)
-            return 2
+        #except BzrError, e:
+        #    quiet = isinstance(e, (BzrCommandError))
+        #    _report_exception('error: ' + e.args[0], quiet=quiet)
+        #    if len(e.args) > 1:
+        #        for h in e.args[1]:
+        #            # some explanation or hints
+        #            log_error('  ' + h)
+        #    return 1
+        #except AssertionError, e:
+        #    msg = 'assertion failed'
+        #    if str(e):
+        #        msg += ': ' + str(e)
+        #    _report_exception(msg)
+        #    return 2
+        #except KeyboardInterrupt, e:
+        #    _report_exception('interrupted', quiet=True)
+        #    return 2
         except Exception, e:
+            raise
             import errno
             quiet = False
             if (isinstance(e, IOError) 
