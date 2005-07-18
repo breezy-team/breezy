@@ -105,10 +105,9 @@ def read_weave_v1(f):
             ver += 1
 
             if len(l) > 2:
-                included = map(int, l[2:].split(' '))
-                w._addversion(included)
+                w._v.append(frozenset(map(int, l[2:].split(' '))))
             else:
-                w._addversion(None)
+                w._v.append(frozenset())
 
             l = f.readline()[:-1]
             assert l.startswith('1 ')

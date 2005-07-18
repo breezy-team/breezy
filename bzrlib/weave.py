@@ -210,7 +210,7 @@ class Weave(object):
         del s
 
         # if we abort after here the weave will be corrupt
-        self._addversion(parents)
+        self._v.append(frozenset(parents))
         self._sha1s.append(sha1)
 
             
@@ -335,12 +335,6 @@ class Weave(object):
         assert mininc[-1] < version
         return mininc
 
-
-    def _addversion(self, parents):
-        if parents:
-            self._v.append(parents)
-        else:
-            self._v.append(set())
 
 
     def _check_lines(self, text):
