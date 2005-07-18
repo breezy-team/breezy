@@ -106,38 +106,6 @@ class StoreTwo(TestBase):
 
 
 
-class DeltaAdd(TestBase):
-    """Detection of changes prior to inserting new revision."""
-    def runTest(self):
-        k = Weave()
-        k.add([], ['line 1'])
-
-        self.assertEqual(k._l,
-                         [('{', 0),
-                          'line 1',
-                          ('}', 0),
-                          ])
-
-        changes = list(k._delta(IntSet([0]),
-                                ['line 1',
-                                 'new line']))
-
-        self.log('raw changes: ' + pformat(changes))
-
-        # currently there are 3 lines in the weave, and we insert after them
-        self.assertEquals(changes,
-                          [(3, 3, ['new line'])])
-
-        changes = k._delta(set([0]),
-                           ['top line',
-                            'line 1'])
-        
-        self.assertEquals(list(changes),
-                          [(1, 1, ['top line'])])
-
-        self.check_read_write(k)
-
-
 class InvalidAdd(TestBase):
     """Try to use invalid version number during add."""
     def runTest(self):
@@ -699,6 +667,11 @@ class MergeCases(TestBase):
         w.add([], map(addcrlf, base))
         w.add([0], map(addcrlf, a))
         w.add([0], map(addcrlf, b))
+
+        self.log('weave is:')
+        tmpf = StringIO()
+        write_weave(w, tmpf)
+        self.log(tmpf.getvalue())
 
         self.log('merge plan:')
         p = list(w.plan_merge(1, 2))
