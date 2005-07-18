@@ -71,12 +71,6 @@
 # properly nested, that there is no text outside of an insertion, that
 # insertions or deletions are not repeated, etc.
 
-# TODO: Make the info command just show info, not extract everything:
-# it can be much faster.
-
-# TODO: Perhaps use long integers as sets instead of set objects; may
-# be faster.
-
 # TODO: Parallel-extract that passes back each line along with a
 # description of which revisions include it.  Nice for checking all
 # shas in parallel.
@@ -498,6 +492,10 @@ class Weave(object):
         return l
 
 
+    def __len__(self):
+        return self.numversions()
+
+
     def check(self, progress_bar=None):
         # check no circular inclusions
         for version in range(self.numversions()):
@@ -672,34 +670,16 @@ class Weave(object):
 
 
 
-def weave_info(filename, out):
+def weave_info(w):
     """Show some text information about the weave."""
-    from weavefile import read_weave
-    wf = file(filename, 'rb')
-    w = read_weave(wf)
-    # FIXME: doesn't work on pipes
-    weave_size = wf.tell()
-    print >>out, "weave file size %d bytes" % weave_size
-    print >>out, "weave contains %d versions" % len(w._parents)
-
-    total = 0
-    print '%6s %6s %8s %40s %20s' % ('ver', 'lines', 'bytes', 'sha1', 'parents')
-    for i in (6, 6, 8, 40, 20):
+    print '%6s %40s %20s' % ('ver', 'sha1', 'parents')
+    for i in (6, 40, 20):
         print '-' * i,
     print
-    for i in range(len(w._parents)):
-        text = w.get(i)
-        lines = len(text)
-        bytes = sum((len(a) for a in text))
+    for i in range(w.numversions()):
         sha1 = w._sha1s[i]
-        print '%6d %6d %8d %40s' % (i, lines, bytes, sha1),
-        for pv in w._parents[i]:
-            print pv,
-        print
-        total += bytes
+        print '%6d %40s %s' % (i, sha1, ' '.join(map(str, w._parents[i])))
 
-    print >>out, "versions total %d bytes" % total
-    print >>out, "compression ratio %.3f" % (float(total)/float(weave_size))
 
 
 def usage():
@@ -803,7 +783,7 @@ def main(argv):
                 lasto = origin
                 
     elif cmd == 'info':
-        weave_info(argv[2], sys.stdout)
+        weave_info(readit())
         
     elif cmd == 'check':
         w = readit()
