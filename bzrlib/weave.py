@@ -682,6 +682,33 @@ def weave_info(w):
 
 
 
+def weave_stats(weave_file):
+    from bzrlib.progress import ProgressBar
+    from bzrlib.weavefile import read_weave
+
+    pb = ProgressBar()
+
+    wf = file(weave_file, 'rb')
+    w = read_weave(wf)
+    # FIXME: doesn't work on pipes
+    weave_size = wf.tell()
+
+    total = 0
+    vers = len(w)
+    for i in range(vers):
+        pb.update('checking sizes', i, vers)
+        for line in w.get_iter(i):
+            total += len(line)
+
+    pb.clear()
+
+    print 'versions          %9d' % vers
+    print 'weave file        %9d bytes' % weave_size
+    print 'total contents    %9d bytes' % total
+    print 'compression ratio %9.2fx' % (float(total) / float(weave_size))
+
+
+
 def usage():
     print """bzr weave tool
 
@@ -784,6 +811,9 @@ def main(argv):
                 
     elif cmd == 'info':
         weave_info(readit())
+
+    elif cmd == 'stats':
+        weave_stats(argv[2])
         
     elif cmd == 'check':
         w = readit()
