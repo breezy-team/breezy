@@ -28,6 +28,26 @@
 # making _extract build and return a list, rather than being a generator
 # takes 37.94s
 
+# with python -O, r923 does 2000 versions in 36.87s
+
+# with optimizations to avoid mutating lists - 35.75!  I guess copying
+# all the elements every time costs more than the small manipulations.
+# a surprisingly small change.
+
+# r931, which avoids using a generator for extract, does 36.98s
+
+# with memoized inclusions, takes 41.49s; not very good
+
+# with slots, takes 37.35s; without takes 39.16, a bit surprising
+
+# with the delta calculation mixed in with the add method, rather than
+# separated, takes 36.78s
+
+# with delta folded in and mutation of the list, 36.13s
+
+# with all this and simplification of add code, 33s 
+
+
 # TODO: Perhaps have copy method for Weave instances?
 
 # XXX: If we do weaves this way, will a merge still behave the same
@@ -148,6 +168,9 @@ class Weave(object):
     _sha1s
         List of hex SHA-1 of each version, or None if not recorded.
     """
+
+    ## __slots__ = ['_l', '_v', '_sha1s']
+    
     def __init__(self):
         self._l = []
         self._v = []
@@ -175,66 +198,105 @@ class Weave(object):
             
         text
             Sequence of lines to be added in the new version."""
-        ## self._check_versions(parents)
+
+        self._check_versions(parents)
         ## self._check_lines(text)
-        idx = len(self._v)
+        new_version = len(self._v)
 
         import sha
         s = sha.new()
-        for l in text:
-            s.update(l)
+        map(s.update, text)
         sha1 = s.hexdigest()
         del s
 
-        # TODO: It'd probably be faster to append things on to a new
-        # list rather than modifying the existing one, which is likely
-        # to cause a lot of copying.
-
-        if parents:
-            ancestors = self.inclusions(parents)
-            delta = self._delta(ancestors, text)
-
-            # offset gives the number of lines that have been inserted
-            # into the weave up to the current point; if the original edit instruction
-            # says to change line A then we actually change (A+offset)
-            offset = 0
-
-            for i1, i2, newlines in delta:
-                assert 0 <= i1
-                assert i1 <= i2
-                assert i2 <= len(self._l)
-
-                # the deletion and insertion are handled separately.
-                # first delete the region.
-                if i1 != i2:
-                    self._l.insert(i1+offset, ('[', idx))
-                    self._l.insert(i2+offset+1, (']', idx))
-                    offset += 2
-                    # is this OK???
-
-                if newlines:
-                    # there may have been a deletion spanning up to
-                    # i2; we want to insert after this region to make sure
-                    # we don't destroy ourselves
-                    i = i2 + offset
-                    self._l[i:i] = [('{', idx)] \
-                                   + newlines \
-                                   + [('}', idx)]
-                    offset += 2 + len(newlines)
-
-            self._addversion(parents)
-        else:
-            # special case; adding with no parents revision; can do this
-            # more quickly by just appending unconditionally
-            self._l.append(('{', idx))
-            self._l += text
-            self._l.append(('}', idx))
-
-            self._addversion(None)
-
+        # if we abort after here the weave will be corrupt
+        self._addversion(parents)
         self._sha1s.append(sha1)
+
             
-        return idx
+        if not parents:
+            # special case; adding with no parents revision; can do
+            # this more quickly by just appending unconditionally.
+            # even more specially, if we're adding an empty text we
+            # need do nothing at all.
+            if text:
+                self._l.append(('{', new_version))
+                self._l.extend(text)
+                self._l.append(('}', new_version))
+        
+            return new_version
+
+        if len(parents) == 1 and sha1 == self._sha1s[parents[0]]:
+            # special case: same as the single parent
+            return new_version
+            
+
+        ancestors = self.inclusions(parents)
+
+        l = self._l
+
+        # basis a list of (origin, lineno, line)
+        basis_lineno = []
+        basis_lines = []
+        for origin, lineno, line in self._extract(ancestors):
+            basis_lineno.append(lineno)
+            basis_lines.append(line)
+
+        # another small special case: a merge, producing the same text as auto-merge
+        if text == basis_lines:
+            return new_version            
+
+        # add a sentinal, because we can also match against the final line
+        basis_lineno.append(len(self._l))
+
+        # XXX: which line of the weave should we really consider
+        # matches the end of the file?  the current code says it's the
+        # last line of the weave?
+
+        #print 'basis_lines:', basis_lines
+        #print 'new_lines:  ', lines
+
+        from difflib import SequenceMatcher
+        s = SequenceMatcher(None, basis_lines, text)
+
+        # offset gives the number of lines that have been inserted
+        # into the weave up to the current point; if the original edit instruction
+        # says to change line A then we actually change (A+offset)
+        offset = 0
+
+        for tag, i1, i2, j1, j2 in s.get_opcodes():
+            # i1,i2 are given in offsets within basis_lines; we need to map them
+            # back to offsets within the entire weave
+            #print 'raw match', tag, i1, i2, j1, j2
+            if tag == 'equal':
+                continue
+
+            i1 = basis_lineno[i1]
+            i2 = basis_lineno[i2]
+
+            assert 0 <= i1 <= i2 <= len(old_l)
+            assert 0 <= j1 <= j2 <= len(text)
+
+            #print tag, i1, i2, j1, j2
+
+            # the deletion and insertion are handled separately.
+            # first delete the region.
+            if i1 != i2:
+                self._l.insert(i1+offset, ('[', new_version))
+                self._l.insert(i2+offset+1, (']', new_version))
+                offset += 2
+
+            if j1 != j2:
+                # there may have been a deletion spanning up to
+                # i2; we want to insert after this region to make sure
+                # we don't destroy ourselves
+                i = i2 + offset
+                self._l[i:i] = ([('{', new_version)] 
+                                + text[j1:j2] 
+                                + [('}', new_version)])
+                offset += 2 + (j2 - j1)
+
+        return new_version
 
 
     def inclusions(self, versions):
@@ -510,41 +572,6 @@ class Weave(object):
         If line1=line2, this is a pure insert; if newlines=[] this is a
         pure delete.  (Similar to difflib.)
         """
-        # basis a list of (origin, lineno, line)
-        basis_lineno = []
-        basis_lines = []
-        for origin, lineno, line in self._extract(included):
-            basis_lineno.append(lineno)
-            basis_lines.append(line)
-
-        # add a sentinal, because we can also match against the final line
-        basis_lineno.append(len(self._l))
-
-        # XXX: which line of the weave should we really consider
-        # matches the end of the file?  the current code says it's the
-        # last line of the weave?
-
-        from difflib import SequenceMatcher
-        s = SequenceMatcher(None, basis_lines, lines)
-
-        # TODO: Perhaps return line numbers from composed weave as well?
-
-        for tag, i1, i2, j1, j2 in s.get_opcodes():
-            ##print tag, i1, i2, j1, j2
-
-            if tag == 'equal':
-                continue
-
-            # i1,i2 are given in offsets within basis_lines; we need to map them
-            # back to offsets within the entire weave
-            real_i1 = basis_lineno[i1]
-            real_i2 = basis_lineno[i2]
-
-            assert 0 <= j1
-            assert j1 <= j2
-            assert j2 <= len(lines)
-
-            yield real_i1, real_i2, lines[j1:j2]
 
 
             
@@ -788,6 +815,7 @@ def main(argv):
         pb = ProgressBar()
         w.check(pb)
         pb.clear()
+        print '%d versions ok' % w.numversions()
 
     elif cmd == 'inclusions':
         w = readit()
