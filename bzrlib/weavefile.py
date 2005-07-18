@@ -52,7 +52,7 @@ def write_weave_v1(weave, f):
     """Write weave to file f."""
     print >>f, FORMAT_1,
 
-    for version, included in enumerate(weave._v):
+    for version, included in enumerate(weave._parents):
         if included:
             # mininc = weave.minimal_parents(version)
             mininc = included
@@ -67,7 +67,7 @@ def write_weave_v1(weave, f):
 
     print >>f, 'w'
 
-    for l in weave._l:
+    for l in weave._weave:
         if isinstance(l, tuple):
             assert l[0] in '{}[]'
             print >>f, '%s %d' % l
@@ -105,9 +105,9 @@ def read_weave_v1(f):
             ver += 1
 
             if len(l) > 2:
-                w._v.append(frozenset(map(int, l[2:].split(' '))))
+                w._parents.append(frozenset(map(int, l[2:].split(' '))))
             else:
-                w._v.append(frozenset())
+                w._parents.append(frozenset())
 
             l = f.readline()[:-1]
             assert l.startswith('1 ')
@@ -125,13 +125,13 @@ def read_weave_v1(f):
         if l == 'W\n':
             break
         elif l.startswith('. '):
-            w._l.append(l[2:])  # include newline
+            w._weave.append(l[2:])  # include newline
         elif l.startswith(', '):
-            w._l.append(l[2:-1])        # exclude newline
+            w._weave.append(l[2:-1])        # exclude newline
         else:
             assert l[0] in '{}[]', l
             assert l[1] == ' ', l
-            w._l.append((intern(l[0]), int(l[2:])))
+            w._weave.append((intern(l[0]), int(l[2:])))
 
     return w
     

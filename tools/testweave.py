@@ -150,7 +150,7 @@ class InsertLines(TestBase):
 
         # self.log("changes to text3: " + pformat(list(k._delta(set([0, 1]), text3))))
 
-        self.log("k._l=" + pformat(k._l))
+        self.log("k._weave=" + pformat(k._weave))
 
         self.assertEqual(k.annotate(3),
                          [(0, 'line 1'),
@@ -192,7 +192,7 @@ class DeleteLines(TestBase):
             ver = k.add([0], t)
 
         self.log('final weave:')
-        self.log('k._l=' + pformat(k._l))
+        self.log('k._weave=' + pformat(k._weave))
 
         for i in range(len(texts)):
             self.assertEqual(k.get(i+1),
@@ -206,9 +206,9 @@ class SuicideDelete(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [(),
+        k._parents = [(),
                 ]
-        k._l = [('{', 0),
+        k._weave = [('{', 0),
                 'first line',
                 ('[', 0),
                 'deleted in 0',
@@ -230,10 +230,10 @@ class CannedDelete(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [(),
+        k._parents = [(),
                 frozenset([0]),
                 ]
-        k._l = [('{', 0),
+        k._weave = [('{', 0),
                 'first line',
                 ('[', 1),
                 'line to be deleted',
@@ -260,10 +260,10 @@ class CannedReplacement(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [frozenset(),
+        k._parents = [frozenset(),
                 frozenset([0]),
                 ]
-        k._l = [('{', 0),
+        k._weave = [('{', 0),
                 'first line',
                 ('[', 1),
                 'line to be deleted',
@@ -294,9 +294,9 @@ class BadWeave(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [frozenset(),
+        k._parents = [frozenset(),
                 ]
-        k._l = ['bad line',
+        k._weave = ['bad line',
                 ('{', 0),
                 'foo {',
                 ('{', 1),
@@ -324,12 +324,12 @@ class BadInsert(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [frozenset(),
+        k._parents = [frozenset(),
                 frozenset([0]),
                 frozenset([0]),
                 frozenset([0,1,2]),
                 ]
-        k._l = [('{', 0),
+        k._weave = [('{', 0),
                 'foo {',
                 ('{', 1),
                 '  added in version 1',
@@ -357,12 +357,12 @@ class InsertNested(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [frozenset(),
+        k._parents = [frozenset(),
                 frozenset([0]),
                 frozenset([0]),
                 frozenset([0,1,2]),
                 ]
-        k._l = [('{', 0),
+        k._weave = [('{', 0),
                 'foo {',
                 ('{', 1),
                 '  added in version 1',
@@ -439,8 +439,8 @@ class IncludeVersions(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [frozenset(), frozenset([0])]
-        k._l = [('{', 0),
+        k._parents = [frozenset(), frozenset([0])]
+        k._weave = [('{', 0),
                 "first line",
                 ('}', 0),
                 ('{', 1),
@@ -463,11 +463,11 @@ class DivergedIncludes(TestBase):
     def runTest(self):
         k = Weave()
 
-        k._v = [frozenset(),
+        k._parents = [frozenset(),
                 frozenset([0]),
                 frozenset([0]),
                 ]
-        k._l = [('{', 0),
+        k._weave = [('{', 0),
                 "first line",
                 ('}', 0),
                 ('{', 1),
@@ -504,7 +504,7 @@ class ReplaceLine(TestBase):
         k.add([], text0)
         k.add([0], text1)
 
-        self.log('k._l=' + pformat(k._l))
+        self.log('k._weave=' + pformat(k._weave))
 
         self.assertEqual(k.get(0), text0)
         self.assertEqual(k.get(1), text1)
@@ -541,7 +541,7 @@ class Merge(TestBase):
         self.assertEqual(list(k.inclusions([3])),
                          [0, 1, 2, 3])
 
-        self.log('k._l=' + pformat(k._l))
+        self.log('k._weave=' + pformat(k._weave))
 
         self.check_read_write(k)
 
@@ -597,7 +597,7 @@ class AutoMerge(TestBase):
         k.add([0], texts[1])
         k.add([0], texts[2])
 
-        self.log('k._l=' + pformat(k._l))
+        self.log('k._weave=' + pformat(k._weave))
 
         m = list(k.mash_iter([0, 1, 2]))
 
@@ -645,7 +645,7 @@ class Khayyam(TestBase):
             ver = k.add(list(parents), t)
             parents.add(ver)
 
-        self.log("k._l=" + pformat(k._l))
+        self.log("k._weave=" + pformat(k._weave))
 
         for i, t in enumerate(texts):
             self.assertEqual(k.get(i), t)

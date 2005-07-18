@@ -113,7 +113,7 @@ class Weave(object):
     the version-id is used to reference it in the larger world.
 
     The weave is represented as a list mixing edit instructions and
-    literal text.  Each entry in _l can be either a string (or
+    literal text.  Each entry in _weave can be either a string (or
     unicode), or a tuple.  If a string, it means that the given line
     should be output in the currently active revisions.
 
@@ -157,10 +157,10 @@ class Weave(object):
       should be no way to get an earlier version deleting a later
       version.
 
-    _l
-        Text of the weave.
+    _weave
+        Text of the weave; list of control instruction tuples and strings.
 
-    _v
+    _parents
         List of parents, indexed by version number.
         It is only necessary to store the minimal set of parents for
         each version; the parent's parents are implied.
@@ -169,19 +169,19 @@ class Weave(object):
         List of hex SHA-1 of each version, or None if not recorded.
     """
 
-    __slots__ = ['_l', '_v', '_sha1s']
+    __slots__ = ['_weave', '_parents', '_sha1s']
     
     def __init__(self):
-        self._l = []
-        self._v = []
+        self._weave = []
+        self._parents = []
         self._sha1s = []
 
 
     def __eq__(self, other):
         if not isinstance(other, Weave):
             return False
-        return self._v == other._v \
-               and self._l == other._l
+        return self._parents == other._parents \
+               and self._weave == other._weave
     
 
     def __ne__(self, other):
@@ -201,7 +201,7 @@ class Weave(object):
 
         self._check_versions(parents)
         ## self._check_lines(text)
-        new_version = len(self._v)
+        new_version = len(self._parents)
 
         import sha
         s = sha.new()
@@ -210,7 +210,7 @@ class Weave(object):
         del s
 
         # if we abort after here the weave will be corrupt
-        self._v.append(frozenset(parents))
+        self._parents.append(frozenset(parents))
         self._sha1s.append(sha1)
 
             
@@ -220,9 +220,9 @@ class Weave(object):
             # even more specially, if we're adding an empty text we
             # need do nothing at all.
             if text:
-                self._l.append(('{', new_version))
-                self._l.extend(text)
-                self._l.append(('}', new_version))
+                self._weave.append(('{', new_version))
+                self._weave.extend(text)
+                self._weave.append(('}', new_version))
         
             return new_version
 
@@ -235,7 +235,7 @@ class Weave(object):
 
         ancestors = self.inclusions(parents)
 
-        l = self._l
+        l = self._weave
 
         # basis a list of (origin, lineno, line)
         basis_lineno = []
@@ -249,7 +249,7 @@ class Weave(object):
             return new_version            
 
         # add a sentinal, because we can also match against the final line
-        basis_lineno.append(len(self._l))
+        basis_lineno.append(len(self._weave))
 
         # XXX: which line of the weave should we really consider
         # matches the end of the file?  the current code says it's the
@@ -283,8 +283,8 @@ class Weave(object):
             # the deletion and insertion are handled separately.
             # first delete the region.
             if i1 != i2:
-                self._l.insert(i1+offset, ('[', new_version))
-                self._l.insert(i2+offset+1, (']', new_version))
+                self._weave.insert(i1+offset, ('[', new_version))
+                self._weave.insert(i2+offset+1, (']', new_version))
                 offset += 2
 
             if j1 != j2:
@@ -292,7 +292,7 @@ class Weave(object):
                 # i2; we want to insert after this region to make sure
                 # we don't destroy ourselves
                 i = i2 + offset
-                self._l[i:i] = ([('{', new_version)] 
+                self._weave[i:i] = ([('{', new_version)] 
                                 + text[j1:j2] 
                                 + [('}', new_version)])
                 offset += 2 + (j2 - j1)
@@ -308,7 +308,7 @@ class Weave(object):
             while v >= 0:
                 if v in i:
                     # include all its parents
-                    i.update(self._v[v])
+                    i.update(self._parents[v])
                 v -= 1
             return i
         except IndexError:
@@ -317,7 +317,7 @@ class Weave(object):
 
     def minimal_parents(self, version):
         """Find the minimal set of parents for the version."""
-        included = self._v[version]
+        included = self._parents[version]
         if not included:
             return []
         
@@ -353,7 +353,7 @@ class Weave(object):
         """Check everything in the sequence of indexes is valid"""
         for i in indexes:
             try:
-                self._v[i]
+                self._parents[i]
             except IndexError:
                 raise IndexError("invalid version number %r" % i)
 
@@ -383,7 +383,7 @@ class Weave(object):
 
         lineno = 0         # line of weave, 0-based
 
-        for l in self._l:
+        for l in self._weave:
             if isinstance(l, tuple):
                 c, v = l
                 isactive = None
@@ -429,7 +429,7 @@ class Weave(object):
 
         WFE = WeaveFormatError
 
-        for l in self._l:
+        for l in self._weave:
             if isinstance(l, tuple):
                 c, v = l
                 isactive = None
@@ -485,15 +485,15 @@ class Weave(object):
 
     def dump(self, to_file):
         from pprint import pprint
-        print >>to_file, "Weave._l = ",
-        pprint(self._l, to_file)
-        print >>to_file, "Weave._v = ",
-        pprint(self._v, to_file)
+        print >>to_file, "Weave._weave = ",
+        pprint(self._weave, to_file)
+        print >>to_file, "Weave._parents = ",
+        pprint(self._parents, to_file)
 
 
 
     def numversions(self):
-        l = len(self._v)
+        l = len(self._parents)
         assert l == len(self._sha1s)
         return l
 
@@ -501,7 +501,7 @@ class Weave(object):
     def check(self, progress_bar=None):
         # check no circular inclusions
         for version in range(self.numversions()):
-            inclusions = list(self._v[version])
+            inclusions = list(self._parents[version])
             if inclusions:
                 inclusions.sort()
                 if inclusions[-1] >= version:
@@ -680,20 +680,20 @@ def weave_info(filename, out):
     # FIXME: doesn't work on pipes
     weave_size = wf.tell()
     print >>out, "weave file size %d bytes" % weave_size
-    print >>out, "weave contains %d versions" % len(w._v)
+    print >>out, "weave contains %d versions" % len(w._parents)
 
     total = 0
     print '%6s %6s %8s %40s %20s' % ('ver', 'lines', 'bytes', 'sha1', 'parents')
     for i in (6, 6, 8, 40, 20):
         print '-' * i,
     print
-    for i in range(len(w._v)):
+    for i in range(len(w._parents)):
         text = w.get(i)
         lines = len(text)
         bytes = sum((len(a) for a in text))
         sha1 = w._sha1s[i]
         print '%6d %6d %8d %40s' % (i, lines, bytes, sha1),
-        for pv in w._v[i]:
+        for pv in w._parents[i]:
             print pv,
         print
         total += bytes
@@ -818,7 +818,7 @@ def main(argv):
 
     elif cmd == 'parents':
         w = readit()
-        print ' '.join(map(str, w._v[int(argv[3])]))
+        print ' '.join(map(str, w._parents[int(argv[3])]))
 
     elif cmd == 'plan-merge':
         w = readit()
