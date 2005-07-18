@@ -26,7 +26,6 @@ import testsweet
 from bzrlib.weave import Weave, WeaveFormatError
 from bzrlib.weavefile import write_weave, read_weave
 from pprint import pformat
-from bzrlib.intset import IntSet
 
 
 try:
@@ -111,7 +110,7 @@ class InvalidAdd(TestBase):
     def runTest(self):
         k = Weave()
 
-        self.assertRaises(ValueError,
+        self.assertRaises(IndexError,
                           k.add,
                           [69],
                           ['new text!'])
@@ -149,7 +148,7 @@ class InsertLines(TestBase):
         k.add([0, 1],
               text3)
 
-        self.log("changes to text3: " + pformat(list(k._delta(set([0, 1]), text3))))
+        # self.log("changes to text3: " + pformat(list(k._delta(set([0, 1]), text3))))
 
         self.log("k._l=" + pformat(k._l))
 
