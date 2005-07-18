@@ -732,6 +732,23 @@ class MergeCases(TestBase):
                      ['aaa'],
                      ['yyy', 'zzz'],
                      ['yyy', 'zzz'])
+
+
+    def testDeleteAndModify(self):
+        """Clashing delete and modification.
+
+        If one side modifies a region and the other deletes it then
+        there should be a conflict with one side blank.
+        """
+
+        #######################################
+        # skippd, not working yet
+        return
+        
+        self.doMerge(['aaa', 'bbb', 'ccc'],
+                     ['aaa', 'ddd', 'ccc'],
+                     ['aaa', 'ccc'],
+                     ['<<<<', 'aaa', '====', '>>>>', 'ccc'])
     
 
 
@@ -739,7 +756,7 @@ def testweave():
     import testsweet
     from unittest import TestSuite, TestLoader
     import testweave
- 
+
     tl = TestLoader()
     suite = TestSuite()
     suite.addTest(tl.loadTestsFromModule(testweave))
