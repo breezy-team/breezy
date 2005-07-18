@@ -1,4 +1,4 @@
-.. -*- mode: indented-text; compile-command: "make -C doc" -*- 
+.. -*- mode: indented-text; compile-command: "make -C doc" -*-
 
 
 *******************
@@ -19,7 +19,7 @@ Small things
 
 * Merging add of a new file clashing with an existing file doesn't
   work; add gets an error that it's already versioned and the merge
-  aborts.  
+  aborts.
 
 * Merge should ignore the destination's working directory, otherwise
   we get an error about the statcache when pulling from a remote
@@ -79,7 +79,7 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
   temporary directory and then tar that up.)
 
   http://www.gelato.unsw.edu.au/archives/git/0504/2194.html
-  
+
 * RemoteBranch could maintain a cache either in memory or on disk.  We
   know more than an external cache might about which files are
   immutable and which can vary.  On the other hand, it's much simpler
@@ -110,12 +110,12 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
   Nice for humans; less good for machine parsing.
 
 * Patches should probably use only forward slashes, even on Windows,
-  otherwise Unix patch can't apply them. (?) 
+  otherwise Unix patch can't apply them. (?)
 
 * Branch.update_revisions() inefficiently fetches revisions from the
   remote server twice; once to find out what text and inventory they
   need and then again to actually get the thing.  This is a bit
-  inefficient. 
+  inefficient.
 
   One complicating factor here is that we don't really want to have
   revisions present in the revision-store until all their constituent
@@ -130,7 +130,28 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 * ``bzr mkdir A...`` should just create and add A.
 
 * Guard against repeatedly merging any particular patch.
-  
+
+* More options for diff:
+
+  - diff two revisions of the same tree
+
+  - diff two different branches, optionally at different revisions
+
+  - diff a particular file in another tree against the corresponding
+    version in this tree (which should be the default if the second
+    parameter is a tree root)
+
+  - diff everything under a particular directory, in any of the above
+    ways
+
+  - diff two files inside the same tree, even if they have different
+    ids
+
+  - and, of course, tests for all this
+
+* stat-cache update is too slow for some reason - why is Python making
+  a lot of futex calls?
+
 
 
 Medium things
@@ -174,7 +195,7 @@ Medium things
   At the very least we could run diffstat over the diff, or perhaps
   read the status output from patch.  Just knowing which files might
   be modified would be enough to guide the add and commit.
-  
+
   Given this we might be able to import patches at 1/second or better.
 
 * Get branch over http.
@@ -216,7 +237,7 @@ Medium things
 
 * Handle symlinks in the working directory; at the very least it
   should be possible for them to be present and ignored/unknown
-  without causing assertion failures. 
+  without causing assertion failures.
 
   Eventually symlinks should be versioned.
 
@@ -224,7 +245,7 @@ Medium things
   if the subdirectory is not already versioned.   Perhaps also require
   a ``--nested`` to protect against confusion.
 
-* Branch names? 
+* Branch names?
 
 * More test framework:
 
@@ -232,7 +253,7 @@ Medium things
     assert it's equal.
 
 * There are too many methods on Branch() that really manipulate the
-  WorkingTree.  They should be moved across.  
+  WorkingTree.  They should be moved across.
 
   Also there are some methods which are duplicated on Tree and
   Inventory objects, and it should be made more clear which ones are
@@ -263,7 +284,7 @@ Medium things
     object interface though, but perhaps that should just be a proxy
     for the elements.
 
-  - Less special cases for the root directory. 
+  - Less special cases for the root directory.
 
 * Perhaps inventories should remember the revision in which each file
   was last changed, as well as its current state?  This is a bit
@@ -275,7 +296,7 @@ Medium things
 
 * It'd be nice to pipeline multiple HTTP requests.  Often we can
   predict what will be wanted in future: all revisions, or all texts
-  in a particular revision, etc.  
+  in a particular revision, etc.
 
   urlgrabber's docs say they are working on batched downloads; we
   could perhaps ride on that or just create a background thread (ew).
@@ -375,7 +396,7 @@ Large things
   a temporary directory.
 
   If the commit does not actually complete, we would rather the
-  content was not left behind in the stores.  
+  content was not left behind in the stores.
 
 * Web interface
 
