@@ -26,14 +26,15 @@ Progress is suppressed when output is not sent to a terminal, so as
 not to clutter log files.
 """
 
-# TODO: remove functions in favour of keeping everything in one class
-
 # TODO: should be a global option e.g. --silent that disables progress
 # indicators, preferably without needing to adjust all code that
 # potentially calls them.
 
 # TODO: Perhaps don't write updates faster than a certain rate, say
 # 5/second.
+
+# TODO: Optionally show elapsed time instead/as well as ETA; nicer
+# when the rate is unpredictable
 
 
 import sys
