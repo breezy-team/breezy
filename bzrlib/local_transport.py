@@ -4,8 +4,11 @@ An implementation of the Transport object for local
 filesystem access.
 """
 
-from bzrlib.transport import Transport, register_transport
+from bzrlib.transport import Transport, register_transport, TransportError
 import os
+
+class LocalTransportError(TransportError):
+    pass
 
 class LocalTransport(Transport):
     """This is the transport agent for local filesystem access."""
@@ -52,12 +55,15 @@ class LocalTransport(Transport):
         :param decode:  If True, assume the file is utf-8 encoded and
                         decode it into Unicode
         """
-        if decode:
-            import codecs
-            return codecs.open(self.abspath(relpath), 'rb',
-                    encoding='utf-8', buffering=60000)
-        else:
-            return open(self.abspath(relpath), 'rb')
+        try:
+            if decode:
+                import codecs
+                return codecs.open(self.abspath(relpath), 'rb',
+                        encoding='utf-8', buffering=60000)
+            else:
+                return open(self.abspath(relpath), 'rb')
+        except IOError,e:
+            raise LocalTransportError(e)
 
     def put(self, relpath, f, encode=False):
         """Copy the file-like or string object into the location.
@@ -68,10 +74,13 @@ class LocalTransport(Transport):
         """
         from bzrlib.atomicfile import AtomicFile
 
-        if encode:
-            fp = AtomicFile(self.abspath(relpath), 'wb', encoding='utf-8')
-        else:
-            fp = AtomicFile(self.abspath(relpath), 'wb')
+        try:
+            if encode:
+                fp = AtomicFile(self.abspath(relpath), 'wb', encoding='utf-8')
+            else:
+                fp = AtomicFile(self.abspath(relpath), 'wb')
+        except IOError, e:
+            raise LocalTransportError(e)
         try:
             self._pump(f, fp)
             fp.commit()
@@ -80,7 +89,10 @@ class LocalTransport(Transport):
 
     def mkdir(self, relpath):
         """Create a directory at the given path."""
-        os.mkdir(self.abspath(relpath))
+        try:
+            os.mkdir(self.abspath(relpath))
+        except OSError,e:
+            raise LocalTransportError(e)
 
     def append(self, relpath, f, encode=False):
         """Append the text in the file-like object into the final
@@ -98,18 +110,27 @@ class LocalTransport(Transport):
         import shutil
         path_from = self.abspath(rel_from)
         path_to = self.abspath(rel_to)
-        shutil.copy(path_from, path_to)
+        try:
+            shutil.copy(path_from, path_to)
+        except OSError,e:
+            raise LocalTransportError(e)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         path_from = self.abspath(rel_from)
         path_to = self.abspath(rel_to)
 
-        os.rename(path_from, path_to)
+        try:
+            os.rename(path_from, path_to)
+        except OSError,e:
+            raise LocalTransportError(e)
 
     def delete(self, relpath):
         """Delete the item at relpath"""
-        os.remove(self.abspath(relpath))
+        try:
+            os.remove(self.abspath(relpath))
+        except OSError,e:
+            raise LocalTransportError(e)
 
     def copy_to(self, relpaths, other, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -146,12 +167,18 @@ class LocalTransport(Transport):
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
-        return os.listdir(self.abspath(relpath))
+        try:
+            return os.listdir(self.abspath(relpath))
+        except OSError,e:
+            raise LocalTransportError(e)
 
     def stat(self, relpath):
         """Return the stat information for a file.
         """
-        return os.stat(self.abspath(relpath))
+        try:
+            return os.stat(self.abspath(relpath))
+        except OSError,e:
+            raise LocalTransportError(e)
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.

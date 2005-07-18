@@ -29,6 +29,7 @@ def selftest():
     import bzrlib.selftest.whitebox
     import bzrlib.selftest.blackbox
     import bzrlib.selftest.versioning
+    import bzrlib.selftest.testtransport
     import bzrlib.selftest.testmerge3
     import bzrlib.selftest.testhashcache
     import bzrlib.selftest.testrevisionnamespaces
@@ -48,6 +49,7 @@ def selftest():
             
     for m in (bzrlib.selftest.whitebox,
               bzrlib.selftest.versioning,
+              bzrlib.selftest.testtransport,
               bzrlib.selftest.testmerge3,
               bzrlib.selftest.testhashcache,
               bzrlib.selftest.blackbox,

@@ -403,9 +403,9 @@ def transport_test(tester, t):
     tester.build_tree(files)
     tester.assertEqual(t.has('a'), True)
     tester.assertEqual(t.has('c'), False)
-    tester.assertEqual(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']),
+    tester.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
             [True, True, False, False, True, False, True, False])
-    tester.assertEqual(t.has_multi(iter(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
+    tester.assertEqual(list(t.has_multi(iter(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']))),
             [True, True, False, False, True, False, True, False])
 
     # Test get
@@ -437,13 +437,13 @@ def transport_test(tester, t):
     tester.assert_(os.path.exists('c'))
     tester.assertEqual(open('c').read(), 'some text for c\n')
     # Make sure 'has' is updated
-    tester.assertEqual(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']),
+    tester.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
             [True, True, True, False, True, False, True, False])
     # Put also replaces contents
     tester.assertEqual(t.put_multi([('a', 'new\ncontents for\na\n'),
                                   ('d', 'contents\nfor d\n')]),
                      2)
-    tester.assertEqual(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']),
+    tester.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
             [True, True, True, True, True, False, True, False])
     tester.assertEqual(open('a').read(), 'new\ncontents for\na\n')
     tester.assertEqual(open('d').read(), 'contents\nfor d\n')
@@ -454,7 +454,7 @@ def transport_test(tester, t):
     tester.assertEqual(open('a').read(), 'diff\ncontents for\na\n')
     tester.assertEqual(open('d').read(), 'another contents\nfor d\n')
 
-    tester.assertRaises(TransportError, t.put, 'path/doesnt/exist/c')
+    tester.assertRaises(TransportError, t.put, 'path/doesnt/exist/c', 'contents')
 
     # Test mkdir
     os.mkdir('dir_a')
@@ -466,7 +466,7 @@ def transport_test(tester, t):
     tester.assert_(os.path.isdir('dir_b'))
 
     t.mkdir_multi(['dir_c', 'dir_d'])
-    tester.assertEqual(t.has_multi(['dir_a', 'dir_b', 'dir_c', 'dir_d', 'dir_e', 'dir_b']),
+    tester.assertEqual(list(t.has_multi(['dir_a', 'dir_b', 'dir_c', 'dir_d', 'dir_e', 'dir_b'])),
             [True, True, True, True, False, True])
     for d in ['dir_a', 'dir_b', 'dir_c', 'dir_d']:
         tester.assert_(os.path.isdir(d))
@@ -485,8 +485,8 @@ def transport_test(tester, t):
 
     # Test get/put in sub-directories
     tester.assertEqual(t.put_multi([('dir_a/a', 'contents of dir_a/a'),
-                                    ('dir_b/b', 'contents of dir_b/b')]
-                      , 2))
+                                    ('dir_b/b', 'contents of dir_b/b')])
+                      , 2)
     for f in ('dir_a/a', 'dir_b/b'):
         tester.assertEqual(t.get(f).read(), open(f).read())
 
