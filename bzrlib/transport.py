@@ -530,9 +530,15 @@ def transport_test(tester, t, readonly=False):
 
     # Make sure the transport recognizes when a
     # directory is created by other means
-    os.mkdir('dir_e')
+    # Caching Transports will fail, because dir_e was already seen not
+    # to exist. So instead, we will search for a new directory
+    #os.mkdir('dir_e')
+    #if not readonly:
+    #    tester.assertRaises(FileExists, t.mkdir, 'dir_e')
+
+    os.mkdir('dir_f')
     if not readonly:
-        tester.assertRaises(FileExists, t.mkdir, 'dir_e')
+        tester.assertRaises(FileExists, t.mkdir, 'dir_f')
 
     # Test get/put in sub-directories
     if readonly:
