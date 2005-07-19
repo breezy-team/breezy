@@ -70,13 +70,13 @@ class HttpServer(object):
 
 class HttpTransportTest(InTempDir):
     def runTest(self):
-        from bzrlib.transport import transport_test_ro
+        from bzrlib.transport import transport_test
         from bzrlib.http_transport import HttpTransport
 
         s = HttpServer()
 
         t = HttpTransport('http://localhost:9999/')
-        transport_test_ro(self, t)
+        transport_test(self, t, readonly=True)
 
         s.stop()
 
