@@ -562,5 +562,8 @@ def transport_test(tester, t, readonly=False):
     for f in files:
         tester.assertEquals(open(f).read(), open(os.path.join(dtmp_base, f)).read())
 
+    # TODO: Test append
+    # TODO: Make sure all entries support file-like objects as well as strings.
+
 # Local transport should always be initialized
 import local_transport
