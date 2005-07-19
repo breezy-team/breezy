@@ -287,30 +287,45 @@ class Branch(object):
         relpath = self._rel_controlfilename(file_or_path)
         #TODO: codecs.open() buffers linewise, so it was overloaded with
         # a much larger buffer, do we need to do the same for getreader/getwriter?
-
-        # TODO: Try to use transport.put() rather than branch.controlfile(mode='w')
         if mode == 'rb': 
             return self._transport.get(relpath)
         elif mode == 'wb':
-            raise BzrError("Branch.controlfile(mode='wb') is not supported, use put_controlfile")
+            raise BzrError("Branch.controlfile(mode='wb') is not supported, use put_controlfiles")
         elif mode == 'r':
-            return self._transport.get(relpath, decode=True)
+            return codecs.getreader('utf-8')(self._transport.get(relpath), errors='replace')
         elif mode == 'w':
-            raise BzrError("Branch.controlfile(mode='w') is not supported, use put_controlfile")
-            #return codecs.getwriter('utf-8')(
-            #        self._transport.open(relpath), errors='replace')
+            raise BzrError("Branch.controlfile(mode='w') is not supported, use put_controlfiles")
         else:
             raise BzrError("invalid controlfile mode %r" % mode)
 
-    def put_controlfile(self, file_or_path, f, encode=True):
+    def put_controlfile(self, path, f, encode=True):
         """Write an entry as a controlfile.
 
-        :param file_or_path: This is the sub-path underneath the bzr control directory
-        :param f: A file-like or string object whose contents should be placed
-                  in the appropriate location.
+        :param path: The path to put the file, relative to the .bzr control
+                     directory
+        :param f: A file-like or string object whose contents should be copied.
         :param encode:  If true, encode the contents as utf-8
         """
-        self._transport.put(self._rel_controlfilename(file_or_path), f, encode=encode)
+        self.put_controlfiles([(path, f)], encode=encode)
+
+    def put_controlfiles(self, files, encode=True):
+        """Write several entries as controlfiles.
+
+        :param files: A list of [(path, file)] pairs, where the path is the directory
+                      underneath the bzr control directory
+        :param encode:  If true, encode the contents as utf-8
+        """
+        import codecs
+        ctrl_files = []
+        for path, f in files:
+            if encode:
+                if isinstance(f, basestring):
+                    f = f.encode('utf-8', 'replace')
+                else:
+                    f = codecs.getwriter('utf-8')(f, errors='replace')
+            path = self._rel_controlfilename(path)
+            ctrl_files.append((path, f))
+        self._transport.put_multi(ctrl_files)
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
@@ -335,7 +350,7 @@ class Branch(object):
             ('inventory', sio.getvalue())
         ]
         self._transport.mkdir_multi([self._rel_controlfilename(d) for d in dirs])
-        self._transport.put_multi([(self._rel_controlfilename(f[0]),f[1]) for f in files])
+        self.put_controlfiles(files)
         mutter('created control directory in ' + self._transport.base)
 
     def _check_format(self):
@@ -417,7 +432,7 @@ class Branch(object):
             sio = StringIO()
             pack_xml(inv, sio)
             sio.seek(0)
-            self._transport.put(self._rel_controlfilename('inventory'), sio)
+            self.put_controlfile('inventory', sio)
         finally:
             self.unlock()
         
@@ -605,8 +620,7 @@ class Branch(object):
 
         self.lock_write()
         try:
-            self._transport.put(self._rel_controlfilename('revision-history'),
-                    '\n'.join(rev_history))
+            self.put_controlfile('revision-history', '\n'.join(rev_history))
         finally:
             self.unlock()
 
@@ -1315,8 +1329,7 @@ class Branch(object):
     def set_pending_merges(self, rev_list):
         self.lock_write()
         try:
-            self._transport.put(self._rel_controlfilename('pending-merges'),
-                    '\n'.join(rev_list))
+            self.put_controlfile('pending-merges', '\n'.join(rev_list))
         finally:
             self.unlock()
 

@@ -526,18 +526,15 @@ class cmd_pull(Command):
 
     def run(self, location=None, revision=None):
         from bzrlib.merge import merge
-        from bzrlib.transport import TransportError
+        from bzrlib.transport import NoSuchFile
         import errno
         
         br_to = find_branch('.')
         stored_loc = None
         try:
             stored_loc = br_to.controlfile("x-pull", "rb").read().rstrip('\n')
-        except TransportError, e:
+        except NoSuchFile:
             pass
-        except IOError, e:
-            if e.errno != errno.ENOENT:
-                raise
         if location is None:
             if stored_loc is None:
                 raise BzrCommandError("No pull location known or specified.")

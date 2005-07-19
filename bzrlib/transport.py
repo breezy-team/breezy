@@ -22,15 +22,56 @@ def register_transport(prefix, klass, override=True):
         _protocol_handlers[prefix] = klass
 
 class TransportError(BzrError):
-    pass
+    """All errors thrown by Transport implementations should derive
+    from this class.
+    """
+    def __init__(self, msg=None, orig_error=None):
+        if msg is None and orig_error is not None:
+            msg = str(orig_error)
+        BzrError.__init__(self, msg)
+        self.msg = msg
+        self.orig_error = orig_error
 
 class AsyncError(TransportError):
     pass
 
-class TransportNotPossibleError(TransportError):
+# A set of semi-meaningful errors which can be thrown
+class TransportNotPossible(TransportError):
     """This is for transports where a specific function is explicitly not
     possible. Such as pushing files to an HTTP server.
     """
+    pass
+
+class NonRelativePath(TransportError):
+    """An absolute path was supplied, that could not be decoded into
+    a relative path.
+    """
+    pass
+
+class NoSuchFile(TransportError, IOError):
+    """A get() was issued for a file that doesn't exist."""
+    def __init__(self, msg=None, orig_error=None):
+        import errno
+        TransportError.__init__(self, msg=msg, orig_error=orig_error)
+        IOError.__init__(self, errno.ENOENT, self.msg)
+
+class FileExists(TransportError, OSError):
+    """An operation was attempted, which would overwrite an entry,
+    but overwritting is not supported.
+
+    mkdir() can throw this, but put() just overwites existing files.
+    """
+    def __init__(self, msg=None, orig_error=None):
+        import errno
+        TransportError.__init__(self, msg=msg, orig_error=orig_error)
+        OSError.__init__(self, errno.EEXIST, self.msg)
+
+class PermissionDenied(TransportError):
+    """An operation cannot succeed because of a lack of permissions."""
+    pass
+
+class ConnectionReset(TransportError):
+    """The connection has been closed."""
     pass
 
 class AsyncFile(object):
@@ -98,14 +139,10 @@ class Transport(object):
     implementations can do pipelining.
     In general implementations should support having a generator or a list
     as an argument (ie always iterate, never index)
-
-    TODO: Worry about file encodings. For instance bzr control files should
-          all be encoded in utf-8, but read as local encoding.
-
-    TODO: Consider adding a lock/unlock functions.
     """
 
     def __init__(self, base):
+        super(Transport, self).__init__()
         self.base = base
 
     def clone(self, offset=None):
@@ -195,21 +232,17 @@ class Transport(object):
             yield self.has(relpath)
             count += 1
 
-    def get(self, relpath, decode=False):
+    def get(self, relpath):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
-        :param decode:  If True, assume the file is utf-8 encoded and
-                        decode it into Unicode
         """
         raise NotImplementedError
 
-    def get_multi(self, relpaths, decode=False, pb=None):
+    def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
 
         :param relpaths: A list of relative paths.
-        :param decode:  If True, assume the file is utf-8 encoded and
-                        decode it into Unicode
         :param pb:  An optional ProgressBar for indicating percent done.
         :return: A list or generator of file-like objects
         """
@@ -220,19 +253,18 @@ class Transport(object):
         count = 0
         for relpath in relpaths:
             self._update_pb(pb, 'get', count, total)
-            yield self.get(relpath, decode=decode)
+            yield self.get(relpath)
             count += 1
 
-    def put(self, relpath, f, encode=False):
+    def put(self, relpath, f):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
-        :param encode:  If True, translate the contents into utf-8 encoded text.
         """
         raise NotImplementedError
 
-    def put_multi(self, files, encode=False, pb=None):
+    def put_multi(self, files, pb=None):
         """Put a set of files or strings into the location.
 
         :param files: A list of tuples of relpath, file object [(path1, file1), (path2, file2),...]
@@ -240,7 +272,7 @@ class Transport(object):
         :return: The number of files copied.
         """
         def put(relpath, f):
-            self.put(relpath, f, encode=encode)
+            self.put(relpath, f)
         return self._iterate_over(files, put, pb, 'put', expand=True)
 
     def mkdir(self, relpath):
@@ -251,7 +283,7 @@ class Transport(object):
         """Create a group of directories"""
         return self._iterate_over(relpaths, self.mkdir, pb, 'mkdir', expand=False)
 
-    def append(self, relpath, f, encode=False):
+    def append(self, relpath, f):
         """Append the text in the file-like or string object to 
         the supplied location.
         """
@@ -286,7 +318,7 @@ class Transport(object):
         """
         # The dummy implementation just does a simple get + put
         def copy_entry(path):
-            other.put(path, self.get(path, decode=False), encode=False)
+            other.put(path, self.get(path))
 
         return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
 
@@ -386,6 +418,91 @@ def transport(base):
     # which has a lookup of None
     return _protocol_handlers[None](base)
 
+def transport_test_ro(tester, t):
+    """Test a transport object, but only assume that it has Read functionality.
+    The Transport object is connected to the current working directory.
+    So that whatever is done through the transport, should show
+    up in the working directory, and vice-versa.
+
+    This also tests to make sure that the functions work with both
+    generators and lists (assuming iter(list) is effectively a generator)
+    """
+    import tempfile, os
+    from local_transport import LocalTransport
+
+    # Test has
+    files = ['a', 'b', 'e', 'g']
+    tester.build_tree(files)
+    tester.assertEqual(t.has('a'), True)
+    tester.assertEqual(t.has('c'), False)
+    tester.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
+            [True, True, False, False, True, False, True, False])
+    tester.assertEqual(list(t.has_multi(iter(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']))),
+            [True, True, False, False, True, False, True, False])
+
+    # Test get
+    tester.assertEqual(t.get('a').read(), open('a').read())
+    content_f = t.get_multi(files)
+    for path,f in zip(files, content_f):
+        tester.assertEqual(open(path).read(), f.read())
+
+    content_f = t.get_multi(iter(files))
+    for path,f in zip(files, content_f):
+        tester.assertEqual(open(path).read(), f.read())
+
+    tester.assertRaises(NoSuchFile, t.get, 'c')
+    try:
+        files = list(t.get_multi(['a', 'b', 'c']))
+    except NoSuchFile:
+        pass
+    else:
+        tester.fail('Failed to raise NoSuchFile for missing file in get_multi')
+    try:
+        files = list(t.get_multi(iter(['a', 'b', 'c', 'e'])))
+    except NoSuchFile:
+        pass
+    else:
+        tester.fail('Failed to raise NoSuchFile for missing file in get_multi')
+
+    open('c', 'wb').write('some text for c\n')
+    tester.assert_(os.path.exists('c'))
+    tester.assertEqual(t.get('c').read(), 'some text for c\n')
+    # Make sure 'has' is updated
+    tester.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
+            [True, True, True, False, True, False, True, False])
+
+    # Test mkdir
+    os.mkdir('dir_a')
+    tester.assertEqual(t.has('dir_a'), True)
+    tester.assertEqual(t.has('dir_b'), False)
+
+    os.mkdir('dir_b')
+    tester.assertEqual(t.has('dir_b'), True)
+    tester.assert_(os.path.isdir('dir_b'))
+
+    os.mkdir('dir_c')
+    os.mkdir('dir_d')
+    tester.assertEqual(list(t.has_multi(['dir_a', 'dir_b', 'dir_c', 'dir_d', 'dir_e', 'dir_b'])),
+            [True, True, True, True, False, True])
+    for d in ['dir_a', 'dir_b', 'dir_c', 'dir_d']:
+        tester.assert_(os.path.isdir(d))
+
+    # Test get/put in sub-directories
+    open('dir_a/a', 'wb').write('contents of dir_a/a')
+    open('dir_b/b', 'wb').write('contents of dir_b/b')
+    for f in ('dir_a/a', 'dir_b/b'):
+        tester.assertEqual(t.get(f).read(), open(f).read())
+
+    # Test copy_to
+    dtmp = tempfile.mkdtemp(dir='.', prefix='test-transport-')
+    dtmp_base = os.path.basename(dtmp)
+    local_t = LocalTransport(dtmp)
+
+    files = ['a', 'b', 'c']
+    t.copy_to(files, local_t)
+    for f in files:
+        tester.assertEquals(open(f).read(), open(os.path.join(dtmp_base, f)).read())
+
 def transport_test(tester, t):
     """Test a transport object. Basically, it assumes that the
     Transport object is connected to the current working directory.
@@ -418,7 +535,7 @@ def transport_test(tester, t):
     for path,f in zip(files, content_f):
         tester.assertEqual(open(path).read(), f.read())
 
-    tester.assertRaises(TransportError, t.get, 'c')
+    tester.assertRaises(NoSuchFile, t.get, 'c')
     try:
         files = list(t.get_multi(['a', 'b', 'c']))
     except TransportError:
@@ -454,7 +571,7 @@ def transport_test(tester, t):
     tester.assertEqual(open('a').read(), 'diff\ncontents for\na\n')
     tester.assertEqual(open('d').read(), 'another contents\nfor d\n')
 
-    tester.assertRaises(TransportError, t.put, 'path/doesnt/exist/c', 'contents')
+    tester.assertRaises(NoSuchFile, t.put, 'path/doesnt/exist/c', 'contents')
 
     # Test mkdir
     os.mkdir('dir_a')
@@ -471,17 +588,11 @@ def transport_test(tester, t):
     for d in ['dir_a', 'dir_b', 'dir_c', 'dir_d']:
         tester.assert_(os.path.isdir(d))
 
-    tester.assertRaises(TransportError, t.mkdir, 'path/doesnt/exist')
-    tester.assertRaises(TransportError, t.mkdir, 'dir_a') # Creating a directory again should fail
+    tester.assertRaises(NoSuchFile, t.mkdir, 'path/doesnt/exist')
+    tester.assertRaises(FileExists, t.mkdir, 'dir_a') # Creating a directory again should fail
 
-    # This one may fail for some transports.
-    # Specifically, I know RsyncTransport doesn't check for the directory
-    # existing, before it creates it. The reason is that it seems to
-    # expensive, it does check to see if the local directory already exists,
-    # and will throw an exception for that
-    # FIXME: Make this work everywhere
-    #os.mkdir('dir_e')
-    #tester.assertRaises(TransportError, t.mkdir, 'dir_e')
+    os.mkdir('dir_e')
+    tester.assertRaises(FileExists, t.mkdir, 'dir_e')
 
     # Test get/put in sub-directories
     tester.assertEqual(t.put_multi([('dir_a/a', 'contents of dir_a/a'),

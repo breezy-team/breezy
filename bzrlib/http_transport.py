@@ -3,8 +3,10 @@
 An implementation of the Transport object for http access.
 """
 
-from bzrlib.transport import Transport, register_transport, TransportNotPossibleError
-import os
+from bzrlib.transport import Transport, register_transport, \
+    TransportNotPossible, NoSuchFile, NonRelativePath, \
+    TransportError
+import os, errno
 from cStringIO import StringIO
 import urllib2
 
@@ -22,6 +24,7 @@ ENABLE_URLGRABBER = True
 if ENABLE_URLGRABBER:
     import urlgrabber
     import urlgrabber.keepalive
+    import urlgrabber.grabber
     urlgrabber.keepalive.DEBUG = 0
     def get_url(path, compressed=False):
         try:
@@ -35,6 +38,8 @@ if ENABLE_URLGRABBER:
             else:
                 return gzip.GzipFile(fileobj=StringIO(url_f.read()))
         except urllib2.URLError, e:
+            raise BzrError("remote fetch failed: %r: %s" % (url, e))
+        except urlgrabber.grabber.URLGrabError, e:
             raise BzrError("remote fetch failed: %r: %s" % (url, e))
 else:
     def get_url(url, compressed=False):
@@ -74,6 +79,8 @@ def _find_remote_root(url):
 
         url = url[:idx]        
         
+class HttpTransportError(TransportError):
+    pass
 
 class HttpTransport(Transport):
     """This is the transport agent for http:// access.
@@ -115,7 +122,7 @@ class HttpTransport(Transport):
 
     def relpath(self, abspath):
         if not abspath.startswith(self.base):
-            raise BzrError('path %r is not under base URL %r'
+            raise NonRelativePath('path %r is not under base URL %r'
                            % (abspath, self.base))
         pl = len(self.base)
         return abspath[pl:].lstrip('/')
@@ -129,65 +136,76 @@ class HttpTransport(Transport):
         try:
             f = get_url(self.abspath(relpath))
             return True
+        except BzrError:
+            return False
         except urllib2.URLError:
             return False
+        except IOError, e:
+            if e.errno == errno.ENOENT:
+                return False
+            raise HttpTransportError(orig_error=e)
 
     def get(self, relpath, decode=False):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
-        :param decode:  If True, assume the file is utf-8 encoded and
-                        decode it into Unicode
         """
-        if decode:
-            import codecs
-            return codecs.getreader('utf-8')(get_url(self.abspath(relpath)))
-        else:
+        try:
             return get_url(self.abspath(relpath))
+        except BzrError, e:
+            raise NoSuchFile(orig_error=e)
+        except urllib2.URLError, e:
+            raise NoSuchFile(orig_error=e)
+        except IOError, e:
+            raise NoSuchFile(orig_error=e)
+        except Exception,e:
+            raise HttpTransportError(orig_error=e)
 
-    def put(self, relpath, f, encode=False):
+    def put(self, relpath, f):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
-        :param encode:  If True, translate the contents into utf-8 encoded text.
         """
-        raise TransportNotPossibleError('http does not support put()')
+        raise TransportNotPossible('http PUT not supported')
 
     def mkdir(self, relpath):
         """Create a directory at the given path."""
-        raise TransportNotPossibleError('http does not support mkdir()')
+        raise TransportNotPossible('http does not support mkdir()')
 
-    def append(self, relpath, f, encode=False):
+    def append(self, relpath, f):
         """Append the text in the file-like object into the final
         location.
         """
-        raise TransportNotPossibleError('http does not support append()')
+        raise TransportNotPossible('http does not support append()')
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
-        raise TransportNotPossibleError('http does not support copy()')
+        raise TransportNotPossible('http does not support copy()')
 
     def copy_to(self, relpaths, other, pb=None):
         """Copy a set of entries from self into another Transport.
 
         :param relpaths: A list/generator of entries to be copied.
+
+        TODO: if other is LocalTransport, is it possible to
+              do better than put(get())?
         """
         # At this point HttpTransport might be able to check and see if
         # the remote location is the same, and rather than download, and
         # then upload, it could just issue a remote copy_this command.
         if isinstance(other, HttpTransport):
-            raise TransportNotPossibleError('http cannot be the target of copy_to()')
+            raise TransportNotPossible('http cannot be the target of copy_to()')
         else:
             return super(HttpTransport, self).copy_to(relpaths, other, pb=pb)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
-        raise TransportNotPossibleError('http does not support move()')
+        raise TransportNotPossible('http does not support move()')
 
     def delete(self, relpath):
         """Delete the item at relpath"""
-        raise TransportNotPossibleError('http does not support delete()')
+        raise TransportNotPossible('http does not support delete()')
 
     def async_get(self, relpath):
         """Make a request for an file at the given location, but
@@ -202,12 +220,12 @@ class HttpTransport(Transport):
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
-        raise TransportNotPossibleError('http does not support list_dir()')
+        raise TransportNotPossible('http does not support list_dir()')
 
     def stat(self, relpath):
         """Return the stat information for a file.
         """
-        raise TransportNotPossibleError('http does not support stat()')
+        raise TransportNotPossible('http does not support stat()')
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
@@ -228,9 +246,8 @@ class HttpTransport(Transport):
 
         :return: A lock object, which should be passed to Transport.unlock()
         """
-        raise TransportNotPossibleError('http does not support lock_write()')
+        raise TransportNotPossible('http does not support lock_write()')
 
-# If nothing else matches, try the LocalTransport
 register_transport('http://', HttpTransport)
 register_transport('https://', HttpTransport)
 
