@@ -1254,6 +1254,20 @@ class cmd_check(Command):
 
 
 
+class cmd_update_hashes(Command):
+    hidden = True
+    def run(self):
+        from bzrlib.hashcache import HashCache
+
+        c = HashCache('.')
+        c.read()
+        for name in c._cache:
+            c.get_sha1(name)
+            
+        
+
+
+
 class cmd_upgrade(Command):
     """Upgrade branch storage to current format.
 
