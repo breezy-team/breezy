@@ -139,7 +139,7 @@ class HashCache(object):
             return cache_sha1
         else:
             self.miss_count += 1
-            digest = sha_file(file(abspath, 'rb'))
+            digest = sha_file(file(abspath, 'rb', buffering=65000))
 
             now = int(time.time())
             if fp[1] >= now or fp[2] >= now:
@@ -200,7 +200,7 @@ class HashCache(object):
 
         fn = self.cache_file_name()
         try:
-            inf = file(fn, 'rb')
+            inf = file(fn, 'rb', buffering=65000)
         except IOError, e:
             mutter("failed to open %s: %s" % (fn, e))
             return
