@@ -206,9 +206,11 @@ def unpack_highres_date(date):
     True
     >>> o == o2
     True
+    >>> t -= 24*3600*365*2 # Start 2 years ago
+    >>> o = -12*3600
     >>> for count in xrange(500):
-    ...   t += random.random()*24*3600*365*2 - 24*3600*364 # Random time within +/- 1 year
-    ...   o = random.randint(-12,12)*3600 # Random timezone
+    ...   t += random.random()*24*3600*30
+    ...   o = ((o/3600 + 13) % 25 - 12)*3600 # Add 1 wrap around from [-12, 12]
     ...   date = format_highres_date(t, o)
     ...   t2, o2 = unpack_highres_date(date)
     ...   if t != t2 or o != o2:
