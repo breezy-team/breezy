@@ -198,13 +198,13 @@ except ImportError:
                         fpos = os.lseek(fn, 0,0)
                         os.lseek(fn, 0,0)
 
-                    if flags & self.LOCK_SH:
-                        if flags & self.LOCK_NB:
+                    if flags & _msvc_FileLock.LOCK_SH:
+                        if flags & _msvc_FileLock.LOCK_NB:
                             lock_mode = msvcrt.LK_NBLCK
                         else:
                             lock_mode = msvcrt.LK_LOCK
-                    elif flags & self.LOCK_EX:
-                        if flags & self.LOCK_NB:
+                    elif flags & _msvc_FileLock.LOCK_EX:
+                        if flags & _msvc_FileLock.LOCK_NB:
                             lock_mode = msvcrt.LK_NBRLCK
                         else:
                             lock_mode = msvcrt.LK_RLCK
