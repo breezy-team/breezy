@@ -20,7 +20,7 @@ from testsweet import TestBase, run_suite, InTempDir
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
 
-def selftest():
+def selftest(verbose=False):
     from unittest import TestLoader, TestSuite
     import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
     import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
@@ -88,7 +88,7 @@ def selftest():
 
     suite.addTest(unittest.makeSuite(bzrlib.merge_core.MergeTest, 'test_'))
 
-    return run_suite(suite, 'testbzr')
+    return run_suite(suite, 'testbzr', verbose=verbose)
 
 
 

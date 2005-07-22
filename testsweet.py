@@ -227,9 +227,12 @@ class _MyResult(TestResult):
 
     No special behaviour for now.
     """
-    def __init__(self, out):
+    def __init__(self, out, style):
         self.out = out
         TestResult.__init__(self)
+        assert style in ('none', 'progress', 'verbose')
+        self.style = style
+
 
     def startTest(self, test):
         # TODO: Maybe show test.shortDescription somewhere?
@@ -238,9 +241,14 @@ class _MyResult(TestResult):
         if what == 'runit':
             what = test.shortDescription()
         
-        print >>self.out, '%-60.60s' % what,
-        self.out.flush()
+        if self.style == 'verbose':
+            print >>self.out, '%-60.60s' % what,
+            self.out.flush()
+        elif self.style == 'progress':
+            self.out.write('~')
+            self.out.flush()
         TestResult.startTest(self, test)
+
 
     def stopTest(self, test):
         # print
@@ -248,22 +256,25 @@ class _MyResult(TestResult):
 
 
     def addError(self, test, err):
-        print >>self.out, 'ERROR'
+        if self.style == 'verbose':
+            print >>self.out, 'ERROR'
         TestResult.addError(self, test, err)
         _show_test_failure('error', test, err, self.out)
 
     def addFailure(self, test, err):
-        print >>self.out, 'FAILURE'
+        if self.style == 'verbose':
+            print >>self.out, 'FAILURE'
         TestResult.addFailure(self, test, err)
         _show_test_failure('failure', test, err, self.out)
 
     def addSuccess(self, test):
-        print >>self.out, 'OK'
+        if self.style == 'verbose':
+            print >>self.out, 'OK'
         TestResult.addSuccess(self, test)
 
 
 
-def run_suite(suite, name="test"):
+def run_suite(suite, name='test', verbose=False):
     import os
     import shutil
     import time
@@ -278,7 +289,11 @@ def run_suite(suite, name="test"):
     real_stderr = sys.stderr
     sys.stdout = sys.stderr = TestBase.TEST_LOG
     try:
-        result = _MyResult(real_stdout)
+        if verbose:
+            style = 'verbose'
+        else:
+            style = 'progress'
+        result = _MyResult(real_stdout, style)
         suite.run(result)
     finally:
         sys.stdout = real_stdout

@@ -1303,9 +1303,10 @@ class cmd_whoami(Command):
 class cmd_selftest(Command):
     """Run internal test suite"""
     hidden = True
-    def run(self):
+    takes_options = ['verbose']
+    def run(self, verbose=False):
         from bzrlib.selftest import selftest
-        return int(not selftest())
+        return int(not selftest(verbose=verbose))
 
 
 class cmd_version(Command):
