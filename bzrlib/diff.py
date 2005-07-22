@@ -389,8 +389,11 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
 
     for file_id in old_tree:
         if file_id in new_tree:
-            kind = old_inv.get_file_kind(file_id)
-            assert kind == new_inv.get_file_kind(file_id)
+            old_ie = old_inv[file_id]
+            new_ie = new_inv[file_id]
+
+            kind = old_ie.kind
+            assert kind == new_ie.kind
             
             assert kind in ('file', 'directory', 'symlink', 'root_directory'), \
                    'invalid file kind %r' % kind
@@ -398,15 +401,9 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
             if kind == 'root_directory':
                 continue
             
-            old_path = old_inv.id2path(file_id)
-            new_path = new_inv.id2path(file_id)
-
-            old_ie = old_inv[file_id]
-            new_ie = new_inv[file_id]
-
             if specific_files:
-                if (not is_inside_any(specific_files, old_path) 
-                    and not is_inside_any(specific_files, new_path)):
+                if (not is_inside_any(specific_files, old_inv.id2path(file_id)) 
+                    and not is_inside_any(specific_files, new_inv.id2path(file_id))):
                     continue
 
             if kind == 'file':
@@ -424,12 +421,14 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
             
             if (old_ie.name != new_ie.name
                 or old_ie.parent_id != new_ie.parent_id):
-                delta.renamed.append((old_path, new_path, file_id, kind,
+                delta.renamed.append((old_inv.id2path(file_id),
+                                      new_inv.id2path(file_id),
+                                      file_id, kind,
                                       text_modified))
             elif text_modified:
-                delta.modified.append((new_path, file_id, kind))
+                delta.modified.append((new_inv.id2path(file_id), file_id, kind))
             elif want_unchanged:
-                delta.unchanged.append((new_path, file_id, kind))
+                delta.unchanged.append((new_inv.id2path(file_id), file_id, kind))
         else:
             kind = old_inv.get_file_kind(file_id)
             old_path = old_inv.id2path(file_id)
