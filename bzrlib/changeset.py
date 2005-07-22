@@ -1529,7 +1529,7 @@ def new_delete_entry(entry, tree, inventory, delete):
 
 
         
-    
+# XXX: Can't we unify this with the regular inventory object
 class Inventory(object):
     def __init__(self, inventory):
         self.inventory = inventory
