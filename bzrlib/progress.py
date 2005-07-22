@@ -30,8 +30,7 @@ not to clutter log files.
 # indicators, preferably without needing to adjust all code that
 # potentially calls them.
 
-# TODO: Perhaps don't write updates faster than a certain rate, say
-# 5/second.
+# TODO: If not on a tty perhaps just print '......' for the benefit of IDEs, etc
 
 # TODO: Optionally show elapsed time instead/as well as ETA; nicer
 # when the rate is unpredictable
