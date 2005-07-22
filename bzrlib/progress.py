@@ -38,6 +38,7 @@ not to clutter log files.
 
 import sys
 import time
+import os
 
 
 def _width():
@@ -48,7 +49,6 @@ def _width():
     TODO: Is there anything that gets a better update when the window
           is resized while the program is running?
     """
-    import os
     try:
         return int(os.environ['COLUMNS'])
     except (IndexError, KeyError, ValueError):
@@ -60,7 +60,6 @@ def _supports_progress(f):
         return False
     if not f.isatty():
         return False
-    import os
     if os.environ.get('TERM') == 'dumb':
         # e.g. emacs compile window
         return False
@@ -68,7 +67,61 @@ def _supports_progress(f):
 
 
 
-class ProgressBar(object):
+def ProgressBar(to_file=sys.stderr, **kwargs):
+    """Abstract factory"""
+    if _supports_progress(to_file):
+        return TTYProgressBar(to_file=to_file, **kwargs)
+    else:
+        return DotsProgressBar(to_file=to_file, **kwargs)
+    
+    
+class _BaseProgressBar(object):
+    def __init__(self,
+                 to_file=sys.stderr,
+                 show_pct=False,
+                 show_spinner=False,
+                 show_eta=True,
+                 show_bar=True,
+                 show_count=True):
+        object.__init__(self)
+        self.to_file = to_file
+ 
+        self.last_msg = None
+        self.last_cnt = None
+        self.last_total = None
+        self.show_pct = show_pct
+        self.show_spinner = show_spinner
+        self.show_eta = show_eta
+        self.show_bar = show_bar
+        self.show_count = show_count
+        
+        
+    
+class DotsProgressBar(_BaseProgressBar):
+    def __init__(self, **kwargs):
+        _BaseProgressBar.__init__(self, **kwargs)
+        self.last_msg = None
+        self.need_nl = False
+        
+    def tick(self):
+        self.update()
+        
+    def update(self, msg=None, current_cnt=None, total_cnt=None):
+        if msg and msg != self.last_msg:
+            if self.need_nl:
+                self.to_file.write('\n')
+            
+            self.to_file.write(msg + ': ')
+            self.last_msg = msg
+        self.need_nl = True
+        self.to_file.write('.')
+        
+    def clear(self):
+        if self.need_nl:
+            self.to_file.write('\n')
+        
+    
+class TTYProgressBar(_BaseProgressBar):
     """Progress bar display object.
 
     Several options are available to control the display.  These can
@@ -91,31 +144,28 @@ class ProgressBar(object):
     SPIN_CHARS = r'/-\|'
     MIN_PAUSE = 0.1 # seconds
 
-    start_time = None
-    last_update = None
-    
-    def __init__(self,
-                 to_file=sys.stderr,
-                 show_pct=False,
-                 show_spinner=False,
-                 show_eta=True,
-                 show_bar=True,
-                 show_count=True):
-        object.__init__(self)
-        self.to_file = to_file
-        self.suppressed = not _supports_progress(self.to_file)
-        self.spin_pos = 0
- 
-        self.last_msg = None
-        self.last_cnt = None
-        self.last_total = None
-        self.show_pct = show_pct
-        self.show_spinner = show_spinner
-        self.show_eta = show_eta
-        self.show_bar = show_bar
-        self.show_count = show_count
 
+    def __init__(self, **kwargs):
+        _BaseProgressBar.__init__(self, **kwargs)
+        self.spin_pos = 0
         self.width = _width()
+        self.start_time = None
+        self.last_update = None
+    
+
+    def throttle(self):
+        """Return True if the bar was updated too recently"""
+        now = time.time()
+        if self.start_time is None:
+            self.start_time = self.last_update = now
+            return False
+        else:
+            interval = now - self.last_update
+            if interval > 0 and interval < self.MIN_PAUSE:
+                return True
+
+        self.last_update = now
+        return False
         
 
     def tick(self):
@@ -125,23 +175,14 @@ class ProgressBar(object):
 
     def update(self, msg, current_cnt=None, total_cnt=None):
         """Update and redraw progress bar."""
-        if self.suppressed:
-            return
 
         # save these for the tick() function
         self.last_msg = msg
         self.last_cnt = current_cnt
         self.last_total = total_cnt
             
-        now = time.time()
-        if self.start_time is None:
-            self.start_time = now
-        else:
-            interval = now - self.last_update
-            if interval > 0 and interval < self.MIN_PAUSE:
-                return
-
-        self.last_update = now
+        if self.throttle():
+            return 
         
         if total_cnt:
             assert current_cnt <= total_cnt
@@ -208,10 +249,7 @@ class ProgressBar(object):
         #self.to_file.flush()
             
 
-    def clear(self):
-        if self.suppressed:
-            return
-        
+    def clear(self):        
         self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
         #self.to_file.flush()        
     
@@ -262,7 +300,18 @@ def run_tests():
 
 
 def demo():
-    from time import sleep
+    sleep = time.sleep
+    
+    print 'dumb-terminal test:'
+    pb = DotsProgressBar()
+    for i in range(100):
+        pb.update('Leoparden', i, 99)
+        sleep(0.1)
+    sleep(1.5)
+    pb.clear()
+    sleep(1.5)
+    
+    print 'smart-terminal test:'
     pb = ProgressBar(show_pct=True, show_bar=True, show_spinner=False)
     for i in range(100):
         pb.update('Elephanten', i, 99)
@@ -270,6 +319,7 @@ def demo():
     sleep(2)
     pb.clear()
     sleep(1)
+
     print 'done!'
 
 if __name__ == "__main__":
