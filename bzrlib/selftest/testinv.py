@@ -20,6 +20,17 @@ from bzrlib.inventory import Inventory, InventoryEntry
 
 class TestIsWithin(TestBase):
     def runTest(self):
+        from bzrlib.osutils import is_inside_any
+        
+        for dirs, fn in [(['src', 'doc'], 'src/foo.c'),
+                         (['src'], 'src/foo.c'),
+                         (['src'], 'src'),
+                         ]:
+            self.assert_(is_inside_any(dirs, fn))
+            
+            
+class TestInventoryIds(TestBase):
+    def runTest(self):
         """Test detection of files within selected directories."""
         inv = Inventory()
         
@@ -34,5 +45,3 @@ class TestIsWithin(TestBase):
         self.assertEqual(inv.path2id('src/bye.c'), 'bye-id')
         
         self.assert_('src-id' in inv)
-        
-        
