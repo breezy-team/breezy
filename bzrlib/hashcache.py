@@ -14,26 +14,27 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
-
-# TODO: Perhaps have a way to stat all the files in inode order, and
-# then remember that they're all fresh for the lifetime of the object?
-
-# TODO: Keep track of whether there are in-memory updates that need to
-# be flushed.
+# TODO: Up-front, stat all files in order and remove those which are deleted or 
+# out-of-date.  Don't actually re-read them until they're needed.  That ought 
+# to bring all the inodes into core so that future stats to them are fast, and 
+# it preserves the nice property that any caller will always get up-to-date
+# data except in unavoidable cases.
 
 # TODO: Perhaps return more details on the file to avoid statting it
 # again: nonexistent, file type, size, etc
 
 
 
-
 CACHE_HEADER = "### bzr hashcache v5\n"
+
+import os, stat, time
+
+from bzrlib.osutils import sha_file
+from bzrlib.trace import mutter, warning
+
 
 
 def _fingerprint(abspath):
-    import os, stat
-
     try:
         fs = os.lstat(abspath)
     except OSError:
@@ -91,13 +92,13 @@ class HashCache(object):
         self.miss_count = 0
         self.stat_count = 0
         self.danger_count = 0
+        self.gone_count = 0
+        self.removed_count = 0
         self._cache = {}
 
 
-
     def cache_file_name(self):
-        import os.path
-        return os.path.join(self.basedir, '.bzr', 'stat-cache')
+        return os.sep.join([self.basedir, '.bzr', 'stat-cache'])
 
 
 
@@ -111,18 +112,22 @@ class HashCache(object):
             self._cache = {}
 
 
-    def get_sha1(self, path):
-        """Return the hex SHA-1 of the contents of the file at path.
-
-        XXX: If the file does not exist or is not a plain file???
-        """
-
-        import os, time
-        from bzrlib.osutils import sha_file
-        from bzrlib.trace import mutter
+    def refresh_all(self):
+        prep = [(ce[1][3], path) for (path, ce) in self._cache.iteritems()]
+        prep.sort()
         
-        abspath = os.path.join(self.basedir, path)
+        for inum, path in prep:
+            # we don't really need to re-hash them; we just need to check 
+            # if they're up to date
+            self.get_sha1(path)
+
+
+    def get_sha1(self, path):
+        """Return the sha1 of a file.
+        """
+        abspath = os.sep.join([self.basedir, path])
         fp = _fingerprint(abspath)
+
         c = self._cache.get(path)
         if c:
             cache_sha1, cache_fp = c
@@ -133,6 +138,10 @@ class HashCache(object):
 
         if not fp:
             # not a regular file
+            if path in self._cache:
+                self.removed_count += 1
+                self.needs_write = True
+                del self._cache[path]
             return None
         elif cache_fp and (cache_fp == fp):
             self.hit_count += 1
@@ -148,17 +157,21 @@ class HashCache(object):
                 # next time.
                 self.danger_count += 1 
                 if cache_fp:
-                    mutter("remove outdated entry for %s" % path)
+                    self.removed_count += 1
                     self.needs_write = True
                     del self._cache[path]
             elif (fp != cache_fp) or (digest != cache_sha1):
-                mutter("update entry for %s" % path)
-                mutter("  %r" % (fp,))
-                mutter("  %r" % (cache_fp,))
+#                 mutter("update entry for %s" % path)
+#                 mutter("  %r" % (fp,))
+#                 mutter("  %r" % (cache_fp,))
                 self.needs_write = True
                 self._cache[path] = (digest, fp)
-
+            else:
+                # huh?
+                assert 0
+            
             return digest
+            
 
 
 
@@ -194,8 +207,6 @@ class HashCache(object):
 
         If the cache file has the wrong version marker, this just clears 
         the cache."""
-        from bzrlib.trace import mutter, warning
-
         self._cache = {}
 
         fn = self.cache_file_name()
