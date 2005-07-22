@@ -361,7 +361,7 @@ class Branch(object):
             # ElementTree does its own conversion from UTF-8, so open in
             # binary.
             inv = unpack_xml(Inventory,
-                                  self.controlfile('inventory', 'rb'))
+                             self.controlfile('inventory', 'rb'))
             mutter("loaded inventory of %d items in %f"
                    % (len(inv), time() - before))
             return inv
@@ -806,10 +806,6 @@ class Branch(object):
         True
         """
         from bzrlib.progress import ProgressBar
-        try:
-            set
-        except NameError:
-            from sets import Set as set
 
         pb = ProgressBar()
 

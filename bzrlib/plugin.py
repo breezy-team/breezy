@@ -56,11 +56,7 @@ def load_plugins():
     _loaded = True
 
     import sys, os, imp
-    try:
-        set
-    except NameError:
-        from sets import Set as set         # python2.3
-
+    
     from bzrlib.trace import log_error, mutter, log_exception
     from bzrlib.errors import BzrError
 
