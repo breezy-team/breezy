@@ -43,13 +43,16 @@ class WorkingTree(bzrlib.tree.Tree):
         # in the future we might want to do this more selectively
         hc = self._hashcache = HashCache(basedir)
         hc.read()
-        for path, ie in inv.iter_entries():
-            hc.get_sha1(path)
+        hc.scan()
 
         if hc.needs_write:
             mutter("write hc")
             hc.write()
-
+            
+            
+    def __del__(self):
+        if self._hashcache.needs_write:
+            self._hashcache.write()
 
 
     def __iter__(self):
@@ -66,7 +69,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,
-                               self.basedir)
+                               getattr(self, 'basedir', None))
 
 
 

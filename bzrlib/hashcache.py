@@ -92,8 +92,8 @@ class HashCache(object):
         self.miss_count = 0
         self.stat_count = 0
         self.danger_count = 0
-        self.gone_count = 0
         self.removed_count = 0
+        self.update_count = 0
         self._cache = {}
 
 
@@ -112,66 +112,74 @@ class HashCache(object):
             self._cache = {}
 
 
-    def refresh_all(self):
-        prep = [(ce[1][3], path) for (path, ce) in self._cache.iteritems()]
+    def scan(self):
+        """Scan all files and remove entries where the cache entry is obsolete.
+        
+        Obsolete entries are those where the file has been modified or deleted
+        since the entry was inserted.        
+        """
+        prep = [(ce[1][3], path, ce) for (path, ce) in self._cache.iteritems()]
         prep.sort()
         
-        for inum, path in prep:
-            # we don't really need to re-hash them; we just need to check 
-            # if they're up to date
-            self.get_sha1(path)
+        for inum, path, cache_entry in prep:
+            abspath = os.sep.join([self.basedir, path])
+            fp = _fingerprint(abspath)
+            self.stat_count += 1
+            
+            cache_fp = cache_entry[1]
+    
+            if (not fp) or (cache_fp != fp):
+                # not here or not a regular file anymore
+                self.removed_count += 1
+                self.needs_write = True
+                del self._cache[path]
+
 
 
     def get_sha1(self, path):
         """Return the sha1 of a file.
         """
         abspath = os.sep.join([self.basedir, path])
-        fp = _fingerprint(abspath)
-
-        c = self._cache.get(path)
-        if c:
-            cache_sha1, cache_fp = c
-        else:
-            cache_sha1, cache_fp = None, None
-
         self.stat_count += 1
-
-        if not fp:
-            # not a regular file
+        file_fp = _fingerprint(abspath)
+        
+        if not file_fp:
+            # not a regular file or not existing
             if path in self._cache:
                 self.removed_count += 1
                 self.needs_write = True
                 del self._cache[path]
-            return None
-        elif cache_fp and (cache_fp == fp):
+            return None        
+
+        if path in self._cache:
+            cache_sha1, cache_fp = self._cache[path]
+        else:
+            cache_sha1, cache_fp = None, None
+
+        if cache_fp == file_fp:
             self.hit_count += 1
             return cache_sha1
-        else:
-            self.miss_count += 1
-            digest = sha_file(file(abspath, 'rb', buffering=65000))
+        
+        self.miss_count += 1
+        digest = sha_file(file(abspath, 'rb', buffering=65000))
 
-            now = int(time.time())
-            if fp[1] >= now or fp[2] >= now:
-                # changed too recently; can't be cached.  we can
-                # return the result and it could possibly be cached
-                # next time.
-                self.danger_count += 1 
-                if cache_fp:
-                    self.removed_count += 1
-                    self.needs_write = True
-                    del self._cache[path]
-            elif (fp != cache_fp) or (digest != cache_sha1):
-#                 mutter("update entry for %s" % path)
-#                 mutter("  %r" % (fp,))
-#                 mutter("  %r" % (cache_fp,))
+        now = int(time.time())
+        if file_fp[1] >= now or file_fp[2] >= now:
+            # changed too recently; can't be cached.  we can
+            # return the result and it could possibly be cached
+            # next time.
+            self.danger_count += 1 
+            if cache_fp:
+                self.removed_count += 1
                 self.needs_write = True
-                self._cache[path] = (digest, fp)
-            else:
-                # huh?
-                assert 0
-            
-            return digest
-            
+                del self._cache[path]
+        else:
+            self.update_count += 1
+            self.needs_write = True
+            self._cache[path] = (digest, file_fp)
+        
+        return digest
+        
 
 
 

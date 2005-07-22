@@ -1254,7 +1254,7 @@ class cmd_check(Command):
 
 
 
-class cmd_update_hashes(Command):
+class cmd_scan_cache(Command):
     hidden = True
     def run(self):
         from bzrlib.hashcache import HashCache
@@ -1262,12 +1262,12 @@ class cmd_update_hashes(Command):
 
         c = HashCache('.')
         c.read()
-        c.refresh_all()
+        c.scan()
             
         print '%6d stats' % c.stat_count
         print '%6d in hashcache' % len(c._cache)
-        print '%6d files gone' % c.gone_count
-        print '%6d hashes updated' % c.miss_count
+        print '%6d files removed from cache' % c.removed_count
+        print '%6d hashes updated' % c.update_count
         print '%6d files changed too recently to cache' % c.danger_count
 
         if c.needs_write:
