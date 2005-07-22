@@ -16,6 +16,10 @@
 
 # TODO: Don't allow WorkingTrees to be constructed for remote branches.
 
+# FIXME: I don't know if writing out the cache from the destructor is really a
+# good idea, because destructors are considered poor taste in Python, and
+# it's not predictable when it will be written out.
+
 import os
     
 import bzrlib.tree
@@ -287,7 +291,3 @@ class WorkingTree(bzrlib.tree.Tree):
         else:
             return None
         
-
-        
-        
-
