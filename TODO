@@ -17,6 +17,8 @@ less, and several days or more.
 Small things
 ------------
 
+* is_within_any is very very dodgy
+
 * Merging add of a new file clashing with an existing file doesn't
   work; add gets an error that it's already versioned and the merge
   aborts.
@@ -149,11 +151,10 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
   - and, of course, tests for all this
 
-* stat-cache update is too slow for some reason - why is Python making
-  a lot of futex calls?
-  
 * ``bzr add`` with no arguments should probably be the same as ``bzr add .``
 
+* Reproducible performance benchmark to measure whether performance is 
+  getting better or worse.
 
 
 Medium things
