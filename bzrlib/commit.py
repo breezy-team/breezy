@@ -211,12 +211,12 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
         working inventory.
     """
     from bzrlib.inventory import Inventory
-    from osutils import isdir, isfile, sha_string, quotefn, \
+    from bzrlib.osutils import isdir, isfile, sha_string, quotefn, \
          local_time_offset, username, kind_marker, is_inside_any
     
-    from branch import gen_file_id
-    from errors import BzrError
-    from revision import Revision
+    from bzrlib.branch import gen_file_id
+    from bzrlib.errors import BzrError
+    from bzrlib.revision import Revision
     from bzrlib.trace import mutter, note
 
     any_changes = False
