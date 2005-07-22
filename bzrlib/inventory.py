@@ -92,9 +92,9 @@ class InventoryEntry(object):
     # TODO: split InventoryEntry into subclasses for files,
     # directories, etc etc.
 
-    text_sha1 = None
-    text_size = None
-    
+    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
+                 'text_id', 'parent_id', 'children', ]
+
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
         
@@ -113,6 +113,9 @@ class InventoryEntry(object):
         if '/' in name or '\\' in name:
             raise BzrCheckError('InventoryEntry name %r is invalid' % name)
         
+        self.text_sha1 = None
+        self.text_size = None
+    
         self.file_id = file_id
         self.name = name
         self.kind = kind
