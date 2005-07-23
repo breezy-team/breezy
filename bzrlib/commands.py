@@ -200,8 +200,9 @@ class Command(object):
         assert isinstance(arguments, dict)
         cmdargs = options.copy()
         cmdargs.update(arguments)
-        assert self.__doc__ != Command.__doc__, \
-               ("No help message set for %r" % self)
+        if self.__doc__ == Command.__doc__:
+            from warnings import warn
+            warn("No help message set for %r" % self)
         self.status = self.run(**cmdargs)
 
     
@@ -409,15 +410,15 @@ class cmd_add(Command):
     whether already versioned or not, are searched for files or
     subdirectories that are neither versioned or ignored, and these
     are added.  This search proceeds recursively into versioned
-    directories.
+    directories.  If no names are given '.' is assumed.
 
-    Therefore simply saying 'bzr add .' will version all files that
+    Therefore simply saying 'bzr add' will version all files that
     are currently unknown.
 
     TODO: Perhaps adding a file whose directly is not versioned should
     recursively add that parent, rather than giving an error?
     """
-    takes_args = ['file+']
+    takes_args = ['file*']
     takes_options = ['verbose', 'no-recurse']
     
     def run(self, file_list, verbose=False, no_recurse=False):
@@ -1706,10 +1707,6 @@ def _parse_master_args(argv):
         'help':False
     }
 
-    # This is the point where we could hook into argv[0] to determine
-    # what front-end is supposed to be run
-    # For now, we are just ignoring it.
-    cmd_name = argv.pop(0)
     for arg in argv[:]:
         if arg[:2] != '--': # at the first non-option, we return the rest
             break
@@ -1729,45 +1726,43 @@ def run_bzr(argv):
 
     This is similar to main(), but without all the trappings for
     logging and error handling.  
+    
+    argv
+       The command-line arguments, without the program name.
+    
+    Returns a command status or raises an exception.
     """
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
+
+    # some options like --builtin and --no-plugins have special effects
+    argv, master_opts = _parse_master_args(argv)
+    if not master_opts['no-plugins']:
+        from bzrlib.plugin import load_plugins
+        load_plugins()
+
+    args, opts = parse_args(argv)
+
+    if master_opts.get('help') or 'help' in opts:
+        from bzrlib.help import help
+        if argv:
+            help(argv[0])
+        else:
+            help()
+        return 0            
+        
+    if 'version' in opts:
+        show_version()
+        return 0
+    
+    if args and args[0] == 'builtin':
+        include_plugins=False
+        args = args[1:]
     
     try:
-        # some options like --builtin and --no-plugins have special effects
-        argv, master_opts = _parse_master_args(argv)
-        if not master_opts['no-plugins']:
-            from bzrlib.plugin import load_plugins
-            load_plugins()
-
-        args, opts = parse_args(argv)
-
-        if master_opts['help']:
-            from bzrlib.help import help
-            if argv:
-                help(argv[0])
-            else:
-                help()
-            return 0            
-            
-        if 'help' in opts:
-            from bzrlib.help import help
-            if args:
-                help(args[0])
-            else:
-                help()
-            return 0
-        elif 'version' in opts:
-            show_version()
-            return 0
-        elif args and args[0] == 'builtin':
-            include_plugins=False
-            args = args[1:]
         cmd = str(args.pop(0))
     except IndexError:
-        import help
-        help.help()
+        print >>sys.stderr, "please try 'bzr help' for help"
         return 1
-          
 
     plugins_override = not (master_opts['builtin'])
     canonical_cmd, cmd_class = get_cmd_class(cmd, plugins_override=plugins_override)
@@ -1838,7 +1833,7 @@ def main(argv):
     try:
         try:
             try:
-                return run_bzr(argv)
+                return run_bzr(argv[1:])
             finally:
                 # do this here inside the exception wrappers to catch EPIPE
                 sys.stdout.flush()
