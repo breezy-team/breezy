@@ -16,6 +16,7 @@
 
 """bzr library"""
 
+# TODO: Do less imports here
 from branch import Branch, ScratchBranch, find_branch
 from errors import BzrError
 
