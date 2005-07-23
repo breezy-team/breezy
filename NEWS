@@ -12,13 +12,19 @@ DEVELOPMENT HEAD
 
     * ``bzr log -m FOO`` displays commits whose message matches regexp 
       FOO.
+      
+    * ``bzr add`` with no arguments adds everything under the current directory.
+    
+  ENHANCEMENTS:
+
+    * Faster working tree operations.
 
   CHANGES:
 
     * When exporting to a tarball with ``bzr export --format tgz``, put 
       everything under a top directory rather than dumping it into the
       current directory.   This can be overridden with the ``--root`` 
-      option.  Patch from William Dodé and John Meinel.
+      option.  Patch from William DodÃ© and John Meinel.
 
     * New ``bzr upgrade`` command to upgrade the format of a branch,
       replacing ``bzr check --update``.
