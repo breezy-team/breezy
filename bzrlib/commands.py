@@ -204,6 +204,8 @@ class Command(object):
             from warnings import warn
             warn("No help message set for %r" % self)
         self.status = self.run(**cmdargs)
+        if self.status is None:
+            self.status = 0
 
     
     def run(self):
@@ -1673,28 +1675,28 @@ def _parse_master_args(argv):
                     This is also a non-master option.
         --help      Run help and exit, also a non-master option (I think that should stay, though)
 
-    >>> argv, opts = _parse_master_args(['bzr', '--test'])
+    >>> argv, opts = _parse_master_args(['--test'])
     Traceback (most recent call last):
     ...
     BzrCommandError: Invalid master option: 'test'
-    >>> argv, opts = _parse_master_args(['bzr', '--version', 'command'])
+    >>> argv, opts = _parse_master_args(['--version', 'command'])
     >>> print argv
     ['command']
     >>> print opts['version']
     True
-    >>> argv, opts = _parse_master_args(['bzr', '--profile', 'command', '--more-options'])
+    >>> argv, opts = _parse_master_args(['--profile', 'command', '--more-options'])
     >>> print argv
     ['command', '--more-options']
     >>> print opts['profile']
     True
-    >>> argv, opts = _parse_master_args(['bzr', '--no-plugins', 'command'])
+    >>> argv, opts = _parse_master_args(['--no-plugins', 'command'])
     >>> print argv
     ['command']
     >>> print opts['no-plugins']
     True
     >>> print opts['profile']
     False
-    >>> argv, opts = _parse_master_args(['bzr', 'command', '--profile'])
+    >>> argv, opts = _parse_master_args(['command', '--profile'])
     >>> print argv
     ['command', '--profile']
     >>> print opts['profile']

@@ -14,9 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, sys
-import bzrlib
-
 from trace import mutter, note
 
 def glob_expand_for_win32(file_list):
@@ -40,13 +37,18 @@ def smart_add(file_list, verbose=True, recurse=True):
     This is designed more towards DWIM for humans than API simplicity.
     For the specific behaviour see the help for cmd_add().
     """
+    import os
+    import sys
     from bzrlib.osutils import quotefn, kind_marker
     from bzrlib.errors import BadFileKindError, ForbiddenFileError
+    import bzrlib.branch
+    import bzrlib.osutils
 
-    assert file_list
-    
     if sys.platform == 'win32':
         file_list = glob_expand_for_win32(file_list)
+        
+    if not file_list:
+        file_list = ['.']
     
     user_list = file_list[:]
     assert not isinstance(file_list, basestring)
@@ -102,3 +104,6 @@ def smart_add(file_list, verbose=True, recurse=True):
         if verbose:
             note('added %d' % count)
         b._write_inventory(inv)
+    else:
+        print "nothing new to add"
+        # should this return 1 to the shell?

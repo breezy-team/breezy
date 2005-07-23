@@ -26,11 +26,11 @@ class Mkdir(InTempDir):
         from bzrlib.commands import run_bzr
         import os
 
-        run_bzr(['bzr', 'init'])
-        run_bzr(['bzr', 'mkdir', 'foo'])
+        run_bzr(['init'])
+        run_bzr(['mkdir', 'foo'])
         self.assert_(os.path.isdir('foo'))
 
-        self.assertRaises(OSError, run_bzr, ['bzr', 'mkdir', 'foo'])
+        self.assertRaises(OSError, run_bzr, ['mkdir', 'foo'])
 
         from bzrlib.diff import compare_trees, TreeDelta
         from bzrlib.branch import Branch
@@ -63,6 +63,26 @@ class AddInUnversioned(InTempDir):
         self.assertRaises(NotVersionedError,
                           b.add,
                           'foo/hello')
+        
+        
+class SubdirCommit(InTempDir):
+    def runTest(self):
+        """Various commits from a subdirectory"""
+        
+        from bzrlib.branch import Branch
+        from bzrlib.commands import run_bzr
+        import os
+        
+        b = Branch('.', init=True)
+        self.build_tree(['src/', 'src/foo.c', 'README'])
+        
+        self.assertEqual(sorted(b.unknowns()),
+                         ['README', 'src'])
+        
+        self.assertEqual(run_bzr(['version']), 0)
+        
+        self.assertEqual(run_bzr(['add']), 0)
+        
         
 
 
