@@ -38,6 +38,9 @@ def make_writable(filename):
 
 
 _QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/_~-])')
+
+_SLASH_RE = re.compile(r'[\\/]+')
+
 def quotefn(f):
     """Return a quoted filename filename
 
@@ -131,9 +134,29 @@ def isfile(f):
 
 def is_inside(dir, fname):
     """True if fname is inside dir.
+    
+    The parameters should typically be passed to os.path.normpath first, so
+    that . and .. and repeated slashes are eliminated, and the separators
+    are canonical for the platform.
+    
+    >>> is_inside('src', 'src/foo.c')
+    True
+    >>> is_inside('src', 'srccontrol')
+    False
+    >>> is_inside('src', 'src/a/a/a/foo.c')
+    True
+    >>> is_inside('foo.c', 'foo.c')
+    True
     """
-    return os.path.commonprefix([dir, fname]) == dir
-
+    # XXX: Most callers of this can actually do something smarter by 
+    # looking at the inventory
+    
+    dir = dir.split(os.sep)
+    pl = len(dir)
+    fname = fname.split(os.sep)
+   
+    return (len(fname) >= pl) and (dir == fname[:pl])
+    
 
 def is_inside_any(dir_list, fname):
     """True if fname is inside any of given dirs."""

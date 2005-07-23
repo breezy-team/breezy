@@ -47,7 +47,8 @@ def selftest(verbose=False):
               bzrlib.osutils, bzrlib.commands, bzrlib.merge3):
         if m not in MODULES_TO_DOCTEST:
             MODULES_TO_DOCTEST.append(m)
-            
+    
+    # ugly ugly!
     for m in (bzrlib.selftest.whitebox,
               bzrlib.selftest.versioning,
               bzrlib.selftest.testinv,

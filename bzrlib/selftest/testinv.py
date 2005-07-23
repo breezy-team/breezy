@@ -18,6 +18,7 @@ from bzrlib.selftest import TestBase
 
 from bzrlib.inventory import Inventory, InventoryEntry
 
+
 class TestIsWithin(TestBase):
     def runTest(self):
         from bzrlib.osutils import is_inside_any
@@ -27,6 +28,11 @@ class TestIsWithin(TestBase):
                          (['src'], 'src'),
                          ]:
             self.assert_(is_inside_any(dirs, fn))
+            
+        for dirs, fn in [(['src'], 'srccontrol'),
+                         (['src'], 'srccontrol/foo')]:
+            self.assertFalse(is_inside_any(dirs, fn))
+            
             
             
 class TestInventoryIds(TestBase):
