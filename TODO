@@ -17,6 +17,11 @@ less, and several days or more.
 Small things
 ------------
 
+* don't try to run the editor unless stdout is a terminal?
+
+* tests for running the commit editor, and fix problem of not passing in 
+  multiple arguments
+
 * is_within_any is very very dodgy
 
 * Merging add of a new file clashing with an existing file doesn't

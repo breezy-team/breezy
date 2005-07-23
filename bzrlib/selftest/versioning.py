@@ -73,17 +73,33 @@ class SubdirCommit(InTempDir):
         from bzrlib.commands import run_bzr
         import os
         
+        eq = self.assertEqual
+        ass = self.assert_
+        chdir = os.chdir
+        
         b = Branch('.', init=True)
         self.build_tree(['src/', 'src/foo.c', 'README'])
         
-        self.assertEqual(sorted(b.unknowns()),
+        eq(sorted(b.unknowns()),
                          ['README', 'src'])
         
-        self.assertEqual(run_bzr(['version']), 0)
+        eq(run_bzr(['version']), 0)
         
-        self.assertEqual(run_bzr(['add']), 0)
+        eq(run_bzr(['add']), 0)
         
+        eq(run_bzr(['commit', '-m', 'initial tree']), 0)
         
+        inv = b.get_revision_inventory(b.lookup_revision(1))
+        
+        eq(len(inv), 4)   # including root
+
+        file('toplevel', 'w').write('top level file')
+        chdir('src')
+        file('more.c', 'w').write('more content')
+        eq(run_bzr(['add']), 0)
+        
+        ass(b.inventory.path2id('src/more.c'))
+        eq(list(b.unknowns()), ['toplevel'])
 
 
 TEST_CLASSES = [
