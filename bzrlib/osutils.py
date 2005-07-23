@@ -150,20 +150,18 @@ def is_inside(dir, fname):
     """
     # XXX: Most callers of this can actually do something smarter by 
     # looking at the inventory
+
+    if dir == fname:
+        return True
     
-    dir = dir.split(os.sep)
-    pl = len(dir)
-    fname = fname.split(os.sep)
-   
-    return (len(fname) >= pl) and (dir == fname[:pl])
+    if dir[-1] != os.sep:
+        dir += os.sep
     
+    return fname.startswith(dir)
+
 
 def is_inside_any(dir_list, fname):
     """True if fname is inside any of given dirs."""
-    # quick scan for perfect match
-    if fname in dir_list:
-        return True
-    
     for dirname in dir_list:
         if is_inside(dirname, fname):
             return True
