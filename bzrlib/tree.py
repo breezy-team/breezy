@@ -66,6 +66,9 @@ class Tree(object):
 
     def _get_inventory(self):
         return self._inventory
+    
+    def get_file_by_path(self, path):
+        return self.get_file(self._inventory.path2id(path))
 
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
