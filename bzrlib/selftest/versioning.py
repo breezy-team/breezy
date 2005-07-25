@@ -100,14 +100,14 @@ class SubdirCommit(BzrTestBase):
         
         os.chdir('a')
         # commit from here should do nothing
-        run_bzr('commit', '.', '-m', 'commit subdir again', '--unchanged')
+        run_bzr('commit', '.', '-m', 'commit subdir only', '--unchanged')
         v3 = b.revision_tree(b.lookup_revision(3))
         eq(v3.get_file_by_path('b/two').read(), 'old contents')
         eq(v3.get_file_by_path('top').read(), 'old contents')
         eq(v3.get_file_by_path('a/one').read(), 'new contents')
                 
         # commit in subdirectory commits whole tree
-        run_bzr('commit', '-m', 'commit in subdir')
+        run_bzr('commit', '-m', 'commit whole tree from subdir')
         v4 = b.revision_tree(b.lookup_revision(4))
         eq(v4.get_file_by_path('b/two').read(), 'new contents')        
         eq(v4.get_file_by_path('top').read(), 'new contents')

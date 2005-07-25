@@ -1236,11 +1236,7 @@ class cmd_commit(Command):
         b = find_branch('.')
         if selected_list:
             selected_list = [b.relpath(s) for s in selected_list]
-        else:
-            selected_list = [b.relpath('.')]
-        if selected_list == ['.']:
-            selected_list = None
-
+            
         try:
             b.commit(message, verbose=verbose,
                      specific_files=selected_list,
