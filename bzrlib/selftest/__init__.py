@@ -16,9 +16,18 @@
 
 
 from testsweet import TestBase, run_suite, InTempDir
+import bzrlib.commands
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
+
+
+class BzrTestBase(InTempDir):
+    """bzr-specific test base class"""
+    def run_bzr(self, *args, **kwargs):
+        retcode = kwargs.get('retcode', 0)
+        self.assertEquals(bzrlib.commands.run_bzr(args), retcode)
+        
 
 def selftest(verbose=False):
     from unittest import TestLoader, TestSuite
