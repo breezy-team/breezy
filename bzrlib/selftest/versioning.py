@@ -67,7 +67,12 @@ class AddInUnversioned(InTempDir):
         
 class SubdirCommit(InTempDir):
     def runTest(self):
-        """Various commits from a subdirectory"""
+        pass
+        
+        
+class SubdirAdd(InTempDir):
+    def runTest(self):
+        """Add in subdirectory should add only things from there down"""
         
         from bzrlib.branch import Branch
         from bzrlib.commands import run_bzr
@@ -78,28 +83,26 @@ class SubdirCommit(InTempDir):
         chdir = os.chdir
         
         b = Branch('.', init=True)
-        self.build_tree(['src/', 'src/foo.c', 'README'])
+        self.build_tree(['src/', 'README'])
         
         eq(sorted(b.unknowns()),
-                         ['README', 'src'])
+           ['README', 'src'])
         
-        eq(run_bzr(['version']), 0)
+        eq(run_bzr(['add', 'src']), 0)
         
-        eq(run_bzr(['add']), 0)
+        self.build_tree(['src/foo.c'])
         
-        eq(run_bzr(['commit', '-m', 'initial tree']), 0)
-        
-        inv = b.get_revision_inventory(b.lookup_revision(1))
-        
-        eq(len(inv), 4)   # including root
-
-        file('toplevel', 'w').write('top level file')
         chdir('src')
-        file('more.c', 'w').write('more content')
         eq(run_bzr(['add']), 0)
         
-        ass(b.inventory.path2id('src/more.c'))
-        eq(list(b.unknowns()), ['toplevel'])
+        eq(sorted(b.unknowns()), 
+           ['README'])
+        eq(len(b.inventory), 3)
+                
+        chdir('..')
+        eq(run_bzr(['add']), 0)
+        eq(list(b.unknowns()), [])
+           
 
 
 TEST_CLASSES = [
