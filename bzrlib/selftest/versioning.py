@@ -17,14 +17,19 @@
 
 """Tests of simple versioning operations"""
 
+# TODO: test adding a file whose directory is not versioned
+# TODO: test trying to commit within a directory that is not yet added
 
-from bzrlib.selftest import InTempDir
+
+import os
+from bzrlib.selftest import InTempDir, BzrTestBase
+from bzrlib.branch import Branch
+
 
 class Mkdir(InTempDir):
     def runTest(self): 
         """Basic 'bzr mkdir' operation"""
         from bzrlib.commands import run_bzr
-        import os
 
         run_bzr(['init'])
         run_bzr(['mkdir', 'foo'])
@@ -52,7 +57,6 @@ class AddInUnversioned(InTempDir):
         branch add doesn't do that.
         """
         from bzrlib.branch import Branch
-        import os
         from bzrlib.errors import NotVersionedError
 
         b = Branch('.', init=True)
@@ -65,9 +69,51 @@ class AddInUnversioned(InTempDir):
                           'foo/hello')
         
         
-class SubdirCommit(InTempDir):
+class SubdirCommit(BzrTestBase):
     def runTest(self):
-        pass
+        """Test committing a subdirectory, and committing within a directory."""
+        run_bzr = self.run_bzr
+        eq = self.assertEqual
+
+        self.build_tree(['a/', 'b/'])
+        
+        run_bzr('init')
+        b = Branch('.')
+        
+        for fn in ('a/one', 'b/two', 'top'):
+            file(fn, 'w').write('old contents')
+            
+        run_bzr('add')
+        run_bzr('commit', '-m', 'first revision')
+        
+        for fn in ('a/one', 'b/two', 'top'):
+            file(fn, 'w').write('new contents')
+            
+        run_bzr('commit', 'a', '-m', 'commit a only')
+        
+        old = b.revision_tree(b.lookup_revision(1))
+        new = b.revision_tree(b.lookup_revision(2))
+        
+        eq(new.get_file_by_path('b/two').read(), 'old contents')
+        eq(new.get_file_by_path('top').read(), 'old contents')
+        eq(new.get_file_by_path('a/one').read(), 'new contents')
+        
+        os.chdir('a')
+        # commit from here should do nothing
+        run_bzr('commit', '.', '-m', 'commit subdir again', '--unchanged')
+        v3 = b.revision_tree(b.lookup_revision(3))
+        eq(v3.get_file_by_path('b/two').read(), 'old contents')
+        eq(v3.get_file_by_path('top').read(), 'old contents')
+        eq(v3.get_file_by_path('a/one').read(), 'new contents')
+                
+        # commit in subdirectory commits whole tree
+        run_bzr('commit', '-m', 'commit in subdir')
+        v4 = b.revision_tree(b.lookup_revision(4))
+        eq(v4.get_file_by_path('b/two').read(), 'new contents')        
+        eq(v4.get_file_by_path('top').read(), 'new contents')
+        
+        # TODO: factor out some kind of assert_tree_state() method
+        
         
         
 class SubdirAdd(InTempDir):
@@ -76,7 +122,6 @@ class SubdirAdd(InTempDir):
         
         from bzrlib.branch import Branch
         from bzrlib.commands import run_bzr
-        import os
         
         eq = self.assertEqual
         ass = self.assert_
@@ -102,10 +147,4 @@ class SubdirAdd(InTempDir):
         chdir('..')
         eq(run_bzr(['add']), 0)
         eq(list(b.unknowns()), [])
-           
-
-
-TEST_CLASSES = [
-    Mkdir,
-    AddInUnversioned,
-    ]
+        

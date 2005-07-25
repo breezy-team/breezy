@@ -38,6 +38,11 @@ DEVELOPMENT HEAD
 
     * By default the commit command refuses to record a revision with
       no changes unless the ``--unchanged`` option is given.
+      
+      
+  BUG FIXES:
+  
+    * Fix bugs in committing only selected files or within a subdirectory.
 
 
 bzr-0.0.5  2005-06-15

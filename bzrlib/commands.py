@@ -1184,10 +1184,12 @@ class cmd_local_time_offset(Command):
 
 class cmd_commit(Command):
     """Commit changes into a new revision.
+    
+    If no arguments are given, the entire tree is committed.
 
     If selected files are specified, only changes to those files are
-    committed.  If a directory is specified then its contents are also
-    committed.
+    committed.  If a directory is specified then the directory and everything 
+    within it is committed.
 
     A selected-file commit may fail in some cases where the committed
     tree would be invalid, such as trying to commit a file in a
@@ -1201,6 +1203,8 @@ class cmd_commit(Command):
     takes_options = ['message', 'file', 'verbose', 'unchanged']
     aliases = ['ci', 'checkin']
 
+    # TODO: Give better message for -s, --summary, used by tla people
+    
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False):
         from bzrlib.errors import PointlessCommit
@@ -1208,6 +1212,8 @@ class cmd_commit(Command):
 
         ## Warning: shadows builtin file()
         if not message and not file:
+            # FIXME: Ugly; change status code to send to a provided function?
+            
             import cStringIO
             stdout = sys.stdout
             catcher = cStringIO.StringIO()
@@ -1228,6 +1234,12 @@ class cmd_commit(Command):
             message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
         b = find_branch('.')
+        if selected_list:
+            selected_list = [b.relpath(s) for s in selected_list]
+        else:
+            selected_list = [b.relpath('.')]
+        if selected_list == ['.']:
+            selected_list = None
 
         try:
             b.commit(message, verbose=verbose,
