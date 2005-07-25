@@ -308,3 +308,8 @@ def log_formatter(name, *args, **kwargs):
         return FORMATTERS[name](*args, **kwargs)
     except IndexError:
         raise BzrCommandError("unknown log formatter: %r" % name)
+
+def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
+    # deprecated; for compatability
+    lf = LongLogFormatter(to_file=to_file, show_timezone=show_timezone)
+    lf.show(revno, rev, delta)
