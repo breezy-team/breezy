@@ -1,6 +1,53 @@
 import changeset
 from changeset import Inventory, apply_changeset, invert_dict
 import os.path
+from merge3 import Merge3
+
+class ApplyMerge3:
+    """Contents-change wrapper around merge3.Merge3"""
+    def __init__(self, base_file, other_file):
+        self.base_file = base_file
+        self.other_file = other_file
+ 
+    def __eq__(self, other):
+        if not isinstance(other, ApplyMerge3):
+            return False
+        return (self.base_file == other.base_file and 
+                self.other_file == other.other_file)
+
+    def __ne__(self, other):
+        return not (self == other)
+
+
+    def apply(self, filename, conflict_handler, reverse=False):
+        new_file = filename+".new" 
+        if not reverse:
+            base = self.base_file
+            other = self.other_file
+        else:
+            base = self.other_file
+            other = self.base_file
+        m3 = Merge3(file(base, "rb").readlines(), 
+                    file(filename, "rb").readlines(), 
+                    file(other, "rb").readlines())
+
+        new_conflicts = False
+        output_file = file(new_file, "wb")
+        start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
+        for line in m3.merge_lines(name_a = "TREE", name_b = "MERGE-SOURCE", 
+                       start_marker=start_marker):
+            if line.startswith(start_marker):
+                new_conflicts = True
+                output_file.write(line.replace(start_marker, '<<<<<<<<'))
+            else:
+                output_file.write(line)
+        output_file.close()
+        if not new_conflicts:
+            os.chmod(new_file, os.stat(filename).st_mode)
+            os.rename(new_file, filename)
+            return
+        else:
+            conflict_handler.merge_conflict(new_file, filename, base, other)
 
 class ThreewayInventory(object):
     def __init__(self, this_inventory, base_inventory, other_inventory):
@@ -371,7 +418,7 @@ class MergeBuilder(object):
         conflict_handler = changeset.ExceptionConflictHandler(self.this.dir)
         return make_merge_changeset(self.cset, all_inventory, self.this,
                                     self.base, self.other, conflict_handler,
-                                    changeset.Diff3Merge)
+                                    ApplyMerge3)
 
     def apply_inv_change(self, inventory_change, orig_inventory):
         orig_inventory_by_path = {}
@@ -494,7 +541,15 @@ class MergeTest(unittest.TestCase):
         builder.cleanup()
 
     def test_contents_merge(self):
+        """Test merge3 merging"""
+        self.do_contents_test(ApplyMerge3)
+
+    def test_contents_merge2(self):
         """Test diff3 merging"""
+        self.do_contents_test(changeset.Diff3Merge)
+
+    def do_contents_test(self, merge_factory):
+        """Test merging with specified ContentsChange factory"""
         builder = MergeBuilder()
         builder.add_file("1", "0", "name1", "text1", 0755)
         builder.change_contents("1", other="text4")
@@ -505,9 +560,9 @@ class MergeTest(unittest.TestCase):
         cset = builder.merge_changeset()
         assert(cset.entries["1"].contents_change is not None)
         assert(isinstance(cset.entries["1"].contents_change,
-                          changeset.Diff3Merge))
+                          ApplyMerge3))
         assert(isinstance(cset.entries["2"].contents_change,
-                          changeset.Diff3Merge))
+                          ApplyMerge3))
         assert(cset.entries["3"].is_boring())
         builder.apply_changeset(cset)
         assert(file(builder.this.full_path("1"), "rb").read() == "text4" )

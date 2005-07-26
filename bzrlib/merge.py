@@ -1,6 +1,7 @@
 from merge_core import merge_flex
 from changeset import generate_changeset, ExceptionConflictHandler
 from changeset import Inventory, Diff3Merge
+from merge_core import ApplyMerge3
 from bzrlib import find_branch
 import bzrlib.osutils
 from bzrlib.errors import BzrCommandError
@@ -231,7 +232,13 @@ def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b):
 
 
 def merge_inner(this_branch, other_tree, base_tree, tempdir, 
-                ignore_zero=False):
+                ignore_zero=False, merge_type="diff3"):
+    merge_types = {"merge3": ApplyMerge3, 
+                   "diff3": Diff3Merge}
+
+    def merge_factory(base_file, other_file):
+        return merge_types[merge_type](base_file, other_file)
+
     this_tree = get_tree((this_branch.base, None), tempdir, "this")[1]
 
     def get_inventory(tree):
@@ -241,7 +248,7 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
                              generate_cset_optimized, get_inventory,
                              MergeConflictHandler(base_tree.root,
                                                   ignore_zero=ignore_zero),
-                             merge_factory=Diff3Merge)
+                             merge_factory=merge_factory)
 
     adjust_ids = []
     for id, path in inv_changes.iteritems():
