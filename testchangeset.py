@@ -54,7 +54,7 @@ class MockTree(object):
         parent_id = self.parent_id(file_id)
         text_sha_1, text_size = self.contents_stats(file_id)
         ie = InventoryEntry(file_id, name, kind, parent_id)
-        ie.text_sha_1 = text_sha_1
+        ie.text_sha1 = text_sha_1
         ie.text_size = text_size
         return ie
 
