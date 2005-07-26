@@ -25,13 +25,14 @@ except AttributeError:
 
 
 REINVOKE = "__BZR_REINVOKE"    
-NEED_VERS = (2, 3)
+NEED_VERS = (2, 4)
+KNOWN_PYTHONS = ('python2.4',)
 
 if version_info < NEED_VERS:
     if not os.environ.has_key(REINVOKE):
         # mutating os.environ doesn't work in old Pythons
         os.putenv(REINVOKE, "1")
-        for python in 'python2.4', 'python2.3':
+        for python in KNOWN_PYTHONS:
             try:
                 os.execvp(python, [python] + sys.argv)
             except OSError:
