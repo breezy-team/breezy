@@ -18,7 +18,7 @@ def make_inv(inventory):
         
 
 def merge_flex(this, base, other, changeset_function, inventory_function,
-               conflict_handler):
+               conflict_handler, merge_factory):
     this_inventory = inventory_function(this)
     base_inventory = inventory_function(base)
     other_inventory = inventory_function(other)
@@ -27,7 +27,7 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
                                   make_inv(other_inventory))
     cset = changeset_function(base, other, base_inventory, other_inventory)
     new_cset = make_merge_changeset(cset, inventory, this, base, other, 
-                                    conflict_handler)
+                                    conflict_handler, merge_factory)
     result = apply_changeset(new_cset, invert_invent(this_inventory),
                              this.root, conflict_handler, False)
     conflict_handler.finalize()
@@ -36,7 +36,7 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
     
 
 def make_merge_changeset(cset, inventory, this, base, other, 
-                         conflict_handler=None):
+                         conflict_handler, merge_factory):
     new_cset = changeset.Changeset()
     def get_this_contents(id):
         path = os.path.join(this.root, inventory.this.get_path(id))
@@ -51,7 +51,8 @@ def make_merge_changeset(cset, inventory, this, base, other,
         else:
             new_entry = make_merged_entry(entry, inventory, conflict_handler)
             new_contents = make_merged_contents(entry, this, base, other, 
-                                                inventory, conflict_handler)
+                                                inventory, conflict_handler, 
+                                                merge_factory)
             new_entry.contents_change = new_contents
             new_entry.metadata_change = make_merged_metadata(entry, base, other)
             new_cset.add_entry(new_entry)
@@ -116,20 +117,21 @@ def make_merged_entry(entry, inventory, conflict_handler):
     return new_entry
 
 
-def make_merged_contents(entry, this, base, other, inventory, conflict_handler):
+def make_merged_contents(entry, this, base, other, inventory, conflict_handler,
+                         merge_factory):
     contents = entry.contents_change
     if contents is None:
         return None
     this_path = this.readonly_path(entry.id)
-    def make_diff3():
+    def make_merge():
         if this_path is None:
             return conflict_handler.missing_for_merge(entry.id, inventory)
         base_path = base.readonly_path(entry.id)
         other_path = other.readonly_path(entry.id)    
-        return changeset.Diff3Merge(base_path, other_path)
+        return merge_factory(base_path, other_path)
 
     if isinstance(contents, changeset.PatchApply):
-        return make_diff3()
+        return make_merge()
     if isinstance(contents, changeset.ReplaceContents):
         if contents.old_contents is None and contents.new_contents is None:
             return None
@@ -151,7 +153,7 @@ def make_merged_contents(entry, this, base, other, inventory, conflict_handler):
                                                            other_path)
         elif isinstance(contents.old_contents, changeset.FileCreate) and \
             isinstance(contents.new_contents, changeset.FileCreate):
-            return make_diff3()
+            return make_merge()
         else:
             raise Exception("Unhandled merge scenario")
 
@@ -161,13 +163,6 @@ def make_merged_metadata(entry, base, other):
         other_path = other.readonly_path(entry.id)    
         return PermissionsMerge(base_path, other_path)
     
-def get_merge_entry(entry, inventory, base, other, conflict_handler):
-    if entry.contents_change is not None:
-        new_entry.contents_change = changeset.Diff3Merge(base_path, other_path)
-    if entry.metadata_change is not None:
-        new_entry.metadata_change = PermissionsMerge(base_path, other_path)
-
-    return new_entry
 
 class PermissionsMerge(object):
     def __init__(self, base_path, other_path):
@@ -375,7 +370,8 @@ class MergeBuilder(object):
                                           Inventory(self.other.inventory))
         conflict_handler = changeset.ExceptionConflictHandler(self.this.dir)
         return make_merge_changeset(self.cset, all_inventory, self.this,
-                                    self.base, self.other, conflict_handler)
+                                    self.base, self.other, conflict_handler,
+                                    changeset.Diff3Merge)
 
     def apply_inv_change(self, inventory_change, orig_inventory):
         orig_inventory_by_path = {}

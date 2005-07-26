@@ -1,6 +1,6 @@
 from merge_core import merge_flex
 from changeset import generate_changeset, ExceptionConflictHandler
-from changeset import Inventory
+from changeset import Inventory, Diff3Merge
 from bzrlib import find_branch
 import bzrlib.osutils
 from bzrlib.errors import BzrCommandError
@@ -240,7 +240,8 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
                              generate_cset_optimized, get_inventory,
                              MergeConflictHandler(base_tree.root,
-                                                  ignore_zero=ignore_zero))
+                                                  ignore_zero=ignore_zero),
+                             merge_factory=Diff3Merge)
 
     adjust_ids = []
     for id, path in inv_changes.iteritems():
