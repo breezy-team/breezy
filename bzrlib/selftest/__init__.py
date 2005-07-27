@@ -35,6 +35,7 @@ def selftest(verbose=False):
     import bzrlib.selftest.testbranch
     import bzrlib.selftest.teststatus
     import bzrlib.selftest.testinv
+    import bzrlib.selftest.testdiff
     import bzrlib.merge_core
     from doctest import DocTestSuite
     import os
@@ -59,6 +60,7 @@ def selftest(verbose=False):
               bzrlib.selftest.testhashcache,
               bzrlib.selftest.testrevisionnamespaces,
               bzrlib.selftest.testbranch,
+              bzrlib.selftest.testdiff,
               ):
         if m not in MODULES_TO_TEST:
             MODULES_TO_TEST.append(m)
@@ -71,12 +73,6 @@ def selftest(verbose=False):
 
     suite = TestSuite()
 
-    # should also test bzrlib.merge_core, but they seem to be out of date with
-    # the code.
-
-
-    # XXX: python2.3's TestLoader() doesn't seem to find all the
-    # tests; don't know why
     for m in MODULES_TO_TEST:
          suite.addTest(TestLoader().loadTestsFromModule(m))
 
