@@ -177,10 +177,12 @@ def test_suite():
     from unittest import TestSuite, TestLoader
     import testchangeset
     import common
+    import patches
 
     suite = TestSuite()
 
     suite.addTest(TestLoader().loadTestsFromModule(testchangeset))
+    suite.addTest(TestLoader().loadTestsFromModule(patches))
     suite.addTest(DocTestSuite(common))
 
     return suite
