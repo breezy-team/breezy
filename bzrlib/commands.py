@@ -223,16 +223,18 @@ class Command(object):
 class ExternalCommand(Command):
     """Class to wrap external commands.
 
-    We cheat a little here, when get_cmd_class() calls us we actually give it back
-    an object we construct that has the appropriate path, help, options etc for the
-    specified command.
+    We cheat a little here, when get_cmd_class() calls us we actually
+    give it back an object we construct that has the appropriate path,
+    help, options etc for the specified command.
 
-    When run_bzr() tries to instantiate that 'class' it gets caught by the __call__
-    method, which we override to call the Command.__init__ method. That then calls
-    our run method which is pretty straight forward.
+    When run_bzr() tries to instantiate that 'class' it gets caught by
+    the __call__ method, which we override to call the Command.__init__
+    method. That then calls our run method which is pretty straight
+    forward.
 
-    The only wrinkle is that we have to map bzr's dictionary of options and arguments
-    back into command line options and arguments for the script.
+    The only wrinkle is that we have to map bzr's dictionary of options
+    and arguments back into command line options and arguments for the
+    script.
     """
 
     def find_command(cls, cmd):
