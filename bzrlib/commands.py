@@ -1665,73 +1665,6 @@ def _match_argform(cmd, takes_args, args):
     return argdict
 
 
-def _parse_master_args(argv):
-    """Parse the arguments that always go with the original command.
-    These are things like bzr --no-plugins, etc.
-
-    There are now 2 types of option flags. Ones that come *before* the command,
-    and ones that come *after* the command.
-    Ones coming *before* the command are applied against all possible commands.
-    And are generally applied before plugins are loaded.
-
-    The current list are:
-        --builtin   Allow plugins to load, but don't let them override builtin commands,
-                    they will still be allowed if they do not override a builtin.
-        --no-plugins    Don't load any plugins. This lets you get back to official source
-                        behavior.
-        --profile   Enable the hotspot profile before running the command.
-                    For backwards compatibility, this is also a non-master option.
-        --version   Spit out the version of bzr that is running and exit.
-                    This is also a non-master option.
-        --help      Run help and exit, also a non-master option (I think that should stay, though)
-
-    >>> argv, opts = _parse_master_args(['--test'])
-    Traceback (most recent call last):
-    ...
-    BzrCommandError: Invalid master option: 'test'
-    >>> argv, opts = _parse_master_args(['--version', 'command'])
-    >>> print argv
-    ['command']
-    >>> print opts['version']
-    True
-    >>> argv, opts = _parse_master_args(['--profile', 'command', '--more-options'])
-    >>> print argv
-    ['command', '--more-options']
-    >>> print opts['profile']
-    True
-    >>> argv, opts = _parse_master_args(['--no-plugins', 'command'])
-    >>> print argv
-    ['command']
-    >>> print opts['no-plugins']
-    True
-    >>> print opts['profile']
-    False
-    >>> argv, opts = _parse_master_args(['command', '--profile'])
-    >>> print argv
-    ['command', '--profile']
-    >>> print opts['profile']
-    False
-    """
-    master_opts = {'builtin':False,
-        'no-plugins':False,
-        'version':False,
-        'profile':False,
-        'help':False
-    }
-
-    for arg in argv[:]:
-        if arg[:2] != '--': # at the first non-option, we return the rest
-            break
-        arg = arg[2:] # Remove '--'
-        if arg not in master_opts:
-            # We could say that this is not an error, that we should
-            # just let it be handled by the main section instead
-            raise BzrCommandError('Invalid master option: %r' % arg)
-        argv.pop(0) # We are consuming this entry
-        master_opts[arg] = True
-    return argv, master_opts
-
-
 
 def run_bzr(argv):
     """Execute a command.
@@ -1740,24 +1673,53 @@ def run_bzr(argv):
     logging and error handling.  
     
     argv
-       The command-line arguments, without the program name.
+       The command-line arguments, without the program name from argv[0]
     
     Returns a command status or raises an exception.
+
+    Special master options: these must come before the command because
+    they control how the command is interpreted.
+
+    --no-plugins
+        Do not load plugin modules at all
+
+    --builtin
+        Only use builtin commands.  (Plugins are still allowed to change
+        other behaviour.)
+
+    --profile
+        Run under the Python profiler.
     """
+    
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
 
-    # some options like --builtin and --no-plugins have special effects
-    argv, master_opts = _parse_master_args(argv)
-    if not master_opts['no-plugins']:
+    opt_profile = opt_no_plugins = opt_builtin = False
+
+    # --no-plugins is handled specially at a very early stage. We need
+    # to load plugins before doing other command parsing so that they
+    # can override commands, but this needs to happen first.
+
+    for a in argv[:]:
+        if a == '--profile':
+            opt_profile = True
+        elif a == '--no-plugins':
+            opt_no_plugins = True
+        elif a == '--builtin':
+            opt_builtin = True
+        else:
+            break
+        argv.remove(a)
+
+    if not opt_no_plugins:
         from bzrlib.plugin import load_plugins
         load_plugins()
 
     args, opts = parse_args(argv)
 
-    if master_opts.get('help') or 'help' in opts:
+    if 'help' in opts:
         from bzrlib.help import help
-        if argv:
-            help(argv[0])
+        if args:
+            help(args[0])
         else:
             help()
         return 0            
@@ -1766,25 +1728,14 @@ def run_bzr(argv):
         show_version()
         return 0
     
-    if args and args[0] == 'builtin':
-        include_plugins=False
-        args = args[1:]
-    
-    try:
-        cmd = str(args.pop(0))
-    except IndexError:
+    if not args:
         print >>sys.stderr, "please try 'bzr help' for help"
         return 1
+    
+    cmd = str(args.pop(0))
 
-    plugins_override = not (master_opts['builtin'])
-    canonical_cmd, cmd_class = get_cmd_class(cmd, plugins_override=plugins_override)
-
-    profile = master_opts['profile']
-    # For backwards compatibility, I would rather stick with --profile being a
-    # master/global option
-    if 'profile' in opts:
-        profile = True
-        del opts['profile']
+    canonical_cmd, cmd_class = \
+                   get_cmd_class(cmd, plugins_override=not opt_builtin)
 
     # check options are reasonable
     allowed = cmd_class.takes_options
@@ -1799,7 +1750,7 @@ def run_bzr(argv):
     for k, v in opts.items():
         cmdopts[k.replace('-', '_')] = v
 
-    if profile:
+    if opt_profile:
         import hotshot, tempfile
         pffileno, pfname = tempfile.mkstemp()
         try:

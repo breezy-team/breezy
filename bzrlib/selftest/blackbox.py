@@ -26,10 +26,9 @@ bit inefficient but arguably tests in a way more representative of how
 it's normally invoked.
 """
 
-# this code was previously in testbzr
+import sys
 
-from unittest import TestCase
-from bzrlib.selftest import TestBase, InTempDir
+from bzrlib.selftest import TestBase, InTempDir, BzrTestBase
 
 
 
@@ -50,12 +49,42 @@ class ExternalBase(InTempDir):
 
 
 
-class TestVersion(ExternalBase):
+class TestVersion(BzrTestBase):
+    """Check output from version command and master option is reasonable"""
     def runTest(self):
         # output is intentionally passed through to stdout so that we
         # can see the version being tested
-        self.runbzr(['version'])
+        from cStringIO import StringIO
+        save_out = sys.stdout
+        try:
+            sys.stdout = tmp_out = StringIO()
+            
+            self.run_bzr('version')
+        finally:
+            sys.stdout = save_out
 
+        output = tmp_out.getvalue()
+        self.log('bzr version output:')
+        self.log(output)
+        
+        self.assert_(output.startswith('bzr (bazaar-ng) '))
+        self.assertNotEqual(output.index('Canonical'), -1)
+
+        # make sure --version is consistent
+        try:
+            sys.stdout = tmp_out = StringIO()
+            
+            self.run_bzr('--version')
+        finally:
+            sys.stdout = save_out
+
+        self.log('bzr --version output:')
+        self.log(tmp_out.getvalue())
+
+        self.assertEquals(output, tmp_out.getvalue())
+
+
+        
 
 
 class HelpCommands(ExternalBase):
