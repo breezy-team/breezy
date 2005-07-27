@@ -809,6 +809,9 @@ class ChangesetTree(Tree):
         file_patch = self.patches.get(self.id2path(file_id))
         if file_patch is None:
             return patch_original
+
+        assert not file_patch.startswith('\\'), \
+            'Malformed patch for %s, %r' % (file_id, file_patch)
         return patched_file(file_patch, patch_original)
 
     def get_kind(self, file_id):
@@ -840,7 +843,8 @@ class ChangesetTree(Tree):
             if ie.text_size is None:
                 return ie.text_size, ie.text_sha1
             return int(ie.text_size), ie.text_sha1
-        content = self.get_file(file_id).read()
+        fileobj = self.get_file(file_id)
+        content = fileobj.read()
         return len(content), sha_string(content)
 
 
@@ -919,31 +923,11 @@ class ChangesetTree(Tree):
         paths.sort()
         return paths
 
-
 def patched_file(file_patch, original):
-    from bzrlib.patch import patch
-    from tempfile import mkdtemp
-    from shutil import rmtree
-    from StringIO import StringIO
-    from bzrlib.osutils import pumpfile
-    import os.path
-    temp_dir = mkdtemp()
-    try:
-        original_path = os.path.join(temp_dir, "originalfile")
-        temp_original = file(original_path, "wb")
-        if original is not None:
-            pumpfile(original, temp_original)
-        temp_original.close()
-        patched_path = os.path.join(temp_dir, "patchfile")
-        assert patch(file_patch, original_path, patched_path) == 0
-        result = StringIO()
-        temp_patched = file(patched_path, "rb")
-        pumpfile(temp_patched, result)
-        temp_patched.close()
-        result.seek(0,0)
-
-    finally:
-        rmtree(temp_dir)
-
-    return result
-
+    """Produce a file-like object with the patched version of a text"""
+    from patches import iter_patched
+    from iterablefile import IterableFile
+    if file_patch == "":
+        return IterableFile(())
+    return IterableFile(iter_patched(original, file_patch.splitlines(True)))
+    

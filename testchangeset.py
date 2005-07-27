@@ -430,12 +430,14 @@ class CSetTester(InTempDir):
                 #'b1/with\ttab.txt'
                 ])
         open('b1/sub/sub/emptyfile.txt', 'wb').close()
+        open('b1/dir/nolastnewline.txt', 'wb').write('bloop')
         self.b1.add([
                 'with space.txt'
                 , 'dir'
                 , 'dir/filein subdir.c'
                 , 'dir/WithCaps.txt'
                 , 'dir/trailing space '
+                , 'dir/nolastnewline.txt'
                 , 'sub'
                 , 'sub/sub'
                 , 'sub/sub/nonempty.txt'
@@ -477,6 +479,7 @@ class CSetTester(InTempDir):
         # Modified files
         open('b1/sub/dir/WithCaps.txt', 'ab').write('\nAdding some text\n')
         open('b1/sub/dir/trailing space ', 'ab').write('\nAdding some\nDOS format lines\n')
+        open('b1/sub/dir/nolastnewline.txt', 'ab').write('\n')
         self.b1.rename_one('sub/dir/trailing space ', 'sub/ start and end space ')
         self.b1.commit('Modified files', rev_id='a@cset-0-5')
         cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5')
