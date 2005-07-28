@@ -241,6 +241,10 @@ class LogFormatter(object):
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
+
+
+    def show(self, revno, rev, delta):
+        raise NotImplementedError('not implemented in abstract base')
         
 
 
