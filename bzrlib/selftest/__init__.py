@@ -49,6 +49,7 @@ def selftest(verbose=False):
                    'bzrlib.selftest.testmerge3',
                    'bzrlib.selftest.testhashcache',
                    'bzrlib.selftest.teststatus',
+                   'bzrlib.selftest.testlog',
                    'bzrlib.selftest.blackbox',
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
