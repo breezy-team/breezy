@@ -411,14 +411,14 @@ class MergeBuilder(object):
     def change_perms_tree(self, id, tree, mode):
         os.chmod(tree.full_path(id), mode)
 
-    def merge_changeset(self):
+    def merge_changeset(self, merge_factory):
         all_inventory = ThreewayInventory(Inventory(self.this.inventory),
                                           Inventory(self.base.inventory), 
                                           Inventory(self.other.inventory))
         conflict_handler = changeset.ExceptionConflictHandler(self.this.dir)
         return make_merge_changeset(self.cset, all_inventory, self.this,
                                     self.base, self.other, conflict_handler,
-                                    ApplyMerge3)
+                                    merge_factory)
 
     def apply_inv_change(self, inventory_change, orig_inventory):
         orig_inventory_by_path = {}
@@ -486,7 +486,7 @@ class MergeTest(unittest.TestCase):
         builder.change_name("2", base="name4")
         builder.add_file("3", "0", "name5", "hello3", 0755)
         builder.change_name("3", this="name6")
-        cset = builder.merge_changeset()
+        cset = builder.merge_changeset(ApplyMerge3)
         assert(cset.entries["2"].is_boring())
         assert(cset.entries["1"].name == "name1")
         assert(cset.entries["1"].new_name == "name2")
@@ -505,7 +505,7 @@ class MergeTest(unittest.TestCase):
         builder.add_file("1", "0", "name1", "hello1", 0644)
         builder.change_name("1", other="name2", this="name3")
         self.assertRaises(changeset.RenameConflict, 
-                          builder.merge_changeset)
+                          builder.merge_changeset, ApplyMerge3)
         builder.cleanup()
         
     def test_file_moves(self):
@@ -522,7 +522,7 @@ class MergeTest(unittest.TestCase):
         assert(Inventory(builder.this.inventory).get_parent("4") == "2")
         builder.change_parent("5", base="2")
         assert(Inventory(builder.base.inventory).get_parent("5") == "2")
-        cset = builder.merge_changeset()
+        cset = builder.merge_changeset(ApplyMerge3)
         for id in ("1", "2", "4", "5"):
             assert(cset.entries[id].is_boring())
         assert(cset.entries["3"].parent == "1")
@@ -537,7 +537,7 @@ class MergeTest(unittest.TestCase):
         builder.add_file("4", "1", "file1", "hello1", 0644)
         builder.change_parent("4", other="2", this="3")
         self.assertRaises(changeset.MoveConflict, 
-                          builder.merge_changeset)
+                          builder.merge_changeset, ApplyMerge3)
         builder.cleanup()
 
     def test_contents_merge(self):
@@ -550,6 +550,7 @@ class MergeTest(unittest.TestCase):
 
     def do_contents_test(self, merge_factory):
         """Test merging with specified ContentsChange factory"""
+        from inspect import isclass
         builder = MergeBuilder()
         builder.add_file("1", "0", "name1", "text1", 0755)
         builder.change_contents("1", other="text4")
@@ -557,12 +558,13 @@ class MergeTest(unittest.TestCase):
         builder.change_contents("2", base="text5")
         builder.add_file("3", "0", "name5", "text3", 0744)
         builder.change_contents("3", this="text6")
-        cset = builder.merge_changeset()
+        cset = builder.merge_changeset(merge_factory)
         assert(cset.entries["1"].contents_change is not None)
-        assert(isinstance(cset.entries["1"].contents_change,
-                          ApplyMerge3))
-        assert(isinstance(cset.entries["2"].contents_change,
-                          ApplyMerge3))
+        if isclass(merge_factory):
+            assert(isinstance(cset.entries["1"].contents_change,
+                          merge_factory))
+            assert(isinstance(cset.entries["2"].contents_change,
+                          merge_factory))
         assert(cset.entries["3"].is_boring())
         builder.apply_changeset(cset)
         assert(file(builder.this.full_path("1"), "rb").read() == "text4" )
@@ -575,7 +577,7 @@ class MergeTest(unittest.TestCase):
         builder = MergeBuilder()
         builder.add_file("1", "0", "name1", "text1", 0755)
         builder.change_contents("1", other="text4", this="text3")
-        cset = builder.merge_changeset()
+        cset = builder.merge_changeset(merge_factory)
         self.assertRaises(changeset.MergeConflict, builder.apply_changeset,
                           cset)
         builder.cleanup()
@@ -585,14 +587,15 @@ class MergeTest(unittest.TestCase):
         builder.change_contents("1", other="text4", base="text3")
         builder.remove_file("1", base=True)
         self.assertRaises(changeset.NewContentsConflict,
-                          builder.merge_changeset)
+                          builder.merge_changeset, merge_factory)
         builder.cleanup()
 
         builder = MergeBuilder()
         builder.add_file("1", "0", "name1", "text1", 0755)
         builder.change_contents("1", other="text4", base="text3")
         builder.remove_file("1", this=True)
-        self.assertRaises(changeset.MissingForMerge, builder.merge_changeset)
+        self.assertRaises(changeset.MissingForMerge, builder.merge_changeset, 
+                          merge_factory)
         builder.cleanup()
 
     def test_perms_merge(self):
@@ -603,7 +606,7 @@ class MergeTest(unittest.TestCase):
         builder.change_perms("2", base=0655)
         builder.add_file("3", "0", "name3", "text3", 0755)
         builder.change_perms("3", this=0655)
-        cset = builder.merge_changeset()
+        cset = builder.merge_changeset(ApplyMerge3)
         assert(cset.entries["1"].metadata_change is not None)
         assert(isinstance(cset.entries["1"].metadata_change,
                           PermissionsMerge))
@@ -618,7 +621,7 @@ class MergeTest(unittest.TestCase):
         builder = MergeBuilder()
         builder.add_file("1", "0", "name1", "text1", 0755)
         builder.change_perms("1", other=0655, base=0555)
-        cset = builder.merge_changeset()
+        cset = builder.merge_changeset(ApplyMerge3)
         self.assertRaises(changeset.MergePermissionConflict, 
                      builder.apply_changeset, cset)
         builder.cleanup()
