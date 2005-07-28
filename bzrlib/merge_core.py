@@ -1,6 +1,7 @@
 import changeset
 from changeset import Inventory, apply_changeset, invert_dict
 import os.path
+from osutils import backup_file
 from merge3 import Merge3
 
 class ApplyMerge3:
@@ -48,6 +49,25 @@ class ApplyMerge3:
             return
         else:
             conflict_handler.merge_conflict(new_file, filename, base, other)
+
+
+class BackupBeforeChange:
+    """Contents-change wrapper to back up file first"""
+    def __init__(self, contents_change):
+        self.contents_change = contents_change
+ 
+    def __eq__(self, other):
+        if not isinstance(other, BackupBeforeChange):
+            return False
+        return (self.contents_change == other.contents_change)
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def apply(self, filename, conflict_handler, reverse=False):
+        backup_file(filename)
+        self.contents_change.apply(filename, conflict_handler, reverse)
+
 
 class ThreewayInventory(object):
     def __init__(self, this_inventory, base_inventory, other_inventory):
@@ -548,8 +568,25 @@ class MergeTest(unittest.TestCase):
         """Test diff3 merging"""
         self.do_contents_test(changeset.Diff3Merge)
 
+    def test_contents_merge3(self):
+        """Test diff3 merging"""
+        def backup_merge(base_file, other_file):
+            return BackupBeforeChange(ApplyMerge3(base_file, other_file))
+        builder = self.contents_test_success(backup_merge)
+        def backup_exists(file_id):
+            return os.path.exists(builder.this.full_path(file_id)+"~")
+        assert backup_exists("1")
+        assert backup_exists("2")
+        assert not backup_exists("3")
+        builder.cleanup()
+
     def do_contents_test(self, merge_factory):
         """Test merging with specified ContentsChange factory"""
+        builder = self.contents_test_success(merge_factory)
+        builder.cleanup()
+        self.contents_test_conflicts(merge_factory)
+
+    def contents_test_success(self, merge_factory):
         from inspect import isclass
         builder = MergeBuilder()
         builder.add_file("1", "0", "name1", "text1", 0755)
@@ -572,8 +609,9 @@ class MergeTest(unittest.TestCase):
         assert(os.stat(builder.this.full_path("1")).st_mode &0777 == 0755)
         assert(os.stat(builder.this.full_path("2")).st_mode &0777 == 0655)
         assert(os.stat(builder.this.full_path("3")).st_mode &0777 == 0744)
-        builder.cleanup()
+        return builder
 
+    def contents_test_conflicts(self, merge_factory):
         builder = MergeBuilder()
         builder.add_file("1", "0", "name1", "text1", 0755)
         builder.change_contents("1", other="text4", this="text3")

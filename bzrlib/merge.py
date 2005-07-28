@@ -1,7 +1,6 @@
-from merge_core import merge_flex
+from merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
 from changeset import generate_changeset, ExceptionConflictHandler
 from changeset import Inventory, Diff3Merge
-from merge_core import ApplyMerge3
 from bzrlib import find_branch
 import bzrlib.osutils
 from bzrlib.errors import BzrCommandError
@@ -166,7 +165,7 @@ class MergeTree(object):
 
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
-          this_dir=None):
+          this_dir=None, backup_files=False):
     """Merge changes into a tree.
 
     base_revision
@@ -202,7 +201,7 @@ def merge(other_revision, base_revision,
             base_revision = ['.', base_revno]
         base_branch, base_tree = get_tree(base_revision, tempdir, "base")
         merge_inner(this_branch, other_tree, base_tree, tempdir, 
-                    ignore_zero=ignore_zero)
+                    ignore_zero=ignore_zero, backup_files=backup_files)
     finally:
         shutil.rmtree(tempdir)
 
@@ -232,12 +231,15 @@ def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b):
 
 
 def merge_inner(this_branch, other_tree, base_tree, tempdir, 
-                ignore_zero=False, merge_type="diff3"):
+                ignore_zero=False, merge_type="diff3", backup_files=False):
     merge_types = {"merge3": ApplyMerge3, 
                    "diff3": Diff3Merge}
 
     def merge_factory(base_file, other_file):
-        return merge_types[merge_type](base_file, other_file)
+        contents_change = merge_types[merge_type](base_file, other_file)
+        if backup_files:
+            contents_change = BackupBeforeChange(contents_change)
+        return contents_change
 
     this_tree = get_tree((this_branch.base, None), tempdir, "this")[1]
 
