@@ -38,6 +38,12 @@ DEVELOPMENT HEAD
 
     * By default the commit command refuses to record a revision with
       no changes unless the ``--unchanged`` option is given.
+
+    * The ``--no-plugins``, ``--profile`` and ``--builtin`` command
+      line options must come before the command name because they 
+      affect what commands are available; all other options must come 
+      after the command name because their interpretation depends on
+      it.
       
       
   BUG FIXES:
