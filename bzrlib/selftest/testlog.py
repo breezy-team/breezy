@@ -18,6 +18,11 @@ from bzrlib.selftest import BzrTestBase
 from bzrlib.log import LogFormatter, show_log
 from bzrlib.branch import Branch
 
+class _LogEntry(object):
+    # should probably move into bzrlib.log?
+    pass
+
+
 class LogCatcher(LogFormatter):
     """Pull log messages into list rather than displaying them.
 
@@ -33,7 +38,11 @@ class LogCatcher(LogFormatter):
         
         
     def show(self, revno, rev, delta):
-        self.logs.append((revno, rev, delta))
+        le = _LogEntry
+        le.revno = revno
+        le.rev = rev
+        le.delta = delta
+        self.logs.append(le)
 
 
 class SimpleLogTest(BzrTestBase):
@@ -47,5 +56,20 @@ class SimpleLogTest(BzrTestBase):
         show_log(b, lf)
         # no entries yet
         eq(lf.logs, [])
+
+
+        b.commit('empty commit')
+        lf = LogCatcher()
+        show_log(b, lf, verbose=True)
+        eq(len(lf.logs), 1)
+        eq(lf.logs[0].revno, 1)
+        eq(lf.logs[0].rev.message, 'empty commit')
+        d = lf.logs[0].delta
+        self.log('log delta: %r' % d)
+        ass(not d.added)
+        ass(not d.removed)
+        ass(not d.renamed)
+        ass(not d.modified)
+        ass(not d.unchanged)
 
         
