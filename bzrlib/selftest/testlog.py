@@ -14,8 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
+
 from bzrlib.selftest import BzrTestBase
-from bzrlib.log import LogFormatter, show_log
+from bzrlib.log import LogFormatter, show_log, LongLogFormatter
 from bzrlib.branch import Branch
 
 class _LogEntry(object):
@@ -38,7 +40,7 @@ class LogCatcher(LogFormatter):
         
         
     def show(self, revno, rev, delta):
-        le = _LogEntry
+        le = _LogEntry()
         le.revno = revno
         le.rev = rev
         le.delta = delta
@@ -46,6 +48,20 @@ class LogCatcher(LogFormatter):
 
 
 class SimpleLogTest(BzrTestBase):
+    def checkDelta(self, delta, **kw):
+        """Check the filenames touched by a delta are as expected."""
+        for n in 'added', 'removed', 'renamed', 'modified', 'unchanged':
+            expected = kw.get(n, [])
+
+            # tests are written with unix paths; fix them up for windows
+            if os.sep != '/':
+                expected = [x.replace('/', os.sep) for x in expected]
+
+            # strip out only the path components
+            got = [x[0] for x in getattr(delta, n)]
+            self.assertEquals(expected, got)
+
+    
     def runTest(self):
         eq = self.assertEquals
         ass = self.assert_
@@ -66,10 +82,28 @@ class SimpleLogTest(BzrTestBase):
         eq(lf.logs[0].rev.message, 'empty commit')
         d = lf.logs[0].delta
         self.log('log delta: %r' % d)
-        ass(not d.added)
-        ass(not d.removed)
-        ass(not d.renamed)
-        ass(not d.modified)
-        ass(not d.unchanged)
+        self.checkDelta(d)
 
+
+        self.build_tree(['hello'])
+        b.add('hello')
+        b.commit('add one file')
+        # log using regular thing
+        show_log(b, LongLogFormatter(self.TEST_LOG))
+
+        # get log as data structure
+        lf = LogCatcher()
+        show_log(b, lf, verbose=True)
+        eq(len(lf.logs), 2)
+        self.log('log entries:')
+        for logentry in lf.logs:
+            self.log('%4d %s' % (logentry.revno, logentry.rev.message))
+        
+        # first one is most recent
+        logentry = lf.logs[0]
+        eq(logentry.revno, 2)
+        eq(logentry.rev.message, 'add one file')
+        d = logentry.delta
+        self.log('log 2 delta: %r' % d)
+        # self.checkDelta(d, added=['hello'])
         
