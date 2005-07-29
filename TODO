@@ -365,6 +365,25 @@ Medium things
   Also for push I suppose.  Clobber may not be the best name, maybe
   ``--destroy``?
 
+* ``uncommit`` command that removes a revision from the end of the
+  revision-history; just doing this is enough to remove the commit,
+  and a new commit will automatically be made against the
+  predecessor.  This can be repeated.
+
+  It only makes sense to delete from the tail of history, not from the
+  end.
+
+  The revision, its inventory and texts remain floating in the store.
+  We should perhaps add the revision to a list of removed-commits, so
+  that it can be restored or at least accounted for when checking
+  consistency.
+
+  If we track merged revisions then we need to update this list too.
+  If the list is stored in a weave it's easy (implicit): the version
+  of the list can remain but it won't be referenced anymore.  It's
+  probably best to just store this list in a weave in the first place
+  and be done.
+
 
 Large things
 ------------
