@@ -40,6 +40,7 @@ true yet.
 
 from unittest import TestResult, TestCase
 
+# XXX: Don't need this anymore now we depend on python2.4
 def _need_subprocess():
     sys.stderr.write("sorry, this test suite requires the subprocess module\n"
                      "this is shipped with python2.4 and available separately for 2.3\n")
