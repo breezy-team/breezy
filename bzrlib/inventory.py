@@ -27,6 +27,9 @@ from bzrlib.errors import BzrError, BzrCheckError
 
 from bzrlib.osutils import uuid, quotefn, splitpath, joinpath, appendpath
 from bzrlib.trace import mutter
+from bzrlib.branch import gen_file_id
+from bzrlib.errors import NotVersionedError
+        
 
 class InventoryEntry(object):
     """Description of a versioned file.
@@ -429,14 +432,11 @@ class Inventory(object):
         """Add entry from a path.
 
         The immediate parent must already be versioned"""
-        from bzrlib.errors import NotVersionedError
-        
         parts = bzrlib.osutils.splitpath(relpath)
         if len(parts) == 0:
             raise BzrError("cannot re-add root of inventory")
 
         if file_id == None:
-            from bzrlib.branch import gen_file_id
             file_id = gen_file_id(relpath)
 
         parent_path = parts[:-1]

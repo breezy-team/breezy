@@ -18,11 +18,13 @@
 import sys, os
 
 import bzrlib
+
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, splitpath, \
      sha_file, appendpath, file_kind
 from bzrlib.errors import BzrError
-
+from bzrlib.textui import show_status
+        
 BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
 
@@ -422,7 +424,6 @@ class Branch(object):
               add all non-ignored children.  Perhaps do that in a
               higher-level method.
         """
-        from bzrlib.textui import show_status
         # TODO: Re-adding a file that is removed in the working copy
         # should probably put it back with the previous ID.
         if isinstance(files, basestring):
@@ -501,7 +502,6 @@ class Branch(object):
         is the opposite of add.  Removing it is consistent with most
         other tools.  Maybe an option.
         """
-        from bzrlib.textui import show_status
         ## TODO: Normalize names
         ## TODO: Remove nested loops; better scalability
         if isinstance(files, basestring):
