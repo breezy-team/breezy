@@ -305,6 +305,8 @@ class ShortLogFormatter(LogFormatter):
             for l in rev.message.split('\n'):
                 print >>to_file,  '      ' + l
 
+        # TODO: Why not show the modified files in a shorter form as
+        # well? rewrap them single lines of appropriate length
         if delta != None:
             delta.show(to_file, self.show_ids)
         print
