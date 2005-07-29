@@ -29,6 +29,14 @@ class BzrCheckError(BzrError):
     pass
 
 
+class InvalidRevisionNumber(BzrError):
+    pass
+
+
+class InvalidRevisionId(BzrError):
+    pass
+
+
 class BzrCommandError(BzrError):
     # Error from malformed user command
     pass
