@@ -1,0 +1,59 @@
+Split and join files
+====================
+
+Version control systems tend to have trouble when files are split or
+joined.  Here is one possibility for handling that.
+
+
+Splitting files
+---------------
+
+This can work like 'svn cp': copy with history::
+
+  % bzr cp a b
+
+This creates a new file b, whose file-history is the same as a, but
+with a different file-id, and present at a different name.
+
+This creates the slightly strange situation that b claims to have text
+versions for revisions where b was not actually present.
+
+
+Joining files
+-------------
+
+We might want to also join files in various cases:
+
+ * Multiple imports of the same file
+
+ * Two source files are being refactored into a single one
+
+ * Two people apply an external patch that creates the same file
+
+I'm not aware of any other system that handles this.
+
+  % bzr join a b
+
+a and b must be versioned files.  b is removed from the working tree
+and inventory.  b's file id is added as a secondary id as a, so that
+later merges between them will detect them as being the same.  
+
+b's weave is (???) incorporated into a.  
+
+This means that we have a file which has multiple history paths.  For
+example, asking to compare that file to its state in a previous
+version has to arbitrarily pick one to use.  That's not necessarily
+fatal if we assign one as primary, but it might be a bit confusing.
+Trying to merge from another tree might can't really choose a good
+basis.
+
+
+
+File aliases
+------------
+
+Rather than trying to join files we might just add notes that files
+are also known by a different file-id in other trees.
+
+
+
