@@ -237,7 +237,7 @@ def deltas_for_log_forward(branch, which_revs):
 
 class LogFormatter(object):
     """Abstract class to display log messages."""
-    def __init__(self, to_file, show_ids=False, show_timezone=False):
+    def __init__(self, to_file, show_ids=False, show_timezone='original'):
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
@@ -262,8 +262,11 @@ class LongLogFormatter(LogFormatter):
         if self.show_ids:
             print >>to_file,  'revision-id:', rev.revision_id
         print >>to_file,  'committer:', rev.committer
-        print >>to_file,  'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0,
-                                             self.show_timezone))
+
+        date_str = format_date(rev.timestamp,
+                               rev.timezone or 0,
+                               self.show_timezone)
+        print >>to_file,  'timestamp: %s' % date_str
 
         print >>to_file,  'message:'
         if not rev.message:
