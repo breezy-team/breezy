@@ -17,6 +17,13 @@ less, and several days or more.
 Small things
 ------------
 
+* ``bzr status`` should show some description of patches that are merged but 
+  not yet committed.  Preferably in a very compact format so that they
+  just fit on a single line; this could also be used for say ``log
+  --tiny``::
+
+  2005-11-05      mbp  Flowers for stephane
+
 * print a message at the end of running the tests telling them tht the
   test log and output exists but can be removed
 
