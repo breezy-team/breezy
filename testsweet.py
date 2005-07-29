@@ -347,7 +347,8 @@ def _show_results(result):
 
 def _show_test_failure(kind, case, exc_info, out):
     from traceback import print_exception
-    
+
+    print >>out
     print >>out, '-' * 60
     print >>out, case
     
