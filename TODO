@@ -356,6 +356,13 @@ Medium things
 
 * Track all merged-in revisions in a versioned add-only metafile.
 
+* ``pull --clobber`` should discard any local changes not present
+  remotely.  Not generally what you want, but possibly useful when
+  you're just mirroring another branch and want to keep tracking it
+  even when they e.g. uncommit or make similar non-forward movements.
+  Also for push I suppose.  Clobber may not be the best name, maybe
+  ``--destroy``?
+
 
 Large things
 ------------
