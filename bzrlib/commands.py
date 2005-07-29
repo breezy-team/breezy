@@ -860,7 +860,7 @@ class cmd_modified(Command):
     """List files modified in working tree."""
     hidden = True
     def run(self):
-        from bzrlib.diff import compare_trees
+        from bzrlib.delta import compare_trees
 
         b = find_branch('.')
         td = compare_trees(b.basis_tree(), b.working_tree())

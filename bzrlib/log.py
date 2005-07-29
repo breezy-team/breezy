@@ -36,7 +36,10 @@ Various flavors of log can be produced:
 """
 
 
-from trace import mutter
+from bzrlib.tree import EmptyTree
+from bzrlib.delta import compare_trees
+from bzrlib.trace import mutter
+
 
 def find_touching_revisions(branch, file_id):
     """Yield a description of revisions which affect the file_id.
@@ -184,9 +187,6 @@ def deltas_for_log_reverse(branch, which_revs):
     sequence, which makes sense if the log is being displayed from
     newest to oldest.
     """
-    from tree import EmptyTree
-    from diff import compare_trees
-    
     last_revno = last_revision_id = last_tree = None
     for revno, revision_id in which_revs:
         this_tree = branch.revision_tree(revision_id)
@@ -221,9 +221,6 @@ def deltas_for_log_forward(branch, which_revs):
     sequence, which makes sense if the log is being displayed from
     newest to oldest.
     """
-    from tree import EmptyTree
-    from diff import compare_trees
-
     last_revno = last_revision_id = last_tree = None
     prev_tree = EmptyTree(branch.get_root_id())
 

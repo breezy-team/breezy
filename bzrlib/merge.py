@@ -4,7 +4,7 @@ from changeset import Inventory
 from bzrlib import find_branch
 import bzrlib.osutils
 from bzrlib.errors import BzrCommandError
-from bzrlib.diff import compare_trees
+from bzrlib.delta import compare_trees
 from trace import mutter, warning
 import os.path
 import tempfile

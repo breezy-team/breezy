@@ -37,7 +37,7 @@ class Mkdir(InTempDir):
 
         self.assertRaises(OSError, run_bzr, ['mkdir', 'foo'])
 
-        from bzrlib.diff import compare_trees, TreeDelta
+        from bzrlib.diff import compare_trees
         from bzrlib.branch import Branch
         b = Branch('.')
         
