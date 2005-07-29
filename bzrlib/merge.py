@@ -165,7 +165,7 @@ class MergeTree(object):
 
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
-          this_dir=None, backup_files=False):
+          this_dir=None, backup_files=False, merge_type=ApplyMerge3):
     """Merge changes into a tree.
 
     base_revision
@@ -201,7 +201,8 @@ def merge(other_revision, base_revision,
             base_revision = ['.', base_revno]
         base_branch, base_tree = get_tree(base_revision, tempdir, "base")
         merge_inner(this_branch, other_tree, base_tree, tempdir, 
-                    ignore_zero=ignore_zero, backup_files=backup_files)
+                    ignore_zero=ignore_zero, backup_files=backup_files, 
+                    merge_type=merge_type)
     finally:
         shutil.rmtree(tempdir)
 
@@ -231,12 +232,10 @@ def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b):
 
 
 def merge_inner(this_branch, other_tree, base_tree, tempdir, 
-                ignore_zero=False, merge_type="diff3", backup_files=False):
-    merge_types = {"merge3": ApplyMerge3, 
-                   "diff3": Diff3Merge}
+                ignore_zero=False, merge_type=ApplyMerge3, backup_files=False):
 
     def merge_factory(base_file, other_file):
-        contents_change = merge_types[merge_type](base_file, other_file)
+        contents_change = merge_type(base_file, other_file)
         if backup_files:
             contents_change = BackupBeforeChange(contents_change)
         return contents_change
@@ -304,3 +303,8 @@ old length: %i insertions: %i deletions: %i new_length: %i"""\
     assert len(new_inventory_list) == len(old_entries) + insertions - deletions
     new_inventory_list.sort()
     return new_inventory_list
+
+merge_types = {     "merge3": (ApplyMerge3, "Native diff3-style merge"), 
+                     "diff3": (Diff3Merge,  "Merge using external diff3")
+              }
+
