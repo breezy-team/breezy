@@ -367,8 +367,8 @@ def format_date(t, offset=0, timezone='original'):
         tt = time.localtime(t)
         offset = local_time_offset(t)
     else:
-        raise BzrError("unsupported timezone format %r",
-                ['options are "utc", "original", "local"'])
+        raise BzrError("unsupported timezone format %r" % timezone,
+                       ['options are "utc", "original", "local"'])
 
     return (time.strftime("%a %Y-%m-%d %H:%M:%S", tt)
             + ' %+03d%02d' % (offset / 3600, (offset / 60) % 60))
