@@ -28,11 +28,25 @@ Various flavors of log can be produced:
 
 * with file-ids and revision-ids shown
 
-* from last to first or (not anymore) from first to last;
-  the default is "reversed" because it shows the likely most
-  relevant and interesting information first
+Logs are actually written out through an abstract LogFormatter
+interface, which allows for different preferred formats.  Plugins can
+register formats too.
 
-* (not yet) in XML format
+Logs can be produced in either forward (oldest->newest) or reverse
+(newest->oldest) order.
+
+Logs can be filtered to show only revisions matching a particular
+search string, or within a particular range of revisions.  The range
+can be given as date/times, which are reduced to revisions before
+calling in here.
+
+In verbose mode we show a summary of what changed in each particular
+revision.  Note that this is the delta for changes in that revision
+relative to its mainline parent, not the delta relative to the last
+logged revision.  So for example if you ask for a verbose log of
+changes touching hello.c you will get a list of those revisions also
+listing other things that were changed in the same revision, but not
+all the changes since the previous revision that touched hello.c.
 """
 
 
