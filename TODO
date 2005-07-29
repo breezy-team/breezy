@@ -376,7 +376,8 @@ Medium things
   The revision, its inventory and texts remain floating in the store.
   We should perhaps add the revision to a list of removed-commits, so
   that it can be restored or at least accounted for when checking
-  consistency.
+  consistency.  This file would not be versioned, and probably should
+  not propagate when branched.
 
   If we track merged revisions then we need to update this list too.
   If the list is stored in a weave it's easy (implicit): the version
