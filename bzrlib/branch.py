@@ -15,19 +15,27 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import sys, os
+import sys
+import os
 
 import bzrlib
-
 from bzrlib.trace import mutter, note
-from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, splitpath, \
+from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
+     splitpath, \
      sha_file, appendpath, file_kind
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId
 from bzrlib.textui import show_status
+from bzrlib.revision import Revision
+from bzrlib.xml import unpack_xml
+
         
 BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
 
+
+# TODO: Some operations like log might retrieve the same revisions
+# repeatedly to calculate deltas.  We could perhaps have a weakref
+# cache in memory to make this faster.
 
 
 def find_branch(f, **args):
@@ -584,19 +592,37 @@ class Branch(object):
 
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
-        from bzrlib.revision import Revision
-        from bzrlib.xml import unpack_xml
-
         self.lock_read()
         try:
             if not revision_id or not isinstance(revision_id, basestring):
-                raise ValueError('invalid revision-id: %r' % revision_id)
+                raise InvalidRevisionId(revision_id)
             r = unpack_xml(Revision, self.revision_store[revision_id])
         finally:
             self.unlock()
             
         assert r.revision_id == revision_id
         return r
+
+
+    def get_revision_delta(self, revno):
+        """Return the delta for one revision.
+
+        The delta is relative to its mainline predecessor, or the
+        empty tree for revision 1.
+        """
+        assert isinstance(revno, int)
+        rh = self.revision_history()
+        if revno <= 0 or revno >= len(rh):
+            raise InvalidRevisionNumber(revno)
+
+        new_tree = self.revision_tree(rh[revno])
+        if revno == 0:
+            old_tree = EmptyTree()
+        else:
+            old_tree = self.revision_tree(rh[revno-1])
+
+        return compare_trees(old_tree, new_tree)
+
         
 
     def get_revision_sha1(self, revision_id):
