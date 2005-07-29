@@ -159,15 +159,26 @@ def show_log(branch,
 
 
 def deltas_for_log_dummy(branch, which_revs):
+    """Return all the revisions without intermediate deltas.
+
+    Useful for log commands that won't need the delta information.
+    """
+    
     for revno, revision_id in which_revs:
         yield revno, branch.get_revision(revision_id), None
 
 
 def deltas_for_log_reverse(branch, which_revs):
-    """Compute deltas for display in reverse log.
+    """Compute deltas for display in latest-to-earliest order.
 
-    Given a sequence of (revno, revision_id) pairs, return
-    (revno, rev, delta).
+    branch
+        Branch to traverse
+
+    which_revs
+        Sequence of (revno, revision_id) for the subset of history to examine
+
+    returns 
+        Sequence of (revno, rev, delta)
 
     The delta is from the given revision to the next one in the
     sequence, which makes sense if the log is being displayed from
