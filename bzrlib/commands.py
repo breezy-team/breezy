@@ -1418,23 +1418,7 @@ class cmd_merge(Command):
               check_clean=(not force), merge_type=merge_type)
 
 
-
 class cmd_revert(Command):
-    """Restore selected files from a previous revision.
-    """
-    takes_args = ['file+']
-    def run(self, file_list):
-        from bzrlib.branch import find_branch
-        
-        if not file_list:
-            file_list = ['.']
-            
-        b = find_branch(file_list[0])
-
-        b.revert([b.relpath(f) for f in file_list])
-
-
-class cmd_merge_revert(Command):
     """Reverse all changes since the last commit.
 
     Only versioned files are affected.  Specify filenames to revert only 
@@ -1443,6 +1427,7 @@ class cmd_merge_revert(Command):
     """
     takes_options = ['revision', 'no-backup']
     takes_args = ['file*']
+    aliases = ['merge-revert']
 
     def run(self, revision=None, no_backup=False, file_list=None):
         from bzrlib.merge import merge
@@ -1452,7 +1437,7 @@ class cmd_merge_revert(Command):
         if revision is None:
             revision = [-1]
         elif len(revision) != 1:
-            raise BzrCommandError('bzr merge-revert --revision takes exactly 1 argument')
+            raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         merge(('.', revision[0]), parse_spec('.'),
               check_clean=False,
               ignore_zero=True,
