@@ -165,7 +165,8 @@ class MergeTree(object):
 
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
-          this_dir=None, backup_files=False, merge_type=ApplyMerge3):
+          this_dir=None, backup_files=False, merge_type=ApplyMerge3,
+          file_list=None):
     """Merge changes into a tree.
 
     base_revision
@@ -200,18 +201,40 @@ def merge(other_revision, base_revision,
                 raise UnrelatedBranches()
             base_revision = ['.', base_revno]
         base_branch, base_tree = get_tree(base_revision, tempdir, "base")
+        if file_list is None:
+            interesting_ids = None
+        else:
+            interesting_ids = set()
+            this_tree = this_branch.working_tree()
+            for fname in file_list:
+                path = this_branch.relpath(fname)
+                found_id = False
+                for tree in (this_tree, base_tree.tree, other_tree.tree):
+                    file_id = tree.inventory.path2id(path)
+                    if file_id is not None:
+                        interesting_ids.add(file_id)
+                        found_id = True
+                if not found_id:
+                    raise BzrCommandError("%s is not a source file in any"
+                                          " tree." % fname)
         merge_inner(this_branch, other_tree, base_tree, tempdir, 
                     ignore_zero=ignore_zero, backup_files=backup_files, 
-                    merge_type=merge_type)
+                    merge_type=merge_type, interesting_ids=interesting_ids)
     finally:
         shutil.rmtree(tempdir)
 
 
-def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b):
-    """Generate a changeset, using the text_id to mark really-changed files.
-    This permits blazing comparisons when text_ids are present.  It also
-    disables metadata comparison for files with identical texts.
-    """ 
+def set_interesting(inventory_a, inventory_b, interesting_ids):
+    """Mark files whose ids are in interesting_ids as interesting
+    """
+    for inventory in (inventory_a, inventory_b):
+        for path, source_file in inventory.iteritems():
+             source_file.interesting = source_file.id in interesting_ids
+
+
+def set_optimized(tree_a, tree_b, inventory_a, inventory_b):
+    """Mark files that have changed texts as interesting
+    """
     for file_id in tree_a.tree.inventory:
         if file_id not in tree_b.tree.inventory:
             continue
@@ -225,6 +248,19 @@ def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b):
             continue
         inventory_a[abspath(tree_a.tree, file_id)].interesting = False
         inventory_b[abspath(tree_b.tree, file_id)].interesting = False
+
+
+def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b,
+                            interesting_ids=None):
+    """Generate a changeset, with preprocessing to select interesting files.
+    using the text_id to mark really-changed files.
+    This permits blazing comparisons when text_ids are present.  It also
+    disables metadata comparison for files with identical texts.
+    """ 
+    if interesting_ids is None:
+        set_optimized(tree_a, tree_b, inventory_a, inventory_b)
+    else:
+        set_interesting(inventory_a, inventory_b, interesting_ids)
     cset =  generate_changeset(tree_a, tree_b, inventory_a, inventory_b)
     for entry in cset.entries.itervalues():
         entry.metadata_change = None
@@ -232,13 +268,18 @@ def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b):
 
 
 def merge_inner(this_branch, other_tree, base_tree, tempdir, 
-                ignore_zero=False, merge_type=ApplyMerge3, backup_files=False):
+                ignore_zero=False, merge_type=ApplyMerge3, backup_files=False,
+                interesting_ids=None):
 
     def merge_factory(base_file, other_file):
         contents_change = merge_type(base_file, other_file)
         if backup_files:
             contents_change = BackupBeforeChange(contents_change)
         return contents_change
+    
+    def generate_cset(tree_a, tree_b, inventory_a, inventory_b):
+        return generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b,
+                                       interesting_ids)
 
     this_tree = get_tree((this_branch.base, None), tempdir, "this")[1]
 
@@ -246,7 +287,7 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
         return tree.inventory
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
-                             generate_cset_optimized, get_inventory,
+                             generate_cset, get_inventory,
                              MergeConflictHandler(base_tree.root,
                                                   ignore_zero=ignore_zero),
                              merge_factory=merge_factory)

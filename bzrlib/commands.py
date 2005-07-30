@@ -1437,13 +1437,18 @@ class cmd_revert(Command):
 class cmd_merge_revert(Command):
     """Reverse all changes since the last commit.
 
-    Only versioned files are affected.  By default, any files that are changed
-    will be backed up first.  Backup files have a '~' appended to their name.
+    Only versioned files are affected.  Specify filenames to revert only 
+    those files.  By default, any files that are changed will be backed up
+    first.  Backup files have a '~' appended to their name.
     """
     takes_options = ['revision', 'no-backup']
+    takes_args = ['file*']
 
-    def run(self, revision=None, no_backup=False):
+    def run(self, revision=None, no_backup=False, file_list=None):
         from bzrlib.merge import merge
+        if file_list is not None:
+            if len(file_list) == 0:
+                raise BzrCommandError("No files specified")
         if revision is None:
             revision = [-1]
         elif len(revision) != 1:
@@ -1451,7 +1456,8 @@ class cmd_merge_revert(Command):
         merge(('.', revision[0]), parse_spec('.'),
               check_clean=False,
               ignore_zero=True,
-              backup_files=not no_backup)
+              backup_files=not no_backup,
+              file_list=file_list)
 
 
 class cmd_assert_fail(Command):
