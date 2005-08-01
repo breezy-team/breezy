@@ -43,6 +43,8 @@ class Mkdir(InTempDir):
         
         delta = compare_trees(b.basis_tree(), b.working_tree())
 
+        self.log('delta.added = %r' % delta.added)
+
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'foo')
         self.failIf(delta.modified)
