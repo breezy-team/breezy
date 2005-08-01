@@ -27,7 +27,8 @@ from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision
 from bzrlib.xml import unpack_xml
-
+from bzrlib.delta import compare_trees
+from bzrlib.tree import EmptyTree, RevisionTree
         
 BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
@@ -612,14 +613,16 @@ class Branch(object):
         """
         assert isinstance(revno, int)
         rh = self.revision_history()
-        if revno <= 0 or revno >= len(rh):
+        if not (1 <= revno <= len(rh)):
             raise InvalidRevisionNumber(revno)
 
-        new_tree = self.revision_tree(rh[revno])
-        if revno == 0:
+        # revno is 1-based; list is 0-based
+
+        new_tree = self.revision_tree(rh[revno-1])
+        if revno == 1:
             old_tree = EmptyTree()
         else:
-            old_tree = self.revision_tree(rh[revno-1])
+            old_tree = self.revision_tree(rh[revno-2])
 
         return compare_trees(old_tree, new_tree)
 
@@ -722,27 +725,6 @@ class Branch(object):
             if my_history[r] == other_history[r]:
                 return r+1, my_history[r]
         return None, None
-
-    def enum_history(self, direction):
-        """Return (revno, revision_id) for history of branch.
-
-        direction
-            'forward' is from earliest to latest
-            'reverse' is from latest to earliest
-        """
-        rh = self.revision_history()
-        if direction == 'forward':
-            i = 1
-            for rid in rh:
-                yield i, rid
-                i += 1
-        elif direction == 'reverse':
-            i = len(rh)
-            while i > 0:
-                yield i, rh[i-1]
-                i -= 1
-        else:
-            raise ValueError('invalid history direction', direction)
 
 
     def revno(self):
@@ -1044,7 +1026,6 @@ class Branch(object):
 
         `revision_id` may be None for the null revision, in which case
         an `EmptyTree` is returned."""
-        from bzrlib.tree import EmptyTree, RevisionTree
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id == None:
@@ -1065,7 +1046,6 @@ class Branch(object):
 
         If there are no revisions yet, return an `EmptyTree`.
         """
-        from bzrlib.tree import EmptyTree, RevisionTree
         r = self.last_patch()
         if r == None:
             return EmptyTree(self.get_root_id())

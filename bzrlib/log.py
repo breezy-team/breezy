@@ -53,6 +53,7 @@ all the changes since the previous revision that touched hello.c.
 from bzrlib.tree import EmptyTree
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter
+from bzrlib.errors import InvalidRevisionNumber
 
 
 def find_touching_revisions(branch, file_id):
@@ -98,6 +99,15 @@ def find_touching_revisions(branch, file_id):
         last_path = this_path
         revno += 1
 
+
+
+def _enumerate_history(branch):
+    rh = []
+    revno = 1
+    for rev_id in branch.revision_history():
+        rh.append((revno, rev_id))
+        revno += 1
+    return rh
 
 
 def show_log(branch,
@@ -148,20 +158,32 @@ def show_log(branch,
     else:
         searchRE = None
 
-    which_revs = branch.enum_history(direction)
-    which_revs = [x for x in which_revs if (
-            (start_revision is None or x[0] >= start_revision)
-            and (end_revision is None or x[0] <= end_revision))]
+    which_revs = _enumerate_history(branch)
+    
+    if start_revision is None:
+        start_revision = 1
+    elif start_revision < 1 or start_revision >= len(which_revs):
+        raise InvalidRevisionNumber(start_revision)
+    
+    if end_revision is None:
+        end_revision = len(which_revs)
+    elif end_revision < 1 or end_revision >= len(which_revs):
+        raise InvalidRevisionNumber(end_revision)
 
-    if not (verbose or specific_fileid):
-        # no need to know what changed between revisions
-        with_deltas = deltas_for_log_dummy(branch, which_revs)
-    elif direction == 'reverse':
-        with_deltas = deltas_for_log_reverse(branch, which_revs)
-    else:        
-        with_deltas = deltas_for_log_forward(branch, which_revs)
+    # list indexes are 0-based; revisions are 1-based
+    cut_revs = which_revs[(start_revision-1):(end_revision)]
 
-    for revno, rev, delta in with_deltas:
+    if direction == 'reverse':
+        cut_revs.reverse()
+    elif direction == 'forward':
+        pass
+    else:
+        raise ValueError('invalid direction %r' % direction)
+
+    for revno, rev_id in cut_revs:
+        if verbose or specific_fileid:
+            delta = branch.get_revision_delta(revno)
+            
         if specific_fileid:
             if not delta.touches_file_id(specific_fileid):
                 continue
@@ -170,8 +192,13 @@ def show_log(branch,
             # although we calculated it, throw it away without display
             delta = None
 
-        if searchRE is None or searchRE.search(rev.message):
-            lf.show(revno, rev, delta)
+        rev = branch.get_revision(rev_id)
+
+        if searchRE:
+            if not searchRE.search(rev.message):
+                continue
+
+        lf.show(revno, rev, delta)
 
 
 
