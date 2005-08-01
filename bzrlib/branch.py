@@ -1029,7 +1029,7 @@ class Branch(object):
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id == None:
-            return EmptyTree(self.get_root_id())
+            return EmptyTree()
         else:
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self.text_store, inv)
@@ -1048,7 +1048,7 @@ class Branch(object):
         """
         r = self.last_patch()
         if r == None:
-            return EmptyTree(self.get_root_id())
+            return EmptyTree()
         else:
             return RevisionTree(self.text_store, self.get_revision_inventory(r))
 

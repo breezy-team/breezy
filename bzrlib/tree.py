@@ -17,13 +17,14 @@
 """Tree classes, representing directory at point in time.
 """
 
-from osutils import pumpfile, appendpath, fingerprint_file
 import os
 
+import bzrlib
 from bzrlib.trace import mutter, note
 from bzrlib.errors import BzrError
+from bzrlib.inventory import Inventory
+from bzrlib.osutils import pumpfile, appendpath, fingerprint_file
 
-import bzrlib
 
 exporters = {}
 
@@ -146,9 +147,8 @@ class RevisionTree(Tree):
 
 
 class EmptyTree(Tree):
-    def __init__(self, root_id):
-        from bzrlib.inventory import Inventory
-        self._inventory = Inventory(root_id)
+    def __init__(self):
+        self._inventory = Inventory()
 
     def has_filename(self, filename):
         return False
