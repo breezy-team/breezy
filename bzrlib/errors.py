@@ -30,7 +30,11 @@ class BzrCheckError(BzrError):
 
 
 class InvalidRevisionNumber(BzrError):
-    pass
+    def __init__(self, revno):
+        self.args = [revno]
+        
+    def __str__(self):
+        return 'invalid revision number: %r' % self.args[0]
 
 
 class InvalidRevisionId(BzrError):
