@@ -588,6 +588,7 @@ class cmd_branch(Command):
     """
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision']
+    aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None):
         import errno

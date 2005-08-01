@@ -44,6 +44,8 @@ DEVELOPMENT HEAD
       affect what commands are available; all other options must come 
       after the command name because their interpretation depends on
       it.
+
+    * ``branch`` and ``clone`` added as aliases for ``branch``.
       
       
   BUG FIXES:
