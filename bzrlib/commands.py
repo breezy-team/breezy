@@ -1802,7 +1802,7 @@ def main(argv):
                 sys.stdout.flush()
         except BzrError, e:
             quiet = isinstance(e, (BzrCommandError))
-            _report_exception('error: ' + e.args[0], quiet=quiet)
+            _report_exception('error: ' + str(e), quiet=quiet)
             if len(e.args) > 1:
                 for h in e.args[1]:
                     # some explanation or hints
