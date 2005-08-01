@@ -197,6 +197,8 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
                 delta.unchanged.append((new_inv.id2path(file_id), file_id, kind))
         else:
             kind = old_inv.get_file_kind(file_id)
+            if kind == 'root_directory':
+                continue
             old_path = old_inv.id2path(file_id)
             if specific_files:
                 if not is_inside_any(specific_files, old_path):
@@ -207,11 +209,13 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
     for file_id in new_inv:
         if file_id in old_inv:
             continue
+        kind = new_inv.get_file_kind(file_id)
+        if kind == 'root_directory':
+            continue
         new_path = new_inv.id2path(file_id)
         if specific_files:
             if not is_inside_any(specific_files, new_path):
                 continue
-        kind = new_inv.get_file_kind(file_id)
         delta.added.append((new_path, file_id, kind))
             
     delta.removed.sort()
