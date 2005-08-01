@@ -42,15 +42,6 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file):
     if not oldlines and not newlines:
         return
 
-    nonl = False
-
-    if oldlines and (oldlines[-1][-1] != '\n'):
-        oldlines[-1] += '\n'
-        nonl = True
-    if newlines and (newlines[-1][-1] != '\n'):
-        newlines[-1] += '\n'
-        nonl = True
-
     ud = difflib.unified_diff(oldlines, newlines,
                               fromfile=old_label, tofile=new_label)
 
@@ -65,8 +56,8 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file):
 
     for line in ud:
         to_file.write(line)
-    if nonl:
-        print >>to_file, "\\ No newline at end of file"
+        if not line.endswith('\n'):
+            to_file.write("\n\\ No newline at end of file\n")
     print >>to_file
 
 

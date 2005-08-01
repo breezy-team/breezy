@@ -122,6 +122,20 @@ def _parse_revision_str(revstr):
     return revs
 
 
+def get_merge_type(typestring):
+    """Attempt to find the merge class/factory associated with a string."""
+    from merge import merge_types
+    try:
+        return merge_types[typestring][0]
+    except KeyError:
+        templ = '%s%%7s: %%s' % (' '*12)
+        lines = [templ % (f[0], f[1][1]) for f in merge_types.iteritems()]
+        type_list = '\n'.join(lines)
+        msg = "No known merge type %s. Supported types are:\n%s" %\
+            (typestring, type_list)
+        raise BzrCommandError(msg)
+    
+
 
 def _get_cmd_dict(plugins_override=True):
     d = {}
@@ -1404,49 +1418,42 @@ class cmd_merge(Command):
     --force is given.
     """
     takes_args = ['other_spec', 'base_spec?']
-    takes_options = ['force']
+    takes_options = ['force', 'merge-type']
 
-    def run(self, other_spec, base_spec=None, force=False):
+    def run(self, other_spec, base_spec=None, force=False, merge_type=None):
         from bzrlib.merge import merge
+        from bzrlib.merge_core import ApplyMerge3
+        if merge_type is None:
+            merge_type = ApplyMerge3
         merge(parse_spec(other_spec), parse_spec(base_spec),
-              check_clean=(not force))
-
+              check_clean=(not force), merge_type=merge_type)
 
 
 class cmd_revert(Command):
-    """Restore selected files from a previous revision.
-    """
-    takes_args = ['file+']
-    def run(self, file_list):
-        from bzrlib.branch import find_branch
-        
-        if not file_list:
-            file_list = ['.']
-            
-        b = find_branch(file_list[0])
-
-        b.revert([b.relpath(f) for f in file_list])
-
-
-class cmd_merge_revert(Command):
     """Reverse all changes since the last commit.
 
-    Only versioned files are affected.
-
-    TODO: Store backups of any files that will be reverted, so
-          that the revert can be undone.          
+    Only versioned files are affected.  Specify filenames to revert only 
+    those files.  By default, any files that are changed will be backed up
+    first.  Backup files have a '~' appended to their name.
     """
-    takes_options = ['revision']
+    takes_options = ['revision', 'no-backup']
+    takes_args = ['file*']
+    aliases = ['merge-revert']
 
-    def run(self, revision=None):
+    def run(self, revision=None, no_backup=False, file_list=None):
         from bzrlib.merge import merge
+        if file_list is not None:
+            if len(file_list) == 0:
+                raise BzrCommandError("No files specified")
         if revision is None:
             revision = [-1]
         elif len(revision) != 1:
-            raise BzrCommandError('bzr merge-revert --revision takes exactly 1 argument')
+            raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         merge(('.', revision[0]), parse_spec('.'),
               check_clean=False,
-              ignore_zero=True)
+              ignore_zero=True,
+              backup_files=not no_backup,
+              file_list=file_list)
 
 
 class cmd_assert_fail(Command):
@@ -1511,6 +1518,8 @@ OPTIONS = {
     'update':                 None,
     'long':                   None,
     'root':                   str,
+    'no-backup':              None,
+    'merge-type':             get_merge_type,
     }
 
 SHORT_OPTIONS = {

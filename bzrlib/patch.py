@@ -1,9 +1,19 @@
 import os
-import popen2
+from subprocess import Popen, PIPE
 """
 Diff and patch functionality
 """
 __docformat__ = "restructuredtext"
+
+def write_to_cmd(args, input=""):
+    process = Popen(args, bufsize=len(input), stdin=PIPE, stdout=PIPE,
+                    stderr=PIPE, close_fds=True)
+    stdout, stderr = process.communicate(input)
+    status = process.wait()
+    if status < 0:
+        raise Exception("%s killed by signal %i" (args[0], -status))
+    return stdout, stderr, status
+    
 
 def patch(patch_contents, filename, output_filename=None, reverse=False):
     """Apply a patch to a file, to produce another output file.  This is should
@@ -26,10 +36,7 @@ def patch(patch_contents, filename, output_filename=None, reverse=False):
     if output_filename is not None:
         args.extend(("-o", output_filename))
     args.append(filename)
-    process = popen2.Popen3(args, bufsize=len(patch_contents))
-    process.tochild.write(patch_contents)
-    process.tochild.close()
-    status = os.WEXITSTATUS(process.wait())
+    stdout, stderr, status = write_to_cmd(args, patch_contents)
     return status 
 
 
@@ -49,11 +56,7 @@ def diff(orig_file, mod_str, orig_label=None, mod_label=None):
     if orig_label is not None and mod_label is not None:
         args.extend(("-L", orig_label, "-L", mod_label))
     args.extend(("--", orig_file, "-"))
-    process = popen2.Popen3(args, bufsize=len(mod_str))
-    process.tochild.write(mod_str)
-    process.tochild.close()
-    patch = process.fromchild.read()
-    status = os.WEXITSTATUS(process.wait())
+    patch, stderr, status = write_to_cmd(args, mod_str)
     if status == 0:
         return None
     else:
@@ -67,11 +70,8 @@ def diff3(out_file, mine_path, older_path, yours_path):
     add_label(args, "ANCESTOR")
     add_label(args, "MERGE-SOURCE")
     args.extend((mine_path, older_path, yours_path))
-    process = popen2.Popen4(args)
-    process.tochild.close()
-    output = process.fromchild.read()
-    status = os.WEXITSTATUS(process.wait())
+    output, stderr, status = write_to_cmd(args)
     if status not in (0, 1):
-        raise Exception(output)
+        raise Exception(stderr)
     file(out_file, "wb").write(output)
     return status
