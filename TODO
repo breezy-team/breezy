@@ -182,9 +182,13 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 Medium things
 -------------
 
-* Merge revert patch.
+* merge should add all revision and inventory XML to the local store.
 
-* ``bzr mv`` that does either rename or move as in Unix.
+* check should give a warning for revisions that are named in the
+  chain but not actually present in the store.
+
+* remove anything outside of the branch implementation that directly
+  accesses the stores.
 
 * More efficient diff of only selected files.  We should be able to
   just get the id for the selected files, look up their location and
