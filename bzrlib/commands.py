@@ -20,7 +20,8 @@
 # TODO: probably should say which arguments are candidates for glob
 # expansion on windows and do that at the command level.
 
-import sys, os
+import sys
+import os
 
 import bzrlib
 from bzrlib.trace import mutter, note, log_error, warning
@@ -1823,10 +1824,15 @@ def run_bzr(argv):
 
 def _report_exception(summary, quiet=False):
     import traceback
+    
     log_error('bzr: ' + summary)
     bzrlib.trace.log_exception()
 
+    if os.environ.get('BZR_DEBUG'):
+        traceback.print_exc()
+
     if not quiet:
+        sys.stderr.write('\n')
         tb = sys.exc_info()[2]
         exinfo = traceback.extract_tb(tb)
         if exinfo:
