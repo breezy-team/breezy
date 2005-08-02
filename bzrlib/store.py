@@ -172,16 +172,24 @@ class ImmutableStore(object):
     def __len__(self):
         return len(os.listdir(self._basedir))
 
+
     def __getitem__(self, fileid):
         """Returns a file reading from a particular entry."""
         p = self._path(fileid)
         try:
             return gzip.GzipFile(p + '.gz', 'rb')
         except IOError, e:
-            if e.errno == errno.ENOENT:
-                return file(p, 'rb')
-            else:
-                raise e
+            if e.errno != errno.ENOENT:
+                raise
+
+        try:
+            return file(p, 'rb')
+        except IOError, e:
+            if e.errno != errno.ENOENT:
+                raise
+
+        raise IndexError(fileid)
+
 
     def total_size(self):
         """Return (count, bytes)

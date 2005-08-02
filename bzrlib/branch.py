@@ -24,6 +24,7 @@ from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
      splitpath, \
      sha_file, appendpath, file_kind
 from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId
+import bzrlib.errors
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision
 from bzrlib.xml import unpack_xml
@@ -591,15 +592,24 @@ class Branch(object):
             f.close()
 
 
-    def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
+    def get_revision_xml(self, revision_id):
+        """Return XML string for revision object."""
+        if not revision_id or not isinstance(revision_id, basestring):
+            raise InvalidRevisionId(revision_id)
+
         self.lock_read()
         try:
-            if not revision_id or not isinstance(revision_id, basestring):
-                raise InvalidRevisionId(revision_id)
-            r = unpack_xml(Revision, self.revision_store[revision_id])
+            try:
+                return self.revision_store[revision_id]
+            except IndexError:
+                raise bzrlib.errors.RevisionNotPresent(revision_id)
         finally:
             self.unlock()
+
+
+    def get_revision(self, revision_id):
+        """Return the Revision object for a named revision"""
+        r = unpack_xml(Revision, self.get_revision_xml(revision_id))
             
         assert r.revision_id == revision_id
         return r
@@ -636,7 +646,7 @@ class Branch(object):
         # the revision, (add signatures/remove signatures) and still
         # have all hash pointers stay consistent.
         # But for now, just hash the contents.
-        return sha_file(self.revision_store[revision_id])
+        return bzrlib.osutils.sha_file(self.get_revision_xml(revision_id))
 
 
     def get_inventory(self, inventory_id):

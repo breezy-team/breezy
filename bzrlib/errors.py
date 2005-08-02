@@ -82,3 +82,10 @@ class LockError(Exception):
 
 class PointlessCommit(Exception):
     """Commit failed because nothing was changed."""
+
+
+class RevisionNotPresent(Exception):
+    """Revision not present in branch.
+
+    (It might be a valid revision somewhere else."""
+    
