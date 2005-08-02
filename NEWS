@@ -14,6 +14,9 @@ DEVELOPMENT HEAD
       FOO.
       
     * ``bzr add`` with no arguments adds everything under the current directory.
+
+    * ``bzr mv`` does move or rename depending on its arguments, like
+      the Unix command.
     
   ENHANCEMENTS:
 

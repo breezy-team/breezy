@@ -49,6 +49,19 @@ class ExternalBase(InTempDir):
 
 
 
+class MvCommand(BzrTestBase):
+    def runbzr(self):
+        """Test two modes of operation for mv"""
+        b = Branch('.', init=True)
+        self.build_tree(['a', 'c', 'subdir/'])
+        self.run_bzr('mv', 'a', 'b')
+        self.run_bzr('mv', 'b', 'subdir')
+        self.run_bzr('mv', 'subdir/b', 'a')
+        self.run_bzr('mv', 'a', 'b', 'subdir')
+        self.run_bzr('mv', 'subdir/a', 'subdir/newa')
+
+
+
 class TestVersion(BzrTestBase):
     """Check output from version command and master option is reasonable"""
     def runTest(self):

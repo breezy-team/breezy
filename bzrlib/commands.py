@@ -15,6 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+# TODO: Split the command framework away from the actual commands.
+
+# TODO: probably should say which arguments are candidates for glob
+# expansion on windows and do that at the command level.
 
 import sys, os
 
@@ -505,6 +509,7 @@ class cmd_move(Command):
     def run(self, source_list, dest):
         b = find_branch('.')
 
+        # TODO: glob expansion on windows?
         b.move([b.relpath(s) for s in source_list], b.relpath(dest))
 
 
@@ -530,6 +535,37 @@ class cmd_rename(Command):
 
 
 
+class cmd_mv(Command):
+    """Move or rename a file.
+
+    usage:
+        bzr mv OLDNAME NEWNAME
+        bzr mv SOURCE... DESTINATION
+
+    If the last argument is a versioned directory, all the other names
+    are moved into it.  Otherwise, there must be exactly two arguments
+    and the file is changed to a new name, which must not already exist.
+
+    Files cannot be moved between branches.
+    """
+    takes_args = ['names*']
+    def run(self, names_list):
+        if len(names_list) < 2:
+            raise BzrCommandError("missing file argument")
+        b = find_branch(names_list[0])
+
+        rel_names = [b.relpath(x) for x in names_list]
+        
+        if os.path.isdir(names_list[-1]):
+            # move into existing directory
+            b.move(rel_names[:-1], rel_names[-1])
+        else:
+            if len(names_list) != 2:
+                raise BzrCommandError('to mv multiple files the destination '
+                                      'must be a versioned directory')
+            b.move(rel_names[0], rel_names[1])
+            
+    
 
 
 class cmd_pull(Command):
