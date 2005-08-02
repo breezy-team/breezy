@@ -322,7 +322,6 @@ class Transport(object):
 
         return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
 
-
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         raise NotImplementedError

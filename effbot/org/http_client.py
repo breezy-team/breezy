@@ -96,7 +96,7 @@ class Request(object):
             "Host: %s" % self.host,
             ]
 
-        if GzipConsumer:
+        if False and GzipConsumer:
             request.append("Accept-Encoding: gzip")
 
         if self.extra_headers:
@@ -154,9 +154,9 @@ class Request(object):
                 self.transfer_encoding = self.header.get("transfer-encoding")
                 self.content_encoding = self.header.get("content-encoding")
 
-                if self.content_encoding == "gzip":
-                    # FIXME: report error if GzipConsumer is not available
-                    self.consumer = GzipConsumer(self.consumer)
+                # if self.content_encoding == "gzip":
+                #     # FIXME: report error if GzipConsumer is not available
+                #     self.consumer = GzipConsumer(self.consumer)
 
                 try:
                     self.consumer.http(1, self)
@@ -232,6 +232,8 @@ class async_http(asyncore.dispatcher_with_send):
     alerting the consumer as bits are downloaded.
     """
 
+    max_requests = 4
+
     def __init__(self, scheme, host):
         """Connect to the given host, extra requests are made on the
         add_request member function.
@@ -300,13 +302,9 @@ class async_http(asyncore.dispatcher_with_send):
             if self._current.original_content_length:
                 # We can pipeline our requests, since we
                 # are getting a content_length count back
-                if len(self._queue) > 0 and not self._queue[0].requested:
-                    cur = self._current.content_length
-                    orig = self._current.original_content_length
-                    if cur < orig / 2:
-                        # We are over 1/2 done with the previous download
-                        # go ahead and request the next one
-                        self._queue[0].http_request(self)
+                for i, r in enumerate(self._queue[:self.max_requests-1]):
+                    if not r.requested:
+                        r.http_request(self)
             return
         if res:
             # We finished downloading the last file

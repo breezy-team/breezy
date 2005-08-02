@@ -6,52 +6,58 @@ An implementation of the Transport object for http access.
 from bzrlib.transport import Transport, register_transport, \
     TransportNotPossible, NoSuchFile, NonRelativePath, \
     TransportError
-import os, errno
+import os, errno, time, asyncore
 from cStringIO import StringIO
 import urllib2
 
-from errors import BzrError, BzrCheckError
-from branch import Branch, BZR_BRANCH_FORMAT
-from trace import mutter
+from bzrlib.errors import BzrError, BzrCheckError
+from bzrlib.branch import Branch, BZR_BRANCH_FORMAT
+from bzrlib.trace import mutter
 
-# velocitynet.com.au transparently proxies connections and thereby
-# breaks keep-alive -- sucks!
+from effbot.org.http_client import do_request
 
+class HttpTransportError(TransportError):
+    pass
 
-ENABLE_URLGRABBER = True
+class simple_wait_consumer(object):
+    """This is a consumer object for effbot.org downloading.
 
+    Basically, it takes a management object, which it expects to
+    fill itself (eventually) if it waits long enough.
+    So it loops to wait for the download to finish, until it
+    finally gets closed.
+    """
+    def __init__(self, url, extra_headers=None):
+        self.buffer = StringIO()
+        self.done = False
+        self.ok = True
+        self.status = None
+        self.url = url
+        do_request(self.url, self)
 
-if ENABLE_URLGRABBER:
-    import urlgrabber
-    import urlgrabber.keepalive
-    import urlgrabber.grabber
-    urlgrabber.keepalive.DEBUG = 0
-    def get_url(path, compressed=False):
-        try:
-            url = path
-            if compressed:
-                url += '.gz'
-            mutter("grab url %s" % url)
-            url_f = urlgrabber.urlopen(url, keepalive=1, close_connection=0)
-            if not compressed:
-                return url_f
-            else:
-                return gzip.GzipFile(fileobj=StringIO(url_f.read()))
-        except urllib2.URLError, e:
-            raise BzrError("remote fetch failed: %r: %s" % (url, e))
-        except urlgrabber.grabber.URLGrabError, e:
-            raise BzrError("remote fetch failed: %r: %s" % (url, e))
-else:
-    def get_url(url, compressed=False):
-        import urllib2
-        if compressed:
-            url += '.gz'
-        mutter("get_url %s" % url)
-        url_f = urllib2.urlopen(url)
-        if compressed:
-            return gzip.GzipFile(fileobj=StringIO(url_f.read()))
+    def get(self):
+        while not self.done:
+            asyncore.poll(0.1)
+        # Try and break cyclical loops
+        if self.ok:
+            self.buffer.seek(0)
+            return self.buffer
         else:
-            return url_f
+            raise HttpTransportError('Download of %r failed: %r' 
+                    % (self.url, self.status))
+
+    def feed(self, data):
+        self.buffer.write(data)
+
+    def close(self):
+        self.done = True
+
+    def http(self, ok, connection, **args):
+        mutter('simple-wait-consumer: %s' % connection)
+        self.ok = ok
+        if not ok:
+            self.done = True
+        self.status = connection.status
 
 def _find_remote_root(url):
     """Return the prefix URL that corresponds to the branch root."""
@@ -92,9 +98,6 @@ class HttpTransport(Transport):
         """Set the base path where files will be stored."""
         assert base.startswith('http://') or base.startswith('https://')
         super(HttpTransport, self).__init__(base)
-        # In the future we might actually connect to the remote host
-        # rather than using get_url
-        # self._connection = None
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -145,21 +148,36 @@ class HttpTransport(Transport):
                 return False
             raise HttpTransportError(orig_error=e)
 
-    def get(self, relpath, decode=False):
+    def _get(self, consumer):
+        """Return the consumer's value"""
+        return consumer.get()
+
+    def get(self, relpath):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
         """
-        try:
-            return get_url(self.abspath(relpath))
-        except BzrError, e:
-            raise NoSuchFile(orig_error=e)
-        except urllib2.URLError, e:
-            raise NoSuchFile(orig_error=e)
-        except IOError, e:
-            raise NoSuchFile(orig_error=e)
-        except Exception,e:
-            raise HttpTransportError(orig_error=e)
+        c = simple_wait_consumer(self.abspath(relpath))
+        return c.get()
+
+    def get_multi(self, relpaths, pb=None):
+        """Get a list of file-like objects, one for each entry in relpaths.
+
+        :param relpaths: A list of relative paths.
+        :param decode:  If True, assume the file is utf-8 encoded and
+                        decode it into Unicode
+        :param pb:  An optional ProgressBar for indicating percent done.
+        :return: A list or generator of file-like objects
+        """
+        consumers = []
+        for relpath in relpaths:
+            consumers.append(simple_wait_consumer(self.abspath(relpath)))
+        total = self._get_total(consumers)
+        count = 0
+        for c in consumers:
+            self._update_pb(pb, 'get', count, total)
+            yield c.get()
+            count += 1
 
     def put(self, relpath, f):
         """Copy the file-like or string object into the location.
