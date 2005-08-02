@@ -593,7 +593,7 @@ class Branch(object):
 
 
     def get_revision_xml(self, revision_id):
-        """Return XML string for revision object."""
+        """Return XML file object for revision object."""
         if not revision_id or not isinstance(revision_id, basestring):
             raise InvalidRevisionId(revision_id)
 
@@ -609,7 +609,14 @@ class Branch(object):
 
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
-        r = unpack_xml(Revision, self.get_revision_xml(revision_id))
+        xml_file = self.get_revision_xml(revision_id)
+
+        try:
+            r = unpack_xml(Revision, xml_file)
+        except SyntaxError, e:
+            raise bzrlib.errors.BzrError('failed to unpack revision_xml',
+                                         [revision_id,
+                                          str(e)])
             
         assert r.revision_id == revision_id
         return r
