@@ -230,13 +230,9 @@ Medium things
 
   Given this we might be able to import patches at 1/second or better.
 
-* Get branch over http.
-
-* Pull pure updates over http.
-
 * revfile compression.
 
-* Split inventory into per-directory files.
+* Split inventory into per-directory files?
 
 * Fix ignore file parsing:
 
@@ -357,9 +353,9 @@ Medium things
 * Function to list a directory, saying in which revision each file was
   last modified.  Useful for web and gui interfaces, and slow to
   compute one file at a time.
-
-* unittest is standard, but the results are kind of ugly; would be
-  nice to make it cleaner.
+  
+  This will be done when we track file texts by referring to the
+  version that created them. 
 
 * Check locking is correct during merge-related operations.
 
