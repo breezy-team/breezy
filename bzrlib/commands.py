@@ -837,8 +837,6 @@ class cmd_diff(Command):
     If files are listed, only the changes in those files are listed.
     Otherwise, all changes for the tree are listed.
 
-    TODO: Given two revision arguments, show the difference between them.
-
     TODO: Allow diff across branches.
 
     TODO: Option to use external diff command; could be GNU diff, wdiff,
@@ -853,6 +851,11 @@ class cmd_diff(Command):
           deleted files.
 
     TODO: This probably handles non-Unix newlines poorly.
+
+    examples:
+        bzr diff
+        bzr diff -r1
+        bzr diff -r1:2
     """
     
     takes_args = ['file*']
@@ -871,16 +874,19 @@ class cmd_diff(Command):
         else:
             b = find_branch('.')
 
-        # TODO: Make show_diff support taking 2 arguments
-        base_rev = None
         if revision is not None:
-            if len(revision) != 1:
-                raise BzrCommandError('bzr diff --revision takes exactly one revision identifier')
-            base_rev = revision[0]
-    
-        show_diff(b, base_rev, specific_files=file_list,
-                  external_diff_options=diff_options)
-
+            if len(revision) == 1:
+                show_diff(b, revision[0], specific_files=file_list,
+                          external_diff_options=diff_options)
+            elif len(revision) == 2:
+                show_diff(b, revision[0], specific_files=file_list,
+                          external_diff_options=diff_options,
+                          revision2=revision[1])
+            else:
+                raise BzrCommandError('bzr diff --revision takes exactly one or two revision identifiers')
+        else:
+            show_diff(b, None, specific_files=file_list,
+                      external_diff_options=diff_options)
 
         
 
