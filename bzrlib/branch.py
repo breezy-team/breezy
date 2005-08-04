@@ -316,7 +316,10 @@ class Branch(object):
             self.controlfile(f, 'w').write('')
         mutter('created control directory in ' + self.base)
 
-        pack_xml(Inventory(gen_root_id()), self.controlfile('inventory','w'))
+        # if we want per-tree root ids then this is the place to set
+        # them; they're not needed for now and so ommitted for
+        # simplicity.
+        pack_xml(Inventory(), self.controlfile('inventory','w'))
 
 
     def _check_format(self):
