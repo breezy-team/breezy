@@ -171,7 +171,11 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * ``bzr log -m foo`` should perhaps error if nothing matches?
 
-* ``bzr diff -r 30 -r 40 foo.c``
+* ``bzr diff -r 30 -r 40 foo.c`` or ``bzr diff -r30..40 foo.c``
+
+  If diffing between two branches then we probably want two -r
+  options, since the revisions don't form a range that can be
+  evaluated on either one.
 
 * bzr diff shouldn't diff binary files
 
@@ -183,6 +187,10 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * revert after a merge should possibly remove all the BASE/THIS/OTHER
   files to get you back to where you were.
+
+* files that are added and then deleted are still reported as added
+
+
 
 
 Medium things
