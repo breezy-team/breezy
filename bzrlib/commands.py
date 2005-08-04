@@ -644,7 +644,7 @@ class cmd_branch(Command):
     def run(self, from_location, to_location=None, revision=None):
         import errno
         from bzrlib.merge import merge
-        from bzrlib.branch import DivergedBranches, NoSuchRevision, \
+        from bzrlib.branch import DivergedBranches, \
              find_cached_branch, Branch
         from shutil import rmtree
         from meta_store import CachedStore
@@ -691,7 +691,7 @@ class cmd_branch(Command):
                     revno, rev_id = br_from.get_revision_info(revision[0])
                 try:
                     br_to.update_revisions(br_from, stop_revision=revno)
-                except NoSuchRevision:
+                except bzrlib.errors.NoSuchRevision:
                     rmtree(to_location)
                     msg = "The branch %s has no revision %d." % (from_location,
                                                                  revno)
