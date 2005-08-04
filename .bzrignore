@@ -1,5 +1,6 @@
 ## *.diff
 ./doc/*.html
+./tutorial.html
 *.py[oc]
 *~
 .arch-ids
