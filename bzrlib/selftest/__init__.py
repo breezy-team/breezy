@@ -53,6 +53,7 @@ def selftest(verbose=False):
                    'bzrlib.selftest.blackbox',
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
+                   'bzrlib.selftest.testrevision',
                    'bzrlib.merge_core',
                    'bzrlib.selftest.testdiff',
                    ]

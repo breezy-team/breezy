@@ -130,14 +130,6 @@ class DivergedBranches(Exception):
         Exception.__init__(self, "These branches have diverged.")
 
 
-class NoSuchRevision(BzrError):
-    def __init__(self, branch, revision):
-        self.branch = branch
-        self.revision = revision
-        msg = "Branch %s has no revision %d" % (branch, revision)
-        BzrError.__init__(self, msg)
-
-
 ######################################################################
 # branch objects
 
@@ -602,7 +594,7 @@ class Branch(object):
             try:
                 return self.revision_store[revision_id]
             except IndexError:
-                raise bzrlib.errors.RevisionNotPresent(revision_id)
+                raise bzrlib.errors.NoSuchRevision(revision_id)
         finally:
             self.unlock()
 
