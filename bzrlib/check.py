@@ -224,9 +224,11 @@ def check(branch):
     if missing_revision_sha_cnt:
         print '%d parent links are missing revision_sha1' % missing_revision_sha_cnt
 
-    if (missing_inventory_sha_cnt
-        or missing_revision_sha_cnt):
-        print '  (use "bzr upgrade" to fix them)'
+    # stub this out for now because the main bzr branch has references
+    # to revisions that aren't present in the store -- mbp 20050804
+#    if (missing_inventory_sha_cnt
+#        or missing_revision_sha_cnt):
+#        print '  (use "bzr upgrade" to fix them)'
 
     if mismatch_inv_id:
         print '%d revisions have mismatched inventory ids:' % len(mismatch_inv_id)
