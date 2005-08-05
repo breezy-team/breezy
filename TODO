@@ -192,6 +192,15 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * stores should raise KeyError, not IndexError
 
+* merging from a remote branch seems to sometimes raise errors not
+  present locally
+
+* should be possible to give a related branch when pulling from a
+  remote branch to make things faster
+
+* sometimes gives "conflicting add" even when the contents are in fact
+  the same???
+
 
 Medium things
 -------------
