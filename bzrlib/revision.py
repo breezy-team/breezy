@@ -186,7 +186,7 @@ def is_ancestor(revision_id, candidate_id, revision_source):
                 revision = revision_source.get_revision(ancestor)
             except bzrlib.errors.NoSuchRevision, e:
                 if e.revision == revision_id:
-                    raise e
+                    raise 
                 else:
                     continue
             new_ancestors.extend([p.revision_id for p in revision.parents])
