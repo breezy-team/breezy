@@ -87,6 +87,12 @@ class MergeConflictHandler(ExceptionConflictHandler):
         os.rename(new_file, this_path)
         self.conflict("Diff3 conflict encountered in %s" % this_path)
 
+    def new_contents_conflict(self, filename, other_contents):
+        """Conflicting contents for newly added file."""
+        self.copy(other_contents, filename + ".OTHER")
+        self.conflict("Conflict in newly added file %s" % filename)
+    
+
     def target_exists(self, entry, target, old_path):
         """Handle the case when the target file or dir exists"""
         moved_path = self.add_suffix(target, ".moved")
