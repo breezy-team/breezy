@@ -135,7 +135,8 @@ class RevisionTree(Tree):
 
     def get_file_sha1(self, file_id):
         ie = self._inventory[file_id]
-        return ie.text_sha1
+        if ie.kind == "file":
+            return ie.text_sha1
 
     def has_filename(self, filename):
         return bool(self.inventory.path2id(filename))
@@ -157,6 +158,9 @@ class EmptyTree(Tree):
         if False:  # just to make it a generator
             yield None
     
+    def __contains__(self, file_id):
+        return file_id in self._inventory
+
 
 
 ######################################################################

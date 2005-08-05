@@ -1395,30 +1395,29 @@ class ChangesetGenerator(object):
         parent = inventory[dirname]
         return parent.id
 
-    def get_paths(self, entry, tree):
+    def get_path(self, entry, tree):
         if entry is None:
             return (None, None)
-        full_path = tree.readonly_path(entry.id)
         if entry.path == ".":
-            return ("", full_path)
-        return (entry.path, full_path)
+            return ""
+        return entry.path
 
     def make_basic_entry(self, id, only_interesting):
         entry_a = self.r_inventory_a.get(id)
         entry_b = self.r_inventory_b.get(id)
         if only_interesting and not self.is_interesting(entry_a, entry_b):
-            return (None, None, None)
+            return None
         parent = self.get_entry_parent(entry_a, self.inventory_a)
-        (path, full_path_a) = self.get_paths(entry_a, self.tree_a)
+        path = self.get_path(entry_a, self.tree_a)
         cs_entry = ChangesetEntry(id, parent, path)
         new_parent = self.get_entry_parent(entry_b, self.inventory_b)
 
 
-        (new_path, full_path_b) = self.get_paths(entry_b, self.tree_b)
+        new_path = self.get_path(entry_b, self.tree_b)
 
         cs_entry.new_path = new_path
         cs_entry.new_parent = new_parent
-        return (cs_entry, full_path_a, full_path_b)
+        return cs_entry
 
     def is_interesting(self, entry_a, entry_b):
         if entry_a is not None:
@@ -1430,8 +1429,7 @@ class ChangesetGenerator(object):
         return False
 
     def make_boring_entry(self, id):
-        (cs_entry, full_path_a, full_path_b) = \
-            self.make_basic_entry(id, only_interesting=False)
+        cs_entry = self.make_basic_entry(id, only_interesting=False)
         if cs_entry.is_creation_or_deletion():
             return self.make_entry(id, only_interesting=False)
         else:
@@ -1439,12 +1437,18 @@ class ChangesetGenerator(object):
         
 
     def make_entry(self, id, only_interesting=True):
-        (cs_entry, full_path_a, full_path_b) = \
-            self.make_basic_entry(id, only_interesting)
+        cs_entry = self.make_basic_entry(id, only_interesting)
 
         if cs_entry is None:
             return None
-       
+        if id in self.tree_a and id in self.tree_b:
+            a_sha1 = self.tree_a.get_file_sha1(id)
+            b_sha1 = self.tree_b.get_file_sha1(id)
+            if None not in (a_sha1, b_sha1) and a_sha1 == b_sha1:
+                return cs_entry
+
+        full_path_a = self.tree_a.readonly_path(id)
+        full_path_b = self.tree_b.readonly_path(id)
         stat_a = self.lstat(full_path_a)
         stat_b = self.lstat(full_path_b)
         if stat_b is None:
