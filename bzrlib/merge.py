@@ -285,7 +285,9 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
                 assert path.startswith('./')
             path = path[2:]
         adjust_ids.append((path, id))
-    this_branch.set_inventory(regen_inventory(this_branch, this_tree.root, adjust_ids))
+    if len(adjust_ids) > 0:
+        this_branch.set_inventory(regen_inventory(this_branch, this_tree.root,
+                                                  adjust_ids))
 
 
 def regen_inventory(this_branch, root, new_entries):
