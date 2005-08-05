@@ -597,7 +597,7 @@ class Branch(object):
             try:
                 return self.revision_store[revision_id]
             except IndexError:
-                raise bzrlib.errors.NoSuchRevision(revision_id)
+                raise bzrlib.errors.NoSuchRevision(self, revision_id)
         finally:
             self.unlock()
 
