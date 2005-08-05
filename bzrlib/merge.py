@@ -1,6 +1,6 @@
 from merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
-from changeset import generate_changeset, ExceptionConflictHandler
-from changeset import Inventory, Diff3Merge
+from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
+from bzrlib.changeset import Inventory, Diff3Merge
 from bzrlib import find_branch
 import bzrlib.osutils
 from bzrlib.errors import BzrCommandError
@@ -19,7 +19,13 @@ class UnrelatedBranches(BzrCommandError):
 
 
 class MergeConflictHandler(ExceptionConflictHandler):
-    """Handle conflicts encountered while merging"""
+    """Handle conflicts encountered while merging.
+
+    This subclasses ExceptionConflictHandler, so that any types of
+    conflict that are not explicitly handled cause an exception and
+    terminate the merge.
+
+    """
     def __init__(self, dir, ignore_zero=False):
         ExceptionConflictHandler.__init__(self, dir)
         self.conflicts = 0
