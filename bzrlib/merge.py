@@ -1,4 +1,4 @@
-from merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
+from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
 from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
 from bzrlib.changeset import Inventory, Diff3Merge
 from bzrlib import find_branch
@@ -10,6 +10,13 @@ import os.path
 import tempfile
 import shutil
 import errno
+
+
+# comments from abentley on irc: merge happens in two stages, each
+# of which generates a changeset object
+
+# stage 1: generate OLD->OTHER,
+# stage 2: use MINE and OLD->OTHER to generate MINE -> RESULT
 
 class UnrelatedBranches(BzrCommandError):
     def __init__(self):
@@ -24,7 +31,6 @@ class MergeConflictHandler(ExceptionConflictHandler):
     This subclasses ExceptionConflictHandler, so that any types of
     conflict that are not explicitly handled cause an exception and
     terminate the merge.
-
     """
     def __init__(self, dir, ignore_zero=False):
         ExceptionConflictHandler.__init__(self, dir)

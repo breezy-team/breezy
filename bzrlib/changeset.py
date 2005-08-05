@@ -18,9 +18,16 @@ import errno
 import patch
 import stat
 from bzrlib.trace import mutter
+
+# XXX: mbp: I'm not totally convinced that we should handle conflicts
+# as part of changeset application, rather than only in the merge
+# operation.
+
+"""Represent and apply a changeset
+
+Conflicts in applying a changeset are represented as exceptions.
 """
-Represent and apply a changeset
-"""
+
 __docformat__ = "restructuredtext"
 
 NULL_ID = "!NULL"
@@ -1028,6 +1035,12 @@ class MissingForMerge(Exception):
 
 
 class ExceptionConflictHandler(object):
+    """Default handler for merge exceptions.
+
+    This throws an error on any kind of conflict.  Conflict handlers can
+    descend from this class if they have a better way to handle some or
+    all types of conflict.
+    """
     def __init__(self, dir):
         self.dir = dir
     
