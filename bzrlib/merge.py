@@ -145,6 +145,12 @@ class MergeTree(object):
         os.mkdir(os.path.join(self.tempdir, "texts"))
         self.cached = {}
 
+    def __contains__(self, file_id):
+        return id in self.tree
+
+    def get_file_sha1(self, id):
+        return self.tree.get_file_sha1(id)
+
     def readonly_path(self, id):
         if id not in self.tree:
             return None
@@ -232,34 +238,12 @@ def set_interesting(inventory_a, inventory_b, interesting_ids):
              source_file.interesting = source_file.id in interesting_ids
 
 
-def set_optimized(tree_a, tree_b, inventory_a, inventory_b):
-    """Mark files that have changed texts as interesting
-    """
-    for file_id in tree_a.tree.inventory:
-        if file_id not in tree_b.tree.inventory:
-            continue
-        entry_a = tree_a.tree.inventory[file_id]
-        entry_b = tree_b.tree.inventory[file_id]
-        if (entry_a.kind, entry_b.kind) != ("file", "file"):
-            continue
-        if None in (entry_a.text_id, entry_b.text_id):
-            continue
-        if entry_a.text_id != entry_b.text_id:
-            continue
-        inventory_a[abspath(tree_a.tree, file_id)].interesting = False
-        inventory_b[abspath(tree_b.tree, file_id)].interesting = False
-
-
 def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b,
                             interesting_ids=None):
-    """Generate a changeset, with preprocessing to select interesting files.
-    using the text_id to mark really-changed files.
-    This permits blazing comparisons when text_ids are present.  It also
-    disables metadata comparison for files with identical texts.
+    """Generate a changeset.  If interesting_ids is supplied, only changes
+    to those files will be shown.  Metadata changes are stripped.
     """ 
-    if interesting_ids is None:
-        set_optimized(tree_a, tree_b, inventory_a, inventory_b)
-    else:
+    if interesting_ids is not None:
         set_interesting(inventory_a, inventory_b, interesting_ids)
     cset =  generate_changeset(tree_a, tree_b, inventory_a, inventory_b)
     for entry in cset.entries.itervalues():
