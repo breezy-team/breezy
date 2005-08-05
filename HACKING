@@ -1,0 +1,27 @@
+guidelines for modifying bzr
+============================
+
+* New functionality should have test cases.  Preferably write the
+  test before writing the code.
+
+  In general, you can test at either the command-line level or the
+  internal API level.  Choose whichever is appropriate: if adding a
+  new command, or a new command option, then call through run_bzr().
+  It is not necessary to do both.
+
+* Before fixing a bug, write a test case so that it does not regress.
+
+* Exceptions should be defined inside bzrlib.errors, so that we can
+  see the whole tree at a glance.
+
+* Imports should be done at the top-level of the file, unless there is
+  a strong reason to have them lazily loaded when a particular
+  function runs.  Import statements have a cost, so try to make sure
+  they don't run inside hot functions.
+
+* Please write PEP-8__ compliant code.
+
+__ http://www.python.org/peps/pep-0008.html
+
+* Module names should always be given fully-qualified,
+  i.e. ``bzrlib.hashcache`` not just ``hashcache``.
