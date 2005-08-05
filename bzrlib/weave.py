@@ -238,7 +238,8 @@ class Weave(object):
             basis_lineno.append(lineno)
             basis_lines.append(line)
 
-        # another small special case: a merge, producing the same text as auto-merge
+        # another small special case: a merge, producing the same text
+        # as auto-merge
         if text == basis_lines:
             return new_version            
 
@@ -706,7 +707,10 @@ def weave_stats(weave_file):
     print 'weave file        %9d bytes' % weave_size
     print 'total contents    %9d bytes' % total
     print 'compression ratio %9.2fx' % (float(total) / float(weave_size))
-
+    if vers:
+        avg = total/vers
+        print 'average size      %9d bytes' % avg
+        print 'relative size     %9.2fx' % (float(weave_size) / float(avg))
 
 
 def usage():
