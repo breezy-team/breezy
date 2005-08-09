@@ -36,55 +36,7 @@ def invert_dict(dict):
     return newdict
 
 
-class PatchApply(object):
-    """Patch application as a kind of content change"""
-    def __init__(self, contents):
-        """Constructor.
-
-        :param contents: The text of the patch to apply
-        :type contents: str"""
-        self.contents = contents
-
-    def __eq__(self, other):
-        if not isinstance(other, PatchApply):
-            return False
-        elif self.contents != other.contents:
-            return False
-        else:
-            return True
-
-    def __ne__(self, other):
-        return not (self == other)
-
-    def apply(self, filename, conflict_handler, reverse=False):
-        """Applies the patch to the specified file.
-
-        :param filename: the file to apply the patch to
-        :type filename: str
-        :param reverse: If true, apply the patch in reverse
-        :type reverse: bool
-        """
-        input_name = filename+".orig"
-        try:
-            os.rename(filename, input_name)
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
-            if conflict_handler.patch_target_missing(filename, self.contents)\
-                == "skip":
-                return
-            os.rename(filename, input_name)
-            
-
-        status = patch.patch(self.contents, input_name, filename, 
-                                    reverse)
-        os.chmod(filename, os.stat(input_name).st_mode)
-        if status == 0:
-            os.unlink(input_name)
-        elif status == 1:
-            conflict_handler.failed_hunks(filename)
-
-        
+       
 class ChangeUnixPermissions(object):
     """This is two-way change, suitable for file modification, creation,
     deletion"""
@@ -1471,15 +1423,6 @@ class ChangesetGenerator(object):
             if stat_a.st_ino == stat_b.st_ino and \
                 stat_a.st_dev == stat_b.st_dev:
                 return None
-            if file(full_path_a, "rb").read() == \
-                file(full_path_b, "rb").read():
-                return None
-
-            patch_contents = patch.diff(full_path_a, 
-                                        file(full_path_b, "rb").read())
-            if patch_contents is None:
-                return None
-            return PatchApply(patch_contents)
 
         a_contents = self.get_contents(stat_a, full_path_a)
         b_contents = self.get_contents(stat_b, full_path_b)

@@ -197,8 +197,6 @@ def make_merged_contents(entry, this, base, other, inventory, conflict_handler,
         other_path = other.readonly_path(entry.id)    
         return merge_factory(base_path, other_path)
 
-    if isinstance(contents, changeset.PatchApply):
-        return make_merge()
     if isinstance(contents, changeset.ReplaceContents):
         if contents.old_contents is None and contents.new_contents is None:
             return None
