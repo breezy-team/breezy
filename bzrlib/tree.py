@@ -158,6 +158,11 @@ class EmptyTree(Tree):
     def __contains__(self, file_id):
         return file_id in self._inventory
 
+    def get_file_sha1(self, file_id):
+        assert self._inventory[file_id].kind == "root_directory"
+        return None
+
+
 
 
 ######################################################################

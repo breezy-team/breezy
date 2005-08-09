@@ -146,7 +146,7 @@ class MergeTree(object):
         self.cached = {}
 
     def __contains__(self, file_id):
-        return id in self.tree
+        return file_id in self.tree
 
     def get_file_sha1(self, id):
         return self.tree.get_file_sha1(id)
