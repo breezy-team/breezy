@@ -999,10 +999,7 @@ class ExceptionConflictHandler(object):
     def rename_conflict(self, id, this_name, base_name, other_name):
         raise RenameConflict(id, this_name, base_name, other_name)
 
-    def move_conflict(self, id, inventory):
-        this_dir = inventory.this.get_dir(id)
-        base_dir = inventory.base.get_dir(id)
-        other_dir = inventory.other.get_dir(id)
+    def move_conflict(self, id, this_dir, base_dir, other_dir):
         raise MoveConflict(id, this_dir, base_dir, other_dir)
 
     def merge_conflict(self, new_file, this_path, base_path, other_path):
@@ -1039,8 +1036,8 @@ class ExceptionConflictHandler(object):
     def missing_for_rename(self, filename):
         raise MissingForRename(filename)
 
-    def missing_for_merge(self, file_id, inventory):
-        raise MissingForMerge(inventory.other.get_path(file_id))
+    def missing_for_merge(self, file_id, other_path):
+        raise MissingForMerge(other_path)
 
     def new_contents_conflict(self, filename, other_contents):
         raise NewContentsConflict(filename)

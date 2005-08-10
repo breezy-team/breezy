@@ -69,11 +69,6 @@ class BackupBeforeChange:
         self.contents_change.apply(filename, conflict_handler, reverse)
 
 
-class ThreewayInventory(object):
-    def __init__(self, this_inventory, base_inventory, other_inventory):
-        self.this = this_inventory
-        self.base = base_inventory
-        self.other = other_inventory
 def invert_invent(inventory):
     invert_invent = {}
     for file_id in inventory:
@@ -85,33 +80,24 @@ def invert_invent(inventory):
         invert_invent[file_id] = path
     return invert_invent
 
-def make_inv(inventory):
-    return Inventory(invert_invent(inventory))
-        
 
 def merge_flex(this, base, other, changeset_function, inventory_function,
                conflict_handler, merge_factory, interesting_ids):
-    this_inventory = inventory_function(this)
-    base_inventory = inventory_function(base)
-    other_inventory = inventory_function(other)
-    inventory = ThreewayInventory(make_inv(this_inventory),
-                                  make_inv(base_inventory), 
-                                  make_inv(other_inventory))
     cset = changeset_function(base, other, interesting_ids)
-    new_cset = make_merge_changeset(cset, inventory, this, base, other, 
+    new_cset = make_merge_changeset(cset, this, base, other, 
                                     conflict_handler, merge_factory)
-    result = apply_changeset(new_cset, invert_invent(this_inventory),
+    result = apply_changeset(new_cset, invert_invent(this.tree.inventory),
                              this.root, conflict_handler, False)
     conflict_handler.finalize()
     return result
 
     
 
-def make_merge_changeset(cset, inventory, this, base, other, 
+def make_merge_changeset(cset, this, base, other, 
                          conflict_handler, merge_factory):
     new_cset = changeset.Changeset()
     def get_this_contents(id):
-        path = os.path.join(this.root, inventory.this.get_path(id))
+        path = this.readonly_path(id)
         if os.path.isdir(path):
             return changeset.dir_create
         else:
@@ -121,9 +107,10 @@ def make_merge_changeset(cset, inventory, this, base, other,
         if entry.is_boring():
             new_cset.add_entry(entry)
         else:
-            new_entry = make_merged_entry(entry, inventory, conflict_handler)
+            new_entry = make_merged_entry(entry, this, base, other, 
+                                          conflict_handler)
             new_contents = make_merged_contents(entry, this, base, other, 
-                                                inventory, conflict_handler, 
+                                                conflict_handler,
                                                 merge_factory)
             new_entry.contents_change = new_contents
             new_entry.metadata_change = make_merged_metadata(entry, base, other)
@@ -131,24 +118,20 @@ def make_merge_changeset(cset, inventory, this, base, other,
 
     return new_cset
 
-def make_merged_entry(entry, inventory, conflict_handler):
+def make_merged_entry(entry, this, base, other, conflict_handler):
     from bzrlib.trace import mutter
-    this_name = inventory.this.get_name(entry.id)
-    this_parent = inventory.this.get_parent(entry.id)
-    this_dir = inventory.this.get_dir(entry.id)
-    if this_dir is None:
-        this_dir = ""
-
-    base_name = inventory.base.get_name(entry.id)
-    base_parent = inventory.base.get_parent(entry.id)
-    base_dir = inventory.base.get_dir(entry.id)
-    if base_dir is None:
-        base_dir = ""
-    other_name = inventory.other.get_name(entry.id)
-    other_parent = inventory.other.get_parent(entry.id)
-    other_dir = inventory.base.get_dir(entry.id)
-    if other_dir is None:
-        other_dir = ""
+    def entry_data(file_id, tree):
+        assert hasattr(tree, "__contains__"), "%s" % tree
+        if file_id not in tree:
+            return (None, None, "")
+        entry = tree.tree.inventory[file_id]
+        my_dir = tree.id2path(entry.parent_id)
+        if my_dir is None:
+            my_dir = ""
+        return entry.name, entry.parent_id, my_dir 
+    this_name, this_parent, this_dir = entry_data(entry.id, this)
+    base_name, base_parent, base_dir = entry_data(entry.id, base)
+    other_name, other_parent, other_dir = entry_data(entry.id, other)
     mutter("Dirs: this, base, other %r %r %r" % (this_dir, base_dir, other_dir))
     mutter("Names: this, base, other %r %r %r" % (this_name, base_name, other_name))
     if base_name == other_name:
@@ -169,7 +152,8 @@ def make_merged_entry(entry, inventory, conflict_handler):
         new_dir = this_dir
     else:
         if this_parent != base_parent and this_parent != other_parent:
-            conflict_handler.move_conflict(entry.id, inventory)
+            conflict_handler.move_conflict(entry.id, this_dir, base_dir, 
+                                           other_dir)
         else:
             old_parent = this_parent
             old_dir = this_dir
@@ -189,7 +173,7 @@ def make_merged_entry(entry, inventory, conflict_handler):
     return new_entry
 
 
-def make_merged_contents(entry, this, base, other, inventory, conflict_handler,
+def make_merged_contents(entry, this, base, other, conflict_handler,
                          merge_factory):
     contents = entry.contents_change
     if contents is None:
@@ -197,7 +181,8 @@ def make_merged_contents(entry, this, base, other, inventory, conflict_handler,
     this_path = this.readonly_path(entry.id)
     def make_merge():
         if this_path is None:
-            return conflict_handler.missing_for_merge(entry.id, inventory)
+            return conflict_handler.missing_for_merge(entry.id, 
+                                                      other.id2path(entry.id))
         base_path = base.readonly_path(entry.id)
         other_path = other.readonly_path(entry.id)    
         return merge_factory(base_path, other_path)
@@ -262,11 +247,41 @@ class PermissionsMerge(object):
 import unittest
 import tempfile
 import shutil
+from bzrlib.inventory import InventoryEntry, RootEntry
+from osutils import file_kind
+class FalseTree(object):
+    def __init__(self, realtree):
+        self._realtree = realtree
+        self.inventory = self
+
+    def __getitem__(self, file_id):
+        entry = self.make_inventory_entry(file_id)
+        if entry is None:
+            raise KeyError(file_id)
+        return entry
+        
+    def make_inventory_entry(self, file_id):
+        path = self._realtree.inventory.get(file_id)
+        if path is None:
+            return None
+        if path == "":
+            return RootEntry(file_id)
+        dir, name = os.path.split(path)
+        kind = file_kind(self._realtree.abs_path(path))
+        for parent_id, path in self._realtree.inventory.iteritems():
+            if path == dir:
+                break
+        if path != dir:
+            raise Exception("Can't find parent for %s" % name)
+        return InventoryEntry(file_id, name, kind, parent_id)
+
+
 class MergeTree(object):
     def __init__(self, dir):
         self.dir = dir;
         os.mkdir(dir)
         self.inventory = {'0': ""}
+        self.tree = FalseTree(self)
     
     def child_path(self, parent, name):
         return os.path.join(self.inventory[parent], name)
@@ -303,6 +318,12 @@ class MergeTree(object):
 
     def readonly_path(self, id):
         return self.full_path(id)
+
+    def __contains__(self, file_id):
+        return file_id in self.inventory
+
+    def id2path(self, file_id):
+        return self.inventory[file_id]
 
     def change_path(self, id, path):
         new = os.path.join(self.dir, self.inventory[id])
@@ -435,12 +456,9 @@ class MergeBuilder(object):
         os.chmod(tree.full_path(id), mode)
 
     def merge_changeset(self, merge_factory):
-        all_inventory = ThreewayInventory(Inventory(self.this.inventory),
-                                          Inventory(self.base.inventory), 
-                                          Inventory(self.other.inventory))
         conflict_handler = changeset.ExceptionConflictHandler(self.this.dir)
-        return make_merge_changeset(self.cset, all_inventory, self.this,
-                                    self.base, self.other, conflict_handler,
+        return make_merge_changeset(self.cset, self.this, self.base,
+                                    self.other, conflict_handler,
                                     merge_factory)
 
     def apply_inv_change(self, inventory_change, orig_inventory):
