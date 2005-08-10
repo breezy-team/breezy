@@ -1267,11 +1267,14 @@ class UnsuppportedFiletype(Exception):
         self.full_path = full_path
         self.stat_result = stat_result
 
-def generate_changeset(tree_a, tree_b, inventory_a=None, inventory_b=None):
-    return ChangesetGenerator(tree_a, tree_b, inventory_a, inventory_b)()
+def generate_changeset(tree_a, tree_b, inventory_a=None, inventory_b=None, 
+                       interesting_ids=None):
+    return ChangesetGenerator(tree_a, tree_b, inventory_a, inventory_b, 
+                              interesting_ids)()
 
 class ChangesetGenerator(object):
-    def __init__(self, tree_a, tree_b, inventory_a=None, inventory_b=None):
+    def __init__(self, tree_a, tree_b, inventory_a=None, inventory_b=None, 
+                 interesting_ids=None):
         object.__init__(self)
         self.tree_a = tree_a
         self.tree_b = tree_b
@@ -1285,6 +1288,7 @@ class ChangesetGenerator(object):
             self.inventory_b = tree_b.inventory()
         self.r_inventory_a = self.reverse_inventory(self.inventory_a)
         self.r_inventory_b = self.reverse_inventory(self.inventory_b)
+        self._interesting_ids = interesting_ids
 
     def reverse_inventory(self, inventory):
         r_inventory = {}
@@ -1359,13 +1363,15 @@ class ChangesetGenerator(object):
         return cs_entry
 
     def is_interesting(self, entry_a, entry_b):
+        if self._interesting_ids is None:
+            return True
         if entry_a is not None:
-            if entry_a.interesting:
-                return True
-        if entry_b is not None:
-            if entry_b.interesting:
-                return True
-        return False
+            file_id = entry_a.id
+        elif entry_b is not None:
+            file_id = entry_b.id
+        else:
+            return False
+        return file_id in self._interesting_ids
 
     def make_boring_entry(self, id):
         cs_entry = self.make_basic_entry(id, only_interesting=False)

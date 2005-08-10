@@ -85,14 +85,15 @@ def make_inv(inventory):
         
 
 def merge_flex(this, base, other, changeset_function, inventory_function,
-               conflict_handler, merge_factory):
+               conflict_handler, merge_factory, interesting_ids):
     this_inventory = inventory_function(this)
     base_inventory = inventory_function(base)
     other_inventory = inventory_function(other)
     inventory = ThreewayInventory(make_inv(this_inventory),
                                   make_inv(base_inventory), 
                                   make_inv(other_inventory))
-    cset = changeset_function(base, other, base_inventory, other_inventory)
+    cset = changeset_function(base, other, base_inventory, other_inventory, 
+                              interesting_ids)
     new_cset = make_merge_changeset(cset, inventory, this, base, other, 
                                     conflict_handler, merge_factory)
     result = apply_changeset(new_cset, invert_invent(this_inventory),

@@ -96,7 +96,6 @@ class SourceFile(object):
         self.id = id
         self.present = present
         self.isdir = isdir
-        self.interesting = True
 
     def __repr__(self):
         return "SourceFile(%s, %s)" % (self.path, self.id)
@@ -243,9 +242,8 @@ def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b,
     """Generate a changeset.  If interesting_ids is supplied, only changes
     to those files will be shown.  Metadata changes are stripped.
     """ 
-    if interesting_ids is not None:
-        set_interesting(inventory_a, inventory_b, interesting_ids)
-    cset =  generate_changeset(tree_a, tree_b, inventory_a, inventory_b)
+    cset =  generate_changeset(tree_a, tree_b, inventory_a, inventory_b, 
+                               interesting_ids)
     for entry in cset.entries.itervalues():
         entry.metadata_change = None
     return cset
@@ -260,10 +258,6 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
         if backup_files:
             contents_change = BackupBeforeChange(contents_change)
         return contents_change
-    
-    def generate_cset(tree_a, tree_b, inventory_a, inventory_b):
-        return generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b,
-                                       interesting_ids)
 
     this_tree = get_tree((this_branch.base, None), tempdir, "this")[1]
 
@@ -271,10 +265,11 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
         return tree.inventory
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
-                             generate_cset, get_inventory,
+                             generate_cset_optimized, get_inventory,
                              MergeConflictHandler(base_tree.root,
                                                   ignore_zero=ignore_zero),
-                             merge_factory=merge_factory)
+                             merge_factory=merge_factory, 
+                             interesting_ids=interesting_ids)
 
     adjust_ids = []
     for id, path in inv_changes.iteritems():
