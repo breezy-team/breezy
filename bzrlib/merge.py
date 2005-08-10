@@ -90,16 +90,6 @@ class MergeConflictHandler(ExceptionConflictHandler):
         if not self.ignore_zero:
             print "%d conflicts encountered.\n" % self.conflicts
             
-class SourceFile(object):
-    def __init__(self, path, id, present=None, isdir=None):
-        self.path = path
-        self.id = id
-        self.present = present
-        self.isdir = isdir
-
-    def __repr__(self):
-        return "SourceFile(%s, %s)" % (self.path, self.id)
-
 def get_tree(treespec, temp_root, label):
     location, revno = treespec
     branch = find_branch(location)
@@ -127,7 +117,7 @@ def inventory_map(tree):
     inventory = {}
     for file_id in tree.inventory:
         path = abspath(tree, file_id)
-        inventory[path] = SourceFile(path, file_id)
+        inventory[path] = tree.inventory[file_id]
     return inventory
 
 
@@ -149,6 +139,12 @@ class MergeTree(object):
 
     def get_file_sha1(self, id):
         return self.tree.get_file_sha1(id)
+
+    def id2path(self, file_id):
+        return self.tree.id2path(file_id)
+
+    def has_id(self, file_id):
+        return self.tree.has_id(file_id)
 
     def readonly_path(self, id):
         if id not in self.tree:

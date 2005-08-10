@@ -77,7 +77,7 @@ class ThreewayInventory(object):
 def invert_invent(inventory):
     invert_invent = {}
     for key, value in inventory.iteritems():
-        invert_invent[value.id] = key
+        invert_invent[value.file_id] = key
     return invert_invent
 
 def make_inv(inventory):

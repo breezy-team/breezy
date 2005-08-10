@@ -1293,25 +1293,25 @@ class ChangesetGenerator(object):
     def reverse_inventory(self, inventory):
         r_inventory = {}
         for entry in inventory.itervalues():
-            if entry.id is None:
+            if entry.file_id is None:
                 continue
-            r_inventory[entry.id] = entry
+            r_inventory[entry.file_id] = entry
         return r_inventory
 
     def __call__(self):
         cset = Changeset()
         for entry in self.inventory_a.itervalues():
-            if entry.id is None:
+            if entry.file_id is None:
                 continue
-            cs_entry = self.make_entry(entry.id)
+            cs_entry = self.make_entry(entry.file_id)
             if cs_entry is not None and not cs_entry.is_boring():
                 cset.add_entry(cs_entry)
 
         for entry in self.inventory_b.itervalues():
-            if entry.id is None:
+            if entry.file_id is None:
                 continue
-            if not self.r_inventory_a.has_key(entry.id):
-                cs_entry = self.make_entry(entry.id)
+            if not self.r_inventory_a.has_key(entry.file_id):
+                cs_entry = self.make_entry(entry.file_id)
                 if cs_entry is not None and not cs_entry.is_boring():
                     cset.add_entry(cs_entry)
         for entry in list(cset.entries.itervalues()):
@@ -1330,33 +1330,28 @@ class ChangesetGenerator(object):
     def get_entry_parent(self, entry, inventory):
         if entry is None:
             return None
-        if entry.path == "./.":
-            return NULL_ID
-        dirname = os.path.dirname(entry.path)
-        if dirname == ".":
-            dirname = "./."
-        parent = inventory[dirname]
-        return parent.id
+        return entry.parent_id
 
-    def get_path(self, entry, tree):
-        if entry is None:
-            return (None, None)
-        if entry.path == ".":
-            return ""
-        return entry.path
+    def get_path(self, file_id, tree):
+        if not tree.has_id(file_id):
+            return None
+        path = tree.id2path(file_id)
+        if path == '':
+            return './.'
+        else:
+            return path
 
-    def make_basic_entry(self, id, only_interesting):
-        entry_a = self.r_inventory_a.get(id)
-        entry_b = self.r_inventory_b.get(id)
+    def make_basic_entry(self, file_id, only_interesting):
+        entry_a = self.r_inventory_a.get(file_id)
+        entry_b = self.r_inventory_b.get(file_id)
         if only_interesting and not self.is_interesting(entry_a, entry_b):
             return None
         parent = self.get_entry_parent(entry_a, self.inventory_a)
-        path = self.get_path(entry_a, self.tree_a)
-        cs_entry = ChangesetEntry(id, parent, path)
+        path = self.get_path(file_id, self.tree_a)
+        cs_entry = ChangesetEntry(file_id, parent, path)
         new_parent = self.get_entry_parent(entry_b, self.inventory_b)
 
-
-        new_path = self.get_path(entry_b, self.tree_b)
+        new_path = self.get_path(file_id, self.tree_b)
 
         cs_entry.new_path = new_path
         cs_entry.new_parent = new_parent
@@ -1366,9 +1361,9 @@ class ChangesetGenerator(object):
         if self._interesting_ids is None:
             return True
         if entry_a is not None:
-            file_id = entry_a.id
+            file_id = entry_a.file_id
         elif entry_b is not None:
-            file_id = entry_b.id
+            file_id = entry_b.file_id
         else:
             return False
         return file_id in self._interesting_ids
