@@ -104,22 +104,9 @@ def get_tree(treespec, temp_root, label):
     return branch, MergeTree(base_tree, temp_path)
 
 
-def abspath(tree, file_id):
-    path = tree.inventory.id2path(file_id)
-    if path == "":
-        return "./."
-    return "./" + path
-
 def file_exists(tree, file_id):
     return tree.has_filename(tree.id2path(file_id))
     
-def inventory_map(tree):
-    inventory = {}
-    for file_id in tree.inventory:
-        path = abspath(tree, file_id)
-        inventory[path] = tree.inventory[file_id]
-    return inventory
-
 
 class MergeTree(object):
     def __init__(self, tree, tempdir):
@@ -128,11 +115,13 @@ class MergeTree(object):
             self.root = tree.basedir
         else:
             self.root = None
-        self.inventory = inventory_map(tree)
         self.tree = tree
         self.tempdir = tempdir
         os.mkdir(os.path.join(self.tempdir, "texts"))
         self.cached = {}
+
+    def __iter__(self):
+        return self.tree.__iter__()
 
     def __contains__(self, file_id):
         return file_id in self.tree
@@ -233,13 +222,11 @@ def set_interesting(inventory_a, inventory_b, interesting_ids):
              source_file.interesting = source_file.id in interesting_ids
 
 
-def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b,
-                            interesting_ids=None):
+def generate_cset_optimized(tree_a, tree_b, interesting_ids=None):
     """Generate a changeset.  If interesting_ids is supplied, only changes
     to those files will be shown.  Metadata changes are stripped.
     """ 
-    cset =  generate_changeset(tree_a, tree_b, inventory_a, inventory_b, 
-                               interesting_ids)
+    cset =  generate_changeset(tree_a, tree_b, interesting_ids)
     for entry in cset.entries.itervalues():
         entry.metadata_change = None
     return cset
@@ -258,7 +245,7 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
     this_tree = get_tree((this_branch.base, None), tempdir, "this")[1]
 
     def get_inventory(tree):
-        return tree.inventory
+        return tree.tree.inventory
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
                              generate_cset_optimized, get_inventory,
@@ -273,7 +260,7 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
             if path == '.':
                 path = ''
             else:
-                assert path.startswith('./')
+                assert path.startswith('./'), "path is %s" % path
             path = path[2:]
         adjust_ids.append((path, id))
     if len(adjust_ids) > 0:

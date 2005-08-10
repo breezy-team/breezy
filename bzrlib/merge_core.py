@@ -76,8 +76,13 @@ class ThreewayInventory(object):
         self.other = other_inventory
 def invert_invent(inventory):
     invert_invent = {}
-    for key, value in inventory.iteritems():
-        invert_invent[value.file_id] = key
+    for file_id in inventory:
+        path = inventory.id2path(file_id)
+        if path == '':
+            path = './.'
+        else:
+            path = './' + path
+        invert_invent[file_id] = path
     return invert_invent
 
 def make_inv(inventory):
@@ -92,8 +97,7 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
     inventory = ThreewayInventory(make_inv(this_inventory),
                                   make_inv(base_inventory), 
                                   make_inv(other_inventory))
-    cset = changeset_function(base, other, base_inventory, other_inventory, 
-                              interesting_ids)
+    cset = changeset_function(base, other, interesting_ids)
     new_cset = make_merge_changeset(cset, inventory, this, base, other, 
                                     conflict_handler, merge_factory)
     result = apply_changeset(new_cset, invert_invent(this_inventory),

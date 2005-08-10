@@ -1267,53 +1267,30 @@ class UnsuppportedFiletype(Exception):
         self.full_path = full_path
         self.stat_result = stat_result
 
-def generate_changeset(tree_a, tree_b, inventory_a=None, inventory_b=None, 
-                       interesting_ids=None):
-    return ChangesetGenerator(tree_a, tree_b, inventory_a, inventory_b, 
-                              interesting_ids)()
+def generate_changeset(tree_a, tree_b, interesting_ids=None):
+    return ChangesetGenerator(tree_a, tree_b, interesting_ids)()
 
 class ChangesetGenerator(object):
-    def __init__(self, tree_a, tree_b, inventory_a=None, inventory_b=None, 
-                 interesting_ids=None):
+    def __init__(self, tree_a, tree_b, interesting_ids=None):
         object.__init__(self)
         self.tree_a = tree_a
         self.tree_b = tree_b
-        if inventory_a is not None:
-            self.inventory_a = inventory_a
-        else:
-            self.inventory_a = tree_a.inventory()
-        if inventory_b is not None:
-            self.inventory_b = inventory_b
-        else:
-            self.inventory_b = tree_b.inventory()
-        self.r_inventory_a = self.reverse_inventory(self.inventory_a)
-        self.r_inventory_b = self.reverse_inventory(self.inventory_b)
         self._interesting_ids = interesting_ids
 
-    def reverse_inventory(self, inventory):
-        r_inventory = {}
-        for entry in inventory.itervalues():
-            if entry.file_id is None:
-                continue
-            r_inventory[entry.file_id] = entry
-        return r_inventory
+    def iter_both_tree_ids(self):
+        for file_id in self.tree_a:
+            yield file_id
+        for file_id in self.tree_b:
+            if file_id not in self.tree_a:
+                yield file_id
 
     def __call__(self):
         cset = Changeset()
-        for entry in self.inventory_a.itervalues():
-            if entry.file_id is None:
-                continue
-            cs_entry = self.make_entry(entry.file_id)
+        for file_id in self.iter_both_tree_ids():
+            cs_entry = self.make_entry(file_id)
             if cs_entry is not None and not cs_entry.is_boring():
                 cset.add_entry(cs_entry)
 
-        for entry in self.inventory_b.itervalues():
-            if entry.file_id is None:
-                continue
-            if not self.r_inventory_a.has_key(entry.file_id):
-                cs_entry = self.make_entry(entry.file_id)
-                if cs_entry is not None and not cs_entry.is_boring():
-                    cset.add_entry(cs_entry)
         for entry in list(cset.entries.itervalues()):
             if entry.parent != entry.new_parent:
                 if not cset.entries.has_key(entry.parent) and\
@@ -1327,7 +1304,16 @@ class ChangesetGenerator(object):
                     cset.add_entry(parent_entry)
         return cset
 
-    def get_entry_parent(self, entry, inventory):
+    def iter_inventory(self, tree):
+        for file_id in tree:
+            yield self.get_entry(file_id, tree)
+
+    def get_entry(self, file_id, tree):
+        if file_id not in tree:
+            return None
+        return tree.tree.inventory[file_id]
+
+    def get_entry_parent(self, entry):
         if entry is None:
             return None
         return entry.parent_id
@@ -1342,14 +1328,14 @@ class ChangesetGenerator(object):
             return path
 
     def make_basic_entry(self, file_id, only_interesting):
-        entry_a = self.r_inventory_a.get(file_id)
-        entry_b = self.r_inventory_b.get(file_id)
+        entry_a = self.get_entry(file_id, self.tree_a)
+        entry_b = self.get_entry(file_id, self.tree_b)
         if only_interesting and not self.is_interesting(entry_a, entry_b):
             return None
-        parent = self.get_entry_parent(entry_a, self.inventory_a)
+        parent = self.get_entry_parent(entry_a)
         path = self.get_path(file_id, self.tree_a)
         cs_entry = ChangesetEntry(file_id, parent, path)
-        new_parent = self.get_entry_parent(entry_b, self.inventory_b)
+        new_parent = self.get_entry_parent(entry_b)
 
         new_path = self.get_path(file_id, self.tree_b)
 
