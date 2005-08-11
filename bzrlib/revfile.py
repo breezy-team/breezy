@@ -268,6 +268,12 @@ class Revfile(object):
             return self._add_full_text(text, text_sha, compress)
         
         data = mdiff.bdiff(base_text, text)
+
+
+        if True: # paranoid early check for bad diff
+            result = mdiff.bpatch(base_text, data)
+            assert result == text
+            
         
         # If the delta is larger than the text, we might as well just
         # store the text.  (OK, the delta might be more compressible,
@@ -332,8 +338,8 @@ class Revfile(object):
             text = self._get_patched(idx, idxrec, recursion_limit)
 
         if sha.new(text).digest() != idxrec[I_SHA]:
-            raise RevfileError("corrupt SHA-1 digest on record %d"
-                               % idx)
+            raise RevfileError("corrupt SHA-1 digest on record %d in %s"
+                               % (idx, self.basename))
 
         return text
 
