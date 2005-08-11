@@ -25,7 +25,9 @@
 
 # TODO: maybe work on files not strings?
 
+# FIXME: doesn't work properly on files without trailing newlines
 
+import unittest
 import difflib, sys, struct
 from cStringIO import StringIO
 
@@ -117,3 +119,26 @@ def bpatch(t, b):
 
 
 
+class TestDiffPatch(unittest.TestCase):
+    def doDiffPatch(self, old, new):
+        diff = bdiff(old, new)
+        result = bpatch(old, diff)
+        self.assertEquals(new, result)
+
+
+    def testSimpleDiff(self):
+        """Simply add a line at the end"""
+        self.doDiffPatch('a\nb\n', 'a\nb\nc\n')
+        
+
+        
+    def testTrailingLine(self):
+        """Test diff that adds an unterminated line.
+
+        (Old versions didn't do this properly.)"""
+        self.doDiffPatch('a\nb\nc\n',
+                         'a\nb\nc\nd')
+
+
+if __name__ == '__main__':
+    unittest.main()
