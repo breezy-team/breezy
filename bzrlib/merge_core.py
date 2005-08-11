@@ -118,6 +118,27 @@ def make_merge_changeset(cset, this, base, other,
 
     return new_cset
 
+class ThreeWayConflict(Exception):
+    def __init__(self, this, base, other):
+        self.this = this
+        self.base = base
+        self.other = other
+        msg = "Conflict merging %s %s and %s" % (this, base, other)
+        Exception.__init__(self, msg)
+
+def threeway_select(this, base, other):
+    """Returns a value selected by the three-way algorithm.
+    Raises ThreewayConflict if the algorithm yields a conflict"""
+    if base == other:
+        return this
+    elif base == this:
+        return other
+    elif other == this:
+        return this
+    else:
+        raise ThreeWayConflict(this, base, other)
+
+
 def make_merged_entry(entry, this, base, other, conflict_handler):
     from bzrlib.trace import mutter
     def entry_data(file_id, tree):
@@ -134,40 +155,33 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
     other_name, other_parent, other_dir = entry_data(entry.id, other)
     mutter("Dirs: this, base, other %r %r %r" % (this_dir, base_dir, other_dir))
     mutter("Names: this, base, other %r %r %r" % (this_name, base_name, other_name))
-    if base_name == other_name:
-        old_name = this_name
-        new_name = this_name
-    else:
-        if this_name != base_name and this_name != other_name:
-            conflict_handler.rename_conflict(entry.id, this_name, base_name,
-                                             other_name)
-        else:
-            old_name = this_name
-            new_name = other_name
+    old_name = this_name
+    try:
+        new_name = threeway_select(this_name, base_name, other_name)
+    except ThreeWayConflict:
+        new_name = conflict_handler.rename_conflict(entry.id, this_name, 
+                                                    base_name, other_name)
 
-    if base_parent == other_parent:
-        old_parent = this_parent
-        new_parent = this_parent
-        old_dir = this_dir
-        new_dir = this_dir
-    else:
-        if this_parent != base_parent and this_parent != other_parent:
-            conflict_handler.move_conflict(entry.id, this_dir, base_dir, 
-                                           other_dir)
+    old_parent = this_parent
+    try:
+        new_parent = threeway_select(this_parent, base_parent, other_parent)
+    except ThreeWayConflict:
+        new_parent = conflict_handler.move_conflict(entry.id, this_dir,
+                                                    base_dir, other_dir)
+    def get_path(name, parent):
+        if name is not None and parent is not None:
+            parent_dir = {this_parent: this_dir, other_parent: other_dir, 
+                          base_parent: base_dir}
+            directory = parent_dir[parent]
+            return os.path.join(directory, name)
         else:
-            old_parent = this_parent
-            old_dir = this_dir
-            new_parent = other_parent
-            new_dir = other_dir
-    if old_name is not None and old_parent is not None:
-        old_path = os.path.join(old_dir, old_name)
-    else:
-        old_path = None
+            assert name is None and parent is None
+            return None
+
+    old_path = get_path(old_name, old_parent)
+        
     new_entry = changeset.ChangesetEntry(entry.id, old_parent, old_path)
-    if new_name is not None and new_parent is not None:
-        new_entry.new_path = os.path.join(new_dir, new_name)
-    else:
-        new_entry.new_path = None
+    new_entry.new_path = get_path(new_name, new_parent)
     new_entry.new_parent = new_parent
     mutter(repr(new_entry))
     return new_entry
