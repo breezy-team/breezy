@@ -218,7 +218,8 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
             if this_path is None or not os.path.exists(this_path):
                 return contents
             else:
-                this_contents = file(this_path, "rb").read()
+                this_contents = changeset.FileCreate(file(this_path, 
+                                                     "rb").read())
                 if this_contents == contents.new_contents:
                     return None
                 else:
@@ -383,7 +384,17 @@ class MergeBuilder(object):
                 tree.remove_file(id)
             if other or base:
                 change = self.cset.entries[id].contents_change
-                assert isinstance(change, changeset.ReplaceContents)
+                if change is None:
+                    change = changeset.ReplaceContents(None, None)
+                    self.cset.entries[id].contents_change = change
+                    def create_file(tree):
+                        return changeset.FileCreate(tree.get_file(id).read())
+                    if not other:
+                        change.new_contents = create_file(self.other)
+                    if not base:
+                        change.old_contents = create_file(self.base)
+                else:
+                    assert isinstance(change, changeset.ReplaceContents)
                 if other:
                     change.new_contents=None
                 if base:
@@ -638,6 +649,9 @@ class MergeTest(unittest.TestCase):
         builder.add_file("2", "0", "name3", "text2", 0655)
         builder.change_contents("2", base="text5")
         builder.add_file("3", "0", "name5", "text3", 0744)
+        builder.add_file("4", "0", "name6", "text4", 0744)
+        builder.remove_file("4", base=True)
+        assert not builder.cset.entries["4"].is_boring()
         builder.change_contents("3", this="text6")
         cset = builder.merge_changeset(merge_factory)
         assert(cset.entries["1"].contents_change is not None)
@@ -647,6 +661,7 @@ class MergeTest(unittest.TestCase):
             assert(isinstance(cset.entries["2"].contents_change,
                           merge_factory))
         assert(cset.entries["3"].is_boring())
+        assert(cset.entries["4"].is_boring())
         builder.apply_changeset(cset)
         assert(file(builder.this.full_path("1"), "rb").read() == "text4" )
         assert(file(builder.this.full_path("2"), "rb").read() == "text2" )
