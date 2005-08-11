@@ -508,6 +508,9 @@ def main(argv):
                          "       revfile last REVFILE\n")
         return 1
 
+    if filename.endswith('.drev') or filename.endswith('.irev'):
+        filename = filename[:-5]
+
     def rw():
         return Revfile(filename, 'w')
 
