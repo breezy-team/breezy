@@ -32,7 +32,22 @@ import difflib, sys, struct
 from cStringIO import StringIO
 
 def linesplit(a):
-    """Split into two lists: content and line positions"""
+    """Split into two lists: content and line positions.
+
+    This returns (al, ap).
+
+    al[i] is the string content of line i of the file, including its
+    newline (if any).
+
+    ap[i] is the byte position in the file where that line starts.
+
+    ap[-1] is the byte position of the end of the file (i.e. the
+    length of the file.)
+
+    This transformation allows us to do a line-based diff and then map
+    back to byte positions.
+    """
+
     al, ap = [], []
     last = 0
 
@@ -42,6 +57,10 @@ def linesplit(a):
         al.append(a[last:n])
         last = n
         n = a.find("\n", n) + 1
+
+    if last < len(a):
+        al.append(a[last:])
+        ap.append(last)
 
     # position at the end
     ap.append(len(a))
