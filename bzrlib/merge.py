@@ -272,9 +272,24 @@ def regen_inventory(this_branch, root, new_entries):
     old_entries = this_branch.read_working_inventory()
     new_inventory = {}
     by_path = {}
+    new_entries_map = {} 
+    for path, file_id in new_entries:
+        if path is None:
+            continue
+        new_entries_map[file_id] = path
+
+    def id2path(file_id):
+        path = new_entries_map.get(file_id)
+        if path is not None:
+            return path
+        entry = old_entries[file_id]
+        if entry.parent_id is None:
+            return entry.name
+        return os.path.join(id2path(entry.parent_id), entry.name)
+        
     for file_id in old_entries:
         entry = old_entries[file_id]
-        path = old_entries.id2path(file_id)
+        path = id2path(file_id)
         new_inventory[file_id] = (path, file_id, entry.parent_id, entry.kind)
         by_path[path] = file_id
     
