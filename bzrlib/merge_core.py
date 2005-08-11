@@ -6,15 +6,16 @@ from merge3 import Merge3
 
 class ApplyMerge3:
     """Contents-change wrapper around merge3.Merge3"""
-    def __init__(self, base_file, other_file):
-        self.base_file = base_file
-        self.other_file = other_file
+    def __init__(self, file_id, base, other):
+        self.file_id = file_id
+        self.base = base
+        self.other = other
  
     def __eq__(self, other):
         if not isinstance(other, ApplyMerge3):
             return False
-        return (self.base_file == other.base_file and 
-                self.other_file == other.other_file)
+        return (self.base == other.base and 
+                self.other == other.other and self.file_id == other.file_id)
 
     def __ne__(self, other):
         return not (self == other)
@@ -23,14 +24,19 @@ class ApplyMerge3:
     def apply(self, filename, conflict_handler, reverse=False):
         new_file = filename+".new" 
         if not reverse:
-            base = self.base_file
-            other = self.other_file
+            base = self.base
+            other = self.other
         else:
-            base = self.other_file
-            other = self.base_file
-        m3 = Merge3(file(base, "rb").readlines(), 
-                    file(filename, "rb").readlines(), 
-                    file(other, "rb").readlines())
+            base = self.other
+            other = self.base
+        def get_lines(tree):
+            if self.file_id not in tree:
+                raise Exception("%s not in tree" % self.file_id)
+                return ()
+            return tree.get_file(self.file_id).readlines()
+        base_lines = get_lines(base)
+        other_lines = get_lines(other)
+        m3 = Merge3(base_lines, file(filename, "rb").readlines(), other_lines)
 
         new_conflicts = False
         output_file = file(new_file, "wb")
@@ -48,7 +54,8 @@ class ApplyMerge3:
             os.rename(new_file, filename)
             return
         else:
-            conflict_handler.merge_conflict(new_file, filename, base, other)
+            conflict_handler.merge_conflict(new_file, filename, base_lines,
+                                            other_lines)
 
 
 class BackupBeforeChange:
@@ -197,9 +204,7 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
         if this_path is None:
             return conflict_handler.missing_for_merge(entry.id, 
                                                       other.id2path(entry.id))
-        base_path = base.readonly_path(entry.id)
-        other_path = other.readonly_path(entry.id)    
-        return merge_factory(base_path, other_path)
+        return merge_factory(entry.id, base, other)
 
     if isinstance(contents, changeset.ReplaceContents):
         if contents.old_contents is None and contents.new_contents is None:
@@ -335,6 +340,10 @@ class MergeTree(object):
 
     def __contains__(self, file_id):
         return file_id in self.inventory
+
+    def get_file(self, file_id):
+        path = self.readonly_path(file_id)
+        return file(path, "rb")
 
     def id2path(self, file_id):
         return self.inventory[file_id]
@@ -605,8 +614,8 @@ class MergeTest(unittest.TestCase):
 
     def test_contents_merge3(self):
         """Test diff3 merging"""
-        def backup_merge(base_file, other_file):
-            return BackupBeforeChange(ApplyMerge3(base_file, other_file))
+        def backup_merge(file_id, base, other):
+            return BackupBeforeChange(ApplyMerge3(file_id, base, other))
         builder = self.contents_test_success(backup_merge)
         def backup_exists(file_id):
             return os.path.exists(builder.this.full_path(file_id)+"~")

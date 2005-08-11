@@ -36,6 +36,15 @@ class MergeConflictHandler(ExceptionConflictHandler):
             d_file.write(line)
         os.chmod(dest, 0777 & os.stat(source).st_mode)
 
+    def dump(self, lines, dest):
+        """Copy the text and mode of a file
+        :param source: The path of the file to copy
+        :param dest: The distination file to create
+        """
+        d_file = file(dest, "wb")
+        for line in lines:
+            d_file.write(line)
+
     def add_suffix(self, name, suffix, last_new_name=None):
         """Rename a file to append a suffix.  If the new name exists, the
         suffix is added repeatedly until a non-existant name is found
@@ -60,7 +69,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
         self.conflicts += 1
         
 
-    def merge_conflict(self, new_file, this_path, base_path, other_path):
+    def merge_conflict(self, new_file, this_path, base_lines, other_lines):
         """
         Handle diff3 conflicts by producing a .THIS, .BASE and .OTHER.  The
         main file will be a version with diff3 conflicts.
@@ -70,8 +79,8 @@ class MergeConflictHandler(ExceptionConflictHandler):
         :param other_path: Path to the file text for the OTHER tree
         """
         self.add_suffix(this_path, ".THIS")
-        self.copy(base_path, this_path+".BASE")
-        self.copy(other_path, this_path+".OTHER")
+        self.dump(base_lines, this_path+".BASE")
+        self.dump(other_lines, this_path+".OTHER")
         os.rename(new_file, this_path)
         self.conflict("Diff3 conflict encountered in %s" % this_path)
 
@@ -125,6 +134,9 @@ class MergeTree(object):
 
     def __contains__(self, file_id):
         return file_id in self.tree
+
+    def get_file(self, file_id):
+        return self.tree.get_file(file_id)
 
     def get_file_sha1(self, id):
         return self.tree.get_file_sha1(id)
@@ -236,8 +248,8 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
                 ignore_zero=False, merge_type=ApplyMerge3, backup_files=False,
                 interesting_ids=None):
 
-    def merge_factory(base_file, other_file):
-        contents_change = merge_type(base_file, other_file)
+    def merge_factory(file_id, base, other):
+        contents_change = merge_type(file_id, base, other)
         if backup_files:
             contents_change = BackupBeforeChange(contents_change)
         return contents_change

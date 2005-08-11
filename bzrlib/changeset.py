@@ -319,27 +319,30 @@ class ApplySequence(object):
 
 
 class Diff3Merge(object):
-    def __init__(self, base_file, other_file):
-        self.base_file = base_file
-        self.other_file = other_file
+    def __init__(self, file_id, base, other):
+        self.file_id = file_id
+        self.base = base
+        self.other = other
 
     def __eq__(self, other):
         if not isinstance(other, Diff3Merge):
             return False
-        return (self.base_file == other.base_file and 
-                self.other_file == other.other_file)
+        return (self.base == other.base and 
+                self.other == other.other and self.file_id == other.file_id)
 
     def __ne__(self, other):
         return not (self == other)
 
     def apply(self, filename, conflict_handler, reverse=False):
-        new_file = filename+".new" 
+        new_file = filename+".new"
+        base_file = self.base.readonly_path(self.file_id)
+        other_file = self.other.readonly_path(self.file_id)
         if not reverse:
-            base = self.base_file
-            other = self.other_file
+            base = base_file
+            other = other_file
         else:
-            base = self.other_file
-            other = self.base_file
+            base = other_file
+            other = base_file
         status = patch.diff3(new_file, filename, base, other)
         if status == 0:
             os.chmod(new_file, os.stat(filename).st_mode)
@@ -347,7 +350,14 @@ class Diff3Merge(object):
             return
         else:
             assert(status == 1)
-            conflict_handler.merge_conflict(new_file, filename, base, other)
+            def get_lines(filename):
+                my_file = file(base, "rb")
+                lines = my_file.readlines()
+                my_file.close()
+            base_lines = get_lines(base)
+            other_lines = get_lines(other)
+            conflict_handler.merge_conflict(new_file, filename, base_lines, 
+                                            other_lines)
 
 
 def CreateDir():
@@ -1002,7 +1012,7 @@ class ExceptionConflictHandler(object):
     def move_conflict(self, id, this_dir, base_dir, other_dir):
         raise MoveConflict(id, this_dir, base_dir, other_dir)
 
-    def merge_conflict(self, new_file, this_path, base_path, other_path):
+    def merge_conflict(self, new_file, this_path, base_lines, other_lines):
         os.unlink(new_file)
         raise MergeConflict(this_path)
 
