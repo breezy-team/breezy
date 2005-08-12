@@ -987,7 +987,8 @@ class cmd_log(Command):
     """
 
     takes_args = ['filename?']
-    takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision','long', 'message']
+    takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision',
+                     'long', 'message', 'short',]
     
     def run(self, filename=None, timezone='original',
             verbose=False,
@@ -995,7 +996,8 @@ class cmd_log(Command):
             forward=False,
             revision=None,
             message=None,
-            long=False):
+            long=False,
+            short=False):
         from bzrlib.branch import find_branch
         from bzrlib.log import log_formatter, show_log
         import codecs
@@ -1035,7 +1037,7 @@ class cmd_log(Command):
         # in e.g. the default C locale.
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
-        if long:
+        if not short:
             log_format = 'long'
         else:
             log_format = 'short'
@@ -1566,6 +1568,7 @@ OPTIONS = {
     'no-recurse':             None,
     'profile':                None,
     'revision':               _parse_revision_str,
+    'short':                  None,
     'show-ids':               None,
     'timezone':               str,
     'verbose':                None,

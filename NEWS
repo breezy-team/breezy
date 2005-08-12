@@ -49,6 +49,9 @@ DEVELOPMENT HEAD
       it.
 
     * ``branch`` and ``clone`` added as aliases for ``branch``.
+
+    * Default log format is back to the long format; the compact one
+      is available with ``--short``.
       
       
   BUG FIXES:
