@@ -29,8 +29,31 @@
 import difflib, sys, struct
 from cStringIO import StringIO
 
+def linesplit(a):
+    """Split into two lists: content and line positions"""
+    al, ap = [], []
+    last = 0
+
+    n = a.find("\n") + 1
+    while n > 0:
+        ap.append(last)
+        al.append(a[last:n])
+        last = n
+        n = a.find("\n", n) + 1
+
+    # position at the end
+    ap.append(len(a))
+
+    return (al, ap)
+
+
 def diff(a, b):
-    d = difflib.SequenceMatcher(None, a, b)
+    # TODO: Use different splits, perhaps rsync-like, for binary files?
+    
+    (al, ap) = linesplit(a)
+    (bl, bp) = linesplit(b)
+
+    d = difflib.SequenceMatcher(None, al, bl)
     
     ## sys.stderr.write('  ~ real_quick_ratio: %.4f\n' % d.real_quick_ratio())
     
@@ -38,9 +61,9 @@ def diff(a, b):
         if o == 'equal': continue
         # a[m:n] should be replaced by b[s:t]
         if s == t:
-            yield m, n, ''
+            yield ap[m], ap[n], ''
         else:
-            yield m, n, b[s:t]
+            yield ap[m], ap[n], ''.join(bl[s:t])
 
 
 def tobinary(ops):
