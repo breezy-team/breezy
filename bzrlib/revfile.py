@@ -280,7 +280,7 @@ class Revfile(object):
             return self._add_compressed(text_sha, data, base, compress)
 
 
-    def add(self, text, base=_NO_RECORD, compress=True):
+    def add(self, text, base=None, compress=True):
         """Add a new text to the revfile.
 
         If the text is already present them its existing id is
@@ -294,6 +294,9 @@ class Revfile(object):
         only be used if it would be a size win and if the existing
         base is not at too long of a delta chain already.
         """
+        if base == None:
+            base = _NO_RECORD
+        
         self._check_write()
         
         text_sha = sha.new(text).digest()
