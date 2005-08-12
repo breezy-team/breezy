@@ -473,6 +473,18 @@ class Revfile(object):
         for idx in range(len(self)):
             t += len(self.get(idx))
         return t
+
+
+    def check(self, pb=None):
+        """Extract every version and check its hash."""
+        total = len(self)
+        for i in range(total):
+            if pb:
+                pb.update("check revision", i, total)
+            # the get method implicitly checks the SHA-1
+            self.get(i)
+        if pb:
+            pb.clear()
         
 
 
@@ -540,6 +552,10 @@ def main(argv):
         print ro().total_text_size()
     elif cmd == 'last':
         print len(ro())-1
+    elif cmd == 'check':
+        import bzrlib.progress
+        pb = bzrlib.progress.ProgressBar()
+        ro().check(pb)
     else:
         sys.stderr.write("unknown command %r\n" % cmd)
         return 1
