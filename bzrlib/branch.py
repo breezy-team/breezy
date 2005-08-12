@@ -660,13 +660,18 @@ class Branch(object):
         from bzrlib.inventory import Inventory
         from bzrlib.xml import unpack_xml
 
-        return unpack_xml(Inventory, self.inventory_store[inventory_id])
+        return unpack_xml(Inventory, self.get_inventory_xml(inventory_id))
+
+
+    def get_inventory_xml(self, inventory_id):
+        """Get inventory XML as a file object."""
+        return self.inventory_store[inventory_id]
             
 
     def get_inventory_sha1(self, inventory_id):
         """Return the sha1 hash of the inventory entry
         """
-        return sha_file(self.inventory_store[inventory_id])
+        return sha_file(self.get_inventory_xml(inventory_id))
 
 
     def get_revision_inventory(self, revision_id):
