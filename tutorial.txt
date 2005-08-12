@@ -169,6 +169,19 @@ files.]
 
 
 
+Removing uncommitted changes
+============================
+
+If you've made some changes and don't want to keep them, use the
+``revert`` command to go back to the previous head version.  It's a
+good idea to use ``bzr diff`` first to see what will be removed. 
+By default the revert command reverts the whole tree; if file or
+directory names are given then only those ones will be affected.
+revert also clears the list of pending merges revisions.
+
+
+
+
 
 Ignoring files
 ==============
