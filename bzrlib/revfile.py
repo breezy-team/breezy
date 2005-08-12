@@ -89,7 +89,9 @@ read() call to get everything into memory.
 # if there are gaps and that can happen if we're interrupted while
 # writing to the datafile.  Overlapping would be very bad though.
 
-
+# TODO: Shouldn't need to lock if we always write in append mode and
+# then ftell after writing to see where it went.  In any case we
+# assume the whole branch is protected by a lock.
 
 import sys, zlib, struct, mdiff, stat, os, sha
 from binascii import hexlify, unhexlify
