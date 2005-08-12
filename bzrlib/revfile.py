@@ -112,7 +112,7 @@ I_LEN = 4
 FL_GZIP = 1
 
 # maximum number of patches in a row before recording a whole text.
-CHAIN_LIMIT = 25
+CHAIN_LIMIT = 10
 
 
 class RevfileError(Exception):
@@ -149,7 +149,6 @@ class Revfile(object):
             self.idxfile = open(idxname, 'w+b')
             self.datafile = open(dataname, 'w+b')
             
-            print 'init empty file'
             self.idxfile.write(_HEADER)
             self.idxfile.flush()
         else:
