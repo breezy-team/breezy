@@ -17,10 +17,15 @@ DEVELOPMENT HEAD
 
     * ``bzr mv`` does move or rename depending on its arguments, like
       the Unix command.
+
+    * ``bzr missing`` command shows a summary of the differences
+      between two trees.  (Merged from John Arbash-Meinel.)
+
     
   ENHANCEMENTS:
 
     * Faster working tree operations.
+
 
   CHANGES:
 

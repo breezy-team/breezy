@@ -231,6 +231,8 @@ Medium things
 
 * More test cases.
 
+  - ``missing`` command
+
   - Selected-file commit
 
   - Impossible selected-file commit: adding things in non-versioned

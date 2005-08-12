@@ -1536,6 +1536,40 @@ class cmd_help(Command):
 
 
 
+class cmd_missing(Command):
+    """What is missing in this branch relative to other branch.
+    """
+    takes_args = ['remote?']
+    aliases = ['mis', 'miss']
+    # We don't have to add quiet to the list, because 
+    # unknown options are parsed as booleans
+    takes_options = ['verbose', 'quiet']
+
+    def run(self, remote=None, verbose=False, quiet=False):
+        from bzrlib.branch import find_branch, DivergedBranches
+        from bzrlib.errors import BzrCommandError
+        from bzrlib.missing import get_parent, show_missing
+
+        if verbose and quiet:
+            raise BzrCommandError('Cannot pass both quiet and verbose')
+
+        b = find_branch('.')
+        parent = get_parent(b)
+        if remote is None:
+            if parent is None:
+                raise BzrCommandError("No missing location known or specified.")
+            else:
+                if not quiet:
+                    print "Using last location: %s" % parent
+                remote = parent
+        elif parent is None:
+            # We only update x-pull if it did not exist, missing should not change the parent
+            b.controlfile('x-pull', 'wb').write(remote + '\n')
+        br_remote = find_branch(remote)
+
+        return show_missing(b, br_remote, verbose=verbose, quiet=quiet)
+
+
 class cmd_plugins(Command):
     """List plugins"""
     hidden = True
