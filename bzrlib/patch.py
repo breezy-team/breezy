@@ -40,28 +40,6 @@ def patch(patch_contents, filename, output_filename=None, reverse=False):
     return status 
 
 
-def diff(orig_file, mod_str, orig_label=None, mod_label=None):
-    """Compare two files, and produce a patch.
-
-    :param orig_file: path to the old file
-    :type orig_file: str
-    :param mod_str: Contents of the new file
-    :type mod_str: str
-    :param orig_label: The label to use for the old file
-    :type orig_label: str
-    :param mod_label: The label to use for the new file
-    :type mod_label: str
-    """
-    args = ["diff", "-u" ]
-    if orig_label is not None and mod_label is not None:
-        args.extend(("-L", orig_label, "-L", mod_label))
-    args.extend(("--", orig_file, "-"))
-    patch, stderr, status = write_to_cmd(args, mod_str)
-    if status == 0:
-        return None
-    else:
-        return patch
-
 def diff3(out_file, mine_path, older_path, yours_path):
     def add_label(args, label):
         args.extend(("-L", label))

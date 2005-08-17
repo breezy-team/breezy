@@ -1455,37 +1455,54 @@ def parse_spec(spec):
 
 
 class cmd_merge(Command):
-    """Perform a three-way merge of trees.
+    """Perform a three-way merge.
     
-    The SPEC parameters are working tree or revision specifiers.  Working trees
-    are specified using standard paths or urls.  No component of a directory
-    path may begin with '@'.
+    The branch is the branch you will merge from.  By default, it will merge
+    the latest revision.  If you specify a revision, that revision will be
+    merged.  If you specify two revisions, the first will be used as a BASE, 
+    and the second one as OTHER.  Revision numbers are always relative to the
+    specified branch.
     
-    Working tree examples: '.', '..', 'foo@', but NOT 'foo/@bar'
+    Examples:
 
-    Revisions are specified using a dirname/@revno pair, where dirname is the
-    branch directory and revno is the revision within that branch.  If no revno
-    is specified, the latest revision is used.
+    To merge the latest revision from bzr.dev
+    bzr merge ../bzr.dev
 
-    Revision examples: './@127', 'foo/@', '../@1'
+    To merge changes up to and including revision 82 from bzr.dev
+    bzr merge -r 82 ../bzr.dev
 
-    The OTHER_SPEC parameter is required.  If the BASE_SPEC parameter is
-    not supplied, the common ancestor of OTHER_SPEC the current branch is used
-    as the BASE.
-
+    To merge the changes introduced by 82, without previous changes:
+    bzr merge -r 81..82 ../bzr.dev
+    
     merge refuses to run if there are any uncommitted changes, unless
     --force is given.
     """
-    takes_args = ['other_spec', 'base_spec?']
-    takes_options = ['force', 'merge-type']
+    takes_args = ['branch?']
+    takes_options = ['revision', 'force', 'merge-type']
 
-    def run(self, other_spec, base_spec=None, force=False, merge_type=None):
+    def run(self, branch='.', revision=None, force=False, 
+            merge_type=None):
         from bzrlib.merge import merge
         from bzrlib.merge_core import ApplyMerge3
         if merge_type is None:
             merge_type = ApplyMerge3
-        merge(parse_spec(other_spec), parse_spec(base_spec),
-              check_clean=(not force), merge_type=merge_type)
+
+        if revision is None or len(revision) < 1:
+            base = (None, None)
+            other = (branch, -1)
+        else:
+            if len(revision) == 1:
+                other = (branch, revision[0])
+                base = (None, None)
+            else:
+                assert len(revision) == 2
+                if None in revision:
+                    raise BzrCommandError(
+                        "Merge doesn't permit that revision specifier.")
+                base = (branch, revision[0])
+                other = (branch, revision[1])
+            
+        merge(other, base, check_clean=(not force), merge_type=merge_type)
 
 
 class cmd_revert(Command):

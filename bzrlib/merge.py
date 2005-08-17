@@ -48,6 +48,15 @@ class MergeConflictHandler(ExceptionConflictHandler):
             d_file.write(line)
         os.chmod(dest, 0777 & os.stat(source).st_mode)
 
+    def dump(self, lines, dest):
+        """Copy the text and mode of a file
+        :param source: The path of the file to copy
+        :param dest: The distination file to create
+        """
+        d_file = file(dest, "wb")
+        for line in lines:
+            d_file.write(line)
+
     def add_suffix(self, name, suffix, last_new_name=None):
         """Rename a file to append a suffix.  If the new name exists, the
         suffix is added repeatedly until a non-existant name is found
@@ -72,7 +81,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
         self.conflicts += 1
         
 
-    def merge_conflict(self, new_file, this_path, base_path, other_path):
+    def merge_conflict(self, new_file, this_path, base_lines, other_lines):
         """
         Handle diff3 conflicts by producing a .THIS, .BASE and .OTHER.  The
         main file will be a version with diff3 conflicts.
@@ -82,8 +91,8 @@ class MergeConflictHandler(ExceptionConflictHandler):
         :param other_path: Path to the file text for the OTHER tree
         """
         self.add_suffix(this_path, ".THIS")
-        self.copy(base_path, this_path+".BASE")
-        self.copy(other_path, this_path+".OTHER")
+        self.dump(base_lines, this_path+".BASE")
+        self.dump(other_lines, this_path+".OTHER")
         os.rename(new_file, this_path)
         self.conflict("Diff3 conflict encountered in %s" % this_path)
 
@@ -108,17 +117,6 @@ class MergeConflictHandler(ExceptionConflictHandler):
         if not self.ignore_zero:
             print "%d conflicts encountered.\n" % self.conflicts
             
-class SourceFile(object):
-    def __init__(self, path, id, present=None, isdir=None):
-        self.path = path
-        self.id = id
-        self.present = present
-        self.isdir = isdir
-        self.interesting = True
-
-    def __repr__(self):
-        return "SourceFile(%s, %s)" % (self.path, self.id)
-
 def get_tree(treespec, temp_root, label):
     location, revno = treespec
     branch = find_branch(location)
@@ -133,22 +131,9 @@ def get_tree(treespec, temp_root, label):
     return branch, MergeTree(base_tree, temp_path)
 
 
-def abspath(tree, file_id):
-    path = tree.inventory.id2path(file_id)
-    if path == "":
-        return "./."
-    return "./" + path
-
 def file_exists(tree, file_id):
     return tree.has_filename(tree.id2path(file_id))
     
-def inventory_map(tree):
-    inventory = {}
-    for file_id in tree.inventory:
-        path = abspath(tree, file_id)
-        inventory[path] = SourceFile(path, file_id)
-    return inventory
-
 
 class MergeTree(object):
     def __init__(self, tree, tempdir):
@@ -157,17 +142,28 @@ class MergeTree(object):
             self.root = tree.basedir
         else:
             self.root = None
-        self.inventory = inventory_map(tree)
         self.tree = tree
         self.tempdir = tempdir
         os.mkdir(os.path.join(self.tempdir, "texts"))
         self.cached = {}
 
+    def __iter__(self):
+        return self.tree.__iter__()
+
     def __contains__(self, file_id):
-        return id in self.tree
+        return file_id in self.tree
+
+    def get_file(self, file_id):
+        return self.tree.get_file(file_id)
 
     def get_file_sha1(self, id):
         return self.tree.get_file_sha1(id)
+
+    def id2path(self, file_id):
+        return self.tree.id2path(file_id)
+
+    def has_id(self, file_id):
+        return self.tree.has_id(file_id)
 
     def readonly_path(self, id):
         if id not in self.tree:
@@ -256,14 +252,11 @@ def set_interesting(inventory_a, inventory_b, interesting_ids):
              source_file.interesting = source_file.id in interesting_ids
 
 
-def generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b,
-                            interesting_ids=None):
+def generate_cset_optimized(tree_a, tree_b, interesting_ids=None):
     """Generate a changeset.  If interesting_ids is supplied, only changes
     to those files will be shown.  Metadata changes are stripped.
     """ 
-    if interesting_ids is not None:
-        set_interesting(inventory_a, inventory_b, interesting_ids)
-    cset =  generate_changeset(tree_a, tree_b, inventory_a, inventory_b)
+    cset =  generate_changeset(tree_a, tree_b, interesting_ids)
     for entry in cset.entries.itervalues():
         entry.metadata_change = None
     return cset
@@ -273,26 +266,23 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
                 ignore_zero=False, merge_type=ApplyMerge3, backup_files=False,
                 interesting_ids=None):
 
-    def merge_factory(base_file, other_file):
-        contents_change = merge_type(base_file, other_file)
+    def merge_factory(file_id, base, other):
+        contents_change = merge_type(file_id, base, other)
         if backup_files:
             contents_change = BackupBeforeChange(contents_change)
         return contents_change
-    
-    def generate_cset(tree_a, tree_b, inventory_a, inventory_b):
-        return generate_cset_optimized(tree_a, tree_b, inventory_a, inventory_b,
-                                       interesting_ids)
 
     this_tree = get_tree((this_branch.base, None), tempdir, "this")[1]
 
     def get_inventory(tree):
-        return tree.inventory
+        return tree.tree.inventory
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
-                             generate_cset, get_inventory,
+                             generate_cset_optimized, get_inventory,
                              MergeConflictHandler(base_tree.root,
                                                   ignore_zero=ignore_zero),
-                             merge_factory=merge_factory)
+                             merge_factory=merge_factory, 
+                             interesting_ids=interesting_ids)
 
     adjust_ids = []
     for id, path in inv_changes.iteritems():
@@ -300,7 +290,7 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
             if path == '.':
                 path = ''
             else:
-                assert path.startswith('./')
+                assert path.startswith('./'), "path is %s" % path
             path = path[2:]
         adjust_ids.append((path, id))
     if len(adjust_ids) > 0:
@@ -312,9 +302,24 @@ def regen_inventory(this_branch, root, new_entries):
     old_entries = this_branch.read_working_inventory()
     new_inventory = {}
     by_path = {}
+    new_entries_map = {} 
+    for path, file_id in new_entries:
+        if path is None:
+            continue
+        new_entries_map[file_id] = path
+
+    def id2path(file_id):
+        path = new_entries_map.get(file_id)
+        if path is not None:
+            return path
+        entry = old_entries[file_id]
+        if entry.parent_id is None:
+            return entry.name
+        return os.path.join(id2path(entry.parent_id), entry.name)
+        
     for file_id in old_entries:
         entry = old_entries[file_id]
-        path = old_entries.id2path(file_id)
+        path = id2path(file_id)
         new_inventory[file_id] = (path, file_id, entry.parent_id, entry.kind)
         by_path[path] = file_id
     

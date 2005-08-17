@@ -6,15 +6,16 @@ from merge3 import Merge3
 
 class ApplyMerge3:
     """Contents-change wrapper around merge3.Merge3"""
-    def __init__(self, base_file, other_file):
-        self.base_file = base_file
-        self.other_file = other_file
+    def __init__(self, file_id, base, other):
+        self.file_id = file_id
+        self.base = base
+        self.other = other
  
     def __eq__(self, other):
         if not isinstance(other, ApplyMerge3):
             return False
-        return (self.base_file == other.base_file and 
-                self.other_file == other.other_file)
+        return (self.base == other.base and 
+                self.other == other.other and self.file_id == other.file_id)
 
     def __ne__(self, other):
         return not (self == other)
@@ -23,14 +24,19 @@ class ApplyMerge3:
     def apply(self, filename, conflict_handler, reverse=False):
         new_file = filename+".new" 
         if not reverse:
-            base = self.base_file
-            other = self.other_file
+            base = self.base
+            other = self.other
         else:
-            base = self.other_file
-            other = self.base_file
-        m3 = Merge3(file(base, "rb").readlines(), 
-                    file(filename, "rb").readlines(), 
-                    file(other, "rb").readlines())
+            base = self.other
+            other = self.base
+        def get_lines(tree):
+            if self.file_id not in tree:
+                raise Exception("%s not in tree" % self.file_id)
+                return ()
+            return tree.get_file(self.file_id).readlines()
+        base_lines = get_lines(base)
+        other_lines = get_lines(other)
+        m3 = Merge3(base_lines, file(filename, "rb").readlines(), other_lines)
 
         new_conflicts = False
         output_file = file(new_file, "wb")
@@ -48,7 +54,8 @@ class ApplyMerge3:
             os.rename(new_file, filename)
             return
         else:
-            conflict_handler.merge_conflict(new_file, filename, base, other)
+            conflict_handler.merge_conflict(new_file, filename, base_lines,
+                                            other_lines)
 
 
 class BackupBeforeChange:
@@ -69,44 +76,35 @@ class BackupBeforeChange:
         self.contents_change.apply(filename, conflict_handler, reverse)
 
 
-class ThreewayInventory(object):
-    def __init__(self, this_inventory, base_inventory, other_inventory):
-        self.this = this_inventory
-        self.base = base_inventory
-        self.other = other_inventory
 def invert_invent(inventory):
     invert_invent = {}
-    for key, value in inventory.iteritems():
-        invert_invent[value.id] = key
+    for file_id in inventory:
+        path = inventory.id2path(file_id)
+        if path == '':
+            path = './.'
+        else:
+            path = './' + path
+        invert_invent[file_id] = path
     return invert_invent
 
-def make_inv(inventory):
-    return Inventory(invert_invent(inventory))
-        
 
 def merge_flex(this, base, other, changeset_function, inventory_function,
-               conflict_handler, merge_factory):
-    this_inventory = inventory_function(this)
-    base_inventory = inventory_function(base)
-    other_inventory = inventory_function(other)
-    inventory = ThreewayInventory(make_inv(this_inventory),
-                                  make_inv(base_inventory), 
-                                  make_inv(other_inventory))
-    cset = changeset_function(base, other, base_inventory, other_inventory)
-    new_cset = make_merge_changeset(cset, inventory, this, base, other, 
+               conflict_handler, merge_factory, interesting_ids):
+    cset = changeset_function(base, other, interesting_ids)
+    new_cset = make_merge_changeset(cset, this, base, other, 
                                     conflict_handler, merge_factory)
-    result = apply_changeset(new_cset, invert_invent(this_inventory),
+    result = apply_changeset(new_cset, invert_invent(this.tree.inventory),
                              this.root, conflict_handler, False)
     conflict_handler.finalize()
     return result
 
     
 
-def make_merge_changeset(cset, inventory, this, base, other, 
+def make_merge_changeset(cset, this, base, other, 
                          conflict_handler, merge_factory):
     new_cset = changeset.Changeset()
     def get_this_contents(id):
-        path = os.path.join(this.root, inventory.this.get_path(id))
+        path = this.readonly_path(id)
         if os.path.isdir(path):
             return changeset.dir_create
         else:
@@ -116,9 +114,10 @@ def make_merge_changeset(cset, inventory, this, base, other,
         if entry.is_boring():
             new_cset.add_entry(entry)
         else:
-            new_entry = make_merged_entry(entry, inventory, conflict_handler)
+            new_entry = make_merged_entry(entry, this, base, other, 
+                                          conflict_handler)
             new_contents = make_merged_contents(entry, this, base, other, 
-                                                inventory, conflict_handler, 
+                                                conflict_handler,
                                                 merge_factory)
             new_entry.contents_change = new_contents
             new_entry.metadata_change = make_merged_metadata(entry, base, other)
@@ -126,65 +125,76 @@ def make_merge_changeset(cset, inventory, this, base, other,
 
     return new_cset
 
-def make_merged_entry(entry, inventory, conflict_handler):
-    from bzrlib.trace import mutter
-    this_name = inventory.this.get_name(entry.id)
-    this_parent = inventory.this.get_parent(entry.id)
-    this_dir = inventory.this.get_dir(entry.id)
-    if this_dir is None:
-        this_dir = ""
+class ThreeWayConflict(Exception):
+    def __init__(self, this, base, other):
+        self.this = this
+        self.base = base
+        self.other = other
+        msg = "Conflict merging %s %s and %s" % (this, base, other)
+        Exception.__init__(self, msg)
 
-    base_name = inventory.base.get_name(entry.id)
-    base_parent = inventory.base.get_parent(entry.id)
-    base_dir = inventory.base.get_dir(entry.id)
-    if base_dir is None:
-        base_dir = ""
-    other_name = inventory.other.get_name(entry.id)
-    other_parent = inventory.other.get_parent(entry.id)
-    other_dir = inventory.base.get_dir(entry.id)
-    if other_dir is None:
-        other_dir = ""
+def threeway_select(this, base, other):
+    """Returns a value selected by the three-way algorithm.
+    Raises ThreewayConflict if the algorithm yields a conflict"""
+    if base == other:
+        return this
+    elif base == this:
+        return other
+    elif other == this:
+        return this
+    else:
+        raise ThreeWayConflict(this, base, other)
+
+
+def make_merged_entry(entry, this, base, other, conflict_handler):
+    from bzrlib.trace import mutter
+    def entry_data(file_id, tree):
+        assert hasattr(tree, "__contains__"), "%s" % tree
+        if file_id not in tree:
+            return (None, None, "")
+        entry = tree.tree.inventory[file_id]
+        my_dir = tree.id2path(entry.parent_id)
+        if my_dir is None:
+            my_dir = ""
+        return entry.name, entry.parent_id, my_dir 
+    this_name, this_parent, this_dir = entry_data(entry.id, this)
+    base_name, base_parent, base_dir = entry_data(entry.id, base)
+    other_name, other_parent, other_dir = entry_data(entry.id, other)
     mutter("Dirs: this, base, other %r %r %r" % (this_dir, base_dir, other_dir))
     mutter("Names: this, base, other %r %r %r" % (this_name, base_name, other_name))
-    if base_name == other_name:
-        old_name = this_name
-        new_name = this_name
-    else:
-        if this_name != base_name and this_name != other_name:
-            conflict_handler.rename_conflict(entry.id, this_name, base_name,
-                                             other_name)
-        else:
-            old_name = this_name
-            new_name = other_name
+    old_name = this_name
+    try:
+        new_name = threeway_select(this_name, base_name, other_name)
+    except ThreeWayConflict:
+        new_name = conflict_handler.rename_conflict(entry.id, this_name, 
+                                                    base_name, other_name)
 
-    if base_parent == other_parent:
-        old_parent = this_parent
-        new_parent = this_parent
-        old_dir = this_dir
-        new_dir = this_dir
-    else:
-        if this_parent != base_parent and this_parent != other_parent:
-            conflict_handler.move_conflict(entry.id, inventory)
+    old_parent = this_parent
+    try:
+        new_parent = threeway_select(this_parent, base_parent, other_parent)
+    except ThreeWayConflict:
+        new_parent = conflict_handler.move_conflict(entry.id, this_dir,
+                                                    base_dir, other_dir)
+    def get_path(name, parent):
+        if name is not None and parent is not None:
+            parent_dir = {this_parent: this_dir, other_parent: other_dir, 
+                          base_parent: base_dir}
+            directory = parent_dir[parent]
+            return os.path.join(directory, name)
         else:
-            old_parent = this_parent
-            old_dir = this_dir
-            new_parent = other_parent
-            new_dir = other_dir
-    if old_name is not None and old_parent is not None:
-        old_path = os.path.join(old_dir, old_name)
-    else:
-        old_path = None
+            assert name is None and parent is None
+            return None
+
+    old_path = get_path(old_name, old_parent)
+        
     new_entry = changeset.ChangesetEntry(entry.id, old_parent, old_path)
-    if new_name is not None and new_parent is not None:
-        new_entry.new_path = os.path.join(new_dir, new_name)
-    else:
-        new_entry.new_path = None
+    new_entry.new_path = get_path(new_name, new_parent)
     new_entry.new_parent = new_parent
     mutter(repr(new_entry))
     return new_entry
 
 
-def make_merged_contents(entry, this, base, other, inventory, conflict_handler,
+def make_merged_contents(entry, this, base, other, conflict_handler,
                          merge_factory):
     contents = entry.contents_change
     if contents is None:
@@ -192,13 +202,10 @@ def make_merged_contents(entry, this, base, other, inventory, conflict_handler,
     this_path = this.readonly_path(entry.id)
     def make_merge():
         if this_path is None:
-            return conflict_handler.missing_for_merge(entry.id, inventory)
-        base_path = base.readonly_path(entry.id)
-        other_path = other.readonly_path(entry.id)    
-        return merge_factory(base_path, other_path)
+            return conflict_handler.missing_for_merge(entry.id, 
+                                                      other.id2path(entry.id))
+        return merge_factory(entry.id, base, other)
 
-    if isinstance(contents, changeset.PatchApply):
-        return make_merge()
     if isinstance(contents, changeset.ReplaceContents):
         if contents.old_contents is None and contents.new_contents is None:
             return None
@@ -211,7 +218,8 @@ def make_merged_contents(entry, this, base, other, inventory, conflict_handler,
             if this_path is None or not os.path.exists(this_path):
                 return contents
             else:
-                this_contents = file(this_path, "rb").read()
+                this_contents = changeset.FileCreate(file(this_path, 
+                                                     "rb").read())
                 if this_contents == contents.new_contents:
                     return None
                 else:
@@ -259,11 +267,41 @@ class PermissionsMerge(object):
 import unittest
 import tempfile
 import shutil
+from bzrlib.inventory import InventoryEntry, RootEntry
+from osutils import file_kind
+class FalseTree(object):
+    def __init__(self, realtree):
+        self._realtree = realtree
+        self.inventory = self
+
+    def __getitem__(self, file_id):
+        entry = self.make_inventory_entry(file_id)
+        if entry is None:
+            raise KeyError(file_id)
+        return entry
+        
+    def make_inventory_entry(self, file_id):
+        path = self._realtree.inventory.get(file_id)
+        if path is None:
+            return None
+        if path == "":
+            return RootEntry(file_id)
+        dir, name = os.path.split(path)
+        kind = file_kind(self._realtree.abs_path(path))
+        for parent_id, path in self._realtree.inventory.iteritems():
+            if path == dir:
+                break
+        if path != dir:
+            raise Exception("Can't find parent for %s" % name)
+        return InventoryEntry(file_id, name, kind, parent_id)
+
+
 class MergeTree(object):
     def __init__(self, dir):
         self.dir = dir;
         os.mkdir(dir)
         self.inventory = {'0': ""}
+        self.tree = FalseTree(self)
     
     def child_path(self, parent, name):
         return os.path.join(self.inventory[parent], name)
@@ -301,6 +339,16 @@ class MergeTree(object):
     def readonly_path(self, id):
         return self.full_path(id)
 
+    def __contains__(self, file_id):
+        return file_id in self.inventory
+
+    def get_file(self, file_id):
+        path = self.readonly_path(file_id)
+        return file(path, "rb")
+
+    def id2path(self, file_id):
+        return self.inventory[file_id]
+
     def change_path(self, id, path):
         new = os.path.join(self.dir, self.inventory[id])
         os.rename(self.abs_path(self.inventory[id]), self.abs_path(path))
@@ -336,7 +384,17 @@ class MergeBuilder(object):
                 tree.remove_file(id)
             if other or base:
                 change = self.cset.entries[id].contents_change
-                assert isinstance(change, changeset.ReplaceContents)
+                if change is None:
+                    change = changeset.ReplaceContents(None, None)
+                    self.cset.entries[id].contents_change = change
+                    def create_file(tree):
+                        return changeset.FileCreate(tree.get_file(id).read())
+                    if not other:
+                        change.new_contents = create_file(self.other)
+                    if not base:
+                        change.old_contents = create_file(self.base)
+                else:
+                    assert isinstance(change, changeset.ReplaceContents)
                 if other:
                     change.new_contents=None
                 if base:
@@ -432,12 +490,9 @@ class MergeBuilder(object):
         os.chmod(tree.full_path(id), mode)
 
     def merge_changeset(self, merge_factory):
-        all_inventory = ThreewayInventory(Inventory(self.this.inventory),
-                                          Inventory(self.base.inventory), 
-                                          Inventory(self.other.inventory))
         conflict_handler = changeset.ExceptionConflictHandler(self.this.dir)
-        return make_merge_changeset(self.cset, all_inventory, self.this,
-                                    self.base, self.other, conflict_handler,
+        return make_merge_changeset(self.cset, self.this, self.base,
+                                    self.other, conflict_handler,
                                     merge_factory)
 
     def apply_inv_change(self, inventory_change, orig_inventory):
@@ -570,8 +625,8 @@ class MergeTest(unittest.TestCase):
 
     def test_contents_merge3(self):
         """Test diff3 merging"""
-        def backup_merge(base_file, other_file):
-            return BackupBeforeChange(ApplyMerge3(base_file, other_file))
+        def backup_merge(file_id, base, other):
+            return BackupBeforeChange(ApplyMerge3(file_id, base, other))
         builder = self.contents_test_success(backup_merge)
         def backup_exists(file_id):
             return os.path.exists(builder.this.full_path(file_id)+"~")
@@ -594,6 +649,9 @@ class MergeTest(unittest.TestCase):
         builder.add_file("2", "0", "name3", "text2", 0655)
         builder.change_contents("2", base="text5")
         builder.add_file("3", "0", "name5", "text3", 0744)
+        builder.add_file("4", "0", "name6", "text4", 0744)
+        builder.remove_file("4", base=True)
+        assert not builder.cset.entries["4"].is_boring()
         builder.change_contents("3", this="text6")
         cset = builder.merge_changeset(merge_factory)
         assert(cset.entries["1"].contents_change is not None)
@@ -603,6 +661,7 @@ class MergeTest(unittest.TestCase):
             assert(isinstance(cset.entries["2"].contents_change,
                           merge_factory))
         assert(cset.entries["3"].is_boring())
+        assert(cset.entries["4"].is_boring())
         builder.apply_changeset(cset)
         assert(file(builder.this.full_path("1"), "rb").read() == "text4" )
         assert(file(builder.this.full_path("2"), "rb").read() == "text2" )

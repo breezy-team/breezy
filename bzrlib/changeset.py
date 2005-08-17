@@ -43,55 +43,7 @@ def invert_dict(dict):
     return newdict
 
 
-class PatchApply(object):
-    """Patch application as a kind of content change"""
-    def __init__(self, contents):
-        """Constructor.
-
-        :param contents: The text of the patch to apply
-        :type contents: str"""
-        self.contents = contents
-
-    def __eq__(self, other):
-        if not isinstance(other, PatchApply):
-            return False
-        elif self.contents != other.contents:
-            return False
-        else:
-            return True
-
-    def __ne__(self, other):
-        return not (self == other)
-
-    def apply(self, filename, conflict_handler, reverse=False):
-        """Applies the patch to the specified file.
-
-        :param filename: the file to apply the patch to
-        :type filename: str
-        :param reverse: If true, apply the patch in reverse
-        :type reverse: bool
-        """
-        input_name = filename+".orig"
-        try:
-            os.rename(filename, input_name)
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
-            if conflict_handler.patch_target_missing(filename, self.contents)\
-                == "skip":
-                return
-            os.rename(filename, input_name)
-            
-
-        status = patch.patch(self.contents, input_name, filename, 
-                                    reverse)
-        os.chmod(filename, os.stat(input_name).st_mode)
-        if status == 0:
-            os.unlink(input_name)
-        elif status == 1:
-            conflict_handler.failed_hunks(filename)
-
-        
+       
 class ChangeUnixPermissions(object):
     """This is two-way change, suitable for file modification, creation,
     deletion"""
@@ -374,27 +326,30 @@ class ApplySequence(object):
 
 
 class Diff3Merge(object):
-    def __init__(self, base_file, other_file):
-        self.base_file = base_file
-        self.other_file = other_file
+    def __init__(self, file_id, base, other):
+        self.file_id = file_id
+        self.base = base
+        self.other = other
 
     def __eq__(self, other):
         if not isinstance(other, Diff3Merge):
             return False
-        return (self.base_file == other.base_file and 
-                self.other_file == other.other_file)
+        return (self.base == other.base and 
+                self.other == other.other and self.file_id == other.file_id)
 
     def __ne__(self, other):
         return not (self == other)
 
     def apply(self, filename, conflict_handler, reverse=False):
-        new_file = filename+".new" 
+        new_file = filename+".new"
+        base_file = self.base.readonly_path(self.file_id)
+        other_file = self.other.readonly_path(self.file_id)
         if not reverse:
-            base = self.base_file
-            other = self.other_file
+            base = base_file
+            other = other_file
         else:
-            base = self.other_file
-            other = self.base_file
+            base = other_file
+            other = base_file
         status = patch.diff3(new_file, filename, base, other)
         if status == 0:
             os.chmod(new_file, os.stat(filename).st_mode)
@@ -402,7 +357,14 @@ class Diff3Merge(object):
             return
         else:
             assert(status == 1)
-            conflict_handler.merge_conflict(new_file, filename, base, other)
+            def get_lines(filename):
+                my_file = file(base, "rb")
+                lines = my_file.readlines()
+                my_file.close()
+            base_lines = get_lines(base)
+            other_lines = get_lines(other)
+            conflict_handler.merge_conflict(new_file, filename, base_lines, 
+                                            other_lines)
 
 
 def CreateDir():
@@ -1060,13 +1022,10 @@ class ExceptionConflictHandler(object):
     def rename_conflict(self, id, this_name, base_name, other_name):
         raise RenameConflict(id, this_name, base_name, other_name)
 
-    def move_conflict(self, id, inventory):
-        this_dir = inventory.this.get_dir(id)
-        base_dir = inventory.base.get_dir(id)
-        other_dir = inventory.other.get_dir(id)
+    def move_conflict(self, id, this_dir, base_dir, other_dir):
         raise MoveConflict(id, this_dir, base_dir, other_dir)
 
-    def merge_conflict(self, new_file, this_path, base_path, other_path):
+    def merge_conflict(self, new_file, this_path, base_lines, other_lines):
         os.unlink(new_file)
         raise MergeConflict(this_path)
 
@@ -1100,8 +1059,8 @@ class ExceptionConflictHandler(object):
     def missing_for_rename(self, filename):
         raise MissingForRename(filename)
 
-    def missing_for_merge(self, file_id, inventory):
-        raise MissingForMerge(inventory.other.get_path(file_id))
+    def missing_for_merge(self, file_id, other_path):
+        raise MissingForMerge(other_path)
 
     def new_contents_conflict(self, filename, other_contents):
         raise NewContentsConflict(filename)
@@ -1328,49 +1287,30 @@ class UnsuppportedFiletype(Exception):
         self.full_path = full_path
         self.stat_result = stat_result
 
-def generate_changeset(tree_a, tree_b, inventory_a=None, inventory_b=None):
-    return ChangesetGenerator(tree_a, tree_b, inventory_a, inventory_b)()
+def generate_changeset(tree_a, tree_b, interesting_ids=None):
+    return ChangesetGenerator(tree_a, tree_b, interesting_ids)()
 
 class ChangesetGenerator(object):
-    def __init__(self, tree_a, tree_b, inventory_a=None, inventory_b=None):
+    def __init__(self, tree_a, tree_b, interesting_ids=None):
         object.__init__(self)
         self.tree_a = tree_a
         self.tree_b = tree_b
-        if inventory_a is not None:
-            self.inventory_a = inventory_a
-        else:
-            self.inventory_a = tree_a.inventory()
-        if inventory_b is not None:
-            self.inventory_b = inventory_b
-        else:
-            self.inventory_b = tree_b.inventory()
-        self.r_inventory_a = self.reverse_inventory(self.inventory_a)
-        self.r_inventory_b = self.reverse_inventory(self.inventory_b)
+        self._interesting_ids = interesting_ids
 
-    def reverse_inventory(self, inventory):
-        r_inventory = {}
-        for entry in inventory.itervalues():
-            if entry.id is None:
-                continue
-            r_inventory[entry.id] = entry
-        return r_inventory
+    def iter_both_tree_ids(self):
+        for file_id in self.tree_a:
+            yield file_id
+        for file_id in self.tree_b:
+            if file_id not in self.tree_a:
+                yield file_id
 
     def __call__(self):
         cset = Changeset()
-        for entry in self.inventory_a.itervalues():
-            if entry.id is None:
-                continue
-            cs_entry = self.make_entry(entry.id)
+        for file_id in self.iter_both_tree_ids():
+            cs_entry = self.make_entry(file_id)
             if cs_entry is not None and not cs_entry.is_boring():
                 cset.add_entry(cs_entry)
 
-        for entry in self.inventory_b.itervalues():
-            if entry.id is None:
-                continue
-            if not self.r_inventory_a.has_key(entry.id):
-                cs_entry = self.make_entry(entry.id)
-                if cs_entry is not None and not cs_entry.is_boring():
-                    cset.add_entry(cs_entry)
         for entry in list(cset.entries.itervalues()):
             if entry.parent != entry.new_parent:
                 if not cset.entries.has_key(entry.parent) and\
@@ -1384,49 +1324,55 @@ class ChangesetGenerator(object):
                     cset.add_entry(parent_entry)
         return cset
 
-    def get_entry_parent(self, entry, inventory):
+    def iter_inventory(self, tree):
+        for file_id in tree:
+            yield self.get_entry(file_id, tree)
+
+    def get_entry(self, file_id, tree):
+        if file_id not in tree:
+            return None
+        return tree.tree.inventory[file_id]
+
+    def get_entry_parent(self, entry):
         if entry is None:
             return None
-        if entry.path == "./.":
-            return NULL_ID
-        dirname = os.path.dirname(entry.path)
-        if dirname == ".":
-            dirname = "./."
-        parent = inventory[dirname]
-        return parent.id
+        return entry.parent_id
 
-    def get_path(self, entry, tree):
-        if entry is None:
-            return (None, None)
-        if entry.path == ".":
-            return ""
-        return entry.path
+    def get_path(self, file_id, tree):
+        if not tree.has_id(file_id):
+            return None
+        path = tree.id2path(file_id)
+        if path == '':
+            return './.'
+        else:
+            return path
 
-    def make_basic_entry(self, id, only_interesting):
-        entry_a = self.r_inventory_a.get(id)
-        entry_b = self.r_inventory_b.get(id)
+    def make_basic_entry(self, file_id, only_interesting):
+        entry_a = self.get_entry(file_id, self.tree_a)
+        entry_b = self.get_entry(file_id, self.tree_b)
         if only_interesting and not self.is_interesting(entry_a, entry_b):
             return None
-        parent = self.get_entry_parent(entry_a, self.inventory_a)
-        path = self.get_path(entry_a, self.tree_a)
-        cs_entry = ChangesetEntry(id, parent, path)
-        new_parent = self.get_entry_parent(entry_b, self.inventory_b)
+        parent = self.get_entry_parent(entry_a)
+        path = self.get_path(file_id, self.tree_a)
+        cs_entry = ChangesetEntry(file_id, parent, path)
+        new_parent = self.get_entry_parent(entry_b)
 
-
-        new_path = self.get_path(entry_b, self.tree_b)
+        new_path = self.get_path(file_id, self.tree_b)
 
         cs_entry.new_path = new_path
         cs_entry.new_parent = new_parent
         return cs_entry
 
     def is_interesting(self, entry_a, entry_b):
+        if self._interesting_ids is None:
+            return True
         if entry_a is not None:
-            if entry_a.interesting:
-                return True
-        if entry_b is not None:
-            if entry_b.interesting:
-                return True
-        return False
+            file_id = entry_a.file_id
+        elif entry_b is not None:
+            file_id = entry_b.file_id
+        else:
+            return False
+        return file_id in self._interesting_ids
 
     def make_boring_entry(self, id):
         cs_entry = self.make_basic_entry(id, only_interesting=False)
@@ -1484,15 +1430,6 @@ class ChangesetGenerator(object):
             if stat_a.st_ino == stat_b.st_ino and \
                 stat_a.st_dev == stat_b.st_dev:
                 return None
-            if file(full_path_a, "rb").read() == \
-                file(full_path_b, "rb").read():
-                return None
-
-            patch_contents = patch.diff(full_path_a, 
-                                        file(full_path_b, "rb").read())
-            if patch_contents is None:
-                return None
-            return PatchApply(patch_contents)
 
         a_contents = self.get_contents(stat_a, full_path_a)
         b_contents = self.get_contents(stat_b, full_path_b)

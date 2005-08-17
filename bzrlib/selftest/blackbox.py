@@ -361,8 +361,16 @@ class RevertCommand(ExternalBase):
         file('hello', 'wt').write('foo')
         self.runbzr('add hello')
         self.runbzr('commit -m setup hello')
+
+        file('goodbye', 'wt').write('baz')
+        self.runbzr('add goodbye')
+        self.runbzr('commit -m setup goodbye')
         
         file('hello', 'wt').write('bar')
+        file('goodbye', 'wt').write('qux')
         self.runbzr('revert hello')
         self.check_file_contents('hello', 'foo')
+        self.check_file_contents('goodbye', 'qux')
+        self.runbzr('revert')
+        self.check_file_contents('goodbye', 'baz')
 
