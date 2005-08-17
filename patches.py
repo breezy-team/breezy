@@ -256,9 +256,12 @@ class Patch:
         self.hunks = []
 
     def __str__(self):
-        ret =  "--- %s\n+++ %s\n" % (self.oldname, self.newname) 
+        ret = self.get_header() 
         ret += "".join([str(h) for h in self.hunks])
         return ret
+
+    def get_header(self):
+        return "--- %s\n+++ %s\n" % (self.oldname, self.newname)
 
     def stats_str(self):
         """Return a string of patch statistics"""
