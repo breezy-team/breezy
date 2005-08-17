@@ -47,16 +47,16 @@ class GetFailed(BzrError):
         self.status = status
 
 if ENABLE_URLGRABBER:
-    import urlgrabber
-    import urlgrabber.keepalive
-    urlgrabber.keepalive.DEBUG = 0
+    import util.urlgrabber
+    import util.urlgrabber.keepalive
+    util.urlgrabber.keepalive.DEBUG = 0
     def get_url(path, compressed=False):
         try:
             url = path
             if compressed:
                 url += '.gz'
             mutter("grab url %s" % url)
-            url_f = urlgrabber.urlopen(url, keepalive=1, close_connection=0)
+            url_f = util.urlgrabber.urlopen(url, keepalive=1, close_connection=0)
             if url_f.status != 200:
                 raise GetFailed(url, url_f.status)
             if not compressed:

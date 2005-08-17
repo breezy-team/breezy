@@ -29,6 +29,17 @@ DEVELOPMENT HEAD
 
   CHANGES:
 
+    * 3rd-party modules shipped with bzr are copied within the bzrlib
+      python package, so that they can be installed by the setup
+      script without clashing with anything already existing on the
+      system.  (Contributed by Gustavo Niemeyer.)
+
+    * Moved plugins directory to bzrlib/, so that there's a standard
+      plugin directory which is not only installed with bzr itself but
+      is also available when using bzr from the development tree.
+      BZR_PLUGIN_PATH and DEFAULT_PLUGIN_PATH are then added to the
+      standard plugins directory.
+
     * When exporting to a tarball with ``bzr export --format tgz``, put 
       everything under a top directory rather than dumping it into the
       current directory.   This can be overridden with the ``--root`` 

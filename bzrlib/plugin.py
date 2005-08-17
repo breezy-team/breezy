@@ -59,8 +59,10 @@ def load_plugins():
     
     from bzrlib.trace import log_error, mutter, log_exception
     from bzrlib.errors import BzrError
+    from bzrlib import plugins
 
-    bzrpath = os.environ.get('BZR_PLUGIN_PATH', DEFAULT_PLUGIN_PATH)
+    dirs = os.environ.get('BZR_PLUGIN_PATH', DEFAULT_PLUGIN_PATH).split(":")
+    dirs.insert(0, os.path.dirname(plugins.__file__))
 
     # The problem with imp.get_suffixes() is that it doesn't include
     # .pyo which is technically valid
@@ -70,7 +72,7 @@ def load_plugins():
     suffixes = imp.get_suffixes()
     suffixes.append(('.pyo', 'rb', imp.PY_COMPILED))
     package_entries = ['__init__.py', '__init__.pyc', '__init__.pyo']
-    for d in bzrpath.split(os.pathsep):
+    for d in dirs:
         # going through them one by one allows different plugins with the same
         # filename in different directories in the path
         mutter('looking for plugins in %s' % d)
