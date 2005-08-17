@@ -112,9 +112,6 @@ class HunkLine:
             terminator = ''
         return leadchar + self.contents + terminator
 
-    def no_nl(self):
-        assert self.contents.endswith('\n')
-        self.contents = self.contents[:-1]
 
 class ContextLine(HunkLine):
     def __init__(self, contents):
@@ -221,12 +218,7 @@ class Hunk:
 def iter_hunks(iter_lines):
     hunk = None
     for line in iter_lines:
-        if line == NO_NL:
-            hunk.lines[-1].no_nl()
-            yield hunk
-            hunk = None
-            continue
-        elif line == "\n":
+        if line == "\n":
             if hunk is not None:
                 yield hunk
                 hunk = None
@@ -238,10 +230,7 @@ def iter_hunks(iter_lines):
         mod_size = 0
         while orig_size < hunk.orig_range or mod_size < hunk.mod_range:
             hunk_line = parse_line(iter_lines.next())
-            if hunk_line is NO_NL:
-                hunk.lines[-1].no_nl()
-            else:
-                hunk.lines.append(hunk_line)
+            hunk.lines.append(hunk_line)
             if isinstance(hunk_line, (RemoveLine, ContextLine)):
                 orig_size += 1
             if isinstance(hunk_line, (InsertLine, ContextLine)):
@@ -322,7 +311,28 @@ def iter_file_patch(iter_lines):
         yield saved_lines
 
 
+def iter_lines_handle_nl(iter_lines):
+    """
+    Iterates through lines, ensuring that lines that originally had no
+    terminating \n are produced without one.  This transformation may be
+    applied at any point up until hunk line parsing, and is safe to apply
+    repeatedly.
+    """
+    last_line = None
+    for line in iter_lines:
+        if line == NO_NL:
+            assert last_line.endswith('\n')
+            last_line = last_line[:-1]
+            line = None
+        if last_line is not None:
+            yield last_line
+        last_line = line
+    if last_line is not None:
+        yield last_line
+
+
 def parse_patches(iter_lines):
+    iter_lines = iter_lines_handle_nl(iter_lines)
     return [parse_patch(f.__iter__()) for f in iter_file_patch(iter_lines)]
 
 
@@ -360,7 +370,7 @@ def iter_patched(orig_lines, patch_lines):
     if orig_lines is not None:
         orig_lines = orig_lines.__iter__()
     seen_patch = []
-    patch_lines = patch_lines.__iter__()
+    patch_lines = iter_lines_handle_nl(patch_lines.__iter__())
     get_patch_names(patch_lines)
     line_no = 1
     for hunk in iter_hunks(patch_lines):
