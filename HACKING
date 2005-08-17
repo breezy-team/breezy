@@ -1,3 +1,4 @@
+============================
 guidelines for modifying bzr
 ============================
 
@@ -25,3 +26,18 @@ __ http://www.python.org/peps/pep-0008.html
 
 * Module names should always be given fully-qualified,
   i.e. ``bzrlib.hashcache`` not just ``hashcache``.
+
+
+
+Documentation
+=============
+
+If you change the behaviour of a command, please update its docstring
+in bzrlib/commands.py.  This is displayed by the 'bzr help' command.
+
+If you make a user-visible change, please add a note to the NEWS file.
+The description should be written to make sense to someone who's just
+a user of bzr, not a developer: new functions or classes shouldn't be
+mentioned, but new commands, changes in behaviour or fixed nontrivial
+bugs should be listed.  See the existing entries for an idea of what
+should be done.
