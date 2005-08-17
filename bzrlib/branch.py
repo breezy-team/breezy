@@ -39,6 +39,9 @@ BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 # repeatedly to calculate deltas.  We could perhaps have a weakref
 # cache in memory to make this faster.
 
+# TODO: please move the revision-string syntax stuff out of the branch
+# object; it's clutter
+
 
 def find_branch(f, **args):
     if f and (f.startswith('http://') or f.startswith('https://')):
