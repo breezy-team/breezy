@@ -1381,10 +1381,15 @@ class cmd_whoami(Command):
     takes_options = ['email']
     
     def run(self, email=False):
+        try:
+            b = bzrlib.branch.find_branch('.')
+        except:
+            b = None
+        
         if email:
-            print bzrlib.osutils.user_email()
+            print bzrlib.osutils.user_email(b)
         else:
-            print bzrlib.osutils.username()
+            print bzrlib.osutils.username(b)
 
 
 class cmd_selftest(Command):

@@ -115,9 +115,8 @@ def commit(branch, message,
             if work_inv.has_id(file_id):
                 del work_inv[file_id]
 
-
         if rev_id is None:
-            rev_id = _gen_revision_id(time.time())
+            rev_id = _gen_revision_id(branch, time.time())
         inv_id = rev_id
 
         inv_tmp = tempfile.TemporaryFile()
@@ -137,7 +136,7 @@ def commit(branch, message,
             timestamp = time.time()
 
         if committer == None:
-            committer = username()
+            committer = username(branch)
 
         if timezone == None:
             timezone = local_time_offset()
@@ -186,12 +185,12 @@ def commit(branch, message,
 
 
 
-def _gen_revision_id(when):
+def _gen_revision_id(branch, when):
     """Return new revision-id."""
     from binascii import hexlify
-    from osutils import rand_bytes, compact_date, user_email
+    from bzrlib.osutils import rand_bytes, compact_date, user_email
 
-    s = '%s-%s-' % (user_email(), compact_date(when))
+    s = '%s-%s-' % (user_email(branch), compact_date(when))
     s += hexlify(rand_bytes(8))
     return s
 

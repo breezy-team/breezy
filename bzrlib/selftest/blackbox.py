@@ -33,7 +33,7 @@ from bzrlib.selftest import TestBase, InTempDir, BzrTestBase
 
 
 class ExternalBase(InTempDir):
-    def runbzr(self, args, retcode=0):
+    def runbzr(self, args, retcode=0,backtick=False):
         try:
             import shutil
             from subprocess import call
@@ -43,8 +43,12 @@ class ExternalBase(InTempDir):
 
         if isinstance(args, basestring):
             args = args.split()
-            
-        return self.runcmd(['python', self.BZRPATH,] + args,
+
+        if backtick:
+            return self.backtick(['python', self.BZRPATH,] + args,
+                           retcode=retcode)
+        else:
+            return self.runcmd(['python', self.BZRPATH,] + args,
                            retcode=retcode)
 
 
@@ -121,8 +125,21 @@ class UserIdentity(ExternalBase):
         # this should always identify something, if only "john@localhost"
         self.runbzr("whoami")
         self.runbzr("whoami --email")
-        self.assertEquals(self.backtick("bzr whoami --email").count('@'),
-                          1)
+
+        self.assertEquals(self.runbzr("whoami --email",
+                                      backtick=True).count('@'), 1)
+        
+class UserIdentityBranch(ExternalBase):
+    def runTest(self):
+        # tests branch specific user identity
+        self.runbzr('init')
+        f = file('.bzr/email', 'wt')
+        f.write('Branch Identity <branch@identi.ty>')
+        f.close()
+        whoami = self.runbzr("whoami",backtick=True)
+        whoami_email = self.runbzr("whoami --email",backtick=True)
+        self.assertTrue(whoami.startswith('Branch Identity <branch@identi.ty>'))
+        self.assertTrue(whoami_email.startswith('branch@identi.ty'))
 
 
 class InvalidCommands(ExternalBase):

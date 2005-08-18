@@ -21,6 +21,10 @@ DEVELOPMENT HEAD
     * ``bzr missing`` command shows a summary of the differences
       between two trees.  (Merged from John Arbash-Meinel.)
 
+    * An email address for commits to a particular tree can be
+      specified by putting it into .bzr/email within a branch.  (Based
+      on a patch from Heikki Paajanen.)
+
     
   ENHANCEMENTS:
 

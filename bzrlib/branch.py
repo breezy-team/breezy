@@ -104,7 +104,8 @@ def find_branch_root(f=None):
     It is not necessary that f exists.
 
     Basically we keep looking up until we find the control directory or
-    run into the root."""
+    run into the root.  If there isn't one, raises NotBranchError.
+    """
     if f == None:
         f = os.getcwd()
     elif hasattr(os.path, 'realpath'):
@@ -123,9 +124,12 @@ def find_branch_root(f=None):
         head, tail = os.path.split(f)
         if head == f:
             # reached the root, whatever that may be
-            raise BzrError('%r is not in a branch' % orig_f)
+            raise bzrlib.errors.NotBranchError('%r is not in a branch' % orig_f)
         f = head
-    
+
+
+
+# XXX: move into bzrlib.errors; subclass BzrError    
 class DivergedBranches(Exception):
     def __init__(self, branch1, branch2):
         self.branch1 = branch1

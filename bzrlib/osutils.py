@@ -269,14 +269,36 @@ def _auto_user_id():
     return realname, (username + '@' + socket.gethostname())
 
 
-def _get_user_id():
+def _get_user_id(branch):
     """Return the full user id from a file or environment variable.
 
-    TODO: Allow taking this from a file in the branch directory too
-    for per-branch ids."""
+    e.g. "John Hacker <jhacker@foo.org>"
+
+    branch
+        A branch to use for a per-branch configuration, or None.
+
+    The following are searched in order:
+
+    1. $BZREMAIL
+    2. .bzr/email for this branch.
+    3. ~/.bzr.conf/email
+    4. $EMAIL
+    """
     v = os.environ.get('BZREMAIL')
     if v:
         return v.decode(bzrlib.user_encoding)
+
+    if branch:
+        try:
+            return (branch.controlfile("email", "r") 
+                    .read()
+                    .decode(bzrlib.user_encoding)
+                    .rstrip("\r\n"))
+        except IOError, e:
+            if e.errno != errno.ENOENT:
+                raise
+        except BzrError, e:
+            pass
     
     try:
         return (open(os.path.join(config_dir(), "email"))
@@ -294,14 +316,14 @@ def _get_user_id():
         return None
 
 
-def username():
+def username(branch):
     """Return email-style username.
 
     Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
     TODO: Check it's reasonably well-formed.
     """
-    v = _get_user_id()
+    v = _get_user_id(branch)
     if v:
         return v
     
@@ -313,9 +335,9 @@ def username():
 
 
 _EMAIL_RE = re.compile(r'[\w+.-]+@[\w+.-]+')
-def user_email():
+def user_email(branch):
     """Return just the email component of a username."""
-    e = _get_user_id()
+    e = _get_user_id(branch)
     if e:
         m = _EMAIL_RE.search(e)
         if not m:
