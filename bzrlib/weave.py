@@ -676,8 +676,8 @@ class Weave(object):
 
 
 
-def weave_info(w):
-    """Show some text information about the weave."""
+def weave_toc(w):
+    """Show the weave's table-of-contents"""
     print '%6s %40s %20s' % ('ver', 'sha1', 'parents')
     for i in (6, 40, 20):
         print '-' * i,
@@ -730,7 +730,7 @@ usage:
         Write out specified version.
     weave check WEAVEFILE
         Check consistency of all versions.
-    weave info WEAVEFILE
+    weave toc WEAVEFILE
         Display table of contents.
     weave add WEAVEFILE [BASE...] < NEWTEXT
         Add NEWTEXT, with specified parent versions.
@@ -779,6 +779,10 @@ def main(argv):
     except ImportError:
         pass
 
+    if len(argv) < 2:
+        usage()
+        return 0
+
     cmd = argv[1]
 
     def readit():
@@ -821,8 +825,8 @@ def main(argv):
                 print '%5d | %s' % (origin, text)
                 lasto = origin
                 
-    elif cmd == 'info':
-        weave_info(readit())
+    elif cmd == 'toc':
+        weave_toc(readit())
 
     elif cmd == 'stats':
         weave_stats(argv[2])
@@ -900,9 +904,9 @@ def profile_main(argv):
 
 if __name__ == '__main__':
     import sys
-    if sys.argv[1] == '--profile':
+    if '--profile' in sys.argv:
         args = sys.argv[:]
-        del args[1]
+        args.remove('--profile')
         sys.exit(profile_main(args))
     else:
         sys.exit(main(sys.argv))
