@@ -870,6 +870,28 @@ def main(argv):
         raise ValueError('unknown command %r' % cmd)
     
 
+
+def profile_main(argv): 
+    import tempfile, hotshot, hotshot.stats
+
+    prof_f = tempfile.NamedTemporaryFile()
+
+    prof = hotshot.Profile(prof_f.name)
+
+    ret = prof.runcall(main, argv)
+    prof.close()
+
+    stats = hotshot.stats.load(prof_f.name)
+    #stats.strip_dirs()
+    stats.sort_stats('time')
+    ## XXX: Might like to write to stderr or the trace file instead but
+    ## print_stats seems hardcoded to stdout
+    stats.print_stats(20)
+            
+    return ret
+
+
 if __name__ == '__main__':
     import sys
     sys.exit(main(sys.argv))
+
