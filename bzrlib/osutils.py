@@ -37,9 +37,8 @@ def make_writable(filename):
     os.chmod(filename, mod)
 
 
-_QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/_~-])')
+_QUOTE_RE = None
 
-_SLASH_RE = re.compile(r'[\\/]+')
 
 def quotefn(f):
     """Return a quoted filename filename
@@ -47,6 +46,10 @@ def quotefn(f):
     This previously used backslash quoting, but that works poorly on
     Windows."""
     # TODO: I'm not really sure this is the best format either.x
+    global _QUOTE_RE
+    if _QUOTE_RE == None:
+        _QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/_~-])')
+        
     if _QUOTE_RE.search(f):
         return '"' + f + '"'
     else:
@@ -334,12 +337,11 @@ def username(branch):
         return email
 
 
-_EMAIL_RE = re.compile(r'[\w+.-]+@[\w+.-]+')
 def user_email(branch):
     """Return just the email component of a username."""
     e = _get_user_id(branch)
     if e:
-        m = _EMAIL_RE.search(e)
+        m = re.search(r'[\w+.-]+@[\w+.-]+', e)
         if not m:
             raise BzrError("%r doesn't seem to contain a reasonable email address" % e)
         return m.group(0)

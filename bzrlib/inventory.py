@@ -644,7 +644,11 @@ class Inventory(object):
 
 
 
-_NAME_RE = re.compile(r'^[^/\\]+$')
+_NAME_RE = None
 
 def is_valid_name(name):
+    global _NAME_RE
+    if _NAME_RE == None:
+        _NAME_RE = re.compile(r'^[^/\\]+$')
+        
     return bool(_NAME_RE.match(name))
