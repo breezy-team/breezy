@@ -79,6 +79,13 @@
 # description of which revisions include it.  Nice for checking all
 # shas in parallel.
 
+# TODO: Using a single _extract routine and then processing the output
+# is probably inefficient.  It's simple enough that we can afford to
+# have slight specializations for different ways its used: annotate,
+# basis for add, get, etc.
+
+
+import sha
 
 
 
@@ -203,7 +210,6 @@ class Weave(object):
         ## self._check_lines(text)
         new_version = len(self._parents)
 
-        import sha
         s = sha.new()
         map(s.update, text)
         sha1 = s.hexdigest()
@@ -514,7 +520,6 @@ class Weave(object):
 
         # try extracting all versions; this is a bit slow and parallel
         # extraction could be used
-        import sha
         nv = self.numversions()
         for version in range(nv):
             if progress_bar:
