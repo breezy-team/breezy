@@ -767,7 +767,7 @@ usage:
         Check consistency of all versions.
     weave toc WEAVEFILE
         Display table of contents.
-    weave add WEAVEFILE [BASE...] < NEWTEXT
+    weave add WEAVEFILE NAME [BASE...] < NEWTEXT
         Add NEWTEXT, with specified parent versions.
     weave annotate WEAVEFILE VERSION
         Display origin of each line.
@@ -780,23 +780,23 @@ example:
 
     % weave init foo.weave
     % vi foo.txt
-    % weave add foo.weave < foo.txt
+    % weave add foo.weave ver0 < foo.txt
     added version 0
 
     (create updated version)
     % vi foo.txt
     % weave get foo.weave 0 | diff -u - foo.txt
-    % weave add foo.weave 0 < foo.txt
+    % weave add foo.weave ver1 0 < foo.txt
     added version 1
 
     % weave get foo.weave 0 > foo.txt       (create forked version)
     % vi foo.txt
-    % weave add foo.weave 0 < foo.txt
+    % weave add foo.weave ver2 0 < foo.txt
     added version 2
 
     % weave merge foo.weave 1 2 > foo.txt   (merge them)
     % vi foo.txt                            (resolve conflicts)
-    % weave add foo.weave 1 2 < foo.txt     (commit merged version)     
+    % weave add foo.weave merged 1 2 < foo.txt     (commit merged version)     
     
 """
     
@@ -828,11 +828,12 @@ def main(argv):
     elif cmd == 'add':
         w = readit()
         # at the moment, based on everything in the file
-        parents = map(int, argv[3:])
+        name = argv[3]
+        parents = map(int, argv[4:])
         lines = sys.stdin.readlines()
-        ver = w.add(parents, lines)
+        ver = w.add(name, parents, lines)
         write_weave(w, file(argv[2], 'wb'))
-        print 'added version %d' % ver
+        print 'added version %r %d' % (name, ver)
     elif cmd == 'init':
         fn = argv[2]
         if os.path.exists(fn):
