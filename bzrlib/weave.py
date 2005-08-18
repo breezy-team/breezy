@@ -51,7 +51,6 @@
 
 
 
-
 # TODO: Perhaps have copy method for Weave instances?
 
 # XXX: If we do weaves this way, will a merge still behave the same
@@ -62,8 +61,6 @@
 # rather than being split up in some other way.  We could accomodate
 # binaries, perhaps by naively splitting on \n or perhaps using
 # something like a rolling checksum.
-
-# TODO: Track version names as well as indexes. 
 
 # TODO: End marker for each version so we can stop reading?
 
@@ -83,6 +80,10 @@
 # is probably inefficient.  It's simple enough that we can afford to
 # have slight specializations for different ways its used: annotate,
 # basis for add, get, etc.
+
+# TODO: Perhaps the API should work only in names to hide the integer
+# indexes from the user?
+
 
 
 import sha
@@ -173,32 +174,52 @@ class Weave(object):
         each version; the parent's parents are implied.
 
     _sha1s
-        List of hex SHA-1 of each version, or None if not recorded.
+        List of hex SHA-1 of each version.
+
+    _names
+        List of symbolic names for each version.  Each should be unique.
+
+    _name_map
+        For each name, the version number.
     """
 
-    __slots__ = ['_weave', '_parents', '_sha1s']
+    __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map']
     
     def __init__(self):
         self._weave = []
         self._parents = []
         self._sha1s = []
+        self._names = []
+        self._name_map = {}
 
 
     def __eq__(self, other):
         if not isinstance(other, Weave):
             return False
         return self._parents == other._parents \
-               and self._weave == other._weave
-    
+               and self._weave == other._weave \
+               and self._sha1s == other._sha1s 
 
+    
     def __ne__(self, other):
         return not self.__eq__(other)
 
+
+    def lookup(self, name):
+        try:
+            return self._name_map[name]
+        except KeyError:
+            raise WeaveError("name %s not present in weave" % name)
+
         
-    def add(self, parents, text):
+    def add(self, name, parents, text):
         """Add a single text on top of the weave.
   
         Returns the index number of the newly added version.
+
+        name
+            Symbolic name for this version.
+            (Typically the revision-id of the revision that added it.)
 
         parents
             List or set of direct parent version numbers.
@@ -206,6 +227,10 @@ class Weave(object):
         text
             Sequence of lines to be added in the new version."""
 
+        assert isinstance(name, basestring)
+        if name in self._name_map:
+            raise WeaveError("name %r already present in weave" % name)
+        
         self._check_versions(parents)
         ## self._check_lines(text)
         new_version = len(self._parents)
@@ -215,9 +240,12 @@ class Weave(object):
         sha1 = s.hexdigest()
         del s
 
-        # if we abort after here the weave will be corrupt
-        self._parents.append(frozenset(parents))
+        # if we abort after here the (in-memory) weave will be corrupt because only
+        # some fields are updated
+        self._parents.append(parents[:])
         self._sha1s.append(sha1)
+        self._names.append(name)
+        self._name_map[name] = new_version
 
             
         if not parents:
@@ -683,13 +711,15 @@ class Weave(object):
 
 def weave_toc(w):
     """Show the weave's table-of-contents"""
-    print '%6s %40s %20s' % ('ver', 'sha1', 'parents')
-    for i in (6, 40, 20):
+    print '%6s %50s %10s %10s' % ('ver', 'name', 'sha1', 'parents')
+    for i in (6, 50, 10, 10):
         print '-' * i,
     print
     for i in range(w.numversions()):
         sha1 = w._sha1s[i]
-        print '%6d %40s %s' % (i, sha1, ' '.join(map(str, w._parents[i])))
+        name = w._names[i]
+        parent_str = ' '.join(map(str, w._parents[i]))
+        print '%6d %-50.50s %10.10s %s' % (i, name, sha1, parent_str)
 
 
 

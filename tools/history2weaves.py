@@ -18,6 +18,12 @@
 
 """Experiment in converting existing bzr branches to weaves."""
 
+try:
+    import psyco
+    psyco.full()
+except ImportError:
+    pass
+
 
 import bzrlib.branch
 from bzrlib.revfile import Revfile
@@ -49,7 +55,7 @@ def convert():
         
         inv_xml = b.get_inventory_xml(rev_id).readlines()
 
-        new_idx = inv_weave.add(parents, inv_xml)
+        new_idx = inv_weave.add(rev_id, parents, inv_xml)
         parents = [new_idx]
 
 #         tree = b.revision_tree(rev_id)
@@ -81,7 +87,7 @@ def convert():
 
         revno += 1
 
-    inv_wf = AtomicFile('inventory.weave')
+    inv_wf = AtomicFile('/tmp/inventory.weave')
     try:
         write_weave(inv_weave, inv_wf)
         inv_wf.commit()

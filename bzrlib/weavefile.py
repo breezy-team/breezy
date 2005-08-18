@@ -26,9 +26,13 @@
 There is one format marker followed by a blank line, followed by a
 series of version headers, followed by the weave itself.
 
-Each version marker has 'i' and the included previous versions, then
-'1' and the SHA-1 of the text, if known.  The inclusions do not need
-to list versions included by a parent.
+Each version marker has
+
+ 'i'   parent version indexes
+ '1'   SHA-1 of text
+ 'n'   name
+
+The inclusions do not need to list versions included by a parent.
 
 The weave is bracketed by 'w' and 'W' lines, and includes the '{}[]'
 processing instructions.  Lines of text are prefixed by '.' if the
@@ -39,17 +43,17 @@ line contains a newline, or ',' if not.
 # an iterator returning the weave lines...  We don't really need to
 # deserialize it into memory.
 
-FORMAT_1 = '# bzr weave file v4\n'
+FORMAT_1 = '# bzr weave file v5\n'
 
 
 def write_weave(weave, f, format=None):
     if format == None or format == 1:
-        return write_weave_v4(weave, f)
+        return write_weave_v5(weave, f)
     else:
         raise ValueError("unknown weave format %r" % format)
 
 
-def write_weave_v4(weave, f):
+def write_weave_v5(weave, f):
     """Write weave to file f."""
     print >>f, FORMAT_1,
 
@@ -64,6 +68,7 @@ def write_weave_v4(weave, f):
         else:
             print >>f, 'i'
         print >>f, '1', weave._sha1s[version]
+        print >>f, 'n', weave._names[version]
         print >>f
 
     print >>f, 'w'
@@ -90,10 +95,10 @@ def write_weave_v4(weave, f):
 
 
 def read_weave(f):
-    return read_weave_v4(f)
+    return read_weave_v5(f)
 
 
-def read_weave_v4(f):
+def read_weave_v5(f):
     from weave import Weave, WeaveFormatError
     w = Weave()
 
@@ -106,8 +111,6 @@ def read_weave_v4(f):
     while True:
         l = f.readline()
         if l[0] == 'i':
-            ver += 1
-
             if len(l) > 2:
                 w._parents.append(map(int, l[2:].split(' ')))
             else:
@@ -118,7 +121,16 @@ def read_weave_v4(f):
             w._sha1s.append(l[2:])
                 
             l = f.readline()
+            assert l.startswith('n ')
+            name = l[2:-1]
+            assert name not in w._name_map
+            w._names.append(name)
+            w._name_map[name] = ver
+                
+            l = f.readline()
             assert l == '\n'
+
+            ver += 1
         elif l == 'w\n':
             break
         else:
