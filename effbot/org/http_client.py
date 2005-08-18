@@ -67,6 +67,11 @@ class Request(object):
 
         self.path = path
 
+        # It turns out Content-Length isn't sufficient
+        # to allow pipelining. Simply required.
+        # So we will be extra stingy, and require the
+        # response to also be HTTP/1.1 to enable pipelining
+        self.http_1_1 = False
         self.status = None
         self.header = None
 
@@ -141,6 +146,11 @@ class Request(object):
                 fp = StringIO.StringIO(header)
                 self.status = fp.readline().split(" ", 2)
                 self.header = mimetools.Message(fp)
+
+                if self.status[0] == 'HTTP/1.1':
+                    self.http_1_1 = True
+                else:
+                    self.http_1_1 = False
 
                 # get http headers
                 self.content_type = self.header.get("content-type")
@@ -299,7 +309,7 @@ class async_http(asyncore.dispatcher_with_send):
         res = self._current.add_data(data)
         if res is None:
             # Downloading is continuing
-            if self._current.original_content_length:
+            if self._current.original_content_length and self._current.http_1_1:
                 # We can pipeline our requests, since we
                 # are getting a content_length count back
                 for i, r in enumerate(self._queue[:self.max_requests-1]):

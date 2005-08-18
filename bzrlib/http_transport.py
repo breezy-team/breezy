@@ -36,15 +36,19 @@ class simple_wait_consumer(object):
         do_request(self.url, self)
 
     def get(self):
-        while not self.done:
-            asyncore.poll(0.1)
+        self.finish()
+
         # Try and break cyclical loops
-        if self.ok:
+        if self.ok and (self.status is None or self.status[1] == '200'):
             self.buffer.seek(0)
             return self.buffer
         else:
-            raise HttpTransportError('Download of %r failed: %r' 
+            raise NoSuchFile('Download of %r failed: %r' 
                     % (self.url, self.status))
+
+    def finish(self):
+        while not self.done:
+            asyncore.poll(0.1)
 
     def feed(self, data):
         self.buffer.write(data)
@@ -52,8 +56,9 @@ class simple_wait_consumer(object):
     def close(self):
         self.done = True
 
-    def http(self, ok, connection, **args):
-        mutter('simple-wait-consumer: %s' % connection)
+    def http(self, ok, connection, *args, **kwargs):
+        mutter('simple-wait-consumer: %s, %s, %s, %s' 
+                % (self.url, ok, connection.status, connection.header))
         self.ok = ok
         if not ok:
             self.done = True
@@ -136,21 +141,15 @@ class HttpTransport(Transport):
         TODO: HttpTransport.has() should use a HEAD request,
         not a full GET request.
         """
-        try:
-            f = get_url(self.abspath(relpath))
-            return True
-        except BzrError:
-            return False
-        except urllib2.URLError:
-            return False
-        except IOError, e:
-            if e.errno == errno.ENOENT:
-                return False
-            raise HttpTransportError(orig_error=e)
+        c = simple_wait_consumer(self.abspath(relpath))
+        c.finish()
 
-    def _get(self, consumer):
-        """Return the consumer's value"""
-        return consumer.get()
+        # We might also look at c.status, but it doesn't seem to always be set
+        # c.status is of the form ["HTTP/1.0", "200", "OK\r\n"] we could
+        # check both the 200 and the OK.
+        if c.ok and (c.status is None or c.status[1] == '200'):
+            return True
+        return False
 
     def get(self, relpath):
         """Get the file at the given relative path.
@@ -160,24 +159,24 @@ class HttpTransport(Transport):
         c = simple_wait_consumer(self.abspath(relpath))
         return c.get()
 
-    def get_multi(self, relpaths, pb=None):
-        """Get a list of file-like objects, one for each entry in relpaths.
+    ### def get_multi(self, relpaths, pb=None):
+    ###     """Get a list of file-like objects, one for each entry in relpaths.
 
-        :param relpaths: A list of relative paths.
-        :param decode:  If True, assume the file is utf-8 encoded and
-                        decode it into Unicode
-        :param pb:  An optional ProgressBar for indicating percent done.
-        :return: A list or generator of file-like objects
-        """
-        consumers = []
-        for relpath in relpaths:
-            consumers.append(simple_wait_consumer(self.abspath(relpath)))
-        total = self._get_total(consumers)
-        count = 0
-        for c in consumers:
-            self._update_pb(pb, 'get', count, total)
-            yield c.get()
-            count += 1
+    ###     :param relpaths: A list of relative paths.
+    ###     :param decode:  If True, assume the file is utf-8 encoded and
+    ###                     decode it into Unicode
+    ###     :param pb:  An optional ProgressBar for indicating percent done.
+    ###     :return: A list or generator of file-like objects
+    ###     """
+    ###     consumers = []
+    ###     for relpath in relpaths:
+    ###         consumers.append(simple_wait_consumer(self.abspath(relpath)))
+    ###     total = self._get_total(consumers)
+    ###     count = 0
+    ###     for c in consumers:
+    ###         self._update_pb(pb, 'get', count, total)
+    ###         yield c.get()
+    ###         count += 1
 
     def put(self, relpath, f):
         """Copy the file-like or string object into the location.
