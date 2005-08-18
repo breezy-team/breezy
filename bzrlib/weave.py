@@ -45,7 +45,11 @@
 
 # with delta folded in and mutation of the list, 36.13s
 
-# with all this and simplification of add code, 33s 
+# with all this and simplification of add code, 33s
+
+
+
+
 
 
 # TODO: Perhaps have copy method for Weave instances?
@@ -886,7 +890,7 @@ def profile_main(argv):
 
     stats = hotshot.stats.load(prof_f.name)
     #stats.strip_dirs()
-    stats.sort_stats('time')
+    stats.sort_stats('cumulative')
     ## XXX: Might like to write to stderr or the trace file instead but
     ## print_stats seems hardcoded to stdout
     stats.print_stats(20)
