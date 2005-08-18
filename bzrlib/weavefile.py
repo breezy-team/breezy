@@ -36,19 +36,20 @@ line contains a newline, or ',' if not.
 """
 
 # TODO: When extracting a single version it'd be enough to just pass
-# an iterator returning the weave lines...
+# an iterator returning the weave lines...  We don't really need to
+# deserialize it into memory.
 
-FORMAT_1 = '# bzr weave file v3\n'
+FORMAT_1 = '# bzr weave file v4\n'
 
 
 def write_weave(weave, f, format=None):
     if format == None or format == 1:
-        return write_weave_v1(weave, f)
+        return write_weave_v4(weave, f)
     else:
         raise ValueError("unknown weave format %r" % format)
 
 
-def write_weave_v1(weave, f):
+def write_weave_v4(weave, f):
     """Write weave to file f."""
     print >>f, FORMAT_1,
 
@@ -70,7 +71,10 @@ def write_weave_v1(weave, f):
     for l in weave._weave:
         if isinstance(l, tuple):
             assert l[0] in '{}[]'
-            print >>f, '%s %d' % l
+            if l[0] == '}':
+                print >>f, '}'
+            else:
+                print >>f, '%s %d' % l
         else: # text line
             if not l:
                 print >>f, ', '
@@ -86,10 +90,10 @@ def write_weave_v1(weave, f):
 
 
 def read_weave(f):
-    return read_weave_v1(f)
+    return read_weave_v4(f)
 
 
-def read_weave_v1(f):
+def read_weave_v4(f):
     from weave import Weave, WeaveFormatError
     w = Weave()
 
@@ -128,8 +132,10 @@ def read_weave_v1(f):
             w._weave.append(l[2:])  # include newline
         elif l.startswith(', '):
             w._weave.append(l[2:-1])        # exclude newline
+        elif l == '}\n':
+            w._weave.append(('}', None))
         else:
-            assert l[0] in '{}[]', l
+            assert l[0] in '{[]', l
             assert l[1] == ' ', l
             w._weave.append((intern(l[0]), int(l[2:])))
 

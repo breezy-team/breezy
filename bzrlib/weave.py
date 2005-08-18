@@ -101,7 +101,7 @@ class Weave(object):
 
     * a nonnegative index number.
 
-    * a version-id string.
+    * a version-id string. (not implemented yet)
 
     Typically the index number will be valid only inside this weave and
     the version-id is used to reference it in the larger world.
@@ -118,7 +118,9 @@ class Weave(object):
     The instruction can be '{' or '}' for an insertion block, and '['
     and ']' for a deletion block respectively.  The version is the
     integer version index.  There is no replace operator, only deletes
-    and inserts.
+    and inserts.  For '}', the end of an insertion, there is no
+    version parameter because it always closes the most recently
+    opened insertion.
 
     Constraints/notes:
 
@@ -216,7 +218,7 @@ class Weave(object):
             if text:
                 self._weave.append(('{', new_version))
                 self._weave.extend(text)
-                self._weave.append(('}', new_version))
+                self._weave.append(('}', None))
         
             return new_version
 
@@ -288,8 +290,8 @@ class Weave(object):
                 # we don't destroy ourselves
                 i = i2 + offset
                 self._weave[i:i] = ([('{', new_version)] 
-                                + text[j1:j2] 
-                                + [('}', new_version)])
+                                    + text[j1:j2] 
+                                    + [('}', None)])
                 offset += 2 + (j2 - j1)
 
         return new_version
@@ -385,7 +387,7 @@ class Weave(object):
                 if c == '{':
                     istack.append(v)
                 elif c == '}':
-                    oldv = istack.pop()
+                    istack.pop()
                 elif c == '[':
                     assert v not in dset
                     dset.add(v)
@@ -432,8 +434,7 @@ class Weave(object):
                     assert v not in istack
                     istack.append(v)
                 elif c == '}':
-                    oldv = istack.pop()
-                    assert oldv == v
+                    istack.pop()
                 elif c == '[':
                     if v in included:
                         assert v not in dset
