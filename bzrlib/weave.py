@@ -769,8 +769,11 @@ def main(argv):
     from weavefile import write_weave, read_weave
     from bzrlib.progress import ProgressBar
 
-    #import psyco
-    #psyco.full()
+    try:
+        import psyco
+        psyco.full()
+    except ImportError:
+        pass
 
     cmd = argv[1]
 
@@ -893,5 +896,10 @@ def profile_main(argv):
 
 if __name__ == '__main__':
     import sys
-    sys.exit(main(sys.argv))
+    if sys.argv[1] == '--profile':
+        args = sys.argv[:]
+        del args[1]
+        sys.exit(profile_main(args))
+    else:
+        sys.exit(main(sys.argv))
 
