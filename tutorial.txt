@@ -1,0 +1,315 @@
+==================
+Bazaar-NG Tutorial
+==================
+
+current for bzr 0.0.6pre, July 2005
+
+
+*Note:* This tutorial is a work in 
+progress, and describes code that is itself still evolving. 
+If you have comments on either the design or the tutorial, 
+please send them to the bazaar-ng@lists.canonical.com mailing list.
+
+
+
+Introduction
+============
+
+Bazaar-NG is a version control tool.  It manages trees of files and subdirectories.  In particular, it records *revisions* of trees, representing their state at a particular point in time, and information about those revisions and their relationships.  Recording and retrieving tree revisions is useful in several ways if you are writing software or documents or doing similar creative work.
+
+ * Keeping previous revisions lets you go back if you make a mistake or want to check your work.  It acts as a high-level unlimited undo.
+
+ * By recording comments on every revision, you produce an annotated history of the project, describing what, who, why, and when.
+
+ * Using a version control tool can be an aid to thinking about a project: getting to a stable state at regular intervals and then writing a description of what you did is an easy way to stay organized and on track.
+
+Bazaar-NG remembers the *ancestry* of a revision: the previous revisions that it is based upon.  A single revision may have more than one direct descendant, each with different changes, representing a divergence in the evolution of the tree.  
+By branching, Bazaar-NG allows multiple people to cooperate on the evolution of a project, without all needing to work in strict
+lock-step.  Branching can be useful even for a single developer.
+
+Bazaar-NG installs a single new command,
+*bzr*.  Everything else is a subcommand of this.  You can get
+some help with ``bzr help``.  There will be more in the future.
+
+
+
+Introducing yourself to bzr
+===========================
+
+One function of a version control system is to keep track of who
+changed what.  In a distributed system that requires an identifier for
+each author that is globally unique.  Most people already have one of
+these: an email address.
+
+[after 0.0.4] To tell bzr which email address to use, put it in the file
+``$HOME/.bzr.conf/email``, or the environment variable ``$BZREMAIL``.
+If neither of these are set, bzr will use the ``$EMAIL``
+variable, or use your username and hostname.
+
+To check this has taken effect, or if you forget your own name, use
+the ``whoami`` ("who am i?") command::
+
+  % bzr whoami
+
+Some people want to avoid sharing their email address so as not to
+get spam.  bzr will never
+disclose your email address unless you tell it to by publishing an
+archive or transmiting a changeset.  It's recommended that you do use
+a real address, so that people can contact you about your work, but
+it's not required.  You can use an address which is obfuscated, which
+bounces, or which goes through an anti-spam service such as spamgourmet.com.
+
+
+
+Creating a branch
+==================
+
+
+History is by default stored in the .bzr directory of the branch.
+There will be a facility to store it in a separate repository, which
+may be remote.  We create a new branch by running *bzr init* in
+an existing directory::
+
+    % mkdir tutorial
+    % cd tutorial
+    % ls -a
+    ls -a
+    ./  ../
+    % pwd
+    /home/mbp/work/bzr.test/tutorial
+    %
+    % bzr init
+    % ls -aF
+    ./  ../  .bzr/
+    %
+
+As for CVS, there are three classes of file: unknown, ignored, and
+versioned.  The *add* command makes a file versioned: that is,
+changes to it will be recorded by the system::
+
+    % echo 'hello world' > hello.txt
+    % bzr status
+    ?       hello.txt
+    % bzr unknowns
+    hello.txt
+    % bzr add -v hello.txt
+    A       hello.txt
+    % bzr unknowns
+
+
+If you add the wrong file, simply use ``bzr remove`` to make
+it unversioned again.  This does not delete the working copy.
+
+
+Reviewing changes
+=================
+
+Once you have completed some work, you will want to *commit*
+it to the version history.  It is good to commit fairly often:
+whenever you get a new feature working, fix a bug, or improve some
+code or documentation.  It's also a good practice to make sure that
+the code compiles and passes its test suite before committing, to make
+sure that every revision is a known-good state.  You can also review
+your changes, to make sure you're committing what you intend to, and
+as a chance to rethink your work before you permanently record it. 
+
+Two bzr commands are particularly useful here: *status* and
+*diff*.  The *status* command
+shows a listing with one line per file, indicating whether it has been
+Added, Deleted, Modified, or Renamed in the current revision.  Unknown
+files are shown as '?'.  With the ``--all`` option, the status
+command also shows unmodified versioned files as '.', and ignored
+files as 'I'::
+
+    % bzr status
+    A       hello.txt
+
+The *diff* command shows the full text of changes to all
+files as a standard unified diff.  This can be piped through many
+programs such as ``patch``, ``diffstat``,
+``filterdiff`` and ``colordiff``::
+
+    % bzr diff
+    *** added file 'hello.txt'
+    --- /dev/null 
+    +++ hello.txt 
+    @@ -1,0 +1,1 @@
+    +hello world
+
+With the ``-r`` option, the tree is compared to an earlier
+revision.
+
+[TODO: options to run external diff; to get context diff or other
+formats; to diff only selected files; to compare two historical
+revisions.]
+
+
+
+Committing changes
+==================
+
+When the working tree state is satisfactory, it can be
+*committed* to the branch, creating a new revision holding a
+snapshot of that state.  
+
+The ``commit`` command takes a message describing the changes
+in the revision.  It also records your userid, the current time and
+timezone, and the inventory and contents of the tree.  The commit
+message is specified by the ``-m`` or ``--message`` option.
+You can enter a multi-line commit message; in most shells you can
+enter this just by leaving the quotes open at the end of the line. ::
+
+    % bzr commit -m "added my first file"
+
+[TODO: commit message interactively, through an editor or from a
+file.]
+
+[TODO: commit only selected files, including renamed/added/deleted
+files.]
+
+
+
+Removing uncommitted changes
+============================
+
+If you've made some changes and don't want to keep them, use the
+``revert`` command to go back to the previous head version.  It's a
+good idea to use ``bzr diff`` first to see what will be removed. 
+By default the revert command reverts the whole tree; if file or
+directory names are given then only those ones will be affected.
+revert also clears the list of pending merges revisions.
+
+
+
+
+
+Ignoring files
+==============
+
+Many source trees contain some files that do not need to be
+versioned, such as editor backups, object or bytecode files, and built
+programs.  You can simply not add them, but then they'll always crop
+up as unknown files.  You can also tell bzr to ignore these files by
+adding them to a file called ``.bzrignore`` at the top of the
+tree.
+
+This file contains a list of file wildcards (or "globs"), one
+per line.  Typical contents are like this::
+
+    *.o
+    *~
+    *.tmp
+    *.py[co]
+
+If a glob contains a slash, it is matched against the whole path
+from the top of the tree; otherwise it is matched against only the
+filename.  So the previous example ignores ``*.o`` in all
+subdirectories, but this example ignores only config.h at the top
+level and HTML files in ``doc/``::
+
+    ./config.h
+    doc/*.html
+
+To get a list of which files are ignored and what pattern they matched, use ``bzr ignored``::
+
+    % bzr ignored
+    config.h                                           ./config.h
+    configure.in~                                      *~
+
+It is OK to have an ignore pattern match a versioned file, or to
+add an ignored file.  Ignore patterns have no effect on versioned
+files; they only determine whether unversioned files are reported as
+unknown or ignored.
+
+The ``.bzrignore`` file should normally be versioned, so that new
+copies of the branch see the same patterns::
+
+    % bzr add .bzrignore
+    % bzr commit -m "Add ignore patterns"
+
+
+Examining history
+=================
+
+bzr log
+-------
+
+The ``log`` command shows a list of previous revisions.
+
+
+Branch statistics
+=================
+
+The ``bzr info`` command shows some summary information about
+the working tree and the branch history.  
+
+
+Versioning directories
+======================
+
+bzr versions files and directories in a way that can keep track of
+renames and intelligently merge them::
+
+    % mkdir src
+    % echo 'int main() {}' > src/simple.c
+    % bzr add src
+    % bzr status
+    A       src/
+    ?       src/simple.c
+    % bzr add src/simple.c
+    % bzr status
+    A       src/
+    A       src/simple.c
+
+
+Deleting and removing files
+===========================
+
+You can delete files or directories by just deleting them from the
+working directory.  This is a bit different to CVS, which requires
+that you also do *cvs remove*.
+
+*bzr remove* makes the file un-versioned, but does not
+delete the working copy.  This is useful when you add the wrong file,
+or decide that a file should actually not be versioned. ::
+
+    % rm -r src
+    % bzr remove -v hello.txt
+    ?       hello.txt
+    % bzr status
+    ?       hello.txt
+    D       src/
+    D       src/simple.c
+
+
+Branching
+=========
+
+Often rather than starting your own project, you will want to
+submit a change to an existing project.  You can get a copy of an
+existing branch by copying its directory, expanding a tarball, or by a
+remote copy using something like rsync.  You can also use bzr to fetch
+a copy.  Because this new copy is potentially a new branch, the
+command is called *branch*::
+
+    % bzr branch http://bazaar-ng.org/bzr/main ./bzr-main
+    % cd bzr-main
+
+This copies down the complete history of this branch, so we can
+do all operations on it locally: log, annotate, making and merging
+branches.  There will be an option to get only part of the history if
+you wish.
+
+
+
+Following upstream changes
+==========================
+
+You can stay up-to-date with the parent branch by *pulling*
+in their changes::
+
+    % bzr pull
+
+This only works if the local branch if your branch includes only
+changes from the parent branch.  Otherwise, the branches are said to
+have *diverged*, and they must be merged instead.

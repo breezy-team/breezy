@@ -51,36 +51,36 @@ def PluginTest(InTempDir):
 
 
 
-PLUGIN_TEXT = \
-"""import bzrlib, bzrlib.commands
-class cmd_myplug(bzrlib.commands.Command):
-    '''Just a simple test plugin.'''
-    aliases = ['mplg']
-    def run(self):
-        print 'Hello from my plugin'
-""")
-    f.close()
+#         PLUGIN_TEXT = \
+#         """import bzrlib, bzrlib.commands
+#         class cmd_myplug(bzrlib.commands.Command):
+#             '''Just a simple test plugin.'''
+#             aliases = ['mplg']
+#             def run(self):
+#                 print 'Hello from my plugin'
+#         """
+#         f.close()
 
-    os.environ['BZRPLUGINPATH'] = os.path.abspath('plugin_test')
-    help = backtick('bzr help commands')
-    assert help.find('myplug') != -1
-    assert help.find('Just a simple test plugin.') != -1
+#         os.environ['BZRPLUGINPATH'] = os.path.abspath('plugin_test')
+#         help = backtick('bzr help commands')
+#         assert help.find('myplug') != -1
+#         assert help.find('Just a simple test plugin.') != -1
 
 
-    assert backtick('bzr myplug') == 'Hello from my plugin\n'
-    assert backtick('bzr mplg') == 'Hello from my plugin\n'
+#         assert backtick('bzr myplug') == 'Hello from my plugin\n'
+#         assert backtick('bzr mplg') == 'Hello from my plugin\n'
 
-    f = open(os.path.join('plugin_test', 'override.py'), 'wb')
-    f.write("""import bzrlib, bzrlib.commands
-class cmd_commit(bzrlib.commands.cmd_commit):
-    '''Commit changes into a new revision.'''
-    def run(self, *args, **kwargs):
-        print "I'm sorry dave, you can't do that"
+#         f = open(os.path.join('plugin_test', 'override.py'), 'wb')
+#         f.write("""import bzrlib, bzrlib.commands
+#     class cmd_commit(bzrlib.commands.cmd_commit):
+#         '''Commit changes into a new revision.'''
+#         def run(self, *args, **kwargs):
+#             print "I'm sorry dave, you can't do that"
 
-class cmd_help(bzrlib.commands.cmd_help):
-    '''Show help on a command or other topic.'''
-    def run(self, *args, **kwargs):
-        print "You have been overridden"
-        bzrlib.commands.cmd_help.run(self, *args, **kwargs)
+#     class cmd_help(bzrlib.commands.cmd_help):
+#         '''Show help on a command or other topic.'''
+#         def run(self, *args, **kwargs):
+#             print "You have been overridden"
+#             bzrlib.commands.cmd_help.run(self, *args, **kwargs)
 
-    """
+#         """

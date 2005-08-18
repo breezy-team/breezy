@@ -139,6 +139,9 @@ def is_inside(dir, fname):
     that . and .. and repeated slashes are eliminated, and the separators
     are canonical for the platform.
     
+    The empty string as a dir name is taken as top-of-tree and matches 
+    everything.
+    
     >>> is_inside('src', 'src/foo.c')
     True
     >>> is_inside('src', 'srccontrol')
@@ -147,11 +150,17 @@ def is_inside(dir, fname):
     True
     >>> is_inside('foo.c', 'foo.c')
     True
+    >>> is_inside('foo.c', '')
+    False
+    >>> is_inside('', 'foo.c')
+    True
     """
     # XXX: Most callers of this can actually do something smarter by 
     # looking at the inventory
-
     if dir == fname:
+        return True
+    
+    if dir == '':
         return True
     
     if dir[-1] != os.sep:
@@ -358,8 +367,8 @@ def format_date(t, offset=0, timezone='original'):
         tt = time.localtime(t)
         offset = local_time_offset(t)
     else:
-        raise BzrError("unsupported timezone format %r",
-                ['options are "utc", "original", "local"'])
+        raise BzrError("unsupported timezone format %r" % timezone,
+                       ['options are "utc", "original", "local"'])
 
     return (time.strftime("%a %Y-%m-%d %H:%M:%S", tt)
             + ' %+03d%02d' % (offset / 3600, (offset / 60) % 60))

@@ -32,7 +32,7 @@ def show_status(branch, show_unchanged=False,
         If set, write to this file (default stdout.)
     """
     import sys
-    from bzrlib.diff import compare_trees
+    from bzrlib.delta import compare_trees
 
     if to_file == None:
         to_file = sys.stdout

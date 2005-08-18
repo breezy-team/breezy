@@ -29,6 +29,18 @@ class BzrCheckError(BzrError):
     pass
 
 
+class InvalidRevisionNumber(BzrError):
+    def __init__(self, revno):
+        self.args = [revno]
+        
+    def __str__(self):
+        return 'invalid revision number: %r' % self.args[0]
+
+
+class InvalidRevisionId(BzrError):
+    pass
+
+
 class BzrCommandError(BzrError):
     # Error from malformed user command
     pass
@@ -70,3 +82,13 @@ class LockError(Exception):
 
 class PointlessCommit(Exception):
     """Commit failed because nothing was changed."""
+
+
+class NoSuchRevision(BzrError):
+    def __init__(self, branch, revision):
+        self.branch = branch
+        self.revision = revision
+        msg = "Branch %s has no revision %s" % (branch, revision)
+        BzrError.__init__(self, msg)
+
+

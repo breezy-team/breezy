@@ -40,6 +40,7 @@ true yet.
 
 from unittest import TestResult, TestCase
 
+# XXX: Don't need this anymore now we depend on python2.4
 def _need_subprocess():
     sys.stderr.write("sorry, this test suite requires the subprocess module\n"
                      "this is shipped with python2.4 and available separately for 2.3\n")
@@ -169,6 +170,12 @@ class TestBase(TestCase):
 
     def log(self, msg):
         """Log a message to a progress file"""
+        # XXX: The problem with this is that code that writes straight
+        # to the log file won't be shown when we display the log
+        # buffer; would be better to not have the in-memory buffer and
+        # instead just a log file per test, which is read in and
+        # displayed if the test fails.  That seems to imply one log
+        # per test case, not globally.  OK?
         self._log_buf = self._log_buf + str(msg) + '\n'
         print >>self.TEST_LOG, msg
 
@@ -346,7 +353,8 @@ def _show_results(result):
 
 def _show_test_failure(kind, case, exc_info, out):
     from traceback import print_exception
-    
+
+    print >>out
     print >>out, '-' * 60
     print >>out, case
     

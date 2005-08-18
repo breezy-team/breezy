@@ -15,17 +15,32 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import sys, os
+import sys
+import os
 
 import bzrlib
 from bzrlib.trace import mutter, note
-from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, splitpath, \
+from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
+     splitpath, \
      sha_file, appendpath, file_kind
-from bzrlib.errors import BzrError
-
+from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId
+import bzrlib.errors
+from bzrlib.textui import show_status
+from bzrlib.revision import Revision
+from bzrlib.xml import unpack_xml
+from bzrlib.delta import compare_trees
+from bzrlib.tree import EmptyTree, RevisionTree
+        
 BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
 
+
+# TODO: Some operations like log might retrieve the same revisions
+# repeatedly to calculate deltas.  We could perhaps have a weakref
+# cache in memory to make this faster.
+
+# TODO: please move the revision-string syntax stuff out of the branch
+# object; it's clutter
 
 
 def find_branch(f, **args):
@@ -116,14 +131,6 @@ class DivergedBranches(Exception):
         self.branch1 = branch1
         self.branch2 = branch2
         Exception.__init__(self, "These branches have diverged.")
-
-
-class NoSuchRevision(BzrError):
-    def __init__(self, branch, revision):
-        self.branch = branch
-        self.revision = revision
-        msg = "Branch %s has no revision %d" % (branch, revision)
-        BzrError.__init__(self, msg)
 
 
 ######################################################################
@@ -312,7 +319,10 @@ class Branch(object):
             self.controlfile(f, 'w').write('')
         mutter('created control directory in ' + self.base)
 
-        pack_xml(Inventory(gen_root_id()), self.controlfile('inventory','w'))
+        # if we want per-tree root ids then this is the place to set
+        # them; they're not needed for now and so ommitted for
+        # simplicity.
+        pack_xml(Inventory(), self.controlfile('inventory','w'))
 
 
     def _check_format(self):
@@ -422,7 +432,6 @@ class Branch(object):
               add all non-ignored children.  Perhaps do that in a
               higher-level method.
         """
-        from bzrlib.textui import show_status
         # TODO: Re-adding a file that is removed in the working copy
         # should probably put it back with the previous ID.
         if isinstance(files, basestring):
@@ -501,7 +510,6 @@ class Branch(object):
         is the opposite of add.  Removing it is consistent with most
         other tools.  Maybe an option.
         """
-        from bzrlib.textui import show_status
         ## TODO: Normalize names
         ## TODO: Remove nested loops; better scalability
         if isinstance(files, basestring):
@@ -582,21 +590,57 @@ class Branch(object):
             f.close()
 
 
-    def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
-        from bzrlib.revision import Revision
-        from bzrlib.xml import unpack_xml
+    def get_revision_xml(self, revision_id):
+        """Return XML file object for revision object."""
+        if not revision_id or not isinstance(revision_id, basestring):
+            raise InvalidRevisionId(revision_id)
 
         self.lock_read()
         try:
-            if not revision_id or not isinstance(revision_id, basestring):
-                raise ValueError('invalid revision-id: %r' % revision_id)
-            r = unpack_xml(Revision, self.revision_store[revision_id])
+            try:
+                return self.revision_store[revision_id]
+            except IndexError:
+                raise bzrlib.errors.NoSuchRevision(self, revision_id)
         finally:
             self.unlock()
+
+
+    def get_revision(self, revision_id):
+        """Return the Revision object for a named revision"""
+        xml_file = self.get_revision_xml(revision_id)
+
+        try:
+            r = unpack_xml(Revision, xml_file)
+        except SyntaxError, e:
+            raise bzrlib.errors.BzrError('failed to unpack revision_xml',
+                                         [revision_id,
+                                          str(e)])
             
         assert r.revision_id == revision_id
         return r
+
+
+    def get_revision_delta(self, revno):
+        """Return the delta for one revision.
+
+        The delta is relative to its mainline predecessor, or the
+        empty tree for revision 1.
+        """
+        assert isinstance(revno, int)
+        rh = self.revision_history()
+        if not (1 <= revno <= len(rh)):
+            raise InvalidRevisionNumber(revno)
+
+        # revno is 1-based; list is 0-based
+
+        new_tree = self.revision_tree(rh[revno-1])
+        if revno == 1:
+            old_tree = EmptyTree()
+        else:
+            old_tree = self.revision_tree(rh[revno-2])
+
+        return compare_trees(old_tree, new_tree)
+
         
 
     def get_revision_sha1(self, revision_id):
@@ -607,7 +651,7 @@ class Branch(object):
         # the revision, (add signatures/remove signatures) and still
         # have all hash pointers stay consistent.
         # But for now, just hash the contents.
-        return sha_file(self.revision_store[revision_id])
+        return bzrlib.osutils.sha_file(self.get_revision_xml(revision_id))
 
 
     def get_inventory(self, inventory_id):
@@ -619,13 +663,18 @@ class Branch(object):
         from bzrlib.inventory import Inventory
         from bzrlib.xml import unpack_xml
 
-        return unpack_xml(Inventory, self.inventory_store[inventory_id])
+        return unpack_xml(Inventory, self.get_inventory_xml(inventory_id))
+
+
+    def get_inventory_xml(self, inventory_id):
+        """Get inventory XML as a file object."""
+        return self.inventory_store[inventory_id]
             
 
     def get_inventory_sha1(self, inventory_id):
         """Return the sha1 hash of the inventory entry
         """
-        return sha_file(self.inventory_store[inventory_id])
+        return sha_file(self.get_inventory_xml(inventory_id))
 
 
     def get_revision_inventory(self, revision_id):
@@ -696,27 +745,6 @@ class Branch(object):
             if my_history[r] == other_history[r]:
                 return r+1, my_history[r]
         return None, None
-
-    def enum_history(self, direction):
-        """Return (revno, revision_id) for history of branch.
-
-        direction
-            'forward' is from earliest to latest
-            'reverse' is from latest to earliest
-        """
-        rh = self.revision_history()
-        if direction == 'forward':
-            i = 1
-            for rid in rh:
-                yield i, rid
-                i += 1
-        elif direction == 'reverse':
-            i = len(rh)
-            while i > 0:
-                yield i, rh[i-1]
-                i -= 1
-        else:
-            raise ValueError('invalid history direction', direction)
 
 
     def revno(self):
@@ -1018,11 +1046,10 @@ class Branch(object):
 
         `revision_id` may be None for the null revision, in which case
         an `EmptyTree` is returned."""
-        from bzrlib.tree import EmptyTree, RevisionTree
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id == None:
-            return EmptyTree(self.get_root_id())
+            return EmptyTree()
         else:
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self.text_store, inv)
@@ -1039,10 +1066,9 @@ class Branch(object):
 
         If there are no revisions yet, return an `EmptyTree`.
         """
-        from bzrlib.tree import EmptyTree, RevisionTree
         r = self.last_patch()
         if r == None:
-            return EmptyTree(self.get_root_id())
+            return EmptyTree()
         else:
             return RevisionTree(self.text_store, self.get_revision_inventory(r))
 

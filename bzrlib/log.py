@@ -28,15 +28,33 @@ Various flavors of log can be produced:
 
 * with file-ids and revision-ids shown
 
-* from last to first or (not anymore) from first to last;
-  the default is "reversed" because it shows the likely most
-  relevant and interesting information first
+Logs are actually written out through an abstract LogFormatter
+interface, which allows for different preferred formats.  Plugins can
+register formats too.
 
-* (not yet) in XML format
+Logs can be produced in either forward (oldest->newest) or reverse
+(newest->oldest) order.
+
+Logs can be filtered to show only revisions matching a particular
+search string, or within a particular range of revisions.  The range
+can be given as date/times, which are reduced to revisions before
+calling in here.
+
+In verbose mode we show a summary of what changed in each particular
+revision.  Note that this is the delta for changes in that revision
+relative to its mainline parent, not the delta relative to the last
+logged revision.  So for example if you ask for a verbose log of
+changes touching hello.c you will get a list of those revisions also
+listing other things that were changed in the same revision, but not
+all the changes since the previous revision that touched hello.c.
 """
 
 
-from trace import mutter
+from bzrlib.tree import EmptyTree
+from bzrlib.delta import compare_trees
+from bzrlib.trace import mutter
+from bzrlib.errors import InvalidRevisionNumber
+
 
 def find_touching_revisions(branch, file_id):
     """Yield a description of revisions which affect the file_id.
@@ -81,6 +99,15 @@ def find_touching_revisions(branch, file_id):
         last_path = this_path
         revno += 1
 
+
+
+def _enumerate_history(branch):
+    rh = []
+    revno = 1
+    for rev_id in branch.revision_history():
+        rh.append((revno, rev_id))
+        revno += 1
+    return rh
 
 
 def show_log(branch,
@@ -131,20 +158,32 @@ def show_log(branch,
     else:
         searchRE = None
 
-    which_revs = branch.enum_history(direction)
-    which_revs = [x for x in which_revs if (
-            (start_revision is None or x[0] >= start_revision)
-            and (end_revision is None or x[0] <= end_revision))]
+    which_revs = _enumerate_history(branch)
+    
+    if start_revision is None:
+        start_revision = 1
+    elif start_revision < 1 or start_revision >= len(which_revs):
+        raise InvalidRevisionNumber(start_revision)
+    
+    if end_revision is None:
+        end_revision = len(which_revs)
+    elif end_revision < 1 or end_revision >= len(which_revs):
+        raise InvalidRevisionNumber(end_revision)
 
-    if not (verbose or specific_fileid):
-        # no need to know what changed between revisions
-        with_deltas = deltas_for_log_dummy(branch, which_revs)
-    elif direction == 'reverse':
-        with_deltas = deltas_for_log_reverse(branch, which_revs)
-    else:        
-        with_deltas = deltas_for_log_forward(branch, which_revs)
+    # list indexes are 0-based; revisions are 1-based
+    cut_revs = which_revs[(start_revision-1):(end_revision)]
 
-    for revno, rev, delta in with_deltas:
+    if direction == 'reverse':
+        cut_revs.reverse()
+    elif direction == 'forward':
+        pass
+    else:
+        raise ValueError('invalid direction %r' % direction)
+
+    for revno, rev_id in cut_revs:
+        if verbose or specific_fileid:
+            delta = branch.get_revision_delta(revno)
+            
         if specific_fileid:
             if not delta.touches_file_id(specific_fileid):
                 continue
@@ -153,29 +192,42 @@ def show_log(branch,
             # although we calculated it, throw it away without display
             delta = None
 
-        if searchRE is None or searchRE.search(rev.message):
-            lf.show(revno, rev, delta)
+        rev = branch.get_revision(rev_id)
+
+        if searchRE:
+            if not searchRE.search(rev.message):
+                continue
+
+        lf.show(revno, rev, delta)
 
 
 
 def deltas_for_log_dummy(branch, which_revs):
+    """Return all the revisions without intermediate deltas.
+
+    Useful for log commands that won't need the delta information.
+    """
+    
     for revno, revision_id in which_revs:
         yield revno, branch.get_revision(revision_id), None
 
 
 def deltas_for_log_reverse(branch, which_revs):
-    """Compute deltas for display in reverse log.
+    """Compute deltas for display in latest-to-earliest order.
 
-    Given a sequence of (revno, revision_id) pairs, return
-    (revno, rev, delta).
+    branch
+        Branch to traverse
+
+    which_revs
+        Sequence of (revno, revision_id) for the subset of history to examine
+
+    returns 
+        Sequence of (revno, rev, delta)
 
     The delta is from the given revision to the next one in the
     sequence, which makes sense if the log is being displayed from
     newest to oldest.
     """
-    from tree import EmptyTree
-    from diff import compare_trees
-    
     last_revno = last_revision_id = last_tree = None
     for revno, revision_id in which_revs:
         this_tree = branch.revision_tree(revision_id)
@@ -210,9 +262,6 @@ def deltas_for_log_forward(branch, which_revs):
     sequence, which makes sense if the log is being displayed from
     newest to oldest.
     """
-    from tree import EmptyTree
-    from diff import compare_trees
-
     last_revno = last_revision_id = last_tree = None
     prev_tree = EmptyTree(branch.get_root_id())
 
@@ -237,10 +286,14 @@ def deltas_for_log_forward(branch, which_revs):
 
 class LogFormatter(object):
     """Abstract class to display log messages."""
-    def __init__(self, to_file, show_ids=False, show_timezone=False):
+    def __init__(self, to_file, show_ids=False, show_timezone='original'):
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
+
+
+    def show(self, revno, rev, delta):
+        raise NotImplementedError('not implemented in abstract base')
         
 
 
@@ -258,8 +311,11 @@ class LongLogFormatter(LogFormatter):
         if self.show_ids:
             print >>to_file,  'revision-id:', rev.revision_id
         print >>to_file,  'committer:', rev.committer
-        print >>to_file,  'timestamp: %s' % (format_date(rev.timestamp, rev.timezone or 0,
-                                             self.show_timezone))
+
+        date_str = format_date(rev.timestamp,
+                               rev.timezone or 0,
+                               self.show_timezone)
+        print >>to_file,  'timestamp: %s' % date_str
 
         print >>to_file,  'message:'
         if not rev.message:
@@ -290,6 +346,8 @@ class ShortLogFormatter(LogFormatter):
             for l in rev.message.split('\n'):
                 print >>to_file,  '      ' + l
 
+        # TODO: Why not show the modified files in a shorter form as
+        # well? rewrap them single lines of appropriate length
         if delta != None:
             delta.show(to_file, self.show_ids)
         print
@@ -308,3 +366,8 @@ def log_formatter(name, *args, **kwargs):
         return FORMATTERS[name](*args, **kwargs)
     except IndexError:
         raise BzrCommandError("unknown log formatter: %r" % name)
+
+def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
+    # deprecated; for compatability
+    lf = LongLogFormatter(to_file=to_file, show_timezone=show_timezone)
+    lf.show(revno, rev, delta)

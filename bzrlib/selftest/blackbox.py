@@ -26,10 +26,9 @@ bit inefficient but arguably tests in a way more representative of how
 it's normally invoked.
 """
 
-# this code was previously in testbzr
+import sys
 
-from unittest import TestCase
-from bzrlib.selftest import TestBase, InTempDir
+from bzrlib.selftest import TestBase, InTempDir, BzrTestBase
 
 
 
@@ -50,12 +49,55 @@ class ExternalBase(InTempDir):
 
 
 
-class TestVersion(ExternalBase):
+class MvCommand(BzrTestBase):
+    def runbzr(self):
+        """Test two modes of operation for mv"""
+        b = Branch('.', init=True)
+        self.build_tree(['a', 'c', 'subdir/'])
+        self.run_bzr('mv', 'a', 'b')
+        self.run_bzr('mv', 'b', 'subdir')
+        self.run_bzr('mv', 'subdir/b', 'a')
+        self.run_bzr('mv', 'a', 'b', 'subdir')
+        self.run_bzr('mv', 'subdir/a', 'subdir/newa')
+
+
+
+class TestVersion(BzrTestBase):
+    """Check output from version command and master option is reasonable"""
     def runTest(self):
         # output is intentionally passed through to stdout so that we
         # can see the version being tested
-        self.runbzr(['version'])
+        from cStringIO import StringIO
+        save_out = sys.stdout
+        try:
+            sys.stdout = tmp_out = StringIO()
+            
+            self.run_bzr('version')
+        finally:
+            sys.stdout = save_out
 
+        output = tmp_out.getvalue()
+        self.log('bzr version output:')
+        self.log(output)
+        
+        self.assert_(output.startswith('bzr (bazaar-ng) '))
+        self.assertNotEqual(output.index('Canonical'), -1)
+
+        # make sure --version is consistent
+        try:
+            sys.stdout = tmp_out = StringIO()
+            
+            self.run_bzr('--version')
+        finally:
+            sys.stdout = save_out
+
+        self.log('bzr --version output:')
+        self.log(tmp_out.getvalue())
+
+        self.assertEquals(output, tmp_out.getvalue())
+
+
+        
 
 
 class HelpCommands(ExternalBase):
@@ -309,88 +351,6 @@ class OldTests(ExternalBase):
 
 
 
-
-
-
-        chdir('..')
-        chdir('..')
-        progress('branch')
-        assert os.path.exists('branch1')
-        assert not os.path.exists('branch2')
-        # Can't create a branch if it already exists
-        runbzr('branch branch1', retcode=1)
-        # Can't create a branch if its parent doesn't exist
-        runbzr('branch /unlikely/to/exist', retcode=1)
-        runbzr('branch branch1 branch2')
-        assert exists('branch2')
-        assert exists('branch2/sub1')
-        assert exists('branch2/sub1/hello.txt')
-        
-        runbzr('branch --revision 0 branch1 branch3')
-        assert not exists('branch3/sub1/hello.txt')
-        runbzr('branch --revision 0..3 branch1 branch4', retcode=1)
-
-        progress("pull")
-        chdir('branch1')
-        runbzr('pull', retcode=1)
-        runbzr('pull ../branch2')
-        chdir('.bzr')
-        runbzr('pull')
-        runbzr('commit --unchanged -m empty')
-        runbzr('pull')
-        chdir('../../branch2')
-        runbzr('pull')
-        runbzr('commit --unchanged -m empty')
-        chdir('../branch1')
-        runbzr('commit --unchanged -m empty')
-        runbzr('pull', retcode=1)
-        chdir ('..')
-
-        progress('status after remove')
-        mkdir('status-after-remove')
-        # see mail from William Dodé, 2005-05-25
-        # $ bzr init; touch a; bzr add a; bzr commit -m "add a"
-        #     * looking for changes...
-        #     added a
-        #     * commited r1
-        #     $ bzr remove a
-        #     $ bzr status
-        #     bzr: local variable 'kind' referenced before assignment
-        #     at /vrac/python/bazaar-ng/bzrlib/diff.py:286 in compare_trees()
-        #     see ~/.bzr.log for debug information
-        chdir('status-after-remove')
-        runbzr('init')
-        file('a', 'w').write('foo')
-        runbzr('add a')
-        runbzr(['commit', '-m', 'add a'])
-        runbzr('remove a')
-        runbzr('status')
-
-        chdir('..')
-
-
-
-        progress("recursive and non-recursive add")
-        mkdir('no-recurse')
-        chdir('no-recurse')
-        runbzr('init')
-        mkdir('foo')
-        fp = os.path.join('foo', 'test.txt')
-        f = file(fp, 'w')
-        f.write('hello!\n')
-        f.close()
-        runbzr('add --no-recurse foo')
-        runbzr('file-id foo')
-        runbzr('file-id ' + fp, 1)      # not versioned yet
-        runbzr('commit -m add-dir-only')
-
-        self.runbzr('file-id ' + fp, 1)      # still not versioned 
-
-        self.runbzr('add foo')
-        self.runbzr('file-id ' + fp)
-        self.runbzr('commit -m add-sub-file')
-
-        chdir('..')
 
 
 

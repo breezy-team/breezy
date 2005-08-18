@@ -22,9 +22,9 @@
 
 # importing this module is fairly slow because it has to load several ElementTree bits
 try:
-    from cElementTree import ElementTree, SubElement, Element
+    from util.cElementTree import ElementTree, SubElement, Element
 except ImportError:
-    from elementtree.ElementTree import ElementTree, SubElement, Element
+    from util.elementtree.ElementTree import ElementTree, SubElement, Element
 
 
 def pack_xml(o, f):

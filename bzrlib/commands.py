@@ -15,8 +15,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+# TODO: Split the command framework away from the actual commands.
 
-import sys, os
+# TODO: probably should say which arguments are candidates for glob
+# expansion on windows and do that at the command level.
+
+import sys
+import os
 
 import bzrlib
 from bzrlib.trace import mutter, note, log_error, warning
@@ -136,6 +141,20 @@ def get_merge_type(typestring):
         raise BzrCommandError(msg)
     
 
+def get_merge_type(typestring):
+    """Attempt to find the merge class/factory associated with a string."""
+    from merge import merge_types
+    try:
+        return merge_types[typestring][0]
+    except KeyError:
+        templ = '%s%%7s: %%s' % (' '*12)
+        lines = [templ % (f[0], f[1][1]) for f in merge_types.iteritems()]
+        type_list = '\n'.join(lines)
+        msg = "No known merge type %s. Supported types are:\n%s" %\
+            (typestring, type_list)
+        raise BzrCommandError(msg)
+    
+
 
 def _get_cmd_dict(plugins_override=True):
     d = {}
@@ -237,16 +256,18 @@ class Command(object):
 class ExternalCommand(Command):
     """Class to wrap external commands.
 
-    We cheat a little here, when get_cmd_class() calls us we actually give it back
-    an object we construct that has the appropriate path, help, options etc for the
-    specified command.
+    We cheat a little here, when get_cmd_class() calls us we actually
+    give it back an object we construct that has the appropriate path,
+    help, options etc for the specified command.
 
-    When run_bzr() tries to instantiate that 'class' it gets caught by the __call__
-    method, which we override to call the Command.__init__ method. That then calls
-    our run method which is pretty straight forward.
+    When run_bzr() tries to instantiate that 'class' it gets caught by
+    the __call__ method, which we override to call the Command.__init__
+    method. That then calls our run method which is pretty straight
+    forward.
 
-    The only wrinkle is that we have to map bzr's dictionary of options and arguments
-    back into command line options and arguments for the script.
+    The only wrinkle is that we have to map bzr's dictionary of options
+    and arguments back into command line options and arguments for the
+    script.
     """
 
     def find_command(cls, cmd):
@@ -503,6 +524,7 @@ class cmd_move(Command):
     def run(self, source_list, dest):
         b = find_branch('.')
 
+        # TODO: glob expansion on windows?
         b.move([b.relpath(s) for s in source_list], b.relpath(dest))
 
 
@@ -528,6 +550,37 @@ class cmd_rename(Command):
 
 
 
+class cmd_mv(Command):
+    """Move or rename a file.
+
+    usage:
+        bzr mv OLDNAME NEWNAME
+        bzr mv SOURCE... DESTINATION
+
+    If the last argument is a versioned directory, all the other names
+    are moved into it.  Otherwise, there must be exactly two arguments
+    and the file is changed to a new name, which must not already exist.
+
+    Files cannot be moved between branches.
+    """
+    takes_args = ['names*']
+    def run(self, names_list):
+        if len(names_list) < 2:
+            raise BzrCommandError("missing file argument")
+        b = find_branch(names_list[0])
+
+        rel_names = [b.relpath(x) for x in names_list]
+        
+        if os.path.isdir(names_list[-1]):
+            # move into existing directory
+            b.move(rel_names[:-1], rel_names[-1])
+        else:
+            if len(names_list) != 2:
+                raise BzrCommandError('to mv multiple files the destination '
+                                      'must be a versioned directory')
+            b.move(rel_names[0], rel_names[1])
+            
+    
 
 
 class cmd_pull(Command):
@@ -600,11 +653,12 @@ class cmd_branch(Command):
     """
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision']
+    aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None):
         import errno
         from bzrlib.merge import merge
-        from bzrlib.branch import DivergedBranches, NoSuchRevision, \
+        from bzrlib.branch import DivergedBranches, \
              find_cached_branch, Branch
         from shutil import rmtree
         from meta_store import CachedStore
@@ -651,7 +705,7 @@ class cmd_branch(Command):
                     revno, rev_id = br_from.get_revision_info(revision[0])
                 try:
                     br_to.update_revisions(br_from, stop_revision=revno)
-                except NoSuchRevision:
+                except bzrlib.errors.NoSuchRevision:
                     rmtree(to_location)
                     msg = "The branch %s has no revision %d." % (from_location,
                                                                  revno)
@@ -797,8 +851,6 @@ class cmd_diff(Command):
     If files are listed, only the changes in those files are listed.
     Otherwise, all changes for the tree are listed.
 
-    TODO: Given two revision arguments, show the difference between them.
-
     TODO: Allow diff across branches.
 
     TODO: Option to use external diff command; could be GNU diff, wdiff,
@@ -813,6 +865,11 @@ class cmd_diff(Command):
           deleted files.
 
     TODO: This probably handles non-Unix newlines poorly.
+
+    examples:
+        bzr diff
+        bzr diff -r1
+        bzr diff -r1:2
     """
     
     takes_args = ['file*']
@@ -831,16 +888,19 @@ class cmd_diff(Command):
         else:
             b = find_branch('.')
 
-        # TODO: Make show_diff support taking 2 arguments
-        base_rev = None
         if revision is not None:
-            if len(revision) != 1:
-                raise BzrCommandError('bzr diff --revision takes exactly one revision identifier')
-            base_rev = revision[0]
-    
-        show_diff(b, base_rev, specific_files=file_list,
-                  external_diff_options=diff_options)
-
+            if len(revision) == 1:
+                show_diff(b, revision[0], specific_files=file_list,
+                          external_diff_options=diff_options)
+            elif len(revision) == 2:
+                show_diff(b, revision[0], specific_files=file_list,
+                          external_diff_options=diff_options,
+                          revision2=revision[1])
+            else:
+                raise BzrCommandError('bzr diff --revision takes exactly one or two revision identifiers')
+        else:
+            show_diff(b, None, specific_files=file_list,
+                      external_diff_options=diff_options)
 
         
 
@@ -872,7 +932,7 @@ class cmd_modified(Command):
     """List files modified in working tree."""
     hidden = True
     def run(self):
-        from bzrlib.diff import compare_trees
+        from bzrlib.delta import compare_trees
 
         b = find_branch('.')
         td = compare_trees(b.basis_tree(), b.working_tree())
@@ -927,7 +987,8 @@ class cmd_log(Command):
     """
 
     takes_args = ['filename?']
-    takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision','long', 'message']
+    takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision',
+                     'long', 'message', 'short',]
     
     def run(self, filename=None, timezone='original',
             verbose=False,
@@ -935,7 +996,8 @@ class cmd_log(Command):
             forward=False,
             revision=None,
             message=None,
-            long=False):
+            long=False,
+            short=False):
         from bzrlib.branch import find_branch
         from bzrlib.log import log_formatter, show_log
         import codecs
@@ -975,7 +1037,7 @@ class cmd_log(Command):
         # in e.g. the default C locale.
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
-        if long:
+        if not short:
             log_format = 'long'
         else:
             log_format = 'short'
@@ -1198,10 +1260,12 @@ class cmd_local_time_offset(Command):
 
 class cmd_commit(Command):
     """Commit changes into a new revision.
+    
+    If no arguments are given, the entire tree is committed.
 
     If selected files are specified, only changes to those files are
-    committed.  If a directory is specified then its contents are also
-    committed.
+    committed.  If a directory is specified then the directory and everything 
+    within it is committed.
 
     A selected-file commit may fail in some cases where the committed
     tree would be invalid, such as trying to commit a file in a
@@ -1215,6 +1279,8 @@ class cmd_commit(Command):
     takes_options = ['message', 'file', 'verbose', 'unchanged']
     aliases = ['ci', 'checkin']
 
+    # TODO: Give better message for -s, --summary, used by tla people
+    
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False):
         from bzrlib.errors import PointlessCommit
@@ -1222,6 +1288,8 @@ class cmd_commit(Command):
 
         ## Warning: shadows builtin file()
         if not message and not file:
+            # FIXME: Ugly; change status code to send to a provided function?
+            
             import cStringIO
             stdout = sys.stdout
             catcher = cStringIO.StringIO()
@@ -1242,7 +1310,9 @@ class cmd_commit(Command):
             message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
         b = find_branch('.')
-
+        if selected_list:
+            selected_list = [b.relpath(s) for s in selected_list]
+            
         try:
             b.commit(message, verbose=verbose,
                      specific_files=selected_list,
@@ -1483,6 +1553,40 @@ class cmd_help(Command):
 
 
 
+class cmd_missing(Command):
+    """What is missing in this branch relative to other branch.
+    """
+    takes_args = ['remote?']
+    aliases = ['mis', 'miss']
+    # We don't have to add quiet to the list, because 
+    # unknown options are parsed as booleans
+    takes_options = ['verbose', 'quiet']
+
+    def run(self, remote=None, verbose=False, quiet=False):
+        from bzrlib.branch import find_branch, DivergedBranches
+        from bzrlib.errors import BzrCommandError
+        from bzrlib.missing import get_parent, show_missing
+
+        if verbose and quiet:
+            raise BzrCommandError('Cannot pass both quiet and verbose')
+
+        b = find_branch('.')
+        parent = get_parent(b)
+        if remote is None:
+            if parent is None:
+                raise BzrCommandError("No missing location known or specified.")
+            else:
+                if not quiet:
+                    print "Using last location: %s" % parent
+                remote = parent
+        elif parent is None:
+            # We only update x-pull if it did not exist, missing should not change the parent
+            b.controlfile('x-pull', 'wb').write(remote + '\n')
+        br_remote = find_branch(remote)
+
+        return show_missing(b, br_remote, verbose=verbose, quiet=quiet)
+
+
 class cmd_plugins(Command):
     """List plugins"""
     hidden = True
@@ -1515,6 +1619,7 @@ OPTIONS = {
     'no-recurse':             None,
     'profile':                None,
     'revision':               _parse_revision_str,
+    'short':                  None,
     'show-ids':               None,
     'timezone':               str,
     'verbose':                None,
@@ -1681,73 +1786,6 @@ def _match_argform(cmd, takes_args, args):
     return argdict
 
 
-def _parse_master_args(argv):
-    """Parse the arguments that always go with the original command.
-    These are things like bzr --no-plugins, etc.
-
-    There are now 2 types of option flags. Ones that come *before* the command,
-    and ones that come *after* the command.
-    Ones coming *before* the command are applied against all possible commands.
-    And are generally applied before plugins are loaded.
-
-    The current list are:
-        --builtin   Allow plugins to load, but don't let them override builtin commands,
-                    they will still be allowed if they do not override a builtin.
-        --no-plugins    Don't load any plugins. This lets you get back to official source
-                        behavior.
-        --profile   Enable the hotspot profile before running the command.
-                    For backwards compatibility, this is also a non-master option.
-        --version   Spit out the version of bzr that is running and exit.
-                    This is also a non-master option.
-        --help      Run help and exit, also a non-master option (I think that should stay, though)
-
-    >>> argv, opts = _parse_master_args(['--test'])
-    Traceback (most recent call last):
-    ...
-    BzrCommandError: Invalid master option: 'test'
-    >>> argv, opts = _parse_master_args(['--version', 'command'])
-    >>> print argv
-    ['command']
-    >>> print opts['version']
-    True
-    >>> argv, opts = _parse_master_args(['--profile', 'command', '--more-options'])
-    >>> print argv
-    ['command', '--more-options']
-    >>> print opts['profile']
-    True
-    >>> argv, opts = _parse_master_args(['--no-plugins', 'command'])
-    >>> print argv
-    ['command']
-    >>> print opts['no-plugins']
-    True
-    >>> print opts['profile']
-    False
-    >>> argv, opts = _parse_master_args(['command', '--profile'])
-    >>> print argv
-    ['command', '--profile']
-    >>> print opts['profile']
-    False
-    """
-    master_opts = {'builtin':False,
-        'no-plugins':False,
-        'version':False,
-        'profile':False,
-        'help':False
-    }
-
-    for arg in argv[:]:
-        if arg[:2] != '--': # at the first non-option, we return the rest
-            break
-        arg = arg[2:] # Remove '--'
-        if arg not in master_opts:
-            # We could say that this is not an error, that we should
-            # just let it be handled by the main section instead
-            raise BzrCommandError('Invalid master option: %r' % arg)
-        argv.pop(0) # We are consuming this entry
-        master_opts[arg] = True
-    return argv, master_opts
-
-
 
 def run_bzr(argv):
     """Execute a command.
@@ -1756,24 +1794,53 @@ def run_bzr(argv):
     logging and error handling.  
     
     argv
-       The command-line arguments, without the program name.
+       The command-line arguments, without the program name from argv[0]
     
     Returns a command status or raises an exception.
+
+    Special master options: these must come before the command because
+    they control how the command is interpreted.
+
+    --no-plugins
+        Do not load plugin modules at all
+
+    --builtin
+        Only use builtin commands.  (Plugins are still allowed to change
+        other behaviour.)
+
+    --profile
+        Run under the Python profiler.
     """
+    
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
 
-    # some options like --builtin and --no-plugins have special effects
-    argv, master_opts = _parse_master_args(argv)
-    if not master_opts['no-plugins']:
+    opt_profile = opt_no_plugins = opt_builtin = False
+
+    # --no-plugins is handled specially at a very early stage. We need
+    # to load plugins before doing other command parsing so that they
+    # can override commands, but this needs to happen first.
+
+    for a in argv[:]:
+        if a == '--profile':
+            opt_profile = True
+        elif a == '--no-plugins':
+            opt_no_plugins = True
+        elif a == '--builtin':
+            opt_builtin = True
+        else:
+            break
+        argv.remove(a)
+
+    if not opt_no_plugins:
         from bzrlib.plugin import load_plugins
         load_plugins()
 
     args, opts = parse_args(argv)
 
-    if master_opts.get('help') or 'help' in opts:
+    if 'help' in opts:
         from bzrlib.help import help
-        if argv:
-            help(argv[0])
+        if args:
+            help(args[0])
         else:
             help()
         return 0            
@@ -1782,25 +1849,14 @@ def run_bzr(argv):
         show_version()
         return 0
     
-    if args and args[0] == 'builtin':
-        include_plugins=False
-        args = args[1:]
-    
-    try:
-        cmd = str(args.pop(0))
-    except IndexError:
+    if not args:
         print >>sys.stderr, "please try 'bzr help' for help"
         return 1
+    
+    cmd = str(args.pop(0))
 
-    plugins_override = not (master_opts['builtin'])
-    canonical_cmd, cmd_class = get_cmd_class(cmd, plugins_override=plugins_override)
-
-    profile = master_opts['profile']
-    # For backwards compatibility, I would rather stick with --profile being a
-    # master/global option
-    if 'profile' in opts:
-        profile = True
-        del opts['profile']
+    canonical_cmd, cmd_class = \
+                   get_cmd_class(cmd, plugins_override=not opt_builtin)
 
     # check options are reasonable
     allowed = cmd_class.takes_options
@@ -1815,7 +1871,7 @@ def run_bzr(argv):
     for k, v in opts.items():
         cmdopts[k.replace('-', '_')] = v
 
-    if profile:
+    if opt_profile:
         import hotshot, tempfile
         pffileno, pfname = tempfile.mkstemp()
         try:
@@ -1842,10 +1898,15 @@ def run_bzr(argv):
 
 def _report_exception(summary, quiet=False):
     import traceback
+    
     log_error('bzr: ' + summary)
     bzrlib.trace.log_exception()
 
+    if os.environ.get('BZR_DEBUG'):
+        traceback.print_exc()
+
     if not quiet:
+        sys.stderr.write('\n')
         tb = sys.exc_info()[2]
         exinfo = traceback.extract_tb(tb)
         if exinfo:
@@ -1867,7 +1928,7 @@ def main(argv):
                 sys.stdout.flush()
         except BzrError, e:
             quiet = isinstance(e, (BzrCommandError))
-            _report_exception('error: ' + e.args[0], quiet=quiet)
+            _report_exception('error: ' + str(e), quiet=quiet)
             if len(e.args) > 1:
                 for h in e.args[1]:
                     # some explanation or hints

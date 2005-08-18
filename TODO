@@ -17,7 +17,18 @@ less, and several days or more.
 Small things
 ------------
 
-* is_within_any is very very dodgy
+* ``bzr status`` should show some description of patches that are merged but 
+  not yet committed.  Preferably in a very compact format so that they
+  just fit on a single line; this could also be used for say ``log
+  --tiny``::
+
+  2005-11-05      mbp  Flowers for stephane
+
+* print a message at the end of running the tests telling them tht the
+  test log and output exists but can be removed
+
+* tests for running the commit editor, and fix problem of not passing in 
+  multiple arguments
 
 * Merging add of a new file clashing with an existing file doesn't
   work; add gets an error that it's already versioned and the merge
@@ -68,7 +79,9 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 * ``bzr status DIR`` should give status on all files under that
   directory.
 
-* ``bzr log DIR`` should give changes to any files within DIR.
+* ``bzr log DIR`` should give changes to any files within DIR; at the
+  moment it only lists things which modify the specific named file
+  (and not its contents)
 
 * ``bzr inventory -r REV`` and perhaps unify this with ``bzr ls``,
   giving options to display ids, types, etc.
@@ -156,13 +169,51 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 * Reproducible performance benchmark to measure whether performance is 
   getting better or worse.
 
+* ``bzr log -m foo`` should perhaps error if nothing matches?
+
+* ``bzr diff -r 30 -r 40 foo.c`` or ``bzr diff -r30..40 foo.c``
+
+  If diffing between two branches then we probably want two -r
+  options, since the revisions don't form a range that can be
+  evaluated on either one.
+
+* bzr diff shouldn't diff binary files
+
+* setup.py install when run from a bzr tree should freeze the tree
+  revision-id into the installed bzr.
+
+* bzr script should trap ImportError and perhaps give a better error
+  message?
+
+* revert after a merge should possibly remove all the BASE/THIS/OTHER
+  files to get you back to where you were.
+
+* files that are added and then deleted are still reported as added
+
+* stores should raise KeyError, not IndexError
+
+* merging from a remote branch seems to sometimes raise errors not
+  present locally
+
+* should be possible to give a related branch when pulling from a
+  remote branch to make things faster
+
+* sometimes gives "conflicting add" even when the contents are in fact
+  the same???
+
 
 Medium things
 -------------
 
-* Merge revert patch.
+* ~/.bzr.log is not written anymore for some reason.
 
-* ``bzr mv`` that does either rename or move as in Unix.
+* merge should add all revision and inventory XML to the local store.
+
+* check should give a warning for revisions that are named in the
+  chain but not actually present in the store.
+
+* remove anything outside of the branch implementation that directly
+  accesses the stores.
 
 * More efficient diff of only selected files.  We should be able to
   just get the id for the selected files, look up their location and
@@ -181,6 +232,8 @@ Medium things
   suitable for transmission over email.
 
 * More test cases.
+
+  - ``missing`` command
 
   - Selected-file commit
 
@@ -201,13 +254,9 @@ Medium things
 
   Given this we might be able to import patches at 1/second or better.
 
-* Get branch over http.
-
-* Pull pure updates over http.
-
 * revfile compression.
 
-* Split inventory into per-directory files.
+* Split inventory into per-directory files?
 
 * Fix ignore file parsing:
 
@@ -328,9 +377,9 @@ Medium things
 * Function to list a directory, saying in which revision each file was
   last modified.  Useful for web and gui interfaces, and slow to
   compute one file at a time.
-
-* unittest is standard, but the results are kind of ugly; would be
-  nice to make it cleaner.
+  
+  This will be done when we track file texts by referring to the
+  version that created them. 
 
 * Check locking is correct during merge-related operations.
 
@@ -344,6 +393,33 @@ Medium things
   make it cleaner to construct objects wrapping external commands.
 
 * Track all merged-in revisions in a versioned add-only metafile.
+
+* ``pull --clobber`` should discard any local changes not present
+  remotely.  Not generally what you want, but possibly useful when
+  you're just mirroring another branch and want to keep tracking it
+  even when they e.g. uncommit or make similar non-forward movements.
+  Also for push I suppose.  Clobber may not be the best name, maybe
+  ``--destroy``?
+
+* ``uncommit`` command that removes a revision from the end of the
+  revision-history; just doing this is enough to remove the commit,
+  and a new commit will automatically be made against the
+  predecessor.  This can be repeated.
+
+  It only makes sense to delete from the tail of history, not from the
+  end.
+
+  The revision, its inventory and texts remain floating in the store.
+  We should perhaps add the revision to a list of removed-commits, so
+  that it can be restored or at least accounted for when checking
+  consistency.  This file would not be versioned, and probably should
+  not propagate when branched.
+
+  If we track merged revisions then we need to update this list too.
+  If the list is stored in a weave it's easy (implicit): the version
+  of the list can remain but it won't be referenced anymore.  It's
+  probably best to just store this list in a weave in the first place
+  and be done.
 
 
 Large things

@@ -1,15 +1,22 @@
-from merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
-from changeset import generate_changeset, ExceptionConflictHandler
-from changeset import Inventory, Diff3Merge
+from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
+from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
+from bzrlib.changeset import Inventory, Diff3Merge
 from bzrlib import find_branch
 import bzrlib.osutils
 from bzrlib.errors import BzrCommandError
-from bzrlib.diff import compare_trees
+from bzrlib.delta import compare_trees
 from trace import mutter, warning
 import os.path
 import tempfile
 import shutil
 import errno
+
+
+# comments from abentley on irc: merge happens in two stages, each
+# of which generates a changeset object
+
+# stage 1: generate OLD->OTHER,
+# stage 2: use MINE and OLD->OTHER to generate MINE -> RESULT
 
 class UnrelatedBranches(BzrCommandError):
     def __init__(self):
@@ -19,7 +26,12 @@ class UnrelatedBranches(BzrCommandError):
 
 
 class MergeConflictHandler(ExceptionConflictHandler):
-    """Handle conflicts encountered while merging"""
+    """Handle conflicts encountered while merging.
+
+    This subclasses ExceptionConflictHandler, so that any types of
+    conflict that are not explicitly handled cause an exception and
+    terminate the merge.
+    """
     def __init__(self, dir, ignore_zero=False):
         ExceptionConflictHandler.__init__(self, dir)
         self.conflicts = 0
@@ -83,6 +95,12 @@ class MergeConflictHandler(ExceptionConflictHandler):
         self.dump(other_lines, this_path+".OTHER")
         os.rename(new_file, this_path)
         self.conflict("Diff3 conflict encountered in %s" % this_path)
+
+    def new_contents_conflict(self, filename, other_contents):
+        """Conflicting contents for newly added file."""
+        self.copy(other_contents, filename + ".OTHER")
+        self.conflict("Conflict in newly added file %s" % filename)
+    
 
     def target_exists(self, entry, target, old_path):
         """Handle the case when the target file or dir exists"""

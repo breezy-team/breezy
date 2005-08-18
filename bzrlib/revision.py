@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+import bzrlib.errors
 
 
 class RevisionReference(object):
@@ -113,10 +114,8 @@ class Revision(object):
 def unpack_revision(elt):
     """Convert XML element into Revision object."""
     # <changeset> is deprecated...
-    from bzrlib.errors import BzrError
-    
     if elt.tag not in ('revision', 'changeset'):
-        raise BzrError("unexpected tag in revision file: %r" % elt)
+        raise bzrlib.errors.BzrError("unexpected tag in revision file: %r" % elt)
 
     rev = Revision(committer = elt.get('committer'),
                    timestamp = float(elt.get('timestamp')),
@@ -167,4 +166,43 @@ def validate_revision_id(rid):
 
     if not REVISION_ID_RE.match(rid):
         raise ValueError("malformed revision-id %r" % rid)
+
+def is_ancestor(revision_id, candidate_id, revision_source):
+    """Return true if candidate_id is an ancestor of revision_id.
+    A false negative will be returned if any intermediate descendent of
+    candidate_id is not present in any of the revision_sources.
     
+    revisions_source is an object supporting a get_revision operation that
+    behaves like Branch's.
+    """
+
+    ancestors = (revision_id,)
+    while len(ancestors) > 0:
+        new_ancestors = []
+        for ancestor in ancestors:
+            if ancestor == candidate_id:
+                return True
+            try:
+                revision = revision_source.get_revision(ancestor)
+            except bzrlib.errors.NoSuchRevision, e:
+                if e.revision == revision_id:
+                    raise 
+                else:
+                    continue
+            new_ancestors.extend([p.revision_id for p in revision.parents])
+        ancestors = new_ancestors
+
+
+class MultipleRevisionSources(object):
+    def __init__(self, *args):
+        object.__init__(self)
+        assert len(args) != 0
+        self._revision_sources = args
+
+    def get_revision(self, revision_id):
+        for source in self._revision_sources:
+            try:
+                return source.get_revision(revision_id)
+            except bzrlib.errors.NoSuchRevision, e:
+                pass
+        raise e

@@ -38,18 +38,27 @@ from trace import mutter
 
 ENABLE_URLGRABBER = True
 
+from bzrlib.errors import BzrError
+
+class GetFailed(BzrError):
+    def __init__(self, url, status):
+        BzrError.__init__(self, "Get %s failed with status %s" % (url, status))
+        self.url = url
+        self.status = status
 
 if ENABLE_URLGRABBER:
-    import urlgrabber
-    import urlgrabber.keepalive
-    urlgrabber.keepalive.DEBUG = 0
+    import util.urlgrabber
+    import util.urlgrabber.keepalive
+    util.urlgrabber.keepalive.DEBUG = 0
     def get_url(path, compressed=False):
         try:
             url = path
             if compressed:
                 url += '.gz'
             mutter("grab url %s" % url)
-            url_f = urlgrabber.urlopen(url, keepalive=1, close_connection=0)
+            url_f = util.urlgrabber.urlopen(url, keepalive=1, close_connection=0)
+            if url_f.status != 200:
+                raise GetFailed(url, url_f.status)
             if not compressed:
                 return url_f
             else:
@@ -167,7 +176,10 @@ class RemoteStore(object):
         
     def __getitem__(self, fileid):
         p = self._path(fileid)
-        return get_url(p, compressed=True)
+        try:
+            return get_url(p, compressed=True)
+        except:
+            raise KeyError(fileid)
     
 
     

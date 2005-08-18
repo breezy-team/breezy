@@ -14,12 +14,31 @@ DEVELOPMENT HEAD
       FOO.
       
     * ``bzr add`` with no arguments adds everything under the current directory.
+
+    * ``bzr mv`` does move or rename depending on its arguments, like
+      the Unix command.
+
+    * ``bzr missing`` command shows a summary of the differences
+      between two trees.  (Merged from John Arbash-Meinel.)
+
     
   ENHANCEMENTS:
 
     * Faster working tree operations.
 
+
   CHANGES:
+
+    * 3rd-party modules shipped with bzr are copied within the bzrlib
+      python package, so that they can be installed by the setup
+      script without clashing with anything already existing on the
+      system.  (Contributed by Gustavo Niemeyer.)
+
+    * Moved plugins directory to bzrlib/, so that there's a standard
+      plugin directory which is not only installed with bzr itself but
+      is also available when using bzr from the development tree.
+      BZR_PLUGIN_PATH and DEFAULT_PLUGIN_PATH are then added to the
+      standard plugins directory.
 
     * When exporting to a tarball with ``bzr export --format tgz``, put 
       everything under a top directory rather than dumping it into the
@@ -38,6 +57,22 @@ DEVELOPMENT HEAD
 
     * By default the commit command refuses to record a revision with
       no changes unless the ``--unchanged`` option is given.
+
+    * The ``--no-plugins``, ``--profile`` and ``--builtin`` command
+      line options must come before the command name because they 
+      affect what commands are available; all other options must come 
+      after the command name because their interpretation depends on
+      it.
+
+    * ``branch`` and ``clone`` added as aliases for ``branch``.
+
+    * Default log format is back to the long format; the compact one
+      is available with ``--short``.
+      
+      
+  BUG FIXES:
+  
+    * Fix bugs in committing only selected files or within a subdirectory.
 
 
 bzr-0.0.5  2005-06-15

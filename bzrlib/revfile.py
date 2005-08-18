@@ -52,6 +52,22 @@ Both the index and the text are only ever appended to; a consequence
 is that sequence numbers are stable references.  But not every
 repository in the world will assign the same sequence numbers,
 therefore the SHA-1 is the only universally unique reference.
+
+This is meant to scale to hold 100,000 revisions of a single file, by
+which time the index file will be ~4.8MB and a bit big to read
+sequentially.
+
+Some of the reserved fields could be used to implement a (semi?)
+balanced tree indexed by SHA1 so we can much more efficiently find the
+index associated with a particular hash.  For 100,000 revs we would be
+able to find it in about 17 random reads, which is not too bad.
+
+This performs pretty well except when trying to calculate deltas of
+really large files.  For that the main thing would be to plug in
+something faster than difflib, which is after all pure Python.
+Another approach is to just store the gzipped full text of big files,
+though perhaps that's too perverse?
+
 The iter method here will generally read through the whole index file
 in one go.  With readahead in the kernel and python/libc (typically
 128kB) this means that there should be no seeks and often only one
@@ -73,12 +89,12 @@ read() call to get everything into memory.
 # if there are gaps and that can happen if we're interrupted while
 # writing to the datafile.  Overlapping would be very bad though.
 
-
+# TODO: Shouldn't need to lock if we always write in append mode and
+# then ftell after writing to see where it went.  In any case we
+# assume the whole branch is protected by a lock.
 
 import sys, zlib, struct, mdiff, stat, os, sha
 from binascii import hexlify, unhexlify
-
-factor = 10
 
 _RECORDSIZE = 48
 
@@ -96,7 +112,7 @@ I_LEN = 4
 FL_GZIP = 1
 
 # maximum number of patches in a row before recording a whole text.
-CHAIN_LIMIT = 50
+CHAIN_LIMIT = 10
 
 
 class RevfileError(Exception):
@@ -133,7 +149,6 @@ class Revfile(object):
             self.idxfile = open(idxname, 'w+b')
             self.datafile = open(dataname, 'w+b')
             
-            print 'init empty file'
             self.idxfile.write(_HEADER)
             self.idxfile.flush()
         else:
@@ -227,16 +242,38 @@ class Revfile(object):
         return self._add_compressed(text_sha, text, _NO_RECORD, compress)
 
 
+    # NOT USED
+    def _choose_base(self, seed, base):
+        while seed & 3 == 3:
+            if base == _NO_RECORD:
+                return _NO_RECORD
+            idxrec = self[base]
+            if idxrec[I_BASE] == _NO_RECORD:
+                return base
+
+            base = idxrec[I_BASE]
+            seed >>= 2
+                
+        return base        # relative to this full text
+        
+
+
     def _add_delta(self, text, text_sha, base, compress):
         """Add a text stored relative to a previous text."""
         self._check_index(base)
-        
+
         try:
-            base_text = self.get(base, recursion_limit=CHAIN_LIMIT)
+            base_text = self.get(base, CHAIN_LIMIT)
         except LimitHitException:
             return self._add_full_text(text, text_sha, compress)
         
         data = mdiff.bdiff(base_text, text)
+
+
+        if True: # paranoid early check for bad diff
+            result = mdiff.bpatch(base_text, data)
+            assert result == text
+            
         
         # If the delta is larger than the text, we might as well just
         # store the text.  (OK, the delta might be more compressible,
@@ -248,7 +285,7 @@ class Revfile(object):
             return self._add_compressed(text_sha, data, base, compress)
 
 
-    def add(self, text, base=_NO_RECORD, compress=True):
+    def add(self, text, base=None, compress=True):
         """Add a new text to the revfile.
 
         If the text is already present them its existing id is
@@ -262,6 +299,9 @@ class Revfile(object):
         only be used if it would be a size win and if the existing
         base is not at too long of a delta chain already.
         """
+        if base == None:
+            base = _NO_RECORD
+        
         self._check_write()
         
         text_sha = sha.new(text).digest()
@@ -272,6 +312,8 @@ class Revfile(object):
             # it's the same, in case someone ever breaks SHA-1.
             return idx                  # already present
         
+        # base = self._choose_base(ord(text_sha[0]), base)
+
         if base == _NO_RECORD:
             return self._add_full_text(text, text_sha, compress)
         else:
@@ -296,8 +338,8 @@ class Revfile(object):
             text = self._get_patched(idx, idxrec, recursion_limit)
 
         if sha.new(text).digest() != idxrec[I_SHA]:
-            raise RevfileError("corrupt SHA-1 digest on record %d"
-                               % idx)
+            raise RevfileError("corrupt SHA-1 digest on record %d in %s"
+                               % (idx, self.basename))
 
         return text
 
@@ -372,7 +414,7 @@ class Revfile(object):
         self._seek_index(idx)
         idxrec = self._read_next_index()
         if idxrec == None:
-            raise IndexError()
+            raise IndexError("no index %d" % idx)
         else:
             return idxrec
 
@@ -388,7 +430,7 @@ class Revfile(object):
         """Read back all index records.
 
         Do not seek the index file while this is underway!"""
-        sys.stderr.write(" ** iter called ** \n")
+        ## sys.stderr.write(" ** iter called ** \n")
         self._seek_index(0)
         while True:
             idxrec = self._read_next_index()
@@ -436,51 +478,76 @@ class Revfile(object):
         for idx in range(len(self)):
             t += len(self.get(idx))
         return t
+
+
+    def check(self, pb=None):
+        """Extract every version and check its hash."""
+        total = len(self)
+        for i in range(total):
+            if pb:
+                pb.update("check revision", i, total)
+            # the get method implicitly checks the SHA-1
+            self.get(i)
+        if pb:
+            pb.clear()
         
 
 
 def main(argv):
     try:
         cmd = argv[1]
+        filename = argv[2]
     except IndexError:
-        sys.stderr.write("usage: revfile dump\n"
-                         "       revfile add\n"
-                         "       revfile add-delta BASE\n"
-                         "       revfile get IDX\n"
-                         "       revfile find-sha HEX\n"
-                         "       revfile total-text-size\n"
-                         "       revfile last\n")
+        sys.stderr.write("usage: revfile dump REVFILE\n"
+                         "       revfile add REVFILE < INPUT\n"
+                         "       revfile add-delta REVFILE BASE < INPUT\n"
+                         "       revfile add-series REVFILE BASE FILE...\n"
+                         "       revfile get REVFILE IDX\n"
+                         "       revfile find-sha REVFILE HEX\n"
+                         "       revfile total-text-size REVFILE\n"
+                         "       revfile last REVFILE\n")
         return 1
 
+    if filename.endswith('.drev') or filename.endswith('.irev'):
+        filename = filename[:-5]
+
     def rw():
-        return Revfile('testrev', 'w')
+        return Revfile(filename, 'w')
 
     def ro():
-        return Revfile('testrev', 'r')
+        return Revfile(filename, 'r')
 
     if cmd == 'add':
         print rw().add(sys.stdin.read())
     elif cmd == 'add-delta':
-        print rw().add(sys.stdin.read(), int(argv[2]))
+        print rw().add(sys.stdin.read(), int(argv[3]))
+    elif cmd == 'add-series':
+        r = rw()
+        rev = int(argv[3])
+        for fn in argv[4:]:
+            print rev
+            rev = r.add(file(fn).read(), rev)
     elif cmd == 'dump':
         ro().dump()
     elif cmd == 'get':
         try:
-            idx = int(argv[2])
+            idx = int(argv[3])
         except IndexError:
-            sys.stderr.write("usage: revfile get IDX\n")
+            sys.stderr.write("usage: revfile get FILE IDX\n")
             return 1
+
+        r = ro()
 
         if idx < 0 or idx >= len(r):
             sys.stderr.write("invalid index %r\n" % idx)
             return 1
 
-        sys.stdout.write(ro().get(idx))
+        sys.stdout.write(r.get(idx))
     elif cmd == 'find-sha':
         try:
-            s = unhexlify(argv[2])
+            s = unhexlify(argv[3])
         except IndexError:
-            sys.stderr.write("usage: revfile find-sha HEX\n")
+            sys.stderr.write("usage: revfile find-sha FILE HEX\n")
             return 1
 
         idx = ro().find_sha(s)
@@ -493,6 +560,10 @@ def main(argv):
         print ro().total_text_size()
     elif cmd == 'last':
         print len(ro())-1
+    elif cmd == 'check':
+        import bzrlib.progress
+        pb = bzrlib.progress.ProgressBar()
+        ro().check(pb)
     else:
         sys.stderr.write("unknown command %r\n" % cmd)
         return 1

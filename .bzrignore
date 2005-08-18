@@ -1,5 +1,6 @@
 ## *.diff
 ./doc/*.html
+./tutorial.html
 *.py[oc]
 *~
 .arch-ids
@@ -14,3 +15,4 @@ testbzr.log
 api
 test.log
 ./tmp
+build
