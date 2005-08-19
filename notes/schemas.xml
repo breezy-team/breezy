@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<locatingRules xmlns="http://thaiopensource.com/ns/locating-rules/1.0">
+  <uri resource="inventory-v2-sample.xml" uri="inventory-v2.rnc"/>
+</locatingRules>
