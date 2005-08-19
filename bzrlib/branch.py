@@ -766,7 +766,7 @@ class Branch(object):
             return None
 
 
-    def missing_revisions(self, other, stop_revision=None):
+    def missing_revisions(self, other, stop_revision=None, diverged_ok=False):
         """
         If self and other have not diverged, return a list of the revisions
         present in other, but missing from self.
@@ -810,7 +810,7 @@ class Branch(object):
         return other_history[self_len:stop_revision]
 
 
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revision=None, revision_ids=None):
         """Pull in all new revisions from other branch.
         
         >>> from bzrlib.commit import commit
@@ -838,7 +838,8 @@ class Branch(object):
         pb = ProgressBar()
 
         pb.update('comparing histories')
-        revision_ids = self.missing_revisions(other, stop_revision)
+        if revision_ids is None:
+            revision_ids = self.missing_revisions(other, stop_revision)
 
         if hasattr(other.revision_store, "prefetch"):
             other.revision_store.prefetch(revision_ids)
