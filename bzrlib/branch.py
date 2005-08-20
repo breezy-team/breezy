@@ -30,7 +30,9 @@ from bzrlib.revision import Revision
 from bzrlib.xml import unpack_xml
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
-        
+from bzrlib.progress import ProgressBar
+
+       
 BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
 
@@ -810,7 +812,7 @@ class Branch(object):
         return other_history[self_len:stop_revision]
 
 
-    def update_revisions(self, other, stop_revision=None, revision_ids=None):
+    def update_revisions(self, other, stop_revision=None):
         """Pull in all new revisions from other branch.
         
         >>> from bzrlib.commit import commit
@@ -833,14 +835,16 @@ class Branch(object):
         >>> br1.text_store.total_size() == br2.text_store.total_size()
         True
         """
-        from bzrlib.progress import ProgressBar
-
         pb = ProgressBar()
-
         pb.update('comparing histories')
-        if revision_ids is None:
-            revision_ids = self.missing_revisions(other, stop_revision)
-
+        revision_ids = self.missing_revisions(other, stop_revision)
+        count = self.install_revisions(other, revision_ids, pb=pb)
+        self.append_revision(*revision_ids)
+        print "Added %d revisions." % count
+                    
+    def install_revisions(self, other, revision_ids, pb=None):
+        if pb is None:
+            pb = ProgressBar()
         if hasattr(other.revision_store, "prefetch"):
             other.revision_store.prefetch(revision_ids)
         if hasattr(other.inventory_store, "prefetch"):
@@ -874,11 +878,8 @@ class Branch(object):
         revision_ids = [ f.revision_id for f in revisions]
         count = self.revision_store.copy_multi(other.revision_store, 
                                                revision_ids)
-        for revision_id in revision_ids:
-            self.append_revision(revision_id)
-        print "Added %d revisions." % count
-                    
-        
+        return count
+       
     def commit(self, *args, **kw):
         from bzrlib.commit import commit
         commit(self, *args, **kw)
