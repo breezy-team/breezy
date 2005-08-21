@@ -838,9 +838,10 @@ class Branch(object):
         pb = ProgressBar()
         pb.update('comparing histories')
         revision_ids = self.missing_revisions(other, stop_revision)
-        count = self.install_revisions(other, revision_ids, pb=pb)
+        count, failures = self.install_revisions(other, revision_ids, pb=pb)
         self.append_revision(*revision_ids)
         print "Added %d revisions." % count
+        assert len(failures) == 0
                     
     def install_revisions(self, other, revision_ids, pb=None):
         if pb is None:
@@ -855,10 +856,14 @@ class Branch(object):
         revisions = []
         needed_texts = set()
         i = 0
-        for rev_id in revision_ids:
-            i += 1
-            pb.update('fetching revision', i, len(revision_ids))
-            rev = other.get_revision(rev_id)
+        failures = set()
+        for i, rev_id in enumerate(revision_ids):
+            pb.update('fetching revision', i+1, len(revision_ids))
+            try:
+                rev = other.get_revision(rev_id)
+            except bzrlib.errors.NoSuchRevision:
+                failures.add(rev_id)
+                continue
             revisions.append(rev)
             inv = other.get_inventory(str(rev.inventory_id))
             for key, entry in inv.iter_entries():
@@ -869,16 +874,19 @@ class Branch(object):
 
         pb.clear()
                     
-        count = self.text_store.copy_multi(other.text_store, needed_texts)
+        count, cp_fail = self.text_store.copy_multi(other.text_store, 
+                                                    needed_texts)
         print "Added %d texts." % count 
         inventory_ids = [ f.inventory_id for f in revisions ]
-        count = self.inventory_store.copy_multi(other.inventory_store, 
-                                                inventory_ids)
+        count, cp_fail = self.inventory_store.copy_multi(other.inventory_store, 
+                                                         inventory_ids)
         print "Added %d inventories." % count 
         revision_ids = [ f.revision_id for f in revisions]
-        count = self.revision_store.copy_multi(other.revision_store, 
-                                               revision_ids)
-        return count
+        count, cp_fail = self.revision_store.copy_multi(other.revision_store, 
+                                                          revision_ids,
+                                                          permit_failure=True)
+        assert len(cp_fail) == 0 
+        return count, failures
        
     def commit(self, *args, **kw):
         from bzrlib.commit import commit

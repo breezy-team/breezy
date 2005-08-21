@@ -91,4 +91,8 @@ class NoSuchRevision(BzrError):
         msg = "Branch %s has no revision %s" % (branch, revision)
         BzrError.__init__(self, msg)
 
-
+class InstallFailed(BzrError):
+    def __init__(self, revisions):
+        self.revisions = revisions
+        msg = "Could not install revisions:\n%s" % " ,".join(revisions)
+        BzrError.__init__(self, msg)
