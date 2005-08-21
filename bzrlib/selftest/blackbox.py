@@ -352,20 +352,21 @@ class OldTests(ExternalBase):
 
 
 
+def example_branch(test):
+    test.runbzr('init')
+
+    file('hello', 'wt').write('foo')
+    test.runbzr('add hello')
+    test.runbzr('commit -m setup hello')
+
+    file('goodbye', 'wt').write('baz')
+    test.runbzr('add goodbye')
+    test.runbzr('commit -m setup goodbye')
 
 
 class RevertCommand(ExternalBase):
     def runTest(self):
-        self.runbzr('init')
-
-        file('hello', 'wt').write('foo')
-        self.runbzr('add hello')
-        self.runbzr('commit -m setup hello')
-
-        file('goodbye', 'wt').write('baz')
-        self.runbzr('add goodbye')
-        self.runbzr('commit -m setup goodbye')
-        
+        example_branch(self)
         file('hello', 'wt').write('bar')
         file('goodbye', 'wt').write('qux')
         self.runbzr('revert hello')
@@ -374,3 +375,26 @@ class RevertCommand(ExternalBase):
         self.runbzr('revert')
         self.check_file_contents('goodbye', 'baz')
 
+
+class MergeCommand(ExternalBase):
+    def runTest(self):
+        from bzrlib.branch import Branch
+        import os
+        os.mkdir('a')
+        os.chdir('a')
+        example_branch(self)
+        os.chdir('..')
+        self.runbzr('branch a b')
+        os.chdir('b')
+        file('goodbye', 'wt').write('quux')
+        self.runbzr(['commit',  '-m',  "more u's are always good"])
+
+        os.chdir('../a')
+        file('hello', 'wt').write('quuux')
+        # We can't merge when there are in-tree changes
+        self.runbzr('merge ../b', retcode=1)
+        self.runbzr(['commit', '-m', "Like an epidemic of u's"])
+        self.runbzr('merge ../b')
+        self.check_file_contents('goodbye', 'quux')
+        # Merging a branch pulls its revision into the tree
+        Branch('.').get_revision_xml(Branch('../b').last_patch())

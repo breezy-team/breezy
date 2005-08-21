@@ -10,6 +10,7 @@ import os.path
 import tempfile
 import shutil
 import errno
+from fetch import greedy_fetch
 
 
 # comments from abentley on irc: merge happens in two stages, each
@@ -117,15 +118,22 @@ class MergeConflictHandler(ExceptionConflictHandler):
         if not self.ignore_zero:
             print "%d conflicts encountered.\n" % self.conflicts
             
-def get_tree(treespec, temp_root, label):
+def get_tree(treespec, temp_root, label, local_branch=None):
     location, revno = treespec
     branch = find_branch(location)
     if revno is None:
         base_tree = branch.working_tree()
-    elif revno == -1:
-        base_tree = branch.basis_tree()
     else:
-        base_tree = branch.revision_tree(branch.lookup_revision(revno))
+        if revno == -1:
+            revision = branch.last_patch()
+        else:
+            revision = branch.lookup_revision(revno)
+        if local_branch is not None:
+            if revision is not None:
+                greedy_fetch(local_branch, branch, revision)
+            base_tree = local_branch.revision_tree(revision)
+        else:
+            base_tree = branch.revision_tree(revision)
     temp_path = os.path.join(temp_root, label)
     os.mkdir(temp_path)
     return branch, MergeTree(base_tree, temp_path)
@@ -198,6 +206,8 @@ def merge(other_revision, base_revision,
     check_clean
         If true, this_dir must have no uncommitted changes before the
         merge begins.
+    all available ancestors of other_revision and base_revision are
+    automatically pulled into the branch.
     """
     tempdir = tempfile.mkdtemp(prefix="bzr-")
     try:
@@ -209,7 +219,8 @@ def merge(other_revision, base_revision,
                                     this_branch.basis_tree(), False)
             if changes.has_changed():
                 raise BzrCommandError("Working tree has uncommitted changes.")
-        other_branch, other_tree = get_tree(other_revision, tempdir, "other")
+        other_branch, other_tree = get_tree(other_revision, tempdir, "other",
+                                            this_branch)
         if base_revision == [None, None]:
             if other_revision[1] == -1:
                 o_revno = None
@@ -220,7 +231,8 @@ def merge(other_revision, base_revision,
             if base_revno is None:
                 raise UnrelatedBranches()
             base_revision = ['.', base_revno]
-        base_branch, base_tree = get_tree(base_revision, tempdir, "base")
+        base_branch, base_tree = get_tree(base_revision, tempdir, "base",
+                                          this_branch)
         if file_list is None:
             interesting_ids = None
         else:
