@@ -21,7 +21,7 @@ from bzrlib.progress import ProgressBar
 import sys
 import os
 
-def greedy_fetch(to_branch, from_branch, revision=None):
+def greedy_fetch(to_branch, from_branch, revision=None, pb=None):
     """Copy a revision and all available ancestors from one branch to another
     If no revision is specified, uses the last revision in the source branch's
     revision history.
@@ -48,7 +48,8 @@ def greedy_fetch(to_branch, from_branch, revision=None):
     count = 0
     while len(missing) > 0:
         installed, failed = to_branch.install_revisions(from_branch, 
-                                                        revision_ids=missing)
+                                                        revision_ids=missing,
+                                                        pb=pb)
         count += installed
         required_failed = failed.intersection(required_revisions)
         if len(required_failed) > 0:

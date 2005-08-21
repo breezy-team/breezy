@@ -829,19 +829,20 @@ class Branch(object):
         >>> br2.revision_history()
         [u'REVISION-ID-1']
         >>> br2.update_revisions(br1)
-        Added 0 texts.
-        Added 0 inventories.
         Added 0 revisions.
         >>> br1.text_store.total_size() == br2.text_store.total_size()
         True
         """
+        from bzrlib.fetch import greedy_fetch
         pb = ProgressBar()
         pb.update('comparing histories')
         revision_ids = self.missing_revisions(other, stop_revision)
-        count, failures = self.install_revisions(other, revision_ids, pb=pb)
+        if len(revision_ids) > 0:
+            count = greedy_fetch(self, other, revision_ids[-1], pb)[0]
+        else:
+            count = 0
         self.append_revision(*revision_ids)
         print "Added %d revisions." % count
-        assert len(failures) == 0
                     
     def install_revisions(self, other, revision_ids, pb=None):
         if pb is None:
