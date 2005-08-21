@@ -59,7 +59,6 @@ def selftest(verbose=False):
                    'bzrlib.selftest.testdiff',
                    'bzrlib.fetch'
                    ]
-    testmod_names = ['bzrlib.fetch']
 
     # XXX: should also test bzrlib.merge_core, but they seem to be out
     # of date with the code.
