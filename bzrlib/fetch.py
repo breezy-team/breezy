@@ -67,7 +67,6 @@ def greedy_fetch(to_branch, from_branch, revision=None, pb=None):
                 else:
                     continue
             for parent in [p.revision_id for p in revision.parents]:
-                print >> sys.stderr, "adding %s" % parent
                 if not has_revision(to_branch, parent):
                     new_missing.append(parent)
         missing = new_missing
