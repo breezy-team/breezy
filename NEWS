@@ -6,6 +6,12 @@ bzr development head
       help with intelligent shell completion.
 
 
+  BUG FIXES:
+
+    * ``bzr upgrade`` no longer fails when trying to fix trees that
+      mention revisions that are not present.
+
+
 bzr-0.0.6 2005-08-18
 
   NEW FEATURES:
