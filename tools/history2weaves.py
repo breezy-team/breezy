@@ -54,7 +54,7 @@ def convert():
     text_count = 0
     
     for rev_id in rev_history:
-        pb.update('converting inventory', revno, len(rev_history))
+        pb.update('converting revision', revno, len(rev_history))
         
         inv_xml = b.get_inventory_xml(rev_id).readlines()
 
@@ -106,7 +106,7 @@ def convert():
     # TODO: commit them all atomically at the end, not one by one
     write_atomic_weave(inv_weave, 'weaves/inventory.weave')
     for file_id, file_weave in text_weaves.items():
-        pb.update('writing weave', i, text_count)
+        pb.update('writing weave', i, len(text_weaves))
         write_atomic_weave(file_weave, 'weaves/%s.weave' % file_id)
         i += 1
 
