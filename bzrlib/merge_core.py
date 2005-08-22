@@ -150,7 +150,7 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
     from bzrlib.trace import mutter
     def entry_data(file_id, tree):
         assert hasattr(tree, "__contains__"), "%s" % tree
-        if file_id not in tree:
+        if not tree.has_or_had_id(file_id):
             return (None, None, "")
         entry = tree.tree.inventory[file_id]
         my_dir = tree.id2path(entry.parent_id)
@@ -354,6 +354,9 @@ class MergeTree(object):
 
     def __contains__(self, file_id):
         return file_id in self.inventory
+
+    def has_or_had_id(self, file_id):
+        return file_id in self
 
     def get_file(self, file_id):
         path = self.readonly_path(file_id)
