@@ -197,6 +197,17 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
     return new_entry
 
 
+def get_contents(entry, tree):
+    """Get a contents change element suitable for use with ReplaceContents
+    """
+    tree_entry = tree.tree.inventory[entry.id]
+    if tree_entry.kind == "file":
+        return changeset.FileCreate(tree.get_file(entry.id).read())
+    else:
+        assert tree_entry.kind in ("root_directory", "directory")
+        return changeset.dir_create
+
+
 def make_merged_contents(entry, this, base, other, conflict_handler,
                          merge_factory):
     contents = entry.contents_change
@@ -221,8 +232,7 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
             if this_path is None or not os.path.exists(this_path):
                 return contents
             else:
-                this_contents = changeset.FileCreate(file(this_path, 
-                                                     "rb").read())
+                this_contents = get_contents(entry, this)
                 if this_contents == contents.new_contents:
                     return None
                 else:
