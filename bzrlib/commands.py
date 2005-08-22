@@ -1556,6 +1556,17 @@ class cmd_help(Command):
         help.help(topic)
 
 
+class cmd_shell_complete(Command):
+    """Show appropriate completions for context.
+
+    For a list of all available commands, say 'bzr shell-complete'."""
+    takes_args = ['context?']
+    aliases = ['s-c']
+    hidden = True
+    
+    def run(self, context=None):
+        import shellcomplete
+        shellcomplete.shellcomplete(context)
 
 
 class cmd_missing(Command):

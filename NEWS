@@ -1,3 +1,11 @@
+bzr development head
+
+  NEW FEATURES:
+
+    * ``bzr shell-complete`` command contributed by Clint Adams to
+      help with intelligent shell completion.
+
+
 bzr-0.0.6 2005-08-18
 
   NEW FEATURES:
