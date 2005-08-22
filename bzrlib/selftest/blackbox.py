@@ -356,6 +356,7 @@ class OldTests(ExternalBase):
 
 class RevertCommand(ExternalBase):
     def runTest(self):
+        import os
         self.runbzr('init')
 
         file('hello', 'wt').write('foo')
@@ -373,4 +374,10 @@ class RevertCommand(ExternalBase):
         self.check_file_contents('goodbye', 'qux')
         self.runbzr('revert')
         self.check_file_contents('goodbye', 'baz')
+        os.mkdir('revertdir')
+        self.runbzr('add revertdir')
+        self.runbzr('commit -m f')
+        os.rmdir('revertdir')
+        self.runbzr('revert')
+
 
