@@ -176,13 +176,16 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
         new_parent = conflict_handler.move_conflict(entry.id, this_dir,
                                                     base_dir, other_dir)
     def get_path(name, parent):
-        if name is not None and parent is not None:
+        if name is not None:
+            if name == "":
+                assert parent is None
+                return './.'
             parent_dir = {this_parent: this_dir, other_parent: other_dir, 
                           base_parent: base_dir}
             directory = parent_dir[parent]
             return os.path.join(directory, name)
         else:
-            assert name is None and parent is None
+            assert parent is None
             return None
 
     old_path = get_path(old_name, old_parent)
