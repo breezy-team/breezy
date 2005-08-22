@@ -626,7 +626,7 @@ class ChangesetEntry(object):
                 return None
             return self.path
 
-    def summarize_name(self, changeset, reverse=False):
+    def summarize_name(self, reverse=False):
         """Produce a one-line summary of the filename.  Indicates renames as
         old => new, indicates creation as None => new, indicates deletion as
         old => None.
@@ -663,7 +663,7 @@ class ChangesetEntry(object):
         :type reverse: bool
         :rtype: str
         """
-        mutter("Finding new path for %s" % self.summarize_name(changeset))
+        mutter("Finding new path for %s" % self.summarize_name())
         if reverse:
             parent = self.parent
             to_dir = self.dir
