@@ -15,14 +15,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.selftest import InTempDir, TestBase
+from bzrlib.selftest import InTempDir, TestCase
 from bzrlib.merge3 import Merge3
 
 
 
 
 
-class NoChanges(TestBase):
+class NoChanges(TestCase):
     """No conflicts because nothing changed"""
     def runTest(self):
         m3 = Merge3(['aaa', 'bbb'],
@@ -45,7 +45,7 @@ class NoChanges(TestBase):
                           [('unchanged', ['aaa', 'bbb'])])
 
 
-class FrontInsert(TestBase):
+class FrontInsert(TestCase):
     def runTest(self):
         m3 = Merge3(['zz'],
                     ['aaa', 'bbb', 'zz'],
@@ -67,7 +67,7 @@ class FrontInsert(TestBase):
         
     
 
-class NullInsert(TestBase):
+class NullInsert(TestCase):
     def runTest(self):
         m3 = Merge3([],
                     ['aaa', 'bbb'],
@@ -86,7 +86,7 @@ class NullInsert(TestBase):
         
     
 
-class NoConflicts(TestBase):
+class NoConflicts(TestCase):
     """No conflicts because only one side changed"""
     def runTest(self):
         m3 = Merge3(['aaa', 'bbb'],
@@ -108,7 +108,7 @@ class NoConflicts(TestBase):
 
 
 
-class AppendA(TestBase):
+class AppendA(TestCase):
     def runTest(self):
         m3 = Merge3(['aaa\n', 'bbb\n'],
                     ['aaa\n', 'bbb\n', '222\n'],
@@ -117,7 +117,7 @@ class AppendA(TestBase):
         self.assertEquals(''.join(m3.merge_lines()),
                           'aaa\nbbb\n222\n')
 
-class AppendB(TestBase):
+class AppendB(TestCase):
     def runTest(self):
         m3 = Merge3(['aaa\n', 'bbb\n'],
                     ['aaa\n', 'bbb\n'],
@@ -126,7 +126,7 @@ class AppendB(TestBase):
         self.assertEquals(''.join(m3.merge_lines()),
                           'aaa\nbbb\n222\n')
 
-class AppendAgreement(TestBase):
+class AppendAgreement(TestCase):
     def runTest(self):
         m3 = Merge3(['aaa\n', 'bbb\n'],
                     ['aaa\n', 'bbb\n', '222\n'],
@@ -135,7 +135,7 @@ class AppendAgreement(TestBase):
         self.assertEquals(''.join(m3.merge_lines()),
                           'aaa\nbbb\n222\n')
 
-class AppendClash(TestBase):
+class AppendClash(TestCase):
     def runTest(self):
         m3 = Merge3(['aaa\n', 'bbb\n'],
                     ['aaa\n', 'bbb\n', '222\n'],
@@ -158,7 +158,7 @@ bbb
 ''')
 
 
-class InsertAgreement(TestBase):
+class InsertAgreement(TestCase):
     def runTest(self):
         m3 = Merge3(['aaa\n', 'bbb\n'],
                     ['aaa\n', '222\n', 'bbb\n'],
@@ -175,7 +175,7 @@ class InsertAgreement(TestBase):
 
 
 
-class InsertClash(TestBase):
+class InsertClash(TestCase):
     """Both try to insert lines in the same place."""
     def runTest(self):
         m3 = Merge3(['aaa\n', 'bbb\n'],
@@ -218,7 +218,7 @@ bbb
 
 
 
-class ReplaceClash(TestBase):
+class ReplaceClash(TestCase):
     """Both try to insert lines in the same place."""
     def runTest(self):
         m3 = Merge3(['aaa', '000', 'bbb'],
@@ -235,7 +235,7 @@ class ReplaceClash(TestBase):
 
 
 
-class ReplaceMulti(TestBase):
+class ReplaceMulti(TestCase):
     """Replacement with regions of different size."""
     def runTest(self):
         m3 = Merge3(['aaa', '000', '000', 'bbb'],
@@ -334,7 +334,7 @@ MERGED_RESULT = split_lines("""     The Way that can be told of is not the etern
 
 
 
-class MergePoem(TestBase):
+class MergePoem(TestCase):
     """Test case from diff3 manual"""
     def runTest(self):
         m3 = Merge3(TZU, LAO, TAO)

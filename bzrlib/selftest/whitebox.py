@@ -3,7 +3,7 @@
 import os
 import unittest
 
-from bzrlib.selftest import InTempDir, TestBase
+from bzrlib.selftest import InTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
 
@@ -55,7 +55,7 @@ class NoChanges(InTempDir):
         
 
 
-class ValidateRevisionId(TestBase):
+class ValidateRevisionId(TestCase):
     def runTest(self):
         from bzrlib.revision import validate_revision_id
         validate_revision_id('mbp@sourcefrog.net-20050311061123-96a255005c7c9dbe')
@@ -179,7 +179,7 @@ class RenameDirs(InTempDir):
         
 
 
-class BranchPathTestCase(TestBase):
+class BranchPathTestCase(TestCase):
     """test for branch path lookups
 
     Branch.relpath and bzrlib.branch._relpath do a simple but subtle

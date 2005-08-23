@@ -30,15 +30,15 @@ This does several things:
 * utilities to run external commands and check their return code
   and/or output
 
-Test cases should normally subclass TestBase.  The test runner should
+Test cases should normally subclass testsweet.TestCase.  The test runner should
 call runsuite().
 
 This is meant to become independent of bzr, though that's not quite
 true yet.
 """  
 
-
-from unittest import TestResult, TestCase
+import unittest
+from unittest import TestResult
 
 # XXX: Don't need this anymore now we depend on python2.4
 def _need_subprocess():
@@ -56,7 +56,7 @@ class TestSkipped(Exception):
     # XXX: Not used yet
 
 
-class TestBase(TestCase):
+class TestCase(unittest.TestCase):
     """Base class for bzr test cases.
 
     Just defines some useful helper functions; doesn't actually test
@@ -73,12 +73,12 @@ class TestBase(TestCase):
 
 
     def setUp(self):
-        super(TestBase, self).setUp()
+        super(TestCase, self).setUp()
         self.log("%s setup" % self.id())
 
 
     def tearDown(self):
-        super(TestBase, self).tearDown()
+        super(TestCase, self).tearDown()
         self.log("%s teardown" % self.id())
         self.log('')
 
@@ -212,7 +212,7 @@ class TestBase(TestCase):
             
 
 
-class InTempDir(TestBase):
+class InTempDir(TestCase):
     """Base class for tests run in a temporary branch."""
     def setUp(self):
         import os
@@ -294,7 +294,7 @@ def run_suite(suite, name='test', verbose=False):
     # save stdout & stderr so there's no leakage from code-under-test
     real_stdout = sys.stdout
     real_stderr = sys.stderr
-    sys.stdout = sys.stderr = TestBase.TEST_LOG
+    sys.stdout = sys.stderr = TestCase.TEST_LOG
     try:
         if verbose:
             style = 'verbose'
@@ -317,9 +317,9 @@ def _setup_test_log(name):
     import os
     
     log_filename = os.path.abspath(name + '.log')
-    TestBase.TEST_LOG = open(log_filename, 'wt', buffering=1) # line buffered
+    TestCase.TEST_LOG = open(log_filename, 'wt', buffering=1) # line buffered
 
-    print >>TestBase.TEST_LOG, "tests run at " + time.ctime()
+    print >>TestCase.TEST_LOG, "tests run at " + time.ctime()
     print '%-30s %s' % ('test log', log_filename)
 
 
@@ -327,19 +327,19 @@ def _setup_test_dir(name):
     import os
     import shutil
     
-    TestBase.ORIG_DIR = os.getcwdu()
-    TestBase.TEST_ROOT = os.path.abspath(name + '.tmp')
+    TestCase.ORIG_DIR = os.getcwdu()
+    TestCase.TEST_ROOT = os.path.abspath(name + '.tmp')
 
-    print '%-30s %s' % ('running tests in', TestBase.TEST_ROOT)
+    print '%-30s %s' % ('running tests in', TestCase.TEST_ROOT)
 
-    if os.path.exists(TestBase.TEST_ROOT):
-        shutil.rmtree(TestBase.TEST_ROOT)
-    os.mkdir(TestBase.TEST_ROOT)
-    os.chdir(TestBase.TEST_ROOT)
+    if os.path.exists(TestCase.TEST_ROOT):
+        shutil.rmtree(TestCase.TEST_ROOT)
+    os.mkdir(TestCase.TEST_ROOT)
+    os.chdir(TestCase.TEST_ROOT)
 
     # make a fake bzr directory there to prevent any tests propagating
     # up onto the source directory's real branch
-    os.mkdir(os.path.join(TestBase.TEST_ROOT, '.bzr'))
+    os.mkdir(os.path.join(TestCase.TEST_ROOT, '.bzr'))
 
     
 
@@ -364,7 +364,7 @@ def _show_test_failure(kind, case, exc_info, out):
          
     print_exception(exc_info[0], exc_info[1], exc_info[2], None, out)
         
-    if isinstance(case, TestBase):
+    if isinstance(case, TestCase):
         print >>out
         print >>out, 'log from this test:'
         print >>out, case._log_buf

@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.selftest import InTempDir, TestBase
+from bzrlib.selftest import InTempDir
 
 class TestRevisionNamespaces(InTempDir):
     """Functional tests for hashcache"""

@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from testsweet import TestBase, run_suite, InTempDir
+from testsweet import TestCase, run_suite, InTempDir
 import bzrlib.commands
 
 MODULES_TO_TEST = []
@@ -67,8 +67,8 @@ def selftest(verbose=False):
             MODULES_TO_DOCTEST.append(m)
 
     
-    TestBase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
-    print '%-30s %s' % ('bzr binary', TestBase.BZRPATH)
+    TestCase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
+    print '%-30s %s' % ('bzr binary', TestCase.BZRPATH)
 
     print
 

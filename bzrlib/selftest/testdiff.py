@@ -1,4 +1,4 @@
-from bzrlib.selftest import TestBase
+from bzrlib.selftest import TestCase
 from bzrlib.diff import internal_diff
 from cStringIO import StringIO
 def udiff_lines(old, new):
@@ -21,7 +21,7 @@ def check_patch(lines):
     assert '@@' in lines[2][2:], \
         "Unterminated hunk header for patch:\n%s" % "".join(lines)
 
-class AddNL(TestBase):
+class AddNL(TestCase):
     """
     diff generates a valid diff for patches that add a newline
     """
@@ -32,7 +32,7 @@ class AddNL(TestBase):
             "expected no-nl, got %r" % lines[4]
 
 
-class AddNL2(TestBase):
+class AddNL2(TestCase):
     """
     diff generates a valid diff for patches that change last line and add a
     newline
@@ -43,7 +43,7 @@ class AddNL2(TestBase):
         assert lines[4] == '\\ No newline at end of file\n', \
             "expected no-nl, got %r" % lines[4]
 
-class RemoveNL(TestBase):
+class RemoveNL(TestCase):
     """
     diff generates a valid diff for patches that change last line and add a
     newline

@@ -28,7 +28,7 @@ it's normally invoked.
 
 import sys
 
-from bzrlib.selftest import TestBase, InTempDir, BzrTestBase
+from bzrlib.selftest import InTempDir, BzrTestBase
 
 
 
