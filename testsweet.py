@@ -304,17 +304,10 @@ class _MyResult(unittest._TextTestResult):
                 print >>self.stream, test._get_log()
 
 
-
 class TextTestRunner(unittest.TextTestRunner):
-
-    def __init__(self, stream=sys.stderr, descriptions=0, verbosity=1):
-        super(TextTestRunner, self).__init__(stream, descriptions, verbosity)
 
     def _makeResult(self):
         return _MyResult(self.stream, self.descriptions, self.verbosity)
-
-    # If we want the old 4 line summary output (count, 0 failures, 0 errors)
-    # we can override run() too.
 
 
 def run_suite(suite, name='test', verbose=False):
@@ -324,7 +317,9 @@ def run_suite(suite, name='test', verbose=False):
         verbosity = 2
     else:
         verbosity = 1
-    runner = TextTestRunner(stream=sys.stdout, verbosity=verbosity)
+    runner = TextTestRunner(stream=sys.stdout,
+                            descriptions=0,
+                            verbosity=verbosity)
     result = runner.run(suite)
     # This is still a little bogus, 
     # but only a little. Folk not using our testrunner will
