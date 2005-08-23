@@ -17,6 +17,7 @@
 
 from testsweet import TestBase, run_suite, InTempDir
 import bzrlib.commands
+import bzrlib.fetch
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
@@ -56,17 +57,14 @@ def selftest(verbose=False):
                    'bzrlib.selftest.testrevision',
                    'bzrlib.merge_core',
                    'bzrlib.selftest.testdiff',
+                   'bzrlib.fetch'
                    ]
-
-    # XXX: should also test bzrlib.merge_core, but they seem to be out
-    # of date with the code.
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
               bzrlib.osutils, bzrlib.commands, bzrlib.merge3):
         if m not in MODULES_TO_DOCTEST:
             MODULES_TO_DOCTEST.append(m)
 
-    
     TestBase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
     print '%-30s %s' % ('bzr binary', TestBase.BZRPATH)
 

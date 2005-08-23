@@ -1603,6 +1603,7 @@ class cmd_missing(Command):
         return show_missing(b, br_remote, verbose=verbose, quiet=quiet)
 
 
+
 class cmd_plugins(Command):
     """List plugins"""
     hidden = True

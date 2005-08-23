@@ -165,6 +165,11 @@ class MergeTree(object):
     def has_id(self, file_id):
         return self.tree.has_id(file_id)
 
+    def has_or_had_id(self, file_id):
+        if file_id == self.tree.inventory.root.file_id:
+            return True
+        return self.tree.inventory.has_id(file_id)
+
     def readonly_path(self, id):
         if id not in self.tree:
             return None

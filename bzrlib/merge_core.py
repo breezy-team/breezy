@@ -150,7 +150,7 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
     from bzrlib.trace import mutter
     def entry_data(file_id, tree):
         assert hasattr(tree, "__contains__"), "%s" % tree
-        if file_id not in tree:
+        if not tree.has_or_had_id(file_id):
             return (None, None, "")
         entry = tree.tree.inventory[file_id]
         my_dir = tree.id2path(entry.parent_id)
@@ -176,13 +176,16 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
         new_parent = conflict_handler.move_conflict(entry.id, this_dir,
                                                     base_dir, other_dir)
     def get_path(name, parent):
-        if name is not None and parent is not None:
+        if name is not None:
+            if name == "":
+                assert parent is None
+                return './.'
             parent_dir = {this_parent: this_dir, other_parent: other_dir, 
                           base_parent: base_dir}
             directory = parent_dir[parent]
             return os.path.join(directory, name)
         else:
-            assert name is None and parent is None
+            assert parent is None
             return None
 
     old_path = get_path(old_name, old_parent)
@@ -192,6 +195,17 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
     new_entry.new_parent = new_parent
     mutter(repr(new_entry))
     return new_entry
+
+
+def get_contents(entry, tree):
+    """Get a contents change element suitable for use with ReplaceContents
+    """
+    tree_entry = tree.tree.inventory[entry.id]
+    if tree_entry.kind == "file":
+        return changeset.FileCreate(tree.get_file(entry.id).read())
+    else:
+        assert tree_entry.kind in ("root_directory", "directory")
+        return changeset.dir_create
 
 
 def make_merged_contents(entry, this, base, other, conflict_handler,
@@ -218,8 +232,7 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
             if this_path is None or not os.path.exists(this_path):
                 return contents
             else:
-                this_contents = changeset.FileCreate(file(this_path, 
-                                                     "rb").read())
+                this_contents = get_contents(entry, this)
                 if this_contents == contents.new_contents:
                     return None
                 else:
@@ -341,6 +354,9 @@ class MergeTree(object):
 
     def __contains__(self, file_id):
         return file_id in self.inventory
+
+    def has_or_had_id(self, file_id):
+        return file_id in self
 
     def get_file(self, file_id):
         path = self.readonly_path(file_id)

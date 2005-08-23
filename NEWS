@@ -39,7 +39,7 @@ bzr-0.0.6 2005-08-18
       specified by putting it into .bzr/email within a branch.  (Based
       on a patch from Heikki Paajanen.)
 
-    
+
   ENHANCEMENTS:
 
     * Faster working tree operations.
