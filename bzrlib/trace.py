@@ -52,9 +52,8 @@ _logprefix = '[%d] ' % _mypid
 
 
 def _write_trace(msg):
-    if 0:
-        if _tracefile:
-            _tracefile.write(_logprefix + msg + '\n')
+    if _tracefile:
+        _tracefile.write(_logprefix + msg + '\n')
 
 
 def warning(msg):
