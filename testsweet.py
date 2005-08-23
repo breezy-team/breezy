@@ -302,8 +302,8 @@ class TestSuite(unittest.TestSuite):
         import time
         import sys
         
-        _setup_test_log(self._name)
-        _setup_test_dir(self._name)
+        self._setup_test_log()
+        self._setup_test_dir()
         print
     
         # save stdout & stderr so there's no leakage from code-under-test
@@ -317,13 +317,44 @@ class TestSuite(unittest.TestSuite):
             sys.stderr = real_stderr
         return result
 
+    def _setup_test_log(self):
+        import time
+        import os
+        
+        log_filename = os.path.abspath(self._name + '.log')
+        # line buffered
+        TestCase.TEST_LOG = open(log_filename, 'wt', buffering=1)
+    
+        print >>TestCase.TEST_LOG, "tests run at " + time.ctime()
+        print '%-30s %s' % ('test log', log_filename)
+
+    def _setup_test_dir(self):
+        import os
+        import shutil
+        
+        TestCase.ORIG_DIR = os.getcwdu()
+        TestCase.TEST_ROOT = os.path.abspath(self._name + '.tmp')
+    
+        print '%-30s %s' % ('running tests in', TestCase.TEST_ROOT)
+    
+        if os.path.exists(TestCase.TEST_ROOT):
+            shutil.rmtree(TestCase.TEST_ROOT)
+        os.mkdir(TestCase.TEST_ROOT)
+        os.chdir(TestCase.TEST_ROOT)
+    
+        # make a fake bzr directory there to prevent any tests propagating
+        # up onto the source directory's real branch
+        os.mkdir(os.path.join(TestCase.TEST_ROOT, '.bzr'))
+
+
 class TextTestRunner(unittest.TextTestRunner):
 
-    def __init__(self, stream=sys.stderr, descriptions=1, verbosity=1):
+    def __init__(self, stream=sys.stderr, descriptions=1, verbosity=0, style='progress'):
         super(TextTestRunner, self).__init__(stream, descriptions, verbosity)
+        self.style = style
 
     def _makeResult(self):
-        return _MyResult(self.stream, self.verbosity)
+        return _MyResult(self.stream, self.style)
 
     # If we want the old 4 line summary output (count, 0 failures, 0 errors)
     # we can override run() too.
@@ -335,36 +366,6 @@ def run_suite(a_suite, name='test', verbose=False):
         style = 'verbose'
     else:
         style = 'progress'
-    runner = TextTestRunner(stream=sys.stdout, verbosity=style)
+    runner = TextTestRunner(stream=sys.stdout, style=style)
     result = runner.run(suite)
     return result.wasSuccessful()
-
-
-def _setup_test_log(name):
-    import time
-    import os
-    
-    log_filename = os.path.abspath(name + '.log')
-    TestCase.TEST_LOG = open(log_filename, 'wt', buffering=1) # line buffered
-
-    print >>TestCase.TEST_LOG, "tests run at " + time.ctime()
-    print '%-30s %s' % ('test log', log_filename)
-
-
-def _setup_test_dir(name):
-    import os
-    import shutil
-    
-    TestCase.ORIG_DIR = os.getcwdu()
-    TestCase.TEST_ROOT = os.path.abspath(name + '.tmp')
-
-    print '%-30s %s' % ('running tests in', TestCase.TEST_ROOT)
-
-    if os.path.exists(TestCase.TEST_ROOT):
-        shutil.rmtree(TestCase.TEST_ROOT)
-    os.mkdir(TestCase.TEST_ROOT)
-    os.chdir(TestCase.TEST_ROOT)
-
-    # make a fake bzr directory there to prevent any tests propagating
-    # up onto the source directory's real branch
-    os.mkdir(os.path.join(TestCase.TEST_ROOT, '.bzr'))
