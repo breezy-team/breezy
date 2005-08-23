@@ -38,7 +38,7 @@ true yet.
 """  
 
 import unittest
-from unittest import TestResult
+import sys
 
 # XXX: Don't need this anymore now we depend on python2.4
 def _need_subprocess():
@@ -225,23 +225,20 @@ class InTempDir(TestCase):
         os.chdir(self.TEST_ROOT)
 
 
-
-
-
-class _MyResult(TestResult):
+class _MyResult(unittest._TextTestResult):
     """
     Custom TestResult.
 
     No special behaviour for now.
     """
     def __init__(self, out, style):
+        super(_MyResult, self).__init__(out, False, 0)
         self.out = out
-        TestResult.__init__(self)
         assert style in ('none', 'progress', 'verbose')
         self.style = style
 
-
     def startTest(self, test):
+        super(_MyResult, self).startTest(test)
         # TODO: Maybe show test.shortDescription somewhere?
         what = test.id()
         # python2.3 has the bad habit of just "runit" for doctests
@@ -251,34 +248,46 @@ class _MyResult(TestResult):
         if self.style == 'verbose':
             print >>self.out, '%-60.60s' % what,
             self.out.flush()
-        elif self.style == 'progress':
-            self.out.write('~')
-            self.out.flush()
-        TestResult.startTest(self, test)
-
-
-    def stopTest(self, test):
-        # print
-        TestResult.stopTest(self, test)
-
 
     def addError(self, test, err):
         if self.style == 'verbose':
             print >>self.out, 'ERROR'
-        TestResult.addError(self, test, err)
-        _show_test_failure('error', test, err, self.out)
+        elif self.style == 'progress':
+            self.stream.write('E')
+        self.stream.flush()
+        super(_MyResult, self).addError(test, err)
 
     def addFailure(self, test, err):
         if self.style == 'verbose':
             print >>self.out, 'FAILURE'
-        TestResult.addFailure(self, test, err)
-        _show_test_failure('failure', test, err, self.out)
+        elif self.style == 'progress':
+            self.stream.write('F')
+        self.stream.flush()
+        super(_MyResult, self).addFailure(test, err)
 
     def addSuccess(self, test):
         if self.style == 'verbose':
             print >>self.out, 'OK'
-        TestResult.addSuccess(self, test)
+        elif self.style == 'progress':
+            self.stream.write('~')
+        self.stream.flush()
+        super(_MyResult, self).addSuccess(test)
 
+    def printErrors(self):
+        if self.style == 'progress':
+            self.stream.writeln()
+        super(_MyResult, self).printErrors()
+
+    def printErrorList(self, flavour, errors):
+        for test, err in errors:
+            self.stream.writeln(self.separator1)
+            self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
+            self.stream.writeln(self.separator2)
+            self.stream.writeln("%s" % err)
+            if isinstance(test, TestCase):
+                self.stream.writeln()
+                self.stream.writeln('log from this test:')
+                print >>self.stream, test._log_buf
 
 
 class TestSuite(unittest.TestSuite):
@@ -308,16 +317,26 @@ class TestSuite(unittest.TestSuite):
             sys.stderr = real_stderr
         return result
 
+class TextTestRunner(unittest.TextTestRunner):
+
+    def __init__(self, stream=sys.stderr, descriptions=1, verbosity=1):
+        super(TextTestRunner, self).__init__(stream, descriptions, verbosity)
+
+    def _makeResult(self):
+        return _MyResult(self.stream, self.verbosity)
+
+    # If we want the old 4 line summary output (count, 0 failures, 0 errors)
+    # we can override run() too.
+
+
 def run_suite(a_suite, name='test', verbose=False):
-    import sys
     suite = TestSuite((a_suite,),name)
     if verbose:
         style = 'verbose'
     else:
         style = 'progress'
-    result = _MyResult(sys.stdout, style)
-    suite.run(result)
-    _show_results(result)
+    runner = TextTestRunner(stream=sys.stdout, verbosity=style)
+    result = runner.run(suite)
     return result.wasSuccessful()
 
 
@@ -349,35 +368,3 @@ def _setup_test_dir(name):
     # make a fake bzr directory there to prevent any tests propagating
     # up onto the source directory's real branch
     os.mkdir(os.path.join(TestCase.TEST_ROOT, '.bzr'))
-
-    
-
-def _show_results(result):
-     print
-     print '%4d tests run' % result.testsRun
-     print '%4d errors' % len(result.errors)
-     print '%4d failures' % len(result.failures)
-
-
-
-def _show_test_failure(kind, case, exc_info, out):
-    from traceback import print_exception
-
-    print >>out
-    print >>out, '-' * 60
-    print >>out, case
-    
-    desc = case.shortDescription()
-    if desc:
-        print >>out, '   (%s)' % desc
-         
-    print_exception(exc_info[0], exc_info[1], exc_info[2], None, out)
-        
-    if isinstance(case, TestCase):
-        print >>out
-        print >>out, 'log from this test:'
-        print >>out, case._log_buf
-         
-    print >>out, '-' * 60
-    
-

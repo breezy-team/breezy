@@ -119,7 +119,6 @@ class InitBranch(ExternalBase):
         self.runbzr(['init'])
 
 
-
 class UserIdentity(ExternalBase):
     def runTest(self):
         # this should always identify something, if only "john@localhost"
