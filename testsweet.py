@@ -218,10 +218,36 @@ class TestCase(unittest.TestCase):
 
 
 class InTempDir(TestCase):
-    """Base class for tests run in a temporary branch."""
+    """Base class for tests that use disk resources - i.e to run in a temporary
+    branch.
+    """
+
+    TEST_ROOT = None
+    _TEST_NAME = 'test'
+
+    def _make_test_root(self):
+        import os
+        import shutil
+        import tempfile
+        
+        if InTempDir.TEST_ROOT is not None:
+            return
+        InTempDir.TEST_ROOT = os.path.abspath(
+                                 tempfile.mkdtemp(suffix='.tmp',
+                                                  prefix=self._TEST_NAME + '-',
+                                                  dir=os.curdir))
+    
+        # print '%-30s %s\n' % ('running tests in', TestCase.TEST_ROOT)
+    
+        os.chdir(InTempDir.TEST_ROOT)
+        # make a fake bzr directory there to prevent any tests propagating
+        # up onto the source directory's real branch
+        os.mkdir(os.path.join(InTempDir.TEST_ROOT, '.bzr'))
+
     def setUp(self):
         super(InTempDir, self).setUp()
         import os
+        self._make_test_root()
         self.test_dir = os.path.join(self.TEST_ROOT, self.__class__.__name__)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
@@ -296,34 +322,6 @@ class _MyResult(unittest._TextTestResult):
                 print >>self.stream, test._get_log()
 
 
-class TestSuite(unittest.TestSuite):
-    
-    def __init__(self, tests=(), name='test'):
-        super(TestSuite, self).__init__(tests)
-        self._name = name
-
-    def run(self, result):
-        self._setup_test_dir()
-        return super(TestSuite,self).run(result)
-
-    def _setup_test_dir(self):
-        import os
-        import shutil
-        
-        TestCase.ORIG_DIR = os.getcwdu()
-        TestCase.TEST_ROOT = os.path.abspath(self._name + '.tmp')
-    
-        print '%-30s %s\n' % ('running tests in', TestCase.TEST_ROOT)
-    
-        if os.path.exists(TestCase.TEST_ROOT):
-            shutil.rmtree(TestCase.TEST_ROOT)
-        os.mkdir(TestCase.TEST_ROOT)
-        os.chdir(TestCase.TEST_ROOT)
-    
-        # make a fake bzr directory there to prevent any tests propagating
-        # up onto the source directory's real branch
-        os.mkdir(os.path.join(TestCase.TEST_ROOT, '.bzr'))
-
 
 class TextTestRunner(unittest.TextTestRunner):
 
@@ -338,12 +336,20 @@ class TextTestRunner(unittest.TextTestRunner):
     # we can override run() too.
 
 
-def run_suite(a_suite, name='test', verbose=False):
-    suite = TestSuite((a_suite,),name)
+def run_suite(suite, name='test', verbose=False):
+    import shutil
+    InTempDir._TEST_NAME = name
     if verbose:
         style = 'verbose'
     else:
         style = 'progress'
     runner = TextTestRunner(stream=sys.stdout, style=style)
     result = runner.run(suite)
+    # This is still a little bogus, 
+    # but only a little. Folk not using our testrunner will
+    # have to delete their temp directories themselves.
+    if result.wasSuccessful():
+        shutil.rmtree(InTempDir.TEST_ROOT) 
+    else:
+        print "Failed tests working directories are in '%s'\n" % InTempDir.TEST_ROOT
     return result.wasSuccessful()
