@@ -68,15 +68,17 @@ class TestCase(unittest.TestCase):
     OVERRIDE_PYTHON = None # to run with alternative python 'python'
     BZRPATH = 'bzr'
 
-    _log_buf = ""
-
-
     def setUp(self):
         super(TestCase, self).setUp()
+        # setup a temporary log for the test 
+        import time
+        import os
+        import tempfile
+        self.TEST_LOG = tempfile.NamedTemporaryFile(mode='wt', bufsize=0)
         # save stdout & stderr so there's no leakage from code-under-test
         self.real_stdout = sys.stdout
         self.real_stderr = sys.stderr
-        sys.stdout = sys.stderr = TestCase.TEST_LOG
+        sys.stdout = sys.stderr = self.TEST_LOG
         self.log("%s setup" % self.id())
 
     def tearDown(self):
@@ -173,13 +175,6 @@ class TestCase(unittest.TestCase):
 
     def log(self, msg):
         """Log a message to a progress file"""
-        # XXX: The problem with this is that code that writes straight
-        # to the log file won't be shown when we display the log
-        # buffer; would be better to not have the in-memory buffer and
-        # instead just a log file per test, which is read in and
-        # displayed if the test fails.  That seems to imply one log
-        # per test case, not globally.  OK?
-        self._log_buf = self._log_buf + str(msg) + '\n'
         print >>self.TEST_LOG, msg
 
 
@@ -204,7 +199,6 @@ class TestCase(unittest.TestCase):
         if extras:
             self.fail("unexpected paths found in inventory: %r" % extras)
 
-
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
         contents = file(filename, 'r').read()
@@ -212,7 +206,15 @@ class TestCase(unittest.TestCase):
             self.log("expected: %r" % expect)
             self.log("actually: %r" % contents)
             self.fail("contents of %s not as expected")
-            
+     
+    def _get_log(self):
+        """Get the log the test case used. This can only be called once,
+        after which an exception will be raised.
+        """
+        self.TEST_LOG.flush()
+        log = open(self.TEST_LOG.name, 'rt').read()
+        self.TEST_LOG.close()
+        return log
 
 
 class InTempDir(TestCase):
@@ -291,7 +293,7 @@ class _MyResult(unittest._TextTestResult):
             if isinstance(test, TestCase):
                 self.stream.writeln()
                 self.stream.writeln('log from this test:')
-                print >>self.stream, test._log_buf
+                print >>self.stream, test._get_log()
 
 
 class TestSuite(unittest.TestSuite):
@@ -305,22 +307,10 @@ class TestSuite(unittest.TestSuite):
         import shutil
         import time
         
-        self._setup_test_log()
         self._setup_test_dir()
         print
     
         return super(TestSuite,self).run(result)
-
-    def _setup_test_log(self):
-        import time
-        import os
-        
-        log_filename = os.path.abspath(self._name + '.log')
-        # line buffered
-        TestCase.TEST_LOG = open(log_filename, 'wt', buffering=1)
-    
-        print >>TestCase.TEST_LOG, "tests run at " + time.ctime()
-        print '%-30s %s' % ('test log', log_filename)
 
     def _setup_test_dir(self):
         import os
