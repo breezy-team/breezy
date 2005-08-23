@@ -303,13 +303,7 @@ class TestSuite(unittest.TestSuite):
         self._name = name
 
     def run(self, result):
-        import os
-        import shutil
-        import time
-        
         self._setup_test_dir()
-        print
-    
         return super(TestSuite,self).run(result)
 
     def _setup_test_dir(self):
@@ -319,7 +313,7 @@ class TestSuite(unittest.TestSuite):
         TestCase.ORIG_DIR = os.getcwdu()
         TestCase.TEST_ROOT = os.path.abspath(self._name + '.tmp')
     
-        print '%-30s %s' % ('running tests in', TestCase.TEST_ROOT)
+        print '%-30s %s\n' % ('running tests in', TestCase.TEST_ROOT)
     
         if os.path.exists(TestCase.TEST_ROOT):
             shutil.rmtree(TestCase.TEST_ROOT)
