@@ -56,10 +56,10 @@ class TestSkipped(Exception):
 
 
 class TestCase(unittest.TestCase):
-    """Base class for bzr test cases.
-
-    Just defines some useful helper functions; doesn't actually test
-    anything.
+    """Base class for bzr unit tests.
+    
+    Tests that need access to disk resources should subclass 
+    FunctionalTestCase not TestCase.
     """
     
     # TODO: Special methods to invoke bzr, so that we can run it
@@ -87,6 +87,89 @@ class TestCase(unittest.TestCase):
         self.log("%s teardown" % self.id())
         self.log('')
         super(TestCase, self).tearDown()
+
+    def log(self, msg):
+        """Log a message to a progress file"""
+        print >>self.TEST_LOG, msg
+
+    def check_inventory_shape(self, inv, shape):
+        """
+        Compare an inventory to a list of expected names.
+
+        Fail if they are not precisely equal.
+        """
+        extras = []
+        shape = list(shape)             # copy
+        for path, ie in inv.entries():
+            name = path.replace('\\', '/')
+            if ie.kind == 'dir':
+                name = name + '/'
+            if name in shape:
+                shape.remove(name)
+            else:
+                extras.append(name)
+        if shape:
+            self.fail("expected paths not found in inventory: %r" % shape)
+        if extras:
+            self.fail("unexpected paths found in inventory: %r" % extras)
+     
+    def _get_log(self):
+        """Get the log the test case used. This can only be called once,
+        after which an exception will be raised.
+        """
+        self.TEST_LOG.flush()
+        log = open(self.TEST_LOG.name, 'rt').read()
+        self.TEST_LOG.close()
+        return log
+
+
+class FunctionalTestCase(TestCase):
+    """Base class for tests that perform function testing - running bzr,
+    using files on disk, and similar activities.
+
+    InTempDir is an old alias for FunctionalTestCase.
+    """
+
+    TEST_ROOT = None
+    _TEST_NAME = 'test'
+
+    def check_file_contents(self, filename, expect):
+        self.log("check contents of file %s" % filename)
+        contents = file(filename, 'r').read()
+        if contents != expect:
+            self.log("expected: %r" % expect)
+            self.log("actually: %r" % contents)
+            self.fail("contents of %s not as expected")
+
+    def _make_test_root(self):
+        import os
+        import shutil
+        import tempfile
+        
+        if FunctionalTestCase.TEST_ROOT is not None:
+            return
+        FunctionalTestCase.TEST_ROOT = os.path.abspath(
+                                 tempfile.mkdtemp(suffix='.tmp',
+                                                  prefix=self._TEST_NAME + '-',
+                                                  dir=os.curdir))
+    
+        # make a fake bzr directory there to prevent any tests propagating
+        # up onto the source directory's real branch
+        os.mkdir(os.path.join(FunctionalTestCase.TEST_ROOT, '.bzr'))
+
+    def setUp(self):
+        super(FunctionalTestCase, self).setUp()
+        import os
+        self._make_test_root()
+        self._currentdir = os.getcwdu()
+        self.test_dir = os.path.join(self.TEST_ROOT, self.__class__.__name__)
+        os.mkdir(self.test_dir)
+        os.chdir(self.test_dir)
+        
+    def tearDown(self):
+        import os
+        os.chdir(self._currentdir)
+        super(FunctionalTestCase, self).tearDown()
 
     def formcmd(self, cmd):
         if isinstance(cmd, basestring):
@@ -171,91 +254,8 @@ class TestCase(unittest.TestCase):
                 f = file(name, 'wt')
                 print >>f, "contents of", name
                 f.close()
-
-
-    def log(self, msg):
-        """Log a message to a progress file"""
-        print >>self.TEST_LOG, msg
-
-
-    def check_inventory_shape(self, inv, shape):
-        """
-        Compare an inventory to a list of expected names.
-
-        Fail if they are not precisely equal.
-        """
-        extras = []
-        shape = list(shape)             # copy
-        for path, ie in inv.entries():
-            name = path.replace('\\', '/')
-            if ie.kind == 'dir':
-                name = name + '/'
-            if name in shape:
-                shape.remove(name)
-            else:
-                extras.append(name)
-        if shape:
-            self.fail("expected paths not found in inventory: %r" % shape)
-        if extras:
-            self.fail("unexpected paths found in inventory: %r" % extras)
-
-    def check_file_contents(self, filename, expect):
-        self.log("check contents of file %s" % filename)
-        contents = file(filename, 'r').read()
-        if contents != expect:
-            self.log("expected: %r" % expect)
-            self.log("actually: %r" % contents)
-            self.fail("contents of %s not as expected")
-     
-    def _get_log(self):
-        """Get the log the test case used. This can only be called once,
-        after which an exception will be raised.
-        """
-        self.TEST_LOG.flush()
-        log = open(self.TEST_LOG.name, 'rt').read()
-        self.TEST_LOG.close()
-        return log
-
-
-class InTempDir(TestCase):
-    """Base class for tests that use disk resources - i.e to run in a temporary
-    branch.
-    """
-
-    TEST_ROOT = None
-    _TEST_NAME = 'test'
-
-    def _make_test_root(self):
-        import os
-        import shutil
-        import tempfile
-        
-        if InTempDir.TEST_ROOT is not None:
-            return
-        InTempDir.TEST_ROOT = os.path.abspath(
-                                 tempfile.mkdtemp(suffix='.tmp',
-                                                  prefix=self._TEST_NAME + '-',
-                                                  dir=os.curdir))
-    
-        # print '%-30s %s\n' % ('running tests in', TestCase.TEST_ROOT)
-    
-        os.chdir(InTempDir.TEST_ROOT)
-        # make a fake bzr directory there to prevent any tests propagating
-        # up onto the source directory's real branch
-        os.mkdir(os.path.join(InTempDir.TEST_ROOT, '.bzr'))
-
-    def setUp(self):
-        super(InTempDir, self).setUp()
-        import os
-        self._make_test_root()
-        self.test_dir = os.path.join(self.TEST_ROOT, self.__class__.__name__)
-        os.mkdir(self.test_dir)
-        os.chdir(self.test_dir)
-        
-    def tearDown(self):
-        import os
-        os.chdir(self.TEST_ROOT)
-        super(InTempDir, self).tearDown()
+                
+InTempDir = FunctionalTestCase
 
 
 class _MyResult(unittest._TextTestResult):
@@ -319,7 +319,7 @@ class TextTestRunner(unittest.TextTestRunner):
 
 def run_suite(suite, name='test', verbose=False):
     import shutil
-    InTempDir._TEST_NAME = name
+    FunctionalTestCase._TEST_NAME = name
     if verbose:
         verbosity = 2
     else:
@@ -330,7 +330,7 @@ def run_suite(suite, name='test', verbose=False):
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
     if result.wasSuccessful():
-        shutil.rmtree(InTempDir.TEST_ROOT) 
+        shutil.rmtree(FunctionalTestCase.TEST_ROOT) 
     else:
-        print "Failed tests working directories are in '%s'\n" % InTempDir.TEST_ROOT
+        print "Failed tests working directories are in '%s'\n" % FunctionalTestCase.TEST_ROOT
     return result.wasSuccessful()
