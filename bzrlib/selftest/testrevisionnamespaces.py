@@ -18,8 +18,8 @@
 from bzrlib.selftest import InTempDir
 
 class TestRevisionNamespaces(InTempDir):
-    """Functional tests for hashcache"""
-    def runTest(self):
+    def test_revision_namespaces(self):
+        """Functional tests for hashcache"""
         from bzrlib.errors import BzrError
         from bzrlib.branch import Branch
         import os

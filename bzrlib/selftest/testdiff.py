@@ -21,41 +21,30 @@ def check_patch(lines):
     assert '@@' in lines[2][2:], \
         "Unterminated hunk header for patch:\n%s" % "".join(lines)
 
-class AddNL(TestCase):
-    """
-    diff generates a valid diff for patches that add a newline
-    """
-    def runTest(self):
+class TestDiff(TestCase):
+    def test_add_nl(self):
+        """diff generates a valid diff for patches that add a newline"""
         lines = udiff_lines(['boo'], ['boo\n'])
         check_patch(lines)
         assert lines[4] == '\\ No newline at end of file\n', \
             "expected no-nl, got %r" % lines[4]
 
-
-class AddNL2(TestCase):
-    """
-    diff generates a valid diff for patches that change last line and add a
-    newline
-    """
-    def runTest(self):
+    def test_add_nl_2(self):
+        """diff generates a valid diff for patches that change last line and
+        add a newline.
+        """
         lines = udiff_lines(['boo'], ['goo\n'])
         check_patch(lines)
         assert lines[4] == '\\ No newline at end of file\n', \
             "expected no-nl, got %r" % lines[4]
 
-class RemoveNL(TestCase):
-    """
-    diff generates a valid diff for patches that change last line and add a
-    newline
-    """
-    def runTest(self):
+    def test_remove_nl(self):
+        """diff generates a valid diff for patches that change last line and
+        add a newline.
+        """
         lines = udiff_lines(['boo\n'], ['boo'])
         check_patch(lines)
         assert lines[5] == '\\ No newline at end of file\n', \
             "expected no-nl, got %r" % lines[5]
 
-TEST_CLASSES = [
-    AddNL, 
-    AddNL2, 
-    RemoveNL,
-]
+TEST_CLASSES = [ TestDiff ]

@@ -20,7 +20,7 @@ from bzrlib.selftest import InTempDir
 
 class TestAppendRevisions(InTempDir):
     """Test appending more than one revision"""
-    def runTest(self):
+    def test_append_revisions(self):
         from bzrlib.branch import Branch
         br = Branch(".", init=True)
         br.append_revision("rev1")

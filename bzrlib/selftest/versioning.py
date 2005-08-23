@@ -26,8 +26,9 @@ from bzrlib.selftest import InTempDir, BzrTestBase
 from bzrlib.branch import Branch
 
 
-class Mkdir(InTempDir):
-    def runTest(self): 
+class TestVersioning(InTempDir):
+    
+    def test_mkdir(self): 
         """Basic 'bzr mkdir' operation"""
         from bzrlib.commands import run_bzr
 
@@ -49,10 +50,7 @@ class Mkdir(InTempDir):
         self.assertEquals(delta.added[0][0], 'foo')
         self.failIf(delta.modified)
 
-
-
-class AddInUnversioned(InTempDir):
-    def runTest(self):
+    def test_add_in_unversioned(self):
         """Try to add a file in an unversioned directory.
 
         smart_add may eventually add the parent as necessary, but simple
@@ -70,9 +68,41 @@ class AddInUnversioned(InTempDir):
                           b.add,
                           'foo/hello')
         
+    def test_subdir_add(self):
+        """Add in subdirectory should add only things from there down"""
+        
+        from bzrlib.branch import Branch
+        from bzrlib.commands import run_bzr
+        
+        eq = self.assertEqual
+        ass = self.assert_
+        chdir = os.chdir
+        
+        b = Branch('.', init=True)
+        self.build_tree(['src/', 'README'])
+        
+        eq(sorted(b.unknowns()),
+           ['README', 'src'])
+        
+        eq(run_bzr(['add', 'src']), 0)
+        
+        self.build_tree(['src/foo.c'])
+        
+        chdir('src')
+        eq(run_bzr(['add']), 0)
+        
+        eq(sorted(b.unknowns()), 
+           ['README'])
+        eq(len(b.inventory), 3)
+                
+        chdir('..')
+        eq(run_bzr(['add']), 0)
+        eq(list(b.unknowns()), [])
+        
         
 class SubdirCommit(BzrTestBase):
-    def runTest(self):
+
+    def test_subdir_commit(self):
         """Test committing a subdirectory, and committing within a directory."""
         run_bzr = self.run_bzr
         eq = self.assertEqual
@@ -115,38 +145,4 @@ class SubdirCommit(BzrTestBase):
         eq(v4.get_file_by_path('top').read(), 'new contents')
         
         # TODO: factor out some kind of assert_tree_state() method
-        
-        
-        
-class SubdirAdd(InTempDir):
-    def runTest(self):
-        """Add in subdirectory should add only things from there down"""
-        
-        from bzrlib.branch import Branch
-        from bzrlib.commands import run_bzr
-        
-        eq = self.assertEqual
-        ass = self.assert_
-        chdir = os.chdir
-        
-        b = Branch('.', init=True)
-        self.build_tree(['src/', 'README'])
-        
-        eq(sorted(b.unknowns()),
-           ['README', 'src'])
-        
-        eq(run_bzr(['add', 'src']), 0)
-        
-        self.build_tree(['src/foo.c'])
-        
-        chdir('src')
-        eq(run_bzr(['add']), 0)
-        
-        eq(sorted(b.unknowns()), 
-           ['README'])
-        eq(len(b.inventory), 3)
-                
-        chdir('..')
-        eq(run_bzr(['add']), 0)
-        eq(list(b.unknowns()), [])
         
