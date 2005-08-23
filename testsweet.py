@@ -264,9 +264,9 @@ class _MyResult(unittest._TextTestResult):
 
     No special behaviour for now.
     """
-    def __init__(self, out, style):
-        super(_MyResult, self).__init__(out, False, 0)
-        self.out = out
+    def __init__(self, stream, descriptions, verbosity, style):
+        super(_MyResult, self).__init__(stream, descriptions, verbosity)
+        self.out = stream
         assert style in ('none', 'progress', 'verbose')
         self.style = style
 
@@ -278,12 +278,12 @@ class _MyResult(unittest._TextTestResult):
         if what == 'runit':
             what = test.shortDescription()
         if self.style == 'verbose':
-            print >>self.out, '%-60.60s' % what,
-            self.out.flush()
+            print >>self.stream, '%-60.60s' % what,
+            self.stream.flush()
 
     def addError(self, test, err):
         if self.style == 'verbose':
-            print >>self.out, 'ERROR'
+            print >>self.stream, 'ERROR'
         elif self.style == 'progress':
             self.stream.write('E')
         self.stream.flush()
@@ -291,7 +291,7 @@ class _MyResult(unittest._TextTestResult):
 
     def addFailure(self, test, err):
         if self.style == 'verbose':
-            print >>self.out, 'FAILURE'
+            print >>self.stream, 'FAILURE'
         elif self.style == 'progress':
             self.stream.write('F')
         self.stream.flush()
@@ -299,7 +299,7 @@ class _MyResult(unittest._TextTestResult):
 
     def addSuccess(self, test):
         if self.style == 'verbose':
-            print >>self.out, 'OK'
+            print >>self.stream, 'OK'
         elif self.style == 'progress':
             self.stream.write('~')
         self.stream.flush()
@@ -330,7 +330,7 @@ class TextTestRunner(unittest.TextTestRunner):
         self.style = style
 
     def _makeResult(self):
-        return _MyResult(self.stream, self.style)
+        return _MyResult(self.stream, self.descriptions, self.verbosity, self.style)
 
     # If we want the old 4 line summary output (count, 0 failures, 0 errors)
     # we can override run() too.
@@ -341,8 +341,10 @@ def run_suite(suite, name='test', verbose=False):
     InTempDir._TEST_NAME = name
     if verbose:
         style = 'verbose'
+        verbosity = 2
     else:
         style = 'progress'
+        verbosity = 1
     runner = TextTestRunner(stream=sys.stdout, style=style)
     result = runner.run(suite)
     # This is still a little bogus, 
