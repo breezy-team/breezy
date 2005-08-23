@@ -50,7 +50,6 @@ class CommandFailed(Exception):
     pass
 
 
-
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
     # XXX: Not used yet
@@ -74,14 +73,18 @@ class TestCase(unittest.TestCase):
 
     def setUp(self):
         super(TestCase, self).setUp()
+        # save stdout & stderr so there's no leakage from code-under-test
+        self.real_stdout = sys.stdout
+        self.real_stderr = sys.stderr
+        sys.stdout = sys.stderr = TestCase.TEST_LOG
         self.log("%s setup" % self.id())
 
-
     def tearDown(self):
-        super(TestCase, self).tearDown()
+        sys.stdout = self.real_stdout
+        sys.stderr = self.real_stderr
         self.log("%s teardown" % self.id())
         self.log('')
-
+        super(TestCase, self).tearDown()
 
     def formcmd(self, cmd):
         if isinstance(cmd, basestring):
@@ -215,6 +218,7 @@ class TestCase(unittest.TestCase):
 class InTempDir(TestCase):
     """Base class for tests run in a temporary branch."""
     def setUp(self):
+        super(InTempDir, self).setUp()
         import os
         self.test_dir = os.path.join(self.TEST_ROOT, self.__class__.__name__)
         os.mkdir(self.test_dir)
@@ -223,6 +227,7 @@ class InTempDir(TestCase):
     def tearDown(self):
         import os
         os.chdir(self.TEST_ROOT)
+        super(InTempDir, self).tearDown()
 
 
 class _MyResult(unittest._TextTestResult):
@@ -244,7 +249,6 @@ class _MyResult(unittest._TextTestResult):
         # python2.3 has the bad habit of just "runit" for doctests
         if what == 'runit':
             what = test.shortDescription()
-        
         if self.style == 'verbose':
             print >>self.out, '%-60.60s' % what,
             self.out.flush()
@@ -300,22 +304,12 @@ class TestSuite(unittest.TestSuite):
         import os
         import shutil
         import time
-        import sys
         
         self._setup_test_log()
         self._setup_test_dir()
         print
     
-        # save stdout & stderr so there's no leakage from code-under-test
-        real_stdout = sys.stdout
-        real_stderr = sys.stderr
-        sys.stdout = sys.stderr = TestCase.TEST_LOG
-        try:
-            super(TestSuite,self).run(result)
-        finally:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-        return result
+        return super(TestSuite,self).run(result)
 
     def _setup_test_log(self):
         import time
