@@ -264,51 +264,33 @@ class _MyResult(unittest._TextTestResult):
 
     No special behaviour for now.
     """
-    def __init__(self, stream, descriptions, verbosity, style):
-        super(_MyResult, self).__init__(stream, descriptions, verbosity)
-        self.out = stream
-        assert style in ('none', 'progress', 'verbose')
-        self.style = style
 
     def startTest(self, test):
-        super(_MyResult, self).startTest(test)
+        unittest.TestResult.startTest(self, test)
         # TODO: Maybe show test.shortDescription somewhere?
         what = test.id()
         # python2.3 has the bad habit of just "runit" for doctests
         if what == 'runit':
             what = test.shortDescription()
-        if self.style == 'verbose':
-            print >>self.stream, '%-60.60s' % what,
-            self.stream.flush()
+        if self.showAll:
+            self.stream.write('%-60.60s' % what)
+        self.stream.flush()
 
     def addError(self, test, err):
-        if self.style == 'verbose':
-            print >>self.stream, 'ERROR'
-        elif self.style == 'progress':
-            self.stream.write('E')
-        self.stream.flush()
         super(_MyResult, self).addError(test, err)
+        self.stream.flush()
 
     def addFailure(self, test, err):
-        if self.style == 'verbose':
-            print >>self.stream, 'FAILURE'
-        elif self.style == 'progress':
-            self.stream.write('F')
-        self.stream.flush()
         super(_MyResult, self).addFailure(test, err)
+        self.stream.flush()
 
     def addSuccess(self, test):
-        if self.style == 'verbose':
-            print >>self.stream, 'OK'
-        elif self.style == 'progress':
+        if self.showAll:
+            self.stream.writeln('OK')
+        elif self.dots:
             self.stream.write('~')
         self.stream.flush()
-        super(_MyResult, self).addSuccess(test)
-
-    def printErrors(self):
-        if self.style == 'progress':
-            self.stream.writeln()
-        super(_MyResult, self).printErrors()
+        unittest.TestResult.addSuccess(self, test)
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
@@ -325,12 +307,11 @@ class _MyResult(unittest._TextTestResult):
 
 class TextTestRunner(unittest.TextTestRunner):
 
-    def __init__(self, stream=sys.stderr, descriptions=1, verbosity=0, style='progress'):
+    def __init__(self, stream=sys.stderr, descriptions=0, verbosity=1):
         super(TextTestRunner, self).__init__(stream, descriptions, verbosity)
-        self.style = style
 
     def _makeResult(self):
-        return _MyResult(self.stream, self.descriptions, self.verbosity, self.style)
+        return _MyResult(self.stream, self.descriptions, self.verbosity)
 
     # If we want the old 4 line summary output (count, 0 failures, 0 errors)
     # we can override run() too.
@@ -340,12 +321,10 @@ def run_suite(suite, name='test', verbose=False):
     import shutil
     InTempDir._TEST_NAME = name
     if verbose:
-        style = 'verbose'
         verbosity = 2
     else:
-        style = 'progress'
         verbosity = 1
-    runner = TextTestRunner(stream=sys.stdout, style=style)
+    runner = TextTestRunner(stream=sys.stdout, verbosity=verbosity)
     result = runner.run(suite)
     # This is still a little bogus, 
     # but only a little. Folk not using our testrunner will
