@@ -397,4 +397,10 @@ class MergeCommand(ExternalBase):
         self.runbzr('merge ../b')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
-        Branch('.').get_revision_xml(Branch('../b').last_patch())
+        a = Branch('.')
+        b = Branch('../b')
+        a.get_revision_xml(b.last_patch())
+        print "Pending: %s" % a.pending_merges()
+#        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
+#        % (a.pending_merges(), b.last_patch())
+
