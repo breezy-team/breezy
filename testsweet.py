@@ -281,35 +281,44 @@ class _MyResult(TestResult):
 
 
 
-def run_suite(suite, name='test', verbose=False):
-    import os
-    import shutil
-    import time
-    import sys
+class TestSuite(unittest.TestSuite):
     
-    _setup_test_log(name)
-    _setup_test_dir(name)
-    print
+    def __init__(self, tests=(), name='test'):
+        super(TestSuite, self).__init__(tests)
+        self._name = name
 
-    # save stdout & stderr so there's no leakage from code-under-test
-    real_stdout = sys.stdout
-    real_stderr = sys.stderr
-    sys.stdout = sys.stderr = TestCase.TEST_LOG
-    try:
-        if verbose:
-            style = 'verbose'
-        else:
-            style = 'progress'
-        result = _MyResult(real_stdout, style)
-        suite.run(result)
-    finally:
-        sys.stdout = real_stdout
-        sys.stderr = real_stderr
+    def run(self, result):
+        import os
+        import shutil
+        import time
+        import sys
+        
+        _setup_test_log(self._name)
+        _setup_test_dir(self._name)
+        print
+    
+        # save stdout & stderr so there's no leakage from code-under-test
+        real_stdout = sys.stdout
+        real_stderr = sys.stderr
+        sys.stdout = sys.stderr = TestCase.TEST_LOG
+        try:
+            super(TestSuite,self).run(result)
+        finally:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr
+        return result
 
+def run_suite(a_suite, name='test', verbose=False):
+    import sys
+    suite = TestSuite((a_suite,),name)
+    if verbose:
+        style = 'verbose'
+    else:
+        style = 'progress'
+    result = _MyResult(sys.stdout, style)
+    suite.run(result)
     _show_results(result)
-
     return result.wasSuccessful()
-
 
 
 def _setup_test_log(name):
