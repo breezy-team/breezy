@@ -162,7 +162,7 @@ class FunctionalTestCase(TestCase):
         import os
         self._make_test_root()
         self._currentdir = os.getcwdu()
-        self.test_dir = os.path.join(self.TEST_ROOT, self.__class__.__name__)
+        self.test_dir = os.path.join(self.TEST_ROOT, self.id())
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         
@@ -174,16 +174,12 @@ class FunctionalTestCase(TestCase):
     def formcmd(self, cmd):
         if isinstance(cmd, basestring):
             cmd = cmd.split()
-
         if cmd[0] == 'bzr':
             cmd[0] = self.BZRPATH
             if self.OVERRIDE_PYTHON:
                 cmd.insert(0, self.OVERRIDE_PYTHON)
-
         self.log('$ %r' % cmd)
-
         return cmd
-
 
     def runcmd(self, cmd, retcode=0):
         """Run one command and check the return code.
@@ -199,17 +195,12 @@ class FunctionalTestCase(TestCase):
         except ImportError, e:
             _need_subprocess()
             raise
-
-
         cmd = self.formcmd(cmd)
-
         self.log('$ ' + ' '.join(cmd))
         actual_retcode = call(cmd, stdout=self.TEST_LOG, stderr=self.TEST_LOG)
-
         if retcode != actual_retcode:
             raise CommandFailed("test failed: %r returned %d, expected %d"
                                 % (cmd, actual_retcode, retcode))
-
 
     def backtick(self, cmd, retcode=0):
         """Run a command and return its output"""
