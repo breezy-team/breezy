@@ -26,7 +26,9 @@ class BzrTestBase(InTempDir):
     """bzr-specific test base class"""
     def run_bzr(self, *args, **kwargs):
         retcode = kwargs.get('retcode', 0)
-        self.assertEquals(bzrlib.commands.run_bzr(args), retcode)
+        result = self.apply_redirected(None, None, None,
+                                       bzrlib.commands.run_bzr, args)
+        self.assertEquals(result, retcode)
         
 
 def selftest(verbose=False):

@@ -68,22 +68,43 @@ class TestCase(unittest.TestCase):
     OVERRIDE_PYTHON = None # to run with alternative python 'python'
     BZRPATH = 'bzr'
 
+    def apply_redirected(self, stdin=None, stdout=None, stderr=None,
+                         a_callable=None, *args, **kwargs):
+        """Call callable with redirected std io pipes.
+
+        Returns the return code."""
+        from StringIO import StringIO
+        if not callable(a_callable):
+            raise ValueError("a_callable must be callable.")
+        if stdin is None:
+            stdin = StringIO("")
+        if stdout is None:
+            stdout = self.TEST_LOG
+        if stderr is None:
+            stderr = self.TEST_LOG
+        real_stdin = sys.stdin
+        real_stdout = sys.stdout
+        real_stderr = sys.stderr
+        result = None
+        try:
+            sys.stdout = stdout
+            sys.stderr = stderr
+            sys.stdin = stdin
+            result = a_callable(*args, **kwargs)
+        finally:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr
+            sys.stdin = real_stdin
+        return result
+
     def setUp(self):
         super(TestCase, self).setUp()
         # setup a temporary log for the test 
-        import time
-        import os
         import tempfile
         self.TEST_LOG = tempfile.NamedTemporaryFile(mode='wt', bufsize=0)
-        # save stdout & stderr so there's no leakage from code-under-test
-        self.real_stdout = sys.stdout
-        self.real_stderr = sys.stderr
-        sys.stdout = sys.stderr = self.TEST_LOG
         self.log("%s setup" % self.id())
 
     def tearDown(self):
-        sys.stdout = self.real_stdout
-        sys.stderr = self.real_stderr
         self.log("%s teardown" % self.id())
         self.log('')
         super(TestCase, self).tearDown()
@@ -210,22 +231,16 @@ class FunctionalTestCase(TestCase):
         except ImportError, e:
             _need_subprocess()
             raise
-
         cmd = self.formcmd(cmd)
         child = Popen(cmd, stdout=PIPE, stderr=self.TEST_LOG)
         outd, errd = child.communicate()
         self.log(outd)
         actual_retcode = child.wait()
-
         outd = outd.replace('\r', '')
-
         if retcode != actual_retcode:
             raise CommandFailed("test failed: %r returned %d, expected %d"
                                 % (cmd, actual_retcode, retcode))
-
         return outd
-
-
 
     def build_tree(self, shape):
         """Build a test tree according to a pattern.
