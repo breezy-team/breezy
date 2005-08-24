@@ -126,7 +126,7 @@ def find_branch_root(f=None):
         head, tail = os.path.split(f)
         if head == f:
             # reached the root, whatever that may be
-            raise bzrlib.errors.NotBranchError('%r is not in a branch' % orig_f)
+            raise bzrlib.errors.NotBranchError('%s is not in a branch' % orig_f)
         f = head
 
 

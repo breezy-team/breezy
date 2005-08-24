@@ -107,7 +107,7 @@ def check(branch):
         for rev_id in history:
             revno += 1
             pb.update('checking revision', revno, revcount)
-            mutter('    revision {%s}' % rev_id)
+            # mutter('    revision {%s}' % rev_id)
             rev = branch.get_revision(rev_id)
             if rev.revision_id != rev_id:
                 raise BzrCheckError('wrong internal revision id in revision {%s}'

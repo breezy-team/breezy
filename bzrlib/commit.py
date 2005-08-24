@@ -85,7 +85,10 @@ def commit(branch, message,
         basis_inv = basis.inventory
 
         if verbose:
-            note('looking for changes...')
+            # note('looking for changes...')
+            # print 'looking for changes...'
+            # disabled; should be done at a higher level
+            pass
 
         pending_merges = branch.pending_merges()
 
@@ -179,7 +182,10 @@ def commit(branch, message,
         branch.set_pending_merges([])
 
         if verbose:
-            note("commited r%d" % branch.revno())
+            # disabled; should go through logging
+            # note("commited r%d" % branch.revno())
+            # print ("commited r%d" % branch.revno())
+            pass
     finally:
         branch.unlock()
 
