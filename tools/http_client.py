@@ -68,11 +68,21 @@ unfulfilled request.
 # The content is written into temporary files.  It returns a list of
 # readable file objects.
 
+# TODO: If we try pipelined or keepalive and the connection drop out
+# then retry the request on a new connection; eventually we should perhaps
+# learn that a given host or network just won't allow keepalive.
+
+
 import asyncore
 import socket, string, time, sys
 import StringIO
 import mimetools, urlparse, urllib
 import logging
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(levelname)s %(message)s',
+                    filename='/tmp/http_client.log',
+                    filemode='w')
 
 logger = logging.getLogger('bzr.http_client')
 debug = logger.debug
@@ -115,7 +125,7 @@ class DownloadManager(object):
         self.channels = []
         self.try_pipelined = False
         self.try_keepalive = False
-        self.max_channels = 3
+        self.max_channels = 5
 
 
     def enqueue(self, url, consumer):
@@ -134,10 +144,9 @@ class DownloadManager(object):
 
     def _make_channel(self):
         # proxy2 203.17.154.69
-        # bazaar-ng.org 
-        return HttpChannel('82.211.81.161', 80, self)
+        # return HttpChannel('82.211.81.161', 80, self)         # bazaar-ng.org 
         # return HttpChannel('203.17.154.69', 8080, self)
-        # return HttpChannel('localhost', 8000, self)
+        return HttpChannel('127.0.0.1', 8000, self)  # forwarded
             
 
     def _wake_up_channel(self):
@@ -172,7 +181,7 @@ class DownloadManager(object):
             choice(self.channels).take_one()
 
 
-        debug("request left until a channel's idle")
+        # debug("request postponed until a channel's idle")
         
 
 
@@ -394,15 +403,20 @@ class HttpChannel(asyncore.dispatcher_with_send):
                 
                 assert got_data
 
-                debug('pass back %d bytes of %s' % (len(got_data),
-                                                    self.sent_requests[0][0]))
-                consumer.feed(data)
-
                 self.content_remaining -= len(got_data)
+
+                debug('pass back %d bytes of %s, %d remain'
+                      % (len(got_data),
+                         self.sent_requests[0][0],
+                         self.content_remaining))
+                consumer.feed(data)
 
             if self.content_remaining == 0:
                 del self.sent_requests[0]
 
+                debug('content complete')
+                consumer.content_complete()
+                
                 # reset lots of things and try to get the next response header
                 if self.response.connection_reply == 'close':
                     debug('server requested close')
@@ -414,7 +428,6 @@ class HttpChannel(asyncore.dispatcher_with_send):
                     self.close()
                 else:
                     debug("ready for next header...")
-                    consumer.content_complete()
                     self.take_one()
                 self.response = None
 
@@ -428,44 +441,61 @@ class HttpChannel(asyncore.dispatcher_with_send):
         self.close()
 
 
+class DummyConsumer:
+    def __init__(self, url, pb):
+        self.url = url
+        self.outf = None
+        self._pb = pb
+
+    def feed(self, data):
+        # print "feed", repr(data)
+        # print "feed", repr(data[:20]), repr(data[-20:]), len(data)
+        if not self.outf:
+            base = self.url[self.url.rindex('/')+1:]
+            self.outf = file('/tmp/download/' + base, 'wb')
+        self.outf.write(data)
+
+    def error(self, err_info):
+        import traceback
+        error('error reported to consumer')
+        traceback.print_exception(err_info[0], err_info[1], err_info[2])
+        sys.exit(1)
+
+    def content_complete(self):
+        info('content complete from %s' % self.url)
+        self.outf.close()
+        self.outf = None
+        # using last_cnt is cheating
+        self._pb.update('downloading inventory',
+                        self._pb.last_cnt+1,
+                        self._pb.last_total)
+
+
+
 if __name__ == "__main__":
-    class dummy_consumer:
-        def __init__(self, url):
-            self.url = url
-
-        def feed(self, data):
-            # print "feed", repr(data)
-            # print "feed", repr(data[:20]), repr(data[-20:]), len(data)
-            pass
-            
-        def error(self, err_info):
-            import traceback
-            traceback.print_exception(err_info[0], err_info[1], err_info[2])
-
-        def content_complete(self):
-            debug('content complete from %s' % self.url)
-            
-
     logging.basicConfig(level=logging.DEBUG)
 
     mgr = DownloadManager()
 
     from bzrlib.branch import Branch
-    revs = Branch('/home/mbp/work/bzr').revision_history()
+    from bzrlib.progress import ProgressBar
 
-        
+    pb = ProgressBar()
+    revs = Branch('/home/mbp/work/bzr').revision_history()
+    pb.update('downloading inventories', 0, len(revs))
+
+    for rev in revs:
+        url = 'http://www.bazaar-ng.org/bzr/bzr.dev/.bzr/inventory-store/' \
+              + rev + '.gz'
+        mgr.enqueue(url, DummyConsumer(url, pb))
+
+    mgr.run()
+    
+
+
     
 #     for url in ['http://www.bazaar-ng.org/',
 #                 'http://www.bazaar-ng.org/tutorial.html',
 #                 'http://www.bazaar-ng.org/download.html',
 #                 'http://www.bazaar-ng.org/bzr/bzr.dev/.bzr/revision-store/mbp@hope-20050415013653-3b3c9c3d33fae0a6.gz',
 #                 ]:
-
-    for rev in revs:
-#        url = 'http://www.bazaar-ng.org/bzr/bzr.dev/.bzr/revision-store/' \
-        url = 'http://www.bazaar-ng.org/bzr/bzr.dev/.bzr/inventory-store/' \
-              + rev + '.gz'
-        mgr.enqueue(url, dummy_consumer(url))
-
-    mgr.run()
-    

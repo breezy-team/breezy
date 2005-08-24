@@ -20,6 +20,13 @@
 # TODO: probably should say which arguments are candidates for glob
 # expansion on windows and do that at the command level.
 
+# TODO: Help messages for options.
+
+# TODO: Define arguments by objects, rather than just using names.
+# Those objects can specify the expected type of the argument, which
+# would help with validation and shell completion.
+
+
 import sys
 import os
 
@@ -1603,6 +1610,7 @@ class cmd_missing(Command):
         return show_missing(b, br_remote, verbose=verbose, quiet=quiet)
 
 
+
 class cmd_plugins(Command):
     """List plugins"""
     hidden = True
@@ -1866,8 +1874,9 @@ def run_bzr(argv):
         return 0
     
     if not args:
-        print >>sys.stderr, "please try 'bzr help' for help"
-        return 1
+        from bzrlib.help import help
+        help(None)
+        return 0
     
     cmd = str(args.pop(0))
 
@@ -1916,10 +1925,6 @@ def _report_exception(summary, quiet=False):
     import traceback
     
     log_error('bzr: ' + summary)
-    bzrlib.trace.log_exception()
-
-    if os.environ.get('BZR_DEBUG'):
-        traceback.print_exc()
 
     if not quiet:
         sys.stderr.write('\n')
@@ -1932,47 +1937,37 @@ def _report_exception(summary, quiet=False):
 
 
 def main(argv):
-    
     bzrlib.trace.open_tracefile(argv)
 
     try:
         try:
-            try:
-                return run_bzr(argv[1:])
-            finally:
-                # do this here inside the exception wrappers to catch EPIPE
-                sys.stdout.flush()
-        except BzrError, e:
-            quiet = isinstance(e, (BzrCommandError))
-            _report_exception('error: ' + str(e), quiet=quiet)
-            if len(e.args) > 1:
-                for h in e.args[1]:
-                    # some explanation or hints
-                    log_error('  ' + h)
-            return 1
-        except AssertionError, e:
-            msg = 'assertion failed'
-            if str(e):
-                msg += ': ' + str(e)
-            _report_exception(msg)
+            return run_bzr(argv[1:])
+        finally:
+            # do this here inside the exception wrappers to catch EPIPE
+            sys.stdout.flush()
+    except BzrCommandError, e:
+        # command line syntax error, etc
+        log_error(str(e))
+        return 1
+    except BzrError, e:
+        bzrlib.trace.log_exception()
+        return 1
+    except AssertionError, e:
+        bzrlib.trace.log_exception('assertion failed: ' + str(e))
+        return 3
+    except KeyboardInterrupt, e:
+        bzrlib.trace.note('interrupted')
+        return 2
+    except Exception, e:
+        import errno
+        if (isinstance(e, IOError) 
+            and hasattr(e, 'errno')
+            and e.errno == errno.EPIPE):
+            bzrlib.trace.note('broken pipe')
             return 2
-        except KeyboardInterrupt, e:
-            _report_exception('interrupted', quiet=True)
+        else:
+            bzrlib.trace.log_exception('terminated by exception')
             return 2
-        except Exception, e:
-            import errno
-            quiet = False
-            if (isinstance(e, IOError) 
-                and hasattr(e, 'errno')
-                and e.errno == errno.EPIPE):
-                quiet = True
-                msg = 'broken pipe'
-            else:
-                msg = str(e).rstrip('\n')
-            _report_exception(msg, quiet)
-            return 2
-    finally:
-        bzrlib.trace.close_trace()
 
 
 if __name__ == '__main__':

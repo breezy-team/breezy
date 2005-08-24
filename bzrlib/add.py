@@ -39,7 +39,7 @@ def smart_add(file_list, verbose=True, recurse=True):
     """
     import os
     import sys
-    from bzrlib.osutils import quotefn, kind_marker
+    from bzrlib.osutils import quotefn
     from bzrlib.errors import BadFileKindError, ForbiddenFileError
     import bzrlib.branch
     import bzrlib.osutils

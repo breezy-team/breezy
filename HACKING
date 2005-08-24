@@ -20,7 +20,10 @@ guidelines for modifying bzr
   function runs.  Import statements have a cost, so try to make sure
   they don't run inside hot functions.
 
-* Please write PEP-8__ compliant code.
+* Please write PEP-8__ compliant code.  
+
+  One often-missed requirement is that the first line of docstrings
+  should be a self-contained one-sentence summary.
 
 __ http://www.python.org/peps/pep-0008.html
 
@@ -41,3 +44,41 @@ a user of bzr, not a developer: new functions or classes shouldn't be
 mentioned, but new commands, changes in behaviour or fixed nontrivial
 bugs should be listed.  See the existing entries for an idea of what
 should be done.
+
+
+
+Writing output
+==============
+
+(The strategy described here is what we want to get to, but it's not
+consistently followed in the code at the moment.)
+
+bzrlib is intended to be a generically reusable library.  It shouldn't
+write messages to stdout or stderr, because some programs that use it
+might want to display that information through a GUI or some other
+mechanism.
+
+We can distinguish two types of output from the library:
+
+ 1. Structured data representing the progress or result of an
+    operation.  For example, for a commit command this will be a list
+    of the modified files and the finally committed revision number
+    and id.
+
+    These should be exposed either through the return code or by calls
+    to a callback parameter.
+
+    A special case of this is progress indicators for long-lived
+    operations, where the caller should pass a ProgressBar object.
+
+ 2. Unstructured log/debug messages, mostly for the benefit of the
+    developers or users trying to debug problems.  This should always
+    be sent through ``bzrlib.trace`` and Python ``logging``, so that
+    it can be redirected by the client.
+
+The distinction between the two is a bit subjective, but in general if
+there is any chance that a library would want to see something as
+structured data, we should make it so.
+
+The policy about how output is presented in the text-mode client
+should be only in the command-line tool.

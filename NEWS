@@ -12,6 +12,14 @@ bzr development head
       mention revisions that are not present.
 
 
+  LIBRARY:
+
+    * Changed trace messages to go through the standard logging
+      framework, so that they can more easily be redirected by
+      libraries.
+
+
+
 bzr-0.0.6 2005-08-18
 
   NEW FEATURES:
@@ -39,7 +47,7 @@ bzr-0.0.6 2005-08-18
       specified by putting it into .bzr/email within a branch.  (Based
       on a patch from Heikki Paajanen.)
 
-    
+
   ENHANCEMENTS:
 
     * Faster working tree operations.

@@ -127,6 +127,7 @@ class TestCommands(ExternalBase):
         assert file('.bzrignore', 'rb').read() == '*.blah\ngarh\n'
 
     def test_revert(self):
+        import os
         self.runbzr('init')
 
         file('hello', 'wt').write('foo')
@@ -144,7 +145,13 @@ class TestCommands(ExternalBase):
         self.check_file_contents('goodbye', 'qux')
         self.runbzr('revert')
         self.check_file_contents('goodbye', 'baz')
-        
+
+        os.mkdir('revertdir')
+        self.runbzr('add revertdir')
+        self.runbzr('commit -m f')
+        os.rmdir('revertdir')
+        self.runbzr('revert')
+
     def skipped_test_mv_modes(self):
         """Test two modes of operation for mv"""
         from bzrlib.branch import Branch
@@ -340,5 +347,3 @@ class OldTests(ExternalBase):
         runbzr('log --forward')
 
         runbzr('info')
-
-

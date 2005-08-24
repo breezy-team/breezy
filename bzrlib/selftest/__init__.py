@@ -17,6 +17,7 @@
 
 from testsweet import TestCase, run_suite, InTempDir
 import bzrlib.commands
+import bzrlib.fetch
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
@@ -62,10 +63,8 @@ def test_suite():
                    'bzrlib.selftest.testrevision',
                    'bzrlib.merge_core',
                    'bzrlib.selftest.testdiff',
+                   'bzrlib.fetch'
                    ]
-
-    # XXX: should also test bzrlib.merge_core, but they seem to be out
-    # of date with the code.
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
               bzrlib.osutils, bzrlib.commands, bzrlib.merge3):

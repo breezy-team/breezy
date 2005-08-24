@@ -73,9 +73,11 @@ class TestRevisionId(TestCase):
 
 
 class PendingMerges(InTempDir):
+
     def test_pending_merges(self):
         """Tracking pending-merged revisions."""
         b = Branch('.', init=True)
+
         self.assertEquals(b.pending_merges(), [])
         b.add_pending_merge('foo@azkhazan-123123-abcabc')
         self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
