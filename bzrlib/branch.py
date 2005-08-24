@@ -811,7 +811,7 @@ class Branch(object):
         if stop_revision is None:
             stop_revision = other_len
         elif stop_revision > other_len:
-            raise NoSuchRevision(self, stop_revision)
+            raise bzrlib.errors.NoSuchRevision(self, stop_revision)
         
         return other_history[self_len:stop_revision]
 

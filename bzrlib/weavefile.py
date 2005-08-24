@@ -102,7 +102,6 @@ def read_weave_v5(f):
     from weave import Weave, WeaveFormatError
     w = Weave()
 
-    wfe = WeaveFormatError
     l = f.readline()
     if l != FORMAT_1:
         raise WeaveFormatError('invalid weave file header: %r' % l)
