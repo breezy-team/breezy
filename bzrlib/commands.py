@@ -1402,10 +1402,10 @@ class cmd_whoami(Command):
 class cmd_selftest(Command):
     """Run internal test suite"""
     hidden = True
-    takes_options = ['verbose']
-    def run(self, verbose=False):
+    takes_options = ['verbose', 'pattern']
+    def run(self, verbose=False, pattern=".*"):
         from bzrlib.selftest import selftest
-        return int(not selftest(verbose=verbose))
+        return int(not selftest(verbose=verbose, pattern=pattern))
 
 
 class cmd_version(Command):
@@ -1655,6 +1655,7 @@ OPTIONS = {
     'root':                   str,
     'no-backup':              None,
     'merge-type':             get_merge_type,
+    'pattern':                str,
     }
 
 SHORT_OPTIONS = {

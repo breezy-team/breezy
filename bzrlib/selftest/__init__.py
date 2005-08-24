@@ -32,12 +32,12 @@ class BzrTestBase(InTempDir):
         self.assertEquals(result, retcode)
         
 
-def selftest(verbose=False):
-    return run_suite(test_suite(), 'testbzr', verbose=verbose)
+def selftest(verbose=False, pattern=".*"):
+    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
 
 
 def test_suite():
-    from unittest import TestLoader, TestSuite
+    from bzrlib.selftest.TestUtil import TestLoader, TestSuite
     import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
     import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
     from doctest import DocTestSuite

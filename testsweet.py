@@ -39,6 +39,7 @@ true yet.
 
 import unittest
 import sys
+from bzrlib.selftest import TestUtil
 
 # XXX: Don't need this anymore now we depend on python2.4
 def _need_subprocess():
@@ -340,7 +341,29 @@ class TextTestRunner(unittest.TextTestRunner):
         return EarlyStoppingTestResultAdapter(result)
 
 
-def run_suite(suite, name='test', verbose=False):
+class filteringVisitor(TestUtil.TestVisitor):
+    """I accruse all the testCases I visit that pass a regexp filter on id
+    into my suite
+    """
+
+    def __init__(self, filter):
+        import re
+        TestUtil.TestVisitor.__init__(self)
+        self._suite=None
+        self.filter=re.compile(filter)
+
+    def suite(self):
+        """answer the suite we are building"""
+        if self._suite is None:
+            self._suite=TestUtil.TestSuite()
+        return self._suite
+
+    def visitCase(self, aCase):
+        if self.filter.match(aCase.id()):
+            self.suite().addTest(aCase)
+
+
+def run_suite(suite, name='test', verbose=False, pattern=".*"):
     import shutil
     FunctionalTestCase._TEST_NAME = name
     if verbose:
@@ -350,12 +373,15 @@ def run_suite(suite, name='test', verbose=False):
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity)
-    result = runner.run(suite)
+    visitor = filteringVisitor(pattern)
+    suite.visit(visitor)
+    result = runner.run(visitor.suite())
     # This is still a little bogus, 
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
     if result.wasSuccessful():
-        shutil.rmtree(FunctionalTestCase.TEST_ROOT) 
+        if FunctionalTestCase.TEST_ROOT is not None:
+            shutil.rmtree(FunctionalTestCase.TEST_ROOT) 
     else:
         print "Failed tests working directories are in '%s'\n" % FunctionalTestCase.TEST_ROOT
     return result.wasSuccessful()
