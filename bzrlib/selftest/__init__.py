@@ -32,6 +32,10 @@ class BzrTestBase(InTempDir):
         
 
 def selftest(verbose=False):
+    return run_suite(test_suite(), 'testbzr', verbose=verbose)
+
+
+def test_suite():
     from unittest import TestLoader, TestSuite
     import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
     import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
@@ -68,30 +72,19 @@ def selftest(verbose=False):
         if m not in MODULES_TO_DOCTEST:
             MODULES_TO_DOCTEST.append(m)
 
-    
     TestCase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
     print '%-30s %s' % ('bzr binary', TestCase.BZRPATH)
-
     print
-
     suite = TestSuite()
-
     suite.addTest(TestLoader().loadTestsFromNames(testmod_names))
-
     for m in MODULES_TO_TEST:
          suite.addTest(TestLoader().loadTestsFromModule(m))
-
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
-
     for p in bzrlib.plugin.all_plugins:
         if hasattr(p, 'test_suite'):
             suite.addTest(p.test_suite())
-
     import bzrlib.merge_core
     suite.addTest(unittest.makeSuite(bzrlib.merge_core.MergeTest, 'test_'))
-
-    return run_suite(suite, 'testbzr', verbose=verbose)
-
-
+    return suite
 

@@ -209,9 +209,3 @@ class PendingMerges(InTempDir):
         finally:
             os.chdir(savedir)
             shutil.rmtree(dtmp)
-
-
-TEST_CLASSES = [TestBranch,
-                TestRevisionId,
-                PendingMerges
-                ]

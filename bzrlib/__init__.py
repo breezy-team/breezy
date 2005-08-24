@@ -57,3 +57,6 @@ def get_bzr_revision():
     except BzrError:
         return None
     
+def test_suite():
+    import selftest
+    return selftest.test_suite()

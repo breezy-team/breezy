@@ -59,8 +59,3 @@ class TestIsAncestor(InTempDir):
         assert is_ancestor(revisions[3], revisions_2[4], br1)
         assert is_ancestor(revisions[3], revisions_2[3], sources)
         assert not is_ancestor(revisions[3], revisions_2[3], br1)
-
-
-TEST_CLASSES = [
-    TestIsAncestor,
-    ]
