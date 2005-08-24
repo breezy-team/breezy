@@ -40,6 +40,9 @@ import logging
 import traceback
 
 
+_file_handler = None
+
+
 class QuietFormatter(logging.Formatter):
     """Formatter that supresses the details of errors.
 
