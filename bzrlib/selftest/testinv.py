@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.selftest import TestBase
+from bzrlib.selftest import TestCase
 
 from bzrlib.inventory import Inventory, InventoryEntry
 
 
-class TestIsWithin(TestBase):
-    def runTest(self):
+class TestInventory(TestCase):
+
+    def test_is_within(self):
         from bzrlib.osutils import is_inside_any
         
         for dirs, fn in [(['src', 'doc'], 'src/foo.c'),
@@ -33,10 +34,7 @@ class TestIsWithin(TestBase):
                          (['src'], 'srccontrol/foo')]:
             self.assertFalse(is_inside_any(dirs, fn))
             
-            
-            
-class TestInventoryIds(TestBase):
-    def runTest(self):
+    def test_ids(self):
         """Test detection of files within selected directories."""
         inv = Inventory()
         

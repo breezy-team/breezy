@@ -15,11 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.selftest import InTempDir, TestBase
+from bzrlib.selftest import InTempDir
 
 class TestRevisionNamespaces(InTempDir):
-    """Functional tests for hashcache"""
-    def runTest(self):
+    def test_revision_namespaces(self):
+        """Functional tests for hashcache"""
         from bzrlib.errors import BzrError
         from bzrlib.branch import Branch
         import os

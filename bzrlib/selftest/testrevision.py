@@ -39,8 +39,9 @@ def make_branches():
 
 
 class TestIsAncestor(InTempDir):
-    """Test checking whether a revision is an ancestor of another revision"""
-    def runTest(self):
+
+    def test_is_ancestor(self):
+        """Test checking whether a revision is an ancestor of another revision"""
         from bzrlib.revision import is_ancestor, MultipleRevisionSources
         from bzrlib.errors import NoSuchRevision
         br1, br2 = make_branches()

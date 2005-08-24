@@ -27,12 +27,11 @@ it's normally invoked.
 """
 
 import sys
-
-from bzrlib.selftest import TestBase, InTempDir, BzrTestBase
-
+from bzrlib.selftest import InTempDir, BzrTestBase
 
 
 class ExternalBase(InTempDir):
+
     def runbzr(self, args, retcode=0,backtick=False):
         try:
             import shutil
@@ -51,77 +50,20 @@ class ExternalBase(InTempDir):
             return self.runcmd(['python', self.BZRPATH,] + args,
                            retcode=retcode)
 
+class TestCommands(ExternalBase):
 
-
-class MvCommand(BzrTestBase):
-    def runbzr(self):
-        """Test two modes of operation for mv"""
-        b = Branch('.', init=True)
-        self.build_tree(['a', 'c', 'subdir/'])
-        self.run_bzr('mv', 'a', 'b')
-        self.run_bzr('mv', 'b', 'subdir')
-        self.run_bzr('mv', 'subdir/b', 'a')
-        self.run_bzr('mv', 'a', 'b', 'subdir')
-        self.run_bzr('mv', 'subdir/a', 'subdir/newa')
-
-
-
-class TestVersion(BzrTestBase):
-    """Check output from version command and master option is reasonable"""
-    def runTest(self):
-        # output is intentionally passed through to stdout so that we
-        # can see the version being tested
-        from cStringIO import StringIO
-        save_out = sys.stdout
-        try:
-            sys.stdout = tmp_out = StringIO()
-            
-            self.run_bzr('version')
-        finally:
-            sys.stdout = save_out
-
-        output = tmp_out.getvalue()
-        self.log('bzr version output:')
-        self.log(output)
-        
-        self.assert_(output.startswith('bzr (bazaar-ng) '))
-        self.assertNotEqual(output.index('Canonical'), -1)
-
-        # make sure --version is consistent
-        try:
-            sys.stdout = tmp_out = StringIO()
-            
-            self.run_bzr('--version')
-        finally:
-            sys.stdout = save_out
-
-        self.log('bzr --version output:')
-        self.log(tmp_out.getvalue())
-
-        self.assertEquals(output, tmp_out.getvalue())
-
-
-        
-
-
-class HelpCommands(ExternalBase):
-    def runTest(self):
+    def test_help_commands(self):
         self.runbzr('--help')
         self.runbzr('help')
         self.runbzr('help commands')
         self.runbzr('help help')
         self.runbzr('commit -h')
 
-
-class InitBranch(ExternalBase):
-    def runTest(self):
+    def test_init_branch(self):
         import os
         self.runbzr(['init'])
 
-
-
-class UserIdentity(ExternalBase):
-    def runTest(self):
+    def test_whoami(self):
         # this should always identify something, if only "john@localhost"
         self.runbzr("whoami")
         self.runbzr("whoami --email")
@@ -129,9 +71,8 @@ class UserIdentity(ExternalBase):
         self.assertEquals(self.runbzr("whoami --email",
                                       backtick=True).count('@'), 1)
         
-class UserIdentityBranch(ExternalBase):
-    def runTest(self):
-        # tests branch specific user identity
+    def test_whoami_branch(self):
+        """branch specific user identity works."""
         self.runbzr('init')
         f = file('.bzr/email', 'wt')
         f.write('Branch Identity <branch@identi.ty>')
@@ -141,27 +82,19 @@ class UserIdentityBranch(ExternalBase):
         self.assertTrue(whoami.startswith('Branch Identity <branch@identi.ty>'))
         self.assertTrue(whoami_email.startswith('branch@identi.ty'))
 
-
-class InvalidCommands(ExternalBase):
-    def runTest(self):
+    def test_invalid_commands(self):
         self.runbzr("pants", retcode=1)
         self.runbzr("--pants off", retcode=1)
         self.runbzr("diff --message foo", retcode=1)
 
-
-
-class EmptyCommit(ExternalBase):
-    def runTest(self):
+    def test_empty_commit(self):
         self.runbzr("init")
         self.build_tree(['hello.txt'])
         self.runbzr("commit -m empty", retcode=1)
         self.runbzr("add hello.txt")
         self.runbzr("commit -m added")
 
-
-
-class IgnorePatterns(ExternalBase):
-    def runTest(self):
+    def test_ignore_patterns(self):
         from bzrlib.branch import Branch
         
         b = Branch('.', init=True)
@@ -192,13 +125,64 @@ class IgnorePatterns(ExternalBase):
         self.runbzr('ignore garh')
         self.assertEquals(list(b.unknowns()), [])
         assert file('.bzrignore', 'rb').read() == '*.blah\ngarh\n'
+
+    def test_revert(self):
+        import os
+
+        self.runbzr('init')
+
+        file('hello', 'wt').write('foo')
+        self.runbzr('add hello')
+        self.runbzr('commit -m setup hello')
+
+        file('goodbye', 'wt').write('baz')
+        self.runbzr('add goodbye')
+        self.runbzr('commit -m setup goodbye')
         
+        file('hello', 'wt').write('bar')
+        file('goodbye', 'wt').write('qux')
+        self.runbzr('revert hello')
+        self.check_file_contents('hello', 'foo')
+        self.check_file_contents('goodbye', 'qux')
+        self.runbzr('revert')
+        self.check_file_contents('goodbye', 'baz')
+
+        os.mkdir('revertdir')
+        self.runbzr('add revertdir')
+        self.runbzr('commit -m f')
+        os.rmdir('revertdir')
+        self.runbzr('revert')
 
 
+    def skipped_test_mv_modes(self):
+        """Test two modes of operation for mv"""
+        from bzrlib.branch import Branch
+        b = Branch('.', init=True)
+        self.build_tree(['a', 'c', 'subdir/'])
+        self.run_bzr('mv', 'a', 'b')
+        self.run_bzr('mv', 'b', 'subdir')
+        self.run_bzr('mv', 'subdir/b', 'a')
+        self.run_bzr('mv', 'a', 'b', 'subdir')
+        self.run_bzr('mv', 'subdir/a', 'subdir/newa')
+
+    def test_main_version(self):
+        """Check output from version command and master option is reasonable"""
+        # output is intentionally passed through to stdout so that we
+        # can see the version being tested
+        output = self.runbzr('version', backtick=1)
+        self.log('bzr version output:')
+        self.log(output)
+        self.assert_(output.startswith('bzr (bazaar-ng) '))
+        self.assertNotEqual(output.index('Canonical'), -1)
+        # make sure --version is consistent
+        tmp_output = self.runbzr('--version', backtick=1)
+        self.log('bzr --version output:')
+        self.log(tmp_output)
+        self.assertEquals(output, tmp_output)
 
 class OldTests(ExternalBase):
     # old tests moved from ./testbzr
-    def runTest(self):
+    def test_bzr(self):
         from os import chdir, mkdir
         from os.path import exists
         import os
@@ -365,36 +349,3 @@ class OldTests(ExternalBase):
         runbzr('log --forward')
 
         runbzr('info')
-
-
-
-
-
-
-class RevertCommand(ExternalBase):
-    def runTest(self):
-        import os
-        self.runbzr('init')
-
-        file('hello', 'wt').write('foo')
-        self.runbzr('add hello')
-        self.runbzr('commit -m setup hello')
-
-        file('goodbye', 'wt').write('baz')
-        self.runbzr('add goodbye')
-        self.runbzr('commit -m setup goodbye')
-        
-        file('hello', 'wt').write('bar')
-        file('goodbye', 'wt').write('qux')
-        self.runbzr('revert hello')
-        self.check_file_contents('hello', 'foo')
-        self.check_file_contents('goodbye', 'qux')
-        self.runbzr('revert')
-        self.check_file_contents('goodbye', 'baz')
-        os.mkdir('revertdir')
-        self.runbzr('add revertdir')
-        self.runbzr('commit -m f')
-        os.rmdir('revertdir')
-        self.runbzr('revert')
-
-

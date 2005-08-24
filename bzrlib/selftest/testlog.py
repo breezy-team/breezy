@@ -48,6 +48,7 @@ class LogCatcher(LogFormatter):
 
 
 class SimpleLogTest(BzrTestBase):
+
     def checkDelta(self, delta, **kw):
         """Check the filenames touched by a delta are as expected."""
         for n in 'added', 'removed', 'renamed', 'modified', 'unchanged':
@@ -61,8 +62,7 @@ class SimpleLogTest(BzrTestBase):
             got = [x[0] for x in getattr(delta, n)]
             self.assertEquals(expected, got)
 
-    
-    def runTest(self):
+    def test_simple_log(self):
         eq = self.assertEquals
         ass = self.assert_
         

@@ -30,15 +30,15 @@ This does several things:
 * utilities to run external commands and check their return code
   and/or output
 
-Test cases should normally subclass TestBase.  The test runner should
+Test cases should normally subclass testsweet.TestCase.  The test runner should
 call runsuite().
 
 This is meant to become independent of bzr, though that's not quite
 true yet.
 """  
 
-
-from unittest import TestResult, TestCase
+import unittest
+import sys
 
 # XXX: Don't need this anymore now we depend on python2.4
 def _need_subprocess():
@@ -50,17 +50,16 @@ class CommandFailed(Exception):
     pass
 
 
-
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
     # XXX: Not used yet
 
 
-class TestBase(TestCase):
-    """Base class for bzr test cases.
-
-    Just defines some useful helper functions; doesn't actually test
-    anything.
+class TestCase(unittest.TestCase):
+    """Base class for bzr unit tests.
+    
+    Tests that need access to disk resources should subclass 
+    FunctionalTestCase not TestCase.
     """
     
     # TODO: Special methods to invoke bzr, so that we can run it
@@ -69,33 +68,118 @@ class TestBase(TestCase):
     OVERRIDE_PYTHON = None # to run with alternative python 'python'
     BZRPATH = 'bzr'
 
-    _log_buf = ""
-
-
     def setUp(self):
-        super(TestBase, self).setUp()
+        super(TestCase, self).setUp()
+        # setup a temporary log for the test 
+        import time
+        import os
+        import tempfile
+        self.TEST_LOG = tempfile.NamedTemporaryFile(mode='wt', bufsize=0)
+        # save stdout & stderr so there's no leakage from code-under-test
+        self.real_stdout = sys.stdout
+        self.real_stderr = sys.stderr
+        sys.stdout = sys.stderr = self.TEST_LOG
         self.log("%s setup" % self.id())
 
-
     def tearDown(self):
-        super(TestBase, self).tearDown()
+        sys.stdout = self.real_stdout
+        sys.stderr = self.real_stderr
         self.log("%s teardown" % self.id())
         self.log('')
+        super(TestCase, self).tearDown()
 
+    def log(self, msg):
+        """Log a message to a progress file"""
+        print >>self.TEST_LOG, msg
+
+    def check_inventory_shape(self, inv, shape):
+        """
+        Compare an inventory to a list of expected names.
+
+        Fail if they are not precisely equal.
+        """
+        extras = []
+        shape = list(shape)             # copy
+        for path, ie in inv.entries():
+            name = path.replace('\\', '/')
+            if ie.kind == 'dir':
+                name = name + '/'
+            if name in shape:
+                shape.remove(name)
+            else:
+                extras.append(name)
+        if shape:
+            self.fail("expected paths not found in inventory: %r" % shape)
+        if extras:
+            self.fail("unexpected paths found in inventory: %r" % extras)
+     
+    def _get_log(self):
+        """Get the log the test case used. This can only be called once,
+        after which an exception will be raised.
+        """
+        self.TEST_LOG.flush()
+        log = open(self.TEST_LOG.name, 'rt').read()
+        self.TEST_LOG.close()
+        return log
+
+
+class FunctionalTestCase(TestCase):
+    """Base class for tests that perform function testing - running bzr,
+    using files on disk, and similar activities.
+
+    InTempDir is an old alias for FunctionalTestCase.
+    """
+
+    TEST_ROOT = None
+    _TEST_NAME = 'test'
+
+    def check_file_contents(self, filename, expect):
+        self.log("check contents of file %s" % filename)
+        contents = file(filename, 'r').read()
+        if contents != expect:
+            self.log("expected: %r" % expect)
+            self.log("actually: %r" % contents)
+            self.fail("contents of %s not as expected")
+
+    def _make_test_root(self):
+        import os
+        import shutil
+        import tempfile
+        
+        if FunctionalTestCase.TEST_ROOT is not None:
+            return
+        FunctionalTestCase.TEST_ROOT = os.path.abspath(
+                                 tempfile.mkdtemp(suffix='.tmp',
+                                                  prefix=self._TEST_NAME + '-',
+                                                  dir=os.curdir))
+    
+        # make a fake bzr directory there to prevent any tests propagating
+        # up onto the source directory's real branch
+        os.mkdir(os.path.join(FunctionalTestCase.TEST_ROOT, '.bzr'))
+
+    def setUp(self):
+        super(FunctionalTestCase, self).setUp()
+        import os
+        self._make_test_root()
+        self._currentdir = os.getcwdu()
+        self.test_dir = os.path.join(self.TEST_ROOT, self.id())
+        os.mkdir(self.test_dir)
+        os.chdir(self.test_dir)
+        
+    def tearDown(self):
+        import os
+        os.chdir(self._currentdir)
+        super(FunctionalTestCase, self).tearDown()
 
     def formcmd(self, cmd):
         if isinstance(cmd, basestring):
             cmd = cmd.split()
-
         if cmd[0] == 'bzr':
             cmd[0] = self.BZRPATH
             if self.OVERRIDE_PYTHON:
                 cmd.insert(0, self.OVERRIDE_PYTHON)
-
         self.log('$ %r' % cmd)
-
         return cmd
-
 
     def runcmd(self, cmd, retcode=0):
         """Run one command and check the return code.
@@ -111,17 +195,12 @@ class TestBase(TestCase):
         except ImportError, e:
             _need_subprocess()
             raise
-
-
         cmd = self.formcmd(cmd)
-
         self.log('$ ' + ' '.join(cmd))
         actual_retcode = call(cmd, stdout=self.TEST_LOG, stderr=self.TEST_LOG)
-
         if retcode != actual_retcode:
             raise CommandFailed("test failed: %r returned %d, expected %d"
                                 % (cmd, actual_retcode, retcode))
-
 
     def backtick(self, cmd, retcode=0):
         """Run a command and return its output"""
@@ -166,209 +245,78 @@ class TestBase(TestCase):
                 f = file(name, 'wt')
                 print >>f, "contents of", name
                 f.close()
+                
+InTempDir = FunctionalTestCase
 
 
-    def log(self, msg):
-        """Log a message to a progress file"""
-        # XXX: The problem with this is that code that writes straight
-        # to the log file won't be shown when we display the log
-        # buffer; would be better to not have the in-memory buffer and
-        # instead just a log file per test, which is read in and
-        # displayed if the test fails.  That seems to imply one log
-        # per test case, not globally.  OK?
-        self._log_buf = self._log_buf + str(msg) + '\n'
-        print >>self.TEST_LOG, msg
-
-
-    def check_inventory_shape(self, inv, shape):
-        """
-        Compare an inventory to a list of expected names.
-
-        Fail if they are not precisely equal.
-        """
-        extras = []
-        shape = list(shape)             # copy
-        for path, ie in inv.entries():
-            name = path.replace('\\', '/')
-            if ie.kind == 'dir':
-                name = name + '/'
-            if name in shape:
-                shape.remove(name)
-            else:
-                extras.append(name)
-        if shape:
-            self.fail("expected paths not found in inventory: %r" % shape)
-        if extras:
-            self.fail("unexpected paths found in inventory: %r" % extras)
-
-
-    def check_file_contents(self, filename, expect):
-        self.log("check contents of file %s" % filename)
-        contents = file(filename, 'r').read()
-        if contents != expect:
-            self.log("expected: %r" % expect)
-            self.log("actually: %r" % contents)
-            self.fail("contents of %s not as expected")
-            
-
-
-class InTempDir(TestBase):
-    """Base class for tests run in a temporary branch."""
-    def setUp(self):
-        import os
-        self.test_dir = os.path.join(self.TEST_ROOT, self.__class__.__name__)
-        os.mkdir(self.test_dir)
-        os.chdir(self.test_dir)
-        
-    def tearDown(self):
-        import os
-        os.chdir(self.TEST_ROOT)
-
-
-
-
-
-class _MyResult(TestResult):
+class _MyResult(unittest._TextTestResult):
     """
     Custom TestResult.
 
     No special behaviour for now.
     """
-    def __init__(self, out, style):
-        self.out = out
-        TestResult.__init__(self)
-        assert style in ('none', 'progress', 'verbose')
-        self.style = style
-
 
     def startTest(self, test):
+        unittest.TestResult.startTest(self, test)
         # TODO: Maybe show test.shortDescription somewhere?
         what = test.id()
         # python2.3 has the bad habit of just "runit" for doctests
         if what == 'runit':
             what = test.shortDescription()
-        
-        if self.style == 'verbose':
-            print >>self.out, '%-60.60s' % what,
-            self.out.flush()
-        elif self.style == 'progress':
-            self.out.write('~')
-            self.out.flush()
-        TestResult.startTest(self, test)
-
-
-    def stopTest(self, test):
-        # print
-        TestResult.stopTest(self, test)
-
+        if self.showAll:
+            self.stream.write('%-60.60s' % what)
+        self.stream.flush()
 
     def addError(self, test, err):
-        if self.style == 'verbose':
-            print >>self.out, 'ERROR'
-        TestResult.addError(self, test, err)
-        _show_test_failure('error', test, err, self.out)
+        super(_MyResult, self).addError(test, err)
+        self.stream.flush()
 
     def addFailure(self, test, err):
-        if self.style == 'verbose':
-            print >>self.out, 'FAILURE'
-        TestResult.addFailure(self, test, err)
-        _show_test_failure('failure', test, err, self.out)
+        super(_MyResult, self).addFailure(test, err)
+        self.stream.flush()
 
     def addSuccess(self, test):
-        if self.style == 'verbose':
-            print >>self.out, 'OK'
-        TestResult.addSuccess(self, test)
+        if self.showAll:
+            self.stream.writeln('OK')
+        elif self.dots:
+            self.stream.write('~')
+        self.stream.flush()
+        unittest.TestResult.addSuccess(self, test)
 
+    def printErrorList(self, flavour, errors):
+        for test, err in errors:
+            self.stream.writeln(self.separator1)
+            self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
+            self.stream.writeln(self.separator2)
+            self.stream.writeln("%s" % err)
+            if isinstance(test, TestCase):
+                self.stream.writeln()
+                self.stream.writeln('log from this test:')
+                print >>self.stream, test._get_log()
+
+
+class TextTestRunner(unittest.TextTestRunner):
+
+    def _makeResult(self):
+        return _MyResult(self.stream, self.descriptions, self.verbosity)
 
 
 def run_suite(suite, name='test', verbose=False):
-    import os
     import shutil
-    import time
-    import sys
-    
-    _setup_test_log(name)
-    _setup_test_dir(name)
-    print
-
-    # save stdout & stderr so there's no leakage from code-under-test
-    real_stdout = sys.stdout
-    real_stderr = sys.stderr
-    sys.stdout = sys.stderr = TestBase.TEST_LOG
-    try:
-        if verbose:
-            style = 'verbose'
-        else:
-            style = 'progress'
-        result = _MyResult(real_stdout, style)
-        suite.run(result)
-    finally:
-        sys.stdout = real_stdout
-        sys.stderr = real_stderr
-
-    _show_results(result)
-
+    FunctionalTestCase._TEST_NAME = name
+    if verbose:
+        verbosity = 2
+    else:
+        verbosity = 1
+    runner = TextTestRunner(stream=sys.stdout,
+                            descriptions=0,
+                            verbosity=verbosity)
+    result = runner.run(suite)
+    # This is still a little bogus, 
+    # but only a little. Folk not using our testrunner will
+    # have to delete their temp directories themselves.
+    if result.wasSuccessful():
+        shutil.rmtree(FunctionalTestCase.TEST_ROOT) 
+    else:
+        print "Failed tests working directories are in '%s'\n" % FunctionalTestCase.TEST_ROOT
     return result.wasSuccessful()
-
-
-
-def _setup_test_log(name):
-    import time
-    import os
-    
-    log_filename = os.path.abspath(name + '.log')
-    TestBase.TEST_LOG = open(log_filename, 'wt', buffering=1) # line buffered
-
-    print >>TestBase.TEST_LOG, "tests run at " + time.ctime()
-    print '%-30s %s' % ('test log', log_filename)
-
-
-def _setup_test_dir(name):
-    import os
-    import shutil
-    
-    TestBase.ORIG_DIR = os.getcwdu()
-    TestBase.TEST_ROOT = os.path.abspath(name + '.tmp')
-
-    print '%-30s %s' % ('running tests in', TestBase.TEST_ROOT)
-
-    if os.path.exists(TestBase.TEST_ROOT):
-        shutil.rmtree(TestBase.TEST_ROOT)
-    os.mkdir(TestBase.TEST_ROOT)
-    os.chdir(TestBase.TEST_ROOT)
-
-    # make a fake bzr directory there to prevent any tests propagating
-    # up onto the source directory's real branch
-    os.mkdir(os.path.join(TestBase.TEST_ROOT, '.bzr'))
-
-    
-
-def _show_results(result):
-     print
-     print '%4d tests run' % result.testsRun
-     print '%4d errors' % len(result.errors)
-     print '%4d failures' % len(result.failures)
-
-
-
-def _show_test_failure(kind, case, exc_info, out):
-    from traceback import print_exception
-
-    print >>out
-    print >>out, '-' * 60
-    print >>out, case
-    
-    desc = case.shortDescription()
-    if desc:
-        print >>out, '   (%s)' % desc
-         
-    print_exception(exc_info[0], exc_info[1], exc_info[2], None, out)
-        
-    if isinstance(case, TestBase):
-        print >>out
-        print >>out, 'log from this test:'
-        print >>out, case._log_buf
-         
-    print >>out, '-' * 60
-    
-

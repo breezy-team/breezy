@@ -3,13 +3,14 @@
 import os
 import unittest
 
-from bzrlib.selftest import InTempDir, TestBase
+from bzrlib.selftest import InTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
 
 
-class Unknowns(InTempDir):
-    def runTest(self):
+class TestBranch(InTempDir):
+
+    def test_unknowns(self):
         b = Branch('.', init=True)
 
         self.build_tree(['hello.txt',
@@ -18,10 +19,7 @@ class Unknowns(InTempDir):
         self.assertEquals(list(b.unknowns()),
                           ['hello.txt'])
 
-
-
-class NoChanges(InTempDir):
-    def runTest(self):
+    def test_no_changes(self):
         from bzrlib.errors import PointlessCommit
         
         b = Branch('.', init=True)
@@ -55,34 +53,28 @@ class NoChanges(InTempDir):
         
 
 
-class ValidateRevisionId(TestBase):
-    def runTest(self):
+class TestRevisionId(TestCase):
+    
+    def test_validate_revision_id(self):
         from bzrlib.revision import validate_revision_id
         validate_revision_id('mbp@sourcefrog.net-20050311061123-96a255005c7c9dbe')
-        
         self.assertRaises(ValueError,
                           validate_revision_id,
                           ' asdkjas')
-
-
         self.assertRaises(ValueError,
                           validate_revision_id,
                           'mbp@sourcefrog.net-20050311061123-96a255005c7c9dbe\n')
-
-
         self.assertRaises(ValueError,
                           validate_revision_id,
                           ' mbp@sourcefrog.net-20050311061123-96a255005c7c9dbe')
-
         self.assertRaises(ValueError,
                           validate_revision_id,
                           'Martin Pool <mbp@sourcefrog.net>-20050311061123-96a255005c7c9dbe')
 
 
-
 class PendingMerges(InTempDir):
-    """Tracking pending-merged revisions."""
-    def runTest(self):
+    def test_pending_merges(self):
+        """Tracking pending-merged revisions."""
         b = Branch('.', init=True)
 
         self.assertEquals(b.pending_merges(), [])
@@ -112,12 +104,8 @@ class PendingMerges(InTempDir):
         # list should be cleared when we do a commit
         self.assertEquals(b.pending_merges(), [])
         
-        
-        
-
-class Revert(InTempDir):
-    """Test selected-file revert"""
-    def runTest(self):
+    def test_revert(self):
+        """Test selected-file revert"""
         b = Branch('.', init=True)
 
         self.build_tree(['hello.txt'])
@@ -143,11 +131,8 @@ class Revert(InTempDir):
         self.check_file_contents('hello.txt', 'initial hello')
         self.check_file_contents('hello.txt~', 'initial hello')
 
-
-
-class RenameDirs(InTempDir):
-    """Test renaming directories and the files within them."""
-    def runTest(self):
+    def test_rename_dirs(self):
+        """Test renaming directories and the files within them."""
         b = Branch('.', init=True)
         self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
         b.add(['dir', 'dir/sub', 'dir/sub/file'])
@@ -176,18 +161,13 @@ class RenameDirs(InTempDir):
                                    ['newdir', 'newdir/newsub',
                                     'newdir/newsub/file'])
 
-        
-
-
-class BranchPathTestCase(TestBase):
-    """test for branch path lookups
-
-    Branch.relpath and bzrlib.branch._relpath do a simple but subtle
-    job: given a path (either relative to cwd or absolute), work out
-    if it is inside a branch and return the path relative to the base.
-    """
-
-    def runTest(self):
+    def test_relpath(self):
+        """test for branch path lookups
+    
+        Branch.relpath and bzrlib.branch._relpath do a simple but subtle
+        job: given a path (either relative to cwd or absolute), work out
+        if it is inside a branch and return the path relative to the base.
+        """
         from bzrlib.branch import _relpath
         import tempfile, shutil
         
@@ -240,12 +220,7 @@ class BranchPathTestCase(TestBase):
             shutil.rmtree(dtmp)
 
 
-
-
-TEST_CLASSES = [Unknowns,
-                ValidateRevisionId,
-                PendingMerges,
-                Revert,
-                RenameDirs,
-                BranchPathTestCase,
+TEST_CLASSES = [TestBranch,
+                TestRevisionId,
+                PendingMerges
                 ]
