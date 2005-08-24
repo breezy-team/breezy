@@ -24,7 +24,8 @@ unique ID.
 import os, tempfile, types, osutils, gzip, errno
 from stat import ST_SIZE
 from StringIO import StringIO
-from trace import mutter
+from bzrlib.trace import mutter
+import bzrlib.ui
 
 ######################################################################
 # stores
@@ -116,8 +117,8 @@ class ImmutableStore(object):
         If an id is present in self, it is skipped.  A count of copied
         ids is returned, which may be less than len(ids).
         """
-        from bzrlib.progress import ProgressBar
-        pb = ProgressBar()
+        pb = bzrlib.ui.ui_factory.progress_bar()
+        
         pb.update('preparing to copy')
         to_copy = [id for id in ids if id not in self]
         if isinstance(other, ImmutableStore):

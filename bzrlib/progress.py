@@ -94,7 +94,22 @@ class _BaseProgressBar(object):
         self.show_eta = show_eta
         self.show_bar = show_bar
         self.show_count = show_count
-        
+
+
+
+class DummyProgress(_BaseProgressBar):
+    """Progress-bar standin that does nothing.
+
+    This can be used as the default argument for methods that
+    take an optional progress indicator."""
+    def tick(self):
+        pass
+
+    def update(self, msg=None, current=None, total=None):
+        pass
+
+    def clear(self):
+        pass
         
     
 class DotsProgressBar(_BaseProgressBar):

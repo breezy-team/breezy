@@ -31,7 +31,8 @@ from bzrlib.revision import Revision
 from bzrlib.xml import unpack_xml
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
-from bzrlib.progress import ProgressBar
+import bzrlib.ui
+
 
 BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
@@ -839,16 +840,15 @@ class Branch(object):
         >>> br1.text_store.total_size() == br2.text_store.total_size()
         True
         """
-        pb = ProgressBar()
-        pb.update('comparing histories')
+        progress = bzrlib.ui.ui_factory.progress_bar()
+        progress.update('comparing histories')
         revision_ids = self.missing_revisions(other, stop_revision)
-        count = self.install_revisions(other, revision_ids, pb=pb)
+        count = self.install_revisions(other, revision_ids, progress=progress)
         self.append_revision(*revision_ids)
         print "Added %d revisions." % count
                     
-    def install_revisions(self, other, revision_ids, pb=None):
-        if pb is None:
-            pb = ProgressBar()
+
+    def install_revisions(self, other, revision_ids, progress=None):
         if hasattr(other.revision_store, "prefetch"):
             other.revision_store.prefetch(revision_ids)
         if hasattr(other.inventory_store, "prefetch"):
@@ -861,7 +861,8 @@ class Branch(object):
         i = 0
         for rev_id in revision_ids:
             i += 1
-            pb.update('fetching revision', i, len(revision_ids))
+            if progress:
+                progress.update('fetching revision', i, len(revision_ids))
             rev = other.get_revision(rev_id)
             revisions.append(rev)
             inv = other.get_inventory(str(rev.inventory_id))
@@ -871,7 +872,8 @@ class Branch(object):
                 if entry.text_id not in self.text_store:
                     needed_texts.add(entry.text_id)
 
-        pb.clear()
+        if progress:
+            progress.clear()
                     
         count = self.text_store.copy_multi(other.text_store, needed_texts)
         print "Added %d texts." % count 

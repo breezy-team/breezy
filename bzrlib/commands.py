@@ -717,7 +717,7 @@ class cmd_branch(Command):
                     msg = "The branch %s has no revision %d." % (from_location,
                                                                  revno)
                     raise BzrCommandError(msg)
-            
+
             merge((to_location, -1), (to_location, 0), this_dir=to_location,
                   check_clean=False, ignore_zero=True)
             from_location = pull_loc(br_from)
@@ -1344,8 +1344,8 @@ class cmd_check(Command):
 
     def run(self, dir='.'):
         from bzrlib.check import check
-        check(find_branch(dir))
 
+        check(find_branch(dir))
 
 
 class cmd_scan_cache(Command):
@@ -1404,8 +1404,18 @@ class cmd_selftest(Command):
     hidden = True
     takes_options = ['verbose']
     def run(self, verbose=False):
+        import bzrlib.ui
         from bzrlib.selftest import selftest
-        return int(not selftest(verbose=verbose))
+
+        # we don't want progress meters from the tests to go to the
+        # real output.
+
+        save_ui = bzrlib.ui.ui_factory
+        try:
+            bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
+            return int(not selftest(verbose=verbose))
+        finally:
+            bzrlib.ui.ui_factory = save_ui
 
 
 class cmd_version(Command):
@@ -1937,7 +1947,11 @@ def _report_exception(summary, quiet=False):
 
 
 def main(argv):
+    import bzrlib.ui
+    
     bzrlib.trace.open_tracefile(argv)
+
+    bzrlib.ui.ui_factory = bzrlib.ui.TextUIFactory()
 
     try:
         try:

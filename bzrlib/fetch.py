@@ -17,7 +17,6 @@ import bzrlib.errors
 from bzrlib.selftest.testrevision import make_branches
 from bzrlib.trace import mutter
 from bzrlib.branch import Branch
-from bzrlib.progress import ProgressBar
 import sys
 import os
 

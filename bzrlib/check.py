@@ -15,6 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import bzrlib.ui
 
 def _update_store_entry(obj, obj_id, branch, store_name, store):
     """This is just a meta-function, which handles both revision entries
@@ -73,6 +74,7 @@ def _update_inventory_entry(inv, inv_id, branch):
     _update_store_entry(inv, inv_id, branch,
             'inventory-store', branch.inventory_store)
 
+
 def check(branch):
     """Run consistency checks on a branch.
 
@@ -83,14 +85,12 @@ def check(branch):
     from bzrlib.trace import mutter
     from bzrlib.errors import BzrCheckError
     from bzrlib.osutils import fingerprint_file
-    from bzrlib.progress import ProgressBar
     from bzrlib.inventory import ROOT_ID
     from bzrlib.branch import gen_root_id
 
     branch.lock_read()
 
     try:
-        pb = ProgressBar(show_spinner=True)
         last_rev_id = None
 
         missing_inventory_sha_cnt = 0
@@ -104,9 +104,11 @@ def check(branch):
         # for all texts checked, text_id -> sha1
         checked_texts = {}
 
+        progress = bzrlib.ui.ui_factory.progress_bar()
+
         for rev_id in history:
             revno += 1
-            pb.update('checking revision', revno, revcount)
+            progress.update('checking revision', revno, revcount)
             # mutter('    revision {%s}' % rev_id)
             rev = branch.get_revision(rev_id)
             if rev.revision_id != rev_id:
@@ -173,7 +175,7 @@ def check(branch):
             for file_id in inv:
                 i += 1
                 if i & 31 == 0:
-                    pb.tick()
+                    progress.tick()
 
                 ie = inv[file_id]
 
@@ -202,7 +204,7 @@ def check(branch):
                         raise BzrCheckError('directory {%s} has text in revision {%s}'
                                 % (file_id, rev_id))
 
-            pb.tick()
+            progress.tick()
             for path, ie in inv.iter_entries():
                 if path in seen_names:
                     raise BzrCheckError('duplicated path %s '
@@ -214,7 +216,7 @@ def check(branch):
     finally:
         branch.unlock()
 
-    pb.clear()
+    progress.clear()
 
     print 'checked %d revisions, %d file texts' % (revcount, len(checked_texts))
     
