@@ -1874,8 +1874,9 @@ def run_bzr(argv):
         return 0
     
     if not args:
-        print >>sys.stderr, "please try 'bzr help' for help"
-        return 1
+        from bzrlib.help import help
+        help(None)
+        return 0
     
     cmd = str(args.pop(0))
 
