@@ -16,6 +16,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import bzrlib.errors
+import bzrlib.progress
 
 
 def upgrade(branch):
@@ -34,12 +35,13 @@ def upgrade(branch):
 
     from bzrlib.trace import mutter
     from bzrlib.errors import BzrCheckError
-    from bzrlib.progress import ProgressBar
+    import bzrlib.ui
 
     branch.lock_write()
 
+    pb = bzrlib.ui.progress_bar()
+
     try:
-        pb = ProgressBar(show_spinner=True)
         last_rev_id = None
 
         history = branch.revision_history()
