@@ -140,9 +140,9 @@ def open_tracefile(argv=[], tracefilename='~/.bzr.log'):
         tf = codecs.open(trace_fname, 'at', 'utf8', buffering=1)
 
         if os.fstat(tf.fileno())[stat.ST_SIZE] == 0:
-            t.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
-            t.write("you can delete or truncate this file, or include sections in\n")
-            t.write("bug reports to bazaar-ng@lists.canonical.com\n\n")
+            tf.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
+            tf.write("you can delete or truncate this file, or include sections in\n")
+            tf.write("bug reports to bazaar-ng@lists.canonical.com\n\n")
         
         _file_handler = logging.StreamHandler(tf)
         fmt = r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
