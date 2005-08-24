@@ -61,7 +61,7 @@ def test_suite():
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
                    'bzrlib.selftest.testrevision',
-                   'bzrlib.merge_core',
+                   'bzrlib.selftest.test_merge_core',
                    'bzrlib.selftest.testdiff',
                    'bzrlib.fetch'
                    ]
@@ -83,7 +83,5 @@ def test_suite():
     for p in bzrlib.plugin.all_plugins:
         if hasattr(p, 'test_suite'):
             suite.addTest(p.test_suite())
-    import bzrlib.merge_core
-    suite.addTest(unittest.makeSuite(bzrlib.merge_core.MergeTest, 'test_'))
     return suite
 
