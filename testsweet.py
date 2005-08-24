@@ -264,6 +264,29 @@ class FunctionalTestCase(TestCase):
 InTempDir = FunctionalTestCase
 
 
+class EarlyStoppingTestResultAdapter(object):
+    """An adapter for TestResult to stop at the first first failure or error"""
+
+    def __init__(self, result):
+        self._result = result
+
+    def addError(self, test, err):
+        self._result.addError(test, err)
+        self._result.stop()
+
+    def addFailure(self, test, err):
+        self._result.addFailure(test, err)
+        self._result.stop()
+
+    def __getattr__(self, name):
+        return getattr(self._result, name)
+
+    def __setattr__(self, name, value):
+        if name == '_result':
+            object.__setattr__(self, name, value)
+        return setattr(self._result, name, value)
+
+
 class _MyResult(unittest._TextTestResult):
     """
     Custom TestResult.
@@ -313,7 +336,8 @@ class _MyResult(unittest._TextTestResult):
 class TextTestRunner(unittest.TextTestRunner):
 
     def _makeResult(self):
-        return _MyResult(self.stream, self.descriptions, self.verbosity)
+        result = _MyResult(self.stream, self.descriptions, self.verbosity)
+        return EarlyStoppingTestResultAdapter(result)
 
 
 def run_suite(suite, name='test', verbose=False):
