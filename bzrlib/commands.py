@@ -2007,7 +2007,7 @@ def main(argv):
             bzrlib.trace.note('broken pipe')
             return 2
         else:
-            bzrlib.trace.log_exception('terminated by exception')
+            bzrlib.trace.log_exception('terminated by exception: %s' % str(e))
             return 2
 
 
