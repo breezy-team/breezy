@@ -886,6 +886,8 @@ class cmd_diff(Command):
     def run(self, revision=None, file_list=None, diff_options=None):
         from bzrlib.diff import show_diff
 
+        print aksdkasjdlksad
+
         if file_list:
             b = find_branch(file_list[0])
             file_list = [b.relpath(f) for f in file_list]
@@ -1992,7 +1994,7 @@ def main(argv):
             bzrlib.trace.note('broken pipe')
             return 2
         else:
-            bzrlib.trace.log_exception('terminated by exception: %s' % str(e))
+            bzrlib.trace.log_exception()
             return 2
 
 
