@@ -15,19 +15,21 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
-from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
-from bzrlib.changeset import Inventory, Diff3Merge
-from bzrlib.branch import find_branch
-import bzrlib.osutils
-from bzrlib.errors import BzrCommandError, UnrelatedBranches
-from bzrlib.delta import compare_trees
-from trace import mutter, warning
 import os.path
 import tempfile
 import shutil
 import errno
-from fetch import greedy_fetch
+
+import bzrlib.osutils
+import bzrlib.revision
+from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
+from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
+from bzrlib.changeset import Inventory, Diff3Merge
+from bzrlib.branch import find_branch
+from bzrlib.errors import BzrCommandError, UnrelatedBranches
+from bzrlib.delta import compare_trees
+from bzrlib.trace import mutter, warning
+from bzrlib.fetch import greedy_fetch
 
 
 # comments from abentley on irc: merge happens in two stages, each
@@ -279,9 +281,8 @@ def merge(other_revision, base_revision,
                 base_rev_id = base_branch.lookup_revision(base_revision[1])
             if base_rev_id is not None:
                 base_is_ancestor = is_ancestor(this_rev_id, base_rev_id, 
-                                               MultipleRevisionSources(
-                                               this_branch, 
-                                               base_branch))
+                                               MultipleRevisionSources(this_branch, 
+                                                                       base_branch))
             else:
                 base_is_ancestor = False
         if file_list is None:
