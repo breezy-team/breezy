@@ -471,3 +471,7 @@ class FunctionalMergeTest(FunctionalTestCase):
 
     def test_trivial_star_merge(self):
         """Test that merges in a star shape Just Work.""" 
+        self.build_tree(("original/", "original/file1", "original/file2"))
+        branch = Branch("original", init=True)
+
+
