@@ -473,6 +473,8 @@ class FunctionalMergeTest(FunctionalTestCase):
         """Test that merges in a star shape Just Work.""" 
         from bzrlib.add import smart_add_branch
         from bzrlib.branch import copy_branch
+        from bzrlib.merge import merge
+        from bzrlib.merge_core import ApplyMerge3
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
         branch = Branch("original", init=True)
@@ -481,7 +483,21 @@ class FunctionalMergeTest(FunctionalTestCase):
         # Mary branches it.
         self.build_tree(("mary/",))
         copy_branch(branch, "mary")
-        # Now John commits again
-
-        
-
+        # Now John commits a change
+        file = open("original/file1", "wt")
+        file.write("John\n")
+        file.close()
+        branch.commit("change file1")
+        # Mary does too
+        mary_branch = Branch("mary")
+        file = open("mary/file2", "wt")
+        file.write("Mary\n")
+        file.close()
+        mary_branch.commit("change file2")
+        # john should be able to merge with no conflicts.
+        merge_type = ApplyMerge3
+        base = ("original", None)
+        other = ("mary", -1)
+        merge(other, base, check_clean=True, merge_type=merge_type, this_dir="original")
+        self.assertEqual("John\n", open("original/file1", "rt").read())
+        self.assertEqual("Mary\n", open("original/file2", "rt").read())

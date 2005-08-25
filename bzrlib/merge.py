@@ -19,6 +19,7 @@ from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
 from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
 from bzrlib.changeset import Inventory, Diff3Merge
 from bzrlib.branch import find_branch
+from bzrlib.revision import is_ancestor
 import bzrlib.osutils
 from bzrlib.errors import BzrCommandError, UnrelatedBranches
 from bzrlib.delta import compare_trees
@@ -218,9 +219,9 @@ def merge(other_revision, base_revision,
     """Merge changes into a tree.
 
     base_revision
-        Base for three-way merge.
+        tuple(path, revision) Base for three-way merge.
     other_revision
-        Other revision for three-way merge.
+        tuple(path, revision) Other revision for three-way merge.
     this_dir
         Directory to merge changes into; '.' by default.
     check_clean
@@ -270,12 +271,14 @@ def merge(other_revision, base_revision,
                                        "base")
             base_is_ancestor = True
         else:
-            base_branch, base_tree = get_tree(base_revision, tempdir, "base")
             if base_revision[1] == -1:
+                base_branch, base_tree = get_tree(base_revision, tempdir, "base")
                 base_rev_id = base_branch.last_patch()
             elif base_revision[1] is None:
-                base_rev_id = None
+                base_revno, base_rev_id = this_branch.common_ancestor(other_branch)
+                base_branch, base_tree = get_tree((base_revision[0], "revid:%s" % base_rev_id), tempdir, "base")
             else:
+                base_branch, base_tree = get_tree(base_revision, tempdir, "base")
                 base_rev_id = base_branch.lookup_revision(base_revision[1])
             if base_rev_id is not None:
                 base_is_ancestor = is_ancestor(this_rev_id, base_rev_id, 
