@@ -402,12 +402,15 @@ class MergeCommand(ExternalBase):
         a.get_revision_xml(b.last_patch())
         assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
         % (a.pending_merges(), b.last_patch())
-        a.set_pending_merges([])
+        self.runbzr('revert hello')
+        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
+        % (a.pending_merges(), b.last_patch())
         self.runbzr('revert')
+        assert a.pending_merges() == [], "Assertion %s %s" \
+        % (a.pending_merges(), b.last_patch())
         self.runbzr('merge ../b -r2..3')
         assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
         % (a.pending_merges(), b.last_patch())
-        a.set_pending_merges([])
         self.runbzr('revert')
         self.runbzr('merge ../b -r3..3')
         assert a.pending_merges() == [], "Assertion %s %s" \
