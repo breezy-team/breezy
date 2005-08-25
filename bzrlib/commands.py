@@ -31,6 +31,7 @@ import sys
 import os
 
 import bzrlib
+import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
 from bzrlib.branch import find_branch
@@ -1408,13 +1409,22 @@ class cmd_selftest(Command):
         from bzrlib.selftest import selftest
 
         # we don't want progress meters from the tests to go to the
-        # real output.
+        # real output; and we don't want log messages cluttering up
+        # the real logs.
 
         save_ui = bzrlib.ui.ui_factory
+        bzrlib.trace.info('running tests...')
+        bzrlib.trace.disable_default_logging()
         try:
             bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-            return int(not selftest(verbose=verbose))
+            result = selftest(verbose=verbose)
+            if result:
+                bzrlib.trace.info('tests passed')
+            else:
+                bzrlib.trace.info('tests failed')
+            return int(not result)
         finally:
+            bzrlib.trace.enable_default_logging()
             bzrlib.ui.ui_factory = save_ui
 
 

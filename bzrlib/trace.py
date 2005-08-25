@@ -204,4 +204,8 @@ def disable_default_logging():
     This is intended to be used by the test framework, which doesn't
     want leakage from the code-under-test into the main logs.
     """
-    
+
+    l = logging.getLogger('')
+    l.removeHandler(_stderr_handler)
+    if _file_handler:
+        l.removeHandler(_file_handler)
