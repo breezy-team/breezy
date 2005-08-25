@@ -1958,21 +1958,6 @@ def run_bzr(argv):
         return cmd_class(cmdopts, cmdargs).status 
 
 
-def _report_exception(summary, quiet=False):
-    import traceback
-    
-    log_error('bzr: ' + summary)
-
-    if not quiet:
-        sys.stderr.write('\n')
-        tb = sys.exc_info()[2]
-        exinfo = traceback.extract_tb(tb)
-        if exinfo:
-            sys.stderr.write('  at %s:%d in %s()\n' % exinfo[-1][:3])
-        sys.stderr.write('  see ~/.bzr.log for debug information\n')
-
-
-
 def main(argv):
     import bzrlib.ui
     
