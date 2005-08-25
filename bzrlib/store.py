@@ -111,7 +111,7 @@ class ImmutableStore(object):
             af.close()
 
 
-    def copy_multi(self, other, ids):
+    def copy_multi(self, other, ids, permit_failure=False):
         """Copy texts for ids from other into self.
 
         If an id is present in self, it is skipped.  A count of copied
@@ -127,15 +127,25 @@ class ImmutableStore(object):
         for id in to_copy:
             count += 1
             pb.update('copy', count, len(to_copy))
-            self.add(other[id], id)
+            if not permit_failure:
+                self.add(other[id], id)
+            else:
+                try:
+                    entry = other[id]
+                except IndexError:
+                    failures.add(id)
+                    continue
+                self.add(entry, id)
+                
         assert count == len(to_copy)
         pb.clear()
         return count
 
 
-    def copy_multi_immutable(self, other, to_copy, pb):
+    def copy_multi_immutable(self, other, to_copy, pb, permit_failure=False):
         from shutil import copyfile
         count = 0
+        failed = set()
         for id in to_copy:
             p = self._path(id)
             other_p = other._path(id)
@@ -143,7 +153,16 @@ class ImmutableStore(object):
                 copyfile(other_p, p)
             except IOError, e:
                 if e.errno == errno.ENOENT:
-                    copyfile(other_p+".gz", p+".gz")
+                    if not permit_failure:
+                        copyfile(other_p+".gz", p+".gz")
+                    else:
+                        try:
+                            copyfile(other_p+".gz", p+".gz")
+                        except IOError, e:
+                            if e.errno == errno.ENOENT:
+                                failed.add(id)
+                            else:
+                                raise
                 else:
                     raise
             
@@ -151,7 +170,7 @@ class ImmutableStore(object):
             pb.update('copy', count, len(to_copy))
         assert count == len(to_copy)
         pb.clear()
-        return count
+        return count, failed
     
 
     def __contains__(self, fileid):

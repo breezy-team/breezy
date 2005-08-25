@@ -99,3 +99,8 @@ class UnrelatedBranches(BzrCommandError):
         BzrCommandError.__init__(self, msg)
 
 
+class InstallFailed(BzrError):
+    def __init__(self, revisions):
+        self.revisions = revisions
+        msg = "Could not install revisions:\n%s" % " ,".join(revisions)
+        BzrError.__init__(self, msg)

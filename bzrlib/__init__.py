@@ -16,10 +16,6 @@
 
 """bzr library"""
 
-# TODO: Do less imports here
-from branch import Branch, ScratchBranch, find_branch
-from errors import BzrError
-
 BZRDIR = ".bzr"
 
 DEFAULT_IGNORE = ['.bzr.log',
@@ -47,6 +43,9 @@ __version__ = '0.0.7pre'
 
 def get_bzr_revision():
     """If bzr is run from a branch, return (revno,revid) or None"""
+    import bzrlib.errors
+    from bzrlib.branch import Branch
+    
     try:
         branch = Branch(__path__[0])
         rh = branch.revision_history()
@@ -54,6 +53,6 @@ def get_bzr_revision():
             return len(rh), rh[-1]
         else:
             return None
-    except BzrError:
+    except bzrlib.errors.BzrError:
         return None
     
