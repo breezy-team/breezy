@@ -1964,7 +1964,7 @@ def run_bzr(argv):
 def main(argv):
     import bzrlib.ui
     
-    bzrlib.trace.open_tracefile(argv)
+    bzrlib.trace.log_startup(argv)
 
     bzrlib.ui.ui_factory = bzrlib.ui.TextUIFactory()
 
