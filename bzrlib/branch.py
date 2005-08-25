@@ -1422,7 +1422,6 @@ def copy_branch(branch_from, to_location, revision=None):
     """
     from bzrlib.merge import merge
     from bzrlib.branch import Branch
-    from shutil import rmtree
     br_to = Branch(to_location, init=True)
     br_to.set_root_id(branch_from.get_root_id())
     if revision is None:

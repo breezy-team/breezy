@@ -668,6 +668,7 @@ class cmd_branch(Command):
         from bzrlib.branch import copy_branch, find_cached_branch
         import tempfile
         import errno
+        from shutil import rmtree
         cache_root = tempfile.mkdtemp()
         try:
             if revision is None:
