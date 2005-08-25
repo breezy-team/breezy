@@ -137,3 +137,22 @@ class TestSmartAddBranch(FunctionalTestCase):
         smart_add_branch(branch, paths, False, True)
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
+
+class TestAddCallbacks(TestCase):
+
+    def setUp(self):
+        from bzrlib.inventory import InventoryEntry
+        super(TestAddCallbacks, self).setUp()
+        self.entry = InventoryEntry("id", "name", "file", None)
+
+    def test_null_callback(self):
+        from bzrlib.add import _NullAddCallback
+        _NullAddCallback(self.entry)
+
+    def test_print_callback(self):
+        from bzrlib.add import _PrintAddCallback
+        from StringIO import StringIO
+        stdout = StringIO()
+        self.apply_redirected(None, stdout, None, _PrintAddCallback,
+                              self.entry)
+        self.assertEqual(stdout.getvalue(), "added name\n")

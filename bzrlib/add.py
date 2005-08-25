@@ -33,6 +33,13 @@ def glob_expand_for_win32(file_list):
             expanded_file_list += glob_files
     return expanded_file_list
 
+def _NullAddCallback(entry):
+    pass
+
+def _PrintAddCallback(entry):
+    from bzrlib.osutils import quotefn
+    print "added", quotefn(entry.name)
+    
 def _prepare_file_list(file_list):
     """Prepare a file list for use by smart_add_*."""
     import sys
@@ -44,7 +51,7 @@ def _prepare_file_list(file_list):
     assert not isinstance(file_list, basestring)
     return file_list
 
-def smart_add(file_list, verbose=True, recurse=True):
+def smart_add(file_list, verbose=True, recurse=True, callback=_NullAddCallback):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
@@ -54,7 +61,8 @@ def smart_add(file_list, verbose=True, recurse=True):
     b = Branch(file_list[0], find_root=True)
     return smart_add_branch(b, file_list, verbose, recurse)
         
-def smart_add_branch(branch, file_list, verbose=True, recurse=True):
+def smart_add_branch(branch, file_list, verbose=True, recurse=True,
+                     callback=_NullAddCallback):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
@@ -110,12 +118,10 @@ def smart_add_branch(branch, file_list, verbose=True, recurse=True):
         elif sub_tree:
             mutter("%r is a bzr tree" %f)
         else:
-            file_id = bzrlib.branch.gen_file_id(rf)
-            inv.add_path(rf, kind=kind, file_id=file_id)
-            mutter("added %r kind %r file_id={%s}" % (rf, kind, file_id))
+            entry = inv.add_path(rf, kind=kind)
+            mutter("added %r kind %r file_id={%s}" % (rf, kind, entry.file_id))
             count += 1 
-
-            print 'added', quotefn(f)
+            callback(entry)
 
         if kind == 'directory' and recurse and not sub_tree:
             for subf in os.listdir(af):
