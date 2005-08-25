@@ -59,3 +59,13 @@ class TestSmartAdd(FunctionalTestCase):
                              (path, None))
         for path in child_paths:
             self.assertEqual(child_branch.inventory.path2id(path), None)
+
+    def test_add_paths(self):
+        """Test smart-adding a list of paths."""
+        from bzrlib.add import smart_add
+        paths = ("file1", "file2")
+        self.build_tree(paths)
+        branch = Branch(".", init=True)
+        smart_add(paths, False, True)
+        for path in paths:
+            self.assertNotEqual(branch.inventory.path2id(path), None)
