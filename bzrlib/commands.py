@@ -664,21 +664,16 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None):
-        import errno
-        from bzrlib.merge import merge
-        from bzrlib.branch import DivergedBranches, \
-             find_cached_branch, Branch
-        from shutil import rmtree
-        from meta_store import CachedStore
+        from bzrlib.branch import copy_branch, find_cached_branch
         import tempfile
+        import errno
         cache_root = tempfile.mkdtemp()
-
-        if revision is None:
-            revision = [None]
-        elif len(revision) > 1:
-            raise BzrCommandError('bzr branch --revision takes exactly 1 revision value')
-
         try:
+            if revision is None:
+                revision = [None]
+            elif len(revision) > 1:
+                raise BzrCommandError(
+                    'bzr branch --revision takes exactly 1 revision value')
             try:
                 br_from = find_cached_branch(from_location, cache_root)
             except OSError, e:
@@ -687,10 +682,8 @@ class cmd_branch(Command):
                                           ' exist.' % to_location)
                 else:
                     raise
-
             if to_location is None:
                 to_location = os.path.basename(from_location.rstrip("/\\"))
-
             try:
                 os.mkdir(to_location)
             except OSError, e:
@@ -702,27 +695,12 @@ class cmd_branch(Command):
                                           to_location)
                 else:
                     raise
-            br_to = Branch(to_location, init=True)
-
-            br_to.set_root_id(br_from.get_root_id())
-
-            if revision:
-                if revision[0] is None:
-                    revno = br_from.revno()
-                else:
-                    revno, rev_id = br_from.get_revision_info(revision[0])
-                try:
-                    br_to.update_revisions(br_from, stop_revision=revno)
-                except bzrlib.errors.NoSuchRevision:
-                    rmtree(to_location)
-                    msg = "The branch %s has no revision %d." % (from_location,
-                                                                 revno)
-                    raise BzrCommandError(msg)
-
-            merge((to_location, -1), (to_location, 0), this_dir=to_location,
-                  check_clean=False, ignore_zero=True)
-            from_location = pull_loc(br_from)
-            br_to.controlfile("x-pull", "wb").write(from_location + "\n")
+            try:
+                copy_branch(br_from, to_location, revision[0])
+            except bzrlib.errors.NoSuchRevision:
+                rmtree(to_location)
+                msg = "The branch %s has no revision %d." % (from_location, revision[0])
+                raise BzrCommandError(msg)
         finally:
             rmtree(cache_root)
 

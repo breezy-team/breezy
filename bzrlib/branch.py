@@ -1405,3 +1405,23 @@ def gen_root_id():
     """Return a new tree-root file id."""
     return gen_file_id('TREE_ROOT')
 
+def copy_branch(branch_from, to_location, revision):
+    """Copy branch_from into the existing directory to_location.
+
+    If revision is not None, the head of the new branch will be revision.
+    """
+    from bzrlib.merge import merge
+    from bzrlib.branch import Branch
+    from shutil import rmtree
+    br_to = Branch(to_location, init=True)
+    br_to.set_root_id(branch_from.get_root_id())
+    if revision is None:
+        revno = branch_from.revno()
+    else:
+        revno, rev_id = branch_from.get_revision_info(revision)
+    br_to.update_revisions(branch_from, stop_revision=revno)
+    merge((to_location, -1), (to_location, 0), this_dir=to_location,
+          check_clean=False, ignore_zero=True)
+    from_location = pull_loc(branch_from)
+    br_to.controlfile("x-pull", "wb").write(from_location + "\n")
+
