@@ -30,7 +30,7 @@ from bzrlib.errors import BzrCommandError, UnrelatedBranches
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter, warning
 from bzrlib.fetch import greedy_fetch
-
+from bzrlib.revision import is_ancestor
 
 # comments from abentley on irc: merge happens in two stages, each
 # of which generates a changeset object
