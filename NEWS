@@ -5,6 +5,8 @@ bzr development head
     * ``bzr shell-complete`` command contributed by Clint Adams to
       help with intelligent shell completion.
 
+    * New expert command ``bzr find-merge-base`` for debugging merges.
+
 
   BUG FIXES:
 

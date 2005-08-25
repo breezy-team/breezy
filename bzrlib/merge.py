@@ -3,7 +3,7 @@ from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
 from bzrlib.changeset import Inventory, Diff3Merge
 from bzrlib import find_branch
 import bzrlib.osutils
-from bzrlib.errors import BzrCommandError
+from bzrlib.errors import BzrCommandError, UnrelatedBranches
 from bzrlib.delta import compare_trees
 from trace import mutter, warning
 import os.path
@@ -17,13 +17,6 @@ import errno
 
 # stage 1: generate OLD->OTHER,
 # stage 2: use MINE and OLD->OTHER to generate MINE -> RESULT
-
-class UnrelatedBranches(BzrCommandError):
-    def __init__(self):
-        msg = "Branches have no common ancestor, and no base revision"\
-            " specified."
-        BzrCommandError.__init__(self, msg)
-
 
 class MergeConflictHandler(ExceptionConflictHandler):
     """Handle conflicts encountered while merging.

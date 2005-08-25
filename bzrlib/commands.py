@@ -1476,6 +1476,33 @@ def parse_spec(spec):
 
 
 
+class cmd_find_merge_base(Command):
+    """Find and print a base revision for merging two branches.
+
+    TODO: Options to specify revisions on either side, as if
+          merging only part of the history.
+    """
+    takes_args = ['branch', 'other']
+    hidden = True
+    
+    def run(self, branch, other):
+        branch1 = find_branch(branch)
+        branch2 = find_branch(other)
+
+        base_revno, base_revid = branch1.common_ancestor(branch2)
+
+        if base_revno is None:
+            raise bzrlib.errors.UnrelatedBranches()
+
+        print 'merge base is revision %s' % base_revid
+        print ' r%-6d in %s' % (base_revno, branch)
+
+        other_revno = branch2.revision_id_to_revno(base_revid)
+        
+        print ' r%-6d in %s' % (other_revno, other)
+
+
+
 class cmd_merge(Command):
     """Perform a three-way merge.
     
