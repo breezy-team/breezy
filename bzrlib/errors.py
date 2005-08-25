@@ -92,3 +92,10 @@ class NoSuchRevision(BzrError):
         BzrError.__init__(self, msg)
 
 
+class UnrelatedBranches(BzrCommandError):
+    def __init__(self):
+        msg = "Branches have no common ancestor, and no base revision"\
+            " specified."
+        BzrCommandError.__init__(self, msg)
+
+

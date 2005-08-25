@@ -176,9 +176,9 @@ def log_exception(msg=None):
     """
     if msg == None:
         ei = sys.exc_info()
-        s = str(ei[1])
-        if s[-1] == '\n':
-            s = s[:-1]
-        msg = s
+        msg = str(ei[1])
+
+    if msg[-1] == '\n':
+        msg = msg[:-1]
         
     _bzr_logger.exception(msg)

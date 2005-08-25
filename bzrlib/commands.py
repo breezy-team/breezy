@@ -1475,6 +1475,33 @@ def parse_spec(spec):
 
 
 
+class cmd_find_merge_base(Command):
+    """Find and print a base revision for merging two branches.
+
+    TODO: Options to specify revisions on either side, as if
+          merging only part of the history.
+    """
+    takes_args = ['branch', 'other']
+    hidden = True
+    
+    def run(self, branch, other):
+        branch1 = find_branch(branch)
+        branch2 = find_branch(other)
+
+        base_revno, base_revid = branch1.common_ancestor(branch2)
+
+        if base_revno is None:
+            raise bzrlib.errors.UnrelatedBranches()
+
+        print 'merge base is revision %s' % base_revid
+        print ' r%-6d in %s' % (base_revno, branch)
+
+        other_revno = branch2.revision_id_to_revno(base_revid)
+        
+        print ' r%-6d in %s' % (other_revno, other)
+
+
+
 class cmd_merge(Command):
     """Perform a three-way merge.
     
@@ -1564,11 +1591,14 @@ class cmd_help(Command):
     """Show help on a command or other topic.
 
     For a list of all available commands, say 'bzr help commands'."""
+    takes_options = ['long']
     takes_args = ['topic?']
     aliases = ['?']
     
-    def run(self, topic=None):
+    def run(self, topic=None, long=False):
         import help
+        if topic is None and long:
+            topic = "commands"
         help.help(topic)
 
 
@@ -1931,21 +1961,6 @@ def run_bzr(argv):
         return cmd_class(cmdopts, cmdargs).status 
 
 
-def _report_exception(summary, quiet=False):
-    import traceback
-    
-    log_error('bzr: ' + summary)
-
-    if not quiet:
-        sys.stderr.write('\n')
-        tb = sys.exc_info()[2]
-        exinfo = traceback.extract_tb(tb)
-        if exinfo:
-            sys.stderr.write('  at %s:%d in %s()\n' % exinfo[-1][:3])
-        sys.stderr.write('  see ~/.bzr.log for debug information\n')
-
-
-
 def main(argv):
     import bzrlib.ui
     
@@ -1980,7 +1995,7 @@ def main(argv):
             bzrlib.trace.note('broken pipe')
             return 2
         else:
-            bzrlib.trace.log_exception('terminated by exception')
+            bzrlib.trace.log_exception()
             return 2
 
 
