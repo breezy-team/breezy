@@ -271,3 +271,67 @@ class MultipleRevisionSources(object):
             except bzrlib.errors.NoSuchRevision, e:
                 pass
         raise e
+
+def get_intervening_revisions(ancestor_id, rev_id, rev_source, 
+                              revision_history=None):
+    """Find the longest line of descent from maybe_ancestor to revision.
+    Revision history is followed where possible
+
+    If ancestor_id == rev_id, list will be empty.
+    Otherwise, rev_id will be the last entry.  ancestor_id will never appear.
+    If ancestor_id is not an ancestor, NotAncestor will be thrown
+    """
+    # This lists only the first descendant we encounter
+    if ancestor_id == rev_id:
+        return []
+
+    def in_history(myrev):
+        return revision_history is not None and myrev in revision_history
+
+    def remove_broken_lines(revisions, rev_id, descendant_map):
+        broken = set()
+        for revision in revisions:
+            cur_revision = revision
+            while cur_revision != rev_id:
+                cur_revision = descendant_map.get(cur_revision)
+                if cur_revision is None:
+                    broken.add(revision)
+                    break
+        return [r for r in revisions if r not in broken]
+
+    def trace_ancestry():
+        revisions = [rev_id]
+        descendant_map = {}
+        while len(revisions) > 0:
+            remove_broken = False
+            new_revisions = []
+            for revision in revisions:
+                parent_ids = [p.revision_id for p in 
+                              rev_source.get_revision(revision).parents]
+                for parent_id in parent_ids:
+                    if parent_id == ancestor_id:
+                        return revision, descendant_map
+                    if descendant_map.has_key(parent_id):
+                        if in_history(descendant_map[parent_id]):
+                            continue
+                        else:
+                            remove_broken = True
+                    descendant_map[parent_id] = revision
+                    new_revisions.append(parent_id)
+            if remove_broken:
+                new_revisions = remove_broken_lines(new_revisions, rev_id,
+                                                    descendant_map,)
+            revisions = new_revisions
+        raise Exception(revision, parent_ids)
+        return None, descendant_map
+
+    list_start, descendant_map = trace_ancestry()
+    if list_start is None:
+        raise Exception(descendant_map)
+        raise bzrlib.errors.NotAncestor(rev_id, ancestor_id)
+    intermediate_revisions = [list_start]
+    next_revision = list_start
+    while next_revision != rev_id:
+        next_revision = descendant_map[next_revision]
+        intermediate_revisions.append(next_revision)
+    return intermediate_revisions

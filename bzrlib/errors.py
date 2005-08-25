@@ -91,6 +91,14 @@ class NoSuchRevision(BzrError):
         msg = "Branch %s has no revision %s" % (branch, revision)
         BzrError.__init__(self, msg)
 
+class NotAncestor(BzrError):
+    def __init__(self, rev_id, not_ancestor_id):
+        self.rev_id = rev_id
+        self.not_ancestor_id = not_ancestor_id
+        msg = "Revision %s is not an ancestor of %s" % (not_ancestor_id, 
+                                                        rev_id)
+        BzrError.__init__(self, msg)
+
 class InstallFailed(BzrError):
     def __init__(self, revisions):
         self.revisions = revisions
