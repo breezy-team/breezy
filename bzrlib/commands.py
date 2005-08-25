@@ -612,6 +612,7 @@ class cmd_pull(Command):
         import tempfile
         from shutil import rmtree
         import errno
+        from bzrlib.branch import pull_loc
         
         br_to = find_branch('.')
         stored_loc = None
@@ -703,16 +704,6 @@ class cmd_branch(Command):
                 raise BzrCommandError(msg)
         finally:
             rmtree(cache_root)
-
-
-def pull_loc(branch):
-    # TODO: Should perhaps just make attribute be 'base' in
-    # RemoteBranch and Branch?
-    if hasattr(branch, "baseurl"):
-        return branch.baseurl
-    else:
-        return branch.base
-
 
 
 class cmd_renames(Command):

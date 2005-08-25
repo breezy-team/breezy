@@ -1405,7 +1405,17 @@ def gen_root_id():
     """Return a new tree-root file id."""
     return gen_file_id('TREE_ROOT')
 
-def copy_branch(branch_from, to_location, revision):
+
+def pull_loc(branch):
+    # TODO: Should perhaps just make attribute be 'base' in
+    # RemoteBranch and Branch?
+    if hasattr(branch, "baseurl"):
+        return branch.baseurl
+    else:
+        return branch.base
+
+
+def copy_branch(branch_from, to_location, revision=None):
     """Copy branch_from into the existing directory to_location.
 
     If revision is not None, the head of the new branch will be revision.
