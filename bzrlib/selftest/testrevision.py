@@ -89,6 +89,7 @@ class TestIntermediateRevisions(InTempDir):
 
     def runTest(self):
         """Find intermediate revisions, without requiring history"""
+        from bzrlib.errors import NotAncestor, NoSuchRevision
         assert len(self.intervene('a@u-0-0', 'a@u-0-0')) == 0
         self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-1'), ['a@u-0-1'])
         self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-2'), 
@@ -97,7 +98,8 @@ class TestIntermediateRevisions(InTempDir):
                          ['a@u-0-1', 'a@u-0-2', 'b@u-0-3'])
         self.assertEqual(self.intervene('b@u-0-3', 'a@u-0-3'), 
                          ['b@u-0-4', 'a@u-0-3'])
-        self.assertEqual(self.intervene('a@u-0-2', 'a@u-0-3'), 
+        self.assertEqual(self.intervene('a@u-0-2', 'a@u-0-3', 
+                                        self.br1.revision_history()), 
                          ['a@u-0-3'])
         self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-5', 
                                         self.br1.revision_history()), 
@@ -110,13 +112,20 @@ class TestIntermediateRevisions(InTempDir):
         self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-5'), 
                          ['a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4', 
                           'b@u-0-5'])
-        self.assertEqual(self.intervene('b@u-0-3', 'b@u-0-6'), 
+        self.assertEqual(self.intervene('b@u-0-3', 'b@u-0-6', 
+                         self.br2.revision_history()), 
                          ['b@u-0-4', 'b@u-0-5', 'b@u-0-6'])
         self.assertEqual(self.intervene('b@u-0-6', 'b@u-0-10'), 
-                         ['a@u-0-6', 'b@u-0-10'])
-#        self.assertEqual(self.intervene('b@u-0-6', 'b@u-0-10', 
-#                                        self.br2.revision_history()), 
-#                         ['b@u-0-7', 'b@u-0-8', 'b@u-0-9', 'b@u-0-10'])
+                         ['b@u-0-7', 'b@u-0-8', 'b@u-0-9', 'b@u-0-10'])
+        self.assertEqual(self.intervene('b@u-0-6', 'b@u-0-10', 
+                                        self.br2.revision_history()), 
+                         ['b@u-0-7', 'b@u-0-8', 'b@u-0-9', 'b@u-0-10'])
+        self.assertRaises(NotAncestor, self.intervene, 'b@u-0-10', 'b@u-0-6', 
+                          self.br2.revision_history())
+        self.assertRaises(NoSuchRevision, self.intervene, 'c@u-0-10', 
+                          'b@u-0-6', self.br2.revision_history())
+        self.assertRaises(NoSuchRevision, self.intervene, 'b@u-0-10', 
+                          'c@u-0-6', self.br2.revision_history())
 
 
 class TestCommonAncestor(InTempDir):

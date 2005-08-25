@@ -275,63 +275,55 @@ class MultipleRevisionSources(object):
 def get_intervening_revisions(ancestor_id, rev_id, rev_source, 
                               revision_history=None):
     """Find the longest line of descent from maybe_ancestor to revision.
-    Revision history is followed where possible
+    Revision history is followed where possible.
 
     If ancestor_id == rev_id, list will be empty.
     Otherwise, rev_id will be the last entry.  ancestor_id will never appear.
     If ancestor_id is not an ancestor, NotAncestor will be thrown
     """
-    # This lists only the first descendant we encounter
+    [rev_source.get_revision(r) for r in (ancestor_id, rev_id)]
     if ancestor_id == rev_id:
         return []
-
-    def in_history(myrev):
-        return revision_history is not None and myrev in revision_history
-
-    def remove_broken_lines(revisions, rev_id, descendant_map):
-        broken = set()
-        for revision in revisions:
-            cur_revision = revision
-            while cur_revision != rev_id:
-                cur_revision = descendant_map.get(cur_revision)
-                if cur_revision is None:
-                    broken.add(revision)
-                    break
-        return [r for r in revisions if r not in broken]
-
-    def trace_ancestry():
-        revisions = [rev_id]
-        descendant_map = {}
-        while len(revisions) > 0:
-            remove_broken = False
-            new_revisions = []
-            for revision in revisions:
-                parent_ids = [p.revision_id for p in 
-                              rev_source.get_revision(revision).parents]
-                for parent_id in parent_ids:
-                    if parent_id == ancestor_id:
-                        return revision, descendant_map
-                    if descendant_map.has_key(parent_id):
-                        if in_history(descendant_map[parent_id]):
-                            continue
-                        else:
-                            remove_broken = True
-                    descendant_map[parent_id] = revision
-                    new_revisions.append(parent_id)
-            if remove_broken:
-                new_revisions = remove_broken_lines(new_revisions, rev_id,
-                                                    descendant_map,)
-            revisions = new_revisions
-        raise Exception(revision, parent_ids)
-        return None, descendant_map
-
-    list_start, descendant_map = trace_ancestry()
-    if list_start is None:
-        raise Exception(descendant_map)
+    def historical_lines(line):
+        """Return a tuple of historical/non_historical lines, for sorting.
+        The non_historical count is negative, since non_historical lines are
+        a bad thing.
+        """
+        good_count = 0
+        bad_count = 0
+        for revision in line:
+            if revision in revision_history:
+                good_count += 1
+            else:
+                bad_count -= 1
+        return good_count, bad_count
+    active = [[rev_id]]
+    successful_lines = []
+    while len(active) > 0:
+        new_active = []
+        for line in active:
+            parent_ids = [p.revision_id for p in 
+                          rev_source.get_revision(line[-1]).parents]
+            for parent in parent_ids:
+                line_copy = line[:]
+                if parent == ancestor_id:
+                    successful_lines.append(line_copy)
+                else:
+                    line_copy.append(parent)
+                    new_active.append(line_copy)
+        active = new_active
+    if len(successful_lines) == 0:
         raise bzrlib.errors.NotAncestor(rev_id, ancestor_id)
-    intermediate_revisions = [list_start]
-    next_revision = list_start
-    while next_revision != rev_id:
-        next_revision = descendant_map[next_revision]
-        intermediate_revisions.append(next_revision)
-    return intermediate_revisions
+    for line in successful_lines:
+        line.reverse()
+    if revision_history is not None:
+        by_historical_lines = []
+        for line in successful_lines:
+            count = historical_lines(line)
+            by_historical_lines.append((count, line))
+        by_historical_lines.sort()
+        if by_historical_lines[-1][0][0] > 0:
+            return by_historical_lines[-1][1]
+    assert len(successful_lines)
+    successful_lines.sort(cmp, len)
+    return successful_lines[-1]
