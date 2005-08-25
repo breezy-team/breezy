@@ -33,7 +33,28 @@ def glob_expand_for_win32(file_list):
             expanded_file_list += glob_files
     return expanded_file_list
 
+def _prepare_file_list(file_list):
+    """Prepare a file list for use by smart_add_*."""
+    import sys
+    if sys.platform == 'win32':
+        file_list = glob_expand_for_win32(file_list)
+    if not file_list:
+        file_list = ['.']
+    file_list = list(file_list)
+    assert not isinstance(file_list, basestring)
+    return file_list
+
 def smart_add(file_list, verbose=True, recurse=True):
+    """Add files to version, optionally recursing into directories.
+
+    This is designed more towards DWIM for humans than API simplicity.
+    For the specific behaviour see the help for cmd_add().
+    """
+    file_list = _prepare_file_list(file_list)
+    b = Branch(file_list[0], find_root=True)
+    return smart_add_branch(b, file_list, verbose, recurse)
+        
+def smart_add_branch(branch, file_list, verbose=True, recurse=True):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
@@ -46,23 +67,15 @@ def smart_add(file_list, verbose=True, recurse=True):
     import bzrlib.branch
     import bzrlib.osutils
 
-    if sys.platform == 'win32':
-        file_list = glob_expand_for_win32(file_list)
-        
-    if not file_list:
-        file_list = ['.']
-    
+    file_list = _prepare_file_list(file_list)
     user_list = file_list[:]
-    file_list = list(file_list)
-    assert not isinstance(file_list, basestring)
-    b = Branch(file_list[0], find_root=True)
-    inv = b.read_working_inventory()
-    tree = b.working_tree()
+    inv = branch.read_working_inventory()
+    tree = branch.working_tree()
     count = 0
 
     for f in file_list:
-        rf = b.relpath(f)
-        af = b.abspath(rf)
+        rf = branch.relpath(f)
+        af = branch.abspath(rf)
 
         kind = bzrlib.osutils.file_kind(af)
 
@@ -113,12 +126,12 @@ def smart_add(file_list, verbose=True, recurse=True):
                     mutter("skip ignored sub-file %r" % subp)
                 else:
                     mutter("queue to add sub-file %r" % subp)
-                    file_list.append(b.abspath(subp))
+                    file_list.append(branch.abspath(subp))
 
     if count > 0:
         if verbose:
             note('added %d' % count)
-        b._write_inventory(inv)
+        branch._write_inventory(inv)
     else:
         print "nothing new to add"
         # should this return 1 to the shell?
