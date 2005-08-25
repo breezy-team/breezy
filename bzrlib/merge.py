@@ -273,12 +273,15 @@ def merge(other_revision, base_revision,
                                        "base")
             base_is_ancestor = True
         else:
-            if base_revision[1] == -1:
+            if base_revision[1] == "auto":
+                base_revno, base_rev_id = this_branch.common_ancestor(other_branch)
+                base_branch, base_tree = get_tree((base_revision[0], "revid:%s" % base_rev_id), tempdir, "base")
+            elif base_revision[1] == -1:
                 base_branch, base_tree = get_tree(base_revision, tempdir, "base")
                 base_rev_id = base_branch.last_patch()
             elif base_revision[1] is None:
-                base_revno, base_rev_id = this_branch.common_ancestor(other_branch)
-                base_branch, base_tree = get_tree((base_revision[0], "revid:%s" % base_rev_id), tempdir, "base")
+                base_branch, base_tree = get_tree(base_revision, tempdir, "base")
+                base_rev_id = None
             else:
                 base_branch, base_tree = get_tree(base_revision, tempdir, "base")
                 base_rev_id = base_branch.lookup_revision(base_revision[1])
