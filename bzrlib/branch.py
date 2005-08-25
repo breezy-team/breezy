@@ -218,7 +218,6 @@ class Branch(object):
             self._lock.unlock()
 
 
-
     def lock_write(self):
         if self._lock_mode:
             if self._lock_mode != 'w':
@@ -234,7 +233,6 @@ class Branch(object):
             self._lock_count = 1
 
 
-
     def lock_read(self):
         if self._lock_mode:
             assert self._lock_mode in ('r', 'w'), \
@@ -247,8 +245,6 @@ class Branch(object):
             self._lock_mode = 'r'
             self._lock_count = 1
                         
-
-            
     def unlock(self):
         if not self._lock_mode:
             from errors import LockError
@@ -261,18 +257,15 @@ class Branch(object):
             self._lock = None
             self._lock_mode = self._lock_count = None
 
-
     def abspath(self, name):
         """Return absolute filename for something in the branch"""
         return os.path.join(self.base, name)
-
 
     def relpath(self, path):
         """Return path relative to this branch of something inside it.
 
         Raises an error if path is not in this branch."""
         return _relpath(self.base, path)
-
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
@@ -306,8 +299,6 @@ class Branch(object):
         else:
             raise BzrError("invalid controlfile mode %r" % mode)
 
-
-
     def _make_control(self):
         from bzrlib.inventory import Inventory
         from bzrlib.xml import pack_xml
@@ -330,7 +321,6 @@ class Branch(object):
         # them; they're not needed for now and so ommitted for
         # simplicity.
         pack_xml(Inventory(), self.controlfile('inventory','w'))
-
 
     def _check_format(self):
         """Check this branch format is supported.

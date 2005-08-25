@@ -15,6 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from trace import mutter, note
+from bzrlib.errors import NotBranchError
+from bzrlib.branch import Branch
 
 def glob_expand_for_win32(file_list):
     import glob
@@ -51,8 +53,9 @@ def smart_add(file_list, verbose=True, recurse=True):
         file_list = ['.']
     
     user_list = file_list[:]
+    file_list = list(file_list)
     assert not isinstance(file_list, basestring)
-    b = bzrlib.branch.Branch(file_list[0], find_root=True)
+    b = Branch(file_list[0], find_root=True)
     inv = b.read_working_inventory()
     tree = b.working_tree()
     count = 0
@@ -77,10 +80,22 @@ def smart_add(file_list, verbose=True, recurse=True):
             
         versioned = (inv.path2id(rf) != None)
 
+        if kind == 'directory':
+            try:
+                sub_branch = Branch(af, find_root=False)
+                sub_tree = True
+            except NotBranchError:
+                sub_tree = False
+        else:
+            sub_tree = False
+
         if rf == '':
             mutter("branch root doesn't need to be added")
+            sub_tree = False
         elif versioned:
             mutter("%r is already versioned" % f)
+        elif sub_tree:
+            mutter("%r is a bzr tree" %f)
         else:
             file_id = bzrlib.branch.gen_file_id(rf)
             inv.add_path(rf, kind=kind, file_id=file_id)
@@ -89,7 +104,7 @@ def smart_add(file_list, verbose=True, recurse=True):
 
             print 'added', quotefn(f)
 
-        if kind == 'directory' and recurse:
+        if kind == 'directory' and recurse and not sub_tree:
             for subf in os.listdir(af):
                 subp = os.path.join(rf, subf)
                 if subf == bzrlib.BZRDIR:
