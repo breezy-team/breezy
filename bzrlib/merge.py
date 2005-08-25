@@ -259,31 +259,20 @@ def merge(other_revision, base_revision,
             other_rev_id = None
             other_basis = other_branch.last_patch()
         if base_revision == [None, None]:
-            if other_revision[1] == -1:
-                o_revno = None
-            else:
-                o_revno = other_revision[1]
+            base_rev_id = common_ancestor(this_rev_id, other_basis, 
+                                          this_branch)
+            if base_rev_id is None:
                 raise UnrelatedBranches()
-            try:
-                base_revision = this_branch.get_revision(base_rev_id)
-                base_branch = this_branch
-            except NoSuchRevision:
-                base_branch = other_branch
-            base_tree = get_revid_tree(base_branch, base_rev_id, tempdir, 
-                                       "base")
+            base_tree = get_revid_tree(this_branch, base_rev_id, tempdir, 
+                                       "base", None)
             base_is_ancestor = True
         else:
-            if base_revision[1] == "auto":
-                base_revno, base_rev_id = this_branch.common_ancestor(other_branch)
-                base_branch, base_tree = get_tree((base_revision[0], "revid:%s" % base_rev_id), tempdir, "base")
-            elif base_revision[1] == -1:
-                base_branch, base_tree = get_tree(base_revision, tempdir, "base")
+            base_branch, base_tree = get_tree(base_revision, tempdir, "base")
+            if base_revision[1] == -1:
                 base_rev_id = base_branch.last_patch()
             elif base_revision[1] is None:
-                base_branch, base_tree = get_tree(base_revision, tempdir, "base")
                 base_rev_id = None
             else:
-                base_branch, base_tree = get_tree(base_revision, tempdir, "base")
                 base_rev_id = base_branch.lookup_revision(base_revision[1])
             if base_rev_id is not None:
                 base_is_ancestor = is_ancestor(this_rev_id, base_rev_id, 

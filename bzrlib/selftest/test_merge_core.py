@@ -496,7 +496,7 @@ class FunctionalMergeTest(FunctionalTestCase):
         mary_branch.commit("change file2")
         # john should be able to merge with no conflicts.
         merge_type = ApplyMerge3
-        base = ("original", "auto")
+        base = [None, None]
         other = ("mary", -1)
         merge(other, base, check_clean=True, merge_type=merge_type, this_dir="original")
         self.assertEqual("John\n", open("original/file1", "rt").read())

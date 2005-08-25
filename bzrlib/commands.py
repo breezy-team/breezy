@@ -1523,7 +1523,7 @@ class cmd_merge(Command):
             merge_type = ApplyMerge3
 
         if revision is None or len(revision) < 1:
-            base = (None, "auto")
+            base = [None, None]
             other = (branch, -1)
         else:
             if len(revision) == 1:
@@ -1553,6 +1553,7 @@ class cmd_revert(Command):
 
     def run(self, revision=None, no_backup=False, file_list=None):
         from bzrlib.merge import merge
+        from bzrlib.branch import Branch
         if file_list is not None:
             if len(file_list) == 0:
                 raise BzrCommandError("No files specified")
@@ -1565,6 +1566,8 @@ class cmd_revert(Command):
               ignore_zero=True,
               backup_files=not no_backup,
               file_list=file_list)
+        if not file_list:
+            Branch('.').set_pending_merges([])
 
 
 class cmd_assert_fail(Command):
