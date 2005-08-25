@@ -126,6 +126,7 @@ class ImmutableStore(object):
         if isinstance(other, ImmutableStore):
             return self.copy_multi_immutable(other, to_copy, pb)
         count = 0
+        failed = set()
         for id in to_copy:
             count += 1
             pb.update('copy', count, len(to_copy))
@@ -135,13 +136,14 @@ class ImmutableStore(object):
                 try:
                     entry = other[id]
                 except IndexError:
-                    failures.add(id)
+                    failed.add(id)
                     continue
                 self.add(entry, id)
                 
-        assert count == len(to_copy)
+        if not permit_failure:
+            assert count == len(to_copy)
         pb.clear()
-        return count, []
+        return count, failed
 
     def copy_multi_immutable(self, other, to_copy, pb, permit_failure=False):
         from shutil import copyfile
