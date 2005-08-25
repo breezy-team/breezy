@@ -919,7 +919,7 @@ class Branch(object):
         if history is None:
             history = self.revision_history()
         elif revno <= 0 or revno > len(history):
-            raise bzrlib.errors.NoSuchRevision(self, revision)
+            raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
     def _get_revision_info(self, revision):
@@ -948,7 +948,7 @@ class Branch(object):
                 revno = len(revs) + revision + 1
             else:
                 revno = revision
-            rev_id = self.get_rev_id(revision, revs)
+            rev_id = self.get_rev_id(revno, revs)
         elif isinstance(revision, basestring):
             for prefix, func in Branch.REVISION_NAMESPACES.iteritems():
                 if revision.startswith(prefix):
