@@ -214,7 +214,8 @@ def merge(other_revision, base_revision,
     all available ancestors of other_revision and base_revision are
     automatically pulled into the branch.
     """
-    from bzrlib.revision import common_ancestor, MultipleRevisionSources
+    from bzrlib.revision import common_ancestor, is_ancestor
+    from bzrlib.revision import MultipleRevisionSources
     from bzrlib.errors import NoSuchRevision
     tempdir = tempfile.mkdtemp(prefix="bzr-")
     try:
@@ -241,18 +242,12 @@ def merge(other_revision, base_revision,
             other_rev_id = None
             other_basis = other_branch.last_patch()
         if base_revision == [None, None]:
-            if other_revision[1] == -1:
-                o_revno = None
-            else:
-                o_revno = other_revision[1]
+            base_rev_id = common_ancestor(this_rev_id, other_basis, 
+                                          this_branch)
+            if base_rev_id is None:
                 raise UnrelatedBranches()
-            try:
-                base_revision = this_branch.get_revision(base_rev_id)
-                base_branch = this_branch
-            except NoSuchRevision:
-                base_branch = other_branch
-            base_tree = get_revid_tree(base_branch, base_rev_id, tempdir, 
-                                       "base")
+            base_tree = get_revid_tree(this_branch, base_rev_id, tempdir, 
+                                       "base", None)
             base_is_ancestor = True
         else:
             base_branch, base_tree = get_tree(base_revision, tempdir, "base")

@@ -400,7 +400,15 @@ class MergeCommand(ExternalBase):
         a = Branch('.')
         b = Branch('../b')
         a.get_revision_xml(b.last_patch())
-        print "Pending: %s" % a.pending_merges()
-#        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
-#        % (a.pending_merges(), b.last_patch())
-
+        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
+        % (a.pending_merges(), b.last_patch())
+        a.set_pending_merges([])
+        self.runbzr('revert')
+        self.runbzr('merge ../b -r2..3')
+        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
+        % (a.pending_merges(), b.last_patch())
+        a.set_pending_merges([])
+        self.runbzr('revert')
+        self.runbzr('merge ../b -r3..3')
+        assert a.pending_merges() == [], "Assertion %s %s" \
+        % (a.pending_merges(), b.last_patch())

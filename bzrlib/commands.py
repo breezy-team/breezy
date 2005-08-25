@@ -1488,7 +1488,7 @@ class cmd_merge(Command):
             merge_type = ApplyMerge3
 
         if revision is None or len(revision) < 1:
-            base = (None, None)
+            base = [None, None]
             other = (branch, -1)
         else:
             if len(revision) == 1:
