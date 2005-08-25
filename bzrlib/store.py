@@ -114,8 +114,10 @@ class ImmutableStore(object):
     def copy_multi(self, other, ids, permit_failure=False):
         """Copy texts for ids from other into self.
 
-        If an id is present in self, it is skipped.  A count of copied
-        ids is returned, which may be less than len(ids).
+        If an id is present in self, it is skipped.
+
+        Returns (count_copied, failed), where failed is a collection of ids
+        that could not be copied.
         """
         pb = bzrlib.ui.ui_factory.progress_bar()
         
@@ -139,8 +141,7 @@ class ImmutableStore(object):
                 
         assert count == len(to_copy)
         pb.clear()
-        return count
-
+        return count, []
 
     def copy_multi_immutable(self, other, to_copy, pb, permit_failure=False):
         from shutil import copyfile

@@ -41,6 +41,7 @@ import traceback
 
 
 _file_handler = None
+_stderr_handler = None
 
 
 class QuietFormatter(logging.Formatter):
@@ -69,18 +70,6 @@ class QuietFormatter(logging.Formatter):
 
         return s
         
-################
-# configure default handler to stderr
-
-_stderr_handler = logging.StreamHandler()
-_stderr_handler.setFormatter(QuietFormatter())
-
-if os.environ.get('BZR_DEBUG'):
-    _stderr_handler.setLevel(logging.DEBUG)
-else:
-    _stderr_handler.setLevel(logging.INFO)
-
-logging.getLogger('').addHandler(_stderr_handler)
 
 
 
@@ -90,7 +79,7 @@ logging.getLogger('').addHandler(_stderr_handler)
 _bzr_logger = logging.getLogger('bzr')
 _bzr_logger.setLevel(logging.DEBUG) 
 
-note =      _bzr_logger.info
+info = note = _bzr_logger.info
 warning =   _bzr_logger.warning
 log_error = _bzr_logger.error
 error =     _bzr_logger.error
@@ -128,7 +117,7 @@ def _rollover_trace_maybe(trace_fname):
 
 
 
-def open_tracefile(argv=[], tracefilename='~/.bzr.log'):
+def open_tracefile(tracefilename='~/.bzr.log'):
     # Messages are always written to here, so that we have some
     # information if something goes wrong.  In a future version this
     # file will be removed on successful completion.
@@ -154,18 +143,20 @@ def open_tracefile(argv=[], tracefilename='~/.bzr.log'):
         _file_handler.setLevel(logging.DEBUG)
         logging.getLogger('').addHandler(_file_handler)
 
-        import bzrlib
-        
-        debug('bzr %s invoked on python %s (%s)'
-              % (bzrlib.__version__,
-                 '.'.join(map(str, sys.version_info)),
-                 sys.platform))
-
-        debug('  arguments: %r' % argv)
-        debug('  working dir: ' + os.getcwdu())
     except IOError, e:
         warning("failed to open trace file: %s" % (e))
 
+
+def log_startup(argv):
+    import bzrlib
+
+    debug('bzr %s invoked on python %s (%s)',
+          bzrlib.__version__,
+          '.'.join(map(str, sys.version_info)),
+          sys.platform)
+
+    debug('  arguments: %r', argv)
+    debug('  working dir: %s', os.getcwdu())
 
 
 def log_exception(msg=None):
@@ -182,3 +173,39 @@ def log_exception(msg=None):
         msg = msg[:-1]
         
     _bzr_logger.exception(msg)
+
+
+
+def enable_default_logging():
+    """Configure default logging to stderr and .bzr.log"""
+    global _stderr_handler, _file_handler
+
+    _stderr_handler = logging.StreamHandler()
+    _stderr_handler.setFormatter(QuietFormatter())
+
+    if not _file_handler:
+        open_tracefile()
+
+    if os.environ.get('BZR_DEBUG'):
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+
+    _stderr_handler.setLevel(logging.INFO)
+    _file_handler.setLevel(level)
+
+    logging.getLogger('').addHandler(_stderr_handler)
+
+
+
+def disable_default_logging():
+    """Turn off default log handlers.
+
+    This is intended to be used by the test framework, which doesn't
+    want leakage from the code-under-test into the main logs.
+    """
+
+    l = logging.getLogger('')
+    l.removeHandler(_stderr_handler)
+    if _file_handler:
+        l.removeHandler(_file_handler)

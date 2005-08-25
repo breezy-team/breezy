@@ -275,4 +275,3 @@ class PermissionsMerge(object):
             os.chmod(filename, other_stat)
         else:
             conflict_handler.permission_conflict(filename, base, other)
-

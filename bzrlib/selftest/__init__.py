@@ -52,6 +52,7 @@ def test_suite():
     testmod_names = \
                   ['bzrlib.selftest.whitebox',
                    'bzrlib.selftest.versioning',
+                   'bzrlib.selftest.testfetch',
                    'bzrlib.selftest.testinv',
                    'bzrlib.selftest.testmerge3',
                    'bzrlib.selftest.testhashcache',

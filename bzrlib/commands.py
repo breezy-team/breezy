@@ -27,10 +27,18 @@
 # would help with validation and shell completion.
 
 
+# TODO: Help messages for options.
+
+# TODO: Define arguments by objects, rather than just using names.
+# Those objects can specify the expected type of the argument, which
+# would help with validation and shell completion.
+
+
 import sys
 import os
 
 import bzrlib
+import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
 from bzrlib.branch import find_branch
@@ -1378,12 +1386,21 @@ class cmd_selftest(Command):
         import bzrlib.ui
         from bzrlib.selftest import selftest
         # we don't want progress meters from the tests to go to the
-        # real output.
+        # real output; and we don't want log messages cluttering up
+        # the real logs.
         save_ui = bzrlib.ui.ui_factory
+        bzrlib.trace.info('running tests...')
+        bzrlib.trace.disable_default_logging()
         try:
             bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-            return int(not selftest(verbose=verbose, pattern=pattern))
+            result = selftest(verbose=verbose, pattern=pattern)
+            if result:
+                bzrlib.trace.info('tests passed')
+            else:
+                bzrlib.trace.info('tests failed')
+            return int(not result)
         finally:
+            bzrlib.trace.enable_default_logging()
             bzrlib.ui.ui_factory = save_ui
 
 
@@ -1933,9 +1950,7 @@ def run_bzr(argv):
 
 def main(argv):
     import bzrlib.ui
-    
-    bzrlib.trace.open_tracefile(argv)
-
+    bzrlib.trace.log_startup(argv)
     bzrlib.ui.ui_factory = bzrlib.ui.TextUIFactory()
 
     try:

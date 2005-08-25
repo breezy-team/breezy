@@ -824,8 +824,8 @@ class Branch(object):
             count = 0
         self.append_revision(*revision_ids)
         ## note("Added %d revisions." % count)
+        pb.clear()
 
-        
     def install_revisions(self, other, revision_ids, pb):
         if hasattr(other.revision_store, "prefetch"):
             other.revision_store.prefetch(revision_ids)
@@ -862,11 +862,11 @@ class Branch(object):
                     
         count, cp_fail = self.text_store.copy_multi(other.text_store, 
                                                     needed_texts)
-        print "Added %d texts." % count 
+        #print "Added %d texts." % count 
         inventory_ids = [ f.inventory_id for f in revisions ]
         count, cp_fail = self.inventory_store.copy_multi(other.inventory_store, 
                                                          inventory_ids)
-        print "Added %d inventories." % count 
+        #print "Added %d inventories." % count 
         revision_ids = [ f.revision_id for f in revisions]
 
         count, cp_fail = self.revision_store.copy_multi(other.revision_store, 

@@ -1065,7 +1065,7 @@ class ExceptionConflictHandler(object):
     def new_contents_conflict(self, filename, other_contents):
         raise NewContentsConflict(filename)
 
-    def finalize():
+    def finalize(self):
         pass
 
 def apply_changeset(changeset, inventory, dir, conflict_handler=None, 

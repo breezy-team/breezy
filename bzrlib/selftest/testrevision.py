@@ -71,7 +71,8 @@ class TestIsAncestor(InTempDir):
 
 class TestCommonAncestor(InTempDir):
     """Test checking whether a revision is an ancestor of another revision"""
-    def runTest(self):
+
+    def test_common_ancestor(self):
         from bzrlib.revision import find_present_ancestors, common_ancestor
         from bzrlib.revision import MultipleRevisionSources
         br1, br2 = make_branches()
