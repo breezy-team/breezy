@@ -17,7 +17,6 @@
 
 from testsweet import TestCase, run_suite, InTempDir
 import bzrlib.commands
-import bzrlib.fetch
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
@@ -46,6 +45,7 @@ def selftest(verbose=False):
     testmod_names = \
                   ['bzrlib.selftest.whitebox',
                    'bzrlib.selftest.versioning',
+                   'bzrlib.selftest.testfetch',
                    'bzrlib.selftest.testinv',
                    'bzrlib.selftest.testmerge3',
                    'bzrlib.selftest.testhashcache',
@@ -57,7 +57,6 @@ def selftest(verbose=False):
                    'bzrlib.selftest.testrevision',
                    'bzrlib.merge_core',
                    'bzrlib.selftest.testdiff',
-                   'bzrlib.fetch'
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
