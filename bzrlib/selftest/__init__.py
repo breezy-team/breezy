@@ -25,6 +25,15 @@ MODULES_TO_DOCTEST = []
 class BzrTestBase(InTempDir):
     """bzr-specific test base class"""
     def run_bzr(self, *args, **kwargs):
+        """Invoke bzr, as if it were run from the command line.
+
+        This should be the main method for tests that want to exercise the
+        overall behavior of the bzr application (rather than a unit test
+        or a functional test of the library.)
+
+        Much of the old code runs bzr by forking a new copy of Python, but
+        that is slower, harder to debug, and generally not necessary.
+        """"
         retcode = kwargs.get('retcode', 0)
         self.assertEquals(bzrlib.commands.run_bzr(args), retcode)
         
