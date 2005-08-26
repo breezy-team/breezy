@@ -57,7 +57,7 @@ def greedy_fetch(to_branch, from_branch, revision=None, pb=None):
         for rev_id in failed:
             note("Failed to install %s" % rev_id)
         all_failed.update(failed)
-        new_missing = []
+        new_missing = set() 
         for rev_id in missing:
             try:
                 revision = from_branch.get_revision(rev_id)
@@ -68,7 +68,7 @@ def greedy_fetch(to_branch, from_branch, revision=None, pb=None):
                     continue
             for parent in [p.revision_id for p in revision.parents]:
                 if not has_revision(to_branch, parent):
-                    new_missing.append(parent)
+                    new_missing.add(parent)
         missing = new_missing
     return count, all_failed
 
