@@ -352,21 +352,21 @@ class OldTests(ExternalBase):
 
 
 
+def example_branch(test):
+    test.runbzr('init')
+
+    file('hello', 'wt').write('foo')
+    test.runbzr('add hello')
+    test.runbzr('commit -m setup hello')
+
+    file('goodbye', 'wt').write('baz')
+    test.runbzr('add goodbye')
+    test.runbzr('commit -m setup goodbye')
 
 
 class RevertCommand(ExternalBase):
     def runTest(self):
-        import os
-        self.runbzr('init')
-
-        file('hello', 'wt').write('foo')
-        self.runbzr('add hello')
-        self.runbzr('commit -m setup hello')
-
-        file('goodbye', 'wt').write('baz')
-        self.runbzr('add goodbye')
-        self.runbzr('commit -m setup goodbye')
-        
+        example_branch(self)
         file('hello', 'wt').write('bar')
         file('goodbye', 'wt').write('qux')
         self.runbzr('revert hello')
@@ -374,10 +374,44 @@ class RevertCommand(ExternalBase):
         self.check_file_contents('goodbye', 'qux')
         self.runbzr('revert')
         self.check_file_contents('goodbye', 'baz')
-        os.mkdir('revertdir')
-        self.runbzr('add revertdir')
-        self.runbzr('commit -m f')
-        os.rmdir('revertdir')
+
+
+class MergeCommand(ExternalBase):
+    def runTest(self):
+        from bzrlib.branch import Branch
+        import os
+        os.mkdir('a')
+        os.chdir('a')
+        example_branch(self)
+        os.chdir('..')
+        self.runbzr('branch a b')
+        os.chdir('b')
+        file('goodbye', 'wt').write('quux')
+        self.runbzr(['commit',  '-m',  "more u's are always good"])
+
+        os.chdir('../a')
+        file('hello', 'wt').write('quuux')
+        # We can't merge when there are in-tree changes
+        self.runbzr('merge ../b', retcode=1)
+        self.runbzr(['commit', '-m', "Like an epidemic of u's"])
+        self.runbzr('merge ../b')
+        self.check_file_contents('goodbye', 'quux')
+        # Merging a branch pulls its revision into the tree
+        a = Branch('.')
+        b = Branch('../b')
+        a.get_revision_xml(b.last_patch())
+        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
+        % (a.pending_merges(), b.last_patch())
+        self.runbzr('revert hello')
+        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
+        % (a.pending_merges(), b.last_patch())
         self.runbzr('revert')
-
-
+        assert a.pending_merges() == [], "Assertion %s %s" \
+        % (a.pending_merges(), b.last_patch())
+        self.runbzr('merge ../b -r2..3')
+        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
+        % (a.pending_merges(), b.last_patch())
+        self.runbzr('revert')
+        self.runbzr('merge ../b -r3..3')
+        assert a.pending_merges() == [], "Assertion %s %s" \
+        % (a.pending_merges(), b.last_patch())

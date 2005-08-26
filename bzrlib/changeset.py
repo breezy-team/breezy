@@ -626,7 +626,7 @@ class ChangesetEntry(object):
                 return None
             return self.path
 
-    def summarize_name(self, reverse=False):
+    def summarize_name(self, changeset, reverse=False):
         """Produce a one-line summary of the filename.  Indicates renames as
         old => new, indicates creation as None => new, indicates deletion as
         old => None.
@@ -663,7 +663,7 @@ class ChangesetEntry(object):
         :type reverse: bool
         :rtype: str
         """
-        mutter("Finding new path for %s" % self.summarize_name())
+        mutter("Finding new path for %s" % self.summarize_name(changeset))
         if reverse:
             parent = self.parent
             to_dir = self.dir
@@ -1329,7 +1329,7 @@ class ChangesetGenerator(object):
             yield self.get_entry(file_id, tree)
 
     def get_entry(self, file_id, tree):
-        if not tree.has_or_had_id(file_id):
+        if file_id not in tree:
             return None
         return tree.tree.inventory[file_id]
 
@@ -1339,7 +1339,7 @@ class ChangesetGenerator(object):
         return entry.parent_id
 
     def get_path(self, file_id, tree):
-        if not tree.has_or_had_id(file_id):
+        if not tree.has_id(file_id):
             return None
         path = tree.id2path(file_id)
         if path == '':
@@ -1397,6 +1397,9 @@ class ChangesetGenerator(object):
         full_path_b = self.tree_b.readonly_path(id)
         stat_a = self.lstat(full_path_a)
         stat_b = self.lstat(full_path_b)
+        if stat_b is None:
+            cs_entry.new_parent = None
+            cs_entry.new_path = None
         
         cs_entry.metadata_change = self.make_mode_change(stat_a, stat_b)
         cs_entry.contents_change = self.make_contents_change(full_path_a,
