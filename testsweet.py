@@ -74,14 +74,23 @@ class TestCase(unittest.TestCase):
         import time
         import os
         import tempfile
+        import logging
+        
         self.TEST_LOG = tempfile.NamedTemporaryFile(mode='wt', bufsize=0)
         # save stdout & stderr so there's no leakage from code-under-test
         self.real_stdout = sys.stdout
         self.real_stderr = sys.stderr
         sys.stdout = sys.stderr = self.TEST_LOG
+        
+        # set up default python log handler
+        #self._handler = logging.StreamHandler(self.TEST_LOG)
+        #self._handler.setLevel(logging.DEBUG)
+        #logging.getLogger('').addHandler(self._handler)
+        
         self.log("%s setup" % self.id())
 
     def tearDown(self):
+        # logging.getLogger('').removeHandler(self._handler)
         sys.stdout = self.real_stdout
         sys.stderr = self.real_stderr
         self.log("%s teardown" % self.id())
@@ -171,7 +180,7 @@ class FunctionalTestCase(TestCase):
         os.chdir(self._currentdir)
         super(FunctionalTestCase, self).tearDown()
 
-    def formcmd(self, cmd):
+    def _formcmd(self, cmd):
         if isinstance(cmd, basestring):
             cmd = cmd.split()
         if cmd[0] == 'bzr':
@@ -195,7 +204,7 @@ class FunctionalTestCase(TestCase):
         except ImportError, e:
             _need_subprocess()
             raise
-        cmd = self.formcmd(cmd)
+        cmd = self._formcmd(cmd)
         self.log('$ ' + ' '.join(cmd))
         actual_retcode = call(cmd, stdout=self.TEST_LOG, stderr=self.TEST_LOG)
         if retcode != actual_retcode:
@@ -211,7 +220,7 @@ class FunctionalTestCase(TestCase):
             _need_subprocess()
             raise
 
-        cmd = self.formcmd(cmd)
+        cmd = self._formcmd(cmd)
         child = Popen(cmd, stdout=PIPE, stderr=self.TEST_LOG)
         outd, errd = child.communicate()
         self.log(outd)
