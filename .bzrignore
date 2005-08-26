@@ -16,3 +16,5 @@ api
 test.log
 ./tmp
 build
+./ID
+./tags
