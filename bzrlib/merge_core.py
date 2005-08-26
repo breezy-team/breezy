@@ -45,7 +45,7 @@ class ApplyMerge3:
                        start_marker=start_marker):
             if line.startswith(start_marker):
                 new_conflicts = True
-                output_file.write(line.replace(start_marker, '<<<<<<<<'))
+                output_file.write(line.replace(start_marker, '<' * 7))
             else:
                 output_file.write(line)
         output_file.close()
