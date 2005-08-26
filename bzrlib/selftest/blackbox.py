@@ -415,3 +415,8 @@ class MergeCommand(ExternalBase):
         self.runbzr('merge ../b -r3..3')
         assert a.pending_merges() == [], "Assertion %s %s" \
         % (a.pending_merges(), b.last_patch())
+        os.mkdir('revertdir')
+        self.runbzr('add revertdir')
+        self.runbzr('commit -m f')
+        os.rmdir('revertdir')
+        self.runbzr('revert')
