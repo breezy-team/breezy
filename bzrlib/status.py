@@ -19,7 +19,8 @@
 def show_status(branch, show_unchanged=False,
                 specific_files=None,
                 show_ids=False,
-                to_file=None):
+                to_file=None,
+                show_pending=True):
     """Display single-line status for non-ignored working files.
 
     show_all
@@ -62,6 +63,10 @@ def show_status(branch, show_unchanged=False,
                 print >>to_file, 'unknown:'
                 done_header = True
             print >>to_file, ' ', path
+        if show_pending and len(branch.pending_merges()) > 0:
+            print >>to_file, 'pending merges:'
+            for merge in branch.pending_merges():
+                print >> to_file, ' ', merge
     finally:
         branch.unlock()
         
