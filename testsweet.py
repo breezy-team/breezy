@@ -325,7 +325,8 @@ def run_suite(suite, name='test', verbose=False):
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
     if result.wasSuccessful():
-        shutil.rmtree(FunctionalTestCase.TEST_ROOT) 
+        if FunctionalTestCase.TEST_ROOT:
+            shutil.rmtree(FunctionalTestCase.TEST_ROOT) 
     else:
         print "Failed tests working directories are in '%s'\n" % FunctionalTestCase.TEST_ROOT
     return result.wasSuccessful()
