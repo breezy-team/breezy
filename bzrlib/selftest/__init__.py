@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from testsweet import TestBase, run_suite, InTempDir
+from testsweet import TestCase, run_suite, InTempDir, FunctionalTestCase
 import bzrlib.commands
 import bzrlib.fetch
 import bzrlib.selftest.teststore
@@ -28,11 +28,17 @@ class BzrTestBase(InTempDir):
     """bzr-specific test base class"""
     def run_bzr(self, *args, **kwargs):
         retcode = kwargs.get('retcode', 0)
-        self.assertEquals(bzrlib.commands.run_bzr(args), retcode)
+        result = self.apply_redirected(None, None, None,
+                                       bzrlib.commands.run_bzr, args)
+        self.assertEquals(result, retcode)
         
 
-def selftest(verbose=False):
-    from unittest import TestLoader, TestSuite
+def selftest(verbose=False, pattern=".*"):
+    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
+
+
+def test_suite():
+    from bzrlib.selftest.TestUtil import TestLoader, TestSuite
     import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
     import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
     from doctest import DocTestSuite
@@ -47,6 +53,7 @@ def selftest(verbose=False):
     testmod_names = \
                   ['bzrlib.selftest.whitebox',
                    'bzrlib.selftest.versioning',
+                   'bzrlib.selftest.testfetch',
                    'bzrlib.selftest.testinv',
                    'bzrlib.selftest.testmerge3',
                    'bzrlib.selftest.testhashcache',
@@ -56,44 +63,29 @@ def selftest(verbose=False):
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
                    'bzrlib.selftest.testrevision',
-                   'bzrlib.merge_core',
+                   'bzrlib.selftest.test_merge_core',
+                   'bzrlib.selftest.test_smart_add',
                    'bzrlib.selftest.testdiff',
                    'bzrlib.fetch',
                    'bzrlib.selftest.teststore',
                    ]
-
-    # XXX: should also test bzrlib.merge_core, but they seem to be out
-    # of date with the code.
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
               bzrlib.osutils, bzrlib.commands, bzrlib.merge3):
         if m not in MODULES_TO_DOCTEST:
             MODULES_TO_DOCTEST.append(m)
 
-    
-    TestBase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
-    print '%-30s %s' % ('bzr binary', TestBase.BZRPATH)
-
+    TestCase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
+    print '%-30s %s' % ('bzr binary', TestCase.BZRPATH)
     print
-
     suite = TestSuite()
-
     suite.addTest(TestLoader().loadTestsFromNames(testmod_names))
-
     for m in MODULES_TO_TEST:
          suite.addTest(TestLoader().loadTestsFromModule(m))
-
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
-
     for p in bzrlib.plugin.all_plugins:
         if hasattr(p, 'test_suite'):
             suite.addTest(p.test_suite())
-
-    import bzrlib.merge_core
-    suite.addTest(unittest.makeSuite(bzrlib.merge_core.MergeTest, 'test_'))
-
-    return run_suite(suite, 'testbzr', verbose=verbose)
-
-
+    return suite
 

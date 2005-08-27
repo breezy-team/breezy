@@ -42,7 +42,10 @@ if version_info < NEED_VERS:
     sys.exit(1)
 os.unsetenv(REINVOKE)
 
-import bzrlib, bzrlib.commands
+import bzrlib
+import bzrlib.commands
+import bzrlib.trace
 
 if __name__ == '__main__':
+    bzrlib.trace.enable_default_logging()
     sys.exit(bzrlib.commands.main(sys.argv))

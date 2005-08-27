@@ -17,19 +17,32 @@
 from bzrlib.selftest import InTempDir
 
 
-
 class TestAppendRevisions(InTempDir):
     """Test appending more than one revision"""
-    def runTest(self):
+    def test_append_revisions(self):
         from bzrlib.branch import Branch
         br = Branch(".", init=True)
         br.append_revision("rev1")
         self.assertEquals(br.revision_history(), ["rev1",])
         br.append_revision("rev2", "rev3")
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
-        
 
 
-TEST_CLASSES = [
-    TestAppendRevisions,
-    ]
+# TODO: rewrite this as a regular unittest, without relying on the displayed output        
+#         >>> from bzrlib.commit import commit
+#         >>> bzrlib.trace.silent = True
+#         >>> br1 = ScratchBranch(files=['foo', 'bar'])
+#         >>> br1.add('foo')
+#         >>> br1.add('bar')
+#         >>> commit(br1, "lala!", rev_id="REVISION-ID-1", verbose=False)
+#         >>> br2 = ScratchBranch()
+#         >>> br2.update_revisions(br1)
+#         Added 2 texts.
+#         Added 1 inventories.
+#         Added 1 revisions.
+#         >>> br2.revision_history()
+#         [u'REVISION-ID-1']
+#         >>> br2.update_revisions(br1)
+#         Added 0 revisions.
+#         >>> br1.text_store.total_size() == br2.text_store.total_size()
+#         True

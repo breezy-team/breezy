@@ -37,9 +37,8 @@ def make_writable(filename):
     os.chmod(filename, mod)
 
 
-_QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/_~-])')
+_QUOTE_RE = None
 
-_SLASH_RE = re.compile(r'[\\/]+')
 
 def quotefn(f):
     """Return a quoted filename filename
@@ -47,6 +46,10 @@ def quotefn(f):
     This previously used backslash quoting, but that works poorly on
     Windows."""
     # TODO: I'm not really sure this is the best format either.x
+    global _QUOTE_RE
+    if _QUOTE_RE == None:
+        _QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/_~-])')
+        
     if _QUOTE_RE.search(f):
         return '"' + f + '"'
     else:
@@ -269,14 +272,36 @@ def _auto_user_id():
     return realname, (username + '@' + socket.gethostname())
 
 
-def _get_user_id():
+def _get_user_id(branch):
     """Return the full user id from a file or environment variable.
 
-    TODO: Allow taking this from a file in the branch directory too
-    for per-branch ids."""
+    e.g. "John Hacker <jhacker@foo.org>"
+
+    branch
+        A branch to use for a per-branch configuration, or None.
+
+    The following are searched in order:
+
+    1. $BZREMAIL
+    2. .bzr/email for this branch.
+    3. ~/.bzr.conf/email
+    4. $EMAIL
+    """
     v = os.environ.get('BZREMAIL')
     if v:
         return v.decode(bzrlib.user_encoding)
+
+    if branch:
+        try:
+            return (branch.controlfile("email", "r") 
+                    .read()
+                    .decode(bzrlib.user_encoding)
+                    .rstrip("\r\n"))
+        except IOError, e:
+            if e.errno != errno.ENOENT:
+                raise
+        except BzrError, e:
+            pass
     
     try:
         return (open(os.path.join(config_dir(), "email"))
@@ -294,14 +319,14 @@ def _get_user_id():
         return None
 
 
-def username():
+def username(branch):
     """Return email-style username.
 
     Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
     TODO: Check it's reasonably well-formed.
     """
-    v = _get_user_id()
+    v = _get_user_id(branch)
     if v:
         return v
     
@@ -312,12 +337,11 @@ def username():
         return email
 
 
-_EMAIL_RE = re.compile(r'[\w+.-]+@[\w+.-]+')
-def user_email():
+def user_email(branch):
     """Return just the email component of a username."""
-    e = _get_user_id()
+    e = _get_user_id(branch)
     if e:
-        m = _EMAIL_RE.search(e)
+        m = re.search(r'[\w+.-]+@[\w+.-]+', e)
         if not m:
             raise BzrError("%r doesn't seem to contain a reasonable email address" % e)
         return m.group(0)

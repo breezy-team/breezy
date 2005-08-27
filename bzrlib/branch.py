@@ -23,6 +23,7 @@ from bzrlib.trace import mutter, note
 from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
      splitpath, \
      sha_file, appendpath, file_kind
+
 from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId
 import bzrlib.errors
 from bzrlib.textui import show_status
@@ -30,9 +31,10 @@ from bzrlib.revision import Revision
 from bzrlib.xml import unpack_xml
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
-from bzrlib.progress import ProgressBar
+import bzrlib.ui
 
-       
+
+
 BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
 
@@ -106,7 +108,8 @@ def find_branch_root(f=None):
     It is not necessary that f exists.
 
     Basically we keep looking up until we find the control directory or
-    run into the root."""
+    run into the root.  If there isn't one, raises NotBranchError.
+    """
     if f == None:
         f = os.getcwd()
     elif hasattr(os.path, 'realpath'):
@@ -125,9 +128,12 @@ def find_branch_root(f=None):
         head, tail = os.path.split(f)
         if head == f:
             # reached the root, whatever that may be
-            raise BzrError('%r is not in a branch' % orig_f)
+            raise bzrlib.errors.NotBranchError('%s is not in a branch' % orig_f)
         f = head
-    
+
+
+
+# XXX: move into bzrlib.errors; subclass BzrError    
 class DivergedBranches(Exception):
     def __init__(self, branch1, branch2):
         self.branch1 = branch1
@@ -213,7 +219,6 @@ class Branch(object):
             self._lock.unlock()
 
 
-
     def lock_write(self):
         if self._lock_mode:
             if self._lock_mode != 'w':
@@ -229,7 +234,6 @@ class Branch(object):
             self._lock_count = 1
 
 
-
     def lock_read(self):
         if self._lock_mode:
             assert self._lock_mode in ('r', 'w'), \
@@ -242,8 +246,6 @@ class Branch(object):
             self._lock_mode = 'r'
             self._lock_count = 1
                         
-
-            
     def unlock(self):
         if not self._lock_mode:
             from errors import LockError
@@ -256,18 +258,15 @@ class Branch(object):
             self._lock = None
             self._lock_mode = self._lock_count = None
 
-
     def abspath(self, name):
         """Return absolute filename for something in the branch"""
         return os.path.join(self.base, name)
-
 
     def relpath(self, path):
         """Return path relative to this branch of something inside it.
 
         Raises an error if path is not in this branch."""
         return _relpath(self.base, path)
-
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
@@ -301,8 +300,6 @@ class Branch(object):
         else:
             raise BzrError("invalid controlfile mode %r" % mode)
 
-
-
     def _make_control(self):
         from bzrlib.inventory import Inventory
         from bzrlib.xml import pack_xml
@@ -325,7 +322,6 @@ class Branch(object):
         # them; they're not needed for now and so ommitted for
         # simplicity.
         pack_xml(Inventory(), self.controlfile('inventory','w'))
-
 
     def _check_format(self):
         """Check this branch format is supported.
@@ -807,56 +803,44 @@ class Branch(object):
         if stop_revision is None:
             stop_revision = other_len
         elif stop_revision > other_len:
-            raise NoSuchRevision(self, stop_revision)
+            raise bzrlib.errors.NoSuchRevision(self, stop_revision)
         
         return other_history[self_len:stop_revision]
 
 
     def update_revisions(self, other, stop_revision=None):
         """Pull in all new revisions from other branch.
-        
-        >>> from bzrlib.commit import commit
-        >>> bzrlib.trace.silent = True
-        >>> br1 = ScratchBranch(files=['foo', 'bar'])
-        >>> br1.add('foo')
-        >>> br1.add('bar')
-        >>> commit(br1, "lala!", rev_id="REVISION-ID-1", verbose=False)
-        >>> br2 = ScratchBranch()
-        >>> br2.update_revisions(br1)
-        Added 2 texts.
-        Added 1 inventories.
-        Added 1 revisions.
-        >>> br2.revision_history()
-        [u'REVISION-ID-1']
-        >>> br2.update_revisions(br1)
-        Added 0 revisions.
-        >>> br1.text_store.total_size() == br2.text_store.total_size()
-        True
         """
         from bzrlib.fetch import greedy_fetch
-        pb = ProgressBar()
+
+        pb = bzrlib.ui.ui_factory.progress_bar()
         pb.update('comparing histories')
+
         revision_ids = self.missing_revisions(other, stop_revision)
+
         if len(revision_ids) > 0:
             count = greedy_fetch(self, other, revision_ids[-1], pb)[0]
         else:
             count = 0
         self.append_revision(*revision_ids)
-        print "Added %d revisions." % count
-                    
-    def install_revisions(self, other, revision_ids, pb=None):
-        if pb is None:
-            pb = ProgressBar()
+        ## note("Added %d revisions." % count)
+        pb.clear()
+
+    def install_revisions(self, other, revision_ids, pb):
         if hasattr(other.revision_store, "prefetch"):
             other.revision_store.prefetch(revision_ids)
         if hasattr(other.inventory_store, "prefetch"):
             inventory_ids = [other.get_revision(r).inventory_id
                              for r in revision_ids]
             other.inventory_store.prefetch(inventory_ids)
+
+        if pb is None:
+            pb = bzrlib.ui.ui_factory.progress_bar()
                 
         revisions = []
         needed_texts = set()
         i = 0
+
         failures = set()
         for i, rev_id in enumerate(revision_ids):
             pb.update('fetching revision', i+1, len(revision_ids))
@@ -865,6 +849,7 @@ class Branch(object):
             except bzrlib.errors.NoSuchRevision:
                 failures.add(rev_id)
                 continue
+
             revisions.append(rev)
             inv = other.get_inventory(str(rev.inventory_id))
             for key, entry in inv.iter_entries():
@@ -877,18 +862,20 @@ class Branch(object):
                     
         count, cp_fail = self.text_store.copy_multi(other.text_store, 
                                                     needed_texts)
-        print "Added %d texts." % count 
+        #print "Added %d texts." % count 
         inventory_ids = [ f.inventory_id for f in revisions ]
         count, cp_fail = self.inventory_store.copy_multi(other.inventory_store, 
                                                          inventory_ids)
-        print "Added %d inventories." % count 
+        #print "Added %d inventories." % count 
         revision_ids = [ f.revision_id for f in revisions]
+
         count, cp_fail = self.revision_store.copy_multi(other.revision_store, 
                                                           revision_ids,
                                                           permit_failure=True)
         assert len(cp_fail) == 0 
         return count, failures
        
+
     def commit(self, *args, **kw):
         from bzrlib.commit import commit
         commit(self, *args, **kw)
@@ -898,6 +885,16 @@ class Branch(object):
         """Return the revision identifier for a given revision information."""
         revno, info = self._get_revision_info(revision)
         return info
+
+
+    def revision_id_to_revno(self, revision_id):
+        """Given a revision id, return its revno"""
+        history = self.revision_history()
+        try:
+            return history.index(revision_id) + 1
+        except ValueError:
+            raise bzrlib.errors.NoSuchRevision(self, revision_id)
+
 
     def get_revision_info(self, revision):
         """Return (revno, revision id) for revision identifier.
@@ -1443,4 +1440,33 @@ def gen_file_id(name):
 def gen_root_id():
     """Return a new tree-root file id."""
     return gen_file_id('TREE_ROOT')
+
+
+def pull_loc(branch):
+    # TODO: Should perhaps just make attribute be 'base' in
+    # RemoteBranch and Branch?
+    if hasattr(branch, "baseurl"):
+        return branch.baseurl
+    else:
+        return branch.base
+
+
+def copy_branch(branch_from, to_location, revision=None):
+    """Copy branch_from into the existing directory to_location.
+
+    If revision is not None, the head of the new branch will be revision.
+    """
+    from bzrlib.merge import merge
+    from bzrlib.branch import Branch
+    br_to = Branch(to_location, init=True)
+    br_to.set_root_id(branch_from.get_root_id())
+    if revision is None:
+        revno = branch_from.revno()
+    else:
+        revno, rev_id = branch_from.get_revision_info(revision)
+    br_to.update_revisions(branch_from, stop_revision=revno)
+    merge((to_location, -1), (to_location, 0), this_dir=to_location,
+          check_clean=False, ignore_zero=True)
+    from_location = pull_loc(branch_from)
+    br_to.controlfile("x-pull", "wb").write(from_location + "\n")
 

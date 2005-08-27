@@ -30,7 +30,7 @@ from bzrlib.selftest import InTempDir
 
 def PluginTest(InTempDir):
     """Create an external plugin and test loading."""
-    def runTest(self):
+    def test_plugin_loading(self):
         import os
         
         orig_help = self.backtick('bzr help commands') # No plugins yet

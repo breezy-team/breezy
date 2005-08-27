@@ -1,4 +1,28 @@
-DEVELOPMENT HEAD
+bzr development head
+
+  NEW FEATURES:
+
+    * ``bzr shell-complete`` command contributed by Clint Adams to
+      help with intelligent shell completion.
+
+    * New expert command ``bzr find-merge-base`` for debugging merges.
+
+
+  BUG FIXES:
+
+    * ``bzr upgrade`` no longer fails when trying to fix trees that
+      mention revisions that are not present.
+
+
+  LIBRARY:
+
+    * Changed trace messages to go through the standard logging
+      framework, so that they can more easily be redirected by
+      libraries.
+
+
+
+bzr-0.0.6 2005-08-18
 
   NEW FEATURES:
 
@@ -21,7 +45,11 @@ DEVELOPMENT HEAD
     * ``bzr missing`` command shows a summary of the differences
       between two trees.  (Merged from John Arbash-Meinel.)
 
-    
+    * An email address for commits to a particular tree can be
+      specified by putting it into .bzr/email within a branch.  (Based
+      on a patch from Heikki Paajanen.)
+
+
   ENHANCEMENTS:
 
     * Faster working tree operations.

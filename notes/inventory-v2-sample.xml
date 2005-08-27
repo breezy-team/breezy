@@ -1,0 +1,10 @@
+<inventory>
+  <root>
+    <file name="readme.txt" id="readme-123" size="400" sha1="abcdef" 
+          revision="2050808"/>
+    <directory name="src" id="src-123"> 
+      <directory name="libwibble" id="libwibble-123">
+      </directory>
+    </directory>
+  </root>
+</inventory>

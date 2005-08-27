@@ -55,7 +55,9 @@ class InventoryEntry(object):
     >>> i.path2id('')
     'TREE_ROOT'
     >>> i.add(InventoryEntry('123', 'src', 'directory', ROOT_ID))
+    InventoryEntry('123', 'src', kind='directory', parent_id='TREE_ROOT')
     >>> i.add(InventoryEntry('2323', 'hello.c', 'file', parent_id='123'))
+    InventoryEntry('2323', 'hello.c', kind='file', parent_id='123')
     >>> for j in i.iter_entries():
     ...   print j
     ... 
@@ -66,12 +68,15 @@ class InventoryEntry(object):
     ...
     BzrError: inventory already contains entry with id {2323}
     >>> i.add(InventoryEntry('2324', 'bye.c', 'file', '123'))
+    InventoryEntry('2324', 'bye.c', kind='file', parent_id='123')
     >>> i.add(InventoryEntry('2325', 'wibble', 'directory', '123'))
+    InventoryEntry('2325', 'wibble', kind='directory', parent_id='123')
     >>> i.path2id('src/wibble')
     '2325'
     >>> '2325' in i
     True
     >>> i.add(InventoryEntry('2326', 'wibble.c', 'file', '2325'))
+    InventoryEntry('2326', 'wibble.c', kind='file', parent_id='2325')
     >>> i['2326']
     InventoryEntry('2326', 'wibble.c', kind='file', parent_id='2325')
     >>> for j in i.iter_entries():
@@ -268,6 +273,7 @@ class Inventory(object):
 
     >>> inv = Inventory()
     >>> inv.add(InventoryEntry('123-123', 'hello.c', 'file', ROOT_ID))
+    InventoryEntry('123-123', 'hello.c', kind='file', parent_id='TREE_ROOT')
     >>> inv['123-123'].name
     'hello.c'
 
@@ -284,6 +290,7 @@ class Inventory(object):
     ['hello.c']
     >>> inv = Inventory('TREE_ROOT-12345678-12345678')
     >>> inv.add(InventoryEntry('123-123', 'hello.c', 'file', ROOT_ID))
+    InventoryEntry('123-123', 'hello.c', kind='file', parent_id='TREE_ROOT-12345678-12345678')
     """
     def __init__(self, root_id=ROOT_ID):
         """Create or read an inventory.
@@ -371,6 +378,7 @@ class Inventory(object):
 
         >>> inv = Inventory()
         >>> inv.add(InventoryEntry('123', 'foo.c', 'file', ROOT_ID))
+        InventoryEntry('123', 'foo.c', kind='file', parent_id='TREE_ROOT')
         >>> '123' in inv
         True
         >>> '456' in inv
@@ -384,6 +392,7 @@ class Inventory(object):
 
         >>> inv = Inventory()
         >>> inv.add(InventoryEntry('123123', 'hello.c', 'file', ROOT_ID))
+        InventoryEntry('123123', 'hello.c', kind='file', parent_id='TREE_ROOT')
         >>> inv['123123'].name
         'hello.c'
         """
@@ -425,6 +434,7 @@ class Inventory(object):
 
         self._byid[entry.file_id] = entry
         parent.children[entry.name] = entry
+        return entry
 
 
     def add_path(self, relpath, kind, file_id=None):
@@ -455,6 +465,7 @@ class Inventory(object):
 
         >>> inv = Inventory()
         >>> inv.add(InventoryEntry('123', 'foo.c', 'file', ROOT_ID))
+        InventoryEntry('123', 'foo.c', kind='file', parent_id='TREE_ROOT')
         >>> '123' in inv
         True
         >>> del inv['123']
@@ -494,6 +505,7 @@ class Inventory(object):
         
         >>> inv = Inventory()
         >>> inv.add(InventoryEntry('foo.c-123981239', 'foo.c', 'file', ROOT_ID))
+        InventoryEntry('foo.c-123981239', 'foo.c', kind='file', parent_id='TREE_ROOT')
         >>> elt = inv.to_element()
         >>> inv2 = Inventory.from_element(elt)
         >>> inv2 == inv
@@ -521,9 +533,11 @@ class Inventory(object):
         >>> i1 == i2
         True
         >>> i1.add(InventoryEntry('123', 'foo', 'file', ROOT_ID))
+        InventoryEntry('123', 'foo', kind='file', parent_id='TREE_ROOT')
         >>> i1 == i2
         False
         >>> i2.add(InventoryEntry('123', 'foo', 'file', ROOT_ID))
+        InventoryEntry('123', 'foo', kind='file', parent_id='TREE_ROOT')
         >>> i1 == i2
         True
         """
@@ -644,7 +658,11 @@ class Inventory(object):
 
 
 
-_NAME_RE = re.compile(r'^[^/\\]+$')
+_NAME_RE = None
 
 def is_valid_name(name):
+    global _NAME_RE
+    if _NAME_RE == None:
+        _NAME_RE = re.compile(r'^[^/\\]+$')
+        
     return bool(_NAME_RE.match(name))

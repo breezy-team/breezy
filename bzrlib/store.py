@@ -24,8 +24,9 @@ unique ID.
 import os, tempfile, types, osutils, gzip, errno
 from stat import ST_SIZE
 from StringIO import StringIO
-from trace import mutter
 from bzrlib.errors import BzrError
+from bzrlib.trace import mutter
+import bzrlib.ui
 
 ######################################################################
 # stores
@@ -113,11 +114,13 @@ class ImmutableStore(object):
     def copy_multi(self, other, ids, permit_failure=False):
         """Copy texts for ids from other into self.
 
-        If an id is present in self, it is skipped.  A count of copied
-        ids is returned, which may be less than len(ids).
+        If an id is present in self, it is skipped.
+
+        Returns (count_copied, failed), where failed is a collection of ids
+        that could not be copied.
         """
-        from bzrlib.progress import ProgressBar
-        pb = ProgressBar()
+        pb = bzrlib.ui.ui_factory.progress_bar()
+        
         pb.update('preparing to copy')
         to_copy = [id for id in ids if id not in self]
         if isinstance(other, ImmutableStore):
@@ -141,7 +144,6 @@ class ImmutableStore(object):
             assert count == len(to_copy)
         pb.clear()
         return count, failed
-
 
     def copy_multi_immutable(self, other, to_copy, pb, permit_failure=False):
         from shutil import copyfile

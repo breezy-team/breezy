@@ -45,7 +45,10 @@
 
 # with delta folded in and mutation of the list, 36.13s
 
-# with all this and simplification of add code, 33s 
+# with all this and simplification of add code, 33s
+
+
+
 
 
 # TODO: Perhaps have copy method for Weave instances?
@@ -58,8 +61,6 @@
 # rather than being split up in some other way.  We could accomodate
 # binaries, perhaps by naively splitting on \n or perhaps using
 # something like a rolling checksum.
-
-# TODO: Track version names as well as indexes. 
 
 # TODO: End marker for each version so we can stop reading?
 
@@ -75,6 +76,17 @@
 # description of which revisions include it.  Nice for checking all
 # shas in parallel.
 
+# TODO: Using a single _extract routine and then processing the output
+# is probably inefficient.  It's simple enough that we can afford to
+# have slight specializations for different ways its used: annotate,
+# basis for add, get, etc.
+
+# TODO: Perhaps the API should work only in names to hide the integer
+# indexes from the user?
+
+
+
+import sha
 
 
 
@@ -101,7 +113,7 @@ class Weave(object):
 
     * a nonnegative index number.
 
-    * a version-id string.
+    * a version-id string. (not implemented yet)
 
     Typically the index number will be valid only inside this weave and
     the version-id is used to reference it in the larger world.
@@ -118,7 +130,9 @@ class Weave(object):
     The instruction can be '{' or '}' for an insertion block, and '['
     and ']' for a deletion block respectively.  The version is the
     integer version index.  There is no replace operator, only deletes
-    and inserts.
+    and inserts.  For '}', the end of an insertion, there is no
+    version parameter because it always closes the most recently
+    opened insertion.
 
     Constraints/notes:
 
@@ -160,32 +174,52 @@ class Weave(object):
         each version; the parent's parents are implied.
 
     _sha1s
-        List of hex SHA-1 of each version, or None if not recorded.
+        List of hex SHA-1 of each version.
+
+    _names
+        List of symbolic names for each version.  Each should be unique.
+
+    _name_map
+        For each name, the version number.
     """
 
-    __slots__ = ['_weave', '_parents', '_sha1s']
+    __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map']
     
     def __init__(self):
         self._weave = []
         self._parents = []
         self._sha1s = []
+        self._names = []
+        self._name_map = {}
 
 
     def __eq__(self, other):
         if not isinstance(other, Weave):
             return False
         return self._parents == other._parents \
-               and self._weave == other._weave
-    
+               and self._weave == other._weave \
+               and self._sha1s == other._sha1s 
 
+    
     def __ne__(self, other):
         return not self.__eq__(other)
 
+
+    def lookup(self, name):
+        try:
+            return self._name_map[name]
+        except KeyError:
+            raise WeaveError("name %s not present in weave" % name)
+
         
-    def add(self, parents, text):
+    def add(self, name, parents, text):
         """Add a single text on top of the weave.
   
         Returns the index number of the newly added version.
+
+        name
+            Symbolic name for this version.
+            (Typically the revision-id of the revision that added it.)
 
         parents
             List or set of direct parent version numbers.
@@ -193,19 +227,25 @@ class Weave(object):
         text
             Sequence of lines to be added in the new version."""
 
+        assert isinstance(name, basestring)
+        if name in self._name_map:
+            raise WeaveError("name %r already present in weave" % name)
+        
         self._check_versions(parents)
         ## self._check_lines(text)
         new_version = len(self._parents)
 
-        import sha
         s = sha.new()
         map(s.update, text)
         sha1 = s.hexdigest()
         del s
 
-        # if we abort after here the weave will be corrupt
-        self._parents.append(frozenset(parents))
+        # if we abort after here the (in-memory) weave will be corrupt because only
+        # some fields are updated
+        self._parents.append(parents[:])
         self._sha1s.append(sha1)
+        self._names.append(name)
+        self._name_map[name] = new_version
 
             
         if not parents:
@@ -216,7 +256,7 @@ class Weave(object):
             if text:
                 self._weave.append(('{', new_version))
                 self._weave.extend(text)
-                self._weave.append(('}', new_version))
+                self._weave.append(('}', None))
         
             return new_version
 
@@ -288,8 +328,8 @@ class Weave(object):
                 # we don't destroy ourselves
                 i = i2 + offset
                 self._weave[i:i] = ([('{', new_version)] 
-                                + text[j1:j2] 
-                                + [('}', new_version)])
+                                    + text[j1:j2] 
+                                    + [('}', None)])
                 offset += 2 + (j2 - j1)
 
         return new_version
@@ -385,7 +425,7 @@ class Weave(object):
                 if c == '{':
                     istack.append(v)
                 elif c == '}':
-                    oldv = istack.pop()
+                    istack.pop()
                 elif c == '[':
                     assert v not in dset
                     dset.add(v)
@@ -432,8 +472,7 @@ class Weave(object):
                     assert v not in istack
                     istack.append(v)
                 elif c == '}':
-                    oldv = istack.pop()
-                    assert oldv == v
+                    istack.pop()
                 elif c == '[':
                     if v in included:
                         assert v not in dset
@@ -509,7 +548,6 @@ class Weave(object):
 
         # try extracting all versions; this is a bit slow and parallel
         # extraction could be used
-        import sha
         nv = self.numversions()
         for version in range(nv):
             if progress_bar:
@@ -671,15 +709,17 @@ class Weave(object):
 
 
 
-def weave_info(w):
-    """Show some text information about the weave."""
-    print '%6s %40s %20s' % ('ver', 'sha1', 'parents')
-    for i in (6, 40, 20):
+def weave_toc(w):
+    """Show the weave's table-of-contents"""
+    print '%6s %50s %10s %10s' % ('ver', 'name', 'sha1', 'parents')
+    for i in (6, 50, 10, 10):
         print '-' * i,
     print
     for i in range(w.numversions()):
         sha1 = w._sha1s[i]
-        print '%6d %40s %s' % (i, sha1, ' '.join(map(str, w._parents[i])))
+        name = w._names[i]
+        parent_str = ' '.join(map(str, w._parents[i]))
+        print '%6d %-50.50s %10.10s %s' % (i, name, sha1, parent_str)
 
 
 
@@ -725,9 +765,9 @@ usage:
         Write out specified version.
     weave check WEAVEFILE
         Check consistency of all versions.
-    weave info WEAVEFILE
+    weave toc WEAVEFILE
         Display table of contents.
-    weave add WEAVEFILE [BASE...] < NEWTEXT
+    weave add WEAVEFILE NAME [BASE...] < NEWTEXT
         Add NEWTEXT, with specified parent versions.
     weave annotate WEAVEFILE VERSION
         Display origin of each line.
@@ -740,23 +780,23 @@ example:
 
     % weave init foo.weave
     % vi foo.txt
-    % weave add foo.weave < foo.txt
+    % weave add foo.weave ver0 < foo.txt
     added version 0
 
     (create updated version)
     % vi foo.txt
     % weave get foo.weave 0 | diff -u - foo.txt
-    % weave add foo.weave 0 < foo.txt
+    % weave add foo.weave ver1 0 < foo.txt
     added version 1
 
     % weave get foo.weave 0 > foo.txt       (create forked version)
     % vi foo.txt
-    % weave add foo.weave 0 < foo.txt
+    % weave add foo.weave ver2 0 < foo.txt
     added version 2
 
     % weave merge foo.weave 1 2 > foo.txt   (merge them)
     % vi foo.txt                            (resolve conflicts)
-    % weave add foo.weave 1 2 < foo.txt     (commit merged version)     
+    % weave add foo.weave merged 1 2 < foo.txt     (commit merged version)     
     
 """
     
@@ -768,8 +808,15 @@ def main(argv):
     from weavefile import write_weave, read_weave
     from bzrlib.progress import ProgressBar
 
-    #import psyco
-    #psyco.full()
+    try:
+        import psyco
+        psyco.full()
+    except ImportError:
+        pass
+
+    if len(argv) < 2:
+        usage()
+        return 0
 
     cmd = argv[1]
 
@@ -781,11 +828,12 @@ def main(argv):
     elif cmd == 'add':
         w = readit()
         # at the moment, based on everything in the file
-        parents = map(int, argv[3:])
+        name = argv[3]
+        parents = map(int, argv[4:])
         lines = sys.stdin.readlines()
-        ver = w.add(parents, lines)
+        ver = w.add(name, parents, lines)
         write_weave(w, file(argv[2], 'wb'))
-        print 'added version %d' % ver
+        print 'added version %r %d' % (name, ver)
     elif cmd == 'init':
         fn = argv[2]
         if os.path.exists(fn):
@@ -813,8 +861,8 @@ def main(argv):
                 print '%5d | %s' % (origin, text)
                 lasto = origin
                 
-    elif cmd == 'info':
-        weave_info(readit())
+    elif cmd == 'toc':
+        weave_toc(readit())
 
     elif cmd == 'stats':
         weave_stats(argv[2])
@@ -869,6 +917,33 @@ def main(argv):
         raise ValueError('unknown command %r' % cmd)
     
 
+
+def profile_main(argv): 
+    import tempfile, hotshot, hotshot.stats
+
+    prof_f = tempfile.NamedTemporaryFile()
+
+    prof = hotshot.Profile(prof_f.name)
+
+    ret = prof.runcall(main, argv)
+    prof.close()
+
+    stats = hotshot.stats.load(prof_f.name)
+    #stats.strip_dirs()
+    stats.sort_stats('cumulative')
+    ## XXX: Might like to write to stderr or the trace file instead but
+    ## print_stats seems hardcoded to stdout
+    stats.print_stats(20)
+            
+    return ret
+
+
 if __name__ == '__main__':
     import sys
-    sys.exit(main(sys.argv))
+    if '--profile' in sys.argv:
+        args = sys.argv[:]
+        args.remove('--profile')
+        sys.exit(profile_main(args))
+    else:
+        sys.exit(main(sys.argv))
+

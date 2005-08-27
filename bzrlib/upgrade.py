@@ -15,7 +15,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
+import bzrlib.errors
+import bzrlib.progress
 
 
 def upgrade(branch):
@@ -34,12 +35,13 @@ def upgrade(branch):
 
     from bzrlib.trace import mutter
     from bzrlib.errors import BzrCheckError
-    from bzrlib.progress import ProgressBar
+    import bzrlib.ui
 
     branch.lock_write()
 
+    pb = bzrlib.ui.progress_bar()
+
     try:
-        pb = ProgressBar(show_spinner=True)
         last_rev_id = None
 
         history = branch.revision_history()
@@ -71,17 +73,20 @@ def upgrade(branch):
                 mutter("  set inventory_sha1 on {%s}" % rev_id)
 
             for prr in rev.parents:
-                actual_sha1 = branch.get_revision_sha1(prr.revision_id)
-                if (updated_previous_revision
-                    or prr.revision_sha1 is None):
-                    if prr.revision_sha1 != actual_sha1:
-                        prr.revision_sha1 = actual_sha1
-                        updated = True
-                elif actual_sha1 != prr.revision_sha1:
-                    raise BzrCheckError("parent {%s} of {%s} sha1 mismatch: "
-                                        "%s vs %s"
-                                        % (prr.revision_id, rev_id,
-                                           actual_sha1, prr.revision_sha1))
+                try:
+                    actual_sha1 = branch.get_revision_sha1(prr.revision_id)
+                except bzrlib.errors.NoSuchRevision:
+                    mutter("parent {%s} of {%s} not present in branch; skipped"
+                           % (prr.revision_id, rev_id))
+                    continue
+                    
+                if actual_sha1 != prr.revision_sha1:
+                    mutter("parent {%s} of {%s} sha1 mismatch: "
+                           "%s vs %s; fixed"
+                           % (prr.revision_id, rev_id,
+                              actual_sha1, prr.revision_sha1))
+                    prr.revision_sha1 = actual_sha1
+                    updated = True
 
             if updated:
                 updated_previous_revision = True

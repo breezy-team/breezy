@@ -47,8 +47,9 @@ def make_branches():
 
 
 class TestIsAncestor(InTempDir):
-    """Test checking whether a revision is an ancestor of another revision"""
-    def runTest(self):
+
+    def test_is_ancestor(self):
+        """Test checking whether a revision is an ancestor of another revision"""
         from bzrlib.revision import is_ancestor, MultipleRevisionSources
         from bzrlib.errors import NoSuchRevision
         br1, br2 = make_branches()
@@ -68,8 +69,10 @@ class TestIsAncestor(InTempDir):
         assert not is_ancestor(revisions[3], revisions_2[3], br1)
 
 class TestIntermediateRevisions(InTempDir):
+
     def setUp(self):
         from bzrlib.commit import commit
+        InTempDir.setUp(self)
         self.br1, self.br2 = make_branches()
         commit(self.br2, "Commit eleven", rev_id="b@u-0-7")
         commit(self.br2, "Commit twelve", rev_id="b@u-0-8")
@@ -87,7 +90,7 @@ class TestIntermediateRevisions(InTempDir):
         return get_intervening_revisions(ancestor,revision, self.sources, 
                                          revision_history)
 
-    def runTest(self):
+    def test_intervene(self):
         """Find intermediate revisions, without requiring history"""
         from bzrlib.errors import NotAncestor, NoSuchRevision
         assert len(self.intervene('a@u-0-0', 'a@u-0-0')) == 0
@@ -130,7 +133,8 @@ class TestIntermediateRevisions(InTempDir):
 
 class TestCommonAncestor(InTempDir):
     """Test checking whether a revision is an ancestor of another revision"""
-    def runTest(self):
+
+    def test_common_ancestor(self):
         from bzrlib.revision import find_present_ancestors, common_ancestor
         from bzrlib.revision import MultipleRevisionSources
         br1, br2 = make_branches()
@@ -167,9 +171,3 @@ class TestCommonAncestor(InTempDir):
                           revisions[4])
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
                           revisions_2[5])
-
-TEST_CLASSES = [
-    TestIsAncestor,
-    TestCommonAncestor,
-    TestIntermediateRevisions,
-    ]

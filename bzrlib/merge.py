@@ -1,30 +1,43 @@
-from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
-from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
-from bzrlib.changeset import Inventory, Diff3Merge
-from bzrlib import find_branch
-import bzrlib.osutils
-from bzrlib.errors import BzrCommandError
-from bzrlib.delta import compare_trees
-from trace import mutter, warning
+# Copyright (C) 2005 Canonical Ltd
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
 import os.path
 import tempfile
 import shutil
 import errno
 from fetch import greedy_fetch
 
+import bzrlib.osutils
+import bzrlib.revision
+from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
+from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
+from bzrlib.changeset import Inventory, Diff3Merge
+from bzrlib.branch import find_branch
+from bzrlib.errors import BzrCommandError, UnrelatedBranches
+from bzrlib.delta import compare_trees
+from bzrlib.trace import mutter, warning
+from bzrlib.fetch import greedy_fetch
+from bzrlib.revision import is_ancestor
 
 # comments from abentley on irc: merge happens in two stages, each
 # of which generates a changeset object
 
 # stage 1: generate OLD->OTHER,
 # stage 2: use MINE and OLD->OTHER to generate MINE -> RESULT
-
-class UnrelatedBranches(BzrCommandError):
-    def __init__(self):
-        msg = "Branches have no common ancestor, and no base revision"\
-            " specified."
-        BzrCommandError.__init__(self, msg)
-
 
 class MergeConflictHandler(ExceptionConflictHandler):
     """Handle conflicts encountered while merging.
@@ -183,6 +196,11 @@ class MergeTree(object):
             return True
         return self.tree.inventory.has_id(file_id)
 
+    def has_or_had_id(self, file_id):
+        if file_id == self.tree.inventory.root.file_id:
+            return True
+        return self.tree.inventory.has_id(file_id)
+
     def readonly_path(self, id):
         if id not in self.tree:
             return None
@@ -208,9 +226,9 @@ def merge(other_revision, base_revision,
     """Merge changes into a tree.
 
     base_revision
-        Base for three-way merge.
+        tuple(path, revision) Base for three-way merge.
     other_revision
-        Other revision for three-way merge.
+        tuple(path, revision) Other revision for three-way merge.
     this_dir
         Directory to merge changes into; '.' by default.
     check_clean
@@ -219,8 +237,7 @@ def merge(other_revision, base_revision,
     all available ancestors of other_revision and base_revision are
     automatically pulled into the branch.
     """
-    from bzrlib.revision import common_ancestor, is_ancestor
-    from bzrlib.revision import MultipleRevisionSources
+    from bzrlib.revision import common_ancestor, MultipleRevisionSources
     from bzrlib.errors import NoSuchRevision
     tempdir = tempfile.mkdtemp(prefix="bzr-")
     try:
@@ -264,9 +281,8 @@ def merge(other_revision, base_revision,
                 base_rev_id = base_branch.lookup_revision(base_revision[1])
             if base_rev_id is not None:
                 base_is_ancestor = is_ancestor(this_rev_id, base_rev_id, 
-                                               MultipleRevisionSources(
-                                               this_branch, 
-                                               base_branch))
+                                               MultipleRevisionSources(this_branch, 
+                                                                       base_branch))
             else:
                 base_is_ancestor = False
         if file_list is None:

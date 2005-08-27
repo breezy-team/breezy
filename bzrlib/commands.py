@@ -20,10 +20,25 @@
 # TODO: probably should say which arguments are candidates for glob
 # expansion on windows and do that at the command level.
 
+# TODO: Help messages for options.
+
+# TODO: Define arguments by objects, rather than just using names.
+# Those objects can specify the expected type of the argument, which
+# would help with validation and shell completion.
+
+
+# TODO: Help messages for options.
+
+# TODO: Define arguments by objects, rather than just using names.
+# Those objects can specify the expected type of the argument, which
+# would help with validation and shell completion.
+
+
 import sys
 import os
 
 import bzrlib
+import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
 from bzrlib.branch import find_branch
@@ -459,8 +474,9 @@ class cmd_add(Command):
     takes_options = ['verbose', 'no-recurse']
     
     def run(self, file_list, verbose=False, no_recurse=False):
-        from bzrlib.add import smart_add
-        smart_add(file_list, verbose, not no_recurse)
+        from bzrlib.add import smart_add, _PrintAddCallback
+        smart_add(file_list, verbose, not no_recurse,
+                  callback=_PrintAddCallback)
 
 
 
@@ -604,6 +620,7 @@ class cmd_pull(Command):
         import tempfile
         from shutil import rmtree
         import errno
+        from bzrlib.branch import pull_loc
         
         br_to = find_branch('.')
         stored_loc = None
@@ -656,21 +673,17 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None):
-        import errno
-        from bzrlib.merge import merge
-        from bzrlib.branch import DivergedBranches, \
-             find_cached_branch, Branch
-        from shutil import rmtree
-        from meta_store import CachedStore
+        from bzrlib.branch import copy_branch, find_cached_branch
         import tempfile
+        import errno
+        from shutil import rmtree
         cache_root = tempfile.mkdtemp()
-
-        if revision is None:
-            revision = [None]
-        elif len(revision) > 1:
-            raise BzrCommandError('bzr branch --revision takes exactly 1 revision value')
-
         try:
+            if revision is None:
+                revision = [None]
+            elif len(revision) > 1:
+                raise BzrCommandError(
+                    'bzr branch --revision takes exactly 1 revision value')
             try:
                 br_from = find_cached_branch(from_location, cache_root)
             except OSError, e:
@@ -679,10 +692,8 @@ class cmd_branch(Command):
                                           ' exist.' % to_location)
                 else:
                     raise
-
             if to_location is None:
                 to_location = os.path.basename(from_location.rstrip("/\\"))
-
             try:
                 os.mkdir(to_location)
             except OSError, e:
@@ -694,39 +705,14 @@ class cmd_branch(Command):
                                           to_location)
                 else:
                     raise
-            br_to = Branch(to_location, init=True)
-
-            br_to.set_root_id(br_from.get_root_id())
-
-            if revision:
-                if revision[0] is None:
-                    revno = br_from.revno()
-                else:
-                    revno, rev_id = br_from.get_revision_info(revision[0])
-                try:
-                    br_to.update_revisions(br_from, stop_revision=revno)
-                except bzrlib.errors.NoSuchRevision:
-                    rmtree(to_location)
-                    msg = "The branch %s has no revision %d." % (from_location,
-                                                                 revno)
-                    raise BzrCommandError(msg)
-            
-            merge((to_location, -1), (to_location, 0), this_dir=to_location,
-                  check_clean=False, ignore_zero=True)
-            from_location = pull_loc(br_from)
-            br_to.controlfile("x-pull", "wb").write(from_location + "\n")
+            try:
+                copy_branch(br_from, to_location, revision[0])
+            except bzrlib.errors.NoSuchRevision:
+                rmtree(to_location)
+                msg = "The branch %s has no revision %d." % (from_location, revision[0])
+                raise BzrCommandError(msg)
         finally:
             rmtree(cache_root)
-
-
-def pull_loc(branch):
-    # TODO: Should perhaps just make attribute be 'base' in
-    # RemoteBranch and Branch?
-    if hasattr(branch, "baseurl"):
-        return branch.baseurl
-    else:
-        return branch.base
-
 
 
 class cmd_renames(Command):
@@ -1337,8 +1323,8 @@ class cmd_check(Command):
 
     def run(self, dir='.'):
         from bzrlib.check import check
-        check(find_branch(dir))
 
+        check(find_branch(dir))
 
 
 class cmd_scan_cache(Command):
@@ -1381,19 +1367,41 @@ class cmd_whoami(Command):
     takes_options = ['email']
     
     def run(self, email=False):
+        try:
+            b = bzrlib.branch.find_branch('.')
+        except:
+            b = None
+        
         if email:
-            print bzrlib.osutils.user_email()
+            print bzrlib.osutils.user_email(b)
         else:
-            print bzrlib.osutils.username()
+            print bzrlib.osutils.username(b)
 
 
 class cmd_selftest(Command):
     """Run internal test suite"""
     hidden = True
-    takes_options = ['verbose']
-    def run(self, verbose=False):
+    takes_options = ['verbose', 'pattern']
+    def run(self, verbose=False, pattern=".*"):
+        import bzrlib.ui
         from bzrlib.selftest import selftest
-        return int(not selftest(verbose=verbose))
+        # we don't want progress meters from the tests to go to the
+        # real output; and we don't want log messages cluttering up
+        # the real logs.
+        save_ui = bzrlib.ui.ui_factory
+        bzrlib.trace.info('running tests...')
+        bzrlib.trace.disable_default_logging()
+        try:
+            bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
+            result = selftest(verbose=verbose, pattern=pattern)
+            if result:
+                bzrlib.trace.info('tests passed')
+            else:
+                bzrlib.trace.info('tests failed')
+            return int(not result)
+        finally:
+            bzrlib.trace.enable_default_logging()
+            bzrlib.ui.ui_factory = save_ui
 
 
 class cmd_version(Command):
@@ -1451,6 +1459,33 @@ def parse_spec(spec):
     else:
         parsed = [spec, None]
     return parsed
+
+
+
+class cmd_find_merge_base(Command):
+    """Find and print a base revision for merging two branches.
+
+    TODO: Options to specify revisions on either side, as if
+          merging only part of the history.
+    """
+    takes_args = ['branch', 'other']
+    hidden = True
+    
+    def run(self, branch, other):
+        branch1 = find_branch(branch)
+        branch2 = find_branch(other)
+
+        base_revno, base_revid = branch1.common_ancestor(branch2)
+
+        if base_revno is None:
+            raise bzrlib.errors.UnrelatedBranches()
+
+        print 'merge base is revision %s' % base_revid
+        print ' r%-6d in %s' % (base_revno, branch)
+
+        other_revno = branch2.revision_id_to_revno(base_revid)
+        
+        print ' r%-6d in %s' % (other_revno, other)
 
 
 
@@ -1546,14 +1581,28 @@ class cmd_help(Command):
     """Show help on a command or other topic.
 
     For a list of all available commands, say 'bzr help commands'."""
+    takes_options = ['long']
     takes_args = ['topic?']
     aliases = ['?']
     
-    def run(self, topic=None):
+    def run(self, topic=None, long=False):
         import help
+        if topic is None and long:
+            topic = "commands"
         help.help(topic)
 
 
+class cmd_shell_complete(Command):
+    """Show appropriate completions for context.
+
+    For a list of all available commands, say 'bzr shell-complete'."""
+    takes_args = ['context?']
+    aliases = ['s-c']
+    hidden = True
+    
+    def run(self, context=None):
+        import shellcomplete
+        shellcomplete.shellcomplete(context)
 
 
 class cmd_missing(Command):
@@ -1588,6 +1637,7 @@ class cmd_missing(Command):
         br_remote = find_branch(remote)
 
         return show_missing(b, br_remote, verbose=verbose, quiet=quiet)
+
 
 
 class cmd_plugins(Command):
@@ -1634,6 +1684,7 @@ OPTIONS = {
     'root':                   str,
     'no-backup':              None,
     'merge-type':             get_merge_type,
+    'pattern':                str,
     }
 
 SHORT_OPTIONS = {
@@ -1853,8 +1904,9 @@ def run_bzr(argv):
         return 0
     
     if not args:
-        print >>sys.stderr, "please try 'bzr help' for help"
-        return 1
+        from bzrlib.help import help
+        help(None)
+        return 0
     
     cmd = str(args.pop(0))
 
@@ -1899,67 +1951,40 @@ def run_bzr(argv):
         return cmd_class(cmdopts, cmdargs).status 
 
 
-def _report_exception(summary, quiet=False):
-    import traceback
-    
-    log_error('bzr: ' + summary)
-    bzrlib.trace.log_exception()
-
-    if os.environ.get('BZR_DEBUG'):
-        traceback.print_exc()
-
-    if not quiet:
-        sys.stderr.write('\n')
-        tb = sys.exc_info()[2]
-        exinfo = traceback.extract_tb(tb)
-        if exinfo:
-            sys.stderr.write('  at %s:%d in %s()\n' % exinfo[-1][:3])
-        sys.stderr.write('  see ~/.bzr.log for debug information\n')
-
-
-
 def main(argv):
-    
-    bzrlib.trace.open_tracefile(argv)
+    import bzrlib.ui
+    bzrlib.trace.log_startup(argv)
+    bzrlib.ui.ui_factory = bzrlib.ui.TextUIFactory()
 
     try:
         try:
-            try:
-                return run_bzr(argv[1:])
-            finally:
-                # do this here inside the exception wrappers to catch EPIPE
-                sys.stdout.flush()
-        except BzrError, e:
-            quiet = isinstance(e, (BzrCommandError))
-            _report_exception('error: ' + str(e), quiet=quiet)
-            if len(e.args) > 1:
-                for h in e.args[1]:
-                    # some explanation or hints
-                    log_error('  ' + h)
-            return 1
-        except AssertionError, e:
-            msg = 'assertion failed'
-            if str(e):
-                msg += ': ' + str(e)
-            _report_exception(msg)
+            return run_bzr(argv[1:])
+        finally:
+            # do this here inside the exception wrappers to catch EPIPE
+            sys.stdout.flush()
+    except BzrCommandError, e:
+        # command line syntax error, etc
+        log_error(str(e))
+        return 1
+    except BzrError, e:
+        bzrlib.trace.log_exception()
+        return 1
+    except AssertionError, e:
+        bzrlib.trace.log_exception('assertion failed: ' + str(e))
+        return 3
+    except KeyboardInterrupt, e:
+        bzrlib.trace.note('interrupted')
+        return 2
+    except Exception, e:
+        import errno
+        if (isinstance(e, IOError) 
+            and hasattr(e, 'errno')
+            and e.errno == errno.EPIPE):
+            bzrlib.trace.note('broken pipe')
             return 2
-        except KeyboardInterrupt, e:
-            _report_exception('interrupted', quiet=True)
+        else:
+            bzrlib.trace.log_exception()
             return 2
-        except Exception, e:
-            import errno
-            quiet = False
-            if (isinstance(e, IOError) 
-                and hasattr(e, 'errno')
-                and e.errno == errno.EPIPE):
-                quiet = True
-                msg = 'broken pipe'
-            else:
-                msg = str(e).rstrip('\n')
-            _report_exception(msg, quiet)
-            return 2
-    finally:
-        bzrlib.trace.close_trace()
 
 
 if __name__ == '__main__':

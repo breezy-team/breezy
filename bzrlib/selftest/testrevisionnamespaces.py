@@ -15,11 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.selftest import InTempDir, TestBase
+from bzrlib.selftest import InTempDir
 
 class TestRevisionNamespaces(InTempDir):
-    """Functional tests for hashcache"""
-    def runTest(self):
+
+    def test_revision_namespaces(self):
+        """Functional tests for hashcache"""
         from bzrlib.errors import NoSuchRevision
         from bzrlib.branch import Branch
         import os
@@ -47,7 +48,3 @@ class TestRevisionNamespaces(InTempDir):
         os.mkdir('newbranch')
         b2 = Branch('newbranch', init=True)
         self.assertEquals(b2.lookup_revision('revid:a@r-0-1'), 'a@r-0-1')
-
-TEST_CLASSES = [
-    TestRevisionNamespaces
-    ]

@@ -17,6 +17,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+# TODO: tests regarding version names
+
 
 
 """test suite for weave algorithm"""
@@ -60,6 +62,14 @@ class TestBase(testsweet.TestBase):
             tf.seek(0)
             self.log('serialized weave:')
             self.log(tf.read())
+
+            self.log('')
+            self.log('parents: %s' % (k._parents == k2._parents))
+            self.log('         %r' % k._parents)
+            self.log('         %r' % k2._parents)
+            self.log('')
+
+            
             self.fail('read/write check failed')
         
         
@@ -74,7 +84,7 @@ class StoreText(TestBase):
     """Store and retrieve a simple text."""
     def runTest(self):
         k = Weave()
-        idx = k.add([], TEXT_0)
+        idx = k.add('text0', [], TEXT_0)
         self.assertEqual(k.get(idx), TEXT_0)
         self.assertEqual(idx, 0)
 
@@ -83,7 +93,7 @@ class StoreText(TestBase):
 class AnnotateOne(TestBase):
     def runTest(self):
         k = Weave()
-        k.add([], TEXT_0)
+        k.add('text0', [], TEXT_0)
         self.assertEqual(k.annotate(0),
                          [(0, TEXT_0[0])])
 
@@ -92,10 +102,10 @@ class StoreTwo(TestBase):
     def runTest(self):
         k = Weave()
 
-        idx = k.add([], TEXT_0)
+        idx = k.add('text0', [], TEXT_0)
         self.assertEqual(idx, 0)
 
-        idx = k.add([], TEXT_1)
+        idx = k.add('text1', [], TEXT_1)
         self.assertEqual(idx, 1)
 
         self.assertEqual(k.get(0), TEXT_0)
@@ -112,6 +122,7 @@ class InvalidAdd(TestBase):
 
         self.assertRaises(IndexError,
                           k.add,
+                          'text0',
                           [69],
                           ['new text!'])
 
@@ -124,8 +135,8 @@ class InsertLines(TestBase):
     def runTest(self):
         k = Weave()
 
-        k.add([], ['line 1'])
-        k.add([0], ['line 1', 'line 2'])
+        k.add('text0', [], ['line 1'])
+        k.add('text1', [0], ['line 1', 'line 2'])
 
         self.assertEqual(k.annotate(0),
                          [(0, 'line 1')])
@@ -138,14 +149,15 @@ class InsertLines(TestBase):
                          [(0, 'line 1'),
                           (1, 'line 2')])
 
-        k.add([0], ['line 1', 'diverged line'])
+        k.add('text2', [0], ['line 1', 'diverged line'])
 
         self.assertEqual(k.annotate(2),
                          [(0, 'line 1'),
                           (2, 'diverged line')])
 
         text3 = ['line 1', 'middle line', 'line 2']
-        k.add([0, 1],
+        k.add('text3',
+              [0, 1],
               text3)
 
         # self.log("changes to text3: " + pformat(list(k._delta(set([0, 1]), text3))))
@@ -158,7 +170,8 @@ class InsertLines(TestBase):
                           (1, 'line 2')])
 
         # now multiple insertions at different places
-        k.add([0, 1, 3],
+        k.add('text4',
+              [0, 1, 3],
               ['line 1', 'aaa', 'middle line', 'bbb', 'line 2', 'ccc'])
 
         self.assertEqual(k.annotate(4), 
@@ -180,7 +193,7 @@ class DeleteLines(TestBase):
 
         base_text = ['one', 'two', 'three', 'four']
 
-        k.add([], base_text)
+        k.add('text0', [], base_text)
         
         texts = [['one', 'two', 'three'],
                  ['two', 'three', 'four'],
@@ -188,8 +201,11 @@ class DeleteLines(TestBase):
                  ['one', 'two', 'three', 'four'],
                  ]
 
+        i = 1
         for t in texts:
-            ver = k.add([0], t)
+            ver = k.add('text%d' % i,
+                        [0], t)
+            i += 1
 
         self.log('final weave:')
         self.log('k._weave=' + pformat(k._weave))
@@ -406,14 +422,14 @@ class DeleteLines2(TestBase):
     def runTest(self):
         k = Weave()
 
-        k.add([], ["line the first",
+        k.add('text0', [], ["line the first",
                    "line 2",
                    "line 3",
                    "fine"])
 
         self.assertEqual(len(k.get(0)), 4)
 
-        k.add([0], ["line the first",
+        k.add('text1', [0], ["line the first",
                    "fine"])
 
         self.assertEqual(k.get(1),
@@ -501,8 +517,8 @@ class ReplaceLine(TestBase):
         text0 = ['cheddar', 'stilton', 'gruyere']
         text1 = ['cheddar', 'blue vein', 'neufchatel', 'chevre']
         
-        k.add([], text0)
-        k.add([0], text1)
+        k.add('text0', [], text0)
+        k.add('text1', [0], text1)
 
         self.log('k._weave=' + pformat(k._weave))
 
@@ -522,10 +538,10 @@ class Merge(TestBase):
                  ['header', '', 'line from 1', 'fixup line', 'line from 2'],
                  ]
 
-        k.add([], texts[0])
-        k.add([0], texts[1])
-        k.add([0], texts[2])
-        k.add([0, 1, 2], texts[3])
+        k.add('text0', [], texts[0])
+        k.add('text1', [0], texts[1])
+        k.add('text2', [0], texts[2])
+        k.add('merge', [0, 1, 2], texts[3])
 
         for i, t in enumerate(texts):
             self.assertEqual(k.get(i), t)
@@ -593,9 +609,9 @@ class AutoMerge(TestBase):
                  ['header', 'aaa', 'bbb', 'line from 2', 'more from 2'],
                  ]
 
-        k.add([], texts[0])
-        k.add([0], texts[1])
-        k.add([0], texts[2])
+        k.add('text0', [], texts[0])
+        k.add('text1', [0], texts[1])
+        k.add('text2', [0], texts[2])
 
         self.log('k._weave=' + pformat(k._weave))
 
@@ -641,9 +657,12 @@ class Khayyam(TestBase):
 
         k = Weave()
         parents = set()
+        i = 0
         for t in texts:
-            ver = k.add(list(parents), t)
+            ver = k.add('text%d' % i,
+                        list(parents), t)
             parents.add(ver)
+            i += 1
 
         self.log("k._weave=" + pformat(k._weave))
 
@@ -663,9 +682,9 @@ class MergeCases(TestBase):
             return x + '\n'
         
         w = Weave()
-        w.add([], map(addcrlf, base))
-        w.add([0], map(addcrlf, a))
-        w.add([0], map(addcrlf, b))
+        w.add('text0', [], map(addcrlf, base))
+        w.add('text1', [0], map(addcrlf, a))
+        w.add('text2', [0], map(addcrlf, b))
 
         self.log('weave is:')
         tmpf = StringIO()

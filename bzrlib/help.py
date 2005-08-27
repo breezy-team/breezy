@@ -39,8 +39,8 @@ Basic commands:
   bzr log       show history of changes
   bzr check     validate storage
 
-Use e.g. 'bzr help init' for more details, or 'bzr help commands' for
-all commands.
+Use e.g. 'bzr help init' for more details, or
+'bzr help commands' for all commands.
 """
 
 

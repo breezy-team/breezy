@@ -31,10 +31,10 @@ def pause():
         time.sleep(0.2)
     
 
-
 class TestHashCache(InTempDir):
-    """Functional tests for hashcache"""
-    def runTest(self):
+
+    def test_hashcache(self):
+        """Functional tests for hashcache"""
         from bzrlib.hashcache import HashCache
         import os
         import time
@@ -112,8 +112,3 @@ class TestHashCache(InTempDir):
         self.assertEquals(hc.hit_count, 1)
         self.assertEquals(hc.miss_count, 0)
         self.assertEquals(hc.get_sha1('foo2'), sha1('new content'))
-
-        
-
-        
-

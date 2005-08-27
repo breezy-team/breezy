@@ -24,7 +24,8 @@ Most of these depend on the particular formatting used.
 from bzrlib.selftest import InTempDir
 
 class BranchStatus(InTempDir):
-    def runTest(self): 
+    
+    def test_branch_status(self): 
         """Basic 'bzr mkdir' operation"""
         from cStringIO import StringIO
         from bzrlib.status import show_status

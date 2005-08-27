@@ -26,9 +26,13 @@
 There is one format marker followed by a blank line, followed by a
 series of version headers, followed by the weave itself.
 
-Each version marker has 'i' and the included previous versions, then
-'1' and the SHA-1 of the text, if known.  The inclusions do not need
-to list versions included by a parent.
+Each version marker has
+
+ 'i'   parent version indexes
+ '1'   SHA-1 of text
+ 'n'   name
+
+The inclusions do not need to list versions included by a parent.
 
 The weave is bracketed by 'w' and 'W' lines, and includes the '{}[]'
 processing instructions.  Lines of text are prefixed by '.' if the
@@ -36,19 +40,20 @@ line contains a newline, or ',' if not.
 """
 
 # TODO: When extracting a single version it'd be enough to just pass
-# an iterator returning the weave lines...
+# an iterator returning the weave lines...  We don't really need to
+# deserialize it into memory.
 
-FORMAT_1 = '# bzr weave file v3\n'
+FORMAT_1 = '# bzr weave file v5\n'
 
 
 def write_weave(weave, f, format=None):
     if format == None or format == 1:
-        return write_weave_v1(weave, f)
+        return write_weave_v5(weave, f)
     else:
         raise ValueError("unknown weave format %r" % format)
 
 
-def write_weave_v1(weave, f):
+def write_weave_v5(weave, f):
     """Write weave to file f."""
     print >>f, FORMAT_1,
 
@@ -63,6 +68,7 @@ def write_weave_v1(weave, f):
         else:
             print >>f, 'i'
         print >>f, '1', weave._sha1s[version]
+        print >>f, 'n', weave._names[version]
         print >>f
 
     print >>f, 'w'
@@ -70,7 +76,10 @@ def write_weave_v1(weave, f):
     for l in weave._weave:
         if isinstance(l, tuple):
             assert l[0] in '{}[]'
-            print >>f, '%s %d' % l
+            if l[0] == '}':
+                print >>f, '}'
+            else:
+                print >>f, '%s %d' % l
         else: # text line
             if not l:
                 print >>f, ', '
@@ -86,14 +95,13 @@ def write_weave_v1(weave, f):
 
 
 def read_weave(f):
-    return read_weave_v1(f)
+    return read_weave_v5(f)
 
 
-def read_weave_v1(f):
+def read_weave_v5(f):
     from weave import Weave, WeaveFormatError
     w = Weave()
 
-    wfe = WeaveFormatError
     l = f.readline()
     if l != FORMAT_1:
         raise WeaveFormatError('invalid weave file header: %r' % l)
@@ -102,19 +110,26 @@ def read_weave_v1(f):
     while True:
         l = f.readline()
         if l[0] == 'i':
-            ver += 1
-
             if len(l) > 2:
-                w._parents.append(frozenset(map(int, l[2:].split(' '))))
+                w._parents.append(map(int, l[2:].split(' ')))
             else:
-                w._parents.append(frozenset())
+                w._parents.append([])
 
             l = f.readline()[:-1]
             assert l.startswith('1 ')
             w._sha1s.append(l[2:])
                 
             l = f.readline()
+            assert l.startswith('n ')
+            name = l[2:-1]
+            assert name not in w._name_map
+            w._names.append(name)
+            w._name_map[name] = ver
+                
+            l = f.readline()
             assert l == '\n'
+
+            ver += 1
         elif l == 'w\n':
             break
         else:
@@ -128,8 +143,10 @@ def read_weave_v1(f):
             w._weave.append(l[2:])  # include newline
         elif l.startswith(', '):
             w._weave.append(l[2:-1])        # exclude newline
+        elif l == '}\n':
+            w._weave.append(('}', None))
         else:
-            assert l[0] in '{}[]', l
+            assert l[0] in '{[]', l
             assert l[1] == ' ', l
             w._weave.append((intern(l[0]), int(l[2:])))
 
