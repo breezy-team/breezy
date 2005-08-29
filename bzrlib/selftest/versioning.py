@@ -22,8 +22,13 @@
 
 
 import os
+
 from bzrlib.selftest import BzrTestBase, FunctionalTestCase
 from bzrlib.branch import Branch
+
+import logging
+logger = logging.getLogger('bzr.test.versioning')
+debug = logger.debug
 
 
 class TestVersioning(FunctionalTestCase):
@@ -68,6 +73,9 @@ class TestVersioning(FunctionalTestCase):
                           b.add,
                           'foo/hello')
         
+        self.check_and_upgrade()
+
+        
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
         
@@ -98,6 +106,31 @@ class TestVersioning(FunctionalTestCase):
         chdir('..')
         eq(run_bzr(['add']), 0)
         eq(list(b.unknowns()), [])
+
+        self.check_and_upgrade()
+
+
+    def check_and_upgrade(self):
+        """After all the above changes, run the check and upgrade commands.
+
+        The upgrade should be a no-op."""
+        from bzrlib.commands import run_bzr
+        b = Branch('.')
+        debug('branch has %d revisions', b.revno())
+        
+        debug('check branch...')
+        from bzrlib.check import check
+        check(b)
+        
+        debug('upgrade branch...')
+        from bzrlib.upgrade import upgrade
+        upgrade(b)
+        
+        debug('check branch...')
+        from bzrlib.check import check
+        check(b)
+        
+
         
         
 class SubdirCommit(FunctionalTestCase):
