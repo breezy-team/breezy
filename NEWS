@@ -14,6 +14,11 @@ bzr development head
       mention revisions that are not present.
 
 
+  CHANGES:
+
+    * ``bzr log --show-ids`` shows the revision ids of all parents.
+
+
   LIBRARY:
 
     * Changed trace messages to go through the standard logging

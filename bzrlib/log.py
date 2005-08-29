@@ -310,6 +310,10 @@ class LongLogFormatter(LogFormatter):
         print >>to_file,  'revno:', revno
         if self.show_ids:
             print >>to_file,  'revision-id:', rev.revision_id
+
+            for parent in rev.parents:
+                print >>to_file, 'parent:', parent.revision_id
+            
         print >>to_file,  'committer:', rev.committer
 
         date_str = format_date(rev.timestamp,
