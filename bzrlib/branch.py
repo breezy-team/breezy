@@ -173,7 +173,7 @@ class Branch(object):
     def __init__(self, base, init=False, find_root=True):
         """Create new branch object at a particular location.
 
-        base -- Base directory for the branch.
+        base -- Base directory for the branch. May be a file:// url.
         
         init -- If True, create new control files in a previously
              unversioned directory.  If False, the branch must already
@@ -192,6 +192,8 @@ class Branch(object):
         elif find_root:
             self.base = find_branch_root(base)
         else:
+            if base.startswith("file://"):
+                base = base[7:]
             self.base = os.path.realpath(base)
             if not isdir(self.controlfilename('.')):
                 from errors import NotBranchError
