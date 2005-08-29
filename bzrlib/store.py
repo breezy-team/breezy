@@ -91,7 +91,6 @@ class ImmutableStore(object):
             
         p = self._path(fileid)
         if os.access(p, os.F_OK) or os.access(p + '.gz', os.F_OK):
-            from bzrlib.errors import bailout
             raise BzrError("store %r already contains id %r" % (self._basedir, fileid))
 
         fn = p
@@ -142,7 +141,6 @@ class ImmutableStore(object):
         assert count == len(to_copy)
         pb.clear()
         return count, []
-
 
     def copy_multi_immutable(self, other, to_copy, pb, permit_failure=False):
         from shutil import copyfile

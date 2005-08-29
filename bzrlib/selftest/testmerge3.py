@@ -300,6 +300,3 @@ bbb
         self.log('merge result:')
         self.log(''.join(ml))
         self.assertEquals(ml, MERGED_RESULT)
-
-
-TEST_CLASSES = [ TestMerge3 ]

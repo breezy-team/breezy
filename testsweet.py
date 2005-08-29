@@ -39,6 +39,7 @@ true yet.
 
 import unittest
 import sys
+from bzrlib.selftest import TestUtil
 
 # XXX: Don't need this anymore now we depend on python2.4
 def _need_subprocess():
@@ -53,6 +54,30 @@ class CommandFailed(Exception):
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
     # XXX: Not used yet
+
+
+
+class EarlyStoppingTestResultAdapter(object):
+    """An adapter for TestResult to stop at the first first failure or error"""
+
+    def __init__(self, result):
+        self._result = result
+
+    def addError(self, test, err):
+        self._result.addError(test, err)
+        self._result.stop()
+
+    def addFailure(self, test, err):
+        self._result.addFailure(test, err)
+        self._result.stop()
+
+    def __getattr__(self, name):
+        return getattr(self._result, name)
+
+    def __setattr__(self, name, value):
+        if name == '_result':
+            object.__setattr__(self, name, value)
+        return setattr(self._result, name, value)
 
 
 class _MyResult(unittest._TextTestResult):
@@ -104,10 +129,33 @@ class _MyResult(unittest._TextTestResult):
 class TextTestRunner(unittest.TextTestRunner):
 
     def _makeResult(self):
-        return _MyResult(self.stream, self.descriptions, self.verbosity)
+        result = _MyResult(self.stream, self.descriptions, self.verbosity)
+        return EarlyStoppingTestResultAdapter(result)
 
 
-def run_suite(suite, name='test', verbose=False):
+class filteringVisitor(TestUtil.TestVisitor):
+    """I accruse all the testCases I visit that pass a regexp filter on id
+    into my suite
+    """
+
+    def __init__(self, filter):
+        import re
+        TestUtil.TestVisitor.__init__(self)
+        self._suite=None
+        self.filter=re.compile(filter)
+
+    def suite(self):
+        """answer the suite we are building"""
+        if self._suite is None:
+            self._suite=TestUtil.TestSuite()
+        return self._suite
+
+    def visitCase(self, aCase):
+        if self.filter.match(aCase.id()):
+            self.suite().addTest(aCase)
+
+
+def run_suite(suite, name='test', verbose=False, pattern=".*"):
     import shutil
     from bzrlib.selftest import FunctionalTestCase
     FunctionalTestCase._TEST_NAME = name
@@ -118,7 +166,9 @@ def run_suite(suite, name='test', verbose=False):
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity)
-    result = runner.run(suite)
+    visitor = filteringVisitor(pattern)
+    suite.visit(visitor)
+    result = runner.run(visitor.suite())
     # This is still a little bogus, 
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.

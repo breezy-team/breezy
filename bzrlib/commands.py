@@ -27,6 +27,13 @@
 # would help with validation and shell completion.
 
 
+# TODO: Help messages for options.
+
+# TODO: Define arguments by objects, rather than just using names.
+# Those objects can specify the expected type of the argument, which
+# would help with validation and shell completion.
+
+
 import sys
 import os
 
@@ -469,11 +476,10 @@ class cmd_add(Command):
     takes_options = ['verbose', 'no-recurse']
     
     def run(self, file_list, verbose=False, no_recurse=False):
-        from bzrlib.add import smart_add
-
+        from bzrlib.add import smart_add, _PrintAddCallback
         recurse = not no_recurse
-        for path, kind, file_id in smart_add(file_list, verbose, recurse):
-            print 'added', path
+        smart_add(file_list, verbose, not no_recurse,
+                  callback=_PrintAddCallback)
 
 
 
@@ -620,6 +626,7 @@ class cmd_pull(Command):
         import tempfile
         from shutil import rmtree
         import errno
+        from bzrlib.branch import pull_loc
         
         br_to = find_branch('.')
         stored_loc = None
@@ -672,21 +679,17 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None):
-        import errno
-        from bzrlib.merge import merge
-        from bzrlib.branch import DivergedBranches, \
-             find_cached_branch, Branch
-        from shutil import rmtree
-        from meta_store import CachedStore
+        from bzrlib.branch import copy_branch, find_cached_branch
         import tempfile
+        import errno
+        from shutil import rmtree
         cache_root = tempfile.mkdtemp()
-
-        if revision is None:
-            revision = [None]
-        elif len(revision) > 1:
-            raise BzrCommandError('bzr branch --revision takes exactly 1 revision value')
-
         try:
+            if revision is None:
+                revision = [None]
+            elif len(revision) > 1:
+                raise BzrCommandError(
+                    'bzr branch --revision takes exactly 1 revision value')
             try:
                 br_from = find_cached_branch(from_location, cache_root)
             except OSError, e:
@@ -695,10 +698,8 @@ class cmd_branch(Command):
                                           ' exist.' % to_location)
                 else:
                     raise
-
             if to_location is None:
                 to_location = os.path.basename(from_location.rstrip("/\\"))
-
             try:
                 os.mkdir(to_location)
             except OSError, e:
@@ -710,39 +711,14 @@ class cmd_branch(Command):
                                           to_location)
                 else:
                     raise
-            br_to = Branch(to_location, init=True)
-
-            br_to.set_root_id(br_from.get_root_id())
-
-            if revision:
-                if revision[0] is None:
-                    revno = br_from.revno()
-                else:
-                    revno, rev_id = br_from.get_revision_info(revision[0])
-                try:
-                    br_to.update_revisions(br_from, stop_revision=revno)
-                except bzrlib.errors.NoSuchRevision:
-                    rmtree(to_location)
-                    msg = "The branch %s has no revision %d." % (from_location,
-                                                                 revno)
-                    raise BzrCommandError(msg)
-
-            merge((to_location, -1), (to_location, 0), this_dir=to_location,
-                  check_clean=False, ignore_zero=True)
-            from_location = pull_loc(br_from)
-            br_to.controlfile("x-pull", "wb").write(from_location + "\n")
+            try:
+                copy_branch(br_from, to_location, revision[0])
+            except bzrlib.errors.NoSuchRevision:
+                rmtree(to_location)
+                msg = "The branch %s has no revision %d." % (from_location, revision[0])
+                raise BzrCommandError(msg)
         finally:
             rmtree(cache_root)
-
-
-def pull_loc(branch):
-    # TODO: Should perhaps just make attribute be 'base' in
-    # RemoteBranch and Branch?
-    if hasattr(branch, "baseurl"):
-        return branch.baseurl
-    else:
-        return branch.base
-
 
 
 class cmd_renames(Command):
@@ -1411,20 +1387,18 @@ class cmd_whoami(Command):
 class cmd_selftest(Command):
     """Run internal test suite"""
     hidden = True
-    takes_options = ['verbose']
-    def run(self, verbose=False):
+    takes_options = ['verbose', 'pattern']
+    def run(self, verbose=False, pattern=".*"):
         import bzrlib.ui
         from bzrlib.selftest import selftest
-
         # we don't want progress meters from the tests to go to the
         # real output; and we don't want log messages cluttering up
         # the real logs.
-
         save_ui = bzrlib.ui.ui_factory
         bzrlib.trace.info('running tests...')
         try:
             bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-            result = selftest(verbose=verbose)
+            result = selftest(verbose=verbose, pattern=pattern)
             if result:
                 bzrlib.trace.info('tests passed')
             else:
@@ -1553,7 +1527,7 @@ class cmd_merge(Command):
             merge_type = ApplyMerge3
 
         if revision is None or len(revision) < 1:
-            base = (None, None)
+            base = [None, None]
             other = (branch, -1)
         else:
             if len(revision) == 1:
@@ -1583,6 +1557,7 @@ class cmd_revert(Command):
 
     def run(self, revision=None, no_backup=False, file_list=None):
         from bzrlib.merge import merge
+        from bzrlib.branch import Branch
         if file_list is not None:
             if len(file_list) == 0:
                 raise BzrCommandError("No files specified")
@@ -1595,6 +1570,8 @@ class cmd_revert(Command):
               ignore_zero=True,
               backup_files=not no_backup,
               file_list=file_list)
+        if not file_list:
+            Branch('.').set_pending_merges([])
 
 
 class cmd_assert_fail(Command):
@@ -1714,6 +1691,7 @@ OPTIONS = {
     'root':                   str,
     'no-backup':              None,
     'merge-type':             get_merge_type,
+    'pattern':                str,
     }
 
 SHORT_OPTIONS = {
@@ -1982,9 +1960,7 @@ def run_bzr(argv):
 
 def main(argv):
     import bzrlib.ui
-    
     bzrlib.trace.log_startup(argv)
-
     bzrlib.ui.ui_factory = bzrlib.ui.TextUIFactory()
 
     try:

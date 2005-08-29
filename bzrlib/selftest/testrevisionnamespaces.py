@@ -40,7 +40,3 @@ class TestRevisionNamespaces(InTempDir):
         self.assertEquals(b.get_revision_info('date:+today'), (1, 'a@r-0-1'))
 
         self.assertEquals(b.get_revision_info('last:1'), (3, 'a@r-0-3'))
-
-TEST_CLASSES = [
-    TestRevisionNamespaces
-    ]

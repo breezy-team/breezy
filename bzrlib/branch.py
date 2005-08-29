@@ -219,7 +219,6 @@ class Branch(object):
             self._lock.unlock()
 
 
-
     def lock_write(self):
         if self._lock_mode:
             if self._lock_mode != 'w':
@@ -235,7 +234,6 @@ class Branch(object):
             self._lock_count = 1
 
 
-
     def lock_read(self):
         if self._lock_mode:
             assert self._lock_mode in ('r', 'w'), \
@@ -248,8 +246,6 @@ class Branch(object):
             self._lock_mode = 'r'
             self._lock_count = 1
                         
-
-            
     def unlock(self):
         if not self._lock_mode:
             from errors import LockError
@@ -262,18 +258,15 @@ class Branch(object):
             self._lock = None
             self._lock_mode = self._lock_count = None
 
-
     def abspath(self, name):
         """Return absolute filename for something in the branch"""
         return os.path.join(self.base, name)
-
 
     def relpath(self, path):
         """Return path relative to this branch of something inside it.
 
         Raises an error if path is not in this branch."""
         return _relpath(self.base, path)
-
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
@@ -307,8 +300,6 @@ class Branch(object):
         else:
             raise BzrError("invalid controlfile mode %r" % mode)
 
-
-
     def _make_control(self):
         from bzrlib.inventory import Inventory
         from bzrlib.xml import pack_xml
@@ -331,7 +322,6 @@ class Branch(object):
         # them; they're not needed for now and so ommitted for
         # simplicity.
         pack_xml(Inventory(), self.controlfile('inventory','w'))
-
 
     def _check_format(self):
         """Check this branch format is supported.
@@ -829,8 +819,6 @@ class Branch(object):
         ## note("Added %d revisions." % count)
         pb.clear()
 
-        
-        
     def install_revisions(self, other, revision_ids, pb):
         if hasattr(other.revision_store, "prefetch"):
             other.revision_store.prefetch(revision_ids)
@@ -1413,4 +1401,33 @@ def gen_file_id(name):
 def gen_root_id():
     """Return a new tree-root file id."""
     return gen_file_id('TREE_ROOT')
+
+
+def pull_loc(branch):
+    # TODO: Should perhaps just make attribute be 'base' in
+    # RemoteBranch and Branch?
+    if hasattr(branch, "baseurl"):
+        return branch.baseurl
+    else:
+        return branch.base
+
+
+def copy_branch(branch_from, to_location, revision=None):
+    """Copy branch_from into the existing directory to_location.
+
+    If revision is not None, the head of the new branch will be revision.
+    """
+    from bzrlib.merge import merge
+    from bzrlib.branch import Branch
+    br_to = Branch(to_location, init=True)
+    br_to.set_root_id(branch_from.get_root_id())
+    if revision is None:
+        revno = branch_from.revno()
+    else:
+        revno, rev_id = branch_from.get_revision_info(revision)
+    br_to.update_revisions(branch_from, stop_revision=revno)
+    merge((to_location, -1), (to_location, 0), this_dir=to_location,
+          check_clean=False, ignore_zero=True)
+    from_location = pull_loc(branch_from)
+    br_to.controlfile("x-pull", "wb").write(from_location + "\n")
 

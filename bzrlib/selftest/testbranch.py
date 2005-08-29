@@ -17,7 +17,6 @@
 from bzrlib.selftest import InTempDir
 
 
-
 class TestAppendRevisions(InTempDir):
     """Test appending more than one revision"""
     def test_append_revisions(self):
@@ -27,13 +26,6 @@ class TestAppendRevisions(InTempDir):
         self.assertEquals(br.revision_history(), ["rev1",])
         br.append_revision("rev2", "rev3")
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
-        
-
-
-TEST_CLASSES = [
-    TestAppendRevisions,
-    ]
-
 
 
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        

@@ -46,5 +46,3 @@ class TestDiff(TestCase):
         check_patch(lines)
         assert lines[5] == '\\ No newline at end of file\n', \
             "expected no-nl, got %r" % lines[5]
-
-TEST_CLASSES = [ TestDiff ]

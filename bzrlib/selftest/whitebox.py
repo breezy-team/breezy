@@ -73,34 +73,27 @@ class TestRevisionId(TestCase):
 
 
 class PendingMerges(InTempDir):
+
     def test_pending_merges(self):
         """Tracking pending-merged revisions."""
         b = Branch('.', init=True)
 
         self.assertEquals(b.pending_merges(), [])
-        
         b.add_pending_merge('foo@azkhazan-123123-abcabc')
-        
         self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
-    
         b.add_pending_merge('foo@azkhazan-123123-abcabc')
-        
         self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
-
         b.add_pending_merge('wibble@fofof--20050401--1928390812')
         self.assertEquals(b.pending_merges(),
                           ['foo@azkhazan-123123-abcabc',
                            'wibble@fofof--20050401--1928390812'])
-
         b.commit("commit from base with two merges")
-
         rev = b.get_revision(b.revision_history()[0])
         self.assertEquals(len(rev.parents), 2)
         self.assertEquals(rev.parents[0].revision_id,
                           'foo@azkhazan-123123-abcabc')
         self.assertEquals(rev.parents[1].revision_id,
                            'wibble@fofof--20050401--1928390812')
-
         # list should be cleared when we do a commit
         self.assertEquals(b.pending_merges(), [])
         
@@ -218,9 +211,3 @@ class PendingMerges(InTempDir):
         finally:
             os.chdir(savedir)
             shutil.rmtree(dtmp)
-
-
-TEST_CLASSES = [TestBranch,
-                TestRevisionId,
-                PendingMerges
-                ]

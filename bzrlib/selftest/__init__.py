@@ -19,11 +19,13 @@ import logging
 import unittest
 import tempfile
 import os
+import sys
 
 from testsweet import run_suite
-
 import bzrlib.commands
+
 import bzrlib.trace
+import bzrlib.fetch
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
@@ -95,7 +97,9 @@ class TestCase(unittest.TestCase):
         that is slower, harder to debug, and generally not necessary.
         """
         retcode = kwargs.get('retcode', 0)
-        self.assertEquals(bzrlib.commands.run_bzr(args), retcode)
+        result = self.apply_redirected(None, None, None,
+                                       bzrlib.commands.run_bzr, args)
+        self.assertEquals(result, retcode)
         
     def check_inventory_shape(self, inv, shape):
         """
@@ -246,6 +250,38 @@ class FunctionalTestCase(TestCase):
                 f.close()
                 
 
+    def apply_redirected(self, stdin=None, stdout=None, stderr=None,
+                         a_callable=None, *args, **kwargs):
+        """Call callable with redirected std io pipes.
+
+        Returns the return code."""
+        from StringIO import StringIO
+        if not callable(a_callable):
+            raise ValueError("a_callable must be callable.")
+        if stdin is None:
+            stdin = StringIO("")
+        if stdout is None:
+            stdout = self._log_file
+        if stderr is None:
+            stderr = self._log_file
+        real_stdin = sys.stdin
+        real_stdout = sys.stdout
+        real_stderr = sys.stderr
+        result = None
+        try:
+            sys.stdout = stdout
+            sys.stderr = stderr
+            sys.stdin = stdin
+            result = a_callable(*args, **kwargs)
+        finally:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr
+            sys.stdin = real_stdin
+        return result
+
+
+InTempDir = FunctionalTestCase
+
 
 class MetaTestLog(TestCase):
     def test_logging(self):
@@ -256,11 +292,12 @@ class MetaTestLog(TestCase):
         ##assert 0
 
 
-InTempDir = FunctionalTestCase
+def selftest(verbose=False, pattern=".*"):
+    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
 
 
-def selftest(verbose=False):
-    from unittest import TestLoader, TestSuite
+def test_suite():
+    from bzrlib.selftest.TestUtil import TestLoader, TestSuite
     import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
     import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
     from doctest import DocTestSuite
@@ -285,8 +322,10 @@ def selftest(verbose=False):
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
                    'bzrlib.selftest.testrevision',
-                   'bzrlib.merge_core',
+                   'bzrlib.selftest.test_merge_core',
+                   'bzrlib.selftest.test_smart_add',
                    'bzrlib.selftest.testdiff',
+                   'bzrlib.fetch'
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
@@ -296,27 +335,15 @@ def selftest(verbose=False):
 
     TestCase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
     print '%-30s %s' % ('bzr binary', TestCase.BZRPATH)
-
     print
-
     suite = TestSuite()
-
     suite.addTest(TestLoader().loadTestsFromNames(testmod_names))
-
     for m in MODULES_TO_TEST:
          suite.addTest(TestLoader().loadTestsFromModule(m))
-
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
-
     for p in bzrlib.plugin.all_plugins:
         if hasattr(p, 'test_suite'):
             suite.addTest(p.test_suite())
-
-    import bzrlib.merge_core
-    suite.addTest(unittest.makeSuite(bzrlib.merge_core.MergeTest, 'test_'))
-
-    return run_suite(suite, 'testbzr', verbose=verbose)
-
-
+    return suite
 

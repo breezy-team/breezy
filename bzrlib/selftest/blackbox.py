@@ -127,7 +127,6 @@ class TestCommands(ExternalBase):
 
     def test_revert(self):
         import os
-
         self.runbzr('init')
 
         file('hello', 'wt').write('foo')
@@ -151,7 +150,6 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m f')
         os.rmdir('revertdir')
         self.runbzr('revert')
-
 
     def skipped_test_mv_modes(self):
         """Test two modes of operation for mv"""
@@ -179,8 +177,59 @@ class TestCommands(ExternalBase):
         self.log(tmp_output)
         self.assertEquals(output, tmp_output)
 
+    def example_branch(test):
+        test.runbzr('init')
+        file('hello', 'wt').write('foo')
+        test.runbzr('add hello')
+        test.runbzr('commit -m setup hello')
+        file('goodbye', 'wt').write('baz')
+        test.runbzr('add goodbye')
+        test.runbzr('commit -m setup goodbye')
+
+    def test_revert(self):
+        self.example_branch()
+        file('hello', 'wt').write('bar')
+        file('goodbye', 'wt').write('qux')
+        self.runbzr('revert hello')
+        self.check_file_contents('hello', 'foo')
+        self.check_file_contents('goodbye', 'qux')
+        self.runbzr('revert')
+        self.check_file_contents('goodbye', 'baz')
+
+    def test_merge(self):
+        from bzrlib.branch import Branch
+        from bzrlib.commands import run_bzr
+        import os
+        
+        os.mkdir('a')
+        os.chdir('a')
+
+        self.example_branch()
+        os.chdir('..')
+        self.runbzr('branch a b')
+        os.chdir('b')
+        file('goodbye', 'wt').write('quux')
+        self.runbzr(['commit',  '-m',  "more u's are always good"])
+
+        os.chdir('../a')
+        file('hello', 'wt').write('quuux')
+        # We can't merge when there are in-tree changes
+        self.runbzr('merge ../b', retcode=1)
+        self.runbzr(['commit', '-m', "Like an epidemic of u's"])
+        self.runbzr('merge ../b')
+        self.check_file_contents('goodbye', 'quux')
+        # Merging a branch pulls its revision into the tree
+        a = Branch('.')
+        b = Branch('../b')
+        a.get_revision_xml(b.last_patch())
+
+        self.log('pending merges: %s', a.pending_merges())
+#        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
+#        % (a.pending_merges(), b.last_patch())
+
 class OldTests(ExternalBase):
-    # old tests moved from ./testbzr
+    """old tests moved from ./testbzr."""
+
     def test_bzr(self):
         from os import chdir, mkdir
         from os.path import exists
@@ -348,62 +397,4 @@ class OldTests(ExternalBase):
         runbzr('log --forward')
 
         runbzr('info')
-
-
-
-def example_branch(test):
-    test.runbzr('init')
-
-    file('hello', 'wt').write('foo')
-    test.runbzr('add hello')
-    test.runbzr('commit -m setup hello')
-
-    file('goodbye', 'wt').write('baz')
-    test.runbzr('add goodbye')
-    test.runbzr('commit -m setup goodbye')
-
-
-class RevertCommand(ExternalBase):
-    def runTest(self):
-        example_branch(self)
-        file('hello', 'wt').write('bar')
-        file('goodbye', 'wt').write('qux')
-        self.runbzr('revert hello')
-        self.check_file_contents('hello', 'foo')
-        self.check_file_contents('goodbye', 'qux')
-        self.runbzr('revert')
-        self.check_file_contents('goodbye', 'baz')
-
-
-class MergeCommand(ExternalBase):
-    def runTest(self):
-        from bzrlib.branch import Branch
-        from bzrlib.commands import run_bzr
-        import os
-        
-        os.mkdir('a')
-        os.chdir('a')
-
-        example_branch(self)
-        os.chdir('..')
-        self.runbzr('branch a b')
-        os.chdir('b')
-        file('goodbye', 'wt').write('quux')
-        self.runbzr(['commit',  '-m',  "more u's are always good"])
-
-        os.chdir('../a')
-        file('hello', 'wt').write('quuux')
-        # We can't merge when there are in-tree changes
-        self.runbzr('merge ../b', retcode=1)
-        self.runbzr(['commit', '-m', "Like an epidemic of u's"])
-        self.runbzr('merge ../b')
-        self.check_file_contents('goodbye', 'quux')
-        # Merging a branch pulls its revision into the tree
-        a = Branch('.')
-        b = Branch('../b')
-        a.get_revision_xml(b.last_patch())
-
-        self.log('pending merges: %s', a.pending_merges())
-#        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
-#        % (a.pending_merges(), b.last_patch())
 

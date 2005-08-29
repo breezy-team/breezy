@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.selftest import InTempDir
+from bzrlib.selftest import FunctionalTestCase
 
 
 def make_branches():
@@ -46,8 +46,7 @@ def make_branches():
     return br1, br2
 
 
-class TestIsAncestor(InTempDir):
-
+class TestIsAncestor(FunctionalTestCase):
     def test_is_ancestor(self):
         """Test checking whether a revision is an ancestor of another revision"""
         from bzrlib.revision import is_ancestor, MultipleRevisionSources
@@ -69,9 +68,10 @@ class TestIsAncestor(InTempDir):
         assert not is_ancestor(revisions[3], revisions_2[3], br1)
 
 
-class TestCommonAncestor(InTempDir):
+class TestCommonAncestor(FunctionalTestCase):
     """Test checking whether a revision is an ancestor of another revision"""
-    def runTest(self):
+
+    def test_common_ancestor(self):
         from bzrlib.revision import find_present_ancestors, common_ancestor
         from bzrlib.revision import MultipleRevisionSources
         br1, br2 = make_branches()
@@ -108,8 +108,3 @@ class TestCommonAncestor(InTempDir):
                           revisions[4])
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
                           revisions_2[5])
-
-TEST_CLASSES = [
-    TestIsAncestor,
-    TestCommonAncestor,
-    ]

@@ -51,7 +51,7 @@ def build():
             if lines:
                 del lines[randrange(0, len(lines))]
 
-        rev_id = wf.add(parents, lines)
+        rev_id = wf.add("%s" % i, parents, lines)
         parents = [rev_id]
 
     write_weave(wf, file(WEAVE_NAME, 'wb'))

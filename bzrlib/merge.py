@@ -19,6 +19,7 @@ import os.path
 import tempfile
 import shutil
 import errno
+from fetch import greedy_fetch
 
 import bzrlib.osutils
 import bzrlib.revision
@@ -220,9 +221,9 @@ def merge(other_revision, base_revision,
     """Merge changes into a tree.
 
     base_revision
-        Base for three-way merge.
+        tuple(path, revision) Base for three-way merge.
     other_revision
-        Other revision for three-way merge.
+        tuple(path, revision) Other revision for three-way merge.
     this_dir
         Directory to merge changes into; '.' by default.
     check_clean
@@ -258,18 +259,12 @@ def merge(other_revision, base_revision,
             other_rev_id = None
             other_basis = other_branch.last_patch()
         if base_revision == [None, None]:
-            if other_revision[1] == -1:
-                o_revno = None
-            else:
-                o_revno = other_revision[1]
+            base_rev_id = common_ancestor(this_rev_id, other_basis, 
+                                          this_branch)
+            if base_rev_id is None:
                 raise UnrelatedBranches()
-            try:
-                base_revision = this_branch.get_revision(base_rev_id)
-                base_branch = this_branch
-            except NoSuchRevision:
-                base_branch = other_branch
-            base_tree = get_revid_tree(base_branch, base_rev_id, tempdir, 
-                                       "base")
+            base_tree = get_revid_tree(this_branch, base_rev_id, tempdir, 
+                                       "base", None)
             base_is_ancestor = True
         else:
             base_branch, base_tree = get_tree(base_revision, tempdir, "base")
