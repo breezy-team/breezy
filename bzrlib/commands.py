@@ -1373,8 +1373,8 @@ class cmd_scan_cache(Command):
 class cmd_upgrade(Command):
     """Upgrade branch storage to current format.
 
-    This should normally be used only after the check command tells
-    you to run it.
+    The check command or bzr developers may sometimes advise you to run
+    this command.
     """
     takes_args = ['dir?']
 
