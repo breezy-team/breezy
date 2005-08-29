@@ -29,7 +29,6 @@ it's normally invoked.
 import sys
 from bzrlib.selftest import InTempDir, BzrTestBase
 
-
 class ExternalBase(InTempDir):
 
     def runbzr(self, args, retcode=0,backtick=False):
@@ -379,9 +378,12 @@ class RevertCommand(ExternalBase):
 class MergeCommand(ExternalBase):
     def runTest(self):
         from bzrlib.branch import Branch
+        from bzrlib.commands import run_bzr
         import os
+        
         os.mkdir('a')
         os.chdir('a')
+
         example_branch(self)
         os.chdir('..')
         self.runbzr('branch a b')
@@ -400,7 +402,8 @@ class MergeCommand(ExternalBase):
         a = Branch('.')
         b = Branch('../b')
         a.get_revision_xml(b.last_patch())
-        print "Pending: %s" % a.pending_merges()
+
+        self.log('pending merges: %s', a.pending_merges())
 #        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
 #        % (a.pending_merges(), b.last_patch())
 
