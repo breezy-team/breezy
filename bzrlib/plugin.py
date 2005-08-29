@@ -116,8 +116,9 @@ def load_plugins():
                 finally:
                     if plugin_info[0] is not None:
                         plugin_info[0].close()
-            except Exception, e:
+
+                mutter('loaded succesfully')
+            except:
                 log_error('Unable to load plugin %r from %r' % (name, d))
-                log_error(str(e))
                 log_exception()
 
