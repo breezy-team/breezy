@@ -1122,8 +1122,6 @@ class Branch(object):
 
             inv.rename(file_id, to_dir_id, to_tail)
 
-            print "%s => %s" % (from_rel, to_rel)
-
             from_abs = self.abspath(from_rel)
             to_abs = self.abspath(to_rel)
             try:
@@ -1148,7 +1146,11 @@ class Branch(object):
 
         Note that to_name is only the last component of the new name;
         this doesn't change the directory.
+
+        This returns a list of (from_path, to_path) pairs for each
+        entry that is moved.
         """
+        result = []
         self.lock_write()
         try:
             ## TODO: Option to move IDs only
@@ -1189,7 +1191,7 @@ class Branch(object):
             for f in from_paths:
                 name_tail = splitpath(f)[-1]
                 dest_path = appendpath(to_name, name_tail)
-                print "%s => %s" % (f, dest_path)
+                result.append((f, dest_path))
                 inv.rename(inv.path2id(f), to_dir_id, name_tail)
                 try:
                     os.rename(self.abspath(f), self.abspath(dest_path))
@@ -1200,6 +1202,8 @@ class Branch(object):
             self._write_inventory(inv)
         finally:
             self.unlock()
+
+        return result
 
 
     def revert(self, filenames, old_tree=None, backups=True):

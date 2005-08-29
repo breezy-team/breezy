@@ -585,12 +585,14 @@ class cmd_mv(Command):
         
         if os.path.isdir(names_list[-1]):
             # move into existing directory
-            b.move(rel_names[:-1], rel_names[-1])
+            for pair in b.move(rel_names[:-1], rel_names[-1]):
+                print "%s => %s" % pair
         else:
             if len(names_list) != 2:
                 raise BzrCommandError('to mv multiple files the destination '
                                       'must be a versioned directory')
-            b.move(rel_names[0], rel_names[1])
+            for pair in b.move(rel_names[0], rel_names[1]):
+                print "%s => %s" % pair
             
     
 
