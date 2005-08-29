@@ -21,10 +21,12 @@
 # it's not predictable when it will be written out.
 
 import os
-    
+import fnmatch
+        
 import bzrlib.tree
-from errors import BzrCheckError
-from trace import mutter
+from bzrlib.osutils import appendpath, file_kind, isdir, splitpath
+from bzrlib.errors import BzrCheckError
+from bzrlib.trace import mutter
 
 class WorkingTree(bzrlib.tree.Tree):
     """Working copy tree.
@@ -135,9 +137,6 @@ class WorkingTree(bzrlib.tree.Tree):
 
         Skips the control directory.
         """
-        from osutils import appendpath, file_kind
-        import os
-
         inv = self._inventory
 
         def descend(from_dir_relpath, from_dir_id, dp):
@@ -205,8 +204,6 @@ class WorkingTree(bzrlib.tree.Tree):
         Currently returned depth-first, sorted by name within directories.
         """
         ## TODO: Work from given directory downwards
-        from osutils import isdir, appendpath
-        
         for path, dir_entry in self.inventory.directories():
             mutter("search for unknowns in %r" % path)
             dirabs = self.abspath(path)
@@ -268,9 +265,6 @@ class WorkingTree(bzrlib.tree.Tree):
         # treat dotfiles correctly and allows * to match /.
         # Eventually it should be replaced with something more
         # accurate.
-        
-        import fnmatch
-        from osutils import splitpath
         
         for pat in self.get_ignore_list():
             if '/' in pat or '\\' in pat:
