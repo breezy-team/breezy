@@ -51,6 +51,7 @@ def register_command(cmd):
         k_unsquished = k
     if not plugin_cmds.has_key(k_unsquished):
         plugin_cmds[k_unsquished] = cmd
+        mutter('registered plugin command %s', k_unsquished)      
     else:
         log_error('Two plugins defined the same command: %r' % k)
         log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
@@ -192,6 +193,7 @@ def get_cmd_class(cmd, plugins_override=True):
 
     # first look up this command under the specified name
     cmds = _get_cmd_dict(plugins_override=plugins_override)
+    mutter("all commands: %r", cmds.keys())
     try:
         return cmd, cmds[cmd]
     except KeyError:
