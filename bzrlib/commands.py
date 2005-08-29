@@ -468,7 +468,10 @@ class cmd_add(Command):
     
     def run(self, file_list, verbose=False, no_recurse=False):
         from bzrlib.add import smart_add
-        smart_add(file_list, verbose, not no_recurse)
+
+        recurse = not no_recurse
+        for path, kind, file_id in smart_add(file_list, verbose, recurse):
+            print 'added', path
 
 
 

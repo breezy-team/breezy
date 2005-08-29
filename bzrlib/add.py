@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from trace import mutter, note
+from bzrlib.trace import mutter, note, warning
 
 def glob_expand_for_win32(file_list):
     import glob
@@ -31,11 +31,14 @@ def glob_expand_for_win32(file_list):
             expanded_file_list += glob_files
     return expanded_file_list
 
+
 def smart_add(file_list, verbose=True, recurse=True):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
     For the specific behaviour see the help for cmd_add().
+
+    This yields a sequence of (path, kind, file_id) for added files.
     """
     import os
     import sys
@@ -67,7 +70,7 @@ def smart_add(file_list, verbose=True, recurse=True):
             if f in user_list:
                 raise BadFileKindError("cannot add %s of type %s" % (f, kind))
             else:
-                print "skipping %s (can't add file of kind '%s')" % (f, kind)
+                warning("skipping %s (can't add file of kind '%s')", f, kind)
                 continue
 
         mutter("smart add of %r, abs=%r" % (f, af))
@@ -87,7 +90,8 @@ def smart_add(file_list, verbose=True, recurse=True):
             mutter("added %r kind %r file_id={%s}" % (rf, kind, file_id))
             count += 1 
 
-            print 'added', quotefn(f)
+            yield f, kind, file_id
+
 
         if kind == 'directory' and recurse:
             for subf in os.listdir(af):
@@ -100,10 +104,9 @@ def smart_add(file_list, verbose=True, recurse=True):
                     mutter("queue to add sub-file %r" % subp)
                     file_list.append(b.abspath(subp))
 
+
     if count > 0:
         if verbose:
-            note('added %d' % count)
+            note('added %d entries', count)
         b._write_inventory(inv)
-    else:
-        print "nothing new to add"
-        # should this return 1 to the shell?
+
