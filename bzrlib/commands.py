@@ -1673,7 +1673,10 @@ class cmd_plugins(Command):
         from inspect import getdoc
         from pprint import pprint
         for plugin in bzrlib.plugin.all_plugins:
-            print plugin.__path__[0]
+            if hasattr(plugin, '__path__'):
+                print plugin.__path__[0]
+            else:
+                print `plugin`
             d = getdoc(plugin)
             if d:
                 print '\t', d.split('\n')[0]
