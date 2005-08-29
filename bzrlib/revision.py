@@ -204,6 +204,12 @@ def iter_ancestors(revision_id, revision_source, only_present=False):
 
 
 def find_present_ancestors(revision_id, revision_source):
+    """Return the ancestors of a revision present in a branch.
+
+    It's possible that a branch won't have the complete ancestry of
+    one of its revisions.  
+
+    """
     found_ancestors = {}
     count = 0
     anc_iter = enumerate(iter_ancestors(revision_id, revision_source,
