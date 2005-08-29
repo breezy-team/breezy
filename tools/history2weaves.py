@@ -25,17 +25,22 @@ except ImportError:
     pass
 
 
+import logging
+
 import bzrlib.branch
 from bzrlib.revfile import Revfile
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave
 from bzrlib.progress import ProgressBar
 from bzrlib.atomicfile import AtomicFile
+import bzrlib.trace
 import tempfile
 import hotshot, hotshot.stats
 import sys
 
 def convert():
+    bzrlib.trace.enable_default_logging()
+
     pb = ProgressBar()
 
     inv_weave = Weave()
