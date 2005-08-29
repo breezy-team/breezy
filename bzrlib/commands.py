@@ -1414,7 +1414,6 @@ class cmd_selftest(Command):
 
         save_ui = bzrlib.ui.ui_factory
         bzrlib.trace.info('running tests...')
-        bzrlib.trace.disable_default_logging()
         try:
             bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
             result = selftest(verbose=verbose)
@@ -1424,7 +1423,6 @@ class cmd_selftest(Command):
                 bzrlib.trace.info('tests failed')
             return int(not result)
         finally:
-            bzrlib.trace.enable_default_logging()
             bzrlib.ui.ui_factory = save_ui
 
 

@@ -55,209 +55,6 @@ class TestSkipped(Exception):
     # XXX: Not used yet
 
 
-class TestCase(unittest.TestCase):
-    """Base class for bzr unit tests.
-    
-    Tests that need access to disk resources should subclass 
-    FunctionalTestCase not TestCase.
-    """
-    
-    # TODO: Special methods to invoke bzr, so that we can run it
-    # through a specified Python intepreter
-
-    OVERRIDE_PYTHON = None # to run with alternative python 'python'
-    BZRPATH = 'bzr'
-
-    def setUp(self):
-        super(TestCase, self).setUp()
-        # setup a temporary log for the test 
-        import time
-        import os
-        import tempfile
-        import logging
-        
-        self.TEST_LOG = tempfile.NamedTemporaryFile(mode='wt', bufsize=0)
-        # save stdout & stderr so there's no leakage from code-under-test
-        self.real_stdout = sys.stdout
-        self.real_stderr = sys.stderr
-        sys.stdout = sys.stderr = self.TEST_LOG
-        
-        # set up default python log handler
-        #self._handler = logging.StreamHandler(self.TEST_LOG)
-        #self._handler.setLevel(logging.DEBUG)
-        #logging.getLogger('').addHandler(self._handler)
-        
-        self.log("%s setup" % self.id())
-
-    def tearDown(self):
-        # logging.getLogger('').removeHandler(self._handler)
-        sys.stdout = self.real_stdout
-        sys.stderr = self.real_stderr
-        self.log("%s teardown" % self.id())
-        self.log('')
-        super(TestCase, self).tearDown()
-
-    def log(self, msg):
-        """Log a message to a progress file"""
-        print >>self.TEST_LOG, msg
-
-    def check_inventory_shape(self, inv, shape):
-        """
-        Compare an inventory to a list of expected names.
-
-        Fail if they are not precisely equal.
-        """
-        extras = []
-        shape = list(shape)             # copy
-        for path, ie in inv.entries():
-            name = path.replace('\\', '/')
-            if ie.kind == 'dir':
-                name = name + '/'
-            if name in shape:
-                shape.remove(name)
-            else:
-                extras.append(name)
-        if shape:
-            self.fail("expected paths not found in inventory: %r" % shape)
-        if extras:
-            self.fail("unexpected paths found in inventory: %r" % extras)
-     
-    def _get_log(self):
-        """Get the log the test case used. This can only be called once,
-        after which an exception will be raised.
-        """
-        self.TEST_LOG.flush()
-        log = open(self.TEST_LOG.name, 'rt').read()
-        self.TEST_LOG.close()
-        return log
-
-
-class FunctionalTestCase(TestCase):
-    """Base class for tests that perform function testing - running bzr,
-    using files on disk, and similar activities.
-
-    InTempDir is an old alias for FunctionalTestCase.
-    """
-
-    TEST_ROOT = None
-    _TEST_NAME = 'test'
-
-    def check_file_contents(self, filename, expect):
-        self.log("check contents of file %s" % filename)
-        contents = file(filename, 'r').read()
-        if contents != expect:
-            self.log("expected: %r" % expect)
-            self.log("actually: %r" % contents)
-            self.fail("contents of %s not as expected")
-
-    def _make_test_root(self):
-        import os
-        import shutil
-        import tempfile
-        
-        if FunctionalTestCase.TEST_ROOT is not None:
-            return
-        FunctionalTestCase.TEST_ROOT = os.path.abspath(
-                                 tempfile.mkdtemp(suffix='.tmp',
-                                                  prefix=self._TEST_NAME + '-',
-                                                  dir=os.curdir))
-    
-        # make a fake bzr directory there to prevent any tests propagating
-        # up onto the source directory's real branch
-        os.mkdir(os.path.join(FunctionalTestCase.TEST_ROOT, '.bzr'))
-
-    def setUp(self):
-        super(FunctionalTestCase, self).setUp()
-        import os
-        self._make_test_root()
-        self._currentdir = os.getcwdu()
-        self.test_dir = os.path.join(self.TEST_ROOT, self.id())
-        os.mkdir(self.test_dir)
-        os.chdir(self.test_dir)
-        
-    def tearDown(self):
-        import os
-        os.chdir(self._currentdir)
-        super(FunctionalTestCase, self).tearDown()
-
-    def _formcmd(self, cmd):
-        if isinstance(cmd, basestring):
-            cmd = cmd.split()
-        if cmd[0] == 'bzr':
-            cmd[0] = self.BZRPATH
-            if self.OVERRIDE_PYTHON:
-                cmd.insert(0, self.OVERRIDE_PYTHON)
-        self.log('$ %r' % cmd)
-        return cmd
-
-    def runcmd(self, cmd, retcode=0):
-        """Run one command and check the return code.
-
-        Returns a tuple of (stdout,stderr) strings.
-
-        If a single string is based, it is split into words.
-        For commands that are not simple space-separated words, please
-        pass a list instead."""
-        try:
-            import shutil
-            from subprocess import call
-        except ImportError, e:
-            _need_subprocess()
-            raise
-        cmd = self._formcmd(cmd)
-        self.log('$ ' + ' '.join(cmd))
-        actual_retcode = call(cmd, stdout=self.TEST_LOG, stderr=self.TEST_LOG)
-        if retcode != actual_retcode:
-            raise CommandFailed("test failed: %r returned %d, expected %d"
-                                % (cmd, actual_retcode, retcode))
-
-    def backtick(self, cmd, retcode=0):
-        """Run a command and return its output"""
-        try:
-            import shutil
-            from subprocess import Popen, PIPE
-        except ImportError, e:
-            _need_subprocess()
-            raise
-
-        cmd = self._formcmd(cmd)
-        child = Popen(cmd, stdout=PIPE, stderr=self.TEST_LOG)
-        outd, errd = child.communicate()
-        self.log(outd)
-        actual_retcode = child.wait()
-
-        outd = outd.replace('\r', '')
-
-        if retcode != actual_retcode:
-            raise CommandFailed("test failed: %r returned %d, expected %d"
-                                % (cmd, actual_retcode, retcode))
-
-        return outd
-
-
-
-    def build_tree(self, shape):
-        """Build a test tree according to a pattern.
-
-        shape is a sequence of file specifications.  If the final
-        character is '/', a directory is created.
-
-        This doesn't add anything to a branch.
-        """
-        # XXX: It's OK to just create them using forward slashes on windows?
-        import os
-        for name in shape:
-            assert isinstance(name, basestring)
-            if name[-1] == '/':
-                os.mkdir(name[:-1])
-            else:
-                f = file(name, 'wt')
-                print >>f, "contents of", name
-                f.close()
-                
-InTempDir = FunctionalTestCase
-
-
 class _MyResult(unittest._TextTestResult):
     """
     Custom TestResult.
@@ -298,7 +95,7 @@ class _MyResult(unittest._TextTestResult):
             self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
-            if isinstance(test, TestCase):
+            if hasattr(test, '_get_log'):
                 self.stream.writeln()
                 self.stream.writeln('log from this test:')
                 print >>self.stream, test._get_log()
@@ -312,6 +109,7 @@ class TextTestRunner(unittest.TextTestRunner):
 
 def run_suite(suite, name='test', verbose=False):
     import shutil
+    from bzrlib.selftest import FunctionalTestCase
     FunctionalTestCase._TEST_NAME = name
     if verbose:
         verbosity = 2

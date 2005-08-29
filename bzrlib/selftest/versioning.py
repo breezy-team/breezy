@@ -22,11 +22,11 @@
 
 
 import os
-from bzrlib.selftest import InTempDir, BzrTestBase
+from bzrlib.selftest import BzrTestBase, FunctionalTestCase
 from bzrlib.branch import Branch
 
 
-class TestVersioning(InTempDir):
+class TestVersioning(FunctionalTestCase):
     
     def test_mkdir(self): 
         """Basic 'bzr mkdir' operation"""
@@ -100,7 +100,7 @@ class TestVersioning(InTempDir):
         eq(list(b.unknowns()), [])
         
         
-class SubdirCommit(BzrTestBase):
+class SubdirCommit(FunctionalTestCase):
 
     def test_subdir_commit(self):
         """Test committing a subdirectory, and committing within a directory."""

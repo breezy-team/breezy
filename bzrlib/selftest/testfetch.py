@@ -20,7 +20,7 @@ from bzrlib.branch import Branch
 import sys
 import os
 
-from testsweet import InTempDir
+from bzrlib.selftest import InTempDir
         
 
 class TestFetch(InTempDir):
