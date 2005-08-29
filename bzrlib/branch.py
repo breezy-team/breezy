@@ -414,10 +414,11 @@ class Branch(object):
                          """Inventory for the working copy.""")
 
 
-    def add(self, files, verbose=False, ids=None):
+    def add(self, files, ids=None):
         """Make files versioned.
 
-        Note that the command line normally calls smart_add instead.
+        Note that the command line normally calls smart_add instead,
+        which can automatically recurse.
 
         This puts the files in the Added state, so that they will be
         recorded by the next commit.
@@ -433,12 +434,7 @@ class Branch(object):
         TODO: Perhaps have an option to add the ids even if the files do
               not (yet) exist.
 
-        TODO: Perhaps return the ids of the files?  But then again it
-              is easy to retrieve them if they're needed.
-
-        TODO: Adding a directory should optionally recurse down and
-              add all non-ignored children.  Perhaps do that in a
-              higher-level method.
+        TODO: Perhaps yield the ids and paths as they're added.
         """
         # TODO: Re-adding a file that is removed in the working copy
         # should probably put it back with the previous ID.
@@ -479,9 +475,6 @@ class Branch(object):
                 if file_id is None:
                     file_id = gen_file_id(f)
                 inv.add_path(f, kind=kind, file_id=file_id)
-
-                if verbose:
-                    print 'added', quotefn(f)
 
                 mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
 

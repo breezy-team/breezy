@@ -489,7 +489,8 @@ class cmd_mkdir(Command):
             os.mkdir(d)
             if not b:
                 b = find_branch(d)
-            b.add([d], verbose=True)
+            b.add([d])
+            print 'added', d
 
 
 class cmd_relpath(Command):
