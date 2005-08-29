@@ -39,7 +39,7 @@ def upgrade(branch):
 
     branch.lock_write()
 
-    pb = bzrlib.ui.progress_bar()
+    pb = bzrlib.ui.ui_factory.progress_bar()
 
     try:
         last_rev_id = None
