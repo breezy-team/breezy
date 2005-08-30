@@ -221,8 +221,8 @@ bbb
                             start_marker='<<',
                             mid_marker='--',
                             end_marker='>>')
-        self.assertEquals(''.join(m3.merge_lines()),
-                          'aaa\n222\nbbb\n')
+        self.assertEquals(''.join(ml), 'aaa\n222\nbbb\n')
+        
 
     def test_insert_clash(self):
         """Both try to insert lines in the same place."""

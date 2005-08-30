@@ -17,7 +17,12 @@
 
 """Tests for plugins"""
 
+
+
+# **************************************************
 # NOT RUN YET
+# **************************************************
+
 
 
 
@@ -28,7 +33,7 @@
 from bzrlib.selftest import TestCaseInTempDir
 
 
-def PluginTest(TestCaseInTempDir):
+class PluginTest(TestCaseInTempDir):
     """Create an external plugin and test loading."""
     def test_plugin_loading(self):
         import os

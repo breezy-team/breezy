@@ -20,6 +20,7 @@ import unittest
 import tempfile
 import os
 import sys
+import subprocess
 
 from testsweet import run_suite
 import bzrlib.commands
@@ -228,30 +229,18 @@ class TestCaseInTempDir(TestCase):
         If a single string is based, it is split into words.
         For commands that are not simple space-separated words, please
         pass a list instead."""
-        try:
-            import shutil
-            from subprocess import call
-        except ImportError, e:
-            _need_subprocess()
-            raise
         cmd = self._formcmd(cmd)
         self.log('$ ' + ' '.join(cmd))
-        actual_retcode = call(cmd, stdout=self._log_file, stderr=self._log_file)
+        actual_retcode = subprocess.call(cmd, stdout=self._log_file,
+                                         stderr=self._log_file)
         if retcode != actual_retcode:
             raise CommandFailed("test failed: %r returned %d, expected %d"
                                 % (cmd, actual_retcode, retcode))
 
     def backtick(self, cmd, retcode=0):
         """Run a command and return its output"""
-        try:
-            import shutil
-            from subprocess import Popen, PIPE
-        except ImportError, e:
-            _need_subprocess()
-            raise
-
         cmd = self._formcmd(cmd)
-        child = Popen(cmd, stdout=PIPE, stderr=self._log_file)
+        child = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=self._log_file)
         outd, errd = child.communicate()
         self.log(outd)
         actual_retcode = child.wait()

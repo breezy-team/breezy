@@ -65,7 +65,6 @@ class SimpleLogTest(TestCaseInTempDir):
 
     def test_simple_log(self):
         eq = self.assertEquals
-        ass = self.assert_
         
         b = Branch('.', init=True)
 

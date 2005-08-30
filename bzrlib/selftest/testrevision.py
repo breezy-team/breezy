@@ -20,7 +20,6 @@ from bzrlib.selftest import TestCaseInTempDir
 def make_branches():
     from bzrlib.branch import Branch
     from bzrlib.commit import commit
-    from bzrlib.revision import validate_revision_id
     import os
     os.mkdir("branch1")
     br1 = Branch("branch1", init=True)

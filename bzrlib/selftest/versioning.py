@@ -114,7 +114,6 @@ class TestVersioning(TestCaseInTempDir):
         """After all the above changes, run the check and upgrade commands.
 
         The upgrade should be a no-op."""
-        from bzrlib.commands import run_bzr
         b = Branch('.')
         debug('branch has %d revisions', b.revno())
         

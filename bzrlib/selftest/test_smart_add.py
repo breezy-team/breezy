@@ -44,10 +44,11 @@ class TestSmartAdd(TestCaseInTempDir):
         """Test nested trees are not affect by an add above them."""
         from bzrlib.add import smart_add
         paths = ("original/", "original/file1", "original/file2")
-        child_paths = ("path")
+        child_paths = ("path",)
         full_child_paths = ("original/child", "original/child/path")
         build_paths = ("original/", "original/file1", "original/file2", 
                        "original/child/", "original/child/path")
+        
         self.build_tree(build_paths)
         branch = Branch(".", init=True)
         child_branch = Branch("original/child", init=True)

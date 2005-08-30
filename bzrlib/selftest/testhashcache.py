@@ -37,7 +37,6 @@ class TestHashCache(TestCaseInTempDir):
         """Functional tests for hashcache"""
         from bzrlib.hashcache import HashCache
         import os
-        import time
 
         # make a dummy bzr directory just to hold the cache
         os.mkdir('.bzr')

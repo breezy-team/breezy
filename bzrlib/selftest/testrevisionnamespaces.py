@@ -22,8 +22,6 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         """Functional tests for hashcache"""
         from bzrlib.errors import BzrError
         from bzrlib.branch import Branch
-        import os
-        import time
 
         b = Branch('.', init=True)
 

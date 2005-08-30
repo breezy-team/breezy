@@ -6,7 +6,6 @@ from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
 
 
-import unittest
 import tempfile
 import shutil
 from bzrlib.inventory import InventoryEntry, RootEntry
@@ -100,8 +99,8 @@ class MergeTree(object):
         return self.inventory[file_id]
 
     def change_path(self, id, path):
-        new = os.path.join(self.dir, self.inventory[id])
-        os.rename(self.abs_path(self.inventory[id]), self.abs_path(path))
+        old_path = os.path.join(self.dir, self.inventory[id])
+        os.rename(old_path, self.abs_path(path))
         self.inventory[id] = path
 
 
@@ -474,7 +473,6 @@ class FunctionalMergeTest(TestCaseInTempDir):
         from bzrlib.add import smart_add_branch
         from bzrlib.branch import copy_branch
         from bzrlib.merge import merge
-        from bzrlib.merge_core import ApplyMerge3
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
         branch = Branch("original", init=True)
