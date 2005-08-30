@@ -30,15 +30,7 @@ import sys
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
 
 class ExternalBase(TestCaseInTempDir):
-
     def runbzr(self, args, retcode=0,backtick=False):
-        try:
-            import shutil
-            from subprocess import call
-        except ImportError, e:
-            _need_subprocess()
-            raise
-
         if isinstance(args, basestring):
             args = args.split()
 
@@ -48,6 +40,7 @@ class ExternalBase(TestCaseInTempDir):
         else:
             return self.runcmd(['python', self.BZRPATH,] + args,
                            retcode=retcode)
+
 
 class TestCommands(ExternalBase):
 
@@ -59,7 +52,6 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -h')
 
     def test_init_branch(self):
-        import os
         self.runbzr(['init'])
 
     def test_whoami(self):
@@ -198,7 +190,6 @@ class TestCommands(ExternalBase):
 
     def test_merge(self):
         from bzrlib.branch import Branch
-        from bzrlib.commands import run_bzr
         import os
         
         os.mkdir('a')
