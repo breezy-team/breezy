@@ -1451,10 +1451,19 @@ def pull_loc(branch):
 def copy_branch(branch_from, to_location, revision=None):
     """Copy branch_from into the existing directory to_location.
 
-    If revision is not None, the head of the new branch will be revision.
+    revision
+        If not None, only revisions up to this point will be copied.
+        The head of the new branch will be that revision.
+
+    to_location
+        The name of a local directory that exists but is empty.
     """
     from bzrlib.merge import merge
     from bzrlib.branch import Branch
+
+    assert isinstance(branch_from, Branch)
+    assert isinstance(to_location, basestring)
+    
     br_to = Branch(to_location, init=True)
     br_to.set_root_id(branch_from.get_root_id())
     if revision is None:
