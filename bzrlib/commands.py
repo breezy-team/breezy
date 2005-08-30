@@ -1714,6 +1714,8 @@ def parse_args(argv):
 
     >>> parse_args('--help'.split())
     ([], {'help': True})
+    >>> parse_args('help -- --invalidcmd'.split())
+    (['help', '--invalidcmd'], {})
     >>> parse_args('--version'.split())
     ([], {'version': True})
     >>> parse_args('status --all'.split())
@@ -1732,15 +1734,18 @@ def parse_args(argv):
     args = []
     opts = {}
 
-    # TODO: Maybe handle '--' to end options?
-
+    argsover = False
     while argv:
         a = argv.pop(0)
-        if a[0] == '-':
+        if not argsover and a[0] == '-':
             # option names must not be unicode
             a = str(a)
             optarg = None
             if a[1] == '-':
+                if a == '--':
+                    # We've received a standalone -- No more flags
+                    argsover = True
+                    continue
                 mutter("  got option %r" % a)
                 if '=' in a:
                     optname, optarg = a[2:].split('=', 1)
