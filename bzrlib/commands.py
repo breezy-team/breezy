@@ -1654,13 +1654,14 @@ class cmd_plugins(Command):
         for plugin in bzrlib.plugin.all_plugins:
             if hasattr(plugin, '__path__'):
                 print plugin.__path__[0]
+            elif hasattr(plugin, '__file__'):
+                print plugin.__file__
             else:
                 print `plugin`
+                
             d = getdoc(plugin)
             if d:
                 print '\t', d.split('\n')[0]
-
-        #pprint(bzrlib.plugin.all_plugins)
 
 
 

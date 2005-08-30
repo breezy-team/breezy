@@ -8,10 +8,17 @@ bzr development head
     * New expert command ``bzr find-merge-base`` for debugging merges.
 
 
+  ENHANCEMENTS:
+
+    * Much better merge support.
+
+
   BUG FIXES:
 
     * ``bzr upgrade`` no longer fails when trying to fix trees that
       mention revisions that are not present.
+
+    * Fixed bugs in listing plugins from ``bzr plugins``.
 
 
   CHANGES:
