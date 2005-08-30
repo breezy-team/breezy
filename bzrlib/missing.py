@@ -11,24 +11,6 @@ except NameError:
     from sets import Set as set
 
 
-def get_parent(branch):
-    """Get the last pull/push location.
-
-    TODO: This should probably be part of a Branch object.
-    """
-    import errno
-    _locs = ['parent', 'pull', 'x-pull']
-    loc = None
-    for l in _locs:
-        try:
-            stored_loc = branch.controlfile(l, 'rb').read().strip('\n')
-        except IOError, e:
-            if e.errno != errno.ENOENT:
-                raise
-        else:
-            return stored_loc
-
-
 def show_missing(br_local, br_remote, verbose=False, quiet=False):
     """Show the revisions which exist in br_remote, that 
     do not exist in br_local.

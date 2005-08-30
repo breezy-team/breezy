@@ -306,6 +306,7 @@ def test_suite():
 
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
+                   'bzrlib.selftest.test_parent',
                    'bzrlib.selftest.testinv',
                    'bzrlib.selftest.testfetch',
                    'bzrlib.selftest.versioning',

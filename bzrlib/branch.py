@@ -1280,6 +1280,25 @@ class Branch(object):
             self.unlock()
 
 
+    def get_parent(self):
+        """Return the parent location of the branch.
+
+        This is the default location for push/pull/missing.  The usual
+        pattern is that the user can override it by specifying a
+        location.
+        """
+        import errno
+        _locs = ['parent', 'pull', 'x-pull']
+        for l in _locs:
+            try:
+                return self.controlfile(l, 'r').read().strip('\n')
+            except IOError, e:
+                if e.errno != errno.ENOENT:
+                    raise
+        return None
+
+        
+
 
 class ScratchBranch(Branch):
     """Special test class: a branch that cleans up after itself.
@@ -1327,6 +1346,8 @@ class ScratchBranch(Branch):
         os.rmdir(base)
         copytree(self.base, base, symlinks=True)
         return ScratchBranch(base=base)
+
+
         
     def __del__(self):
         self.destroy()

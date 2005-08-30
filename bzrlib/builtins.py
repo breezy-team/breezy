@@ -1262,13 +1262,13 @@ class cmd_missing(Command):
 
     def run(self, remote=None, verbose=False, quiet=False):
         from bzrlib.errors import BzrCommandError
-        from bzrlib.missing import get_parent, show_missing
+        from bzrlib.missing import show_missing
 
         if verbose and quiet:
             raise BzrCommandError('Cannot pass both quiet and verbose')
 
         b = find_branch('.')
-        parent = get_parent(b)
+        parent = b.get_parent()
         if remote is None:
             if parent is None:
                 raise BzrCommandError("No missing location known or specified.")
