@@ -256,7 +256,7 @@ def common_ancestor(revision_a, revision_b, revision_source):
     elif b_closest[0] in a_closest:
         return b_closest[0]
     else:
-        raise AmbiguousBase((a_closest[0], b_closest[0]))
+        raise bzrlib.errors.AmbiguousBase((a_closest[0], b_closest[0]))
     return a_closest[0]
 
 class MultipleRevisionSources(object):
