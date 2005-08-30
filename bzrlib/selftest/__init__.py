@@ -28,11 +28,14 @@ import bzrlib.commands
 import bzrlib.trace
 import bzrlib.fetch
 
+
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
 
 from logging import debug, warning, error
 
+class CommandFailed(Exception):
+    pass
 
 class TestCase(unittest.TestCase):
     """Base class for bzr unit tests.
