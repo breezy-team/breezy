@@ -23,7 +23,7 @@
 
 import os
 
-from bzrlib.selftest import BzrTestBase, FunctionalTestCase
+from bzrlib.selftest import BzrTestBase, TestCaseInTempDir
 from bzrlib.branch import Branch
 
 import logging
@@ -31,7 +31,7 @@ logger = logging.getLogger('bzr.test.versioning')
 debug = logger.debug
 
 
-class TestVersioning(FunctionalTestCase):
+class TestVersioning(TestCaseInTempDir):
     
     def test_mkdir(self): 
         """Basic 'bzr mkdir' operation"""
@@ -133,7 +133,7 @@ class TestVersioning(FunctionalTestCase):
 
         
         
-class SubdirCommit(FunctionalTestCase):
+class SubdirCommit(TestCaseInTempDir):
 
     def test_subdir_commit(self):
         """Test committing a subdirectory, and committing within a directory."""

@@ -17,7 +17,7 @@
 import os
 from cStringIO import StringIO
 
-from bzrlib.selftest import BzrTestBase, InTempDir
+from bzrlib.selftest import BzrTestBase, TestCaseInTempDir
 from bzrlib.log import LogFormatter, show_log, LongLogFormatter
 from bzrlib.branch import Branch
 
@@ -48,7 +48,7 @@ class LogCatcher(LogFormatter):
         self.logs.append(le)
 
 
-class SimpleLogTest(InTempDir):
+class SimpleLogTest(TestCaseInTempDir):
 
     def checkDelta(self, delta, **kw):
         """Check the filenames touched by a delta are as expected."""

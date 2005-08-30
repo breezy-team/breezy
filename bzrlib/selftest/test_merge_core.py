@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from bzrlib.selftest import FunctionalTestCase, TestCase
+from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
 
@@ -467,7 +467,7 @@ class MergeTest(unittest.TestCase):
                      builder.apply_changeset, cset)
         builder.cleanup()
 
-class FunctionalMergeTest(FunctionalTestCase):
+class FunctionalMergeTest(TestCaseInTempDir):
 
     def test_trivial_star_merge(self):
         """Test that merges in a star shape Just Work.""" 

@@ -20,10 +20,10 @@ from bzrlib.branch import Branch
 import sys
 import os
 
-from bzrlib.selftest import InTempDir
+from bzrlib.selftest import TestCaseInTempDir
         
 
-class TestFetch(InTempDir):
+class TestFetch(TestCaseInTempDir):
     def runTest(self):
         from bzrlib.commit import commit
         from bzrlib.fetch import greedy_fetch, has_revision

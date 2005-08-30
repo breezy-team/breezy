@@ -157,8 +157,8 @@ class filteringVisitor(TestUtil.TestVisitor):
 
 def run_suite(suite, name='test', verbose=False, pattern=".*"):
     import shutil
-    from bzrlib.selftest import FunctionalTestCase
-    FunctionalTestCase._TEST_NAME = name
+    from bzrlib.selftest import TestCaseInTempDir
+    TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
     else:
@@ -173,8 +173,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*"):
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
     if result.wasSuccessful():
-        if FunctionalTestCase.TEST_ROOT:
-            shutil.rmtree(FunctionalTestCase.TEST_ROOT) 
+        if TestCaseInTempDir.TEST_ROOT:
+            shutil.rmtree(TestCaseInTempDir.TEST_ROOT) 
     else:
-        print "Failed tests working directories are in '%s'\n" % FunctionalTestCase.TEST_ROOT
+        print "Failed tests working directories are in '%s'\n" % TestCaseInTempDir.TEST_ROOT
     return result.wasSuccessful()

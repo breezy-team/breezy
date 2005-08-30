@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.selftest import InTempDir, TestCase
+from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.merge3 import Merge3
 
 def split_lines(t):

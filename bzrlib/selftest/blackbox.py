@@ -27,9 +27,9 @@ it's normally invoked.
 """
 
 import sys
-from bzrlib.selftest import InTempDir, BzrTestBase
+from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
 
-class ExternalBase(InTempDir):
+class ExternalBase(TestCaseInTempDir):
 
     def runbzr(self, args, retcode=0,backtick=False):
         try:

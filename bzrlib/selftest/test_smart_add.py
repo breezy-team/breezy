@@ -1,11 +1,11 @@
 import os
 import unittest
 
-from bzrlib.selftest import FunctionalTestCase, TestCase
+from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
 
-class TestSmartAdd(FunctionalTestCase):
+class TestSmartAdd(TestCaseInTempDir):
 
     def test_add_dot_from_root(self):
         """Test adding . from the root of the tree.""" 
@@ -71,7 +71,7 @@ class TestSmartAdd(FunctionalTestCase):
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
             
-class TestSmartAddBranch(FunctionalTestCase):
+class TestSmartAddBranch(TestCaseInTempDir):
     """Test smart adds with a specified branch."""
 
     def test_add_dot_from_root(self):
@@ -138,7 +138,7 @@ class TestSmartAddBranch(FunctionalTestCase):
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
-class TestAddCallbacks(FunctionalTestCase):
+class TestAddCallbacks(TestCaseInTempDir):
 
     def setUp(self):
         from bzrlib.inventory import InventoryEntry

@@ -37,7 +37,7 @@ class TestCase(unittest.TestCase):
     """Base class for bzr unit tests.
     
     Tests that need access to disk resources should subclass 
-    FunctionalTestCase not TestCase.
+    TestCaseInTempDir not TestCase.
 
     Error and debug log messages are redirected from their usual
     location into a temporary file, the contents of which can be
@@ -122,12 +122,48 @@ class TestCase(unittest.TestCase):
         if extras:
             self.fail("unexpected paths found in inventory: %r" % extras)
 
+    def apply_redirected(self, stdin=None, stdout=None, stderr=None,
+                         a_callable=None, *args, **kwargs):
+        """Call callable with redirected std io pipes.
+
+        Returns the return code."""
+        from StringIO import StringIO
+        if not callable(a_callable):
+            raise ValueError("a_callable must be callable.")
+        if stdin is None:
+            stdin = StringIO("")
+        if stdout is None:
+            stdout = self._log_file
+        if stderr is None:
+            stderr = self._log_file
+        real_stdin = sys.stdin
+        real_stdout = sys.stdout
+        real_stderr = sys.stderr
+        result = None
+        try:
+            sys.stdout = stdout
+            sys.stderr = stderr
+            sys.stdin = stdin
+            result = a_callable(*args, **kwargs)
+        finally:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr
+            sys.stdin = real_stdin
+        return result
+
+
 BzrTestBase = TestCase
 
      
-class FunctionalTestCase(TestCase):
-    """Base class for tests that perform function testing - running bzr,
-    using files on disk, and similar activities.
+class TestCaseInTempDir(TestCase):
+    """Derived class that runs a test within a temporary directory.
+
+    This is useful for tests that need to create a branch, etc.
+
+    The directory is created in a slightly complex way: for each
+    Python invocation, a new temporary top-level directory is created.
+    All test cases create their own directory within that.  If the
+    tests complete successfully, the directory is removed.
 
     InTempDir is an old alias for FunctionalTestCase.
     """
@@ -149,19 +185,19 @@ class FunctionalTestCase(TestCase):
         import shutil
         import tempfile
         
-        if FunctionalTestCase.TEST_ROOT is not None:
+        if TestCaseInTempDir.TEST_ROOT is not None:
             return
-        FunctionalTestCase.TEST_ROOT = os.path.abspath(
+        TestCaseInTempDir.TEST_ROOT = os.path.abspath(
                                  tempfile.mkdtemp(suffix='.tmp',
                                                   prefix=self._TEST_NAME + '-',
                                                   dir=os.curdir))
     
         # make a fake bzr directory there to prevent any tests propagating
         # up onto the source directory's real branch
-        os.mkdir(os.path.join(FunctionalTestCase.TEST_ROOT, '.bzr'))
+        os.mkdir(os.path.join(TestCaseInTempDir.TEST_ROOT, '.bzr'))
 
     def setUp(self):
-        super(FunctionalTestCase, self).setUp()
+        super(TestCaseInTempDir, self).setUp()
         import os
         self._make_test_root()
         self._currentdir = os.getcwdu()
@@ -172,7 +208,7 @@ class FunctionalTestCase(TestCase):
     def tearDown(self):
         import os
         os.chdir(self._currentdir)
-        super(FunctionalTestCase, self).tearDown()
+        super(TestCaseInTempDir, self).tearDown()
 
     def _formcmd(self, cmd):
         if isinstance(cmd, basestring):
@@ -249,38 +285,6 @@ class FunctionalTestCase(TestCase):
                 print >>f, "contents of", name
                 f.close()
                 
-
-    def apply_redirected(self, stdin=None, stdout=None, stderr=None,
-                         a_callable=None, *args, **kwargs):
-        """Call callable with redirected std io pipes.
-
-        Returns the return code."""
-        from StringIO import StringIO
-        if not callable(a_callable):
-            raise ValueError("a_callable must be callable.")
-        if stdin is None:
-            stdin = StringIO("")
-        if stdout is None:
-            stdout = self._log_file
-        if stderr is None:
-            stderr = self._log_file
-        real_stdin = sys.stdin
-        real_stdout = sys.stdout
-        real_stderr = sys.stderr
-        result = None
-        try:
-            sys.stdout = stdout
-            sys.stderr = stderr
-            sys.stdin = stdin
-            result = a_callable(*args, **kwargs)
-        finally:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
-            sys.stdin = real_stdin
-        return result
-
-
-InTempDir = FunctionalTestCase
 
 
 class MetaTestLog(TestCase):
