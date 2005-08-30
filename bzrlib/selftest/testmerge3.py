@@ -82,12 +82,12 @@ MERGED_RESULT = split_lines("""     The Way that can be told of is not the etern
      The two are the same,
      But after they are produced,
        they have different names.
-<<<<<<<< LAO
-========
+<<<<<<< LAO
+=======
      
        -- The Way of Lao-Tzu, tr. Wing-tsit Chan
 
->>>>>>>> TAO
+>>>>>>> TAO
 """)
 
 class TestMerge3(TestCase):

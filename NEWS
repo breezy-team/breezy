@@ -12,6 +12,10 @@ bzr development head
 
     * Much better merge support.
 
+    * merge3 conflicts are now reported with markers like '<<<<<<<'
+      (seven characters) which is the same as CVS and pleases things
+      like emacs smerge.
+
 
   BUG FIXES:
 
