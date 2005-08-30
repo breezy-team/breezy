@@ -1297,6 +1297,21 @@ class Branch(object):
                     raise
         return None
 
+
+    def set_parent(self, url):
+        # TODO: Maybe delete old location files?
+        from bzrlib.atomicfile import AtomicFile
+        self.lock_write()
+        try:
+            f = AtomicFile(self.controlfilename('parent'))
+            try:
+                f.write(url + '\n')
+                f.commit()
+            finally:
+                f.close()
+        finally:
+            self.unlock()
+
         
 
 

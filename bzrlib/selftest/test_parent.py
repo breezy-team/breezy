@@ -31,3 +31,7 @@ class TestParent(TestCaseInTempDir):
     def test_set_get_parent(self):
         """Set and then re-get the parent"""
         b = Branch('.', init=True)
+        url = 'http://bazaar-ng.org/bzr/bzr.dev'
+        b.set_parent(url)
+        self.assertEquals(b.get_parent(), url)
+        
