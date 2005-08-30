@@ -1116,15 +1116,28 @@ class cmd_find_merge_base(Command):
     hidden = True
     
     def run(self, branch, other):
+        from bzrlib.revision import common_ancestor, MultipleRevisionSources
+        
         branch1 = find_branch(branch)
         branch2 = find_branch(other)
 
-        base_revno, base_revid = branch1.common_ancestor(branch2)
+        history_1 = branch1.revision_history()
+        history_2 = branch2.revision_history()
+
+        last1 = branch1.last_patch()
+        last2 = branch2.last_patch()
+
+        source = MultipleRevisionSources(branch1, branch2)
+        
+        base_rev_id = common_ancestor(last1, last2, source)
+
+        print 'merge base is revision %s' % base_rev_id
+        
+        return
 
         if base_revno is None:
             raise bzrlib.errors.UnrelatedBranches()
 
-        print 'merge base is revision %s' % base_revid
         print ' r%-6d in %s' % (base_revno, branch)
 
         other_revno = branch2.revision_id_to_revno(base_revid)
