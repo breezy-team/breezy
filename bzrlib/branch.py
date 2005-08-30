@@ -1473,6 +1473,7 @@ def copy_branch(branch_from, to_location, revision=None):
     br_to.update_revisions(branch_from, stop_revision=revno)
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)
+    
     from_location = pull_loc(branch_from)
-    br_to.controlfile("x-pull", "wb").write(from_location + "\n")
+    br_to.set_parent(pull_loc(branch_from))
 

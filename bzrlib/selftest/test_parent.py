@@ -15,9 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-
+import os
 from bzrlib.selftest import TestCaseInTempDir
-from bzrlib.branch import Branch
+from bzrlib.branch import Branch, copy_branch
 
 
 
@@ -34,4 +34,22 @@ class TestParent(TestCaseInTempDir):
         url = 'http://bazaar-ng.org/bzr/bzr.dev'
         b.set_parent(url)
         self.assertEquals(b.get_parent(), url)
+
+    def test_branch_sets_parent(self):
+        """The branch command should set the new branch's parent"""
+        from bzrlib.commands import run_bzr
+
+        os.mkdir('from')
+        branch_from = Branch('from', init=True)
+        file('from/foo', 'wt').write('contents of foo')
+        branch_from.add('foo')
+        branch_from.commit('initial commit')
         
+        os.mkdir('to')
+        copy_branch(branch_from, 'to', None)
+
+        branch_to = Branch('to')
+        abspath = os.path.abspath('from')
+        self.assertEquals(branch_to.get_parent(), abspath)
+        
+
