@@ -1,5 +1,0 @@
-#! /bin/sh -ex
-
-root=`bzr root`
-
-find $root \! -perm -0444 
