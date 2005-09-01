@@ -14,6 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: Perhaps rather than mapping options and arguments back and
+# forth, we should just pass in the whole argv, and allow
+# ExternalCommands to handle it differently to internal commands?
+
 
 from bzrlib.commands import Command
 
@@ -21,20 +25,12 @@ from bzrlib.commands import Command
 class ExternalCommand(Command):
     """Class to wrap external commands.
 
-    We cheat a little here, when get_cmd_class() calls us we actually
-    give it back an object we construct that has the appropriate path,
-    help, options etc for the specified command.
-
-    When run_bzr() tries to instantiate that 'class' it gets caught by
-    the __call__ method, which we override to call the Command.__init__
-    method. That then calls our run method which is pretty straight
-    forward.
-
-    The only wrinkle is that we have to map bzr's dictionary of options
-    and arguments back into command line options and arguments for the
-    script.
+    The only wrinkle is that we have to map bzr's dictionary of
+    options and arguments back into command line options and arguments
+    for the script.
     """
 
+    @classmethod
     def find_command(cls, cmd):
         import os.path
         bzrpath = os.environ.get('BZRPATH', '')
@@ -46,7 +42,6 @@ class ExternalCommand(Command):
 
         return None
 
-    find_command = classmethod(find_command)
 
     def __init__(self, path):
         self.path = path
