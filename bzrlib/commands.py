@@ -272,6 +272,34 @@ class Command(object):
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
 
+
+    def run_argv(self, argv):
+        """Parse command line and run."""
+        args, opts = parse_args(argv)
+
+        if 'help' in opts:  # e.g. bzr add --help
+            from bzrlib.help import help_on_command
+            help_on_command(self.name())
+            return 0
+
+        # check options are reasonable
+        allowed = self.takes_options
+        for oname in opts:
+            if oname not in allowed:
+                raise BzrCommandError("option '--%s' is not allowed for command %r"
+                                      % (oname, self.name()))
+
+        # mix arguments and options into one dictionary
+        cmdargs = _match_argform(self.name(), self.takes_args, args)
+        cmdopts = {}
+        for k, v in opts.items():
+            cmdopts[k.replace('-', '_')] = v
+
+        all_cmd_args = cmdargs.copy()
+        all_cmd_args.update(cmdopts)
+
+        return self.run(**all_cmd_args)
+
     
     def run(self):
         """Actually run the command.
@@ -577,7 +605,7 @@ def run_bzr(argv):
     # to load plugins before doing other command parsing so that they
     # can override commands, but this needs to happen first.
 
-    for a in argv[:]:
+    for a in argv:
         if a == '--profile':
             opt_profile = True
         elif a == '--no-plugins':
@@ -588,58 +616,32 @@ def run_bzr(argv):
             break
         argv.remove(a)
 
+    if (not argv) or (argv[0] == '--help'):
+        from bzrlib.help import help
+        if len(argv) > 1:
+            help(argv[1])
+        else:
+            help()
+        return 0
+
+    if argv[0] == '--version':
+        from bzrlib.builtins import show_version
+        show_version()
+        return 0
+        
     if not opt_no_plugins:
         from bzrlib.plugin import load_plugins
         load_plugins()
 
-    args, opts = parse_args(argv)
-
-    if 'help' in opts:
-        from bzrlib.help import help
-        if args:
-            help(args[0])
-        else:
-            help()
-        return 0            
-        
-    if 'version' in opts:
-        from bzrlib.builtins import show_version
-        show_version()
-        return 0
-    
-    if not args:
-        from bzrlib.help import help
-        help(None)
-        return 0
-    
-    cmd = str(args.pop(0))
+    cmd = str(argv.pop(0))
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
 
-    # check options are reasonable
-    allowed = cmd_obj.takes_options
-    for oname in opts:
-        if oname not in allowed:
-            raise BzrCommandError("option '--%s' is not allowed for command %r"
-                                  % (oname, cmd))
-
-    # mix arguments and options into one dictionary
-    cmdargs = _match_argform(cmd, cmd_obj.takes_args, args)
-    cmdopts = {}
-    for k, v in opts.items():
-        cmdopts[k.replace('-', '_')] = v
-
-    all_cmd_args = cmdargs.copy()
-    all_cmd_args.update(cmdopts)
-
     if opt_profile:
-        ret = apply_profiled(cmd_obj.run, **all_cmd_args)
+        ret = apply_profiled(cmd_obj.run_argv, argv)
     else:
-        ret = cmd_obj.run(**all_cmd_args)
-
-    if ret is None:
-        ret = 0
-    return ret
+        ret = cmd_obj.run_argv(argv)
+    return ret or 0
 
 
 def main(argv):
