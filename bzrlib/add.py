@@ -51,7 +51,6 @@ def _prepare_file_list(file_list):
     if not file_list:
         file_list = ['.']
     file_list = list(file_list)
-    assert not isinstance(file_list, basestring)
     return file_list
 
 
