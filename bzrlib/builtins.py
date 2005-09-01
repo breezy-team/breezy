@@ -959,7 +959,7 @@ class cmd_commit(Command):
             stdout = sys.stdout
             catcher = cStringIO.StringIO()
             sys.stdout = catcher
-            cmd_status({"file_list":selected_list}, {})
+            cmd_status().run({"file_list":selected_list}, {})
             info = catcher.getvalue()
             sys.stdout = stdout
             message = get_text_message(info)

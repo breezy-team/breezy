@@ -105,6 +105,7 @@ class TestCase(unittest.TestCase):
                                        bzrlib.commands.run_bzr, args)
         self.assertEquals(result, retcode)
         
+        
     def check_inventory_shape(self, inv, shape):
         """
         Compare an inventory to a list of expected names.

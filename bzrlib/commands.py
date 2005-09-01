@@ -25,8 +25,11 @@
 # would help with validation and shell completion.
 
 
+
 import sys
 import os
+from warnings import warn
+from inspect import getdoc
 
 import bzrlib
 import bzrlib.trace
@@ -160,24 +163,34 @@ def get_merge_type(typestring):
         msg = "No known merge type %s. Supported types are:\n%s" %\
             (typestring, type_list)
         raise BzrCommandError(msg)
-    
 
 
-def _get_cmd_dict(plugins_override=True):
+def _builtin_commands():
     import bzrlib.builtins
-    
-    d = {}
+    r = {}
     builtins = bzrlib.builtins.__dict__
     for name in builtins:
         if name.startswith("cmd_"):
-            d[_unsquish_command_name(name)] = builtins[name]
-    # If we didn't load plugins, the plugin_cmds dict will be empty
+            real_name = _unsquish_command_name(name)        
+            r[real_name] = builtins[name]
+    return r
+
+            
+
+def builtin_command_names():
+    """Return list of builtin command names."""
+    return _builtin_commands().keys()
+    
+
+def plugin_command_names():
+    return plugin_cmds.keys()
+
+
+def _get_cmd_dict(plugins_override=True):
+    """Return name->class mapping for all commands."""
+    d = _builtin_commands()
     if plugins_override:
         d.update(plugin_cmds)
-    else:
-        d2 = plugin_cmds.copy()
-        d2.update(d)
-        d = d2
     return d
 
     
@@ -187,37 +200,53 @@ def get_all_cmds(plugins_override=True):
         yield k,v
 
 
-def get_cmd_class(cmd, plugins_override=True):
+def get_cmd_object(cmd_name, plugins_override=True):
     """Return the canonical name and command class for a command.
+
+    plugins_override
+        If true, plugin commands can override builtins.
     """
-    cmd = str(cmd)                      # not unicode
+    cmd_name = str(cmd_name)            # not unicode
 
     # first look up this command under the specified name
     cmds = _get_cmd_dict(plugins_override=plugins_override)
-    mutter("all commands: %r", cmds.keys())
     try:
-        return cmd, cmds[cmd]
+        return cmds[cmd_name]()
     except KeyError:
         pass
 
     # look for any command which claims this as an alias
-    for cmdname, cmdclass in cmds.iteritems():
-        if cmd in cmdclass.aliases:
-            return cmdname, cmdclass
+    for real_cmd_name, cmd_class in cmds.iteritems():
+        if cmd_name in cmd_class.aliases:
+            return cmd_class()
 
-    cmdclass = ExternalCommand.find_command(cmd)
-    if cmdclass:
-        return cmd, cmdclass
+    cmd_obj = ExternalCommand.find_command(cmd_name)
+    if cmd_obj:
+        return cmd_obj
 
-    raise BzrCommandError("unknown command %r" % cmd)
+    raise BzrCommandError("unknown command %r" % cmd_name)
 
 
 class Command(object):
     """Base class for commands.
 
+    Commands are the heart of the command-line bzr interface.
+
+    The command object mostly handles the mapping of command-line
+    parameters into one or more bzrlib operations, and of the results
+    into textual output.
+
+    Commands normally don't have any state.  All their arguments are
+    passed in to the run method.  (Subclasses may take a different
+    policy if the behaviour of the instance needs to depend on e.g. a
+    shell plugin and not just its Python class.)
+
     The docstring for an actual command should give a single-line
     summary, then a complete description of the command.  A grammar
     description will be inserted.
+
+    aliases
+        Other accepted names for this command.
 
     takes_args
         List of argument forms, marked with whether they are optional,
@@ -227,7 +256,8 @@ class Command(object):
         List of options that may be given for this command.
 
     hidden
-        If true, this command isn't advertised.
+        If true, this command isn't advertised.  This is typically
+        for commands intended for expert users.
     """
     aliases = []
     
@@ -236,32 +266,33 @@ class Command(object):
 
     hidden = False
     
-    def __init__(self, options, arguments):
-        """Construct and run the command.
-
-        Sets self.status to the return value of run()."""
-        assert isinstance(options, dict)
-        assert isinstance(arguments, dict)
-        cmdargs = options.copy()
-        cmdargs.update(arguments)
+    def __init__(self):
+        """Construct an instance of this command."""
         if self.__doc__ == Command.__doc__:
-            from warnings import warn
             warn("No help message set for %r" % self)
-        self.status = self.run(**cmdargs)
-        if self.status is None:
-            self.status = 0
 
     
-    def run(self, *args, **kwargs):
-        """Override this in sub-classes.
+    def run(self):
+        """Actually run the command.
 
         This is invoked with the options and arguments bound to
         keyword parameters.
 
-        Return 0 or None if the command was successful, or a shell
-        error code if not.
+        Return 0 or None if the command was successful, or a non-zero
+        shell error code if not.  It's OK for this method to allow
+        an exception to raise up.
         """
         raise NotImplementedError()
+
+
+    def help(self):
+        """Return help message for this class."""
+        if self.__doc__ is Command.__doc__:
+            return None
+        return getdoc(self)
+
+    def name(self):
+        return _unsquish_command_name(self.__class__.__name__)
 
 
 class ExternalCommand(Command):
@@ -320,7 +351,12 @@ class ExternalCommand(Command):
         Command.__init__(self, options, arguments)
         return self
 
+    def name(self):
+        raise NotImplementedError()
+
     def run(self, **kargs):
+        raise NotImplementedError()
+        
         opts = []
         args = []
 
@@ -570,6 +606,31 @@ def _match_argform(cmd, takes_args, args):
 
 
 
+def apply_profiled(the_callable, *args, **kwargs):
+    import hotshot
+    import tempfile
+    pffileno, pfname = tempfile.mkstemp()
+    try:
+        prof = hotshot.Profile(pfname)
+        try:
+            ret = prof.runcall(the_callable, *args, **kwargs) or 0
+        finally:
+            prof.close()
+
+        import hotshot.stats
+        stats = hotshot.stats.load(pfname)
+        #stats.strip_dirs()
+        stats.sort_stats('time')
+        ## XXX: Might like to write to stderr or the trace file instead but
+        ## print_stats seems hardcoded to stdout
+        stats.print_stats(20)
+
+        return ret
+    finally:
+        os.close(pffileno)
+        os.remove(pfname)
+
+
 def run_bzr(argv):
     """Execute a command.
 
@@ -640,45 +701,32 @@ def run_bzr(argv):
     
     cmd = str(args.pop(0))
 
-    canonical_cmd, cmd_class = \
-                   get_cmd_class(cmd, plugins_override=not opt_builtin)
+    cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
 
     # check options are reasonable
-    allowed = cmd_class.takes_options
+    allowed = cmd_obj.takes_options
     for oname in opts:
         if oname not in allowed:
             raise BzrCommandError("option '--%s' is not allowed for command %r"
                                   % (oname, cmd))
 
     # mix arguments and options into one dictionary
-    cmdargs = _match_argform(cmd, cmd_class.takes_args, args)
+    cmdargs = _match_argform(cmd, cmd_obj.takes_args, args)
     cmdopts = {}
     for k, v in opts.items():
         cmdopts[k.replace('-', '_')] = v
 
+    all_cmd_args = cmdargs.copy()
+    all_cmd_args.update(cmdopts)
+
     if opt_profile:
-        import hotshot, tempfile
-        pffileno, pfname = tempfile.mkstemp()
-        try:
-            prof = hotshot.Profile(pfname)
-            ret = prof.runcall(cmd_class, cmdopts, cmdargs) or 0
-            prof.close()
-
-            import hotshot.stats
-            stats = hotshot.stats.load(pfname)
-            #stats.strip_dirs()
-            stats.sort_stats('time')
-            ## XXX: Might like to write to stderr or the trace file instead but
-            ## print_stats seems hardcoded to stdout
-            stats.print_stats(20)
-            
-            return ret.status
-
-        finally:
-            os.close(pffileno)
-            os.remove(pfname)
+        ret = apply_profiled(cmd_obj.run, **all_cmd_args)
     else:
-        return cmd_class(cmdopts, cmdargs).status 
+        ret = cmd_obj.run(**all_cmd_args)
+
+    if ret is None:
+        ret = 0
+    return ret
 
 
 def main(argv):
