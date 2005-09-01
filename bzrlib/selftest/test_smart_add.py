@@ -13,7 +13,7 @@ class TestSmartAdd(TestCaseInTempDir):
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
         branch = Branch(".", init=True)
-        smart_add((".",), False, True)
+        smart_add((".",), recurse=True)
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
@@ -24,7 +24,7 @@ class TestSmartAdd(TestCaseInTempDir):
         self.build_tree(paths)
         branch = Branch(".", init=True)
         os.chdir("original")
-        smart_add((".",), False, True)
+        smart_add((".",), recurse=True)
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
@@ -36,13 +36,14 @@ class TestSmartAdd(TestCaseInTempDir):
                         "branch/original/file2")
         self.build_tree(branch_paths)
         branch = Branch("branch", init=True)
-        smart_add(("branch",), False, True)
+        smart_add(("branch",))
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
     def test_add_above_tree_preserves_tree(self):
         """Test nested trees are not affect by an add above them."""
-        from bzrlib.add import smart_add
+        from bzrlib.add import smart_add, add_reporter_null
+        
         paths = ("original/", "original/file1", "original/file2")
         child_paths = ("path",)
         full_child_paths = ("original/child", "original/child/path")
@@ -52,7 +53,7 @@ class TestSmartAdd(TestCaseInTempDir):
         self.build_tree(build_paths)
         branch = Branch(".", init=True)
         child_branch = Branch("original/child", init=True)
-        smart_add((".",), False, True)
+        smart_add((".",), True, add_reporter_null)
         for path in paths:
             self.assertNotEqual((path, branch.inventory.path2id(path)),
                                 (path, None))
@@ -68,7 +69,7 @@ class TestSmartAdd(TestCaseInTempDir):
         paths = ("file1", "file2")
         self.build_tree(paths)
         branch = Branch(".", init=True)
-        smart_add(paths, False, True)
+        smart_add(paths)
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
             
@@ -81,7 +82,7 @@ class TestSmartAddBranch(TestCaseInTempDir):
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
         branch = Branch(".", init=True)
-        smart_add_branch(branch, (".",), False, True)
+        smart_add_branch(branch, (".",))
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
@@ -92,7 +93,7 @@ class TestSmartAddBranch(TestCaseInTempDir):
         self.build_tree(paths)
         branch = Branch(".", init=True)
         os.chdir("original")
-        smart_add_branch(branch, (".",), False, True)
+        smart_add_branch(branch, (".",))
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
@@ -104,7 +105,7 @@ class TestSmartAddBranch(TestCaseInTempDir):
                         "branch/original/file2")
         self.build_tree(branch_paths)
         branch = Branch("branch", init=True)
-        smart_add_branch(branch, ("branch",), False, True)
+        smart_add_branch(branch, ("branch",))
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
@@ -119,7 +120,7 @@ class TestSmartAddBranch(TestCaseInTempDir):
         self.build_tree(build_paths)
         branch = Branch(".", init=True)
         child_branch = Branch("original/child", init=True)
-        smart_add_branch(branch, (".",), False, True)
+        smart_add_branch(branch, (".",))
         for path in paths:
             self.assertNotEqual((path, branch.inventory.path2id(path)),
                                 (path, None))
@@ -135,7 +136,7 @@ class TestSmartAddBranch(TestCaseInTempDir):
         paths = ("file1", "file2")
         self.build_tree(paths)
         branch = Branch(".", init=True)
-        smart_add_branch(branch, paths, False, True)
+        smart_add_branch(branch, paths)
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
@@ -147,13 +148,13 @@ class TestAddCallbacks(TestCaseInTempDir):
         self.entry = InventoryEntry("id", "name", "file", None)
 
     def test_null_callback(self):
-        from bzrlib.add import _NullAddCallback
-        _NullAddCallback('path', 'file', self.entry)
+        from bzrlib.add import add_reporter_null
+        add_reporter_null('path', 'file', self.entry)
 
     def test_print_callback(self):
-        from bzrlib.add import _PrintAddCallback
+        from bzrlib.add import add_reporter_print
         from StringIO import StringIO
         stdout = StringIO()
-        self.apply_redirected(None, stdout, None, _PrintAddCallback,
+        self.apply_redirected(None, stdout, None, add_reporter_print,
                               'path', 'file', self.entry)
         self.assertEqual(stdout.getvalue(), "added path\n")

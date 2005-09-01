@@ -35,10 +35,12 @@ def glob_expand_for_win32(file_list):
     return expanded_file_list
 
 
-def _NullAddCallback(path, kind, entry):
+def add_reporter_null(path, kind, entry):
+    """Absorb add reports and do nothing."""
     pass
 
-def _PrintAddCallback(path, kind, entry):
+def add_reporter_print(path, kind, entry):
+    """Print a line to stdout for each file that's added."""
     print "added", quotefn(path)
     
 def _prepare_file_list(file_list):
@@ -52,24 +54,29 @@ def _prepare_file_list(file_list):
     assert not isinstance(file_list, basestring)
     return file_list
 
-def smart_add(file_list, verbose=True, recurse=True, callback=_NullAddCallback):
+
+def smart_add(file_list, recurse=True, reporter=add_reporter_null):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
     For the specific behaviour see the help for cmd_add().
+
+    Returns the number of files added.
     """
     file_list = _prepare_file_list(file_list)
     b = Branch(file_list[0], find_root=True)
-    return smart_add_branch(b, file_list, verbose, recurse)
+    return smart_add_branch(b, file_list, recurse, reporter)
+
         
-def smart_add_branch(branch, file_list, verbose=True, recurse=True,
-                     callback=_NullAddCallback):
+def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
     For the specific behaviour see the help for cmd_add().
 
     This yields a sequence of (path, kind, file_id) for added files.
+
+    Returns the number of files added.
     """
     import os
     import sys
@@ -77,6 +84,8 @@ def smart_add_branch(branch, file_list, verbose=True, recurse=True,
     from bzrlib.errors import BadFileKindError, ForbiddenFileError
     import bzrlib.branch
     import bzrlib.osutils
+
+    assert isinstance(recurse, bool)
 
     file_list = _prepare_file_list(file_list)
     user_list = file_list[:]
@@ -124,7 +133,7 @@ def smart_add_branch(branch, file_list, verbose=True, recurse=True,
             entry = inv.add_path(rf, kind=kind)
             mutter("added %r kind %r file_id={%s}" % (rf, kind, entry.file_id))
             count += 1 
-            callback(rf, kind, entry)
+            reporter(rf, kind, entry)
 
         if kind == 'directory' and recurse and not sub_tree:
             for subf in os.listdir(af):
@@ -138,10 +147,9 @@ def smart_add_branch(branch, file_list, verbose=True, recurse=True,
                     file_list.append(branch.abspath(subp))
 
 
+    mutter('added %d entries', count)
+    
     if count > 0:
-        if verbose:
-            note('added %d' % count)
         branch._write_inventory(inv)
-    else:
-        note("nothing new to add")
-        # should this return 1 to the shell?
+
+    return count

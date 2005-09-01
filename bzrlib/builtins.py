@@ -151,9 +151,9 @@ class cmd_add(Command):
     takes_options = ['verbose', 'no-recurse']
     
     def run(self, file_list, verbose=False, no_recurse=False):
-        from bzrlib.add import smart_add, _PrintAddCallback
-        smart_add(file_list, verbose, not no_recurse,
-                  callback=_PrintAddCallback)
+        # verbose currently has no effect
+        from bzrlib.add import smart_add, add_reporter_print
+        smart_add(file_list, not no_recurse, add_reporter_print)
 
 
 
