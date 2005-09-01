@@ -2,10 +2,11 @@
 Opportunities for improvement on GNU Arch
 ***************************************** 
 
+[note that this document is rather out of date in 2005-08]
 
-Bazaar-NG is based on the GNU Arch system, and inherits a lot of its
-design from Arch.  However, there are several things we will change in
-Baz to (we hope) improve the user experience.
+GNU Arch is one influence on bazaar-ng.  There are several things we
+would change from Arch in Bazaar to (we hope) improve the user
+experience.
 
 The core design of Arch is good, brilliant even.  It can scale from
 small projects too large ones, and is a good foundation for building
