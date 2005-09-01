@@ -1144,11 +1144,15 @@ class cmd_find_merge_base(Command):
 class cmd_merge(Command):
     """Perform a three-way merge.
     
-    The branch is the branch you will merge from.  By default, it will merge
-    the latest revision.  If you specify a revision, that revision will be
-    merged.  If you specify two revisions, the first will be used as a BASE, 
-    and the second one as OTHER.  Revision numbers are always relative to the
-    specified branch.
+    The branch is the branch you will merge from.  By default, it will
+    merge the latest revision.  If you specify a revision, that
+    revision will be merged.  If you specify two revisions, the first
+    will be used as a BASE, and the second one as OTHER.  Revision
+    numbers are always relative to the specified branch.
+
+    By default bzr will try to merge in all new work from the other
+    branch, automatically determining an appropriate base.  If this
+    fails, you may need to give an explicit base.
     
     Examples:
 
@@ -1188,8 +1192,17 @@ class cmd_merge(Command):
                         "Merge doesn't permit that revision specifier.")
                 base = (branch, revision[0])
                 other = (branch, revision[1])
-            
-        merge(other, base, check_clean=(not force), merge_type=merge_type)
+
+        try:
+            merge(other, base, check_clean=(not force), merge_type=merge_type)
+        except bzrlib.errors.AmbiguousBase, e:
+            m = ("sorry, bzr can't determine the write merge base yet\n"
+                 "candidates are:\n  "
+                 + "\n  ".join(e.bases)
+                 + "\n"
+                 "please specify an explicit base with -r,\n"
+                 "and (if you want) report this to the bzr developers\n")
+            log_error(m)
 
 
 class cmd_revert(Command):
