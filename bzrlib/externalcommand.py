@@ -19,16 +19,13 @@
 # ExternalCommands to handle it differently to internal commands?
 
 
+import os
+import sys
 from bzrlib.commands import Command
 
 
 class ExternalCommand(Command):
-    """Class to wrap external commands.
-
-    The only wrinkle is that we have to map bzr's dictionary of
-    options and arguments back into command line options and arguments
-    for the script.
-    """
+    """Class to wrap external commands."""
 
     @classmethod
     def find_command(cls, cmd):
@@ -46,58 +43,20 @@ class ExternalCommand(Command):
     def __init__(self, path):
         self.path = path
 
-        pipe = os.popen('%s --bzr-usage' % path, 'r')
-        self.takes_options = pipe.readline().split()
-
-        for opt in self.takes_options:
-            if not opt in OPTIONS:
-                raise BzrError("Unknown option '%s' returned by external command %s"
-                               % (opt, path))
-
-        # TODO: Is there any way to check takes_args is valid here?
-        self.takes_args = pipe.readline().split()
-
-        if pipe.close() is not None:
-            raise BzrError("Failed funning '%s --bzr-usage'" % path)
-
-        pipe = os.popen('%s --bzr-help' % path, 'r')
-        self.__doc__ = pipe.read()
-        if pipe.close() is not None:
-            raise BzrError("Failed funning '%s --bzr-help'" % path)
-
-    def __call__(self, options, arguments):
-        Command.__init__(self, options, arguments)
-        return self
-
+ 
     def name(self):
-        raise NotImplementedError()
-
-    def run(self, **kargs):
-        raise NotImplementedError()
-        
-        opts = []
-        args = []
-
-        keys = kargs.keys()
-        keys.sort()
-        for name in keys:
-            optname = name.replace('_','-')
-            value = kargs[name]
-            if OPTIONS.has_key(optname):
-                # it's an option
-                opts.append('--%s' % optname)
-                if value is not None and value is not True:
-                    opts.append(str(value))
-            else:
-                # it's an arg, or arg list
-                if type(value) is not list:
-                    value = [value]
-                for v in value:
-                    if v is not None:
-                        args.append(str(v))
-
-        self.status = os.spawnv(os.P_WAIT, self.path, [self.path] + opts + args)
-        return self.status
+        return self.path.split(os.sep)[-1]
 
 
+    def run(self, *args, **kwargs):
+        raise NotImplementedError('should not be called on %r' % self)
 
+
+    def run_argv(self, argv):
+        return os.spawnv(os.P_WAIT, self.path, [self.path] + argv)
+
+
+    def help(self):
+        m = 'external command from %s\n\n' % self.path
+        pipe = os.popen('%s --help' % self.path)
+        return m + pipe.read()
