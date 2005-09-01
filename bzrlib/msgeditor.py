@@ -40,18 +40,19 @@ def _get_editor():
 
 
 def _run_editor(filename):
-    """Try to execute an editor to edit the commit message. Returns True on success,
-    False on failure"""
+    """Try to execute an editor to edit the commit message."""
     for e in _get_editor():
-        x = os.spawnvp(os.P_WAIT, e, (e, filename))
+        edargs = e.split(' ')
+        x = os.spawnvp(os.P_WAIT, edargs[0],
+                       edargs + [filename])
         if x == 0:
             return True
         elif x == 127:
             continue
         else:
             break
-    raise BzrError("Could not start any editor. Please specify $EDITOR or use ~/.bzr.conf/editor")
-    return False
+    raise BzrError("Could not start any editor. "
+                   "Please specify $EDITOR or use ~/.bzr.conf/editor")
                           
 
 def edit_commit_message(infotext, ignoreline=None):

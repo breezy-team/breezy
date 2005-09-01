@@ -24,6 +24,8 @@ bzr development head
 
     * Fixed bugs in listing plugins from ``bzr plugins``.
 
+    * Fix case of $EDITOR containing options for the editor.
+
 
   CHANGES:
 
