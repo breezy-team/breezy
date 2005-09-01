@@ -949,7 +949,7 @@ class cmd_commit(Command):
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False):
         from bzrlib.errors import PointlessCommit
-        from bzrlib.osutils import get_text_message
+        from bzrlib.msgeditor import edit_commit_message
 
         ## Warning: shadows builtin file()
         if not message and not file:
@@ -962,7 +962,7 @@ class cmd_commit(Command):
             cmd_status().run(file_list=selected_list)
             info = catcher.getvalue()
             sys.stdout = stdout
-            message = get_text_message(info)
+            message = edit_commit_message(info)
             
             if message is None:
                 raise BzrCommandError("please specify a commit message",
