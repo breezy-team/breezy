@@ -143,17 +143,15 @@ class TestCase(unittest.TestCase):
         real_stdin = sys.stdin
         real_stdout = sys.stdout
         real_stderr = sys.stderr
-        result = None
         try:
             sys.stdout = stdout
             sys.stderr = stderr
             sys.stdin = stdin
-            result = a_callable(*args, **kwargs)
+            return a_callable(*args, **kwargs)
         finally:
             sys.stdout = real_stdout
             sys.stderr = real_stderr
             sys.stdin = real_stdin
-        return result
 
 
 BzrTestBase = TestCase
