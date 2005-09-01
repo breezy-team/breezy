@@ -950,23 +950,22 @@ class cmd_commit(Command):
             unchanged=False):
         from bzrlib.errors import PointlessCommit
         from bzrlib.msgeditor import edit_commit_message
+        from bzrlib.status import show_status
+        from cStringIO import StringIO
 
-        ## Warning: shadows builtin file()
-        if not message and not file:
-            # FIXME: Ugly; change status code to send to a provided function?
+        b = find_branch('.')
+        if selected_list:
+            selected_list = [b.relpath(s) for s in selected_list]
             
-            import cStringIO
-            stdout = sys.stdout
-            catcher = cStringIO.StringIO()
-            sys.stdout = catcher
-            cmd_status().run(file_list=selected_list)
-            info = catcher.getvalue()
-            sys.stdout = stdout
-            message = edit_commit_message(info)
+        if not message and not file:
+            catcher = StringIO()
+            show_status(b, specific_files=selected_list,
+                        to_file=catcher)
+            message = edit_commit_message(catcher.getvalue())
             
             if message is None:
-                raise BzrCommandError("please specify a commit message",
-                                      ["use either --message or --file"])
+                raise BzrCommandError("please specify a commit message"
+                                      " with either --message or --file")
         elif message and file:
             raise BzrCommandError("please specify either --message or --file")
         
@@ -974,10 +973,6 @@ class cmd_commit(Command):
             import codecs
             message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
-        b = find_branch('.')
-        if selected_list:
-            selected_list = [b.relpath(s) for s in selected_list]
-            
         try:
             b.commit(message, verbose=verbose,
                      specific_files=selected_list,
