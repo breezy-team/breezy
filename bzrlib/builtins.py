@@ -1196,7 +1196,7 @@ class cmd_merge(Command):
         try:
             merge(other, base, check_clean=(not force), merge_type=merge_type)
         except bzrlib.errors.AmbiguousBase, e:
-            m = ("sorry, bzr can't determine the write merge base yet\n"
+            m = ("sorry, bzr can't determine the right merge base yet\n"
                  "candidates are:\n  "
                  + "\n  ".join(e.bases)
                  + "\n"
