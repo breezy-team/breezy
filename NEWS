@@ -26,10 +26,17 @@ bzr development head
 
     * Fix case of $EDITOR containing options for the editor.
 
+    * Fix log -r refusing to show the last revision.
+      (Patch from Goffredo Baroncelli.)
+
 
   CHANGES:
 
     * ``bzr log --show-ids`` shows the revision ids of all parents.
+
+    * Externally provided commands on your $BZRPATH no longer need
+      to recognize --bzr-usage to work properly, and can just handle
+      --help themselves.
 
 
   LIBRARY:

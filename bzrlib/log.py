@@ -162,12 +162,12 @@ def show_log(branch,
     
     if start_revision is None:
         start_revision = 1
-    elif start_revision < 1 or start_revision >= len(which_revs):
+    elif not (1 <= start_revision <= len(which_revs)):
         raise InvalidRevisionNumber(start_revision)
     
     if end_revision is None:
         end_revision = len(which_revs)
-    elif end_revision < 1 or end_revision >= len(which_revs):
+    elif not (1 <= end_revision <= len(which_revs)):
         raise InvalidRevisionNumber(end_revision)
 
     # list indexes are 0-based; revisions are 1-based
