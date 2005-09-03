@@ -38,7 +38,7 @@ from trace import mutter
 
 ENABLE_URLGRABBER = True
 
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, NoSuchRevision
 
 class GetFailed(BzrError):
     def __init__(self, url, status):
@@ -156,7 +156,10 @@ class RemoteBranch(Branch):
     def get_revision(self, revision_id):
         from bzrlib.revision import Revision
         from bzrlib.xml import unpack_xml
-        revf = self.revision_store[revision_id]
+        try:
+            revf = self.revision_store[revision_id]
+        except KeyError:
+            raise NoSuchRevision(self, revision_id)
         r = unpack_xml(Revision, revf)
         if r.revision_id != revision_id:
             raise BzrCheckError('revision stored as {%s} actually contains {%s}'
