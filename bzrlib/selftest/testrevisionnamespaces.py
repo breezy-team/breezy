@@ -14,17 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
+from bzrlib.selftest import TestCaseInTempDir
 
-from bzrlib.selftest import InTempDir
-
-class TestRevisionNamespaces(InTempDir):
-
+class TestRevisionNamespaces(TestCaseInTempDir):
     def test_revision_namespaces(self):
         """Functional tests for hashcache"""
         from bzrlib.errors import NoSuchRevision
         from bzrlib.branch import Branch
-        import os
-        import time
 
         b = Branch('.', init=True)
 

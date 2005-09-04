@@ -27,19 +27,14 @@ it's normally invoked.
 """
 
 import sys
-from bzrlib.selftest import InTempDir, BzrTestBase
+
+from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
+from bzrlib.branch import Branch
+from bzrlib.commands import run_bzr
 
 
-class ExternalBase(InTempDir):
-
+class ExternalBase(TestCaseInTempDir):
     def runbzr(self, args, retcode=0,backtick=False):
-        try:
-            import shutil
-            from subprocess import call
-        except ImportError, e:
-            _need_subprocess()
-            raise
-
         if isinstance(args, basestring):
             args = args.split()
 
@@ -49,6 +44,7 @@ class ExternalBase(InTempDir):
         else:
             return self.runcmd(['python', self.BZRPATH,] + args,
                            retcode=retcode)
+
 
 class TestCommands(ExternalBase):
 
@@ -60,7 +56,6 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -h')
 
     def test_init_branch(self):
-        import os
         self.runbzr(['init'])
 
     def test_whoami(self):
@@ -200,8 +195,10 @@ class TestCommands(ExternalBase):
     def test_merge(self):
         from bzrlib.branch import Branch
         import os
+        
         os.mkdir('a')
         os.chdir('a')
+
         self.example_branch()
         os.chdir('..')
         self.runbzr('branch a b')
@@ -220,9 +217,32 @@ class TestCommands(ExternalBase):
         a = Branch('.')
         b = Branch('../b')
         a.get_revision_xml(b.last_patch())
-        print "Pending: %s" % a.pending_merges()
-#        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
-#        % (a.pending_merges(), b.last_patch())
+
+        self.log('pending merges: %s', a.pending_merges())
+        #        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
+        #        % (a.pending_merges(), b.last_patch())
+
+
+    def test_add_reports(self):
+        """add command prints the names of added files."""
+        b = Branch('.', init=True)
+        self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
+
+        from cStringIO import StringIO
+        out = StringIO()
+
+        ret = self.apply_redirected(None, out, None,
+                                    run_bzr,
+                                    ['add'])
+        self.assertEquals(ret, 0)
+
+        # the ordering is not defined at the moment
+        results = sorted(out.getvalue().rstrip('\n').split('\n'))
+        self.assertEquals(['added dir',
+                           'added dir/sub.txt',
+                           'added top.txt',],
+                          results)
+
 
 class OldTests(ExternalBase):
     """old tests moved from ./testbzr."""

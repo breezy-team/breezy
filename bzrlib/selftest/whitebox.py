@@ -3,12 +3,12 @@
 import os
 import unittest
 
-from bzrlib.selftest import InTempDir, TestCase
+from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
 
 
-class TestBranch(InTempDir):
+class TestBranch(TestCaseInTempDir):
 
     def test_unknowns(self):
         b = Branch('.', init=True)
@@ -72,7 +72,7 @@ class TestRevisionId(TestCase):
                           'Martin Pool <mbp@sourcefrog.net>-20050311061123-96a255005c7c9dbe')
 
 
-class PendingMerges(InTempDir):
+class PendingMerges(TestCaseInTempDir):
 
     def test_pending_merges(self):
         """Tracking pending-merged revisions."""

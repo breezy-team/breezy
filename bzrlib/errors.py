@@ -113,3 +113,12 @@ class InstallFailed(BzrError):
         self.revisions = revisions
         msg = "Could not install revisions:\n%s" % " ,".join(revisions)
         BzrError.__init__(self, msg)
+
+
+class AmbiguousBase(BzrError):
+    def __init__(self, bases):
+        msg = "The correct base is unclear, becase %s are all equally close" %\
+            ", ".join(bases)
+        BzrError.__init__(self, msg)
+        self.bases = bases
+

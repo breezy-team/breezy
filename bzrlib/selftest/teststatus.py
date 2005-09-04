@@ -21,9 +21,9 @@ Most of these depend on the particular formatting used.
 """
 
 
-from bzrlib.selftest import InTempDir
+from bzrlib.selftest import TestCaseInTempDir
 
-class BranchStatus(InTempDir):
+class BranchStatus(TestCaseInTempDir):
     
     def test_branch_status(self): 
         """Basic 'bzr mkdir' operation"""

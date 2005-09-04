@@ -14,13 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.selftest import InTempDir
+from bzrlib.selftest import TestCaseInTempDir
 
 
 def make_branches():
     from bzrlib.branch import Branch
     from bzrlib.commit import commit
-    from bzrlib.revision import validate_revision_id
     import os
     os.mkdir("branch1")
     br1 = Branch("branch1", init=True)
@@ -46,8 +45,7 @@ def make_branches():
     return br1, br2
 
 
-class TestIsAncestor(InTempDir):
-
+class TestIsAncestor(TestCaseInTempDir):
     def test_is_ancestor(self):
         """Test checking whether a revision is an ancestor of another revision"""
         from bzrlib.revision import is_ancestor, MultipleRevisionSources
@@ -68,11 +66,11 @@ class TestIsAncestor(InTempDir):
         assert is_ancestor(revisions[3], revisions_2[3], sources)
         assert not is_ancestor(revisions[3], revisions_2[3], br1)
 
-class TestIntermediateRevisions(InTempDir):
+class TestIntermediateRevisions(TestCaseInTempDir):
 
     def setUp(self):
         from bzrlib.commit import commit
-        InTempDir.setUp(self)
+        TestCaseInTempDir.setUp(self)
         self.br1, self.br2 = make_branches()
         commit(self.br2, "Commit eleven", rev_id="b@u-0-7")
         commit(self.br2, "Commit twelve", rev_id="b@u-0-8")
@@ -131,7 +129,7 @@ class TestIntermediateRevisions(InTempDir):
                           'c@u-0-6', self.br2.revision_history())
 
 
-class TestCommonAncestor(InTempDir):
+class TestCommonAncestor(TestCaseInTempDir):
     """Test checking whether a revision is an ancestor of another revision"""
 
     def test_common_ancestor(self):

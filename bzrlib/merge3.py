@@ -76,9 +76,9 @@ class Merge3(object):
     def merge_lines(self,
                     name_a=None,
                     name_b=None,
-                    start_marker='<'*7,
-                    mid_marker='='*7,
-                    end_marker='>'*7,
+                    start_marker='<<<<<<<',
+                    mid_marker='=======',
+                    end_marker='>>>>>>>',
                     show_base=False):
         """Return merge in cvs-like form.
         """

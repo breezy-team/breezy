@@ -15,8 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+from cStringIO import StringIO
 
-from bzrlib.selftest import BzrTestBase
+from bzrlib.selftest import BzrTestBase, TestCaseInTempDir
 from bzrlib.log import LogFormatter, show_log, LongLogFormatter
 from bzrlib.branch import Branch
 
@@ -47,7 +48,7 @@ class LogCatcher(LogFormatter):
         self.logs.append(le)
 
 
-class SimpleLogTest(BzrTestBase):
+class SimpleLogTest(TestCaseInTempDir):
 
     def checkDelta(self, delta, **kw):
         """Check the filenames touched by a delta are as expected."""
@@ -64,7 +65,6 @@ class SimpleLogTest(BzrTestBase):
 
     def test_simple_log(self):
         eq = self.assertEquals
-        ass = self.assert_
         
         b = Branch('.', init=True)
 
@@ -88,8 +88,13 @@ class SimpleLogTest(BzrTestBase):
         self.build_tree(['hello'])
         b.add('hello')
         b.commit('add one file')
+
+        lf = StringIO()
         # log using regular thing
-        show_log(b, LongLogFormatter(self.TEST_LOG))
+        show_log(b, LongLogFormatter(lf))
+        lf.seek(0)
+        for l in lf.readlines():
+            self.log(l)
 
         # get log as data structure
         lf = LogCatcher()

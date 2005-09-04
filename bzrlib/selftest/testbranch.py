@@ -14,10 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.selftest import InTempDir
+from bzrlib.selftest import TestCaseInTempDir
 
 
-class TestAppendRevisions(InTempDir):
+class TestAppendRevisions(TestCaseInTempDir):
     """Test appending more than one revision"""
     def test_append_revisions(self):
         from bzrlib.branch import Branch

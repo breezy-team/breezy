@@ -20,14 +20,12 @@ from bzrlib.branch import Branch
 import sys
 import os
 
-from testsweet import InTempDir
+from bzrlib.selftest import TestCaseInTempDir
         
 
-class TestFetch(InTempDir):
+class TestFetch(TestCaseInTempDir):
     def runTest(self):
-        from bzrlib.commit import commit
         from bzrlib.fetch import greedy_fetch, has_revision
-        from bzrlib.selftest.testrevision import make_branches
 
         def new_branch(name):
             os.mkdir(name)
@@ -93,5 +91,5 @@ class TestFetch(InTempDir):
 
 
 if __name__ == '__main__':
-    import sys
-    sys.exit(run_suite(unittest.makeSuite()))
+    import unittest
+    sys.exit(unittest.run_suite(unittest.makeSuite()))

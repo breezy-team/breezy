@@ -16,6 +16,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import bzrlib.ui
+from bzrlib.trace import note, warning
 
 def _update_store_entry(obj, obj_id, branch, store_name, store):
     """This is just a meta-function, which handles both revision entries
@@ -227,13 +228,16 @@ def check(branch):
 
     progress.clear()
 
-    print 'checked %d revisions, %d file texts' % (revcount, len(checked_texts))
+    note('checked %d revisions, %d file texts' % (revcount, len(checked_texts)))
     
     if missing_inventory_sha_cnt:
-        print '%d revisions are missing inventory_sha1' % missing_inventory_sha_cnt
+        note('%d revisions are missing inventory_sha1' % missing_inventory_sha_cnt)
 
     if missing_revision_sha_cnt:
-        print '%d parent links are missing revision_sha1' % missing_revision_sha_cnt
+        note('%d parent links are missing revision_sha1' % missing_revision_sha_cnt)
+
+    if missing_revision_cnt:
+        note('%d revisions are mentioned but not present' % missing_revision_cnt)
 
     if missing_revision_cnt:
         print '%d revisions are mentioned but not present' % missing_revision_cnt
@@ -245,6 +249,6 @@ def check(branch):
 #        print '  (use "bzr upgrade" to fix them)'
 
     if mismatch_inv_id:
-        print '%d revisions have mismatched inventory ids:' % len(mismatch_inv_id)
+        warning('%d revisions have mismatched inventory ids:' % len(mismatch_inv_id))
         for rev_id in mismatch_inv_id:
-            print '  ', rev_id
+            warning('  %s', rev_id)

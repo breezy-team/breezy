@@ -17,11 +17,11 @@
 """Test Store implementation
 """
 from bzrlib.store import ImmutableStore
-from testsweet import InTempDir
+from bzrlib.selftest import TestCaseInTempDir
 from StringIO import StringIO
 from bzrlib.errors import BzrError
 
-class TestStore(InTempDir):
+class TestStore(TestCaseInTempDir):
     def test_multiple_add(self):
         """Multiple add with same ID should raise a BzrError"""
         store = ImmutableStore('.')
