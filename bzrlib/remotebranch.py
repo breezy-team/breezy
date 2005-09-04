@@ -36,7 +36,7 @@ from trace import mutter
 # breaks keep-alive -- sucks!
 
 
-ENABLE_URLGRABBER = True
+ENABLE_URLGRABBER = False
 
 from bzrlib.errors import BzrError, NoSuchRevision
 
