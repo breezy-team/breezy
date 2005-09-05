@@ -120,3 +120,28 @@ def farthest_node(graph, start):
     print distances
     distfirst = [(d, n) for n, d in distances.iteritems()]
     return distfirst[-1][1]
+
+def farthest_nodes_ab(graph, start):
+    lines = [start]
+    predecessors = {}
+    endpoints = {}
+    while len(lines) > 0:
+        new_lines = set()
+        for line in lines:
+            for child in graph[line]:
+                if child not in predecessors:
+                    new_lines.add(child)
+                predecessors[child] = line
+            else:
+                endpoints[line] = None
+        lines = new_lines
+    distances = []
+    for endpoint in endpoints:
+        path = []
+        node = endpoint
+        while node != start:
+           path.append(node)
+           node = predecessors[node]
+        distances.append((len(path), endpoint))
+    distances.sort(reverse=True)
+    return [d[1] for d in distances]
