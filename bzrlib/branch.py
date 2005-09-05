@@ -28,9 +28,9 @@ from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId
 import bzrlib.errors
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision
-from bzrlib.xml import unpack_xml
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
+import bzrlib.xml
 import bzrlib.ui
 
 
@@ -302,7 +302,6 @@ class Branch(object):
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
-        from bzrlib.xml import serializer_v4
         
         os.mkdir(self.controlfilename([]))
         self.controlfile('README', 'w').write(
@@ -322,7 +321,7 @@ class Branch(object):
         # them; they're not needed for now and so ommitted for
         # simplicity.
         f = self.controlfile('inventory','w')
-        serializer_v4.write_inventory(Inventory(), f)
+        bzrlib.xml.serializer_v4.write_inventory(Inventory(), f)
 
 
     def _check_format(self):
@@ -363,13 +362,12 @@ class Branch(object):
     def read_working_inventory(self):
         """Read the working inventory."""
         from bzrlib.inventory import Inventory
-        from bzrlib.xml import serializer_v4
         self.lock_read()
         try:
             # ElementTree does its own conversion from UTF-8, so open in
             # binary.
             f = self.controlfile('inventory', 'rb')
-            return serializer_v4.read_inventory(f)
+            return bzrlib.xml.serializer_v4.read_inventory(f)
         finally:
             self.unlock()
             
@@ -381,13 +379,12 @@ class Branch(object):
         will be committed to the next revision.
         """
         from bzrlib.atomicfile import AtomicFile
-        from bzrlib.xml import serializer_v4
         
         self.lock_write()
         try:
             f = AtomicFile(self.controlfilename('inventory'), 'wb')
             try:
-                serializer_v4.write_inventory(inv, f)
+                bzrlib.xml.serializer_v4.write_inventory(inv, f)
                 f.commit()
             finally:
                 f.close()
@@ -578,7 +575,7 @@ class Branch(object):
             f.close()
 
 
-    def get_revision_xml(self, revision_id):
+    def get_revision_xml_file(self, revision_id):
         """Return XML file object for revision object."""
         if not revision_id or not isinstance(revision_id, basestring):
             raise InvalidRevisionId(revision_id)
@@ -593,12 +590,16 @@ class Branch(object):
             self.unlock()
 
 
+    #deprecated
+    get_revision_xml = get_revision_xml_file
+
+
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
-        xml_file = self.get_revision_xml(revision_id)
+        xml_file = self.get_revision_xml_file(revision_id)
 
         try:
-            r = unpack_xml(Revision, xml_file)
+            r = bzrlib.xml.serializer_v4.read_revision(xml_file)
         except SyntaxError, e:
             raise bzrlib.errors.BzrError('failed to unpack revision_xml',
                                          [revision_id,
@@ -649,10 +650,9 @@ class Branch(object):
                parameter which can be either an integer revno or a
                string hash."""
         from bzrlib.inventory import Inventory
-        from bzrlib.xml import serializer_v4
 
         f = self.get_inventory_xml_file(inventory_id)
-        return serializer_v4.read_inventory(f)
+        return bzrlib.xml.serializer_v4.read_inventory(f)
 
 
     def get_inventory_xml(self, inventory_id):

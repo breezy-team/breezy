@@ -29,7 +29,7 @@ except ImportError:
     from util.elementtree.ElementTree import ElementTree, SubElement, Element
 
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
-        
+from bzrlib.revision import Revision, RevisionReference        
 
 
 class Serializer(object):
@@ -41,6 +41,12 @@ class Serializer(object):
 
     def read_inventory(self, f):
         return self._unpack_inventory(self._read_element(f))
+
+    def write_revision(self, rev, f):
+        self._write_element(self._pack_revision(rev), f)
+
+    def read_revision(self, f):
+        return self._unpack_revision(self._read_element(f))
 
     def _write_element(self, elt, f):
         ElementTree(elt).write(f, 'utf-8')
@@ -133,21 +139,82 @@ class _Serializer_v4(Serializer):
         return ie
 
 
+    def _pack_revision(self, rev):
+        """Revision object -> xml tree"""
+        root = Element('revision',
+                       committer = rev.committer,
+                       timestamp = '%.9f' % rev.timestamp,
+                       revision_id = rev.revision_id,
+                       inventory_id = rev.inventory_id,
+                       inventory_sha1 = rev.inventory_sha1,
+                       )
+        if rev.timezone:
+            root.set('timezone', str(rev.timezone))
+        root.text = '\n'
+
+        msg = SubElement(root, 'message')
+        msg.text = rev.message
+        msg.tail = '\n'
+
+        if rev.parents:
+            pelts = SubElement(root, 'parents')
+            pelts.tail = pelts.text = '\n'
+            for rr in rev.parents:
+                assert isinstance(rr, RevisionReference)
+                p = SubElement(pelts, 'revision_ref')
+                p.tail = '\n'
+                assert rr.revision_id
+                p.set('revision_id', rr.revision_id)
+                if rr.revision_sha1:
+                    p.set('revision_sha1', rr.revision_sha1)
+
+        return root
+
+    
+    def _unpack_revision(self, elt):
+        """XML Element -> Revision object"""
+        
+        # <changeset> is deprecated...
+        if elt.tag not in ('revision', 'changeset'):
+            raise bzrlib.errors.BzrError("unexpected tag in revision file: %r" % elt)
+
+        rev = Revision(committer = elt.get('committer'),
+                       timestamp = float(elt.get('timestamp')),
+                       revision_id = elt.get('revision_id'),
+                       inventory_id = elt.get('inventory_id'),
+                       inventory_sha1 = elt.get('inventory_sha1')
+                       )
+
+        precursor = elt.get('precursor')
+        precursor_sha1 = elt.get('precursor_sha1')
+
+        pelts = elt.find('parents')
+
+        if pelts:
+            for p in pelts:
+                assert p.tag == 'revision_ref', \
+                       "bad parent node tag %r" % p.tag
+                rev_ref = RevisionReference(p.get('revision_id'),
+                                            p.get('revision_sha1'))
+                rev.parents.append(rev_ref)
+
+            if precursor:
+                # must be consistent
+                prec_parent = rev.parents[0].revision_id
+                assert prec_parent == precursor
+        elif precursor:
+            # revisions written prior to 0.0.5 have a single precursor
+            # give as an attribute
+            rev_ref = RevisionReference(precursor, precursor_sha1)
+            rev.parents.append(rev_ref)
+
+        v = elt.get('timezone')
+        rev.timezone = v and int(v)
+
+        rev.message = elt.findtext('message') # text of <message>
+        return rev
+
+
+
 """singleton instance"""
 serializer_v4 = _Serializer_v4()
-
-
-
-
-
-def pack_xml(o, f):
-    """Write object o to file f as XML.
-
-    o must provide a to_element method.
-    """
-    ElementTree(o.to_element()).write(f, 'utf-8')
-    f.write('\n')
-
-
-def unpack_xml(cls, f):
-    return cls.from_element(ElementTree().parse(f))

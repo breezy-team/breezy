@@ -64,7 +64,7 @@ def commit(branch, message,
     from bzrlib.errors import BzrError, PointlessCommit
     from bzrlib.revision import Revision, RevisionReference
     from bzrlib.trace import mutter, note
-    from bzrlib.xml import pack_xml, serializer_v4
+    from bzrlib.xml import serializer_v4
 
     branch.lock_write()
 
@@ -161,7 +161,7 @@ def commit(branch, message,
             rev.parents.append(RevisionReference(merge_rev))            
 
         rev_tmp = tempfile.TemporaryFile()
-        pack_xml(rev, rev_tmp)
+        serializer_v4.write_revision(rev, rev_tmp)
         rev_tmp.seek(0)
         branch.revision_store.add(rev_tmp, rev_id)
         mutter("new revision_id is {%s}" % rev_id)

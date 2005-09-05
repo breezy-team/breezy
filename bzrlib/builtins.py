@@ -92,8 +92,8 @@ class cmd_cat_revision(Command):
     takes_args = ['revision_id']
     
     def run(self, revision_id):
-        from bzrlib.xml import pack_xml
-        pack_xml(find_branch('.').get_revision(revision_id), sys.stdout)
+        b = find_branch('.')
+        sys.stdout.write(b.get_revision_xml_file(revision_id).read())
 
 
 class cmd_revno(Command):
@@ -102,6 +102,7 @@ class cmd_revno(Command):
     This is equal to the number of revisions on this branch."""
     def run(self):
         print find_branch('.').revno()
+
 
 class cmd_revision_info(Command):
     """Show revision number and revision id for a given revision identifier.
