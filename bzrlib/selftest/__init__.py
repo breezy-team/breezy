@@ -310,6 +310,7 @@ def test_suite():
                    'bzrlib.selftest.testfetch',
                    'bzrlib.selftest.versioning',
                    'bzrlib.selftest.whitebox',
+                   'bzrlib.selftest.testmerge',
                    'bzrlib.selftest.testmerge3',
                    'bzrlib.selftest.testhashcache',
                    'bzrlib.selftest.teststatus',
