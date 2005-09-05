@@ -321,7 +321,8 @@ def test_suite():
                    'bzrlib.selftest.test_merge_core',
                    'bzrlib.selftest.test_smart_add',
                    'bzrlib.selftest.testdiff',
-                   'bzrlib.fetch'
+                   'bzrlib.fetch',
+                   'bzrlib.selftest.teststore',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,

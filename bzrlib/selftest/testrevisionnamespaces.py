@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
+import os
 from bzrlib.selftest import TestCaseInTempDir
 
 class TestRevisionNamespaces(TestCaseInTempDir):
     def test_revision_namespaces(self):
         """Functional tests for hashcache"""
-        from bzrlib.errors import BzrError
+        from bzrlib.errors import NoSuchRevision
         from bzrlib.branch import Branch
 
         b = Branch('.', init=True)
@@ -29,12 +29,19 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         b.commit('Commit two', rev_id='a@r-0-2')
         b.commit('Commit three', rev_id='a@r-0-3')
 
+        self.assertEquals(b.get_revision_info(None), (0, None))
         self.assertEquals(b.get_revision_info(1), (1, 'a@r-0-1'))
         self.assertEquals(b.get_revision_info('revno:1'), (1, 'a@r-0-1'))
         self.assertEquals(b.get_revision_info('revid:a@r-0-1'), (1, 'a@r-0-1'))
-        self.assertRaises(BzrError, b.get_revision_info, 'revid:a@r-0-0')
+        self.assertRaises(NoSuchRevision, b.get_revision_info, 'revid:a@r-0-0')
+        self.assertRaises(TypeError, b.get_revision_info, object)
 
         self.assertEquals(b.get_revision_info('date:-tomorrow'), (3, 'a@r-0-3'))
         self.assertEquals(b.get_revision_info('date:+today'), (1, 'a@r-0-1'))
 
         self.assertEquals(b.get_revision_info('last:1'), (3, 'a@r-0-3'))
+        self.assertEquals(b.get_revision_info('-1'), (3, 'a@r-0-3'))
+
+        os.mkdir('newbranch')
+        b2 = Branch('newbranch', init=True)
+        self.assertEquals(b2.lookup_revision('revid:a@r-0-1'), 'a@r-0-1')

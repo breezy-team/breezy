@@ -239,6 +239,9 @@ def check(branch):
     if missing_revision_cnt:
         note('%d revisions are mentioned but not present' % missing_revision_cnt)
 
+    if missing_revision_cnt:
+        print '%d revisions are mentioned but not present' % missing_revision_cnt
+
     # stub this out for now because the main bzr branch has references
     # to revisions that aren't present in the store -- mbp 20050804
 #    if (missing_inventory_sha_cnt

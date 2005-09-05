@@ -20,6 +20,7 @@ from cStringIO import StringIO
 from bzrlib.selftest import BzrTestBase, TestCaseInTempDir
 from bzrlib.log import LogFormatter, show_log, LongLogFormatter
 from bzrlib.branch import Branch
+from bzrlib.errors import InvalidRevisionNumber
 
 class _LogEntry(object):
     # should probably move into bzrlib.log?
@@ -62,6 +63,25 @@ class SimpleLogTest(TestCaseInTempDir):
             # strip out only the path components
             got = [x[0] for x in getattr(delta, n)]
             self.assertEquals(expected, got)
+
+    def test_cur_revno(self):
+        b = Branch('.', init=True)
+
+        lf = LogCatcher()
+        b.commit('empty commit')
+        show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=2, end_revision=1) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=1, end_revision=2) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=0, end_revision=2) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=1, end_revision=0) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=-1, end_revision=1) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=1, end_revision=-1) 
 
     def test_simple_log(self):
         eq = self.assertEquals

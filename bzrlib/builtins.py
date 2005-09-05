@@ -1180,18 +1180,18 @@ class cmd_merge(Command):
 
         if revision is None or len(revision) < 1:
             base = [None, None]
-            other = (branch, -1)
+            other = [branch, -1]
         else:
             if len(revision) == 1:
-                other = (branch, revision[0])
-                base = (None, None)
+                other = [branch, revision[0]]
+                base = [None, None]
             else:
                 assert len(revision) == 2
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                base = (branch, revision[0])
-                other = (branch, revision[1])
+                base = [branch, revision[0]]
+                other = [branch, revision[1]]
 
         try:
             merge(other, base, check_clean=(not force), merge_type=merge_type)
