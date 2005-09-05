@@ -16,8 +16,6 @@
 
 
 
-# FIXME: "bzr commit doc/format" commits doc/format.txt!
-
 def commit(branch, message,
            timestamp=None,
            timezone=None,
