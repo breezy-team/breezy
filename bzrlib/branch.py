@@ -302,7 +302,7 @@ class Branch(object):
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
-        from bzrlib.xml import pack_xml
+        from bzrlib.xml import serializer_v4
         
         os.mkdir(self.controlfilename([]))
         self.controlfile('README', 'w').write(
@@ -321,7 +321,9 @@ class Branch(object):
         # if we want per-tree root ids then this is the place to set
         # them; they're not needed for now and so ommitted for
         # simplicity.
-        pack_xml(Inventory(), self.controlfile('inventory','w'))
+        f = self.controlfile('inventory','w')
+        serializer_v4.write_inventory(Inventory(), f)
+
 
     def _check_format(self):
         """Check this branch format is supported.
@@ -361,18 +363,13 @@ class Branch(object):
     def read_working_inventory(self):
         """Read the working inventory."""
         from bzrlib.inventory import Inventory
-        from bzrlib.xml import unpack_xml
-        from time import time
-        before = time()
+        from bzrlib.xml import serializer_v4
         self.lock_read()
         try:
             # ElementTree does its own conversion from UTF-8, so open in
             # binary.
-            inv = unpack_xml(Inventory,
-                             self.controlfile('inventory', 'rb'))
-            mutter("loaded inventory of %d items in %f"
-                   % (len(inv), time() - before))
-            return inv
+            f = self.controlfile('inventory', 'rb')
+            return serializer_v4.read_inventory(f)
         finally:
             self.unlock()
             
@@ -384,13 +381,13 @@ class Branch(object):
         will be committed to the next revision.
         """
         from bzrlib.atomicfile import AtomicFile
-        from bzrlib.xml import pack_xml
+        from bzrlib.xml import serializer_v4
         
         self.lock_write()
         try:
             f = AtomicFile(self.controlfilename('inventory'), 'wb')
             try:
-                pack_xml(inv, f)
+                serializer_v4.write_inventory(inv, f)
                 f.commit()
             finally:
                 f.close()
@@ -652,14 +649,17 @@ class Branch(object):
                parameter which can be either an integer revno or a
                string hash."""
         from bzrlib.inventory import Inventory
-        from bzrlib.xml import unpack_xml
+        from bzrlib.xml import serializer_v4
 
-        return unpack_xml(Inventory, self.get_inventory_xml(inventory_id))
+        f = self.get_inventory_xml_file(inventory_id)
+        return serializer_v4.read_inventory(f)
 
 
     def get_inventory_xml(self, inventory_id):
         """Get inventory XML as a file object."""
         return self.inventory_store[inventory_id]
+
+    get_inventory_xml_file = get_inventory_xml
             
 
     def get_inventory_sha1(self, inventory_id):
