@@ -53,7 +53,6 @@ all the changes since the previous revision that touched hello.c.
 from bzrlib.tree import EmptyTree
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter
-from bzrlib.errors import InvalidRevisionNumber
 
 
 def find_touching_revisions(branch, file_id):
@@ -162,13 +161,13 @@ def show_log(branch,
     
     if start_revision is None:
         start_revision = 1
-    elif start_revision < 1 or start_revision >= len(which_revs):
-        raise InvalidRevisionNumber(start_revision)
+    else:
+        branch.check_real_revno(start_revision)
     
     if end_revision is None:
         end_revision = len(which_revs)
-    elif end_revision < 1 or end_revision >= len(which_revs):
-        raise InvalidRevisionNumber(end_revision)
+    else:
+        branch.check_real_revno(end_revision)
 
     # list indexes are 0-based; revisions are 1-based
     cut_revs = which_revs[(start_revision-1):(end_revision)]

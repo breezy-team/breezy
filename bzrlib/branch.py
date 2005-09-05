@@ -1348,6 +1348,22 @@ class Branch(object):
         finally:
             self.unlock()
 
+    def check_revno(self, revno):
+        """\
+        Check whether a revno corresponds to any revision.
+        Zero (the NULL revision) is considered valid.
+        """
+        if revno != 0:
+            self.check_real_revno(revno)
+            
+    def check_real_revno(self, revno):
+        """\
+        Check whether a revno corresponds to a real revision.
+        Zero (the NULL revision) is considered invalid
+        """
+        if revno < 1 or revno > self.revno():
+            raise InvalidRevisionNumber(revno)
+        
         
 
 
