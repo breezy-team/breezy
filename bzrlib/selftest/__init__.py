@@ -324,6 +324,7 @@ def test_suite():
                    'bzrlib.selftest.testdiff',
                    'bzrlib.fetch',
                    'bzrlib.selftest.teststore',
+                   'bzrlib.selftest.testgraph',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
