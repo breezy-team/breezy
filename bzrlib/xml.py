@@ -222,6 +222,8 @@ class _Serializer_v4(Serializer):
 class _Serializer_v5(Serializer):
     """Version 5 serializer
 
+    Packs objects into XML and vice versa.
+
     You should use the serialzer_v5 singleton."""
     
     __slots__ = []
@@ -239,10 +241,10 @@ class _Serializer_v5(Serializer):
 
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
-        e = Element('entry')
+        assert ie.kind == 'directory' or ie.kind == 'file'
+        e = Element(ie.kind)
         e.set('name', ie.name)
         e.set('file_id', ie.file_id)
-        e.set('kind', ie.kind)
 
         if ie.text_size != None:
             e.set('text_size', '%d' % ie.text_size)

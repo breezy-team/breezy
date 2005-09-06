@@ -121,3 +121,11 @@ class TestSerializer(TestCase):
         eq(ie.entry_version, 'mbp@foo-00')
         eq(ie.name, 'bar')
         eq(inv[ie.parent_id].kind, 'directory')
+
+    def test_repack_inventory_5(self):
+        inp = StringIO(_committed_inv_v5)
+        inv = serializer_v5.read_inventory(inp)
+        outp = StringIO()
+        serializer_v5.write_inventory(inv, outp)
+        inv2 = serializer_v5.read_inventory(StringIO(outp.getvalue()))
+        self.assertEqual(inv, inv2)
