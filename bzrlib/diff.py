@@ -144,7 +144,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
 
 
 def show_diff(b, revision, specific_files, external_diff_options=None,
-              revision2=None):
+              revision2=None, output=None):
     """Shortcut for showing the diff to the working tree.
 
     b
@@ -156,7 +156,9 @@ def show_diff(b, revision, specific_files, external_diff_options=None,
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
-    import sys
+    if output is None:
+        import sys
+        output = sys.stdout
 
     if revision == None:
         old_tree = b.basis_tree()
@@ -168,7 +170,7 @@ def show_diff(b, revision, specific_files, external_diff_options=None,
     else:
         new_tree = b.revision_tree(b.lookup_revision(revision2))
 
-    show_diff_trees(old_tree, new_tree, sys.stdout, specific_files,
+    show_diff_trees(old_tree, new_tree, output, specific_files,
                     external_diff_options)
 
 
