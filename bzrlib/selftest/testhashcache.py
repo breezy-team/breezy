@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.selftest import InTempDir
+from bzrlib.selftest import TestCaseInTempDir
 
 
 
@@ -31,13 +31,12 @@ def pause():
         time.sleep(0.2)
     
 
-class TestHashCache(InTempDir):
+class TestHashCache(TestCaseInTempDir):
 
     def test_hashcache(self):
         """Functional tests for hashcache"""
         from bzrlib.hashcache import HashCache
         import os
-        import time
 
         # make a dummy bzr directory just to hold the cache
         os.mkdir('.bzr')

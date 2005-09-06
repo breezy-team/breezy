@@ -196,6 +196,11 @@ class MergeTree(object):
             return True
         return self.tree.inventory.has_id(file_id)
 
+    def has_or_had_id(self, file_id):
+        if file_id == self.tree.inventory.root.file_id:
+            return True
+        return self.tree.inventory.has_id(file_id)
+
     def readonly_path(self, id):
         if id not in self.tree:
             return None
@@ -299,7 +304,8 @@ def merge(other_revision, base_revision,
         merge_inner(this_branch, other_tree, base_tree, tempdir, 
                     ignore_zero=ignore_zero, backup_files=backup_files, 
                     merge_type=merge_type, interesting_ids=interesting_ids)
-        if base_is_ancestor and other_rev_id is not None:
+        if base_is_ancestor and other_rev_id is not None\
+            and other_rev_id not in this_branch.revision_history():
             this_branch.add_pending_merge(other_rev_id)
     finally:
         shutil.rmtree(tempdir)

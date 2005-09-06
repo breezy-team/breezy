@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: Some way to get a list of external commands (defined by shell
+# scripts) so that they can be included in the help listing as well.
+# It should be enough to just list the plugin directory and look for
+# executable files with reasonable names.
+
+# TODO: `help commands --all` should show hidden commands
+
 global_help = \
 """Bazaar-NG -- a free distributed version-control tool
 http://bazaar-ng.org/
@@ -58,13 +65,13 @@ def help(topic=None, outfile = None):
         help_on_command(topic, outfile = outfile)
 
 
-def command_usage(cmdname, cmdclass):
+def command_usage(cmd_object):
     """Return single-line grammar for command.
 
     Only describes arguments, not options.
     """
-    s = cmdname + ' '
-    for aname in cmdclass.takes_args:
+    s = 'bzr ' + cmd_object.name() + ' '
+    for aname in cmd_object.takes_args:
         aname = aname.upper()
         if aname[-1] in ['$', '+']:
             aname = aname[:-1] + '...'
@@ -80,34 +87,37 @@ def command_usage(cmdname, cmdclass):
     return s
 
 
-def help_on_command(cmdname, outfile = None):
+def help_on_command(cmdname, outfile=None):
+    from bzrlib.commands import get_cmd_object
+
     cmdname = str(cmdname)
 
     if outfile == None:
         outfile = sys.stdout
 
-    from inspect import getdoc
-    import commands
-    topic, cmdclass = commands.get_cmd_class(cmdname)
+    cmd_object = get_cmd_object(cmdname)
 
-    doc = getdoc(cmdclass)
+    doc = cmd_object.help()
     if doc == None:
         raise NotImplementedError("sorry, no detailed help yet for %r" % cmdname)
 
-    outfile.write('usage: ' + command_usage(topic, cmdclass) + '\n')
+    print >>outfile, 'usage:', command_usage(cmd_object) 
 
-    if cmdclass.aliases:
-        outfile.write('aliases: ' + ', '.join(cmdclass.aliases) + '\n')
-    
+    if cmd_object.aliases:
+        print >>outfile, 'aliases:',
+        print >>outfile, ', '.join(cmd_object.aliases)
+
+    print >>outfile
+
     outfile.write(doc)
     if doc[-1] != '\n':
         outfile.write('\n')
     
-    help_on_option(cmdclass.takes_options, outfile = None)
+    help_on_options(cmd_object.takes_options, outfile=None)
 
 
-def help_on_option(options, outfile = None):
-    import commands
+def help_on_options(options, outfile=None):
+    from bzrlib.commands import SHORT_OPTIONS
     
     if not options:
         return
@@ -118,32 +128,35 @@ def help_on_option(options, outfile = None):
     outfile.write('\noptions:\n')
     for on in options:
         l = '    --' + on
-        for shortname, longname in commands.SHORT_OPTIONS.items():
+        for shortname, longname in SHORT_OPTIONS.items():
             if longname == on:
                 l += ', -' + shortname
                 break
         outfile.write(l + '\n')
 
 
-def help_commands(outfile = None):
+def help_commands(outfile=None):
     """List all commands"""
-    import inspect
-    import commands
+    from bzrlib.commands import (builtin_command_names,
+                                 plugin_command_names,
+                                 get_cmd_object)
 
     if outfile == None:
         outfile = sys.stdout
-    
-    accu = []
-    for cmdname, cmdclass in commands.get_all_cmds():
-        accu.append((cmdname, cmdclass))
-    accu.sort()
-    for cmdname, cmdclass in accu:
-        if cmdclass.hidden:
+
+    names = set()                       # to eliminate duplicates
+    names.update(builtin_command_names())
+    names.update(plugin_command_names())
+    names = list(names)
+    names.sort()
+
+    for cmd_name in names:
+        cmd_object = get_cmd_object(cmd_name)
+        if cmd_object.hidden:
             continue
-        outfile.write(command_usage(cmdname, cmdclass) + '\n')
-        help = inspect.getdoc(cmdclass)
-        if help:
-            outfile.write("    " + help.split('\n', 1)[0] + '\n')
-
-            
-
+        print >>outfile, command_usage(cmd_object)
+        cmd_help = cmd_object.help()
+        if cmd_help:
+            firstline = cmd_help.split('\n', 1)[0]
+            print >>outfile, '    ' + firstline
+        

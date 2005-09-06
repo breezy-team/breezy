@@ -19,5 +19,5 @@ setup(name='bzr',
                 'bzrlib.util',
                 'bzrlib.util.elementtree',
                 'bzrlib.util.effbot.org',
-                'bzrlib.util.urlgrabber'],
+                ],
       scripts=['bzr'])

@@ -5,11 +5,8 @@ Bazaar-NG Tutorial
 current for bzr 0.0.6pre, July 2005
 
 
-*Note:* This tutorial is a work in 
-progress, and describes code that is itself still evolving. 
-If you have comments on either the design or the tutorial, 
-please send them to the bazaar-ng@lists.canonical.com mailing list.
-
+*NOTE* For a more current and user-editable version of this 
+document, see the wiki at http://bazaar.canonical.com/IntroductionToBzr
 
 
 Introduction
@@ -54,7 +51,7 @@ the ``whoami`` ("who am i?") command::
 Some people want to avoid sharing their email address so as not to
 get spam.  bzr will never
 disclose your email address unless you tell it to by publishing an
-archive or transmiting a changeset.  It's recommended that you do use
+archive or transmitting a changeset.  It's recommended that you do use
 a real address, so that people can contact you about your work, but
 it's not required.  You can use an address which is obfuscated, which
 bounces, or which goes through an anti-spam service such as spamgourmet.com.
@@ -310,6 +307,6 @@ in their changes::
 
     % bzr pull
 
-This only works if the local branch if your branch includes only
-changes from the parent branch.  Otherwise, the branches are said to
-have *diverged*, and they must be merged instead.
+This only works if your local branch includes only changes from the
+parent branch.  Otherwise, the branches are said to have *diverged*,
+and they must be merged instead.

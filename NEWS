@@ -1,4 +1,4 @@
-bzr development head
+bzr-0.0.7 2005-09-02
 
   NEW FEATURES:
 
@@ -8,10 +8,35 @@ bzr development head
     * New expert command ``bzr find-merge-base`` for debugging merges.
 
 
+  ENHANCEMENTS:
+
+    * Much better merge support.
+
+    * merge3 conflicts are now reported with markers like '<<<<<<<'
+      (seven characters) which is the same as CVS and pleases things
+      like emacs smerge.
+
+
   BUG FIXES:
 
     * ``bzr upgrade`` no longer fails when trying to fix trees that
       mention revisions that are not present.
+
+    * Fixed bugs in listing plugins from ``bzr plugins``.
+
+    * Fix case of $EDITOR containing options for the editor.
+
+    * Fix log -r refusing to show the last revision.
+      (Patch from Goffredo Baroncelli.)
+
+
+  CHANGES:
+
+    * ``bzr log --show-ids`` shows the revision ids of all parents.
+
+    * Externally provided commands on your $BZRPATH no longer need
+      to recognize --bzr-usage to work properly, and can just handle
+      --help themselves.
 
 
   LIBRARY:

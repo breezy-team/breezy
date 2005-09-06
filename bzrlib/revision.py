@@ -204,8 +204,13 @@ def iter_ancestors(revision_id, revision_source, only_present=False):
 
 
 def find_present_ancestors(revision_id, revision_source):
+    """Return the ancestors of a revision present in a branch.
+
+    It's possible that a branch won't have the complete ancestry of
+    one of its revisions.  
+
+    """
     found_ancestors = {}
-    count = 0
     anc_iter = enumerate(iter_ancestors(revision_id, revision_source,
                          only_present=True))
     for anc_order, (anc_id, anc_distance) in anc_iter:
@@ -213,12 +218,15 @@ def find_present_ancestors(revision_id, revision_source):
             found_ancestors[anc_id] = (anc_order, anc_distance)
     return found_ancestors
     
-class AmbiguousBase(bzrlib.errors.BzrError):
-    def __init__(self, bases):
-        msg = "The correct base is unclear, becase %s are all equally close" %\
-            ", ".join(bases)
-        bzrlib.errors.BzrError.__init__(self, msg)
-        self.bases = bases
+
+def __get_closest(intersection):
+    intersection.sort()
+    matches = [] 
+    for entry in intersection:
+        if entry[0] == intersection[0][0]:
+            matches.append(entry[2])
+    return matches
+
 
 def common_ancestor(revision_a, revision_b, revision_source):
     """Find the ancestor common to both revisions that is closest to both.
@@ -235,18 +243,11 @@ def common_ancestor(revision_a, revision_b, revision_source):
             b_intersection.append((b_ancestors[revision][1], a_order, revision))
     mutter("a intersection: %r" % a_intersection)
     mutter("b intersection: %r" % b_intersection)
-    def get_closest(intersection):
-        intersection.sort()
-        matches = [] 
-        for entry in intersection:
-            if entry[0] == intersection[0][0]:
-                matches.append(entry[2])
-        return matches
 
-    a_closest = get_closest(a_intersection)
+    a_closest = __get_closest(a_intersection)
     if len(a_closest) == 0:
         return None
-    b_closest = get_closest(b_intersection)
+    b_closest = __get_closest(b_intersection)
     assert len(b_closest) != 0
     mutter ("a_closest %r" % a_closest)
     mutter ("b_closest %r" % b_closest)
@@ -255,10 +256,11 @@ def common_ancestor(revision_a, revision_b, revision_source):
     elif b_closest[0] in a_closest:
         return b_closest[0]
     else:
-        raise AmbiguousBase((a_closest[0], b_closest[0]))
+        raise bzrlib.errors.AmbiguousBase((a_closest[0], b_closest[0]))
     return a_closest[0]
 
 class MultipleRevisionSources(object):
+    """Proxy that looks in multiple branches for revisions."""
     def __init__(self, *args):
         object.__init__(self)
         assert len(args) != 0
@@ -271,3 +273,59 @@ class MultipleRevisionSources(object):
             except bzrlib.errors.NoSuchRevision, e:
                 pass
         raise e
+
+def get_intervening_revisions(ancestor_id, rev_id, rev_source, 
+                              revision_history=None):
+    """Find the longest line of descent from maybe_ancestor to revision.
+    Revision history is followed where possible.
+
+    If ancestor_id == rev_id, list will be empty.
+    Otherwise, rev_id will be the last entry.  ancestor_id will never appear.
+    If ancestor_id is not an ancestor, NotAncestor will be thrown
+    """
+    [rev_source.get_revision(r) for r in (ancestor_id, rev_id)]
+    if ancestor_id == rev_id:
+        return []
+    def historical_lines(line):
+        """Return a tuple of historical/non_historical lines, for sorting.
+        The non_historical count is negative, since non_historical lines are
+        a bad thing.
+        """
+        good_count = 0
+        bad_count = 0
+        for revision in line:
+            if revision in revision_history:
+                good_count += 1
+            else:
+                bad_count -= 1
+        return good_count, bad_count
+    active = [[rev_id]]
+    successful_lines = []
+    while len(active) > 0:
+        new_active = []
+        for line in active:
+            parent_ids = [p.revision_id for p in 
+                          rev_source.get_revision(line[-1]).parents]
+            for parent in parent_ids:
+                line_copy = line[:]
+                if parent == ancestor_id:
+                    successful_lines.append(line_copy)
+                else:
+                    line_copy.append(parent)
+                    new_active.append(line_copy)
+        active = new_active
+    if len(successful_lines) == 0:
+        raise bzrlib.errors.NotAncestor(rev_id, ancestor_id)
+    for line in successful_lines:
+        line.reverse()
+    if revision_history is not None:
+        by_historical_lines = []
+        for line in successful_lines:
+            count = historical_lines(line)
+            by_historical_lines.append((count, line))
+        by_historical_lines.sort()
+        if by_historical_lines[-1][0][0] > 0:
+            return by_historical_lines[-1][1]
+    assert len(successful_lines)
+    successful_lines.sort(cmp, len)
+    return successful_lines[-1]

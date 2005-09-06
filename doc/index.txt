@@ -14,10 +14,9 @@ development.
 __ http://canonical.com/
 
 
-**Note:** These documents are in a very preliminary state, and so may
-be internally or externally inconsistent or redundant.  Comments are
-still very welcome.  Please send them to <mbp@sourcefrog.net>.
-
+**Note: These documents describe the initial design and are out of
+date in parts.**  For more up-to-date information see the wiki at
+http://bazaar.canonical.com/
 
 For more information, see the homepage at http://bazaar-ng.org/
 

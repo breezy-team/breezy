@@ -15,10 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+from cStringIO import StringIO
 
-from bzrlib.selftest import BzrTestBase
+from bzrlib.selftest import BzrTestBase, TestCaseInTempDir
 from bzrlib.log import LogFormatter, show_log, LongLogFormatter
 from bzrlib.branch import Branch
+from bzrlib.errors import InvalidRevisionNumber
 
 class _LogEntry(object):
     # should probably move into bzrlib.log?
@@ -47,7 +49,7 @@ class LogCatcher(LogFormatter):
         self.logs.append(le)
 
 
-class SimpleLogTest(BzrTestBase):
+class SimpleLogTest(TestCaseInTempDir):
 
     def checkDelta(self, delta, **kw):
         """Check the filenames touched by a delta are as expected."""
@@ -62,9 +64,27 @@ class SimpleLogTest(BzrTestBase):
             got = [x[0] for x in getattr(delta, n)]
             self.assertEquals(expected, got)
 
+    def test_cur_revno(self):
+        b = Branch('.', init=True)
+
+        lf = LogCatcher()
+        b.commit('empty commit')
+        show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=2, end_revision=1) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=1, end_revision=2) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=0, end_revision=2) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=1, end_revision=0) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=-1, end_revision=1) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=1, end_revision=-1) 
+
     def test_simple_log(self):
         eq = self.assertEquals
-        ass = self.assert_
         
         b = Branch('.', init=True)
 
@@ -88,8 +108,13 @@ class SimpleLogTest(BzrTestBase):
         self.build_tree(['hello'])
         b.add('hello')
         b.commit('add one file')
+
+        lf = StringIO()
         # log using regular thing
-        show_log(b, LongLogFormatter(self.TEST_LOG))
+        show_log(b, LongLogFormatter(lf))
+        lf.seek(0)
+        for l in lf.readlines():
+            self.log(l)
 
         # get log as data structure
         lf = LogCatcher()

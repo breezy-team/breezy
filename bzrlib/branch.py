@@ -220,7 +220,6 @@ class Branch(object):
             warn("branch %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
-
     def lock_write(self):
         if self._lock_mode:
             if self._lock_mode != 'w':
@@ -406,10 +405,11 @@ class Branch(object):
                          """Inventory for the working copy.""")
 
 
-    def add(self, files, verbose=False, ids=None):
+    def add(self, files, ids=None):
         """Make files versioned.
 
-        Note that the command line normally calls smart_add instead.
+        Note that the command line normally calls smart_add instead,
+        which can automatically recurse.
 
         This puts the files in the Added state, so that they will be
         recorded by the next commit.
@@ -425,12 +425,7 @@ class Branch(object):
         TODO: Perhaps have an option to add the ids even if the files do
               not (yet) exist.
 
-        TODO: Perhaps return the ids of the files?  But then again it
-              is easy to retrieve them if they're needed.
-
-        TODO: Adding a directory should optionally recurse down and
-              add all non-ignored children.  Perhaps do that in a
-              higher-level method.
+        TODO: Perhaps yield the ids and paths as they're added.
         """
         # TODO: Re-adding a file that is removed in the working copy
         # should probably put it back with the previous ID.
@@ -471,9 +466,6 @@ class Branch(object):
                 if file_id is None:
                     file_id = gen_file_id(f)
                 inv.add_path(f, kind=kind, file_id=file_id)
-
-                if verbose:
-                    print 'added', quotefn(f)
 
                 mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
 
@@ -885,7 +877,7 @@ class Branch(object):
 
     def lookup_revision(self, revision):
         """Return the revision identifier for a given revision information."""
-        revno, info = self.get_revision_info(revision)
+        revno, info = self._get_revision_info(revision)
         return info
 
 
@@ -906,6 +898,34 @@ class Branch(object):
         revision can also be a string, in which case it is parsed for something like
             'date:' or 'revid:' etc.
         """
+        revno, rev_id = self._get_revision_info(revision)
+        if revno is None:
+            raise bzrlib.errors.NoSuchRevision(self, revision)
+        return revno, rev_id
+
+    def get_rev_id(self, revno, history=None):
+        """Find the revision id of the specified revno."""
+        if revno == 0:
+            return None
+        if history is None:
+            history = self.revision_history()
+        elif revno <= 0 or revno > len(history):
+            raise bzrlib.errors.NoSuchRevision(self, revno)
+        return history[revno - 1]
+
+    def _get_revision_info(self, revision):
+        """Return (revno, revision id) for revision specifier.
+
+        revision can be an integer, in which case it is assumed to be revno
+        (though this will translate negative values into positive ones)
+        revision can also be a string, in which case it is parsed for something
+        like 'date:' or 'revid:' etc.
+
+        A revid is always returned.  If it is None, the specifier referred to
+        the null revision.  If the revid does not occur in the revision
+        history, revno will be None.
+        """
+        
         if revision is None:
             return 0, None
         revno = None
@@ -915,40 +935,48 @@ class Branch(object):
             pass
         revs = self.revision_history()
         if isinstance(revision, int):
-            if revision == 0:
-                return 0, None
-            # Mabye we should do this first, but we don't need it if revision == 0
             if revision < 0:
                 revno = len(revs) + revision + 1
             else:
                 revno = revision
+            rev_id = self.get_rev_id(revno, revs)
         elif isinstance(revision, basestring):
             for prefix, func in Branch.REVISION_NAMESPACES.iteritems():
                 if revision.startswith(prefix):
-                    revno = func(self, revs, revision)
+                    result = func(self, revs, revision)
+                    if len(result) > 1:
+                        revno, rev_id = result
+                    else:
+                        revno = result[0]
+                        rev_id = self.get_rev_id(revno, revs)
                     break
             else:
-                raise BzrError('No namespace registered for string: %r' % revision)
+                raise BzrError('No namespace registered for string: %r' %
+                               revision)
+        else:
+            raise TypeError('Unhandled revision type %s' % revision)
 
-        if revno is None or revno <= 0 or revno > len(revs):
-            raise BzrError("no such revision %s" % revision)
-        return revno, revs[revno-1]
+        if revno is None:
+            if rev_id is None:
+                raise bzrlib.errors.NoSuchRevision(self, revision)
+        return revno, rev_id
 
     def _namespace_revno(self, revs, revision):
         """Lookup a revision by revision number"""
         assert revision.startswith('revno:')
         try:
-            return int(revision[6:])
+            return (int(revision[6:]),)
         except ValueError:
             return None
     REVISION_NAMESPACES['revno:'] = _namespace_revno
 
     def _namespace_revid(self, revs, revision):
         assert revision.startswith('revid:')
+        rev_id = revision[len('revid:'):]
         try:
-            return revs.index(revision[6:]) + 1
+            return revs.index(rev_id) + 1, rev_id
         except ValueError:
-            return None
+            return None, rev_id
     REVISION_NAMESPACES['revid:'] = _namespace_revid
 
     def _namespace_last(self, revs, revision):
@@ -956,11 +984,11 @@ class Branch(object):
         try:
             offset = int(revision[5:])
         except ValueError:
-            return None
+            return (None,)
         else:
             if offset <= 0:
                 raise BzrError('You must supply a positive value for --revision last:XXX')
-            return len(revs) - offset + 1
+            return (len(revs) - offset + 1,)
     REVISION_NAMESPACES['last:'] = _namespace_last
 
     def _namespace_tag(self, revs, revision):
@@ -1041,14 +1069,14 @@ class Branch(object):
                 # TODO: Handle timezone.
                 dt = datetime.datetime.fromtimestamp(r.timestamp)
                 if first >= dt and (last is None or dt >= last):
-                    return i+1
+                    return (i+1,)
         else:
             for i in range(len(revs)):
                 r = self.get_revision(revs[i])
                 # TODO: Handle timezone.
                 dt = datetime.datetime.fromtimestamp(r.timestamp)
                 if first <= dt and (last is None or dt <= last):
-                    return i+1
+                    return (i+1,)
     REVISION_NAMESPACES['date:'] = _namespace_date
 
     def revision_tree(self, revision_id):
@@ -1119,8 +1147,6 @@ class Branch(object):
 
             inv.rename(file_id, to_dir_id, to_tail)
 
-            print "%s => %s" % (from_rel, to_rel)
-
             from_abs = self.abspath(from_rel)
             to_abs = self.abspath(to_rel)
             try:
@@ -1145,7 +1171,11 @@ class Branch(object):
 
         Note that to_name is only the last component of the new name;
         this doesn't change the directory.
+
+        This returns a list of (from_path, to_path) pairs for each
+        entry that is moved.
         """
+        result = []
         self.lock_write()
         try:
             ## TODO: Option to move IDs only
@@ -1186,7 +1216,7 @@ class Branch(object):
             for f in from_paths:
                 name_tail = splitpath(f)[-1]
                 dest_path = appendpath(to_name, name_tail)
-                print "%s => %s" % (f, dest_path)
+                result.append((f, dest_path))
                 inv.rename(inv.path2id(f), to_dir_id, name_tail)
                 try:
                     os.rename(self.abspath(f), self.abspath(dest_path))
@@ -1197,6 +1227,8 @@ class Branch(object):
             self._write_inventory(inv)
         finally:
             self.unlock()
+
+        return result
 
 
     def revert(self, filenames, old_tree=None, backups=True):
@@ -1285,6 +1317,56 @@ class Branch(object):
             self.unlock()
 
 
+    def get_parent(self):
+        """Return the parent location of the branch.
+
+        This is the default location for push/pull/missing.  The usual
+        pattern is that the user can override it by specifying a
+        location.
+        """
+        import errno
+        _locs = ['parent', 'pull', 'x-pull']
+        for l in _locs:
+            try:
+                return self.controlfile(l, 'r').read().strip('\n')
+            except IOError, e:
+                if e.errno != errno.ENOENT:
+                    raise
+        return None
+
+
+    def set_parent(self, url):
+        # TODO: Maybe delete old location files?
+        from bzrlib.atomicfile import AtomicFile
+        self.lock_write()
+        try:
+            f = AtomicFile(self.controlfilename('parent'))
+            try:
+                f.write(url + '\n')
+                f.commit()
+            finally:
+                f.close()
+        finally:
+            self.unlock()
+
+    def check_revno(self, revno):
+        """\
+        Check whether a revno corresponds to any revision.
+        Zero (the NULL revision) is considered valid.
+        """
+        if revno != 0:
+            self.check_real_revno(revno)
+            
+    def check_real_revno(self, revno):
+        """\
+        Check whether a revno corresponds to a real revision.
+        Zero (the NULL revision) is considered invalid
+        """
+        if revno < 1 or revno > self.revno():
+            raise InvalidRevisionNumber(revno)
+        
+        
+
 
 class ScratchBranch(Branch):
     """Special test class: a branch that cleans up after itself.
@@ -1332,6 +1414,8 @@ class ScratchBranch(Branch):
         os.rmdir(base)
         copytree(self.base, base, symlinks=True)
         return ScratchBranch(base=base)
+
+
         
     def __del__(self):
         self.destroy()
@@ -1420,10 +1504,19 @@ def pull_loc(branch):
 def copy_branch(branch_from, to_location, revision=None):
     """Copy branch_from into the existing directory to_location.
 
-    If revision is not None, the head of the new branch will be revision.
+    revision
+        If not None, only revisions up to this point will be copied.
+        The head of the new branch will be that revision.
+
+    to_location
+        The name of a local directory that exists but is empty.
     """
     from bzrlib.merge import merge
     from bzrlib.branch import Branch
+
+    assert isinstance(branch_from, Branch)
+    assert isinstance(to_location, basestring)
+    
     br_to = Branch(to_location, init=True)
     br_to.set_root_id(branch_from.get_root_id())
     if revision is None:
@@ -1433,6 +1526,6 @@ def copy_branch(branch_from, to_location, revision=None):
     br_to.update_revisions(branch_from, stop_revision=revno)
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)
+    
     from_location = pull_loc(branch_from)
-    br_to.controlfile("x-pull", "wb").write(from_location + "\n")
-
+    br_to.set_parent(pull_loc(branch_from))

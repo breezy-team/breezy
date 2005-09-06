@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.selftest import InTempDir, TestCase
+from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.merge3 import Merge3
 
 def split_lines(t):
@@ -82,12 +82,12 @@ MERGED_RESULT = split_lines("""     The Way that can be told of is not the etern
      The two are the same,
      But after they are produced,
        they have different names.
-<<<<<<<< LAO
-========
+<<<<<<< LAO
+=======
      
        -- The Way of Lao-Tzu, tr. Wing-tsit Chan
 
->>>>>>>> TAO
+>>>>>>> TAO
 """)
 
 class TestMerge3(TestCase):
@@ -221,8 +221,8 @@ bbb
                             start_marker='<<',
                             mid_marker='--',
                             end_marker='>>')
-        self.assertEquals(''.join(m3.merge_lines()),
-                          'aaa\n222\nbbb\n')
+        self.assertEquals(''.join(ml), 'aaa\n222\nbbb\n')
+        
 
     def test_insert_clash(self):
         """Both try to insert lines in the same place."""

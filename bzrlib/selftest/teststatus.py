@@ -21,9 +21,9 @@ Most of these depend on the particular formatting used.
 """
 
 
-from bzrlib.selftest import InTempDir
+from bzrlib.selftest import TestCaseInTempDir
 
-class BranchStatus(InTempDir):
+class BranchStatus(TestCaseInTempDir):
     
     def test_branch_status(self): 
         """Basic 'bzr mkdir' operation"""
@@ -40,11 +40,14 @@ class BranchStatus(InTempDir):
 
         tof = StringIO()
         self.build_tree(['hello.c', 'bye.c'])
+        b.add_pending_merge('pending@pending-0-0')
         show_status(b, to_file=tof)
         tof.seek(0)
         self.assertEquals(tof.readlines(),
                           ['unknown:\n',
                            '  bye.c\n',
                            '  hello.c\n',
+                           'pending merges:\n',
+                           '  pending@pending-0-0\n'
                            ])
 

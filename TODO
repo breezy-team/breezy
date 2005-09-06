@@ -24,7 +24,7 @@ Small things
 
   2005-11-05      mbp  Flowers for stephane
 
-* print a message at the end of running the tests telling them tht the
+* print a message at the end of running the tests telling them that the
   test log and output exists but can be removed
 
 * tests for running the commit editor, and fix problem of not passing in 

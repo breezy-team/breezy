@@ -1,11 +1,11 @@
 import os
 import unittest
 
-from bzrlib.selftest import FunctionalTestCase, TestCase
+from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
 
-class TestSmartAdd(FunctionalTestCase):
+class TestSmartAdd(TestCaseInTempDir):
 
     def test_add_dot_from_root(self):
         """Test adding . from the root of the tree.""" 
@@ -13,7 +13,7 @@ class TestSmartAdd(FunctionalTestCase):
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
         branch = Branch(".", init=True)
-        smart_add((".",), False, True)
+        smart_add((".",), recurse=True)
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
@@ -24,7 +24,7 @@ class TestSmartAdd(FunctionalTestCase):
         self.build_tree(paths)
         branch = Branch(".", init=True)
         os.chdir("original")
-        smart_add((".",), False, True)
+        smart_add((".",), recurse=True)
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
@@ -36,22 +36,24 @@ class TestSmartAdd(FunctionalTestCase):
                         "branch/original/file2")
         self.build_tree(branch_paths)
         branch = Branch("branch", init=True)
-        smart_add(("branch",), False, True)
+        smart_add(("branch",))
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
     def test_add_above_tree_preserves_tree(self):
         """Test nested trees are not affect by an add above them."""
-        from bzrlib.add import smart_add
+        from bzrlib.add import smart_add, add_reporter_null
+        
         paths = ("original/", "original/file1", "original/file2")
-        child_paths = ("path")
+        child_paths = ("path",)
         full_child_paths = ("original/child", "original/child/path")
         build_paths = ("original/", "original/file1", "original/file2", 
                        "original/child/", "original/child/path")
+        
         self.build_tree(build_paths)
         branch = Branch(".", init=True)
         child_branch = Branch("original/child", init=True)
-        smart_add((".",), False, True)
+        smart_add((".",), True, add_reporter_null)
         for path in paths:
             self.assertNotEqual((path, branch.inventory.path2id(path)),
                                 (path, None))
@@ -67,11 +69,11 @@ class TestSmartAdd(FunctionalTestCase):
         paths = ("file1", "file2")
         self.build_tree(paths)
         branch = Branch(".", init=True)
-        smart_add(paths, False, True)
+        smart_add(paths)
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
             
-class TestSmartAddBranch(FunctionalTestCase):
+class TestSmartAddBranch(TestCaseInTempDir):
     """Test smart adds with a specified branch."""
 
     def test_add_dot_from_root(self):
@@ -80,7 +82,7 @@ class TestSmartAddBranch(FunctionalTestCase):
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
         branch = Branch(".", init=True)
-        smart_add_branch(branch, (".",), False, True)
+        smart_add_branch(branch, (".",))
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
@@ -91,7 +93,7 @@ class TestSmartAddBranch(FunctionalTestCase):
         self.build_tree(paths)
         branch = Branch(".", init=True)
         os.chdir("original")
-        smart_add_branch(branch, (".",), False, True)
+        smart_add_branch(branch, (".",))
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
@@ -103,7 +105,7 @@ class TestSmartAddBranch(FunctionalTestCase):
                         "branch/original/file2")
         self.build_tree(branch_paths)
         branch = Branch("branch", init=True)
-        smart_add_branch(branch, ("branch",), False, True)
+        smart_add_branch(branch, ("branch",))
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
@@ -118,7 +120,7 @@ class TestSmartAddBranch(FunctionalTestCase):
         self.build_tree(build_paths)
         branch = Branch(".", init=True)
         child_branch = Branch("original/child", init=True)
-        smart_add_branch(branch, (".",), False, True)
+        smart_add_branch(branch, (".",))
         for path in paths:
             self.assertNotEqual((path, branch.inventory.path2id(path)),
                                 (path, None))
@@ -134,11 +136,11 @@ class TestSmartAddBranch(FunctionalTestCase):
         paths = ("file1", "file2")
         self.build_tree(paths)
         branch = Branch(".", init=True)
-        smart_add_branch(branch, paths, False, True)
+        smart_add_branch(branch, paths)
         for path in paths:
             self.assertNotEqual(branch.inventory.path2id(path), None)
 
-class TestAddCallbacks(TestCase):
+class TestAddCallbacks(TestCaseInTempDir):
 
     def setUp(self):
         from bzrlib.inventory import InventoryEntry
@@ -146,13 +148,13 @@ class TestAddCallbacks(TestCase):
         self.entry = InventoryEntry("id", "name", "file", None)
 
     def test_null_callback(self):
-        from bzrlib.add import _NullAddCallback
-        _NullAddCallback(self.entry)
+        from bzrlib.add import add_reporter_null
+        add_reporter_null('path', 'file', self.entry)
 
     def test_print_callback(self):
-        from bzrlib.add import _PrintAddCallback
+        from bzrlib.add import add_reporter_print
         from StringIO import StringIO
         stdout = StringIO()
-        self.apply_redirected(None, stdout, None, _PrintAddCallback,
-                              self.entry)
-        self.assertEqual(stdout.getvalue(), "added name\n")
+        self.apply_redirected(None, stdout, None, add_reporter_print,
+                              'path', 'file', self.entry)
+        self.assertEqual(stdout.getvalue(), "added path\n")

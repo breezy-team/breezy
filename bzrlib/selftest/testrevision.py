@@ -14,13 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.selftest import InTempDir
+from bzrlib.selftest import TestCaseInTempDir
 
 
 def make_branches():
     from bzrlib.branch import Branch
     from bzrlib.commit import commit
-    from bzrlib.revision import validate_revision_id
     import os
     os.mkdir("branch1")
     br1 = Branch("branch1", init=True)
@@ -46,8 +45,7 @@ def make_branches():
     return br1, br2
 
 
-class TestIsAncestor(InTempDir):
-
+class TestIsAncestor(TestCaseInTempDir):
     def test_is_ancestor(self):
         """Test checking whether a revision is an ancestor of another revision"""
         from bzrlib.revision import is_ancestor, MultipleRevisionSources
@@ -68,8 +66,70 @@ class TestIsAncestor(InTempDir):
         assert is_ancestor(revisions[3], revisions_2[3], sources)
         assert not is_ancestor(revisions[3], revisions_2[3], br1)
 
+class TestIntermediateRevisions(TestCaseInTempDir):
 
-class TestCommonAncestor(InTempDir):
+    def setUp(self):
+        from bzrlib.commit import commit
+        TestCaseInTempDir.setUp(self)
+        self.br1, self.br2 = make_branches()
+        commit(self.br2, "Commit eleven", rev_id="b@u-0-7")
+        commit(self.br2, "Commit twelve", rev_id="b@u-0-8")
+        commit(self.br2, "Commit thirtteen", rev_id="b@u-0-9")
+        self.br1.add_pending_merge(self.br2.revision_history()[6])
+        commit(self.br1, "Commit fourtten", rev_id="a@u-0-6")
+        self.br2.add_pending_merge(self.br1.revision_history()[6])
+        commit(self.br2, "Commit fifteen", rev_id="b@u-0-10")
+
+        from bzrlib.revision import MultipleRevisionSources
+        self.sources = MultipleRevisionSources(self.br1, self.br2)
+
+    def intervene(self, ancestor, revision, revision_history=None):
+        from bzrlib.revision import get_intervening_revisions
+        return get_intervening_revisions(ancestor,revision, self.sources, 
+                                         revision_history)
+
+    def test_intervene(self):
+        """Find intermediate revisions, without requiring history"""
+        from bzrlib.errors import NotAncestor, NoSuchRevision
+        assert len(self.intervene('a@u-0-0', 'a@u-0-0')) == 0
+        self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-1'), ['a@u-0-1'])
+        self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-2'), 
+                         ['a@u-0-1', 'a@u-0-2'])
+        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-3'), 
+                         ['a@u-0-1', 'a@u-0-2', 'b@u-0-3'])
+        self.assertEqual(self.intervene('b@u-0-3', 'a@u-0-3'), 
+                         ['b@u-0-4', 'a@u-0-3'])
+        self.assertEqual(self.intervene('a@u-0-2', 'a@u-0-3', 
+                                        self.br1.revision_history()), 
+                         ['a@u-0-3'])
+        self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-5', 
+                                        self.br1.revision_history()), 
+                         ['a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4', 
+                          'a@u-0-5'])
+        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-6', 
+                         self.br1.revision_history()), 
+                         ['a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4', 
+                          'b@u-0-6'])
+        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-5'), 
+                         ['a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4', 
+                          'b@u-0-5'])
+        self.assertEqual(self.intervene('b@u-0-3', 'b@u-0-6', 
+                         self.br2.revision_history()), 
+                         ['b@u-0-4', 'b@u-0-5', 'b@u-0-6'])
+        self.assertEqual(self.intervene('b@u-0-6', 'b@u-0-10'), 
+                         ['b@u-0-7', 'b@u-0-8', 'b@u-0-9', 'b@u-0-10'])
+        self.assertEqual(self.intervene('b@u-0-6', 'b@u-0-10', 
+                                        self.br2.revision_history()), 
+                         ['b@u-0-7', 'b@u-0-8', 'b@u-0-9', 'b@u-0-10'])
+        self.assertRaises(NotAncestor, self.intervene, 'b@u-0-10', 'b@u-0-6', 
+                          self.br2.revision_history())
+        self.assertRaises(NoSuchRevision, self.intervene, 'c@u-0-10', 
+                          'b@u-0-6', self.br2.revision_history())
+        self.assertRaises(NoSuchRevision, self.intervene, 'b@u-0-10', 
+                          'c@u-0-6', self.br2.revision_history())
+
+
+class TestCommonAncestor(TestCaseInTempDir):
     """Test checking whether a revision is an ancestor of another revision"""
 
     def test_common_ancestor(self):

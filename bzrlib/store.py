@@ -24,6 +24,7 @@ unique ID.
 import os, tempfile, types, osutils, gzip, errno
 from stat import ST_SIZE
 from StringIO import StringIO
+from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 import bzrlib.ui
 
@@ -91,7 +92,6 @@ class ImmutableStore(object):
             
         p = self._path(fileid)
         if os.access(p, os.F_OK) or os.access(p + '.gz', os.F_OK):
-            from bzrlib.errors import bailout
             raise BzrError("store %r already contains id %r" % (self._basedir, fileid))
 
         fn = p
@@ -126,6 +126,7 @@ class ImmutableStore(object):
         if isinstance(other, ImmutableStore):
             return self.copy_multi_immutable(other, to_copy, pb)
         count = 0
+        failed = set()
         for id in to_copy:
             count += 1
             pb.update('copy', count, len(to_copy))
@@ -135,13 +136,14 @@ class ImmutableStore(object):
                 try:
                     entry = other[id]
                 except IndexError:
-                    failures.add(id)
+                    failed.add(id)
                     continue
                 self.add(entry, id)
                 
-        assert count == len(to_copy)
+        if not permit_failure:
+            assert count == len(to_copy)
         pb.clear()
-        return count, []
+        return count, failed
 
     def copy_multi_immutable(self, other, to_copy, pb, permit_failure=False):
         from shutil import copyfile
