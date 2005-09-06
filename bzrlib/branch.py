@@ -35,7 +35,8 @@ import bzrlib.ui
 
 
 
-BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
+BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
+BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
 
 
@@ -307,7 +308,7 @@ class Branch(object):
         self.controlfile('README', 'w').write(
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.\n")
-        self.controlfile('branch-format', 'w').write(BZR_BRANCH_FORMAT)
+        self.controlfile('branch-format', 'w').write(BZR_BRANCH_FORMAT_5)
         for d in ('text-store', 'inventory-store', 'revision-store'):
             os.mkdir(self.controlfilename(d))
         for f in ('revision-history', 'merged-patches',
@@ -335,12 +336,13 @@ class Branch(object):
         # This ignores newlines so that we can open branches created
         # on Windows from Linux and so on.  I think it might be better
         # to always make all internal files in unix format.
-        fmt = self.controlfile('branch-format', 'r').read()
-        fmt.replace('\r\n', '')
-        if fmt != BZR_BRANCH_FORMAT:
-            raise BzrError('sorry, branch format %r not supported' % fmt,
-                           ['use a different bzr version',
-                            'or remove the .bzr directory and "bzr init" again'])
+        fmt = self.controlfile('branch-format', 'r').read().rstrip('\r\n')
+        if fmt != BZR_BRANCH_FORMAT_5:
+            raise BzrError('sorry, branch format "%s" not supported; ' 
+                           'use a different bzr version, '
+                           'or run "bzr upgrade", '
+                           'or remove the .bzr directory and "bzr init" again'
+                           % fmt)
 
     def get_root_id(self):
         """Return the id of this branches root"""
