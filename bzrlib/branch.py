@@ -596,7 +596,11 @@ class Branch(object):
             self.unlock()
 
     def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
+        """Return the Revision object for a named revision. 
+        
+        This operates on the storage level - it is agnostic as to
+        logical presence or absence from the branch.
+        """
         xml_file = self.get_revision_xml(revision_id)
 
         try:
