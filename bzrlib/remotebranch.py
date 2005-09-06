@@ -106,16 +106,17 @@ def _find_remote_root(url):
         url = url[:idx]        
         
 
-
 class RemoteBranch(Branch):
+
     def __init__(self, baseurl, find_root=True):
         """Create new proxy for a remote branch."""
+        # circular import protection
+        from bzrlib.store import RemoteStore
         if find_root:
             self.baseurl = _find_remote_root(baseurl)
         else:
             self.baseurl = baseurl
             self._check_format()
-
         self.inventory_store = RemoteStore(baseurl + '/.bzr/inventory-store/')
         self.text_store = RemoteStore(baseurl + '/.bzr/text-store/')
         self.revision_store = RemoteStore(baseurl + '/.bzr/revision-store/')
@@ -166,23 +167,3 @@ class RemoteBranch(Branch):
                                 % (revision_id, r.revision_id))
         return r
 
-
-class RemoteStore(object):
-    def __init__(self, baseurl):
-        self._baseurl = baseurl
-        
-
-    def _path(self, name):
-        if '/' in name:
-            raise ValueError('invalid store id', name)
-        return self._baseurl + '/' + name
-        
-    def __getitem__(self, fileid):
-        p = self._path(fileid)
-        try:
-            return get_url(p, compressed=True)
-        except:
-            raise KeyError(fileid)
-    
-
-    

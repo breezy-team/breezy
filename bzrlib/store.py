@@ -27,6 +27,7 @@ from StringIO import StringIO
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 import bzrlib.ui
+from bzrlib.remotebranch import get_url
 
 ######################################################################
 # stores
@@ -281,3 +282,21 @@ class ImmutableMemoryStore(Store):
 
     def __iter__(self):
         return iter(self._contents.keys())
+
+
+class RemoteStore(object):
+
+    def __init__(self, baseurl):
+        self._baseurl = baseurl
+
+    def _path(self, name):
+        if '/' in name:
+            raise ValueError('invalid store id', name)
+        return self._baseurl + '/' + name
+        
+    def __getitem__(self, fileid):
+        p = self._path(fileid)
+        try:
+            return get_url(p, compressed=True)
+        except:
+            raise KeyError(fileid)
