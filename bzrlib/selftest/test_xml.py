@@ -18,7 +18,7 @@ from cStringIO import StringIO
 
 from bzrlib.selftest import TestCase
 from bzrlib.inventory import Inventory, InventoryEntry
-from bzrlib.xml import serializer_v4
+from bzrlib.xml import serializer_v4, serializer_v5
 
 _working_inventory_v4 = """<inventory file_id="TREE_ROOT">
 <entry file_id="bar-20050901064931-73b4b1138abc9cd2" kind="file" name="bar" parent_id="TREE_ROOT" />
@@ -42,6 +42,37 @@ _revision_v4 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
 </revision>
 """
 
+_revision_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
+    inventory_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
+    inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
+    revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
+    timestamp="1125907235.211783886"
+    timezone="36000">
+<message>- start splitting code for xml (de)serialization away from objects
+  preparatory to supporting multiple formats by a single library
+</message>
+<parents>
+<revision_ref revision_id="mbp@sourcefrog.net-20050905063503-43948f59fa127d92"/>
+</parents>
+</revision>
+"""
+
+_committed_inv_v5 = """<inventory>
+<file file_id="bar-20050901064931-73b4b1138abc9cd2" 
+      name="bar" parent_id="TREE_ROOT" 
+      text_version="mbp@foo-123123" entry_version="mbp@foo-123123"
+      />
+<directory name="subdir"
+           file_id="foo-20050801201819-4139aa4a272f4250"
+           parent_id="TREE_ROOT" 
+           entry_version="mbp@foo-00"/>
+<file file_id="bar-20050824000535-6bc48cfad47ed134" 
+      name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" 
+      entry_version="mbp@foo-00"
+      text_version="mbp@foo-123123"/>
+</inventory>
+"""
+
 class TestSerializer(TestCase):
     """Test XML serialization"""
     def test_canned_inventory(self):
@@ -63,3 +94,30 @@ class TestSerializer(TestCase):
         eq(len(rev.parents), 1)
         eq(rev.parents[0].revision_id,
            "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
+
+    def test_unpack_revision_5(self):
+        """Test unpacking a canned revision v5"""
+        inp = StringIO(_revision_v5)
+        rev = serializer_v5.read_revision(inp)
+        eq = self.assertEqual
+        eq(rev.committer,
+           "Martin Pool <mbp@sourcefrog.net>")
+        eq(rev.inventory_id,
+           "mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9")
+        eq(len(rev.parents), 1)
+        eq(rev.timezone, 36000)
+        eq(rev.parents[0].revision_id,
+           "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
+
+    def test_unpack_inventory_5(self):
+        """Unpack canned new-style inventory"""
+        inp = StringIO(_committed_inv_v5)
+        inv = serializer_v5.read_inventory(inp)
+        eq = self.assertEqual
+        eq(len(inv), 4)
+        ie = inv['bar-20050824000535-6bc48cfad47ed134']
+        eq(ie.kind, 'file')
+        eq(ie.text_version, 'mbp@foo-123123')
+        eq(ie.entry_version, 'mbp@foo-00')
+        eq(ie.name, 'bar')
+        eq(inv[ie.parent_id].kind, 'directory')

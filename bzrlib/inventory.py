@@ -100,7 +100,8 @@ class InventoryEntry(object):
     # directories, etc etc.
 
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', ]
+                 'text_id', 'parent_id', 'children',
+                 'text_version', 'entry_version', ]
 
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
@@ -117,6 +118,7 @@ class InventoryEntry(object):
         Traceback (most recent call last):
         BzrCheckError: InventoryEntry name 'src/hello.c' is invalid
         """
+        assert isinstance(name, basestring), name
         if '/' in name or '\\' in name:
             raise BzrCheckError('InventoryEntry name %r is invalid' % name)
         
