@@ -103,6 +103,7 @@ class InventoryEntry(object):
                  'text_id', 'parent_id', 'children',
                  'text_version', 'entry_version', ]
 
+
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
         
@@ -122,9 +123,10 @@ class InventoryEntry(object):
         if '/' in name or '\\' in name:
             raise BzrCheckError('InventoryEntry name %r is invalid' % name)
         
+        self.text_version = None
+        self.entry_version = None
         self.text_sha1 = None
         self.text_size = None
-    
         self.file_id = file_id
         self.name = name
         self.kind = kind
@@ -174,7 +176,9 @@ class InventoryEntry(object):
                and (self.text_size == other.text_size) \
                and (self.text_id == other.text_id) \
                and (self.parent_id == other.parent_id) \
-               and (self.kind == other.kind)
+               and (self.kind == other.kind) \
+               and (self.text_version == other.text_version) \
+               and (self.entry_version == other.entry_version)
 
 
     def __ne__(self, other):

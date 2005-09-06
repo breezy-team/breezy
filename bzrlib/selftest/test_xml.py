@@ -129,3 +129,12 @@ class TestSerializer(TestCase):
         serializer_v5.write_inventory(inv, outp)
         inv2 = serializer_v5.read_inventory(StringIO(outp.getvalue()))
         self.assertEqual(inv, inv2)
+
+    def test_repack_revision_5(self):
+        inp = StringIO(_revision_v5)
+        rev = serializer_v5.read_revision(inp)
+        outp = StringIO()
+        serializer_v5.write_revision(rev, outp)
+        rev2 = serializer_v5.read_revision(StringIO(outp.getvalue()))
+        self.assertEqual(rev, rev2)
+

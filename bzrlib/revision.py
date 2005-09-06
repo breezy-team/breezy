@@ -70,6 +70,20 @@ class Revision(object):
     def __repr__(self):
         return "<Revision id %s>" % self.revision_id
 
+    def __eq__(self, other):
+        if not isinstance(other, Revision):
+            return False
+        return (self.inventory_id == other.inventory_id
+                and self.inventory_sha1 == other.inventory_sha1
+                and self.revision_id == other.revision_id
+                and self.timestamp == other.timestamp
+                and self.message == other.message
+                and self.timezone == other.timezone
+                and self.committer == other.committer)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
         
 
 REVISION_ID_RE = None
