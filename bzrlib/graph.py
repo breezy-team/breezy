@@ -162,7 +162,7 @@ def max_distance(node, ancestors, distances):
     
 def farthest_node(graph, ancestors, start):
     distances = {start: 0}
-    lines = set(start)
+    lines = set([start])
     while len(lines) > 0:
         new_lines = set()
         for line in lines:

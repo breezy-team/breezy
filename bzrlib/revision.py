@@ -16,7 +16,7 @@
 
 
 import bzrlib.errors
-
+from bzrlib.graph import farthest_node
 
 class RevisionReference(object):
     """
@@ -258,6 +258,57 @@ def common_ancestor(revision_a, revision_b, revision_source):
     else:
         raise bzrlib.errors.AmbiguousBase((a_closest[0], b_closest[0]))
     return a_closest[0]
+
+def revision_graph(revision, revision_source):
+    ancestors = {}
+    descendants = {}
+    lines = [revision]
+    root = None
+    while len(lines) > 0:
+        new_lines = set()
+        for line in lines:
+            try:
+                rev = revision_source.get_revision(line)
+                parents = [p.revision_id for p in rev.parents]
+                if len(parents) == 0:
+                    root = line
+            except bzrlib.errors.NoSuchRevision:
+                parents = []
+            for parent in parents:
+                if parent not in ancestors:
+                    new_lines.add(parent)
+                if parent not in descendants:
+                    descendants[parent] = {}
+                descendants[parent][line] = 1
+            ancestors[line] = set(parents)
+        lines = new_lines
+    return root, ancestors, descendants
+
+def combined_graph(revision_a, revision_b, revision_source):
+    root, ancestors, descendants = revision_graph(revision_a, revision_source)
+    root_b, ancestors_b, descendants_b = revision_graph(revision_b, 
+                                                        revision_source)
+    assert root == root_b
+    common = set()
+    for node, node_anc in ancestors_b.iteritems():
+        if node in ancestors:
+            common.add(node)
+        else:
+            ancestors[node] = set()
+        ancestors[node].update(node_anc)
+    for node, node_dec in descendants_b.iteritems():
+        if node not in descendants:
+            descendants[node] = set()
+        ancestors[node].update(node_anc)
+    return root, ancestors, descendants, common
+
+def common_ancestor(revision_a, revision_b, revision_source):
+    root, ancestors, descendants, common = \
+        combined_graph(revision_a, revision_b, revision_source)
+    nodes = farthest_node(ancestors, descendants, root)
+    for node in nodes:
+        if node in common:
+            return node
 
 class MultipleRevisionSources(object):
     """Proxy that looks in multiple branches for revisions."""
