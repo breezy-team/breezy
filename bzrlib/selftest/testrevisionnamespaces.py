@@ -18,10 +18,9 @@
 from bzrlib.selftest import InTempDir
 
 class TestRevisionNamespaces(InTempDir):
-
     def test_revision_namespaces(self):
         """Functional tests for hashcache"""
-        from bzrlib.errors import NoSuchRevision
+        from bzrlib.errors import BzrError
         from bzrlib.branch import Branch
         import os
         import time
@@ -32,19 +31,12 @@ class TestRevisionNamespaces(InTempDir):
         b.commit('Commit two', rev_id='a@r-0-2')
         b.commit('Commit three', rev_id='a@r-0-3')
 
-        self.assertEquals(b.get_revision_info(None), (0, None))
         self.assertEquals(b.get_revision_info(1), (1, 'a@r-0-1'))
         self.assertEquals(b.get_revision_info('revno:1'), (1, 'a@r-0-1'))
         self.assertEquals(b.get_revision_info('revid:a@r-0-1'), (1, 'a@r-0-1'))
-        self.assertRaises(NoSuchRevision, b.get_revision_info, 'revid:a@r-0-0')
-        self.assertRaises(TypeError, b.get_revision_info, object)
+        self.assertRaises(BzrError, b.get_revision_info, 'revid:a@r-0-0')
 
         self.assertEquals(b.get_revision_info('date:-tomorrow'), (3, 'a@r-0-3'))
         self.assertEquals(b.get_revision_info('date:+today'), (1, 'a@r-0-1'))
 
         self.assertEquals(b.get_revision_info('last:1'), (3, 'a@r-0-3'))
-        self.assertEquals(b.get_revision_info('-1'), (3, 'a@r-0-3'))
-
-        os.mkdir('newbranch')
-        b2 = Branch('newbranch', init=True)
-        self.assertEquals(b2.lookup_revision('revid:a@r-0-1'), 'a@r-0-1')

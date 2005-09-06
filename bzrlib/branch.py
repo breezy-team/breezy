@@ -885,7 +885,7 @@ class Branch(object):
 
     def lookup_revision(self, revision):
         """Return the revision identifier for a given revision information."""
-        revno, info = self._get_revision_info(revision)
+        revno, info = self.get_revision_info(revision)
         return info
 
 
@@ -906,34 +906,6 @@ class Branch(object):
         revision can also be a string, in which case it is parsed for something like
             'date:' or 'revid:' etc.
         """
-        revno, rev_id = self._get_revision_info(revision)
-        if revno is None:
-            raise bzrlib.errors.NoSuchRevision(self, revision)
-        return revno, rev_id
-
-    def get_rev_id(self, revno, history=None):
-        """Find the revision id of the specified revno."""
-        if revno == 0:
-            return None
-        if history is None:
-            history = self.revision_history()
-        elif revno <= 0 or revno > len(history):
-            raise bzrlib.errors.NoSuchRevision(self, revno)
-        return history[revno - 1]
-
-    def _get_revision_info(self, revision):
-        """Return (revno, revision id) for revision specifier.
-
-        revision can be an integer, in which case it is assumed to be revno
-        (though this will translate negative values into positive ones)
-        revision can also be a string, in which case it is parsed for something
-        like 'date:' or 'revid:' etc.
-
-        A revid is always returned.  If it is None, the specifier referred to
-        the null revision.  If the revid does not occur in the revision
-        history, revno will be None.
-        """
-        
         if revision is None:
             return 0, None
         revno = None
@@ -943,48 +915,40 @@ class Branch(object):
             pass
         revs = self.revision_history()
         if isinstance(revision, int):
+            if revision == 0:
+                return 0, None
+            # Mabye we should do this first, but we don't need it if revision == 0
             if revision < 0:
                 revno = len(revs) + revision + 1
             else:
                 revno = revision
-            rev_id = self.get_rev_id(revno, revs)
         elif isinstance(revision, basestring):
             for prefix, func in Branch.REVISION_NAMESPACES.iteritems():
                 if revision.startswith(prefix):
-                    result = func(self, revs, revision)
-                    if len(result) > 1:
-                        revno, rev_id = result
-                    else:
-                        revno = result[0]
-                        rev_id = self.get_rev_id(revno, revs)
+                    revno = func(self, revs, revision)
                     break
             else:
-                raise BzrError('No namespace registered for string: %r' %
-                               revision)
-        else:
-            raise TypeError('Unhandled revision type %s' % revision)
+                raise BzrError('No namespace registered for string: %r' % revision)
 
-        if revno is None:
-            if rev_id is None:
-                raise bzrlib.errors.NoSuchRevision(self, revision)
-        return revno, rev_id
+        if revno is None or revno <= 0 or revno > len(revs):
+            raise BzrError("no such revision %s" % revision)
+        return revno, revs[revno-1]
 
     def _namespace_revno(self, revs, revision):
         """Lookup a revision by revision number"""
         assert revision.startswith('revno:')
         try:
-            return (int(revision[6:]),)
+            return int(revision[6:])
         except ValueError:
             return None
     REVISION_NAMESPACES['revno:'] = _namespace_revno
 
     def _namespace_revid(self, revs, revision):
         assert revision.startswith('revid:')
-        rev_id = revision[len('revid:'):]
         try:
-            return revs.index(rev_id) + 1, rev_id
+            return revs.index(revision[6:]) + 1
         except ValueError:
-            return None, rev_id
+            return None
     REVISION_NAMESPACES['revid:'] = _namespace_revid
 
     def _namespace_last(self, revs, revision):
@@ -992,11 +956,11 @@ class Branch(object):
         try:
             offset = int(revision[5:])
         except ValueError:
-            return (None,)
+            return None
         else:
             if offset <= 0:
                 raise BzrError('You must supply a positive value for --revision last:XXX')
-            return (len(revs) - offset + 1,)
+            return len(revs) - offset + 1
     REVISION_NAMESPACES['last:'] = _namespace_last
 
     def _namespace_tag(self, revs, revision):
@@ -1077,14 +1041,14 @@ class Branch(object):
                 # TODO: Handle timezone.
                 dt = datetime.datetime.fromtimestamp(r.timestamp)
                 if first >= dt and (last is None or dt >= last):
-                    return (i+1,)
+                    return i+1
         else:
             for i in range(len(revs)):
                 r = self.get_revision(revs[i])
                 # TODO: Handle timezone.
                 dt = datetime.datetime.fromtimestamp(r.timestamp)
                 if first <= dt and (last is None or dt <= last):
-                    return (i+1,)
+                    return i+1
     REVISION_NAMESPACES['date:'] = _namespace_date
 
     def revision_tree(self, revision_id):

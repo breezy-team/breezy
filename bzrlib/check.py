@@ -83,7 +83,7 @@ def check(branch):
     TODO: Check for extra files in the control directory.
     """
     from bzrlib.trace import mutter
-    from bzrlib.errors import BzrCheckError, NoSuchRevision
+    from bzrlib.errors import BzrCheckError
     from bzrlib.osutils import fingerprint_file
     from bzrlib.inventory import ROOT_ID
     from bzrlib.branch import gen_root_id
@@ -95,7 +95,6 @@ def check(branch):
 
         missing_inventory_sha_cnt = 0
         missing_revision_sha_cnt = 0
-        missing_revision_cnt = 0
 
         history = branch.revision_history()
         revno = 0
@@ -135,15 +134,7 @@ def check(branch):
                         missing_revision_sha_cnt += 1
                         continue
                     prid = prr.revision_id
-                    
-                    try:
-                        actual_sha = branch.get_revision_sha1(prid)
-                    except NoSuchRevision:
-                        missing_revision_cnt += 1
-                        mutter("parent {%s} of {%s} not present in store",
-                               prid, rev_id)
-                        continue
-                        
+                    actual_sha = branch.get_revision_sha1(prid)
                     if prr.revision_sha1 != actual_sha:
                         raise BzrCheckError("mismatched revision sha1 for "
                                             "parent {%s} of {%s}: %s vs %s"
@@ -234,9 +225,6 @@ def check(branch):
 
     if missing_revision_sha_cnt:
         print '%d parent links are missing revision_sha1' % missing_revision_sha_cnt
-
-    if missing_revision_cnt:
-        print '%d revisions are mentioned but not present' % missing_revision_cnt
 
     # stub this out for now because the main bzr branch has references
     # to revisions that aren't present in the store -- mbp 20050804

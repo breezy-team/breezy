@@ -14,14 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os
-from bzrlib.selftest import FunctionalTestCase
+from bzrlib.selftest import InTempDir
 
 
-class FunctionalBranchTests(FunctionalTestCase):
-
+class TestAppendRevisions(InTempDir):
+    """Test appending more than one revision"""
     def test_append_revisions(self):
-        """Test appending more than one revision"""
         from bzrlib.branch import Branch
         br = Branch(".", init=True)
         br.append_revision("rev1")
@@ -29,15 +27,6 @@ class FunctionalBranchTests(FunctionalTestCase):
         br.append_revision("rev2", "rev3")
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
 
-    def test_file_url(self):
-        """Test accessing a branch by a file:/// url."""
-        from bzrlib.branch import Branch, find_branch
-        os.mkdir("foo")
-        br = Branch("foo", init=True)
-        br = None
-        url = ("file://%s" % os.path.abspath("foo")).replace('\\', '/')
-        br = find_branch(url, find_root=False)
-        self.assertEqual(br.base, os.path.abspath("foo"))
 
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        
 #         >>> from bzrlib.commit import commit
