@@ -59,7 +59,7 @@ def find_cached_branch(f, cache_root, **args):
     from remotebranch import RemoteBranch
     br = find_branch(f, **args)
     def cacheify(br, store_name):
-        from meta_store import CachedStore
+        from store import CachedStore
         cache_path = os.path.join(cache_root, store_name)
         os.mkdir(cache_path)
         new_store = CachedStore(getattr(br, store_name), cache_path)
