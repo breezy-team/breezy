@@ -15,6 +15,21 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+import time
+import tempfile
+from binascii import hexlify
+
+from bzrlib.osutils import (local_time_offset, username,
+                            rand_bytes, compact_date, user_email,
+                            kind_marker, is_inside_any, quotefn,
+                            sha_string, isdir, isfile)
+from bzrlib.branch import gen_file_id
+from bzrlib.errors import BzrError, PointlessCommit
+from bzrlib.revision import Revision, RevisionReference
+from bzrlib.trace import mutter, note
+from bzrlib.xml import serializer_v4
+from bzrlib.inventory import Inventory
+
 
 def commit(branch, message,
            timestamp=None,
@@ -56,15 +71,6 @@ def commit(branch, message,
         a revision id that exists elsewhere it is your own fault.
         If null (default), a time/random revision id is generated.
     """
-
-    import time, tempfile
-
-    from bzrlib.osutils import local_time_offset, username
-    from bzrlib.branch import gen_file_id
-    from bzrlib.errors import BzrError, PointlessCommit
-    from bzrlib.revision import Revision, RevisionReference
-    from bzrlib.trace import mutter, note
-    from bzrlib.xml import serializer_v4
 
     branch.lock_write()
 
@@ -192,9 +198,6 @@ def commit(branch, message,
 
 def _gen_revision_id(branch, when):
     """Return new revision-id."""
-    from binascii import hexlify
-    from bzrlib.osutils import rand_bytes, compact_date, user_email
-
     s = '%s-%s-' % (user_email(branch), compact_date(when))
     s += hexlify(rand_bytes(8))
     return s
@@ -214,15 +217,6 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
         the working directory; these should be removed from the
         working inventory.
     """
-    from bzrlib.inventory import Inventory
-    from bzrlib.osutils import isdir, isfile, sha_string, quotefn, \
-         local_time_offset, username, kind_marker, is_inside_any
-    
-    from bzrlib.branch import gen_file_id
-    from bzrlib.errors import BzrError
-    from bzrlib.revision import Revision
-    from bzrlib.trace import mutter, note
-
     any_changes = False
     inv = Inventory(work_inv.root.file_id)
     missing_ids = []

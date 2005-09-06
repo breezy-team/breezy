@@ -29,7 +29,7 @@ from cStringIO import StringIO
 import urllib2
 
 from errors import BzrError, BzrCheckError
-from branch import Branch, BZR_BRANCH_FORMAT
+from branch import Branch, BZR_BRANCH_FORMAT_5
 from trace import mutter
 
 # velocitynet.com.au transparently proxies connections and thereby
@@ -89,8 +89,7 @@ def _find_remote_root(url):
             fmt = ff.read()
             ff.close()
 
-            fmt = fmt.rstrip('\r\n')
-            if fmt != BZR_BRANCH_FORMAT.rstrip('\r\n'):
+            if fmt != BZR_BRANCH_FORMAT_5:
                 raise BzrError("sorry, branch format %r not supported at url %s"
                                % (fmt, url))
             
