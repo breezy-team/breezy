@@ -169,3 +169,11 @@ class TestCommonAncestor(TestCaseInTempDir):
                           revisions[4])
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
                           revisions_2[5])
+
+class TestCreateSignedRevision(TestCaseInTempDir):
+
+    def test_create_signed_revision(self):
+        # create a store
+        # create a revision, sign it, apply to the store.
+        pass
+

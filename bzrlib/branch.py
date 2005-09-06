@@ -581,7 +581,6 @@ class Branch(object):
         finally:
             f.close()
 
-
     def get_revision_xml(self, revision_id):
         """Return XML file object for revision object."""
         if not revision_id or not isinstance(revision_id, basestring):
@@ -596,7 +595,6 @@ class Branch(object):
         finally:
             self.unlock()
 
-
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
         xml_file = self.get_revision_xml(revision_id)
@@ -610,7 +608,6 @@ class Branch(object):
             
         assert r.revision_id == revision_id
         return r
-
 
     def get_revision_delta(self, revno):
         """Return the delta for one revision.

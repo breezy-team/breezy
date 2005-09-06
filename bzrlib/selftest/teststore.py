@@ -17,17 +17,56 @@
 """Test Store implementation
 """
 from bzrlib.store import ImmutableStore
-from bzrlib.selftest import TestCaseInTempDir
+import bzrlib.store
+from bzrlib.selftest import TestCase, TestCaseInTempDir
 from StringIO import StringIO
 from bzrlib.errors import BzrError
 
 class TestStore(TestCaseInTempDir):
+
     def test_multiple_add(self):
         """Multiple add with same ID should raise a BzrError"""
         store = ImmutableStore('.')
         store.add(StringIO('goodbye'), '123123')
         self.assertRaises(BzrError, store.add, StringIO('goodbye'), '123123')
 
-TEST_CLASSES = [
-    TestStore,
-    ]
+    def test_total_size(self):
+        store = ImmutableStore('.')
+        store.add(StringIO('goodbye'), '123123')
+        store.add(StringIO('goodbye2'), '123123.dsc')
+        # these get gzipped - content should be stable
+        self.assertEqual(store.total_size(), (2, 55))
+        
+
+class TestMemoryStore(TestCase):
+    
+    def get_store(self):
+        return bzrlib.store.ImmutableMemoryStore()
+    
+    def test_imports(self):
+        from bzrlib.store import ImmutableMemoryStore
+
+    def test_add_and_retrieve(self):
+        store = self.get_store()
+        store.add(StringIO('hello'), 'aa')
+        self.assertNotEqual(store['aa'], None)
+        self.assertEqual(store['aa'].read(), 'hello')
+        store.add(StringIO('hello world'), 'bb')
+        self.assertNotEqual(store['bb'], None)
+        self.assertEqual(store['bb'].read(), 'hello world')
+
+    def test_missing_is_absent(self):
+        store = self.get_store()
+        self.failIf('aa' in store)
+
+    def test_adding_fails_when_present(self):
+        store = self.get_store()
+        store.add(StringIO('hello'), 'aa')
+        self.assertRaises(bzrlib.store.StoreError,
+                          store.add, StringIO('hello'), 'aa')
+
+    def test_total_size(self):
+        store = self.get_store()
+        store.add(StringIO('goodbye'), '123123')
+        store.add(StringIO('goodbye2'), '123123.dsc')
+        self.assertEqual(store.total_size(), (2, 15))

@@ -35,8 +35,8 @@ class StoreError(Exception):
     pass
 
 
-class ImmutableStore(object):
-    """Store that holds files indexed by unique names.
+class Store(object):
+    """An abstract store that holds files indexed by unique names.
 
     Files can be added, but not modified once they are in.  Typically
     the hash is used as the name, or something else known to be unique,
@@ -57,8 +57,29 @@ class ImmutableStore(object):
     >>> st.add(StringIO('goodbye'), '123123')
     >>> st['123123'].read()
     'goodbye'
+    """
+
+    def total_size(self):
+        """Return (count, bytes)
+
+        This is the (compressed) size stored on disk, not the size of
+        the content."""
+        total = 0
+        count = 0
+        for fid in self:
+            count += 1
+            total += self._item_size(fid)
+        return count, total
+
+
+class ImmutableStore(Store):
+    """Store that stores files on disk.
 
     TODO: Atomic add by writing to a temporary file and renaming.
+    TODO: Guard against the same thing being stored twice, compressed and
+          uncompressed during copy_multi_immutable - the window is for a
+          matching store with some crack code that lets it offer a 
+          non gz FOO and then a fz FOO.
 
     In bzr 0.0.5 and earlier, files within the store were marked
     readonly on disk.  This is no longer done but existing stores need
@@ -66,6 +87,7 @@ class ImmutableStore(object):
     """
 
     def __init__(self, basedir):
+        super(ImmutableStore, self).__init__()
         self._basedir = basedir
 
     def _path(self, id):
@@ -174,7 +196,6 @@ class ImmutableStore(object):
         assert count == len(to_copy)
         pb.clear()
         return count, failed
-    
 
     def __contains__(self, fileid):
         """"""
@@ -182,7 +203,12 @@ class ImmutableStore(object):
         return (os.access(p, os.R_OK)
                 or os.access(p + '.gz', os.R_OK))
 
-    # TODO: Guard against the same thing being stored twice, compressed and uncompresse
+    def _item_size(self, fid):
+        p = self._path(fid)
+        try:
+            return os.stat(p)[ST_SIZE]
+        except OSError:
+            return os.stat(p + '.gz')[ST_SIZE]
 
     def __iter__(self):
         for f in os.listdir(self._basedir):
@@ -194,7 +220,6 @@ class ImmutableStore(object):
 
     def __len__(self):
         return len(os.listdir(self._basedir))
-
 
     def __getitem__(self, fileid):
         """Returns a file reading from a particular entry."""
@@ -214,26 +239,6 @@ class ImmutableStore(object):
         raise IndexError(fileid)
 
 
-    def total_size(self):
-        """Return (count, bytes)
-
-        This is the (compressed) size stored on disk, not the size of
-        the content."""
-        total = 0
-        count = 0
-        for fid in self:
-            count += 1
-            p = self._path(fid)
-            try:
-                total += os.stat(p)[ST_SIZE]
-            except OSError:
-                total += os.stat(p + '.gz')[ST_SIZE]
-                
-        return count, total
-
-
-
-
 class ImmutableScratchStore(ImmutableStore):
     """Self-destructing test subclass of ImmutableStore.
 
@@ -241,7 +246,7 @@ class ImmutableScratchStore(ImmutableStore):
  Obviously you should not put anything precious in it.
     """
     def __init__(self):
-        ImmutableStore.__init__(self, tempfile.mkdtemp())
+        super(ImmutableScratchStore, self).__init__(tempfile.mkdtemp())
 
     def __del__(self):
         for f in os.listdir(self._basedir):
@@ -251,3 +256,28 @@ class ImmutableScratchStore(ImmutableStore):
             os.remove(fpath)
         os.rmdir(self._basedir)
         mutter("%r destroyed" % self)
+
+
+class ImmutableMemoryStore(Store):
+    """A memory only store."""
+
+    def __init__(self):
+        super(ImmutableMemoryStore, self).__init__()
+        self._contents = {}
+
+    def add(self, stream, fileid, compressed=True):
+        if self._contents.has_key(fileid):
+            raise StoreError("fileid %s already in the store" % fileid)
+        self._contents[fileid] = stream.read()
+
+    def __getitem__(self, fileid):
+        """Returns a file reading from a particular entry."""
+        if not self._contents.has_key(fileid):
+            raise IndexError
+        return StringIO(self._contents[fileid])
+
+    def _item_size(self, fileid):
+        return len(self._contents[fileid])
+
+    def __iter__(self):
+        return iter(self._contents.keys())
