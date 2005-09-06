@@ -630,8 +630,6 @@ class Branch(object):
 
         return compare_trees(old_tree, new_tree)
 
-        
-
     def get_revision_sha1(self, revision_id):
         """Hash the stored value of a revision, and return it."""
         # In the future, revision entries will be signed. At that
@@ -641,7 +639,6 @@ class Branch(object):
         # have all hash pointers stay consistent.
         # But for now, just hash the contents.
         return bzrlib.osutils.sha_file(self.get_revision_xml(revision_id))
-
 
     def get_inventory(self, inventory_id):
         """Get Inventory object by hash.
@@ -654,17 +651,14 @@ class Branch(object):
 
         return unpack_xml(Inventory, self.get_inventory_xml(inventory_id))
 
-
     def get_inventory_xml(self, inventory_id):
         """Get inventory XML as a file object."""
         return self.inventory_store[inventory_id]
             
-
     def get_inventory_sha1(self, inventory_id):
         """Return the sha1 hash of the inventory entry
         """
         return sha_file(self.get_inventory_xml(inventory_id))
-
 
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""
@@ -675,7 +669,6 @@ class Branch(object):
             return Inventory(self.get_root_id())
         else:
             return self.get_inventory(revision_id)
-
 
     def revision_history(self):
         """Return sequence of revision hashes on to this branch.
@@ -689,7 +682,6 @@ class Branch(object):
                     self.controlfile('revision-history', 'r').readlines()]
         finally:
             self.unlock()
-
 
     def common_ancestor(self, other, self_revno=None, other_revno=None):
         """
