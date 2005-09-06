@@ -328,16 +328,16 @@ class Branch(object):
     def _check_format(self):
         """Check this branch format is supported.
 
-        The current tool only supports the current unstable format.
+        The format level is stored, as an integer, in
+        self._branch_format for code that needs to check it later.
 
         In the future, we might need different in-memory Branch
         classes to support downlevel branches.  But not yet.
         """
-        # This ignores newlines so that we can open branches created
-        # on Windows from Linux and so on.  I think it might be better
-        # to always make all internal files in unix format.
-        fmt = self.controlfile('branch-format', 'r').read().rstrip('\r\n')
-        if fmt != BZR_BRANCH_FORMAT_5:
+        fmt = self.controlfile('branch-format', 'r').read()
+        if fmt == BZR_BRANCH_FORMAT_5:
+            self._branch_format = 5
+        else:
             raise BzrError('sorry, branch format "%s" not supported; ' 
                            'use a different bzr version, '
                            'or run "bzr upgrade", '
