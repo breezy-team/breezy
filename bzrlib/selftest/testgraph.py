@@ -1,6 +1,7 @@
 from bzrlib.selftest import TestCase
 from bzrlib.graph import shortest_path
 from bzrlib.graph import farthest_nodes_ab
+from bzrlib.graph import farthest_node
 
 class TestBase(TestCase):
     def edge_add(self, *args):
@@ -33,5 +34,17 @@ class TestBase(TestCase):
         self.edge_add('A', 'E', 'F', 'C')
         self.edge_add('A', 'G', 'H', 'I', 'B')
         self.edge_add('A', 'J', 'K', 'L', 'M', 'N')
-        self.assertEqual(farthest_nodes_ab(self.graph, 'A')[0], 'D')
+        descendants = {}
+        for node in self.graph:
+            for ancestor in self.graph[node]:
+                if ancestor not in descendants:
+                    descendants[ancestor] = set()
+                descendants[ancestor].add(node)
+        nodes = farthest_node(self.graph, descendants, 'A')
+        self.assertEqual(nodes[0], 'D')
+        assert nodes[1] in ('N', 'C')
+        assert nodes[2] in ('N', 'C')
+        assert nodes[3] in ('B', 'M')
+        assert nodes[4] in ('B', 'M')
+
 
