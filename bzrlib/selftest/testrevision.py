@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.selftest import TestCaseInTempDir, TestCase
 
 
 def make_branches():
@@ -177,3 +177,20 @@ class TestCreateSignedRevision(TestCaseInTempDir):
         # create a revision, sign it, apply to the store.
         pass
 
+class TestOperators(TestCase):
+
+    def test___eq__(self):
+        from bzrlib.revision import Revision, RevisionReference
+        revision1 = Revision("invid", "sha", "revid", 100, "boo", "john", [])
+        revision2 = Revision("invid", "sha", "revid", 100, "boo", "john", [])
+        revision3 = Revision("invid", "sha", "rev2id", 100, "bp", "john", 
+                             [RevisionReference("revid")])
+        self.assertEqual(revision1, revision1)
+        self.assertEqual(revision1, revision2)
+        self.assertNotEqual(revision1, revision3)
+        self.assertEqual(revision2, revision1)
+        self.assertEqual(revision2, revision2)
+        self.assertNotEqual(revision2, revision3)
+        self.assertNotEqual(revision3, revision1)
+        self.assertNotEqual(revision3, revision2)
+        self.assertEqual(revision3, revision3)
