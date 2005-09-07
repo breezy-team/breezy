@@ -24,6 +24,14 @@ class RevisionReference(object):
 
     Includes the revision_id and revision_sha1.
     """
+
+    def __eq__(self, other):
+        try:
+            return self.revision_id == other.revision_id and \
+                   self.revision_sha1 == other.revision_sha1
+        except AttributeError:
+            return False
+
     def __init__(self, revision_id, revision_sha1=None):
         self.revision_id = None
         self.revision_sha1 = None
