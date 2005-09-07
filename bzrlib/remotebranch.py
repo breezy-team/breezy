@@ -29,12 +29,10 @@ from cStringIO import StringIO
 import os
 import urllib2
 
-from errors import BzrError, BzrCheckError
-from branch import Branch, BZR_BRANCH_FORMAT
-from trace import mutter
-
-# velocitynet.com.au transparently proxies connections and thereby
-# breaks keep-alive -- sucks!
+from bzrlib.errors import BzrError, BzrCheckError
+from bzrlib.branch import Branch, BZR_BRANCH_FORMAT
+from bzrlib.trace import mutter
+from bzrlib.xml import serializer_v4
 
 
 ENABLE_URLGRABBER = False
@@ -155,7 +153,6 @@ class RemoteBranch(Branch):
 
 
     def get_revision(self, revision_id):
-        from bzrlib.revision import Revision
         try:
             revf = self.revision_store[revision_id]
         except KeyError:
