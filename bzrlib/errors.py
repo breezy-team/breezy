@@ -24,7 +24,9 @@ __author__ = "Martin Pool <mbp@canonical.com>"
 # exceptions 
 class BzrError(StandardError):
     def __str__(self):
-        if len(self.args) == 2:
+        if len(self.args) == 1:
+            return self.args[0]
+        elif len(self.args) == 2:
             # further explanation or suggestions
             return '\n  '.join([self.args[0]] + self.args[1])
         else:
