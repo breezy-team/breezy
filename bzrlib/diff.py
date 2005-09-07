@@ -228,17 +228,17 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         print >>to_file, '*** renamed %s %r => %r' % (kind, old_path, new_path)
         _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
                                     new_label, new_path, new_tree,
-                                    text_modified, kind, to_file)
+                                    text_modified, kind, to_file, diff_file)
 
     for path, file_id, kind in delta.modified:
         print >>to_file, '*** modified %s %r' % (kind, path)
         _maybe_diff_file_or_symlink(old_label, path, old_tree, file_id,
                                     new_label, path, new_tree,
-                                    True, kind, to_file)
+                                    True, kind, to_file, diff_file)
 
 def _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
                                 new_label, new_path, new_tree, text_modified,
-                                kind, to_file):
+                                kind, to_file, diff_file):
     if text_modified:
         if kind == 'file':
             diff_file(old_label + old_path,
