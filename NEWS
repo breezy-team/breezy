@@ -4,6 +4,18 @@ development head
 
     * Refactor xml packing/unpacking.
 
+  BUG FIXES: 
+
+    * Fixed 'bzr mv' by Ollie Rutherfurd.
+
+    * Fixed strange error when trying to access a nonexistent http
+      branch.
+
+
+  PORTABILITY:
+
+    * Various Windows fixes from Ollie Rutherfurd.
+
 
 bzr-0.0.7 2005-09-02
 
