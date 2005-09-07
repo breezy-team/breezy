@@ -100,7 +100,7 @@ class InventoryEntry(object):
     # directories, etc etc.
 
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', ]
+                 'text_id', 'parent_id', 'children', 'symlink_target']
 
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
@@ -128,14 +128,22 @@ class InventoryEntry(object):
         self.kind = kind
         self.text_id = text_id
         self.parent_id = parent_id
+        self.symlink_target = None
         if kind == 'directory':
             self.children = {}
         elif kind == 'file':
             pass
+        elif kind == 'symlink':
+            pass
         else:
             raise BzrError("unhandled entry kind %r" % kind)
 
-
+    def read_symlink_target(self, path):
+        if self.kind == 'symlink':
+            try:
+                self.symlink_target = os.readlink(path)
+            except OSError,e:
+                raise BzrError("os.readlink error, %s" % e)
 
     def sorted_children(self):
         l = self.children.items()
@@ -148,6 +156,7 @@ class InventoryEntry(object):
                                self.parent_id, text_id=self.text_id)
         other.text_sha1 = self.text_sha1
         other.text_size = self.text_size
+        other.symlink_target = self.symlink_target
         # note that children are *not* copied; they're pulled across when
         # others are added
         return other
@@ -175,7 +184,7 @@ class InventoryEntry(object):
         if self.text_size != None:
             e.set('text_size', '%d' % self.text_size)
             
-        for f in ['text_id', 'text_sha1']:
+        for f in ['text_id', 'text_sha1', 'symlink_target']:
             v = getattr(self, f)
             if v != None:
                 e.set(f, v)
@@ -205,6 +214,7 @@ class InventoryEntry(object):
         self = cls(elt.get('file_id'), elt.get('name'), elt.get('kind'), parent_id)
         self.text_id = elt.get('text_id')
         self.text_sha1 = elt.get('text_sha1')
+        self.symlink_target = elt.get('symlink_target')
         
         ## mutter("read inventoryentry: %r" % (elt.attrib))
 
@@ -222,6 +232,7 @@ class InventoryEntry(object):
 
         return (self.file_id == other.file_id) \
                and (self.name == other.name) \
+               and (other.symlink_target == self.symlink_target) \
                and (self.text_sha1 == other.text_sha1) \
                and (self.text_size == other.text_size) \
                and (self.text_id == other.text_id) \

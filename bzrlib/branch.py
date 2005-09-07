@@ -112,11 +112,9 @@ def find_branch_root(f=None):
     """
     if f == None:
         f = os.getcwd()
-    elif hasattr(os.path, 'realpath'):
-        f = os.path.realpath(f)
     else:
-        f = os.path.abspath(f)
-    if not os.path.exists(f):
+        f = bzrlib.osutils.normalizepath(f)
+    if not bzrlib.osutils.lexists(f):
         raise BzrError('%r does not exist' % f)
         
 
@@ -458,10 +456,10 @@ class Branch(object):
                     kind = file_kind(fullpath)
                 except OSError:
                     # maybe something better?
-                    raise BzrError('cannot add: not a regular file or directory: %s' % quotefn(f))
+                    raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
 
-                if kind != 'file' and kind != 'directory':
-                    raise BzrError('cannot add: not a regular file or directory: %s' % quotefn(f))
+                if kind not in ('file', 'directory', 'symlink'):
+                    raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
 
                 if file_id is None:
                     file_id = gen_file_id(f)
@@ -532,7 +530,6 @@ class Branch(object):
         finally:
             self.unlock()
 
-
     # FIXME: this doesn't need to be a branch method
     def set_inventory(self, new_inventory_list):
         from bzrlib.inventory import Inventory, InventoryEntry
@@ -543,7 +540,6 @@ class Branch(object):
                 continue
             inv.add(InventoryEntry(file_id, name, kind, parent))
         self._write_inventory(inv)
-
 
     def unknowns(self):
         """Return all unknown files.

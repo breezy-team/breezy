@@ -61,8 +61,6 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file):
     print >>to_file
 
 
-
-
 def external_diff(old_label, oldlines, new_label, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
@@ -140,8 +138,6 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
     finally:
         oldtmpf.close()                 # and delete
         newtmpf.close()
-    
-
 
 def show_diff(b, revision, specific_files, external_diff_options=None,
               revision2=None, output=None):
@@ -230,23 +226,31 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
     for old_path, new_path, file_id, kind, text_modified in delta.renamed:
         print >>to_file, '*** renamed %s %r => %r' % (kind, old_path, new_path)
-        if text_modified:
+        _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
+                                    new_label, new_path, new_tree,
+                                    text_modified, kind, to_file)
+
+    for path, file_id, kind in delta.modified:
+        print >>to_file, '*** modified %s %r' % (kind, path)
+        _maybe_diff_file_or_symlink(old_label, path, old_tree, file_id,
+                                    new_label, path, new_tree,
+                                    True, kind, to_file)
+
+def _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
+                                new_label, new_path, new_tree, text_modified,
+                                kind, to_file):
+    if text_modified:
+        if kind == 'file':
             diff_file(old_label + old_path,
                       old_tree.get_file(file_id).readlines(),
                       new_label + new_path,
                       new_tree.get_file(file_id).readlines(),
                       to_file)
-
-    for path, file_id, kind in delta.modified:
-        print >>to_file, '*** modified %s %r' % (kind, path)
-        if kind == 'file':
-            diff_file(old_label + path,
-                      old_tree.get_file(file_id).readlines(),
-                      new_label + path,
-                      new_tree.get_file(file_id).readlines(),
-                      to_file)
-
-
-
-
-
+        elif kind == 'symlink':
+            _diff_symlink(old_tree, new_tree, file_id, to_file)
+            
+def _diff_symlink(old_tree, new_tree, file_id, to_file):
+    t1 = old_tree.get_symlink_target(file_id)
+    t2 = new_tree.get_symlink_target(file_id)
+    print >>to_file, '*** *** target changed %r => %r' % (t1, t2)
+    

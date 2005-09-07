@@ -216,7 +216,7 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
         working inventory.
     """
     from bzrlib.inventory import Inventory
-    from bzrlib.osutils import isdir, isfile, sha_string, quotefn, \
+    from bzrlib.osutils import isdir, isfile, islink, sha_string, quotefn, \
          local_time_offset, username, kind_marker, is_inside_any
     
     from bzrlib.branch import gen_file_id
@@ -264,8 +264,9 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
         if old_ie:
             old_kind = old_ie.kind
             if old_kind != entry.kind:
-                raise BzrError("entry %r changed kind from %r to %r"
-                        % (file_id, old_kind, entry.kind))
+                raise BzrError("entry %r changed kind from %r to %r - not "
+                               "supported yet."
+                                % (file_id, old_kind, entry.kind))
 
         if entry.kind == 'directory':
             if not isdir(p):
@@ -296,6 +297,19 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
                 entry.text_id = gen_file_id(entry.name)
                 branch.text_store.add(content, entry.text_id)
                 mutter('    stored with text_id {%s}' % entry.text_id)
+        elif entry.kind == 'symlink':
+            if not islink(p):
+                raise BzrError("%s is entered as link but is not a link" 
+                                % quotefn(p))
+
+            entry.read_symlink_target(path)
+
+            if (old_ie
+                and old_ie.symlink_target == entry.symlink_target):
+                mutter('    unchanged from previous symlink {%s}' %
+                       entry.symlink_target)
+            else:
+                mutter('    changed to value {%s}' % entry.symlink_target)
 
         if verbose:
             marked = path + kind_marker(entry.kind)

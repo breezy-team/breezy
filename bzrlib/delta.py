@@ -36,7 +36,9 @@ class TreeDelta(object):
     Each id is listed only once.
 
     Files that are both modified and renamed are listed only in
-    renamed, with the text_modified flag true.
+    renamed, with the text_modified flag true. The text_modified
+    applies either to the the content of the file or the target of the
+    symbolic link, depending of the kind of file.
 
     Files are only considered renamed if their name has changed or
     their parent directory has changed.  Renaming a directory
@@ -176,6 +178,14 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
                 old_sha1 = old_tree.get_file_sha1(file_id)
                 new_sha1 = new_tree.get_file_sha1(file_id)
                 text_modified = (old_sha1 != new_sha1)
+            elif kind == 'symlink':
+                t1 = old_tree.get_symlink_target(file_id)
+                t2 = new_tree.get_symlink_target(file_id)
+                if t1 != t2:
+                    mutter("    symlink target changed")
+                    text_modified = True
+                else:
+                    text_modified = False
             else:
                 ## mutter("no text to check for %r %r" % (file_id, kind))
                 text_modified = False

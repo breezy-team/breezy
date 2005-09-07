@@ -26,6 +26,7 @@ bit inefficient but arguably tests in a way more representative of how
 it's normally invoked.
 """
 
+import os;
 import sys
 
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
@@ -220,13 +221,24 @@ class TestCommands(ExternalBase):
 #        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
 #        % (a.pending_merges(), b.last_patch())
 
+
+def has_symlinks():
+    if hasattr(os, 'symlink'):
+        return True
+    else:
+        return False
+
+def listdir_sorted(dir):
+    L = os.listdir(dir)
+    L.sort()
+    return L
+
 class OldTests(ExternalBase):
     """old tests moved from ./testbzr."""
 
     def test_bzr(self):
         from os import chdir, mkdir
         from os.path import exists
-        import os
 
         runbzr = self.runbzr
         backtick = self.backtick
@@ -391,3 +403,100 @@ class OldTests(ExternalBase):
 
         runbzr('info')
 
+        if has_symlinks():
+            progress("symlinks")
+            mkdir('symlinks')
+            chdir('symlinks')
+            runbzr('init')
+            os.symlink("NOWHERE1", "link1")
+            runbzr('add link1')
+            assert backtick('bzr unknowns') == ''
+            runbzr(['commit', '-m', '1: added symlink link1'])
+    
+            mkdir('d1')
+            runbzr('add d1')
+            assert backtick('bzr unknowns') == ''
+            os.symlink("NOWHERE2", "d1/link2")
+            assert backtick('bzr unknowns') == 'd1/link2\n'
+            # is d1/link2 found when adding d1
+            runbzr('add d1')
+            assert backtick('bzr unknowns') == ''
+            os.symlink("NOWHERE3", "d1/link3")
+            assert backtick('bzr unknowns') == 'd1/link3\n'
+            runbzr(['commit', '-m', '2: added dir, symlink'])
+    
+            runbzr('rename d1 d2')
+            runbzr('move d2/link2 .')
+            runbzr('move link1 d2')
+            assert os.readlink("./link2") == "NOWHERE2"
+            assert os.readlink("d2/link1") == "NOWHERE1"
+            runbzr('add d2/link3')
+            runbzr('diff')
+            runbzr(['commit', '-m', '3: rename of dir, move symlinks, add link3'])
+    
+            os.unlink("link2")
+            os.symlink("TARGET 2", "link2")
+            os.unlink("d2/link1")
+            os.symlink("TARGET 1", "d2/link1")
+            runbzr('diff')
+            assert backtick("bzr relpath d2/link1") == "d2/link1\n"
+            runbzr(['commit', '-m', '4: retarget of two links'])
+    
+            runbzr('remove d2/link1')
+            assert backtick('bzr unknowns') == 'd2/link1\n'
+            runbzr(['commit', '--unchanged', '-m', '5: remove d2/link1'])
+            print ("commit --uchanged is needed to delete a file with no other"
+                   " changes. this is a bug.")
+    
+            os.mkdir("d1")
+            runbzr('add d1')
+            runbzr('rename d2/link3 d1/link3new')
+            assert backtick('bzr unknowns') == 'd2/link1\n'
+            runbzr(['commit', '-m', '6: remove d2/link1, move/rename link3'])
+            
+            runbzr(['check'])
+            
+            runbzr(['export', '-r', '1', 'exp1.tmp'])
+            chdir("exp1.tmp")
+            assert listdir_sorted(".") == [ "link1" ]
+            assert os.readlink("link1") == "NOWHERE1"
+            chdir("..")
+            
+            runbzr(['export', '-r', '2', 'exp2.tmp'])
+            chdir("exp2.tmp")
+            assert listdir_sorted(".") == [ "d1", "link1" ]
+            chdir("..")
+            
+            runbzr(['export', '-r', '3', 'exp3.tmp'])
+            chdir("exp3.tmp")
+            assert listdir_sorted(".") == [ "d2", "link2" ]
+            assert listdir_sorted("d2") == [ "link1", "link3" ]
+            assert os.readlink("d2/link1") == "NOWHERE1"
+            assert os.readlink("link2")    == "NOWHERE2"
+            chdir("..")
+            
+            runbzr(['export', '-r', '4', 'exp4.tmp'])
+            chdir("exp4.tmp")
+            assert listdir_sorted(".") == [ "d2", "link2" ]
+            assert os.readlink("d2/link1") == "TARGET 1"
+            assert os.readlink("link2")    == "TARGET 2"
+            assert listdir_sorted("d2") == [ "link1", "link3" ]
+            chdir("..")
+            
+            runbzr(['export', '-r', '5', 'exp5.tmp'])
+            chdir("exp5.tmp")
+            assert listdir_sorted(".") == [ "d2", "link2" ]
+            assert os.path.islink("link2")
+            assert listdir_sorted("d2")== [ "link3" ]
+            chdir("..")
+            
+            runbzr(['export', '-r', '6', 'exp6.tmp'])
+            chdir("exp6.tmp")
+            assert listdir_sorted(".") == [ "d1", "d2", "link2" ]
+            assert listdir_sorted("d1") == [ "link3new" ]
+            assert listdir_sorted("d2") == []
+            assert os.readlink("d1/link3new") == "NOWHERE3"
+            chdir("..")
+        else:
+            progress("skipping symlink tests")
+            

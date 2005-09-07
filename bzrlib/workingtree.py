@@ -69,7 +69,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         inv = self._inventory
         for path, ie in inv.iter_entries():
-            if os.path.exists(self.abspath(path)):
+            if bzrlib.osutils.lexists(self.abspath(path)):
                 yield ie.file_id
 
 
@@ -83,7 +83,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return os.path.join(self.basedir, filename)
 
     def has_filename(self, filename):
-        return os.path.exists(self.abspath(filename))
+        return bzrlib.osutils.lexists(self.abspath(filename))
 
     def get_file(self, file_id):
         return self.get_file_byname(self.id2path(file_id))
@@ -102,7 +102,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if not inv.has_id(file_id):
             return False
         path = inv.id2path(file_id)
-        return os.path.exists(self.abspath(path))
+        return bzrlib.osutils.lexists(self.abspath(path))
 
 
     __contains__ = has_id
@@ -112,11 +112,12 @@ class WorkingTree(bzrlib.tree.Tree):
         # is this still called?
         raise NotImplementedError()
 
-
     def get_file_sha1(self, file_id):
         path = self._inventory.id2path(file_id)
         return self._hashcache.get_sha1(path)
 
+    def get_symlink_target(self, file_id):
+        return os.readlink(self.id2path(file_id))
 
     def file_class(self, filename):
         if self.path2id(filename):

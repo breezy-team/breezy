@@ -98,7 +98,7 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
 
         kind = bzrlib.osutils.file_kind(af)
 
-        if kind != 'file' and kind != 'directory':
+        if kind != 'file' and kind != 'directory' and kind != 'symlink':
             if f in user_list:
                 raise BadFileKindError("cannot add %s of type %s" % (f, kind))
             else:

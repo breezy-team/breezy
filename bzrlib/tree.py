@@ -146,10 +146,16 @@ class RevisionTree(Tree):
         for path, entry in self.inventory.iter_entries():
             yield path, 'V', entry.kind, entry.file_id
 
+    def get_symlink_target(self, file_id):
+        ie = self._inventory[file_id]
+        return ie.symlink_target;
 
 class EmptyTree(Tree):
     def __init__(self):
         self._inventory = Inventory()
+
+    def get_symlink_target(self, file_id):
+        return None
 
     def has_filename(self, filename):
         return False
@@ -260,6 +266,11 @@ def dir_exporter(tree, dest, root):
             os.mkdir(fullpath)
         elif kind == 'file':
             pumpfile(tree.get_file(ie.file_id), file(fullpath, 'wb'))
+        elif kind == 'symlink':
+            try:
+                os.symlink(ie.symlink_target, fullpath)
+            except OSError,e:
+                raise BzrError("Failed to create symlink %r -> %r, error: %s" % (fullpath, ie.symlink_target, e))
         else:
             raise BzrError("don't know how to export {%s} of kind %r" % (ie.file_id, kind))
         mutter("  export {%s} kind %s to %s" % (ie.file_id, kind, fullpath))
