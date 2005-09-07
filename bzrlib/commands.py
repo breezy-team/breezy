@@ -69,10 +69,11 @@ def _unsquish_command_name(cmd):
 def _parse_revision_str(revstr):
     """This handles a revision string -> revno.
 
-    This always returns a list.  The list will have one element for 
+    This always returns a list.  The list will have one element for
+    each revision.
 
     It supports integers directly, but everything else it
-    defers for passing to Branch.get_revision_info()
+    defers for passing to revisionspec.get_revision_info()
 
     >>> _parse_revision_str('234')
     [234]

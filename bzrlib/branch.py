@@ -143,139 +143,16 @@ class Branch(object):
         Base directory/url of the branch.
     """
     base = None
-    
-    # Map some sort of prefix into a namespace
-    # stuff like "revno:10", "revid:", etc.
-    # This should match a prefix with a function which accepts
-    REVISION_NAMESPACES = {}
 
     def __new__(cls, *a, **kw):
         """this is temporary, till we get rid of all code that does
         b = Branch()
         """
-        # AAARGH!  MY EYES!  UUUUGLY!!!
+        # XXX: AAARGH!  MY EYES!  UUUUGLY!!!
         if cls == Branch:
             cls = LocalBranch
         b = object.__new__(cls)
         return b
-
-    def _namespace_revno(self, revs, revision):
-        """Lookup a revision by revision number"""
-        assert revision.startswith('revno:')
-        try:
-            return (int(revision[6:]),)
-        except ValueError:
-            return None
-    REVISION_NAMESPACES['revno:'] = _namespace_revno
-
-    def _namespace_revid(self, revs, revision):
-        assert revision.startswith('revid:')
-        rev_id = revision[len('revid:'):]
-        try:
-            return revs.index(rev_id) + 1, rev_id
-        except ValueError:
-            return None, rev_id
-    REVISION_NAMESPACES['revid:'] = _namespace_revid
-
-    def _namespace_last(self, revs, revision):
-        assert revision.startswith('last:')
-        try:
-            offset = int(revision[5:])
-        except ValueError:
-            return (None,)
-        else:
-            if offset <= 0:
-                raise BzrError('You must supply a positive value for --revision last:XXX')
-            return (len(revs) - offset + 1,)
-    REVISION_NAMESPACES['last:'] = _namespace_last
-
-    def _namespace_tag(self, revs, revision):
-        assert revision.startswith('tag:')
-        raise BzrError('tag: namespace registered, but not implemented.')
-    REVISION_NAMESPACES['tag:'] = _namespace_tag
-
-    def _namespace_date(self, revs, revision):
-        assert revision.startswith('date:')
-        import datetime
-        # Spec for date revisions:
-        #   date:value
-        #   value can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
-        #   it can also start with a '+/-/='. '+' says match the first
-        #   entry after the given date. '-' is match the first entry before the date
-        #   '=' is match the first entry after, but still on the given date.
-        #
-        #   +2005-05-12 says find the first matching entry after May 12th, 2005 at 0:00
-        #   -2005-05-12 says find the first matching entry before May 12th, 2005 at 0:00
-        #   =2005-05-12 says find the first match after May 12th, 2005 at 0:00 but before
-        #       May 13th, 2005 at 0:00
-        #
-        #   So the proper way of saying 'give me all entries for today' is:
-        #       -r {date:+today}:{date:-tomorrow}
-        #   The default is '=' when not supplied
-        val = revision[5:]
-        match_style = '='
-        if val[:1] in ('+', '-', '='):
-            match_style = val[:1]
-            val = val[1:]
-
-        today = datetime.datetime.today().replace(hour=0,minute=0,second=0,microsecond=0)
-        if val.lower() == 'yesterday':
-            dt = today - datetime.timedelta(days=1)
-        elif val.lower() == 'today':
-            dt = today
-        elif val.lower() == 'tomorrow':
-            dt = today + datetime.timedelta(days=1)
-        else:
-            import re
-            # This should be done outside the function to avoid recompiling it.
-            _date_re = re.compile(
-                    r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
-                    r'(,|T)?\s*'
-                    r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
-                )
-            m = _date_re.match(val)
-            if not m or (not m.group('date') and not m.group('time')):
-                raise BzrError('Invalid revision date %r' % revision)
-
-            if m.group('date'):
-                year, month, day = int(m.group('year')), int(m.group('month')), int(m.group('day'))
-            else:
-                year, month, day = today.year, today.month, today.day
-            if m.group('time'):
-                hour = int(m.group('hour'))
-                minute = int(m.group('minute'))
-                if m.group('second'):
-                    second = int(m.group('second'))
-                else:
-                    second = 0
-            else:
-                hour, minute, second = 0,0,0
-
-            dt = datetime.datetime(year=year, month=month, day=day,
-                    hour=hour, minute=minute, second=second)
-        first = dt
-        last = None
-        reversed = False
-        if match_style == '-':
-            reversed = True
-        elif match_style == '=':
-            last = dt + datetime.timedelta(days=1)
-
-        if reversed:
-            for i in range(len(revs)-1, -1, -1):
-                r = self.get_revision(revs[i])
-                # TODO: Handle timezone.
-                dt = datetime.datetime.fromtimestamp(r.timestamp)
-                if first >= dt and (last is None or dt >= last):
-                    return (i+1,)
-        else:
-            for i in range(len(revs)):
-                r = self.get_revision(revs[i])
-                # TODO: Handle timezone.
-                dt = datetime.datetime.fromtimestamp(r.timestamp)
-                if first <= dt and (last is None or dt <= last):
-                    return (i+1,)
-    REVISION_NAMESPACES['date:'] = _namespace_date
 
 
 class LocalBranch(Branch):
@@ -1007,8 +884,24 @@ class LocalBranch(Branch):
         
 
     def lookup_revision(self, revision):
-        """Return the revision identifier for a given revision information."""
-        revno, info = self._get_revision_info(revision)
+        """Return the revision identifier for a given revision specifier."""
+        # XXX: I'm not sure this method belongs here; I'd rather have the
+        # revision spec stuff be an UI thing, and branch blissfully unaware
+        # of it.
+        # Also, I'm not entirely happy with this method returning None
+        # when the revision doesn't exist.
+        # But I'm keeping the contract I found, because this seems to be
+        # used in a lot of places - and when I do change these, I'd rather
+        # figure out case-by-case which ones actually want to care about
+        # revision specs (eg, they are UI-level) and which ones should trust
+        # that they have a revno/revid.
+        #   -- lalo@exoweb.net, 2005-09-07
+        from bzrlib.errors import NoSuchRevision
+        from bzrlib.revisionspec import get_revision_info
+        try:
+            revno, info = get_revision_info(self, revision)
+        except NoSuchRevision:
+            return None
         return info
 
 
@@ -1021,19 +914,6 @@ class LocalBranch(Branch):
             raise bzrlib.errors.NoSuchRevision(self, revision_id)
 
 
-    def get_revision_info(self, revision):
-        """Return (revno, revision id) for revision identifier.
-
-        revision can be an integer, in which case it is assumed to be revno (though
-            this will translate negative values into positive ones)
-        revision can also be a string, in which case it is parsed for something like
-            'date:' or 'revid:' etc.
-        """
-        revno, rev_id = self._get_revision_info(revision)
-        if revno is None:
-            raise bzrlib.errors.NoSuchRevision(self, revision)
-        return revno, rev_id
-
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
         if revno == 0:
@@ -1043,54 +923,6 @@ class LocalBranch(Branch):
         elif revno <= 0 or revno > len(history):
             raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
-
-    def _get_revision_info(self, revision):
-        """Return (revno, revision id) for revision specifier.
-
-        revision can be an integer, in which case it is assumed to be revno
-        (though this will translate negative values into positive ones)
-        revision can also be a string, in which case it is parsed for something
-        like 'date:' or 'revid:' etc.
-
-        A revid is always returned.  If it is None, the specifier referred to
-        the null revision.  If the revid does not occur in the revision
-        history, revno will be None.
-        """
-        
-        if revision is None:
-            return 0, None
-        revno = None
-        try:# Convert to int if possible
-            revision = int(revision)
-        except ValueError:
-            pass
-        revs = self.revision_history()
-        if isinstance(revision, int):
-            if revision < 0:
-                revno = len(revs) + revision + 1
-            else:
-                revno = revision
-            rev_id = self.get_rev_id(revno, revs)
-        elif isinstance(revision, basestring):
-            for prefix, func in Branch.REVISION_NAMESPACES.iteritems():
-                if revision.startswith(prefix):
-                    result = func(self, revs, revision)
-                    if len(result) > 1:
-                        revno, rev_id = result
-                    else:
-                        revno = result[0]
-                        rev_id = self.get_rev_id(revno, revs)
-                    break
-            else:
-                raise BzrError('No namespace registered for string: %r' %
-                               revision)
-        else:
-            raise TypeError('Unhandled revision type %s' % revision)
-
-        if revno is None:
-            if rev_id is None:
-                raise bzrlib.errors.NoSuchRevision(self, revision)
-        return revno, rev_id
 
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
@@ -1516,6 +1348,7 @@ def copy_branch(branch_from, to_location, revision=None):
         The name of a local directory that exists but is empty.
     """
     from bzrlib.merge import merge
+    from bzrlib.revisionspec import get_revision_info
 
     assert isinstance(branch_from, Branch)
     assert isinstance(to_location, basestring)
@@ -1525,7 +1358,7 @@ def copy_branch(branch_from, to_location, revision=None):
     if revision is None:
         revno = branch_from.revno()
     else:
-        revno, rev_id = branch_from.get_revision_info(revision)
+        revno, rev_id = get_revision_info(branch_from, revision)
     br_to.update_revisions(branch_from, stop_revision=revno)
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)

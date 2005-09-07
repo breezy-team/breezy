@@ -23,6 +23,7 @@ import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
 from bzrlib.branch import find_branch
+from bzrlib.revisionspec import get_revision_info
 from bzrlib import BZRDIR
 from bzrlib.commands import Command
 
@@ -124,7 +125,7 @@ class cmd_revision_info(Command):
         b = find_branch('.')
 
         for rev in revs:
-            print '%4d %s' % b.get_revision_info(rev)
+            print '%4d %s' % get_revision_info(b, rev)
 
     
 class cmd_add(Command):
@@ -684,10 +685,10 @@ class cmd_log(Command):
             rev1 = None
             rev2 = None
         elif len(revision) == 1:
-            rev1 = rev2 = b.get_revision_info(revision[0])[0]
+            rev1 = rev2 = get_revision_info(b, revision[0])[0]
         elif len(revision) == 2:
-            rev1 = b.get_revision_info(revision[0])[0]
-            rev2 = b.get_revision_info(revision[1])[0]
+            rev1 = get_revision_info(b, revision[0])[0]
+            rev2 = get_revision_info(b, revision[1])[0]
         else:
             raise BzrCommandError('bzr log --revision takes one or two values.')
 
@@ -885,7 +886,7 @@ class cmd_export(Command):
         else:
             if len(revision) != 1:
                 raise BzrError('bzr export --revision takes exactly 1 argument')
-            revno, rev_id = b.get_revision_info(revision[0])
+            revno, rev_id = get_revision_info(b, revision[0])
         t = b.revision_tree(rev_id)
         root, ext = os.path.splitext(dest)
         if not format:
