@@ -15,19 +15,27 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-## XXX: Everything up to here can simply be orphaned if we abort
-## the commit; it will leave junk files behind but that doesn't
-## matter.
+## XXX: Can we do any better about making interrupted commits change
+## nothing?
+
+## XXX: If we merged two versions of a file then we still need to
+## create a new version representing that merge, even if it didn't
+## change from the parent.
 
 ## TODO: Read back the just-generated changeset, and make sure it
 ## applies and recreates the right state.
+
+
 
 
 import os
 import sys
 import time
 import tempfile
+import sha
+
 from binascii import hexlify
+from cStringIO import StringIO
 
 from bzrlib.osutils import (local_time_offset, username,
                             rand_bytes, compact_date, user_email,
@@ -133,6 +141,7 @@ class Commit(object):
         self.branch.lock_write()
         self.rev_id = rev_id
         self.specific_files = specific_files
+        self.allow_pointless = allow_pointless
 
         if timestamp is None:
             self.timestamp = time.time()
@@ -172,6 +181,7 @@ class Commit(object):
             if self.rev_id is None:
                 self.rev_id = _gen_revision_id(self.branch, time.time())
 
+            # todo: update hashcache
             self.delta = compare_trees(self.basis_tree, self.work_tree,
                                        specific_files=self.specific_files)
 
@@ -185,24 +195,24 @@ class Commit(object):
             self.delta.show(sys.stdout)
 
             self._remove_deleted()
-            self._store_texts()
+            self._store_files()
 
             self.branch._write_inventory(self.work_inv)
             self._record_inventory()
 
             self._make_revision()
-            note('committted r%d', (self.branch.revno() + 1))
-            self.branch.append_revision(rev_id)
+            note('committted r%d {%s}', (self.branch.revno() + 1),
+                 self.rev_id)
+            self.branch.append_revision(self.rev_id)
             self.branch.set_pending_merges([])
         finally:
             self.branch.unlock()
 
 
     def _record_inventory(self):
-        inv_tmp = tempfile.TemporaryFile()
+        inv_tmp = StringIO()
         serializer_v5.write_inventory(self.new_inv, inv_tmp)
-        inv_tmp.seek(0)
-        self.inv_sha1 = sha_file(inv_tmp)
+        self.inv_sha1 = sha_string(inv_tmp.getvalue())
         inv_tmp.seek(0)
         self.branch.inventory_store.add(inv_tmp, self.rev_id)
 
@@ -239,37 +249,56 @@ class Commit(object):
                 del self.new_inv[id]
 
 
-    def _store_texts(self):
+
+    def _store_files(self):
         """Store new texts of modified/added files."""
         for path, id, kind in self.delta.modified:
             if kind != 'file':
                 continue
-            self._store_file_text(path, id)
+            self._store_file_text(id)
 
         for path, id, kind in self.delta.added:
             if kind != 'file':
                 continue
-            self._store_file_text(path, id)
+            self._store_file_text(id)
 
         for old_path, new_path, id, kind, text_modified in self.delta.renamed:
             if kind != 'file':
                 continue
             if not text_modified:
                 continue
-            self._store_file_text(path, id)
+            self._store_file_text(id)
 
 
-    def _store_file_text(self, path, id):
+    def _store_file_text(self, file_id):
         """Store updated text for one modified or added file."""
-        # TODO: Add or update the inventory entry for this file;
-        # put in the new text version
         note('store new text for {%s} in revision {%s}', id, self.rev_id)
-        new_lines = self.work_tree.get_file(id).readlines()
-        weave_fn = self.branch.controlfilename(['weaves', id+'.weave'])
+        new_lines = self.work_tree.get_file(file_id).readlines()
+        self._add_text_to_weave(file_id, new_lines)
+        # update or add an entry
+        if file_id in self.new_inv:
+            ie = self.new_inv[file_id]
+            assert ie.file_id == file_id
+        else:
+            ie = self.work_inv[file_id].copy()
+            self.new_inv.add(ie)
+        assert ie.kind == 'file'
+        # make a new inventory entry for this file, using whatever
+        # it had in the working copy, plus details on the new text
+        ie.text_sha1 = _sha_strings(new_lines)
+        ie.text_size = sum(map(len, new_lines))
+        ie.text_version = self.rev_id
+        ie.entry_version = self.rev_id
+
+
+    def _add_text_to_weave(self, file_id, new_lines):
+        weave_fn = self.branch.controlfilename(['weaves', file_id+'.weave'])
         if os.path.exists(weave_fn):
             w = read_weave(file(weave_fn, 'rb'))
         else:
             w = Weave()
+        # XXX: Should set the appropriate parents by looking for this file_id
+        # in all revision parents
         w.add(self.rev_id, [], new_lines)
         af = AtomicFile(weave_fn)
         try:
@@ -279,101 +308,6 @@ class Commit(object):
             af.close()
 
 
-    def _gather(self):
-        """Build inventory preparatory to commit.
-
-        This adds any changed files into the text store, and sets their
-        test-id, sha and size in the returned inventory appropriately.
-
-        """
-        self.any_changes = False
-        self.new_inv = Inventory(self.work_inv.root.file_id)
-        self.missing_ids = []
-
-        for path, entry in self.work_inv.iter_entries():
-            ## TODO: Check that the file kind has not changed from the previous
-            ## revision of this file (if any).
-
-            p = self.branch.abspath(path)
-            file_id = entry.file_id
-            mutter('commit prep file %s, id %r ' % (p, file_id))
-
-            if (self.specific_files
-            and not is_inside_any(self.specific_files, path)):
-                mutter('  skipping file excluded from commit')
-                if self.basis_inv.has_id(file_id):
-                    # carry over with previous state
-                    self.new_inv.add(self.basis_inv[file_id].copy())
-                else:
-                    # omit this from committed inventory
-                    pass
-                continue
-
-            if not self.work_tree.has_id(file_id):
-                mutter("    file is missing, removing from inventory")
-                self.missing_ids.append(file_id)
-                continue
-
-            # this is present in the new inventory; may be new, modified or
-            # unchanged.
-            old_ie = self.basis_inv.has_id(file_id) and self.basis_inv[file_id]
-
-            entry = entry.copy()
-            self.new_inv.add(entry)
-
-            if old_ie:
-                old_kind = old_ie.kind
-                if old_kind != entry.kind:
-                    raise BzrError("entry %r changed kind from %r to %r"
-                            % (file_id, old_kind, entry.kind))
-
-            if entry.kind == 'directory':
-                if not isdir(p):
-                    raise BzrError("%s is entered as directory but not a directory"
-                                   % quotefn(p))
-            elif entry.kind == 'file':
-                if not isfile(p):
-                    raise BzrError("%s is entered as file but is not a file" % quotefn(p))
-
-                new_sha1 = self.work_tree.get_file_sha1(file_id)
-
-                if (old_ie
-                    and old_ie.text_sha1 == new_sha1):
-                    ## assert content == basis.get_file(file_id).read()
-                    entry.text_id = old_ie.text_id
-                    entry.text_sha1 = new_sha1
-                    entry.text_size = old_ie.text_size
-                    mutter('    unchanged from previous text_id {%s}' %
-                           entry.text_id)
-                else:
-                    content = file(p, 'rb').read()
-
-                    # calculate the sha again, just in case the file contents
-                    # changed since we updated the cache
-                    entry.text_sha1 = sha_string(content)
-                    entry.text_size = len(content)
-
-                    entry.text_id = gen_file_id(entry.name)
-                    self.branch.text_store.add(content, entry.text_id)
-                    mutter('    stored with text_id {%s}' % entry.text_id)
-
-            marked = path + kind_marker(entry.kind)
-            if not old_ie:
-                self.reporter.added(marked)
-                self.any_changes = True
-            elif old_ie == entry:
-                pass                    # unchanged
-            elif (old_ie.name == entry.name
-                  and old_ie.parent_id == entry.parent_id):
-                self.reporter.modified(marked)
-                self.any_changes = True
-            else:
-                old_path = old_inv.id2path(file_id) + kind_marker(entry.kind)
-                self.reporter.renamed(old_path, marked)
-                self.any_changes = True
-
-
-
 def _gen_revision_id(branch, when):
     """Return new revision-id."""
     s = '%s-%s-' % (user_email(branch), compact_date(when))
@@ -381,3 +315,8 @@ def _gen_revision_id(branch, when):
     return s
 
 
+def _sha_strings(strings):
+    """Return the sha-1 of concatenation of strings"""
+    s = sha.new()
+    map(s.update, strings)
+    return s.hexdigest()
