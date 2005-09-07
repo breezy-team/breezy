@@ -1482,15 +1482,6 @@ def gen_root_id():
     return gen_file_id('TREE_ROOT')
 
 
-def pull_loc(branch):
-    # TODO: Should perhaps just make attribute be 'base' in
-    # RemoteBranch and Branch?
-    if hasattr(branch, "baseurl"):
-        return branch.baseurl
-    else:
-        return branch.base
-
-
 def copy_branch(branch_from, to_location, revision=None):
     """Copy branch_from into the existing directory to_location.
 
@@ -1516,6 +1507,6 @@ def copy_branch(branch_from, to_location, revision=None):
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)
     
-    from_location = pull_loc(branch_from)
-    br_to.set_parent(pull_loc(branch_from))
+    from_location = branch_from.base
+    br_to.set_parent(branch_from.base)
 
