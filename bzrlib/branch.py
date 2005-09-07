@@ -343,7 +343,7 @@ class Branch(object):
                            'use a different bzr version, '
                            'or run "bzr upgrade", '
                            'or remove the .bzr directory and "bzr init" again'
-                           % fmt)
+                           % fmt.rstrip('\n\r'))
 
     def get_root_id(self):
         """Return the id of this branches root"""
