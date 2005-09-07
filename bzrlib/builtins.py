@@ -536,7 +536,7 @@ class cmd_diff(Command):
     examples:
         bzr diff
         bzr diff -r1
-        bzr diff -r1:2
+        bzr diff -r1..2
     """
     
     takes_args = ['file*']

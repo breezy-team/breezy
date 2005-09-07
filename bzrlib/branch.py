@@ -336,7 +336,7 @@ class Branch(object):
         # on Windows from Linux and so on.  I think it might be better
         # to always make all internal files in unix format.
         fmt = self.controlfile('branch-format', 'r').read()
-        fmt.replace('\r\n', '')
+        fmt = fmt.replace('\r\n', '\n')
         if fmt != BZR_BRANCH_FORMAT:
             raise BzrError('sorry, branch format %r not supported' % fmt,
                            ['use a different bzr version',

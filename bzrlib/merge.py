@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import os.path
+import os
 import tempfile
 import shutil
 import errno
@@ -357,7 +357,7 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
             if path == '.':
                 path = ''
             else:
-                assert path.startswith('./'), "path is %s" % path
+                assert path.startswith('.' + os.sep), "path is %s" % path
             path = path[2:]
         adjust_ids.append((path, id))
     if len(adjust_ids) > 0:

@@ -26,6 +26,7 @@ access.
 
 import gzip
 from cStringIO import StringIO
+import os
 import urllib2
 
 from errors import BzrError, BzrCheckError
