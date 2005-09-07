@@ -30,7 +30,7 @@ from bzrlib.textui import show_status
 from bzrlib.revision import Revision
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
-import bzrlib.xml
+import bzrlib.xml5
 import bzrlib.ui
 
 
@@ -309,7 +309,8 @@ class Branch(object):
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.\n")
         self.controlfile('branch-format', 'w').write(BZR_BRANCH_FORMAT_5)
-        for d in ('text-store', 'inventory-store', 'revision-store'):
+        for d in ('text-store', 'inventory-store', 'revision-store',
+                  'weaves'):
             os.mkdir(self.controlfilename(d))
         for f in ('revision-history', 'merged-patches',
                   'pending-merged-patches', 'branch-name',
@@ -322,7 +323,7 @@ class Branch(object):
         # them; they're not needed for now and so ommitted for
         # simplicity.
         f = self.controlfile('inventory','w')
-        bzrlib.xml.serializer_v4.write_inventory(Inventory(), f)
+        bzrlib.xml5.serializer_v5.write_inventory(Inventory(), f)
 
 
     def _check_format(self):
@@ -369,7 +370,7 @@ class Branch(object):
             # ElementTree does its own conversion from UTF-8, so open in
             # binary.
             f = self.controlfile('inventory', 'rb')
-            return bzrlib.xml.serializer_v4.read_inventory(f)
+            return bzrlib.xml5.serializer_v5.read_inventory(f)
         finally:
             self.unlock()
             
@@ -386,7 +387,7 @@ class Branch(object):
         try:
             f = AtomicFile(self.controlfilename('inventory'), 'wb')
             try:
-                bzrlib.xml.serializer_v4.write_inventory(inv, f)
+                bzrlib.xml5.serializer_v5.write_inventory(inv, f)
                 f.commit()
             finally:
                 f.close()
@@ -601,7 +602,7 @@ class Branch(object):
         xml_file = self.get_revision_xml_file(revision_id)
 
         try:
-            r = bzrlib.xml.serializer_v4.read_revision(xml_file)
+            r = bzrlib.xml5.serializer_v5.read_revision(xml_file)
         except SyntaxError, e:
             raise bzrlib.errors.BzrError('failed to unpack revision_xml',
                                          [revision_id,
@@ -654,7 +655,7 @@ class Branch(object):
         from bzrlib.inventory import Inventory
 
         f = self.get_inventory_xml_file(inventory_id)
-        return bzrlib.xml.serializer_v4.read_inventory(f)
+        return bzrlib.xml5.serializer_v5.read_inventory(f)
 
 
     def get_inventory_xml(self, inventory_id):
@@ -872,8 +873,8 @@ class Branch(object):
        
 
     def commit(self, *args, **kw):
-        from bzrlib.commit import commit
-        commit(self, *args, **kw)
+        from bzrlib.commit import Commit
+        Commit().commit(self, *args, **kw)
         
 
     def lookup_revision(self, revision):

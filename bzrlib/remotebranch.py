@@ -28,9 +28,10 @@ import gzip
 from cStringIO import StringIO
 import urllib2
 
-from errors import BzrError, BzrCheckError
-from branch import Branch, BZR_BRANCH_FORMAT_5
-from trace import mutter
+from bzrlib.errors import BzrError, BzrCheckError
+from bzrlib.branch import Branch, BZR_BRANCH_FORMAT_5
+from bzrlib.trace import mutter
+from bzrlib.xml5 import serializer_v5
 
 # velocitynet.com.au transparently proxies connections and thereby
 # breaks keep-alive -- sucks!
@@ -158,7 +159,7 @@ class RemoteBranch(Branch):
             revf = self.revision_store[revision_id]
         except KeyError:
             raise NoSuchRevision(self, revision_id)
-        r = serializer_v4.read_revision(revf)
+        r = serializer_v5.read_revision(revf)
         if r.revision_id != revision_id:
             raise BzrCheckError('revision stored as {%s} actually contains {%s}'
                                 % (revision_id, r.revision_id))

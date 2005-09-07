@@ -149,7 +149,8 @@ class InventoryEntry(object):
 
     def copy(self):
         other = InventoryEntry(self.file_id, self.name, self.kind,
-                               self.parent_id, text_id=self.text_id)
+                               self.parent_id)
+        other.text_id = self.text_id
         other.text_sha1 = self.text_sha1
         other.text_size = self.text_size
         # note that children are *not* copied; they're pulled across when
@@ -260,6 +261,15 @@ class Inventory(object):
         #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
         self.root = RootEntry(root_id)
         self._byid = {self.root.file_id: self.root}
+
+
+    def copy(self):
+        other = Inventory(self.root.file_id)
+        for entry in self._byid.itervalues():
+            if entry == self.root:
+                continue
+            other.add(entry.copy())
+        return other
 
 
     def __iter__(self):

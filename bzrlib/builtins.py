@@ -946,6 +946,8 @@ class cmd_commit(Command):
     aliases = ['ci', 'checkin']
 
     # TODO: Give better message for -s, --summary, used by tla people
+
+    # XXX: verbose currently does nothing
     
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False):
@@ -975,7 +977,7 @@ class cmd_commit(Command):
             message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
         try:
-            b.commit(message, verbose=verbose,
+            b.commit(message,
                      specific_files=selected_list,
                      allow_pointless=unchanged)
         except PointlessCommit:
