@@ -301,7 +301,6 @@ class cmd_pull(Command):
         import tempfile
         from shutil import rmtree
         import errno
-        from bzrlib.branch import pull_loc
         
         br_to = find_branch('.')
         stored_loc = None
@@ -319,12 +318,12 @@ class cmd_pull(Command):
         cache_root = tempfile.mkdtemp()
         from bzrlib.branch import DivergedBranches
         br_from = find_branch(location)
-        location = pull_loc(br_from)
+        location = br_from.base
         old_revno = br_to.revno()
         try:
             from branch import find_cached_branch, DivergedBranches
             br_from = find_cached_branch(location, cache_root)
-            location = pull_loc(br_from)
+            location = br_from.base
             old_revno = br_to.revno()
             try:
                 br_to.update_revisions(br_from)
@@ -636,7 +635,7 @@ class cmd_root(Command):
     def run(self, filename=None):
         """Print the branch root."""
         b = find_branch(filename)
-        print getattr(b, 'base', None) or getattr(b, 'baseurl')
+        print b.base
 
 
 class cmd_log(Command):

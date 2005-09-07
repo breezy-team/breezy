@@ -116,9 +116,9 @@ class RemoteBranch(Branch):
     def __init__(self, baseurl, find_root=True):
         """Create new proxy for a remote branch."""
         if find_root:
-            self.baseurl = _find_remote_root(baseurl)
+            self.base = _find_remote_root(baseurl)
         else:
-            self.baseurl = baseurl
+            self.base = baseurl
             self._check_format()
 
         self.inventory_store = RemoteStore(baseurl + '/.bzr/inventory-store/')
@@ -134,7 +134,7 @@ class RemoteBranch(Branch):
     def controlfile(self, filename, mode):
         if mode not in ('rb', 'rt', 'r'):
             raise BzrError("file mode %r not supported for remote branches" % mode)
-        return get_url(self.baseurl + '/.bzr/' + filename, False)
+        return get_url(self.base + '/.bzr/' + filename, False)
 
 
     def lock_read(self):
@@ -144,17 +144,17 @@ class RemoteBranch(Branch):
     def lock_write(self):
         from errors import LockError
         raise LockError("write lock not supported for remote branch %s"
-                        % self.baseurl)
+                        % self.base)
 
     def unlock(self):
         pass
     
 
     def relpath(self, path):
-        if not path.startswith(self.baseurl):
+        if not path.startswith(self.base):
             raise BzrError('path %r is not under base URL %r'
-                           % (path, self.baseurl))
-        pl = len(self.baseurl)
+                           % (path, self.base))
+        pl = len(self.base)
         return path[pl:].lstrip('/')
 
 

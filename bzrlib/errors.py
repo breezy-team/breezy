@@ -92,6 +92,12 @@ class NoSuchRevision(BzrError):
         BzrError.__init__(self, msg)
 
 
+class DivergedBranches(BzrError):
+    def __init__(self, branch1, branch2):
+        self.branch1 = branch1
+        self.branch2 = branch2
+        BzrError.__init__(self, "These branches have diverged.")
+
 class UnrelatedBranches(BzrCommandError):
     def __init__(self):
         msg = "Branches have no common ancestor, and no base revision"\

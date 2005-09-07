@@ -24,8 +24,8 @@ from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
      splitpath, \
      sha_file, appendpath, file_kind
 
-from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId
-import bzrlib.errors
+from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId, \
+     DivergedBranches, NotBranchError
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision
 from bzrlib.delta import compare_trees
@@ -49,17 +49,17 @@ BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 
 def find_branch(f, **args):
     if f and (f.startswith('http://') or f.startswith('https://')):
-        import remotebranch 
-        return remotebranch.RemoteBranch(f, **args)
+        from bzrlib.remotebranch import RemoteBranch
+        return RemoteBranch(f, **args)
     else:
         return Branch(f, **args)
 
 
 def find_cached_branch(f, cache_root, **args):
-    from remotebranch import RemoteBranch
+    from bzrlib.remotebranch import RemoteBranch
     br = find_branch(f, **args)
     def cacheify(br, store_name):
-        from meta_store import CachedStore
+        from bzrlib.meta_store import CachedStore
         cache_path = os.path.join(cache_root, store_name)
         os.mkdir(cache_path)
         new_store = CachedStore(getattr(br, store_name), cache_path)
@@ -94,7 +94,6 @@ def _relpath(base, path):
         if tail:
             s.insert(0, tail)
     else:
-        from errors import NotBranchError
         raise NotBranchError("path %r is not within branch %r" % (rp, base))
 
     return os.sep.join(s)
@@ -128,17 +127,10 @@ def find_branch_root(f=None):
         head, tail = os.path.split(f)
         if head == f:
             # reached the root, whatever that may be
-            raise bzrlib.errors.NotBranchError('%s is not in a branch' % orig_f)
+            raise NotBranchError('%s is not in a branch' % orig_f)
         f = head
 
 
-
-# XXX: move into bzrlib.errors; subclass BzrError    
-class DivergedBranches(Exception):
-    def __init__(self, branch1, branch2):
-        self.branch1 = branch1
-        self.branch2 = branch2
-        Exception.__init__(self, "These branches have diverged.")
 
 
 ######################################################################
@@ -194,7 +186,6 @@ class Branch(object):
         else:
             self.base = os.path.realpath(base)
             if not isdir(self.controlfilename('.')):
-                from errors import NotBranchError
                 raise NotBranchError("not a bzr branch: %s" % quotefn(base),
                                      ['use "bzr init" to initialize a new working tree',
                                       'current bzr can only operate from top-of-tree'])
@@ -214,7 +205,7 @@ class Branch(object):
 
     def __del__(self):
         if self._lock_mode or self._lock:
-            from warnings import warn
+            from bzrlib.warnings import warn
             warn("branch %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
@@ -222,7 +213,7 @@ class Branch(object):
     def lock_write(self):
         if self._lock_mode:
             if self._lock_mode != 'w':
-                from errors import LockError
+                from bzrlib.errors import LockError
                 raise LockError("can't upgrade to a write lock from %r" %
                                 self._lock_mode)
             self._lock_count += 1
@@ -248,7 +239,7 @@ class Branch(object):
                         
     def unlock(self):
         if not self._lock_mode:
-            from errors import LockError
+            from bzrlib.errors import LockError
             raise LockError('branch %r is not locked' % (self))
 
         if self._lock_count > 1:
@@ -695,20 +686,20 @@ class Branch(object):
 
     def common_ancestor(self, other, self_revno=None, other_revno=None):
         """
-        >>> import commit
+        >>> from bzrlib.commit import commit
         >>> sb = ScratchBranch(files=['foo', 'foo~'])
         >>> sb.common_ancestor(sb) == (None, None)
         True
-        >>> commit.commit(sb, "Committing first revision", verbose=False)
+        >>> commit(sb, "Committing first revision", verbose=False)
         >>> sb.common_ancestor(sb)[0]
         1
         >>> clone = sb.clone()
-        >>> commit.commit(sb, "Committing second revision", verbose=False)
+        >>> commit(sb, "Committing second revision", verbose=False)
         >>> sb.common_ancestor(sb)[0]
         2
         >>> sb.common_ancestor(clone)[0]
         1
-        >>> commit.commit(clone, "Committing divergent second revision", 
+        >>> commit(clone, "Committing divergent second revision", 
         ...               verbose=False)
         >>> sb.common_ancestor(clone)[0]
         1
@@ -1094,7 +1085,7 @@ class Branch(object):
 
     def working_tree(self):
         """Return a `Tree` for the working copy."""
-        from workingtree import WorkingTree
+        from bzrlib.workingtree import WorkingTree
         return WorkingTree(self.base, self.read_working_inventory())
 
 
@@ -1491,15 +1482,6 @@ def gen_root_id():
     return gen_file_id('TREE_ROOT')
 
 
-def pull_loc(branch):
-    # TODO: Should perhaps just make attribute be 'base' in
-    # RemoteBranch and Branch?
-    if hasattr(branch, "baseurl"):
-        return branch.baseurl
-    else:
-        return branch.base
-
-
 def copy_branch(branch_from, to_location, revision=None):
     """Copy branch_from into the existing directory to_location.
 
@@ -1511,7 +1493,6 @@ def copy_branch(branch_from, to_location, revision=None):
         The name of a local directory that exists but is empty.
     """
     from bzrlib.merge import merge
-    from bzrlib.branch import Branch
 
     assert isinstance(branch_from, Branch)
     assert isinstance(to_location, basestring)
@@ -1526,6 +1507,6 @@ def copy_branch(branch_from, to_location, revision=None):
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)
     
-    from_location = pull_loc(branch_from)
-    br_to.set_parent(pull_loc(branch_from))
+    from_location = branch_from.base
+    br_to.set_parent(branch_from.base)
 
