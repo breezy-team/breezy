@@ -103,7 +103,6 @@ def _find_remote_root(url):
             raise BzrError('no branch root found for URL %s' % orig_url)
 
         url = url[:idx]        
-        
 
 
 class RemoteBranch(Branch):

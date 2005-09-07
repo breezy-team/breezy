@@ -52,7 +52,7 @@ def find_branch(f, **args):
         from bzrlib.remotebranch import RemoteBranch
         return RemoteBranch(f, **args)
     else:
-        return Branch(f, **args)
+        return LocalBranch(f, **args)
 
 
 def find_cached_branch(f, cache_root, **args):
@@ -140,7 +140,150 @@ class Branch(object):
     """Branch holding a history of revisions.
 
     base
-        Base directory of the branch.
+        Base directory/url of the branch.
+    """
+    base = None
+    
+    # Map some sort of prefix into a namespace
+    # stuff like "revno:10", "revid:", etc.
+    # This should match a prefix with a function which accepts
+    REVISION_NAMESPACES = {}
+
+    def __new__(cls, *a, **kw):
+        """this is temporary, till we get rid of all code that does
+        b = Branch()
+        """
+        # AAARGH!  MY EYES!  UUUUGLY!!!
+        if cls == Branch:
+            cls = LocalBranch
+        b = object.__new__(cls)
+        return b
+
+    def _namespace_revno(self, revs, revision):
+        """Lookup a revision by revision number"""
+        assert revision.startswith('revno:')
+        try:
+            return (int(revision[6:]),)
+        except ValueError:
+            return None
+    REVISION_NAMESPACES['revno:'] = _namespace_revno
+
+    def _namespace_revid(self, revs, revision):
+        assert revision.startswith('revid:')
+        rev_id = revision[len('revid:'):]
+        try:
+            return revs.index(rev_id) + 1, rev_id
+        except ValueError:
+            return None, rev_id
+    REVISION_NAMESPACES['revid:'] = _namespace_revid
+
+    def _namespace_last(self, revs, revision):
+        assert revision.startswith('last:')
+        try:
+            offset = int(revision[5:])
+        except ValueError:
+            return (None,)
+        else:
+            if offset <= 0:
+                raise BzrError('You must supply a positive value for --revision last:XXX')
+            return (len(revs) - offset + 1,)
+    REVISION_NAMESPACES['last:'] = _namespace_last
+
+    def _namespace_tag(self, revs, revision):
+        assert revision.startswith('tag:')
+        raise BzrError('tag: namespace registered, but not implemented.')
+    REVISION_NAMESPACES['tag:'] = _namespace_tag
+
+    def _namespace_date(self, revs, revision):
+        assert revision.startswith('date:')
+        import datetime
+        # Spec for date revisions:
+        #   date:value
+        #   value can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
+        #   it can also start with a '+/-/='. '+' says match the first
+        #   entry after the given date. '-' is match the first entry before the date
+        #   '=' is match the first entry after, but still on the given date.
+        #
+        #   +2005-05-12 says find the first matching entry after May 12th, 2005 at 0:00
+        #   -2005-05-12 says find the first matching entry before May 12th, 2005 at 0:00
+        #   =2005-05-12 says find the first match after May 12th, 2005 at 0:00 but before
+        #       May 13th, 2005 at 0:00
+        #
+        #   So the proper way of saying 'give me all entries for today' is:
+        #       -r {date:+today}:{date:-tomorrow}
+        #   The default is '=' when not supplied
+        val = revision[5:]
+        match_style = '='
+        if val[:1] in ('+', '-', '='):
+            match_style = val[:1]
+            val = val[1:]
+
+        today = datetime.datetime.today().replace(hour=0,minute=0,second=0,microsecond=0)
+        if val.lower() == 'yesterday':
+            dt = today - datetime.timedelta(days=1)
+        elif val.lower() == 'today':
+            dt = today
+        elif val.lower() == 'tomorrow':
+            dt = today + datetime.timedelta(days=1)
+        else:
+            import re
+            # This should be done outside the function to avoid recompiling it.
+            _date_re = re.compile(
+                    r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
+                    r'(,|T)?\s*'
+                    r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
+                )
+            m = _date_re.match(val)
+            if not m or (not m.group('date') and not m.group('time')):
+                raise BzrError('Invalid revision date %r' % revision)
+
+            if m.group('date'):
+                year, month, day = int(m.group('year')), int(m.group('month')), int(m.group('day'))
+            else:
+                year, month, day = today.year, today.month, today.day
+            if m.group('time'):
+                hour = int(m.group('hour'))
+                minute = int(m.group('minute'))
+                if m.group('second'):
+                    second = int(m.group('second'))
+                else:
+                    second = 0
+            else:
+                hour, minute, second = 0,0,0
+
+            dt = datetime.datetime(year=year, month=month, day=day,
+                    hour=hour, minute=minute, second=second)
+        first = dt
+        last = None
+        reversed = False
+        if match_style == '-':
+            reversed = True
+        elif match_style == '=':
+            last = dt + datetime.timedelta(days=1)
+
+        if reversed:
+            for i in range(len(revs)-1, -1, -1):
+                r = self.get_revision(revs[i])
+                # TODO: Handle timezone.
+                dt = datetime.datetime.fromtimestamp(r.timestamp)
+                if first >= dt and (last is None or dt >= last):
+                    return (i+1,)
+        else:
+            for i in range(len(revs)):
+                r = self.get_revision(revs[i])
+                # TODO: Handle timezone.
+                dt = datetime.datetime.fromtimestamp(r.timestamp)
+                if first <= dt and (last is None or dt <= last):
+                    return (i+1,)
+    REVISION_NAMESPACES['date:'] = _namespace_date
+
+
+class LocalBranch(Branch):
+    """A branch stored in the actual filesystem.
+
+    Note that it's "local" in the context of the filesystem; it doesn't
+    really matter if it's on an nfs/smb/afs/coda/... share, as long as
+    it's writable, and can be accessed via the normal filesystem API.
 
     _lock_mode
         None, or 'r' or 'w'
@@ -152,15 +295,13 @@ class Branch(object):
     _lock
         Lock object from bzrlib.lock.
     """
-    base = None
+    # We actually expect this class to be somewhat short-lived; part of its
+    # purpose is to try to isolate what bits of the branch logic are tied to
+    # filesystem access, so that in a later step, we can extricate them to
+    # a separarte ("storage") class.
     _lock_mode = None
     _lock_count = None
     _lock = None
-    
-    # Map some sort of prefix into a namespace
-    # stuff like "revno:10", "revid:", etc.
-    # This should match a prefix with a function which accepts
-    REVISION_NAMESPACES = {}
 
     def __init__(self, base, init=False, find_root=True):
         """Create new branch object at a particular location.
@@ -951,124 +1092,6 @@ class Branch(object):
                 raise bzrlib.errors.NoSuchRevision(self, revision)
         return revno, rev_id
 
-    def _namespace_revno(self, revs, revision):
-        """Lookup a revision by revision number"""
-        assert revision.startswith('revno:')
-        try:
-            return (int(revision[6:]),)
-        except ValueError:
-            return None
-    REVISION_NAMESPACES['revno:'] = _namespace_revno
-
-    def _namespace_revid(self, revs, revision):
-        assert revision.startswith('revid:')
-        rev_id = revision[len('revid:'):]
-        try:
-            return revs.index(rev_id) + 1, rev_id
-        except ValueError:
-            return None, rev_id
-    REVISION_NAMESPACES['revid:'] = _namespace_revid
-
-    def _namespace_last(self, revs, revision):
-        assert revision.startswith('last:')
-        try:
-            offset = int(revision[5:])
-        except ValueError:
-            return (None,)
-        else:
-            if offset <= 0:
-                raise BzrError('You must supply a positive value for --revision last:XXX')
-            return (len(revs) - offset + 1,)
-    REVISION_NAMESPACES['last:'] = _namespace_last
-
-    def _namespace_tag(self, revs, revision):
-        assert revision.startswith('tag:')
-        raise BzrError('tag: namespace registered, but not implemented.')
-    REVISION_NAMESPACES['tag:'] = _namespace_tag
-
-    def _namespace_date(self, revs, revision):
-        assert revision.startswith('date:')
-        import datetime
-        # Spec for date revisions:
-        #   date:value
-        #   value can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
-        #   it can also start with a '+/-/='. '+' says match the first
-        #   entry after the given date. '-' is match the first entry before the date
-        #   '=' is match the first entry after, but still on the given date.
-        #
-        #   +2005-05-12 says find the first matching entry after May 12th, 2005 at 0:00
-        #   -2005-05-12 says find the first matching entry before May 12th, 2005 at 0:00
-        #   =2005-05-12 says find the first match after May 12th, 2005 at 0:00 but before
-        #       May 13th, 2005 at 0:00
-        #
-        #   So the proper way of saying 'give me all entries for today' is:
-        #       -r {date:+today}:{date:-tomorrow}
-        #   The default is '=' when not supplied
-        val = revision[5:]
-        match_style = '='
-        if val[:1] in ('+', '-', '='):
-            match_style = val[:1]
-            val = val[1:]
-
-        today = datetime.datetime.today().replace(hour=0,minute=0,second=0,microsecond=0)
-        if val.lower() == 'yesterday':
-            dt = today - datetime.timedelta(days=1)
-        elif val.lower() == 'today':
-            dt = today
-        elif val.lower() == 'tomorrow':
-            dt = today + datetime.timedelta(days=1)
-        else:
-            import re
-            # This should be done outside the function to avoid recompiling it.
-            _date_re = re.compile(
-                    r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
-                    r'(,|T)?\s*'
-                    r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
-                )
-            m = _date_re.match(val)
-            if not m or (not m.group('date') and not m.group('time')):
-                raise BzrError('Invalid revision date %r' % revision)
-
-            if m.group('date'):
-                year, month, day = int(m.group('year')), int(m.group('month')), int(m.group('day'))
-            else:
-                year, month, day = today.year, today.month, today.day
-            if m.group('time'):
-                hour = int(m.group('hour'))
-                minute = int(m.group('minute'))
-                if m.group('second'):
-                    second = int(m.group('second'))
-                else:
-                    second = 0
-            else:
-                hour, minute, second = 0,0,0
-
-            dt = datetime.datetime(year=year, month=month, day=day,
-                    hour=hour, minute=minute, second=second)
-        first = dt
-        last = None
-        reversed = False
-        if match_style == '-':
-            reversed = True
-        elif match_style == '=':
-            last = dt + datetime.timedelta(days=1)
-
-        if reversed:
-            for i in range(len(revs)-1, -1, -1):
-                r = self.get_revision(revs[i])
-                # TODO: Handle timezone.
-                dt = datetime.datetime.fromtimestamp(r.timestamp)
-                if first >= dt and (last is None or dt >= last):
-                    return (i+1,)
-        else:
-            for i in range(len(revs)):
-                r = self.get_revision(revs[i])
-                # TODO: Handle timezone.
-                dt = datetime.datetime.fromtimestamp(r.timestamp)
-                if first <= dt and (last is None or dt <= last):
-                    return (i+1,)
-    REVISION_NAMESPACES['date:'] = _namespace_date
-
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
@@ -1358,7 +1381,7 @@ class Branch(object):
         
 
 
-class ScratchBranch(Branch):
+class ScratchBranch(LocalBranch):
     """Special test class: a branch that cleans up after itself.
 
     >>> b = ScratchBranch()
@@ -1381,7 +1404,7 @@ class ScratchBranch(Branch):
         if base is None:
             base = mkdtemp()
             init = True
-        Branch.__init__(self, base, init=init)
+        LocalBranch.__init__(self, base, init=init)
         for d in dirs:
             os.mkdir(self.abspath(d))
             
