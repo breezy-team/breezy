@@ -23,7 +23,13 @@ __author__ = "Martin Pool <mbp@canonical.com>"
 ######################################################################
 # exceptions 
 class BzrError(StandardError):
-    pass
+    def __str__(self):
+        if len(self.args) == 2:
+            # further explanation or suggestions
+            return '\n  '.join([self.args[0]] + self.args[1])
+        else:
+            return `self.args`
+
 
 class BzrCheckError(BzrError):
     pass
