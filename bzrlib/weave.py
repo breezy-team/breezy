@@ -87,7 +87,7 @@
 
 
 import sha
-
+from cStringIO import StringIO
 
 
 class WeaveError(Exception):
@@ -451,6 +451,10 @@ class Weave(object):
 
         The set typically but not necessarily corresponds to a version.
         """
+        for i in versions:
+            if not isinstance(i, int):
+                raise ValueError(i)
+            
         included = self.inclusions(versions)
 
         istack = []
@@ -505,6 +509,13 @@ class Weave(object):
         """Yield lines for the specified version."""
         for origin, lineno, line in self._extract([version]):
             yield line
+
+
+    def get_text(self, version):
+        assert isinstance(version, int)
+        s = StringIO()
+        s.writelines(self.get_iter(version))
+        return s.getvalue()
 
 
     def get(self, index):

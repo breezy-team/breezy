@@ -31,7 +31,7 @@ from bzrlib.revision import Revision
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
-
+from bzrlib.weavestore import WeaveStore
 import bzrlib.xml5
 import bzrlib.ui
 
@@ -203,7 +203,7 @@ class Branch(object):
                                       'current bzr can only operate from top-of-tree'])
         self._check_format()
 
-        self.text_store = ImmutableStore(self.controlfilename('text-store'))
+        self.weave_store = WeaveStore(self.controlfilename('weaves'))
         self.revision_store = ImmutableStore(self.controlfilename('revision-store'))
         self.inventory_store = ImmutableStore(self.controlfilename('inventory-store'))
 
@@ -1092,7 +1092,7 @@ class Branch(object):
             return EmptyTree()
         else:
             inv = self.get_revision_inventory(revision_id)
-            return RevisionTree(self.text_store, inv)
+            return RevisionTree(self.weave_store, inv, revision_id)
 
 
     def working_tree(self):
@@ -1106,12 +1106,7 @@ class Branch(object):
 
         If there are no revisions yet, return an `EmptyTree`.
         """
-        r = self.last_patch()
-        if r == None:
-            return EmptyTree()
-        else:
-            return RevisionTree(self.text_store, self.get_revision_inventory(r))
-
+        return self.revision_tree(self.last_patch())
 
 
     def rename_one(self, from_rel, to_rel):
