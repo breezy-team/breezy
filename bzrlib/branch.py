@@ -24,12 +24,14 @@ from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
      splitpath, \
      sha_file, appendpath, file_kind
 
-from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId
-import bzrlib.errors
+from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
+                           NoSuchRevision)
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
+from bzrlib.inventory import Inventory
+
 import bzrlib.xml5
 import bzrlib.ui
 
@@ -302,8 +304,6 @@ class Branch(object):
             raise BzrError("invalid controlfile mode %r" % mode)
 
     def _make_control(self):
-        from bzrlib.inventory import Inventory
-        
         os.mkdir(self.controlfilename([]))
         self.controlfile('README', 'w').write(
             "This is a Bazaar-NG control directory.\n"
@@ -364,7 +364,6 @@ class Branch(object):
 
     def read_working_inventory(self):
         """Read the working inventory."""
-        from bzrlib.inventory import Inventory
         self.lock_read()
         try:
             # ElementTree does its own conversion from UTF-8, so open in
@@ -646,29 +645,31 @@ class Branch(object):
         return bzrlib.osutils.sha_file(self.get_revision_xml(revision_id))
 
 
-    def get_inventory(self, inventory_id):
+    def get_inventory(self, revision_id):
         """Get Inventory object by hash.
 
         TODO: Perhaps for this and similar methods, take a revision
                parameter which can be either an integer revno or a
                string hash."""
-        from bzrlib.inventory import Inventory
-
-        f = self.get_inventory_xml_file(inventory_id)
+        f = self.get_inventory_xml_file(revision_id)
         return bzrlib.xml5.serializer_v5.read_inventory(f)
 
 
-    def get_inventory_xml(self, inventory_id):
+    def get_inventory_xml(self, revision_id):
         """Get inventory XML as a file object."""
-        return self.inventory_store[inventory_id]
+        try:
+            assert isinstance(revision_id, basestring), type(revision_id)
+            return self.inventory_store[revision_id]
+        except IndexError:
+            raise bzrlib.errors.HistoryMissing(self, 'inventory', revision_id)
 
     get_inventory_xml_file = get_inventory_xml
             
 
-    def get_inventory_sha1(self, inventory_id):
+    def get_inventory_sha1(self, revision_id):
         """Return the sha1 hash of the inventory entry
         """
-        return sha_file(self.get_inventory_xml(inventory_id))
+        return sha_file(self.get_inventory_xml_file(revision_id))
 
 
     def get_revision_inventory(self, revision_id):
@@ -676,7 +677,6 @@ class Branch(object):
         # bzr 0.0.6 imposes the constraint that the inventory_id
         # must be the same as its revision, so this is trivial.
         if revision_id == None:
-            from bzrlib.inventory import Inventory
             return Inventory(self.get_root_id())
         else:
             return self.get_inventory(revision_id)

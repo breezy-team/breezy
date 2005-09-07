@@ -92,6 +92,14 @@ class NoSuchRevision(BzrError):
         BzrError.__init__(self, msg)
 
 
+class HistoryMissing(BzrError):
+    def __init__(self, branch, object_type, object_id):
+        self.branch = branch
+        BzrError.__init__(self,
+                          '%s is missing %s {%s}'
+                          % (branch, object_type, object_id))
+
+
 class UnrelatedBranches(BzrCommandError):
     def __init__(self):
         msg = "Branches have no common ancestor, and no base revision"\
