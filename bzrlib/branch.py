@@ -24,7 +24,8 @@ from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
      splitpath, \
      sha_file, appendpath, file_kind
 
-from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId
+from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId, \
+     DivergedBranches
 import bzrlib.errors
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision
@@ -132,13 +133,6 @@ def find_branch_root(f=None):
         f = head
 
 
-
-# XXX: move into bzrlib.errors; subclass BzrError    
-class DivergedBranches(Exception):
-    def __init__(self, branch1, branch2):
-        self.branch1 = branch1
-        self.branch2 = branch2
-        Exception.__init__(self, "These branches have diverged.")
 
 
 ######################################################################
