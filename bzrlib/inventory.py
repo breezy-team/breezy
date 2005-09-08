@@ -15,6 +15,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+# TODO: Maybe also keep the full path of the entry, and the children?
+# But those depend on its position within a particular inventory, and
+# it would be nice not to need to hold the backpointer here.
+
+# TODO: Perhaps split InventoryEntry into subclasses for files,
+# directories, etc etc.
+
+
 # This should really be an id randomly assigned when the tree is
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"
@@ -36,20 +44,31 @@ class InventoryEntry(object):
     An InventoryEntry has the following fields, which are also
     present in the XML inventory-entry element:
 
-    * *file_id*
-    * *name*: (only the basename within the directory, must not
-      contain slashes)
-    * *kind*: "directory" or "file"
-    * *directory_id*: (if absent/null means the branch root directory)
-    * *text_sha1*: only for files
-    * *text_size*: in bytes, only for files 
-    * *text_id*: identifier for the text version, only for files
+    file_id
 
-    InventoryEntries can also exist inside a WorkingTree
-    inventory, in which case they are not yet bound to a
-    particular revision of the file.  In that case the text_sha1,
-    text_size and text_id are absent.
+    name
+        (within the parent directory)
 
+    kind
+        'directory' or 'file'
+
+    parent_id
+        file_id of the parent directory, or ROOT_ID
+
+    entry_version
+        the revision_id in which the name or parent of this file was
+        last changed
+
+    text_sha1
+        sha-1 of the text of the file
+        
+    text_size
+        size in bytes of the text of the file
+        
+    text_version
+        the revision_id in which the text of this file was introduced
+
+    (reading a version 4 tree created a text_id field.)
 
     >>> i = Inventory()
     >>> i.path2id('')
@@ -90,15 +109,8 @@ class InventoryEntry(object):
     src/wibble/wibble.c
     >>> i.id2path('2326')
     'src/wibble/wibble.c'
-
-    TODO: Maybe also keep the full path of the entry, and the children?
-           But those depend on its position within a particular inventory, and
-           it would be nice not to need to hold the backpointer here.
     """
-
-    # TODO: split InventoryEntry into subclasses for files,
-    # directories, etc etc.
-
+    
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
                  'text_id', 'parent_id', 'children',
                  'text_version', 'entry_version', ]
