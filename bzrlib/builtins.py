@@ -199,7 +199,7 @@ class cmd_inventory(Command):
             if len(revision) > 1:
                 raise BzrCommandError('bzr inventory --revision takes'
                     ' exactly one revision identifier')
-            inv = b.get_revision_inventory(b.lookup_revision(revision[0]))
+            inv = b.get_revision_inventory(RevisionSpec(b, revision[0]).rev_id)
 
         for path, entry in inv.entries():
             if show_ids:
@@ -748,7 +748,7 @@ class cmd_ls(Command):
         if revision == None:
             tree = b.working_tree()
         else:
-            tree = b.revision_tree(b.lookup_revision(revision))
+            tree = b.revision_tree(RevisionSpec(b, revision).rev_id)
 
         for fp, fc, kind, fid in tree.list_files():
             if verbose:
@@ -1184,15 +1184,15 @@ class cmd_merge(Command):
             other = [branch, -1]
         else:
             if len(revision) == 1:
-                other = [branch, revision[0]]
                 base = [None, None]
+                other = [branch, RevisionSpec(branch, revision[0]).revno]
             else:
                 assert len(revision) == 2
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                base = [branch, revision[0]]
-                other = [branch, revision[1]]
+                base = [branch, RevisionSpec(branch, revision[0]).revno]
+                other = [branch, RevisionSpec(branch, revision[1]).revno]
 
         try:
             merge(other, base, check_clean=(not force), merge_type=merge_type)

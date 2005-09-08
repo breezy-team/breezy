@@ -139,7 +139,7 @@ def get_tree(treespec, temp_root, label, local_branch=None):
     elif revno == -1:
         revision = branch.last_patch()
     else:
-        revision = branch.lookup_revision(revno)
+        revision = branch.get_rev_id(revno)
     return branch, get_revid_tree(branch, revision, temp_root, label,
                                   local_branch)
 
@@ -258,7 +258,7 @@ def merge(other_revision, base_revision,
             other_rev_id = other_branch.last_patch()
             other_basis = other_rev_id
         elif other_revision[1] is not None:
-            other_rev_id = other_branch.lookup_revision(other_revision[1])
+            other_rev_id = other_branch.get_rev_id(other_revision[1])
             other_basis = other_rev_id
         else:
             other_rev_id = None
@@ -278,7 +278,7 @@ def merge(other_revision, base_revision,
             elif base_revision[1] is None:
                 base_rev_id = None
             else:
-                base_rev_id = base_branch.lookup_revision(base_revision[1])
+                base_rev_id = base_branch.get_rev_id(base_revision[1])
             if base_rev_id is not None:
                 base_is_ancestor = is_ancestor(this_rev_id, base_rev_id, 
                                                MultipleRevisionSources(this_branch, 

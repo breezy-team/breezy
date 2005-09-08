@@ -100,7 +100,6 @@ class RevisionSpec(object):
             return False
         if type(other) is type(self) and self.branch is not other.branch:
             return False
-        print 'comparing', tuple(self), tuple(other)
         return tuple(self) == tuple(other)
 
     def __repr__(self):

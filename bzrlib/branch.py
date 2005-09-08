@@ -883,28 +883,6 @@ class LocalBranch(Branch):
         commit(self, *args, **kw)
         
 
-    def lookup_revision(self, revision):
-        """Return the revision identifier for a given revision specifier."""
-        # XXX: I'm not sure this method belongs here; I'd rather have the
-        # revision spec stuff be an UI thing, and branch blissfully unaware
-        # of it.
-        # Also, I'm not entirely happy with this method returning None
-        # when the revision doesn't exist.
-        # But I'm keeping the contract I found, because this seems to be
-        # used in a lot of places - and when I do change these, I'd rather
-        # figure out case-by-case which ones actually want to care about
-        # revision specs (eg, they are UI-level) and which ones should trust
-        # that they have a revno/revid.
-        #   -- lalo@exoweb.net, 2005-09-07
-        from bzrlib.errors import NoSuchRevision
-        from bzrlib.revisionspec import RevisionSpec
-        try:
-            spec = RevisionSpec(self, revision)
-        except NoSuchRevision:
-            return None
-        return spec.rev_id
-
-
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         history = self.revision_history()
