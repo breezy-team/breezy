@@ -73,7 +73,7 @@ def _parse_revision_str(revstr):
     each revision.
 
     It supports integers directly, but everything else it
-    defers for passing to revisionspec.get_revision_info()
+    defers for passing to RevisionSpec.
 
     >>> _parse_revision_str('234')
     [234]

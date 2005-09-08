@@ -22,7 +22,7 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         """Functional tests for hashcache"""
         from bzrlib.errors import NoSuchRevision
         from bzrlib.branch import Branch
-        from bzrlib.revisionspec import get_revision_info
+        from bzrlib.revisionspec import RevisionSpec
 
         b = Branch('.', init=True)
 
@@ -30,19 +30,15 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         b.commit('Commit two', rev_id='a@r-0-2')
         b.commit('Commit three', rev_id='a@r-0-3')
 
-        self.assertEquals(get_revision_info(b, None), (0, None))
-        self.assertEquals(get_revision_info(b, 1), (1, 'a@r-0-1'))
-        self.assertEquals(get_revision_info(b, 'revno:1'), (1, 'a@r-0-1'))
-        self.assertEquals(get_revision_info(b, 'revid:a@r-0-1'), (1, 'a@r-0-1'))
-        self.assertRaises(NoSuchRevision, get_revision_info, b, 'revid:a@r-0-0')
-        self.assertRaises(TypeError, get_revision_info, b, object)
+        self.assertEquals(RevisionSpec(b, None), (0, None))
+        self.assertEquals(RevisionSpec(b, 1), (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec(b, 'revno:1'), (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec(b, 'revid:a@r-0-1'), (1, 'a@r-0-1'))
+        self.assertRaises(NoSuchRevision, RevisionSpec, b, 'revid:a@r-0-0')
+        self.assertRaises(TypeError, RevisionSpec, b, object)
 
-        self.assertEquals(get_revision_info(b, 'date:-tomorrow'), (3, 'a@r-0-3'))
-        self.assertEquals(get_revision_info(b, 'date:+today'), (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec(b, 'date:-tomorrow'), (3, 'a@r-0-3'))
+        self.assertEquals(RevisionSpec(b, 'date:+today'), (1, 'a@r-0-1'))
 
-        self.assertEquals(get_revision_info(b, 'last:1'), (3, 'a@r-0-3'))
-        self.assertEquals(get_revision_info(b, '-1'), (3, 'a@r-0-3'))
-
-        os.mkdir('newbranch')
-        b2 = Branch('newbranch', init=True)
-        self.assertEquals(b2.lookup_revision('revid:a@r-0-1'), None)
+        self.assertEquals(RevisionSpec(b, 'last:1'), (3, 'a@r-0-3'))
+        self.assertEquals(RevisionSpec(b, '-1'), (3, 'a@r-0-3'))

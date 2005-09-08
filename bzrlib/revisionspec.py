@@ -24,52 +24,88 @@ from bzrlib.errors import BzrError, NoSuchRevision
 # This should match a prefix with a function which accepts it
 REVISION_NAMESPACES = {}
 
-def get_revision_info(branch, spec):
-    """Return (revno, revision id) for revision specifier.
+class RevisionSpec(object):
+    """Equivalent to the old get_revision_info().
+    An instance has two useful attributes: revno, and rev_id.
 
-    spec can be an integer, in which case it is assumed to be revno
-    (though this will translate negative values into positive ones)
-    spec can also be a string, in which case it is parsed for something
-    like 'date:' or 'revid:' etc.
+    They can also be accessed as spec[0] and spec[1] respectively,
+    so that you can write code like:
+    revno, rev_id = RevisionSpec(branch, spec)
+    although this is probably going to be deprecated later.
 
-    A revid is always returned.  If it is None, the specifier referred to
-    the null revision.  If the revid does not occur in the revision
-    history, revno will be None.
+    Revision specs are an UI element, and they have been moved out
+    of the branch class to leave "back-end" classes unaware of such
+    details.  Code that gets a revno or rev_id from other code should
+    not be using revision specs - revnos and revision ids are the
+    accepted ways to refer to revisions internally.
     """
+    def __init__(self, branch, spec):
+        """Parse a revision specifier.
 
-    if spec is None:
-        return 0, None
-    revno = None
-    try:# Convert to int if possible
-        spec = int(spec)
-    except ValueError:
-        pass
-    revs = branch.revision_history()
-    if isinstance(spec, int):
-        if spec < 0:
-            revno = len(revs) + spec + 1
-        else:
-            revno = spec
-        rev_id = branch.get_rev_id(revno, revs)
-    elif isinstance(spec, basestring):
-        for prefix, func in REVISION_NAMESPACES.iteritems():
-            if spec.startswith(prefix):
-                result = func(branch, revs, spec)
-                if len(result) > 1:
-                    revno, rev_id = result
-                else:
-                    revno = result[0]
-                    rev_id = branch.get_rev_id(revno, revs)
-                break
-        else:
-            raise BzrError('No namespace registered for string: %r' %
-                           spec)
-    else:
-        raise TypeError('Unhandled revision type %s' % spec)
+        spec can be an integer, in which case it is assumed to be revno
+        (though this will translate negative values into positive ones)
+        spec can also be a string, in which case it is parsed for something
+        like 'date:' or 'revid:' etc.
+        """
+        self.branch = branch
 
-    if revno is None or rev_id is None:
-        raise NoSuchRevision(branch, spec)
-    return revno, rev_id
+        if spec is None:
+            self.revno = 0
+            self.rev_id = None
+            return
+        self.revno = None
+        try:# Convert to int if possible
+            spec = int(spec)
+        except ValueError:
+            pass
+        revs = branch.revision_history()
+        if isinstance(spec, int):
+            if spec < 0:
+                self.revno = len(revs) + spec + 1
+            else:
+                self.revno = spec
+            self.rev_id = branch.get_rev_id(self.revno, revs)
+        elif isinstance(spec, basestring):
+            for prefix, func in REVISION_NAMESPACES.iteritems():
+                if spec.startswith(prefix):
+                    result = func(branch, revs, spec)
+                    if len(result) > 1:
+                        self.revno, self.rev_id = result
+                    else:
+                        self.revno = result[0]
+                        self.rev_id = branch.get_rev_id(self.revno, revs)
+                    break
+            else:
+                raise BzrError('No namespace registered for string: %r' %
+                               spec)
+        else:
+            raise TypeError('Unhandled revision type %s' % spec)
+
+        if self.revno is None or self.rev_id is None:
+            raise NoSuchRevision(branch, spec)
+
+    def __len__(self):
+        return 2
+
+    def __getitem__(self, index):
+        if index == 0: return self.revno
+        if index == 1: return self.rev_id
+        raise IndexError(index)
+
+    def get(self):
+        return self.branch.get_revision(self.rev_id)
+
+    def __eq__(self, other):
+        if type(other) not in (tuple, list, type(self)):
+            return False
+        if type(other) is type(self) and self.branch is not other.branch:
+            return False
+        print 'comparing', tuple(self), tuple(other)
+        return tuple(self) == tuple(other)
+
+    def __repr__(self):
+        return '<bzrlib.revisionspec.RevisionSpec object %s, %s for %r>' % (
+            self.revno, self.rev_id, self.branch)
 
 
 # private API

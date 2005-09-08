@@ -480,7 +480,7 @@ class LocalBranch(Branch):
         """Print `file` to stdout."""
         self.lock_read()
         try:
-            tree = self.revision_tree(self.lookup_revision(revno))
+            tree = self.revision_tree(self.get_rev_id(revno))
             # use inventory as it was in that revision
             file_id = tree.inventory.path2id(file)
             if not file_id:
@@ -897,12 +897,12 @@ class LocalBranch(Branch):
         # that they have a revno/revid.
         #   -- lalo@exoweb.net, 2005-09-07
         from bzrlib.errors import NoSuchRevision
-        from bzrlib.revisionspec import get_revision_info
+        from bzrlib.revisionspec import RevisionSpec
         try:
-            revno, info = get_revision_info(self, revision)
+            spec = RevisionSpec(self, revision)
         except NoSuchRevision:
             return None
-        return info
+        return spec.rev_id
 
 
     def revision_id_to_revno(self, revision_id):
@@ -1348,7 +1348,7 @@ def copy_branch(branch_from, to_location, revision=None):
         The name of a local directory that exists but is empty.
     """
     from bzrlib.merge import merge
-    from bzrlib.revisionspec import get_revision_info
+    from bzrlib.revisionspec import RevisionSpec
 
     assert isinstance(branch_from, Branch)
     assert isinstance(to_location, basestring)
@@ -1358,7 +1358,7 @@ def copy_branch(branch_from, to_location, revision=None):
     if revision is None:
         revno = branch_from.revno()
     else:
-        revno, rev_id = get_revision_info(branch_from, revision)
+        revno, rev_id = RevisionSpec(branch_from, revision)
     br_to.update_revisions(branch_from, stop_revision=revno)
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)
