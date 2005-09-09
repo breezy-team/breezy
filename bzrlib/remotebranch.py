@@ -124,6 +124,16 @@ class RemoteBranch(Branch):
 
     __repr__ = __str__
 
+    def setup_caching(self, cache_root):
+        """Set up cached stores located under cache_root"""
+        from bzrlib.meta_store import CachedStore
+        for store_name in ('inventory_store', 'text_store', 'revision_store'):
+            if not isinstance(getattr(self, store_name), CachedStore):
+                cache_path = os.path.join(cache_root, store_name)
+                os.mkdir(cache_path)
+                new_store = CachedStore(getattr(self, store_name), cache_path)
+                setattr(self, store_name, new_store)
+
     def controlfile(self, filename, mode):
         if mode not in ('rb', 'rt', 'r'):
             raise BzrError("file mode %r not supported for remote branches" % mode)

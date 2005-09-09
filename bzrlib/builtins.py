@@ -22,7 +22,7 @@ import bzrlib
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
-from bzrlib.branch import find_branch, Branch
+from bzrlib.branch import Branch
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib import BZRDIR
 from bzrlib.commands import Command
@@ -317,13 +317,14 @@ class cmd_pull(Command):
                 print "Using last location: %s" % stored_loc
                 location = stored_loc
         cache_root = tempfile.mkdtemp()
-        from bzrlib.branch import DivergedBranches
+        from bzrlib.errors import DivergedBranches
         br_from = Branch.open_containing(location)
         location = br_from.base
         old_revno = br_to.revno()
         try:
-            from branch import find_cached_branch, DivergedBranches
-            br_from = find_cached_branch(location, cache_root)
+            from bzrlib.errors import DivergedBranches
+            br_from = Branch.open(location)
+            br_from.setup_caching(cache_root)
             location = br_from.base
             old_revno = br_to.revno()
             try:
@@ -354,7 +355,7 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None):
-        from bzrlib.branch import copy_branch, find_cached_branch
+        from bzrlib.branch import copy_branch
         import tempfile
         import errno
         from shutil import rmtree
@@ -366,13 +367,14 @@ class cmd_branch(Command):
                 raise BzrCommandError(
                     'bzr branch --revision takes exactly 1 revision value')
             try:
-                br_from = find_cached_branch(from_location, cache_root)
+                br_from = Branch.open(from_location)
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     raise BzrCommandError('Source location "%s" does not'
                                           ' exist.' % to_location)
                 else:
                     raise
+            br_from.setup_caching(cache_root)
             if to_location is None:
                 to_location = os.path.basename(from_location.rstrip("/\\"))
             try:

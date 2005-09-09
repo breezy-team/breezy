@@ -35,7 +35,6 @@ import bzrlib
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
-from bzrlib.branch import find_branch
 from bzrlib import BZRDIR
 
 plugin_cmds = {}

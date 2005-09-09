@@ -43,31 +43,10 @@ BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 # repeatedly to calculate deltas.  We could perhaps have a weakref
 # cache in memory to make this faster.
 
-
-def find_branch(base, init=False, find_root=True):
-    if init:
-        return Branch.initialize(base)
-    if find_root:
-        return Branch.open_containing(base)
-    return Branch.open(base)
-
-
-def find_cached_branch(f, cache_root, **args):
-    from bzrlib.remotebranch import RemoteBranch
-    br = find_branch(f, **args)
-    def cacheify(br, store_name):
-        from bzrlib.meta_store import CachedStore
-        cache_path = os.path.join(cache_root, store_name)
-        os.mkdir(cache_path)
-        new_store = CachedStore(getattr(br, store_name), cache_path)
-        setattr(br, store_name, new_store)
-
-    if isinstance(br, RemoteBranch):
-        cacheify(br, 'inventory_store')
-        cacheify(br, 'text_store')
-        cacheify(br, 'revision_store')
-    return br
-
+def find_branch(*ignored, **ignored_too):
+    # XXX: leave this here for about one release, then remove it
+    raise NotImplementedError('find_branch() is not supported anymore, '
+                              'please use one of the new branch constructors')
 
 def _relpath(base, path):
     """Return path relative to base, or raise exception.
@@ -141,7 +120,7 @@ class Branch(object):
     """
     base = None
 
-    def __init__(self, *a, **kw):
+    def __init__(self, *ignored, **ignored_too):
         raise NotImplementedError('The Branch class is abstract')
 
     @staticmethod
@@ -171,6 +150,11 @@ class Branch(object):
             return RemoteBranch(base, init=True)
         else:
             return LocalBranch(base, init=True)
+
+    def setup_caching(self, cache_root):
+        """Subclasses that care about caching should override this, and set
+        up cached stores located under cache_root.
+        """
 
 
 class LocalBranch(Branch):
