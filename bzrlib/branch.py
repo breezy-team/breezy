@@ -43,16 +43,13 @@ BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 # repeatedly to calculate deltas.  We could perhaps have a weakref
 # cache in memory to make this faster.
 
-# TODO: please move the revision-string syntax stuff out of the branch
-# object; it's clutter
 
-
-def find_branch(f, **args):
-    if f and (f.startswith('http://') or f.startswith('https://')):
-        from bzrlib.remotebranch import RemoteBranch
-        return RemoteBranch(f, **args)
-    else:
-        return LocalBranch(f, **args)
+def find_branch(base, init=False, find_root=True):
+    if init:
+        return Branch.initialize(base)
+    if find_root:
+        return Branch.open_containing(base)
+    return Branch.open(base)
 
 
 def find_cached_branch(f, cache_root, **args):
@@ -153,6 +150,34 @@ class Branch(object):
             cls = LocalBranch
         b = object.__new__(cls)
         return b
+
+    @staticmethod
+    def open(base):
+        """Open an existing branch, rooted at 'base' (url)"""
+        if base and (base.startswith('http://') or base.startswith('https://')):
+            from bzrlib.remotebranch import RemoteBranch
+            return RemoteBranch(base, find_root=False)
+        else:
+            return LocalBranch(base, find_root=False)
+
+    @staticmethod
+    def open_containing(url):
+        """Open an existing branch, containing url (search upwards for the root)
+        """
+        if url and (url.startswith('http://') or url.startswith('https://')):
+            from bzrlib.remotebranch import RemoteBranch
+            return RemoteBranch(url)
+        else:
+            return LocalBranch(url)
+
+    @staticmethod
+    def initialize(base):
+        """Create a new branch, rooted at 'base' (url)"""
+        if base and (base.startswith('http://') or base.startswith('https://')):
+            from bzrlib.remotebranch import RemoteBranch
+            return RemoteBranch(base, init=True)
+        else:
+            return LocalBranch(base, init=True)
 
 
 class LocalBranch(Branch):
