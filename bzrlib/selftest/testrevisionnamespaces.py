@@ -30,15 +30,21 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         b.commit('Commit two', rev_id='a@r-0-2')
         b.commit('Commit three', rev_id='a@r-0-3')
 
-        self.assertEquals(RevisionSpec(b, None), (0, None))
-        self.assertEquals(RevisionSpec(b, 1), (1, 'a@r-0-1'))
-        self.assertEquals(RevisionSpec(b, 'revno:1'), (1, 'a@r-0-1'))
-        self.assertEquals(RevisionSpec(b, 'revid:a@r-0-1'), (1, 'a@r-0-1'))
-        self.assertRaises(NoSuchRevision, RevisionSpec, b, 'revid:a@r-0-0')
-        self.assertRaises(TypeError, RevisionSpec, b, object)
+        self.assertEquals(RevisionSpec(None).in_history(b), (0, None))
+        self.assertEquals(RevisionSpec(1).in_history(b), (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('revno:1').in_history(b),
+                          (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('revid:a@r-0-1').in_history(b),
+                          (1, 'a@r-0-1'))
+        self.assertRaises(NoSuchRevision,
+                          RevisionSpec('revid:a@r-0-0').in_history, b)
+        self.assertRaises(TypeError, RevisionSpec, object)
 
-        self.assertEquals(RevisionSpec(b, 'date:-tomorrow'), (3, 'a@r-0-3'))
-        self.assertEquals(RevisionSpec(b, 'date:+today'), (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('date:-tomorrow').in_history(b),
+                          (3, 'a@r-0-3'))
+        self.assertEquals(RevisionSpec('date:+today').in_history(b),
+                          (1, 'a@r-0-1'))
 
-        self.assertEquals(RevisionSpec(b, 'last:1'), (3, 'a@r-0-3'))
-        self.assertEquals(RevisionSpec(b, '-1'), (3, 'a@r-0-3'))
+        self.assertEquals(RevisionSpec('last:1').in_history(b),
+                          (3, 'a@r-0-3'))
+        self.assertEquals(RevisionSpec('-1').in_history(b), (3, 'a@r-0-3'))

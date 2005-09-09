@@ -1338,7 +1338,7 @@ def copy_branch(branch_from, to_location, revision=None):
     if revision is None:
         revno = branch_from.revno()
     else:
-        revno, rev_id = RevisionSpec(branch_from, revision)
+        revno, rev_id = RevisionSpec(revision).in_history(branch_from)
     br_to.update_revisions(branch_from, stop_revision=revno)
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)

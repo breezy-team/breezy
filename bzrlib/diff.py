@@ -160,15 +160,15 @@ def show_diff(b, revision, specific_files, external_diff_options=None,
     import sys
     from bzrlib.revisionspec import RevisionSpec
 
-    if revision == None:
+    if revision is None:
         old_tree = b.basis_tree()
     else:
-        old_tree = b.revision_tree(RevisionSpec(b, revision).rev_id)
+        old_tree = b.revision_tree(RevisionSpec(revision).in_history(b).rev_id)
 
-    if revision2 == None:
+    if revision2 is None:
         new_tree = b.working_tree()
     else:
-        new_tree = b.revision_tree(RevisionSpec(b, revision2).rev_id)
+        new_tree = b.revision_tree(RevisionSpec(revision2).in_branch(b).rev_id)
 
     show_diff_trees(old_tree, new_tree, sys.stdout, specific_files,
                     external_diff_options)

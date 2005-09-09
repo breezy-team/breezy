@@ -125,7 +125,7 @@ class cmd_revision_info(Command):
         b = Branch.open_containing('.')
 
         for rev in revs:
-            print '%4d %s' % RevisionSpec(b, rev)
+            print '%4d %s' % RevisionSpec(rev).in_history(b)
 
     
 class cmd_add(Command):
@@ -199,7 +199,8 @@ class cmd_inventory(Command):
             if len(revision) > 1:
                 raise BzrCommandError('bzr inventory --revision takes'
                     ' exactly one revision identifier')
-            inv = b.get_revision_inventory(RevisionSpec(b, revision[0]).rev_id)
+            spec = RevisionSpec(revision[0])
+            inv = b.get_revision_inventory(spec.in_history(b).rev_id)
 
         for path, entry in inv.entries():
             if show_ids:
@@ -687,10 +688,10 @@ class cmd_log(Command):
             rev1 = None
             rev2 = None
         elif len(revision) == 1:
-            rev1 = rev2 = RevisionSpec(b, revision[0]).revno
+            rev1 = rev2 = RevisionSpec(revision[0]).in_history(b).revno
         elif len(revision) == 2:
-            rev1 = RevisionSpec(b, revision[0]).revno
-            rev2 = RevisionSpec(b, revision[1]).revno
+            rev1 = RevisionSpec(revision[0]).in_history(b).revno
+            rev2 = RevisionSpec(revision[1]).in_history(b).revno
         else:
             raise BzrCommandError('bzr log --revision takes one or two values.')
 
@@ -750,7 +751,7 @@ class cmd_ls(Command):
         if revision == None:
             tree = b.working_tree()
         else:
-            tree = b.revision_tree(RevisionSpec(b, revision).rev_id)
+            tree = b.revision_tree(RevisionSpec(revision).in_history(b).rev_id)
 
         for fp, fc, kind, fid in tree.list_files():
             if verbose:
@@ -888,7 +889,7 @@ class cmd_export(Command):
         else:
             if len(revision) != 1:
                 raise BzrError('bzr export --revision takes exactly 1 argument')
-            rev_id = RevisionSpec(b, revision[0]).rev_id
+            rev_id = RevisionSpec(revision[0]).in_history(b).rev_id
         t = b.revision_tree(rev_id)
         root, ext = os.path.splitext(dest)
         if not format:
@@ -1187,14 +1188,17 @@ class cmd_merge(Command):
         else:
             if len(revision) == 1:
                 base = [None, None]
-                other = [branch, RevisionSpec(branch, revision[0]).revno]
+                spec = RevisionSpec(revision[0])
+                other = [branch, spec.in_history(branch).revno]
             else:
                 assert len(revision) == 2
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                base = [branch, RevisionSpec(branch, revision[0]).revno]
-                other = [branch, RevisionSpec(branch, revision[1]).revno]
+                spec = RevisionSpec(revision[0])
+                base = [branch, spec.in_history(branch).revno]
+                spec = RevisionSpec(revision[1])
+                other = [branch, spec.in_history(branch).revno]
 
         try:
             merge(other, base, check_clean=(not force), merge_type=merge_type)
