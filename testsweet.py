@@ -165,9 +165,12 @@ def run_suite(suite, name='test', verbose=False, pattern=".*"):
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity)
-    visitor = filteringVisitor(pattern)
-    suite.visit(visitor)
-    result = runner.run(visitor.suite())
+    if not pattern or pattern == ".*":
+        result = runner.run(suite)
+    else:
+        visitor = filteringVisitor(pattern)
+        suite.visit(visitor)
+        result = runner.run(visitor.suite())
     # This is still a little bogus, 
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
