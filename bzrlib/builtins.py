@@ -62,11 +62,9 @@ class cmd_status(Command):
     directory is shown.  Otherwise, only the status of the specified
     files or directories is reported.  If a directory is given, status
     is reported for everything inside that directory.
-
-    If a revision is specified, the changes since that revision are shown.
     """
     takes_args = ['file*']
-    takes_options = ['all', 'show-ids', 'revision']
+    takes_options = ['all', 'show-ids']
     aliases = ['st', 'stat']
     
     def run(self, all=False, show_ids=False, file_list=None):
