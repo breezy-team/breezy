@@ -92,7 +92,7 @@ class TestCommands(ExternalBase):
     def test_ignore_patterns(self):
         from bzrlib.branch import Branch
         
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         self.assertEquals(list(b.unknowns()), [])
 
         file('foo.tmp', 'wt').write('tmp files are ignored')
@@ -150,7 +150,7 @@ class TestCommands(ExternalBase):
     def skipped_test_mv_modes(self):
         """Test two modes of operation for mv"""
         from bzrlib.branch import Branch
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         self.build_tree(['a', 'c', 'subdir/'])
         self.run_bzr('mv', 'a', 'b')
         self.run_bzr('mv', 'b', 'subdir')
@@ -214,8 +214,8 @@ class TestCommands(ExternalBase):
         self.runbzr('merge ../b')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
-        a = Branch('.')
-        b = Branch('../b')
+        a = Branch.open('.')
+        b = Branch.open('../b')
         a.get_revision_xml(b.last_patch())
 
         self.log('pending merges: %s', a.pending_merges())
@@ -225,7 +225,7 @@ class TestCommands(ExternalBase):
 
     def test_add_reports(self):
         """add command prints the names of added files."""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
 
         from cStringIO import StringIO

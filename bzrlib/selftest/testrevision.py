@@ -22,14 +22,14 @@ def make_branches():
     from bzrlib.commit import commit
     import os
     os.mkdir("branch1")
-    br1 = Branch("branch1", init=True)
+    br1 = Branch.initialize("branch1")
     
     commit(br1, "Commit one", rev_id="a@u-0-0")
     commit(br1, "Commit two", rev_id="a@u-0-1")
     commit(br1, "Commit three", rev_id="a@u-0-2")
 
     os.mkdir("branch2")
-    br2 = Branch("branch2", init=True)
+    br2 = Branch.initialize("branch2")
     br2.update_revisions(br1)
     commit(br2, "Commit four", rev_id="b@u-0-3")
     commit(br2, "Commit five", rev_id="b@u-0-4")

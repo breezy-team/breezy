@@ -1356,7 +1356,7 @@ def copy_branch(branch_from, to_location, revision=None):
     assert isinstance(branch_from, Branch)
     assert isinstance(to_location, basestring)
     
-    br_to = Branch(to_location, init=True)
+    br_to = Branch.initialize(to_location)
     br_to.set_root_id(branch_from.get_root_id())
     if revision is None:
         revno = branch_from.revno()

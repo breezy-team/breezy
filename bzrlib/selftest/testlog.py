@@ -65,7 +65,7 @@ class SimpleLogTest(TestCaseInTempDir):
             self.assertEquals(expected, got)
 
     def test_cur_revno(self):
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         lf = LogCatcher()
         b.commit('empty commit')
@@ -86,7 +86,7 @@ class SimpleLogTest(TestCaseInTempDir):
     def test_simple_log(self):
         eq = self.assertEquals
         
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         lf = LogCatcher()
         show_log(b, lf)

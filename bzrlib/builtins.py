@@ -509,7 +509,7 @@ class cmd_init(Command):
     """
     def run(self):
         from bzrlib.branch import Branch
-        Branch('.', init=True)
+        Branch.initialize('.')
 
 
 class cmd_diff(Command):
@@ -1235,7 +1235,7 @@ class cmd_revert(Command):
               backup_files=not no_backup,
               file_list=file_list)
         if not file_list:
-            Branch('.').set_pending_merges([])
+            Branch.open_containing('.').set_pending_merges([])
 
 
 class cmd_assert_fail(Command):

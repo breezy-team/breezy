@@ -24,7 +24,7 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec
 
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         b.commit('Commit one', rev_id='a@r-0-1')
         b.commit('Commit two', rev_id='a@r-0-2')

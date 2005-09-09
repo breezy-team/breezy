@@ -63,7 +63,7 @@ def smart_add(file_list, recurse=True, reporter=add_reporter_null):
     Returns the number of files added.
     """
     file_list = _prepare_file_list(file_list)
-    b = Branch(file_list[0], find_root=True)
+    b = Branch.open_containing(file_list[0])
     return smart_add_branch(b, file_list, recurse, reporter)
 
         
@@ -114,7 +114,7 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
 
         if kind == 'directory':
             try:
-                sub_branch = Branch(af, find_root=False)
+                sub_branch = Branch.open(af)
                 sub_tree = True
             except NotBranchError:
                 sub_tree = False
