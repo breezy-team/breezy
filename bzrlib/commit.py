@@ -177,7 +177,9 @@ class Commit(object):
             self.basis_inv = self.basis_tree.inventory
 
             self.pending_merges = self.branch.pending_merges()
-
+            if self.pending_merges:
+                raise NotImplementedError("sorry, can't commit merges to the weave format yet")
+            
             if self.rev_id is None:
                 self.rev_id = _gen_revision_id(self.branch, time.time())
 
@@ -272,17 +274,23 @@ class Commit(object):
 
     def _store_file_text(self, file_id):
         """Store updated text for one modified or added file."""
-        note('store new text for {%s} in revision {%s}', id, self.rev_id)
+        note('store new text for {%s} in revision {%s}',
+             file_id, self.rev_id)
         new_lines = self.work_tree.get_file(file_id).readlines()
-        self._add_text_to_weave(file_id, new_lines)
-        # update or add an entry
-        if file_id in self.new_inv:
+        if file_id in self.new_inv:     # was in basis inventory
             ie = self.new_inv[file_id]
             assert ie.file_id == file_id
-        else:
+            assert file_id in self.basis_inv
+            assert self.basis_inv[file_id].kind == 'file'
+            old_version = self.basis_inv[file_id].text_version
+            file_parents = [old_version]
+        else:                           # new in this revision
             ie = self.work_inv[file_id].copy()
             self.new_inv.add(ie)
+            assert file_id not in self.basis_inv
+            file_parents = []
         assert ie.kind == 'file'
+        self._add_text_to_weave(file_id, new_lines, file_parents)
         # make a new inventory entry for this file, using whatever
         # it had in the working copy, plus details on the new text
         ie.text_sha1 = _sha_strings(new_lines)
@@ -291,7 +299,7 @@ class Commit(object):
         ie.entry_version = self.rev_id
 
 
-    def _add_text_to_weave(self, file_id, new_lines):
+    def _add_text_to_weave(self, file_id, new_lines, parents):
         weave_fn = self.branch.controlfilename(['weaves', file_id+'.weave'])
         if os.path.exists(weave_fn):
             w = read_weave(file(weave_fn, 'rb'))
@@ -299,7 +307,8 @@ class Commit(object):
             w = Weave()
         # XXX: Should set the appropriate parents by looking for this file_id
         # in all revision parents
-        w.add(self.rev_id, [], new_lines)
+        parent_idxs = map(w.lookup, parents)
+        w.add(self.rev_id, parent_idxs, new_lines)
         af = AtomicFile(weave_fn)
         try:
             write_weave_v5(w, af)
