@@ -264,6 +264,7 @@ def revision_graph(revision, revision_source):
     descendants = {}
     lines = [revision]
     root = None
+    descendants[revision] = {}
     while len(lines) > 0:
         new_lines = set()
         for line in lines:
@@ -299,13 +300,13 @@ def combined_graph(revision_a, revision_b, revision_source):
     for node, node_dec in descendants_b.iteritems():
         if node not in descendants:
             descendants[node] = set()
-        ancestors[node].update(node_anc)
+        descendants[node].update(descendants)
     return root, ancestors, descendants, common
 
 def common_ancestor(revision_a, revision_b, revision_source):
     root, ancestors, descendants, common = \
         combined_graph(revision_a, revision_b, revision_source)
-    nodes = farthest_node(ancestors, descendants, root)
+    nodes = farthest_node(descendants, ancestors, root)
     for node in nodes:
         if node in common:
             return node
