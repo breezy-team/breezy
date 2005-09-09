@@ -147,16 +147,18 @@ class TestCommands(ExternalBase):
         os.rmdir('revertdir')
         self.runbzr('revert')
 
-    def skipped_test_mv_modes(self):
+    def test_mv_modes(self):
         """Test two modes of operation for mv"""
         from bzrlib.branch import Branch
         b = Branch('.', init=True)
         self.build_tree(['a', 'c', 'subdir/'])
+        self.run_bzr('add', self.test_dir)
         self.run_bzr('mv', 'a', 'b')
         self.run_bzr('mv', 'b', 'subdir')
         self.run_bzr('mv', 'subdir/b', 'a')
-        self.run_bzr('mv', 'a', 'b', 'subdir')
+        self.run_bzr('mv', 'a', 'c', 'subdir')
         self.run_bzr('mv', 'subdir/a', 'subdir/newa')
+
 
     def test_main_version(self):
         """Check output from version command and master option is reasonable"""

@@ -272,8 +272,8 @@ class cmd_mv(Command):
             if len(names_list) != 2:
                 raise BzrCommandError('to mv multiple files the destination '
                                       'must be a versioned directory')
-            for pair in b.move(rel_names[0], rel_names[1]):
-                print "%s => %s" % pair
+            b.rename_one(rel_names[0], rel_names[1])
+            print "%s => %s" % (rel_names[0], rel_names[1])
             
     
 
