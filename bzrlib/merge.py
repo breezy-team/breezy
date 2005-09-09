@@ -26,7 +26,7 @@ import bzrlib.revision
 from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
 from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
 from bzrlib.changeset import Inventory, Diff3Merge
-from bzrlib.branch import find_branch
+from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError, UnrelatedBranches
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter, warning
@@ -133,7 +133,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
             
 def get_tree(treespec, temp_root, label, local_branch=None):
     location, revno = treespec
-    branch = find_branch(location)
+    branch = Branch.open(location)
     if revno is None:
         revision = None
     elif revno == -1:
@@ -243,7 +243,7 @@ def merge(other_revision, base_revision,
     try:
         if this_dir is None:
             this_dir = '.'
-        this_branch = find_branch(this_dir)
+        this_branch = Branch.open_containing(this_dir)
         this_rev_id = this_branch.last_patch()
         if this_rev_id is None:
             raise BzrCommandError("This branch has no commits")
