@@ -141,15 +141,8 @@ class Branch(object):
     """
     base = None
 
-    def __new__(cls, *a, **kw):
-        """this is temporary, till we get rid of all code that does
-        b = Branch()
-        """
-        # XXX: AAARGH!  MY EYES!  UUUUGLY!!!
-        if cls == Branch:
-            cls = LocalBranch
-        b = object.__new__(cls)
-        return b
+    def __init__(self, *a, **kw):
+        raise NotImplementedError('The Branch class is abstract')
 
     @staticmethod
     def open(base):
