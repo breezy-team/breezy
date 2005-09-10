@@ -166,6 +166,7 @@ def farthest_node(graph, ancestors, start):
     while len(lines) > 0:
         new_lines = set()
         for line in lines:
+            assert line not in graph[line], "%s refers to itself" % line
             for descendant in graph[line]:
                 distance = max_distance(descendant, ancestors, distances)
                 if distance is None:
@@ -178,4 +179,6 @@ def farthest_node(graph, ancestors, start):
         return distances[n]
     node_list = distances.keys()
     node_list.sort(key=by_distance, reverse=True)
+    assert len(node_list) == len(graph), "%d nodes missing" % \
+        (len(graph) - len(node_list)) 
     return node_list
