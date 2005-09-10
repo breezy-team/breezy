@@ -65,12 +65,17 @@ class cmd_changeset(Command):
 
 
     If --verbose, renames will be given as an 'add + delete' style patch.
+    If --revision is given, it has several states:
+        --revision A..B A is chosen as the base and B is chosen as the target
+        --revision A    A is chosen as the target, and the base is it's primary parent
+        --revision ..B  B is chosen as the target, and the base is it's primary parent
+        --revision A..  ???
     """
-    takes_options = ['verbose']
+    takes_options = ['verbose', 'revision']
     takes_args = ['base?', 'target?', 'starting-rev-id?']
     aliases = ['cset']
 
-    def run(self, base=None, target=None, starting_rev_id=None, verbose=False):
+    def run(self, base=None, target=None, starting_rev_id=None, verbose=False, revision=None):
         from bzrlib.branch import find_branch
         from bzrlib.commands import parse_spec
         from bzrlib.errors import BzrCommandError
@@ -79,26 +84,47 @@ class cmd_changeset(Command):
         import sys
         import codecs
 
-        if target is None:
-            target = './@'
-        b_target_path, target_revno = parse_spec(target)
-        target_branch = find_branch(b_target_path)
-        if target_revno is None or target_revno == -1:
-            target_rev_id = target_branch.last_patch()
-        else:
-            target_rev_id = target_branch.lookup_revision(target_revno)
-
-        if base is None:
-            base_branch = target_branch
-            target_rev = target_branch.get_revision(target_rev_id)
-            base_rev_id = target_rev.parents[0].revision_id
-        else:
-            base_path, base_revno = parse_spec(base)
-            base_branch = find_branch(base_path)
-            if base_revno is None or base_revno == -1:
-                base_rev_id = base_branch.last_patch()
+        if revision is not None:
+            if (target is not None or base is not None):
+                raise BzrCommandError('--revision superceeds base and target')
+            if len(revision) == 1:
+                target_info = revision[0]
+                base_info = None
+            elif len(revision) == 2:
+                target_info = revision[1]
+                base_info = revision[0]
             else:
-                base_rev_id = base_branch.lookup_revision(base_revno)
+                raise BzrCommandError('--revision can take at most 2 arguments')
+
+            target_branch = find_branch('.')
+            target_rev_id = target_branch.lookup_revision(target_info)
+            base_branch = target_branch
+            if base_info is not None:
+                base_rev_id = target_branch.lookup_revision(base_info)
+            else:
+                target_rev = target_branch.get_revision(target_rev_id)
+                base_rev_id = target_rev.parents[0].revision_id
+        else:
+            if target is None:
+                target = './@'
+            b_target_path, target_revno = parse_spec(target)
+            target_branch = find_branch(b_target_path)
+            if target_revno is None or target_revno == -1:
+                target_rev_id = target_branch.last_patch()
+            else:
+                target_rev_id = target_branch.lookup_revision(target_revno)
+
+            if base is None:
+                base_branch = target_branch
+                target_rev = target_branch.get_revision(target_rev_id)
+                base_rev_id = target_rev.parents[0].revision_id
+            else:
+                base_path, base_revno = parse_spec(base)
+                base_branch = find_branch(base_path)
+                if base_revno is None or base_revno == -1:
+                    base_rev_id = base_branch.last_patch()
+                else:
+                    base_rev_id = base_branch.lookup_revision(base_revno)
 
         # outf = codecs.getwriter(user_encoding)(sys.stdout,
         #         errors='replace')
