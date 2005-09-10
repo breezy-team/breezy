@@ -133,6 +133,7 @@ class TestCommonAncestor(TestCaseInTempDir):
     """Test checking whether a revision is an ancestor of another revision"""
 
     def test_old_common_ancestor(self):
+        """Pick a resonable merge base using the old functionality"""
         from bzrlib.revision import find_present_ancestors
         from bzrlib.revision import old_common_ancestor as common_ancestor
         from bzrlib.revision import MultipleRevisionSources

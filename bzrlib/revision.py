@@ -16,7 +16,7 @@
 
 
 import bzrlib.errors
-from bzrlib.graph import farthest_node
+from bzrlib.graph import farthest_nodes
 
 class RevisionReference(object):
     """
@@ -260,6 +260,13 @@ def old_common_ancestor(revision_a, revision_b, revision_source):
     return a_closest[0]
 
 def revision_graph(revision, revision_source):
+    """Produce a graph of the ancestry of the specified revision.
+    Return root, ancestors map, descendants map
+
+    TODO: Produce graphs with the NULL revision as root, so that we can find
+    a common even when trees are not branches don't represent a single line
+    of descent.
+    """
     ancestors = {}
     descendants = {}
     lines = [revision]
@@ -290,6 +297,8 @@ def revision_graph(revision, revision_source):
     return root, ancestors, descendants
 
 def combined_graph(revision_a, revision_b, revision_source):
+    """Produce a combined ancestry graph.
+    Return graph root, ancestors map, descendants map, set of common nodes"""
     root, ancestors, descendants = revision_graph(revision_a, revision_source)
     root_b, ancestors_b, descendants_b = revision_graph(revision_b, 
                                                         revision_source)
@@ -310,7 +319,7 @@ def combined_graph(revision_a, revision_b, revision_source):
 def common_ancestor(revision_a, revision_b, revision_source):
     root, ancestors, descendants, common = \
         combined_graph(revision_a, revision_b, revision_source)
-    nodes = farthest_node(descendants, ancestors, root)
+    nodes = farthest_nodes(descendants, ancestors, root)
     for node in nodes:
         if node in common:
             return node
