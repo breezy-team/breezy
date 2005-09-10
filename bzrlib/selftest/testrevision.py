@@ -132,8 +132,9 @@ class TestIntermediateRevisions(TestCaseInTempDir):
 class TestCommonAncestor(TestCaseInTempDir):
     """Test checking whether a revision is an ancestor of another revision"""
 
-    def test_common_ancestor(self):
-        from bzrlib.revision import find_present_ancestors, common_ancestor
+    def test_old_common_ancestor(self):
+        from bzrlib.revision import find_present_ancestors
+        from bzrlib.revision import old_common_ancestor as common_ancestor
         from bzrlib.revision import MultipleRevisionSources
         br1, br2 = make_branches()
         revisions = br1.revision_history()
@@ -169,3 +170,44 @@ class TestCommonAncestor(TestCaseInTempDir):
                           revisions[4])
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
                           revisions_2[5])
+
+    def test_common_ancestor(self):
+        """Pick a reasonable merge base"""
+        from bzrlib.revision import find_present_ancestors
+        from bzrlib.revision import common_ancestor
+        from bzrlib.revision import MultipleRevisionSources
+        br1, br2 = make_branches()
+        revisions = br1.revision_history()
+        revisions_2 = br2.revision_history()
+        sources = MultipleRevisionSources(br1, br2)
+
+        expected_ancestors_list = {revisions[3]:(0, 0), 
+                                   revisions[2]:(1, 1),
+                                   revisions_2[4]:(2, 1), 
+                                   revisions[1]:(3, 2),
+                                   revisions_2[3]:(4, 2),
+                                   revisions[0]:(5, 3) }
+        ancestors_list = find_present_ancestors(revisions[3], sources)
+        assert len(expected_ancestors_list) == len(ancestors_list)
+        for key, value in expected_ancestors_list.iteritems():
+            self.assertEqual(ancestors_list[key], value, 
+                              "key %r, %r != %r" % (key, ancestors_list[key],
+                                                    value))
+
+        self.assertEqual(common_ancestor(revisions[0], revisions[0], sources),
+                          revisions[0])
+        self.assertEqual(common_ancestor(revisions[1], revisions[2], sources),
+                          revisions[1])
+        self.assertEqual(common_ancestor(revisions[1], revisions[1], sources),
+                          revisions[1])
+        self.assertEqual(common_ancestor(revisions[2], revisions_2[4], sources),
+                          revisions[2])
+        self.assertEqual(common_ancestor(revisions[3], revisions_2[4], sources),
+                          revisions_2[4])
+        self.assertEqual(common_ancestor(revisions[4], revisions_2[5], sources),
+                          revisions_2[4])
+        self.assertEqual(common_ancestor(revisions[5], revisions_2[6], sources),
+                          revisions[4])
+        self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
+                          revisions[4])
+

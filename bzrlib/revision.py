@@ -228,7 +228,7 @@ def __get_closest(intersection):
     return matches
 
 
-def common_ancestor(revision_a, revision_b, revision_source):
+def old_common_ancestor(revision_a, revision_b, revision_source):
     """Find the ancestor common to both revisions that is closest to both.
     """
     from bzrlib.trace import mutter
