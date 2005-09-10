@@ -283,6 +283,8 @@ def revision_graph(revision, revision_source):
                 descendants[parent][line] = 1
             ancestors[line] = set(parents)
         lines = new_lines
+    assert root not in descendants[root]
+    assert root not in ancestors[root]
     return root, ancestors, descendants
 
 def combined_graph(revision_a, revision_b, revision_source):
@@ -300,7 +302,7 @@ def combined_graph(revision_a, revision_b, revision_source):
     for node, node_dec in descendants_b.iteritems():
         if node not in descendants:
             descendants[node] = set()
-        descendants[node].update(descendants)
+        descendants[node].update(node_dec)
     return root, ancestors, descendants, common
 
 def common_ancestor(revision_a, revision_b, revision_source):
