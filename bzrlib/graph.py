@@ -153,6 +153,9 @@ def max_distance(node, ancestors, distances):
     if node in distances:
         best = distances[node]
     for ancestor in ancestors[node]:
+        if ancestor not in ancestors:
+            print ancestor
+            continue
         if ancestor not in distances:
             return None
         if best is None or distances[ancestor] > best:
@@ -161,6 +164,7 @@ def max_distance(node, ancestors, distances):
 
     
 def farthest_node(graph, ancestors, start):
+    assert 'A' in graph
     distances = {start: 0}
     lines = set([start])
     while len(lines) > 0:
@@ -179,6 +183,4 @@ def farthest_node(graph, ancestors, start):
         return distances[n]
     node_list = distances.keys()
     node_list.sort(key=by_distance, reverse=True)
-    assert len(node_list) == len(graph), "%d nodes missing" % \
-        (len(graph) - len(node_list)) 
     return node_list

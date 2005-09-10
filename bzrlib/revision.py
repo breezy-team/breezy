@@ -274,14 +274,16 @@ def revision_graph(revision, revision_source):
                 if len(parents) == 0:
                     root = line
             except bzrlib.errors.NoSuchRevision:
-                parents = []
-            for parent in parents:
-                if parent not in ancestors:
-                    new_lines.add(parent)
-                if parent not in descendants:
-                    descendants[parent] = {}
-                descendants[parent][line] = 1
-            ancestors[line] = set(parents)
+                parents = None
+            if parents is not None:
+                for parent in parents:
+                    if parent not in ancestors:
+                        new_lines.add(parent)
+                    if parent not in descendants:
+                        descendants[parent] = {}
+                    descendants[parent][line] = 1
+            if parents is not None:
+                ancestors[line] = set(parents)
         lines = new_lines
     assert root not in descendants[root]
     assert root not in ancestors[root]

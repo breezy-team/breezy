@@ -34,7 +34,8 @@ class TestBase(TestCase):
         self.edge_add('A', 'E', 'F', 'C')
         self.edge_add('A', 'G', 'H', 'I', 'B')
         self.edge_add('A', 'J', 'K', 'L', 'M', 'N')
-        descendants = {}
+        self.edge_add('O', 'N')
+        descendants = {'A':set()}
         for node in self.graph:
             for ancestor in self.graph[node]:
                 if ancestor not in descendants:
