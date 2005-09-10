@@ -3,7 +3,7 @@ import bzrlib
 import unittest
 from StringIO import StringIO
 
-from bzrlib.selftest import InTempDir
+from bzrlib.selftest import TestCaseInTempDir
 
 from bzrlib.diff import internal_diff
 from read_changeset import ChangesetTree
@@ -256,7 +256,7 @@ class CTreeTester(unittest.TestCase):
         ctree.note_id("e", "grandparent/alt_parent/fool", kind="directory")
         self.assertEqual(self.sorted_ids(ctree), ['a', 'b', 'd', 'e'])
 
-class CSetTester(InTempDir):
+class CSetTester(TestCaseInTempDir):
 
     def get_valid_cset(self, base_rev_id, rev_id, auto_commit=False, checkout_dir=None):
         """Create a changeset from base_rev_id -> rev_id in built-in branch.
