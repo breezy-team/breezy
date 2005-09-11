@@ -74,6 +74,9 @@ class TestCase(unittest.TestCase):
         
         self._log_file_name = name
 
+    def run(self, result):
+        self.apply_redirected(None, None, None,
+                              unittest.TestCase.run, self, result)
         
     def tearDown(self):
         logging.getLogger('').removeHandler(self._log_hdlr)
@@ -138,9 +141,15 @@ class TestCase(unittest.TestCase):
         if stdin is None:
             stdin = StringIO("")
         if stdout is None:
-            stdout = self._log_file
+            if hasattr(self, "_log_file"):
+                stdout = self._log_file
+            else:
+                stdout = StringIO()
         if stderr is None:
-            stderr = self._log_file
+            if hasattr(self, "_log_file"):
+                stderr = self._log_file
+            else:
+                stderr = StringIO()
         real_stdin = sys.stdin
         real_stdout = sys.stdout
         real_stderr = sys.stderr
