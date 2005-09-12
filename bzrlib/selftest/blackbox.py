@@ -27,6 +27,7 @@ it's normally invoked.
 """
 
 import sys
+import os
 
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
 from bzrlib.branch import Branch
@@ -122,7 +123,6 @@ class TestCommands(ExternalBase):
         assert file('.bzrignore', 'rb').read() == '*.blah\ngarh\n'
 
     def test_revert(self):
-        import os
         self.runbzr('init')
 
         file('hello', 'wt').write('foo')
@@ -194,7 +194,6 @@ class TestCommands(ExternalBase):
 
     def test_merge(self):
         from bzrlib.branch import Branch
-        import os
         
         os.mkdir('a')
         os.chdir('a')
@@ -222,6 +221,33 @@ class TestCommands(ExternalBase):
         #        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
         #        % (a.pending_merges(), b.last_patch())
 
+    def test_pull(self):
+        """Pull changes from one branch to another."""
+        os.mkdir('a')
+        os.chdir('a')
+
+        self.example_branch()
+        os.chdir('..')
+        self.runbzr('branch a b')
+        os.chdir('b')
+        self.runbzr('commit -m blah --unchanged')
+        os.chdir('../a')
+        a = Branch('.')
+        b = Branch('../b')
+        assert a.revision_history() == b.revision_history()[:-1]
+        self.runbzr('pull ../b')
+        assert a.revision_history() == b.revision_history()
+        self.runbzr('commit -m blah2 --unchanged')
+        os.chdir('../b')
+        self.runbzr('commit -m blah3 --unchanged')
+        self.runbzr('pull ../a', retcode=1)
+        os.chdir('../a')
+        self.runbzr('merge ../b')
+        self.runbzr('commit -m blah4 --unchanged')
+        os.chdir('../b')
+        self.runbzr('pull ../a')
+        assert a.revision_history()[-1] == b.revision_history()[-1]
+        
 
     def test_add_reports(self):
         """add command prints the names of added files."""
@@ -250,7 +276,6 @@ class OldTests(ExternalBase):
     def test_bzr(self):
         from os import chdir, mkdir
         from os.path import exists
-        import os
 
         runbzr = self.runbzr
         backtick = self.backtick
