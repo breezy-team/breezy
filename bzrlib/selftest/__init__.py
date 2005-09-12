@@ -204,7 +204,8 @@ class TestCaseInTempDir(TestCase):
         import os
         self._make_test_root()
         self._currentdir = os.getcwdu()
-        self.test_dir = os.path.join(self.TEST_ROOT, self.id())
+        short_id = self.id().replace('bzrlib.selftest.', '')
+        self.test_dir = os.path.join(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         
@@ -307,25 +308,25 @@ def test_suite():
 
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
-                   'bzrlib.selftest.test_parent',
                    'bzrlib.selftest.testinv',
-                   'bzrlib.selftest.testfetch',
                    'bzrlib.selftest.versioning',
-                   'bzrlib.selftest.whitebox',
                    'bzrlib.selftest.testmerge3',
                    'bzrlib.selftest.testhashcache',
                    'bzrlib.selftest.teststatus',
                    'bzrlib.selftest.testlog',
-                   'bzrlib.selftest.blackbox',
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
                    'bzrlib.selftest.testrevision',
                    'bzrlib.selftest.test_merge_core',
                    'bzrlib.selftest.test_smart_add',
                    'bzrlib.selftest.testdiff',
+                   'bzrlib.selftest.test_parent',
                    'bzrlib.selftest.test_xml',
+                   'bzrlib.selftest.testfetch',
+                   'bzrlib.selftest.whitebox',
                    'bzrlib.fetch',
                    'bzrlib.selftest.teststore',
+                   'bzrlib.selftest.blackbox',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
