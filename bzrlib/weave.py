@@ -181,16 +181,22 @@ class Weave(object):
 
     _name_map
         For each name, the version number.
+
+    _weave_name
+        Descriptive name of this weave; typically the filename if known.
+        Set by read_weave.
     """
 
-    __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map']
+    __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
+                 '_weave_name']
     
-    def __init__(self):
+    def __init__(self, weave_name=None):
         self._weave = []
         self._parents = []
         self._sha1s = []
         self._names = []
         self._name_map = {}
+        self._weave_name = weave_name
 
 
     def __eq__(self, other):
@@ -209,7 +215,8 @@ class Weave(object):
         try:
             return self._name_map[name]
         except KeyError:
-            raise WeaveError("name %s not present in weave" % name)
+            raise WeaveError("name %s not present in weave %s" %
+                             (name, self._weave_name))
 
         
     def add(self, name, parents, text):
