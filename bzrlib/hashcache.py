@@ -224,6 +224,8 @@ class HashCache(object):
             inf = file(fn, 'rb', buffering=65000)
         except IOError, e:
             mutter("failed to open %s: %s" % (fn, e))
+            # better write it now so it is valid
+            self.needs_write = True
             return
 
 
@@ -231,6 +233,7 @@ class HashCache(object):
         if hdr != CACHE_HEADER:
             mutter('cache header marker not found at top of %s; discarding cache'
                    % fn)
+            self.needs_write = True
             return
 
         for l in inf:
