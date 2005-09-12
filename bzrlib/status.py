@@ -21,16 +21,22 @@ def show_status(branch, show_unchanged=False,
                 show_ids=False,
                 to_file=None,
                 show_pending=True):
-    """Display single-line status for non-ignored working files.
+    """Display status for non-ignored working files.
 
-    show_all
-        If true, show unmodified files too.
+    show_unchanged
+        If set, includes unchanged files.
 
     specific_files
         If set, only show the status of files in this list.
 
+    show_ids
+        If set, includes each file's id.
+
     to_file
         If set, write to this file (default stdout.)
+
+    show_pending
+        If set, write pending merges.
     """
     import sys
     from bzrlib.delta import compare_trees

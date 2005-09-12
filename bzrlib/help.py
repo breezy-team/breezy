@@ -70,7 +70,7 @@ def command_usage(cmd_object):
 
     Only describes arguments, not options.
     """
-    s = cmd_object.name() + ' '
+    s = 'bzr ' + cmd_object.name() + ' '
     for aname in cmd_object.takes_args:
         aname = aname.upper()
         if aname[-1] in ['$', '+']:

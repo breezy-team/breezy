@@ -62,11 +62,10 @@ class cmd_status(Command):
     directory is shown.  Otherwise, only the status of the specified
     files or directories is reported.  If a directory is given, status
     is reported for everything inside that directory.
-
-    If a revision is specified, the changes since that revision are shown.
     """
+
     takes_args = ['file*']
-    takes_options = ['all', 'show-ids', 'revision']
+    takes_options = ['all', 'show-ids']
     aliases = ['st', 'stat']
     
     def run(self, all=False, show_ids=False, file_list=None):
@@ -92,8 +91,8 @@ class cmd_cat_revision(Command):
     takes_args = ['revision_id']
     
     def run(self, revision_id):
-        from bzrlib.xml import pack_xml
-        pack_xml(find_branch('.').get_revision(revision_id), sys.stdout)
+        b = find_branch('.')
+        sys.stdout.write(b.get_revision_xml_file(revision_id).read())
 
 
 class cmd_revno(Command):
@@ -102,6 +101,7 @@ class cmd_revno(Command):
     This is equal to the number of revisions on this branch."""
     def run(self):
         print find_branch('.').revno()
+
 
 class cmd_revision_info(Command):
     """Show revision number and revision id for a given revision identifier.
@@ -144,8 +144,10 @@ class cmd_add(Command):
     Therefore simply saying 'bzr add' will version all files that
     are currently unknown.
 
-    TODO: Perhaps adding a file whose directly is not versioned should
-    recursively add that parent, rather than giving an error?
+    Adding a file whose parent directory is not versioned will
+    implicitly add the parent, and so on up to the root. This means
+    you should never need to explictly add a directory, they'll just
+    get added when you add a file in the directory.
     """
     takes_args = ['file*']
     takes_options = ['verbose', 'no-recurse']
@@ -535,7 +537,7 @@ class cmd_diff(Command):
     examples:
         bzr diff
         bzr diff -r1
-        bzr diff -r1:2
+        bzr diff -r1..2
     """
     
     takes_args = ['file*']
@@ -1196,7 +1198,7 @@ class cmd_merge(Command):
         try:
             merge(other, base, check_clean=(not force), merge_type=merge_type)
         except bzrlib.errors.AmbiguousBase, e:
-            m = ("sorry, bzr can't determine the write merge base yet\n"
+            m = ("sorry, bzr can't determine the right merge base yet\n"
                  "candidates are:\n  "
                  + "\n  ".join(e.bases)
                  + "\n"

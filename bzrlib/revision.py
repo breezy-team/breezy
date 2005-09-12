@@ -70,90 +70,21 @@ class Revision(object):
     def __repr__(self):
         return "<Revision id %s>" % self.revision_id
 
+    def __eq__(self, other):
+        if not isinstance(other, Revision):
+            return False
+        return (self.inventory_id == other.inventory_id
+                and self.inventory_sha1 == other.inventory_sha1
+                and self.revision_id == other.revision_id
+                and self.timestamp == other.timestamp
+                and self.message == other.message
+                and self.timezone == other.timezone
+                and self.committer == other.committer)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
         
-    def to_element(self):
-        from bzrlib.xml import Element, SubElement
-        
-        root = Element('revision',
-                       committer = self.committer,
-                       timestamp = '%.9f' % self.timestamp,
-                       revision_id = self.revision_id,
-                       inventory_id = self.inventory_id,
-                       inventory_sha1 = self.inventory_sha1,
-                       )
-        if self.timezone:
-            root.set('timezone', str(self.timezone))
-        root.text = '\n'
-        
-        msg = SubElement(root, 'message')
-        msg.text = self.message
-        msg.tail = '\n'
-
-        if self.parents:
-            pelts = SubElement(root, 'parents')
-            pelts.tail = pelts.text = '\n'
-            for rr in self.parents:
-                assert isinstance(rr, RevisionReference)
-                p = SubElement(pelts, 'revision_ref')
-                p.tail = '\n'
-                assert rr.revision_id
-                p.set('revision_id', rr.revision_id)
-                if rr.revision_sha1:
-                    p.set('revision_sha1', rr.revision_sha1)
-
-        return root
-
-
-    def from_element(cls, elt):
-        return unpack_revision(elt)
-
-    from_element = classmethod(from_element)
-
-
-
-def unpack_revision(elt):
-    """Convert XML element into Revision object."""
-    # <changeset> is deprecated...
-    if elt.tag not in ('revision', 'changeset'):
-        raise bzrlib.errors.BzrError("unexpected tag in revision file: %r" % elt)
-
-    rev = Revision(committer = elt.get('committer'),
-                   timestamp = float(elt.get('timestamp')),
-                   revision_id = elt.get('revision_id'),
-                   inventory_id = elt.get('inventory_id'),
-                   inventory_sha1 = elt.get('inventory_sha1')
-                   )
-
-    precursor = elt.get('precursor')
-    precursor_sha1 = elt.get('precursor_sha1')
-
-    pelts = elt.find('parents')
-
-    if pelts:
-        for p in pelts:
-            assert p.tag == 'revision_ref', \
-                   "bad parent node tag %r" % p.tag
-            rev_ref = RevisionReference(p.get('revision_id'),
-                                        p.get('revision_sha1'))
-            rev.parents.append(rev_ref)
-
-        if precursor:
-            # must be consistent
-            prec_parent = rev.parents[0].revision_id
-            assert prec_parent == precursor
-    elif precursor:
-        # revisions written prior to 0.0.5 have a single precursor
-        # give as an attribute
-        rev_ref = RevisionReference(precursor, precursor_sha1)
-        rev.parents.append(rev_ref)
-
-    v = elt.get('timezone')
-    rev.timezone = v and int(v)
-
-    rev.message = elt.findtext('message') # text of <message>
-    return rev
-
-
 
 REVISION_ID_RE = None
 

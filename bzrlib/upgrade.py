@@ -15,8 +15,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import tempfile, os, errno
+                
 import bzrlib.errors
 import bzrlib.progress
+from bzrlib.xml import serializer_v4
 
 
 def upgrade(branch):
@@ -96,11 +99,8 @@ def upgrade(branch):
                 # revision entry. I'm not supremely happy about it, but
                 # there should be *some* way of making old entries have
                 # the full meta information.
-                import tempfile, os, errno
-                from bzrlib.xml import pack_xml
-                
                 rev_tmp = tempfile.TemporaryFile()
-                pack_xml(rev, rev_tmp)
+                serializer_v4.write_revision(rev, rev_tmp)
                 rev_tmp.seek(0)
 
                 tmpfd, tmp_path = tempfile.mkstemp(prefix=rev_id, suffix='.gz',

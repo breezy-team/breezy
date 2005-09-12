@@ -1,4 +1,33 @@
-bzr development head
+development head
+
+  IMPROVEMENTS:
+
+    * Adding a file whose parent directory is not versioned will
+      implicitly add the parent, and so on up to the root. This means
+      you should never need to explictly add a directory, they'll just
+      get added when you add a file in the directory.  Contributed by
+      Michael Ellerman.
+
+
+  INTERNALS:
+
+    * Refactor xml packing/unpacking.
+
+
+  BUG FIXES: 
+
+    * Fixed 'bzr mv' by Ollie Rutherfurd.
+
+    * Fixed strange error when trying to access a nonexistent http
+      branch.
+
+
+  PORTABILITY:
+
+    * Various Windows fixes from Ollie Rutherfurd.
+
+
+bzr-0.0.7 2005-09-02
 
   NEW FEATURES:
 
@@ -26,10 +55,17 @@ bzr development head
 
     * Fix case of $EDITOR containing options for the editor.
 
+    * Fix log -r refusing to show the last revision.
+      (Patch from Goffredo Baroncelli.)
+
 
   CHANGES:
 
     * ``bzr log --show-ids`` shows the revision ids of all parents.
+
+    * Externally provided commands on your $BZRPATH no longer need
+      to recognize --bzr-usage to work properly, and can just handle
+      --help themselves.
 
 
   LIBRARY:

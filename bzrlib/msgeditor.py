@@ -20,6 +20,7 @@
 """Commit message editor support."""
 
 import os
+from subprocess import call
 from bzrlib.errors import BzrError
 
 def _get_editor():
@@ -30,12 +31,12 @@ def _get_editor():
     if e is not None:
         yield e
         
-    if os.name == "windows":
-        yield "notepad.exe"
-    elif os.name == "posix":
-        try:
-            yield os.environ["EDITOR"]
-        except KeyError:
+    try:
+        yield os.environ["EDITOR"]
+    except KeyError:
+        if os.name == "nt":
+            yield "notepad.exe"
+        elif os.name == "posix":
             yield "/usr/bin/vi"
 
 
@@ -43,8 +44,7 @@ def _run_editor(filename):
     """Try to execute an editor to edit the commit message."""
     for e in _get_editor():
         edargs = e.split(' ')
-        x = os.spawnvp(os.P_WAIT, edargs[0],
-                       edargs + [filename])
+        x = call(edargs + [filename])
         if x == 0:
             return True
         elif x == 127:

@@ -18,6 +18,7 @@ from bzrlib.trace import mutter, note, warning
 from bzrlib.errors import NotBranchError
 from bzrlib.branch import Branch
 from bzrlib.osutils import quotefn
+from os.path import dirname
 
 def glob_expand_for_win32(file_list):
     import glob
@@ -78,11 +79,8 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
     Returns the number of files added.
     """
     import os
-    import sys
-    from bzrlib.osutils import quotefn
     from bzrlib.errors import BadFileKindError, ForbiddenFileError
     import bzrlib.branch
-    import bzrlib.osutils
 
     assert isinstance(recurse, bool)
 
@@ -129,10 +127,7 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
         elif sub_tree:
             mutter("%r is a bzr tree" %f)
         else:
-            entry = inv.add_path(rf, kind=kind)
-            mutter("added %r kind %r file_id={%s}" % (rf, kind, entry.file_id))
-            count += 1 
-            reporter(rf, kind, entry)
+            count += __add_one(branch, inv, rf, kind, reporter)
 
         if kind == 'directory' and recurse and not sub_tree:
             for subf in os.listdir(af):
@@ -152,3 +147,21 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
         branch._write_inventory(inv)
 
     return count
+
+def __add_one(branch, inv, path, kind, reporter):
+    """Add a file or directory, automatically add unversioned parents."""
+
+    # Nothing to do if path is already versioned.
+    # This is safe from infinite recursion because the branch root is
+    # always versioned.
+    if inv.path2id(path) != None:
+        return 0
+
+    # add parent
+    count = __add_one(branch, inv, dirname(path), 'directory', reporter)
+
+    entry = inv.add_path(path, kind=kind)
+    mutter("added %r kind %r file_id={%s}" % (path, kind, entry.file_id))
+    reporter(path, kind, entry)
+
+    return count + 1

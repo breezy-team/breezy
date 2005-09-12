@@ -49,3 +49,11 @@ class TestInventory(TestCase):
         self.assertEqual(inv.path2id('src/bye.c'), 'bye-id')
         
         self.assert_('src-id' in inv)
+
+
+    def test_version(self):
+        """Inventory remembers the text's version."""
+        inv = Inventory()
+        ie = inv.add_path('foo.txt', 'file')
+        ## XXX
+

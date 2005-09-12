@@ -16,8 +16,6 @@
 
 
 
-# FIXME: "bzr commit doc/format" commits doc/format.txt!
-
 def commit(branch, message,
            timestamp=None,
            timezone=None,
@@ -66,7 +64,7 @@ def commit(branch, message,
     from bzrlib.errors import BzrError, PointlessCommit
     from bzrlib.revision import Revision, RevisionReference
     from bzrlib.trace import mutter, note
-    from bzrlib.xml import pack_xml
+    from bzrlib.xml import serializer_v4
 
     branch.lock_write()
 
@@ -123,7 +121,8 @@ def commit(branch, message,
         inv_id = rev_id
 
         inv_tmp = tempfile.TemporaryFile()
-        pack_xml(new_inv, inv_tmp)
+        
+        serializer_v4.write_inventory(new_inv, inv_tmp)
         inv_tmp.seek(0)
         branch.inventory_store.add(inv_tmp, inv_id)
         mutter('new inventory_id is {%s}' % inv_id)
@@ -162,7 +161,7 @@ def commit(branch, message,
             rev.parents.append(RevisionReference(merge_rev))            
 
         rev_tmp = tempfile.TemporaryFile()
-        pack_xml(rev, rev_tmp)
+        serializer_v4.write_revision(rev, rev_tmp)
         rev_tmp.seek(0)
         branch.revision_store.add(rev_tmp, rev_id)
         mutter("new revision_id is {%s}" % rev_id)
