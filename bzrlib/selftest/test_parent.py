@@ -20,6 +20,8 @@ from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch, copy_branch
 
 
+"""Tests for Branch parent URL"""
+
 
 class TestParent(TestCaseInTempDir):
     def test_no_default_parent(self):
