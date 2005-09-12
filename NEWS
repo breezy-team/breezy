@@ -21,6 +21,9 @@ development head
     * Fixed strange error when trying to access a nonexistent http
       branch.
 
+    * Make sure that the hashcache gets written out if it can't be
+      read.
+
 
   PORTABILITY:
 
