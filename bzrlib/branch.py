@@ -805,11 +805,22 @@ class Branch(object):
         """Pull in all new revisions from other branch.
         """
         from bzrlib.fetch import greedy_fetch
+        from bzrlib.revision import get_intervening_revisions
 
         pb = bzrlib.ui.ui_factory.progress_bar()
         pb.update('comparing histories')
 
-        revision_ids = self.missing_revisions(other, stop_revision)
+        try:
+            revision_ids = self.missing_revisions(other, stop_revision)
+        except DivergedBranches, e:
+            try:
+                if stop_revision is None:
+                    end_revision = other.last_patch()
+                revision_ids = get_intervening_revisions(self.last_patch(), 
+                                                         end_revision, other)
+                assert self.last_patch() not in revision_ids
+            except bzrlib.errors.NotAncestor:
+                raise e
 
         if len(revision_ids) > 0:
             count = greedy_fetch(self, other, revision_ids[-1], pb)[0]
