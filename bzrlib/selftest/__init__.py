@@ -66,7 +66,7 @@ class TestCase(unittest.TestCase):
 
         hdlr = logging.StreamHandler(self._log_file)
         hdlr.setLevel(logging.DEBUG)
-        hdlr.setFormatter(logging.Formatter('%(levelname)4.4s  %(message)s'))
+        hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
         logging.getLogger('').addHandler(hdlr)
         logging.getLogger('').setLevel(logging.DEBUG)
         self._log_hdlr = hdlr
