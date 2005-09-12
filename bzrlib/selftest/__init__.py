@@ -288,10 +288,12 @@ class MetaTestLog(TestCase):
 
 
 def selftest(verbose=False, pattern=".*"):
+    """Run the whole test suite under the enhanced runner"""
     return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
 
 
 def test_suite():
+    """Build and return TestSuite for the whole program."""
     from bzrlib.selftest.TestUtil import TestLoader, TestSuite
     import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
     import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
