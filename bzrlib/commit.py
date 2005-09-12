@@ -264,22 +264,28 @@ class Commit(object):
 
     def _store_files(self):
         """Store new texts of modified/added files."""
-        for path, id, kind in self.delta.modified:
+        # We must make sure that directories are added before anything
+        # inside them is added.  the files within the delta report are
+        # sorted by path so we know the directory will come before its
+        # contents. 
+        for path, file_id, kind in self.delta.added:
+            if kind != 'file':
+                ie = self.work_inv[file_id].copy()
+                self.new_inv.add(ie)
+            else:
+                self._store_file_text(file_id)
+
+        for path, file_id, kind in self.delta.modified:
             if kind != 'file':
                 continue
-            self._store_file_text(id)
+            self._store_file_text(file_id)
 
-        for path, id, kind in self.delta.added:
-            if kind != 'file':
-                continue
-            self._store_file_text(id)
-
-        for old_path, new_path, id, kind, text_modified in self.delta.renamed:
+        for old_path, new_path, file_id, kind, text_modified in self.delta.renamed:
             if kind != 'file':
                 continue
             if not text_modified:
                 continue
-            self._store_file_text(id)
+            self._store_file_text(file_id)
 
 
     def _store_file_text(self, file_id):
