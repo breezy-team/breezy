@@ -185,7 +185,13 @@ def enable_default_logging():
     if not _file_handler:
         open_tracefile()                # also adds it
 
-    if os.environ.get('BZR_DEBUG'):
+    debug_flag = False
+    try:
+        debug_flag = bool(os.environ['BZR_DEBUG'])
+    except:
+        pass
+        
+    if debug_flag:
         level = logging.DEBUG
     else:
         level = logging.INFO
