@@ -53,6 +53,16 @@ from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.atomicfile import AtomicFile
 
 
+def commit(*args, **kwargs):
+    """Commit a new revision to a branch.
+
+    Function-style interface for convenience of old callers.
+
+    New code should use the Commit class instead.
+    """
+    Commit().commit(*args, **kwargs)
+
+
 class NullCommitReporter(object):
     """I report on progress of a commit."""
     def added(self, path):
