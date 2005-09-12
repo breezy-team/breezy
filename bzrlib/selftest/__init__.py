@@ -324,7 +324,6 @@ def test_suite():
                    'bzrlib.selftest.test_xml',
                    'bzrlib.selftest.testfetch',
                    'bzrlib.selftest.whitebox',
-                   'bzrlib.fetch',
                    'bzrlib.selftest.teststore',
                    'bzrlib.selftest.blackbox',
                    ]
