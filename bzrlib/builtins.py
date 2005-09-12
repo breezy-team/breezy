@@ -63,6 +63,7 @@ class cmd_status(Command):
     files or directories is reported.  If a directory is given, status
     is reported for everything inside that directory.
     """
+
     takes_args = ['file*']
     takes_options = ['all', 'show-ids']
     aliases = ['st', 'stat']
@@ -143,8 +144,10 @@ class cmd_add(Command):
     Therefore simply saying 'bzr add' will version all files that
     are currently unknown.
 
-    TODO: Perhaps adding a file whose directly is not versioned should
-    recursively add that parent, rather than giving an error?
+    Adding a file whose parent directory is not versioned will
+    implicitly add the parent, and so on up to the root. This means
+    you should never need to explictly add a directory, they'll just
+    get added when you add a file in the directory.
     """
     takes_args = ['file*']
     takes_options = ['verbose', 'no-recurse']

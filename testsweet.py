@@ -56,7 +56,6 @@ class TestSkipped(Exception):
     # XXX: Not used yet
 
 
-
 class EarlyStoppingTestResultAdapter(object):
     """An adapter for TestResult to stop at the first first failure or error"""
 
@@ -173,7 +172,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*"):
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
     if result.wasSuccessful():
-        if TestCaseInTempDir.TEST_ROOT:
+        if TestCaseInTempDir.TEST_ROOT is not None:
             shutil.rmtree(TestCaseInTempDir.TEST_ROOT) 
     else:
         print "Failed tests working directories are in '%s'\n" % TestCaseInTempDir.TEST_ROOT
