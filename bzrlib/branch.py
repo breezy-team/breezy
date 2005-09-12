@@ -809,25 +809,22 @@ class Branch(object):
 
         pb = bzrlib.ui.ui_factory.progress_bar()
         pb.update('comparing histories')
-
+        if stop_revision is None:
+            other_revision = other.last_patch()
+        else:
+            other_revision = other.lookup_revision(stop_revision)
+        count = greedy_fetch(self, other, other_revision, pb)[0]
         try:
             revision_ids = self.missing_revisions(other, stop_revision)
         except DivergedBranches, e:
             try:
-                if stop_revision is None:
-                    end_revision = other.last_patch()
                 revision_ids = get_intervening_revisions(self.last_patch(), 
-                                                         end_revision, other)
+                                                         other_revision, self)
                 assert self.last_patch() not in revision_ids
             except bzrlib.errors.NotAncestor:
                 raise e
 
-        if len(revision_ids) > 0:
-            count = greedy_fetch(self, other, revision_ids[-1], pb)[0]
-        else:
-            count = 0
         self.append_revision(*revision_ids)
-        ## note("Added %d revisions." % count)
         pb.clear()
 
     def install_revisions(self, other, revision_ids, pb):
