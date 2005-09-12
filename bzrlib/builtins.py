@@ -991,9 +991,6 @@ class cmd_check(Command):
 
     This command checks various invariants about the branch storage to
     detect data corruption or bzr bugs.
-
-    If given the --update flag, it will update some optional fields
-    to help ensure data consistency.
     """
     takes_args = ['dir?']
 
