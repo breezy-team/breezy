@@ -24,9 +24,17 @@ class RevisionReference(object):
 
     Includes the revision_id and revision_sha1.
     """
-    revision_id = None
-    revision_sha1 = None
+
+    def __eq__(self, other):
+        try:
+            return self.revision_id == other.revision_id and \
+                   self.revision_sha1 == other.revision_sha1
+        except AttributeError:
+            return False
+
     def __init__(self, revision_id, revision_sha1=None):
+        self.revision_id = None
+        self.revision_sha1 = None
         if revision_id == None \
            or isinstance(revision_id, basestring):
             self.revision_id = revision_id
@@ -54,22 +62,38 @@ class Revision(object):
     parents
         List of parent revisions, each is a RevisionReference.
     """
-    inventory_id = None
-    inventory_sha1 = None
-    revision_id = None
-    timestamp = None
-    message = None
-    timezone = None
-    committer = None
     
-    def __init__(self, **args):
-        self.__dict__.update(args)
-        self.parents = []
+    def __init__(self, inventory_id=None, inventory_sha1=None, 
+                       revision_id=None, timestamp=None,
+                       message=None, timezone=None,
+                       committer=None, parents=None):
+        self.inventory_id = inventory_id
+        self.inventory_sha1 = inventory_sha1
+        self.revision_id = revision_id
+        self.timestamp = timestamp
+        self.message = message
+        self.timezone = timezone
+        self.committer = committer
+        if parents is not None:
+            self.parents = parents
+        else:
+            self.parents = []
 
+    def __eq__(self, other):
+        try:
+            return self.inventory_id == other.inventory_id and \
+                   self.inventory_sha1 == other.inventory_sha1 and \
+                   self.revision_id == other.revision_id and \
+                   self.timestamp == other.timestamp and \
+                   self.message == other.message and \
+                   self.timezone == other.timezone and \
+                   self.committer == other.committer and \
+                   self.parents == other.parents 
+        except AttributeError:
+            return False
 
     def __repr__(self):
         return "<Revision id %s>" % self.revision_id
-
         
     def to_element(self):
         from bzrlib.xml import Element, SubElement

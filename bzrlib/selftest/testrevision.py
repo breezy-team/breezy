@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.selftest import TestCaseInTempDir, TestCase
 
 
 def make_branches():
@@ -177,3 +177,43 @@ class TestCreateSignedRevision(TestCaseInTempDir):
         # create a revision, sign it, apply to the store.
         pass
 
+class TestOperators(TestCase):
+
+    def test___eq__(self):
+        from bzrlib.revision import Revision, RevisionReference
+        revision1 = Revision("invid", "sha", "revid", 100, "boo", "john", [])
+        revision2 = Revision("invid", "sha", "revid", 100, "boo", "john", [])
+        revision3 = Revision("invid", "sha", "rev2id", 100, "bp", "john", 
+                             [RevisionReference("revid")])
+        self.assertEqual(revision1, revision1)
+        self.assertEqual(revision1, revision2)
+        self.assertNotEqual(revision1, revision3)
+        self.assertEqual(revision2, revision1)
+        self.assertEqual(revision2, revision2)
+        self.assertNotEqual(revision2, revision3)
+        self.assertNotEqual(revision3, revision1)
+        self.assertNotEqual(revision3, revision2)
+        self.assertEqual(revision3, revision3)
+
+    def test__eq__reference(self):
+        from bzrlib.revision import Revision, RevisionReference
+        ref1 = RevisionReference('revid', '1'*40)
+        ref2 = RevisionReference('revid', '1'*40)
+        ref3 = RevisionReference('revid', '2'*40)
+        ref4 = RevisionReference('revid2', '3'*40)
+        self.assertEqual(ref1, ref1)
+        self.assertEqual(ref1, ref2)
+        self.assertNotEqual(ref1, ref3)
+        self.assertNotEqual(ref1, ref4)
+        self.assertEqual(ref2, ref1)
+        self.assertEqual(ref2, ref2)
+        self.assertNotEqual(ref2, ref3)
+        self.assertNotEqual(ref2, ref4)
+        self.assertNotEqual(ref3, ref1)
+        self.assertNotEqual(ref3, ref2)
+        self.assertEqual(ref3, ref3)
+        self.assertNotEqual(ref3, ref4)
+        self.assertNotEqual(ref4, ref1)
+        self.assertNotEqual(ref4, ref2)
+        self.assertNotEqual(ref4, ref3)
+        self.assertEqual(ref4, ref4)
