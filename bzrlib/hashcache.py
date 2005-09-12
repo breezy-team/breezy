@@ -23,6 +23,8 @@
 # TODO: Perhaps return more details on the file to avoid statting it
 # again: nonexistent, file type, size, etc
 
+# TODO: Perhaps use a Python pickle instead of a text file; might be faster.
+
 
 
 CACHE_HEADER = "### bzr hashcache v5\n"
@@ -31,6 +33,8 @@ import os, stat, time
 
 from bzrlib.osutils import sha_file
 from bzrlib.trace import mutter, warning
+from bzrlib.atomicfile import AtomicFile
+
 
 
 
@@ -185,8 +189,6 @@ class HashCache(object):
 
     def write(self):
         """Write contents of cache to file."""
-        from atomicfile import AtomicFile
-
         outf = AtomicFile(self.cache_file_name(), 'wb')
         try:
             print >>outf, CACHE_HEADER,
