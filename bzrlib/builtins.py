@@ -63,6 +63,8 @@ class cmd_status(Command):
     files or directories is reported.  If a directory is given, status
     is reported for everything inside that directory.
     """
+    # XXX: FIXME: bzr status should accept a -r option to show changes
+    # relative to a revision, or between revisions
 
     takes_args = ['file*']
     takes_options = ['all', 'show-ids']
