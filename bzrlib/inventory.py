@@ -165,6 +165,7 @@ class InventoryEntry(object):
         other.text_id = self.text_id
         other.text_sha1 = self.text_sha1
         other.text_size = self.text_size
+        other.text_version = self.text_version
         # note that children are *not* copied; they're pulled across when
         # others are added
         return other
