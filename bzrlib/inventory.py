@@ -277,7 +277,9 @@ class Inventory(object):
 
     def copy(self):
         other = Inventory(self.root.file_id)
-        for entry in self._byid.itervalues():
+        # copy recursively so we know directories will be added before
+        # their children.  There are more efficient ways than this...
+        for path, entry in self.iter_entries():
             if entry == self.root:
                 continue
             other.add(entry.copy())
