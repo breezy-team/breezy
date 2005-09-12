@@ -28,9 +28,9 @@ from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId
 import bzrlib.errors
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision
-from bzrlib.xml import unpack_xml
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
+import bzrlib.xml
 import bzrlib.ui
 
 
@@ -303,7 +303,6 @@ class Branch(object):
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
-        from bzrlib.xml import pack_xml
         
         os.mkdir(self.controlfilename([]))
         self.controlfile('README', 'w').write(
@@ -322,7 +321,9 @@ class Branch(object):
         # if we want per-tree root ids then this is the place to set
         # them; they're not needed for now and so ommitted for
         # simplicity.
-        pack_xml(Inventory(), self.controlfile('inventory','w'))
+        f = self.controlfile('inventory','w')
+        bzrlib.xml.serializer_v4.write_inventory(Inventory(), f)
+
 
     def _check_format(self):
         """Check this branch format is supported.
@@ -336,7 +337,7 @@ class Branch(object):
         # on Windows from Linux and so on.  I think it might be better
         # to always make all internal files in unix format.
         fmt = self.controlfile('branch-format', 'r').read()
-        fmt.replace('\r\n', '')
+        fmt = fmt.replace('\r\n', '\n')
         if fmt != BZR_BRANCH_FORMAT:
             raise BzrError('sorry, branch format %r not supported' % fmt,
                            ['use a different bzr version',
@@ -362,18 +363,12 @@ class Branch(object):
     def read_working_inventory(self):
         """Read the working inventory."""
         from bzrlib.inventory import Inventory
-        from bzrlib.xml import unpack_xml
-        from time import time
-        before = time()
         self.lock_read()
         try:
             # ElementTree does its own conversion from UTF-8, so open in
             # binary.
-            inv = unpack_xml(Inventory,
-                             self.controlfile('inventory', 'rb'))
-            mutter("loaded inventory of %d items in %f"
-                   % (len(inv), time() - before))
-            return inv
+            f = self.controlfile('inventory', 'rb')
+            return bzrlib.xml.serializer_v4.read_inventory(f)
         finally:
             self.unlock()
             
@@ -385,13 +380,12 @@ class Branch(object):
         will be committed to the next revision.
         """
         from bzrlib.atomicfile import AtomicFile
-        from bzrlib.xml import pack_xml
         
         self.lock_write()
         try:
             f = AtomicFile(self.controlfilename('inventory'), 'wb')
             try:
-                pack_xml(inv, f)
+                bzrlib.xml.serializer_v4.write_inventory(inv, f)
                 f.commit()
             finally:
                 f.close()
@@ -582,7 +576,7 @@ class Branch(object):
             f.close()
 
 
-    def get_revision_xml(self, revision_id):
+    def get_revision_xml_file(self, revision_id):
         """Return XML file object for revision object."""
         if not revision_id or not isinstance(revision_id, basestring):
             raise InvalidRevisionId(revision_id)
@@ -597,12 +591,16 @@ class Branch(object):
             self.unlock()
 
 
+    #deprecated
+    get_revision_xml = get_revision_xml_file
+
+
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
-        xml_file = self.get_revision_xml(revision_id)
+        xml_file = self.get_revision_xml_file(revision_id)
 
         try:
-            r = unpack_xml(Revision, xml_file)
+            r = bzrlib.xml.serializer_v4.read_revision(xml_file)
         except SyntaxError, e:
             raise bzrlib.errors.BzrError('failed to unpack revision_xml',
                                          [revision_id,
@@ -653,14 +651,16 @@ class Branch(object):
                parameter which can be either an integer revno or a
                string hash."""
         from bzrlib.inventory import Inventory
-        from bzrlib.xml import unpack_xml
 
-        return unpack_xml(Inventory, self.get_inventory_xml(inventory_id))
+        f = self.get_inventory_xml_file(inventory_id)
+        return bzrlib.xml.serializer_v4.read_inventory(f)
 
 
     def get_inventory_xml(self, inventory_id):
         """Get inventory XML as a file object."""
         return self.inventory_store[inventory_id]
+
+    get_inventory_xml_file = get_inventory_xml
             
 
     def get_inventory_sha1(self, inventory_id):
@@ -806,11 +806,22 @@ class Branch(object):
         """Pull in all new revisions from other branch.
         """
         from bzrlib.fetch import greedy_fetch
+        from bzrlib.revision import get_intervening_revisions
 
         pb = bzrlib.ui.ui_factory.progress_bar()
         pb.update('comparing histories')
 
-        revision_ids = self.missing_revisions(other, stop_revision)
+        try:
+            revision_ids = self.missing_revisions(other, stop_revision)
+        except DivergedBranches, e:
+            try:
+                if stop_revision is None:
+                    end_revision = other.last_patch()
+                revision_ids = get_intervening_revisions(self.last_patch(), 
+                                                         end_revision, other)
+                assert self.last_patch() not in revision_ids
+            except bzrlib.errors.NotAncestor:
+                raise e
 
         if len(revision_ids) > 0:
             count = greedy_fetch(self, other, revision_ids[-1], pb)[0]
