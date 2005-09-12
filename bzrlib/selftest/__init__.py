@@ -301,6 +301,9 @@ def test_suite():
     import time
     import sys
 
+    import bzrlib.selftest.test_xml
+
+
     global MODULES_TO_TEST, MODULES_TO_DOCTEST
 
     testmod_names = \

@@ -18,7 +18,8 @@ from cStringIO import StringIO
 
 from bzrlib.selftest import TestCase
 from bzrlib.inventory import Inventory, InventoryEntry
-from bzrlib.xml import serializer_v4, serializer_v5
+from bzrlib.xml import serializer_v4
+from bzrlib.xml5 import serializer_v5
 
 _working_inventory_v4 = """<inventory file_id="TREE_ROOT">
 <entry file_id="bar-20050901064931-73b4b1138abc9cd2" kind="file" name="bar" parent_id="TREE_ROOT" />
