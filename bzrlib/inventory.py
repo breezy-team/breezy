@@ -100,7 +100,9 @@ class InventoryEntry(object):
     # directories, etc etc.
 
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', 'symlink_target']
+                 'text_id', 'parent_id', 'children',
+                 'text_version', 'entry_version', 'symlink_target']
+
 
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
@@ -117,12 +119,14 @@ class InventoryEntry(object):
         Traceback (most recent call last):
         BzrCheckError: InventoryEntry name 'src/hello.c' is invalid
         """
+        assert isinstance(name, basestring), name
         if '/' in name or '\\' in name:
             raise BzrCheckError('InventoryEntry name %r is invalid' % name)
         
+        self.text_version = None
+        self.entry_version = None
         self.text_sha1 = None
         self.text_size = None
-    
         self.file_id = file_id
         self.name = name
         self.kind = kind
@@ -170,62 +174,6 @@ class InventoryEntry(object):
                    self.kind,
                    self.parent_id))
 
-    
-    def to_element(self):
-        """Convert to XML element"""
-        from bzrlib.xml import Element
-        
-        e = Element('entry')
-
-        e.set('name', self.name)
-        e.set('file_id', self.file_id)
-        e.set('kind', self.kind)
-
-        if self.text_size != None:
-            e.set('text_size', '%d' % self.text_size)
-            
-        for f in ['text_id', 'text_sha1', 'symlink_target']:
-            v = getattr(self, f)
-            if v != None:
-                e.set(f, v)
-
-        # to be conservative, we don't externalize the root pointers
-        # for now, leaving them as null in the xml form.  in a future
-        # version it will be implied by nested elements.
-        if self.parent_id != ROOT_ID:
-            assert isinstance(self.parent_id, basestring)
-            e.set('parent_id', self.parent_id)
-
-        e.tail = '\n'
-            
-        return e
-
-
-    def from_element(cls, elt):
-        assert elt.tag == 'entry'
-
-        ## original format inventories don't have a parent_id for
-        ## nodes in the root directory, but it's cleaner to use one
-        ## internally.
-        parent_id = elt.get('parent_id')
-        if parent_id == None:
-            parent_id = ROOT_ID
-
-        self = cls(elt.get('file_id'), elt.get('name'), elt.get('kind'), parent_id)
-        self.text_id = elt.get('text_id')
-        self.text_sha1 = elt.get('text_sha1')
-        self.symlink_target = elt.get('symlink_target')
-        
-        ## mutter("read inventoryentry: %r" % (elt.attrib))
-
-        v = elt.get('text_size')
-        self.text_size = v and int(v)
-
-        return self
-            
-
-    from_element = classmethod(from_element)
-
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
             return NotImplemented
@@ -237,8 +185,9 @@ class InventoryEntry(object):
                and (self.text_size == other.text_size) \
                and (self.text_id == other.text_id) \
                and (self.parent_id == other.parent_id) \
-               and (self.kind == other.kind)
-
+               and (self.kind == other.kind) \
+               and (self.text_version == other.text_version) \
+               and (self.entry_version == other.entry_version)
 
     def __ne__(self, other):
         return not (self == other)
@@ -427,7 +376,10 @@ class Inventory(object):
         """Add entry to inventory.
 
         To add  a file to a branch ready to be committed, use Branch.add,
-        which calls this."""
+        which calls this.
+
+        Returns the new entry object.
+        """
         if entry.file_id in self._byid:
             raise BzrError("inventory already contains entry with id {%s}" % entry.file_id)
 
@@ -451,7 +403,9 @@ class Inventory(object):
     def add_path(self, relpath, kind, file_id=None):
         """Add entry from a path.
 
-        The immediate parent must already be versioned"""
+        The immediate parent must already be versioned.
+
+        Returns the new entry object."""
         from bzrlib.branch import gen_file_id
         
         parts = bzrlib.osutils.splitpath(relpath)
@@ -498,44 +452,6 @@ class Inventory(object):
         del self[ie.parent_id].children[ie.name]
 
 
-    def to_element(self):
-        """Convert to XML Element"""
-        from bzrlib.xml import Element
-        
-        e = Element('inventory')
-        e.text = '\n'
-        if self.root.file_id not in (None, ROOT_ID):
-            e.set('file_id', self.root.file_id)
-        for path, ie in self.iter_entries():
-            e.append(ie.to_element())
-        return e
-    
-
-    def from_element(cls, elt):
-        """Construct from XML Element
-        
-        >>> inv = Inventory()
-        >>> inv.add(InventoryEntry('foo.c-123981239', 'foo.c', 'file', ROOT_ID))
-        InventoryEntry('foo.c-123981239', 'foo.c', kind='file', parent_id='TREE_ROOT')
-        >>> elt = inv.to_element()
-        >>> inv2 = Inventory.from_element(elt)
-        >>> inv2 == inv
-        True
-        """
-        # XXXX: doctest doesn't run this properly under python2.3
-        assert elt.tag == 'inventory'
-        root_id = elt.get('file_id') or ROOT_ID
-        o = cls(root_id)
-        for e in elt:
-            ie = InventoryEntry.from_element(e)
-            if ie.parent_id == ROOT_ID:
-                ie.parent_id = root_id
-            o.add(ie)
-        return o
-        
-    from_element = classmethod(from_element)
-
-
     def __eq__(self, other):
         """Compare two sets by comparing their contents.
 
@@ -568,7 +484,6 @@ class Inventory(object):
 
     def __hash__(self):
         raise ValueError('not hashable')
-
 
 
     def get_idpath(self, file_id):

@@ -128,18 +128,81 @@ class TestIntermediateRevisions(TestCaseInTempDir):
         self.assertRaises(NoSuchRevision, self.intervene, 'b@u-0-10', 
                           'c@u-0-6', self.br2.revision_history())
 
+class TestIntermediateRevisions(TestCaseInTempDir):
+
+    def setUp(self):
+        from bzrlib.commit import commit
+        TestCaseInTempDir.setUp(self)
+        self.br1, self.br2 = make_branches()
+        commit(self.br2, "Commit eleven", rev_id="b@u-0-7")
+        commit(self.br2, "Commit twelve", rev_id="b@u-0-8")
+        commit(self.br2, "Commit thirtteen", rev_id="b@u-0-9")
+        self.br1.add_pending_merge(self.br2.revision_history()[6])
+        commit(self.br1, "Commit fourtten", rev_id="a@u-0-6")
+        self.br2.add_pending_merge(self.br1.revision_history()[6])
+        commit(self.br2, "Commit fifteen", rev_id="b@u-0-10")
+
+        from bzrlib.revision import MultipleRevisionSources
+        self.sources = MultipleRevisionSources(self.br1, self.br2)
+
+    def intervene(self, ancestor, revision, revision_history=None):
+        from bzrlib.revision import get_intervening_revisions
+        return get_intervening_revisions(ancestor,revision, self.sources, 
+                                         revision_history)
+
+    def test_intervene(self):
+        """Find intermediate revisions, without requiring history"""
+        from bzrlib.errors import NotAncestor, NoSuchRevision
+        assert len(self.intervene('a@u-0-0', 'a@u-0-0')) == 0
+        self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-1'), ['a@u-0-1'])
+        self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-2'), 
+                         ['a@u-0-1', 'a@u-0-2'])
+        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-3'), 
+                         ['a@u-0-1', 'a@u-0-2', 'b@u-0-3'])
+        self.assertEqual(self.intervene('b@u-0-3', 'a@u-0-3'), 
+                         ['b@u-0-4', 'a@u-0-3'])
+        self.assertEqual(self.intervene('a@u-0-2', 'a@u-0-3', 
+                                        self.br1.revision_history()), 
+                         ['a@u-0-3'])
+        self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-5', 
+                                        self.br1.revision_history()), 
+                         ['a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4', 
+                          'a@u-0-5'])
+        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-6', 
+                         self.br1.revision_history()), 
+                         ['a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4', 
+                          'b@u-0-6'])
+        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-5'), 
+                         ['a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4', 
+                          'b@u-0-5'])
+        self.assertEqual(self.intervene('b@u-0-3', 'b@u-0-6', 
+                         self.br2.revision_history()), 
+                         ['b@u-0-4', 'b@u-0-5', 'b@u-0-6'])
+        self.assertEqual(self.intervene('b@u-0-6', 'b@u-0-10'), 
+                         ['b@u-0-7', 'b@u-0-8', 'b@u-0-9', 'b@u-0-10'])
+        self.assertEqual(self.intervene('b@u-0-6', 'b@u-0-10', 
+                                        self.br2.revision_history()), 
+                         ['b@u-0-7', 'b@u-0-8', 'b@u-0-9', 'b@u-0-10'])
+        self.assertRaises(NotAncestor, self.intervene, 'b@u-0-10', 'b@u-0-6', 
+                          self.br2.revision_history())
+        self.assertRaises(NoSuchRevision, self.intervene, 'c@u-0-10', 
+                          'b@u-0-6', self.br2.revision_history())
+        self.assertRaises(NoSuchRevision, self.intervene, 'b@u-0-10', 
+                          'c@u-0-6', self.br2.revision_history())
+
 
 class TestCommonAncestor(TestCaseInTempDir):
     """Test checking whether a revision is an ancestor of another revision"""
 
-    def test_common_ancestor(self):
-        from bzrlib.revision import find_present_ancestors, common_ancestor
+    def test_old_common_ancestor(self):
+        """Pick a resonable merge base using the old functionality"""
+        from bzrlib.revision import find_present_ancestors
+        from bzrlib.revision import old_common_ancestor as common_ancestor
         from bzrlib.revision import MultipleRevisionSources
         br1, br2 = make_branches()
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
         sources = MultipleRevisionSources(br1, br2)
-
         expected_ancestors_list = {revisions[3]:(0, 0), 
                                    revisions[2]:(1, 1),
                                    revisions_2[4]:(2, 1), 
@@ -152,7 +215,6 @@ class TestCommonAncestor(TestCaseInTempDir):
             self.assertEqual(ancestors_list[key], value, 
                               "key %r, %r != %r" % (key, ancestors_list[key],
                                                     value))
-
         self.assertEqual(common_ancestor(revisions[0], revisions[0], sources),
                           revisions[0])
         self.assertEqual(common_ancestor(revisions[1], revisions[2], sources),
@@ -170,12 +232,52 @@ class TestCommonAncestor(TestCaseInTempDir):
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
                           revisions_2[5])
 
+    def test_common_ancestor(self):
+        """Pick a reasonable merge base"""
+        from bzrlib.revision import find_present_ancestors
+        from bzrlib.revision import common_ancestor
+        from bzrlib.revision import MultipleRevisionSources
+        br1, br2 = make_branches()
+        revisions = br1.revision_history()
+        revisions_2 = br2.revision_history()
+        sources = MultipleRevisionSources(br1, br2)
+        expected_ancestors_list = {revisions[3]:(0, 0), 
+                                   revisions[2]:(1, 1),
+                                   revisions_2[4]:(2, 1), 
+                                   revisions[1]:(3, 2),
+                                   revisions_2[3]:(4, 2),
+                                   revisions[0]:(5, 3) }
+        ancestors_list = find_present_ancestors(revisions[3], sources)
+        assert len(expected_ancestors_list) == len(ancestors_list)
+        for key, value in expected_ancestors_list.iteritems():
+            self.assertEqual(ancestors_list[key], value, 
+                              "key %r, %r != %r" % (key, ancestors_list[key],
+                                                    value))
+        self.assertEqual(common_ancestor(revisions[0], revisions[0], sources),
+                          revisions[0])
+        self.assertEqual(common_ancestor(revisions[1], revisions[2], sources),
+                          revisions[1])
+        self.assertEqual(common_ancestor(revisions[1], revisions[1], sources),
+                          revisions[1])
+        self.assertEqual(common_ancestor(revisions[2], revisions_2[4], sources),
+                          revisions[2])
+        self.assertEqual(common_ancestor(revisions[3], revisions_2[4], sources),
+                          revisions_2[4])
+        self.assertEqual(common_ancestor(revisions[4], revisions_2[5], sources),
+                          revisions_2[4])
+        self.assertEqual(common_ancestor(revisions[5], revisions_2[6], sources),
+                          revisions[4])
+        self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
+                          revisions[4])
+
+
 class TestCreateSignedRevision(TestCaseInTempDir):
 
     def test_create_signed_revision(self):
         # create a store
         # create a revision, sign it, apply to the store.
         pass
+
 
 class TestOperators(TestCase):
 

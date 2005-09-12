@@ -1,3 +1,32 @@
+development head
+
+  IMPROVEMENTS:
+
+    * Adding a file whose parent directory is not versioned will
+      implicitly add the parent, and so on up to the root. This means
+      you should never need to explictly add a directory, they'll just
+      get added when you add a file in the directory.  Contributed by
+      Michael Ellerman.
+
+
+  INTERNALS:
+
+    * Refactor xml packing/unpacking.
+
+
+  BUG FIXES: 
+
+    * Fixed 'bzr mv' by Ollie Rutherfurd.
+
+    * Fixed strange error when trying to access a nonexistent http
+      branch.
+
+
+  PORTABILITY:
+
+    * Various Windows fixes from Ollie Rutherfurd.
+
+
 bzr-0.0.7 2005-09-02
 
   NEW FEATURES:

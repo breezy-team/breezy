@@ -26,14 +26,14 @@ access.
 
 import gzip
 from cStringIO import StringIO
+import os
 import urllib2
+import urlparse
 
-from errors import BzrError, BzrCheckError
-from branch import Branch, BZR_BRANCH_FORMAT
-from trace import mutter
-
-# velocitynet.com.au transparently proxies connections and thereby
-# breaks keep-alive -- sucks!
+from bzrlib.errors import BzrError, BzrCheckError
+from bzrlib.branch import Branch, BZR_BRANCH_FORMAT
+from bzrlib.trace import mutter
+from bzrlib.xml import serializer_v4
 
 
 ENABLE_URLGRABBER = False
@@ -84,8 +84,8 @@ def _find_remote_root(url):
     orig_url = url
     while True:
         try:
-            ff = get_url(url + '/.bzr/branch-format')
-
+            fmt_url = url + '/.bzr/branch-format'
+            ff = get_url(fmt_url)
             fmt = ff.read()
             ff.close()
 
@@ -98,12 +98,17 @@ def _find_remote_root(url):
         except urllib2.URLError:
             pass
 
-        try:
-            idx = url.rindex('/')
-        except ValueError:
-            raise BzrError('no branch root found for URL %s' % orig_url)
-
-        url = url[:idx]        
+        scheme, host, path = list(urlparse.urlparse(url))[:3]
+        # discard params, query, fragment
+        
+        # strip off one component of the path component
+        idx = path.rfind('/')
+        if idx == -1 or path == '/':
+            raise BzrError('no branch root found for URL %s'
+                           ' or enclosing directories'
+                           % orig_url)
+        path = path[:idx]
+        url = urlparse.urlunparse((scheme, host, path, '', '', ''))
         
 
 class RemoteBranch(Branch):
@@ -155,13 +160,11 @@ class RemoteBranch(Branch):
 
 
     def get_revision(self, revision_id):
-        from bzrlib.revision import Revision
-        from bzrlib.xml import unpack_xml
         try:
             revf = self.revision_store[revision_id]
         except KeyError:
             raise NoSuchRevision(self, revision_id)
-        r = unpack_xml(Revision, revf)
+        r = serializer_v4.read_revision(revf)
         if r.revision_id != revision_id:
             raise BzrCheckError('revision stored as {%s} actually contains {%s}'
                                 % (revision_id, r.revision_id))

@@ -16,7 +16,7 @@
 
 
 import bzrlib.errors
-
+from bzrlib.graph import farthest_nodes, node_distances, all_descendants
 
 class RevisionReference(object):
     """
@@ -94,89 +94,20 @@ class Revision(object):
 
     def __repr__(self):
         return "<Revision id %s>" % self.revision_id
-        
-    def to_element(self):
-        from bzrlib.xml import Element, SubElement
-        
-        root = Element('revision',
-                       committer = self.committer,
-                       timestamp = '%.9f' % self.timestamp,
-                       revision_id = self.revision_id,
-                       inventory_id = self.inventory_id,
-                       inventory_sha1 = self.inventory_sha1,
-                       )
-        if self.timezone:
-            root.set('timezone', str(self.timezone))
-        root.text = '\n'
-        
-        msg = SubElement(root, 'message')
-        msg.text = self.message
-        msg.tail = '\n'
 
-        if self.parents:
-            pelts = SubElement(root, 'parents')
-            pelts.tail = pelts.text = '\n'
-            for rr in self.parents:
-                assert isinstance(rr, RevisionReference)
-                p = SubElement(pelts, 'revision_ref')
-                p.tail = '\n'
-                assert rr.revision_id
-                p.set('revision_id', rr.revision_id)
-                if rr.revision_sha1:
-                    p.set('revision_sha1', rr.revision_sha1)
+    def __eq__(self, other):
+        if not isinstance(other, Revision):
+            return False
+        return (self.inventory_id == other.inventory_id
+                and self.inventory_sha1 == other.inventory_sha1
+                and self.revision_id == other.revision_id
+                and self.timestamp == other.timestamp
+                and self.message == other.message
+                and self.timezone == other.timezone
+                and self.committer == other.committer)
 
-        return root
-
-
-    def from_element(cls, elt):
-        return unpack_revision(elt)
-
-    from_element = classmethod(from_element)
-
-
-
-def unpack_revision(elt):
-    """Convert XML element into Revision object."""
-    # <changeset> is deprecated...
-    if elt.tag not in ('revision', 'changeset'):
-        raise bzrlib.errors.BzrError("unexpected tag in revision file: %r" % elt)
-
-    rev = Revision(committer = elt.get('committer'),
-                   timestamp = float(elt.get('timestamp')),
-                   revision_id = elt.get('revision_id'),
-                   inventory_id = elt.get('inventory_id'),
-                   inventory_sha1 = elt.get('inventory_sha1')
-                   )
-
-    precursor = elt.get('precursor')
-    precursor_sha1 = elt.get('precursor_sha1')
-
-    pelts = elt.find('parents')
-
-    if pelts:
-        for p in pelts:
-            assert p.tag == 'revision_ref', \
-                   "bad parent node tag %r" % p.tag
-            rev_ref = RevisionReference(p.get('revision_id'),
-                                        p.get('revision_sha1'))
-            rev.parents.append(rev_ref)
-
-        if precursor:
-            # must be consistent
-            prec_parent = rev.parents[0].revision_id
-            assert prec_parent == precursor
-    elif precursor:
-        # revisions written prior to 0.0.5 have a single precursor
-        # give as an attribute
-        rev_ref = RevisionReference(precursor, precursor_sha1)
-        rev.parents.append(rev_ref)
-
-    v = elt.get('timezone')
-    rev.timezone = v and int(v)
-
-    rev.message = elt.findtext('message') # text of <message>
-    return rev
-
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 REVISION_ID_RE = None
@@ -186,7 +117,7 @@ def validate_revision_id(rid):
     global REVISION_ID_RE
     if not REVISION_ID_RE:
         import re
-        REVISION_ID_RE = re.compile('[\w.-]+@[\w.-]+--?\d+--?[0-9a-f]+\Z')
+        REVISION_ID_RE = re.compile('[\w:.-]+@[\w%.-]+--?[\w]+--?[0-9a-f]+\Z')
 
     if not REVISION_ID_RE.match(rid):
         raise ValueError("malformed revision-id %r" % rid)
@@ -252,7 +183,7 @@ def __get_closest(intersection):
     return matches
 
 
-def common_ancestor(revision_a, revision_b, revision_source):
+def old_common_ancestor(revision_a, revision_b, revision_source):
     """Find the ancestor common to both revisions that is closest to both.
     """
     from bzrlib.trace import mutter
@@ -283,6 +214,73 @@ def common_ancestor(revision_a, revision_b, revision_source):
         raise bzrlib.errors.AmbiguousBase((a_closest[0], b_closest[0]))
     return a_closest[0]
 
+def revision_graph(revision, revision_source):
+    """Produce a graph of the ancestry of the specified revision.
+    Return root, ancestors map, descendants map
+
+    TODO: Produce graphs with the NULL revision as root, so that we can find
+    a common even when trees are not branches don't represent a single line
+    of descent.
+    """
+    ancestors = {}
+    descendants = {}
+    lines = [revision]
+    root = None
+    descendants[revision] = {}
+    while len(lines) > 0:
+        new_lines = set()
+        for line in lines:
+            try:
+                rev = revision_source.get_revision(line)
+                parents = [p.revision_id for p in rev.parents]
+                if len(parents) == 0:
+                    root = line
+            except bzrlib.errors.NoSuchRevision:
+                if line == revision:
+                    raise
+                parents = None
+            if parents is not None:
+                for parent in parents:
+                    if parent not in ancestors:
+                        new_lines.add(parent)
+                    if parent not in descendants:
+                        descendants[parent] = {}
+                    descendants[parent][line] = 1
+            if parents is not None:
+                ancestors[line] = set(parents)
+        lines = new_lines
+    assert root not in descendants[root]
+    assert root not in ancestors[root]
+    return root, ancestors, descendants
+
+def combined_graph(revision_a, revision_b, revision_source):
+    """Produce a combined ancestry graph.
+    Return graph root, ancestors map, descendants map, set of common nodes"""
+    root, ancestors, descendants = revision_graph(revision_a, revision_source)
+    root_b, ancestors_b, descendants_b = revision_graph(revision_b, 
+                                                        revision_source)
+    assert root == root_b
+    common = set()
+    for node, node_anc in ancestors_b.iteritems():
+        if node in ancestors:
+            common.add(node)
+        else:
+            ancestors[node] = set()
+        ancestors[node].update(node_anc)
+    for node, node_dec in descendants_b.iteritems():
+        if node not in descendants:
+            descendants[node] = set()
+        descendants[node].update(node_dec)
+    return root, ancestors, descendants, common
+
+def common_ancestor(revision_a, revision_b, revision_source):
+    root, ancestors, descendants, common = \
+        combined_graph(revision_a, revision_b, revision_source)
+    nodes = farthest_nodes(descendants, ancestors, root)
+    for node in nodes:
+        if node in common:
+            return node
+
 class MultipleRevisionSources(object):
     """Proxy that looks in multiple branches for revisions."""
     def __init__(self, *args):
@@ -307,49 +305,36 @@ def get_intervening_revisions(ancestor_id, rev_id, rev_source,
     Otherwise, rev_id will be the last entry.  ancestor_id will never appear.
     If ancestor_id is not an ancestor, NotAncestor will be thrown
     """
-    [rev_source.get_revision(r) for r in (ancestor_id, rev_id)]
-    if ancestor_id == rev_id:
-        return []
-    def historical_lines(line):
-        """Return a tuple of historical/non_historical lines, for sorting.
-        The non_historical count is negative, since non_historical lines are
-        a bad thing.
-        """
-        good_count = 0
-        bad_count = 0
-        for revision in line:
-            if revision in revision_history:
-                good_count += 1
-            else:
-                bad_count -= 1
-        return good_count, bad_count
-    active = [[rev_id]]
-    successful_lines = []
-    while len(active) > 0:
-        new_active = []
-        for line in active:
-            parent_ids = [p.revision_id for p in 
-                          rev_source.get_revision(line[-1]).parents]
-            for parent in parent_ids:
-                line_copy = line[:]
-                if parent == ancestor_id:
-                    successful_lines.append(line_copy)
-                else:
-                    line_copy.append(parent)
-                    new_active.append(line_copy)
-        active = new_active
-    if len(successful_lines) == 0:
+    root, ancestors, descendants = revision_graph(rev_id, rev_source)
+    if len(descendants) == 0:
+        raise NoSuchRevision(rev_source, rev_id)
+    if ancestor_id not in descendants:
+        rev_source.get_revision(ancestor_id)
         raise bzrlib.errors.NotAncestor(rev_id, ancestor_id)
-    for line in successful_lines:
-        line.reverse()
-    if revision_history is not None:
-        by_historical_lines = []
-        for line in successful_lines:
-            count = historical_lines(line)
-            by_historical_lines.append((count, line))
-        by_historical_lines.sort()
-        if by_historical_lines[-1][0][0] > 0:
-            return by_historical_lines[-1][1]
-    assert len(successful_lines)
-    successful_lines.sort(cmp, len)
-    return successful_lines[-1]
+    root_descendants = all_descendants(descendants, ancestor_id)
+    root_descendants.add(ancestor_id)
+    if rev_id not in root_descendants:
+        raise bzrlib.errors.NotAncestor(rev_id, ancestor_id)
+    distances = node_distances(descendants, ancestors, ancestor_id,
+                               root_descendants=root_descendants)
+
+    def best_ancestor(rev_id):
+        best = None
+        for anc_id in ancestors[rev_id]:
+            try:
+                distance = distances[anc_id]
+            except KeyError:
+                continue
+            if revision_history is not None and anc_id in revision_history:
+                return anc_id
+            elif best is None or distance > best[1]:
+                best = (anc_id, distance)
+        return best[0]
+
+    next = rev_id
+    path = []
+    while next != ancestor_id:
+        path.append(next)
+        next = best_ancestor(next)
+    path.reverse()
+    return path
