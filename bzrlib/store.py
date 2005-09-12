@@ -91,10 +91,12 @@ class ImmutableStore(Store):
         super(ImmutableStore, self).__init__()
         self._basedir = basedir
 
-    def _path(self, id):
-        if '\\' in id or '/' in id:
-            raise ValueError("invalid store id %r" % id)
-        return os.path.join(self._basedir, id)
+    def _path(self, entry_id):
+        if not isinstance(entry_id, basestring):
+            raise TypeError(type(entry_id))
+        if '\\' in entry_id or '/' in entry_id:
+            raise ValueError("invalid store id %r" % entry_id)
+        return os.path.join(self._basedir, entry_id)
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._basedir)
