@@ -14,13 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-def max_distance(node, ancestors, distances):
+def max_distance(node, ancestors, distances, root_descendants):
     """Calculate the max distance to an ancestor.  
     Return None if not all possible ancestors have known distances"""
     best = None
     if node in distances:
         best = distances[node]
     for ancestor in ancestors[node]:
+        # skip ancestors we will never traverse:
+        if root_descendants is not None and ancestor not in root_descendants:
+            continue
         # An ancestor which is not listed in ancestors will never be in
         # distances, so we pretend it never existed.
         if ancestor not in ancestors:
@@ -32,7 +35,7 @@ def max_distance(node, ancestors, distances):
     return best
 
     
-def farthest_nodes(graph, ancestors, start):
+def node_distances(graph, ancestors, start, root_descendants=None):
     """Produce a list of nodes, sorted by distance from a start node.
     This is an algorithm devised by Aaron Bentley, because applying Dijkstra
     backwards seemed too complicated.
@@ -52,17 +55,39 @@ def farthest_nodes(graph, ancestors, start):
     while len(lines) > 0:
         new_lines = set()
         for line in lines:
-            assert line not in graph[line], "%s refers to itself" % line
-            for descendant in graph[line]:
-                distance = max_distance(descendant, ancestors, distances)
+            line_descendants = graph[line]
+            assert line not in line_descendants, "%s refers to itself" % line
+            for descendant in line_descendants:
+                distance = max_distance(descendant, ancestors, distances,
+                                        root_descendants)
                 if distance is None:
                     continue
                 distances[descendant] = distance
                 new_lines.add(descendant)
         lines = new_lines
+    return distances
 
+def farthest_nodes(graph, ancestors, start):
     def by_distance(n):
         return distances[n],n
+
+    distances = node_distances(graph, ancestors, start)
     node_list = distances.keys()
     node_list.sort(key=by_distance, reverse=True)
     return node_list
+
+def all_descendants(descendants, start):
+    result = set()
+    lines = set([start])
+    while len(lines) > 0:
+        new_lines = set()
+        for line in lines:
+            if line not in descendants:
+                continue
+            for descendant in descendants[line]:
+                if descendant in result:
+                    continue
+                result.add(descendant)
+                new_lines.add(descendant)
+        lines = new_lines
+    return result
