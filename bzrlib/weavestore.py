@@ -20,7 +20,10 @@
 
 
 import os
-import bzrlib.weavefile
+
+from bzrlib.weavefile import read_weave, write_weave_v5
+from bzrlib.weave import Weave
+from bzrlib.atomicfile import AtomicFile
 
 
 class WeaveStore(object):
@@ -29,7 +32,32 @@ class WeaveStore(object):
         self._dir = dir
 
 
+    def filename(self, file_id):
+        return self._dir + os.sep + file_id + '.weave'
+
     def get_weave(self, file_id):
-        path = self._dir + os.sep + file_id + '.weave'
-        return bzrlib.weavefile.read_weave(file(path, 'rb'))
+        return read_weave(file(self.filename(file_id), 'rb'))
     
+
+    def put_weave(self, file_id, weave):
+        """Write back a modified weave"""
+        weave_fn = self.filename(file_id)
+        af = AtomicFile(weave_fn)
+        try:
+            write_weave_v5(weave, af)
+            af.commit()
+        finally:
+            af.close()
+
+
+    def add_text(self, file_id, rev_id, new_lines, parents):
+        weave_fn = self.filename(file_id)
+        if os.path.exists(weave_fn):
+            w = read_weave(file(weave_fn, 'rb'))
+        else:
+            w = Weave()
+        parent_idxs = map(w.lookup, parents)
+        w.add(rev_id, parent_idxs, new_lines)
+        self.put_weave(file_id, w)
+        
+     

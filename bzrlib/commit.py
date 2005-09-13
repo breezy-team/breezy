@@ -41,7 +41,7 @@ from bzrlib.osutils import (local_time_offset, username,
                             rand_bytes, compact_date, user_email,
                             kind_marker, is_inside_any, quotefn,
                             sha_string, sha_file, isdir, isfile)
-from bzrlib.branch import gen_file_id
+from bzrlib.branch import gen_file_id, INVENTORY_FILEID
 from bzrlib.errors import BzrError, PointlessCommit
 from bzrlib.revision import Revision, RevisionReference
 from bzrlib.trace import mutter, note
@@ -186,10 +186,8 @@ class Commit(object):
             self.basis_tree = self.branch.basis_tree()
             self.basis_inv = self.basis_tree.inventory
 
-            self.pending_merges = self.branch.pending_merges()
-            if self.pending_merges:
-                raise NotImplementedError("sorry, can't commit merges to the weave format yet")
-            
+            self._gather_parents()
+
             if self.rev_id is None:
                 self.rev_id = _gen_revision_id(self.branch, time.time())
 
@@ -199,7 +197,7 @@ class Commit(object):
 
             if not (self.delta.has_changed()
                     or self.allow_pointless
-                    or self.pending_merges):
+                    or len(self.parents) != 1):
                 raise PointlessCommit()
 
             self.new_inv = self.basis_inv.copy()
@@ -222,11 +220,25 @@ class Commit(object):
 
 
     def _record_inventory(self):
+        """Store the inventory for the new revision."""
         inv_tmp = StringIO()
         serializer_v5.write_inventory(self.new_inv, inv_tmp)
-        self.inv_sha1 = sha_string(inv_tmp.getvalue())
         inv_tmp.seek(0)
-        self.branch.inventory_store.add(inv_tmp, self.rev_id)
+        self.inv_sha1 = sha_string(inv_tmp.getvalue())
+        inv_lines = inv_tmp.readlines()
+        self.branch.weave_store.add_text(INVENTORY_FILEID, self.rev_id,
+                                         inv_lines, self.parents)
+
+
+    def _gather_parents(self):
+        pending_merges = self.branch.pending_merges()
+        if pending_merges:
+            raise NotImplementedError("sorry, can't commit merges to the weave format yet")
+        self.parents = []
+        precursor_id = self.branch.last_patch()
+        if precursor_id:
+            self.parents.append(precursor_id)
+        self.parents += pending_merges
 
 
     def _make_revision(self):
@@ -237,14 +249,7 @@ class Commit(object):
                             message=self.message,
                             inventory_sha1=self.inv_sha1,
                             revision_id=self.rev_id)
-
-        self.rev.parents = []
-        precursor_id = self.branch.last_patch()
-        if precursor_id:
-            self.rev.parents.append(RevisionReference(precursor_id))
-        for merge_rev in self.pending_merges:
-            rev.parents.append(RevisionReference(merge_rev))
-
+        self.rev.parents = map(RevisionReference, self.parents)
         rev_tmp = tempfile.TemporaryFile()
         serializer_v5.write_revision(self.rev, rev_tmp)
         rev_tmp.seek(0)
@@ -316,21 +321,9 @@ class Commit(object):
 
 
     def _add_text_to_weave(self, file_id, new_lines, parents):
-        weave_fn = self.branch.controlfilename(['weaves', file_id+'.weave'])
-        if os.path.exists(weave_fn):
-            w = read_weave(file(weave_fn, 'rb'))
-        else:
-            w = Weave()
-        # XXX: Should set the appropriate parents by looking for this file_id
-        # in all revision parents
-        parent_idxs = map(w.lookup, parents)
-        w.add(self.rev_id, parent_idxs, new_lines)
-        af = AtomicFile(weave_fn)
-        try:
-            write_weave_v5(w, af)
-            af.commit()
-        finally:
-            af.close()
+        if file_id.startswith('__'):
+            raise ValueError('illegal file-id %r for text file' % file_id)
+        self.branch.weave_store.add_text(file_id, self.rev_id, new_lines, parents)
 
 
 def _gen_revision_id(branch, when):

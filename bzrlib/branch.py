@@ -17,6 +17,7 @@
 
 import sys
 import os
+from cStringIO import StringIO
 
 import bzrlib
 from bzrlib.trace import mutter, note
@@ -36,6 +37,9 @@ import bzrlib.xml5
 import bzrlib.ui
 
 
+INVENTORY_FILEID = '__inventory'
+ANCESTRY_FILEID = '__ancestry'
+
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
 BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
@@ -44,7 +48,8 @@ BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
 
 # TODO: Some operations like log might retrieve the same revisions
 # repeatedly to calculate deltas.  We could perhaps have a weakref
-# cache in memory to make this faster.
+# cache in memory to make this faster.  In general anything can be
+# cached in memory between lock and unlock operations.
 
 # TODO: please move the revision-string syntax stuff out of the branch
 # object; it's clutter
@@ -167,6 +172,7 @@ class Branch(object):
     _lock_mode = None
     _lock_count = None
     _lock = None
+    _inventory_weave = None
     
     # Map some sort of prefix into a namespace
     # stuff like "revno:10", "revid:", etc.
@@ -205,7 +211,6 @@ class Branch(object):
 
         self.weave_store = WeaveStore(self.controlfilename('weaves'))
         self.revision_store = ImmutableStore(self.controlfilename('revision-store'))
-        self.inventory_store = ImmutableStore(self.controlfilename('inventory-store'))
 
 
     def __str__(self):
@@ -309,7 +314,7 @@ class Branch(object):
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.\n")
         self.controlfile('branch-format', 'w').write(BZR_BRANCH_FORMAT_5)
-        for d in ('text-store', 'inventory-store', 'revision-store',
+        for d in ('text-store', 'revision-store',
                   'weaves'):
             os.mkdir(self.controlfilename(d))
         for f in ('revision-history', 'merged-patches',
@@ -645,13 +650,14 @@ class Branch(object):
         return bzrlib.osutils.sha_file(self.get_revision_xml(revision_id))
 
 
-    def get_inventory(self, revision_id):
-        """Get Inventory object by hash.
+    def get_inventory_weave(self):
+        return self.weave_store.get_weave(INVENTORY_FILEID)
 
-        TODO: Perhaps for this and similar methods, take a revision
-               parameter which can be either an integer revno or a
-               string hash."""
-        f = self.get_inventory_xml_file(revision_id)
+
+    def get_inventory(self, revision_id):
+        """Get Inventory object by hash."""
+        # FIXME: The text gets passed around a lot coming from the weave.
+        f = StringIO(self.get_inventory_xml(revision_id))
         return bzrlib.xml5.serializer_v5.read_inventory(f)
 
 
@@ -659,17 +665,16 @@ class Branch(object):
         """Get inventory XML as a file object."""
         try:
             assert isinstance(revision_id, basestring), type(revision_id)
-            return self.inventory_store[revision_id]
+            iw = self.get_inventory_weave()
+            return iw.get_text(iw.lookup(revision_id))
         except IndexError:
             raise bzrlib.errors.HistoryMissing(self, 'inventory', revision_id)
 
-    get_inventory_xml_file = get_inventory_xml
-            
 
     def get_inventory_sha1(self, revision_id):
         """Return the sha1 hash of the inventory entry
         """
-        return sha_file(self.get_inventory_xml_file(revision_id))
+        return self.get_revision(revision_id).inventory_sha1
 
 
     def get_revision_inventory(self, revision_id):

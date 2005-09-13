@@ -72,8 +72,7 @@ def _update_inventory_entry(inv, inv_id, branch):
     :param inv_id:  The inventory id for this inventory
     :param branch:  The Branch where this entry will be stored.
     """
-    _update_store_entry(inv, inv_id, branch,
-            'inventory-store', branch.inventory_store)
+    raise NotImplementedError("can't update existing inventory entry")
 
 
 def check(branch):
