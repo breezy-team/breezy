@@ -20,6 +20,7 @@
 
 
 import os
+import errno
 
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.weave import Weave
@@ -35,8 +36,22 @@ class WeaveStore(object):
     def filename(self, file_id):
         return self._dir + os.sep + file_id + '.weave'
 
+
     def get_weave(self, file_id):
         return read_weave(file(self.filename(file_id), 'rb'))
+    
+
+    def get_weave_or_empty(self, file_id):
+        """Return a weave, or an empty one if it doesn't exist.""" 
+        try:
+            inf = file(self.filename(file_id), 'rb')
+        except IOError, e:
+            if e.errno == errno.ENOENT:
+                return Weave()
+            else:
+                raise
+        else:
+            return read_weave(inf)
     
 
     def put_weave(self, file_id, weave):
@@ -51,11 +66,7 @@ class WeaveStore(object):
 
 
     def add_text(self, file_id, rev_id, new_lines, parents):
-        weave_fn = self.filename(file_id)
-        if os.path.exists(weave_fn):
-            w = read_weave(file(weave_fn, 'rb'))
-        else:
-            w = Weave()
+        w = self.get_weave_or_empty(file_id)
         parent_idxs = map(w.lookup, parents)
         w.add(rev_id, parent_idxs, new_lines)
         self.put_weave(file_id, w)
