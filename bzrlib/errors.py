@@ -38,9 +38,6 @@ class BzrCheckError(BzrError):
 
 
 class InvalidRevisionNumber(BzrError):
-    def __init__(self, revno):
-        self.args = [revno]
-        
     def __str__(self):
         return 'invalid revision number: %r' % self.args[0]
 
