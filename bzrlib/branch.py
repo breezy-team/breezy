@@ -598,6 +598,10 @@ class Branch(object):
             self.unlock()
 
 
+    def get_revision_xml(self, revision_id):
+        return self.get_revision_xml_file(revision_id).read()
+
+
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
         xml_file = self.get_revision_xml_file(revision_id)

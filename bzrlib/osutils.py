@@ -17,6 +17,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os, types, re, time, errno, sys
+from cStringIO import StringIO
+
 from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 
 from bzrlib.errors import BzrError
@@ -492,3 +494,8 @@ def _read_config_value(name):
         raise
 
 
+
+def split_lines(s):
+    """Split s into lines, but without removing the newline characters."""
+    return StringIO(s).readlines()
+    

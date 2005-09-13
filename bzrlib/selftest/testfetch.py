@@ -92,4 +92,5 @@ class TestFetch(TestCaseInTempDir):
 
 if __name__ == '__main__':
     import unittest
-    sys.exit(unittest.run_suite(unittest.makeSuite()))
+    unittest.main()
+    

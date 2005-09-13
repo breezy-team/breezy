@@ -16,11 +16,31 @@
 
 import sys
 import os
+from cStringIO import StringIO
 
 import bzrlib.errors
-from bzrlib.trace import mutter, note
-from bzrlib.branch import Branch
+from bzrlib.trace import mutter, note, warning
+from bzrlib.branch import Branch, INVENTORY_FILEID, ANCESTRY_FILEID
 from bzrlib.progress import ProgressBar
+from bzrlib.xml5 import serializer_v5
+from bzrlib.osutils import sha_string, split_lines
+
+"""Copying of history from one branch to another.
+
+The basic plan is that every branch knows the history of everything
+that has merged into it.  As the first step of a merge, pull, or
+branch operation we copy history from the source into the destination
+branch.
+
+The copying is done in a slightly complicated order.  We don't want to
+add a revision to the store until everything it refers to is also
+stored, so that if a revision is present we can totally recreate it.
+However, we can't know what files are included in a revision until we
+read its inventory.  Therefore, we first pull the XML and hold it in
+memory until we've updated all of the files referenced.
+"""
+
+# TODO: Avoid repeatedly opening weaves so many times.
 
 
 def greedy_fetch(to_branch, from_branch, revision, pb):
@@ -29,46 +49,131 @@ def greedy_fetch(to_branch, from_branch, revision, pb):
 
 
 class Fetcher(object):
-    """Pull history from one branch to another."""
+    """Pull history from one branch to another.
+
+    revision_limit
+        If set, pull only up to this revision_id.
+        """
     def __init__(self, to_branch, from_branch, revision_limit=None, pb=None):
         self.to_branch = to_branch
         self.from_branch = from_branch
         self.revision_limit = revision_limit
+        self.failed_revisions = []
+        self.count_copied = 0
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.progress_bar()
         else:
             self.pb = pb
-        self._scan_histories()
-        self.failed_revisions = []
-        self.count_copied = 0
-        self._copy()
+        self._load_histories()
+        revs_to_fetch = self._compare_ancestries()
+        self._copy_revisions(revs_to_fetch)
+        # - get a list of revisions that need to be pulled in
+        # - for each one, pull in that revision file
+        #   and get the inventory, and store the inventory with right
+        #   parents.
+        # - and get the ancestry, and store that with right parents too
+        # - and keep a note of all file ids and version seen
+        # - then go through all files; for each one get the weave,
+        #   and add in all file versions
 
 
-    def _scan_histories(self):
-        self.from_history = from_branch.revision_history()
-        self.required_revisions = set(from_history)
-        self.to_history = to_branch.revision_history()
+    def _load_histories(self):
+        """Load histories of both branches, up to the limit."""
+        self.from_history = self.from_branch.revision_history()
+        self.to_history = self.to_branch.revision_history()
         if self.revision_limit:
-            raise NotImplementedError('sorry, revision_limit not handled yet')
-        self.need_revisions = []
-        for rev_id in self.from_history:
-            if not has_revision(self.to_branch):
-                self.need_revisions.append(rev_id)
+            assert isinstance(revision_limit, basestring)
+            try:
+                rev_index = self.from_history.index(revision_limit)
+            except ValueError:
+                rev_index = None
+            if rev_index is not None:
+                self.from_history = self.from_history[:rev_index + 1]
+            else:
+                self.from_history = [revision]
+            
+
+    def _compare_ancestries(self):
+        """Get a list of revisions that must be copied.
+
+        That is, every revision that's in the ancestry of the source
+        branch and not in the destination branch."""
+        if self.from_history:
+            self.from_ancestry = self.from_branch.get_ancestry(self.from_history[-1])
+        else:
+            self.from_ancestry = []
+        if self.to_history:
+            self.to_history = self.to_branch.get_ancestry(self.to_history[-1])
+        else:
+            self.to_history = []
+        ss = set(self.to_history)
+        to_fetch = []
+        for rev_id in self.from_ancestry:
+            if rev_id not in ss:
+                to_fetch.append(rev_id)
                 mutter('need to get revision {%s}', rev_id)
+        mutter('need to get %d revisions in total', len(to_fetch))
+        return to_fetch
+                
 
 
-    def _copy(self):
-        while self.need_revisions:
-            rev_id = self.need_revisions.pop()
-            mutter('try to get revision {%s}', rev_id)
+    def _copy_revisions(self, revs_to_fetch):
+        for rev_id in revs_to_fetch:
+            self._copy_one_revision(rev_id)
 
-    
+
+    def _copy_one_revision(self, rev_id):
+        """Copy revision and everything referenced by it."""
+        mutter('copying revision {%s}', rev_id)
+        rev_xml = self.from_branch.get_revision_xml(rev_id)
+        inv_xml = self.from_branch.get_inventory_xml(rev_id)
+        rev = serializer_v5.read_revision_from_string(rev_xml)
+        inv = serializer_v5.read_inventory_from_string(inv_xml)
+        assert rev.revision_id == rev_id
+        assert rev.inventory_sha1 == sha_string(inv_xml)
+        mutter('  commiter %s, %d parents',
+               rev.committer,
+               len(rev.parents))
+        self._copy_new_texts(rev_id, inv)
+        self.to_branch.weave_store.add_text(INVENTORY_FILEID, rev_id,
+                                            split_lines(inv_xml), rev.parents)
+        self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
+
         
+    def _copy_new_texts(self, rev_id, inv):
+        """Copy any new texts occuring in this revision."""
+        # TODO: Rather than writing out weaves every time, hold them
+        # in memory until everything's done?  But this way is nicer
+        # if it's interrupted.
+        for path, ie in inv.iter_entries():
+            if ie.kind != 'file':
+                continue
+            if ie.text_version != rev_id:
+                continue
+            mutter('%s {%s} is changed in this revision',
+                   path, ie.file_id)
+            self._copy_one_text(rev_id, ie.file_id)
+
+
+    def _copy_one_text(self, rev_id, file_id):
+        """Copy one file text."""
+        from_weave = self.from_branch.weave_store.get_weave(file_id)
+        from_idx = from_weave.lookup(rev_id)
+        from_parents = map(from_weave.idx_to_name, from_weave.parents(from_idx))
+        text_lines = from_weave.get(from_idx)
+        to_weave = self.to_branch.weave_store.get_weave_or_empty(file_id)
+        if rev_id in to_weave._name_map:
+            warning('version {%s} already present in weave of file {%s}',
+                    rev_id, file_id)
+            return
+        to_parents = map(to_weave.lookup, from_parents)
+        to_weave.add(rev_id, to_parents, text_lines)
+        self.to_branch.weave_store.put_weave(file_id, to_weave)
     
 
 def has_revision(branch, revision_id):
     try:
-        branch.get_revision_xml(revision_id)
+        branch.get_revision_xml_file(revision_id)
         return True
     except bzrlib.errors.NoSuchRevision:
         return False
