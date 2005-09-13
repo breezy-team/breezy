@@ -87,7 +87,10 @@
 
 
 import sha
+
 from cStringIO import StringIO
+
+from bzrlib.osutils import sha_strings
 
 
 class WeaveError(Exception):
@@ -222,6 +225,23 @@ class Weave(object):
     def idx_to_name(self, version):
         return self._names[version]
 
+
+    def _check_repeated_add(self, name, parents, text):
+        """Check that a duplicated add is OK.
+
+        If it is, return the (old) index; otherwise raise an exception.
+        """
+        idx = self.lookup(name)
+        if sorted(self._parents[idx]) != sorted(parents):
+            raise WeaveError("name \"%s\" already present in weave "
+                             "with different parents" % name)
+        new_sha1 = sha_strings(text)
+        if new_sha1 != self._sha1s[idx]:
+            raise WeaveError("name \"%s\" already present in weave "
+                             "with different text" % name)            
+        return idx
+        
+
         
     def add(self, name, parents, text):
         """Add a single text on top of the weave.
@@ -240,16 +260,13 @@ class Weave(object):
 
         assert isinstance(name, basestring)
         if name in self._name_map:
-            raise WeaveError("name %r already present in weave" % name)
+            return self._check_repeated_add(name, parents, text)
         
         self._check_versions(parents)
         ## self._check_lines(text)
         new_version = len(self._parents)
 
-        s = sha.new()
-        map(s.update, text)
-        sha1 = s.hexdigest()
-        del s
+        sha1 = sha_strings(text)
 
         # if we abort after here the (in-memory) weave will be corrupt because only
         # some fields are updated

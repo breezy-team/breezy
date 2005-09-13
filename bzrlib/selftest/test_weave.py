@@ -25,7 +25,7 @@
 
 
 import testsweet
-from bzrlib.weave import Weave, WeaveFormatError
+from bzrlib.weave import Weave, WeaveFormatError, WeaveError
 from bzrlib.weavefile import write_weave, read_weave
 from bzrlib.selftest import TestCase
 from pprint import pformat
@@ -124,6 +124,33 @@ class InvalidAdd(TestBase):
                           'text0',
                           [69],
                           ['new text!'])
+
+
+class RepeatedAdd(TestBase):
+    """Add the same version twice; harmless."""
+    def runTest(self):
+        k = Weave()
+        idx = k.add('text0', [], TEXT_0)
+        idx2 = k.add('text0', [], TEXT_0)
+        self.assertEqual(idx, idx2)
+
+
+
+class InvalidRepeatedAdd(TestBase):
+    def runTest(self):
+        k = Weave()
+        idx = k.add('text0', [], TEXT_0)
+        self.assertRaises(WeaveError,
+                          k.add,
+                          'text0',
+                          [],
+                          ['not the same text'])
+        self.assertRaises(WeaveError,
+                          k.add,
+                          'text0',
+                          [12],         # not the right parents
+                          TEXT_0)
+        
 
 
 class InsertLines(TestBase):
