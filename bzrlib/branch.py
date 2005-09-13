@@ -33,6 +33,7 @@ from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
 from bzrlib.weavestore import WeaveStore
+from bzrlib.store import ImmutableStore
 import bzrlib.xml5
 import bzrlib.ui
 
@@ -194,7 +195,6 @@ class Branch(object):
         In the test suite, creation of new trees is tested using the
         `ScratchBranch` class.
         """
-        from bzrlib.store import ImmutableStore
         if init:
             self.base = os.path.realpath(base)
             self._make_control()
@@ -329,6 +329,7 @@ class Branch(object):
         # simplicity.
         f = self.controlfile('inventory','w')
         bzrlib.xml5.serializer_v5.write_inventory(Inventory(), f)
+        
 
 
     def _check_format(self):
@@ -648,6 +649,14 @@ class Branch(object):
         # have all hash pointers stay consistent.
         # But for now, just hash the contents.
         return bzrlib.osutils.sha_file(self.get_revision_xml(revision_id))
+
+
+    def get_ancestry(self, revision_id):
+        """Return a list of revision-ids integrated by a revision.
+        """
+        w = self.weave_store.get_weave(ANCESTRY_FILEID)
+        # strip newlines
+        return [l[:-1] for l in w.get_iter(w.lookup(revision_id))]
 
 
     def get_inventory_weave(self):

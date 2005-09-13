@@ -484,6 +484,15 @@ class cmd_revision_history(Command):
             print patchid
 
 
+class cmd_ancestry(Command):
+    """List all revisions merged into this branch."""
+    hidden = True
+    def run(self):
+        b = find_branch('.')
+        for revision_id in b.get_ancestry(b.last_patch()):
+            print revision_id
+
+
 class cmd_directories(Command):
     """Display list of versioned directories in this branch."""
     def run(self):

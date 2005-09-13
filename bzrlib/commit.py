@@ -41,7 +41,7 @@ from bzrlib.osutils import (local_time_offset, username,
                             rand_bytes, compact_date, user_email,
                             kind_marker, is_inside_any, quotefn,
                             sha_string, sha_file, isdir, isfile)
-from bzrlib.branch import gen_file_id, INVENTORY_FILEID
+from bzrlib.branch import gen_file_id, INVENTORY_FILEID, ANCESTRY_FILEID
 from bzrlib.errors import BzrError, PointlessCommit
 from bzrlib.revision import Revision, RevisionReference
 from bzrlib.trace import mutter, note
@@ -191,7 +191,7 @@ class Commit(object):
             if self.rev_id is None:
                 self.rev_id = _gen_revision_id(self.branch, time.time())
 
-            # todo: update hashcache
+            # TODO: update hashcache
             self.delta = compare_trees(self.basis_tree, self.work_tree,
                                        specific_files=self.specific_files)
 
@@ -209,6 +209,7 @@ class Commit(object):
 
             self.branch._write_inventory(self.work_inv)
             self._record_inventory()
+            self._record_ancestry()
 
             self._make_revision()
             note('committted r%d {%s}', (self.branch.revno() + 1),
@@ -228,6 +229,21 @@ class Commit(object):
         inv_lines = inv_tmp.readlines()
         self.branch.weave_store.add_text(INVENTORY_FILEID, self.rev_id,
                                          inv_lines, self.parents)
+
+
+    def _record_ancestry(self):
+        """Append merged revision ancestry to the ancestry file."""
+        if len(self.parents) > 1:
+            raise NotImplementedError("sorry, can't commit merges yet")
+        w = self.branch.weave_store.get_weave_or_empty(ANCESTRY_FILEID)
+        if self.parents:
+            lines = w.get(w.lookup(self.parents[0]))
+        else:
+            lines = []
+        lines.append(self.rev_id + '\n')
+        parent_idxs = map(w.lookup, self.parents)
+        w.add(self.rev_id, parent_idxs, lines)
+        self.branch.weave_store.put_weave(ANCESTRY_FILEID, w)
 
 
     def _gather_parents(self):
