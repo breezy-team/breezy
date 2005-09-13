@@ -823,63 +823,6 @@ class Branch(object):
         pb.clear()
 
 
-    def install_revisions(self, other, revision_ids, pb):
-        """Copy revisions from other branch into self.
-
-        This is a lower-level function used by a pull or a merge.  It
-        incorporates some history from one branch into another, but
-        does not update the revision history or operate on the working
-        copy.
-
-        revision_ids
-            Sequence of revisions to copy.
-
-        pb
-            Progress bar for copying.
-        """
-        if False:
-            if hasattr(other.revision_store, "prefetch"):
-                other.revision_store.prefetch(revision_ids)
-            if hasattr(other.inventory_store, "prefetch"):
-                other.inventory_store.prefetch(revision_ids)
-
-        if pb is None:
-            pb = bzrlib.ui.ui_factory.progress_bar()
-                
-        revisions = []
-        needed_texts = set()
-        i = 0
-
-        failures = set()
-        for i, rev_id in enumerate(revision_ids):
-            pb.update('fetching revision', i+1, len(revision_ids))
-            try:
-                rev = other.get_revision(rev_id)
-            except bzrlib.errors.NoSuchRevision:
-                failures.add(rev_id)
-                continue
-
-            revisions.append(rev)
-            inv = other.get_inventory(rev_id)
-            for key, entry in inv.iter_entries():
-                if entry.text_id is None:
-                    continue
-                if entry.text_id not in self.text_store:
-                    needed_texts.add(entry.text_id)
-
-        pb.clear()
-                    
-        count, cp_fail = self.text_store.copy_multi(other.text_store, 
-                                                    needed_texts)
-        count, cp_fail = self.inventory_store.copy_multi(other.inventory_store, 
-                                                         revision_ids)
-        count, cp_fail = self.revision_store.copy_multi(other.revision_store, 
-                                                        revision_ids,
-                                                        permit_failure=True)
-        assert len(cp_fail) == 0 
-        return count, failures
-       
-
     def commit(self, *args, **kw):
         from bzrlib.commit import Commit
         Commit().commit(self, *args, **kw)
