@@ -584,7 +584,7 @@ class Branch(object):
         try:
             try:
                 return self.revision_store[revision_id]
-            except IndexError:
+            except KeyError:
                 raise bzrlib.errors.NoSuchRevision(self, revision_id)
         finally:
             self.unlock()
@@ -834,8 +834,13 @@ class Branch(object):
         if hasattr(other.revision_store, "prefetch"):
             other.revision_store.prefetch(revision_ids)
         if hasattr(other.inventory_store, "prefetch"):
-            inventory_ids = [other.get_revision(r).inventory_id
-                             for r in revision_ids]
+            inventory_ids = []
+            for rev_id in revision_ids:
+                try:
+                    revision = other.get_revision(rev_id).inventory_id
+                    inventory_ids.append(revision)
+                except bzrlib.errors.NoSuchRevision:
+                    pass
             other.inventory_store.prefetch(inventory_ids)
 
         if pb is None:

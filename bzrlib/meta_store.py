@@ -36,6 +36,9 @@ class CachedStore:
         """Copy a series of ids into the cache, before they are used.
         For remote stores that support pipelining or async downloads, this can
         increase speed considerably.
+
+        Failures while prefetching are ignored.
         """
         mutter("Prefetch of ids %s" % ",".join(ids))
-        self.cache_store.copy_multi(self.source_store, ids)
+        self.cache_store.copy_multi(self.source_store, ids, 
+                                    permit_failure=True)
