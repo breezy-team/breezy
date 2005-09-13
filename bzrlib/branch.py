@@ -598,10 +598,6 @@ class Branch(object):
             self.unlock()
 
 
-    #deprecated
-    get_revision_xml = get_revision_xml_file
-
-
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
         xml_file = self.get_revision_xml_file(revision_id)
@@ -642,13 +638,7 @@ class Branch(object):
 
     def get_revision_sha1(self, revision_id):
         """Hash the stored value of a revision, and return it."""
-        # In the future, revision entries will be signed. At that
-        # point, it is probably best *not* to include the signature
-        # in the revision hash. Because that lets you re-sign
-        # the revision, (add signatures/remove signatures) and still
-        # have all hash pointers stay consistent.
-        # But for now, just hash the contents.
-        return bzrlib.osutils.sha_file(self.get_revision_xml(revision_id))
+        return bzrlib.osutils.sha_file(self.get_revision_xml_file(revision_id))
 
 
     def get_ancestry(self, revision_id):
