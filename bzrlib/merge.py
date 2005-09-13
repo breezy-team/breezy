@@ -137,7 +137,7 @@ def get_tree(treespec, temp_root, label, local_branch=None):
     if revno is None:
         revision = None
     elif revno == -1:
-        revision = branch.last_patch()
+        revision = branch.last_revision()
     else:
         revision = branch.lookup_revision(revno)
     return branch, get_revid_tree(branch, revision, temp_root, label,
@@ -244,7 +244,7 @@ def merge(other_revision, base_revision,
         if this_dir is None:
             this_dir = '.'
         this_branch = find_branch(this_dir)
-        this_rev_id = this_branch.last_patch()
+        this_rev_id = this_branch.last_revision()
         if this_rev_id is None:
             raise BzrCommandError("This branch has no commits")
         if check_clean:
@@ -255,14 +255,14 @@ def merge(other_revision, base_revision,
         other_branch, other_tree = get_tree(other_revision, tempdir, "other",
                                             this_branch)
         if other_revision[1] == -1:
-            other_rev_id = other_branch.last_patch()
+            other_rev_id = other_branch.last_revision()
             other_basis = other_rev_id
         elif other_revision[1] is not None:
             other_rev_id = other_branch.lookup_revision(other_revision[1])
             other_basis = other_rev_id
         else:
             other_rev_id = None
-            other_basis = other_branch.last_patch()
+            other_basis = other_branch.last_revision()
         if base_revision == [None, None]:
             base_rev_id = common_ancestor(this_rev_id, other_basis, 
                                           this_branch)
@@ -274,7 +274,7 @@ def merge(other_revision, base_revision,
         else:
             base_branch, base_tree = get_tree(base_revision, tempdir, "base")
             if base_revision[1] == -1:
-                base_rev_id = base_branch.last_patch()
+                base_rev_id = base_branch.last_revision()
             elif base_revision[1] is None:
                 base_rev_id = None
             else:

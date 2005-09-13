@@ -757,7 +757,7 @@ class Branch(object):
         return len(self.revision_history())
 
 
-    def last_patch(self):
+    def last_revision(self):
         """Return last patch hash, or None if no history.
         """
         ph = self.revision_history()
@@ -1064,7 +1064,7 @@ class Branch(object):
 
         If there are no revisions yet, return an `EmptyTree`.
         """
-        return self.revision_tree(self.last_patch())
+        return self.revision_tree(self.last_revision())
 
 
     def rename_one(self, from_rel, to_rel):

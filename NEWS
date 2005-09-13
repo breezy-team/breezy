@@ -4,6 +4,23 @@ development head
 
     * Refactor xml packing/unpacking.
 
+    * Improved 'fetch' code for pulling revisions from one branch into
+      another (used by pull, merged, etc.)
+
+
+  CHANGES:
+
+    * New tree format based on weave files, called version 5.
+
+
+  API:
+
+    * New method-object style interface for Commit() and Fetch().
+
+    * Renamed Branch.last_patch() to Branch.last_revision(), since
+      we call them revisions not patches.
+  
+
 
 bzr-0.0.7 2005-09-02
 

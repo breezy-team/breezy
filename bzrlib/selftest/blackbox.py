@@ -216,11 +216,11 @@ class TestCommands(ExternalBase):
         # Merging a branch pulls its revision into the tree
         a = Branch('.')
         b = Branch('../b')
-        a.get_revision_xml(b.last_patch())
+        a.get_revision_xml(b.last_revision())
 
         self.log('pending merges: %s', a.pending_merges())
-        #        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
-        #        % (a.pending_merges(), b.last_patch())
+        #        assert a.pending_merges() == [b.last_revision()], "Assertion %s %s" \
+        #        % (a.pending_merges(), b.last_revision())
 
 
     def test_add_reports(self):

@@ -489,7 +489,7 @@ class cmd_ancestry(Command):
     hidden = True
     def run(self):
         b = find_branch('.')
-        for revision_id in b.get_ancestry(b.last_patch()):
+        for revision_id in b.get_ancestry(b.last_revision()):
             print revision_id
 
 
@@ -891,7 +891,7 @@ class cmd_export(Command):
         import os.path
         b = find_branch('.')
         if revision is None:
-            rev_id = b.last_patch()
+            rev_id = b.last_revision()
         else:
             if len(revision) != 1:
                 raise BzrError('bzr export --revision takes exactly 1 argument')
@@ -1131,8 +1131,8 @@ class cmd_find_merge_base(Command):
         history_1 = branch1.revision_history()
         history_2 = branch2.revision_history()
 
-        last1 = branch1.last_patch()
-        last2 = branch2.last_patch()
+        last1 = branch1.last_revision()
+        last2 = branch2.last_revision()
 
         source = MultipleRevisionSources(branch1, branch2)
         

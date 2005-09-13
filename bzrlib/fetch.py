@@ -115,7 +115,7 @@ class Fetcher(object):
         self.pb.update('get source ancestry')
         self.from_ancestry = self.from_branch.get_ancestry(self.revision_limit)
 
-        dest_last_rev = self.to_branch.last_patch()
+        dest_last_rev = self.to_branch.last_revision()
         self.pb.update('get destination ancestry')
         if dest_last_rev:
             dest_ancestry = self.to_branch.get_ancestry(dest_last_rev)

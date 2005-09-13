@@ -251,7 +251,7 @@ class Commit(object):
         if pending_merges:
             raise NotImplementedError("sorry, can't commit merges to the weave format yet")
         self.parents = []
-        precursor_id = self.branch.last_patch()
+        precursor_id = self.branch.last_revision()
         if precursor_id:
             self.parents.append(precursor_id)
         self.parents += pending_merges
