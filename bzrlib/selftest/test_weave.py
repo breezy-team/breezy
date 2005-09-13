@@ -27,6 +27,7 @@
 import testsweet
 from bzrlib.weave import Weave, WeaveFormatError
 from bzrlib.weavefile import write_weave, read_weave
+from bzrlib.selftest import TestCase
 from pprint import pformat
 
 
@@ -48,7 +49,7 @@ TEXT_1 = ["Hello world",
 
 
 
-class TestBase(testsweet.TestBase):
+class TestBase(TestCase):
     def check_read_write(self, k):
         """Check the weave k can be written & re-read."""
         from tempfile import TemporaryFile
@@ -110,8 +111,6 @@ class StoreTwo(TestBase):
 
         self.assertEqual(k.get(0), TEXT_0)
         self.assertEqual(k.get(1), TEXT_1)
-
-        k.dump(self.TEST_LOG)
 
 
 
@@ -470,8 +469,6 @@ class IncludeVersions(TestBase):
         self.assertEqual(k.get(0),
                          ["first line"])
 
-        k.dump(self.TEST_LOG)
-
 
 class DivergedIncludes(TestBase):
     """Weave with two diverged texts based on version 0.
@@ -771,19 +768,8 @@ class MergeCases(TestBase):
     
 
 
-def testweave():
-    import testsweet
-    from unittest import TestSuite, TestLoader
-    import testweave
-
-    tl = TestLoader()
-    suite = TestSuite()
-    suite.addTest(tl.loadTestsFromModule(testweave))
-    
-    return int(not testsweet.run_suite(suite)) # for shell 0=true
-
-
 if __name__ == '__main__':
     import sys
-    sys.exit(testweave())
+    import unittest
+    sys.exit(unittest.main())
     
