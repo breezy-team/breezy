@@ -702,17 +702,16 @@ class Branch(object):
         >>> sb = ScratchBranch(files=['foo', 'foo~'])
         >>> sb.common_ancestor(sb) == (None, None)
         True
-        >>> commit.commit(sb, "Committing first revision", verbose=False)
+        >>> commit.commit(sb, "Committing first revision")
         >>> sb.common_ancestor(sb)[0]
         1
         >>> clone = sb.clone()
-        >>> commit.commit(sb, "Committing second revision", verbose=False)
+        >>> commit.commit(sb, "Committing second revision")
         >>> sb.common_ancestor(sb)[0]
         2
         >>> sb.common_ancestor(clone)[0]
         1
-        >>> commit.commit(clone, "Committing divergent second revision", 
-        ...               verbose=False)
+        >>> commit.commit(clone, "Committing divergent second revision")
         >>> sb.common_ancestor(clone)[0]
         1
         >>> sb.common_ancestor(clone) == clone.common_ancestor(sb)
