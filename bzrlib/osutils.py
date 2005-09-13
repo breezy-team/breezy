@@ -17,6 +17,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os, types, re, time, errno, sys
+import sha
 from cStringIO import StringIO
 
 from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
@@ -89,7 +90,6 @@ def backup_file(fn):
 
     If the file is already a backup, it's not copied.
     """
-    import os
     if fn[-1] == '~':
         return
     bfn = fn + '~'
@@ -197,7 +197,6 @@ def uuid():
 
 
 def sha_file(f):
-    import sha
     if hasattr(f, 'tell'):
         assert f.tell() == 0
     s = sha.new()
@@ -219,7 +218,6 @@ def sha_strings(strings):
 
 
 def sha_string(f):
-    import sha
     s = sha.new()
     s.update(f)
     return s.hexdigest()
@@ -227,7 +225,6 @@ def sha_string(f):
 
 
 def fingerprint_file(f):
-    import sha
     s = sha.new()
     b = f.read()
     s.update(b)
