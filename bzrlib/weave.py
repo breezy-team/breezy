@@ -218,6 +218,10 @@ class Weave(object):
             raise WeaveError("name %s not present in weave %s" %
                              (name, self._weave_name))
 
+
+    def idx_to_name(self, version):
+        return self._names[version]
+
         
     def add(self, name, parents, text):
         """Add a single text on top of the weave.
@@ -355,6 +359,10 @@ class Weave(object):
             return i
         except IndexError:
             raise ValueError("version %d not present in weave" % v)
+
+
+    def parents(self, version):
+        return self._parents[version]
 
 
     def minimal_parents(self, version):
