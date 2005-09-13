@@ -231,9 +231,9 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
         ## TODO: Check that the file kind has not changed from the previous
         ## revision of this file (if any).
 
-        p = branch.abspath(path)
+        abspath = branch.abspath(path)
         file_id = entry.file_id
-        mutter('commit prep file %s, id %r ' % (p, file_id))
+        mutter('commit prep file %s, id %r ' % (abspath, file_id))
 
         if specific_files and not is_inside_any(specific_files, path):
             mutter('  skipping file excluded from commit')
@@ -268,12 +268,12 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
                                 % (file_id, old_kind, entry.kind))
 
         if entry.kind == 'directory':
-            if not isdir(p):
+            if not isdir(abspath):
                 raise BzrError("%s is entered as directory but not a directory"
-                               % quotefn(p))
+                               % quotefn(abspath))
         elif entry.kind == 'file':
-            if not isfile(p):
-                raise BzrError("%s is entered as file but is not a file" % quotefn(p))
+            if not isfile(abspath):
+                raise BzrError("%s is entered as file but is not a file" % quotefn(abspath))
 
             new_sha1 = work_tree.get_file_sha1(file_id)
 
@@ -286,7 +286,7 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
                 mutter('    unchanged from previous text_id {%s}' %
                        entry.text_id)
             else:
-                content = file(p, 'rb').read()
+                content = file(abspath, 'rb').read()
 
                 # calculate the sha again, just in case the file contents
                 # changed since we updated the cache
@@ -297,11 +297,11 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
                 branch.text_store.add(content, entry.text_id)
                 mutter('    stored with text_id {%s}' % entry.text_id)
         elif entry.kind == 'symlink':
-            if not islink(p):
+            if not islink(abspath):
                 raise BzrError("%s is entered as link but is not a link" 
-                                % quotefn(p))
+                                % quotefn(abspath))
 
-            entry.read_symlink_target(path)
+            entry.read_symlink_target(abspath)
 
             if (old_ie
                 and old_ie.symlink_target == entry.symlink_target):
