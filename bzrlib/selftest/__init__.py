@@ -24,7 +24,7 @@ import errno
 import subprocess
 import shutil
 
-from testsweet import run_suite
+import testsweet
 import bzrlib.commands
 
 import bzrlib.trace
@@ -193,8 +193,9 @@ class TestCaseInTempDir(TestCase):
             root = 'test%04d.tmp' % i
             try:
                 os.mkdir(root)
-            except IOError, e:
-                if e.errno == errno.EEXISTS:
+            except OSError, e:
+                if e.errno == errno.EEXIST:
+                    i += 1
                     continue
                 else:
                     raise
@@ -210,7 +211,8 @@ class TestCaseInTempDir(TestCase):
         import os
         self._make_test_root()
         self._currentdir = os.getcwdu()
-        short_id = self.id().replace('bzrlib.selftest.', '')
+        short_id = self.id().replace('bzrlib.selftest.', '') \
+                   .replace('__main__.', '')
         self.test_dir = os.path.join(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
@@ -296,7 +298,7 @@ class MetaTestLog(TestCase):
 
 def selftest(verbose=False, pattern=".*"):
     """Run the whole test suite under the enhanced runner"""
-    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
+    return testsweet.run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
 
 
 def test_suite():

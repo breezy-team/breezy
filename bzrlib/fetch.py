@@ -13,12 +13,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+import sys
+import os
+
 import bzrlib.errors
 from bzrlib.trace import mutter, note
 from bzrlib.branch import Branch
 from bzrlib.progress import ProgressBar
-import sys
-import os
 
 def has_revision(branch, revision_id):
     try:

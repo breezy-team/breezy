@@ -674,7 +674,7 @@ class Branch(object):
 
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""
-        # bzr 0.0.6 imposes the constraint that the inventory_id
+        # bzr 0.0.6 and later imposes the constraint that the inventory_id
         # must be the same as its revision, so this is trivial.
         if revision_id == None:
             return Inventory(self.get_root_id())
@@ -822,13 +822,26 @@ class Branch(object):
         ## note("Added %d revisions." % count)
         pb.clear()
 
+
     def install_revisions(self, other, revision_ids, pb):
-        if hasattr(other.revision_store, "prefetch"):
-            other.revision_store.prefetch(revision_ids)
-        if hasattr(other.inventory_store, "prefetch"):
-            inventory_ids = [other.get_revision(r).inventory_id
-                             for r in revision_ids]
-            other.inventory_store.prefetch(inventory_ids)
+        """Copy revisions from other branch into self.
+
+        This is a lower-level function used by a pull or a merge.  It
+        incorporates some history from one branch into another, but
+        does not update the revision history or operate on the working
+        copy.
+
+        revision_ids
+            Sequence of revisions to copy.
+
+        pb
+            Progress bar for copying.
+        """
+        if False:
+            if hasattr(other.revision_store, "prefetch"):
+                other.revision_store.prefetch(revision_ids)
+            if hasattr(other.inventory_store, "prefetch"):
+                other.inventory_store.prefetch(revision_ids)
 
         if pb is None:
             pb = bzrlib.ui.ui_factory.progress_bar()
@@ -847,7 +860,7 @@ class Branch(object):
                 continue
 
             revisions.append(rev)
-            inv = other.get_inventory(str(rev.inventory_id))
+            inv = other.get_inventory(rev_id)
             for key, entry in inv.iter_entries():
                 if entry.text_id is None:
                     continue
@@ -858,16 +871,11 @@ class Branch(object):
                     
         count, cp_fail = self.text_store.copy_multi(other.text_store, 
                                                     needed_texts)
-        #print "Added %d texts." % count 
-        inventory_ids = [ f.inventory_id for f in revisions ]
         count, cp_fail = self.inventory_store.copy_multi(other.inventory_store, 
-                                                         inventory_ids)
-        #print "Added %d inventories." % count 
-        revision_ids = [ f.revision_id for f in revisions]
-
+                                                         revision_ids)
         count, cp_fail = self.revision_store.copy_multi(other.revision_store, 
-                                                          revision_ids,
-                                                          permit_failure=True)
+                                                        revision_ids,
+                                                        permit_failure=True)
         assert len(cp_fail) == 0 
         return count, failures
        
