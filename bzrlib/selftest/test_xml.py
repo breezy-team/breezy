@@ -44,7 +44,6 @@ _revision_v4 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
 """
 
 _revision_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
-    inventory_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
     inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
     revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
     timestamp="1125907235.211783886"
@@ -103,8 +102,6 @@ class TestSerializer(TestCase):
         eq = self.assertEqual
         eq(rev.committer,
            "Martin Pool <mbp@sourcefrog.net>")
-        eq(rev.inventory_id,
-           "mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9")
         eq(len(rev.parents), 1)
         eq(rev.timezone, 36000)
         eq(rev.parents[0].revision_id,
