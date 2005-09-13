@@ -20,7 +20,9 @@ import unittest
 import tempfile
 import os
 import sys
+import errno
 import subprocess
+import shutil
 
 from testsweet import run_suite
 import bzrlib.commands
@@ -184,17 +186,21 @@ class TestCaseInTempDir(TestCase):
             self.fail("contents of %s not as expected")
 
     def _make_test_root(self):
-        import os
-        import shutil
-        import tempfile
-        
         if TestCaseInTempDir.TEST_ROOT is not None:
             return
-        TestCaseInTempDir.TEST_ROOT = os.path.abspath(
-                                 tempfile.mkdtemp(suffix='.tmp',
-                                                  prefix=self._TEST_NAME + '-',
-                                                  dir=os.curdir))
-    
+        i = 0
+        while True:
+            root = 'test%04d.tmp' % i
+            try:
+                os.mkdir(root)
+            except IOError, e:
+                if e.errno == errno.EEXISTS:
+                    continue
+                else:
+                    raise
+            # successfully created
+            TestCaseInTempDir.TEST_ROOT = os.path.abspath(root)
+            break
         # make a fake bzr directory there to prevent any tests propagating
         # up onto the source directory's real branch
         os.mkdir(os.path.join(TestCaseInTempDir.TEST_ROOT, '.bzr'))
