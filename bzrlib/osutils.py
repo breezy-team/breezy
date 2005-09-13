@@ -210,6 +210,14 @@ def sha_file(f):
     return s.hexdigest()
 
 
+
+def sha_strings(strings):
+    """Return the sha-1 of concatenation of strings"""
+    s = sha.new()
+    map(s.update, strings)
+    return s.hexdigest()
+
+
 def sha_string(f):
     import sha
     s = sha.new()

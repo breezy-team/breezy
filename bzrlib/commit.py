@@ -40,7 +40,7 @@ from cStringIO import StringIO
 from bzrlib.osutils import (local_time_offset, username,
                             rand_bytes, compact_date, user_email,
                             kind_marker, is_inside_any, quotefn,
-                            sha_string, sha_file, isdir, isfile)
+                            sha_string, sha_strings, sha_file, isdir, isfile)
 from bzrlib.branch import gen_file_id, INVENTORY_FILEID, ANCESTRY_FILEID
 from bzrlib.errors import BzrError, PointlessCommit
 from bzrlib.revision import Revision, RevisionReference
@@ -330,7 +330,7 @@ class Commit(object):
         self._add_text_to_weave(file_id, new_lines, file_parents)
         # make a new inventory entry for this file, using whatever
         # it had in the working copy, plus details on the new text
-        ie.text_sha1 = _sha_strings(new_lines)
+        ie.text_sha1 = sha_strings(new_lines)
         ie.text_size = sum(map(len, new_lines))
         ie.text_version = self.rev_id
         ie.entry_version = self.rev_id
@@ -348,9 +348,3 @@ def _gen_revision_id(branch, when):
     s += hexlify(rand_bytes(8))
     return s
 
-
-def _sha_strings(strings):
-    """Return the sha-1 of concatenation of strings"""
-    s = sha.new()
-    map(s.update, strings)
-    return s.hexdigest()
