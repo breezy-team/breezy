@@ -330,6 +330,7 @@ def test_suite():
                    'bzrlib.selftest.testdiff',
 #                   'bzrlib.selftest.test_parent',
                    'bzrlib.selftest.test_xml',
+                   'bzrlib.selftest.test_weave',
 #                   'bzrlib.selftest.testfetch',
 #                   'bzrlib.selftest.whitebox',
                    'bzrlib.selftest.teststore',
