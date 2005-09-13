@@ -156,19 +156,17 @@ def show_diff(b, revision, specific_files, external_diff_options=None,
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
-    # XXX: the RevisionSpec stuff should be done by the caller (UI) code
     import sys
-    from bzrlib.revisionspec import RevisionSpec
 
     if revision is None:
         old_tree = b.basis_tree()
     else:
-        old_tree = b.revision_tree(RevisionSpec(revision).in_history(b).rev_id)
+        old_tree = b.revision_tree(revision.in_history(b).rev_id)
 
     if revision2 is None:
         new_tree = b.working_tree()
     else:
-        new_tree = b.revision_tree(RevisionSpec(revision2).in_branch(b).rev_id)
+        new_tree = b.revision_tree(revision2.in_branch(b).rev_id)
 
     show_diff_trees(old_tree, new_tree, sys.stdout, specific_files,
                     external_diff_options)

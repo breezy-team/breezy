@@ -143,6 +143,12 @@ class RevisionSpec(object):
         revs = branch.revision_history()
         return self._match_on_and_check(branch, revs)
 
+    def __repr__(self):
+        # this is mostly for helping with testing
+        return '<%s %s%s>' % (self.__class__.__name__,
+                              self.prefix or '',
+                              self.spec)
+
 
 # private API
 
