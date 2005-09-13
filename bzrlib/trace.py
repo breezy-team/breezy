@@ -193,6 +193,8 @@ def enable_default_logging():
         
     if debug_flag:
         level = logging.DEBUG
+        fmt = '%(levelname)8s: %(message)s'
+        _stderr_handler.setFormatter(logging.Formatter(fmt))
     else:
         level = logging.INFO
         # show only summary of exceptions
