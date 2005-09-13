@@ -814,6 +814,7 @@ class Branch(object):
     def update_revisions(self, other, stop_revision=None):
         """Pull in all new revisions from other branch.
         """
+        # FIXME: Is this redundant with just doing fetch?
         from bzrlib.fetch import greedy_fetch
 
         pb = bzrlib.ui.ui_factory.progress_bar()
