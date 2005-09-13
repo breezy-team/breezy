@@ -13,20 +13,30 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+import sys
+import os
+
 import bzrlib.errors
 from bzrlib.selftest.testrevision import make_branches
 from bzrlib.trace import mutter
 from bzrlib.branch import Branch
-import sys
-import os
+from bzrlib.fetch import greedy_fetch
 
 from bzrlib.selftest import TestCaseInTempDir
         
 
+def has_revision(branch, revision_id):
+    try:
+        branch.get_revision_xml_file(revision_id)
+        return True
+    except bzrlib.errors.NoSuchRevision:
+        return False
+
+
+
 class TestFetch(TestCaseInTempDir):
     def runTest(self):
-        from bzrlib.fetch import greedy_fetch, has_revision
-
         def new_branch(name):
             os.mkdir(name)
             return Branch(name, init=True)

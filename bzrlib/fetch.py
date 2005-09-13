@@ -42,6 +42,19 @@ memory until we've updated all of the files referenced.
 
 # TODO: Avoid repeatedly opening weaves so many times.
 
+# XXX: This doesn't handle ghost (not present in branch) revisions at
+# all yet.
+
+# - get a list of revisions that need to be pulled in
+# - for each one, pull in that revision file
+#   and get the inventory, and store the inventory with right
+#   parents.
+# - and get the ancestry, and store that with right parents too
+# - and keep a note of all file ids and version seen
+# - then go through all files; for each one get the weave,
+#   and add in all file versions
+
+
 
 def greedy_fetch(to_branch, from_branch, revision, pb):
     f = Fetcher(to_branch, from_branch, revision, pb)
@@ -67,15 +80,6 @@ class Fetcher(object):
         self._load_histories()
         revs_to_fetch = self._compare_ancestries()
         self._copy_revisions(revs_to_fetch)
-        # - get a list of revisions that need to be pulled in
-        # - for each one, pull in that revision file
-        #   and get the inventory, and store the inventory with right
-        #   parents.
-        # - and get the ancestry, and store that with right parents too
-        # - and keep a note of all file ids and version seen
-        # - then go through all files; for each one get the weave,
-        #   and add in all file versions
-
 
     def _load_histories(self):
         """Load histories of both branches, up to the limit."""
@@ -162,134 +166,7 @@ class Fetcher(object):
         from_parents = map(from_weave.idx_to_name, from_weave.parents(from_idx))
         text_lines = from_weave.get(from_idx)
         to_weave = self.to_branch.weave_store.get_weave_or_empty(file_id)
-        if rev_id in to_weave._name_map:
-            warning('version {%s} already present in weave of file {%s}',
-                    rev_id, file_id)
-            return
         to_parents = map(to_weave.lookup, from_parents)
+        # it's ok to add even if the text is already there
         to_weave.add(rev_id, to_parents, text_lines)
         self.to_branch.weave_store.put_weave(file_id, to_weave)
-    
-
-def has_revision(branch, revision_id):
-    try:
-        branch.get_revision_xml_file(revision_id)
-        return True
-    except bzrlib.errors.NoSuchRevision:
-        return False
-
-
-def old_greedy_fetch(to_branch, from_branch, revision=None, pb=None):
-    """Copy all history from one branch to another.
-
-    revision
-        If set, copy only up to this point in the source branch.
-
-    @returns: number copied, missing ids       
-    """
-    from_history = from_branch.revision_history()
-    required_revisions = set(from_history)
-    all_failed = set()
-    if revision is not None:
-        required_revisions.add(revision)
-        try:
-            rev_index = from_history.index(revision)
-        except ValueError:
-            rev_index = None
-        if rev_index is not None:
-            from_history = from_history[:rev_index + 1]
-        else:
-            from_history = [revision]
-    to_history = to_branch.revision_history()
-    missing = []
-    for rev_id in from_history:
-        if not has_revision(to_branch, rev_id):
-            missing.append(rev_id)
-
-    # recurse down through the revision graph, looking for things that
-    # can't be found.
-    count = 0
-    while len(missing) > 0:
-        installed, failed = to_branch.install_revisions(from_branch, 
-                                                        revision_ids=missing,
-                                                        pb=pb)
-        count += installed
-        required_failed = failed.intersection(required_revisions)
-        if len(required_failed) > 0:
-            raise bzrlib.errors.InstallFailed(required_failed)
-        for rev_id in failed:
-            note("Failed to install %s" % rev_id)
-        all_failed.update(failed)
-        new_missing = set() 
-        for rev_id in missing:
-            try:
-                revision = from_branch.get_revision(rev_id)
-            except bzrlib.errors.NoSuchRevision:
-                if revision in from_history:
-                    raise
-                else:
-                    continue
-            for parent in [p.revision_id for p in revision.parents]:
-                if not has_revision(to_branch, parent):
-                    new_missing.add(parent)
-        missing = new_missing
-    return count, all_failed
-
-
-def old_install_revisions(branch, other, revision_ids, pb):
-    """Copy revisions from other branch into branch.
-
-    This is a lower-level function used by a pull or a merge.  It
-    incorporates some history from one branch into another, but
-    does not update the revision history or operate on the working
-    copy.
-
-    revision_ids
-        Sequence of revisions to copy.
-
-    pb
-        Progress bar for copying.
-    """
-    if False:
-        if hasattr(other.revision_store, "prefetch"):
-            other.revision_store.prefetch(revision_ids)
-        if hasattr(other.inventory_store, "prefetch"):
-            other.inventory_store.prefetch(revision_ids)
-
-    if pb is None:
-        pb = bzrlib.ui.ui_factory.progress_bar()
-
-    revisions = []
-    needed_texts = set()
-    i = 0
-
-    failures = set()
-    for i, rev_id in enumerate(revision_ids):
-        pb.update('fetching revision', i+1, len(revision_ids))
-        try:
-            rev = other.get_revision(rev_id)
-        except bzrlib.errors.NoSuchRevision:
-            failures.add(rev_id)
-            continue
-
-        revisions.append(rev)
-        inv = other.get_inventory(rev_id)
-        for key, entry in inv.iter_entries():
-            if entry.text_id is None:
-                continue
-            if entry.text_id not in branch.text_store:
-                needed_texts.add(entry.text_id)
-
-    pb.clear()
-
-    count, cp_fail = branch.text_store.copy_multi(other.text_store, 
-                                                needed_texts)
-    count, cp_fail = branch.inventory_store.copy_multi(other.inventory_store, 
-                                                     revision_ids)
-    count, cp_fail = branch.revision_store.copy_multi(other.revision_store, 
-                                                    revision_ids,
-                                                    permit_failure=True)
-    assert len(cp_fail) == 0 
-    return count, failures
-
-
