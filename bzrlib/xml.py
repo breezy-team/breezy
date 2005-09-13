@@ -23,9 +23,11 @@
 # ElementTree bits
 
 try:
-    from util.cElementTree import ElementTree, SubElement, Element
+    from util.cElementTree import (ElementTree, SubElement, Element,
+                                   XMLTreeBuilder)
 except ImportError:
-    from util.elementtree.ElementTree import ElementTree, SubElement, Element
+    from util.elementtree.ElementTree import (ElementTree, SubElement,
+                                              Element, XMLTreeBuilder)
 
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 from bzrlib.revision import Revision, RevisionReference        
@@ -39,6 +41,9 @@ class Serializer(object):
         elt = self._pack_inventory(inv)
         self._write_element(elt, f)
 
+    def read_inventory_from_string(self, xml_string):
+        return self._unpack_inventory(self._parse_string(xml_string))
+
     def read_inventory(self, f):
         return self._unpack_inventory(self._read_element(f))
 
@@ -48,6 +53,9 @@ class Serializer(object):
     def read_revision(self, f):
         return self._unpack_revision(self._read_element(f))
 
+    def read_revision_from_string(self, xml_string):
+        return self._unpack_revision(self._parse_string(xml_string))
+
     def _write_element(self, elt, f):
         ElementTree(elt).write(f, 'utf-8')
         f.write('\n')
@@ -55,6 +63,11 @@ class Serializer(object):
     def _read_element(self, f):
         return ElementTree().parse(f)
 
+    def _parse_string(self, xml_string):
+        parser = XMLTreeBuilder()
+        parser.feed(xml_string)
+        return parser.close()
+        
 
 
 class _Serializer_v4(Serializer):
