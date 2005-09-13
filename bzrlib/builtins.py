@@ -1284,9 +1284,27 @@ class cmd_shell_complete(Command):
         shellcomplete.shellcomplete(context)
 
 
+class cmd_fetch(Command):
+    """Copy in history from another branch but don't merge it.
+
+    This is an internal method used for pull and merge."""
+    hidden = True
+    takes_args = ['from_branch', 'to_branch']
+    def run(self, from_branch, to_branch):
+        from bzrlib.fetch import Fetcher
+        from bzrlib.branch import Branch
+        from_b = Branch(from_branch)
+        to_b = Branch(to_branch)
+        Fetcher(to_b, from_b)
+        
+
+
 class cmd_missing(Command):
     """What is missing in this branch relative to other branch.
     """
+    # TODO: rewrite this in terms of ancestry so that it shows only
+    # unmerged things
+    
     takes_args = ['remote?']
     aliases = ['mis', 'miss']
     # We don't have to add quiet to the list, because 
