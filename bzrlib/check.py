@@ -155,13 +155,13 @@ def check(branch):
                                     "by {%s}"
                                     % (rev_id, last_rev_id))
 
-            if rev.inventory_id != rev_id:
+            if hasattr(rev, 'inventory_id') and rev.inventory_id != rev_id:
                 mismatch_inv_id.append(rev_id)
 
             ## TODO: Check all the required fields are present on the revision.
 
             if rev.inventory_sha1:
-                inv_sha1 = branch.get_inventory_sha1(rev.inventory_id)
+                inv_sha1 = branch.get_inventory_sha1(rev_id)
                 if inv_sha1 != rev.inventory_sha1:
                     raise BzrCheckError('Inventory sha1 hash doesn\'t match'
                         ' value in revision {%s}' % rev_id)
@@ -169,7 +169,7 @@ def check(branch):
                 missing_inventory_sha_cnt += 1
                 mutter("no inventory_sha1 on revision {%s}" % rev_id)
 
-            inv = branch.get_inventory(rev.inventory_id)
+            inv = branch.get_inventory(rev_id)
             seen_ids = {}
             seen_names = {}
 

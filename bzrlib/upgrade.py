@@ -71,7 +71,7 @@ def upgrade(branch):
             updated = False
 
             if rev.inventory_sha1 is None:
-                rev.inventory_sha1 = branch.get_inventory_sha1(rev.inventory_id)
+                rev.inventory_sha1 = branch.get_inventory_sha1(rev_id)
                 updated = True
                 mutter("  set inventory_sha1 on {%s}" % rev_id)
 
