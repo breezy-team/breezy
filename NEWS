@@ -8,6 +8,9 @@ development head
       get added when you add a file in the directory.  Contributed by
       Michael Ellerman.
 
+    * Ignore .DS_Store (contains Mac metadata) by default.  Patch from
+      Nir Soffer.
+
 
   INTERNALS:
 
