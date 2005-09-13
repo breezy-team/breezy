@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import sys
 import os
 from cStringIO import StringIO
 
@@ -24,6 +23,7 @@ from bzrlib.branch import Branch, INVENTORY_FILEID, ANCESTRY_FILEID
 from bzrlib.progress import ProgressBar
 from bzrlib.xml5 import serializer_v5
 from bzrlib.osutils import sha_string, split_lines
+from bzrlib.errors import NoSuchRevision
 
 """Copying of history from one branch to another.
 
@@ -43,7 +43,10 @@ memory until we've updated all of the files referenced.
 # TODO: Avoid repeatedly opening weaves so many times.
 
 # XXX: This doesn't handle ghost (not present in branch) revisions at
-# all yet.
+# all yet.  I'm not sure they really should be supported.
+
+# TODO: This doesn't handle revisions which may be present but not
+# merged into the last revision.
 
 # - get a list of revisions that need to be pulled in
 # - for each one, pull in that revision file
@@ -70,31 +73,38 @@ class Fetcher(object):
     def __init__(self, to_branch, from_branch, revision_limit=None, pb=None):
         self.to_branch = to_branch
         self.from_branch = from_branch
-        self.revision_limit = revision_limit
         self.failed_revisions = []
         self.count_copied = 0
+        self.count_total = 0
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.progress_bar()
         else:
             self.pb = pb
-        self._load_histories()
+        self.revision_limit = self._find_revision_limit(revision_limit)
         revs_to_fetch = self._compare_ancestries()
         self._copy_revisions(revs_to_fetch)
 
-    def _load_histories(self):
-        """Load histories of both branches, up to the limit."""
-        self.from_history = self.from_branch.revision_history()
-        self.to_history = self.to_branch.revision_history()
-        if self.revision_limit:
-            assert isinstance(revision_limit, basestring)
-            try:
-                rev_index = self.from_history.index(revision_limit)
-            except ValueError:
-                rev_index = None
-            if rev_index is not None:
-                self.from_history = self.from_history[:rev_index + 1]
+        
+
+    def _find_revision_limit(self, revision_limit):
+        """Find the limiting source revision.
+
+        Every ancestor of that revision will be merged across.
+
+        Returns the revision_id, or returns None if there's no history
+        in the source branch."""
+        self.pb.update('get source history')
+        from_history = self.from_branch.revision_history()
+        self.pb.update('get destination history')
+        if revision_limit:
+            if revision_limit not in from_history:
+                raise NoSuchRevision(self.from_branch, revision_limit)
             else:
-                self.from_history = [revision]
+                return revision_limit
+        elif from_history:
+            return from_history[-1]
+        else:
+            return None                 # no history in the source branch
             
 
     def _compare_ancestries(self):
@@ -102,28 +112,33 @@ class Fetcher(object):
 
         That is, every revision that's in the ancestry of the source
         branch and not in the destination branch."""
-        if self.from_history:
-            self.from_ancestry = self.from_branch.get_ancestry(self.from_history[-1])
+        self.pb.update('get source ancestry')
+        self.from_ancestry = self.from_branch.get_ancestry(self.revision_limit)
+
+        dest_last_rev = self.to_branch.last_patch()
+        self.pb.update('get destination ancestry')
+        if dest_last_rev:
+            dest_ancestry = self.to_branch.get_ancestry(dest_last_rev)
         else:
-            self.from_ancestry = []
-        if self.to_history:
-            self.to_history = self.to_branch.get_ancestry(self.to_history[-1])
-        else:
-            self.to_history = []
-        ss = set(self.to_history)
+            dest_ancestry = []
+        ss = set(dest_ancestry)
         to_fetch = []
         for rev_id in self.from_ancestry:
             if rev_id not in ss:
                 to_fetch.append(rev_id)
                 mutter('need to get revision {%s}', rev_id)
         mutter('need to get %d revisions in total', len(to_fetch))
+        self.count_total = len(to_fetch)
         return to_fetch
                 
 
 
     def _copy_revisions(self, revs_to_fetch):
+        i = 0
         for rev_id in revs_to_fetch:
+            self.pb.update('fetch revision', i, self.count_total)
             self._copy_one_revision(rev_id)
+            i += 1                           
 
 
     def _copy_one_revision(self, rev_id):
