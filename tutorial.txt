@@ -289,8 +289,8 @@ remote copy using something like rsync.  You can also use bzr to fetch
 a copy.  Because this new copy is potentially a new branch, the
 command is called *branch*::
 
-    % bzr branch http://bazaar-ng.org/bzr/bzr.dev 
-    % cd bzr.dev
+    % bzr branch http://bazaar-ng.org/bzr/main ./bzr-main
+    % cd bzr-main
 
 This copies down the complete history of this branch, so we can
 do all operations on it locally: log, annotate, making and merging
