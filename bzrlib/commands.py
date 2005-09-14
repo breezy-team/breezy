@@ -25,6 +25,13 @@
 # would help with validation and shell completion.
 
 
+# TODO: Help messages for options.
+
+# TODO: Define arguments by objects, rather than just using names.
+# Those objects can specify the expected type of the argument, which
+# would help with validation and shell completion.
+
+
 
 import sys
 import os
@@ -352,8 +359,6 @@ def parse_spec(spec):
     else:
         parsed = [spec, None]
     return parsed
-
-
 
 
 # list of all available options; the rhs can be either None for an

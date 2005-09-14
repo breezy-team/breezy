@@ -185,7 +185,7 @@ class LocalBranch(Branch):
     def __init__(self, base, init=False, find_root=True):
         """Create new branch object at a particular location.
 
-        base -- Base directory for the branch.
+        base -- Base directory for the branch. May be a file:// url.
         
         init -- If True, create new control files in a previously
              unversioned directory.  If False, the branch must already
@@ -204,6 +204,8 @@ class LocalBranch(Branch):
         elif find_root:
             self.base = find_branch_root(base)
         else:
+            if base.startswith("file://"):
+                base = base[7:]
             self.base = os.path.realpath(base)
             if not isdir(self.controlfilename('.')):
                 raise NotBranchError("not a bzr branch: %s" % quotefn(base),
@@ -228,7 +230,6 @@ class LocalBranch(Branch):
             from bzrlib.warnings import warn
             warn("branch %r was not explicitly unlocked" % self)
             self._lock.unlock()
-
 
     def lock_write(self):
         if self._lock_mode:
@@ -816,11 +817,22 @@ class LocalBranch(Branch):
         """Pull in all new revisions from other branch.
         """
         from bzrlib.fetch import greedy_fetch
+        from bzrlib.revision import get_intervening_revisions
 
         pb = bzrlib.ui.ui_factory.progress_bar()
         pb.update('comparing histories')
 
-        revision_ids = self.missing_revisions(other, stop_revision)
+        try:
+            revision_ids = self.missing_revisions(other, stop_revision)
+        except DivergedBranches, e:
+            try:
+                if stop_revision is None:
+                    end_revision = other.last_patch()
+                revision_ids = get_intervening_revisions(self.last_patch(), 
+                                                         end_revision, other)
+                assert self.last_patch() not in revision_ids
+            except bzrlib.errors.NotAncestor:
+                raise e
 
         if len(revision_ids) > 0:
             count = greedy_fetch(self, other, revision_ids[-1], pb)[0]
@@ -1191,6 +1203,7 @@ class LocalBranch(Branch):
             raise InvalidRevisionNumber(revno)
         
         
+        
 
 
 class ScratchBranch(LocalBranch):
@@ -1343,6 +1356,4 @@ def copy_branch(branch_from, to_location, revision=None):
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)
     
-    from_location = branch_from.base
     br_to.set_parent(branch_from.base)
-

@@ -17,7 +17,6 @@
 
 """Tests of simple versioning operations"""
 
-# TODO: test adding a file whose directory is not versioned
 # TODO: test trying to commit within a directory that is not yet added
 
 
@@ -55,11 +54,11 @@ class TestVersioning(TestCaseInTempDir):
         self.assertEquals(delta.added[0][0], 'foo')
         self.failIf(delta.modified)
 
-    def test_add_in_unversioned(self):
+    def test_branch_add_in_unversioned(self):
         """Try to add a file in an unversioned directory.
 
-        smart_add may eventually add the parent as necessary, but simple
-        branch add doesn't do that.
+        "bzr add" adds the parent as necessary, but simple branch add
+        doesn't do that.
         """
         from bzrlib.branch import Branch
         from bzrlib.errors import NotVersionedError
@@ -75,7 +74,53 @@ class TestVersioning(TestCaseInTempDir):
         
         self.check_and_upgrade()
 
-        
+
+    def test_add_in_unversioned(self):
+        """Try to add a file in an unversioned directory.
+
+        "bzr add" should add the parent(s) as necessary.
+        """
+        from bzrlib.branch import Branch
+        from bzrlib.commands import run_bzr
+        eq = self.assertEqual
+
+        b = Branch('.', init=True)
+
+        self.build_tree(['inertiatic/', 'inertiatic/esp'])
+        eq(list(b.unknowns()), ['inertiatic'])
+        run_bzr(['add', 'inertiatic/esp'])
+        eq(list(b.unknowns()), [])
+
+        # Multiple unversioned parents
+        self.build_tree(['veil/', 'veil/cerpin/', 'veil/cerpin/taxt'])
+        eq(list(b.unknowns()), ['veil'])
+        run_bzr(['add', 'veil/cerpin/taxt'])
+        eq(list(b.unknowns()), [])
+
+        # Check whacky paths work
+        self.build_tree(['cicatriz/', 'cicatriz/esp'])
+        eq(list(b.unknowns()), ['cicatriz'])
+        run_bzr(['add', 'inertiatic/../cicatriz/esp'])
+        eq(list(b.unknowns()), [])
+
+    def test_add_in_versioned(self):
+        """Try to add a file in a versioned directory.
+
+        "bzr add" should do this happily.
+        """
+        from bzrlib.branch import Branch
+        from bzrlib.commands import run_bzr
+        eq = self.assertEqual
+
+        b = Branch('.', init=True)
+
+        self.build_tree(['inertiatic/', 'inertiatic/esp'])
+        eq(list(b.unknowns()), ['inertiatic'])
+        run_bzr(['add', '--no-recurse', 'inertiatic'])
+        eq(list(b.unknowns()), ['inertiatic/esp'])
+        run_bzr(['add', 'inertiatic/esp'])
+        eq(list(b.unknowns()), [])
+
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
         
@@ -130,7 +175,6 @@ class TestVersioning(TestCaseInTempDir):
         check(b)
         
 
-        
         
 class SubdirCommit(TestCaseInTempDir):
 

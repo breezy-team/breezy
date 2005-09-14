@@ -28,6 +28,7 @@ import gzip
 from cStringIO import StringIO
 import os
 import urllib2
+import urlparse
 
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.branch import Branch, BZR_BRANCH_FORMAT
@@ -83,8 +84,8 @@ def _find_remote_root(url):
     orig_url = url
     while True:
         try:
-            ff = get_url(url + '/.bzr/branch-format')
-
+            fmt_url = url + '/.bzr/branch-format'
+            ff = get_url(fmt_url)
             fmt = ff.read()
             ff.close()
 
@@ -97,12 +98,18 @@ def _find_remote_root(url):
         except urllib2.URLError:
             pass
 
-        try:
-            idx = url.rindex('/')
-        except ValueError:
-            raise BzrError('no branch root found for URL %s' % orig_url)
-
-        url = url[:idx]        
+        scheme, host, path = list(urlparse.urlparse(url))[:3]
+        # discard params, query, fragment
+        
+        # strip off one component of the path component
+        idx = path.rfind('/')
+        if idx == -1 or path == '/':
+            raise BzrError('no branch root found for URL %s'
+                           ' or enclosing directories'
+                           % orig_url)
+        path = path[:idx]
+        url = urlparse.urlunparse((scheme, host, path, '', '', ''))
+        
 
 
 class RemoteBranch(Branch):

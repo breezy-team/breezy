@@ -62,11 +62,10 @@ class cmd_status(Command):
     directory is shown.  Otherwise, only the status of the specified
     files or directories is reported.  If a directory is given, status
     is reported for everything inside that directory.
-
-    If a revision is specified, the changes since that revision are shown.
     """
+
     takes_args = ['file*']
-    takes_options = ['all', 'show-ids', 'revision']
+    takes_options = ['all', 'show-ids']
     aliases = ['st', 'stat']
     
     def run(self, all=False, show_ids=False, file_list=None):
@@ -145,8 +144,10 @@ class cmd_add(Command):
     Therefore simply saying 'bzr add' will version all files that
     are currently unknown.
 
-    TODO: Perhaps adding a file whose directly is not versioned should
-    recursively add that parent, rather than giving an error?
+    Adding a file whose parent directory is not versioned will
+    implicitly add the parent, and so on up to the root. This means
+    you should never need to explictly add a directory, they'll just
+    get added when you add a file in the directory.
     """
     takes_args = ['file*']
     takes_options = ['verbose', 'no-recurse']
@@ -274,8 +275,8 @@ class cmd_mv(Command):
             if len(names_list) != 2:
                 raise BzrCommandError('to mv multiple files the destination '
                                       'must be a versioned directory')
-            for pair in b.move(rel_names[0], rel_names[1]):
-                print "%s => %s" % pair
+            b.rename_one(rel_names[0], rel_names[1])
+            print "%s => %s" % (rel_names[0], rel_names[1])
             
     
 
