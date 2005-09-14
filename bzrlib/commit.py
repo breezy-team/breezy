@@ -26,6 +26,34 @@
 ## applies and recreates the right state.
 
 
+## This is not quite safe if the working copy changes during the
+## commit; for the moment that is simply not allowed.  A better
+## approach is to make a temporary copy of the files before
+## computing their hashes, and then add those hashes in turn to
+## the inventory.  This should mean at least that there are no
+## broken hash pointers.  There is no way we can get a snapshot
+## of the whole directory at an instant.  This would also have to
+## be robust against files disappearing, moving, etc.  So the
+## whole thing is a bit hard.
+
+## The newly committed revision is going to have a shape corresponding
+## to that of the working inventory.  Files that are not in the
+## working tree and that were in the predecessor are reported as
+## removed -- this can include files that were either removed from the
+## inventory or deleted in the working tree.  If they were only
+## deleted from disk, they are removed from the working inventory.
+
+## We then consider the remaining entries, which will be in the new
+## version.  Directory entries are simply copied across.  File entries
+## must be checked to see if a new version of the file should be
+## recorded.  For each parent revision inventory, we check to see what
+## version of the file was present.  If the file was present in at
+## least one tree, and if it was the same version in all the trees,
+## then we can just refer to that version.  Otherwise, a new version
+## representing the merger of the file versions must be added.
+
+
+
 
 
 import os
@@ -120,16 +148,6 @@ class Commit(object):
         store, then the inventory, then make a new revision pointing
         to that inventory and store that.
 
-        This is not quite safe if the working copy changes during the
-        commit; for the moment that is simply not allowed.  A better
-        approach is to make a temporary copy of the files before
-        computing their hashes, and then add those hashes in turn to
-        the inventory.  This should mean at least that there are no
-        broken hash pointers.  There is no way we can get a snapshot
-        of the whole directory at an instant.  This would also have to
-        be robust against files disappearing, moving, etc.  So the
-        whole thing is a bit hard.
-
         This raises PointlessCommit if there are no changes, no new merges,
         and allow_pointless  is false.
 
@@ -148,7 +166,6 @@ class Commit(object):
         """
 
         self.branch = branch
-        self.branch.lock_write()
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
@@ -172,6 +189,7 @@ class Commit(object):
         assert isinstance(message, basestring), type(message)
         self.message = message
 
+        self.branch.lock_write()
         try:
             # First walk over the working inventory; and both update that
             # and also build a new revision inventory.  The revision
@@ -191,6 +209,8 @@ class Commit(object):
             if self.rev_id is None:
                 self.rev_id = _gen_revision_id(self.branch, time.time())
 
+            self._remove_deletions()
+
             # TODO: update hashcache
             self.delta = compare_trees(self.basis_tree, self.work_tree,
                                        specific_files=self.specific_files)
@@ -202,6 +222,7 @@ class Commit(object):
 
             self.new_inv = self.basis_inv.copy()
 
+            ## FIXME: Don't write to stdout!
             self.delta.show(sys.stdout)
 
             self._remove_deleted()
@@ -218,6 +239,13 @@ class Commit(object):
             self.branch.set_pending_merges([])
         finally:
             self.branch.unlock()
+
+
+
+    def _remove_deletions(self):
+        """Remove deleted files from the working inventory."""
+        pass
+
 
 
     def _record_inventory(self):
