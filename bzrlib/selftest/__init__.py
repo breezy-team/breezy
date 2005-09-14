@@ -74,17 +74,12 @@ class TestCase(unittest.TestCase):
         
         self._log_file_name = name
 
-    def run(self, result):
-        self.apply_redirected(None, None, None,
-                              unittest.TestCase.run, self, result)
-        
     def tearDown(self):
         logging.getLogger('').removeHandler(self._log_hdlr)
         bzrlib.trace.enable_default_logging()
         logging.debug('%s teardown', self.id())
         self._log_file.close()
         unittest.TestCase.tearDown(self)
-
 
     def log(self, *args):
         logging.debug(*args)
