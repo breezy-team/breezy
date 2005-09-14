@@ -16,6 +16,9 @@
 
 import os
 from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.errors import NoCommonAncestor, NoCommits
+from bzrlib.branch import copy_branch
+from bzrlib.merge import merge
 
 class TestRevisionNamespaces(TestCaseInTempDir):
     def test_revision_namespaces(self):
@@ -45,3 +48,14 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         os.mkdir('newbranch')
         b2 = Branch('newbranch', init=True)
         self.assertEquals(b2.lookup_revision('revid:a@r-0-1'), 'a@r-0-1')
+
+        self.assertRaises(NoCommits, b2.lookup_revision, 'ancestor:.')
+        self.assertEquals(b.lookup_revision('ancestor:.'), 'a@r-0-3')
+        os.mkdir('copy')
+        b3 = copy_branch(b, 'copy')
+        b3.commit('Commit four', rev_id='b@r-0-4')
+        self.assertEquals(b3.lookup_revision('ancestor:.'), 'a@r-0-3')
+        merge(['copy', -1], [None, None])
+        b.commit('Commit five', rev_id='a@r-0-4')
+        self.assertEquals(b.lookup_revision('ancestor:copy'), 'b@r-0-4')
+        self.assertEquals(b3.lookup_revision('ancestor:.'), 'b@r-0-4')

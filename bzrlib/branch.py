@@ -1091,6 +1091,26 @@ class Branch(object):
                     return (i+1,)
     REVISION_NAMESPACES['date:'] = _namespace_date
 
+
+    def _namespace_ancestor(self, revs, revision):
+        from revision import common_ancestor, MultipleRevisionSources
+        other_branch = find_branch(_trim_namespace('ancestor', revision))
+        revision_a = self.last_patch()
+        revision_b = other_branch.last_patch()
+        for r, b in ((revision_a, self), (revision_b, other_branch)):
+            if r is None:
+                raise bzrlib.errors.NoCommits(b)
+        revision_source = MultipleRevisionSources(self, other_branch)
+        result = common_ancestor(revision_a, revision_b, revision_source)
+        try:
+            revno = self.revision_id_to_revno(result)
+        except bzrlib.errors.NoSuchRevision:
+            revno = None
+        return revno,result
+        
+
+    REVISION_NAMESPACES['ancestor:'] = _namespace_ancestor
+
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
@@ -1541,4 +1561,9 @@ def copy_branch(branch_from, to_location, revision=None):
     
     from_location = pull_loc(branch_from)
     br_to.set_parent(pull_loc(branch_from))
+    return br_to
 
+def _trim_namespace(namespace, spec):
+    full_namespace = namespace + ':'
+    assert spec.startswith(full_namespace)
+    return spec[len(full_namespace):]
