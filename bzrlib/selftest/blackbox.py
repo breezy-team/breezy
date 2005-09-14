@@ -123,31 +123,6 @@ class TestCommands(ExternalBase):
         self.assertEquals(list(b.unknowns()), [])
         assert file('.bzrignore', 'rb').read() == '*.blah\ngarh\n'
 
-    def test_revert(self):
-        self.runbzr('init')
-
-        file('hello', 'wt').write('foo')
-        self.runbzr('add hello')
-        self.runbzr('commit -m setup hello')
-
-        file('goodbye', 'wt').write('baz')
-        self.runbzr('add goodbye')
-        self.runbzr('commit -m setup goodbye')
-        
-        file('hello', 'wt').write('bar')
-        file('goodbye', 'wt').write('qux')
-        self.runbzr('revert hello')
-        self.check_file_contents('hello', 'foo')
-        self.check_file_contents('goodbye', 'qux')
-        self.runbzr('revert')
-        self.check_file_contents('goodbye', 'baz')
-
-        os.mkdir('revertdir')
-        self.runbzr('add revertdir')
-        self.runbzr('commit -m f')
-        os.rmdir('revertdir')
-        self.runbzr('revert')
-
     def skipped_test_mv_modes(self):
         """Test two modes of operation for mv"""
         from bzrlib.branch import Branch
@@ -192,6 +167,11 @@ class TestCommands(ExternalBase):
         self.check_file_contents('goodbye', 'qux')
         self.runbzr('revert')
         self.check_file_contents('goodbye', 'baz')
+        os.mkdir('revertdir')
+        self.runbzr('add revertdir')
+        self.runbzr('commit -m f')
+        os.rmdir('revertdir')
+        self.runbzr('revert')
 
     def test_merge(self):
         from bzrlib.branch import Branch
@@ -247,7 +227,6 @@ class TestCommands(ExternalBase):
         self.runbzr('pull ../a')
         assert a.revision_history()[-1] == b.revision_history()[-1]
         
-
     def test_add_reports(self):
         """add command prints the names of added files."""
         b = Branch('.', init=True)

@@ -640,7 +640,6 @@ class Branch(object):
                parameter which can be either an integer revno or a
                string hash."""
         from bzrlib.inventory import Inventory
-
         f = self.get_inventory_xml_file(inventory_id)
         return bzrlib.xml.serializer_v4.read_inventory(f)
 

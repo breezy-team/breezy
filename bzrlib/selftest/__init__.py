@@ -81,7 +81,6 @@ class TestCase(unittest.TestCase):
         self._log_file.close()
         unittest.TestCase.tearDown(self)
 
-
     def log(self, *args):
         logging.debug(*args)
 

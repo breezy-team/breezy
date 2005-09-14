@@ -174,7 +174,6 @@ class InventoryEntry(object):
                    self.kind,
                    self.parent_id))
 
-    
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
             return NotImplemented

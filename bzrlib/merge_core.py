@@ -203,6 +203,8 @@ def get_contents(entry, tree):
     tree_entry = tree.tree.inventory[entry.id]
     if tree_entry.kind == "file":
         return changeset.FileCreate(tree.get_file(entry.id).read())
+    elif tree_entry.kind == "symlink":
+        return changeset.SymlinkCreate(tree.get_symlink_target(entry.id))
     else:
         assert tree_entry.kind in ("root_directory", "directory")
         return changeset.dir_create

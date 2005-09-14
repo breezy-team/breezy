@@ -66,6 +66,7 @@ class TestIsAncestor(TestCaseInTempDir):
         assert is_ancestor(revisions[3], revisions_2[3], sources)
         assert not is_ancestor(revisions[3], revisions_2[3], br1)
 
+
 class TestIntermediateRevisions(TestCaseInTempDir):
 
     def setUp(self):
