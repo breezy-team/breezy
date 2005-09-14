@@ -576,7 +576,7 @@ class Branch(object):
         try:
             try:
                 return self.revision_store[revision_id]
-            except IndexError:
+            except KeyError:
                 raise bzrlib.errors.NoSuchRevision(self, revision_id)
         finally:
             self.unlock()
@@ -801,33 +801,35 @@ class Branch(object):
 
         pb = bzrlib.ui.ui_factory.progress_bar()
         pb.update('comparing histories')
-
+        if stop_revision is None:
+            other_revision = other.last_patch()
+        else:
+            other_revision = other.lookup_revision(stop_revision)
+        count = greedy_fetch(self, other, other_revision, pb)[0]
         try:
             revision_ids = self.missing_revisions(other, stop_revision)
         except DivergedBranches, e:
             try:
-                if stop_revision is None:
-                    end_revision = other.last_patch()
                 revision_ids = get_intervening_revisions(self.last_patch(), 
-                                                         end_revision, other)
+                                                         other_revision, self)
                 assert self.last_patch() not in revision_ids
             except bzrlib.errors.NotAncestor:
                 raise e
 
-        if len(revision_ids) > 0:
-            count = greedy_fetch(self, other, revision_ids[-1], pb)[0]
-        else:
-            count = 0
         self.append_revision(*revision_ids)
-        ## note("Added %d revisions." % count)
         pb.clear()
 
     def install_revisions(self, other, revision_ids, pb):
         if hasattr(other.revision_store, "prefetch"):
             other.revision_store.prefetch(revision_ids)
         if hasattr(other.inventory_store, "prefetch"):
-            inventory_ids = [other.get_revision(r).inventory_id
-                             for r in revision_ids]
+            inventory_ids = []
+            for rev_id in revision_ids:
+                try:
+                    revision = other.get_revision(rev_id).inventory_id
+                    inventory_ids.append(revision)
+                except bzrlib.errors.NoSuchRevision:
+                    pass
             other.inventory_store.prefetch(inventory_ids)
 
         if pb is None:
@@ -1080,6 +1082,26 @@ class Branch(object):
                 if first <= dt and (last is None or dt <= last):
                     return (i+1,)
     REVISION_NAMESPACES['date:'] = _namespace_date
+
+
+    def _namespace_ancestor(self, revs, revision):
+        from revision import common_ancestor, MultipleRevisionSources
+        other_branch = find_branch(_trim_namespace('ancestor', revision))
+        revision_a = self.last_patch()
+        revision_b = other_branch.last_patch()
+        for r, b in ((revision_a, self), (revision_b, other_branch)):
+            if r is None:
+                raise bzrlib.errors.NoCommits(b)
+        revision_source = MultipleRevisionSources(self, other_branch)
+        result = common_ancestor(revision_a, revision_b, revision_source)
+        try:
+            revno = self.revision_id_to_revno(result)
+        except bzrlib.errors.NoSuchRevision:
+            revno = None
+        return revno,result
+        
+
+    REVISION_NAMESPACES['ancestor:'] = _namespace_ancestor
 
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
@@ -1518,5 +1540,10 @@ def copy_branch(branch_from, to_location, revision=None):
     br_to.update_revisions(branch_from, stop_revision=revno)
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)
-    
     br_to.set_parent(branch_from.base)
+    return br_to
+
+def _trim_namespace(namespace, spec):
+    full_namespace = namespace + ':'
+    assert spec.startswith(full_namespace)
+    return spec[len(full_namespace):]

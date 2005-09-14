@@ -306,12 +306,7 @@ class cmd_pull(Command):
         import errno
         
         br_to = find_branch('.')
-        stored_loc = None
-        try:
-            stored_loc = br_to.controlfile("x-pull", "rb").read().rstrip('\n')
-        except IOError, e:
-            if e.errno != errno.ENOENT:
-                raise
+        stored_loc = br_to.get_parent()
         if location is None:
             if stored_loc is None:
                 raise BzrCommandError("No pull location known or specified.")
@@ -336,7 +331,7 @@ class cmd_pull(Command):
                 
             merge(('.', -1), ('.', old_revno), check_clean=False)
             if location != stored_loc:
-                br_to.controlfile("x-pull", "wb").write(location + "\n")
+                br_to.set_parent(location)
         finally:
             rmtree(cache_root)
 
@@ -1298,8 +1293,8 @@ class cmd_missing(Command):
                     print "Using last location: %s" % parent
                 remote = parent
         elif parent is None:
-            # We only update x-pull if it did not exist, missing should not change the parent
-            b.controlfile('x-pull', 'wb').write(remote + '\n')
+            # We only update parent if it did not exist, missing should not change the parent
+            b.set_parent(remote)
         br_remote = find_branch(remote)
 
         return show_missing(b, br_remote, verbose=verbose, quiet=quiet)

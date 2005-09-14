@@ -41,7 +41,7 @@ from inspect import getdoc
 import bzrlib
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
-from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
+from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
 from bzrlib.branch import find_branch
 from bzrlib import BZRDIR
 
@@ -642,10 +642,14 @@ def main(argv):
 
     try:
         try:
-            return run_bzr(argv[1:])
-        finally:
-            # do this here inside the exception wrappers to catch EPIPE
-            sys.stdout.flush()
+            try:
+                return run_bzr(argv[1:])
+            finally:
+                # do this here inside the exception wrappers to catch EPIPE
+                sys.stdout.flush()
+        #wrap common errors as CommandErrors.
+        except (NotBranchError,), e:
+            raise BzrCommandError(str(e))
     except BzrCommandError, e:
         # command line syntax error, etc
         log_error(str(e))
