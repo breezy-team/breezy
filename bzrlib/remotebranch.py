@@ -31,7 +31,7 @@ import urllib2
 import urlparse
 
 from bzrlib.errors import BzrError, BzrCheckError
-from bzrlib.branch import Branch, BZR_BRANCH_FORMAT
+from bzrlib.branch import Branch, LocalBranch, BZR_BRANCH_FORMAT
 from bzrlib.trace import mutter
 from bzrlib.xml import serializer_v4
 
@@ -112,7 +112,7 @@ def _find_remote_root(url):
         
 
 
-class RemoteBranch(Branch):
+class RemoteBranch(LocalBranch):
     def __init__(self, baseurl, find_root=True):
         """Create new proxy for a remote branch."""
         if find_root:
