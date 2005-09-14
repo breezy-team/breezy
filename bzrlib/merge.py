@@ -47,10 +47,20 @@ class MergeConflictHandler(ExceptionConflictHandler):
     conflict that are not explicitly handled cause an exception and
     terminate the merge.
     """
-    def __init__(self, ignore_zero=False):
+    def __init__(self, this_branch, this_tree, base_tree, other_tree, 
+                 ignore_zero=False):
         ExceptionConflictHandler.__init__(self)
+        self.this_branch = this_branch
+        self.this_tree = this_tree
+        self.base_tree = base_tree
+        self.other_tree = other_tree
         self.conflicts = 0
         self.ignore_zero = ignore_zero
+        self.inventory_changes = []
+
+    def inventory_add(self, id, path):
+        self.this_branch.inventory.add([path])
+        self.inventory_changes[id] = path
 
     def copy(self, source, dest):
         """Copy the text and mode of a file
@@ -68,6 +78,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
         :param source: The path of the file to copy
         :param dest: The distination file to create
         """
+        self.clear_path(dest)
         d_file = file(dest, "wb")
         for line in lines:
             d_file.write(line)
@@ -110,6 +121,32 @@ class MergeConflictHandler(ExceptionConflictHandler):
         self.dump(other_lines, this_path+".OTHER")
         os.rename(new_file, this_path)
         self.conflict("Diff3 conflict encountered in %s" % this_path)
+
+    def invent_path(self, file_id, create_dir=False):
+        """Copies as much of the path as possible from this_tree, substituting
+        pathname elements from other_tree where necessary.
+        """
+        path = self.this_tree.id2path()
+        if path is not None:
+            return this_tree.abspath(path)
+        else:
+            ie = other.inventory[file_id]
+            parent_dir = self.invent_path(ie.parent_id, create_dir=True)
+            path = os.path.join(parent_dir, ie.name)
+            if create_dir:
+                add_dir(self, file_id, path)
+
+    def add_dir(self, file_id, path):
+        self.clear_path(path)
+        os.path.mkdir(path)
+        self.this_branch.add([path], [file_id])
+        self.inventory_change[file_id] = path
+
+    def missing_for_merge(self, file_id, other_path):
+        try:
+            path = self.invent_path(file_id)
+            self.clear_path()
+            self.dump(self.base_tree.get_file(file_id), path)
 
     def new_contents_conflict(self, filename, other_contents):
         """Conflicting contents for newly added file."""
@@ -201,6 +238,9 @@ class MergeTree(object):
         if file_id == self.tree.inventory.root.file_id:
             return True
         return self.tree.inventory.has_id(file_id)
+
+    def abspath(self, filename):
+        return self.tree.filename
 
     def readonly_path(self, id):
         if id not in self.tree:
@@ -350,9 +390,10 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
     def get_inventory(tree):
         return tree.tree.inventory
 
+    handler = MergeConflictHander(this_branch, this_tree, base_tree, 
+                                  other_tree, ignore_zero=ignore_zero)
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
-                             generate_cset_optimized, get_inventory,
-                             MergeConflictHandler(ignore_zero=ignore_zero),
+                             generate_cset_optimized, get_inventory, handler,
                              merge_factory=merge_factory, 
                              interesting_ids=interesting_ids)
 
