@@ -240,7 +240,7 @@ class MergeBuilder(object):
         os.chmod(tree.full_path(id), mode)
 
     def merge_changeset(self, merge_factory):
-        conflict_handler = changeset.ExceptionConflictHandler(self.this.dir)
+        conflict_handler = changeset.ExceptionConflictHandler()
         return make_merge_changeset(self.cset, self.this, self.base,
                                     self.other, conflict_handler,
                                     merge_factory)

@@ -47,8 +47,8 @@ class MergeConflictHandler(ExceptionConflictHandler):
     conflict that are not explicitly handled cause an exception and
     terminate the merge.
     """
-    def __init__(self, dir, ignore_zero=False):
-        ExceptionConflictHandler.__init__(self, dir)
+    def __init__(self, ignore_zero=False):
+        ExceptionConflictHandler.__init__(self)
         self.conflicts = 0
         self.ignore_zero = ignore_zero
 
@@ -352,8 +352,7 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
                              generate_cset_optimized, get_inventory,
-                             MergeConflictHandler(base_tree.root,
-                                                  ignore_zero=ignore_zero),
+                             MergeConflictHandler(ignore_zero=ignore_zero),
                              merge_factory=merge_factory, 
                              interesting_ids=interesting_ids)
 
