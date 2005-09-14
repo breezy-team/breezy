@@ -178,3 +178,8 @@ class SubdirCommit(TestCaseInTempDir):
         
         # TODO: factor out some kind of assert_tree_state() method
         
+
+if __name__ == '__main__':
+    import unittest
+    unittest.main()
+    
