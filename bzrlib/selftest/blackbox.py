@@ -172,6 +172,11 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m f')
         os.rmdir('revertdir')
         self.runbzr('revert')
+        os.symlink('/unlikely/to/exist', 'symlink')
+        self.runbzr('add symlink')
+        self.runbzr('commit -m f')
+        os.unlink('symlink')
+        self.runbzr('revert')
 
     def test_merge(self):
         from bzrlib.branch import Branch
