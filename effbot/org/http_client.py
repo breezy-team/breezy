@@ -36,25 +36,32 @@ class Redirect(CloseConnection):
     def __init__(self, location):
         self.location = location
 
-class Request(object):
-    """This keeps track of all the information for a single request.
-    """
+##
+# Asynchronous HTTP/1.1 client.
+
+class async_http(asyncore.dispatcher_with_send):
+    # asynchronous http client
 
     user_agent = "http_client.py 1.2 (http://effbot.org/zone)"
     http_version = "1.1"
+
     proxies = urllib.getproxies()
 
     def __init__(self, uri, consumer, extra_headers=None):
-        self.consumer = consumer
+        asyncore.dispatcher_with_send.__init__(self)
+
         # turn the uri into a valid request
         scheme, host, path, params, query, fragment = urlparse.urlparse(uri)
 
-        self.scheme = scheme
+        # use origin host
         self.host = host
 
         # get proxy settings, if any
         proxy = self.proxies.get(scheme)
-        self.proxy = proxy
+        if proxy:
+            scheme, host, x, x, x, x = urlparse.urlparse(proxy)
+
+        assert scheme == "http", "only supports HTTP requests (%s)" % scheme
 
         if not path:
             path = "/"
@@ -67,11 +74,15 @@ class Request(object):
 
         self.path = path
 
-        # It turns out Content-Length isn't sufficient
-        # to allow pipelining. Simply required.
-        # So we will be extra stingy, and require the
-        # response to also be HTTP/1.1 to enable pipelining
-        self.http_1_1 = False
+        # get port number
+        try:
+            host, port = host.split(":", 1)
+            port = int(port)
+        except (TypeError, ValueError):
+            port = 80 # default port
+
+        self.consumer = consumer
+
         self.status = None
         self.header = None
 
@@ -90,10 +101,14 @@ class Request(object):
         self.timestamp = time.time()
 
         self.extra_headers = extra_headers
-        self.requested = False
 
-    def http_request(self, conn):
-        """Place the actual http request on the server"""
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            self.connect((host, port))
+        except socket.error:
+            self.consumer.http(0, self, sys.exc_info())
+
+    def handle_connect(self):
         # connection succeeded
 
         request = [
@@ -101,7 +116,7 @@ class Request(object):
             "Host: %s" % self.host,
             ]
 
-        if False and GzipConsumer:
+        if GzipConsumer:
             request.append("Accept-Encoding: gzip")
 
         if self.extra_headers:
@@ -116,18 +131,21 @@ class Request(object):
 
         request = string.join(request, "\r\n") + "\r\n\r\n"
 
-        conn.send(request)
+        self.send(request)
 
         self.bytes_out = self.bytes_out + len(request)
-        self.requested = True
 
-    def add_data(self, data):
-        """Some data has been downloaded, let the consumer know.
-        :return: True- download is completed, there may be extra data in self.data which
-                       should be transfered to the next item
-                 False- download failed
-                 None- continue downloading
-        """
+    def handle_expt(self):
+        # connection failed (windows); notify consumer
+
+        if sys.platform == "win32":
+            self.close()
+            self.consumer.http(0, self)
+
+    def handle_read(self):
+        # handle incoming data
+
+        data = self.recv(2048)
 
         self.data = self.data + data
         self.bytes_in = self.bytes_in + len(data)
@@ -147,11 +165,6 @@ class Request(object):
                 self.status = fp.readline().split(" ", 2)
                 self.header = mimetools.Message(fp)
 
-                if self.status[0] == 'HTTP/1.1':
-                    self.http_1_1 = True
-                else:
-                    self.http_1_1 = False
-
                 # get http headers
                 self.content_type = self.header.get("content-type")
                 try:
@@ -160,13 +173,12 @@ class Request(object):
                         )
                 except (ValueError, TypeError):
                     self.content_length = None
-                self.original_content_length = self.content_length
                 self.transfer_encoding = self.header.get("transfer-encoding")
                 self.content_encoding = self.header.get("content-encoding")
 
-                # if self.content_encoding == "gzip":
-                #     # FIXME: report error if GzipConsumer is not available
-                #     self.consumer = GzipConsumer(self.consumer)
+                if self.content_encoding == "gzip":
+                    # FIXME: report error if GzipConsumer is not available
+                    self.consumer = GzipConsumer(self.consumer)
 
                 try:
                     self.consumer.http(1, self)
@@ -176,9 +188,11 @@ class Request(object):
                         do_request(
                             v.location, self.consumer, self.extra_headers
                             )
-                    return True
+                    self.close()
+                    return
                 except CloseConnection:
-                    return False
+                    self.close()
+                    return
 
             if self.transfer_encoding == "chunked" and self.chunk_size is None:
 
@@ -196,8 +210,7 @@ class Request(object):
                     if self.chunk_size <= 0:
                         raise ValueError
                 except ValueError:
-                    self.consumer.close()
-                    return False
+                    return self.handle_close()
 
             if not self.data:
                 return
@@ -206,12 +219,6 @@ class Request(object):
             self.data = ""
 
             chunk_size = self.chunk_size or len(data)
-
-            # Make sure to only feed the consumer whatever is left for
-            # this file.
-            if self.content_length:
-                if chunk_size > self.content_length:
-                    chunk_size = self.content_length
 
             if chunk_size < len(data):
                 self.data = data[chunk_size:]
@@ -228,160 +235,19 @@ class Request(object):
             if self.content_length:
                 self.content_length -= chunk_size
                 if self.content_length <= 0:
-                    self.consumer.close()
-                    return True
-
-
-##
-# Asynchronous HTTP/1.1 client.
-
-class async_http(asyncore.dispatcher_with_send):
-    """Asynchronous HTTP client.
-    This client keeps a queue of files to download, and
-    tries to asynchronously (and pipelined) download them,
-    alerting the consumer as bits are downloaded.
-    """
-
-    max_requests = 4
-
-    def __init__(self, scheme, host):
-        """Connect to the given host, extra requests are made on the
-        add_request member function.
-
-        :param scheme: The connection method, such as http/https, currently
-                       we only support http
-        :param host:   The host to connect to, either a proxy, or the actual host.
-        """
-        asyncore.dispatcher_with_send.__init__(self)
-
-        # use origin host
-        self.scheme = scheme
-        self.host = host
-
-        assert scheme == "http", "only supports HTTP requests (%s)" % scheme
-
-        self._connected = False
-        self._queue = []
-        self._current = None
-
-    def _connect(self):
-        # get port number
-        host = self.host
-        try:
-            host, port = self.host.split(":", 1)
-            port = int(port)
-        except (TypeError, ValueError):
-            port = 80 # default port
-
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            self.connect((host, port))
-            self._connected = True
-        except socket.error:
-            self.handle_error()
-
-    def _close(self):
-        if self._connected:
-            self.close()
-        self._connected = False
-
-    def _request_next(self):
-        extra_data = None
-        if self._current:
-            extra_data = self._current.data
-        if len(self._queue) > 0:
-            self._current = self._queue.pop(0)
-            if not self._current.requested:
-                self._current.http_request(self)
-            if extra_data:
-                self._update_current(extra_data)
-        else:
-            # TODO: Consider some sort of delayed closing,
-            # rather than closing the instant the
-            # queue is empty. But I don't know any way
-            # under async_core to be alerted at a later time.
-            # If this were a thread, I would sleep, waking
-            # up to check for more work, and eventually timing
-            # out and disconnecting.
-            self._close()
-
-    def _update_current(self, data):
-        res = self._current.add_data(data)
-        if res is None:
-            # Downloading is continuing
-            if self._current.original_content_length and self._current.http_1_1:
-                # We can pipeline our requests, since we
-                # are getting a content_length count back
-                for i, r in enumerate(self._queue[:self.max_requests-1]):
-                    if not r.requested:
-                        r.http_request(self)
-            return
-        if res:
-            # We finished downloading the last file
-            self._request_next()
-        else:
-            # There was a failure
-            self.handle_error()
-
-    def add_request(self, request):
-        """Add a new Request into the queue."""
-        self._queue.append(request)
-        if not self._connected:
-            self._connect()
-
-    def handle_connect(self):
-        self._request_next()
-
-    def handle_expt(self):
-        # connection failed (windows); notify consumer
-        assert self._current
-
-        if sys.platform == "win32":
-            self._close()
-            self._current.consumer.http(0, self._current)
-
-    def handle_read(self):
-        # handle incoming data
-        assert self._current
-
-        data = self.recv(2048)
-
-        self._update_current(data)
-
+                    return self.handle_close()
 
     def handle_close(self):
-        """When does this event occur? Is it okay to start the next entry in the queue
-        (possibly reconnecting), or is this an indication that we should stop?
-        """
-        if self._current:
-            self._current.consumer.close()
-        self._close()
-        if len(self._queue) > 0:
-            self._connect()
+        self.consumer.close()
+        self.close()
 
     def handle_error(self):
-        if self._current:
-            self._current.consumer.http(0, self._current, sys.exc_info())
-        # Should this be broadcast to all other items waiting in the queue?
-        self._close()
-
-_connections = {}
+        self.consumer.http(0, self, sys.exc_info())
+        self.close()
 
 def do_request(uri, consumer, extra_headers=None):
-    global _connections
-    request = Request(uri, consumer, extra_headers)
 
-    scheme = request.scheme
-    host = request.host
-    if request.proxy:
-        host = request.proxy
-    key = (scheme, host)
-    if not _connections.has_key(key):
-        _connections[key] = async_http(scheme, host)
-
-    _connections[key].add_request(request)
-
-    return request
+    return async_http(uri, consumer, extra_headers)
 
 if __name__ == "__main__":
     class dummy_consumer:
@@ -390,13 +256,13 @@ if __name__ == "__main__":
             print "feed", repr(data[:20]), repr(data[-20:]), len(data)
         def close(self):
             print "close"
-        def http(self, ok, connection, *args, **kwargs):
-            print ok, connection, args, kwargs
+        def http(self, ok, connection, **args):
+            print ok, connection, args
             print "status", connection.status
             print "header", connection.header
-    if len(sys.argv) < 2:
-        do_request('http://www.cnn.com/', dummy_consumer())
-    else:
-        for url in sys.argv[1:]:
-            do_request(url, dummy_consumer())
+    try:
+        url = sys.argv[1]
+    except IndexError:
+        url = "http://www.cnn.com/"
+    do_request(url, dummy_consumer())
     asyncore.loop()
