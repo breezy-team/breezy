@@ -30,24 +30,24 @@ WARNING: This is an unstable development version.
 
 Basic commands:
 
-  bzr init      makes this branch versioned
-  bzr branch    make a copy of another branch
+  bzr init           makes this directory a versioned branch
+  bzr branch         make a copy of another branch
 
-  bzr add       make files or directories versioned
-  bzr ignore    ignore a file or pattern
-  bzr mv        move or rename a versioned file
+  bzr add            make files or directories versioned
+  bzr ignore         ignore a file or pattern
+  bzr mv             move or rename a versioned file
 
-  bzr status    summarize changes in working copy
-  bzr diff      show detailed diffs
+  bzr status         summarize changes in working copy
+  bzr diff           show detailed diffs
 
-  bzr merge     pull in changes from another branch
-  bzr commit    
+  bzr merge          pull in changes from another branch
+  bzr commit         commit changes from working copy
 
-  bzr log       show history of changes
-  bzr check     validate storage
+  bzr log            show history of changes
+  bzr check          validate storage
 
-Use e.g. 'bzr help init' for more details, or
-'bzr help commands' for all commands.
+  bzr help init      more help on e.g. init command
+  bzr help commands  list all commands
 """
 
 
