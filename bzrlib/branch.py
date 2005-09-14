@@ -392,10 +392,8 @@ class Branch(object):
         
         mutter('wrote working inventory')
             
-
     inventory = property(read_working_inventory, _write_inventory, None,
                          """Inventory for the working copy.""")
-
 
     def add(self, files, ids=None):
         """Make files versioned.
@@ -1409,8 +1407,6 @@ class ScratchBranch(Branch):
         copytree(self.base, base, symlinks=True)
         return ScratchBranch(base=base)
 
-
-        
     def __del__(self):
         self.destroy()
 
