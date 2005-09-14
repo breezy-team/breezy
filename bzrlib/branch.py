@@ -576,7 +576,7 @@ class Branch(object):
         try:
             try:
                 return self.revision_store[revision_id]
-            except KeyError:
+            except (IndexError, KeyError):
                 raise bzrlib.errors.NoSuchRevision(self, revision_id)
         finally:
             self.unlock()

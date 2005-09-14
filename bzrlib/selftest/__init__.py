@@ -322,6 +322,7 @@ def test_suite():
                    'bzrlib.selftest.blackbox',
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
+                   'bzrlib.selftest.testremotebranch',
                    'bzrlib.selftest.testrevision',
                    'bzrlib.selftest.test_merge_core',
                    'bzrlib.selftest.test_smart_add',
