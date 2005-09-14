@@ -232,8 +232,8 @@ class TestCommands(ExternalBase):
         os.chdir('b')
         self.runbzr('commit -m blah --unchanged')
         os.chdir('../a')
-        a = Branch('.')
-        b = Branch('../b')
+        a = Branch.open('.')
+        b = Branch.open('../b')
         assert a.revision_history() == b.revision_history()[:-1]
         self.runbzr('pull ../b')
         assert a.revision_history() == b.revision_history()

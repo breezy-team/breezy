@@ -84,7 +84,7 @@ class TestVersioning(TestCaseInTempDir):
         from bzrlib.commands import run_bzr
         eq = self.assertEqual
 
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         eq(list(b.unknowns()), ['inertiatic'])
@@ -112,7 +112,7 @@ class TestVersioning(TestCaseInTempDir):
         from bzrlib.commands import run_bzr
         eq = self.assertEqual
 
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         eq(list(b.unknowns()), ['inertiatic'])
