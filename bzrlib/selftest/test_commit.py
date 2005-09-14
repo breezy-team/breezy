@@ -50,9 +50,30 @@ class TestCommit(TestCaseInTempDir):
 
     def test_delete_commit(self):
         """Test a commit with a deleted file"""
+        b = Branch('.', init=True)
+        file('hello', 'w').write('hello world')
+        b.add(['hello'], ['hello-id'])
+        b.commit(message='add hello')
+
+        os.remove('hello')
+        b.commit('removed hello', rev_id='rev2')
+
+        tree = b.revision_tree('rev2')
+        self.assertFalse(tree.has_id('hello-id'))
+
 
     def test_removed_commit(self):
         """Test a commit with a removed file"""
+        b = Branch('.', init=True)
+        file('hello', 'w').write('hello world')
+        b.add(['hello'], ['hello-id'])
+        b.commit(message='add hello')
+
+        b.remove('hello')
+        b.commit('removed hello', rev_id='rev2')
+
+        tree = b.revision_tree('rev2')
+        self.assertFalse(tree.has_id('hello-id'))
 
 
 if __name__ == '__main__':
