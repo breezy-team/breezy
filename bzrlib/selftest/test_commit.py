@@ -20,6 +20,7 @@ import os
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.commit import Commit
+from bzrlib.errors import PointlessCommit
 
 
 class TestCommit(TestCaseInTempDir):
@@ -60,6 +61,20 @@ class TestCommit(TestCaseInTempDir):
 
         tree = b.revision_tree('rev2')
         self.assertFalse(tree.has_id('hello-id'))
+
+
+    def test_commit_empty(self):
+        b = Branch('.', init=True)
+        b.commit(message='empty tree', allow_pointless=True)
+        ##self.assertRaises(PointlessCommit,
+        ##                  b.commit,
+        ##                  message='empty tree')
+        b.commit(message='empty tree', allow_pointless=True)
+        self.assertEquals(b.revno(), 2)
+
+
+    def test_selective_delete(self):
+        """Selective commit in tree with deletions"""
 
 
     def test_removed_commit(self):
