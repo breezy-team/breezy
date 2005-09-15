@@ -22,12 +22,16 @@
 # importing this module is fairly slow because it has to load several
 # ElementTree bits
 
+from bzrlib.trace import mutter, warning
+
 try:
     from util.cElementTree import (ElementTree, SubElement, Element,
-                                   XMLTreeBuilder)
+                                   XMLTreeBuilder, fromstring, tostring)
 except ImportError:
+    warning('using slower ElementTree; consider installing cElementTree')
     from util.elementtree.ElementTree import (ElementTree, SubElement,
-                                              Element, XMLTreeBuilder)
+                                              Element, XMLTreeBuilder,
+                                              fromstring, tostring)
 
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 from bzrlib.revision import Revision, RevisionReference        
@@ -41,8 +45,11 @@ class Serializer(object):
         elt = self._pack_inventory(inv)
         self._write_element(elt, f)
 
+    def write_inventory_to_string(self, inv):
+        return tostring(self._pack_inventory(inv))
+
     def read_inventory_from_string(self, xml_string):
-        return self._unpack_inventory(self._parse_string(xml_string))
+        return self._unpack_inventory(fromstring(xml_string))
 
     def read_inventory(self, f):
         return self._unpack_inventory(self._read_element(f))
@@ -50,11 +57,14 @@ class Serializer(object):
     def write_revision(self, rev, f):
         self._write_element(self._pack_revision(rev), f)
 
+    def write_revision_to_string(self, rev):
+        return tostring(self._pack_revision(rev), f)
+
     def read_revision(self, f):
         return self._unpack_revision(self._read_element(f))
 
     def read_revision_from_string(self, xml_string):
-        return self._unpack_revision(self._parse_string(xml_string))
+        return self._unpack_revision(fromstring(xml_string))
 
     def _write_element(self, elt, f):
         ElementTree(elt).write(f, 'utf-8')
@@ -62,12 +72,6 @@ class Serializer(object):
 
     def _read_element(self, f):
         return ElementTree().parse(f)
-
-    def _parse_string(self, xml_string):
-        parser = XMLTreeBuilder()
-        parser.feed(xml_string)
-        return parser.close()
-        
 
 
 class _Serializer_v4(Serializer):

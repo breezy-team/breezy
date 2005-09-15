@@ -1,66 +1,55 @@
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-## XXX: Can we do any better about making interrupted commits change
-## nothing?
+# XXX: Can we do any better about making interrupted commits change
+# nothing?  Perhaps the best approach is to integrate commit of
+# AtomicFiles with releasing the lock on the Branch.
 
-## XXX: If we merged two versions of a file then we still need to
-## create a new version representing that merge, even if it didn't
-## change from the parent.
+# TODO: Separate 'prepare' phase where we find a list of potentially
+# committed files.  We then can then pause the commit to prompt for a
+# commit message, knowing the summary will be the same as what's
+# actually used for the commit.  (But perhaps simpler to simply get
+# the tree status, then use that for a selective commit?)
 
-## TODO: Read back the just-generated changeset, and make sure it
-## applies and recreates the right state.
+# The newly committed revision is going to have a shape corresponding
+# to that of the working inventory.  Files that are not in the
+# working tree and that were in the predecessor are reported as
+# removed --- this can include files that were either removed from the
+# inventory or deleted in the working tree.  If they were only
+# deleted from disk, they are removed from the working inventory.
 
+# We then consider the remaining entries, which will be in the new
+# version.  Directory entries are simply copied across.  File entries
+# must be checked to see if a new version of the file should be
+# recorded.  For each parent revision inventory, we check to see what
+# version of the file was present.  If the file was present in at
+# least one tree, and if it was the same version in all the trees,
+# then we can just refer to that version.  Otherwise, a new version
+# representing the merger of the file versions must be added.
 
-## This is not quite safe if the working copy changes during the
-## commit; for the moment that is simply not allowed.  A better
-## approach is to make a temporary copy of the files before
-## computing their hashes, and then add those hashes in turn to
-## the inventory.  This should mean at least that there are no
-## broken hash pointers.  There is no way we can get a snapshot
-## of the whole directory at an instant.  This would also have to
-## be robust against files disappearing, moving, etc.  So the
-## whole thing is a bit hard.
-
-## The newly committed revision is going to have a shape corresponding
-## to that of the working inventory.  Files that are not in the
-## working tree and that were in the predecessor are reported as
-## removed -- this can include files that were either removed from the
-## inventory or deleted in the working tree.  If they were only
-## deleted from disk, they are removed from the working inventory.
-
-## We then consider the remaining entries, which will be in the new
-## version.  Directory entries are simply copied across.  File entries
-## must be checked to see if a new version of the file should be
-## recorded.  For each parent revision inventory, we check to see what
-## version of the file was present.  If the file was present in at
-## least one tree, and if it was the same version in all the trees,
-## then we can just refer to that version.  Otherwise, a new version
-## representing the merger of the file versions must be added.
-
-
+# TODO: Update hashcache before and after - or does the WorkingTree
+# look after that?
 
 
 
 import os
 import sys
 import time
-import tempfile
-import sha
+import pdb
 
 from binascii import hexlify
 from cStringIO import StringIO
@@ -68,14 +57,14 @@ from cStringIO import StringIO
 from bzrlib.osutils import (local_time_offset, username,
                             rand_bytes, compact_date, user_email,
                             kind_marker, is_inside_any, quotefn,
-                            sha_string, sha_strings, sha_file, isdir, isfile)
+                            sha_string, sha_strings, sha_file, isdir, isfile,
+                            split_lines)
 from bzrlib.branch import gen_file_id, INVENTORY_FILEID, ANCESTRY_FILEID
 from bzrlib.errors import BzrError, PointlessCommit
 from bzrlib.revision import Revision, RevisionReference
 from bzrlib.trace import mutter, note
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory
-from bzrlib.delta import compare_trees
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.atomicfile import AtomicFile
@@ -166,6 +155,7 @@ class Commit(object):
         """
 
         self.branch = branch
+        self.weave_store = branch.weave_store
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
@@ -175,6 +165,11 @@ class Commit(object):
         else:
             self.timestamp = long(timestamp)
             
+        if rev_id is None:
+            self.rev_id = _gen_revision_id(self.branch, self.timestamp)
+        else:
+            self.rev_id = rev_id
+
         if committer is None:
             self.committer = username(self.branch)
         else:
@@ -191,14 +186,6 @@ class Commit(object):
 
         self.branch.lock_write()
         try:
-            # First walk over the working inventory; and both update that
-            # and also build a new revision inventory.  The revision
-            # inventory needs to hold the text-id, sha1 and size of the
-            # actual file versions committed in the revision.  (These are
-            # not present in the working inventory.)  We also need to
-            # detect missing/deleted files, and remove them from the
-            # working inventory.
-
             self.work_tree = self.branch.working_tree()
             self.work_inv = self.work_tree.inventory
             self.basis_tree = self.branch.basis_tree()
@@ -206,32 +193,22 @@ class Commit(object):
 
             self._gather_parents()
 
-            if self.rev_id is None:
-                self.rev_id = _gen_revision_id(self.branch, time.time())
-
-            self._remove_deletions()
+            any_deletions = self._remove_deleted()
+            self.new_inv = self.work_inv.copy()
+            any_changes = self._store_files()
+            self._report_deletes()
 
             # TODO: update hashcache
-            self.delta = compare_trees(self.basis_tree, self.work_tree,
-                                       specific_files=self.specific_files)
-
-            if not (self.delta.has_changed()
-                    or self.allow_pointless
+            if not (self.allow_pointless
+                    or any_changes
+                    or any_deletions
                     or len(self.parents) != 1):
                 raise PointlessCommit()
 
-            self.new_inv = self.basis_inv.copy()
-
-            ## FIXME: Don't write to stdout!
-            self.delta.show(sys.stdout)
-
-            self._remove_deleted()
-            self._store_files()
-
-            self.branch._write_inventory(self.work_inv)
+            if any_deletions:
+                self.branch._write_inventory(self.work_inv)
             self._record_inventory()
             self._record_ancestry()
-
             self._make_revision()
             note('committted r%d {%s}', (self.branch.revno() + 1),
                  self.rev_id)
@@ -242,28 +219,17 @@ class Commit(object):
 
 
 
-    def _remove_deletions(self):
-        """Remove deleted files from the working inventory."""
-        pass
-
-
-
     def _record_inventory(self):
         """Store the inventory for the new revision."""
-        inv_tmp = StringIO()
-        serializer_v5.write_inventory(self.new_inv, inv_tmp)
-        inv_tmp.seek(0)
-        self.inv_sha1 = sha_string(inv_tmp.getvalue())
-        inv_lines = inv_tmp.readlines()
-        self.branch.weave_store.add_text(INVENTORY_FILEID, self.rev_id,
-                                         inv_lines, self.parents)
+        inv_text = serializer_v5.write_inventory_to_string(self.new_inv)
+        self.inv_sha1 = sha_string(inv_text)
+        self.weave_store.add_text(INVENTORY_FILEID, self.rev_id,
+                                         split_lines(inv_text), self.parents)
 
 
     def _record_ancestry(self):
         """Append merged revision ancestry to the ancestry file."""
-        if len(self.parents) > 1:
-            raise NotImplementedError("sorry, can't commit merges yet")
-        w = self.branch.weave_store.get_weave_or_empty(ANCESTRY_FILEID)
+        w = self.weave_store.get_weave_or_empty(ANCESTRY_FILEID)
         if self.parents:
             lines = w.get(w.lookup(self.parents[0]))
         else:
@@ -271,18 +237,17 @@ class Commit(object):
         lines.append(self.rev_id + '\n')
         parent_idxs = map(w.lookup, self.parents)
         w.add(self.rev_id, parent_idxs, lines)
-        self.branch.weave_store.put_weave(ANCESTRY_FILEID, w)
+        self.weave_store.put_weave(ANCESTRY_FILEID, w)
 
 
     def _gather_parents(self):
         pending_merges = self.branch.pending_merges()
-        if pending_merges:
-            raise NotImplementedError("sorry, can't commit merges to the weave format yet")
         self.parents = []
         precursor_id = self.branch.last_revision()
         if precursor_id:
             self.parents.append(precursor_id)
         self.parents += pending_merges
+        self.parent_trees = map(self.branch.revision_tree, self.parents)
 
 
     def _make_revision(self):
@@ -294,7 +259,7 @@ class Commit(object):
                             inventory_sha1=self.inv_sha1,
                             revision_id=self.rev_id)
         self.rev.parents = map(RevisionReference, self.parents)
-        rev_tmp = tempfile.TemporaryFile()
+        rev_tmp = StringIO()
         serializer_v5.write_revision(self.rev, rev_tmp)
         rev_tmp.seek(0)
         self.branch.revision_store.add(rev_tmp, self.rev_id)
@@ -302,72 +267,107 @@ class Commit(object):
 
 
     def _remove_deleted(self):
-        """Remove deleted files from the working and stored inventories."""
-        for path, id, kind in self.delta.removed:
-            if self.work_inv.has_id(id):
-                del self.work_inv[id]
-            if self.new_inv.has_id(id):
-                del self.new_inv[id]
+        """Remove deleted files from the working inventories.
 
+        This is done prior to taking the working inventory as the
+        basis for the new committed inventory.
+
+        This returns true if any files
+        *that existed in the basis inventory* were deleted.
+        Files that were added and deleted
+        in the working copy don't matter.
+        """
+        any_deletes = False
+        for file_id in list(iter(self.work_inv)): # snapshot for deletion
+            if not self.work_tree.has_id(file_id):
+                note('missing %s', self.work_inv.id2path(file_id))
+                del self.work_inv[file_id]
+                if self.basis_inv.has_id(file_id):
+                    any_deletes = True
+        return any_deletes
+
+
+    def _find_file_parents(self, file_id):
+        """Return the text versions and hashes for all file parents.
+
+        Returned as a map from text version to text sha1.
+
+        This is a set containing the file versions in all parents
+        revisions containing the file.  If the file is new, the set
+        will be empty."""
+        r = {}
+        for tree in self.parent_trees:
+            if file_id in tree.inventory:
+                ie = tree.inventory[file_id]
+                assert ie.kind == 'file'
+                assert ie.file_id == file_id
+                if ie.text_version in r:
+                    assert r[ie.text_version] == ie.text_sha1
+                else:
+                    r[ie.text_version] = ie.text_sha1
+        return r            
 
 
     def _store_files(self):
-        """Store new texts of modified/added files."""
-        # We must make sure that directories are added before anything
-        # inside them is added.  the files within the delta report are
-        # sorted by path so we know the directory will come before its
-        # contents. 
-        for path, file_id, kind in self.delta.added:
-            if kind != 'file':
-                ie = self.work_inv[file_id].copy()
-                self.new_inv.add(ie)
+        """Store new texts of modified/added files.
+
+        This is called with new_inv set to a copy of the working
+        inventory, with deleted/removed files already cut out.  So
+        this code only needs to deal with setting text versions, and
+        possibly recording new file texts."""
+        any_changes = False
+        for path, new_ie in self.new_inv.iter_entries():
+            if self.specific_files:
+                if not is_inside_any(self.specific_files, path):
+                    # Not done yet
+                    pass
+            mutter('check %s {%s}', path, new_ie.file_id)
+            if new_ie.kind != 'file':
+                # only regular files have texts to update
+                continue
+            file_id = new_ie.file_id
+            file_parents = self._find_file_parents(file_id)
+            wc_sha1 = self.work_tree.get_file_sha1(file_id)
+            wc_len = self.work_tree.get_file_size(file_id)
+            if (len(file_parents) == 1
+                and file_parents.values()[0] == wc_sha1):
+                # same as the single previous version, can reuse that
+                text_version = file_parents.keys()[0]
             else:
-                self._store_file_text(file_id)
+                # file is either new, or a file merge; need to record
+                # a new version
+                if len(file_parents) > 1:
+                    note('merged %s', path)
+                elif len(file_parents) == 0:
+                    note('added %s', path)
+                else:
+                    note('modified %s', path)
+                self._store_text(file_id, file_parents)
+                text_version = self.rev_id
+                any_changes = True
+            new_ie.text_version = text_version
+            new_ie.text_sha1 = wc_sha1
+            new_ie.text_size = wc_len
+        return any_changes
 
-        for path, file_id, kind in self.delta.modified:
-            if kind != 'file':
-                continue
-            self._store_file_text(file_id)
 
-        for old_path, new_path, file_id, kind, text_modified in self.delta.renamed:
-            if kind != 'file':
-                continue
-            if not text_modified:
-                continue
-            self._store_file_text(file_id)
+    def _report_deletes(self):
+        for file_id in self.basis_inv:
+            if file_id not in self.new_inv:
+                note('deleted %s', self.basis_inv.id2path(file_id))
 
 
-    def _store_file_text(self, file_id):
-        """Store updated text for one modified or added file."""
-        note('store new text for {%s} in revision {%s}',
-             file_id, self.rev_id)
+    def _store_text(self, file_id, file_parents):                    
+        mutter('store new text for {%s} in revision {%s}',
+               file_id, self.rev_id)
         new_lines = self.work_tree.get_file(file_id).readlines()
-        if file_id in self.new_inv:     # was in basis inventory
-            ie = self.new_inv[file_id]
-            assert ie.file_id == file_id
-            assert file_id in self.basis_inv
-            assert self.basis_inv[file_id].kind == 'file'
-            old_version = self.basis_inv[file_id].text_version
-            file_parents = [old_version]
-        else:                           # new in this revision
-            ie = self.work_inv[file_id].copy()
-            self.new_inv.add(ie)
-            assert file_id not in self.basis_inv
-            file_parents = []
-        assert ie.kind == 'file'
         self._add_text_to_weave(file_id, new_lines, file_parents)
-        # make a new inventory entry for this file, using whatever
-        # it had in the working copy, plus details on the new text
-        ie.text_sha1 = sha_strings(new_lines)
-        ie.text_size = sum(map(len, new_lines))
-        ie.text_version = self.rev_id
-        ie.entry_version = self.rev_id
 
 
     def _add_text_to_weave(self, file_id, new_lines, parents):
         if file_id.startswith('__'):
             raise ValueError('illegal file-id %r for text file' % file_id)
-        self.branch.weave_store.add_text(file_id, self.rev_id, new_lines, parents)
+        self.weave_store.add_text(file_id, self.rev_id, new_lines, parents)
 
 
 def _gen_revision_id(branch, when):
@@ -376,3 +376,6 @@ def _gen_revision_id(branch, when):
     s += hexlify(rand_bytes(8))
     return s
 
+
+
+    

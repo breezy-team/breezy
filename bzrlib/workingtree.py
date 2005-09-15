@@ -95,6 +95,10 @@ class WorkingTree(bzrlib.tree.Tree):
         ## XXX: badly named; this isn't in the store at all
         return self.abspath(self.id2path(file_id))
 
+
+    def id2abspath(self, file_id):
+        return self.abspath(self.id2path(file_id))
+
                 
     def has_id(self, file_id):
         # files that have been deleted are excluded
@@ -109,8 +113,7 @@ class WorkingTree(bzrlib.tree.Tree):
     
 
     def get_file_size(self, file_id):
-        # is this still called?
-        raise NotImplementedError()
+        return os.path.getsize(self.id2abspath(file_id))
 
 
     def get_file_sha1(self, file_id):

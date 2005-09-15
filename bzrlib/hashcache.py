@@ -139,7 +139,6 @@ class HashCache(object):
                 del self._cache[path]
 
 
-
     def get_sha1(self, path):
         """Return the sha1 of a file.
         """
