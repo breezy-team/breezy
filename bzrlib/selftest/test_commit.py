@@ -23,6 +23,8 @@ from bzrlib.commit import Commit
 from bzrlib.errors import PointlessCommit
 
 
+# TODO: Test commit with some added, and added-but-missing files
+
 class TestCommit(TestCaseInTempDir):
     def test_simple_commit(self):
         """Commit and check two versions of a single file."""
