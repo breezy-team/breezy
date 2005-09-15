@@ -151,3 +151,12 @@ class SimpleLogTest(TestCaseInTempDir):
         self.log('log 2 delta: %r' % d)
         # self.checkDelta(d, added=['hello'])
         
+        # commit a log message with control characters
+        msg = "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)])
+        b.commit(msg)
+        lf = LogCatcher()
+        show_log(b, lf, verbose=True)
+        committed_msg = lf.logs[0].rev.message
+        self.log("escaped commit message: %r", committed_msg)
+        self.assert_(msg != committed_msg)
+        self.assert_(len(committed_msg) > len(msg))
