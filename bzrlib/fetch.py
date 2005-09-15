@@ -64,6 +64,7 @@ def greedy_fetch(to_branch, from_branch, revision=None, pb=None):
     return f.count_copied, f.failed_revisions
 
 
+
 class Fetcher(object):
     """Pull revisions and texts from one branch to another.
 
@@ -221,3 +222,6 @@ class Fetcher(object):
         to_weave.add(rev_id, to_parents, text_lines)
         self.to_weaves.put_weave(file_id, to_weave)
         self.count_texts += 1
+
+
+fetch = Fetcher
