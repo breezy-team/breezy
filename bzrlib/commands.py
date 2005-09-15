@@ -41,7 +41,7 @@ from inspect import getdoc
 import bzrlib
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
-from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
+from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib import BZRDIR
 
@@ -140,20 +140,6 @@ def _parse_revision_str(revstr):
                 revs.append(RevisionSpec(x))
     return revs
 
-
-def get_merge_type(typestring):
-    """Attempt to find the merge class/factory associated with a string."""
-    from merge import merge_types
-    try:
-        return merge_types[typestring][0]
-    except KeyError:
-        templ = '%s%%7s: %%s' % (' '*12)
-        lines = [templ % (f[0], f[1][1]) for f in merge_types.iteritems()]
-        type_list = '\n'.join(lines)
-        msg = "No known merge type %s. Supported types are:\n%s" %\
-            (typestring, type_list)
-        raise BzrCommandError(msg)
-    
 
 def get_merge_type(typestring):
     """Attempt to find the merge class/factory associated with a string."""
@@ -654,10 +640,14 @@ def main(argv):
 
     try:
         try:
-            return run_bzr(argv[1:])
-        finally:
-            # do this here inside the exception wrappers to catch EPIPE
-            sys.stdout.flush()
+            try:
+                return run_bzr(argv[1:])
+            finally:
+                # do this here inside the exception wrappers to catch EPIPE
+                sys.stdout.flush()
+        #wrap common errors as CommandErrors.
+        except (NotBranchError,), e:
+            raise BzrCommandError(str(e))
     except BzrCommandError, e:
         # command line syntax error, etc
         log_error(str(e))

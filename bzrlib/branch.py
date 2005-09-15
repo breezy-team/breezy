@@ -596,7 +596,7 @@ class LocalBranch(Branch):
         try:
             try:
                 return self.revision_store[revision_id]
-            except IndexError:
+            except (IndexError, KeyError):
                 raise bzrlib.errors.NoSuchRevision(self, revision_id)
         finally:
             self.unlock()
@@ -821,33 +821,35 @@ class LocalBranch(Branch):
 
         pb = bzrlib.ui.ui_factory.progress_bar()
         pb.update('comparing histories')
-
+        if stop_revision is None:
+            other_revision = other.last_patch()
+        else:
+            other_revision = other.get_rev_id(stop_revision)
+        count = greedy_fetch(self, other, other_revision, pb)[0]
         try:
             revision_ids = self.missing_revisions(other, stop_revision)
         except DivergedBranches, e:
             try:
-                if stop_revision is None:
-                    end_revision = other.last_patch()
                 revision_ids = get_intervening_revisions(self.last_patch(), 
-                                                         end_revision, other)
+                                                         other_revision, self)
                 assert self.last_patch() not in revision_ids
             except bzrlib.errors.NotAncestor:
                 raise e
 
-        if len(revision_ids) > 0:
-            count = greedy_fetch(self, other, revision_ids[-1], pb)[0]
-        else:
-            count = 0
         self.append_revision(*revision_ids)
-        ## note("Added %d revisions." % count)
         pb.clear()
 
     def install_revisions(self, other, revision_ids, pb):
         if hasattr(other.revision_store, "prefetch"):
             other.revision_store.prefetch(revision_ids)
         if hasattr(other.inventory_store, "prefetch"):
-            inventory_ids = [other.get_revision(r).inventory_id
-                             for r in revision_ids]
+            inventory_ids = []
+            for rev_id in revision_ids:
+                try:
+                    revision = other.get_revision(rev_id).inventory_id
+                    inventory_ids.append(revision)
+                except bzrlib.errors.NoSuchRevision:
+                    pass
             other.inventory_store.prefetch(inventory_ids)
 
         if pb is None:
@@ -915,6 +917,7 @@ class LocalBranch(Branch):
         elif revno <= 0 or revno > len(history):
             raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
+
 
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
@@ -1355,5 +1358,5 @@ def copy_branch(branch_from, to_location, revision=None):
     br_to.update_revisions(branch_from, stop_revision=revno)
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)
-    
     br_to.set_parent(branch_from.base)
+    return br_to

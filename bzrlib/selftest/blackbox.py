@@ -227,9 +227,18 @@ class TestCommands(ExternalBase):
         os.chdir('a')
 
         self.example_branch()
+        self.runbzr('pull', retcode=1)
+        self.runbzr('missing', retcode=1)
+        self.runbzr('missing .')
+        self.runbzr('missing')
+        self.runbzr('pull')
+        self.runbzr('pull /', retcode=1)
+        self.runbzr('pull')
+
         os.chdir('..')
         self.runbzr('branch a b')
         os.chdir('b')
+        self.runbzr('pull')
         self.runbzr('commit -m blah --unchanged')
         os.chdir('../a')
         a = Branch.open('.')

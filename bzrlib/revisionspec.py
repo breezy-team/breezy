@@ -17,7 +17,7 @@
 
 import datetime
 import re
-from bzrlib.errors import BzrError, NoSuchRevision
+from bzrlib.errors import BzrError, NoSuchRevision, NoCommits
 
 _marker = []
 
@@ -49,7 +49,15 @@ class RevisionInfo(object):
             self.rev_id = rev_id
 
     def __nonzero__(self):
-        return not (self.revno is None or self.rev_id is None)
+        # first the easy ones...
+        if self.rev_id is None:
+            return False
+        if self.revno is not None:
+            return True
+        # TODO: otherwise, it should depend on how I was built -
+        # if it's in_history(branch), then check revision_history(),
+        # if it's in_store(branch), do the check below
+        return self.rev_id in self.branch.revision_store
 
     def __len__(self):
         return 2
@@ -301,3 +309,26 @@ class RevisionSpec_date(RevisionSpec):
                     return RevisionInfo(branch, i+1,)
 
 SPEC_TYPES.append(RevisionSpec_date)
+
+
+class RevisionSpec_ancestor(RevisionSpec):
+    prefix = 'ancestor:'
+
+    def _match_on(self, branch, revs):
+        from branch import Branch
+        from revision import common_ancestor, MultipleRevisionSources
+        other_branch = Branch.open_containing(self.spec)
+        revision_a = branch.last_patch()
+        revision_b = other_branch.last_patch()
+        for r, b in ((revision_a, branch), (revision_b, other_branch)):
+            if r is None:
+                raise NoCommits(b)
+        revision_source = MultipleRevisionSources(branch, other_branch)
+        rev_id = common_ancestor(revision_a, revision_b, revision_source)
+        try:
+            revno = branch.revision_id_to_revno(rev_id)
+        except NoSuchRevision:
+            revno = None
+        return RevisionInfo(branch, revno, rev_id)
+        
+SPEC_TYPES.append(RevisionSpec_ancestor)

@@ -235,7 +235,8 @@ def combined_graph(revision_a, revision_b, revision_source):
     root, ancestors, descendants = revision_graph(revision_a, revision_source)
     root_b, ancestors_b, descendants_b = revision_graph(revision_b, 
                                                         revision_source)
-    assert root == root_b
+    if root != root_b:
+        raise bzrlib.errors.NoCommonRoot(revision_a, revision_b)
     common = set()
     for node, node_anc in ancestors_b.iteritems():
         if node in ancestors:
@@ -250,12 +251,17 @@ def combined_graph(revision_a, revision_b, revision_source):
     return root, ancestors, descendants, common
 
 def common_ancestor(revision_a, revision_b, revision_source):
-    root, ancestors, descendants, common = \
-        combined_graph(revision_a, revision_b, revision_source)
+    try:
+        root, ancestors, descendants, common = \
+            combined_graph(revision_a, revision_b, revision_source)
+    except bzrlib.errors.NoCommonRoot:
+        raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+        
     nodes = farthest_nodes(descendants, ancestors, root)
     for node in nodes:
         if node in common:
             return node
+    raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
 
 class MultipleRevisionSources(object):
     """Proxy that looks in multiple branches for revisions."""

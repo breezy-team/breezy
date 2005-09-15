@@ -27,7 +27,8 @@ from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
 from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
 from bzrlib.changeset import Inventory, Diff3Merge
 from bzrlib.branch import Branch
-from bzrlib.errors import BzrCommandError, UnrelatedBranches
+from bzrlib.errors import BzrCommandError, UnrelatedBranches, NoCommonAncestor
+from bzrlib.errors import NoCommits
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter, warning
 from bzrlib.fetch import greedy_fetch
@@ -256,6 +257,8 @@ def merge(other_revision, base_revision,
                                             this_branch)
         if other_revision[1] == -1:
             other_rev_id = other_branch.last_patch()
+            if other_rev_id is None:
+                raise NoCommits(other_branch)
             other_basis = other_rev_id
         elif other_revision[1] is not None:
             other_rev_id = other_branch.get_rev_id(other_revision[1])
@@ -263,10 +266,13 @@ def merge(other_revision, base_revision,
         else:
             other_rev_id = None
             other_basis = other_branch.last_patch()
+            if other_basis is None:
+                raise NoCommits(other_branch)
         if base_revision == [None, None]:
-            base_rev_id = common_ancestor(this_rev_id, other_basis, 
-                                          this_branch)
-            if base_rev_id is None:
+            try:
+                base_rev_id = common_ancestor(this_rev_id, other_basis, 
+                                              this_branch)
+            except NoCommonAncestor:
                 raise UnrelatedBranches()
             base_tree = get_revid_tree(this_branch, base_rev_id, tempdir, 
                                        "base", None)

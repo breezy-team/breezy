@@ -25,6 +25,7 @@ __author__ = "Martin Pool <mbp@canonical.com>"
 class BzrError(StandardError):
     pass
 
+
 class BzrCheckError(BzrError):
     pass
 
@@ -94,9 +95,9 @@ class NoSuchRevision(BzrError):
 
 class DivergedBranches(BzrError):
     def __init__(self, branch1, branch2):
+        BzrError.__init__(self, "These branches have diverged.")
         self.branch1 = branch1
         self.branch2 = branch2
-        BzrError.__init__(self, "These branches have diverged.")
 
 class UnrelatedBranches(BzrCommandError):
     def __init__(self):
@@ -104,21 +105,32 @@ class UnrelatedBranches(BzrCommandError):
             " specified."
         BzrCommandError.__init__(self, msg)
 
+class NoCommonAncestor(BzrError):
+    def __init__(self, revision_a, revision_b):
+        msg = "Revisions have no common ancestor: %s %s." \
+            % (revision_a, revision_b) 
+        BzrError.__init__(self, msg)
+
+class NoCommonRoot(BzrError):
+    def __init__(self, revision_a, revision_b):
+        msg = "Revisions are not derived from the same root: %s %s." \
+            % (revision_a, revision_b) 
+        BzrError.__init__(self, msg)
 
 class NotAncestor(BzrError):
     def __init__(self, rev_id, not_ancestor_id):
-        self.rev_id = rev_id
-        self.not_ancestor_id = not_ancestor_id
         msg = "Revision %s is not an ancestor of %s" % (not_ancestor_id, 
                                                         rev_id)
         BzrError.__init__(self, msg)
+        self.rev_id = rev_id
+        self.not_ancestor_id = not_ancestor_id
 
 
 class InstallFailed(BzrError):
     def __init__(self, revisions):
-        self.revisions = revisions
         msg = "Could not install revisions:\n%s" % " ,".join(revisions)
         BzrError.__init__(self, msg)
+        self.revisions = revisions
 
 
 class AmbiguousBase(BzrError):
@@ -128,3 +140,7 @@ class AmbiguousBase(BzrError):
         BzrError.__init__(self, msg)
         self.bases = bases
 
+class NoCommits(BzrError):
+    def __init__(self, branch):
+        msg = "Branch %s has no commits." % branch
+        BzrError.__init__(self, msg)

@@ -16,6 +16,9 @@
 
 import os
 from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.errors import NoCommonAncestor, NoCommits
+from bzrlib.branch import copy_branch
+from bzrlib.merge import merge
 
 class TestRevisionNamespaces(TestCaseInTempDir):
     def test_revision_namespaces(self):
@@ -48,3 +51,24 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         self.assertEquals(RevisionSpec('last:1').in_history(b),
                           (3, 'a@r-0-3'))
         self.assertEquals(RevisionSpec('-1').in_history(b), (3, 'a@r-0-3'))
+#        self.assertEquals(b.get_revision_info('last:1'), (3, 'a@r-0-3'))
+#        self.assertEquals(b.get_revision_info('-1'), (3, 'a@r-0-3'))
+
+        self.assertEquals(RevisionSpec('ancestor:.').in_history(b).rev_id,
+                          'a@r-0-3')
+
+        os.mkdir('newbranch')
+        b2 = Branch.initialize('newbranch')
+        self.assertRaises(NoCommits, RevisionSpec('ancestor:.').in_history, b2)
+
+        os.mkdir('copy')
+        b3 = copy_branch(b, 'copy')
+        b3.commit('Commit four', rev_id='b@r-0-4')
+        self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
+                          'a@r-0-3')
+        merge(['copy', -1], [None, None])
+        b.commit('Commit five', rev_id='a@r-0-4')
+        self.assertEquals(RevisionSpec('ancestor:copy').in_history(b).rev_id,
+                          'b@r-0-4')
+        self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
+                          'b@r-0-4')
