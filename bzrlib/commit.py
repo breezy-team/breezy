@@ -248,7 +248,7 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
         if not work_tree.has_id(file_id):
             if verbose:
                 print('deleted %s%s' % (path, kind_marker(entry.kind)))
-                any_changes = True
+            any_changes = True
             mutter("    file is missing, removing from inventory")
             missing_ids.append(file_id)
             continue
@@ -310,7 +310,9 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
             else:
                 print 'renamed', marked
                 any_changes = True
-                        
+        elif old_ie != entry:
+            any_changes = True
+
     return missing_ids, inv, any_changes
 
 
