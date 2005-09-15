@@ -140,6 +140,27 @@ class TestCommit(TestCaseInTempDir):
         self.assertFalse(tree.has_id('hello-id'))
 
 
+    def test_committed_ancestry(self):
+        """Test commit appends revisions to ancestry."""
+        b = Branch('.', init=True)
+        rev_ids = []
+        for i in range(4):
+            file('hello', 'w').write((str(i) * 4) + '\n')
+            if i == 0:
+                b.add(['hello'], ['hello-id'])
+            rev_id = 'test@rev-%d' % (i+1)
+            rev_ids.append(rev_id)
+            b.commit(message='rev %d' % (i+1),
+                     rev_id=rev_id)
+        eq = self.assertEquals
+        eq(b.revision_history(), rev_ids)
+        for i in range(4):
+            anc = b.get_ancestry(rev_ids[i])
+            eq(anc, rev_ids[:i+1])
+            
+        
+
+
 if __name__ == '__main__':
     import unittest
     unittest.main()
