@@ -153,6 +153,7 @@ class SubdirCommit(TestCaseInTempDir):
         for fn in ('a/one', 'b/two', 'top'):
             file(fn, 'w').write('new contents')
             
+        debug('start selective subdir commit')
         run_bzr('commit', 'a', '-m', 'commit a only')
         
         old = b.revision_tree(b.lookup_revision(1))

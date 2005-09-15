@@ -153,6 +153,7 @@ class Commit(object):
             a revision id that exists elsewhere it is your own fault.
             If null (default), a time/random revision id is generated.
         """
+        self.any_changes = False
 
         self.branch = branch
         self.weave_store = branch.weave_store
@@ -193,20 +194,15 @@ class Commit(object):
 
             self._gather_parents()
 
-            any_deletions = self._remove_deleted()
-            self.new_inv = self.work_inv.copy()
-            any_changes = self._store_files()
+            self.new_inv = Inventory()
+            self._store_files()
             self._report_deletes()
 
-            # TODO: update hashcache
             if not (self.allow_pointless
-                    or any_changes
-                    or any_deletions
-                    or len(self.parents) != 1):
+                    or len(self.parents) != 1
+                    or self.new_inv != self.basis_inv):
                 raise PointlessCommit()
 
-            if any_deletions:
-                self.branch._write_inventory(self.work_inv)
             self._record_inventory()
             self._record_ancestry()
             self._make_revision()
@@ -282,9 +278,9 @@ class Commit(object):
             if not self.work_tree.has_id(file_id):
                 note('missing %s', self.work_inv.id2path(file_id))
                 del self.work_inv[file_id]
-                if self.basis_inv.has_id(file_id):
-                    any_deletes = True
-        return any_deletes
+                any_deletes = True
+        if any_deletions:
+            self.branch._write_inventory(self.work_inv)
 
 
     def _find_file_parents(self, file_id):
@@ -315,40 +311,46 @@ class Commit(object):
         inventory, with deleted/removed files already cut out.  So
         this code only needs to deal with setting text versions, and
         possibly recording new file texts."""
-        any_changes = False
-        for path, new_ie in self.new_inv.iter_entries():
+        for path, new_ie in self.work_inv.iter_entries():
+            file_id = new_ie.file_id
+            mutter('check %s {%s}', path, new_ie.file_id)
             if self.specific_files:
                 if not is_inside_any(self.specific_files, path):
-                    # Not done yet
-                    pass
-            mutter('check %s {%s}', path, new_ie.file_id)
+                    mutter('%s not selected for commit', path)
+                    self._carry_file(file_id)
+                    continue
             if new_ie.kind != 'file':
-                # only regular files have texts to update
+                self._commit_nonfile(file_id)
                 continue
-            file_id = new_ie.file_id
             file_parents = self._find_file_parents(file_id)
             wc_sha1 = self.work_tree.get_file_sha1(file_id)
-            wc_len = self.work_tree.get_file_size(file_id)
             if (len(file_parents) == 1
                 and file_parents.values()[0] == wc_sha1):
-                # same as the single previous version, can reuse that
-                text_version = file_parents.keys()[0]
+                # not changed or merged
+                self._carry_file(file_id)
+                continue
+
+            mutter('parents of %s are %r', path, file_parents)
+
+            # file is either new, or a file merge; need to record
+            # a new version
+            if len(file_parents) > 1:
+                note('merged %s', path)
+            elif len(file_parents) == 0:
+                note('added %s', path)
             else:
-                # file is either new, or a file merge; need to record
-                # a new version
-                if len(file_parents) > 1:
-                    note('merged %s', path)
-                elif len(file_parents) == 0:
-                    note('added %s', path)
-                else:
-                    note('modified %s', path)
-                self._store_text(file_id, file_parents)
-                text_version = self.rev_id
-                any_changes = True
-            new_ie.text_version = text_version
-            new_ie.text_sha1 = wc_sha1
-            new_ie.text_size = wc_len
-        return any_changes
+                note('modified %s', path)
+            self._commit_file(new_ie, file_id, file_parents)
+
+
+    def _commit_nonfile(self, file_id):
+        self.new_inv.add(self.work_inv[file_id].copy())
+
+
+    def _carry_file(self, file_id):
+        """Keep a file in the same state as in the basis."""
+        if self.basis_inv.has_id(file_id):
+            self.new_inv.add(self.basis_inv[file_id].copy())
 
 
     def _report_deletes(self):
@@ -357,11 +359,15 @@ class Commit(object):
                 note('deleted %s', self.basis_inv.id2path(file_id))
 
 
-    def _store_text(self, file_id, file_parents):                    
+    def _commit_file(self, new_ie, file_id, file_parents):                    
         mutter('store new text for {%s} in revision {%s}',
                file_id, self.rev_id)
         new_lines = self.work_tree.get_file(file_id).readlines()
         self._add_text_to_weave(file_id, new_lines, file_parents)
+        new_ie.text_version = self.rev_id
+        new_ie.text_sha1 = sha_strings(new_lines)
+        new_ie.text_size = sum(map(len, new_lines))
+        self.new_inv.add(new_ie)
 
 
     def _add_text_to_weave(self, file_id, new_lines, parents):
