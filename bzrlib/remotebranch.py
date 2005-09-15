@@ -29,7 +29,7 @@ import urllib2
 import urlparse
 
 from bzrlib.errors import BzrError, BzrCheckError
-from bzrlib.branch import Branch, BZR_BRANCH_FORMAT
+from bzrlib.branch import Branch, LocalBranch, BZR_BRANCH_FORMAT
 from bzrlib.trace import mutter
 from bzrlib.xml import serializer_v4
 
@@ -110,7 +110,7 @@ def _find_remote_root(url):
         
 
 
-class RemoteBranch(Branch):
+class RemoteBranch(LocalBranch):
     def __init__(self, baseurl, find_root=True):
         """Create new proxy for a remote branch."""
         if find_root:
@@ -128,6 +128,16 @@ class RemoteBranch(Branch):
         return '%s(%r)' % (self.__class__.__name__, b)
 
     __repr__ = __str__
+
+    def setup_caching(self, cache_root):
+        """Set up cached stores located under cache_root"""
+        from bzrlib.meta_store import CachedStore
+        for store_name in ('inventory_store', 'text_store', 'revision_store'):
+            if not isinstance(getattr(self, store_name), CachedStore):
+                cache_path = os.path.join(cache_root, store_name)
+                os.mkdir(cache_path)
+                new_store = CachedStore(getattr(self, store_name), cache_path)
+                setattr(self, store_name, new_store)
 
     def controlfile(self, filename, mode):
         if mode not in ('rb', 'rt', 'r'):

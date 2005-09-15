@@ -475,7 +475,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         from bzrlib.merge import merge
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
-        branch = Branch("original", init=True)
+        branch = Branch.initialize("original")
         smart_add_branch(branch, ["original"], True, add_reporter_null)
         branch.commit("start branch.", verbose=False)
         # Mary branches it.
@@ -487,7 +487,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         file.close()
         branch.commit("change file1")
         # Mary does too
-        mary_branch = Branch("mary")
+        mary_branch = Branch.open("mary")
         file = open("mary/file2", "wt")
         file.write("Mary\n")
         file.close()

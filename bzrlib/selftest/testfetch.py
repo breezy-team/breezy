@@ -29,7 +29,7 @@ class TestFetch(TestCaseInTempDir):
 
         def new_branch(name):
             os.mkdir(name)
-            return Branch(name, init=True)
+            return Branch.initialize(name)
             
         #highest indices a: 5, b: 7
         br_a, br_b = make_branches()

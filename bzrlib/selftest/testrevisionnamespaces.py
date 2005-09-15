@@ -25,37 +25,50 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         """Functional tests for hashcache"""
         from bzrlib.errors import NoSuchRevision
         from bzrlib.branch import Branch
+        from bzrlib.revisionspec import RevisionSpec
 
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         b.commit('Commit one', rev_id='a@r-0-1')
         b.commit('Commit two', rev_id='a@r-0-2')
         b.commit('Commit three', rev_id='a@r-0-3')
 
-        self.assertEquals(b.get_revision_info(None), (0, None))
-        self.assertEquals(b.get_revision_info(1), (1, 'a@r-0-1'))
-        self.assertEquals(b.get_revision_info('revno:1'), (1, 'a@r-0-1'))
-        self.assertEquals(b.get_revision_info('revid:a@r-0-1'), (1, 'a@r-0-1'))
-        self.assertRaises(NoSuchRevision, b.get_revision_info, 'revid:a@r-0-0')
-        self.assertRaises(TypeError, b.get_revision_info, object)
+        self.assertEquals(RevisionSpec(None).in_history(b), (0, None))
+        self.assertEquals(RevisionSpec(1).in_history(b), (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('revno:1').in_history(b),
+                          (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('revid:a@r-0-1').in_history(b),
+                          (1, 'a@r-0-1'))
+        self.assertRaises(NoSuchRevision,
+                          RevisionSpec('revid:a@r-0-0').in_history, b)
+        self.assertRaises(TypeError, RevisionSpec, object)
 
-        self.assertEquals(b.get_revision_info('date:-tomorrow'), (3, 'a@r-0-3'))
-        self.assertEquals(b.get_revision_info('date:+today'), (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('date:-tomorrow').in_history(b),
+                          (3, 'a@r-0-3'))
+        self.assertEquals(RevisionSpec('date:+today').in_history(b),
+                          (1, 'a@r-0-1'))
 
-        self.assertEquals(b.get_revision_info('last:1'), (3, 'a@r-0-3'))
-        self.assertEquals(b.get_revision_info('-1'), (3, 'a@r-0-3'))
+        self.assertEquals(RevisionSpec('last:1').in_history(b),
+                          (3, 'a@r-0-3'))
+        self.assertEquals(RevisionSpec('-1').in_history(b), (3, 'a@r-0-3'))
+#        self.assertEquals(b.get_revision_info('last:1'), (3, 'a@r-0-3'))
+#        self.assertEquals(b.get_revision_info('-1'), (3, 'a@r-0-3'))
+
+        self.assertEquals(RevisionSpec('ancestor:.').in_history(b).rev_id,
+                          'a@r-0-3')
 
         os.mkdir('newbranch')
-        b2 = Branch('newbranch', init=True)
-        self.assertEquals(b2.lookup_revision('revid:a@r-0-1'), 'a@r-0-1')
+        b2 = Branch.initialize('newbranch')
+        self.assertRaises(NoCommits, RevisionSpec('ancestor:.').in_history, b2)
 
-        self.assertRaises(NoCommits, b2.lookup_revision, 'ancestor:.')
-        self.assertEquals(b.lookup_revision('ancestor:.'), 'a@r-0-3')
         os.mkdir('copy')
         b3 = copy_branch(b, 'copy')
         b3.commit('Commit four', rev_id='b@r-0-4')
-        self.assertEquals(b3.lookup_revision('ancestor:.'), 'a@r-0-3')
+        self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
+                          'a@r-0-3')
         merge(['copy', -1], [None, None])
         b.commit('Commit five', rev_id='a@r-0-4')
-        self.assertEquals(b.lookup_revision('ancestor:copy'), 'b@r-0-4')
-        self.assertEquals(b3.lookup_revision('ancestor:.'), 'b@r-0-4')
+        self.assertEquals(RevisionSpec('ancestor:copy').in_history(b).rev_id,
+                          'b@r-0-4')
+        self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
+                          'b@r-0-4')
