@@ -169,3 +169,9 @@ class TestCommonAncestor(TestCaseInTempDir):
                           revisions[4])
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
                           revisions_2[5])
+
+
+if __name__ == '__main__':
+    import unittest, sys
+    unittest.main()
+    
