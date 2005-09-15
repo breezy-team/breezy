@@ -20,7 +20,7 @@ import os
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.commit import commit
-from bzrlib.fetch import Fetcher
+from bzrlib.fetch import fetch
 
 def make_branches():
     os.mkdir("branch1")
@@ -37,15 +37,20 @@ def make_branches():
     commit(br2, "Commit five", rev_id="b@u-0-4")
     revisions_2 = br2.revision_history()
     
-    ## Fetch(from_branch=br2, to_branch=br1)
+    fetch(from_branch=br2, to_branch=br1)
     br1.add_pending_merge(revisions_2[4])
     commit(br1, "Commit six", rev_id="a@u-0-3")
     commit(br1, "Commit seven", rev_id="a@u-0-4")
     commit(br2, "Commit eight", rev_id="b@u-0-5")
+    
+    fetch(from_branch=br2, to_branch=br1)
     br1.add_pending_merge(br2.revision_history()[5])
     commit(br1, "Commit nine", rev_id="a@u-0-5")
+
+    fetch(from_branch=br1, to_branch=br2)
     br2.add_pending_merge(br1.revision_history()[4])
     commit(br2, "Commit ten", rev_id="b@u-0-6")
+    
     return br1, br2
 
 
