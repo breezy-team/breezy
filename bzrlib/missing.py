@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """\
 A plugin for displaying what revisions are in 'other' but not in local.
 """
