@@ -194,6 +194,7 @@ class Commit(object):
 
             self._gather_parents()
 
+            self._remove_deleted()
             self.new_inv = Inventory()
             self._store_files()
             self._report_deletes()
@@ -279,7 +280,7 @@ class Commit(object):
                 note('missing %s', self.work_inv.id2path(file_id))
                 del self.work_inv[file_id]
                 any_deletes = True
-        if any_deletions:
+        if any_deletes:
             self.branch._write_inventory(self.work_inv)
 
 
