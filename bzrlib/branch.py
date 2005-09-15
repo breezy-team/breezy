@@ -583,6 +583,14 @@ class Branch(object):
             f.close()
 
 
+    def has_revision(self, revision_id):
+        """True if this branch has a copy of the revision.
+
+        This does not necessarily imply the revision is merge
+        or on the mainline."""
+        return revision_id in self.revision_store
+
+
     def get_revision_xml_file(self, revision_id):
         """Return XML file object for revision object."""
         if not revision_id or not isinstance(revision_id, basestring):
@@ -821,15 +829,15 @@ class Branch(object):
         from bzrlib.fetch import greedy_fetch
 
         greedy_fetch(to_branch=self, from_branch=other,
-                     revision_limit=stop_revision)
+                     revision=stop_revision)
 
-        revision_ids = self.missing_revisions(other, stop_revision)
+        pullable_revs = self.missing_revisions(other, stop_revision)
 
-        if len(revision_ids) > 0:
-            count = greedy_fetch(self, other, revision_ids[-1], pb)[0]
-        else:
-            count = 0
-        self.append_revision(*revision_ids)
+        if pullable_revs:
+            greedy_fetch(to_branch=self,
+                         from_branch=other,
+                         revision=pullable_revs[-1])
+            self.append_revision(*pullable_revs)
 
 
     def commit(self, *args, **kw):

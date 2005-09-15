@@ -154,9 +154,11 @@ class Fetcher(object):
     def _copy_revisions(self, revs_to_fetch):
         i = 0
         for rev_id in revs_to_fetch:
+            i += 1
+            if self.to_branch.has_revision(rev_id):
+                continue
             self.pb.update('fetch revision', i, self.count_total)
             self._copy_one_revision(rev_id)
-            i += 1
             self.count_copied += 1
 
 
@@ -176,6 +178,7 @@ class Fetcher(object):
         parent_ids = [x.revision_id for x in rev.parents]
         self.to_weaves.add_text(INVENTORY_FILEID, rev_id,
                                             split_lines(inv_xml), parent_ids)
+
         self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
 
         
