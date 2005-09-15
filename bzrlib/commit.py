@@ -206,7 +206,7 @@ class Commit(object):
             self._record_inventory()
             self._record_ancestry()
             self._make_revision()
-            note('committted r%d {%s}', (self.branch.revno() + 1),
+            note('committed r%d {%s}', (self.branch.revno() + 1),
                  self.rev_id)
             self.branch.append_revision(self.rev_id)
             self.branch.set_pending_merges([])
