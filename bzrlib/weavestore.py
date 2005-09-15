@@ -39,6 +39,14 @@ class WeaveStore(object):
 
     def get_weave(self, file_id):
         return read_weave(file(self.filename(file_id), 'rb'))
+
+
+    def get_lines(self, file_id, rev_id):
+        """Return text from a particular version of a weave.
+
+        Returned as a list of lines."""
+        w = self.get_weave(file_id)
+        return w.get(w.lookup(rev_id))
     
 
     def get_weave_or_empty(self, file_id):

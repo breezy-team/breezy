@@ -45,8 +45,8 @@ memory until we've updated all of the files referenced.
 # XXX: This doesn't handle ghost (not present in branch) revisions at
 # all yet.  I'm not sure they really should be supported.
 
-# TODO: This doesn't handle revisions which may be present but not
-# merged into the last revision.
+# NOTE: This doesn't copy revisions which may be present but not
+# merged into the last revision.  I'm not sure we want to do that.
 
 # - get a list of revisions that need to be pulled in
 # - for each one, pull in that revision file
@@ -176,10 +176,20 @@ class Fetcher(object):
                len(rev.parents))
         self._copy_new_texts(rev_id, inv)
         parent_ids = [x.revision_id for x in rev.parents]
-        self.to_weaves.add_text(INVENTORY_FILEID, rev_id,
-                                            split_lines(inv_xml), parent_ids)
-
+        self._copy_inventory(rev_id, inv_xml, parent_ids)
+        self._copy_ancestry(rev_id, parent_ids)
         self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
+
+
+    def _copy_inventory(self, rev_id, inv_xml, parent_ids):
+        self.to_weaves.add_text(INVENTORY_FILEID, rev_id,
+                                split_lines(inv_xml), parent_ids)
+
+
+    def _copy_ancestry(self, rev_id, parent_ids):
+        ancestry_lines = self.from_weaves.get_lines(ANCESTRY_FILEID, rev_id)
+        self.to_weaves.add_text(ANCESTRY_FILEID, rev_id, ancestry_lines,
+                                parent_ids)
 
         
     def _copy_new_texts(self, rev_id, inv):
