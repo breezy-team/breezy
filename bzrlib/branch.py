@@ -26,9 +26,9 @@ from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
      sha_file, appendpath, file_kind
 
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
-                           NoSuchRevision)
+                           NoSuchRevision, HistoryMissing)
 from bzrlib.textui import show_status
-from bzrlib.revision import Revision
+from bzrlib.revision import Revision, validate_revision_id
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
@@ -1256,10 +1256,9 @@ class Branch(object):
 
 
     def add_pending_merge(self, revision_id):
-        from bzrlib.revision import validate_revision_id
-
         validate_revision_id(revision_id)
-
+        # TODO: Perhaps should check at this point that the
+        # history of the revision is actually present?
         p = self.pending_merges()
         if revision_id in p:
             return

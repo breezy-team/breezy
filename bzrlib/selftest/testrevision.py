@@ -14,13 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.selftest import TestCaseInTempDir
 
+import os
+
+from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.branch import Branch
+from bzrlib.commit import commit
+from bzrlib.fetch import Fetcher
 
 def make_branches():
-    from bzrlib.branch import Branch
-    from bzrlib.commit import commit
-    import os
     os.mkdir("branch1")
     br1 = Branch("branch1", init=True)
     
@@ -34,6 +36,8 @@ def make_branches():
     commit(br2, "Commit four", rev_id="b@u-0-3")
     commit(br2, "Commit five", rev_id="b@u-0-4")
     revisions_2 = br2.revision_history()
+    
+    ## Fetch(from_branch=br2, to_branch=br1)
     br1.add_pending_merge(revisions_2[4])
     commit(br1, "Commit six", rev_id="a@u-0-3")
     commit(br1, "Commit seven", rev_id="a@u-0-4")
