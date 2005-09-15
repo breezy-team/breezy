@@ -49,7 +49,7 @@ BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 
 def find_branch(f, **args):
     from bzrlib.transport import transport
-    from bzrlib.local_transport import LocalTransport
+    from bzrlib.transport.local import LocalTransport
     t = transport(f)
     # FIXME: This is a hack around transport so that
     #        We can search the local directories for

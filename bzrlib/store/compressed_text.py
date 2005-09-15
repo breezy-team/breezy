@@ -118,7 +118,7 @@ class CompressedTextStore(bzrlib.store.Store):
         failed = set()
         if permit_failure:
             new_to_copy = set()
-            for fileid, has in zip(to_copy, self.has(to_copy)):
+            for fileid, has in zip(to_copy, other.has(to_copy)):
                 if has:
                     new_to_copy.add(fileid)
                 else:
