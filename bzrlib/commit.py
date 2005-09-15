@@ -44,6 +44,10 @@
 # TODO: Update hashcache before and after - or does the WorkingTree
 # look after that?
 
+# This code requires all merge parents to be present in the branch.
+# We could relax this but for the sake of simplicity the constraint is
+# here for now.  It's not totally clear to me how we'd know which file
+# need new text versions if some parents are absent.  -- mbp 20050915
 
 
 import os
@@ -60,9 +64,11 @@ from bzrlib.osutils import (local_time_offset, username,
                             sha_string, sha_strings, sha_file, isdir, isfile,
                             split_lines)
 from bzrlib.branch import gen_file_id, INVENTORY_FILEID, ANCESTRY_FILEID
-from bzrlib.errors import BzrError, PointlessCommit
+from bzrlib.errors import (BzrError, PointlessCommit,
+                           HistoryMissing,
+                           )
 from bzrlib.revision import Revision, RevisionReference
-from bzrlib.trace import mutter, note
+from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory
 from bzrlib.weave import Weave
@@ -238,6 +244,10 @@ class Commit(object):
         if precursor_id:
             self.parents.append(precursor_id)
         self.parents += pending_merges
+        for parent_id in self.parents:
+            if not self.branch.has_revision(parent_id):
+                warning("can't commit a merge from an absent parent")
+                raise HistoryMissing(self.branch, 'revision', parent_id)
         self.parent_trees = map(self.branch.revision_tree, self.parents)
 
 
