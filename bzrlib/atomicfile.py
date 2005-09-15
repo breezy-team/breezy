@@ -97,6 +97,6 @@ class AtomicFile(object):
 
 
     def __del__(self):
-        if not self.closed:
+        if hasattr(self, 'closed') and not self.closed:
             warn("%r leaked" % self)
         

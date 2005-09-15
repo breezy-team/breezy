@@ -16,6 +16,7 @@
 
 
 from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.transport import NoSuchFile, FileExists
 
 def test_transport(tester, t, readonly=False):
     """Test a transport object. Basically, it assumes that the
