@@ -1,8 +1,14 @@
-all:
+all: executables
+
+executables:
 	chmod u+x ./bzr
+	chmod u+x ./setup.py
 
 check:
 	./bzr selftest
+
+clean: executables
+	./setup.py clean
 
 .PHONY: all
 
