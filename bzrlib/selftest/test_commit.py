@@ -63,12 +63,29 @@ class TestCommit(TestCaseInTempDir):
         self.assertFalse(tree.has_id('hello-id'))
 
 
+    def test_pointless_commit(self):
+        """Commit refuses unless there are changes or it's forced."""
+        b = Branch('.', init=True)
+        file('hello', 'w').write('hello')
+        b.add(['hello'])
+        b.commit(message='add hello')
+        self.assertEquals(b.revno(), 1)
+        self.assertRaises(PointlessCommit,
+                          b.commit,
+                          message='fails',
+                          allow_pointless=False)
+        self.assertEquals(b.revno(), 1)
+        
+
+
     def test_commit_empty(self):
+        """Commiting an empty tree works."""
         b = Branch('.', init=True)
         b.commit(message='empty tree', allow_pointless=True)
-        ##self.assertRaises(PointlessCommit,
-        ##                  b.commit,
-        ##                  message='empty tree')
+        self.assertRaises(PointlessCommit,
+                          b.commit,
+                          message='empty tree',
+                          allow_pointless=False)
         b.commit(message='empty tree', allow_pointless=True)
         self.assertEquals(b.revno(), 2)
 

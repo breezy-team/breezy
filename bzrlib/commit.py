@@ -133,25 +133,19 @@ class Commit(object):
                allow_pointless=True):
         """Commit working copy as a new revision.
 
-        The basic approach is to add all the file texts into the
-        store, then the inventory, then make a new revision pointing
-        to that inventory and store that.
-
-        This raises PointlessCommit if there are no changes, no new merges,
-        and allow_pointless  is false.
-
         timestamp -- if not None, seconds-since-epoch for a
              postdated/predated commit.
 
-        specific_files
-            If true, commit only those files.
+        specific_files -- If true, commit only those files.
 
-        rev_id
-            If set, use this as the new revision id.
+        rev_id -- If set, use this as the new revision id.
             Useful for test or import commands that need to tightly
             control what revisions are assigned.  If you duplicate
             a revision id that exists elsewhere it is your own fault.
             If null (default), a time/random revision id is generated.
+
+        allow_pointless -- If true (default), commit even if nothing
+            has changed and no merges are recorded.
         """
         self.any_changes = False
 
