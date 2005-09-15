@@ -7,7 +7,7 @@ import os
 class TestMerge(TestCaseInTempDir):
     """Test appending more than one revision"""
     def test_pending(self):
-        br = Branch(".", init=True)
+        br = Branch.initialize(".")
         commit(br, "lala!")
         self.assertEquals(len(br.pending_merges()), 0)
         merge(['.', -1], [None, None])
@@ -16,7 +16,7 @@ class TestMerge(TestCaseInTempDir):
     def test_nocommits(self):
         self.test_pending()
         os.mkdir('branch2')
-        br2 = Branch('branch2', init=True)
+        br2 = Branch.initialize('branch2')
         self.assertRaises(NoCommits, merge, ['branch2', -1], 
                           [None, None])
         return br2
