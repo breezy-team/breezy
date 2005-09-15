@@ -215,6 +215,7 @@ class Weave(object):
 
 
     def lookup(self, name):
+        assert isinstance(name, basestring), type(name)
         try:
             return self._name_map[name]
         except KeyError:
