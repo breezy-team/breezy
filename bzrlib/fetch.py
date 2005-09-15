@@ -59,34 +59,52 @@ memory until we've updated all of the files referenced.
 
 
 
-def greedy_fetch(to_branch, from_branch, revision, pb):
+def greedy_fetch(to_branch, from_branch, revision=None, pb=None):
     f = Fetcher(to_branch, from_branch, revision, pb)
     return f.count_copied, f.failed_revisions
 
 
 class Fetcher(object):
-    """Pull history from one branch to another.
+    """Pull revisions and texts from one branch to another.
+
+    This doesn't update the destination's history; that can be done
+    separately if desired.  
 
     revision_limit
         If set, pull only up to this revision_id.
-        """
-    def __init__(self, to_branch, from_branch, revision_limit=None, pb=None):
+
+    After running:
+
+    last_revision -- if last_revision
+        is given it will be that, otherwise the last revision of
+        from_branch
+
+    count_copied -- number of revisions copied
+
+    count_texts -- number of file texts copied
+    """
+    def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
         self.to_branch = to_branch
+        self.to_weaves = to_branch.weave_store
         self.from_branch = from_branch
+        self.from_weaves = from_branch.weave_store
         self.failed_revisions = []
         self.count_copied = 0
         self.count_total = 0
+        self.count_texts = 0
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.progress_bar()
         else:
             self.pb = pb
-        self.revision_limit = self._find_revision_limit(revision_limit)
+        self.last_revision = self._find_last_revision(last_revision)
+        mutter('fetch up to rev {%s}', self.last_revision)
         revs_to_fetch = self._compare_ancestries()
         self._copy_revisions(revs_to_fetch)
+        self.new_ancestry = revs_to_fetch
 
         
 
-    def _find_revision_limit(self, revision_limit):
+    def _find_last_revision(self, last_revision):
         """Find the limiting source revision.
 
         Every ancestor of that revision will be merged across.
@@ -96,11 +114,11 @@ class Fetcher(object):
         self.pb.update('get source history')
         from_history = self.from_branch.revision_history()
         self.pb.update('get destination history')
-        if revision_limit:
-            if revision_limit not in from_history:
-                raise NoSuchRevision(self.from_branch, revision_limit)
+        if last_revision:
+            if last_revision not in from_history:
+                raise NoSuchRevision(self.from_branch, last_revision)
             else:
-                return revision_limit
+                return last_revision
         elif from_history:
             return from_history[-1]
         else:
@@ -113,7 +131,7 @@ class Fetcher(object):
         That is, every revision that's in the ancestry of the source
         branch and not in the destination branch."""
         self.pb.update('get source ancestry')
-        self.from_ancestry = self.from_branch.get_ancestry(self.revision_limit)
+        self.from_ancestry = self.from_branch.get_ancestry(self.last_revision)
 
         dest_last_rev = self.to_branch.last_revision()
         self.pb.update('get destination ancestry')
@@ -138,7 +156,8 @@ class Fetcher(object):
         for rev_id in revs_to_fetch:
             self.pb.update('fetch revision', i, self.count_total)
             self._copy_one_revision(rev_id)
-            i += 1                           
+            i += 1
+            self.count_copied += 1
 
 
     def _copy_one_revision(self, rev_id):
@@ -154,8 +173,9 @@ class Fetcher(object):
                rev.committer,
                len(rev.parents))
         self._copy_new_texts(rev_id, inv)
-        self.to_branch.weave_store.add_text(INVENTORY_FILEID, rev_id,
-                                            split_lines(inv_xml), rev.parents)
+        parent_ids = [x.revision_id for x in rev.parents]
+        self.to_weaves.add_text(INVENTORY_FILEID, rev_id,
+                                            split_lines(inv_xml), parent_ids)
         self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
 
         
@@ -176,12 +196,15 @@ class Fetcher(object):
 
     def _copy_one_text(self, rev_id, file_id):
         """Copy one file text."""
-        from_weave = self.from_branch.weave_store.get_weave(file_id)
+        mutter('copy text version {%s} of file {%s}',
+               rev_id, file_id)
+        from_weave = self.from_weaves.get_weave(file_id)
         from_idx = from_weave.lookup(rev_id)
         from_parents = map(from_weave.idx_to_name, from_weave.parents(from_idx))
         text_lines = from_weave.get(from_idx)
-        to_weave = self.to_branch.weave_store.get_weave_or_empty(file_id)
+        to_weave = self.to_weaves.get_weave_or_empty(file_id)
         to_parents = map(to_weave.lookup, from_parents)
         # it's ok to add even if the text is already there
         to_weave.add(rev_id, to_parents, text_lines)
-        self.to_branch.weave_store.put_weave(file_id, to_weave)
+        self.to_weaves.put_weave(file_id, to_weave)
+        self.count_texts += 1

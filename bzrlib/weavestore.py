@@ -47,7 +47,7 @@ class WeaveStore(object):
             inf = file(self.filename(file_id), 'rb')
         except IOError, e:
             if e.errno == errno.ENOENT:
-                return Weave()
+                return Weave(weave_name=file_id)
             else:
                 raise
         else:

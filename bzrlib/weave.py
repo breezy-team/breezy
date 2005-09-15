@@ -219,7 +219,7 @@ class Weave(object):
         try:
             return self._name_map[name]
         except KeyError:
-            raise WeaveError("name %s not present in weave %s" %
+            raise WeaveError("name %r not present in weave %r" %
                              (name, self._weave_name))
 
 

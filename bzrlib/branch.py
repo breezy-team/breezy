@@ -768,7 +768,8 @@ class Branch(object):
 
 
     def missing_revisions(self, other, stop_revision=None, diverged_ok=False):
-        """
+        """Return a list of new revisions that would perfectly fit.
+        
         If self and other have not diverged, return a list of the revisions
         present in other, but missing from self.
 
@@ -794,6 +795,9 @@ class Branch(object):
         Traceback (most recent call last):
         DivergedBranches: These branches have diverged.
         """
+        # FIXME: If the branches have diverged, but the latest
+        # revision in this branch is completely merged into the other,
+        # then we should still be able to pull.
         self_history = self.revision_history()
         self_len = len(self_history)
         other_history = other.revision_history()
@@ -812,13 +816,12 @@ class Branch(object):
 
 
     def update_revisions(self, other, stop_revision=None):
-        """Pull in all new revisions from other branch.
+        """Pull in new perfect-fit revisions.
         """
-        # FIXME: Is this redundant with just doing fetch?
         from bzrlib.fetch import greedy_fetch
 
-        pb = bzrlib.ui.ui_factory.progress_bar()
-        pb.update('comparing histories')
+        greedy_fetch(to_branch=self, from_branch=other,
+                     revision_limit=stop_revision)
 
         revision_ids = self.missing_revisions(other, stop_revision)
 
@@ -827,8 +830,6 @@ class Branch(object):
         else:
             count = 0
         self.append_revision(*revision_ids)
-        ## note("Added %d revisions." % count)
-        pb.clear()
 
 
     def commit(self, *args, **kw):

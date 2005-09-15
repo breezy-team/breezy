@@ -14,7 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
+import os
+
 from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.branch import Branch
+from bzrlib.trace import mutter
 
 
 class TestAppendRevisions(TestCaseInTempDir):
@@ -26,6 +31,30 @@ class TestAppendRevisions(TestCaseInTempDir):
         self.assertEquals(br.revision_history(), ["rev1",])
         br.append_revision("rev2", "rev3")
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
+
+
+
+class TestFetch(TestCaseInTempDir):
+    def test_fetch_revisions(self):
+        """Test fetch-revision operation."""
+        from bzrlib.fetch import Fetcher
+        os.mkdir('b1')
+        os.mkdir('b2')
+        b1 = Branch('b1', init=True)
+        b2 = Branch('b2', init=True)
+        file(os.sep.join(['b1', 'foo']), 'w').write('hello')
+        b1.add(['foo'], ['foo-id'])
+        b1.commit('lala!', rev_id='revision-1', allow_pointless=False)
+
+        mutter('start fetch')
+        f = Fetcher(from_branch=b1, to_branch=b2)
+        eq = self.assertEquals
+        eq(f.count_copied, 1)
+        eq(f.last_revision, 'revision-1')
+
+        rev = b2.get_revision('revision-1')
+        tree = b2.revision_tree('revision-1')
+        eq(tree.get_file_text('foo-id'), 'hello')
 
 
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        
