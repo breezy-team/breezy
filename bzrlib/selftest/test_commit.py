@@ -95,21 +95,34 @@ class TestCommit(TestCaseInTempDir):
         b = Branch('.', init=True)
         file('hello', 'w').write('hello')
         file('buongia', 'w').write('buongia')
-        b.add(['hello', 'buongia'])
-        b.commit(message='add files')
+        b.add(['hello', 'buongia'],
+              ['hello-id', 'buongia-id'])
+        b.commit(message='add files',
+                 rev_id='test@rev-1')
         
         os.remove('hello')
         file('buongia', 'w').write('new text')
         b.commit(message='update text',
                  specific_files=['buongia'],
-                 allow_pointless=False)
+                 allow_pointless=False,
+                 rev_id='test@rev-2')
 
         b.commit(message='remove hello',
                  specific_files=['hello'],
-                 allow_pointless=False)
+                 allow_pointless=False,
+                 rev_id='test@rev-3')
 
         eq = self.assertEquals
         eq(b.revno(), 3)
+
+        tree2 = b.revision_tree('test@rev-2')
+        self.assertTrue(tree2.has_filename('hello'))
+        self.assertEquals(tree2.get_file_text('hello-id'), 'hello')
+        self.assertEquals(tree2.get_file_text('buongia-id'), 'new text')
+        
+        tree3 = b.revision_tree('test@rev-3')
+        self.assertFalse(tree3.has_filename('hello'))
+        self.assertEquals(tree3.get_file_text('buongia-id'), 'new text')
         
 
 
