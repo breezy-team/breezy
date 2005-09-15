@@ -92,6 +92,25 @@ class TestCommit(TestCaseInTempDir):
 
     def test_selective_delete(self):
         """Selective commit in tree with deletions"""
+        b = Branch('.', init=True)
+        file('hello', 'w').write('hello')
+        file('buongia', 'w').write('buongia')
+        b.add(['hello', 'buongia'])
+        b.commit(message='add files')
+        
+        os.remove('hello')
+        file('buongia', 'w').write('new text')
+        b.commit(message='update text',
+                 specific_files=['buongia'],
+                 allow_pointless=False)
+
+        b.commit(message='remove hello',
+                 specific_files=['hello'],
+                 allow_pointless=False)
+
+        eq = self.assertEquals
+        eq(b.revno(), 3)
+        
 
 
     def test_removed_commit(self):

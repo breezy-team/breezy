@@ -268,13 +268,17 @@ class Commit(object):
         Files that were added and deleted
         in the working copy don't matter.
         """
-        any_deletes = False
-        for file_id in list(iter(self.work_inv)): # snapshot for deletion
-            if not self.work_tree.has_id(file_id):
-                note('missing %s', self.work_inv.id2path(file_id))
+        specific = self.specific_files
+        deleted_ids = []
+        for path, ie in self.work_inv.iter_entries():
+            if specific and not is_inside_any(specific, path):
+                continue
+            if not self.work_tree.has_filename(path):
+                note('missing %s', path)
+                deleted_ids.append(ie.file_id)
+        if deleted_ids:
+            for file_id in deleted_ids:
                 del self.work_inv[file_id]
-                any_deletes = True
-        if any_deletes:
             self.branch._write_inventory(self.work_inv)
 
 
