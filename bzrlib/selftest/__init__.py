@@ -330,6 +330,7 @@ def test_suite():
                    'bzrlib.selftest.test_xml',
                    'bzrlib.fetch',
                    'bzrlib.selftest.teststore',
+                   'bzrlib.selftest.testtransport',
                    'bzrlib.selftest.testgraph',
                    ]
 
