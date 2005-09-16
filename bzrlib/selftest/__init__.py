@@ -244,11 +244,18 @@ class TestCaseInTempDir(TestCase):
         pass a list instead."""
         cmd = self._formcmd(cmd)
         self.log('$ ' + ' '.join(cmd))
-        actual_retcode = subprocess.call(cmd, stdout=self._log_file,
-                                         stderr=self._log_file)
+        child = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                                       stderr=subprocess.PIPE)
+        outd, errd = child.communicate()
+        self.log(outd)
+        self.log(errd)
+
+        actual_retcode = child.wait()
         if retcode != actual_retcode:
             raise CommandFailed("test failed: %r returned %d, expected %d"
                                 % (cmd, actual_retcode, retcode))
+
+        return outd, errd
 
     def backtick(self, cmd, retcode=0):
         """Run a command and return its output"""

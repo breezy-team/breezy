@@ -26,6 +26,7 @@ bit inefficient but arguably tests in a way more representative of how
 it's normally invoked.
 """
 
+from cStringIO import StringIO
 import sys
 import os
 
@@ -256,21 +257,16 @@ class TestCommands(ExternalBase):
         os.chdir('../b')
         self.runbzr('pull ../a')
         assert a.revision_history()[-1] == b.revision_history()[-1]
-        
 
     def test_add_reports(self):
         """add command prints the names of added files."""
         b = Branch.initialize('.')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
-
-        from cStringIO import StringIO
         out = StringIO()
-
         ret = self.apply_redirected(None, out, None,
                                     run_bzr,
                                     ['add'])
         self.assertEquals(ret, 0)
-
         # the ordering is not defined at the moment
         results = sorted(out.getvalue().rstrip('\n').split('\n'))
         self.assertEquals(['added dir',
