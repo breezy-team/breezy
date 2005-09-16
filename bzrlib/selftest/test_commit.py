@@ -125,8 +125,28 @@ class TestCommit(TestCaseInTempDir):
         tree3 = b.revision_tree('test@rev-3')
         self.assertFalse(tree3.has_filename('hello'))
         self.assertEquals(tree3.get_file_text('buongia-id'), 'new text')
-        
 
+
+    def test_commit_rename(self):
+        """Test commit of a revision where a file is renamed."""
+        b = Branch('.', init=True)
+        self.build_tree(['hello'])
+        b.add(['hello'], ['hello-id'])
+        b.commit(message='one', rev_id='test@rev-1', allow_pointless=False)
+
+        b.rename_one('hello', 'fruity')
+        b.commit(message='renamed', rev_id='test@rev-2', allow_pointless=False)
+
+        tree1 = b.revision_tree('test@rev-1')
+        self.assertEquals(tree1.id2path('hello-id'), 'hello')
+        self.assertEquals(tree1.get_file_text('hello-id'), 'contents of hello\n')
+        self.assertFalse(tree1.has_filename('fruity'))
+
+        tree2 = b.revision_tree('test@rev-2')
+        self.assertEquals(tree2.id2path('hello-id'), 'fruity')
+        self.assertEquals(tree2.get_file_text('hello-id'), 'contents of hello\n')
+        self.assertFalse(tree2.has_filename('hello'))
+        
 
     def test_removed_commit(self):
         """Test a commit with a removed file"""

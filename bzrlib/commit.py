@@ -155,7 +155,7 @@ class Commit(object):
         allow_pointless -- If true (default), commit even if nothing
             has changed and no merges are recorded.
         """
-        self.any_changes = False
+        mutter('preparing to commit')
 
         self.branch = branch
         self.weave_store = branch.weave_store
@@ -321,7 +321,7 @@ class Commit(object):
     def _find_file_parents(self, file_id):
         """Return the text versions and hashes for all file parents.
 
-        Returned as a map from text version to text sha1.
+        Returned as a map from text version to inventory entry.
 
         This is a set containing the file versions in all parents
         revisions containing the file.  If the file is new, the set
@@ -333,9 +333,9 @@ class Commit(object):
                 assert ie.kind == 'file'
                 assert ie.file_id == file_id
                 if ie.text_version in r:
-                    assert r[ie.text_version] == ie.text_sha1
+                    assert r[ie.text_version] == ie
                 else:
-                    r[ie.text_version] = ie.text_sha1
+                    r[ie.text_version] = ie
         return r            
 
 
@@ -357,13 +357,15 @@ class Commit(object):
             if new_ie.kind != 'file':
                 self._commit_nonfile(file_id)
                 continue
+            
             file_parents = self._find_file_parents(file_id)
-            wc_sha1 = self.work_tree.get_file_sha1(file_id)
-            if (len(file_parents) == 1
-                and file_parents.values()[0] == wc_sha1):
-                # not changed or merged
-                self._carry_file(file_id)
-                continue
+            if len(file_parents) == 1:
+                parent_ie = file_parents.values()[0]
+                wc_sha1 = self.work_tree.get_file_sha1(file_id)
+                if parent_ie.text_sha1 == wc_sha1:
+                    # text not changed or merged
+                    self._commit_old_text(file_id, parent_ie)
+                    continue
 
             mutter('parents of %s are %r', path, file_parents)
 
@@ -383,9 +385,18 @@ class Commit(object):
 
 
     def _carry_file(self, file_id):
-        """Keep a file in the same state as in the basis."""
+        """Carry the file unchanged from the basis revision."""
         if self.basis_inv.has_id(file_id):
             self.new_inv.add(self.basis_inv[file_id].copy())
+
+
+    def _commit_old_text(self, file_id, parent_ie):
+        """Keep the same text as last time, but possibly a different name."""
+        ie = self.work_inv[file_id].copy()
+        ie.text_version = parent_ie.text_version
+        ie.text_size = parent_ie.text_size
+        ie.text_sha1 = parent_ie.text_sha1
+        self.new_inv.add(ie)
 
 
     def _report_deletes(self):
