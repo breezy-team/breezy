@@ -201,7 +201,7 @@ class Commit(object):
             self.new_inv = Inventory()
             self._store_entries()
             self._report_deletes()
-            self._set_entry_versions()
+            self._set_name_versions()
 
             if not (self.allow_pointless
                     or len(self.parents) > 1
@@ -340,7 +340,7 @@ class Commit(object):
         return r
 
 
-    def _set_entry_versions(self):
+    def _set_name_versions(self):
         """Pass over inventory and mark new entry version as needed.
 
         Files get a new name version when they are new, have a
@@ -365,19 +365,19 @@ class Commit(object):
                     old_version = None
                     break
                 elif old_version is None:
-                    old_version = parent_ie.entry_version
-                elif old_version != parent_ie.entry_version:
+                    old_version = parent_ie.name_version
+                elif old_version != parent_ie.name_version:
                     old_version = None
                     break
                 else:
                     pass                # so far so good
             if old_version is None:
-                mutter('new entry_version for {%s}', file_id)
-                ie.entry_version = self.rev_id
+                mutter('new name_version for {%s}', file_id)
+                ie.name_version = self.rev_id
             else:
-                mutter('entry_version for {%s} inherited as {%s}',
+                mutter('name_version for {%s} inherited as {%s}',
                        file_id, old_version)
-                ie.entry_version = old_version
+                ie.name_version = old_version
 
 
     def _store_entries(self):

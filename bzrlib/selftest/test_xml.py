@@ -60,15 +60,15 @@ _revision_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
 _committed_inv_v5 = """<inventory>
 <file file_id="bar-20050901064931-73b4b1138abc9cd2" 
       name="bar" parent_id="TREE_ROOT" 
-      text_version="mbp@foo-123123" entry_version="mbp@foo-123123"
+      text_version="mbp@foo-123123" name_version="mbp@foo-123123"
       />
 <directory name="subdir"
            file_id="foo-20050801201819-4139aa4a272f4250"
            parent_id="TREE_ROOT" 
-           entry_version="mbp@foo-00"/>
+           name_version="mbp@foo-00"/>
 <file file_id="bar-20050824000535-6bc48cfad47ed134" 
       name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" 
-      entry_version="mbp@foo-00"
+      name_version="mbp@foo-00"
       text_version="mbp@foo-123123"/>
 </inventory>
 """
@@ -116,7 +116,7 @@ class TestSerializer(TestCase):
         ie = inv['bar-20050824000535-6bc48cfad47ed134']
         eq(ie.kind, 'file')
         eq(ie.text_version, 'mbp@foo-123123')
-        eq(ie.entry_version, 'mbp@foo-00')
+        eq(ie.name_version, 'mbp@foo-00')
         eq(ie.name, 'bar')
         eq(inv[ie.parent_id].kind, 'directory')
 

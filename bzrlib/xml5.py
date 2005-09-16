@@ -53,7 +53,7 @@ class Serializer_v5(Serializer):
         if ie.text_size != None:
             e.set('text_size', '%d' % ie.text_size)
 
-        for f in ['text_version', 'text_sha1', 'entry_version']:
+        for f in ['text_version', 'text_sha1', 'name_version']:
             v = getattr(ie, f)
             if v != None:
                 e.set(f, v)
@@ -127,7 +127,7 @@ class Serializer_v5(Serializer):
                             kind,
                             parent_id)
         ie.text_version = elt.get('text_version')
-        ie.entry_version = elt.get('entry_version')
+        ie.name_version = elt.get('name_version')
         ie.text_sha1 = elt.get('text_sha1')
         v = elt.get('text_size')
         ie.text_size = v and int(v)

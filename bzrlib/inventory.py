@@ -55,7 +55,7 @@ class InventoryEntry(object):
     parent_id
         file_id of the parent directory, or ROOT_ID
 
-    entry_version
+    name_version
         the revision_id in which the name or parent of this file was
         last changed
 
@@ -113,7 +113,7 @@ class InventoryEntry(object):
     
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
                  'text_id', 'parent_id', 'children',
-                 'text_version', 'entry_version', ]
+                 'text_version', 'name_version', ]
 
 
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
@@ -136,7 +136,7 @@ class InventoryEntry(object):
             raise BzrCheckError('InventoryEntry name %r is invalid' % name)
         
         self.text_version = None
-        self.entry_version = None
+        self.name_version = None
         self.text_sha1 = None
         self.text_size = None
         self.file_id = file_id
@@ -166,7 +166,7 @@ class InventoryEntry(object):
         other.text_sha1 = self.text_sha1
         other.text_size = self.text_size
         other.text_version = self.text_version
-        other.entry_version = self.entry_version
+        other.name_version = self.name_version
         # note that children are *not* copied; they're pulled across when
         # others are added
         return other
@@ -193,7 +193,7 @@ class InventoryEntry(object):
                and (self.parent_id == other.parent_id) \
                and (self.kind == other.kind) \
                and (self.text_version == other.text_version) \
-               and (self.entry_version == other.entry_version)
+               and (self.name_version == other.name_version)
 
 
     def __ne__(self, other):
