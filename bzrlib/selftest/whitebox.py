@@ -46,9 +46,6 @@ class TestBranch(TestCaseInTempDir):
         b.commit('commit pointless revision with one file',
                  allow_pointless=True)
 
-        b.add_pending_merge('mbp@892739123-2005-123123')
-        b.commit('commit new merge with no text changes',
-                 allow_pointless=False)
         
 
 
