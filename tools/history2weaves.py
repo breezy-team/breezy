@@ -39,17 +39,19 @@
 # sort of all revisions.  (Or do we, can we just before doing a revision
 # see that all its parents have either been converted or abandoned?)
 
-try:
-    import psyco
-    psyco.full()
-except ImportError:
-    pass
+if False:
+    try:
+        import psyco
+        psyco.full()
+    except ImportError:
+        pass
 
 
 import tempfile
 import hotshot, hotshot.stats
 import sys
 import logging
+import time
 
 from bzrlib.branch import Branch, find_branch
 from bzrlib.revfile import Revfile
@@ -57,36 +59,82 @@ from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave
 from bzrlib.progress import ProgressBar
 from bzrlib.atomicfile import AtomicFile
+from bzrlib.xml4 import serializer_v4
+from bzrlib.xml5 import serializer_v5
 import bzrlib.trace
 
 
 
-def convert():
-    bzrlib.trace.enable_default_logging()
+class Convert(object):
+    def __init__(self):
+        self.total_revs = 0
+        self.converted_revs = 0
+        self.text_count = 0
+        self.convert()
 
-    pb = ProgressBar()
 
-    inv_weave = Weave()
 
-    last_text_sha = {}
+    def convert(self):
+        bzrlib.trace.enable_default_logging()
+        self.pb = ProgressBar()
+        self.inv_weave = Weave('__inventory')
+        self.anc_weave = Weave('__ancestry')
 
-    # holds in-memory weaves for all files
-    text_weaves = {}
+        last_text_sha = {}
 
-    b = Branch('.', relax_version_check=True)
+        # holds in-memory weaves for all files
+        text_weaves = {}
 
-    revno = 1
-    rev_history = b.revision_history()
-    last_idx = None
-    inv_parents = []
-    text_count = 0
-    
-    for rev_id in rev_history:
-        pb.update('converting revision', revno, len(rev_history))
+        b = self.branch = Branch('.', relax_version_check=True)
+
+        revno = 1
+        rev_history = b.revision_history()
+        last_idx = None
+        inv_parents = []
+
+        # todo is a stack holding the revisions we still need to process;
+        # appending to it adds new highest-priority revisions
+        todo = rev_history[:]
+        todo.reverse()
+        self.total_revs = len(todo)
+
+        while todo:
+            self._convert_one_rev(todo.pop())
+
+        self.pb.clear()
+        print 'upgraded to weaves:'
+        print '  %6d revisions and inventories' % self.converted_revs
+        print '  %6d texts' % self.text_count
+
+        self._write_all_weaves()
+
+
+    def _write_all_weaves(self):
+        i = 0
+        return ############################################
+        # TODO: commit them all atomically at the end, not one by one
+        write_atomic_weave(self.inv_weave, 'weaves/inventory.weave')
+        write_atomic_weave(self.anc_weave, 'weaves/ancestry.weave')
+        for file_id, file_weave in text_weaves.items():
+            self.pb.update('writing weave', i, len(text_weaves))
+            write_atomic_weave(file_weave, 'weaves/%s.weave' % file_id)
+            i += 1
+
+        self.pb.clear()
+
         
-        inv_xml = b.get_inventory_xml(rev_id).readlines()
+    def _convert_one_rev(self, rev_id):
+        self._bump_progress()
+        b = self.branch
+        rev_xml = b.revision_store[rev_id].read()
+        inv_xml = b.inventory_store[rev_id].read()
 
-        new_idx = inv_weave.add(rev_id, inv_parents, inv_xml)
+        rev = serializer_v4.read_revision_from_string(rev_xml)
+        inv = serializer_v4.read_inventory_from_string(inv_xml)
+        
+        return ##########################################
+
+        new_idx = self.inv_weave.add(rev_id, inv_parents, inv_xml)
         inv_parents = [new_idx]
 
         tree = b.revision_tree(rev_id)
@@ -109,7 +157,7 @@ def convert():
             # revision then make a new weave; else find the old one
             if file_id not in text_weaves:
                 text_weaves[file_id] = Weave()
-                
+
             w = text_weaves[file_id]
 
             # base the new text version off whatever was last
@@ -125,20 +173,12 @@ def convert():
             text_count += 1
 
         revno += 1
-
-    pb.clear()
-    print '%6d revisions and inventories' % revno
-    print '%6d texts' % text_count
-
-    i = 0
-    # TODO: commit them all atomically at the end, not one by one
-    write_atomic_weave(inv_weave, 'weaves/inventory.weave')
-    for file_id, file_weave in text_weaves.items():
-        pb.update('writing weave', i, len(text_weaves))
-        write_atomic_weave(file_weave, 'weaves/%s.weave' % file_id)
-        i += 1
-
-    pb.clear()
+        
+    def _bump_progress(self):
+        self.converted_revs += 1
+        self.pb.update('converting revisions',
+                       self.converted_revs,
+                       self.total_revs)
 
 
 def write_atomic_weave(weave, filename):
@@ -157,7 +197,7 @@ def profile_convert():
 
     prof = hotshot.Profile(prof_f.name)
 
-    prof.runcall(convert) 
+    prof.runcall(Convert) 
     prof.close()
 
     stats = hotshot.stats.load(prof_f.name)
@@ -171,5 +211,5 @@ def profile_convert():
 if '-p' in sys.argv[1:]:
     profile_convert()
 else:
-    convert()
+    Convert()
     
