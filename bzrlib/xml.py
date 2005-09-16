@@ -25,8 +25,8 @@
 from bzrlib.trace import mutter, warning
 
 try:
-    from util.cElementTree import (ElementTree, SubElement, Element,
-                                   XMLTreeBuilder, fromstring, tostring)
+    from cElementTree import (ElementTree, SubElement, Element,
+                              XMLTreeBuilder, fromstring, tostring)
 except ImportError:
     from warnings import warn
     warn('using slower ElementTree; consider installing cElementTree')
