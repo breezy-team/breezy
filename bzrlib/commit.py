@@ -202,7 +202,7 @@ class Commit(object):
             self._report_deletes()
 
             if not (self.allow_pointless
-                    or len(self.parents) != 1
+                    or len(self.parents) > 1
                     or self.new_inv != self.basis_inv):
                 raise PointlessCommit()
 
