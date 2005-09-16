@@ -29,11 +29,11 @@ class TestFetch(TestCaseWithWebserver):
 
         def new_branch(name):
             os.mkdir(name)
-            return Branch(name, init=True)
+            return Branch.initialize(name)
             
         #highest indices a: 5, b: 7
         br_a, br_b = make_branches()
-        br_rem = find_branch(self.get_remote_url(br_a.base))
+        br_rem = Branch.open(self.get_remote_url(br_a.base))
         assert not has_revision(br_b, br_rem.revision_history()[3])
         assert has_revision(br_b, br_rem.revision_history()[2])
         assert len(br_b.revision_history()) == 7

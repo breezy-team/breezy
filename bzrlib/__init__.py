@@ -28,7 +28,8 @@ DEFAULT_IGNORE = ['.bzr.log',
                   'BitKeeper',
                   '.git',
                   'TAGS', '.make.state', '.sconsign', '.tmp*',
-                  '.del-*']
+                  '.del-*',
+                  '.DS_Store',]
 
 IGNORE_FILENAME = ".bzrignore"
 
@@ -48,7 +49,7 @@ def get_bzr_revision():
     
     try:
         import os
-        branch = Branch(os.path.dirname(__path__[0]))
+        branch = Branch.open(os.path.dirname(__path__[0]))
         rh = branch.revision_history()
         if rh:
             return len(rh), rh[-1]

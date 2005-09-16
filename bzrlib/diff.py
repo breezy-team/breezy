@@ -161,15 +161,15 @@ def show_diff(b, revision, specific_files, external_diff_options=None,
         import sys
         output = sys.stdout
 
-    if revision == None:
+    if revision is None:
         old_tree = b.basis_tree()
     else:
-        old_tree = b.revision_tree(b.lookup_revision(revision))
+        old_tree = b.revision_tree(revision.in_history(b).rev_id)
 
-    if revision2 == None:
+    if revision2 is None:
         new_tree = b.working_tree()
     else:
-        new_tree = b.revision_tree(b.lookup_revision(revision2))
+        new_tree = b.revision_tree(revision2.in_branch(b).rev_id)
 
     show_diff_trees(old_tree, new_tree, output, specific_files,
                     external_diff_options)

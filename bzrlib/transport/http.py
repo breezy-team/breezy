@@ -118,7 +118,9 @@ class HttpTransport(Transport):
         if isinstance(relpath, basestring):
             relpath = [relpath]
         baseurl = self.base.rstrip('/')
-        return '/'.join([baseurl] + relpath)
+        # TODO: We should handle ".." in a more appropriate manner
+        # Basically, we need to normalize the path.
+        path = '/'.join([baseurl] + relpath)
 
     def relpath(self, abspath):
         if not abspath.startswith(self.base):

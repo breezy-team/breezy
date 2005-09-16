@@ -92,7 +92,7 @@ class Transport(object):
 
     def clone(self, offset=None):
         """Return a new Transport object, cloned from the current location,
-        using a subdirectory. This allows connections to be pooled,
+        using a subdirectory or parent directory. This allows connections to be pooled,
         rather than a new one needed for each subdir.
         """
         raise NotImplementedError

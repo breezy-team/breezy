@@ -83,10 +83,29 @@ class SimpleLogTest(TestCaseInTempDir):
         self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
                           start_revision=1, end_revision=-1) 
 
+    def test_cur_revno(self):
+        b = Branch.initialize('.')
+
+        lf = LogCatcher()
+        b.commit('empty commit')
+        show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=2, end_revision=1) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=1, end_revision=2) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=0, end_revision=2) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=1, end_revision=0) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=-1, end_revision=1) 
+        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
+                          start_revision=1, end_revision=-1) 
+
     def test_simple_log(self):
         eq = self.assertEquals
         
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         lf = LogCatcher()
         show_log(b, lf)
@@ -132,3 +151,12 @@ class SimpleLogTest(TestCaseInTempDir):
         self.log('log 2 delta: %r' % d)
         # self.checkDelta(d, added=['hello'])
         
+        # commit a log message with control characters
+        msg = "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)])
+        b.commit(msg)
+        lf = LogCatcher()
+        show_log(b, lf, verbose=True)
+        committed_msg = lf.logs[0].rev.message
+        self.log("escaped commit message: %r", committed_msg)
+        self.assert_(msg != committed_msg)
+        self.assert_(len(committed_msg) > len(msg))
