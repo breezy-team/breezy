@@ -71,7 +71,9 @@ class Convert(object):
         self.converted_revs = set()
         self.absent_revisions = set()
         self.text_count = 0
+        self.revisions = {}
         self.convert()
+        
 
 
 
@@ -93,18 +95,24 @@ class Convert(object):
         last_idx = None
         inv_parents = []
 
-        # todo is a stack holding the revisions we still need to process;
+        # to_read is a stack holding the revisions we still need to process;
         # appending to it adds new highest-priority revisions
-        self.todo = rev_history[:]
-        self.todo.reverse()
-        self.total_revs = len(self.todo)
-
-        while self.todo:
-            self._convert_one_rev(self.todo.pop())
-
+        importorder = []
+        self.to_read = [rev_history[-1]]
+        self.total_revs = len(rev_history)
+        while self.to_read:
+            rev_id = self.to_read.pop()
+            if (rev_id not in self.revisions
+                and rev_id not in self.absent_revisions):
+                self._load_one_rev(rev_id)
         self.pb.clear()
+
+        self._make_order()
+
+        # self._convert_one_rev(self.to_read.pop())
+        
         print 'upgraded to weaves:'
-        print '  %6d revisions and inventories' % len(self.converted_revs)
+        print '  %6d revisions and inventories' % len(self.revisions)
         print '  %6d absent revisions removed' % len(self.absent_revisions)
         print '  %6d texts' % self.text_count
 
@@ -125,6 +133,65 @@ class Convert(object):
         self.pb.clear()
 
         
+    def _load_one_rev(self, rev_id):
+        """Load a revision object into memory.
+
+        Any parents not either loaded or abandoned get queued to be
+        loaded."""
+        self.pb.update('loading revision',
+                       len(self.converted_revs),
+                       self.total_revs)
+        if rev_id not in self.branch.revision_store:
+            self.pb.clear()
+            note('revision {%s} not present in branch; '
+                 'will not be converted',
+                 rev_id)
+            self.absent_revisions.add(rev_id)
+        else:
+            rev_xml = self.branch.revision_store[rev_id].read()
+            rev = serializer_v4.read_revision_from_string(rev_xml)
+            for parent_id in [x.revision_id for x in rev.parents]:
+                self.total_revs += 1
+                self.to_read.append(parent_id)
+            self.revisions[rev_id] = rev
+
+
+    def _make_order(self):
+        todo = set(self.revisions.keys())
+        done = self.absent_revisions.copy()
+        while todo:
+            # scan through looking for a revision whose parents
+            # are all done
+            for rev_id in list(todo):
+                rev = self.revisions[rev_id]
+                parent_ids = set([x.revision_id for x in rev.parents])
+                if parent_ids.issubset(done):
+                    # can take this one now
+                    print rev_id
+                    todo.remove(rev_id)
+                    done.add(rev_id)
+                    
+                
+
+    # Cannot import a revision until all its parents have been
+    # imported.  in other words, we can only import revisions whose
+    # parents have all been imported.  the first step must be to
+    # import a revision with no parents, of which there must be at
+    # least one.  (So perhaps it's useful to store forward pointers
+    # from a list of parents to their children?)
+    #
+    # Another (equivalent?) approach is to build up the ordered
+    # ancestry list for the last revision, and walk through that.  We
+    # are going to need that.
+    #
+    # We don't want to have to recurse all the way back down the list.
+    #
+    # Suppose we keep a queue of the revisions able to be processed at
+    # any point.  This starts out with all the revisions having no
+    # parents.
+    #
+    # This seems like a generally useful algorithm...
+
     def _convert_one_rev(self, rev_id):
         self._bump_progress()
         b = self.branch
@@ -142,11 +209,6 @@ class Convert(object):
 
         rev = serializer_v4.read_revision_from_string(rev_xml)
         inv = serializer_v4.read_inventory_from_string(inv_xml)
-
-        # see if parents need to be done first
-        for parent_id in [x.revision_id for x in rev.parents]:
-            if parent_id not in self.converted_revs:
-                self.todo.append(parent_id)
 
         self.converted_revs.add(rev_id)
         
@@ -192,10 +254,6 @@ class Convert(object):
 
         revno += 1
         
-    def _bump_progress(self):
-        self.pb.update('converting revisions',
-                       len(self.converted_revs),
-                       self.total_revs)
 
 
 def write_atomic_weave(weave, filename):
