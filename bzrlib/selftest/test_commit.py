@@ -137,16 +137,21 @@ class TestCommit(TestCaseInTempDir):
         b.rename_one('hello', 'fruity')
         b.commit(message='renamed', rev_id='test@rev-2', allow_pointless=False)
 
+        eq = self.assertEquals
         tree1 = b.revision_tree('test@rev-1')
-        self.assertEquals(tree1.id2path('hello-id'), 'hello')
-        self.assertEquals(tree1.get_file_text('hello-id'), 'contents of hello\n')
+        eq(tree1.id2path('hello-id'), 'hello')
+        eq(tree1.get_file_text('hello-id'), 'contents of hello\n')
         self.assertFalse(tree1.has_filename('fruity'))
         self.check_inventory_shape(tree1.inventory, ['hello'])
+        ie = tree1.inventory['hello-id']
+        eq(ie.entry_version, 'test@rev-1')
 
         tree2 = b.revision_tree('test@rev-2')
-        self.assertEquals(tree2.id2path('hello-id'), 'fruity')
-        self.assertEquals(tree2.get_file_text('hello-id'), 'contents of hello\n')
+        eq(tree2.id2path('hello-id'), 'fruity')
+        eq(tree2.get_file_text('hello-id'), 'contents of hello\n')
         self.check_inventory_shape(tree2.inventory, ['fruity'])
+        ie = tree2.inventory['hello-id']
+        eq(ie.entry_version, 'test@rev-2')
 
 
     def test_reused_rev_id(self):

@@ -201,6 +201,7 @@ class Commit(object):
             self.new_inv = Inventory()
             self._store_entries()
             self._report_deletes()
+            self._set_entry_versions()
 
             if not (self.allow_pointless
                     or len(self.parents) > 1
@@ -336,7 +337,47 @@ class Commit(object):
                     assert r[ie.text_version] == ie
                 else:
                     r[ie.text_version] = ie
-        return r            
+        return r
+
+
+    def _set_entry_versions(self):
+        """Pass over inventory and mark new entry version as needed.
+
+        Files get a new name version when they are new, have a
+        different parent, or a different name from in the
+        basis inventory, or if the file is in a different place
+        to any of the parents."""
+        # XXX: Need to think more here about when the user has
+        # made a specific decision on a particular value -- c.f.
+        # mark-merge.  
+        for path, ie in self.new_inv.iter_entries():
+            old_version = None
+            file_id = ie.file_id
+            for parent_tree in self.parent_trees:
+                parent_inv = parent_tree.inventory
+                if file_id not in parent_inv:
+                    continue
+                parent_ie = parent_inv[file_id]
+                if parent_ie.parent_id != ie.parent_id:
+                    old_version = None
+                    break
+                elif parent_ie.name != ie.name:
+                    old_version = None
+                    break
+                elif old_version is None:
+                    old_version = parent_ie.entry_version
+                elif old_version != parent_ie.entry_version:
+                    old_version = None
+                    break
+                else:
+                    pass                # so far so good
+            if old_version is None:
+                mutter('new entry_version for {%s}', file_id)
+                ie.entry_version = self.rev_id
+            else:
+                mutter('entry_version for {%s} inherited as {%s}',
+                       file_id, old_version)
+                ie.entry_version = old_version
 
 
     def _store_entries(self):
