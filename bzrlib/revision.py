@@ -98,19 +98,18 @@ def validate_revision_id(rid):
     if not REVISION_ID_RE.match(rid):
         raise ValueError("malformed revision-id %r" % rid)
 
-def is_ancestor(revision_id, candidate_id, revision_source):
+
+def is_ancestor(revision_id, candidate_id, branch):
     """Return true if candidate_id is an ancestor of revision_id.
+
     A false negative will be returned if any intermediate descendent of
     candidate_id is not present in any of the revision_sources.
     
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
     """
+    return candidate_id in branch.get_ancestry(revision_id)
 
-    for ancestor_id, distance in iter_ancestors(revision_id, revision_source):
-        if ancestor_id == candidate_id:
-            return True
-    return False
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
     ancestors = (revision_id,)
