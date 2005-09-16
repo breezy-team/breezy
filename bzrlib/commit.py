@@ -225,15 +225,33 @@ class Commit(object):
 
 
     def _record_ancestry(self):
-        """Append merged revision ancestry to the ancestry file."""
+        """Append merged revision ancestry to the ancestry file.
+
+        This should be the merged ancestry of all parents, plus the
+        new revision id."""
         w = self.weave_store.get_weave_or_empty(ANCESTRY_FILEID)
-        if self.parents:
-            lines = w.get(self.parents[0])
-        else:
-            lines = []
-        lines.append(self.rev_id + '\n')
+        lines = self._merge_ancestry_lines(w)
         w.add(self.rev_id, self.parents, lines)
         self.weave_store.put_weave(ANCESTRY_FILEID, w)
+
+
+    def _merge_ancestry_lines(self, ancestry_weave):
+        """Return merged ancestry lines.
+
+        The lines are revision-ids followed by newlines."""
+        seen = set()
+        ancs = []
+        for parent_id in self.parents:
+            for line in ancestry_weave.get(parent_id):
+                assert line[-1] == '\n'
+                if line not in seen:
+                    ancs.append(line)
+                    seen.add(line)
+        r = self.rev_id + '\n'
+        assert r not in ancs
+        ancs.append(r)
+        mutter('merged ancestry of {%s}:\n%s', self.rev_id, ''.join(ancs))
+        return ancs
 
 
     def _gather_parents(self):
@@ -244,6 +262,7 @@ class Commit(object):
             self.parents.append(precursor_id)
         self.parents += pending_merges
         for parent_id in self.parents:
+            mutter('commit parent revision {%s}', parent_id)
             if not self.branch.has_revision(parent_id):
                 warning("can't commit a merge from an absent parent")
                 raise HistoryMissing(self.branch, 'revision', parent_id)
