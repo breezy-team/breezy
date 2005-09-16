@@ -73,7 +73,7 @@ def convert():
     # holds in-memory weaves for all files
     text_weaves = {}
 
-    b = find_branch('.')
+    b = Branch('.', relax_version_check=True)
 
     revno = 1
     rev_history = b.revision_history()

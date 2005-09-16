@@ -26,7 +26,7 @@ from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
      sha_file, appendpath, file_kind
 
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
-                           NoSuchRevision, HistoryMissing)
+                           NoSuchRevision, HistoryMissing, NotBranchError)
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision, validate_revision_id
 from bzrlib.delta import compare_trees
@@ -103,7 +103,6 @@ def _relpath(base, path):
         if tail:
             s.insert(0, tail)
     else:
-        from errors import NotBranchError
         raise NotBranchError("path %r is not within branch %r" % (rp, base))
 
     return os.sep.join(s)
@@ -137,7 +136,7 @@ def find_branch_root(f=None):
         head, tail = os.path.split(f)
         if head == f:
             # reached the root, whatever that may be
-            raise bzrlib.errors.NotBranchError('%s is not in a branch' % orig_f)
+            raise NotBranchError('%s is not in a branch' % orig_f)
         f = head
 
 
@@ -180,7 +179,8 @@ class Branch(object):
     # This should match a prefix with a function which accepts
     REVISION_NAMESPACES = {}
 
-    def __init__(self, base, init=False, find_root=True):
+    def __init__(self, base, init=False, find_root=True,
+                 relax_version_check=False):
         """Create new branch object at a particular location.
 
         base -- Base directory for the branch.
@@ -191,6 +191,11 @@ class Branch(object):
 
         find_root -- If true and init is false, find the root of the
              existing branch containing base.
+
+        relax_version_check -- If true, the usual check for the branch
+            version is not applied.  This is intended only for
+            upgrade/recovery type use; it's not guaranteed that
+            all operations will work on old format branches.
 
         In the test suite, creation of new trees is tested using the
         `ScratchBranch` class.
@@ -203,11 +208,10 @@ class Branch(object):
         else:
             self.base = os.path.realpath(base)
             if not isdir(self.controlfilename('.')):
-                from errors import NotBranchError
                 raise NotBranchError("not a bzr branch: %s" % quotefn(base),
-                                     ['use "bzr init" to initialize a new working tree',
-                                      'current bzr can only operate from top-of-tree'])
-        self._check_format()
+                                     ['use "bzr init" to initialize a new working tree'])
+        
+        self._check_format(relax_version_check)
 
         self.weave_store = WeaveStore(self.controlfilename('weaves'))
         self.revision_store = ImmutableStore(self.controlfilename('revision-store'))
@@ -332,7 +336,7 @@ class Branch(object):
         
 
 
-    def _check_format(self):
+    def _check_format(self, relax_version_check):
         """Check this branch format is supported.
 
         The format level is stored, as an integer, in
@@ -344,12 +348,17 @@ class Branch(object):
         fmt = self.controlfile('branch-format', 'r').read()
         if fmt == BZR_BRANCH_FORMAT_5:
             self._branch_format = 5
-        else:
-            raise BzrError('sorry, branch format "%s" not supported; ' 
-                           'use a different bzr version, '
-                           'or run "bzr upgrade", '
-                           'or remove the .bzr directory and "bzr init" again'
-                           % fmt.rstrip('\n\r'))
+            return
+        elif relax_version_check:
+            if fmt == BZR_BRANCH_FORMAT_4:
+                self._branch_format = 4
+                return
+            
+        raise BzrError('sorry, branch format "%s" not supported; ' 
+                       'use a different bzr version, '
+                       'or run "bzr upgrade"'
+                       % fmt.rstrip('\n\r'))
+        
 
     def get_root_id(self):
         """Return the id of this branches root"""
