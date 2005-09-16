@@ -184,7 +184,8 @@ class ImmutableStore(object):
         return (os.access(p, os.R_OK)
                 or os.access(p + '.gz', os.R_OK))
 
-    # TODO: Guard against the same thing being stored twice, compressed and uncompresse
+    # TODO: Guard against the same thing being stored twice,
+    # compressed and uncompressed
 
     def __iter__(self):
         for f in os.listdir(self._basedir):
