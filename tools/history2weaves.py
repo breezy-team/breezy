@@ -51,7 +51,7 @@ import hotshot, hotshot.stats
 import sys
 import logging
 
-import bzrlib.branch
+from bzrlib.branch import Branch, find_branch
 from bzrlib.revfile import Revfile
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave
@@ -73,7 +73,7 @@ def convert():
     # holds in-memory weaves for all files
     text_weaves = {}
 
-    b = bzrlib.branch.find_branch('.')
+    b = find_branch('.')
 
     revno = 1
     rev_history = b.revision_history()
