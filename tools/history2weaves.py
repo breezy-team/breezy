@@ -61,21 +61,22 @@ from bzrlib.progress import ProgressBar
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
-import bzrlib.trace
+from bzrlib.trace import mutter, note, warning, enable_default_logging
 
 
 
 class Convert(object):
     def __init__(self):
         self.total_revs = 0
-        self.converted_revs = 0
+        self.converted_revs = set()
+        self.absent_revisions = set()
         self.text_count = 0
         self.convert()
 
 
 
     def convert(self):
-        bzrlib.trace.enable_default_logging()
+        enable_default_logging()
         self.pb = ProgressBar()
         self.inv_weave = Weave('__inventory')
         self.anc_weave = Weave('__ancestry')
@@ -94,16 +95,17 @@ class Convert(object):
 
         # todo is a stack holding the revisions we still need to process;
         # appending to it adds new highest-priority revisions
-        todo = rev_history[:]
-        todo.reverse()
-        self.total_revs = len(todo)
+        self.todo = rev_history[:]
+        self.todo.reverse()
+        self.total_revs = len(self.todo)
 
-        while todo:
-            self._convert_one_rev(todo.pop())
+        while self.todo:
+            self._convert_one_rev(self.todo.pop())
 
         self.pb.clear()
         print 'upgraded to weaves:'
-        print '  %6d revisions and inventories' % self.converted_revs
+        print '  %6d revisions and inventories' % len(self.converted_revs)
+        print '  %6d absent revisions removed' % len(self.absent_revisions)
         print '  %6d texts' % self.text_count
 
         self._write_all_weaves()
@@ -126,11 +128,27 @@ class Convert(object):
     def _convert_one_rev(self, rev_id):
         self._bump_progress()
         b = self.branch
+
+        if rev_id not in b.revision_store:
+            self.pb.clear()
+            note('revision {%s} not present in branch; '
+                 'will not be converted',
+                 rev_id)
+            self.absent_revisions.add(rev_id)
+            return
+        
         rev_xml = b.revision_store[rev_id].read()
         inv_xml = b.inventory_store[rev_id].read()
 
         rev = serializer_v4.read_revision_from_string(rev_xml)
         inv = serializer_v4.read_inventory_from_string(inv_xml)
+
+        # see if parents need to be done first
+        for parent_id in [x.revision_id for x in rev.parents]:
+            if parent_id not in self.converted_revs:
+                self.todo.append(parent_id)
+
+        self.converted_revs.add(rev_id)
         
         return ##########################################
 
@@ -175,9 +193,8 @@ class Convert(object):
         revno += 1
         
     def _bump_progress(self):
-        self.converted_revs += 1
         self.pb.update('converting revisions',
-                       self.converted_revs,
+                       len(self.converted_revs),
                        self.total_revs)
 
 
