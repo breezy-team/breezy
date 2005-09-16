@@ -83,6 +83,7 @@ def commit(*args, **kwargs):
 
     New code should use the Commit class instead.
     """
+    ## XXX: Remove this in favor of Branch.commit?
     Commit().commit(*args, **kwargs)
 
 
@@ -136,7 +137,8 @@ class Commit(object):
                committer=None,
                specific_files=None,
                rev_id=None,
-               allow_pointless=True):
+               allow_pointless=True,
+               verbose=False):
         """Commit working copy as a new revision.
 
         timestamp -- if not None, seconds-since-epoch for a
