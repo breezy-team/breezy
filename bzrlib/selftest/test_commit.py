@@ -20,7 +20,7 @@ import os
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.commit import Commit
-from bzrlib.errors import PointlessCommit
+from bzrlib.errors import PointlessCommit, BzrError
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -150,7 +150,15 @@ class TestCommit(TestCaseInTempDir):
 
 
     def test_reused_rev_id(self):
-        pass
+        """Test that a revision id cannot be reused in a branch"""
+        b = Branch('.', init=True)
+        b.commit('initial', rev_id='test@rev-1', allow_pointless=True)
+        self.assertRaises(Exception,
+                          b.commit,
+                          message='reused id',
+                          rev_id='test@rev-1',
+                          allow_pointless=True)
+                          
 
 
     def test_commit_move(self):
