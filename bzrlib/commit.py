@@ -228,12 +228,11 @@ class Commit(object):
         """Append merged revision ancestry to the ancestry file."""
         w = self.weave_store.get_weave_or_empty(ANCESTRY_FILEID)
         if self.parents:
-            lines = w.get(w.lookup(self.parents[0]))
+            lines = w.get(self.parents[0])
         else:
             lines = []
         lines.append(self.rev_id + '\n')
-        parent_idxs = map(w.lookup, self.parents)
-        w.add(self.rev_id, parent_idxs, lines)
+        w.add(self.rev_id, self.parents, lines)
         self.weave_store.put_weave(ANCESTRY_FILEID, w)
 
 

@@ -214,8 +214,16 @@ class Weave(object):
         return not self.__eq__(other)
 
 
+    def maybe_lookup(self, name_or_index):
+        """Convert possible symbolic name to index, or pass through indexes."""
+        if isinstance(name_or_index, (int, long)):
+            return name_or_index
+        else:
+            return self.lookup(name_or_index)
+
+        
     def lookup(self, name):
-        assert isinstance(name, basestring), type(name)
+        """Convert symbolic version name to index."""
         try:
             return self._name_map[name]
         except KeyError:
@@ -262,7 +270,8 @@ class Weave(object):
         assert isinstance(name, basestring)
         if name in self._name_map:
             return self._check_repeated_add(name, parents, text)
-        
+
+        parents = map(self.maybe_lookup, parents)
         self._check_versions(parents)
         ## self._check_lines(text)
         new_version = len(self._parents)
@@ -426,15 +435,16 @@ class Weave(object):
                 raise IndexError("invalid version number %r" % i)
 
     
-    def annotate(self, index):
-        return list(self.annotate_iter(index))
+    def annotate(self, name_or_index):
+        return list(self.annotate_iter(name_or_index))
 
 
-    def annotate_iter(self, version):
+    def annotate_iter(self, name_or_index):
         """Yield list of (index-id, line) pairs for the specified version.
 
         The index indicates when the line originated in the weave."""
-        for origin, lineno, text in self._extract([version]):
+        incls = [self.maybe_lookup(name_or_index)]
+        for origin, lineno, text in self._extract(incls):
             yield origin, text
 
 
@@ -538,9 +548,10 @@ class Weave(object):
     
 
 
-    def get_iter(self, version):
+    def get_iter(self, name_or_index):
         """Yield lines for the specified version."""
-        for origin, lineno, line in self._extract([version]):
+        incls = [self.maybe_lookup(name_or_index)]
+        for origin, lineno, line in self._extract(incls):
             yield line
 
 
@@ -551,8 +562,8 @@ class Weave(object):
         return s.getvalue()
 
 
-    def get(self, index):
-        return list(self.get_iter(index))
+    def get(self, name_or_index):
+        return list(self.get_iter(name_or_index))
 
 
     def mash_iter(self, included):
