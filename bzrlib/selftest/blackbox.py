@@ -160,7 +160,6 @@ class TestCommands(ExternalBase):
         self.run_bzr('mv', 'a', 'c', 'subdir')
         self.run_bzr('mv', 'subdir/a', 'subdir/newa')
 
-
     def test_main_version(self):
         """Check output from version command and master option is reasonable"""
         # output is intentionally passed through to stdout so that we
@@ -184,6 +183,15 @@ class TestCommands(ExternalBase):
         file('goodbye', 'wt').write('baz')
         test.runbzr('add goodbye')
         test.runbzr('commit -m setup goodbye')
+
+    def test_diff(self):
+        self.example_branch()
+        file('hello', 'wt').write('hello world!')
+        self.runbzr('commit -m fixing hello')
+        output = self.runbzr('diff -r 2..3', backtick=1)
+        self.assert_('\n+hello world!' in output)
+        output = self.runbzr('diff -r last:3..last:1', backtick=1)
+        self.assert_('\n+baz' in output)
 
     def test_revert(self):
         self.example_branch()
@@ -257,7 +265,7 @@ class TestCommands(ExternalBase):
         os.chdir('../b')
         self.runbzr('pull ../a')
         assert a.revision_history()[-1] == b.revision_history()[-1]
-
+        
     def test_add_reports(self):
         """add command prints the names of added files."""
         b = Branch.initialize('.')
