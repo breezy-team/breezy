@@ -348,16 +348,15 @@ class Branch(object):
         fmt = self.controlfile('branch-format', 'r').read()
         if fmt == BZR_BRANCH_FORMAT_5:
             self._branch_format = 5
-            return
-        elif relax_version_check:
-            if fmt == BZR_BRANCH_FORMAT_4:
-                self._branch_format = 4
-                return
-            
-        raise BzrError('sorry, branch format "%s" not supported; ' 
-                       'use a different bzr version, '
-                       'or run "bzr upgrade"'
-                       % fmt.rstrip('\n\r'))
+        elif fmt == BZR_BRANCH_FORMAT_4:
+            self._branch_format = 4
+
+        if (not relax_version_check
+            and self._branch_format != 5):
+            raise BzrError('sorry, branch format "%s" not supported; ' 
+                           'use a different bzr version, '
+                           'or run "bzr upgrade"'
+                           % fmt.rstrip('\n\r'))
         
 
     def get_root_id(self):
