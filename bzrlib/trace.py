@@ -58,7 +58,10 @@ class QuietFormatter(logging.Formatter):
         if record.levelno >= logging.WARNING:
             s += record.levelname + ': '
             
-        s += record.getMessage() 
+        s += record.getMessage()
+
+        import textwrap
+        s = textwrap.fill(s)
             
         if record.exc_info:
             # give just a summary of the exception, not the whole thing
