@@ -22,7 +22,9 @@ from bzrlib.merge import merge
 
 class TestRevisionNamespaces(TestCaseInTempDir):
     def test_revision_namespaces(self):
-        """Functional tests for hashcache"""
+        """Test revision specifiers.
+
+        These identify revisions by date, etc."""
         from bzrlib.errors import NoSuchRevision
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec

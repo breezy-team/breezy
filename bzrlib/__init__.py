@@ -28,7 +28,8 @@ DEFAULT_IGNORE = ['.bzr.log',
                   'BitKeeper',
                   '.git',
                   'TAGS', '.make.state', '.sconsign', '.tmp*',
-                  '.del-*']
+                  '.del-*',
+                  '.DS_Store',]
 
 IGNORE_FILENAME = ".bzrignore"
 

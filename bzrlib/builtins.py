@@ -1295,12 +1295,11 @@ class cmd_missing(Command):
                     print "Using last location: %s" % parent
                 remote = parent
         elif parent is None:
-            # We only update parent if it did not exist, missing should not change the parent
+            # We only update parent if it did not exist, missing
+            # should not change the parent
             b.set_parent(remote)
         br_remote = Branch.open_containing(remote)
-
         return show_missing(b, br_remote, verbose=verbose, quiet=quiet)
-
 
 
 class cmd_plugins(Command):
