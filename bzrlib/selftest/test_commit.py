@@ -168,32 +168,40 @@ class TestCommit(TestCaseInTempDir):
 
     def test_commit_move(self):
         """Test commit of revisions with moved files and directories"""
+        eq = self.assertEquals
         b = Branch('.', init=True)
+        r1 = 'test@rev-1'
         self.build_tree(['hello', 'a/', 'b/'])
         b.add(['hello', 'a', 'b'], ['hello-id', 'a-id', 'b-id'])
-        b.commit('initial', rev_id='test@rev-1', allow_pointless=False)
+        b.commit('initial', rev_id=r1, allow_pointless=False)
 
         b.move(['hello'], 'a')
-        b.commit('two', rev_id='test@rev-2', allow_pointless=False)
+        r2 = 'test@rev-2'
+        b.commit('two', rev_id=r2, allow_pointless=False)
         self.check_inventory_shape(b.inventory,
                                    ['a', 'a/hello', 'b'])
 
         b.move(['b'], 'a')
-        b.commit('three', rev_id='test@rev-3', allow_pointless=False)
+        r3 = 'test@rev-3'
+        b.commit('three', rev_id=r3, allow_pointless=False)
         self.check_inventory_shape(b.inventory,
                                    ['a', 'a/hello', 'a/b'])
-        self.check_inventory_shape(b.get_revision_inventory('test@rev-3'),
+        self.check_inventory_shape(b.get_revision_inventory(r3),
                                    ['a', 'a/hello', 'a/b'])
 
         b.move([os.sep.join(['a', 'hello'])],
                os.sep.join(['a', 'b']))
-        b.commit('four', rev_id='test@rev-4', allow_pointless=False)
+        r4 = 'test@rev-4'
+        b.commit('four', rev_id=r4, allow_pointless=False)
         self.check_inventory_shape(b.inventory,
                                    ['a', 'a/b/hello', 'a/b'])
-        
-        
-        
 
+        inv = b.get_revision_inventory(r4)
+        eq(inv['hello-id'].name_version, r4)
+        eq(inv['a-id'].name_version, r1)
+        eq(inv['b-id'].name_version, r3)
+
+        
     def test_removed_commit(self):
         """Test a commit with a removed file"""
         b = Branch('.', init=True)
