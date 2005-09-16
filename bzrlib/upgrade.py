@@ -19,7 +19,7 @@ import tempfile, os, errno
                 
 import bzrlib.errors
 import bzrlib.progress
-from bzrlib.xml import serializer_v4
+from bzrlib.xml4 import serializer_v4
 
 
 def upgrade(branch):
