@@ -208,11 +208,16 @@ class Branch(object):
         else:
             self.base = os.path.realpath(base)
             if not isdir(self.controlfilename('.')):
-                raise NotBranchError("not a bzr branch: %s" % quotefn(base),
-                                     ['use "bzr init" to initialize a new working tree'])
+                raise NotBranchError('not a bzr branch: %s' % quotefn(base),
+                                     ['use "bzr init" to initialize a '
+                                      'new working tree'])
         
         self._check_format(relax_version_check)
-
+        if self._branch_format == 4:
+            self.inventory_store = \
+                ImmutableStore(self.controlfilename('inventory-store'))
+            self.text_store = \
+                ImmutableStore(self.controlfilename('text-store'))
         self.weave_store = WeaveStore(self.controlfilename('weaves'))
         self.revision_store = ImmutableStore(self.controlfilename('revision-store'))
 
