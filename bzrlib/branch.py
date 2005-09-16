@@ -26,7 +26,8 @@ from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
      sha_file, appendpath, file_kind
 
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
-                           NoSuchRevision, HistoryMissing, NotBranchError)
+                           NoSuchRevision, HistoryMissing, NotBranchError,
+                           LockError)
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision, validate_revision_id
 from bzrlib.delta import compare_trees
@@ -219,7 +220,8 @@ class Branch(object):
             self.text_store = \
                 ImmutableStore(self.controlfilename('text-store'))
         self.weave_store = WeaveStore(self.controlfilename('weaves'))
-        self.revision_store = ImmutableStore(self.controlfilename('revision-store'))
+        self.revision_store = \
+            ImmutableStore(self.controlfilename('revision-store'))
 
 
     def __str__(self):
@@ -239,7 +241,6 @@ class Branch(object):
     def lock_write(self):
         if self._lock_mode:
             if self._lock_mode != 'w':
-                from errors import LockError
                 raise LockError("can't upgrade to a write lock from %r" %
                                 self._lock_mode)
             self._lock_count += 1
@@ -265,7 +266,6 @@ class Branch(object):
                         
     def unlock(self):
         if not self._lock_mode:
-            from errors import LockError
             raise LockError('branch %r is not locked' % (self))
 
         if self._lock_count > 1:
