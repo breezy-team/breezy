@@ -195,7 +195,8 @@ class Commit(object):
             self.basis_inv = self.basis_tree.inventory
 
             self._gather_parents()
-
+            self._check_parents_present()
+            
             self._remove_deleted()
             self.new_inv = Inventory()
             self._store_files()
@@ -259,18 +260,23 @@ class Commit(object):
     def _gather_parents(self):
         pending_merges = self.branch.pending_merges()
         self.parents = []
+        self.parent_trees = []
         precursor_id = self.branch.last_revision()
         if precursor_id:
             self.parents.append(precursor_id)
+            self.parent_trees.append(self.basis_tree)
         self.parents += pending_merges
+        self.parent_trees.extend(map(self.branch.revision_tree, pending_merges))
+
+
+    def _check_parents_present(self):
         for parent_id in self.parents:
             mutter('commit parent revision {%s}', parent_id)
             if not self.branch.has_revision(parent_id):
                 warning("can't commit a merge from an absent parent")
                 raise HistoryMissing(self.branch, 'revision', parent_id)
-        self.parent_trees = map(self.branch.revision_tree, self.parents)
 
-
+            
     def _make_revision(self):
         """Record a new revision object for this commit."""
         self.rev = Revision(timestamp=self.timestamp,
