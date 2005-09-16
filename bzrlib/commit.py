@@ -199,7 +199,7 @@ class Commit(object):
             
             self._remove_deleted()
             self.new_inv = Inventory()
-            self._store_files()
+            self._store_entries()
             self._report_deletes()
 
             if not (self.allow_pointless
@@ -339,13 +339,28 @@ class Commit(object):
         return r            
 
 
-    def _store_files(self):
-        """Store new texts of modified/added files.
+    def _store_entries(self):
+        """Build revision inventory and store modified files.
 
-        This is called with new_inv set to a copy of the working
-        inventory, with deleted/removed files already cut out.  So
-        this code only needs to deal with setting text versions, and
-        possibly recording new file texts."""
+        This is called with new_inv a new empty inventory.  Depending on
+        which files are selected for commit, and which ones have
+        been modified or merged, new inventory entries are built
+        based on the working and parent inventories.
+
+        As a side-effect this stores new text versions for committed
+        files with text changes or merges.
+
+        Each entry can have one of several things happen:
+
+        carry_file -- carried from the previous version (if not
+            selected for commit)
+
+        commit_nonfile -- no text to worry about
+
+        commit_old_text -- same text, may have moved
+
+        commit_file -- new text version
+        """
         for path, new_ie in self.work_inv.iter_entries():
             file_id = new_ie.file_id
             mutter('check %s {%s}', path, new_ie.file_id)
