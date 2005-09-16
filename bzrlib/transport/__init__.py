@@ -74,61 +74,6 @@ class ConnectionReset(TransportError):
     """The connection has been closed."""
     pass
 
-class AsyncFile(object):
-    """This will be returned from a Transport object,
-    whenever an asyncronous get is requested.
-    """
-    _max_write_buffer = 8192
-
-    def __init__(self):
-        self.read_buffer = []
-        self.write_buffer = []
-        self._finalized = False
-
-    def _total_len(self, buffer):
-        count = 0
-        for b in buffer:
-            count += len(b)
-        return count
-
-    def finalize(self):
-        """This will block until all data has been buffered for
-        reading, or all data has been flushed for writing.
-        Once this is called, you can no longer write more data.
-        """
-        raise NotImplementedError
-
-    def can_read(self):
-        """Can we read some data without blocking"""
-        return len(self.read_buffer) > 0
-
-    def can_write(self):
-        """Can we write some more data out without blocking?"""
-        return (not self._finalized \
-                and self._total_len(self.write_buffer) < self._max_write_buffer)
-
-    def write(self, chunk):
-        if self._finalized:
-            raise AsyncError('write attempted on finalized file.')
-        self.write_buffer.append(chunk)
-
-    def read(self, size=None):
-        if size is None:
-            return ''.join(self.read_buffer)
-        else:
-            out = ''
-            while True:
-                buf = self.read_buffer.pop(0)
-                if len(buf) + len(out) < size:
-                    out += buf
-                else:
-                    left = size - len(out)
-                    out += buf[:left]
-                    buf = buf[left:]
-                    self.read_buffer.insert(0, buf)
-                    return out
-
-
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
