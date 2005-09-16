@@ -83,7 +83,6 @@ class TestCase(unittest.TestCase):
         self._log_file.close()
         unittest.TestCase.tearDown(self)
 
-
     def log(self, *args):
         logging.debug(*args)
 
@@ -323,12 +322,14 @@ def test_suite():
                    'bzrlib.selftest.versioning',
                    'bzrlib.selftest.whitebox',
                    'bzrlib.selftest.testmerge3',
+                   'bzrlib.selftest.testmerge',
                    'bzrlib.selftest.testhashcache',
                    'bzrlib.selftest.teststatus',
                    'bzrlib.selftest.testlog',
                    'bzrlib.selftest.blackbox',
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
+                   'bzrlib.selftest.testremotebranch',
                    'bzrlib.selftest.testrevision',
                    'bzrlib.selftest.test_merge_core',
                    'bzrlib.selftest.test_smart_add',

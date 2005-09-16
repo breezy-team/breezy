@@ -48,7 +48,7 @@ def get_bzr_revision():
     from bzrlib.branch import Branch
     
     try:
-        branch = Branch(__path__[0])
+        branch = Branch.open(__path__[0])
         rh = branch.revision_history()
         if rh:
             return len(rh), rh[-1]

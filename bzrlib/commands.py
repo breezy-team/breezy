@@ -25,6 +25,13 @@
 # would help with validation and shell completion.
 
 
+# TODO: Help messages for options.
+
+# TODO: Define arguments by objects, rather than just using names.
+# Those objects can specify the expected type of the argument, which
+# would help with validation and shell completion.
+
+
 
 import sys
 import os
@@ -34,8 +41,8 @@ from inspect import getdoc
 import bzrlib
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
-from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
-from bzrlib.branch import find_branch
+from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib import BZRDIR
 
 plugin_cmds = {}
@@ -69,70 +76,68 @@ def _unsquish_command_name(cmd):
 def _parse_revision_str(revstr):
     """This handles a revision string -> revno.
 
-    This always returns a list.  The list will have one element for 
-
-    It supports integers directly, but everything else it
-    defers for passing to Branch.get_revision_info()
+    This always returns a list.  The list will have one element for
+    each revision.
 
     >>> _parse_revision_str('234')
-    [234]
+    [<RevisionSpec_int 234>]
     >>> _parse_revision_str('234..567')
-    [234, 567]
+    [<RevisionSpec_int 234>, <RevisionSpec_int 567>]
     >>> _parse_revision_str('..')
-    [None, None]
+    [<RevisionSpec None>, <RevisionSpec None>]
     >>> _parse_revision_str('..234')
-    [None, 234]
+    [<RevisionSpec None>, <RevisionSpec_int 234>]
     >>> _parse_revision_str('234..')
-    [234, None]
+    [<RevisionSpec_int 234>, <RevisionSpec None>]
     >>> _parse_revision_str('234..456..789') # Maybe this should be an error
-    [234, 456, 789]
+    [<RevisionSpec_int 234>, <RevisionSpec_int 456>, <RevisionSpec_int 789>]
     >>> _parse_revision_str('234....789') # Error?
-    [234, None, 789]
+    [<RevisionSpec_int 234>, <RevisionSpec None>, <RevisionSpec_int 789>]
     >>> _parse_revision_str('revid:test@other.com-234234')
-    ['revid:test@other.com-234234']
+    [<RevisionSpec_revid revid:test@other.com-234234>]
     >>> _parse_revision_str('revid:test@other.com-234234..revid:test@other.com-234235')
-    ['revid:test@other.com-234234', 'revid:test@other.com-234235']
+    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revid revid:test@other.com-234235>]
     >>> _parse_revision_str('revid:test@other.com-234234..23')
-    ['revid:test@other.com-234234', 23]
+    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_int 23>]
     >>> _parse_revision_str('date:2005-04-12')
-    ['date:2005-04-12']
+    [<RevisionSpec_date date:2005-04-12>]
     >>> _parse_revision_str('date:2005-04-12 12:24:33')
-    ['date:2005-04-12 12:24:33']
+    [<RevisionSpec_date date:2005-04-12 12:24:33>]
     >>> _parse_revision_str('date:2005-04-12T12:24:33')
-    ['date:2005-04-12T12:24:33']
+    [<RevisionSpec_date date:2005-04-12T12:24:33>]
     >>> _parse_revision_str('date:2005-04-12,12:24:33')
-    ['date:2005-04-12,12:24:33']
+    [<RevisionSpec_date date:2005-04-12,12:24:33>]
     >>> _parse_revision_str('-5..23')
-    [-5, 23]
+    [<RevisionSpec_int -5>, <RevisionSpec_int 23>]
     >>> _parse_revision_str('-5')
-    [-5]
+    [<RevisionSpec_int -5>]
     >>> _parse_revision_str('123a')
-    ['123a']
+    Traceback (most recent call last):
+      ...
+    BzrError: No namespace registered for string: '123a'
     >>> _parse_revision_str('abc')
-    ['abc']
+    Traceback (most recent call last):
+      ...
+    BzrError: No namespace registered for string: 'abc'
     """
     import re
     old_format_re = re.compile('\d*:\d*')
     m = old_format_re.match(revstr)
+    revs = []
     if m:
         warning('Colon separator for revision numbers is deprecated.'
                 ' Use .. instead')
-        revs = []
         for rev in revstr.split(':'):
             if rev:
-                revs.append(int(rev))
+                revs.append(RevisionSpec(int(rev)))
             else:
-                revs.append(None)
-        return revs
-    revs = []
-    for x in revstr.split('..'):
-        if not x:
-            revs.append(None)
-        else:
-            try:
-                revs.append(int(x))
-            except ValueError:
-                revs.append(x)
+                revs.append(RevisionSpec(None))
+    else:
+        for x in revstr.split('..'):
+            if not x:
+                revs.append(RevisionSpec(None))
+            else:
+                revs.append(RevisionSpec(x))
     return revs
 
 
@@ -342,8 +347,6 @@ def parse_spec(spec):
     return parsed
 
 
-
-
 # list of all available options; the rhs can be either None for an
 # option that takes no argument, or a constructor function that checks
 # the type.
@@ -403,13 +406,13 @@ def parse_args(argv):
     >>> parse_args('commit --message=biter'.split())
     (['commit'], {'message': u'biter'})
     >>> parse_args('log -r 500'.split())
-    (['log'], {'revision': [500]})
+    (['log'], {'revision': [<RevisionSpec_int 500>]})
     >>> parse_args('log -r500..600'.split())
-    (['log'], {'revision': [500, 600]})
+    (['log'], {'revision': [<RevisionSpec_int 500>, <RevisionSpec_int 600>]})
     >>> parse_args('log -vr500..600'.split())
-    (['log'], {'verbose': True, 'revision': [500, 600]})
-    >>> parse_args('log -rv500..600'.split()) #the r takes an argument
-    (['log'], {'revision': ['v500', 600]})
+    (['log'], {'verbose': True, 'revision': [<RevisionSpec_int 500>, <RevisionSpec_int 600>]})
+    >>> parse_args('log -rrevno:500..600'.split()) #the r takes an argument
+    (['log'], {'revision': [<RevisionSpec_revno revno:500>, <RevisionSpec_int 600>]})
     """
     args = []
     opts = {}
@@ -637,10 +640,14 @@ def main(argv):
 
     try:
         try:
-            return run_bzr(argv[1:])
-        finally:
-            # do this here inside the exception wrappers to catch EPIPE
-            sys.stdout.flush()
+            try:
+                return run_bzr(argv[1:])
+            finally:
+                # do this here inside the exception wrappers to catch EPIPE
+                sys.stdout.flush()
+        #wrap common errors as CommandErrors.
+        except (NotBranchError,), e:
+            raise BzrCommandError(str(e))
     except BzrCommandError, e:
         # command line syntax error, etc
         log_error(str(e))

@@ -407,21 +407,27 @@ def filesize(f):
     """Return size of given open file."""
     return os.fstat(f.fileno())[ST_SIZE]
 
-
-if hasattr(os, 'urandom'): # python 2.4 and later
+# Define rand_bytes based on platform.
+try:
+    # Python 2.4 and later have os.urandom,
+    # but it doesn't work on some arches
+    os.urandom(1)
     rand_bytes = os.urandom
-elif sys.platform == 'linux2':
-    rand_bytes = file('/dev/urandom', 'rb').read
-else:
-    # not well seeded, but better than nothing
-    def rand_bytes(n):
-        import random
-        s = ''
-        while n:
-            s += chr(random.randint(0, 255))
-            n -= 1
-        return s
-
+except (NotImplementedError, AttributeError):
+    # If python doesn't have os.urandom, or it doesn't work,
+    # then try to first pull random data from /dev/urandom
+    if os.path.exists("/dev/urandom"):
+        rand_bytes = file('/dev/urandom', 'rb').read
+    # Otherwise, use this hack as a last resort
+    else:
+        # not well seeded, but better than nothing
+        def rand_bytes(n):
+            import random
+            s = ''
+            while n:
+                s += chr(random.randint(0, 255))
+                n -= 1
+            return s
 
 ## TODO: We could later have path objects that remember their list
 ## decomposition (might be too tricksy though.)

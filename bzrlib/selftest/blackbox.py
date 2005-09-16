@@ -93,7 +93,7 @@ class TestCommands(ExternalBase):
     def test_ignore_patterns(self):
         from bzrlib.branch import Branch
         
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         self.assertEquals(list(b.unknowns()), [])
 
         file('foo.tmp', 'wt').write('tmp files are ignored')
@@ -147,16 +147,18 @@ class TestCommands(ExternalBase):
         os.rmdir('revertdir')
         self.runbzr('revert')
 
-    def skipped_test_mv_modes(self):
+    def test_mv_modes(self):
         """Test two modes of operation for mv"""
         from bzrlib.branch import Branch
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         self.build_tree(['a', 'c', 'subdir/'])
+        self.run_bzr('add', self.test_dir)
         self.run_bzr('mv', 'a', 'b')
         self.run_bzr('mv', 'b', 'subdir')
         self.run_bzr('mv', 'subdir/b', 'a')
-        self.run_bzr('mv', 'a', 'b', 'subdir')
+        self.run_bzr('mv', 'a', 'c', 'subdir')
         self.run_bzr('mv', 'subdir/a', 'subdir/newa')
+
 
     def test_main_version(self):
         """Check output from version command and master option is reasonable"""
@@ -197,7 +199,6 @@ class TestCommands(ExternalBase):
         
         os.mkdir('a')
         os.chdir('a')
-
         self.example_branch()
         os.chdir('..')
         self.runbzr('branch a b')
@@ -213,10 +214,9 @@ class TestCommands(ExternalBase):
         self.runbzr('merge ../b')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
-        a = Branch('.')
-        b = Branch('../b')
+        a = Branch.open('.')
+        b = Branch.open('../b')
         a.get_revision_xml(b.last_patch())
-
         self.log('pending merges: %s', a.pending_merges())
         #        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
         #        % (a.pending_merges(), b.last_patch())
@@ -241,8 +241,8 @@ class TestCommands(ExternalBase):
         self.runbzr('pull')
         self.runbzr('commit -m blah --unchanged')
         os.chdir('../a')
-        a = Branch('.')
-        b = Branch('../b')
+        a = Branch.open('.')
+        b = Branch.open('../b')
         assert a.revision_history() == b.revision_history()[:-1]
         self.runbzr('pull ../b')
         assert a.revision_history() == b.revision_history()
@@ -260,7 +260,7 @@ class TestCommands(ExternalBase):
 
     def test_add_reports(self):
         """add command prints the names of added files."""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
 
         from cStringIO import StringIO

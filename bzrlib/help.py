@@ -41,7 +41,7 @@ Basic commands:
   bzr diff           show detailed diffs
 
   bzr merge          pull in changes from another branch
-  bzr commit         commit changes from working copy
+  bzr commit         save some or all changes
 
   bzr log            show history of changes
   bzr check          validate storage
