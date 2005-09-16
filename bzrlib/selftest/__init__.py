@@ -335,7 +335,7 @@ def test_suite():
                    'bzrlib.selftest.testfetch',
                    'bzrlib.selftest.whitebox',
                    'bzrlib.selftest.teststore',
-#                   'bzrlib.selftest.blackbox',
+                   'bzrlib.selftest.blackbox',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
