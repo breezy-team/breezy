@@ -191,6 +191,12 @@ class TTYProgressBar(_BaseProgressBar):
     def update(self, msg, current_cnt=None, total_cnt=None):
         """Update and redraw progress bar."""
 
+        if current_cnt < 0:
+            current_cnt = 0
+            
+        if current_cnt > total_cnt:
+            total_cnt = current_cnt
+
         # save these for the tick() function
         self.last_msg = msg
         self.last_cnt = current_cnt
@@ -198,11 +204,6 @@ class TTYProgressBar(_BaseProgressBar):
             
         if self.throttle():
             return 
-        
-        if total_cnt:
-            assert current_cnt <= total_cnt
-        if current_cnt:
-            assert current_cnt >= 0
         
         if self.show_eta and self.start_time and total_cnt:
             eta = get_eta(self.start_time, current_cnt, total_cnt)
