@@ -28,7 +28,8 @@ try:
     from util.cElementTree import (ElementTree, SubElement, Element,
                                    XMLTreeBuilder, fromstring, tostring)
 except ImportError:
-    warning('using slower ElementTree; consider installing cElementTree')
+    from warnings import warn
+    warn('using slower ElementTree; consider installing cElementTree')
     from util.elementtree.ElementTree import (ElementTree, SubElement,
                                               Element, XMLTreeBuilder,
                                               fromstring, tostring)
