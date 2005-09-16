@@ -17,6 +17,7 @@
 
 import bzrlib.ui
 from bzrlib.trace import note, warning
+from bzrlib.osutils import rename, sha_string
 
 def _update_store_entry(obj, obj_id, branch, store_name, store):
     """This is just a meta-function, which handles both revision entries
@@ -24,7 +25,6 @@ def _update_store_entry(obj, obj_id, branch, store_name, store):
     """
     from bzrlib.trace import mutter
     import tempfile, os, errno
-    from osutils import rename
     obj_tmp = tempfile.TemporaryFile()
     obj.write_xml(obj_tmp)
     obj_tmp.seek(0)
@@ -100,10 +100,8 @@ def check(branch):
         history = branch.revision_history()
         revno = 0
         revcount = len(history)
-        mismatch_inv_id = []
 
-        # for all texts checked, text_id -> sha1
-        checked_texts = {}
+        checked_text_count = 0
 
         progress = bzrlib.ui.ui_factory.progress_bar()
 
@@ -154,9 +152,6 @@ def check(branch):
                                     "by {%s}"
                                     % (rev_id, last_rev_id))
 
-            if hasattr(rev, 'inventory_id') and rev.inventory_id != rev_id:
-                mismatch_inv_id.append(rev_id)
-
             ## TODO: Check all the required fields are present on the revision.
 
             if rev.inventory_sha1:
@@ -168,7 +163,8 @@ def check(branch):
                 missing_inventory_sha_cnt += 1
                 mutter("no inventory_sha1 on revision {%s}" % rev_id)
 
-            inv = branch.get_inventory(rev_id)
+            tree = branch.revision_tree(rev_id)
+            inv = tree.inventory
             seen_ids = {}
             seen_names = {}
 
@@ -194,19 +190,11 @@ def check(branch):
                                 % (ie.parent_id, rev_id))
 
                 if ie.kind == 'file':
-                    if ie.text_id in checked_texts:
-                        fp = checked_texts[ie.text_id]
-                    else:
-                        if not ie.text_id in branch.text_store:
-                            raise BzrCheckError('text {%s} not in text_store' % ie.text_id)
-
-                        tf = branch.text_store[ie.text_id]
-                        fp = fingerprint_file(tf)
-                        checked_texts[ie.text_id] = fp
-
-                    if ie.text_size != fp['size']:
+                    text = tree.get_file_text(file_id)
+                    checked_text_count += 1 
+                    if ie.text_size != len(text):
                         raise BzrCheckError('text {%s} wrong size' % ie.text_id)
-                    if ie.text_sha1 != fp['sha1']:
+                    if ie.text_sha1 != sha_string(text):
                         raise BzrCheckError('text {%s} wrong sha1' % ie.text_id)
                 elif ie.kind == 'directory':
                     if ie.text_sha1 != None or ie.text_size != None or ie.text_id != None:
@@ -219,7 +207,7 @@ def check(branch):
                     raise BzrCheckError('duplicated path %s '
                                         'in inventory for revision {%s}'
                                         % (path, rev_id))
-            seen_names[path] = True
+                seen_names[path] = True
             last_rev_id = rev_id
 
     finally:
@@ -227,13 +215,13 @@ def check(branch):
 
     progress.clear()
 
-    note('checked %d revisions, %d file texts' % (revcount, len(checked_texts)))
+    note('checked %d revisions, %d file texts' % (revcount, checked_text_count))
     
     if missing_inventory_sha_cnt:
         note('%d revisions are missing inventory_sha1' % missing_inventory_sha_cnt)
 
-    if missing_revision_sha_cnt:
-        note('%d parent links are missing revision_sha1' % missing_revision_sha_cnt)
+    ##if missing_revision_sha_cnt:
+    ##    note('%d parent links are missing revision_sha1' % missing_revision_sha_cnt)
 
     if missing_revision_cnt:
         note('%d revisions are mentioned but not present' % missing_revision_cnt)
@@ -246,8 +234,3 @@ def check(branch):
 #    if (missing_inventory_sha_cnt
 #        or missing_revision_sha_cnt):
 #        print '  (use "bzr upgrade" to fix them)'
-
-    if mismatch_inv_id:
-        warning('%d revisions have mismatched inventory ids:' % len(mismatch_inv_id))
-        for rev_id in mismatch_inv_id:
-            warning('  %s', rev_id)
