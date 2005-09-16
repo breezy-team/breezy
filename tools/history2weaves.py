@@ -1,22 +1,43 @@
 #! /usr/bin/python
-
+#
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """Experiment in converting existing bzr branches to weaves."""
+
+# To make this properly useful
+#
+# 1. assign text version ids, and put those text versions into
+#    the inventory as they're converted.
+#
+# 2. keep track of the previous version of each file, rather than
+#    just using the last one imported
+#
+# 3. assign entry versions when files are added, renamed or moved.
+#
+# 4. when merged-in versions are observed, walk down through them
+#    to discover everything, then commit bottom-up
+#
+# 5. track ancestry as things are merged in, and commit that in each
+#    revision
+#
+# Perhaps it's best to first walk the whole graph and make a plan for
+# what should be imported in what order?  Need a kind of topological
+# sort of all revisions.  (Or do we, can we just before doing a revision
+# see that all its parents have either been converted or abandoned?)
 
 try:
     import psyco
@@ -25,6 +46,9 @@ except ImportError:
     pass
 
 
+import tempfile
+import hotshot, hotshot.stats
+import sys
 import logging
 
 import bzrlib.branch
@@ -34,9 +58,8 @@ from bzrlib.weavefile import read_weave, write_weave
 from bzrlib.progress import ProgressBar
 from bzrlib.atomicfile import AtomicFile
 import bzrlib.trace
-import tempfile
-import hotshot, hotshot.stats
-import sys
+
+
 
 def convert():
     bzrlib.trace.enable_default_logging()
@@ -138,10 +161,10 @@ def profile_convert():
     prof.close()
 
     stats = hotshot.stats.load(prof_f.name)
-    #stats.strip_dirs()
+    ##stats.strip_dirs()
     stats.sort_stats('time')
-    ## XXX: Might like to write to stderr or the trace file instead but
-    ## print_stats seems hardcoded to stdout
+    # XXX: Might like to write to stderr or the trace file instead but
+    # print_stats seems hardcoded to stdout
     stats.print_stats(20)
             
 
