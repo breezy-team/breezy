@@ -817,17 +817,23 @@ class Branch(object):
 
         if stop_revision is None:
             stop_revision = other_len
-        elif stop_revision > other_len:
-            raise bzrlib.errors.NoSuchRevision(self, stop_revision)
+        else:
+            assert isinstance(stop_revision, int)
+            if stop_revision > other_len:
+                raise bzrlib.errors.NoSuchRevision(self, stop_revision)
         
         return other_history[self_len:stop_revision]
 
 
-    def update_revisions(self, other, stop_revision=None):
+    def update_revisions(self, other, stop_revno=None):
         """Pull in new perfect-fit revisions.
         """
         from bzrlib.fetch import greedy_fetch
 
+        if stop_revno:
+            stop_revision = other.lookup_revision(stop_revno)
+        else:
+            stop_revision = None
         greedy_fetch(to_branch=self, from_branch=other,
                      revision=stop_revision)
 
@@ -1470,11 +1476,15 @@ def copy_branch(branch_from, to_location, revision=None):
 
     revision
         If not None, only revisions up to this point will be copied.
-        The head of the new branch will be that revision.
+        The head of the new branch will be that revision.  Can be a
+        revno or revid.
 
     to_location
         The name of a local directory that exists but is empty.
     """
+    # TODO: This could be done *much* more efficiently by just copying
+    # all the whole weaves and revisions, rather than getting one
+    # revision at a time.
     from bzrlib.merge import merge
     from bzrlib.branch import Branch
 
@@ -1484,10 +1494,10 @@ def copy_branch(branch_from, to_location, revision=None):
     br_to = Branch(to_location, init=True)
     br_to.set_root_id(branch_from.get_root_id())
     if revision is None:
-        revno = branch_from.revno()
+        revno = None
     else:
         revno, rev_id = branch_from.get_revision_info(revision)
-    br_to.update_revisions(branch_from, stop_revision=revno)
+    br_to.update_revisions(branch_from, stop_revno=revno)
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)
     
