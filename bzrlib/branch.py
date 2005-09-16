@@ -707,11 +707,7 @@ class Branch(object):
 
 
     def revision_history(self):
-        """Return sequence of revision hashes on to this branch.
-
-        >>> ScratchBranch().revision_history()
-        []
-        """
+        """Return sequence of revision hashes on to this branch."""
         self.lock_read()
         try:
             return [l.rstrip('\r\n') for l in
