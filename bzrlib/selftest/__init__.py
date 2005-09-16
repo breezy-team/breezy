@@ -109,8 +109,7 @@ class TestCase(unittest.TestCase):
         
         
     def check_inventory_shape(self, inv, shape):
-        """
-        Compare an inventory to a list of expected names.
+        """Compare an inventory to a list of expected names.
 
         Fail if they are not precisely equal.
         """

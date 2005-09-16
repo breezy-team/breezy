@@ -141,11 +141,44 @@ class TestCommit(TestCaseInTempDir):
         self.assertEquals(tree1.id2path('hello-id'), 'hello')
         self.assertEquals(tree1.get_file_text('hello-id'), 'contents of hello\n')
         self.assertFalse(tree1.has_filename('fruity'))
+        self.check_inventory_shape(tree1.inventory, ['hello'])
 
         tree2 = b.revision_tree('test@rev-2')
         self.assertEquals(tree2.id2path('hello-id'), 'fruity')
         self.assertEquals(tree2.get_file_text('hello-id'), 'contents of hello\n')
-        self.assertFalse(tree2.has_filename('hello'))
+        self.check_inventory_shape(tree2.inventory, ['fruity'])
+
+
+    def test_reused_rev_id(self):
+        pass
+
+
+    def test_commit_move(self):
+        """Test commit of revisions with moved files and directories"""
+        b = Branch('.', init=True)
+        self.build_tree(['hello', 'a/', 'b/'])
+        b.add(['hello', 'a', 'b'], ['hello-id', 'a-id', 'b-id'])
+        b.commit('initial', rev_id='test@rev-1', allow_pointless=False)
+
+        b.move(['hello'], 'a')
+        b.commit('two', rev_id='test@rev-2', allow_pointless=False)
+        self.check_inventory_shape(b.inventory,
+                                   ['a', 'a/hello', 'b'])
+
+        b.move(['b'], 'a')
+        b.commit('three', rev_id='test@rev-3', allow_pointless=False)
+        self.check_inventory_shape(b.inventory,
+                                   ['a', 'a/hello', 'a/b'])
+        self.check_inventory_shape(b.get_revision_inventory('test@rev-3'),
+                                   ['a', 'a/hello', 'a/b'])
+
+        b.move([os.sep.join(['a', 'hello'])],
+               os.sep.join(['a', 'b']))
+        b.commit('four', rev_id='test@rev-4', allow_pointless=False)
+        self.check_inventory_shape(b.inventory,
+                                   ['a', 'a/b/hello', 'a/b'])
+        
+        
         
 
     def test_removed_commit(self):
