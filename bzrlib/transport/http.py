@@ -128,7 +128,9 @@ class HttpTransport(Transport):
         for p in relpath:
             if p == '..':
                 if len(basepath) < 0:
-                    raise NoSuchFile('Cannot seek above root directory.')
+                    # In most filesystems, a request for the parent
+                    # of root, just returns root.
+                    continue
                 basepath.pop()
             elif p == '.':
                 continue # No-op
