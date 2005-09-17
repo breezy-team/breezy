@@ -74,3 +74,16 @@ class TestRevisionNamespaces(TestCaseInTempDir):
                           'b@r-0-4')
         self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
                           'b@r-0-4')
+
+
+        # Make sure you can create a revision spec from another revision spec
+        spec = RevisionSpec('revid:a@r-0-4')
+        self.assertEquals(spec, RevisionSpec(spec))
+
+        spec = RevisionSpec('1')
+        self.assertEquals(spec, RevisionSpec(spec))
+
+        spec_1 = RevisionSpec(1)
+        self.assertEquals(spec_1, RevisionSpec(spec_1))
+        self.assertEquals(spec, spec_1)
+
