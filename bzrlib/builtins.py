@@ -87,14 +87,32 @@ class cmd_status(Command):
 
 
 class cmd_cat_revision(Command):
-    """Write out metadata for a revision."""
+    """Write out metadata for a revision.
+    
+    The revision to print can either be specified by a specific
+    revision identifier, or you can use --revision.
+    """
 
     hidden = True
-    takes_args = ['revision_id']
+    takes_args = ['revision_id?']
+    takes_options = ['revision']
     
-    def run(self, revision_id):
+    def run(self, revision_id=None, revision=None):
+        from bzrlib.revisionspec import RevisionSpec
+
+        if revision_id is not None and revision is not None:
+            raise BzrCommandError('You can only supply one of revision_id or --revision')
+        if revision_id is None and revision is None:
+            raise BzrCommandError('You must supply either --revision or a revision_id')
         b = Branch.open_containing('.')
-        sys.stdout.write(b.get_revision_xml_file(revision_id).read())
+        if revision_id is not None:
+            sys.stdout.write(b.get_revision_xml_file(revision_id).read())
+        elif revision is not None:
+            for rev in revision:
+                if rev is None:
+                    raise BzrCommandError('You cannot specify a NULL revision.')
+                revno, rev_id = rev.in_history(b)
+                sys.stdout.write(b.get_revision_xml_file(rev_id).read())
 
 
 class cmd_revno(Command):
