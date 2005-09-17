@@ -15,15 +15,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from trace import mutter
-from bzrlib.store import Storage, CompressedTextStore
-from bzrlib.local_transport import LocalTransport
+from bzrlib.store import Store
+from bzrlib.store.compressed_text import CompressedTextStore
+from bzrlib.transport.local import LocalTransport
 
 try:
     set
 except NameError:
     from sets import Set as set
 
-class CachedStore(Storage):
+class CachedStore(Store):
     """A store that caches data locally, to avoid repeated downloads.
     The precacache method should be used to avoid server round-trips for
     every piece of data.
@@ -67,3 +68,4 @@ class CachedStore(Storage):
         mutter("Prefetch of ids %s" % ",".join(ids))
         self.cache_store.copy_multi(self.source_store, ids, 
                                     permit_failure=True)
+
