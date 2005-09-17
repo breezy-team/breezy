@@ -95,7 +95,7 @@ class TestCaseWithWebserver(TestCaseInTempDir):
         return self._http_base_url + remote_path
 
     def setUp(self):
-        super(TestCaseWithWebserver, self).setUp()
+        TestCaseInTempDir.setUp(self)
         import threading, os
         self._local_path_parts = self.test_dir.split(os.path.sep)
         self._http_starting = threading.Lock()
@@ -109,4 +109,5 @@ class TestCaseWithWebserver(TestCaseInTempDir):
     def tearDown(self):
         self._http_running = False
         self._http_thread.join()
-        super(TestCaseWithWebserver, self).tearDown()
+        TestCaseInTempDir.tearDown(self)
+

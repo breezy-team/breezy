@@ -19,67 +19,12 @@ from bzrlib.trace import mutter
 # breaks keep-alive -- sucks!
 
 
-ENABLE_URLGRABBER = False
+def get_url(url):
+    import urllib2
+    mutter("get_url %s" % url)
+    url_f = urllib2.urlopen(url)
+    return url_f
 
-
-if ENABLE_URLGRABBER:
-    import urlgrabber
-    import urlgrabber.keepalive
-    import urlgrabber.grabber
-    urlgrabber.keepalive.DEBUG = 0
-    def get_url(path, compressed=False):
-        try:
-            url = path
-            if compressed:
-                url += '.gz'
-            mutter("grab url %s" % url)
-            url_f = urlgrabber.urlopen(url, keepalive=1, close_connection=0)
-            if not compressed:
-                return url_f
-            else:
-                return gzip.GzipFile(fileobj=StringIO(url_f.read()))
-        except urllib2.URLError, e:
-            raise BzrError("remote fetch failed: %r: %s" % (url, e))
-        except urlgrabber.grabber.URLGrabError, e:
-            raise BzrError("remote fetch failed: %r: %s" % (url, e))
-else:
-    def get_url(url, compressed=False):
-        import urllib2
-        if compressed:
-            url += '.gz'
-        mutter("get_url %s" % url)
-        url_f = urllib2.urlopen(url)
-        if compressed:
-            return gzip.GzipFile(fileobj=StringIO(url_f.read()))
-        else:
-            return url_f
-
-def _find_remote_root(url):
-    """Return the prefix URL that corresponds to the branch root."""
-    orig_url = url
-    while True:
-        try:
-            ff = get_url(url + '/.bzr/branch-format')
-
-            fmt = ff.read()
-            ff.close()
-
-            fmt = fmt.rstrip('\r\n')
-            if fmt != BZR_BRANCH_FORMAT.rstrip('\r\n'):
-                raise BzrError("sorry, branch format %r not supported at url %s"
-                               % (fmt, url))
-            
-            return url
-        except urllib2.URLError:
-            pass
-
-        try:
-            idx = url.rindex('/')
-        except ValueError:
-            raise BzrError('no branch root found for URL %s' % orig_url)
-
-        url = url[:idx]        
-        
 class HttpTransportError(TransportError):
     pass
 

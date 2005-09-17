@@ -176,7 +176,7 @@ class _Branch(Branch):
         `ScratchBranch` class.
         """
         if isinstance(transport, basestring):
-            from transport import transport as get_transport
+            from bzrlib.transport import transport as get_transport
             transport = get_transport(transport)
 
         self._transport = transport
@@ -946,7 +946,7 @@ class _Branch(Branch):
         if hasattr(other.revision_store, "prefetch"):
             other.revision_store.prefetch(revision_ids)
         if hasattr(other.inventory_store, "prefetch"):
-            other.inventory_store.prefetch(inventory_ids)
+            other.inventory_store.prefetch(revision_ids)
 
         if pb is None:
             pb = bzrlib.ui.ui_factory.progress_bar()
