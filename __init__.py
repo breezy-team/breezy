@@ -6,7 +6,10 @@ This should have commands for both generating a changeset,
 and for applying a changeset.
 """
 
+import sys
 from bzrlib.commands import Command, register_command, OPTIONS
+from bzrlib.branch import Branch
+from bzrlib.revisionspec import RevisionSpec
 
 class cmd_send_changeset(Command):
     """Send a bundled up changset via mail.
@@ -25,7 +28,6 @@ class cmd_send_changeset(Command):
     takes_args = ['to?']
 
     def run(self, to=None, message=None, revision=None, file=None):
-        from bzrlib import find_branch
         from bzrlib.errors import BzrCommandError
         from send_changeset import send_changeset
         
@@ -34,7 +36,7 @@ class cmd_send_changeset(Command):
                 raise BzrCommandError('We do not support rollup-changesets yet.')
             revision = revision[0]
 
-        b = find_branch('.')
+        b = Branch.open_containing('.')
 
         if not to:
             try:
@@ -76,12 +78,10 @@ class cmd_changeset(Command):
     aliases = ['cset']
 
     def run(self, base=None, target=None, starting_rev_id=None, verbose=False, revision=None):
-        from bzrlib.branch import find_branch
         from bzrlib.commands import parse_spec
         from bzrlib.errors import BzrCommandError
         from bzrlib import user_encoding
         import gen_changeset
-        import sys
         import codecs
 
         if revision is not None:
@@ -96,11 +96,11 @@ class cmd_changeset(Command):
             else:
                 raise BzrCommandError('--revision can take at most 2 arguments')
 
-            target_branch = find_branch('.')
-            target_rev_id = target_branch.lookup_revision(target_info)
+            target_branch = Branch.open_containing('.')
+            target_revno, target_rev_id = target_info.in_history(target_branch)
             base_branch = target_branch
             if base_info is not None:
-                base_rev_id = target_branch.lookup_revision(base_info)
+                base_revno, base_rev_id = base_info.in_history(target_branch)
             else:
                 target_rev = target_branch.get_revision(target_rev_id)
                 base_rev_id = target_rev.parents[0].revision_id
@@ -108,11 +108,11 @@ class cmd_changeset(Command):
             if target is None:
                 target = './@'
             b_target_path, target_revno = parse_spec(target)
-            target_branch = find_branch(b_target_path)
+            target_branch = Branch.open_containing(b_target_path)
             if target_revno is None or target_revno == -1:
                 target_rev_id = target_branch.last_patch()
             else:
-                target_rev_id = target_branch.lookup_revision(target_revno)
+                target_rev_id = target_branch.get_rev_id(target_revno)
 
             if base is None:
                 base_branch = target_branch
@@ -120,11 +120,11 @@ class cmd_changeset(Command):
                 base_rev_id = target_rev.parents[0].revision_id
             else:
                 base_path, base_revno = parse_spec(base)
-                base_branch = find_branch(base_path)
+                base_branch = Branch.open_containing(base_path)
                 if base_revno is None or base_revno == -1:
                     base_rev_id = base_branch.last_patch()
                 else:
-                    base_rev_id = base_branch.lookup_revision(base_revno)
+                    base_rev_id = base_branch.get_rev_id(base_revno)
 
         # outf = codecs.getwriter(user_encoding)(sys.stdout,
         #         errors='replace')
@@ -145,12 +145,10 @@ class cmd_verify_changeset(Command):
     takes_args = ['filename?']
 
     def run(self, filename=None):
-        import sys
         from read_changeset import read_changeset
-        from bzrlib.branch import find_branch
         from bzrlib.xml import pack_xml
 
-        b = find_branch('.')
+        b = Branch.open_containing('.')
 
         if filename is None or filename == '-':
             f = sys.stdin
@@ -173,11 +171,9 @@ class cmd_apply_changeset(Command):
     takes_options = ['reverse', 'auto-commit']
 
     def run(self, filename=None, reverse=False, auto_commit=False):
-        from bzrlib.branch import find_branch
-        import sys
         import apply_changeset
 
-        b = find_branch('.') # Make sure we are in a branch
+        b = Branch.open_containing('.') # Make sure we are in a branch
         if filename is None or filename == '-':
             f = sys.stdin
         else:
