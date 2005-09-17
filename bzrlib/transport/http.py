@@ -9,6 +9,7 @@ from bzrlib.transport import Transport, register_transport, \
 import os, errno
 from cStringIO import StringIO
 import urllib2
+import urlparse
 
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.branch import Branch, BZR_BRANCH_FORMAT
@@ -95,6 +96,9 @@ class HttpTransport(Transport):
         # In the future we might actually connect to the remote host
         # rather than using get_url
         # self._connection = None
+        (self._proto, self._host,
+            self._path, self._parameters,
+            self._query, self._fragment) = urlparse.urlparse(self.base)
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -117,10 +121,26 @@ class HttpTransport(Transport):
         """
         if isinstance(relpath, basestring):
             relpath = [relpath]
-        baseurl = self.base.rstrip('/')
-        # TODO: We should handle ".." in a more appropriate manner
-        # Basically, we need to normalize the path.
-        path = '/'.join([baseurl] + relpath)
+        basepath = self._path.split('/')
+        if len(basepath) > 0 && basepath[-1] == '':
+            basepath = basepath[:-1]
+
+        for p in relpath:
+            if p == '..':
+                if len(basepath) < 0:
+                    raise NoSuchFile('Cannot seek above root directory.')
+                basepath.pop()
+            elif p == '.':
+                continue # No-op
+            else:
+                basepath.append(p)
+
+        # Possibly, we could use urlparse.urljoin() here, but
+        # I'm concerned about when it chooses to strip the last
+        # portion of the path, and when it doesn't.
+        path = '/'.join(basepath)
+        return urlparse.urlunparse(self._proto,
+                self._host, path, '', '', '')
 
     def relpath(self, abspath):
         if not abspath.startswith(self.base):
