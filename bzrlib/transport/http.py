@@ -122,7 +122,7 @@ class HttpTransport(Transport):
         if isinstance(relpath, basestring):
             relpath = [relpath]
         basepath = self._path.split('/')
-        if len(basepath) > 0 && basepath[-1] == '':
+        if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
 
         for p in relpath:
