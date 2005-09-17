@@ -74,10 +74,22 @@ class TestCommands(ExternalBase):
         f = file('.bzr/email', 'wt')
         f.write('Branch Identity <branch@identi.ty>')
         f.close()
+        bzr_email = os.environ.get('BZREMAIL')
+        if bzr_email is not None:
+            del os.environ['BZREMAIL']
         whoami = self.runbzr("whoami",backtick=True)
         whoami_email = self.runbzr("whoami --email",backtick=True)
         self.assertTrue(whoami.startswith('Branch Identity <branch@identi.ty>'))
         self.assertTrue(whoami_email.startswith('branch@identi.ty'))
+        # Verify that the environment variable overrides the value 
+        # in the file
+        os.environ['BZREMAIL'] = 'Different ID <other@environ.ment>'
+        whoami = self.runbzr("whoami",backtick=True)
+        whoami_email = self.runbzr("whoami --email",backtick=True)
+        self.assertTrue(whoami.startswith('Different ID <other@environ.ment>'))
+        self.assertTrue(whoami_email.startswith('other@environ.ment'))
+        if bzr_email is not None:
+            os.environ['BZREMAIL'] = bzr_email
 
     def test_invalid_commands(self):
         self.runbzr("pants", retcode=1)
