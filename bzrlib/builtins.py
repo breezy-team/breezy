@@ -129,21 +129,26 @@ class cmd_revision_info(Command):
     hidden = True
     takes_args = ['revision_info*']
     takes_options = ['revision']
-    def run(self, revision=None, revision_info_list=()):
+    def run(self, revision=None, revision_info_list=[]):
         from bzrlib.revisionspec import RevisionSpec
 
         revs = []
         if revision is not None:
             revs.extend(revision)
-        for rev in revision_info_list:
-            revs.append(RevisionSpec(revision_info_list))
+        if revision_info_list is not None:
+            for rev in revision_info_list:
+                revs.append(RevisionSpec(rev))
         if len(revs) == 0:
             raise BzrCommandError('You must supply a revision identifier')
 
         b = Branch.open_containing('.')
 
         for rev in revs:
-            print '%4d %s' % rev.in_history(b)
+            revinfo = rev.in_history(b)
+            if revinfo.revno is None:
+                print '     %s' % revinfo.rev_id
+            else:
+                print '%4d %s' % (revinfo.revno, revinfo.rev_id)
 
     
 class cmd_add(Command):
