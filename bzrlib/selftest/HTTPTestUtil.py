@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import BaseHTTPServer, SimpleHTTPServer
+import BaseHTTPServer, SimpleHTTPServer, socket, errno, time
 from bzrlib.selftest import TestCaseInTempDir
 
 
@@ -32,11 +32,43 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                                    self.log_date_time_string(),
                                    format%args))
 
+    def handle_one_request(self):
+        """Handle a single HTTP request.
+
+        You normally don't need to override this method; see the class
+        __doc__ string for information on how to handle specific HTTP
+        commands such as GET and POST.
+
+        """
+        while True:
+            try:
+                self.raw_requestline = self.rfile.readline()
+            except socket.error, e:
+                if e.args[0] == errno.EAGAIN:
+                    self.log_message('EAGAIN while reading from raw_requestline')
+                    time.sleep(0.01)
+                    continue
+                raise
+            else:
+                break
+        if not self.raw_requestline:
+            self.close_connection = 1
+            return
+        if not self.parse_request(): # An error code has been sent, just exit
+            return
+        mname = 'do_' + self.command
+        if not hasattr(self, mname):
+            self.send_error(501, "Unsupported method (%r)" % self.command)
+            return
+        method = getattr(self, mname)
+        method()
+
 class TestingHTTPServer(BaseHTTPServer.HTTPServer):
     def __init__(self, server_address, RequestHandlerClass, test_case):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
                                                 RequestHandlerClass)
         self.test_case = test_case
+
 
 class TestCaseWithWebserver(TestCaseInTempDir):
     """Derived class that starts a localhost-only webserver

@@ -124,6 +124,7 @@ class CompressedTextStore(bzrlib.store.Store):
                 else:
                     failed.add(fileid)
             to_copy = new_to_copy
+            #mutter('_copy_multi_text copying %s, failed %s' % (to_copy, failed))
 
         paths = [self._relpath(fileid) for fileid in to_copy]
         count = other._transport.copy_to(paths, self._transport, pb=pb)
@@ -144,10 +145,10 @@ class CompressedTextStore(bzrlib.store.Store):
         relpaths = (self._relpath(fid) for fid in fileids)
         return self._transport.has_multi(relpaths, pb=pb)
 
-    def get(self, fileids, ignore_missing=False, pb=None):
+    def get(self, fileids, permit_failure=False, pb=None):
         """Return a set of files, one for each requested entry.
         
-        TODO: Write some tests to make sure that ignore_missing is
+        TODO: Write some tests to make sure that permit_failure is
               handled correctly.
 
         TODO: What should the exception be for a missing file?
@@ -161,7 +162,8 @@ class CompressedTextStore(bzrlib.store.Store):
         rel_paths = [self._relpath(fid) for fid in fileids]
         is_requested = []
 
-        if ignore_missing:
+        #mutter('CompressedTextStore.get(permit_failure=%s)' % permit_failure)
+        if permit_failure:
             existing_paths = []
             for path, has in zip(rel_paths,
                     self._transport.has_multi(rel_paths)):
@@ -170,7 +172,9 @@ class CompressedTextStore(bzrlib.store.Store):
                     is_requested.append(True)
                 else:
                     is_requested.append(False)
+            #mutter('Retrieving %s out of %s' % (existing_paths, rel_paths))
         else:
+            #mutter('Retrieving all %s' % (rel_paths, ))
             existing_paths = rel_paths
             is_requested = [True for x in rel_paths]
 

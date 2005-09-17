@@ -101,9 +101,18 @@ class HttpTransport(Transport):
 
         TODO: HttpTransport.has() should use a HEAD request,
         not a full GET request.
+
+        TODO: This should be changed so that we don't use
+        urllib2 and get an exception, the code path would be
+        cleaner if we just do an http HEAD request, and parse
+        the return code.
         """
         try:
             f = get_url(self.abspath(relpath))
+            # Without the read and then close()
+            # we tend to have busy sockets.
+            f.read()
+            f.close()
             return True
         except BzrError:
             return False

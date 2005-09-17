@@ -178,6 +178,7 @@ class HttpTransportTest(TestCaseWithWebserver):
     def test_http_transport(self):
         from bzrlib.transport.http import HttpTransport
 
-        t = HttpTransport(self.get_remote_url('.'))
+        url = self.get_remote_url('.')
+        t = HttpTransport(url)
         test_transport(self, t, readonly=True)
 

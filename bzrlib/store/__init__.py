@@ -90,10 +90,10 @@ class Store(object):
             else:
                 yield False
 
-    def get(self, fileids, ignore_missing=False, pb=None):
+    def get(self, fileids, permit_failure=False, pb=None):
         """Return a set of files, one for each requested entry.
         
-        :param ignore_missing: If true, return None for entries which do not 
+        :param permit_failure: If true, return None for entries which do not 
                                exist.
         :return: A list or generator of file-like objects, one for each id.
         """
@@ -101,7 +101,7 @@ class Store(object):
             try:
                 yield self[fileid]
             except KeyError:
-                if ignore_missing:
+                if permit_failure:
                     yield None
                 else:
                     raise

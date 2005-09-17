@@ -194,8 +194,8 @@ class _Branch(Branch):
 
     def __del__(self):
         if self._lock_mode or self._lock:
-            from bzrlib.warnings import warn
-            warn("branch %r was not explicitly unlocked" % self)
+            from bzrlib.trace import warning
+            warning("branch %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
         # TODO: It might be best to do this somewhere else,
@@ -205,8 +205,6 @@ class _Branch(Branch):
         # See the earlier discussion about how major objects (like Branch)
         # should never expect their __del__ function to run.
         if hasattr(self, 'cache_root') and self.cache_root is not None:
-            #from warnings import warn
-            #warn("branch %r auto-cleanup of cache files" % self)
             try:
                 import shutil
                 shutil.rmtree(self.cache_root)
@@ -754,21 +752,20 @@ class _Branch(Branch):
 
     get_inventory_xml_file = get_inventory_xml
             
-    def get_inventories(self, inventory_ids, pb=None, ignore_missing=False):
+    def get_inventories(self, inventory_ids, pb=None, permit_failure=False):
         """Get Inventory objects by id
         """
-        from bzrlib.inventory import Inventory
-
         # See the discussion in get_revisions for why
         # we don't use a try/finally block here
         self.lock_read()
-        for f in self.inventory_store.get(inventory_ids, pb=pb, ignore_missing=ignore_missing):
+        for f in self.inventory_store.get(inventory_ids,
+                permit_failure=permit_failure, pb=pb):
             if f is not None:
                 # TODO: Possibly put a try/except around this to handle
                 # read serialization errors
                 r = bzrlib.xml.serializer_v4.read_inventory(f)
                 yield r
-            elif ignore_missing:
+            elif permit_failure:
                 yield None
             else:
                 raise bzrlib.errors.NoSuchRevision(self, revision_id)
@@ -953,7 +950,7 @@ class _Branch(Branch):
                 
         # This entire next section is generally done
         # with either generators, or bulk updates
-        inventories = other.get_inventories(revision_ids, ignore_missing=True)
+        inventories = other.get_inventories(revision_ids, permit_failure=True)
         needed_texts = set()
 
         failures = set()

@@ -47,7 +47,7 @@ class CachedStore(Store):
             return True
         return False
 
-    def get(self, fileids, pb=None):
+    def get(self, fileids, permit_failure=False, pb=None):
         fileids = list(fileids)
         hasids = self.cache_store.has(fileids)
         needs = set()
@@ -55,8 +55,10 @@ class CachedStore(Store):
             if not has:
                 needs.add(fileid)
         if needs:
-            self.cache_store.copy_multi(self.source_store, needs)
-        return self.cache_store.get(fileids, pb=pb)
+            self.cache_store.copy_multi(self.source_store, needs,
+                    permit_failure=permit_failure)
+        return self.cache_store.get(fileids,
+                permit_failure=permit_failure, pb=pb)
 
     def prefetch(self, ids):
         """Copy a series of ids into the cache, before they are used.
