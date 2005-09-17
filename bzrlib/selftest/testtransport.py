@@ -16,6 +16,7 @@
 
 
 from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.transport import NoSuchFile, FileExists
 
 def test_transport(tester, t, readonly=False):
@@ -164,6 +165,7 @@ def test_transport(tester, t, readonly=False):
 
     # TODO: Test append
     # TODO: Make sure all entries support file-like objects as well as strings.
+    # TODO: Test get_partial()
 
 class LocalTransportTest(TestCaseInTempDir):
     def test_local_transport(self):
@@ -172,57 +174,10 @@ class LocalTransportTest(TestCaseInTempDir):
         t = LocalTransport('.')
         test_transport(self, t)
 
-class HttpServer(object):
-    """This just encapsulates spawning and stopping
-    an httpserver.
-    """
-    def __init__(self):
-        """This just spawns a separate process to serve files from
-        this directory. Call the .stop() function to kill the
-        process.
-        """
-        from BaseHTTPServer import HTTPServer
-        from SimpleHTTPServer import SimpleHTTPRequestHandler
-        import os
-        if hasattr(os, 'fork'):
-            self.pid = os.fork()
-            if self.pid != 0:
-                return
-        else: # How do we handle windows, which doesn't have fork?
-            raise NotImplementedError('At present HttpServer cannot fork on Windows')
-
-            # We might be able to do something like os.spawn() for the
-            # python executable, and give it a simple script to run.
-            # but then how do we kill it?
-
-        try:
-            self.s = HTTPServer(('', 9999), SimpleHTTPRequestHandler)
-            # TODO: Is there something nicer than killing the server when done?
-            self.s.serve_forever()
-        except KeyboardInterrupt:
-            pass
-        os._exit(0)
-
-    def stop(self):
-        import os
-        if self.pid is None:
-            return
-        if hasattr(os, 'kill'):
-            import signal
-            os.kill(self.pid, signal.SIGINT)
-            os.waitpid(self.pid, 0)
-            self.pid = None
-        else:
-            raise NotImplementedError('At present HttpServer cannot stop on Windows')
-
-class HttpTransportTest(TestCaseInTempDir):
+class HttpTransportTest(TestCaseWithWebserver):
     def test_http_transport(self):
         from bzrlib.transport.http import HttpTransport
 
-        s = HttpServer()
-
-        t = HttpTransport('http://localhost:9999/')
+        t = HttpTransport(self.get_remote_url('.'))
         test_transport(self, t, readonly=True)
-
-        s.stop()
 

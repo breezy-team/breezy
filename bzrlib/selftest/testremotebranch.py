@@ -24,7 +24,7 @@ from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
         
 
 class TestFetch(TestCaseWithWebserver):
-    def runTest(self):
+    def test_fetch(self):
         from bzrlib.fetch import greedy_fetch, has_revision
 
         def new_branch(name):
