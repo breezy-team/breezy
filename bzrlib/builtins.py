@@ -1187,8 +1187,11 @@ class cmd_merge(Command):
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                base = [branch, revision[0].in_history(branch).revno]
-                other = [branch, revision[1].in_history(branch).revno]
+                from bzrlib.branch import Branch
+                b = Branch.open(branch)
+
+                base = [branch, revision[0].in_history(b).revno]
+                other = [branch, revision[1].in_history(b).revno]
 
         try:
             merge(other, base, check_clean=(not force), merge_type=merge_type)
