@@ -114,7 +114,7 @@ class Branch(object):
     def open(base):
         """Open an existing branch, rooted at 'base' (url)"""
         t = bzrlib.transport.transport(base)
-        return LocalBranch(t)
+        return _Branch(t)
 
     @staticmethod
     def open_containing(base):
@@ -122,13 +122,13 @@ class Branch(object):
         """
         t = bzrlib.transport.transport(base)
         t = find_branch_root(t)
-        return LocalBranch(t)
+        return _Branch(t)
 
     @staticmethod
     def initialize(base):
         """Create a new branch, rooted at 'base' (url)"""
         t = bzrlib.transport.transport(base)
-        return LocalBranch(t, init=True)
+        return _Branch(t, init=True)
 
     def setup_caching(self, cache_root):
         """Subclasses that care about caching should override this, and set
@@ -136,7 +136,7 @@ class Branch(object):
         """
 
 
-class LocalBranch(Branch):
+class _Branch(Branch):
     """A branch stored in the actual filesystem.
 
     Note that it's "local" in the context of the filesystem; it doesn't
@@ -1315,7 +1315,7 @@ class LocalBranch(Branch):
         
 
 
-class ScratchBranch(LocalBranch):
+class ScratchBranch(_Branch):
     """Special test class: a branch that cleans up after itself.
 
     >>> b = ScratchBranch()
@@ -1338,7 +1338,7 @@ class ScratchBranch(LocalBranch):
         if base is None:
             base = mkdtemp()
             init = True
-        LocalBranch.__init__(self, base, init=init)
+        _Branch.__init__(self, base, init=init)
         for d in dirs:
             self._transport.mkdir(d)
             
