@@ -25,7 +25,7 @@ from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
      sha_file, appendpath, file_kind
 
 from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId, \
-     DivergedBranches, NotBranchError
+     DivergedBranches, NotBranchError, NoSuchFile
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision
 from bzrlib.delta import compare_trees
@@ -85,13 +85,14 @@ def find_branch_root(t):
     Basically we keep looking up until we find the control directory or
     run into the root.  If there isn't one, raises NotBranchError.
     """
+    orig_base = t.base
     while True:
         if t.has(bzrlib.BZRDIR):
             return t
         new_t = t.clone('..')
         if new_t.base == t.base:
             # reached the root, whatever that may be
-            raise NotBranchError('%s is not in a branch' % orig_f)
+            raise NotBranchError('%s is not in a branch' % orig_base)
         t = new_t
 
 
@@ -116,11 +117,11 @@ class Branch(object):
         return LocalBranch(t)
 
     @staticmethod
-    def open_containing(url):
+    def open_containing(base):
         """Open an existing branch, containing url (search upwards for the root)
         """
         t = bzrlib.transport.transport(base)
-        found_t = find_branch_root(t)
+        t = find_branch_root(t)
         return LocalBranch(t)
 
     @staticmethod
@@ -203,7 +204,7 @@ class LocalBranch(Branch):
         # Alternatively, we could have the Transport objects cache requests
         # See the earlier discussion about how major objects (like Branch)
         # should never expect their __del__ function to run.
-        if self.cache_root is not None:
+        if hasattr(self, 'cache_root') and self.cache_root is not None:
             #from warnings import warn
             #warn("branch %r auto-cleanup of cache files" % self)
             try:
@@ -376,7 +377,11 @@ class LocalBranch(Branch):
         # This ignores newlines so that we can open branches created
         # on Windows from Linux and so on.  I think it might be better
         # to always make all internal files in unix format.
-        fmt = self.controlfile('branch-format', 'r').read()
+        try:
+            fmt = self.controlfile('branch-format', 'r').read()
+        except NoSuchFile:
+            raise NotBranchError('Could not find .bzr/branch-format in %s' 
+                    % self._transport.base)
         fmt = fmt.replace('\r\n', '\n')
         if fmt != BZR_BRANCH_FORMAT:
             raise BzrError('sorry, branch format %r not supported' % fmt,

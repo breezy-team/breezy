@@ -141,8 +141,8 @@ class HttpTransport(Transport):
         # I'm concerned about when it chooses to strip the last
         # portion of the path, and when it doesn't.
         path = '/'.join(basepath)
-        return urlparse.urlunparse(self._proto,
-                self._host, path, '', '', '')
+        return urlparse.urlunparse((self._proto,
+                self._host, path, '', '', ''))
 
     def relpath(self, abspath):
         if not abspath.startswith(self.base):
