@@ -92,6 +92,11 @@ class TestCase(unittest.TestCase):
         return open(self._log_file_name).read()
 
 
+    def capture(self, cmd):
+        """Shortcut that splits cmd into words, runs, and returns stdout"""
+        return self.run_bzr_captured(cmd.split())[0]
+
+
     def run_bzr_captured(self, argv, retcode=0):
         """Invoke bzr and return (result, stdout, stderr).
 
@@ -284,7 +289,7 @@ class TestCaseInTempDir(TestCase):
         If a single string is based, it is split into words.
         For commands that are not simple space-separated words, please
         pass a list instead."""
-        warn('TestBase.runcmd is deprecated')
+        warn('TestBase.runcmd is deprecated', stacklevel=2)
         cmd = self._formcmd(cmd)
         self.log('$ ' + ' '.join(cmd))
         actual_retcode = subprocess.call(cmd, stdout=self._log_file,
@@ -295,7 +300,7 @@ class TestCaseInTempDir(TestCase):
 
     def backtick(self, cmd, retcode=0):
         """Run a command and return its output"""
-        warn('TestBase.backtick is deprecated')
+        warn('TestBase.backtick is deprecated', stacklevel=2)
         cmd = self._formcmd(cmd)
         child = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=self._log_file)
         outd, errd = child.communicate()

@@ -96,14 +96,14 @@ class TestCommands(ExternalBase):
 
         file('foo.tmp', 'wt').write('tmp files are ignored')
         self.assertEquals(list(b.unknowns()), [])
-        assert self.backtick('bzr unknowns') == ''
+        assert self.capture('unknowns') == ''
 
         file('foo.c', 'wt').write('int main() {}')
         self.assertEquals(list(b.unknowns()), ['foo.c'])
-        assert self.backtick('bzr unknowns') == 'foo.c\n'
+        assert self.capture('unknowns') == 'foo.c\n'
 
         self.runbzr(['add', 'foo.c'])
-        assert self.backtick('bzr unknowns') == ''
+        assert self.capture('unknowns') == ''
 
         # 'ignore' works when creating the .bzignore file
         file('foo.blah', 'wt').write('blah')
@@ -115,7 +115,7 @@ class TestCommands(ExternalBase):
         # 'ignore' works when then .bzrignore file already exists
         file('garh', 'wt').write('garh')
         self.assertEquals(list(b.unknowns()), ['garh'])
-        assert self.backtick('bzr unknowns') == 'garh\n'
+        assert self.capture('unknowns') == 'garh\n'
         self.runbzr('ignore garh')
         self.assertEquals(list(b.unknowns()), [])
         assert file('.bzrignore', 'rb').read() == '*.blah\ngarh\n'
@@ -292,10 +292,8 @@ class OldTests(ExternalBase):
         from os import chdir, mkdir
         from os.path import exists
 
-        def capture(cmd):
-            return self.run_bzr_captured(cmd.split())[0]
-
         runbzr = self.runbzr
+        capture = self.capture
         progress = self.log
 
         progress("basic branch creation")
