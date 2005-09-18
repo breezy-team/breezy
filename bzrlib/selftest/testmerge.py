@@ -24,7 +24,14 @@ class TestMerge(TestCaseInTempDir):
     def test_unrelated(self):
         br2 = self.test_nocommits()
         commit(br2, "blah")
-        merge, ['branch2', -1], [None, None]
         self.assertRaises(UnrelatedBranches, merge, ['branch2', -1], 
                           [None, None])
+        return br2
 
+    def test_pending_with_null(self):
+        """When base is forced to revno 0, pending_merges is set"""
+        br2 = self.test_unrelated()
+        br1 = Branch('.')
+        merge(['branch2', -1], ['branch2', 0])
+        self.assertEquals(len(br1.pending_merges()), 1)
+        return (br1, br2)

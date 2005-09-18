@@ -285,12 +285,9 @@ def merge(other_revision, base_revision,
                 base_rev_id = None
             else:
                 base_rev_id = base_branch.lookup_revision(base_revision[1])
-            if base_rev_id is not None:
-                base_is_ancestor = is_ancestor(this_rev_id, base_rev_id, 
-                                               MultipleRevisionSources(this_branch, 
-                                                                       base_branch))
-            else:
-                base_is_ancestor = False
+            multi_source = MultipleRevisionSources(this_branch, base_branch)
+            base_is_ancestor = is_ancestor(this_rev_id, base_rev_id,
+                                           multi_source)
         if file_list is None:
             interesting_ids = None
         else:

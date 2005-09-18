@@ -106,7 +106,8 @@ def is_ancestor(revision_id, candidate_id, revision_source):
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
     """
-
+    if candidate_id is None:
+        return True
     for ancestor_id, distance in iter_ancestors(revision_id, revision_source):
         if ancestor_id == candidate_id:
             return True

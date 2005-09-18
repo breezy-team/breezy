@@ -890,6 +890,7 @@ class Branch(object):
     def lookup_revision(self, revision):
         """Return the revision identifier for a given revision information."""
         revno, info = self._get_revision_info(revision)
+        assert info is not None or revno == 0, (info, revno)
         return info
 
 
