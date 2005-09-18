@@ -24,6 +24,9 @@ Small things
 
   2005-11-05      mbp  Flowers for stephane
 
+* Fix tests so that import errors caused by modules don't produce false reports
+  that the tests themselves don't exist.
+
 * print a message at the end of running the tests telling them that the
   test log and output exists but can be removed
 
