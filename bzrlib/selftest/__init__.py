@@ -105,14 +105,27 @@ class TestCase(unittest.TestCase):
         Much of the old code runs bzr by forking a new copy of Python, but
         that is slower, harder to debug, and generally not necessary.
 
+        This runs bzr through the interface that catches and reports
+        errors, and with logging set to something approximating the
+        default, so that error reporting can be checked.
+
         argv -- arguments to invoke bzr
         retcode -- expected return code, or None for don't-care.
         """
         stdout = StringIO()
         stderr = StringIO()
         self.log('run bzr: %s', ' '.join(argv))
-        result = self.apply_redirected(None, stdout, stderr,
-                                       bzrlib.commands.run_bzr, argv)
+        handler = logging.StreamHandler(stderr)
+        handler.setFormatter(bzrlib.trace.QuietFormatter())
+        handler.setLevel(logging.INFO)
+        logger = logging.getLogger('')
+        logger.addHandler(handler)
+        try:
+            result = self.apply_redirected(None, stdout, stderr,
+                                           bzrlib.commands.run_bzr_catch_errors,
+                                           argv)
+        finally:
+            logger.removeHandler(handler)
         out = stdout.getvalue()
         err = stderr.getvalue()
         if out:

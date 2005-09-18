@@ -278,6 +278,14 @@ class TestCommands(ExternalBase):
                            'added top.txt',],
                           results)
 
+    def test_unknown_command(self):
+        """Handling of unknown command."""
+        out, err = self.run_bzr_captured(['fluffy-badger'],
+                                         retcode=1)
+        self.assertEquals(out, '')
+        err.index('unknown command')
+        
+
 
 class OldTests(ExternalBase):
     """old tests moved from ./testbzr."""
