@@ -638,6 +638,10 @@ def main(argv):
     bzrlib.trace.log_startup(argv)
     bzrlib.ui.ui_factory = bzrlib.ui.TextUIFactory()
 
+    return run_bzr_catch_errors(argv)
+
+
+def run_bzr_catch_errors(argv):
     try:
         try:
             try:
