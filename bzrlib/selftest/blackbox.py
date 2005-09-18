@@ -160,6 +160,13 @@ class TestCommands(ExternalBase):
         os.rmdir('revertdir')
         self.runbzr('revert')
 
+        file('hello', 'wt').write('xyz')
+        self.runbzr('commit -m xyz hello')
+        self.runbzr('revert -r 1 hello')
+        self.check_file_contents('hello', 'foo')
+        self.runbzr('revert hello')
+        self.check_file_contents('hello', 'xyz')
+
     def test_mv_modes(self):
         """Test two modes of operation for mv"""
         from bzrlib.branch import Branch
@@ -204,16 +211,6 @@ class TestCommands(ExternalBase):
         self.assert_('\n+hello world!' in output)
         output = self.runbzr('diff -r last:3..last:1', backtick=1)
         self.assert_('\n+baz' in output)
-
-    def test_revert(self):
-        self.example_branch()
-        file('hello', 'wt').write('bar')
-        file('goodbye', 'wt').write('qux')
-        self.runbzr('revert hello')
-        self.check_file_contents('hello', 'foo')
-        self.check_file_contents('goodbye', 'qux')
-        self.runbzr('revert')
-        self.check_file_contents('goodbye', 'baz')
 
     def test_merge(self):
         from bzrlib.branch import Branch

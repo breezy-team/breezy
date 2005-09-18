@@ -1248,10 +1248,13 @@ class cmd_revert(Command):
             if len(file_list) == 0:
                 raise BzrCommandError("No files specified")
         if revision is None:
-            revision = [-1]
+            revno = -1
         elif len(revision) != 1:
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
-        merge(('.', revision[0]), parse_spec('.'),
+        else:
+            b = Branch.open_containing('.')
+            revno = revision[0].in_history(b).revno
+        merge(('.', revno), parse_spec('.'),
               check_clean=False,
               ignore_zero=True,
               backup_files=not no_backup,
