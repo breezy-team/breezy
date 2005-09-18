@@ -24,9 +24,6 @@ from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
         
 
 class TestFetch(TestCaseWithWebserver):
-    # For some reason, this test *has* to be named runTest()
-    # trying to run it as test_fetch causes exceptions to be
-    # thrown involving "resource is temporarily unavailable".
     def test_fetch(self):
         from bzrlib.fetch import greedy_fetch, has_revision
 
