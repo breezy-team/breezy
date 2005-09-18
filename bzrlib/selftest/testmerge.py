@@ -3,6 +3,7 @@ from bzrlib.commit import commit
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.merge import merge
 from bzrlib.errors import UnrelatedBranches, NoCommits
+from bzrlib.revision import common_ancestor
 import os
 class TestMerge(TestCaseInTempDir):
     """Test appending more than one revision"""
@@ -35,3 +36,10 @@ class TestMerge(TestCaseInTempDir):
         merge(['branch2', -1], ['branch2', 0])
         self.assertEquals(len(br1.pending_merges()), 1)
         return (br1, br2)
+
+    def test_two_roots(self):
+        """Merge base is sane when two unrelated branches are merged"""
+        br1, br2 = self.test_pending_with_null()
+        commit(br1, "blah")
+        last = br1.last_patch()
+        self.assertEquals(common_ancestor(last, last, br1), last)

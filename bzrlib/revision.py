@@ -18,6 +18,8 @@
 import bzrlib.errors
 from bzrlib.graph import node_distances, select_farthest, all_descendants
 
+NULL_REVISION="!NULL!"
+
 class RevisionReference(object):
     """
     Reference to a stored revision.
@@ -207,15 +209,19 @@ def revision_graph(revision, revision_source):
     while len(lines) > 0:
         new_lines = set()
         for line in lines:
-            try:
-                rev = revision_source.get_revision(line)
-                parents = [p.revision_id for p in rev.parents]
-                if len(parents) == 0:
-                    root = line
-            except bzrlib.errors.NoSuchRevision:
-                if line == revision:
-                    raise
-                parents = None
+            if line == NULL_REVISION:
+                parents = []
+                root = NULL_REVISION
+            else:
+                try:
+                    rev = revision_source.get_revision(line)
+                    parents = [p.revision_id for p in rev.parents]
+                    if len(parents) == 0:
+                        parents = [NULL_REVISION]
+                except bzrlib.errors.NoSuchRevision:
+                    if line == revision:
+                        raise
+                    parents = None
             if parents is not None:
                 for parent in parents:
                     if parent not in ancestors:
@@ -260,7 +266,7 @@ def common_ancestor(revision_a, revision_b, revision_source):
         
     distances = node_distances (descendants, ancestors, root)
     farthest = select_farthest(distances, common)
-    if farthest is None:
+    if farthest is None or farthest == NULL_REVISION:
         raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
     return farthest
 
