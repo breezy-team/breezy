@@ -29,8 +29,8 @@ def fill_store(store):
     store.add(StringIO('something'), 'c')
     store.add(StringIO('goodbye'), '123123')
 
-def check_equals(tester, store, files, values, ignore_missing=False):
-    files = store.get(files, ignore_missing=ignore_missing)
+def check_equals(tester, store, files, values, permit_failure=False):
+    files = store.get(files, permit_failure=permit_failure)
     count = 0
     for f, v in zip(files, values):
         count += 1
@@ -69,23 +69,23 @@ def test_get(tester, store):
 def test_ignore_get(tester, store):
     fill_store(store)
 
-    files = store.get(['d'], ignore_missing=True)
+    files = store.get(['d'], permit_failure=True)
     files = list(files)
     tester.assertEquals(len(files), 1)
     tester.assert_(files[0] is None)
 
     check_equals(tester, store, ['a', 'd'], ['hello', None],
-            ignore_missing=True)
+            permit_failure=True)
     check_equals(tester, store, ['d', 'a'], [None, 'hello'],
-            ignore_missing=True)
+            permit_failure=True)
     check_equals(tester, store, ['d', 'd'], [None, None],
-            ignore_missing=True)
+            permit_failure=True)
     check_equals(tester, store, ['a', 'd', 'b'], ['hello', None, 'other'],
-            ignore_missing=True)
+            permit_failure=True)
     check_equals(tester, store, ['a', 'd', 'b'], ['hello', None, 'other'],
-            ignore_missing=True)
+            permit_failure=True)
     check_equals(tester, store, ['b', 'd', 'c'], ['other', None, 'something'],
-            ignore_missing=True)
+            permit_failure=True)
 
 def get_compressed_store():
     t = LocalTransport('.')
