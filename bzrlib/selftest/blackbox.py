@@ -35,16 +35,14 @@ from bzrlib.commands import run_bzr
 
 
 class ExternalBase(TestCaseInTempDir):
-    def runbzr(self, args, retcode=0,backtick=False):
+    def runbzr(self, args, retcode=0, backtick=False):
         if isinstance(args, basestring):
             args = args.split()
 
         if backtick:
-            return self.backtick(['python', self.BZRPATH,] + args,
-                           retcode=retcode)
+            return self.run_bzr_captured(args, retcode=retcode)[0]
         else:
-            return self.runcmd(['python', self.BZRPATH,] + args,
-                           retcode=retcode)
+            return self.run_bzr_captured(args, retcode=retcode)
 
 
 class TestCommands(ExternalBase):
@@ -280,6 +278,8 @@ class TestCommands(ExternalBase):
 
     def test_unknown_command(self):
         """Handling of unknown command."""
+        from bzrlib.commands import main
+        
         out, err = self.run_bzr_captured(['fluffy-badger'],
                                          retcode=1)
         self.assertEquals(out, '')

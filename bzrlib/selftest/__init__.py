@@ -284,6 +284,7 @@ class TestCaseInTempDir(TestCase):
         If a single string is based, it is split into words.
         For commands that are not simple space-separated words, please
         pass a list instead."""
+        warn('TestBase.runcmd is deprecated')
         cmd = self._formcmd(cmd)
         self.log('$ ' + ' '.join(cmd))
         actual_retcode = subprocess.call(cmd, stdout=self._log_file,
@@ -294,6 +295,7 @@ class TestCaseInTempDir(TestCase):
 
     def backtick(self, cmd, retcode=0):
         """Run a command and return its output"""
+        warn('TestBase.backtick is deprecated')
         cmd = self._formcmd(cmd)
         child = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=self._log_file)
         outd, errd = child.communicate()
