@@ -173,9 +173,7 @@ class Transport(object):
         :param pb:  An optional ProgressBar for indicating percent done.
         :return: A generator of file-like objects.
         """
-        def get_partial(relpath, portion):
-            yield self.get_partial(relpath, portion)
-        self._iterate_over(files, get_partial, pb, 'get_partial', expand=True)
+        self._iterate_over(files, self.get_partial, pb, 'get_partial', expand=True)
 
     def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
@@ -209,9 +207,7 @@ class Transport(object):
         :param pb:  An optional ProgressBar for indicating percent done.
         :return: The number of files copied.
         """
-        def put(relpath, f):
-            self.put(relpath, f)
-        return self._iterate_over(files, put, pb, 'put', expand=True)
+        return self._iterate_over(files, self.put, pb, 'put', expand=True)
 
     def mkdir(self, relpath):
         """Create a directory at the given path."""

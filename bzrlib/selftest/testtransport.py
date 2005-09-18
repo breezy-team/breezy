@@ -17,7 +17,7 @@
 
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
-from bzrlib.transport import NoSuchFile, FileExists
+from bzrlib.errors import NoSuchFile, FileExists, TransportNotPossible
 from cStringIO import StringIO
 
 def _append(fn, txt):
@@ -76,6 +76,8 @@ def test_transport(tester, t, readonly=False):
 
     # Test put
     if readonly:
+        tester.assertRaises(TransportNotPossible,
+                t.put, 'c', 'some text for c\n')
         open('c', 'wb').write('some text for c\n')
     else:
         t.put('c', 'some text for c\n')
@@ -86,6 +88,10 @@ def test_transport(tester, t, readonly=False):
     tester.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
             [True, True, True, False, True, False, True, False])
     if readonly:
+        tester.assertRaises(TransportNotPossible,
+                t.put_multi,
+                [('a', 'new\ncontents for\na\n'),
+                    ('d', 'contents\nfor d\n')])
         open('a', 'wb').write('new\ncontents for\na\n')
         open('d', 'wb').write('contents\nfor d\n')
     else:
@@ -99,6 +105,9 @@ def test_transport(tester, t, readonly=False):
     tester.check_file_contents('d', 'contents\nfor d\n')
 
     if readonly:
+        tester.assertRaises(TransportNotPossible,
+            t.put_multi, iter([('a', 'diff\ncontents for\na\n'),
+                              ('d', 'another contents\nfor d\n')]))
         open('a', 'wb').write('diff\ncontents for\na\n')
         open('d', 'wb').write('another contents\nfor d\n')
     else:
@@ -109,8 +118,12 @@ def test_transport(tester, t, readonly=False):
     tester.check_file_contents('a', 'diff\ncontents for\na\n')
     tester.check_file_contents('d', 'another contents\nfor d\n')
 
-    if not readonly:
-        tester.assertRaises(NoSuchFile, t.put, 'path/doesnt/exist/c', 'contents')
+    if readonly:
+        tester.assertRaises(TransportNotPossible,
+                t.put, 'path/doesnt/exist/c', 'contents')
+    else:
+        tester.assertRaises(NoSuchFile,
+                t.put, 'path/doesnt/exist/c', 'contents')
 
     # Test mkdir
     os.mkdir('dir_a')
@@ -118,6 +131,8 @@ def test_transport(tester, t, readonly=False):
     tester.assertEqual(t.has('dir_b'), False)
 
     if readonly:
+        tester.assertRaises(TransportNotPossible,
+                t.mkdir, 'dir_b')
         os.mkdir('dir_b')
     else:
         t.mkdir('dir_b')
@@ -125,13 +140,26 @@ def test_transport(tester, t, readonly=False):
     tester.assert_(os.path.isdir('dir_b'))
 
     if readonly:
+        tester.assertRaises(TransportNotPossible,
+                t.mkdir_multi, ['dir_c', 'dir_d'])
         os.mkdir('dir_c')
         os.mkdir('dir_d')
     else:
         t.mkdir_multi(['dir_c', 'dir_d'])
-    tester.assertEqual(list(t.has_multi(['dir_a', 'dir_b', 'dir_c', 'dir_d', 'dir_e', 'dir_b'])),
-            [True, True, True, True, False, True])
-    for d in ['dir_a', 'dir_b', 'dir_c', 'dir_d']:
+
+    if readonly:
+        tester.assertRaises(TransportNotPossible,
+                t.mkdir_multi, iter(['dir_e', 'dir_f']))
+        os.mkdir('dir_e')
+        os.mkdir('dir_f')
+    else:
+        t.mkdir_multi(iter(['dir_e', 'dir_f']))
+    tester.assertEqual(list(t.has_multi(
+        ['dir_a', 'dir_b', 'dir_c', 'dir_q',
+         'dir_d', 'dir_e', 'dir_f', 'dir_b'])),
+        [True, True, True, False,
+         True, True, True, True])
+    for d in ['dir_a', 'dir_b', 'dir_c', 'dir_d', 'dir_e', 'dir_f']:
         tester.assert_(os.path.isdir(d))
 
     if not readonly:
@@ -146,9 +174,9 @@ def test_transport(tester, t, readonly=False):
     #if not readonly:
     #    tester.assertRaises(FileExists, t.mkdir, 'dir_e')
 
-    os.mkdir('dir_f')
+    os.mkdir('dir_g')
     if not readonly:
-        tester.assertRaises(FileExists, t.mkdir, 'dir_f')
+        tester.assertRaises(FileExists, t.mkdir, 'dir_g')
 
     # Test get/put in sub-directories
     if readonly:
@@ -170,12 +198,27 @@ def test_transport(tester, t, readonly=False):
     files = ['a', 'b', 'c', 'd']
     t.copy_to(files, local_t)
     for f in files:
-        tester.assertEquals(open(f).read(), open(os.path.join(dtmp_base, f)).read())
+        tester.assertEquals(open(f).read(),
+                open(os.path.join(dtmp_base, f)).read())
 
-    del dtmp, dtmp_base
+    del dtmp, dtmp_base, local_t
+
+    dtmp = tempfile.mkdtemp(dir='.', prefix='test-transport-')
+    dtmp_base = os.path.basename(dtmp)
+    local_t = LocalTransport(dtmp)
+
+    files = ['a', 'b', 'c', 'd']
+    t.copy_to(iter(files), local_t)
+    for f in files:
+        tester.assertEquals(open(f).read(),
+                open(os.path.join(dtmp_base, f)).read())
+
+    del dtmp, dtmp_base, local_t
 
     # Test append, and append_multi
     if readonly:
+        tester.assertRaises(TransportNotPossible,
+                t.append, 'a', 'add\nsome\nmore\ncontents\n')
         _append('a', 'add\nsome\nmore\ncontents\n')
     else:
         t.append('a', 'add\nsome\nmore\ncontents\n')
@@ -184,6 +227,10 @@ def test_transport(tester, t, readonly=False):
         'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n')
 
     if readonly:
+        tester.assertRaises(TransportNotPossible,
+                t.append_multi,
+                    [('a', 'and\nthen\nsome\nmore\n'),
+                     ('d', 'some\nmore\nfor\nd\n')])
         _append('a', 'and\nthen\nsome\nmore\n')
         _append('d', 'some\nmore\nfor\nd\n')
     else:
@@ -196,6 +243,22 @@ def test_transport(tester, t, readonly=False):
     tester.check_file_contents('d', 
             'another contents\nfor d\n'
             'some\nmore\nfor\nd\n')
+
+    if readonly:
+        _append('a', 'a little bit more\n')
+        _append('d', 'from an iterator\n')
+    else:
+        t.append_multi(iter([('a', 'a little bit more\n'),
+                ('d', 'from an iterator\n')]))
+    tester.check_file_contents('a', 
+        'diff\ncontents for\na\n'
+        'add\nsome\nmore\ncontents\n'
+        'and\nthen\nsome\nmore\n'
+        'a little bit more\n')
+    tester.check_file_contents('d', 
+            'another contents\nfor d\n'
+            'some\nmore\nfor\nd\n'
+            'from an iterator\n')
 
     # Test that StringIO can be used as a file-like object with put
     f1 = StringIO('this is a string\nand some more stuff\n')
@@ -312,8 +375,10 @@ def test_transport(tester, t, readonly=False):
             'some text for the\nthird file created\n'
             'some garbage\nto put in three\n')
 
-    # TODO: Make sure all entries support file-like objects as well as strings.
-    # TODO: Test get_partial()
+    # TODO: Test get_partial
+    # TODO: Test delete, move, etc.
+    
+    # TODO: Test locking
 
 class LocalTransportTest(TestCaseInTempDir):
     def test_local_transport(self):
