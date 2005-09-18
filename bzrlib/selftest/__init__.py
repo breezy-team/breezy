@@ -147,9 +147,8 @@ class TestCase(unittest.TestCase):
         This sends the stdout/stderr results into the test's log,
         where it may be useful for debugging.  See also run_captured.
         """
-        warn('TestBase.run_bzr is deprecated, use TestBase.run_bzr_captured')
         retcode = kwargs.pop('retcode', 0)
-        self.run_bzr_captured(args, retcode)
+        return self.run_bzr_captured(args, retcode)
 
 
     def check_inventory_shape(self, inv, shape):
