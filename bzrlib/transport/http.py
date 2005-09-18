@@ -143,14 +143,32 @@ class HttpTransport(Transport):
         """
         try:
             return get_url(self.abspath(relpath))
-        except BzrError, e:
-            raise NoSuchFile(orig_error=e)
-        except urllib2.URLError, e:
-            raise NoSuchFile(orig_error=e)
-        except IOError, e:
+        except (BzrError, urllib2.URLError, IOError), e:
             raise NoSuchFile(orig_error=e)
         except Exception,e:
             raise HttpTransportError(orig_error=e)
+
+    def get_partial(self, relpath, start, length=None):
+        """Get just part of a file.
+
+        :param relpath: Path to the file, relative to base
+        :param start: The starting position to read from
+        :param length: The length to read. A length of None indicates
+                       read to the end of the file.
+        :return: A file-like object containing at least the specified bytes.
+                 Some implementations may return objects which can be read
+                 past this length, but this is not guaranteed.
+        """
+        # TODO: You can make specialized http requests for just
+        # a portion of the file. Figure out how to do that.
+        # For now, urllib2 returns files that cannot seek() so
+        # we just read bytes off the beginning, until we
+        # get to the point that we care about.
+        f = self.get(relpath)
+        # TODO: read in smaller chunks, in case things are
+        # buffered internally.
+        f.read(start)
+        return f
 
     def put(self, relpath, f):
         """Copy the file-like or string object into the location.
@@ -197,14 +215,6 @@ class HttpTransport(Transport):
     def delete(self, relpath):
         """Delete the item at relpath"""
         raise TransportNotPossible('http does not support delete()')
-
-    def async_get(self, relpath):
-        """Make a request for an file at the given location, but
-        don't worry about actually getting it yet.
-
-        :rtype: AsyncFile
-        """
-        raise NotImplementedError
 
     def list_dir(self, relpath):
         """Return a list of all files at the given location.

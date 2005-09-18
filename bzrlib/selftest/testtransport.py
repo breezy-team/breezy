@@ -375,9 +375,53 @@ def test_transport(tester, t, readonly=False):
             'some text for the\nthird file created\n'
             'some garbage\nto put in three\n')
 
-    # TODO: Test get_partial
+    # Test get_partial
+    tester.assertRaises(NoSuchFile,
+            t.get_partial, 'a-missing-file', 20)
+    tester.assertRaises(NoSuchFile,
+            t.get_partial, 'another-missing-file', 20, 30)
+    f = t.get_partial('f5', 33)
+    tester.assertEqual(f.read(), 
+            'here is some text\nand a bit more\n'
+            'adding more\ntext to two\n')
+    f = t.get_partial('f5', 66)
+    tester.assertEqual(f.read(), 
+            'adding more\ntext to two\n')
+    f = t.get_partial('f5', 66, 10)
+    tester.assertEqual(f.read(10), 
+            'adding mor')
+
+    del f
+
+    offsets = [('f5', 33), ('f6', 20, 10), ('f4', 10, 20)]
+    values = ['here is some text\nand a bit more\nadding more\ntext to two\n',
+              'ird file c',
+              'string\nand some more'
+             ]
+    contents_f = t.get_partial_multi(offsets)
+    count = 0
+    for f, val in zip(contents_f, values):
+        count += 1
+        tester.assertEqual(val, f.read(len(val)))
+    # Make sure we saw all values, and no extra
+    tester.assertEqual(len(values), count)
+    tester.assertEqual(list(contents_f), [])
+
+    # Do the same thing with an iterator
+    offsets = iter([('f5', 34), ('f6', 18, 10), ('f4', 15, 15)])
+    values = ['ere is some text\nand a bit more\nadding more\ntext to two\n',
+              'third file',
+              'g\nand some more'
+             ]
+    contents_f = t.get_partial_multi(offsets)
+    count = 0
+    for f, val in zip(contents_f, values):
+        count += 1
+        tester.assertEqual(val, f.read(len(val)))
+    tester.assertEqual(len(values), count)
+    tester.assertEqual(list(contents_f), [])
+
     # TODO: Test delete, move, etc.
-    
     # TODO: Test locking
 
 class LocalTransportTest(TestCaseInTempDir):

@@ -149,32 +149,6 @@ class Transport(object):
         """
         raise NotImplementedError
 
-    def get_partial(self, relpath, portion):
-        """Get just part of a file.
-
-        :param relpath: Path to the file, relative to base
-        :param portion: A tuple of [start,length). 
-                        Length can be -1 indicating copy until the end
-                        of the file. If the file ends before length bytes,
-                        just the set of bytes will be returned (think read())
-        :return: A file-like object containing at least the specified bytes.
-                 Some implementations may return objects which can be read
-                 past this length, but this is not guaranteed.
-        """
-        raise NotImplementedError
-
-    def get_partial_multi(self, files, pb=None):
-        """Put a set of files or strings into the location.
-
-        Requesting multiple portions of the same file can be dangerous.
-
-        :param files: A list of tuples of relpath, portion
-                      [(path1, portion1), (path2, portion2),...]
-        :param pb:  An optional ProgressBar for indicating percent done.
-        :return: A generator of file-like objects.
-        """
-        self._iterate_over(files, self.get_partial, pb, 'get_partial', expand=True)
-
     def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
 
@@ -190,6 +164,39 @@ class Transport(object):
         for relpath in relpaths:
             self._update_pb(pb, 'get', count, total)
             yield self.get(relpath)
+            count += 1
+
+    def get_partial(self, relpath, start, length=None):
+        """Get just part of a file.
+
+        :param relpath: Path to the file, relative to base
+        :param start: The starting position to read from
+        :param length: The length to read. A length of None indicates
+                       read to the end of the file.
+        :return: A file-like object containing at least the specified bytes.
+                 Some implementations may return objects which can be read
+                 past this length, but this is not guaranteed.
+        """
+        raise NotImplementedError
+
+    def get_partial_multi(self, offsets, pb=None):
+        """Put a set of files or strings into the location.
+
+        Requesting multiple portions of the same file can be dangerous.
+
+        :param offsets: A list of tuples of relpath, start, length
+                         [(path1, start1, length1),
+                          (path2, start2, length2),
+                          (path3, start3), ...]
+                         length is optional, defaulting to None
+        :param pb:  An optional ProgressBar for indicating percent done.
+        :return: A generator of file-like objects.
+        """
+        total = self._get_total(offsets)
+        count = 0
+        for offset in offsets:
+            self._update_pb(pb, 'get_partial', count, total)
+            yield self.get_partial(*offset)
             count += 1
 
     def put(self, relpath, f):

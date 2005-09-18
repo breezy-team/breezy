@@ -75,6 +75,30 @@ class LocalTransport(Transport):
                 raise NoSuchFile('File %r does not exist' % path, orig_error=e)
             raise LocalTransportError(orig_error=e)
 
+    def get_partial(self, relpath, start, length=None):
+        """Get just part of a file.
+
+        :param relpath: Path to the file, relative to base
+        :param start: The starting position to read from
+        :param length: The length to read. A length of None indicates
+                       read to the end of the file.
+        :return: A file-like object containing at least the specified bytes.
+                 Some implementations may return objects which can be read
+                 past this length, but this is not guaranteed.
+        """
+        # LocalTransport.get_partial() doesn't care about the length
+        # argument, because it is using a local file, and thus just
+        # returns the file seek'ed to the appropriate location.
+        try:
+            path = self.abspath(relpath)
+            f = open(path, 'rb')
+            f.seek(start, 0)
+            return f
+        except IOError,e:
+            if e.errno == errno.ENOENT:
+                raise NoSuchFile('File %r does not exist' % path, orig_error=e)
+            raise LocalTransportError(orig_error=e)
+
     def put(self, relpath, f):
         """Copy the file-like or string object into the location.
 
@@ -162,14 +186,6 @@ class LocalTransport(Transport):
         else:
             return super(LocalTransport, self).copy_to(relpaths, other, pb=pb)
 
-
-    def async_get(self, relpath):
-        """Make a request for an file at the given location, but
-        don't worry about actually getting it yet.
-
-        :rtype: AsyncFile
-        """
-        raise NotImplementedError
 
     def list_dir(self, relpath):
         """Return a list of all files at the given location.
