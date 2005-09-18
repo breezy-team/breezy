@@ -167,6 +167,10 @@ class RevisionSpec(object):
                               self.spec)
 
     def __eq__(self, other):
+        if other is None:
+            if self.spec is None:
+                return True
+            return False
         if not isinstance(other, RevisionSpec):
             raise TypeError('Do not know how to compare a RevisionSpec against a %s' % type(other))
         return self.spec == other.spec
