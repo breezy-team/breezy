@@ -292,8 +292,10 @@ class OldTests(ExternalBase):
         from os import chdir, mkdir
         from os.path import exists
 
+        def capture(cmd):
+            return self.run_bzr_captured(cmd.split())[0]
+
         runbzr = self.runbzr
-        backtick = self.backtick
         progress = self.log
 
         progress("basic branch creation")
@@ -301,7 +303,7 @@ class OldTests(ExternalBase):
         chdir('branch1')
         runbzr('init')
 
-        self.assertEquals(backtick('bzr root').rstrip(),
+        self.assertEquals(capture('root').rstrip(),
                           os.path.join(self.test_dir, 'branch1'))
 
         progress("status of new file")
@@ -310,26 +312,25 @@ class OldTests(ExternalBase):
         f.write('hello world!\n')
         f.close()
 
-        out = backtick("bzr unknowns")
-        self.assertEquals(out, 'test.txt\n')
+        self.assertEquals(capture('unknowns'), 'test.txt\n')
 
-        out = backtick("bzr status")
+        out = capture("status")
         assert out == 'unknown:\n  test.txt\n'
 
-        out = backtick("bzr status --all")
+        out = capture("status --all")
         assert out == "unknown:\n  test.txt\n"
 
-        out = backtick("bzr status test.txt --all")
+        out = capture("status test.txt --all")
         assert out == "unknown:\n  test.txt\n"
 
         f = file('test2.txt', 'wt')
         f.write('goodbye cruel world...\n')
         f.close()
 
-        out = backtick("bzr status test.txt")
+        out = capture("status test.txt")
         assert out == "unknown:\n  test.txt\n"
 
-        out = backtick("bzr status")
+        out = capture("status")
         assert out == ("unknown:\n"
                        "  test.txt\n"
                        "  test2.txt\n")
@@ -337,11 +338,11 @@ class OldTests(ExternalBase):
         os.unlink('test2.txt')
 
         progress("command aliases")
-        out = backtick("bzr st --all")
+        out = capture("st --all")
         assert out == ("unknown:\n"
                        "  test.txt\n")
 
-        out = backtick("bzr stat")
+        out = capture("stat")
         assert out == ("unknown:\n"
                        "  test.txt\n")
 
@@ -351,7 +352,7 @@ class OldTests(ExternalBase):
         runbzr("help commands")
         runbzr("help slartibartfast", 1)
 
-        out = backtick("bzr help ci")
+        out = capture("help ci")
         out.index('aliases: ')
 
         progress("can't rename unversioned file")
@@ -360,8 +361,8 @@ class OldTests(ExternalBase):
         progress("adding a file")
 
         runbzr("add test.txt")
-        assert backtick("bzr unknowns") == ''
-        assert backtick("bzr status --all") == ("added:\n"
+        assert capture("unknowns") == ''
+        assert capture("status --all") == ("added:\n"
                                                 "  test.txt\n")
 
         progress("rename newly-added file")
@@ -369,7 +370,7 @@ class OldTests(ExternalBase):
         assert os.path.exists("hello.txt")
         assert not os.path.exists("test.txt")
 
-        assert backtick("bzr revno") == '0\n'
+        assert capture("revno") == '0\n'
 
         progress("add first revision")
         runbzr(['commit', '-m', 'add first revision'])
@@ -383,7 +384,7 @@ class OldTests(ExternalBase):
         runbzr("add sub1")
         runbzr("rename sub1 sub2")
         runbzr("move hello.txt sub2")
-        assert backtick("bzr relpath sub2/hello.txt") == os.path.join("sub2", "hello.txt\n")
+        assert capture("relpath sub2/hello.txt") == os.path.join("sub2", "hello.txt\n")
 
         assert exists("sub2")
         assert exists("sub2/hello.txt")
@@ -404,15 +405,16 @@ class OldTests(ExternalBase):
         runbzr(['commit', '-m', 'rename nested subdirectories'])
 
         chdir('sub1/sub2')
-        self.assertEquals(backtick('bzr root')[:-1],
+        self.assertEquals(capture('root')[:-1],
                           os.path.join(self.test_dir, 'branch1'))
         runbzr('move ../hello.txt .')
         assert exists('./hello.txt')
-        assert backtick('bzr relpath hello.txt') == os.path.join('sub1', 'sub2', 'hello.txt\n')
-        assert backtick('bzr relpath ../../sub1/sub2/hello.txt') == os.path.join('sub1', 'sub2', 'hello.txt\n')
+        self.assertEquals(capture('relpath hello.txt'),
+                          os.path.join('sub1', 'sub2', 'hello.txt') + '\n')
+        assert capture('relpath ../../sub1/sub2/hello.txt') == os.path.join('sub1', 'sub2', 'hello.txt\n')
         runbzr(['commit', '-m', 'move to parent directory'])
         chdir('..')
-        assert backtick('bzr relpath sub2/hello.txt') == os.path.join('sub1', 'sub2', 'hello.txt\n')
+        assert capture('relpath sub2/hello.txt') == os.path.join('sub1', 'sub2', 'hello.txt\n')
 
         runbzr('move sub2/hello.txt .')
         assert exists('hello.txt')
@@ -427,7 +429,7 @@ class OldTests(ExternalBase):
 
         runbzr('commit -F msg.tmp')
 
-        assert backtick('bzr revno') == '5\n'
+        assert capture('revno') == '5\n'
         runbzr('export -r 5 export-5.tmp')
         runbzr('export export.tmp')
 
@@ -435,11 +437,11 @@ class OldTests(ExternalBase):
         runbzr('log -v')
         runbzr('log -v --forward')
         runbzr('log -m', retcode=1)
-        log_out = backtick('bzr log -m commit')
+        log_out = capture('log -m commit')
         assert "this is my new commit" in log_out
         assert "rename nested" not in log_out
         assert 'revision-id' not in log_out
-        assert 'revision-id' in backtick('bzr log --show-ids -m commit')
+        assert 'revision-id' in capture('log --show-ids -m commit')
 
 
         progress("file with spaces in name")
