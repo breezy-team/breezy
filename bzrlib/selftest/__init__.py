@@ -21,8 +21,8 @@ import tempfile
 import os
 import sys
 import errno
-import subprocess
-import shutil
+from warnings import warn
+from cStringIO import StringIO
 
 import testsweet
 import bzrlib.commands
@@ -90,8 +90,17 @@ class TestCase(unittest.TestCase):
         """Return as a string the log for this test"""
         return open(self._log_file_name).read()
 
-    def run_bzr(self, *args, **kwargs):
-        """Invoke bzr, as if it were run from the command line.
+
+    def capture(self, cmd):
+        """Shortcut that splits cmd into words, runs, and returns stdout"""
+        return self.run_bzr_captured(cmd.split())[0]
+
+
+    def run_bzr_captured(self, argv, retcode=0):
+        """Invoke bzr and return (result, stdout, stderr).
+
+        Useful for code that wants to check the contents of the
+        output, the way error messages are presented, etc.
 
         This should be the main method for tests that want to exercise the
         overall behavior of the bzr application (rather than a unit test
@@ -99,13 +108,53 @@ class TestCase(unittest.TestCase):
 
         Much of the old code runs bzr by forking a new copy of Python, but
         that is slower, harder to debug, and generally not necessary.
+
+        This runs bzr through the interface that catches and reports
+        errors, and with logging set to something approximating the
+        default, so that error reporting can be checked.
+
+        argv -- arguments to invoke bzr
+        retcode -- expected return code, or None for don't-care.
         """
-        retcode = kwargs.get('retcode', 0)
-        result = self.apply_redirected(None, None, None,
-                                       bzrlib.commands.run_bzr, args)
-        self.assertEquals(result, retcode)
-        
-        
+        stdout = StringIO()
+        stderr = StringIO()
+        self.log('run bzr: %s', ' '.join(argv))
+        handler = logging.StreamHandler(stderr)
+        handler.setFormatter(bzrlib.trace.QuietFormatter())
+        handler.setLevel(logging.INFO)
+        logger = logging.getLogger('')
+        logger.addHandler(handler)
+        try:
+            result = self.apply_redirected(None, stdout, stderr,
+                                           bzrlib.commands.run_bzr_catch_errors,
+                                           argv)
+        finally:
+            logger.removeHandler(handler)
+        out = stdout.getvalue()
+        err = stderr.getvalue()
+        if out:
+            self.log('output:\n%s', out)
+        if err:
+            self.log('errors:\n%s', err)
+        if retcode is not None:
+            self.assertEquals(result, retcode)
+        return out, err
+
+
+    def run_bzr(self, *args, **kwargs):
+        """Invoke bzr, as if it were run from the command line.
+
+        This should be the main method for tests that want to exercise the
+        overall behavior of the bzr application (rather than a unit test
+        or a functional test of the library.)
+
+        This sends the stdout/stderr results into the test's log,
+        where it may be useful for debugging.  See also run_captured.
+        """
+        retcode = kwargs.pop('retcode', 0)
+        return self.run_bzr_captured(args, retcode)
+
+
     def check_inventory_shape(self, inv, shape):
         """
         Compare an inventory to a list of expected names.
@@ -132,7 +181,6 @@ class TestCase(unittest.TestCase):
         """Call callable with redirected std io pipes.
 
         Returns the return code."""
-        from StringIO import StringIO
         if not callable(a_callable):
             raise ValueError("a_callable must be callable.")
         if stdin is None:
@@ -212,7 +260,6 @@ class TestCaseInTempDir(TestCase):
 
     def setUp(self):
         super(TestCaseInTempDir, self).setUp()
-        import os
         self._make_test_root()
         self._currentdir = os.getcwdu()
         self.test_dir = os.path.join(self.TEST_ROOT, self.id())
@@ -220,54 +267,10 @@ class TestCaseInTempDir(TestCase):
         os.chdir(self.test_dir)
         
     def tearDown(self):
-        import os
         os.chdir(self._currentdir)
         super(TestCaseInTempDir, self).tearDown()
 
-    def _formcmd(self, cmd):
-        if isinstance(cmd, basestring):
-            cmd = cmd.split()
-        if cmd[0] == 'bzr':
-            cmd[0] = self.BZRPATH
-            if self.OVERRIDE_PYTHON:
-                cmd.insert(0, self.OVERRIDE_PYTHON)
-        self.log('$ %r' % cmd)
-        return cmd
-
-    def runcmd(self, cmd, retcode=0):
-        """Run one command and check the return code.
-
-        Returns a tuple of (stdout,stderr) strings.
-
-        If a single string is based, it is split into words.
-        For commands that are not simple space-separated words, please
-        pass a list instead."""
-        cmd = self._formcmd(cmd)
-        self.log('$ ' + ' '.join(cmd))
-        actual_retcode = subprocess.call(cmd, stdout=self._log_file,
-                                         stderr=self._log_file)
-        if retcode != actual_retcode:
-            raise CommandFailed("test failed: %r returned %d, expected %d"
-                                % (cmd, actual_retcode, retcode))
-
-    def backtick(self, cmd, retcode=0):
-        """Run a command and return its output"""
-        cmd = self._formcmd(cmd)
-        child = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=self._log_file)
-        outd, errd = child.communicate()
-        self.log(outd)
-        actual_retcode = child.wait()
-
-        outd = outd.replace('\r', '')
-
-        if retcode != actual_retcode:
-            raise CommandFailed("test failed: %r returned %d, expected %d"
-                                % (cmd, actual_retcode, retcode))
-
-        return outd
-
-
-
+    
     def build_tree(self, shape):
         """Build a test tree according to a pattern.
 
@@ -277,7 +280,6 @@ class TestCaseInTempDir(TestCase):
         This doesn't add anything to a branch.
         """
         # XXX: It's OK to just create them using forward slashes on windows?
-        import os
         for name in shape:
             assert isinstance(name, basestring)
             if name[-1] == '/':
@@ -307,10 +309,6 @@ def test_suite():
     import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
     import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
     from doctest import DocTestSuite
-    import os
-    import shutil
-    import time
-    import sys
 
     global MODULES_TO_TEST, MODULES_TO_DOCTEST
 

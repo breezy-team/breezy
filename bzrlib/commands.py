@@ -640,10 +640,14 @@ def main(argv):
     bzrlib.trace.log_startup(argv)
     bzrlib.ui.ui_factory = bzrlib.ui.TextUIFactory()
 
+    return run_bzr_catch_errors(argv[1:])
+
+
+def run_bzr_catch_errors(argv):
     try:
         try:
             try:
-                return run_bzr(argv[1:])
+                return run_bzr(argv)
             finally:
                 # do this here inside the exception wrappers to catch EPIPE
                 sys.stdout.flush()
