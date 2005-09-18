@@ -21,7 +21,6 @@ import tempfile
 import os
 import sys
 import errno
-import subprocess
 from warnings import warn
 from cStringIO import StringIO
 
@@ -271,52 +270,7 @@ class TestCaseInTempDir(TestCase):
         os.chdir(self._currentdir)
         super(TestCaseInTempDir, self).tearDown()
 
-    def _formcmd(self, cmd):
-        if isinstance(cmd, basestring):
-            cmd = cmd.split()
-        if cmd[0] == 'bzr':
-            cmd[0] = self.BZRPATH
-            if self.OVERRIDE_PYTHON:
-                cmd.insert(0, self.OVERRIDE_PYTHON)
-        self.log('$ %r' % cmd)
-        return cmd
-
-    def runcmd(self, cmd, retcode=0):
-        """Run one command and check the return code.
-
-        Returns a tuple of (stdout,stderr) strings.
-
-        If a single string is based, it is split into words.
-        For commands that are not simple space-separated words, please
-        pass a list instead."""
-        warn('TestBase.runcmd is deprecated', stacklevel=2)
-        cmd = self._formcmd(cmd)
-        self.log('$ ' + ' '.join(cmd))
-        actual_retcode = subprocess.call(cmd, stdout=self._log_file,
-                                         stderr=self._log_file)
-        if retcode != actual_retcode:
-            raise CommandFailed("test failed: %r returned %d, expected %d"
-                                % (cmd, actual_retcode, retcode))
-
-    def backtick(self, cmd, retcode=0):
-        """Run a command and return its output"""
-        warn('TestBase.backtick is deprecated', stacklevel=2)
-        cmd = self._formcmd(cmd)
-        child = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=self._log_file)
-        outd, errd = child.communicate()
-        self.log(outd)
-        actual_retcode = child.wait()
-
-        outd = outd.replace('\r', '')
-
-        if retcode != actual_retcode:
-            raise CommandFailed("test failed: %r returned %d, expected %d"
-                                % (cmd, actual_retcode, retcode))
-
-        return outd
-
-
-
+    
     def build_tree(self, shape):
         """Build a test tree according to a pattern.
 
