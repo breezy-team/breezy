@@ -22,7 +22,7 @@ import os
 import sys
 import errno
 import subprocess
-import shutil
+from cStringIO import StringIO
 
 import testsweet
 import bzrlib.commands
@@ -132,7 +132,6 @@ class TestCase(unittest.TestCase):
         """Call callable with redirected std io pipes.
 
         Returns the return code."""
-        from StringIO import StringIO
         if not callable(a_callable):
             raise ValueError("a_callable must be callable.")
         if stdin is None:
@@ -212,7 +211,6 @@ class TestCaseInTempDir(TestCase):
 
     def setUp(self):
         super(TestCaseInTempDir, self).setUp()
-        import os
         self._make_test_root()
         self._currentdir = os.getcwdu()
         self.test_dir = os.path.join(self.TEST_ROOT, self.id())
@@ -220,7 +218,6 @@ class TestCaseInTempDir(TestCase):
         os.chdir(self.test_dir)
         
     def tearDown(self):
-        import os
         os.chdir(self._currentdir)
         super(TestCaseInTempDir, self).tearDown()
 
@@ -277,7 +274,6 @@ class TestCaseInTempDir(TestCase):
         This doesn't add anything to a branch.
         """
         # XXX: It's OK to just create them using forward slashes on windows?
-        import os
         for name in shape:
             assert isinstance(name, basestring)
             if name[-1] == '/':
@@ -307,10 +303,6 @@ def test_suite():
     import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
     import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
     from doctest import DocTestSuite
-    import os
-    import shutil
-    import time
-    import sys
 
     global MODULES_TO_TEST, MODULES_TO_DOCTEST
 
