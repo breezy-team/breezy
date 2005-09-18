@@ -22,6 +22,7 @@ import os
 import sys
 import errno
 import subprocess
+from warnings import warn
 from cStringIO import StringIO
 
 import testsweet
@@ -90,8 +91,12 @@ class TestCase(unittest.TestCase):
         """Return as a string the log for this test"""
         return open(self._log_file_name).read()
 
-    def run_bzr(self, *args, **kwargs):
-        """Invoke bzr, as if it were run from the command line.
+
+    def run_bzr_captured(self, argv, retcode=0):
+        """Invoke bzr and return (result, stdout, stderr).
+
+        Useful for code that wants to check the contents of the
+        output, the way error messages are presented, etc.
 
         This should be the main method for tests that want to exercise the
         overall behavior of the bzr application (rather than a unit test
@@ -99,13 +104,41 @@ class TestCase(unittest.TestCase):
 
         Much of the old code runs bzr by forking a new copy of Python, but
         that is slower, harder to debug, and generally not necessary.
+
+        argv -- arguments to invoke bzr
+        retcode -- expected return code, or None for don't-care.
         """
-        retcode = kwargs.get('retcode', 0)
-        result = self.apply_redirected(None, None, None,
-                                       bzrlib.commands.run_bzr, args)
-        self.assertEquals(result, retcode)
-        
-        
+        stdout = StringIO()
+        stderr = StringIO()
+        self.log('run bzr: %s', ' '.join(argv))
+        result = self.apply_redirected(None, stdout, stderr,
+                                       bzrlib.commands.run_bzr, argv)
+        out = stdout.getvalue()
+        err = stderr.getvalue()
+        if out:
+            self.log('output:\n%s', out)
+        if err:
+            self.log('errors:\n%s', err)
+        if retcode is not None:
+            self.assertEquals(result, retcode)
+        return out, err
+
+
+    def run_bzr(self, *args, **kwargs):
+        """Invoke bzr, as if it were run from the command line.
+
+        This should be the main method for tests that want to exercise the
+        overall behavior of the bzr application (rather than a unit test
+        or a functional test of the library.)
+
+        This sends the stdout/stderr results into the test's log,
+        where it may be useful for debugging.  See also run_captured.
+        """
+        warn('TestBase.run_bzr is deprecated, use TestBase.run_bzr_captured')
+        retcode = kwargs.pop('retcode', 0)
+        self.run_bzr_captured(args, retcode)
+
+
     def check_inventory_shape(self, inv, shape):
         """
         Compare an inventory to a list of expected names.
