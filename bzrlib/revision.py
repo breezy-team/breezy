@@ -16,7 +16,7 @@
 
 
 import bzrlib.errors
-from bzrlib.graph import farthest_nodes, node_distances, all_descendants
+from bzrlib.graph import node_distances, select_farthest, all_descendants
 
 class RevisionReference(object):
     """
@@ -257,11 +257,11 @@ def common_ancestor(revision_a, revision_b, revision_source):
     except bzrlib.errors.NoCommonRoot:
         raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
         
-    nodes = farthest_nodes(descendants, ancestors, root)
-    for node in nodes:
-        if node in common:
-            return node
-    raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+    distances = node_distances (descendants, ancestors, root)
+    farthest = select_farthest(distances, common)
+    if farthest is None:
+        raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+    return farthest
 
 class MultipleRevisionSources(object):
     """Proxy that looks in multiple branches for revisions."""
