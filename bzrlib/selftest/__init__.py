@@ -327,6 +327,7 @@ def test_suite():
                    'bzrlib.selftest.test_revision_info',
                    'bzrlib.selftest.test_merge_core',
                    'bzrlib.selftest.test_smart_add',
+                   'bzrlib.selftest.test_bad_files',
                    'bzrlib.selftest.testdiff',
                    'bzrlib.selftest.test_xml',
                    'bzrlib.fetch',

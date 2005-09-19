@@ -17,6 +17,10 @@ development head
       set in EDITOR would cause editing to fail, now the fallback program
       for the operating system is still tried.
 
+    * Files that are not directories/symlinks/regular files will no longer
+      cause bzr to fail, it will just ignore them by default. You cannot add
+      them to the tree though - they are not versionable.
+
 
   INTERNALS:
 
