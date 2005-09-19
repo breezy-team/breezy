@@ -84,6 +84,10 @@
 # TODO: Perhaps the API should work only in names to hide the integer
 # indexes from the user?
 
+# TODO: Is there any potential performance win by having an add()
+# variant that is passed a pre-cooked version of the single basis
+# version?
+
 
 
 import sha
@@ -380,16 +384,13 @@ class Weave(object):
     def inclusions(self, versions):
         """Return set of all ancestors of given version(s)."""
         i = set(versions)
-        v = max(versions)
-        try:
-            while v >= 0:
-                if v in i:
-                    # include all its parents
-                    i.update(self._parents[v])
-                v -= 1
-            return i
-        except IndexError:
-            raise ValueError("version %d not present in weave" % v)
+        for v in xrange(max(versions), 0, -1):
+            if v in i:
+                # include all its parents
+                i.update(self._parents[v])
+        return i
+        ## except IndexError:
+        ##     raise ValueError("version %d not present in weave" % v)
 
 
     def parents(self, version):
