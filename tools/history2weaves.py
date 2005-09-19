@@ -62,6 +62,12 @@
 # The current algorithm is dumb (O(n**2)?) but will do the job, and
 # takes less than a second on the bzr.dev branch.
 
+# This currently does a kind of lazy conversion of file texts, where a
+# new text is written in every version.  That's unnecessary but for
+# the moment saves us having to worry about when files need new
+# versions.
+
+
 if False:
     try:
         import psyco
@@ -85,6 +91,7 @@ from bzrlib.atomicfile import AtomicFile
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
 from bzrlib.trace import mutter, note, warning, enable_default_logging
+from bzrlib.osutils import sha_strings
 
 
 
@@ -95,6 +102,7 @@ class Convert(object):
         self.absent_revisions = set()
         self.text_count = 0
         self.revisions = {}
+        self.inventories = {}
         self.convert()
         
 
@@ -109,7 +117,7 @@ class Convert(object):
         last_text_sha = {}
 
         # holds in-memory weaves for all files
-        text_weaves = {}
+        self.text_weaves = {}
 
         b = self.branch = Branch('.', relax_version_check=True)
 
@@ -129,10 +137,10 @@ class Convert(object):
                 and rev_id not in self.absent_revisions):
                 self._load_one_rev(rev_id)
         self.pb.clear()
-        to_import = self._make_order()
+        to_import = self._make_order()[:100]
         for i, rev_id in enumerate(to_import):
             self.pb.update('converting revision', i, len(to_import))
-            self._import_one_rev(rev_id)
+            self._convert_one_rev(rev_id)
 
         print '(not really) upgraded to weaves:'
         print '  %6d revisions and inventories' % len(self.revisions)
@@ -145,14 +153,14 @@ class Convert(object):
     def _write_all_weaves(self):
         i = 0
         write_atomic_weave(self.inv_weave, 'weaves/inventory.weave')
-        return #######################
-        write_atomic_weave(self.anc_weave, 'weaves/ancestry.weave')
-        for file_id, file_weave in text_weaves.items():
-            self.pb.update('writing weave', i, len(text_weaves))
-            write_atomic_weave(file_weave, 'weaves/%s.weave' % file_id)
-            i += 1
-
-        self.pb.clear()
+        try:
+            for file_id, file_weave in self.text_weaves.items():
+                self.pb.update('writing weave', i, len(self.text_weaves))
+                write_atomic_weave(file_weave, 'weaves/%s.weave' % file_id)
+                i += 1
+        finally:
+            self.pb.clear()
+        ## write_atomic_weave(self.anc_weave, 'weaves/ancestry.weave')
 
         
     def _load_one_rev(self, rev_id):
@@ -176,17 +184,53 @@ class Convert(object):
                 self.total_revs += 1
                 self.to_read.append(parent_id)
             self.revisions[rev_id] = rev
+            old_inv_xml = self.branch.inventory_store[rev_id].read()
+            inv = serializer_v4.read_inventory_from_string(old_inv_xml)
+            self.inventories[rev_id] = inv
+        
 
-
-    def _import_one_rev(self, rev_id):
-        """Convert rev_id and all referenced file texts to new format."""
-        old_inv_xml = self.branch.inventory_store[rev_id].read()
-        inv = serializer_v4.read_inventory_from_string(old_inv_xml)
+    def _convert_one_rev(self, rev_id):
+        """Convert revision and all referenced objects to new format."""
+        rev = self.revisions[rev_id]
+        inv = self.inventories[rev_id]
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
         inv_parents = [x for x in self.revisions[rev_id].parent_ids
                        if x not in self.absent_revisions]
         self.inv_weave.add(rev_id, inv_parents,
                            new_inv_xml.splitlines(True))
+        # TODO: Upgrade revision XML and write that out
+        self._convert_revision_contents(rev, inv)
+        self.converted_revs.add(rev_id)
+
+
+    def _convert_revision_contents(self, rev, inv):
+        """Convert all the files within a revision.
+
+        Also upgrade the inventory to refer to the text revision ids."""
+        rev_id = rev.revision_id
+        for path, ie in inv.iter_entries():
+            file_id = ie.file_id
+            if ie.kind != 'file':
+                continue
+            w = self.text_weaves.get(file_id)
+            if w is None:
+                w = Weave(file_id)
+                self.text_weaves[file_id] = w
+            file_lines = self.branch.text_store[ie.text_id].readlines()
+            assert sha_strings(file_lines) == ie.text_sha1
+            assert sum(map(len, file_lines)) == ie.text_size
+            file_parents = []
+            for parent_id in rev.parent_ids:
+                assert parent_id in self.converted_revs
+                if self.inventories[parent_id].has_id(file_id):
+                    file_parents.append(parent_id)
+            w.add(rev_id, file_parents, file_lines)
+            ie.text_version = rev_id
+            ie.name_version = rev_id
+            mutter('import text {%s}\n  from {%s}\n  in revision {%s}',
+                   ie.text_id, file_id, rev_id)
+            del ie.text_id
+                   
 
 
     def _make_order(self):
@@ -237,7 +281,9 @@ def profile_convert():
     # XXX: Might like to write to stderr or the trace file instead but
     # print_stats seems hardcoded to stdout
     stats.print_stats(20)
-            
+
+
+enable_default_logging()
 
 if '-p' in sys.argv[1:]:
     profile_convert()
