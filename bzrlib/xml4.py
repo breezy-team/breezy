@@ -17,7 +17,7 @@
 
 from bzrlib.xml import ElementTree, SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
-from bzrlib.revision import Revision, RevisionReference        
+from bzrlib.revision import Revision        
 from bzrlib.errors import BzrError
 
 
@@ -129,15 +129,13 @@ class _Serializer_v4(Serializer):
         if rev.parents:
             pelts = SubElement(root, 'parents')
             pelts.tail = pelts.text = '\n'
-            for rr in rev.parents:
-                assert isinstance(rr, RevisionReference)
+            for i, parent_id in enumerate(rev.parents):
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
-                assert rr.revision_id
-                p.set('revision_id', rr.revision_id)
-                if rr.revision_sha1:
-                    p.set('revision_sha1', rr.revision_sha1)
-
+                assert parent_id
+                p.set('revision_id', parent_id)
+                if i < len(rev.parent_sha1s):
+                    p.set('revision_sha1', rev.parent_sha1s[i])
         return root
 
     
@@ -164,10 +162,8 @@ class _Serializer_v4(Serializer):
             for p in pelts:
                 assert p.tag == 'revision_ref', \
                        "bad parent node tag %r" % p.tag
-                rev_ref = RevisionReference(p.get('revision_id'),
-                                            p.get('revision_sha1'))
-                rev.parents.append(rev_ref)
-
+                rev.parents.append(p.get('revision_id'))
+                rev.parent_sha1s.append(p.get('revision_sha1'))
             if precursor:
                 # must be consistent
                 prec_parent = rev.parents[0].revision_id
@@ -175,8 +171,8 @@ class _Serializer_v4(Serializer):
         elif precursor:
             # revisions written prior to 0.0.5 have a single precursor
             # give as an attribute
-            rev_ref = RevisionReference(precursor, precursor_sha1)
-            rev.parents.append(rev_ref)
+            rev.parents.append(precursor)
+            rev.parent_sha1s.append(precursor_sha1)
 
         v = elt.get('timezone')
         rev.timezone = v and int(v)

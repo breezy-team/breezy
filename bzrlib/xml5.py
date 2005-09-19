@@ -17,7 +17,7 @@
 
 from bzrlib.xml import ElementTree, SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
-from bzrlib.revision import Revision, RevisionReference        
+from bzrlib.revision import Revision        
 from bzrlib.errors import BzrError
 
 
@@ -89,13 +89,11 @@ class Serializer_v5(Serializer):
         if rev.parents:
             pelts = SubElement(root, 'parents')
             pelts.tail = pelts.text = '\n'
-            for rr in rev.parents:
-                assert isinstance(rr, RevisionReference)
+            for parent_id in rev.parents:
+                assert isinstance(parent_id, basestring)
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
-                assert rr.revision_id
-                p.set('revision_id', rr.revision_id)
-
+                p.set('revision_id', parent_id)
         return root
 
     
@@ -149,8 +147,7 @@ class Serializer_v5(Serializer):
         for p in parents:
             assert p.tag == 'revision_ref', \
                    "bad parent node tag %r" % p.tag
-            rev_ref = RevisionReference(p.get('revision_id'))
-            rev.parents.append(rev_ref)
+            rev.parents.append(p.get('revision_id'))
 
         v = elt.get('timezone')
         rev.timezone = v and int(v)

@@ -18,30 +18,6 @@
 import bzrlib.errors
 
 
-class RevisionReference(object):
-    """
-    Reference to a stored revision.
-
-    Includes the revision_id and revision_sha1.
-    """
-    revision_id = None
-    revision_sha1 = None
-    def __init__(self, revision_id, revision_sha1=None):
-        if revision_id == None \
-           or isinstance(revision_id, basestring):
-            self.revision_id = revision_id
-        else:
-            raise ValueError('bad revision_id %r' % revision_id)
-
-        if revision_sha1 != None:
-            if isinstance(revision_sha1, basestring) \
-               and len(revision_sha1) == 40:
-                self.revision_sha1 = revision_sha1
-            else:
-                raise ValueError('bad revision_sha1 %r' % revision_sha1)
-                
-
-
 class Revision(object):
     """Single revision on a branch.
 
@@ -65,6 +41,7 @@ class Revision(object):
     def __init__(self, **args):
         self.__dict__.update(args)
         self.parents = []
+        self.parent_sha1s = []
 
 
     def __repr__(self):
@@ -128,7 +105,7 @@ def iter_ancestors(revision_id, revision_source, only_present=False):
                     continue
             if only_present:
                 yield ancestor, distance
-            new_ancestors.extend([p.revision_id for p in revision.parents])
+            new_ancestors.extend(revision.parents)
         ancestors = new_ancestors
         distance += 1
 
@@ -234,9 +211,7 @@ def get_intervening_revisions(ancestor_id, rev_id, rev_source,
     while len(active) > 0:
         new_active = []
         for line in active:
-            parent_ids = [p.revision_id for p in 
-                          rev_source.get_revision(line[-1]).parents]
-            for parent in parent_ids:
+            for parent in rev_source.get_revision(line[-1]).parents:
                 line_copy = line[:]
                 if parent == ancestor_id:
                     successful_lines.append(line_copy)

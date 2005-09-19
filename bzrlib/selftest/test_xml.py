@@ -92,7 +92,7 @@ class TestSerializer(TestCase):
         eq(rev.inventory_id,
            "mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9")
         eq(len(rev.parents), 1)
-        eq(rev.parents[0].revision_id,
+        eq(rev.parents[0],
            "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
 
     def test_unpack_revision_5(self):
@@ -104,7 +104,7 @@ class TestSerializer(TestCase):
            "Martin Pool <mbp@sourcefrog.net>")
         eq(len(rev.parents), 1)
         eq(rev.timezone, 36000)
-        eq(rev.parents[0].revision_id,
+        eq(rev.parents[0],
            "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
 
     def test_unpack_inventory_5(self):

@@ -67,7 +67,7 @@ from bzrlib.branch import gen_file_id, INVENTORY_FILEID, ANCESTRY_FILEID
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
                            )
-from bzrlib.revision import Revision, RevisionReference
+from bzrlib.revision import Revision
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory
@@ -286,7 +286,7 @@ class Commit(object):
                             message=self.message,
                             inventory_sha1=self.inv_sha1,
                             revision_id=self.rev_id)
-        self.rev.parents = map(RevisionReference, self.parents)
+        self.rev.parents = self.parents
         rev_tmp = StringIO()
         serializer_v5.write_revision(self.rev, rev_tmp)
         rev_tmp.seek(0)

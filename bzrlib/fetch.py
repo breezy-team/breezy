@@ -176,9 +176,8 @@ class Fetcher(object):
                rev.committer,
                len(rev.parents))
         self._copy_new_texts(rev_id, inv)
-        parent_ids = [x.revision_id for x in rev.parents]
-        self._copy_inventory(rev_id, inv_xml, parent_ids)
-        self._copy_ancestry(rev_id, parent_ids)
+        self._copy_inventory(rev_id, inv_xml, rev.parents)
+        self._copy_ancestry(rev_id, rev.parents)
         self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
 
 

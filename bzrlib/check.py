@@ -120,36 +120,16 @@ def check(branch):
                     raise BzrCheckError("revision {%s} has %d parents, but is the "
                                         "start of the branch"
                                         % (rev_id, len(rev.parents)))
-                for prr in rev.parents:
-                    if prr.revision_id == last_rev_id:
+                for parent_id in rev.parents:
+                    if parent_id == last_rev_id:
                         break
                 else:
                     raise BzrCheckError("previous revision {%s} not listed among "
                                         "parents of {%s}"
                                         % (last_rev_id, rev_id))
-
-                for prr in rev.parents:
-                    if prr.revision_sha1 is None:
-                        missing_revision_sha_cnt += 1
-                        continue
-                    prid = prr.revision_id
-                    
-                    try:
-                        actual_sha = branch.get_revision_sha1(prid)
-                    except NoSuchRevision:
-                        missing_revision_cnt += 1
-                        mutter("parent {%s} of {%s} not present in store",
-                               prid, rev_id)
-                        continue
-                        
-                    if prr.revision_sha1 != actual_sha:
-                        raise BzrCheckError("mismatched revision sha1 for "
-                                            "parent {%s} of {%s}: %s vs %s"
-                                            % (prid, rev_id,
-                                               prr.revision_sha1, actual_sha))
             elif last_rev_id:
-                raise BzrCheckError("revision {%s} has no parents listed but preceded "
-                                    "by {%s}"
+                raise BzrCheckError("revision {%s} has no parents listed "
+                                    "but preceded by {%s}"
                                     % (rev_id, last_rev_id))
 
             ## TODO: Check all the required fields are present on the revision.

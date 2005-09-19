@@ -35,7 +35,6 @@ except ImportError:
                                               fromstring, tostring)
 
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
-from bzrlib.revision import Revision, RevisionReference        
 from bzrlib.errors import BzrError
 
 

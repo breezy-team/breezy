@@ -1,0 +1,7 @@
+changes in weave branch:
+
+ * Remove RevisionReference class; Revision.parents is now simply a
+   list of their ids and parent_sha1s  is a list of their
+   corresponding sha1s (for old branches only at the moment.)
+
+
