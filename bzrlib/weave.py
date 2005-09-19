@@ -117,7 +117,7 @@ class Weave(object):
 
     * a nonnegative index number.
 
-    * a version-id string. (not implemented yet)
+    * a version-id string.
 
     Typically the index number will be valid only inside this weave and
     the version-id is used to reference it in the larger world.
