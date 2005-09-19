@@ -106,8 +106,9 @@ class Convert(object):
                 and rev_id not in self.absent_revisions):
                 self._load_one_rev(rev_id)
         self.pb.clear()
-
-        self._make_order()
+        to_import = self._make_order()
+        for rev_id in to_import:
+            self._import_one_rev(rev_id)
 
         # self._convert_one_rev(self.to_read.pop())
         
@@ -156,18 +157,29 @@ class Convert(object):
             self.revisions[rev_id] = rev
 
 
+    def _import_one_rev(self, rev_id):
+        """Convert rev_id and all referenced file texts to new format."""
+        
+
+
     def _make_order(self):
+        """Return a suitable order for importing revisions.
+
+        The order must be such that an revision is imported after all
+        its (present) parents.
+        """
         todo = set(self.revisions.keys())
         done = self.absent_revisions.copy()
+        o = []
         while todo:
             # scan through looking for a revision whose parents
             # are all done
-            for rev_id in list(todo):
+            for rev_id in sorted(list(todo)):
                 rev = self.revisions[rev_id]
                 parent_ids = set([x.revision_id for x in rev.parents])
                 if parent_ids.issubset(done):
                     # can take this one now
-                    print rev_id
+                    o.append(rev_id)
                     todo.remove(rev_id)
                     done.add(rev_id)
                     
