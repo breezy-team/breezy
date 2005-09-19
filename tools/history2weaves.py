@@ -97,7 +97,6 @@ from bzrlib.osutils import sha_strings
 
 class Convert(object):
     def __init__(self):
-        self.total_revs = 0
         self.converted_revs = set()
         self.absent_revisions = set()
         self.text_count = 0
@@ -129,15 +128,15 @@ class Convert(object):
         # to_read is a stack holding the revisions we still need to process;
         # appending to it adds new highest-priority revisions
         importorder = []
+        self.known_revisions = set(rev_history)
         self.to_read = [rev_history[-1]]
-        self.total_revs = len(rev_history)
         while self.to_read:
             rev_id = self.to_read.pop()
             if (rev_id not in self.revisions
                 and rev_id not in self.absent_revisions):
                 self._load_one_rev(rev_id)
         self.pb.clear()
-        to_import = self._make_order()[:100]
+        to_import = self._make_order()
         for i, rev_id in enumerate(to_import):
             self.pb.update('converting revision', i, len(to_import))
             self._convert_one_rev(rev_id)
@@ -170,7 +169,7 @@ class Convert(object):
         loaded."""
         self.pb.update('loading revision',
                        len(self.revisions),
-                       self.total_revs)
+                       len(self.known_revisions))
         if rev_id not in self.branch.revision_store:
             self.pb.clear()
             note('revision {%s} not present in branch; '
@@ -181,7 +180,7 @@ class Convert(object):
             rev_xml = self.branch.revision_store[rev_id].read()
             rev = serializer_v4.read_revision_from_string(rev_xml)
             for parent_id in rev.parent_ids:
-                self.total_revs += 1
+                self.known_revisions.add(parent_id)
                 self.to_read.append(parent_id)
             self.revisions[rev_id] = rev
             old_inv_xml = self.branch.inventory_store[rev_id].read()
@@ -208,28 +207,53 @@ class Convert(object):
 
         Also upgrade the inventory to refer to the text revision ids."""
         rev_id = rev.revision_id
+        mutter('converting texts of revision {%s}',
+               rev_id)
         for path, ie in inv.iter_entries():
-            file_id = ie.file_id
             if ie.kind != 'file':
                 continue
-            w = self.text_weaves.get(file_id)
-            if w is None:
-                w = Weave(file_id)
-                self.text_weaves[file_id] = w
-            file_lines = self.branch.text_store[ie.text_id].readlines()
-            assert sha_strings(file_lines) == ie.text_sha1
-            assert sum(map(len, file_lines)) == ie.text_size
-            file_parents = []
-            for parent_id in rev.parent_ids:
-                assert parent_id in self.converted_revs
-                if self.inventories[parent_id].has_id(file_id):
-                    file_parents.append(parent_id)
+            self._convert_file_version(rev, ie)
+            # TODO: Check and convert name versions
+
+
+    def _convert_file_version(self, rev, ie):
+        """Convert one version of one file.
+
+        The file needs to be added into the weave if it is a merge
+        of >=2 parents or if it's changed from its parent.
+        """
+        file_id = ie.file_id
+        rev_id = rev.revision_id
+        w = self.text_weaves.get(file_id)
+        if w is None:
+            w = Weave(file_id)
+            self.text_weaves[file_id] = w
+        file_lines = self.branch.text_store[ie.text_id].readlines()
+        assert sha_strings(file_lines) == ie.text_sha1
+        assert sum(map(len, file_lines)) == ie.text_size
+        file_parents = []
+        text_changed = False
+        for parent_id in rev.parent_ids:
+            assert parent_id in self.converted_revs
+            parent_inv = self.inventories[parent_id]
+            if parent_inv.has_id(file_id):
+                parent_ie = parent_inv[file_id]
+                old_text_version = parent_ie.text_version
+                assert old_text_version in self.converted_revs 
+                if old_text_version not in file_parents:
+                    file_parents.append(old_text_version)
+                if parent_ie.text_sha1 != ie.text_sha1:
+                    text_changed = True
+        if len(file_parents) != 1 or text_changed:
             w.add(rev_id, file_parents, file_lines)
             ie.text_version = rev_id
-            ie.name_version = rev_id
-            mutter('import text {%s}\n  from {%s}\n  in revision {%s}',
-                   ie.text_id, file_id, rev_id)
-            del ie.text_id
+            mutter('import text {%s} of {%s}',
+                   ie.text_id, file_id)
+        else:
+            mutter('text of {%s} unchanged from parent', file_id)            
+            ie.text_version = file_parents[0]
+        ie.name_version = rev_id
+        del ie.text_id
                    
 
 
