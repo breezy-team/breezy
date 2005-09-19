@@ -60,8 +60,8 @@ class QuietFormatter(logging.Formatter):
             
         s += record.getMessage()
 
-        import textwrap
-        s = textwrap.fill(s)
+        ##import textwrap
+        ##s = textwrap.fill(s)
             
         if record.exc_info:
             # give just a summary of the exception, not the whole thing
