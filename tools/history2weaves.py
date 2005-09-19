@@ -180,12 +180,13 @@ class Convert(object):
 
     def _import_one_rev(self, rev_id):
         """Convert rev_id and all referenced file texts to new format."""
-        inv_xml = self.branch.inventory_store[rev_id].read()
-        inv = serializer_v4.read_inventory_from_string(inv_xml)
+        old_inv_xml = self.branch.inventory_store[rev_id].read()
+        inv = serializer_v4.read_inventory_from_string(old_inv_xml)
+        new_inv_xml = serializer_v5.write_inventory_to_string(inv)
         inv_parents = [x for x in self.revisions[rev_id].parent_ids
                        if x not in self.absent_revisions]
         self.inv_weave.add(rev_id, inv_parents,
-                           inv_xml.splitlines(True))
+                           new_inv_xml.splitlines(True))
 
 
     def _make_order(self):
@@ -210,67 +211,6 @@ class Convert(object):
                     done.add(rev_id)
         return o
                 
-
-    def _convert_one_rev(self, rev_id):
-        self._bump_progress()
-        b = self.branch
-
-        if rev_id not in b.revision_store:
-            self.pb.clear()
-            note('revision {%s} not present in branch; '
-                 'will not be converted',
-                 rev_id)
-            self.absent_revisions.add(rev_id)
-            return
-        
-        rev_xml = b.revision_store[rev_id].read()
-        inv_xml = b.inventory_store[rev_id].read()
-
-        rev = serializer_v4.read_revision_from_string(rev_xml)
-        inv = serializer_v4.read_inventory_from_string(inv_xml)
-
-        self.converted_revs.add(rev_id)
-        
-        return ##########################################
-
-        tree = b.revision_tree(rev_id)
-        inv = tree.inventory
-
-        # for each file in the inventory, put it into its own revfile
-        for file_id in inv:
-            ie = inv[file_id]
-            if ie.kind != 'file':
-                continue
-            if last_text_sha.get(file_id) == ie.text_sha1:
-                # same as last time
-                continue
-            last_text_sha[file_id] = ie.text_sha1
-
-            # new text (though possibly already stored); need to store it
-            text_lines = tree.get_file(file_id).readlines()
-
-            # if the file's created for the first time in this
-            # revision then make a new weave; else find the old one
-            if file_id not in text_weaves:
-                text_weaves[file_id] = Weave()
-
-            w = text_weaves[file_id]
-
-            # base the new text version off whatever was last
-            # (actually it'd be better to track this, to allow for
-            # files that are deleted and then reappear)
-            last = len(w)
-            if last == 0:
-                parents = []
-            else:
-                parents = [last-1]
-
-            w.add(rev_id, parents, text_lines)
-            text_count += 1
-
-        revno += 1
-        
-
 
 def write_atomic_weave(weave, filename):
     inv_wf = AtomicFile(filename)
