@@ -68,7 +68,7 @@
 # versions.
 
 
-if False:
+if True:
     try:
         import psyco
         psyco.full()
@@ -136,7 +136,7 @@ class Convert(object):
                 and rev_id not in self.absent_revisions):
                 self._load_one_rev(rev_id)
         self.pb.clear()
-        to_import = self._make_order()[:500]
+        to_import = self._make_order()
         for i, rev_id in enumerate(to_import):
             self.pb.update('converting revision', i, len(to_import))
             self._convert_one_rev(rev_id)
@@ -235,6 +235,8 @@ class Convert(object):
         file_parents = []
         text_changed = False
         for parent_id in rev.parent_ids:
+            if parent_id in self.absent_revisions:
+                continue
             assert parent_id in self.converted_revs
             parent_inv = self.inventories[parent_id]
             if parent_inv.has_id(file_id):
