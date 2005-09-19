@@ -87,6 +87,7 @@
 
 
 import sha
+from difflib import SequenceMatcher
 
 from cStringIO import StringIO
 
@@ -331,7 +332,6 @@ class Weave(object):
         #print 'basis_lines:', basis_lines
         #print 'new_lines:  ', lines
 
-        from difflib import SequenceMatcher
         s = SequenceMatcher(None, basis_lines, text)
 
         # offset gives the number of lines that have been inserted
