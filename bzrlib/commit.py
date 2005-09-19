@@ -234,28 +234,19 @@ class Commit(object):
         This should be the merged ancestry of all parents, plus the
         new revision id."""
         w = self.weave_store.get_weave_or_empty(ANCESTRY_FILEID)
-        lines = self._merge_ancestry_lines(w)
+        lines = self._make_ancestry(w)
         w.add(self.rev_id, self.parents, lines)
         self.weave_store.put_weave(ANCESTRY_FILEID, w)
 
 
-    def _merge_ancestry_lines(self, ancestry_weave):
+    def _make_ancestry(self, ancestry_weave):
         """Return merged ancestry lines.
 
         The lines are revision-ids followed by newlines."""
-        seen = set()
-        ancs = []
-        for parent_id in self.parents:
-            for line in ancestry_weave.get(parent_id):
-                assert line[-1] == '\n'
-                if line not in seen:
-                    ancs.append(line)
-                    seen.add(line)
-        r = self.rev_id + '\n'
-        assert r not in ancs
-        ancs.append(r)
-        mutter('merged ancestry of {%s}:\n%s', self.rev_id, ''.join(ancs))
-        return ancs
+        parent_ancestries = [ancestry_weave.get(p) for p in self.parents]
+        new_lines = merge_ancestry_lines(self.rev_id, parent_ancestries)
+        mutter('merged ancestry of {%s}:\n%s', self.rev_id, ''.join(new_lines))
+        return new_lines
 
 
     def _gather_parents(self):
@@ -487,3 +478,26 @@ def _gen_revision_id(branch, when):
 
 
     
+def merge_ancestry_lines(rev_id, ancestries):
+    """Return merged ancestry lines.
+
+    rev_id -- id of the new revision
+    
+    ancestries -- a sequence of ancestries for parent revisions,
+        as newline-terminated line lists.
+    """
+    if len(ancestries) == 0:
+        return [rev_id + '\n']
+    seen = set(ancestries[0])
+    ancs = ancestries[0][:]    
+    for parent_ancestry in ancestries[1:]:
+        for line in parent_ancestry:
+            assert line[-1] == '\n'
+            if line not in seen:
+                ancs.append(line)
+                seen.add(line)
+    r = rev_id + '\n'
+    assert r not in seen
+    ancs.append(r)
+    return ancs
+
