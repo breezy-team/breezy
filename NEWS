@@ -32,6 +32,8 @@ development head
 
     * Various Windows fixes from Ollie Rutherfurd.
 
+    * Quieten warnings about locking; patch from Matt Lavin.
+
 
 bzr-0.0.7 2005-09-02
 
