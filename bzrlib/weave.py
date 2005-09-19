@@ -835,6 +835,8 @@ usage:
         Display composite of all selected versions.
     weave merge WEAVEFILE VERSION1 VERSION2 > OUT
         Auto-merge two versions and display conflicts.
+    weave diff WEAVEFILE VERSION1 VERSION2 
+        Show differences between two versions.
 
 example:
 
@@ -908,6 +910,18 @@ def main(argv):
         w = readit()
         sys.stdout.writelines(w.mash_iter(map(int, argv[3:])))
 
+    elif cmd == 'diff':
+        from difflib import unified_diff
+        w = readit()
+        fn = argv[2]
+        v1, v2 = map(int, argv[3:5])
+        lines1 = w.get(v1)
+        lines2 = w.get(v2)
+        diff_gen = unified_diff(lines1, lines2,
+                                '%s version %d' % (fn, v1),
+                                '%s version %d' % (fn, v2))
+        sys.stdout.writelines(diff_gen)
+            
     elif cmd == 'annotate':
         w = readit()
         # newline is added to all lines regardless; too hard to get
