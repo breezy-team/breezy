@@ -867,7 +867,7 @@ example:
 def main(argv):
     import sys
     import os
-    from weavefile import write_weave, read_weave
+    from bzrlib.weavefile import write_weave, read_weave
     from bzrlib.progress import ProgressBar
 
     try:
