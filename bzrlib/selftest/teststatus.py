@@ -31,7 +31,7 @@ class BranchStatus(TestCaseInTempDir):
         from bzrlib.status import show_status
         from bzrlib.branch import Branch
         
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         # status with nothing
         tof = StringIO()

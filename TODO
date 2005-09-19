@@ -206,6 +206,9 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * BZRDIR should be in branch.py not __init__.py.
 
+* ``status `` should accept a -r option to show changes relative to a revision,
+  or between revisions
+
 Medium things
 -------------
 

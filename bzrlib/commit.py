@@ -57,7 +57,7 @@ def commit(branch, message,
         If null (default), a time/random revision id is generated.
     """
 
-    import time, tempfile
+    import time, tempfile, re
 
     from bzrlib.osutils import local_time_offset, username
     from bzrlib.branch import gen_file_id
@@ -144,6 +144,22 @@ def commit(branch, message,
             timezone = local_time_offset()
 
         mutter("building commit log message")
+        # Python strings can include characters that can't be
+        # represented in well-formed XML; escape characters that
+        # aren't listed in the XML specification
+        # (http://www.w3.org/TR/REC-xml/#NT-Char).
+        if isinstance(message, unicode):
+            char_pattern = u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]'
+        else:
+            # Use a regular 'str' as pattern to avoid having re.subn
+            # return 'unicode' results.
+            char_pattern = '[^x09\x0A\x0D\x20-\xFF]'
+        message, escape_count = re.subn(
+            char_pattern,
+            lambda match: match.group(0).encode('unicode_escape'),
+            message)
+        if escape_count:
+            note("replaced %d control characters in message", escape_count)
         rev = Revision(timestamp=timestamp,
                        timezone=timezone,
                        committer=committer,
@@ -248,7 +264,7 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
         if not work_tree.has_id(file_id):
             if verbose:
                 print('deleted %s%s' % (path, kind_marker(entry.kind)))
-                any_changes = True
+            any_changes = True
             mutter("    file is missing, removing from inventory")
             missing_ids.append(file_id)
             continue
@@ -310,7 +326,9 @@ def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
             else:
                 print 'renamed', marked
                 any_changes = True
-                        
+        elif old_ie != entry:
+            any_changes = True
+
     return missing_ids, inv, any_changes
 
 

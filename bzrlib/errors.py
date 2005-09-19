@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 # -*- coding: UTF-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
@@ -24,6 +23,7 @@ __author__ = "Martin Pool <mbp@canonical.com>"
 # exceptions 
 class BzrError(StandardError):
     pass
+
 
 class BzrCheckError(BzrError):
     pass
@@ -92,6 +92,12 @@ class NoSuchRevision(BzrError):
         BzrError.__init__(self, msg)
 
 
+class DivergedBranches(BzrError):
+    def __init__(self, branch1, branch2):
+        BzrError.__init__(self, "These branches have diverged.")
+        self.branch1 = branch1
+        self.branch2 = branch2
+
 class UnrelatedBranches(BzrCommandError):
     def __init__(self):
         msg = "Branches have no common ancestor, and no base revision"\
@@ -112,18 +118,18 @@ class NoCommonRoot(BzrError):
 
 class NotAncestor(BzrError):
     def __init__(self, rev_id, not_ancestor_id):
-        self.rev_id = rev_id
-        self.not_ancestor_id = not_ancestor_id
         msg = "Revision %s is not an ancestor of %s" % (not_ancestor_id, 
                                                         rev_id)
         BzrError.__init__(self, msg)
+        self.rev_id = rev_id
+        self.not_ancestor_id = not_ancestor_id
 
 
 class InstallFailed(BzrError):
     def __init__(self, revisions):
-        self.revisions = revisions
         msg = "Could not install revisions:\n%s" % " ,".join(revisions)
         BzrError.__init__(self, msg)
+        self.revisions = revisions
 
 
 class AmbiguousBase(BzrError):

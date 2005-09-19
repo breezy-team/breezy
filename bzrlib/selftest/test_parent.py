@@ -24,13 +24,13 @@ from bzrlib.branch import Branch, copy_branch
 class TestParent(TestCaseInTempDir):
     def test_no_default_parent(self):
         """Branches should have no parent by default"""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         self.assertEquals(b.get_parent(), None)
         
     
     def test_set_get_parent(self):
         """Set and then re-get the parent"""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         url = 'http://bazaar-ng.org/bzr/bzr.dev'
         b.set_parent(url)
         self.assertEquals(b.get_parent(), url)
@@ -40,7 +40,7 @@ class TestParent(TestCaseInTempDir):
         from bzrlib.commands import run_bzr
 
         os.mkdir('from')
-        branch_from = Branch('from', init=True)
+        branch_from = Branch.initialize('from')
         file('from/foo', 'wt').write('contents of foo')
         branch_from.add('foo')
         branch_from.commit('initial commit')
@@ -48,7 +48,7 @@ class TestParent(TestCaseInTempDir):
         os.mkdir('to')
         copy_branch(branch_from, 'to', None)
 
-        branch_to = Branch('to')
+        branch_to = Branch.open('to')
         abspath = os.path.abspath('from')
         self.assertEquals(branch_to.get_parent(), abspath)
         
