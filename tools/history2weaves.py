@@ -136,7 +136,7 @@ class Convert(object):
                 and rev_id not in self.absent_revisions):
                 self._load_one_rev(rev_id)
         self.pb.clear()
-        to_import = self._make_order()
+        to_import = self._make_order()[:500]
         for i, rev_id in enumerate(to_import):
             self.pb.update('converting revision', i, len(to_import))
             self._convert_one_rev(rev_id)
@@ -192,13 +192,14 @@ class Convert(object):
         """Convert revision and all referenced objects to new format."""
         rev = self.revisions[rev_id]
         inv = self.inventories[rev_id]
+        self._convert_revision_contents(rev, inv)
+        # the XML is now updated with text versions
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
         inv_parents = [x for x in self.revisions[rev_id].parent_ids
                        if x not in self.absent_revisions]
         self.inv_weave.add(rev_id, inv_parents,
                            new_inv_xml.splitlines(True))
         # TODO: Upgrade revision XML and write that out
-        self._convert_revision_contents(rev, inv)
         self.converted_revs.add(rev_id)
 
 
@@ -246,13 +247,13 @@ class Convert(object):
                     text_changed = True
         if len(file_parents) != 1 or text_changed:
             w.add(rev_id, file_parents, file_lines)
-            ie.text_version = rev_id
+            ie.name_version = ie.text_version = rev_id
             mutter('import text {%s} of {%s}',
                    ie.text_id, file_id)
         else:
             mutter('text of {%s} unchanged from parent', file_id)            
             ie.text_version = file_parents[0]
-        ie.name_version = rev_id
+            ie.name_version = file_parents[0]
         del ie.text_id
                    
 
