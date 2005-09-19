@@ -137,12 +137,12 @@ class Convert(object):
                 and rev_id not in self.absent_revisions):
                 self._load_one_rev(rev_id)
         self.pb.clear()
-        to_import = self._make_order()[:500]
+        to_import = self._make_order()
         for i, rev_id in enumerate(to_import):
             self.pb.update('converting revision', i, len(to_import))
             self._convert_one_rev(rev_id)
         self.pb.clear()
-        print '(not really) upgraded to weaves:'
+        print 'upgraded to weaves:'
         print '  %6d revisions and inventories' % len(self.revisions)
         print '  %6d absent revisions removed' % len(self.absent_revisions)
         print '  %6d texts' % self.text_count
@@ -152,11 +152,11 @@ class Convert(object):
 
     def _write_all_weaves(self):
         i = 0
-        write_atomic_weave(self.inv_weave, 'weaves/inventory.weave')
+        write_a_weave(self.inv_weave, 'weaves/inventory.weave')
         try:
             for file_id, file_weave in self.text_weaves.items():
                 self.pb.update('writing weave', i, len(self.text_weaves))
-                write_atomic_weave(file_weave, 'weaves/%s.weave' % file_id)
+                write_a_weave(file_weave, 'weaves/%s.weave' % file_id)
                 i += 1
         finally:
             self.pb.clear()
@@ -175,6 +175,7 @@ class Convert(object):
                     f.close()
         finally:
             self.pb.clear()
+
             
     def _load_one_rev(self, rev_id):
         """Load a revision object into memory.
@@ -228,7 +229,8 @@ class Convert(object):
         rev_id = rev.revision_id
         mutter('converting texts of revision {%s}',
                rev_id)
-        for path, ie in inv.iter_entries():
+        for file_id in inv:
+            ie = inv[file_id]
             if ie.kind != 'file':
                 continue
             self._convert_file_version(rev, ie)
@@ -268,6 +270,7 @@ class Convert(object):
         if len(file_parents) != 1 or text_changed:
             w.add(rev_id, file_parents, file_lines, ie.text_sha1)
             ie.name_version = ie.text_version = rev_id
+            self.text_count += 1
             ##mutter('import text {%s} of {%s}',
             ##       ie.text_id, file_id)
         else:
@@ -301,11 +304,10 @@ class Convert(object):
         return o
                 
 
-def write_atomic_weave(weave, filename):
-    inv_wf = AtomicFile(filename)
+def write_a_weave(weave, filename):
+    inv_wf = file(filename, 'wb')
     try:
         write_weave(weave, inv_wf)
-        inv_wf.commit()
     finally:
         inv_wf.close()
 
