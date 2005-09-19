@@ -32,10 +32,10 @@ import os
 
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
 from bzrlib.branch import Branch
-from bzrlib.commands import run_bzr
 
 
 class ExternalBase(TestCaseInTempDir):
+
     def runbzr(self, args, retcode=0, backtick=False):
         if isinstance(args, basestring):
             args = args.split()
@@ -170,12 +170,12 @@ class TestCommands(ExternalBase):
         from bzrlib.branch import Branch
         b = Branch.initialize('.')
         self.build_tree(['a', 'c', 'subdir/'])
-        self.run_bzr('add', self.test_dir)
-        self.run_bzr('mv', 'a', 'b')
-        self.run_bzr('mv', 'b', 'subdir')
-        self.run_bzr('mv', 'subdir/b', 'a')
-        self.run_bzr('mv', 'a', 'c', 'subdir')
-        self.run_bzr('mv', 'subdir/a', 'subdir/newa')
+        self.run_bzr_captured(['add', self.test_dir])
+        self.run_bzr_captured(['mv', 'a', 'b'])
+        self.run_bzr_captured(['mv', 'b', 'subdir'])
+        self.run_bzr_captured(['mv', 'subdir/b', 'a'])
+        self.run_bzr_captured(['mv', 'a', 'c', 'subdir'])
+        self.run_bzr_captured(['mv', 'subdir/a', 'subdir/newa'])
 
 
     def test_main_version(self):
@@ -287,13 +287,9 @@ class TestCommands(ExternalBase):
         """add command prints the names of added files."""
         b = Branch.initialize('.')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
-        out = StringIO()
-        ret = self.apply_redirected(None, out, None,
-                                    run_bzr,
-                                    ['add'])
-        self.assertEquals(ret, 0)
+        out = self.run_bzr_captured(['add'], retcode = 0)[0]
         # the ordering is not defined at the moment
-        results = sorted(out.getvalue().rstrip('\n').split('\n'))
+        results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['added dir',
                            'added dir/sub.txt',
                            'added top.txt',],
