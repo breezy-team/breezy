@@ -11,6 +11,12 @@ development head
     * Ignore .DS_Store (contains Mac metadata) by default.  Patch from
       Nir Soffer.
 
+    * If you set BZR_EDITOR in the environment, it is checked in
+      preference to EDITOR and the config file for the interactive commit
+      editing program. Related to this is a bugfix where a missing program
+      set in EDITOR would cause editing to fail, now the fallback program
+      for the operating system is still tried.
+
 
   INTERNALS:
 
