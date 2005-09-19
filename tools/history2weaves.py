@@ -92,7 +92,7 @@ from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
 from bzrlib.trace import mutter, note, warning, enable_default_logging
 from bzrlib.osutils import sha_strings, sha_string
-
+from bzrlib.commit import merge_ancestry_lines
 
 
 class Convert(object):
@@ -102,7 +102,6 @@ class Convert(object):
         self.text_count = 0
         self.revisions = {}
         self.inventories = {}
-        self.ancestries = {}
         self.convert()
         
 
@@ -113,16 +112,14 @@ class Convert(object):
         self.pb = ProgressBar()
         self.inv_weave = Weave('__inventory')
         self.anc_weave = Weave('__ancestry')
-
-        last_text_sha = {}
-
+        self.ancestries = {}
         # holds in-memory weaves for all files
         self.text_weaves = {}
 
-        b = self.branch = Branch('.', relax_version_check=True)
+        self.branch = Branch('.', relax_version_check=True)
 
         revno = 1
-        rev_history = b.revision_history()
+        rev_history = self.branch.revision_history()
         last_idx = None
         inv_parents = []
 
@@ -151,8 +148,9 @@ class Convert(object):
 
 
     def _write_all_weaves(self):
-        i = 0
         write_a_weave(self.inv_weave, 'weaves/inventory.weave')
+        write_a_weave(self.anc_weave, 'weaves/ancestry.weave')
+        i = 0
         try:
             for file_id, file_weave in self.text_weaves.items():
                 self.pb.update('writing weave', i, len(self.text_weaves))
@@ -160,7 +158,6 @@ class Convert(object):
                 i += 1
         finally:
             self.pb.clear()
-        ## write_atomic_weave(self.anc_weave, 'weaves/ancestry.weave')
 
 
     def _write_all_revs(self):
@@ -208,18 +205,32 @@ class Convert(object):
         """Convert revision and all referenced objects to new format."""
         rev = self.revisions[rev_id]
         inv = self.inventories[rev_id]
+        for parent_id in rev.parent_ids[:]:
+            if parent_id in self.absent_revisions:
+                rev.parent_ids.remove(parent_id)
+                self.pb.clear()
+                note('remove {%s} as parent of {%s}', parent_id, rev_id)
         self._convert_revision_contents(rev, inv)
         # the XML is now updated with text versions
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
-        inv_parents = [x for x in self.revisions[rev_id].parent_ids
-                       if x not in self.absent_revisions]
         new_inv_sha1 = sha_string(new_inv_xml)
-        self.inv_weave.add(rev_id, inv_parents,
+        self.inv_weave.add(rev_id, rev.parent_ids,
                            new_inv_xml.splitlines(True),
                            new_inv_sha1)
         # TODO: Upgrade revision XML and write that out
         rev.inventory_sha1 = new_inv_sha1
+        self._make_rev_ancestry(rev)
         self.converted_revs.add(rev_id)
+
+
+    def _make_rev_ancestry(self, rev):
+        rev_id = rev.revision_id
+        for parent_id in rev.parent_ids:
+            assert parent_id in self.converted_revs
+        parent_ancestries = [self.ancestries[p] for p in rev.parent_ids]
+        new_lines = merge_ancestry_lines(rev_id, parent_ancestries)
+        self.ancestries[rev_id] = new_lines
+        self.anc_weave.add(rev_id, rev.parent_ids, new_lines)
 
 
     def _convert_revision_contents(self, rev, inv):
@@ -255,9 +266,10 @@ class Convert(object):
         file_parents = []
         text_changed = False
         for parent_id in rev.parent_ids:
-            if parent_id in self.absent_revisions:
-                continue
-            assert parent_id in self.converted_revs
+            ##if parent_id in self.absent_revisions:
+            ##    continue
+            assert parent_id in self.converted_revs, \
+                   'parent {%s} not converted' % parent_id
             parent_inv = self.inventories[parent_id]
             if parent_inv.has_id(file_id):
                 parent_ie = parent_inv[file_id]
