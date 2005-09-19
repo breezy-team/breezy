@@ -102,6 +102,7 @@ class Convert(object):
         self.text_count = 0
         self.revisions = {}
         self.inventories = {}
+        self.ancestries = {}
         self.convert()
         
 
@@ -136,17 +137,17 @@ class Convert(object):
                 and rev_id not in self.absent_revisions):
                 self._load_one_rev(rev_id)
         self.pb.clear()
-        to_import = self._make_order()
+        to_import = self._make_order()[:500]
         for i, rev_id in enumerate(to_import):
             self.pb.update('converting revision', i, len(to_import))
             self._convert_one_rev(rev_id)
-
+        self.pb.clear()
         print '(not really) upgraded to weaves:'
         print '  %6d revisions and inventories' % len(self.revisions)
         print '  %6d absent revisions removed' % len(self.absent_revisions)
         print '  %6d texts' % self.text_count
-
         self._write_all_weaves()
+        self._write_all_revs()
 
 
     def _write_all_weaves(self):
@@ -161,7 +162,20 @@ class Convert(object):
             self.pb.clear()
         ## write_atomic_weave(self.anc_weave, 'weaves/ancestry.weave')
 
-        
+
+    def _write_all_revs(self):
+        """Write all revisions out in new form."""
+        try:
+            for i, rev_id in enumerate(self.converted_revs):
+                self.pb.update('write revision', i, len(self.converted_revs))
+                f = file('new-revisions/%s' % rev_id, 'wb')
+                try:
+                    serializer_v5.write_revision(self.revisions[rev_id], f)
+                finally:
+                    f.close()
+        finally:
+            self.pb.clear()
+            
     def _load_one_rev(self, rev_id):
         """Load a revision object into memory.
 
