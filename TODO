@@ -27,6 +27,8 @@ Small things
 * Fix tests so that import errors caused by modules don't produce false reports
   that the tests themselves don't exist.
 
+* Fix tests so that one test failure doesn't prevent other tests from running
+
 * print a message at the end of running the tests telling them that the
   test log and output exists but can be removed
 
