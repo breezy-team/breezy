@@ -115,12 +115,12 @@ def check(branch):
                                     % rev_id)
 
             # check the previous history entry is a parent of this entry
-            if rev.parents:
+            if rev.parent_ids:
                 if last_rev_id is None:
                     raise BzrCheckError("revision {%s} has %d parents, but is the "
                                         "start of the branch"
-                                        % (rev_id, len(rev.parents)))
-                for parent_id in rev.parents:
+                                        % (rev_id, len(rev.parent_ids)))
+                for parent_id in rev.parent_ids:
                     if parent_id == last_rev_id:
                         break
                 else:

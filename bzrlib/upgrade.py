@@ -75,22 +75,6 @@ def upgrade(branch):
                 updated = True
                 mutter("  set inventory_sha1 on {%s}" % rev_id)
 
-            for prr in rev.parents:
-                try:
-                    actual_sha1 = branch.get_revision_sha1(prr.revision_id)
-                except bzrlib.errors.NoSuchRevision:
-                    mutter("parent {%s} of {%s} not present in branch; skipped"
-                           % (prr.revision_id, rev_id))
-                    continue
-                    
-                if actual_sha1 != prr.revision_sha1:
-                    mutter("parent {%s} of {%s} sha1 mismatch: "
-                           "%s vs %s; fixed"
-                           % (prr.revision_id, rev_id,
-                              actual_sha1, prr.revision_sha1))
-                    prr.revision_sha1 = actual_sha1
-                    updated = True
-
             if updated:
                 updated_previous_revision = True
                 # We had to update this revision entries hashes

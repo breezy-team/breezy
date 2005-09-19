@@ -27,8 +27,8 @@ class Revision(object):
 
     After bzr 0.0.5 revisions are allowed to have multiple parents.
 
-    parents
-        List of parent revisions, each is a RevisionReference.
+    parent_ids
+        List of parent revision_ids
     """
     inventory_id = None
     inventory_sha1 = None
@@ -40,7 +40,7 @@ class Revision(object):
     
     def __init__(self, **args):
         self.__dict__.update(args)
-        self.parents = []
+        self.parent_ids = []
         self.parent_sha1s = []
 
 
@@ -105,7 +105,7 @@ def iter_ancestors(revision_id, revision_source, only_present=False):
                     continue
             if only_present:
                 yield ancestor, distance
-            new_ancestors.extend(revision.parents)
+            new_ancestors.extend(revision.parent_ids)
         ancestors = new_ancestors
         distance += 1
 
@@ -211,7 +211,7 @@ def get_intervening_revisions(ancestor_id, rev_id, rev_source,
     while len(active) > 0:
         new_active = []
         for line in active:
-            for parent in rev_source.get_revision(line[-1]).parents:
+            for parent in rev_source.get_revision(line[-1]).parent_ids:
                 line_copy = line[:]
                 if parent == ancestor_id:
                     successful_lines.append(line_copy)

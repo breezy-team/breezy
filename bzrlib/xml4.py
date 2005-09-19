@@ -162,16 +162,16 @@ class _Serializer_v4(Serializer):
             for p in pelts:
                 assert p.tag == 'revision_ref', \
                        "bad parent node tag %r" % p.tag
-                rev.parents.append(p.get('revision_id'))
+                rev.parent_ids.append(p.get('revision_id'))
                 rev.parent_sha1s.append(p.get('revision_sha1'))
             if precursor:
                 # must be consistent
-                prec_parent = rev.parents[0].revision_id
+                prec_parent = rev.parent_ids[0].revision_id
                 assert prec_parent == precursor
         elif precursor:
             # revisions written prior to 0.0.5 have a single precursor
             # give as an attribute
-            rev.parents.append(precursor)
+            rev.parent_ids.append(precursor)
             rev.parent_sha1s.append(precursor_sha1)
 
         v = elt.get('timezone')

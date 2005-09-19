@@ -86,10 +86,10 @@ class Serializer_v5(Serializer):
         msg.text = rev.message
         msg.tail = '\n'
 
-        if rev.parents:
+        if rev.parent_ids:
             pelts = SubElement(root, 'parents')
             pelts.tail = pelts.text = '\n'
-            for parent_id in rev.parents:
+            for parent_id in rev.parent_ids:
                 assert isinstance(parent_id, basestring)
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
@@ -147,7 +147,7 @@ class Serializer_v5(Serializer):
         for p in parents:
             assert p.tag == 'revision_ref', \
                    "bad parent node tag %r" % p.tag
-            rev.parents.append(p.get('revision_id'))
+            rev.parent_ids.append(p.get('revision_id'))
 
         v = elt.get('timezone')
         rev.timezone = v and int(v)

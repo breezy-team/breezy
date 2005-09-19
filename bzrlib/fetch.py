@@ -174,10 +174,10 @@ class Fetcher(object):
         assert rev.inventory_sha1 == sha_string(inv_xml)
         mutter('  commiter %s, %d parents',
                rev.committer,
-               len(rev.parents))
+               len(rev.parent_ids))
         self._copy_new_texts(rev_id, inv)
-        self._copy_inventory(rev_id, inv_xml, rev.parents)
-        self._copy_ancestry(rev_id, rev.parents)
+        self._copy_inventory(rev_id, inv_xml, rev.parent_ids)
+        self._copy_ancestry(rev_id, rev.parent_ids)
         self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
 
 

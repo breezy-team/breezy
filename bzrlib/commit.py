@@ -286,7 +286,7 @@ class Commit(object):
                             message=self.message,
                             inventory_sha1=self.inv_sha1,
                             revision_id=self.rev_id)
-        self.rev.parents = self.parents
+        self.rev.parent_ids = self.parents
         rev_tmp = StringIO()
         serializer_v5.write_revision(self.rev, rev_tmp)
         rev_tmp.seek(0)
