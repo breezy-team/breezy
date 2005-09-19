@@ -91,7 +91,7 @@ from bzrlib.atomicfile import AtomicFile
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
 from bzrlib.trace import mutter, note, warning, enable_default_logging
-from bzrlib.osutils import sha_strings
+from bzrlib.osutils import sha_strings, sha_string
 
 
 
@@ -185,6 +185,7 @@ class Convert(object):
             self.revisions[rev_id] = rev
             old_inv_xml = self.branch.inventory_store[rev_id].read()
             inv = serializer_v4.read_inventory_from_string(old_inv_xml)
+            assert rev.inventory_sha1 == sha_string(old_inv_xml)
             self.inventories[rev_id] = inv
         
 
