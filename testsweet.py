@@ -55,7 +55,6 @@ class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
     # XXX: Not used yet
 
-
 class EarlyStoppingTestResultAdapter(object):
     """An adapter for TestResult to stop at the first first failure or error"""
 
@@ -89,12 +88,9 @@ class _MyResult(unittest._TextTestResult):
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
         # TODO: Maybe show test.shortDescription somewhere?
-        what = test.id()
-        # python2.3 has the bad habit of just "runit" for doctests
-        if what == 'runit':
-            what = test.shortDescription()
+        what = test.shortDescription() or test.id()        
         if self.showAll:
-            self.stream.write('%-60.60s' % what)
+            self.stream.write('%-70.70s' % what)
         self.stream.flush()
 
     def addError(self, test, err):

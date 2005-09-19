@@ -110,16 +110,10 @@ class RevisionSpec(object):
         if spec is None:
             return object.__new__(RevisionSpec, spec)
 
-        if isinstance(spec, RevisionSpec):
-            import pdb;pdb.set_trace()
-
         try:
             spec = int(spec)
         except ValueError:
             pass
-        except TypeError:
-            raise TypeError('Unexpected type, got %s, %r' % (type(spec), spec))
-
 
         if isinstance(spec, int):
             return object.__new__(RevisionSpec_int, spec)
@@ -134,12 +128,9 @@ class RevisionSpec(object):
             raise TypeError('Unhandled revision type %s' % spec)
 
     def __init__(self, spec):
-        if isinstance(spec, RevisionSpec):
-            self.spec = spec.spec
-        else:
-            if self.prefix and spec.startswith(self.prefix):
-                spec = spec[len(self.prefix):]
-            self.spec = spec
+        if self.prefix and spec.startswith(self.prefix):
+            spec = spec[len(self.prefix):]
+        self.spec = spec
 
     def _match_on(self, branch, revs):
         return RevisionInfo(branch, 0, None)
@@ -166,21 +157,13 @@ class RevisionSpec(object):
                               self.prefix or '',
                               self.spec)
 
-    def __eq__(self, other):
-        if isinstance(other, RevisionSpec):
-            return self.spec == other.spec
-        return other == self.spec
-
 
 # private API
 
 class RevisionSpec_int(RevisionSpec):
     """Spec is a number.  Special case."""
     def __init__(self, spec):
-        if isinstance(spec, RevisionSpec):
-            self.spec = int(spec.spec)
-        else:
-            self.spec = int(spec)
+        self.spec = int(spec)
 
     def _match_on(self, branch, revs):
         if self.spec < 0:

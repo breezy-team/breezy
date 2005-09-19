@@ -898,7 +898,6 @@ class LocalBranch(Branch):
         from bzrlib.commit import commit
         commit(self, *args, **kw)
         
-
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         history = self.revision_history()
@@ -906,7 +905,6 @@ class LocalBranch(Branch):
             return history.index(revision_id) + 1
         except ValueError:
             raise bzrlib.errors.NoSuchRevision(self, revision_id)
-
 
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""

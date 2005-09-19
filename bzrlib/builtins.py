@@ -113,7 +113,7 @@ class cmd_cat_revision(Command):
                     raise BzrCommandError('You cannot specify a NULL revision.')
                 revno, rev_id = rev.in_history(b)
                 sys.stdout.write(b.get_revision_xml_file(rev_id).read())
-
+    
 
 class cmd_revno(Command):
     """Show current revision number.

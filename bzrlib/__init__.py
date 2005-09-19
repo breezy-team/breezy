@@ -33,6 +33,7 @@ DEFAULT_IGNORE = ['.bzr.log',
 
 IGNORE_FILENAME = ".bzrignore"
 
+import os
 import locale
 user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
@@ -48,7 +49,6 @@ def get_bzr_revision():
     from bzrlib.branch import Branch
     
     try:
-        import os
         branch = Branch.open(os.path.dirname(__path__[0]))
         rh = branch.revision_history()
         if rh:

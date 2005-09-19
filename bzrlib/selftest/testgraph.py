@@ -1,5 +1,5 @@
 from bzrlib.selftest import TestCase
-from bzrlib.graph import farthest_nodes
+from bzrlib.graph import node_distances, nodes_by_distance
 
 class TestBase(TestCase):
     def edge_add(self, *args):
@@ -18,15 +18,20 @@ class TestBase(TestCase):
         self.edge_add('A', 'G', 'H', 'I', 'B')
         self.edge_add('A', 'J', 'K', 'L', 'M', 'N')
         self.edge_add('O', 'N')
-    
-    def test_farthest(self):
+
+    def node_descendants(self):
         descendants = {'A':set()}
         for node in self.graph:
             for ancestor in self.graph[node]:
                 if ancestor not in descendants:
                     descendants[ancestor] = set()
                 descendants[ancestor].add(node)
-        nodes = farthest_nodes(self.graph, descendants, 'A')
+        return descendants
+    
+    def test_distances(self):
+        descendants = self.node_descendants()
+        distances = node_distances(self.graph, descendants, 'A')
+        nodes = nodes_by_distance(distances)
         self.assertEqual(nodes[0], 'D')
         assert nodes[1] in ('N', 'C')
         assert nodes[2] in ('N', 'C')

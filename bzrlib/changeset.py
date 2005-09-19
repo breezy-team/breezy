@@ -1003,9 +1003,6 @@ class ExceptionConflictHandler(object):
     descend from this class if they have a better way to handle some or
     all types of conflict.
     """
-    def __init__(self, dir):
-        self.dir = dir
-    
     def missing_parent(self, pathname):
         parent = os.path.dirname(pathname)
         raise Exception("Parent directory missing for %s" % pathname)
@@ -1084,7 +1081,7 @@ def apply_changeset(changeset, inventory, dir, conflict_handler=None,
     :rtype: Dictionary
     """
     if conflict_handler is None:
-        conflict_handler = ExceptionConflictHandler(dir)
+        conflict_handler = ExceptionConflictHandler()
     temp_dir = os.path.join(dir, "bzr-tree-change")
     try:
         os.mkdir(temp_dir)
