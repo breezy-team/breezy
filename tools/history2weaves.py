@@ -197,9 +197,12 @@ class Convert(object):
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
         inv_parents = [x for x in self.revisions[rev_id].parent_ids
                        if x not in self.absent_revisions]
+        new_inv_sha1 = sha_string(new_inv_xml)
         self.inv_weave.add(rev_id, inv_parents,
-                           new_inv_xml.splitlines(True))
+                           new_inv_xml.splitlines(True),
+                           new_inv_sha1)
         # TODO: Upgrade revision XML and write that out
+        rev.inventory_sha1 = new_inv_sha1
         self.converted_revs.add(rev_id)
 
 
@@ -248,7 +251,7 @@ class Convert(object):
                 if parent_ie.text_sha1 != ie.text_sha1:
                     text_changed = True
         if len(file_parents) != 1 or text_changed:
-            w.add(rev_id, file_parents, file_lines)
+            w.add(rev_id, file_parents, file_lines, ie.text_sha1)
             ie.name_version = ie.text_version = rev_id
             mutter('import text {%s} of {%s}',
                    ie.text_id, file_id)
