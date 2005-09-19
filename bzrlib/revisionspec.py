@@ -111,7 +111,7 @@ class RevisionSpec(object):
             return object.__new__(RevisionSpec, spec)
 
         if isinstance(spec, RevisionSpec):
-            return object.__new__(type(spec), spec)
+            import pdb;pdb.set_trace()
 
         try:
             spec = int(spec)
