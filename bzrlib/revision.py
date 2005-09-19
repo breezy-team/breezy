@@ -18,7 +18,7 @@
 import bzrlib.errors
 from bzrlib.graph import node_distances, select_farthest, all_descendants
 
-NULL_REVISION="!NULL!"
+NULL_REVISION="null:"
 
 class RevisionReference(object):
     """
