@@ -49,6 +49,9 @@
 # here for now.  It's not totally clear to me how we'd know which file
 # need new text versions if some parents are absent.  -- mbp 20050915
 
+# TODO: Perhaps it'd be enough to just commit an auto-merge of the
+# ancestries?  Wouldn't that always preserve the appropriate ordering?
+
 
 import os
 import sys

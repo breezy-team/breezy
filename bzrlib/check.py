@@ -15,6 +15,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: Check ancestries are correct for every revision: includes
+# every committed so far, and in a reasonable order.
+
 import bzrlib.ui
 from bzrlib.trace import note, warning
 from bzrlib.osutils import rename, sha_string
