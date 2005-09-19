@@ -39,6 +39,29 @@
 # sort of all revisions.  (Or do we, can we just before doing a revision
 # see that all its parents have either been converted or abandoned?)
 
+
+# Cannot import a revision until all its parents have been
+# imported.  in other words, we can only import revisions whose
+# parents have all been imported.  the first step must be to
+# import a revision with no parents, of which there must be at
+# least one.  (So perhaps it's useful to store forward pointers
+# from a list of parents to their children?)
+#
+# Another (equivalent?) approach is to build up the ordered
+# ancestry list for the last revision, and walk through that.  We
+# are going to need that.
+#
+# We don't want to have to recurse all the way back down the list.
+#
+# Suppose we keep a queue of the revisions able to be processed at
+# any point.  This starts out with all the revisions having no
+# parents.
+#
+# This seems like a generally useful algorithm...
+#
+# The current algorithm is dumb (O(n**2)?) but will do the job, and
+# takes less than a second on the bzr.dev branch.
+
 if False:
     try:
         import psyco
@@ -107,12 +130,11 @@ class Convert(object):
                 self._load_one_rev(rev_id)
         self.pb.clear()
         to_import = self._make_order()
-        for rev_id in to_import:
+        for i, rev_id in enumerate(to_import):
+            self.pb.update('converting revision', i, len(to_import))
             self._import_one_rev(rev_id)
 
-        # self._convert_one_rev(self.to_read.pop())
-        
-        print 'upgraded to weaves:'
+        print '(not really) upgraded to weaves:'
         print '  %6d revisions and inventories' % len(self.revisions)
         print '  %6d absent revisions removed' % len(self.absent_revisions)
         print '  %6d texts' % self.text_count
@@ -122,9 +144,8 @@ class Convert(object):
 
     def _write_all_weaves(self):
         i = 0
-        return ############################################
-        # TODO: commit them all atomically at the end, not one by one
         write_atomic_weave(self.inv_weave, 'weaves/inventory.weave')
+        return #######################
         write_atomic_weave(self.anc_weave, 'weaves/ancestry.weave')
         for file_id, file_weave in text_weaves.items():
             self.pb.update('writing weave', i, len(text_weaves))
@@ -140,7 +161,7 @@ class Convert(object):
         Any parents not either loaded or abandoned get queued to be
         loaded."""
         self.pb.update('loading revision',
-                       len(self.converted_revs),
+                       len(self.revisions),
                        self.total_revs)
         if rev_id not in self.branch.revision_store:
             self.pb.clear()
@@ -159,7 +180,12 @@ class Convert(object):
 
     def _import_one_rev(self, rev_id):
         """Convert rev_id and all referenced file texts to new format."""
-        
+        inv_xml = self.branch.inventory_store[rev_id].read()
+        inv = serializer_v4.read_inventory_from_string(inv_xml)
+        inv_parents = [x for x in self.revisions[rev_id].parent_ids
+                       if x not in self.absent_revisions]
+        self.inv_weave.add(rev_id, inv_parents,
+                           inv_xml.splitlines(True))
 
 
     def _make_order(self):
@@ -182,27 +208,8 @@ class Convert(object):
                     o.append(rev_id)
                     todo.remove(rev_id)
                     done.add(rev_id)
-                    
+        return o
                 
-
-    # Cannot import a revision until all its parents have been
-    # imported.  in other words, we can only import revisions whose
-    # parents have all been imported.  the first step must be to
-    # import a revision with no parents, of which there must be at
-    # least one.  (So perhaps it's useful to store forward pointers
-    # from a list of parents to their children?)
-    #
-    # Another (equivalent?) approach is to build up the ordered
-    # ancestry list for the last revision, and walk through that.  We
-    # are going to need that.
-    #
-    # We don't want to have to recurse all the way back down the list.
-    #
-    # Suppose we keep a queue of the revisions able to be processed at
-    # any point.  This starts out with all the revisions having no
-    # parents.
-    #
-    # This seems like a generally useful algorithm...
 
     def _convert_one_rev(self, rev_id):
         self._bump_progress()
@@ -225,9 +232,6 @@ class Convert(object):
         self.converted_revs.add(rev_id)
         
         return ##########################################
-
-        new_idx = self.inv_weave.add(rev_id, inv_parents, inv_xml)
-        inv_parents = [new_idx]
 
         tree = b.revision_tree(rev_id)
         inv = tree.inventory
