@@ -151,7 +151,7 @@ class Convert(object):
         else:
             rev_xml = self.branch.revision_store[rev_id].read()
             rev = serializer_v4.read_revision_from_string(rev_xml)
-            for parent_id in [x.revision_id for x in rev.parents]:
+            for parent_id in rev.parents:
                 self.total_revs += 1
                 self.to_read.append(parent_id)
             self.revisions[rev_id] = rev
@@ -176,7 +176,7 @@ class Convert(object):
             # are all done
             for rev_id in sorted(list(todo)):
                 rev = self.revisions[rev_id]
-                parent_ids = set([x.revision_id for x in rev.parents])
+                parent_ids = set(rev.parents)
                 if parent_ids.issubset(done):
                     # can take this one now
                     o.append(rev_id)
