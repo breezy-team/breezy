@@ -102,7 +102,7 @@ class TestCaseWithWebserver(TestCaseInTempDir):
 
         self._http_base_url = 'http://localhost:%s/' % port
         self._http_starting.release()
-        httpd.socket.settimeout(1)
+        httpd.socket.settimeout(0.1)
 
         while self._http_running:
             try:
