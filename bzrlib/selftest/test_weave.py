@@ -23,13 +23,13 @@
 
 """test suite for weave algorithm"""
 
+from pprint import pformat
 
 import testsweet
 from bzrlib.weave import Weave, WeaveFormatError, WeaveError
 from bzrlib.weavefile import write_weave, read_weave
 from bzrlib.selftest import TestCase
-from pprint import pformat
-
+from bzrlib.osutils import sha_string
 
 try:
     set
@@ -111,6 +111,16 @@ class StoreTwo(TestBase):
 
         self.assertEqual(k.get(0), TEXT_0)
         self.assertEqual(k.get(1), TEXT_1)
+
+
+
+class AddWithGivenSha(TestBase):
+    def runTest(self):
+        """Add with caller-supplied SHA-1"""
+        k = Weave()
+
+        t = 'text0'
+        k.add('text0', [], [t], sha1=sha_string(t))
 
 
 

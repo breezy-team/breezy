@@ -236,7 +236,7 @@ class Weave(object):
         return self._names[version]
 
 
-    def _check_repeated_add(self, name, parents, text):
+    def _check_repeated_add(self, name, parents, text, sha1):
         """Check that a duplicated add is OK.
 
         If it is, return the (old) index; otherwise raise an exception.
@@ -245,15 +245,14 @@ class Weave(object):
         if sorted(self._parents[idx]) != sorted(parents):
             raise WeaveError("name \"%s\" already present in weave "
                              "with different parents" % name)
-        new_sha1 = sha_strings(text)
-        if new_sha1 != self._sha1s[idx]:
+        if sha1 != self._sha1s[idx]:
             raise WeaveError("name \"%s\" already present in weave "
                              "with different text" % name)            
         return idx
         
 
         
-    def add(self, name, parents, text):
+    def add(self, name, parents, text, sha1=None):
         """Add a single text on top of the weave.
   
         Returns the index number of the newly added version.
@@ -266,18 +265,23 @@ class Weave(object):
             List or set of direct parent version numbers.
             
         text
-            Sequence of lines to be added in the new version."""
+            Sequence of lines to be added in the new version.
+
+        sha -- SHA-1 of the file, if known.  This is trusted to be
+            correct if supplied.
+        """
 
         assert isinstance(name, basestring)
+        if sha1 is None:
+            sha1 = sha_strings(text)
         if name in self._name_map:
-            return self._check_repeated_add(name, parents, text)
+            return self._check_repeated_add(name, parents, text, sha1)
 
         parents = map(self.maybe_lookup, parents)
         self._check_versions(parents)
         ## self._check_lines(text)
         new_version = len(self._parents)
 
-        sha1 = sha_strings(text)
 
         # if we abort after here the (in-memory) weave will be corrupt because only
         # some fields are updated
