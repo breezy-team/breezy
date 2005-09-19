@@ -166,7 +166,7 @@ class _Serializer_v4(Serializer):
                 rev.parent_sha1s.append(p.get('revision_sha1'))
             if precursor:
                 # must be consistent
-                prec_parent = rev.parent_ids[0].revision_id
+                prec_parent = rev.parent_ids[0]
                 assert prec_parent == precursor
         elif precursor:
             # revisions written prior to 0.0.5 have a single precursor
