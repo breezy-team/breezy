@@ -254,10 +254,10 @@ class Convert(object):
         if len(file_parents) != 1 or text_changed:
             w.add(rev_id, file_parents, file_lines, ie.text_sha1)
             ie.name_version = ie.text_version = rev_id
-            mutter('import text {%s} of {%s}',
-                   ie.text_id, file_id)
+            ##mutter('import text {%s} of {%s}',
+            ##       ie.text_id, file_id)
         else:
-            mutter('text of {%s} unchanged from parent', file_id)            
+            ##mutter('text of {%s} unchanged from parent', file_id)            
             ie.text_version = file_parents[0]
             ie.name_version = file_parents[0]
         del ie.text_id
@@ -311,7 +311,7 @@ def profile_convert():
     stats.sort_stats('time')
     # XXX: Might like to write to stderr or the trace file instead but
     # print_stats seems hardcoded to stdout
-    stats.print_stats(20)
+    stats.print_stats(100)
 
 
 enable_default_logging()
