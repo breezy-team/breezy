@@ -253,7 +253,7 @@ def combined_graph(revision_a, revision_b, revision_source):
         ancestors[node].update(node_anc)
     for node, node_dec in descendants_b.iteritems():
         if node not in descendants:
-            descendants[node] = set()
+            descendants[node] = {}
         descendants[node].update(node_dec)
     return root, ancestors, descendants, common
 
