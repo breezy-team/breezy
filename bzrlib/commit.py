@@ -207,6 +207,8 @@ class Commit(object):
             self.basis_inv = self.basis_tree.inventory
 
             self._gather_parents()
+            if len(self.parents) > 1 and self.specific_files:
+                raise NotImplementedError('selected-file commit of merges is not supported yet')
             self._check_parents_present()
             
             self._remove_deleted()

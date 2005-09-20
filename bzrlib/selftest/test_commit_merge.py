@@ -78,12 +78,20 @@ class TestCommitMerge(TestCaseInTempDir):
         shutil.copyfile('x/ecks', 'y/ecks')
         by.add(['ecks'], ['ecks-id'])
         by.add_pending_merge('x@u-0-1')
+
+        # partial commit of merges is currently not allowed, because
+        # it would give different merge graphs for each file which
+        # might be complex.  it can be allowed in the future.
+        self.assertRaises(Exception,
+                          commit,
+                          by, 'partial commit', allow_pointless=False,
+                          specific_files=['ecks'])
+        
         commit(by, 'merge from x', rev_id='y@u-0-2', allow_pointless=False)
         tree = by.revision_tree('y@u-0-2')
         inv = tree.inventory
         self.assertEquals(inv['ecks-id'].text_version, 'x@u-0-1')
-        self.assertEquals(inv['why-id'].text_version, 'y@u-0-1')
-        
+        self.assertEquals(inv['why-id'].text_version, 'y@u-0-1')        
 
 
 if __name__ == '__main__':
