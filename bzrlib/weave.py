@@ -573,6 +573,7 @@ class Weave(object):
 
     def mash_iter(self, included):
         """Return composed version of multiple included versions."""
+        included = map(self.maybe_lookup, included)
         for origin, lineno, text in self._extract(included):
             yield text
 
