@@ -227,10 +227,17 @@ class Convert(object):
         rev_id = rev.revision_id
         for parent_id in rev.parent_ids:
             assert parent_id in self.converted_revs
-        parent_ancestries = [self.ancestries[p] for p in rev.parent_ids]
-        new_lines = merge_ancestry_lines(rev_id, parent_ancestries)
-        self.ancestries[rev_id] = new_lines
-        self.anc_weave.add(rev_id, rev.parent_ids, new_lines)
+        if rev.parent_ids:
+            lines = list(self.anc_weave.mash_iter(rev.parent_ids))
+        else:
+            lines = []
+        lines.append(rev_id + '\n')
+        if __debug__:
+            parent_ancestries = [self.ancestries[p] for p in rev.parent_ids]
+            new_lines = merge_ancestry_lines(rev_id, parent_ancestries)
+            assert set(lines) == set(new_lines)
+            self.ancestries[rev_id] = new_lines
+        self.anc_weave.add(rev_id, rev.parent_ids, lines)
 
 
     def _convert_revision_contents(self, rev, inv):
