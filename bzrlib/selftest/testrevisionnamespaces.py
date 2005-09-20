@@ -21,6 +21,7 @@ from bzrlib.branch import copy_branch
 from bzrlib.merge import merge
 
 class TestRevisionNamespaces(TestCaseInTempDir):
+
     def test_revision_namespaces(self):
         """Test revision specifiers.
 

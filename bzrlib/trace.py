@@ -197,7 +197,6 @@ def enable_default_logging():
     logging.getLogger('').addHandler(_stderr_handler)
 
 
-
 def disable_default_logging():
     """Turn off default log handlers.
 

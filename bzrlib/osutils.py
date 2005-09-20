@@ -17,7 +17,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os, types, re, time, errno, sys
-from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
+from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
+        S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
@@ -64,8 +65,16 @@ def file_kind(f):
         return 'directory'
     elif S_ISLNK(mode):
         return 'symlink'
+    elif S_ISCHR(mode):
+        return 'chardev'
+    elif S_ISBLK(mode):
+        return 'block'
+    elif S_ISFIFO(mode):
+        return 'fifo'
+    elif S_ISSOCK(mode):
+        return 'socket'
     else:
-        raise BzrError("can't handle file kind with mode %o of %r" % (mode, f))
+        return 'unknown'
 
 
 def kind_marker(kind):

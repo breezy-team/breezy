@@ -87,15 +87,33 @@ class cmd_status(Command):
 
 
 class cmd_cat_revision(Command):
-    """Write out metadata for a revision."""
+    """Write out metadata for a revision.
+    
+    The revision to print can either be specified by a specific
+    revision identifier, or you can use --revision.
+    """
 
     hidden = True
-    takes_args = ['revision_id']
+    takes_args = ['revision_id?']
+    takes_options = ['revision']
     
-    def run(self, revision_id):
-        b = Branch.open_containing('.')
-        sys.stdout.write(b.get_revision_xml_file(revision_id).read())
+    def run(self, revision_id=None, revision=None):
+        from bzrlib.revisionspec import RevisionSpec
 
+        if revision_id is not None and revision is not None:
+            raise BzrCommandError('You can only supply one of revision_id or --revision')
+        if revision_id is None and revision is None:
+            raise BzrCommandError('You must supply either --revision or a revision_id')
+        b = Branch.open_containing('.')
+        if revision_id is not None:
+            sys.stdout.write(b.get_revision_xml_file(revision_id).read())
+        elif revision is not None:
+            for rev in revision:
+                if rev is None:
+                    raise BzrCommandError('You cannot specify a NULL revision.')
+                revno, rev_id = rev.in_history(b)
+                sys.stdout.write(b.get_revision_xml_file(rev_id).read())
+    
 
 class cmd_revno(Command):
     """Show current revision number.
@@ -111,21 +129,26 @@ class cmd_revision_info(Command):
     hidden = True
     takes_args = ['revision_info*']
     takes_options = ['revision']
-    def run(self, revision=None, revision_info_list=()):
+    def run(self, revision=None, revision_info_list=[]):
         from bzrlib.revisionspec import RevisionSpec
 
         revs = []
         if revision is not None:
             revs.extend(revision)
-        for rev in revision_info_list:
-            revs.append(RevisionSpec(revision_info_list))
+        if revision_info_list is not None:
+            for rev in revision_info_list:
+                revs.append(RevisionSpec(rev))
         if len(revs) == 0:
             raise BzrCommandError('You must supply a revision identifier')
 
         b = Branch.open_containing('.')
 
         for rev in revs:
-            print '%4d %s' % rev.in_history(b)
+            revinfo = rev.in_history(b)
+            if revinfo.revno is None:
+                print '     %s' % revinfo.rev_id
+            else:
+                print '%4d %s' % (revinfo.revno, revinfo.rev_id)
 
     
 class cmd_add(Command):
@@ -1187,8 +1210,11 @@ class cmd_merge(Command):
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                base = [branch, revision[0].in_history(branch).revno]
-                other = [branch, revision[1].in_history(branch).revno]
+                from bzrlib.branch import Branch
+                b = Branch.open(branch)
+
+                base = [branch, revision[0].in_history(b).revno]
+                other = [branch, revision[1].in_history(b).revno]
 
         try:
             merge(other, base, check_clean=(not force), merge_type=merge_type)
@@ -1222,10 +1248,13 @@ class cmd_revert(Command):
             if len(file_list) == 0:
                 raise BzrCommandError("No files specified")
         if revision is None:
-            revision = [-1]
+            revno = -1
         elif len(revision) != 1:
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
-        merge(('.', revision[0]), parse_spec('.'),
+        else:
+            b = Branch.open_containing('.')
+            revno = revision[0].in_history(b).revno
+        merge(('.', revno), parse_spec('.'),
               check_clean=False,
               ignore_zero=True,
               backup_files=not no_backup,

@@ -55,7 +55,6 @@ class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
     # XXX: Not used yet
 
-
 class EarlyStoppingTestResultAdapter(object):
     """An adapter for TestResult to stop at the first first failure or error"""
 

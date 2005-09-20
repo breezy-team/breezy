@@ -15,18 +15,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+from cStringIO import StringIO
 import logging
 import unittest
 import tempfile
 import os
 import sys
 import errno
-from warnings import warn
-from cStringIO import StringIO
-
+import subprocess
+import shutil
 import testsweet
-import bzrlib.commands
 
+import bzrlib.commands
 import bzrlib.trace
 import bzrlib.fetch
 
@@ -95,7 +95,6 @@ class TestCase(unittest.TestCase):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split())[0]
 
-
     def run_bzr_captured(self, argv, retcode=0):
         """Invoke bzr and return (result, stdout, stderr).
 
@@ -140,7 +139,6 @@ class TestCase(unittest.TestCase):
             self.assertEquals(result, retcode)
         return out, err
 
-
     def run_bzr(self, *args, **kwargs):
         """Invoke bzr, as if it were run from the command line.
 
@@ -153,7 +151,6 @@ class TestCase(unittest.TestCase):
         """
         retcode = kwargs.pop('retcode', 0)
         return self.run_bzr_captured(args, retcode)
-
 
     def check_inventory_shape(self, inv, shape):
         """
@@ -270,7 +267,6 @@ class TestCaseInTempDir(TestCase):
         os.chdir(self._currentdir)
         super(TestCaseInTempDir, self).tearDown()
 
-    
     def build_tree(self, shape):
         """Build a test tree according to a pattern.
 
@@ -288,7 +284,6 @@ class TestCaseInTempDir(TestCase):
                 f = file(name, 'wt')
                 print >>f, "contents of", name
                 f.close()
-                
 
 
 class MetaTestLog(TestCase):
@@ -329,8 +324,10 @@ def test_suite():
                    'bzrlib.selftest.testbranch',
                    'bzrlib.selftest.testremotebranch',
                    'bzrlib.selftest.testrevision',
+                   'bzrlib.selftest.test_revision_info',
                    'bzrlib.selftest.test_merge_core',
                    'bzrlib.selftest.test_smart_add',
+                   'bzrlib.selftest.test_bad_files',
                    'bzrlib.selftest.testdiff',
                    'bzrlib.selftest.test_xml',
                    'bzrlib.fetch',

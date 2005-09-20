@@ -26,15 +26,16 @@ bit inefficient but arguably tests in a way more representative of how
 it's normally invoked.
 """
 
+from cStringIO import StringIO
 import sys
 import os
 
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
 from bzrlib.branch import Branch
-from bzrlib.commands import run_bzr
 
 
 class ExternalBase(TestCaseInTempDir):
+
     def runbzr(self, args, retcode=0, backtick=False):
         if isinstance(args, basestring):
             args = args.split()
@@ -71,10 +72,22 @@ class TestCommands(ExternalBase):
         f = file('.bzr/email', 'wt')
         f.write('Branch Identity <branch@identi.ty>')
         f.close()
+        bzr_email = os.environ.get('BZREMAIL')
+        if bzr_email is not None:
+            del os.environ['BZREMAIL']
         whoami = self.runbzr("whoami",backtick=True)
         whoami_email = self.runbzr("whoami --email",backtick=True)
         self.assertTrue(whoami.startswith('Branch Identity <branch@identi.ty>'))
         self.assertTrue(whoami_email.startswith('branch@identi.ty'))
+        # Verify that the environment variable overrides the value 
+        # in the file
+        os.environ['BZREMAIL'] = 'Different ID <other@environ.ment>'
+        whoami = self.runbzr("whoami",backtick=True)
+        whoami_email = self.runbzr("whoami --email",backtick=True)
+        self.assertTrue(whoami.startswith('Different ID <other@environ.ment>'))
+        self.assertTrue(whoami_email.startswith('other@environ.ment'))
+        if bzr_email is not None:
+            os.environ['BZREMAIL'] = bzr_email
 
     def test_invalid_commands(self):
         self.runbzr("pants", retcode=1)
@@ -145,17 +158,24 @@ class TestCommands(ExternalBase):
         os.rmdir('revertdir')
         self.runbzr('revert')
 
+        file('hello', 'wt').write('xyz')
+        self.runbzr('commit -m xyz hello')
+        self.runbzr('revert -r 1 hello')
+        self.check_file_contents('hello', 'foo')
+        self.runbzr('revert hello')
+        self.check_file_contents('hello', 'xyz')
+
     def test_mv_modes(self):
         """Test two modes of operation for mv"""
         from bzrlib.branch import Branch
         b = Branch.initialize('.')
         self.build_tree(['a', 'c', 'subdir/'])
-        self.run_bzr('add', self.test_dir)
-        self.run_bzr('mv', 'a', 'b')
-        self.run_bzr('mv', 'b', 'subdir')
-        self.run_bzr('mv', 'subdir/b', 'a')
-        self.run_bzr('mv', 'a', 'c', 'subdir')
-        self.run_bzr('mv', 'subdir/a', 'subdir/newa')
+        self.run_bzr_captured(['add', self.test_dir])
+        self.run_bzr_captured(['mv', 'a', 'b'])
+        self.run_bzr_captured(['mv', 'b', 'subdir'])
+        self.run_bzr_captured(['mv', 'subdir/b', 'a'])
+        self.run_bzr_captured(['mv', 'a', 'c', 'subdir'])
+        self.run_bzr_captured(['mv', 'subdir/a', 'subdir/newa'])
 
 
     def test_main_version(self):
@@ -182,15 +202,23 @@ class TestCommands(ExternalBase):
         test.runbzr('add goodbye')
         test.runbzr('commit -m setup goodbye')
 
-    def test_revert(self):
+    def test_diff(self):
         self.example_branch()
-        file('hello', 'wt').write('bar')
-        file('goodbye', 'wt').write('qux')
-        self.runbzr('revert hello')
-        self.check_file_contents('hello', 'foo')
-        self.check_file_contents('goodbye', 'qux')
-        self.runbzr('revert')
-        self.check_file_contents('goodbye', 'baz')
+        file('hello', 'wt').write('hello world!')
+        self.runbzr('commit -m fixing hello')
+        output = self.runbzr('diff -r 2..3', backtick=1)
+        self.assert_('\n+hello world!' in output)
+        output = self.runbzr('diff -r last:3..last:1', backtick=1)
+        self.assert_('\n+baz' in output)
+
+    def test_diff(self):
+        self.example_branch()
+        file('hello', 'wt').write('hello world!')
+        self.runbzr('commit -m fixing hello')
+        output = self.runbzr('diff -r 2..3', backtick=1)
+        self.assert_('\n+hello world!' in output)
+        output = self.runbzr('diff -r last:3..last:1', backtick=1)
+        self.assert_('\n+baz' in output)
 
     def test_merge(self):
         from bzrlib.branch import Branch
@@ -255,22 +283,13 @@ class TestCommands(ExternalBase):
         self.runbzr('pull ../a')
         assert a.revision_history()[-1] == b.revision_history()[-1]
         
-
     def test_add_reports(self):
         """add command prints the names of added files."""
         b = Branch.initialize('.')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
-
-        from cStringIO import StringIO
-        out = StringIO()
-
-        ret = self.apply_redirected(None, out, None,
-                                    run_bzr,
-                                    ['add'])
-        self.assertEquals(ret, 0)
-
+        out = self.run_bzr_captured(['add'], retcode = 0)[0]
         # the ordering is not defined at the moment
-        results = sorted(out.getvalue().rstrip('\n').split('\n'))
+        results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['added dir',
                            'added dir/sub.txt',
                            'added top.txt',],
