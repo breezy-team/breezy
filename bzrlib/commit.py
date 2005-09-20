@@ -53,6 +53,10 @@
 # perhaps the weave should have single method which does it all in one
 # go, avoiding a lot of redundant work.
 
+# TODO: Perhaps give a warning if one of the revisions marked as
+# merged is already in the ancestry, and then don't record it as a
+# distinct parent.
+
 
 import os
 import sys
