@@ -16,6 +16,7 @@
 
 
 import os
+import shutil
 
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
@@ -74,14 +75,14 @@ class TestCommitMerge(TestCaseInTempDir):
 
         fetch(from_branch=bx, to_branch=by)
         # we haven't merged the texts, but let's fake it
-        self.build_tree(['y/ecks'])
+        shutil.copyfile('x/ecks', 'y/ecks')
         by.add(['ecks'], ['ecks-id'])
         by.add_pending_merge('x@u-0-1')
         commit(by, 'merge from x', rev_id='y@u-0-2', allow_pointless=False)
         tree = by.revision_tree('y@u-0-2')
         inv = tree.inventory
-        ## self.assertEquals(inv['ecks-id'].text_version, 'x@u-0-1')
-        ## self.assertEquals(inv['why-id'].text_version, 'y@u-0-1')
+        self.assertEquals(inv['ecks-id'].text_version, 'x@u-0-1')
+        self.assertEquals(inv['why-id'].text_version, 'y@u-0-1')
         
 
 

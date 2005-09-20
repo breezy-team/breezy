@@ -57,6 +57,10 @@
 # merged is already in the ancestry, and then don't record it as a
 # distinct parent.
 
+# TODO: If the file is newly merged but unchanged from the version it
+# merges from, then it should still be reported as newly added
+# relative to the basis revision.
+
 
 import os
 import sys
@@ -414,6 +418,7 @@ class Commit(object):
                 continue
             
             file_parents = self._find_file_parents(file_id)
+            mutter('parents of %s are %r', path, file_parents)
             if len(file_parents) == 1:
                 parent_ie = file_parents.values()[0]
                 wc_sha1 = self.work_tree.get_file_sha1(file_id)
@@ -421,9 +426,6 @@ class Commit(object):
                     # text not changed or merged
                     self._commit_old_text(file_id, parent_ie)
                     continue
-
-            mutter('parents of %s are %r', path, file_parents)
-
             # file is either new, or a file merge; need to record
             # a new version
             if len(file_parents) > 1:
