@@ -317,6 +317,7 @@ def test_suite():
                   ['bzrlib.selftest.MetaTestLog',
                    'bzrlib.selftest.testinv',
                    'bzrlib.selftest.test_commit',
+                   'bzrlib.selftest.test_commit_merge',
                    'bzrlib.selftest.versioning',
                    'bzrlib.selftest.testmerge3',
                    'bzrlib.selftest.testhashcache',
