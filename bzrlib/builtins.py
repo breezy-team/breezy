@@ -1328,7 +1328,9 @@ class cmd_missing(Command):
             # should not change the parent
             b.set_parent(remote)
         br_remote = Branch.open_containing(remote)
+
         return show_missing(b, br_remote, verbose=verbose, quiet=quiet)
+
 
 
 class cmd_plugins(Command):
