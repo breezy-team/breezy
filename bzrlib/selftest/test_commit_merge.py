@@ -24,6 +24,7 @@ from bzrlib.commit import commit
 from bzrlib.errors import PointlessCommit, BzrError, PointlessCommit
 from bzrlib.selftest.testrevision import make_branches
 from bzrlib.fetch import fetch
+from bzrlib.check import check
 
 
 class TestCommitMerge(TestCaseInTempDir):
@@ -91,7 +92,10 @@ class TestCommitMerge(TestCaseInTempDir):
         tree = by.revision_tree('y@u-0-2')
         inv = tree.inventory
         self.assertEquals(inv['ecks-id'].text_version, 'x@u-0-1')
-        self.assertEquals(inv['why-id'].text_version, 'y@u-0-1')        
+        self.assertEquals(inv['why-id'].text_version, 'y@u-0-1')
+
+        check(bx)
+        check(by)
 
 
 if __name__ == '__main__':
