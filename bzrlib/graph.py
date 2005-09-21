@@ -30,7 +30,7 @@ def max_distance(node, ancestors, distances, root_descendants):
             continue
         if ancestor not in distances:
             return None
-        if best is None or distances[ancestor] > best:
+        if best is None or distances[ancestor]+1 > best:
             best = distances[ancestor] + 1
     return best
 
