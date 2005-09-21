@@ -1331,7 +1331,7 @@ def gen_root_id():
     return gen_file_id('TREE_ROOT')
 
 
-def copy_branch(branch_from, to_location, revision=None):
+def copy_branch(branch_from, to_location, revno=None):
     """Copy branch_from into the existing directory to_location.
 
     revision
@@ -1342,17 +1342,14 @@ def copy_branch(branch_from, to_location, revision=None):
         The name of a local directory that exists but is empty.
     """
     from bzrlib.merge import merge
-    from bzrlib.revisionspec import RevisionSpec
 
     assert isinstance(branch_from, Branch)
     assert isinstance(to_location, basestring)
     
     br_to = Branch.initialize(to_location)
     br_to.set_root_id(branch_from.get_root_id())
-    if revision is None:
+    if revno is None:
         revno = branch_from.revno()
-    else:
-        revno, rev_id = RevisionSpec(revision).in_history(branch_from)
     br_to.update_revisions(branch_from, stop_revision=revno)
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)

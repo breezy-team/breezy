@@ -220,6 +220,15 @@ class TestCommands(ExternalBase):
         output = self.runbzr('diff -r last:3..last:1', backtick=1)
         self.assert_('\n+baz' in output)
 
+    def test_branch(self):
+        """Branch from one branch to another."""
+        os.mkdir('a')
+        os.chdir('a')
+        self.example_branch()
+        os.chdir('..')
+        self.runbzr('branch a b')
+        self.runbzr('branch a c -r 1')
+
     def test_merge(self):
         from bzrlib.branch import Branch
         

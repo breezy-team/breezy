@@ -395,6 +395,10 @@ class cmd_branch(Command):
                 else:
                     raise
             br_from.setup_caching(cache_root)
+            if len(revision) == 1 and revision[0] is not None:
+                revno = revision[0].in_history(br_from)[0]
+            else:
+                revno = None
             if to_location is None:
                 to_location = os.path.basename(from_location.rstrip("/\\"))
             try:
@@ -409,7 +413,7 @@ class cmd_branch(Command):
                 else:
                     raise
             try:
-                copy_branch(br_from, to_location, revision[0])
+                copy_branch(br_from, to_location, revno)
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
                 msg = "The branch %s has no revision %d." % (from_location, revision[0])
