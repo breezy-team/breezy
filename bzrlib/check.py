@@ -18,6 +18,11 @@
 # TODO: Check ancestries are correct for every revision: includes
 # every committed so far, and in a reasonable order.
 
+# TODO: Also check non-mainline revisions mentioned as parents.
+
+# TODO: Check for extra files in the control directory.
+
+
 import bzrlib.ui
 from bzrlib.trace import note, warning
 from bzrlib.osutils import rename, sha_string, fingerprint_file
@@ -27,16 +32,16 @@ from bzrlib.inventory import ROOT_ID
 from bzrlib.branch import gen_root_id
 
 
-def check(branch):
-    """Run consistency checks on a branch.
+class Check(object):
+    """Check a branch"""
+    def __init__(self, branch):
+        self.branch = branch
+        self.run()
 
-    TODO: Also check non-mainline revisions mentioned as parents.
 
-    TODO: Check for extra files in the control directory.
-    """
-    branch.lock_read()
+    def run(self):
+        branch = self.branch
 
-    try:
         last_rev_id = None
 
         missing_inventory_sha_cnt = 0
@@ -136,27 +141,35 @@ def check(branch):
                 seen_names[path] = True
             last_rev_id = rev_id
 
-    finally:
-        branch.unlock()
 
-    progress.clear()
+        progress.clear()
 
-    note('checked %d revisions, %d file texts' % (revcount, checked_text_count))
-    
-    if missing_inventory_sha_cnt:
-        note('%d revisions are missing inventory_sha1' % missing_inventory_sha_cnt)
+        note('checked %d revisions, %d file texts' % (revcount, checked_text_count))
 
-    ##if missing_revision_sha_cnt:
-    ##    note('%d parent links are missing revision_sha1' % missing_revision_sha_cnt)
+        if missing_inventory_sha_cnt:
+            note('%d revisions are missing inventory_sha1' % missing_inventory_sha_cnt)
 
-    if missing_revision_cnt:
-        note('%d revisions are mentioned but not present' % missing_revision_cnt)
+        ##if missing_revision_sha_cnt:
+        ##    note('%d parent links are missing revision_sha1' % missing_revision_sha_cnt)
 
-    if missing_revision_cnt:
-        print '%d revisions are mentioned but not present' % missing_revision_cnt
+        if missing_revision_cnt:
+            note('%d revisions are mentioned but not present' % missing_revision_cnt)
 
-    # stub this out for now because the main bzr branch has references
-    # to revisions that aren't present in the store -- mbp 20050804
-#    if (missing_inventory_sha_cnt
-#        or missing_revision_sha_cnt):
-#        print '  (use "bzr upgrade" to fix them)'
+        if missing_revision_cnt:
+            print '%d revisions are mentioned but not present' % missing_revision_cnt
+
+        # stub this out for now because the main bzr branch has references
+        # to revisions that aren't present in the store -- mbp 20050804
+    #    if (missing_inventory_sha_cnt
+    #        or missing_revision_sha_cnt):
+    #        print '  (use "bzr upgrade" to fix them)'
+
+
+
+
+        
+
+
+def check(branch):
+    """Run consistency checks on a branch."""
+    Check(branch)
