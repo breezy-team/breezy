@@ -193,6 +193,10 @@ class RemoteStore(object):
         try:
             return get_url(p, compressed=True)
         except urllib2.URLError:
+            pass
+        try:
+            return get_url(p, compressed=False)
+        except urllib2.URLError:
             raise KeyError(fileid)
     
 

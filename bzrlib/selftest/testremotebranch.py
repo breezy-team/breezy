@@ -17,6 +17,7 @@ import bzrlib.errors
 from bzrlib.selftest.testrevision import make_branches
 from bzrlib.trace import mutter
 from bzrlib.branch import Branch, find_branch
+import gzip
 import sys
 import os
 
@@ -33,6 +34,20 @@ class TestFetch(TestCaseWithWebserver):
             
         #highest indices a: 5, b: 7
         br_a, br_b = make_branches()
+        # unpack one of br_a's revision files to test .gz fallbacks
+        to_unzip = br_a.revision_history()[-1]
+        to_unzip_source = gzip.open(os.path.join(br_a.base, '.bzr', 
+                                                  'revision-store',
+                                                  to_unzip + '.gz'))
+        content = to_unzip_source.read()
+        to_unzip_source.close()
+        os.unlink(os.path.join(br_a.base, '.bzr', 'revision-store',
+                               to_unzip + '.gz'))
+        to_unzip_output = open(os.path.join(br_a.base, '.bzr', 
+                                             'revision-store', to_unzip), 'wb')
+        to_unzip_output.write(content)
+        to_unzip_output.close()
+        
         br_rem = Branch.open(self.get_remote_url(br_a.base))
         assert not has_revision(br_b, br_rem.revision_history()[3])
         assert has_revision(br_b, br_rem.revision_history()[2])
