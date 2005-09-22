@@ -1052,10 +1052,7 @@ class cmd_whoami(Command):
     takes_options = ['email']
     
     def run(self, email=False):
-        try:
-            b = bzrlib.branch.find_branch('.')
-        except:
-            b = None
+        b = bzrlib.branch.find_branch('.')
         
         if email:
             print bzrlib.osutils.user_email(b)
