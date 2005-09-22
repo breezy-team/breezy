@@ -110,6 +110,8 @@ class Convert(object):
 
 
     def convert(self):
+	if not os.path.exists('.bzr/allow-upgrade'):
+	    raise Exception, "please create .bzr/allow-upgrade to indicate consent"
 	self._backup_control_dir()
         self.pb = ProgressBar()
 	if not os.path.isdir('.bzr/weaves'):
@@ -122,7 +124,6 @@ class Convert(object):
         self.branch = Branch('.', relax_version_check=True)
 	os.remove(self.branch.controlfilename('branch-format'))
 	self._convert_working_inv()
-	self._cleanup_spare_files()
         rev_history = self.branch.revision_history()[:300]
         # to_read is a stack holding the revisions we still need to process;
         # appending to it adds new highest-priority revisions
@@ -145,11 +146,17 @@ class Convert(object):
         note('  %6d texts' % self.text_count)
         self._write_all_weaves()
         self._write_all_revs()
+	self._set_new_format()
+	self._cleanup_spare_files()
+
+
+    def _set_new_format(self):
 	f = self.branch.controlfile('branch-format', 'wb')
-	try:
+    	try:
 	    f.write(BZR_BRANCH_FORMAT_5)
 	finally:
 	    f.close()
+		
 
 
     def _cleanup_spare_files(self):
@@ -159,6 +166,9 @@ class Convert(object):
 		continue
 	    assert os.path.getsize(p) == 0
 	    os.remove(p)
+	os.remove('.bzr/allow-upgrade')
+	shutil.rmtree('.bzr/inventory-store')
+	shutil.rmtree('.bzr/text-store')
 
 
     def _backup_control_dir(self):
@@ -190,10 +200,12 @@ class Convert(object):
 
     def _write_all_revs(self):
         """Write all revisions out in new form."""
+	shutil.rmtree('.bzr/revision-store')
+	os.mkdir('.bzr/revision-store')
         try:
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update('write revision', i, len(self.converted_revs))
-                f = file('new-revisions/%s' % rev_id, 'wb')
+                f = file('.bzr/revision-store/%s' % rev_id, 'wb')
                 try:
                     serializer_v5.write_revision(self.revisions[rev_id], f)
                 finally:
