@@ -27,7 +27,7 @@ from bzrlib.weave import Weave
 from bzrlib.atomicfile import AtomicFile
 
 
-ENABLE_CACHE = True
+ENABLE_CACHE = False
 
 
 class WeaveStore(object):
