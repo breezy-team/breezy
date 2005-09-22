@@ -47,8 +47,11 @@ class Check(object):
 
 	self.checked_text_cnt = 0
 	self.checked_rev_cnt = 0
+        self.repeated_text_cnt = 0
         self.missing_inventory_sha_cnt = 0
         self.missing_revision_cnt = 0
+        # maps (file-id, version) -> sha1
+        self.checked_texts = {}
 
         history = branch.revision_history()
         revno = 0
@@ -70,14 +73,12 @@ class Check(object):
 	     self.branch.base, 
 	     self.branch._branch_format)
 
-        note('checked %d revisions, %d file texts',
-	     self.checked_rev_cnt,
-	     self.checked_text_cnt)
-
+        note('%6d revisions', self.checked_rev_cnt)
+        note('%6d unique file texts', self.checked_text_cnt)
+        note('%6d repeated file texts', self.repeated_text_cnt)
         if self.missing_inventory_sha_cnt:
             note('%d revisions are missing inventory_sha1',
 		 self.missing_inventory_sha_cnt)
-
         if self.missing_revision_cnt:
             note('%d revisions are mentioned but not present',
 		 self.missing_revision_cnt)
@@ -155,12 +156,22 @@ class Check(object):
 		raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
 			% (ie.parent_id, rev_id))
 	if ie.kind == 'file':
+            text_version = ie.text_version
+            t = (file_id, text_version)
+            if t in self.checked_texts:
+                prev_sha = self.checked_texts[t] 
+                if prev_sha != ie.text_sha1:
+                    raise BzrCheckError('mismatched sha1 on {%s} in {%s}' %
+                                        (file_id, rev_id))
+                else:
+                    self.repeated_text_cnt += 1
 	    text = tree.get_file_text(file_id)
 	    self.checked_text_cnt += 1 
 	    if ie.text_size != len(text):
 		raise BzrCheckError('text {%s} wrong size' % ie.text_id)
 	    if ie.text_sha1 != sha_string(text):
 		raise BzrCheckError('text {%s} wrong sha1' % ie.text_id)
+            self.checked_texts[t] = ie.text_sha1
 	elif ie.kind == 'directory':
 	    if ie.text_sha1 != None or ie.text_size != None or ie.text_id != None:
 		raise BzrCheckError('directory {%s} has text in revision {%s}'
