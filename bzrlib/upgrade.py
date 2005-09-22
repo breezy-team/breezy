@@ -109,12 +109,12 @@ class Convert(object):
 
     def convert(self):
         note('starting upgrade of %s', self.base)
-	self._backup_control_dir()
-	note('starting upgrade')
-	note('note: upgrade may be faster if all store files are ungzipped first')
+        self._backup_control_dir()
+        note('starting upgrade')
+        note('note: upgrade may be faster if all store files are ungzipped first')
         self.pb = ProgressBar()
-	if not os.path.isdir(self.base + '/.bzr/weaves'):
-	    os.mkdir(self.base + '/.bzr/weaves')
+        if not os.path.isdir(self.base + '/.bzr/weaves'):
+            os.mkdir(self.base + '/.bzr/weaves')
         self.inv_weave = Weave('__inventory')
         self.anc_weave = Weave('__ancestry')
         self.ancestries = {}
@@ -127,8 +127,8 @@ class Convert(object):
         if self.branch._branch_format != 4:
             raise BzrError("cannot upgrade from branch format %r" %
                            self.branch._branch_format)
-	os.remove(self.branch.controlfilename('branch-format'))
-	self._convert_working_inv()
+        os.remove(self.branch.controlfilename('branch-format'))
+        self._convert_working_inv()
         rev_history = self.branch.revision_history()
         # to_read is a stack holding the revisions we still need to process;
         # appending to it adds new highest-priority revisions
@@ -151,42 +151,42 @@ class Convert(object):
         note('  %6d texts' % self.text_count)
         self._write_all_weaves()
         self._write_all_revs()
-	self._set_new_format()
-	self._cleanup_spare_files()
+        self._set_new_format()
+        self._cleanup_spare_files()
 
 
     def _set_new_format(self):
-	f = self.branch.controlfile('branch-format', 'wb')
+        f = self.branch.controlfile('branch-format', 'wb')
         try:
-	    f.write(BZR_BRANCH_FORMAT_5)
-	finally:
-	    f.close()
+            f.write(BZR_BRANCH_FORMAT_5)
+        finally:
+            f.close()
 
 
     def _cleanup_spare_files(self):
-	for n in 'merged-patches', 'pending-merged-patches':
-	    p = self.branch.controlfilename(n)
-	    if not os.path.exists(p):
-		continue
-	    ## assert os.path.getsize(p) == 0
-	    os.remove(p)
-	shutil.rmtree(self.base + '/.bzr/inventory-store')
-	shutil.rmtree(self.base + '/.bzr/text-store')
+        for n in 'merged-patches', 'pending-merged-patches':
+            p = self.branch.controlfilename(n)
+            if not os.path.exists(p):
+                continue
+            ## assert os.path.getsize(p) == 0
+            os.remove(p)
+        shutil.rmtree(self.base + '/.bzr/inventory-store')
+        shutil.rmtree(self.base + '/.bzr/text-store')
 
 
     def _backup_control_dir(self):
         orig = self.base + '/.bzr'
         backup = orig + '.backup'
-	shutil.copytree(orig, backup)
-	note('%s has been backed up to %s', orig, backup)
-	note('if conversion fails, you can move this directory back to .bzr')
-	note('if it succeeds, you can remove this directory if you wish')
+        shutil.copytree(orig, backup)
+        note('%s has been backed up to %s', orig, backup)
+        note('if conversion fails, you can move this directory back to .bzr')
+        note('if it succeeds, you can remove this directory if you wish')
 
 
     def _convert_working_inv(self):
-	branch = self.branch
-	inv = serializer_v4.read_inventory(branch.controlfile('inventory', 'rb'))
-	serializer_v5.write_inventory(inv, branch.controlfile('inventory', 'wb'))
+        branch = self.branch
+        inv = serializer_v4.read_inventory(branch.controlfile('inventory', 'rb'))
+        serializer_v5.write_inventory(inv, branch.controlfile('inventory', 'wb'))
 
 
 
@@ -205,8 +205,8 @@ class Convert(object):
 
     def _write_all_revs(self):
         """Write all revisions out in new form."""
-	shutil.rmtree(self.base + '/.bzr/revision-store')
-	os.mkdir(self.base + '/.bzr/revision-store')
+        shutil.rmtree(self.base + '/.bzr/revision-store')
+        os.mkdir(self.base + '/.bzr/revision-store')
         try:
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update('write revision', i, len(self.converted_revs))
@@ -294,32 +294,32 @@ class Convert(object):
                rev_id)
         for file_id in inv:
             ie = inv[file_id]
-	    self._set_name_version(rev, ie)
+            self._set_name_version(rev, ie)
             if ie.kind != 'file':
                 continue
             self._convert_file_version(rev, ie)
 
 
     def _set_name_version(self, rev, ie):
-	"""Set name version for a file.
+        """Set name version for a file.
 
-	Done in a slightly lazy way: if the file is renamed or in a merge revision
-	it gets a new version, otherwise the same as before.
-	"""
-	file_id = ie.file_id
-	if len(rev.parent_ids) != 1:
-	    ie.name_version = rev.revision_id
-	else:
-	    old_inv = self.inventories[rev.parent_ids[0]]
-	    if not old_inv.has_id(file_id):
-		ie.name_version = rev.revision_id
-	    else:
-		old_ie = old_inv[file_id]
-		if (old_ie.parent_id != ie.parent_id
-		    or old_ie.name != ie.name):
-		    ie.name_version = rev.revision_id
-		else:
-		    ie.name_version = old_ie.name_version
+        Done in a slightly lazy way: if the file is renamed or in a merge revision
+        it gets a new version, otherwise the same as before.
+        """
+        file_id = ie.file_id
+        if len(rev.parent_ids) != 1:
+            ie.name_version = rev.revision_id
+        else:
+            old_inv = self.inventories[rev.parent_ids[0]]
+            if not old_inv.has_id(file_id):
+                ie.name_version = rev.revision_id
+            else:
+                old_ie = old_inv[file_id]
+                if (old_ie.parent_id != ie.parent_id
+                    or old_ie.name != ie.name):
+                    ie.name_version = rev.revision_id
+                else:
+                    ie.name_version = old_ie.name_version
 
 
 
