@@ -40,12 +40,12 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         commands such as GET and POST.
 
         """
-        while True:
+        for i in xrange(1,11): # Don't try more than 10 times
             try:
                 self.raw_requestline = self.rfile.readline()
             except socket.error, e:
                 if e.args[0] == errno.EAGAIN:
-                    self.log_message('EAGAIN while reading from raw_requestline')
+                    self.log_message('EAGAIN (%d) while reading from raw_requestline' % i)
                     time.sleep(0.01)
                     continue
                 raise
