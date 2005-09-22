@@ -18,7 +18,8 @@
 import sys
 import os
 import errno
-from cStringIO import StringIO
+from warnings import warn
+
 
 import bzrlib
 from bzrlib.trace import mutter, note
@@ -229,7 +230,6 @@ class Branch(object):
 
     def __del__(self):
         if self._lock_mode or self._lock:
-            from warnings import warn
             warn("branch %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
@@ -687,9 +687,8 @@ class Branch(object):
 
     def get_inventory(self, revision_id):
         """Get Inventory object by hash."""
-        # FIXME: The text gets passed around a lot coming from the weave.
-        f = StringIO(self.get_inventory_xml(revision_id))
-        return bzrlib.xml5.serializer_v5.read_inventory(f)
+        xml = self.get_inventory_xml(revision_id)
+        return bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
 
 
     def get_inventory_xml(self, revision_id):
@@ -710,6 +709,7 @@ class Branch(object):
 
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""
+        # TODO: Unify this with get_inventory()
         # bzr 0.0.6 and later imposes the constraint that the inventory_id
         # must be the same as its revision, so this is trivial.
         if revision_id == None:
