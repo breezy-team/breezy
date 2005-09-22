@@ -164,6 +164,10 @@ class TestCommands(ExternalBase):
         self.check_file_contents('hello', 'foo')
         self.runbzr('revert hello')
         self.check_file_contents('hello', 'xyz')
+        os.chdir('revertdir')
+        self.runbzr('revert')
+        os.chdir('..')
+
 
     def test_mv_modes(self):
         """Test two modes of operation for mv"""
@@ -274,6 +278,8 @@ class TestCommands(ExternalBase):
         self.runbzr('branch a b')
         os.chdir('b')
         self.runbzr('pull')
+        os.mkdir('subdir')
+        self.runbzr('add subdir')
         self.runbzr('commit -m blah --unchanged')
         os.chdir('../a')
         a = Branch.open('.')
@@ -288,8 +294,8 @@ class TestCommands(ExternalBase):
         os.chdir('../a')
         self.runbzr('merge ../b')
         self.runbzr('commit -m blah4 --unchanged')
-        os.chdir('../b')
-        self.runbzr('pull ../a')
+        os.chdir('../b/subdir')
+        self.runbzr('pull ../../a')
         assert a.revision_history()[-1] == b.revision_history()[-1]
         
     def test_add_reports(self):
