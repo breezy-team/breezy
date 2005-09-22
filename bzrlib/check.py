@@ -165,6 +165,8 @@ class Check(object):
                                         (file_id, rev_id))
                 else:
                     self.repeated_text_cnt += 1
+		    return
+            mutter('check version {%s} of {%s}', rev_id, file_id)
 	    text = tree.get_file_text(file_id)
 	    self.checked_text_cnt += 1 
 	    if ie.text_size != len(text):
