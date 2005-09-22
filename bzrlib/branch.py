@@ -17,6 +17,7 @@
 
 import sys
 import os
+import errno
 from cStringIO import StringIO
 
 import bzrlib
@@ -345,7 +346,14 @@ class Branch(object):
         In the future, we might need different in-memory Branch
         classes to support downlevel branches.  But not yet.
         """
-        fmt = self.controlfile('branch-format', 'r').read()
+	try:
+	    fmt = self.controlfile('branch-format', 'r').read()
+        except IOError, e:
+            if e.errno == errno.ENOENT:
+                raise NotBranchError(self.base)
+            else:
+                raise
+
         if fmt == BZR_BRANCH_FORMAT_5:
             self._branch_format = 5
         elif fmt == BZR_BRANCH_FORMAT_4:

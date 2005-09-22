@@ -21,7 +21,7 @@ import os
 import bzrlib
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
-from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
+from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
 from bzrlib.branch import find_branch
 from bzrlib import BZRDIR
 from bzrlib.commands import Command
@@ -1052,7 +1052,10 @@ class cmd_whoami(Command):
     takes_options = ['email']
     
     def run(self, email=False):
-        b = bzrlib.branch.find_branch('.')
+        try:
+            b = bzrlib.branch.find_branch('.')
+        except NotBranchError:
+            b = None
         
         if email:
             print bzrlib.osutils.user_email(b)
