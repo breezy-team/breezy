@@ -14,6 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: Could remember a bias towards whether a particular store is typically
+# compressed or not.
+
 """
 Stores are the main data-storage mechanism for Bazaar-NG.
 
