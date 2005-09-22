@@ -93,7 +93,6 @@
 import sha
 from difflib import SequenceMatcher
 
-from cStringIO import StringIO
 
 from bzrlib.osutils import sha_strings
 
@@ -560,15 +559,16 @@ class Weave(object):
             yield line
 
 
-    def get_text(self, version):
-        version = self.maybe_lookup(version)
-        s = StringIO()
-        s.writelines(self.get_iter(version))
-        return s.getvalue()
+    def get_text(self, name_or_index):
+        return ''.join(self.get_iter(name_or_index))
+        assert isinstance(version, int)
 
 
-    def get(self, name_or_index):
+    def get_lines(self, name_or_index):
         return list(self.get_iter(name_or_index))
+
+
+    get = get_lines
 
 
     def mash_iter(self, included):

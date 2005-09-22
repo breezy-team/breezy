@@ -28,7 +28,7 @@
 
 import bzrlib.ui
 from bzrlib.trace import note, warning
-from bzrlib.osutils import rename, sha_string, fingerprint_file
+from bzrlib.osutils import rename, sha_string, fingerprint_file, sha_strings
 from bzrlib.trace import mutter
 from bzrlib.errors import BzrCheckError, NoSuchRevision
 from bzrlib.inventory import ROOT_ID
@@ -167,11 +167,11 @@ class Check(object):
                     self.repeated_text_cnt += 1
 		    return
             mutter('check version {%s} of {%s}', rev_id, file_id)
-	    text = tree.get_file_text(file_id)
+	    file_lines = tree.get_file_lines(file_id)
 	    self.checked_text_cnt += 1 
-	    if ie.text_size != len(text):
+	    if ie.text_size != sum(map(len, file_lines)):
 		raise BzrCheckError('text {%s} wrong size' % ie.text_id)
-	    if ie.text_sha1 != sha_string(text):
+	    if ie.text_sha1 != sha_strings(file_lines):
 		raise BzrCheckError('text {%s} wrong sha1' % ie.text_id)
             self.checked_texts[t] = ie.text_sha1
 	elif ie.kind == 'directory':
