@@ -184,29 +184,19 @@ def enable_default_logging():
     global _stderr_handler, _file_handler
 
     _stderr_handler = logging.StreamHandler()
+    _stderr_handler.setFormatter(QuietFormatter())
+
     if not _file_handler:
-        open_tracefile()                # also adds it
+        open_tracefile()
 
-    debug_flag = bool(os.environ.get('BZR_DEBUG'))
-    noisy_flag = bool(os.environ.get('BZR_NOISY'))
-        
-    if debug_flag:
-        _file_handler.setLevel(logging.DEBUG)
+    if os.environ.get('BZR_DEBUG'):
+        level = logging.DEBUG
     else:
-        _file_handler.setLevel(logging.DEBUG)
+        level = logging.INFO
 
-    if noisy_flag:
-        fmt = '%(levelname)8s: %(message)s'
-        _stderr_handler.setFormatter(logging.Formatter(fmt))
-        _stderr_handler.setLevel(logging.DEBUG)
-    elif debug_flag:
-        _stderr_handler.setLevel(logging.INFO)
-        # leave default formatter for exceptions
-    else:
-        _stderr_handler.setLevel(logging.INFO)
-        _stderr_handler.setFormatter(QuietFormatter())
-        # show only summary of exceptions
-        
+    _stderr_handler.setLevel(logging.INFO)
+    _file_handler.setLevel(level)
+
     logging.getLogger('').addHandler(_stderr_handler)
 
 
