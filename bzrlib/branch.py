@@ -321,8 +321,8 @@ class Branch(object):
         for d in ('text-store', 'revision-store',
                   'weaves'):
             os.mkdir(self.controlfilename(d))
-        for f in ('revision-history', 'merged-patches',
-                  'pending-merged-patches', 'branch-name',
+        for f in ('revision-history',
+                  'branch-name',
                   'branch-lock',
                   'pending-merges'):
             self.controlfile(f, 'w').write('')
