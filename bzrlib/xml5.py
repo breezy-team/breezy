@@ -114,7 +114,8 @@ class Serializer_v5(Serializer):
 
     def _unpack_entry(self, elt):
         kind = elt.tag
-        assert kind == 'directory' or kind == 'file'
+        assert kind == 'directory' or kind == 'file', \
+	    'unsupported entry kind %s' % kind
 
         parent_id = elt.get('parent_id')
         if parent_id == None:
