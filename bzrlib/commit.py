@@ -478,8 +478,6 @@ class Commit(object):
 
 
     def _add_text_to_weave(self, file_id, new_lines, parents):
-        if file_id.startswith('__'):
-            raise ValueError('illegal file-id %r for text file' % file_id)
         self.weave_store.add_text(file_id, self.rev_id, new_lines, parents)
 
 
