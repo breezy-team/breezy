@@ -652,7 +652,7 @@ def main(argv):
         bzrlib.trace.log_exception('assertion failed: ' + str(e))
         return 3
     except KeyboardInterrupt, e:
-        bzrlib.trace.note('interrupted')
+        bzrlib.trace.log_exception('interrupted')
         return 2
     except Exception, e:
         import errno
