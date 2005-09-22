@@ -124,8 +124,8 @@ class Check(object):
 	else:
 	    missing_inventory_sha_cnt += 1
 	    mutter("no inventory_sha1 on revision {%s}" % rev_id)
-
 	self._check_revision_tree(rev_id)
+        self.checked_rev_cnt += 1
 
     def _check_revision_tree(self, rev_id):
 	tree = self.branch.revision_tree(rev_id)
