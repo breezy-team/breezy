@@ -73,7 +73,7 @@ class TestVersioning(TestCaseInTempDir):
                           b.add,
                           'foo/hello')
         
-        self.check_and_upgrade()
+        self.check_branch()
 
         
     def test_subdir_add(self):
@@ -107,23 +107,15 @@ class TestVersioning(TestCaseInTempDir):
         eq(run_bzr(['add']), 0)
         eq(list(b.unknowns()), [])
 
-        self.check_and_upgrade()
+        self.check_branch()
 
 
-    def check_and_upgrade(self):
+    def check_branch(self):
         """After all the above changes, run the check and upgrade commands.
 
         The upgrade should be a no-op."""
         b = Branch('.')
         debug('branch has %d revisions', b.revno())
-        
-        debug('check branch...')
-        from bzrlib.check import check
-        check(b)
-        
-        debug('upgrade branch...')
-        from bzrlib.upgrade import upgrade
-        upgrade(b)
         
         debug('check branch...')
         from bzrlib.check import check
