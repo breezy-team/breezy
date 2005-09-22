@@ -85,7 +85,7 @@ import sys
 import logging
 import shutil
 
-from bzrlib.branch import Branch, find_branch
+from bzrlib.branch import Branch, find_branch, BZR_BRANCH_FORMAT_5
 from bzrlib.revfile import Revfile
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave
@@ -110,7 +110,6 @@ class Convert(object):
 
 
     def convert(self):
-        enable_default_logging()
 	self._backup_control_dir()
         self.pb = ProgressBar()
 	if not os.path.isdir('.bzr/weaves'):
@@ -121,7 +120,9 @@ class Convert(object):
         # holds in-memory weaves for all files
         self.text_weaves = {}
         self.branch = Branch('.', relax_version_check=True)
+	os.remove(self.branch.controlfilename('branch-format'))
 	self._convert_working_inv()
+	self._cleanup_spare_files()
         rev_history = self.branch.revision_history()[:300]
         # to_read is a stack holding the revisions we still need to process;
         # appending to it adds new highest-priority revisions
@@ -144,6 +145,20 @@ class Convert(object):
         note('  %6d texts' % self.text_count)
         self._write_all_weaves()
         self._write_all_revs()
+	f = self.branch.controlfile('branch-format', 'wb')
+	try:
+	    f.write(BZR_BRANCH_FORMAT_5)
+	finally:
+	    f.close()
+
+
+    def _cleanup_spare_files(self):
+	for n in 'merged-patches', 'pending-merged-patches':
+	    p = self.branch.controlfilename(n)
+	    if not os.path.exists(p):
+		continue
+	    assert os.path.getsize(p) == 0
+	    os.remove(p)
 
 
     def _backup_control_dir(self):
@@ -156,7 +171,7 @@ class Convert(object):
     def _convert_working_inv(self):
 	branch = self.branch
 	inv = serializer_v4.read_inventory(branch.controlfile('inventory', 'rb'))
-	serializer_v5.write_inventory(inv, branch.controlfile('new-inventory', 'wb'))
+	serializer_v5.write_inventory(inv, branch.controlfile('inventory', 'wb'))
 
 
 
