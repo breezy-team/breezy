@@ -108,6 +108,8 @@ class Convert(object):
 
 
     def convert(self):
+        if not self._open_branch():
+            return
         note('starting upgrade of %s', self.base)
         self._backup_control_dir()
         note('starting upgrade')
@@ -115,18 +117,11 @@ class Convert(object):
         self.pb = ProgressBar()
         if not os.path.isdir(self.base + '/.bzr/weaves'):
             os.mkdir(self.base + '/.bzr/weaves')
-        self.inv_weave = Weave('__inventory')
-        self.anc_weave = Weave('__ancestry')
+        self.inv_weave = Weave('inventory')
+        self.anc_weave = Weave('ancestry')
         self.ancestries = {}
         # holds in-memory weaves for all files
         self.text_weaves = {}
-        self.branch = Branch(self.base, relax_version_check=True)
-        if self.branch._branch_format == 5:
-            note('this branch is already in the most current format')
-            return
-        if self.branch._branch_format != 4:
-            raise BzrError("cannot upgrade from branch format %r" %
-                           self.branch._branch_format)
         os.remove(self.branch.controlfilename('branch-format'))
         self._convert_working_inv()
         rev_history = self.branch.revision_history()
@@ -153,6 +148,17 @@ class Convert(object):
         self._write_all_revs()
         self._set_new_format()
         self._cleanup_spare_files()
+
+
+    def _open_branch(self):
+        self.branch = Branch(self.base, relax_version_check=True)
+        if self.branch._branch_format == 5:
+            note('this branch is already in the most current format')
+            return False
+        if self.branch._branch_format != 4:
+            raise BzrError("cannot upgrade from branch format %r" %
+                           self.branch._branch_format)
+        return True
 
 
     def _set_new_format(self):
