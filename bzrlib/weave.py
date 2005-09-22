@@ -561,7 +561,7 @@ class Weave(object):
 
 
     def get_text(self, version):
-        assert isinstance(version, int)
+        version = self.maybe_lookup(version)
         s = StringIO()
         s.writelines(self.get_iter(version))
         return s.getvalue()
