@@ -111,7 +111,7 @@ class Convert(object):
         note('starting upgrade of %s', self.base)
 	self._backup_control_dir()
 	note('starting upgrade')
-	note('note: upgrade will be faster if all store files are ungzipped first')
+	note('note: upgrade may be faster if all store files are ungzipped first')
         self.pb = ProgressBar()
 	if not os.path.isdir(self.base + '/.bzr/weaves'):
 	    os.mkdir(self.base + '/.bzr/weaves')
@@ -168,9 +168,8 @@ class Convert(object):
 	    p = self.branch.controlfilename(n)
 	    if not os.path.exists(p):
 		continue
-	    assert os.path.getsize(p) == 0
+	    ## assert os.path.getsize(p) == 0
 	    os.remove(p)
-	os.remove(self.base + '/.bzr/allow-upgrade')
 	shutil.rmtree(self.base + '/.bzr/inventory-store')
 	shutil.rmtree(self.base + '/.bzr/text-store')
 
