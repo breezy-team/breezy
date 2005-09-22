@@ -68,7 +68,7 @@
 # versions.
 
 
-if True:
+if False:
     try:
         import psyco
         psyco.full()
@@ -80,7 +80,6 @@ import tempfile
 import hotshot, hotshot.stats
 import sys
 import logging
-import time
 
 from bzrlib.branch import Branch, find_branch
 from bzrlib.revfile import Revfile
@@ -115,17 +114,10 @@ class Convert(object):
         self.ancestries = {}
         # holds in-memory weaves for all files
         self.text_weaves = {}
-
         self.branch = Branch('.', relax_version_check=True)
-
-        revno = 1
         rev_history = self.branch.revision_history()
-        last_idx = None
-        inv_parents = []
-
         # to_read is a stack holding the revisions we still need to process;
         # appending to it adds new highest-priority revisions
-        importorder = []
         self.known_revisions = set(rev_history)
         self.to_read = [rev_history[-1]]
         while self.to_read:
@@ -249,10 +241,33 @@ class Convert(object):
                rev_id)
         for file_id in inv:
             ie = inv[file_id]
+	    self._set_name_version(rev, ie)
             if ie.kind != 'file':
                 continue
             self._convert_file_version(rev, ie)
-            # TODO: Check and convert name versions
+
+
+    def _set_name_version(self, rev, ie):
+	"""Set name version for a file.
+
+	Done in a slightly lazy way: if the file is renamed or in a merge revision
+	it gets a new version, otherwise the same as before.
+	"""
+	file_id = ie.file_id
+	if len(rev.parent_ids) != 1:
+	    ie.name_version = rev.revision_id
+	else:
+	    old_inv = self.inventories[rev.parent_ids[0]]
+	    if not old_inv.has_id(file_id):
+		ie.name_version = rev.revision_id
+	    else:
+		old_ie = old_inv[file_id]
+		if (old_ie.parent_id != ie.parent_id
+		    or old_ie.name != ie.name):
+		    ie.name_version = rev.revision_id
+		else:
+		    ie.name_version = old_ie.name_version
+
 
 
     def _convert_file_version(self, rev, ie):
@@ -288,14 +303,13 @@ class Convert(object):
                     text_changed = True
         if len(file_parents) != 1 or text_changed:
             w.add(rev_id, file_parents, file_lines, ie.text_sha1)
-            ie.name_version = ie.text_version = rev_id
+            ie.text_version = rev_id
             self.text_count += 1
             ##mutter('import text {%s} of {%s}',
             ##       ie.text_id, file_id)
         else:
             ##mutter('text of {%s} unchanged from parent', file_id)            
             ie.text_version = file_parents[0]
-            ie.name_version = file_parents[0]
         del ie.text_id
                    
 
@@ -349,10 +363,10 @@ def profile_convert():
     stats.print_stats(100)
 
 
-enable_default_logging()
+if __name__ == '__main__':
+    enable_default_logging()
 
-if '-p' in sys.argv[1:]:
-    profile_convert()
-else:
-    Convert()
-    
+    if '-p' in sys.argv[1:]:
+	profile_convert()
+    else:
+	Convert()
