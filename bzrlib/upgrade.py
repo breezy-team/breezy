@@ -336,9 +336,6 @@ class Convert(object):
         if w is None:
             w = Weave(file_id)
             self.text_weaves[file_id] = w
-        file_lines = self.branch.text_store[ie.text_id].readlines()
-        assert sha_strings(file_lines) == ie.text_sha1
-        assert sum(map(len, file_lines)) == ie.text_size
         file_parents = []
         text_changed = False
         for parent_id in rev.parent_ids:
@@ -356,6 +353,9 @@ class Convert(object):
                 if parent_ie.text_sha1 != ie.text_sha1:
                     text_changed = True
         if len(file_parents) != 1 or text_changed:
+            file_lines = self.branch.text_store[ie.text_id].readlines()
+            assert sha_strings(file_lines) == ie.text_sha1
+            assert sum(map(len, file_lines)) == ie.text_size
             w.add(rev_id, file_parents, file_lines, ie.text_sha1)
             ie.text_version = rev_id
             self.text_count += 1
