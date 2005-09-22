@@ -39,10 +39,6 @@ import bzrlib.xml5
 import bzrlib.ui
 
 
-INVENTORY_FILEID = '__inventory'
-ANCESTRY_FILEID = '__ancestry'
-
-
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
 BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
@@ -212,16 +208,15 @@ class Branch(object):
                 raise NotBranchError('not a bzr branch: %s' % quotefn(base),
                                      ['use "bzr init" to initialize a '
                                       'new working tree'])
-        
         self._check_format(relax_version_check)
+	cfn = self.controlfilename
         if self._branch_format == 4:
-            self.inventory_store = \
-                ImmutableStore(self.controlfilename('inventory-store'))
-            self.text_store = \
-                ImmutableStore(self.controlfilename('text-store'))
-        self.weave_store = WeaveStore(self.controlfilename('weaves'))
-        self.revision_store = \
-            ImmutableStore(self.controlfilename('revision-store'))
+            self.inventory_store = ImmutableStore(cfn('inventory-store'))
+            self.text_store = ImmutableStore(cfn('text-store'))
+	elif self._branch_format == 5:
+	    self.control_weaves = WeaveStore(cfn([]))
+	    self.weave_store = WeaveStore(cfn('weaves'))
+        self.revision_store = ImmutableStore(cfn('revision-store'))
 
 
     def __str__(self):
@@ -666,16 +661,20 @@ class Branch(object):
         return bzrlib.osutils.sha_file(self.get_revision_xml_file(revision_id))
 
 
+    def _get_ancestry_weave(self):
+        return self.control_weaves.get_weave('ancestry')
+	
+
     def get_ancestry(self, revision_id):
         """Return a list of revision-ids integrated by a revision.
         """
-        w = self.weave_store.get_weave(ANCESTRY_FILEID)
         # strip newlines
+	w = self._get_ancestry_weave()
         return [l[:-1] for l in w.get_iter(w.lookup(revision_id))]
 
 
     def get_inventory_weave(self):
-        return self.weave_store.get_weave(INVENTORY_FILEID)
+        return self.control_weaves.get_weave('inventory')
 
 
     def get_inventory(self, revision_id):

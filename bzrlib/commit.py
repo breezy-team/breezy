@@ -75,7 +75,7 @@ from bzrlib.osutils import (local_time_offset, username,
                             kind_marker, is_inside_any, quotefn,
                             sha_string, sha_strings, sha_file, isdir, isfile,
                             split_lines)
-from bzrlib.branch import gen_file_id, INVENTORY_FILEID, ANCESTRY_FILEID
+from bzrlib.branch import gen_file_id
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
                            )
@@ -238,8 +238,9 @@ class Commit(object):
         """Store the inventory for the new revision."""
         inv_text = serializer_v5.write_inventory_to_string(self.new_inv)
         self.inv_sha1 = sha_string(inv_text)
-        self.weave_store.add_text(INVENTORY_FILEID, self.rev_id,
-                                         split_lines(inv_text), self.parents)
+	s = self.branch.control_weaves
+        s.add_text('inventory', self.rev_id,
+		   split_lines(inv_text), self.parents)
 
 
     def _record_ancestry(self):
@@ -247,10 +248,11 @@ class Commit(object):
 
         This should be the merged ancestry of all parents, plus the
         new revision id."""
-        w = self.weave_store.get_weave_or_empty(ANCESTRY_FILEID)
+	s = self.branch.control_weaves
+        w = s.get_weave_or_empty('ancestry')
         lines = self._make_ancestry(w)
         w.add(self.rev_id, self.parents, lines)
-        self.weave_store.put_weave(ANCESTRY_FILEID, w)
+        s.put_weave('ancestry', w)
 
 
     def _make_ancestry(self, ancestry_weave):

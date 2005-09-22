@@ -28,7 +28,10 @@ from bzrlib.atomicfile import AtomicFile
 
 
 class WeaveStore(object):
-    """Collection of several weave files."""
+    """Collection of several weave files in a directory.
+
+    This has some shortcuts for reading and writing them.
+    """
     def __init__(self, dir):
         self._dir = dir
 

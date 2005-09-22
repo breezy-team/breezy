@@ -19,7 +19,7 @@ from cStringIO import StringIO
 
 import bzrlib.errors
 from bzrlib.trace import mutter, note, warning
-from bzrlib.branch import Branch, INVENTORY_FILEID, ANCESTRY_FILEID
+from bzrlib.branch import Branch
 from bzrlib.progress import ProgressBar
 from bzrlib.xml5 import serializer_v5
 from bzrlib.osutils import sha_string, split_lines
@@ -87,8 +87,10 @@ class Fetcher(object):
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
         self.to_branch = to_branch
         self.to_weaves = to_branch.weave_store
+	self.to_control = to_branch.control_weaves
         self.from_branch = from_branch
         self.from_weaves = from_branch.weave_store
+	self.from_control = from_branch.control_weaves
         self.failed_revisions = []
         self.count_copied = 0
         self.count_total = 0
@@ -182,14 +184,14 @@ class Fetcher(object):
 
 
     def _copy_inventory(self, rev_id, inv_xml, parent_ids):
-        self.to_weaves.add_text(INVENTORY_FILEID, rev_id,
+        self.to_control.add_text('inventory', rev_id,
                                 split_lines(inv_xml), parent_ids)
 
 
     def _copy_ancestry(self, rev_id, parent_ids):
-        ancestry_lines = self.from_weaves.get_lines(ANCESTRY_FILEID, rev_id)
-        self.to_weaves.add_text(ANCESTRY_FILEID, rev_id, ancestry_lines,
-                                parent_ids)
+        ancestry_lines = self.from_control.get_lines('ancestry', rev_id)
+        self.to_control.add_text('ancestry', rev_id, ancestry_lines,
+                                 parent_ids)
 
         
     def _copy_new_texts(self, rev_id, inv):

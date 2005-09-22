@@ -67,6 +67,8 @@
 # the moment saves us having to worry about when files need new
 # versions.
 
+# TODO: Check that the working directory is clean before converting
+
 
 if False:
     try:
@@ -76,10 +78,12 @@ if False:
         pass
 
 
+import os
 import tempfile
 import hotshot, hotshot.stats
 import sys
 import logging
+import shutil
 
 from bzrlib.branch import Branch, find_branch
 from bzrlib.revfile import Revfile
@@ -105,17 +109,20 @@ class Convert(object):
         
 
 
-
     def convert(self):
         enable_default_logging()
+	self._backup_control_dir()
         self.pb = ProgressBar()
+	if not os.path.isdir('.bzr/weaves'):
+	    os.mkdir('.bzr/weaves')
         self.inv_weave = Weave('__inventory')
         self.anc_weave = Weave('__ancestry')
         self.ancestries = {}
         # holds in-memory weaves for all files
         self.text_weaves = {}
         self.branch = Branch('.', relax_version_check=True)
-        rev_history = self.branch.revision_history()
+	self._convert_working_inv()
+        rev_history = self.branch.revision_history()[:300]
         # to_read is a stack holding the revisions we still need to process;
         # appending to it adds new highest-priority revisions
         self.known_revisions = set(rev_history)
@@ -131,22 +138,36 @@ class Convert(object):
             self.pb.update('converting revision', i, len(to_import))
             self._convert_one_rev(rev_id)
         self.pb.clear()
-        print 'upgraded to weaves:'
-        print '  %6d revisions and inventories' % len(self.revisions)
-        print '  %6d absent revisions removed' % len(self.absent_revisions)
-        print '  %6d texts' % self.text_count
+        note('upgraded to weaves:')
+        note('  %6d revisions and inventories' % len(self.revisions))
+        note('  %6d absent revisions removed' % len(self.absent_revisions))
+        note('  %6d texts' % self.text_count)
         self._write_all_weaves()
         self._write_all_revs()
 
 
+    def _backup_control_dir(self):
+	shutil.copytree('.bzr', '.bzr.backup')
+	note('.bzr has been backed up to .bzr.backup')
+	note('if conversion fails, you can move this directory back to .bzr')
+	note('if it succeeds, you can remove this directory if you wish')
+
+
+    def _convert_working_inv(self):
+	branch = self.branch
+	inv = serializer_v4.read_inventory(branch.controlfile('inventory', 'rb'))
+	serializer_v5.write_inventory(inv, branch.controlfile('new-inventory', 'wb'))
+
+
+
     def _write_all_weaves(self):
-        write_a_weave(self.inv_weave, 'weaves/inventory.weave')
-        write_a_weave(self.anc_weave, 'weaves/ancestry.weave')
+        write_a_weave(self.inv_weave, '.bzr/inventory.weave')
+        write_a_weave(self.anc_weave, '.bzr/ancestry.weave')
         i = 0
         try:
             for file_id, file_weave in self.text_weaves.items():
                 self.pb.update('writing weave', i, len(self.text_weaves))
-                write_a_weave(file_weave, 'weaves/%s.weave' % file_id)
+                write_a_weave(file_weave, '.bzr/weaves/%s.weave' % file_id)
                 i += 1
         finally:
             self.pb.clear()
