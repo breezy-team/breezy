@@ -84,6 +84,13 @@ class Check(object):
 
 
     def check_one_rev(self, rev_id, last_rev_id):
+	"""Check one revision.
+
+	rev_id - the one to check
+
+	last_rev_id - the previous one on the mainline, if any.
+	"""
+
 	# mutter('    revision {%s}' % rev_id)
 	branch = self.branch
 	rev = branch.get_revision(rev_id)
@@ -118,52 +125,51 @@ class Check(object):
 	    missing_inventory_sha_cnt += 1
 	    mutter("no inventory_sha1 on revision {%s}" % rev_id)
 
-	tree = branch.revision_tree(rev_id)
+	self._check_revision_tree(rev_id)
+
+    def _check_revision_tree(self, rev_id):
+	tree = self.branch.revision_tree(rev_id)
 	inv = tree.inventory
 	seen_ids = {}
-	seen_names = {}
-
-	## p('revision %d/%d file ids' % (revno, revcount))
 	for file_id in inv:
 	    if file_id in seen_ids:
 		raise BzrCheckError('duplicated file_id {%s} '
 				    'in inventory for revision {%s}'
 				    % (file_id, rev_id))
 	    seen_ids[file_id] = True
-
-	i = 0
 	for file_id in inv:
-	    i += 1
-	    if i & 31 == 0:
-		self.progress.tick()
-
-	    ie = inv[file_id]
-
-	    if ie.parent_id != None:
-		if ie.parent_id not in seen_ids:
-		    raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
-			    % (ie.parent_id, rev_id))
-
-	    if ie.kind == 'file':
-		text = tree.get_file_text(file_id)
-		self.checked_text_cnt += 1 
-		if ie.text_size != len(text):
-		    raise BzrCheckError('text {%s} wrong size' % ie.text_id)
-		if ie.text_sha1 != sha_string(text):
-		    raise BzrCheckError('text {%s} wrong sha1' % ie.text_id)
-	    elif ie.kind == 'directory':
-		if ie.text_sha1 != None or ie.text_size != None or ie.text_id != None:
-		    raise BzrCheckError('directory {%s} has text in revision {%s}'
-			    % (file_id, rev_id))
-
-	self.progress.tick()
+	    self._check_one_entry(rev_id, inv, tree, file_id)
+	seen_names = {}
 	for path, ie in inv.iter_entries():
 	    if path in seen_names:
 		raise BzrCheckError('duplicated path %s '
 				    'in inventory for revision {%s}'
 				    % (path, rev_id))
 	    seen_names[path] = True
-        
+
+	
+    def _check_one_entry(self, rev_id, inv, tree, file_id):
+	ie = inv[file_id]
+	if ie.parent_id != None:
+	    if not inv.has_id(ie.parent_id):
+		raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
+			% (ie.parent_id, rev_id))
+	if ie.kind == 'file':
+	    text = tree.get_file_text(file_id)
+	    self.checked_text_cnt += 1 
+	    if ie.text_size != len(text):
+		raise BzrCheckError('text {%s} wrong size' % ie.text_id)
+	    if ie.text_sha1 != sha_string(text):
+		raise BzrCheckError('text {%s} wrong sha1' % ie.text_id)
+	elif ie.kind == 'directory':
+	    if ie.text_sha1 != None or ie.text_size != None or ie.text_id != None:
+		raise BzrCheckError('directory {%s} has text in revision {%s}'
+			% (file_id, rev_id))
+	elif ie.kind == 'root_directory':
+	    pass
+	else:
+	    raise BzrCheckError('unknown entry kind %r in revision {%s}' % 
+				(ie.kind, rev_id))
 
 
 def check(branch):
