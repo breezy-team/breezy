@@ -113,6 +113,8 @@ class Convert(object):
 	if not os.path.exists('.bzr/allow-upgrade'):
 	    raise Exception, "please create .bzr/allow-upgrade to indicate consent"
 	self._backup_control_dir()
+	note('starting upgrade')
+	note('note: upgrade will be faster if all store files are ungzipped first')
         self.pb = ProgressBar()
 	if not os.path.isdir('.bzr/weaves'):
 	    os.mkdir('.bzr/weaves')
@@ -124,7 +126,7 @@ class Convert(object):
         self.branch = Branch('.', relax_version_check=True)
 	os.remove(self.branch.controlfilename('branch-format'))
 	self._convert_working_inv()
-        rev_history = self.branch.revision_history()[:300]
+        rev_history = self.branch.revision_history()
         # to_read is a stack holding the revisions we still need to process;
         # appending to it adds new highest-priority revisions
         self.known_revisions = set(rev_history)
