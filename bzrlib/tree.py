@@ -76,6 +76,8 @@ class Tree(object):
                          doc="Inventory of this Tree")
 
     def _check_retrieved(self, ie, f):
+        if not __debug__:
+            return  
         fp = fingerprint_file(f)
         f.seek(0)
         
