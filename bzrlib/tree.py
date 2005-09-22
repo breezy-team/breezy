@@ -134,8 +134,7 @@ class RevisionTree(Tree):
     def get_file_text(self, file_id):
         ie = self._inventory[file_id]
         weave = self.get_weave(file_id)
-        idx = weave.lookup(ie.text_version)
-        content = weave.get_text(idx)
+        content = weave.get_text(ie.text_version)
         if len(content) != ie.text_size:
             raise BzrCheckError('mismatched size on revision %s of file %s: '
                                 '%d vs %d bytes'
