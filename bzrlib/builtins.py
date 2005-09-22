@@ -1038,12 +1038,15 @@ class cmd_upgrade(Command):
 
     The check command or bzr developers may sometimes advise you to run
     this command.
+
+    This version of this command upgrades from the full-text storage
+    used by bzr 0.0.8 and earlier to the weave format (v5).
     """
     takes_args = ['dir?']
 
     def run(self, dir='.'):
         from bzrlib.upgrade import upgrade
-        upgrade(find_branch(dir))
+        upgrade(dir)
 
 
 

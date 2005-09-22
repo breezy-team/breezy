@@ -67,8 +67,6 @@
 # the moment saves us having to worry about when files need new
 # versions.
 
-# TODO: Check that the working directory is clean before converting
-
 
 if False:
     try:
@@ -99,31 +97,36 @@ from bzrlib.commit import merge_ancestry_lines
 
 
 class Convert(object):
-    def __init__(self):
+    def __init__(self, base_dir):
+        self.base = base_dir
         self.converted_revs = set()
         self.absent_revisions = set()
         self.text_count = 0
         self.revisions = {}
         self.inventories = {}
         self.convert()
-        
 
 
     def convert(self):
-	if not os.path.exists('.bzr/allow-upgrade'):
-	    raise Exception, "please create .bzr/allow-upgrade to indicate consent"
+        note('starting upgrade of %s', self.base)
 	self._backup_control_dir()
 	note('starting upgrade')
 	note('note: upgrade will be faster if all store files are ungzipped first')
         self.pb = ProgressBar()
-	if not os.path.isdir('.bzr/weaves'):
-	    os.mkdir('.bzr/weaves')
+	if not os.path.isdir(self.base + '/.bzr/weaves'):
+	    os.mkdir(self.base + '/.bzr/weaves')
         self.inv_weave = Weave('__inventory')
         self.anc_weave = Weave('__ancestry')
         self.ancestries = {}
         # holds in-memory weaves for all files
         self.text_weaves = {}
-        self.branch = Branch('.', relax_version_check=True)
+        self.branch = Branch(self.base, relax_version_check=True)
+        if self.branch._branch_format == 5:
+            note('this branch is already in the most current format')
+            return
+        if self.branch._branch_format != 4:
+            raise BzrError("cannot upgrade from branch format %r" %
+                           self.branch._branch_format)
 	os.remove(self.branch.controlfilename('branch-format'))
 	self._convert_working_inv()
         rev_history = self.branch.revision_history()
@@ -154,11 +157,10 @@ class Convert(object):
 
     def _set_new_format(self):
 	f = self.branch.controlfile('branch-format', 'wb')
-    	try:
+        try:
 	    f.write(BZR_BRANCH_FORMAT_5)
 	finally:
 	    f.close()
-		
 
 
     def _cleanup_spare_files(self):
@@ -168,14 +170,16 @@ class Convert(object):
 		continue
 	    assert os.path.getsize(p) == 0
 	    os.remove(p)
-	os.remove('.bzr/allow-upgrade')
-	shutil.rmtree('.bzr/inventory-store')
-	shutil.rmtree('.bzr/text-store')
+	os.remove(self.base + '/.bzr/allow-upgrade')
+	shutil.rmtree(self.base + '/.bzr/inventory-store')
+	shutil.rmtree(self.base + '/.bzr/text-store')
 
 
     def _backup_control_dir(self):
-	shutil.copytree('.bzr', '.bzr.backup')
-	note('.bzr has been backed up to .bzr.backup')
+        orig = self.base + '/.bzr'
+        backup = orig + '.backup'
+	shutil.copytree(orig, backup)
+	note('%s has been backed up to %s', orig, backup)
 	note('if conversion fails, you can move this directory back to .bzr')
 	note('if it succeeds, you can remove this directory if you wish')
 
@@ -188,13 +192,13 @@ class Convert(object):
 
 
     def _write_all_weaves(self):
-        write_a_weave(self.inv_weave, '.bzr/inventory.weave')
-        write_a_weave(self.anc_weave, '.bzr/ancestry.weave')
+        write_a_weave(self.inv_weave, self.base + '/.bzr/inventory.weave')
+        write_a_weave(self.anc_weave, self.base + '/.bzr/ancestry.weave')
         i = 0
         try:
             for file_id, file_weave in self.text_weaves.items():
                 self.pb.update('writing weave', i, len(self.text_weaves))
-                write_a_weave(file_weave, '.bzr/weaves/%s.weave' % file_id)
+                write_a_weave(file_weave, self.base + '/.bzr/weaves/%s.weave' % file_id)
                 i += 1
         finally:
             self.pb.clear()
@@ -202,12 +206,12 @@ class Convert(object):
 
     def _write_all_revs(self):
         """Write all revisions out in new form."""
-	shutil.rmtree('.bzr/revision-store')
-	os.mkdir('.bzr/revision-store')
+	shutil.rmtree(self.base + '/.bzr/revision-store')
+	os.mkdir(self.base + '/.bzr/revision-store')
         try:
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update('write revision', i, len(self.converted_revs))
-                f = file('.bzr/revision-store/%s' % rev_id, 'wb')
+                f = file(self.base + '/.bzr/revision-store/%s' % rev_id, 'wb')
                 try:
                     serializer_v5.write_revision(self.revisions[rev_id], f)
                 finally:
@@ -358,10 +362,10 @@ class Convert(object):
             ##mutter('import text {%s} of {%s}',
             ##       ie.text_id, file_id)
         else:
-            ##mutter('text of {%s} unchanged from parent', file_id)            
+            ##mutter('text of {%s} unchanged from parent', file_id)
             ie.text_version = file_parents[0]
         del ie.text_id
-                   
+
 
 
     def _make_order(self):
@@ -385,7 +389,7 @@ class Convert(object):
                     todo.remove(rev_id)
                     done.add(rev_id)
         return o
-                
+
 
 def write_a_weave(weave, filename):
     inv_wf = file(filename, 'wb')
@@ -394,29 +398,6 @@ def write_a_weave(weave, filename):
     finally:
         inv_wf.close()
 
-    
 
-
-def profile_convert(): 
-    prof_f = tempfile.NamedTemporaryFile()
-
-    prof = hotshot.Profile(prof_f.name)
-
-    prof.runcall(Convert) 
-    prof.close()
-
-    stats = hotshot.stats.load(prof_f.name)
-    ##stats.strip_dirs()
-    stats.sort_stats('time')
-    # XXX: Might like to write to stderr or the trace file instead but
-    # print_stats seems hardcoded to stdout
-    stats.print_stats(100)
-
-
-if __name__ == '__main__':
-    enable_default_logging()
-
-    if '-p' in sys.argv[1:]:
-	profile_convert()
-    else:
-	Convert()
+def upgrade(base_dir):
+    Convert(base_dir)
