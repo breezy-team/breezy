@@ -39,11 +39,18 @@ class Check(object):
     """Check a branch"""
     def __init__(self, branch):
         self.branch = branch
-        self.run()
+	branch.lock_read()
+	try:
+	    self.run()
+	finally:
+   	    branch.unlock()
 
 
     def run(self):
         branch = self.branch
+
+	branch.weave_store.enable_cache = True
+	branch.control_weaves.enable_cache = True
 
 	self.checked_text_cnt = 0
 	self.checked_rev_cnt = 0

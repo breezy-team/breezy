@@ -27,7 +27,6 @@ from bzrlib.weave import Weave
 from bzrlib.atomicfile import AtomicFile
 
 
-ENABLE_CACHE = False
 
 
 class WeaveStore(object):
@@ -38,6 +37,7 @@ class WeaveStore(object):
     def __init__(self, dir):
         self._dir = dir
         self._cache = {}
+	self.enable_cache = False
 
 
     def filename(self, file_id):
@@ -45,11 +45,11 @@ class WeaveStore(object):
 
 
     def get_weave(self, file_id):
-        if ENABLE_CACHE:
+        if self.enable_cache:
             if file_id in self._cache:
                 return self._cache[file_id]
         w = read_weave(file(self.filename(file_id), 'rb'))
-        if ENABLE_CACHE:
+        if self.enable_cache:
             self._cache[file_id] = w
         return w
 
@@ -77,7 +77,7 @@ class WeaveStore(object):
 
     def put_weave(self, file_id, weave):
         """Write back a modified weave"""
-        if ENABLE_CACHE:
+        if self.enable_cache:
             self._cache[file_id] = weave
         weave_fn = self.filename(file_id)
         af = AtomicFile(weave_fn)
