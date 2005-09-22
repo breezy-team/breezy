@@ -41,16 +41,18 @@ class Check(object):
         self.branch = branch
         branch.lock_read()
         try:
+            branch.weave_store.enable_cache = True
+            branch.control_weaves.enable_cache = True
             self.run()
         finally:
             branch.unlock()
+            branch.weave_store.enable_cache = False
+            branch.control_weaves.enable_cache = False
 
 
     def run(self):
         branch = self.branch
 
-        branch.weave_store.enable_cache = True
-        branch.control_weaves.enable_cache = True
 
         self.checked_text_cnt = 0
         self.checked_rev_cnt = 0
