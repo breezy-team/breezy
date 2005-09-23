@@ -1,5 +1,12 @@
 development head
 
+  CHANGES:
+
+    * New tree format based on weave files, called version 5.
+      Existing branches can be upgraded to this format using 
+      'bzr upgrade'.
+
+
   INTERNALS:
 
     * Refactor xml packing/unpacking.
@@ -7,10 +14,6 @@ development head
     * Improved 'fetch' code for pulling revisions from one branch into
       another (used by pull, merged, etc.)
 
-
-  CHANGES:
-
-    * New tree format based on weave files, called version 5.
 
 
   API:
