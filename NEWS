@@ -16,14 +16,6 @@ development head
 
 
 
-  API:
-
-    * New method-object style interface for Commit() and Fetch().
-
-    * Renamed Branch.last_patch() to Branch.last_revision(), since
-      we call them revisions not patches.
-  
-
 
 bzr-0.0.7 2005-09-02
 
