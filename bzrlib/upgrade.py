@@ -351,8 +351,6 @@ class Convert(object):
                 ie.name_version = rev.revision_id
             else:
                 old_ie = old_inv[file_id]
-                import pdb
-                # pdb.set_trace()
                 if (old_ie.parent_id != ie.parent_id
                     or old_ie.name != ie.name):
                     ie.name_version = rev.revision_id
