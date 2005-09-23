@@ -72,12 +72,15 @@ class cmd_changeset(Command):
         --revision A    A is chosen as the target, and the base is it's primary parent
         --revision ..B  B is chosen as the target, and the base is it's primary parent
         --revision A..  ???
+    --message will replace the global message with the one supplied. Though this
+        will not be saved in the final revision messages.
     """
-    takes_options = ['verbose', 'revision']
+    takes_options = ['verbose', 'revision', 'message']
     takes_args = ['base?', 'target?', 'starting-rev-id?']
     aliases = ['cset']
 
-    def run(self, base=None, target=None, starting_rev_id=None, verbose=False, revision=None):
+    def run(self, base=None, target=None, starting_rev_id=None,
+            verbose=False, revision=None, message=None):
         from bzrlib.commands import parse_spec
         from bzrlib.errors import BzrCommandError
         from bzrlib import user_encoding
@@ -136,7 +139,8 @@ class cmd_changeset(Command):
         gen_changeset.show_changeset(base_branch, base_rev_id,
                 target_branch, target_rev_id,
                 starting_rev_id,
-                to_file=sys.stdout, include_full_diff=verbose)
+                to_file=sys.stdout, include_full_diff=verbose,
+                message=message)
 
 class cmd_verify_changeset(Command):
     """Read a written changeset, and make sure it is valid.
@@ -146,7 +150,7 @@ class cmd_verify_changeset(Command):
 
     def run(self, filename=None):
         from read_changeset import read_changeset
-        from bzrlib.xml import pack_xml
+        #from bzrlib.xml import serializer_v4
 
         b = Branch.open_containing('.')
 
@@ -156,9 +160,9 @@ class cmd_verify_changeset(Command):
             f = open(filename, 'U')
 
         cset_info, cset_tree = read_changeset(f, b)
-        print cset_info
-        print cset_tree
-        pack_xml(cset_tree.inventory, sys.stdout)
+        # print cset_info
+        # print cset_tree
+        #serializer_v4.write(cset_tree.inventory, sys.stdout)
 
 
 

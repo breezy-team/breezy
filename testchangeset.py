@@ -258,7 +258,9 @@ class CTreeTester(unittest.TestCase):
 
 class CSetTester(TestCaseInTempDir):
 
-    def get_valid_cset(self, base_rev_id, rev_id, auto_commit=False, checkout_dir=None):
+    def get_valid_cset(self, base_rev_id, rev_id,
+            auto_commit=False, checkout_dir=None,
+            message=None):
         """Create a changeset from base_rev_id -> rev_id in built-in branch.
         Make sure that the text generated is valid, and that it
         can be applied against the base, and generate the same information.
@@ -270,7 +272,8 @@ class CSetTester(TestCaseInTempDir):
         from read_changeset import read_changeset
 
         cset_txt = StringIO()
-        show_changeset(self.b1, base_rev_id, self.b1, rev_id, to_file=cset_txt)
+        show_changeset(self.b1, base_rev_id, self.b1, rev_id, to_file=cset_txt,
+                message=message)
         cset_txt.seek(0)
         self.assertEqual(cset_txt.readline(), '# Bazaar-NG changeset v0.0.5\n')
         self.assertEqual(cset_txt.readline(), '# \n')
@@ -414,6 +417,8 @@ class CSetTester(TestCaseInTempDir):
         self.b1.commit('add one', rev_id='a@cset-0-1')
 
         cset = self.get_valid_cset(None, 'a@cset-0-1')
+        cset = self.get_valid_cset(None, 'a@cset-0-1',
+                message='With a specialized message')
 
         # Make sure we can handle files with spaces, tabs, other
         # bogus characters

@@ -184,6 +184,7 @@ class MetaInfoHeader(object):
             delta,
             starting_rev_id=None,
             full_remove=False, full_rename=False,
+            message=None,
             base_label = 'orig', target_label = 'mod'):
         """
         :param full_remove: Include the full-text for a delete
@@ -221,7 +222,7 @@ class MetaInfoHeader(object):
         # only if they have changed
         self.date = None
         self.committer = None
-        self.message = None
+        self.message = message
 
         self._get_revision_list()
 
@@ -292,11 +293,13 @@ class MetaInfoHeader(object):
         self.committer = rev.committer
         self.date = format_highres_date(rev.timestamp, offset=rev.timezone)
         write(self.date, key='date')
-        if rev.message:
+        if self.message is None:
+            if rev.message is not None:
+                self.message = rev.message
+        if self.message:
             write('', key='message')
-            for line in rev.message.split('\n'):
+            for line in self.message.split('\n'):
                 write(txt=line, indent=4)
-            self.message = rev.message
 
         write('') # line with just '#'
         write('', indent=0) # Empty line
@@ -444,7 +447,8 @@ class MetaInfoHeader(object):
 def show_changeset(base_branch, base_rev_id,
         target_branch, target_rev_id,
         starting_rev_id = None,
-        to_file=None, include_full_diff=False):
+        to_file=None, include_full_diff=False,
+        message=None):
     from bzrlib.diff import compare_trees
 
     if to_file is None:
@@ -459,6 +463,7 @@ def show_changeset(base_branch, base_rev_id,
             target_branch, target_rev_id, target_tree,
             delta,
             starting_rev_id=starting_rev_id,
-            full_rename=include_full_diff, full_remove=include_full_diff)
+            full_rename=include_full_diff, full_remove=include_full_diff,
+            message=message)
     meta.write_meta_info(to_file)
 
