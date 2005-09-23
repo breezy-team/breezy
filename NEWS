@@ -5,6 +5,12 @@ development head
     * Status now accepted a -r argument to give status between chosen
       revisions. Contributed by Heikki Paajanen.
 
+    * Revision arguments no longer use +/-/= to control ranges, instead
+      there is a 'before' namespace, which limits the successive namespace.
+      For example '$ bzr log -r date:yesterday..before:date:today' will
+      select everything from yesterday and before today. Contributed by
+      Robey Pointer
+
 bzr 0.0.8 2005-09-20
 
   IMPROVEMENTS:

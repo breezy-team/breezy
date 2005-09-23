@@ -200,6 +200,7 @@ SPEC_TYPES.append(RevisionSpec_revid)
 
 
 class RevisionSpec_last(RevisionSpec):
+
     prefix = 'last:'
 
     def _match_on(self, branch, revs):
@@ -213,6 +214,19 @@ class RevisionSpec_last(RevisionSpec):
             return RevisionInfo(branch, len(revs) - offset + 1)
 
 SPEC_TYPES.append(RevisionSpec_last)
+
+
+class RevisionSpec_before(RevisionSpec):
+
+    prefix = 'before:'
+    
+    def _match_on(self, branch, revs):
+        r = RevisionSpec(self.spec)._match_on(branch, revs)
+        if (r.revno is None) or (r.revno == 0):
+            return r
+        return RevisionInfo(branch, r.revno - 1)
+
+SPEC_TYPES.append(RevisionSpec_before)
 
 
 class RevisionSpec_tag(RevisionSpec):
@@ -237,27 +251,13 @@ class RevisionSpec_date(RevisionSpec):
         Spec for date revisions:
           date:value
           value can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
-          it can also start with a '+/-/='. '+' says match the first
-          entry after the given date. '-' is match the first entry before the date
-          '=' is match the first entry after, but still on the given date.
-
-          +2005-05-12 says find the first matching entry after May 12th, 2005 at 0:00
-          -2005-05-12 says find the first matching entry before May 12th, 2005 at 0:00
-          =2005-05-12 says find the first match after May 12th, 2005 at 0:00 but before
-              May 13th, 2005 at 0:00
+          matches the first entry after a given date (either at midnight or
+          at a specified time).
 
           So the proper way of saying 'give me all entries for today' is:
-              -r {date:+today}:{date:-tomorrow}
-          The default is '=' when not supplied
+              -r date:today..date:tomorrow
         """
-        match_style = '='
-        if self.spec[:1] in ('+', '-', '='):
-            match_style = self.spec[:1]
-            self.spec = self.spec[1:]
-
-        # XXX: this should probably be using datetime.date instead
-        today = datetime.datetime.today().replace(hour=0, minute=0, second=0,
-                                                  microsecond=0)
+        today = datetime.datetime.fromordinal(datetime.date.today().toordinal())
         if self.spec.lower() == 'yesterday':
             dt = today - datetime.timedelta(days=1)
         elif self.spec.lower() == 'today':
@@ -286,27 +286,13 @@ class RevisionSpec_date(RevisionSpec):
             dt = datetime.datetime(year=year, month=month, day=day,
                     hour=hour, minute=minute, second=second)
         first = dt
-        last = None
-        reversed = False
-        if match_style == '-':
-            reversed = True
-        elif match_style == '=':
-            last = dt + datetime.timedelta(days=1)
-
-        if reversed:
-            for i in range(len(revs)-1, -1, -1):
-                r = branch.get_revision(revs[i])
-                # TODO: Handle timezone.
-                dt = datetime.datetime.fromtimestamp(r.timestamp)
-                if first >= dt and (last is None or dt >= last):
-                    return RevisionInfo(branch, i+1,)
-        else:
-            for i in range(len(revs)):
-                r = branch.get_revision(revs[i])
-                # TODO: Handle timezone.
-                dt = datetime.datetime.fromtimestamp(r.timestamp)
-                if first <= dt and (last is None or dt <= last):
-                    return RevisionInfo(branch, i+1,)
+        for i in range(len(revs)):
+            r = branch.get_revision(revs[i])
+            # TODO: Handle timezone.
+            dt = datetime.datetime.fromtimestamp(r.timestamp)
+            if first <= dt:
+                return RevisionInfo(branch, i+1)
+        return RevisionInfo(branch, None)
 
 SPEC_TYPES.append(RevisionSpec_date)
 

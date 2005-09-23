@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import time
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.errors import NoCommonAncestor, NoCommits
 from bzrlib.branch import copy_branch
@@ -32,7 +33,7 @@ class TestRevisionNamespaces(TestCaseInTempDir):
 
         b = Branch.initialize('.')
 
-        b.commit('Commit one', rev_id='a@r-0-1')
+        b.commit('Commit one', rev_id='a@r-0-1', timestamp=time.time() - 60*60*24)
         b.commit('Commit two', rev_id='a@r-0-2')
         b.commit('Commit three', rev_id='a@r-0-3')
 
@@ -46,9 +47,11 @@ class TestRevisionNamespaces(TestCaseInTempDir):
                           RevisionSpec('revid:a@r-0-0').in_history, b)
         self.assertRaises(TypeError, RevisionSpec, object)
 
-        self.assertEquals(RevisionSpec('date:-tomorrow').in_history(b),
-                          (3, 'a@r-0-3'))
-        self.assertEquals(RevisionSpec('date:+today').in_history(b),
+        self.assertEquals(RevisionSpec('date:today').in_history(b),
+                          (2, 'a@r-0-2'))
+        self.assertEquals(RevisionSpec('date:yesterday').in_history(b),
+                          (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('before:date:today').in_history(b),
                           (1, 'a@r-0-1'))
 
         self.assertEquals(RevisionSpec('last:1').in_history(b),
