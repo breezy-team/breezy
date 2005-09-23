@@ -12,7 +12,7 @@ def _install_info(branch, cset_info, cset_tree):
     """Make sure that there is a text entry for each 
     file in the changeset.
     """
-    from bzrlib.xml import pack_xml
+    from bzrlib.xml import serializer_v4
     from cStringIO import StringIO
 
     inv = cset_tree.inventory
@@ -29,7 +29,7 @@ def _install_info(branch, cset_info, cset_tree):
             warning('Target inventory already exists in destination.')
         else:
             sio = StringIO()
-            pack_xml(inv, sio)
+            serializer_v4.write_inventory(inv, sio)
             branch.inventory_store.add(sio.getvalue(), cset_info.target)
             del sio
 
@@ -38,7 +38,7 @@ def _install_info(branch, cset_info, cset_tree):
     for rev in cset_info.real_revisions:
         if rev.revision_id not in branch.revision_store:
             sio = StringIO()
-            pack_xml(rev, sio)
+            serializer_v4.write_revision(rev, sio)
             branch.revision_store.add(sio.getvalue(), rev.revision_id)
             del sio
 

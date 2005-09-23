@@ -316,7 +316,7 @@ class CSetTester(TestCaseInTempDir):
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.
         """
-        from bzrlib.branch import find_branch
+        from bzrlib.branch import Branch
         import tempfile
         from bzrlib.merge import merge
 
@@ -326,7 +326,7 @@ class CSetTester(TestCaseInTempDir):
             import os
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)
-        to_branch = find_branch(checkout_dir, init=True)
+        to_branch = Branch.initialize(checkout_dir)
         # TODO: Once root ids are established, remove this if
         if hasattr(self.b1, 'get_root_id'):
             to_branch.set_root_id(self.b1.get_root_id())
@@ -399,15 +399,15 @@ class CSetTester(TestCaseInTempDir):
             # self.assertEqual(base_tree.get_file(fileid).read(),
             #         to_tree.get_file(fileid).read())
 
-    def runTest(self):
-        from bzrlib.branch import find_branch
+    def test_changeset(self):
+        from bzrlib.branch import Branch
         import common
 
         import os, sys
         pjoin = os.path.join
 
         os.mkdir('b1')
-        self.b1 = find_branch('b1', init=True)
+        self.b1 = Branch.initialize('b1')
 
         open(pjoin('b1/one'), 'wb').write('one\n')
         self.b1.add('one')

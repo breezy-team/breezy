@@ -189,7 +189,7 @@ class ChangesetReader(object):
 
     def _validate_revisions(self):
         """Make sure all revision entries match their checksum."""
-        from bzrlib.xml import pack_xml
+        from bzrlib.xml import serializer_v4
         from cStringIO import StringIO
         from bzrlib.osutils import sha_file
 
@@ -199,7 +199,7 @@ class ChangesetReader(object):
         for rev, rev_info in zip(self.info.real_revisions, self.info.revisions):
             assert rev.revision_id == rev_info.rev_id
             sio = StringIO()
-            pack_xml(rev, sio)
+            serializer_v4.write_revision(rev, sio)
             sio.seek(0)
             sha1 = sha_file(sio)
             if sha1 != rev_info.sha1:
@@ -294,7 +294,7 @@ class ChangesetReader(object):
         """At this point we should have generated the ChangesetTree,
         so build up an inventory, and make sure the hashes match.
         """
-        from bzrlib.xml import pack_xml
+        from bzrlib.xml import serializer_v4
         from cStringIO import StringIO
         from bzrlib.osutils import sha_file
 
@@ -302,7 +302,7 @@ class ChangesetReader(object):
 
         # Now we should have a complete inventory entry.
         sio = StringIO()
-        pack_xml(inv, sio)
+        serializer_v4.write_inventory(inv, sio)
         sio.seek(0)
         sha1 = sha_file(sio)
         # Target revision is the last entry in the real_revisions list
