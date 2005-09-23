@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import BaseHTTPServer, SimpleHTTPServer
+import BaseHTTPServer, SimpleHTTPServer, socket, errno, time
 from bzrlib.selftest import TestCaseInTempDir
 
 
@@ -27,16 +27,48 @@ class BadWebserverPath(ValueError):
 
 class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
-        self.server.test_case.log("webserver - %s - - [%s] %s\n" %
+        self.server.test_case.log("webserver - %s - - [%s] %s" %
                                   (self.address_string(),
                                    self.log_date_time_string(),
                                    format%args))
+
+    def handle_one_request(self):
+        """Handle a single HTTP request.
+
+        You normally don't need to override this method; see the class
+        __doc__ string for information on how to handle specific HTTP
+        commands such as GET and POST.
+
+        """
+        for i in xrange(1,11): # Don't try more than 10 times
+            try:
+                self.raw_requestline = self.rfile.readline()
+            except socket.error, e:
+                if e.args[0] == errno.EAGAIN:
+                    self.log_message('EAGAIN (%d) while reading from raw_requestline' % i)
+                    time.sleep(0.01)
+                    continue
+                raise
+            else:
+                break
+        if not self.raw_requestline:
+            self.close_connection = 1
+            return
+        if not self.parse_request(): # An error code has been sent, just exit
+            return
+        mname = 'do_' + self.command
+        if not hasattr(self, mname):
+            self.send_error(501, "Unsupported method (%r)" % self.command)
+            return
+        method = getattr(self, mname)
+        method()
 
 class TestingHTTPServer(BaseHTTPServer.HTTPServer):
     def __init__(self, server_address, RequestHandlerClass, test_case):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
                                                 RequestHandlerClass)
         self.test_case = test_case
+
 
 class TestCaseWithWebserver(TestCaseInTempDir):
     """Derived class that starts a localhost-only webserver
@@ -70,7 +102,7 @@ class TestCaseWithWebserver(TestCaseInTempDir):
 
         self._http_base_url = 'http://localhost:%s/' % port
         self._http_starting.release()
-        httpd.socket.settimeout(1)
+        httpd.socket.settimeout(0.1)
 
         while self._http_running:
             try:
@@ -95,7 +127,7 @@ class TestCaseWithWebserver(TestCaseInTempDir):
         return self._http_base_url + remote_path
 
     def setUp(self):
-        super(TestCaseWithWebserver, self).setUp()
+        TestCaseInTempDir.setUp(self)
         import threading, os
         self._local_path_parts = self.test_dir.split(os.path.sep)
         self._http_starting = threading.Lock()
@@ -109,4 +141,5 @@ class TestCaseWithWebserver(TestCaseInTempDir):
     def tearDown(self):
         self._http_running = False
         self._http_thread.join()
-        super(TestCaseWithWebserver, self).tearDown()
+        TestCaseInTempDir.tearDown(self)
+
