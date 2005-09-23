@@ -84,7 +84,7 @@ try:
         f = None
 
         def unlock(self):
-            fcntl.flock(self.f, fcntl.LOCK_UN)
+            fcntl.lockf(self.f, fcntl.LOCK_UN)
             self.f.close()
             del self.f 
 
@@ -92,7 +92,7 @@ try:
     class _fcntl_WriteLock(_fcntl_FileLock):
         def __init__(self, filename):
             try:
-                fcntl.flock(self._open(filename, 'wb'), fcntl.LOCK_EX)
+                fcntl.lockf(self._open(filename, 'wb'), fcntl.LOCK_EX)
             except Exception, e:
                 raise LockError(e)
 
@@ -100,7 +100,7 @@ try:
     class _fcntl_ReadLock(_fcntl_FileLock):
         def __init__(self, filename):
             try:
-                fcntl.flock(self._open(filename, 'rb'), fcntl.LOCK_SH)
+                fcntl.lockf(self._open(filename, 'rb'), fcntl.LOCK_SH)
             except Exception, e:
                 raise LockError(e)
 
