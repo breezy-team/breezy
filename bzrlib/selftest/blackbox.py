@@ -211,15 +211,6 @@ class TestCommands(ExternalBase):
         output = self.runbzr('diff -r last:3..last:1', backtick=1)
         self.assert_('\n+baz' in output)
 
-    def test_diff(self):
-        self.example_branch()
-        file('hello', 'wt').write('hello world!')
-        self.runbzr('commit -m fixing hello')
-        output = self.runbzr('diff -r 2..3', backtick=1)
-        self.assert_('\n+hello world!' in output)
-        output = self.runbzr('diff -r last:3..last:1', backtick=1)
-        self.assert_('\n+baz' in output)
-
     def test_merge(self):
         from bzrlib.branch import Branch
         
