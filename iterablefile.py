@@ -109,7 +109,9 @@ class IterableFile(object):
     def _make_iterator(self):
         while not self._file_base.done:
             self._check_closed()
-            yield self._file_base.read_to('\n')
+            result = self._file_base.read_to('\n')
+            if result != '':
+                yield result
 
     def _check_closed(self):
         if self.closed:
@@ -149,6 +151,14 @@ class IterableFile(object):
         >>> f.next()
         Traceback (most recent call last):
         ValueError: File is closed.
+        >>> f = IterableFile(['This \\n', 'is ', 'a ', 'test.\\n'])
+        >>> f.next()
+        'This \\n'
+        >>> f.next()
+        'is a test.\\n'
+        >>> f.next()
+        Traceback (most recent call last):
+        StopIteration
         """
         self._check_closed()
         return self._iter.next()
