@@ -62,15 +62,18 @@ class cmd_status(Command):
     directory is shown.  Otherwise, only the status of the specified
     files or directories is reported.  If a directory is given, status
     is reported for everything inside that directory.
+
+    If a revision argument is given, the status is calculated against
+    that revision, or between two revisions if two are provided.
     """
     # XXX: FIXME: bzr status should accept a -r option to show changes
     # relative to a revision, or between revisions
 
     takes_args = ['file*']
-    takes_options = ['all', 'show-ids']
+    takes_options = ['all', 'show-ids', 'revision']
     aliases = ['st', 'stat']
     
-    def run(self, all=False, show_ids=False, file_list=None):
+    def run(self, all=False, show_ids=False, file_list=None, revision=None):
         if file_list:
             b = Branch.open_containing(file_list[0])
             file_list = [b.relpath(x) for x in file_list]
@@ -83,7 +86,7 @@ class cmd_status(Command):
             
         from bzrlib.status import show_status
         show_status(b, show_unchanged=all, show_ids=show_ids,
-                    specific_files=file_list)
+                    specific_files=file_list, revision=revision)
 
 
 class cmd_cat_revision(Command):

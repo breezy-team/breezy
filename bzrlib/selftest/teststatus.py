@@ -22,6 +22,7 @@ Most of these depend on the particular formatting used.
 
 
 from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.revisionspec import RevisionSpec
 
 class BranchStatus(TestCaseInTempDir):
     
@@ -50,4 +51,45 @@ class BranchStatus(TestCaseInTempDir):
                            'pending merges:\n',
                            '  pending@pending-0-0\n'
                            ])
+
+    def test_branch_status_revisions(self):
+        """Tests branch status with revisions"""
+        from cStringIO import StringIO
+        from bzrlib.status import show_status
+        from bzrlib.branch import Branch
+        
+        b = Branch.initialize('.')
+
+        tof = StringIO()
+        self.build_tree(['hello.c', 'bye.c'])
+        b.add('hello.c')
+        b.add('bye.c')
+        b.commit('Test message')
+
+        tof = StringIO()
+        revs =[]
+        revs.append(RevisionSpec(0))
+        
+        show_status(b, to_file=tof, revision=revs)
+        
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['added:\n',
+                           '  bye.c\n',
+                           '  hello.c\n'])
+
+        self.build_tree(['more.c'])
+        b.add('more.c')
+        b.commit('Another test message')
+        
+        tof = StringIO()
+        revs.append(RevisionSpec(1))
+        
+        show_status(b, to_file=tof, revision=revs)
+        
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['added:\n',
+                           '  bye.c\n',
+                           '  hello.c\n'])
 

@@ -1,3 +1,10 @@
+development head
+
+  IMPROVEMENTS:
+
+    * Status now accepted a -r argument to give status between chosen
+      revisions. Contributed by Heikki Paajanen.
+
 bzr 0.0.8 2005-09-20
 
   IMPROVEMENTS:
