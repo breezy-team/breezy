@@ -564,11 +564,6 @@ class PatchesTester(unittest.TestCase):
             lines = []
             count = 0
             for patch_line in patched_file:
-                # patched_file seems to return a final empty string
-                # rather than nothing. It means the contents of the
-                # file will be identical, so we are just skipping it
-                if not patch_line:
-                    continue
                 self.assertEqual(patch_line, mod_lines[count])
                 count += 1
             self.assertEqual(count, len(mod_lines))
