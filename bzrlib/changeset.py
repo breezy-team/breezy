@@ -18,6 +18,7 @@ import errno
 import patch
 import stat
 from bzrlib.trace import mutter
+from bzrlib.osutils import rename
 
 # XXX: mbp: I'm not totally convinced that we should handle conflicts
 # as part of changeset application, rather than only in the merge
@@ -353,7 +354,7 @@ class Diff3Merge(object):
         status = patch.diff3(new_file, filename, base, other)
         if status == 0:
             os.chmod(new_file, os.stat(filename).st_mode)
-            os.rename(new_file, filename)
+            rename(new_file, filename)
             return
         else:
             assert(status == 1)
@@ -831,7 +832,7 @@ def rename_to_temp_delete(source_entries, inventory, dir, temp_dir,
             if src_path is not None:
                 src_path = os.path.join(dir, src_path)
                 try:
-                    os.rename(src_path, to_name)
+                    rename(src_path, to_name)
                     temp_name[entry.id] = to_name
                 except OSError, e:
                     if e.errno != errno.ENOENT:
@@ -874,7 +875,7 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
             if old_path is None:
                 continue
             try:
-                os.rename(old_path, new_path)
+                rename(old_path, new_path)
                 changed_inventory[entry.id] = new_tree_path
             except OSError, e:
                 raise Exception ("%s is missing" % new_path)

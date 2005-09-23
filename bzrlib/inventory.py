@@ -79,16 +79,16 @@ class InventoryEntry(object):
     InventoryEntry('2326', 'wibble.c', kind='file', parent_id='2325')
     >>> i['2326']
     InventoryEntry('2326', 'wibble.c', kind='file', parent_id='2325')
-    >>> for j in i.iter_entries():
-    ...     print j[0]
-    ...     assert i.path2id(j[0])
+    >>> for path, entry in i.iter_entries():
+    ...     print path.replace('\\\\', '/')     # for win32 os.sep
+    ...     assert i.path2id(path)
     ... 
     src
     src/bye.c
     src/hello.c
     src/wibble
     src/wibble/wibble.c
-    >>> i.id2path('2326')
+    >>> i.id2path('2326').replace('\\\\', '/')
     'src/wibble/wibble.c'
 
     TODO: Maybe also keep the full path of the entry, and the children?

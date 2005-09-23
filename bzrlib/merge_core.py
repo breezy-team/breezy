@@ -1,7 +1,7 @@
 import changeset
 from changeset import Inventory, apply_changeset, invert_dict
 import os.path
-from osutils import backup_file
+from osutils import backup_file, rename
 from merge3 import Merge3
 
 class ApplyMerge3:
@@ -51,7 +51,7 @@ class ApplyMerge3:
         output_file.close()
         if not new_conflicts:
             os.chmod(new_file, os.stat(filename).st_mode)
-            os.rename(new_file, filename)
+            rename(new_file, filename)
             return
         else:
             conflict_handler.merge_conflict(new_file, filename, base_lines,

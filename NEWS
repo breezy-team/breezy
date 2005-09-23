@@ -11,6 +11,14 @@ development head
       select everything from yesterday and before today. Contributed by
       Robey Pointer
 
+    * There is now a bzr.bat file created by distutils when building on 
+      Windows. Contributed by Alexander Belchenko.
+
+  BUG FIXES:
+
+    * Various minor bug in windows support have been fixed, largely in the
+      test suite. Contributed by Alexander Belchenko.
+
 bzr 0.0.8 2005-09-20
 
   IMPROVEMENTS:

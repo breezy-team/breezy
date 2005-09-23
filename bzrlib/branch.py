@@ -21,8 +21,7 @@ import os
 import bzrlib
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
-     splitpath, \
-     sha_file, appendpath, file_kind
+     rename, splitpath, sha_file, appendpath, file_kind
 
 from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId, \
      DivergedBranches, NotBranchError
@@ -988,7 +987,7 @@ class LocalBranch(Branch):
             from_abs = self.abspath(from_rel)
             to_abs = self.abspath(to_rel)
             try:
-                os.rename(from_abs, to_abs)
+                rename(from_abs, to_abs)
             except OSError, e:
                 raise BzrError("failed to rename %r to %r: %s"
                         % (from_abs, to_abs, e[1]),
@@ -1057,7 +1056,7 @@ class LocalBranch(Branch):
                 result.append((f, dest_path))
                 inv.rename(inv.path2id(f), to_dir_id, name_tail)
                 try:
-                    os.rename(self.abspath(f), self.abspath(dest_path))
+                    rename(self.abspath(f), self.abspath(dest_path))
                 except OSError, e:
                     raise BzrError("failed to rename %r to %r: %s" % (f, dest_path, e[1]),
                             ["rename rolled back"])
@@ -1242,7 +1241,11 @@ class ScratchBranch(LocalBranch):
         """
         >>> orig = ScratchBranch(files=["file1", "file2"])
         >>> clone = orig.clone()
-        >>> os.path.samefile(orig.base, clone.base)
+        >>> if os.name != 'nt':
+        ...   os.path.samefile(orig.base, clone.base)
+        ... else:
+        ...   orig.base == clone.base
+        ...
         False
         >>> os.path.isfile(os.path.join(clone.base, "file1"))
         True

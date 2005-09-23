@@ -106,14 +106,6 @@ def upgrade(branch):
                 tmpfd, tmp_path = tempfile.mkstemp(prefix=rev_id, suffix='.gz',
                     dir=branch.controlfilename('revision-store'))
                 os.close(tmpfd)
-                def special_rename(p1, p2):
-                    if sys.platform == 'win32':
-                        try:
-                            os.remove(p2)
-                        except OSError, e:
-                            if e.errno != errno.ENOENT:
-                                raise
-                    os.rename(p1, p2)
 
                 try:
                     # TODO: We may need to handle the case where the old revision
@@ -121,13 +113,13 @@ def upgrade(branch):
 
                     # Remove the old revision entry out of the way
                     rev_path = branch.controlfilename(['revision-store', rev_id+'.gz'])
-                    special_rename(rev_path, tmp_path)
+                    rename(rev_path, tmp_path)
                     branch.revision_store.add(rev_tmp, rev_id) # Add the new one
                     os.remove(tmp_path) # Remove the old name
                     mutter('    Updated revision entry {%s}' % rev_id)
                 except:
                     # On any exception, restore the old entry
-                    special_rename(tmp_path, rev_path)
+                    rename(tmp_path, rev_path)
                     raise
                 rev_tmp.close()
                 updated_revisions.append(rev_id)

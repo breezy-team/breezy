@@ -113,18 +113,11 @@ def backup_file(fn):
     finally:
         outf.close()
 
-def rename(path_from, path_to):
-    """Basically the same as os.rename() just special for win32"""
-    if sys.platform == 'win32':
-        try:
-            os.remove(path_to)
-        except OSError, e:
-            if e.errno != e.ENOENT:
-                raise
-    os.rename(path_from, path_to)
-
-
-
+if os.name == 'nt':
+    import shutil
+    rename = shutil.move
+else:
+    rename = os.rename
 
 
 def isdir(f):
@@ -133,7 +126,6 @@ def isdir(f):
         return S_ISDIR(os.lstat(f)[ST_MODE])
     except OSError:
         return False
-
 
 
 def isfile(f):
@@ -154,11 +146,11 @@ def is_inside(dir, fname):
     The empty string as a dir name is taken as top-of-tree and matches 
     everything.
     
-    >>> is_inside('src', 'src/foo.c')
+    >>> is_inside('src', os.path.join('src', 'foo.c'))
     True
     >>> is_inside('src', 'srccontrol')
     False
-    >>> is_inside('src', 'src/a/a/a/foo.c')
+    >>> is_inside('src', os.path.join('src', 'a', 'a', 'a', 'foo.c'))
     True
     >>> is_inside('foo.c', 'foo.c')
     True

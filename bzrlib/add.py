@@ -22,7 +22,6 @@ from os.path import dirname
 
 def glob_expand_for_win32(file_list):
     import glob
-    
     expanded_file_list = []
     for possible_glob in file_list:
         glob_files = glob.glob(possible_glob)

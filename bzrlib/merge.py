@@ -84,7 +84,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
             last_new_name = name
         new_name = last_new_name+suffix
         try:
-            os.rename(name, new_name)
+            rename(name, new_name)
             return new_name
         except OSError, e:
             if e.errno != errno.EEXIST and e.errno != errno.ENOTEMPTY:
@@ -108,7 +108,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
         self.add_suffix(this_path, ".THIS")
         self.dump(base_lines, this_path+".BASE")
         self.dump(other_lines, this_path+".OTHER")
-        os.rename(new_file, this_path)
+        rename(new_file, this_path)
         self.conflict("Diff3 conflict encountered in %s" % this_path)
 
     def new_contents_conflict(self, filename, other_contents):

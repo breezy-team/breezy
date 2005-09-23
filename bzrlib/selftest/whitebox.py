@@ -195,7 +195,8 @@ class PendingMerges(TestCaseInTempDir):
             # directory, or nearby
             os.chdir(dtmp)
 
-            self.assertEqual(rp('foo/bar/quux'), 'foo/bar/quux')
+            FOO_BAR_QUUX = os.path.join('foo', 'bar', 'quux')
+            self.assertEqual(rp('foo/bar/quux'), FOO_BAR_QUUX)
 
             self.assertEqual(rp('foo'), 'foo')
 
