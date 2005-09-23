@@ -134,7 +134,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
             
 def get_tree(treespec, temp_root, label, local_branch=None):
     location, revno = treespec
-    branch = Branch.open(location)
+    branch = Branch.open_containing(location)
     if revno is None:
         revision = None
     elif revno == -1:

@@ -38,4 +38,12 @@ class TestBase(TestCase):
         assert nodes[3] in ('B', 'M')
         assert nodes[4] in ('B', 'M')
 
+        #Ensure we don't shortcut through B when there's only a difference of
+        # 1 in distance
+        self.graph = {}
+        self.edge_add('A', 'B', 'C')
+        self.edge_add('A', 'D', 'E', 'C')
+        descendants = self.node_descendants()
+        distances = node_distances(self.graph, descendants, 'A')
+        self.assertEqual(distances['C'], 3)
 

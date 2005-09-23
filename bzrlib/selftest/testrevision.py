@@ -15,7 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.selftest import TestCaseInTempDir
-
+from bzrlib.revision import is_ancestor, MultipleRevisionSources
+from bzrlib.revision import combined_graph
 
 def make_branches():
     from bzrlib.branch import Branch
@@ -48,7 +49,6 @@ def make_branches():
 class TestIsAncestor(TestCaseInTempDir):
     def test_is_ancestor(self):
         """Test checking whether a revision is an ancestor of another revision"""
-        from bzrlib.revision import is_ancestor, MultipleRevisionSources
         from bzrlib.errors import NoSuchRevision
         br1, br2 = make_branches()
         revisions = br1.revision_history()
@@ -212,3 +212,15 @@ class TestCommonAncestor(TestCaseInTempDir):
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
                           revisions[4])
 
+    def test_combined(self):
+        """combined_graph
+        Ensure it's not order-sensitive
+        """
+        br1, br2 = make_branches()
+        source = MultipleRevisionSources(br1, br2)
+        combined_1 = combined_graph(br1.last_patch(), br2.last_patch(), source)
+        combined_2 = combined_graph(br2.last_patch(), br1.last_patch(), source)
+        assert combined_1[1] == combined_2[1]
+        assert combined_1[2] == combined_2[2]
+        assert combined_1[3] == combined_2[3]
+        assert combined_1 == combined_2

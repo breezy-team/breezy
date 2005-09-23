@@ -164,6 +164,10 @@ class TestCommands(ExternalBase):
         self.check_file_contents('hello', 'foo')
         self.runbzr('revert hello')
         self.check_file_contents('hello', 'xyz')
+        os.chdir('revertdir')
+        self.runbzr('revert')
+        os.chdir('..')
+
 
     def test_mv_modes(self):
         """Test two modes of operation for mv"""
@@ -211,6 +215,15 @@ class TestCommands(ExternalBase):
         output = self.runbzr('diff -r last:3..last:1', backtick=1)
         self.assert_('\n+baz' in output)
 
+    def test_branch(self):
+        """Branch from one branch to another."""
+        os.mkdir('a')
+        os.chdir('a')
+        self.example_branch()
+        os.chdir('..')
+        self.runbzr('branch a b')
+        self.runbzr('branch a c -r 1')
+
     def test_merge(self):
         from bzrlib.branch import Branch
         
@@ -256,6 +269,8 @@ class TestCommands(ExternalBase):
         self.runbzr('branch a b')
         os.chdir('b')
         self.runbzr('pull')
+        os.mkdir('subdir')
+        self.runbzr('add subdir')
         self.runbzr('commit -m blah --unchanged')
         os.chdir('../a')
         a = Branch.open('.')
@@ -270,8 +285,8 @@ class TestCommands(ExternalBase):
         os.chdir('../a')
         self.runbzr('merge ../b')
         self.runbzr('commit -m blah4 --unchanged')
-        os.chdir('../b')
-        self.runbzr('pull ../a')
+        os.chdir('../b/subdir')
+        self.runbzr('pull ../../a')
         assert a.revision_history()[-1] == b.revision_history()[-1]
         
     def test_add_reports(self):
