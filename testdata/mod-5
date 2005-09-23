@@ -60,161 +60,6 @@ def get_patch_names(iter_lines):
         raise MalformedPatchHeader("No mod line", "")
     return (orig_name, mod_name)
 
-def parse_range(textrange):
-    """Parse a patch range, handling the "1" special-case
-
-    :param textrange: The text to parse
-    :type textrange: str
-    :return: the position and range, as a tuple
-    :rtype: (int, int)
-    """
-    tmp = textrange.split(',')
-    if len(tmp) == 1:
-        pos = tmp[0]
-        range = "1"
-    else:
-        (pos, range) = tmp
-    pos = int(pos)
-    range = int(range)
-    return (pos, range)
-
- 
-def hunk_from_header(line):
-    if not line.startswith("@@") or not line.endswith("@@\n") \
-        or not len(line) > 4:
-        raise MalformedHunkHeader("Does not start and end with @@.", line)
-    try:
-        (orig, mod) = line[3:-4].split(" ")
-    except Exception, e:
-        raise MalformedHunkHeader(str(e), line)
-    if not orig.startswith('-') or not mod.startswith('+'):
-        raise MalformedHunkHeader("Positions don't start with + or -.", line)
-    try:
-        (orig_pos, orig_range) = parse_range(orig[1:])
-        (mod_pos, mod_range) = parse_range(mod[1:])
-    except Exception, e:
-        raise MalformedHunkHeader(str(e), line)
-    if mod_range < 0 or orig_range < 0:
-        raise MalformedHunkHeader("Hunk range is negative", line)
-    return Hunk(orig_pos, orig_range, mod_pos, mod_range)
-
-
-class HunkLine:
-    def __init__(self, contents):
-        self.contents = contents
-
-    def get_str(self, leadchar):
-        if self.contents == "\n" and leadchar == " " and False:
-            return "\n"
-        if not self.contents.endswith('\n'):
-            terminator = '\n' + NO_NL
-        else:
-            terminator = ''
-        return leadchar + self.contents + terminator
-
-
-class ContextLine(HunkLine):
-    def __init__(self, contents):
-        HunkLine.__init__(self, contents)
-
-    def __str__(self):
-        return self.get_str(" ")
-
-
-class InsertLine(HunkLine):
-    def __init__(self, contents):
-        HunkLine.__init__(self, contents)
-
-    def __str__(self):
-        return self.get_str("+")
-
-
-class RemoveLine(HunkLine):
-    def __init__(self, contents):
-        HunkLine.__init__(self, contents)
-
-    def __str__(self):
-        return self.get_str("-")
-
-NO_NL = '\\ No newline at end of file\n'
-__pychecker__="no-returnvalues"
-
-def parse_line(line):
-    if line.startswith("\n"):
-        return ContextLine(line)
-    elif line.startswith(" "):
-        return ContextLine(line[1:])
-    elif line.startswith("+"):
-        return InsertLine(line[1:])
-    elif line.startswith("-"):
-        return RemoveLine(line[1:])
-    elif line == NO_NL:
-        return NO_NL
-    else:
-        raise MalformedLine("Unknown line type", line)
-__pychecker__=""
-
-
-class Hunk:
-    def __init__(self, orig_pos, orig_range, mod_pos, mod_range):
-        self.orig_pos = orig_pos
-        self.orig_range = orig_range
-        self.mod_pos = mod_pos
-        self.mod_range = mod_range
-        self.lines = []
-
-    def get_header(self):
-        return "@@ -%s +%s @@\n" % (self.range_str(self.orig_pos, 
-                                                   self.orig_range),
-                                    self.range_str(self.mod_pos, 
-                                                   self.mod_range))
-
-    def range_str(self, pos, range):
-        """Return a file range, special-casing for 1-line files.
-
-        :param pos: The position in the file
-        :type pos: int
-        :range: The range in the file
-        :type range: int
-        :return: a string in the format 1,4 except when range == pos == 1
-        """
-        if range == 1:
-            return "%i" % pos
-        else:
-            return "%i,%i" % (pos, range)
-
-    def __str__(self):
-        lines = [self.get_header()]
-        for line in self.lines:
-            lines.append(str(line))
-        return "".join(lines)
-
-    def shift_to_mod(self, pos):
-        if pos < self.orig_pos-1:
-            return 0
-        elif pos > self.orig_pos+self.orig_range:
-            return self.mod_range - self.orig_range
-        else:
-            return self.shift_to_mod_lines(pos)
-
-    def shift_to_mod_lines(self, pos):
-        assert (pos >= self.orig_pos-1 and pos <= self.orig_pos+self.orig_range)
-        position = self.orig_pos-1
-        shift = 0
-        for line in self.lines:
-            if isinstance(line, InsertLine):
-                shift += 1
-            elif isinstance(line, RemoveLine):
-                if position == pos:
-                    return None
-                shift -= 1
-                position += 1
-            elif isinstance(line, ContextLine):
-                position += 1
-            if position > pos:
-                break
-        return shift
-
 def iter_hunks(iter_lines):
     hunk = None
     for line in iter_lines:
@@ -300,7 +145,7 @@ def parse_patch(iter_lines):
 def iter_file_patch(iter_lines):
     saved_lines = []
     for line in iter_lines:
-        if line.startswith('=== ') or line.startswith('*** '):
+        if line.startswith('=== '):
             continue
         elif line.startswith('--- '):
             if len(saved_lines) > 0:
@@ -391,9 +236,6 @@ def iter_patched(orig_lines, patch_lines):
                 else:
                     assert isinstance(hunk_line, RemoveLine)
                 line_no += 1
-    if orig_lines is not None:
-        for line in orig_lines:
-            yield line
                     
 import unittest
 import os.path
@@ -544,34 +386,6 @@ class PatchesTester(unittest.TestCase):
                                          line.contents))
                     assert(line.contents == next)
         self.assertRaises(StopIteration, rem_iter.next)
-
-    def testPatching(self):
-        """Test a few patch files, and make sure they work."""
-        from iterablefile import IterableFile
-        files = [
-            ('diff-2', 'orig-2', 'mod-2'),
-            ('diff-3', 'orig-3', 'mod-3'),
-            ('diff-4', 'orig-4', 'mod-4'),
-            ('diff-5', 'orig-5', 'mod-5'),
-            ('diff-6', 'orig-6', 'mod-6'),
-        ]
-        for diff, orig, mod in files:
-            patch = self.datafile(diff)
-            orig_lines = list(self.datafile(orig))
-            mod_lines = list(self.datafile(mod))
-
-            patched_file = IterableFile(iter_patched(orig_lines, patch))
-            lines = []
-            count = 0
-            for patch_line in patched_file:
-                # patched_file seems to return a final empty string
-                # rather than nothing. It means the contents of the
-                # file will be identical, so we are just skipping it
-                if not patch_line:
-                    continue
-                self.assertEqual(patch_line, mod_lines[count])
-                count += 1
-            self.assertEqual(count, len(mod_lines))
 
     def testFirstLineRenumber(self):
         """Make sure we handle lines at the beginning of the hunk"""
