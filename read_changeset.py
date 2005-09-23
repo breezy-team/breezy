@@ -457,12 +457,12 @@ class ChangesetReader(object):
         lines = []
         for line in self._next():
             if first:
-                if line[:3] != '***':
+                if line[:3] != '===':
                     raise MalformedPatches('The first line of all patches'
-                        ' should be a bzr meta line "***"'
+                        ' should be a bzr meta line "==="'
                         ': %r' % line)
                 action = decode(line[4:-1])
-            if self._next_line is not None and self._next_line[:3] == '***':
+            if self._next_line is not None and self._next_line[:3] == '===':
                 return action, lines, True
             elif self._next_line is None or self._next_line[:1] == '#':
                 return action, lines, False

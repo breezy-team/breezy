@@ -388,7 +388,7 @@ class MetaInfoHeader(object):
 
         for path, file_id, kind in self.delta.removed:
             # We don't care about text ids for removed files
-            write('*** removed %s %s' % (kind, path), indent=0)
+            write('=== removed %s %s' % (kind, path), indent=0)
             if kind == 'file' and self.full_remove:
                 diff_file(pjoin(self.base_label, path),
                           self.base_tree.get_file(file_id).readlines(),
@@ -397,7 +397,7 @@ class MetaInfoHeader(object):
                           self.to_file)
     
         for path, file_id, kind in self.delta.added:
-            write('*** added %s %s // file-id:%s%s' % (kind,
+            write('=== added %s %s // file-id:%s%s' % (kind,
                     path, file_id, get_text_id_str(file_id, kind)),
                     indent=0)
             if kind == 'file':
@@ -408,7 +408,7 @@ class MetaInfoHeader(object):
                           self.to_file)
     
         for old_path, new_path, file_id, kind, text_modified in self.delta.renamed:
-            write('*** renamed %s %s // %s%s' % (kind,
+            write('=== renamed %s %s // %s%s' % (kind,
                     old_path, new_path,
                     get_text_id_str(file_id, kind, modified=text_modified)),
                     indent=0)
@@ -431,7 +431,7 @@ class MetaInfoHeader(object):
                               self.to_file)
     
         for path, file_id, kind in self.delta.modified:
-            write('*** modified %s %s%s' % (kind,
+            write('=== modified %s %s%s' % (kind,
                     path, get_text_id_str(file_id, kind)),
                     indent=0)
             if kind == 'file':
