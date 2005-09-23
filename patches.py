@@ -300,7 +300,7 @@ def parse_patch(iter_lines):
 def iter_file_patch(iter_lines):
     saved_lines = []
     for line in iter_lines:
-        if line.startswith('=== '):
+        if line.startswith('=== ') or line.startswith('*** '):
             continue
         elif line.startswith('--- '):
             if len(saved_lines) > 0:
