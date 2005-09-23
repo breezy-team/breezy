@@ -391,6 +391,8 @@ def iter_patched(orig_lines, patch_lines):
                 else:
                     assert isinstance(hunk_line, RemoveLine)
                 line_no += 1
+    for line in orig_lines:
+        yield line
                     
 import unittest
 import os.path
