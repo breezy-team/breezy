@@ -48,11 +48,15 @@ class cmd_uncommit(bzrlib.commands.Command):
             lf = log_formatter('short', to_file=sys.stdout,show_timezone='original')
             lf.show(r, b.get_revision(rev_id), None)
 
-        print 'The above revision(s) will be removed.'
-        val = raw_input('Are you sure [y/N]? ')
-        if val.lower() not in ('y', 'yes'):
-            print 'Canceled'
-            return 0
+        if dry_run:
+            print 'Dry-run, pretending to remove the above revisions.'
+            val = raw_input('Press <enter> to continue')
+        else:
+            print 'The above revision(s) will be removed.'
+            val = raw_input('Are you sure [y/N]? ')
+            if val.lower() not in ('y', 'yes'):
+                print 'Canceled'
+                return 0
 
         uncommit.uncommit(b, remove_files=remove,
                 dry_run=dry_run, verbose=verbose,

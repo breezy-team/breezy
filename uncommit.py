@@ -69,7 +69,7 @@ def uncommit(branch, remove_files=False,
                     rev.inventory_id + '.gz'])
             files_to_remove.append(inv_file)
 
-    if verbose:
+    if verbose and files_to_remove:
         print 'Removing files:'
         for f in files_to_remove:
             print '\t%s' % branch.relpath(f)
