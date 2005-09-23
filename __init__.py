@@ -26,13 +26,13 @@ class cmd_uncommit(bzrlib.commands.Command):
 
     def run(self, location=None, remove=False,
             dry_run=False, verbose=False):
-        from bzrlib.branch import find_branch
+        from bzrlib.branch import Branch
         from bzrlib.log import log_formatter
         import uncommit, sys
 
         if location is None:
             location = '.'
-        b = find_branch(location)
+        b = Branch.open_containing(location)
 
         revno = b.revno()
         rev_id = b.last_patch()
