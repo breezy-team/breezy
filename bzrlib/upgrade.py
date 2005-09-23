@@ -78,7 +78,6 @@ if False:
 
 import os
 import tempfile
-import hotshot, hotshot.stats
 import sys
 import logging
 import shutil
@@ -103,14 +102,13 @@ class Convert(object):
         self.absent_revisions = set()
         self.text_count = 0
         self.revisions = {}
-        self.inventories = {}
         self.convert()
 
 
     def convert(self):
         if not self._open_branch():
             return
-        note('starting upgrade of %s', self.base)
+        note('starting upgrade of %s', os.path.abspath(self.base))
         self._backup_control_dir()
         note('starting upgrade')
         note('note: upgrade may be faster if all store files are ungzipped first')
@@ -183,6 +181,7 @@ class Convert(object):
     def _backup_control_dir(self):
         orig = self.base + '/.bzr'
         backup = orig + '.backup'
+        note('making backup of tree history')
         shutil.copytree(orig, backup)
         note('%s has been backed up to %s', orig, backup)
         note('if conversion fails, you can move this directory back to .bzr')
@@ -246,32 +245,60 @@ class Convert(object):
                 self.known_revisions.add(parent_id)
                 self.to_read.append(parent_id)
             self.revisions[rev_id] = rev
-            old_inv_xml = self.branch.inventory_store[rev_id].read()
-            inv = serializer_v4.read_inventory_from_string(old_inv_xml)
-            assert rev.inventory_sha1 == sha_string(old_inv_xml)
-            self.inventories[rev_id] = inv
+
+
+    def _load_old_inventory(self, rev_id):
+        assert rev_id not in self.converted_revs
+        old_inv_xml = self.branch.inventory_store[rev_id].read()
+        inv = serializer_v4.read_inventory_from_string(old_inv_xml)
+        rev = self.revisions[rev_id]
+        if rev.inventory_sha1:
+            assert rev.inventory_sha1 == sha_string(old_inv_xml), \
+                'inventory sha mismatch for {%s}' % rev_id
+        return inv
         
+
+    def _load_updated_inventory(self, rev_id):
+        assert rev_id in self.converted_revs
+        inv_xml = self.inv_weave.get_text(rev_id)
+        inv = serializer_v5.read_inventory_from_string(inv_xml)
+        return inv
+
 
     def _convert_one_rev(self, rev_id):
         """Convert revision and all referenced objects to new format."""
         rev = self.revisions[rev_id]
-        inv = self.inventories[rev_id]
+        inv = self._load_old_inventory(rev_id)
         for parent_id in rev.parent_ids[:]:
             if parent_id in self.absent_revisions:
                 rev.parent_ids.remove(parent_id)
                 self.pb.clear()
                 note('remove {%s} as parent of {%s}', parent_id, rev_id)
         self._convert_revision_contents(rev, inv)
-        # the XML is now updated with text versions
-        new_inv_xml = serializer_v5.write_inventory_to_string(inv)
-        new_inv_sha1 = sha_string(new_inv_xml)
-        self.inv_weave.add(rev_id, rev.parent_ids,
-                           new_inv_xml.splitlines(True),
-                           new_inv_sha1)
-        # TODO: Upgrade revision XML and write that out
-        rev.inventory_sha1 = new_inv_sha1
+        self._store_new_weave(rev, inv)
         self._make_rev_ancestry(rev)
         self.converted_revs.add(rev_id)
+
+
+    def _store_new_weave(self, rev, inv):
+        # the XML is now updated with text versions
+        if __debug__:
+            for file_id in inv:
+                ie = inv[file_id]
+                if ie.kind == 'root_directory':
+                    continue
+                assert hasattr(ie, 'name_version'), \
+                    'no name_version on {%s} in {%s}' % \
+                    (file_id, rev.revision_id)
+                if ie.kind == 'file':
+                    assert hasattr(ie, 'text_version')
+
+        new_inv_xml = serializer_v5.write_inventory_to_string(inv)
+        new_inv_sha1 = sha_string(new_inv_xml)
+        self.inv_weave.add(rev.revision_id, rev.parent_ids,
+                           new_inv_xml.splitlines(True),
+                           new_inv_sha1)
+        rev.inventory_sha1 = new_inv_sha1
 
 
     def _make_rev_ancestry(self, rev):
@@ -298,29 +325,34 @@ class Convert(object):
         rev_id = rev.revision_id
         mutter('converting texts of revision {%s}',
                rev_id)
+        parent_invs = map(self._load_updated_inventory, rev.parent_ids)
         for file_id in inv:
             ie = inv[file_id]
-            self._set_name_version(rev, ie)
+            self._set_name_version(rev, ie, parent_invs)
             if ie.kind != 'file':
                 continue
-            self._convert_file_version(rev, ie)
+            self._convert_file_version(rev, ie, parent_invs)
 
 
-    def _set_name_version(self, rev, ie):
+    def _set_name_version(self, rev, ie, parent_invs):
         """Set name version for a file.
 
         Done in a slightly lazy way: if the file is renamed or in a merge revision
         it gets a new version, otherwise the same as before.
         """
         file_id = ie.file_id
-        if len(rev.parent_ids) != 1:
+        if ie.kind == 'root_directory':
+            return
+        if len(parent_invs) != 1:
             ie.name_version = rev.revision_id
         else:
-            old_inv = self.inventories[rev.parent_ids[0]]
+            old_inv = parent_invs[0]
             if not old_inv.has_id(file_id):
                 ie.name_version = rev.revision_id
             else:
                 old_ie = old_inv[file_id]
+                import pdb
+                # pdb.set_trace()
                 if (old_ie.parent_id != ie.parent_id
                     or old_ie.name != ie.name):
                     ie.name_version = rev.revision_id
@@ -329,7 +361,7 @@ class Convert(object):
 
 
 
-    def _convert_file_version(self, rev, ie):
+    def _convert_file_version(self, rev, ie, parent_invs):
         """Convert one version of one file.
 
         The file needs to be added into the weave if it is a merge
@@ -343,12 +375,7 @@ class Convert(object):
             self.text_weaves[file_id] = w
         file_parents = []
         text_changed = False
-        for parent_id in rev.parent_ids:
-            ##if parent_id in self.absent_revisions:
-            ##    continue
-            assert parent_id in self.converted_revs, \
-                   'parent {%s} not converted' % parent_id
-            parent_inv = self.inventories[parent_id]
+        for parent_inv in parent_invs:
             if parent_inv.has_id(file_id):
                 parent_ie = parent_inv[file_id]
                 old_text_version = parent_ie.text_version
