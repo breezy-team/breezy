@@ -9,7 +9,7 @@ import bzrlib, bzrlib.commands
 class cmd_uncommit(bzrlib.commands.Command):
     """Remove the last committed revision.
 
-    By supplying the --remove flag, it will not only remove the entry 
+    By supplying the --all flag, it will not only remove the entry 
     from revision_history, but also remove all of the entries in the
     stores.
 
@@ -20,11 +20,11 @@ class cmd_uncommit(bzrlib.commands.Command):
     In the future, uncommit will create a changeset, which can then
     be re-applied.
     """
-    takes_options = ['remove', 'dry-run', 'verbose', 'revision']
+    takes_options = ['all', 'dry-run', 'verbose', 'revision']
     takes_args = ['location?']
     aliases = []
 
-    def run(self, location=None, remove=False,
+    def run(self, location=None, all=False,
             dry_run=False, verbose=False,
             revision=None):
         from bzrlib.branch import Branch
@@ -58,10 +58,9 @@ class cmd_uncommit(bzrlib.commands.Command):
                 print 'Canceled'
                 return 0
 
-        uncommit.uncommit(b, remove_files=remove,
+        uncommit.uncommit(b, remove_files=all,
                 dry_run=dry_run, verbose=verbose,
                 revno=revno)
 
 bzrlib.commands.register_command(cmd_uncommit)
-bzrlib.commands.OPTIONS['remove'] = None
 bzrlib.commands.OPTIONS['dry-run'] = None
