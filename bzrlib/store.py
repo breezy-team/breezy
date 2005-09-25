@@ -24,7 +24,7 @@ unique ID.
 import os, tempfile, types, osutils, gzip, errno
 from stat import ST_SIZE
 from StringIO import StringIO
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, UnlistableStore
 from bzrlib.trace import mutter
 import bzrlib.ui
 
@@ -254,3 +254,10 @@ class ImmutableScratchStore(ImmutableStore):
             os.remove(fpath)
         os.rmdir(self._basedir)
         mutter("%r destroyed" % self)
+
+def copy_all(store_from, store_to):
+    """Copy all ids from one store to another."""
+    if not hasattr(store_from, "__iter__"):
+        raise UnlistableStore(store_from)
+    ids = [f for f in store_from]
+    store_to.copy_multi(store_from, ids)

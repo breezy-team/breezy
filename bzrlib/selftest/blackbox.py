@@ -29,6 +29,7 @@ it's normally invoked.
 from cStringIO import StringIO
 import sys
 import os
+import shutil
 
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
 from bzrlib.branch import Branch
@@ -223,6 +224,13 @@ class TestCommands(ExternalBase):
         os.chdir('..')
         self.runbzr('branch a b')
         self.runbzr('branch a c -r 1')
+        os.chdir('b')
+        self.runbzr('commit -m foo --unchanged')
+        os.chdir('..')
+        shutil.rmtree('a/.bzr/revision-store')
+        shutil.rmtree('a/.bzr/inventory-store')
+        shutil.rmtree('a/.bzr/text-store')
+        self.runbzr('branch a d --basis b')
 
     def test_merge(self):
         from bzrlib.branch import Branch

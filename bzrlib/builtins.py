@@ -374,10 +374,10 @@ class cmd_branch(Command):
     parameter, as in "branch foo/bar -r 5".
     """
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision']
+    takes_options = ['revision', 'basis']
     aliases = ['get', 'clone']
 
-    def run(self, from_location, to_location=None, revision=None):
+    def run(self, from_location, to_location=None, revision=None, basis=None):
         from bzrlib.branch import copy_branch
         import tempfile
         import errno
@@ -398,6 +398,10 @@ class cmd_branch(Command):
                 else:
                     raise
             br_from.setup_caching(cache_root)
+            if basis is not None:
+                basis_branch = Branch.open_containing(basis)
+            else:
+                basis_branch = None
             if len(revision) == 1 and revision[0] is not None:
                 revno = revision[0].in_history(br_from)[0]
             else:
@@ -416,11 +420,13 @@ class cmd_branch(Command):
                 else:
                     raise
             try:
-                copy_branch(br_from, to_location, revno)
+                copy_branch(br_from, to_location, revno, basis_branch)
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
                 msg = "The branch %s has no revision %d." % (from_location, revision[0])
                 raise BzrCommandError(msg)
+            except bzrlib.errors.UnlistableBranch:
+                msg = "The branch %s cannot be used as a --basis"
         finally:
             rmtree(cache_root)
 
