@@ -23,6 +23,7 @@ from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 import bzrlib
+from shutil import copyfile
 
 def make_readonly(filename):
     """Make a filename read-only."""
@@ -488,13 +489,6 @@ def appendpath(p1, p2):
         return os.path.join(p1, p2)
     
 
-def extern_command(cmd, ignore_errors = False):
-    mutter('external command: %s' % `cmd`)
-    if os.system(cmd):
-        if not ignore_errors:
-            raise BzrError('command failed')
-
-
 def _read_config_value(name):
     """Read a config value from the file ~/.bzr.conf/<name>
     Return None if the file does not exist"""
@@ -506,4 +500,14 @@ def _read_config_value(name):
             return None
         raise
 
-
+def link_or_copy(src, dest):
+    """Hardlink a file, or copy it if it can't be hardlinked."""
+    if sys.platform == 'win32':
+        copyfile(src, dest)
+        return
+    try:
+        os.link(src, dest)
+    except (OSError, IOError), e:
+        if e.errno != errno.EXDEV:
+            raise
+        copyfile(src, dest)

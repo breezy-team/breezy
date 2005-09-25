@@ -149,21 +149,20 @@ class ImmutableStore(object):
         return count, failed
 
     def copy_multi_immutable(self, other, to_copy, pb, permit_failure=False):
-        from shutil import copyfile
         count = 0
         failed = set()
         for id in to_copy:
             p = self._path(id)
             other_p = other._path(id)
             try:
-                copyfile(other_p, p)
-            except IOError, e:
+                osutils.link_or_copy(other_p, p)
+            except (IOError, OSError), e:
                 if e.errno == errno.ENOENT:
                     if not permit_failure:
-                        copyfile(other_p+".gz", p+".gz")
+                        osutils.link_or_copy(other_p+".gz", p+".gz")
                     else:
                         try:
-                            copyfile(other_p+".gz", p+".gz")
+                            osutils.link_or_copy(other_p+".gz", p+".gz")
                         except IOError, e:
                             if e.errno == errno.ENOENT:
                                 failed.add(id)
