@@ -372,6 +372,10 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
+
+    --basis is to speed up branching from remote branches.  When specified, it
+    copies all the file-contents, inventory and revision data from the basis
+    branch before copying anything from the remote branch.
     """
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision', 'basis']
