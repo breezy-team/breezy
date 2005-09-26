@@ -501,7 +501,7 @@ def _read_config_value(name):
         raise
 
 def hardlinks_good():
-    sys.platform not in ('win32', 'cygwin', 'darwin')
+    return sys.platform not in ('win32', 'cygwin', 'darwin')
 
 def link_or_copy(src, dest):
     """Hardlink a file, or copy it if it can't be hardlinked."""
