@@ -296,6 +296,16 @@ class TestCommands(ExternalBase):
         os.chdir('../b/subdir')
         self.runbzr('pull ../../a')
         assert a.revision_history()[-1] == b.revision_history()[-1]
+        self.runbzr('commit -m blah5 --unchanged')
+        self.runbzr('commit -m blah6 --unchanged')
+        os.chdir('..')
+        self.runbzr('pull ../a')
+        os.chdir('../a')
+        self.runbzr('commit -m blah7 --unchanged')
+        self.runbzr('merge ../b')
+        self.runbzr('commit -m blah8 --unchanged')
+        self.runbzr('pull ../b')
+        self.runbzr('pull ../b')
         
     def test_add_reports(self):
         """add command prints the names of added files."""

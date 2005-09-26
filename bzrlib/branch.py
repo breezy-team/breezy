@@ -28,7 +28,7 @@ from bzrlib.store import copy_all
 from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId, \
      DivergedBranches, NotBranchError, UnlistableStore, UnlistableBranch
 from bzrlib.textui import show_status
-from bzrlib.revision import Revision
+from bzrlib.revision import Revision, is_ancestor
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 import bzrlib.xml
@@ -835,7 +835,10 @@ class LocalBranch(Branch):
                                                          other_revision, self)
                 assert self.last_patch() not in revision_ids
             except bzrlib.errors.NotAncestor:
-                raise e
+                if is_ancestor(self.last_patch(), other_revision, self):
+                    revision_ids = []
+                else:
+                    raise e
 
         self.append_revision(*revision_ids)
         pb.clear()
