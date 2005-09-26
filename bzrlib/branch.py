@@ -1351,7 +1351,6 @@ def copy_branch(branch_from, to_location, revno=None, basis_branch=None):
     from bzrlib.merge import merge
 
     assert isinstance(branch_from, Branch)
-    print repr(to_location)
     assert isinstance(to_location, basestring)
     
     br_to = Branch.initialize(to_location)
