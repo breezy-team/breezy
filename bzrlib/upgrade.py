@@ -15,11 +15,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import tempfile, os, errno
-                
+import errno
+import os
+import tempfile
+
 import bzrlib.errors
 import bzrlib.progress
 from bzrlib.xml import serializer_v4
+from bzrlib.osutils import rename
 
 
 def upgrade(branch):

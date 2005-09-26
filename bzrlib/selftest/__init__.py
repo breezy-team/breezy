@@ -232,7 +232,7 @@ class TestCaseInTempDir(TestCase):
         if contents != expect:
             self.log("expected: %r" % expect)
             self.log("actually: %r" % contents)
-            self.fail("contents of %s not as expected")
+            self.fail("contents of %s not as expected" % filename)
 
     def _make_test_root(self):
         if TestCaseInTempDir.TEST_ROOT is not None:

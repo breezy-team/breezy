@@ -20,15 +20,18 @@
 ROOT_ID = "TREE_ROOT"
 
 
-import sys, os.path, types, re
+import os.path
+import re
+import sys
+import types
 
 import bzrlib
 from bzrlib.errors import BzrError, BzrCheckError
 
-from bzrlib.osutils import uuid, quotefn, splitpath, joinpath, appendpath
+from bzrlib.osutils import quotefn, splitpath, joinpath, appendpath
 from bzrlib.trace import mutter
 from bzrlib.errors import NotVersionedError
-        
+
 
 class InventoryEntry(object):
     """Description of a versioned file.

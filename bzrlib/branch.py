@@ -133,7 +133,9 @@ class Branch(object):
 
     @staticmethod
     def open_containing(url):
-        """Open an existing branch, containing url (search upwards for the root)
+        """Open an existing branch which contains url.
+        
+        This probes for a branch at url, and searches upwards from there.
         """
         if url and (url.startswith('http://') or url.startswith('https://')):
             from bzrlib.remotebranch import RemoteBranch

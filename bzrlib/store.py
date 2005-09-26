@@ -21,12 +21,19 @@ A store is a simple write-once container indexed by a universally
 unique ID.
 """
 
-import os, tempfile, types, osutils, gzip, errno
+import errno
+import gzip
+import os
+import tempfile
+import types
 from stat import ST_SIZE
 from StringIO import StringIO
+
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 import bzrlib.ui
+import bzrlib.osutils as osutils
+
 
 ######################################################################
 # stores

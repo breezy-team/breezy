@@ -43,7 +43,6 @@ def invert_dict(dict):
         newdict[value] = key
     return newdict
 
-
        
 class ChangeUnixPermissions(object):
     """This is two-way change, suitable for file modification, creation,
@@ -93,6 +92,7 @@ class ChangeUnixPermissions(object):
     def __ne__(self, other):
         return not (self == other)
 
+
 def dir_create(filename, conflict_handler, reverse):
     """Creates the directory, or deletes it if reverse is true.  Intended to be
     used with ReplaceContents.
@@ -118,14 +118,12 @@ def dir_create(filename, conflict_handler, reverse):
         try:
             os.rmdir(filename)
         except OSError, e:
-            if e.errno != 39:
+            if e.errno != errno.ENOTEMPTY:
                 raise
             if conflict_handler.rmdir_non_empty(filename) == "skip":
                 return
             os.rmdir(filename)
 
-                
-            
 
 class SymlinkCreate(object):
     """Creates or deletes a symlink (for use with ReplaceContents)"""

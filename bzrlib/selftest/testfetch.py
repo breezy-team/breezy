@@ -13,15 +13,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+import os
+import sys
+
 import bzrlib.errors
 from bzrlib.selftest.testrevision import make_branches
 from bzrlib.trace import mutter
 from bzrlib.branch import Branch
-import sys
-import os
 
 from bzrlib.selftest import TestCaseInTempDir
-        
+
 
 class TestFetch(TestCaseInTempDir):
     def runTest(self):

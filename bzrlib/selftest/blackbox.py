@@ -27,8 +27,8 @@ it's normally invoked.
 """
 
 from cStringIO import StringIO
-import sys
 import os
+import sys
 
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
 from bzrlib.branch import Branch
@@ -123,7 +123,7 @@ class TestCommands(ExternalBase):
         self.assertEquals(list(b.unknowns()), ['foo.blah'])
         self.runbzr('ignore *.blah')
         self.assertEquals(list(b.unknowns()), [])
-        assert file('.bzrignore', 'rb').read() == '*.blah\n'
+        assert file('.bzrignore', 'rU').read() == '*.blah\n'
 
         # 'ignore' works when then .bzrignore file already exists
         file('garh', 'wt').write('garh')
@@ -131,7 +131,7 @@ class TestCommands(ExternalBase):
         assert self.capture('unknowns') == 'garh\n'
         self.runbzr('ignore garh')
         self.assertEquals(list(b.unknowns()), [])
-        assert file('.bzrignore', 'rb').read() == '*.blah\ngarh\n'
+        assert file('.bzrignore', 'rU').read() == '*.blah\ngarh\n'
 
     def test_revert(self):
         self.runbzr('init')
@@ -297,7 +297,7 @@ class TestCommands(ExternalBase):
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['added dir',
-                           'added dir/sub.txt',
+                           'added dir'+os.sep+'sub.txt',
                            'added top.txt',],
                           results)
 

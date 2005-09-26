@@ -117,7 +117,7 @@ class TestVersioning(TestCaseInTempDir):
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         eq(list(b.unknowns()), ['inertiatic'])
         run_bzr(['add', '--no-recurse', 'inertiatic'])
-        eq(list(b.unknowns()), ['inertiatic/esp'])
+        eq(list(b.unknowns()), ['inertiatic'+os.sep+'esp'])
         run_bzr(['add', 'inertiatic/esp'])
         eq(list(b.unknowns()), [])
 

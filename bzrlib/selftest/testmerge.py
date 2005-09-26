@@ -1,10 +1,13 @@
+import os
+
 from bzrlib.branch import Branch
 from bzrlib.commit import commit
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.merge import merge
 from bzrlib.errors import UnrelatedBranches, NoCommits
 from bzrlib.revision import common_ancestor
-import os
+
+
 class TestMerge(TestCaseInTempDir):
     """Test appending more than one revision"""
     def test_pending(self):

@@ -18,6 +18,10 @@ development head
 
     * Various minor bug in windows support have been fixed, largely in the
       test suite. Contributed by Alexander Belchenko.
+      
+  INTERNALS:
+
+    * removed uuid() as it was unused.
 
 bzr 0.0.8 2005-09-20
 
