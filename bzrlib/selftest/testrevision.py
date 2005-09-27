@@ -21,21 +21,21 @@ from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.commit import commit
 from bzrlib.fetch import fetch
-from bzrlib.revision import (find_present_ancestors, common_ancestor,
-                             is_ancestor)
+from bzrlib.revision import (find_present_ancestors, combined_graph,
+                             is_ancestor, MultipleRevisionSources)
 from bzrlib.trace import mutter
 from bzrlib.errors import NoSuchRevision
 
 def make_branches():
     os.mkdir("branch1")
-    br1 = Branch("branch1", init=True)
+    br1 = Branch.initialize("branch1")
     
     commit(br1, "Commit one", rev_id="a@u-0-0")
     commit(br1, "Commit two", rev_id="a@u-0-1")
     commit(br1, "Commit three", rev_id="a@u-0-2")
 
     os.mkdir("branch2")
-    br2 = Branch("branch2", init=True)
+    br2 = Branch.initialize("branch2")
     br2.update_revisions(br1)
     commit(br2, "Commit four", rev_id="b@u-0-3")
     commit(br2, "Commit five", rev_id="b@u-0-4")
@@ -89,7 +89,7 @@ class TestIsAncestor(TestCaseInTempDir):
                 mutter('ancestry of {%s}: %r',
                        rev_id, branch.get_ancestry(rev_id))
                 self.assertEquals(sorted(branch.get_ancestry(rev_id)),
-                                  sorted(anc))
+                                  [None] + sorted(anc))
     
     
     def test_is_ancestor(self):
@@ -103,7 +103,7 @@ class TestIsAncestor(TestCaseInTempDir):
         assert is_ancestor(revisions[1], revisions[0], sources)
         assert not is_ancestor(revisions[0], revisions[1], sources)
         assert is_ancestor(revisions_2[3], revisions[0], sources)
-	# disabled mbp 20050914, doesn't seem to happen anymore
+        # disabled mbp 20050914, doesn't seem to happen anymore
         ## self.assertRaises(NoSuchRevision, is_ancestor, revisions_2[3],
         ##                  revisions[0], br1)        
         assert is_ancestor(revisions[3], revisions_2[4], sources)
@@ -124,11 +124,11 @@ class TestIntermediateRevisions(TestCaseInTempDir):
         self.br2.commit("Commit twelve", rev_id="b@u-0-8")
         self.br2.commit("Commit thirtteen", rev_id="b@u-0-9")
 
-	fetch(from_branch=self.br2, to_branch=self.br1)
+        fetch(from_branch=self.br2, to_branch=self.br1)
         self.br1.add_pending_merge(self.br2.revision_history()[6])
         self.br1.commit("Commit fourtten", rev_id="a@u-0-6")
 
-	fetch(from_branch=self.br1, to_branch=self.br2)
+        fetch(from_branch=self.br1, to_branch=self.br2)
         self.br2.add_pending_merge(self.br1.revision_history()[6])
         self.br2.commit("Commit fifteen", rev_id="b@u-0-10")
 
@@ -184,7 +184,9 @@ class TestIntermediateRevisions(TestCaseInTempDir):
 class TestCommonAncestor(TestCaseInTempDir):
     """Test checking whether a revision is an ancestor of another revision"""
 
-    def test_common_ancestor(self):
+    def test_old_common_ancestor(self):
+        """Pick a resonable merge base using the old functionality"""
+        from bzrlib.revision import old_common_ancestor as common_ancestor
         br1, br2 = make_branches()
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
@@ -220,8 +222,55 @@ class TestCommonAncestor(TestCaseInTempDir):
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
                           revisions_2[5])
 
+    def test_common_ancestor(self):
+        """Pick a reasonable merge base"""
+        from bzrlib.revision import common_ancestor
+        br1, br2 = make_branches()
+        revisions = br1.revision_history()
+        revisions_2 = br2.revision_history()
+        sources = MultipleRevisionSources(br1, br2)
 
-if __name__ == '__main__':
-    import unittest, sys
-    unittest.main()
-    
+        expected_ancestors_list = {revisions[3]:(0, 0), 
+                                   revisions[2]:(1, 1),
+                                   revisions_2[4]:(2, 1), 
+                                   revisions[1]:(3, 2),
+                                   revisions_2[3]:(4, 2),
+                                   revisions[0]:(5, 3) }
+        ancestors_list = find_present_ancestors(revisions[3], sources)
+        assert len(expected_ancestors_list) == len(ancestors_list)
+        for key, value in expected_ancestors_list.iteritems():
+            self.assertEqual(ancestors_list[key], value, 
+                              "key %r, %r != %r" % (key, ancestors_list[key],
+                                                    value))
+
+        self.assertEqual(common_ancestor(revisions[0], revisions[0], sources),
+                          revisions[0])
+        self.assertEqual(common_ancestor(revisions[1], revisions[2], sources),
+                          revisions[1])
+        self.assertEqual(common_ancestor(revisions[1], revisions[1], sources),
+                          revisions[1])
+        self.assertEqual(common_ancestor(revisions[2], revisions_2[4], sources),
+                          revisions[2])
+        self.assertEqual(common_ancestor(revisions[3], revisions_2[4], sources),
+                          revisions_2[4])
+        self.assertEqual(common_ancestor(revisions[4], revisions_2[5], sources),
+                          revisions_2[4])
+        self.assertEqual(common_ancestor(revisions[5], revisions_2[6], sources),
+                          revisions[4])
+        self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
+                          revisions[4])
+
+    def test_combined(self):
+        """combined_graph
+        Ensure it's not order-sensitive
+        """
+        br1, br2 = make_branches()
+        source = MultipleRevisionSources(br1, br2)
+        combined_1 = combined_graph(br1.last_revision(), 
+                                    br2.last_revision(), source)
+        combined_2 = combined_graph(br2.last_revision(),
+                                    br1.last_revision(), source)
+        assert combined_1[1] == combined_2[1]
+        assert combined_1[2] == combined_2[2]
+        assert combined_1[3] == combined_2[3]
+        assert combined_1 == combined_2

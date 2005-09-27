@@ -26,9 +26,10 @@ from bzrlib.errors import PointlessCommit, BzrError
 # TODO: Test commit with some added, and added-but-missing files
 
 class TestCommit(TestCaseInTempDir):
+
     def test_simple_commit(self):
         """Commit and check two versions of a single file."""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
         b.add('hello')
         b.commit(message='add hello')
@@ -53,7 +54,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_delete_commit(self):
         """Test a commit with a deleted file"""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
         b.add(['hello'], ['hello-id'])
         b.commit(message='add hello')
@@ -67,7 +68,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_pointless_commit(self):
         """Commit refuses unless there are changes or it's forced."""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         file('hello', 'w').write('hello')
         b.add(['hello'])
         b.commit(message='add hello')
@@ -82,7 +83,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_commit_empty(self):
         """Commiting an empty tree works."""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         b.commit(message='empty tree', allow_pointless=True)
         self.assertRaises(PointlessCommit,
                           b.commit,
@@ -94,7 +95,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_selective_delete(self):
         """Selective commit in tree with deletions"""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         file('hello', 'w').write('hello')
         file('buongia', 'w').write('buongia')
         b.add(['hello', 'buongia'],
@@ -129,7 +130,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_commit_rename(self):
         """Test commit of a revision where a file is renamed."""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         self.build_tree(['hello'])
         b.add(['hello'], ['hello-id'])
         b.commit(message='one', rev_id='test@rev-1', allow_pointless=False)
@@ -156,7 +157,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_reused_rev_id(self):
         """Test that a revision id cannot be reused in a branch"""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         b.commit('initial', rev_id='test@rev-1', allow_pointless=True)
         self.assertRaises(Exception,
                           b.commit,
@@ -169,7 +170,7 @@ class TestCommit(TestCaseInTempDir):
     def test_commit_move(self):
         """Test commit of revisions with moved files and directories"""
         eq = self.assertEquals
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         r1 = 'test@rev-1'
         self.build_tree(['hello', 'a/', 'b/'])
         b.add(['hello', 'a', 'b'], ['hello-id', 'a-id', 'b-id'])
@@ -204,7 +205,7 @@ class TestCommit(TestCaseInTempDir):
         
     def test_removed_commit(self):
         """Test a commit with a removed file"""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
         b.add(['hello'], ['hello-id'])
         b.commit(message='add hello')
@@ -218,7 +219,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_committed_ancestry(self):
         """Test commit appends revisions to ancestry."""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         rev_ids = []
         for i in range(4):
             file('hello', 'w').write((str(i) * 4) + '\n')
@@ -232,12 +233,4 @@ class TestCommit(TestCaseInTempDir):
         eq(b.revision_history(), rev_ids)
         for i in range(4):
             anc = b.get_ancestry(rev_ids[i])
-            eq(anc, rev_ids[:i+1])
-            
-        
-
-
-if __name__ == '__main__':
-    import unittest
-    unittest.main()
-    
+            eq(anc, [None] + rev_ids[:i+1])

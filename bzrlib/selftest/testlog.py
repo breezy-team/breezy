@@ -65,7 +65,7 @@ class SimpleLogTest(TestCaseInTempDir):
             self.assertEquals(expected, got)
 
     def test_cur_revno(self):
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         lf = LogCatcher()
         b.commit('empty commit')
@@ -86,7 +86,7 @@ class SimpleLogTest(TestCaseInTempDir):
     def test_simple_log(self):
         eq = self.assertEquals
         
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         lf = LogCatcher()
         show_log(b, lf)
@@ -132,3 +132,12 @@ class SimpleLogTest(TestCaseInTempDir):
         self.log('log 2 delta: %r' % d)
         # self.checkDelta(d, added=['hello'])
         
+        # commit a log message with control characters
+        msg = "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)])
+        b.commit(msg)
+        lf = LogCatcher()
+        show_log(b, lf, verbose=True)
+        committed_msg = lf.logs[0].rev.message
+        self.log("escaped commit message: %r", committed_msg)
+        self.assert_(msg != committed_msg)
+        self.assert_(len(committed_msg) > len(msg))

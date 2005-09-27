@@ -26,7 +26,7 @@ class TestAppendRevisions(TestCaseInTempDir):
     """Test appending more than one revision"""
     def test_append_revisions(self):
         from bzrlib.branch import Branch
-        br = Branch(".", init=True)
+        br = Branch.initialize(".")
         br.append_revision("rev1")
         self.assertEquals(br.revision_history(), ["rev1",])
         br.append_revision("rev2", "rev3")
@@ -40,8 +40,8 @@ class TestFetch(TestCaseInTempDir):
         from bzrlib.fetch import Fetcher
         os.mkdir('b1')
         os.mkdir('b2')
-        b1 = Branch('b1', init=True)
-        b2 = Branch('b2', init=True)
+        b1 = Branch.initialize('b1')
+        b2 = Branch.initialize('b2')
         file(os.sep.join(['b1', 'foo']), 'w').write('hello')
         b1.add(['foo'], ['foo-id'])
         b1.commit('lala!', rev_id='revision-1', allow_pointless=False)

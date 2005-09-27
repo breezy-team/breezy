@@ -1,5 +1,3 @@
-#! /usr/bin/python
-
 import os
 import unittest
 
@@ -11,7 +9,7 @@ from bzrlib.errors import NotBranchError, NotVersionedError
 class TestBranch(TestCaseInTempDir):
 
     def test_unknowns(self):
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         self.build_tree(['hello.txt',
                          'hello.txt~'])
@@ -22,7 +20,8 @@ class TestBranch(TestCaseInTempDir):
     def test_no_changes(self):
         from bzrlib.errors import PointlessCommit
         
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
+
         self.build_tree(['hello.txt'])
 
         self.assertRaises(PointlessCommit,
@@ -68,10 +67,40 @@ class TestRevisionId(TestCase):
                           'Martin Pool <mbp@sourcefrog.net>-20050311061123-96a255005c7c9dbe')
 
 
+class PendingMerges(TestCaseInTempDir):
+
+    def test_pending_merges(self):
+        """Tracking pending-merged revisions."""
+        print "GHOST SUPPORT REMOVED"
+        return
+
+        b = Branch.initialize('.')
+
+        self.assertEquals(b.pending_merges(), [])
+        b.add_pending_merge('foo@azkhazan-123123-abcabc')
+        self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
+        b.add_pending_merge('foo@azkhazan-123123-abcabc')
+        self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
+        b.add_pending_merge('wibble@fofof--20050401--1928390812')
+        self.assertEquals(b.pending_merges(),
+                          ['foo@azkhazan-123123-abcabc',
+                           'wibble@fofof--20050401--1928390812'])
+        b.commit("commit from base with two merges")
+        rev = b.get_revision(b.revision_history()[0])
+        self.assertEquals(len(rev.parents), 2)
+        self.assertEquals(rev.parents[0].revision_id,
+                          'foo@azkhazan-123123-abcabc')
+        self.assertEquals(rev.parents[1].revision_id,
+                           'wibble@fofof--20050401--1928390812')
+        # list should be cleared when we do a commit
+        self.assertEquals(b.pending_merges(), [])
+ 
+
 class MoreTests(TestCaseInTempDir):
+
     def test_revert(self):
         """Test selected-file revert"""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         self.build_tree(['hello.txt'])
         file('hello.txt', 'w').write('initial hello')
@@ -98,7 +127,7 @@ class MoreTests(TestCaseInTempDir):
 
     def test_rename_dirs(self):
         """Test renaming directories and the files within them."""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
         b.add(['dir', 'dir/sub', 'dir/sub/file'])
 
@@ -169,7 +198,8 @@ class MoreTests(TestCaseInTempDir):
             # directory, or nearby
             os.chdir(dtmp)
 
-            self.assertEqual(rp('foo/bar/quux'), 'foo/bar/quux')
+            FOO_BAR_QUUX = os.path.join('foo', 'bar', 'quux')
+            self.assertEqual(rp('foo/bar/quux'), FOO_BAR_QUUX)
 
             self.assertEqual(rp('foo'), 'foo')
 

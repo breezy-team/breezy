@@ -21,12 +21,14 @@ from cStringIO import StringIO
 
 from bzrlib.selftest import TestCase, TestCaseInTempDir
 from bzrlib.branch import Branch
+from bzrlib.revision import is_ancestor
 
 
 class TestAncestry(TestCaseInTempDir):
+
     def test_straightline_ancestry(self):
         """Test ancestry file when just committing."""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         b.commit(message='one',
                  allow_pointless=True,
@@ -38,12 +40,16 @@ class TestAncestry(TestCaseInTempDir):
 
         ancs = b.get_ancestry('tester@foo--2')
 
+    def test_none_is_always_an_ancestor(self):
+        b = Branch.initialize('.')
+        # note this is tested before any commits are done.
+        self.assertEqual(True, is_ancestor(None, None, b))
+        b.commit(message='one',
+                 allow_pointless=True,
+                 rev_id='tester@foo--1')
+        self.assertEqual(True, is_ancestor(None, None, b))
+        self.assertEqual(True, is_ancestor('tester@foo--1', None, b))
+        self.assertEqual(False, is_ancestor(None, 'tester@foo--1', b))
 
 
 # TODO: check that ancestry is updated to include indirectly merged revisions
-        
-        
-
-if __name__ == '__main__':
-    import unittest
-    sys.exit(unittest.main())

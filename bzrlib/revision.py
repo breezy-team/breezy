@@ -16,7 +16,9 @@
 
 
 import bzrlib.errors
+from bzrlib.graph import node_distances, select_farthest, all_descendants
 
+NULL_REVISION="null:"
 
 class Revision(object):
     """Single revision on a branch.
@@ -135,7 +137,7 @@ def __get_closest(intersection):
     return matches
 
 
-def common_ancestor(revision_a, revision_b, revision_source):
+def old_common_ancestor(revision_a, revision_b, revision_source):
     """Find the ancestor common to both revisions that is closest to both.
     """
     from bzrlib.trace import mutter
@@ -166,6 +168,83 @@ def common_ancestor(revision_a, revision_b, revision_source):
         raise bzrlib.errors.AmbiguousBase((a_closest[0], b_closest[0]))
     return a_closest[0]
 
+def revision_graph(revision, revision_source):
+    """Produce a graph of the ancestry of the specified revision.
+    Return root, ancestors map, descendants map
+
+    TODO: Produce graphs with the NULL revision as root, so that we can find
+    a common even when trees are not branches don't represent a single line
+    of descent.
+    """
+    ancestors = {}
+    descendants = {}
+    lines = [revision]
+    root = None
+    descendants[revision] = {}
+    while len(lines) > 0:
+        new_lines = set()
+        for line in lines:
+            if line == NULL_REVISION:
+                parents = []
+                root = NULL_REVISION
+            else:
+                try:
+                    rev = revision_source.get_revision(line)
+                    parents = list(rev.parent_ids)
+                    if len(parents) == 0:
+                        parents = [NULL_REVISION]
+                except bzrlib.errors.NoSuchRevision:
+                    if line == revision:
+                        raise
+                    parents = None
+            if parents is not None:
+                for parent in parents:
+                    if parent not in ancestors:
+                        new_lines.add(parent)
+                    if parent not in descendants:
+                        descendants[parent] = {}
+                    descendants[parent][line] = 1
+            if parents is not None:
+                ancestors[line] = set(parents)
+        lines = new_lines
+    assert root not in descendants[root]
+    assert root not in ancestors[root]
+    return root, ancestors, descendants
+
+def combined_graph(revision_a, revision_b, revision_source):
+    """Produce a combined ancestry graph.
+    Return graph root, ancestors map, descendants map, set of common nodes"""
+    root, ancestors, descendants = revision_graph(revision_a, revision_source)
+    root_b, ancestors_b, descendants_b = revision_graph(revision_b, 
+                                                        revision_source)
+    if root != root_b:
+        raise bzrlib.errors.NoCommonRoot(revision_a, revision_b)
+    common = set()
+    for node, node_anc in ancestors_b.iteritems():
+        if node in ancestors:
+            common.add(node)
+        else:
+            ancestors[node] = set()
+        ancestors[node].update(node_anc)
+    for node, node_dec in descendants_b.iteritems():
+        if node not in descendants:
+            descendants[node] = {}
+        descendants[node].update(node_dec)
+    return root, ancestors, descendants, common
+
+def common_ancestor(revision_a, revision_b, revision_source):
+    try:
+        root, ancestors, descendants, common = \
+            combined_graph(revision_a, revision_b, revision_source)
+    except bzrlib.errors.NoCommonRoot:
+        raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+        
+    distances = node_distances (descendants, ancestors, root)
+    farthest = select_farthest(distances, common)
+    if farthest is None or farthest == NULL_REVISION:
+        raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+    return farthest
+
 class MultipleRevisionSources(object):
     """Proxy that looks in multiple branches for revisions."""
     def __init__(self, *args):
@@ -190,47 +269,36 @@ def get_intervening_revisions(ancestor_id, rev_id, rev_source,
     Otherwise, rev_id will be the last entry.  ancestor_id will never appear.
     If ancestor_id is not an ancestor, NotAncestor will be thrown
     """
-    [rev_source.get_revision(r) for r in (ancestor_id, rev_id)]
-    if ancestor_id == rev_id:
-        return []
-    def historical_lines(line):
-        """Return a tuple of historical/non_historical lines, for sorting.
-        The non_historical count is negative, since non_historical lines are
-        a bad thing.
-        """
-        good_count = 0
-        bad_count = 0
-        for revision in line:
-            if revision in revision_history:
-                good_count += 1
-            else:
-                bad_count -= 1
-        return good_count, bad_count
-    active = [[rev_id]]
-    successful_lines = []
-    while len(active) > 0:
-        new_active = []
-        for line in active:
-            for parent in rev_source.get_revision(line[-1]).parent_ids:
-                line_copy = line[:]
-                if parent == ancestor_id:
-                    successful_lines.append(line_copy)
-                else:
-                    line_copy.append(parent)
-                    new_active.append(line_copy)
-        active = new_active
-    if len(successful_lines) == 0:
+    root, ancestors, descendants = revision_graph(rev_id, rev_source)
+    if len(descendants) == 0:
+        raise NoSuchRevision(rev_source, rev_id)
+    if ancestor_id not in descendants:
+        rev_source.get_revision(ancestor_id)
         raise bzrlib.errors.NotAncestor(rev_id, ancestor_id)
-    for line in successful_lines:
-        line.reverse()
-    if revision_history is not None:
-        by_historical_lines = []
-        for line in successful_lines:
-            count = historical_lines(line)
-            by_historical_lines.append((count, line))
-        by_historical_lines.sort()
-        if by_historical_lines[-1][0][0] > 0:
-            return by_historical_lines[-1][1]
-    assert len(successful_lines)
-    successful_lines.sort(cmp, len)
-    return successful_lines[-1]
+    root_descendants = all_descendants(descendants, ancestor_id)
+    root_descendants.add(ancestor_id)
+    if rev_id not in root_descendants:
+        raise bzrlib.errors.NotAncestor(rev_id, ancestor_id)
+    distances = node_distances(descendants, ancestors, ancestor_id,
+                               root_descendants=root_descendants)
+
+    def best_ancestor(rev_id):
+        best = None
+        for anc_id in ancestors[rev_id]:
+            try:
+                distance = distances[anc_id]
+            except KeyError:
+                continue
+            if revision_history is not None and anc_id in revision_history:
+                return anc_id
+            elif best is None or distance > best[1]:
+                best = (anc_id, distance)
+        return best[0]
+
+    next = rev_id
+    path = []
+    while next != ancestor_id:
+        path.append(next)
+        next = best_ancestor(next)
+    path.reverse()
+    return path

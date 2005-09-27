@@ -63,6 +63,7 @@
 
 
 import os
+import re
 import sys
 import time
 import pdb
@@ -198,6 +199,7 @@ class Commit(object):
 
         assert isinstance(message, basestring), type(message)
         self.message = message
+        self._escape_commit_message()
 
         self.branch.lock_write()
         try:
@@ -238,17 +240,35 @@ class Commit(object):
         """Store the inventory for the new revision."""
         inv_text = serializer_v5.write_inventory_to_string(self.new_inv)
         self.inv_sha1 = sha_string(inv_text)
-	s = self.branch.control_weaves
+        s = self.branch.control_weaves
         s.add_text('inventory', self.rev_id,
-		   split_lines(inv_text), self.parents)
+                   split_lines(inv_text), self.parents)
 
+    def _escape_commit_message(self):
+        """Replace xml-incompatible control characters."""
+        # Python strings can include characters that can't be
+        # represented in well-formed XML; escape characters that
+        # aren't listed in the XML specification
+        # (http://www.w3.org/TR/REC-xml/#NT-Char).
+        if isinstance(self.message, unicode):
+            char_pattern = u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]'
+        else:
+            # Use a regular 'str' as pattern to avoid having re.subn
+            # return 'unicode' results.
+            char_pattern = '[^x09\x0A\x0D\x20-\xFF]'
+        self.message, escape_count = re.subn(
+            char_pattern,
+            lambda match: match.group(0).encode('unicode_escape'),
+            self.message)
+        if escape_count:
+            note("replaced %d control characters in message", escape_count)
 
     def _record_ancestry(self):
         """Append merged revision ancestry to the ancestry file.
 
         This should be the merged ancestry of all parents, plus the
         new revision id."""
-	s = self.branch.control_weaves
+        s = self.branch.control_weaves
         w = s.get_weave_or_empty('ancestry')
         lines = self._make_ancestry(w)
         w.add(self.rev_id, self.parents, lines)
@@ -512,4 +532,3 @@ def merge_ancestry_lines(rev_id, ancestries):
     assert r not in seen
     ancs.append(r)
     return ancs
-

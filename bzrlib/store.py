@@ -24,12 +24,19 @@ A store is a simple write-once container indexed by a universally
 unique ID.
 """
 
-import os, tempfile, types, osutils, gzip, errno
+import errno
+import gzip
+import os
+import tempfile
+import types
 from stat import ST_SIZE
 from StringIO import StringIO
+
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 import bzrlib.ui
+import bzrlib.osutils as osutils
+
 
 ######################################################################
 # stores
@@ -129,7 +136,8 @@ class ImmutableStore(object):
         pb.update('preparing to copy')
         to_copy = [id for id in ids if id not in self]
         if isinstance(other, ImmutableStore):
-            return self.copy_multi_immutable(other, to_copy, pb)
+            return self.copy_multi_immutable(other, to_copy, pb, 
+                                             permit_failure=permit_failure)
         count = 0
         failed = set()
         for id in to_copy:
@@ -140,7 +148,7 @@ class ImmutableStore(object):
             else:
                 try:
                     entry = other[id]
-                except IndexError:
+                except KeyError:
                     failed.add(id)
                     continue
                 self.add(entry, id)
@@ -217,7 +225,7 @@ class ImmutableStore(object):
             if e.errno != errno.ENOENT:
                 raise
 
-        raise IndexError(fileid)
+        raise KeyError(fileid)
 
 
     def total_size(self):

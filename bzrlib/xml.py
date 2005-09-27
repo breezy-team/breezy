@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+# -*- coding: UTF-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,8 +28,8 @@ try:
     from cElementTree import (ElementTree, SubElement, Element,
                               XMLTreeBuilder, fromstring, tostring)
 except ImportError:
-    from warnings import warn
-    warn('using slower ElementTree; consider installing cElementTree')
+    ## from warnings import warn
+    ## warn('using slower ElementTree; consider installing cElementTree')
     from util.elementtree.ElementTree import (ElementTree, SubElement,
                                               Element, XMLTreeBuilder,
                                               fromstring, tostring)

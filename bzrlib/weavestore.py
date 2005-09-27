@@ -75,6 +75,10 @@ class WeaveStore(object):
             return read_weave(inf)
     
 
+    def put_empty_weave(self, file_id):
+        self.put_weave(file_id, Weave())
+
+
     def put_weave(self, file_id, weave):
         """Write back a modified weave"""
         if self.enable_cache:

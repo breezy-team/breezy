@@ -38,8 +38,8 @@ class TestCommitMerge(TestCaseInTempDir):
         """Simple commit of two-way merge of empty trees."""
         os.mkdir('x')
         os.mkdir('y')
-        bx = Branch('x', init=True)
-        by = Branch('y', init=True)
+        bx = Branch.initialize('x')
+        by = Branch.initialize('y')
 
         commit(bx, 'commit one', rev_id='x@u-0-1', allow_pointless=True)
         commit(by, 'commit two', rev_id='y@u-0-1', allow_pointless=True)
@@ -66,8 +66,8 @@ class TestCommitMerge(TestCaseInTempDir):
         """Commit merge of two trees with no overlapping files."""
         self.build_tree(['x/', 'x/ecks', 'y/', 'y/why'])
 
-        bx = Branch('x', init=True)
-        by = Branch('y', init=True)
+        bx = Branch.initialize('x')
+        by = Branch.initialize('y')
         bx.add(['ecks'], ['ecks-id'])
         by.add(['why'], ['why-id'])
 
@@ -96,9 +96,3 @@ class TestCommitMerge(TestCaseInTempDir):
 
         check(bx)
         check(by)
-
-
-if __name__ == '__main__':
-    import unittest
-    unittest.main()
-    

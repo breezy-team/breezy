@@ -168,6 +168,8 @@ except ImportError:
                 LOCK_NB = 4
                 def unlock(self):
                     _msvc_unlock(self.f)
+                    self.f.close()
+                    self.f = None
 
 
             class _msvc_ReadLock(_msvc_FileLock):

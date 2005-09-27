@@ -104,17 +104,9 @@ def _rollover_trace_maybe(trace_fname):
             return
         old_fname = trace_fname + '.old'
 
-        try:
-            # must remove before rename on windows
-            os.remove(old_fname)
-        except OSError:
-            pass
+        from osutils import rename
+        rename(trace_fname, old_fname)
 
-        try:
-            # might fail if in use on windows
-            os.rename(trace_fname, old_fname)
-        except OSError:
-            pass
     except OSError:
         return
 
@@ -198,7 +190,6 @@ def enable_default_logging():
     _file_handler.setLevel(level)
 
     logging.getLogger('').addHandler(_stderr_handler)
-
 
 
 def disable_default_logging():

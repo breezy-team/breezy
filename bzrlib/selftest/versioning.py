@@ -17,7 +17,6 @@
 
 """Tests of simple versioning operations"""
 
-# TODO: test adding a file whose directory is not versioned
 # TODO: test trying to commit within a directory that is not yet added
 
 
@@ -45,7 +44,7 @@ class TestVersioning(TestCaseInTempDir):
 
         from bzrlib.diff import compare_trees
         from bzrlib.branch import Branch
-        b = Branch('.')
+        b = Branch.open('.')
         
         delta = compare_trees(b.basis_tree(), b.working_tree())
 
@@ -55,16 +54,16 @@ class TestVersioning(TestCaseInTempDir):
         self.assertEquals(delta.added[0][0], 'foo')
         self.failIf(delta.modified)
 
-    def test_add_in_unversioned(self):
+    def test_branch_add_in_unversioned(self):
         """Try to add a file in an unversioned directory.
 
-        smart_add may eventually add the parent as necessary, but simple
-        branch add doesn't do that.
+        "bzr add" adds the parent as necessary, but simple branch add
+        doesn't do that.
         """
         from bzrlib.branch import Branch
         from bzrlib.errors import NotVersionedError
 
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         self.build_tree(['foo/',
                          'foo/hello'])
@@ -75,7 +74,53 @@ class TestVersioning(TestCaseInTempDir):
         
         self.check_branch()
 
-        
+
+    def test_add_in_unversioned(self):
+        """Try to add a file in an unversioned directory.
+
+        "bzr add" should add the parent(s) as necessary.
+        """
+        from bzrlib.branch import Branch
+        from bzrlib.commands import run_bzr
+        eq = self.assertEqual
+
+        b = Branch.initialize('.')
+
+        self.build_tree(['inertiatic/', 'inertiatic/esp'])
+        eq(list(b.unknowns()), ['inertiatic'])
+        run_bzr(['add', 'inertiatic/esp'])
+        eq(list(b.unknowns()), [])
+
+        # Multiple unversioned parents
+        self.build_tree(['veil/', 'veil/cerpin/', 'veil/cerpin/taxt'])
+        eq(list(b.unknowns()), ['veil'])
+        run_bzr(['add', 'veil/cerpin/taxt'])
+        eq(list(b.unknowns()), [])
+
+        # Check whacky paths work
+        self.build_tree(['cicatriz/', 'cicatriz/esp'])
+        eq(list(b.unknowns()), ['cicatriz'])
+        run_bzr(['add', 'inertiatic/../cicatriz/esp'])
+        eq(list(b.unknowns()), [])
+
+    def test_add_in_versioned(self):
+        """Try to add a file in a versioned directory.
+
+        "bzr add" should do this happily.
+        """
+        from bzrlib.branch import Branch
+        from bzrlib.commands import run_bzr
+        eq = self.assertEqual
+
+        b = Branch.initialize('.')
+
+        self.build_tree(['inertiatic/', 'inertiatic/esp'])
+        eq(list(b.unknowns()), ['inertiatic'])
+        run_bzr(['add', '--no-recurse', 'inertiatic'])
+        eq(list(b.unknowns()), ['inertiatic'+os.sep+'esp'])
+        run_bzr(['add', 'inertiatic/esp'])
+        eq(list(b.unknowns()), [])
+
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
         
@@ -86,7 +131,7 @@ class TestVersioning(TestCaseInTempDir):
         ass = self.assert_
         chdir = os.chdir
         
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         self.build_tree(['src/', 'README'])
         
         eq(sorted(b.unknowns()),
@@ -114,7 +159,7 @@ class TestVersioning(TestCaseInTempDir):
         """After all the above changes, run the check and upgrade commands.
 
         The upgrade should be a no-op."""
-        b = Branch('.')
+        b = Branch.open('.')
         debug('branch has %d revisions', b.revno())
         
         debug('check branch...')
@@ -122,7 +167,6 @@ class TestVersioning(TestCaseInTempDir):
         check(b)
         
 
-        
         
 class SubdirCommit(TestCaseInTempDir):
 
@@ -134,7 +178,7 @@ class SubdirCommit(TestCaseInTempDir):
         self.build_tree(['a/', 'b/'])
         
         run_bzr('init')
-        b = Branch('.')
+        b = Branch.open('.')
         
         for fn in ('a/one', 'b/two', 'top'):
             file(fn, 'w').write('old contents')
@@ -148,8 +192,8 @@ class SubdirCommit(TestCaseInTempDir):
         debug('start selective subdir commit')
         run_bzr('commit', 'a', '-m', 'commit a only')
         
-        old = b.revision_tree(b.lookup_revision(1))
-        new = b.revision_tree(b.lookup_revision(2))
+        old = b.revision_tree(b.get_rev_id(1))
+        new = b.revision_tree(b.get_rev_id(2))
         
         eq(new.get_file_by_path('b/two').read(), 'old contents')
         eq(new.get_file_by_path('top').read(), 'old contents')
@@ -158,14 +202,14 @@ class SubdirCommit(TestCaseInTempDir):
         os.chdir('a')
         # commit from here should do nothing
         run_bzr('commit', '.', '-m', 'commit subdir only', '--unchanged')
-        v3 = b.revision_tree(b.lookup_revision(3))
+        v3 = b.revision_tree(b.get_rev_id(3))
         eq(v3.get_file_by_path('b/two').read(), 'old contents')
         eq(v3.get_file_by_path('top').read(), 'old contents')
         eq(v3.get_file_by_path('a/one').read(), 'new contents')
                 
         # commit in subdirectory commits whole tree
         run_bzr('commit', '-m', 'commit whole tree from subdir')
-        v4 = b.revision_tree(b.lookup_revision(4))
+        v4 = b.revision_tree(b.get_rev_id(4))
         eq(v4.get_file_by_path('b/two').read(), 'new contents')        
         eq(v4.get_file_by_path('top').read(), 'new contents')
         

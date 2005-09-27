@@ -16,10 +16,13 @@
 
 """Test Store implementation
 """
+
+from StringIO import StringIO
+
 from bzrlib.store import ImmutableStore
 from bzrlib.selftest import TestCaseInTempDir
-from StringIO import StringIO
 from bzrlib.errors import BzrError
+
 
 class TestStore(TestCaseInTempDir):
     def test_multiple_add(self):

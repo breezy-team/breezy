@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 # -*- coding: UTF-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
@@ -45,14 +44,16 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file):
     ud = difflib.unified_diff(oldlines, newlines,
                               fromfile=old_label, tofile=new_label)
 
+    ud = list(ud)
     # work-around for difflib being too smart for its own good
     # if /dev/null is "1,0", patch won't recognize it as /dev/null
     if not oldlines:
-        ud = list(ud)
         ud[2] = ud[2].replace('-1,0', '-0,0')
     elif not newlines:
-        ud = list(ud)
         ud[2] = ud[2].replace('+1,0', '+0,0')
+    # work around for difflib emitting random spaces after the label
+    ud[0] = ud[0][:-2] + '\n'
+    ud[1] = ud[1][:-2] + '\n'
 
     for line in ud:
         to_file.write(line)
@@ -144,7 +145,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
 
 
 def show_diff(b, revision, specific_files, external_diff_options=None,
-              revision2=None):
+              revision2=None, output=None):
     """Shortcut for showing the diff to the working tree.
 
     b
@@ -156,19 +157,21 @@ def show_diff(b, revision, specific_files, external_diff_options=None,
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
-    import sys
+    if output is None:
+        import sys
+        output = sys.stdout
 
-    if revision == None:
+    if revision is None:
         old_tree = b.basis_tree()
     else:
-        old_tree = b.revision_tree(b.lookup_revision(revision))
+        old_tree = b.revision_tree(revision.in_history(b).rev_id)
 
-    if revision2 == None:
+    if revision2 is None:
         new_tree = b.working_tree()
     else:
-        new_tree = b.revision_tree(b.lookup_revision(revision2))
+        new_tree = b.revision_tree(revision2.in_history(b).rev_id)
 
-    show_diff_trees(old_tree, new_tree, sys.stdout, specific_files,
+    show_diff_trees(old_tree, new_tree, output, specific_files,
                     external_diff_options)
 
 
@@ -209,7 +212,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                           specific_files=specific_files)
 
     for path, file_id, kind in delta.removed:
-        print >>to_file, '*** removed %s %r' % (kind, path)
+        print >>to_file, '=== removed %s %r' % (kind, path)
         if kind == 'file':
             diff_file(old_label + path,
                       old_tree.get_file(file_id).readlines(),
@@ -218,7 +221,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                       to_file)
 
     for path, file_id, kind in delta.added:
-        print >>to_file, '*** added %s %r' % (kind, path)
+        print >>to_file, '=== added %s %r' % (kind, path)
         if kind == 'file':
             diff_file(DEVNULL,
                       [],
@@ -227,7 +230,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                       to_file)
 
     for old_path, new_path, file_id, kind, text_modified in delta.renamed:
-        print >>to_file, '*** renamed %s %r => %r' % (kind, old_path, new_path)
+        print >>to_file, '=== renamed %s %r => %r' % (kind, old_path, new_path)
         if text_modified:
             diff_file(old_label + old_path,
                       old_tree.get_file(file_id).readlines(),
@@ -236,7 +239,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                       to_file)
 
     for path, file_id, kind in delta.modified:
-        print >>to_file, '*** modified %s %r' % (kind, path)
+        print >>to_file, '=== modified %s %r' % (kind, path)
         if kind == 'file':
             diff_file(old_label + path,
                       old_tree.get_file(file_id).readlines(),

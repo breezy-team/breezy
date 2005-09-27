@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+from cStringIO import StringIO
 import logging
 import unittest
 import tempfile
@@ -26,7 +27,6 @@ import shutil
 
 import testsweet
 import bzrlib.commands
-
 import bzrlib.trace
 import bzrlib.fetch
 
@@ -76,14 +76,12 @@ class TestCase(unittest.TestCase):
         
         self._log_file_name = name
 
-        
     def tearDown(self):
         logging.getLogger('').removeHandler(self._log_hdlr)
         bzrlib.trace.enable_default_logging()
         logging.debug('%s teardown', self.id())
         self._log_file.close()
         unittest.TestCase.tearDown(self)
-
 
     def log(self, *args):
         logging.debug(*args)
@@ -92,8 +90,16 @@ class TestCase(unittest.TestCase):
         """Return as a string the log for this test"""
         return open(self._log_file_name).read()
 
-    def run_bzr(self, *args, **kwargs):
-        """Invoke bzr, as if it were run from the command line.
+
+    def capture(self, cmd):
+        """Shortcut that splits cmd into words, runs, and returns stdout"""
+        return self.run_bzr_captured(cmd.split())[0]
+
+    def run_bzr_captured(self, argv, retcode=0):
+        """Invoke bzr and return (result, stdout, stderr).
+
+        Useful for code that wants to check the contents of the
+        output, the way error messages are presented, etc.
 
         This should be the main method for tests that want to exercise the
         overall behavior of the bzr application (rather than a unit test
@@ -101,13 +107,51 @@ class TestCase(unittest.TestCase):
 
         Much of the old code runs bzr by forking a new copy of Python, but
         that is slower, harder to debug, and generally not necessary.
+
+        This runs bzr through the interface that catches and reports
+        errors, and with logging set to something approximating the
+        default, so that error reporting can be checked.
+
+        argv -- arguments to invoke bzr
+        retcode -- expected return code, or None for don't-care.
         """
-        retcode = kwargs.get('retcode', 0)
-        result = self.apply_redirected(None, None, None,
-                                       bzrlib.commands.run_bzr, args)
-        self.assertEquals(result, retcode)
-        
-        
+        stdout = StringIO()
+        stderr = StringIO()
+        self.log('run bzr: %s', ' '.join(argv))
+        handler = logging.StreamHandler(stderr)
+        handler.setFormatter(bzrlib.trace.QuietFormatter())
+        handler.setLevel(logging.INFO)
+        logger = logging.getLogger('')
+        logger.addHandler(handler)
+        try:
+            result = self.apply_redirected(None, stdout, stderr,
+                                           bzrlib.commands.run_bzr_catch_errors,
+                                           argv)
+        finally:
+            logger.removeHandler(handler)
+        out = stdout.getvalue()
+        err = stderr.getvalue()
+        if out:
+            self.log('output:\n%s', out)
+        if err:
+            self.log('errors:\n%s', err)
+        if retcode is not None:
+            self.assertEquals(result, retcode)
+        return out, err
+
+    def run_bzr(self, *args, **kwargs):
+        """Invoke bzr, as if it were run from the command line.
+
+        This should be the main method for tests that want to exercise the
+        overall behavior of the bzr application (rather than a unit test
+        or a functional test of the library.)
+
+        This sends the stdout/stderr results into the test's log,
+        where it may be useful for debugging.  See also run_captured.
+        """
+        retcode = kwargs.pop('retcode', 0)
+        return self.run_bzr_captured(args, retcode)
+
     def check_inventory_shape(self, inv, shape):
         """Compare an inventory to a list of expected names.
 
@@ -133,15 +177,20 @@ class TestCase(unittest.TestCase):
         """Call callable with redirected std io pipes.
 
         Returns the return code."""
-        from StringIO import StringIO
         if not callable(a_callable):
             raise ValueError("a_callable must be callable.")
         if stdin is None:
             stdin = StringIO("")
         if stdout is None:
-            stdout = self._log_file
+            if hasattr(self, "_log_file"):
+                stdout = self._log_file
+            else:
+                stdout = StringIO()
         if stderr is None:
-            stderr = self._log_file
+            if hasattr(self, "_log_file"):
+                stderr = self._log_file
+            else:
+                stderr = StringIO()
         real_stdin = sys.stdin
         real_stdout = sys.stdout
         real_stderr = sys.stderr
@@ -182,7 +231,7 @@ class TestCaseInTempDir(TestCase):
         if contents != expect:
             self.log("expected: %r" % expect)
             self.log("actually: %r" % contents)
-            self.fail("contents of %s not as expected")
+            self.fail("contents of %s not as expected" % filename)
 
     def _make_test_root(self):
         if TestCaseInTempDir.TEST_ROOT is not None:
@@ -207,7 +256,6 @@ class TestCaseInTempDir(TestCase):
 
     def setUp(self):
         super(TestCaseInTempDir, self).setUp()
-        import os
         self._make_test_root()
         self._currentdir = os.getcwdu()
         short_id = self.id().replace('bzrlib.selftest.', '') \
@@ -217,53 +265,8 @@ class TestCaseInTempDir(TestCase):
         os.chdir(self.test_dir)
         
     def tearDown(self):
-        import os
         os.chdir(self._currentdir)
         super(TestCaseInTempDir, self).tearDown()
-
-    def _formcmd(self, cmd):
-        if isinstance(cmd, basestring):
-            cmd = cmd.split()
-        if cmd[0] == 'bzr':
-            cmd[0] = self.BZRPATH
-            if self.OVERRIDE_PYTHON:
-                cmd.insert(0, self.OVERRIDE_PYTHON)
-        self.log('$ %r' % cmd)
-        return cmd
-
-    def runcmd(self, cmd, retcode=0):
-        """Run one command and check the return code.
-
-        Returns a tuple of (stdout,stderr) strings.
-
-        If a single string is based, it is split into words.
-        For commands that are not simple space-separated words, please
-        pass a list instead."""
-        cmd = self._formcmd(cmd)
-        self.log('$ ' + ' '.join(cmd))
-        actual_retcode = subprocess.call(cmd, stdout=self._log_file,
-                                         stderr=self._log_file)
-        if retcode != actual_retcode:
-            raise CommandFailed("test failed: %r returned %d, expected %d"
-                                % (cmd, actual_retcode, retcode))
-
-    def backtick(self, cmd, retcode=0):
-        """Run a command and return its output"""
-        cmd = self._formcmd(cmd)
-        child = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=self._log_file)
-        outd, errd = child.communicate()
-        self.log(outd)
-        actual_retcode = child.wait()
-
-        outd = outd.replace('\r', '')
-
-        if retcode != actual_retcode:
-            raise CommandFailed("test failed: %r returned %d, expected %d"
-                                % (cmd, actual_retcode, retcode))
-
-        return outd
-
-
 
     def build_tree(self, shape):
         """Build a test tree according to a pattern.
@@ -274,7 +277,6 @@ class TestCaseInTempDir(TestCase):
         This doesn't add anything to a branch.
         """
         # XXX: It's OK to just create them using forward slashes on windows?
-        import os
         for name in shape:
             assert isinstance(name, basestring)
             if name[-1] == '/':
@@ -283,7 +285,6 @@ class TestCaseInTempDir(TestCase):
                 f = file(name, 'wt')
                 print >>f, "contents of", name
                 f.close()
-                
 
 
 class MetaTestLog(TestCase):
@@ -306,28 +307,29 @@ def test_suite():
     import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
     import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
     from doctest import DocTestSuite
-    import os
-    import shutil
-    import time
-    import sys
 
     global MODULES_TO_TEST, MODULES_TO_DOCTEST
 
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
                    'bzrlib.selftest.testinv',
+                   'bzrlib.selftest.test_ancestry',
                    'bzrlib.selftest.test_commit',
                    'bzrlib.selftest.test_commit_merge',
                    'bzrlib.selftest.versioning',
                    'bzrlib.selftest.testmerge3',
+                   'bzrlib.selftest.testmerge',
                    'bzrlib.selftest.testhashcache',
                    'bzrlib.selftest.teststatus',
                    'bzrlib.selftest.testlog',
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
+                   'bzrlib.selftest.testremotebranch',
                    'bzrlib.selftest.testrevision',
+                   'bzrlib.selftest.test_revision_info',
                    'bzrlib.selftest.test_merge_core',
                    'bzrlib.selftest.test_smart_add',
+                   'bzrlib.selftest.test_bad_files',
                    'bzrlib.selftest.testdiff',
                    'bzrlib.selftest.test_parent',
                    'bzrlib.selftest.test_xml',
@@ -336,6 +338,7 @@ def test_suite():
                    'bzrlib.selftest.whitebox',
                    'bzrlib.selftest.teststore',
                    'bzrlib.selftest.blackbox',
+                   'bzrlib.selftest.testgraph',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,

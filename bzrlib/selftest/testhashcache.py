@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
+import time
 from bzrlib.selftest import TestCaseInTempDir
 
 
@@ -25,12 +27,14 @@ def sha1(t):
 
 def pause():
     if False:
-        # enable this to get more accurate testing
-        import time
-        # allow it to stabilize
-        start = int(time.time())
-        while int(time.time()) == start:
-            time.sleep(0.2)
+        return
+    if os.name == 'nt':
+        time.sleep(3)
+        return
+    # allow it to stabilize
+    start = int(time.time())
+    while int(time.time()) == start:
+        time.sleep(0.2)
     
 
 class TestHashCache(TestCaseInTempDir):

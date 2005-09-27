@@ -158,6 +158,8 @@ class Fetcher(object):
         i = 0
         for rev_id in revs_to_fetch:
             i += 1
+            if rev_id is None:
+                continue
             if self.to_branch.has_revision(rev_id):
                 continue
             self.pb.update('fetch revision', i, self.count_total)
