@@ -23,6 +23,9 @@ development head
 
     * removed uuid() as it was unused.
 
+    * Test case failures have the exception printed after the log for your
+      viewing pleasure.
+
 bzr 0.0.8 2005-09-20
 
   IMPROVEMENTS:

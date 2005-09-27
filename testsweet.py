@@ -113,12 +113,12 @@ class _MyResult(unittest._TextTestResult):
         for test, err in errors:
             self.stream.writeln(self.separator1)
             self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
-            self.stream.writeln(self.separator2)
-            self.stream.writeln("%s" % err)
             if hasattr(test, '_get_log'):
                 self.stream.writeln()
                 self.stream.writeln('log from this test:')
                 print >>self.stream, test._get_log()
+            self.stream.writeln(self.separator2)
+            self.stream.writeln("%s" % err)
 
 
 class TextTestRunner(unittest.TextTestRunner):
