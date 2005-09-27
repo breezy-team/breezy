@@ -7,6 +7,7 @@ import bzrlib
 import os
 
 from bzrlib.trace import mutter, warning
+from bzrlib.revision import common_ancestor
 
 def _install_info(branch, cset_info, cset_tree):
     """Make sure that there is a text entry for each 
@@ -109,7 +110,8 @@ def _apply_cset(branch, cset, reverse=False, auto_commit=False):
     #   for the merge, the merge code should pick the best merge
     #   based on the ancestry of both trees.
     #
-    merge_revs(branch, cset_info.base, cset_info.target)
+    base = common_ancestor(branch.last_patch(), cset_info.target, branch)
+    merge_revs(branch, base, cset_info.target)
 
     auto_committed = False
     
