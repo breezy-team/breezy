@@ -30,7 +30,7 @@ def max_distance(node, ancestors, distances, root_descendants):
             continue
         if ancestor not in distances:
             return None
-        if best is None or distances[ancestor] > best:
+        if best is None or distances[ancestor]+1 > best:
             best = distances[ancestor] + 1
     return best
 
@@ -67,16 +67,27 @@ def node_distances(graph, ancestors, start, root_descendants=None):
         lines = new_lines
     return distances
 
-def farthest_nodes(graph, ancestors, start):
+def nodes_by_distance(distances):
+    """Return a list of nodes sorted by distance"""
     def by_distance(n):
         return distances[n],n
 
-    distances = node_distances(graph, ancestors, start)
     node_list = distances.keys()
     node_list.sort(key=by_distance, reverse=True)
     return node_list
 
+def select_farthest(distances, common):
+    """Return the farthest common node, or None if no node qualifies."""
+    node_list = nodes_by_distance(distances)
+    for node in node_list:
+        if node in common:
+            return node
+
 def all_descendants(descendants, start):
+    """Produce a set of all descendants of the start node.
+    The input is a map of node->list of descendants for a graph encompassing
+    start.
+    """
     result = set()
     lines = set([start])
     while len(lines) > 0:

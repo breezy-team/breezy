@@ -21,13 +21,21 @@ A store is a simple write-once container indexed by a universally
 unique ID.
 """
 
-import os, tempfile, types, osutils, gzip, errno
+import errno
+import gzip
+import os
+import tempfile
+import types
 from stat import ST_SIZE
 from StringIO import StringIO
+
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 import bzrlib.ui
+import bzrlib.osutils as osutils
 from bzrlib.remotebranch import get_url
+import urllib2
+
 
 ######################################################################
 # stores
@@ -149,7 +157,8 @@ class ImmutableStore(Store):
         pb.update('preparing to copy')
         to_copy = [id for id in ids if id not in self]
         if isinstance(other, ImmutableStore):
-            return self.copy_multi_immutable(other, to_copy, pb)
+            return self.copy_multi_immutable(other, to_copy, pb, 
+                                             permit_failure=permit_failure)
         count = 0
         failed = set()
         for id in to_copy:
@@ -160,7 +169,7 @@ class ImmutableStore(Store):
             else:
                 try:
                     entry = other[id]
-                except IndexError:
+                except KeyError:
                     failed.add(id)
                     continue
                 self.add(entry, id)
@@ -239,7 +248,7 @@ class ImmutableStore(Store):
             if e.errno != errno.ENOENT:
                 raise
 
-        raise IndexError(fileid)
+        raise KeyError(fileid)
 
 
 class ImmutableScratchStore(ImmutableStore):
@@ -300,9 +309,12 @@ class RemoteStore(object):
         p = self._path(fileid)
         try:
             return get_url(p, compressed=True)
-        except:
+        except urllib2.URLError:
+            pass
+        try:
+            return get_url(p, compressed=False)
+        except urllib2.URLError:
             raise KeyError(fileid)
-
 
 class CachedStore:
     """A store that caches data locally, to avoid repeated downloads.
@@ -324,6 +336,8 @@ class CachedStore:
         """Copy a series of ids into the cache, before they are used.
         For remote stores that support pipelining or async downloads, this can
         increase speed considerably.
+        Failures while prefetching are ignored.
         """
         mutter("Prefetch of ids %s" % ",".join(ids))
-        self.cache_store.copy_multi(self.source_store, ids)
+        self.cache_store.copy_multi(self.source_store, ids,
+                                    permit_failure=True)

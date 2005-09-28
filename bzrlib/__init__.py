@@ -28,17 +28,19 @@ DEFAULT_IGNORE = ['.bzr.log',
                   'BitKeeper',
                   '.git',
                   'TAGS', '.make.state', '.sconsign', '.tmp*',
-                  '.del-*']
+                  '.del-*',
+                  '.DS_Store',]
 
 IGNORE_FILENAME = ".bzrignore"
 
+import os
 import locale
 user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
 __copyright__ = "Copyright 2005 Canonical Development Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
-__version__ = '0.1pre'
+__version__ = '0.0.8'
 
 
 def get_bzr_revision():
@@ -47,7 +49,7 @@ def get_bzr_revision():
     from bzrlib.branch import Branch
     
     try:
-        branch = Branch(__path__[0])
+        branch = Branch.open(os.path.dirname(__path__[0]))
         rh = branch.revision_history()
         if rh:
             return len(rh), rh[-1]

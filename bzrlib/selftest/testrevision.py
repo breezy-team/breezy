@@ -14,22 +14,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.selftest import TestCaseInTempDir, TestCase
-
+from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.revision import is_ancestor, MultipleRevisionSources
+from bzrlib.revision import combined_graph
 
 def make_branches():
     from bzrlib.branch import Branch
     from bzrlib.commit import commit
     import os
     os.mkdir("branch1")
-    br1 = Branch("branch1", init=True)
+    br1 = Branch.initialize("branch1")
     
     commit(br1, "Commit one", rev_id="a@u-0-0")
     commit(br1, "Commit two", rev_id="a@u-0-1")
     commit(br1, "Commit three", rev_id="a@u-0-2")
 
     os.mkdir("branch2")
-    br2 = Branch("branch2", init=True)
+    br2 = Branch.initialize("branch2")
     br2.update_revisions(br1)
     commit(br2, "Commit four", rev_id="b@u-0-3")
     commit(br2, "Commit five", rev_id="b@u-0-4")
@@ -48,7 +49,6 @@ def make_branches():
 class TestIsAncestor(TestCaseInTempDir):
     def test_is_ancestor(self):
         """Test checking whether a revision is an ancestor of another revision"""
-        from bzrlib.revision import is_ancestor, MultipleRevisionSources
         from bzrlib.errors import NoSuchRevision
         br1, br2 = make_branches()
         revisions = br1.revision_history()
@@ -65,68 +65,6 @@ class TestIsAncestor(TestCaseInTempDir):
         assert is_ancestor(revisions[3], revisions_2[4], br1)
         assert is_ancestor(revisions[3], revisions_2[3], sources)
         assert not is_ancestor(revisions[3], revisions_2[3], br1)
-
-class TestIntermediateRevisions(TestCaseInTempDir):
-
-    def setUp(self):
-        from bzrlib.commit import commit
-        TestCaseInTempDir.setUp(self)
-        self.br1, self.br2 = make_branches()
-        commit(self.br2, "Commit eleven", rev_id="b@u-0-7")
-        commit(self.br2, "Commit twelve", rev_id="b@u-0-8")
-        commit(self.br2, "Commit thirtteen", rev_id="b@u-0-9")
-        self.br1.add_pending_merge(self.br2.revision_history()[6])
-        commit(self.br1, "Commit fourtten", rev_id="a@u-0-6")
-        self.br2.add_pending_merge(self.br1.revision_history()[6])
-        commit(self.br2, "Commit fifteen", rev_id="b@u-0-10")
-
-        from bzrlib.revision import MultipleRevisionSources
-        self.sources = MultipleRevisionSources(self.br1, self.br2)
-
-    def intervene(self, ancestor, revision, revision_history=None):
-        from bzrlib.revision import get_intervening_revisions
-        return get_intervening_revisions(ancestor,revision, self.sources, 
-                                         revision_history)
-
-    def test_intervene(self):
-        """Find intermediate revisions, without requiring history"""
-        from bzrlib.errors import NotAncestor, NoSuchRevision
-        assert len(self.intervene('a@u-0-0', 'a@u-0-0')) == 0
-        self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-1'), ['a@u-0-1'])
-        self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-2'), 
-                         ['a@u-0-1', 'a@u-0-2'])
-        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-3'), 
-                         ['a@u-0-1', 'a@u-0-2', 'b@u-0-3'])
-        self.assertEqual(self.intervene('b@u-0-3', 'a@u-0-3'), 
-                         ['b@u-0-4', 'a@u-0-3'])
-        self.assertEqual(self.intervene('a@u-0-2', 'a@u-0-3', 
-                                        self.br1.revision_history()), 
-                         ['a@u-0-3'])
-        self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-5', 
-                                        self.br1.revision_history()), 
-                         ['a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4', 
-                          'a@u-0-5'])
-        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-6', 
-                         self.br1.revision_history()), 
-                         ['a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4', 
-                          'b@u-0-6'])
-        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-5'), 
-                         ['a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4', 
-                          'b@u-0-5'])
-        self.assertEqual(self.intervene('b@u-0-3', 'b@u-0-6', 
-                         self.br2.revision_history()), 
-                         ['b@u-0-4', 'b@u-0-5', 'b@u-0-6'])
-        self.assertEqual(self.intervene('b@u-0-6', 'b@u-0-10'), 
-                         ['b@u-0-7', 'b@u-0-8', 'b@u-0-9', 'b@u-0-10'])
-        self.assertEqual(self.intervene('b@u-0-6', 'b@u-0-10', 
-                                        self.br2.revision_history()), 
-                         ['b@u-0-7', 'b@u-0-8', 'b@u-0-9', 'b@u-0-10'])
-        self.assertRaises(NotAncestor, self.intervene, 'b@u-0-10', 'b@u-0-6', 
-                          self.br2.revision_history())
-        self.assertRaises(NoSuchRevision, self.intervene, 'c@u-0-10', 
-                          'b@u-0-6', self.br2.revision_history())
-        self.assertRaises(NoSuchRevision, self.intervene, 'b@u-0-10', 
-                          'c@u-0-6', self.br2.revision_history())
 
 class TestIntermediateRevisions(TestCaseInTempDir):
 
@@ -241,6 +179,7 @@ class TestCommonAncestor(TestCaseInTempDir):
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
         sources = MultipleRevisionSources(br1, br2)
+
         expected_ancestors_list = {revisions[3]:(0, 0), 
                                    revisions[2]:(1, 1),
                                    revisions_2[4]:(2, 1), 
@@ -253,6 +192,7 @@ class TestCommonAncestor(TestCaseInTempDir):
             self.assertEqual(ancestors_list[key], value, 
                               "key %r, %r != %r" % (key, ancestors_list[key],
                                                     value))
+
         self.assertEqual(common_ancestor(revisions[0], revisions[0], sources),
                           revisions[0])
         self.assertEqual(common_ancestor(revisions[1], revisions[2], sources),
@@ -270,52 +210,15 @@ class TestCommonAncestor(TestCaseInTempDir):
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
                           revisions[4])
 
-
-class TestCreateSignedRevision(TestCaseInTempDir):
-
-    def test_create_signed_revision(self):
-        # create a store
-        # create a revision, sign it, apply to the store.
-        pass
-
-
-class TestOperators(TestCase):
-
-    def test___eq__(self):
-        from bzrlib.revision import Revision, RevisionReference
-        revision1 = Revision("invid", "sha", "revid", 100, "boo", "john", [])
-        revision2 = Revision("invid", "sha", "revid", 100, "boo", "john", [])
-        revision3 = Revision("invid", "sha", "rev2id", 100, "bp", "john", 
-                             [RevisionReference("revid")])
-        self.assertEqual(revision1, revision1)
-        self.assertEqual(revision1, revision2)
-        self.assertNotEqual(revision1, revision3)
-        self.assertEqual(revision2, revision1)
-        self.assertEqual(revision2, revision2)
-        self.assertNotEqual(revision2, revision3)
-        self.assertNotEqual(revision3, revision1)
-        self.assertNotEqual(revision3, revision2)
-        self.assertEqual(revision3, revision3)
-
-    def test__eq__reference(self):
-        from bzrlib.revision import Revision, RevisionReference
-        ref1 = RevisionReference('revid', '1'*40)
-        ref2 = RevisionReference('revid', '1'*40)
-        ref3 = RevisionReference('revid', '2'*40)
-        ref4 = RevisionReference('revid2', '3'*40)
-        self.assertEqual(ref1, ref1)
-        self.assertEqual(ref1, ref2)
-        self.assertNotEqual(ref1, ref3)
-        self.assertNotEqual(ref1, ref4)
-        self.assertEqual(ref2, ref1)
-        self.assertEqual(ref2, ref2)
-        self.assertNotEqual(ref2, ref3)
-        self.assertNotEqual(ref2, ref4)
-        self.assertNotEqual(ref3, ref1)
-        self.assertNotEqual(ref3, ref2)
-        self.assertEqual(ref3, ref3)
-        self.assertNotEqual(ref3, ref4)
-        self.assertNotEqual(ref4, ref1)
-        self.assertNotEqual(ref4, ref2)
-        self.assertNotEqual(ref4, ref3)
-        self.assertEqual(ref4, ref4)
+    def test_combined(self):
+        """combined_graph
+        Ensure it's not order-sensitive
+        """
+        br1, br2 = make_branches()
+        source = MultipleRevisionSources(br1, br2)
+        combined_1 = combined_graph(br1.last_patch(), br2.last_patch(), source)
+        combined_2 = combined_graph(br2.last_patch(), br1.last_patch(), source)
+        assert combined_1[1] == combined_2[1]
+        assert combined_1[2] == combined_2[2]
+        assert combined_1[3] == combined_2[3]
+        assert combined_1 == combined_2

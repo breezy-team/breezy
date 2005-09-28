@@ -13,19 +13,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-import os
-import sys
-
 import bzrlib.errors
 from bzrlib.selftest.testrevision import make_branches
 from bzrlib.trace import mutter
-from bzrlib.branch import Branch
+from bzrlib.branch import Branch, find_branch
+import gzip
+import sys
+import os
 
-from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
+        
 
-
-class TestFetch(TestCaseInTempDir):
+class TestFetch(TestCaseWithWebserver):
     def runTest(self):
         from bzrlib.fetch import greedy_fetch, has_revision
 
@@ -35,25 +34,40 @@ class TestFetch(TestCaseInTempDir):
             
         #highest indices a: 5, b: 7
         br_a, br_b = make_branches()
-        assert not has_revision(br_b, br_a.revision_history()[3])
-        assert has_revision(br_b, br_a.revision_history()[2])
+        # unpack one of br_a's revision files to test .gz fallbacks
+        to_unzip = br_a.revision_history()[-1]
+        to_unzip_source = gzip.open(os.path.join(br_a.base, '.bzr', 
+                                                  'revision-store',
+                                                  to_unzip + '.gz'))
+        content = to_unzip_source.read()
+        to_unzip_source.close()
+        os.unlink(os.path.join(br_a.base, '.bzr', 'revision-store',
+                               to_unzip + '.gz'))
+        to_unzip_output = open(os.path.join(br_a.base, '.bzr', 
+                                             'revision-store', to_unzip), 'wb')
+        to_unzip_output.write(content)
+        to_unzip_output.close()
+        
+        br_rem = Branch.open(self.get_remote_url(br_a.base))
+        assert not has_revision(br_b, br_rem.revision_history()[3])
+        assert has_revision(br_b, br_rem.revision_history()[2])
         assert len(br_b.revision_history()) == 7
-        assert greedy_fetch(br_b, br_a, br_a.revision_history()[2])[0] == 0
+        assert greedy_fetch(br_b, br_rem, br_rem.revision_history()[2])[0] == 0
 
         # greedy_fetch is not supposed to alter the revision history
         assert len(br_b.revision_history()) == 7
-        assert not has_revision(br_b, br_a.revision_history()[3])
+        assert not has_revision(br_b, br_rem.revision_history()[3])
 
         assert len(br_b.revision_history()) == 7
-        assert greedy_fetch(br_b, br_a, br_a.revision_history()[3])[0] == 1
+        assert greedy_fetch(br_b, br_rem, br_rem.revision_history()[3])[0] == 1
         assert has_revision(br_b, br_a.revision_history()[3])
-        assert not has_revision(br_a, br_b.revision_history()[3])
-        assert not has_revision(br_a, br_b.revision_history()[4])
+        assert not has_revision(br_rem, br_b.revision_history()[3])
+        assert not has_revision(br_rem, br_b.revision_history()[4])
 
         # When a non-branch ancestor is missing, it should be a failure, not
         # exception
         br_a4 = new_branch('br_a4')
-        count, failures = greedy_fetch(br_a4, br_a)
+        count, failures = greedy_fetch(br_a4, br_rem)
         assert count == 6
         assert failures == set((br_b.revision_history()[4],
                                 br_b.revision_history()[5])) 
@@ -69,27 +83,9 @@ class TestFetch(TestCaseInTempDir):
         assert not has_revision(br_b2, br_a.revision_history()[3])
 
         br_a2 = new_branch('br_a2')
-        assert greedy_fetch(br_a2, br_a)[0] == 9
+        assert greedy_fetch(br_a2, br_rem)[0] == 9
         assert has_revision(br_a2, br_b.revision_history()[4])
         assert has_revision(br_a2, br_a.revision_history()[3])
-
-        br_a3 = new_branch('br_a3')
-        assert greedy_fetch(br_a3, br_a2)[0] == 0
-        for revno in range(4):
-            assert not has_revision(br_a3, br_a.revision_history()[revno])
-        assert greedy_fetch(br_a3, br_a2, br_a.revision_history()[2])[0] == 3
-        fetched = greedy_fetch(br_a3, br_a2, br_a.revision_history()[3])[0]
-        assert fetched == 3, "fetched %d instead of 3" % fetched
-        # InstallFailed should be raised if the branch is missing the revision
-        # that was requested.
-        self.assertRaises(bzrlib.errors.InstallFailed, greedy_fetch, br_a3,
-                          br_a2, 'pizza')
-        # InstallFailed should be raised if the branch is missing a revision
-        # from its own revision history
-        br_a2.append_revision('a-b-c')
-        self.assertRaises(bzrlib.errors.InstallFailed, greedy_fetch, br_a3,
-                          br_a2)
-
 
 
 if __name__ == '__main__':

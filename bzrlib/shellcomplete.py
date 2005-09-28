@@ -17,15 +17,15 @@ def shellcomplete_on_command(cmdname, outfile = None):
 
     from inspect import getdoc
     import commands
-    context, cmdclass = commands.get_cmd_class(cmdname)
+    cmdobj = commands.get_cmd_object(cmdname)
 
-    doc = getdoc(cmdclass)
+    doc = getdoc(cmdobj)
     if doc == None:
         raise NotImplementedError("sorry, no detailed shellcomplete yet for %r" % cmdname)
 
-    shellcomplete_on_option(cmdclass.takes_options, outfile = None)
-    for aname in cmdclass.takes_args:
-	    outfile.write(aname + '\n')
+    shellcomplete_on_option(cmdobj.takes_options, outfile = None)
+    for aname in cmdobj.takes_args:
+        outfile.write(aname + '\n')
 
 
 def shellcomplete_on_option(options, outfile = None):

@@ -20,7 +20,8 @@ def show_status(branch, show_unchanged=False,
                 specific_files=None,
                 show_ids=False,
                 to_file=None,
-                show_pending=True):
+                show_pending=True,
+                revision=None):
     """Display status for non-ignored working files.
 
     show_unchanged
@@ -37,6 +38,11 @@ def show_status(branch, show_unchanged=False,
 
     show_pending
         If set, write pending merges.
+
+    revision
+        If None the compare latest revision with working tree
+        If one revision show compared it with working tree.
+        If two revisions show status between first and second.
     """
     import sys
     from bzrlib.delta import compare_trees
@@ -46,9 +52,26 @@ def show_status(branch, show_unchanged=False,
     
     branch.lock_read()
     try:
-
-        old = branch.basis_tree()
-        new = branch.working_tree()
+        new_is_working_tree = True
+        if revision is None:
+            old = branch.basis_tree()
+            new = branch.working_tree()
+        elif len(revision) > 0:
+            try:
+                rev_id = revision[0].in_history(branch).rev_id
+                old = branch.revision_tree(rev_id)
+            except NoSuchRevision, e:
+                raise BzrCommandError(str(e))
+            if len(revision) > 1:
+                try:
+                    rev_id = revision[1].in_history(branch).rev_id
+                    new = branch.revision_tree(rev_id)
+                    new_is_working_tree = False
+                except NoSuchRevision, e:
+                    raise BzrCommandError(str(e))
+            else:
+                new = branch.working_tree()
+                
 
         delta = compare_trees(old, new, want_unchanged=show_unchanged,
                               specific_files=specific_files)
@@ -57,22 +80,23 @@ def show_status(branch, show_unchanged=False,
                    show_ids=show_ids,
                    show_unchanged=show_unchanged)
 
-        unknowns = new.unknowns()
-        done_header = False
-        for path in unknowns:
-            # FIXME: Should also match if the unknown file is within a
-            # specified directory.
-            if specific_files:
-                if path not in specific_files:
-                    continue
-            if not done_header:
-                print >>to_file, 'unknown:'
-                done_header = True
-            print >>to_file, ' ', path
-        if show_pending and len(branch.pending_merges()) > 0:
-            print >>to_file, 'pending merges:'
-            for merge in branch.pending_merges():
-                print >> to_file, ' ', merge
+        if new_is_working_tree:
+            unknowns = new.unknowns()
+            done_header = False
+            for path in unknowns:
+                # FIXME: Should also match if the unknown file is within a
+                # specified directory.
+                if specific_files:
+                    if path not in specific_files:
+                        continue
+                if not done_header:
+                    print >>to_file, 'unknown:'
+                    done_header = True
+                print >>to_file, ' ', path
+            if show_pending and len(branch.pending_merges()) > 0:
+                print >>to_file, 'pending merges:'
+                for merge in branch.pending_merges():
+                    print >> to_file, ' ', merge
     finally:
         branch.unlock()
         

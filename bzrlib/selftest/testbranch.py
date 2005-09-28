@@ -21,7 +21,7 @@ class TestAppendRevisions(TestCaseInTempDir):
     """Test appending more than one revision"""
     def test_append_revisions(self):
         from bzrlib.branch import Branch
-        br = Branch(".", init=True)
+        br = Branch.initialize(".")
         br.append_revision("rev1")
         self.assertEquals(br.revision_history(), ["rev1",])
         br.append_revision("rev2", "rev3")

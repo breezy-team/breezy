@@ -44,7 +44,7 @@ class TestVersioning(TestCaseInTempDir):
 
         from bzrlib.diff import compare_trees
         from bzrlib.branch import Branch
-        b = Branch('.')
+        b = Branch.open('.')
         
         delta = compare_trees(b.basis_tree(), b.working_tree())
 
@@ -63,7 +63,7 @@ class TestVersioning(TestCaseInTempDir):
         from bzrlib.branch import Branch
         from bzrlib.errors import NotVersionedError
 
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         self.build_tree(['foo/',
                          'foo/hello'])
@@ -84,7 +84,7 @@ class TestVersioning(TestCaseInTempDir):
         from bzrlib.commands import run_bzr
         eq = self.assertEqual
 
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         eq(list(b.unknowns()), ['inertiatic'])
@@ -112,12 +112,12 @@ class TestVersioning(TestCaseInTempDir):
         from bzrlib.commands import run_bzr
         eq = self.assertEqual
 
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         eq(list(b.unknowns()), ['inertiatic'])
         run_bzr(['add', '--no-recurse', 'inertiatic'])
-        eq(list(b.unknowns()), ['inertiatic/esp'])
+        eq(list(b.unknowns()), ['inertiatic'+os.sep+'esp'])
         run_bzr(['add', 'inertiatic/esp'])
         eq(list(b.unknowns()), [])
 
@@ -131,7 +131,7 @@ class TestVersioning(TestCaseInTempDir):
         ass = self.assert_
         chdir = os.chdir
         
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         self.build_tree(['src/', 'README'])
         
         eq(sorted(b.unknowns()),
@@ -159,7 +159,7 @@ class TestVersioning(TestCaseInTempDir):
         """After all the above changes, run the check and upgrade commands.
 
         The upgrade should be a no-op."""
-        b = Branch('.')
+        b = Branch.open('.')
         debug('branch has %d revisions', b.revno())
         
         debug('check branch...')
@@ -186,7 +186,7 @@ class SubdirCommit(TestCaseInTempDir):
         self.build_tree(['a/', 'b/'])
         
         run_bzr('init')
-        b = Branch('.')
+        b = Branch.open('.')
         
         for fn in ('a/one', 'b/two', 'top'):
             file(fn, 'w').write('old contents')
@@ -199,8 +199,8 @@ class SubdirCommit(TestCaseInTempDir):
             
         run_bzr('commit', 'a', '-m', 'commit a only')
         
-        old = b.revision_tree(b.lookup_revision(1))
-        new = b.revision_tree(b.lookup_revision(2))
+        old = b.revision_tree(b.get_rev_id(1))
+        new = b.revision_tree(b.get_rev_id(2))
         
         eq(new.get_file_by_path('b/two').read(), 'old contents')
         eq(new.get_file_by_path('top').read(), 'old contents')
@@ -209,14 +209,14 @@ class SubdirCommit(TestCaseInTempDir):
         os.chdir('a')
         # commit from here should do nothing
         run_bzr('commit', '.', '-m', 'commit subdir only', '--unchanged')
-        v3 = b.revision_tree(b.lookup_revision(3))
+        v3 = b.revision_tree(b.get_rev_id(3))
         eq(v3.get_file_by_path('b/two').read(), 'old contents')
         eq(v3.get_file_by_path('top').read(), 'old contents')
         eq(v3.get_file_by_path('a/one').read(), 'new contents')
                 
         # commit in subdirectory commits whole tree
         run_bzr('commit', '-m', 'commit whole tree from subdir')
-        v4 = b.revision_tree(b.lookup_revision(4))
+        v4 = b.revision_tree(b.get_rev_id(4))
         eq(v4.get_file_by_path('b/two').read(), 'new contents')        
         eq(v4.get_file_by_path('top').read(), 'new contents')
         

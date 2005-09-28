@@ -1,5 +1,3 @@
-#! /usr/bin/python
-
 # Copyright (C) 2005 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
@@ -210,12 +208,3 @@ class IntSet(Exception):
         if not self._val & m:
             raise KeyError(to_remove)
         self._val ^= m
-        
-        
-            
-    
-
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod()
-    

@@ -18,7 +18,7 @@
 
 import time
 
-from osutils import format_date
+from bzrlib.osutils import format_date
 
 
 def _countiter(it):

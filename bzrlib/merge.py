@@ -26,12 +26,15 @@ import bzrlib.revision
 from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
 from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
 from bzrlib.changeset import Inventory, Diff3Merge
-from bzrlib.branch import find_branch
-from bzrlib.errors import BzrCommandError, UnrelatedBranches
+from bzrlib.branch import Branch
+from bzrlib.errors import BzrCommandError, UnrelatedBranches, NoCommonAncestor
+from bzrlib.errors import NoCommits
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter, warning
 from bzrlib.fetch import greedy_fetch
 from bzrlib.revision import is_ancestor
+from bzrlib.osutils import rename
+
 
 # comments from abentley on irc: merge happens in two stages, each
 # of which generates a changeset object
@@ -46,8 +49,8 @@ class MergeConflictHandler(ExceptionConflictHandler):
     conflict that are not explicitly handled cause an exception and
     terminate the merge.
     """
-    def __init__(self, dir, ignore_zero=False):
-        ExceptionConflictHandler.__init__(self, dir)
+    def __init__(self, ignore_zero=False):
+        ExceptionConflictHandler.__init__(self)
         self.conflicts = 0
         self.ignore_zero = ignore_zero
 
@@ -83,7 +86,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
             last_new_name = name
         new_name = last_new_name+suffix
         try:
-            os.rename(name, new_name)
+            rename(name, new_name)
             return new_name
         except OSError, e:
             if e.errno != errno.EEXIST and e.errno != errno.ENOTEMPTY:
@@ -107,7 +110,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
         self.add_suffix(this_path, ".THIS")
         self.dump(base_lines, this_path+".BASE")
         self.dump(other_lines, this_path+".OTHER")
-        os.rename(new_file, this_path)
+        rename(new_file, this_path)
         self.conflict("Diff3 conflict encountered in %s" % this_path)
 
     def new_contents_conflict(self, filename, other_contents):
@@ -133,13 +136,13 @@ class MergeConflictHandler(ExceptionConflictHandler):
             
 def get_tree(treespec, temp_root, label, local_branch=None):
     location, revno = treespec
-    branch = find_branch(location)
+    branch = Branch.open_containing(location)
     if revno is None:
         revision = None
     elif revno == -1:
         revision = branch.last_patch()
     else:
-        revision = branch.lookup_revision(revno)
+        revision = branch.get_rev_id(revno)
     return branch, get_revid_tree(branch, revision, temp_root, label,
                                   local_branch)
 
@@ -243,7 +246,7 @@ def merge(other_revision, base_revision,
     try:
         if this_dir is None:
             this_dir = '.'
-        this_branch = find_branch(this_dir)
+        this_branch = Branch.open_containing(this_dir)
         this_rev_id = this_branch.last_patch()
         if this_rev_id is None:
             raise BzrCommandError("This branch has no commits")
@@ -256,17 +259,22 @@ def merge(other_revision, base_revision,
                                             this_branch)
         if other_revision[1] == -1:
             other_rev_id = other_branch.last_patch()
+            if other_rev_id is None:
+                raise NoCommits(other_branch)
             other_basis = other_rev_id
         elif other_revision[1] is not None:
-            other_rev_id = other_branch.lookup_revision(other_revision[1])
+            other_rev_id = other_branch.get_rev_id(other_revision[1])
             other_basis = other_rev_id
         else:
             other_rev_id = None
             other_basis = other_branch.last_patch()
+            if other_basis is None:
+                raise NoCommits(other_branch)
         if base_revision == [None, None]:
-            base_rev_id = common_ancestor(this_rev_id, other_basis, 
-                                          this_branch)
-            if base_rev_id is None:
+            try:
+                base_rev_id = common_ancestor(this_rev_id, other_basis, 
+                                              this_branch)
+            except NoCommonAncestor:
                 raise UnrelatedBranches()
             base_tree = get_revid_tree(this_branch, base_rev_id, tempdir, 
                                        "base", None)
@@ -278,13 +286,10 @@ def merge(other_revision, base_revision,
             elif base_revision[1] is None:
                 base_rev_id = None
             else:
-                base_rev_id = base_branch.lookup_revision(base_revision[1])
-            if base_rev_id is not None:
-                base_is_ancestor = is_ancestor(this_rev_id, base_rev_id, 
-                                               MultipleRevisionSources(this_branch, 
-                                                                       base_branch))
-            else:
-                base_is_ancestor = False
+                base_rev_id = base_branch.get_rev_id(base_revision[1])
+            multi_source = MultipleRevisionSources(this_branch, base_branch)
+            base_is_ancestor = is_ancestor(this_rev_id, base_rev_id,
+                                           multi_source)
         if file_list is None:
             interesting_ids = None
         else:
@@ -346,8 +351,7 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
                              generate_cset_optimized, get_inventory,
-                             MergeConflictHandler(base_tree.root,
-                                                  ignore_zero=ignore_zero),
+                             MergeConflictHandler(ignore_zero=ignore_zero),
                              merge_factory=merge_factory, 
                              interesting_ids=interesting_ids)
 

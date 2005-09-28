@@ -16,7 +16,9 @@
 
 
 import bzrlib.errors
-from bzrlib.graph import farthest_nodes, node_distances, all_descendants
+from bzrlib.graph import node_distances, select_farthest, all_descendants
+
+NULL_REVISION="null:"
 
 class RevisionReference(object):
     """
@@ -109,7 +111,7 @@ class Revision(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-
+        
 REVISION_ID_RE = None
 
 def validate_revision_id(rid):
@@ -130,7 +132,8 @@ def is_ancestor(revision_id, candidate_id, revision_source):
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
     """
-
+    if candidate_id is None:
+        return True
     for ancestor_id, distance in iter_ancestors(revision_id, revision_source):
         if ancestor_id == candidate_id:
             return True
@@ -230,15 +233,19 @@ def revision_graph(revision, revision_source):
     while len(lines) > 0:
         new_lines = set()
         for line in lines:
-            try:
-                rev = revision_source.get_revision(line)
-                parents = [p.revision_id for p in rev.parents]
-                if len(parents) == 0:
-                    root = line
-            except bzrlib.errors.NoSuchRevision:
-                if line == revision:
-                    raise
-                parents = None
+            if line == NULL_REVISION:
+                parents = []
+                root = NULL_REVISION
+            else:
+                try:
+                    rev = revision_source.get_revision(line)
+                    parents = [p.revision_id for p in rev.parents]
+                    if len(parents) == 0:
+                        parents = [NULL_REVISION]
+                except bzrlib.errors.NoSuchRevision:
+                    if line == revision:
+                        raise
+                    parents = None
             if parents is not None:
                 for parent in parents:
                     if parent not in ancestors:
@@ -253,13 +260,15 @@ def revision_graph(revision, revision_source):
     assert root not in ancestors[root]
     return root, ancestors, descendants
 
+
 def combined_graph(revision_a, revision_b, revision_source):
     """Produce a combined ancestry graph.
     Return graph root, ancestors map, descendants map, set of common nodes"""
     root, ancestors, descendants = revision_graph(revision_a, revision_source)
     root_b, ancestors_b, descendants_b = revision_graph(revision_b, 
                                                         revision_source)
-    assert root == root_b
+    if root != root_b:
+        raise bzrlib.errors.NoCommonRoot(revision_a, revision_b)
     common = set()
     for node, node_anc in ancestors_b.iteritems():
         if node in ancestors:
@@ -269,17 +278,24 @@ def combined_graph(revision_a, revision_b, revision_source):
         ancestors[node].update(node_anc)
     for node, node_dec in descendants_b.iteritems():
         if node not in descendants:
-            descendants[node] = set()
+            descendants[node] = {}
         descendants[node].update(node_dec)
     return root, ancestors, descendants, common
 
+
 def common_ancestor(revision_a, revision_b, revision_source):
-    root, ancestors, descendants, common = \
-        combined_graph(revision_a, revision_b, revision_source)
-    nodes = farthest_nodes(descendants, ancestors, root)
-    for node in nodes:
-        if node in common:
-            return node
+    try:
+        root, ancestors, descendants, common = \
+            combined_graph(revision_a, revision_b, revision_source)
+    except bzrlib.errors.NoCommonRoot:
+        raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+        
+    distances = node_distances (descendants, ancestors, root)
+    farthest = select_farthest(distances, common)
+    if farthest is None or farthest == NULL_REVISION:
+        raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+    return farthest
+
 
 class MultipleRevisionSources(object):
     """Proxy that looks in multiple branches for revisions."""

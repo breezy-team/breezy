@@ -93,8 +93,16 @@ read() call to get everything into memory.
 # then ftell after writing to see where it went.  In any case we
 # assume the whole branch is protected by a lock.
 
-import sys, zlib, struct, mdiff, stat, os, sha
+import os
+import sha
+import stat
+import struct
+import sys
+import zlib
 from binascii import hexlify, unhexlify
+
+import bzrlib.mdiff as mdiff
+
 
 _RECORDSIZE = 48
 

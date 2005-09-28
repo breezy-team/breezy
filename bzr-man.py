@@ -42,7 +42,8 @@ if version_info < NEED_VERS:
     print >>sys.stderr, "bzr-man.py: error: cannot find a suitable python interpreter"
     print >>sys.stderr, "  (need %d.%d or later)" % NEED_VERS
     sys.exit(1)
-os.unsetenv(REINVOKE)
+if hasattr(os, "unsetenv"):
+    os.unsetenv(REINVOKE)
 
 import bzrlib, bzrlib.help
 

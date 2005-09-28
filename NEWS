@@ -2,11 +2,52 @@ development head
 
   IMPROVEMENTS:
 
+    * Status now accepted a -r argument to give status between chosen
+      revisions. Contributed by Heikki Paajanen.
+
+    * Revision arguments no longer use +/-/= to control ranges, instead
+      there is a 'before' namespace, which limits the successive namespace.
+      For example '$ bzr log -r date:yesterday..before:date:today' will
+      select everything from yesterday and before today. Contributed by
+      Robey Pointer
+
+    * There is now a bzr.bat file created by distutils when building on 
+      Windows. Contributed by Alexander Belchenko.
+
+  BUG FIXES:
+
+    * Various minor bug in windows support have been fixed, largely in the
+      test suite. Contributed by Alexander Belchenko.
+      
+  INTERNALS:
+
+    * removed uuid() as it was unused.
+
+    * Test case failures have the exception printed after the log for your
+      viewing pleasure.
+
+bzr 0.0.8 2005-09-20
+
+  IMPROVEMENTS:
+
     * Adding a file whose parent directory is not versioned will
       implicitly add the parent, and so on up to the root. This means
       you should never need to explictly add a directory, they'll just
       get added when you add a file in the directory.  Contributed by
       Michael Ellerman.
+
+    * Ignore .DS_Store (contains Mac metadata) by default.  Patch from
+      Nir Soffer.
+
+    * If you set BZR_EDITOR in the environment, it is checked in
+      preference to EDITOR and the config file for the interactive commit
+      editing program. Related to this is a bugfix where a missing program
+      set in EDITOR would cause editing to fail, now the fallback program
+      for the operating system is still tried.
+
+    * Files that are not directories/symlinks/regular files will no longer
+      cause bzr to fail, it will just ignore them by default. You cannot add
+      them to the tree though - they are not versionable.
 
 
   INTERNALS:
@@ -21,10 +62,15 @@ development head
     * Fixed strange error when trying to access a nonexistent http
       branch.
 
+    * Make sure that the hashcache gets written out if it can't be
+      read.
+
 
   PORTABILITY:
 
     * Various Windows fixes from Ollie Rutherfurd.
+
+    * Quieten warnings about locking; patch from Matt Lavin.
 
 
 bzr-0.0.7 2005-09-02
