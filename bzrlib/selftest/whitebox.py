@@ -1,5 +1,3 @@
-#! /usr/bin/python
-
 import os
 import unittest
 
@@ -11,7 +9,7 @@ from bzrlib.errors import NotBranchError, NotVersionedError
 class TestBranch(TestCaseInTempDir):
 
     def test_unknowns(self):
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         self.build_tree(['hello.txt',
                          'hello.txt~'])
@@ -22,7 +20,7 @@ class TestBranch(TestCaseInTempDir):
     def test_no_changes(self):
         from bzrlib.errors import PointlessCommit
         
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         self.build_tree(['hello.txt'])
 
@@ -76,7 +74,7 @@ class PendingMerges(TestCaseInTempDir):
 
     def test_pending_merges(self):
         """Tracking pending-merged revisions."""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         self.assertEquals(b.pending_merges(), [])
         b.add_pending_merge('foo@azkhazan-123123-abcabc')
@@ -99,7 +97,7 @@ class PendingMerges(TestCaseInTempDir):
         
     def test_revert(self):
         """Test selected-file revert"""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
 
         self.build_tree(['hello.txt'])
         file('hello.txt', 'w').write('initial hello')
@@ -126,7 +124,7 @@ class PendingMerges(TestCaseInTempDir):
 
     def test_rename_dirs(self):
         """Test renaming directories and the files within them."""
-        b = Branch('.', init=True)
+        b = Branch.initialize('.')
         self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
         b.add(['dir', 'dir/sub', 'dir/sub/file'])
 
@@ -197,7 +195,8 @@ class PendingMerges(TestCaseInTempDir):
             # directory, or nearby
             os.chdir(dtmp)
 
-            self.assertEqual(rp('foo/bar/quux'), 'foo/bar/quux')
+            FOO_BAR_QUUX = os.path.join('foo', 'bar', 'quux')
+            self.assertEqual(rp('foo/bar/quux'), FOO_BAR_QUUX)
 
             self.assertEqual(rp('foo'), 'foo')
 

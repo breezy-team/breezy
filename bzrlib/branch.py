@@ -21,11 +21,10 @@ import os
 import bzrlib
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
-     splitpath, \
-     sha_file, appendpath, file_kind
+     rename, splitpath, sha_file, appendpath, file_kind
 
-from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId
-import bzrlib.errors
+from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId, \
+     DivergedBranches, NotBranchError
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision
 from bzrlib.delta import compare_trees
@@ -43,34 +42,10 @@ BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
 # repeatedly to calculate deltas.  We could perhaps have a weakref
 # cache in memory to make this faster.
 
-# TODO: please move the revision-string syntax stuff out of the branch
-# object; it's clutter
-
-
-def find_branch(f, **args):
-    if f and (f.startswith('http://') or f.startswith('https://')):
-        import remotebranch 
-        return remotebranch.RemoteBranch(f, **args)
-    else:
-        return Branch(f, **args)
-
-
-def find_cached_branch(f, cache_root, **args):
-    from remotebranch import RemoteBranch
-    br = find_branch(f, **args)
-    def cacheify(br, store_name):
-        from store import CachedStore
-        cache_path = os.path.join(cache_root, store_name)
-        os.mkdir(cache_path)
-        new_store = CachedStore(getattr(br, store_name), cache_path)
-        setattr(br, store_name, new_store)
-
-    if isinstance(br, RemoteBranch):
-        cacheify(br, 'inventory_store')
-        cacheify(br, 'text_store')
-        cacheify(br, 'revision_store')
-    return br
-
+def find_branch(*ignored, **ignored_too):
+    # XXX: leave this here for about one release, then remove it
+    raise NotImplementedError('find_branch() is not supported anymore, '
+                              'please use one of the new branch constructors')
 
 def _relpath(base, path):
     """Return path relative to base, or raise exception.
@@ -94,7 +69,6 @@ def _relpath(base, path):
         if tail:
             s.insert(0, tail)
     else:
-        from errors import NotBranchError
         raise NotBranchError("path %r is not within branch %r" % (rp, base))
 
     return os.sep.join(s)
@@ -116,7 +90,6 @@ def find_branch_root(f=None):
         f = bzrlib.osutils.normalizepath(f)
     if not bzrlib.osutils.lexists(f):
         raise BzrError('%r does not exist' % f)
-        
 
     orig_f = f
 
@@ -126,17 +99,10 @@ def find_branch_root(f=None):
         head, tail = os.path.split(f)
         if head == f:
             # reached the root, whatever that may be
-            raise bzrlib.errors.NotBranchError('%s is not in a branch' % orig_f)
+            raise NotBranchError('%s is not in a branch' % orig_f)
         f = head
 
 
-
-# XXX: move into bzrlib.errors; subclass BzrError    
-class DivergedBranches(Exception):
-    def __init__(self, branch1, branch2):
-        self.branch1 = branch1
-        self.branch2 = branch2
-        Exception.__init__(self, "These branches have diverged.")
 
 
 ######################################################################
@@ -146,7 +112,55 @@ class Branch(object):
     """Branch holding a history of revisions.
 
     base
-        Base directory of the branch.
+        Base directory/url of the branch.
+    """
+    base = None
+
+    def __init__(self, *ignored, **ignored_too):
+        raise NotImplementedError('The Branch class is abstract')
+
+    @staticmethod
+    def open(base):
+        """Open an existing branch, rooted at 'base' (url)"""
+        if base and (base.startswith('http://') or base.startswith('https://')):
+            from bzrlib.remotebranch import RemoteBranch
+            return RemoteBranch(base, find_root=False)
+        else:
+            return LocalBranch(base, find_root=False)
+
+    @staticmethod
+    def open_containing(url):
+        """Open an existing branch which contains url.
+        
+        This probes for a branch at url, and searches upwards from there.
+        """
+        if url and (url.startswith('http://') or url.startswith('https://')):
+            from bzrlib.remotebranch import RemoteBranch
+            return RemoteBranch(url)
+        else:
+            return LocalBranch(url)
+
+    @staticmethod
+    def initialize(base):
+        """Create a new branch, rooted at 'base' (url)"""
+        if base and (base.startswith('http://') or base.startswith('https://')):
+            from bzrlib.remotebranch import RemoteBranch
+            return RemoteBranch(base, init=True)
+        else:
+            return LocalBranch(base, init=True)
+
+    def setup_caching(self, cache_root):
+        """Subclasses that care about caching should override this, and set
+        up cached stores located under cache_root.
+        """
+
+
+class LocalBranch(Branch):
+    """A branch stored in the actual filesystem.
+
+    Note that it's "local" in the context of the filesystem; it doesn't
+    really matter if it's on an nfs/smb/afs/coda/... share, as long as
+    it's writable, and can be accessed via the normal filesystem API.
 
     _lock_mode
         None, or 'r' or 'w'
@@ -158,15 +172,13 @@ class Branch(object):
     _lock
         Lock object from bzrlib.lock.
     """
-    base = None
+    # We actually expect this class to be somewhat short-lived; part of its
+    # purpose is to try to isolate what bits of the branch logic are tied to
+    # filesystem access, so that in a later step, we can extricate them to
+    # a separarte ("storage") class.
     _lock_mode = None
     _lock_count = None
     _lock = None
-    
-    # Map some sort of prefix into a namespace
-    # stuff like "revno:10", "revid:", etc.
-    # This should match a prefix with a function which accepts
-    REVISION_NAMESPACES = {}
 
     def __init__(self, base, init=False, find_root=True):
         """Create new branch object at a particular location.
@@ -194,7 +206,6 @@ class Branch(object):
                 base = base[7:]
             self.base = os.path.realpath(base)
             if not isdir(self.controlfilename('.')):
-                from errors import NotBranchError
                 raise NotBranchError("not a bzr branch: %s" % quotefn(base),
                                      ['use "bzr init" to initialize a new working tree',
                                       'current bzr can only operate from top-of-tree'])
@@ -214,14 +225,14 @@ class Branch(object):
 
     def __del__(self):
         if self._lock_mode or self._lock:
-            from warnings import warn
+            from bzrlib.warnings import warn
             warn("branch %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
     def lock_write(self):
         if self._lock_mode:
             if self._lock_mode != 'w':
-                from errors import LockError
+                from bzrlib.errors import LockError
                 raise LockError("can't upgrade to a write lock from %r" %
                                 self._lock_mode)
             self._lock_count += 1
@@ -247,7 +258,7 @@ class Branch(object):
                         
     def unlock(self):
         if not self._lock_mode:
-            from errors import LockError
+            from bzrlib.errors import LockError
             raise LockError('branch %r is not locked' % (self))
 
         if self._lock_count > 1:
@@ -468,7 +479,7 @@ class Branch(object):
         """Print `file` to stdout."""
         self.lock_read()
         try:
-            tree = self.revision_tree(self.lookup_revision(revno))
+            tree = self.revision_tree(self.get_rev_id(revno))
             # use inventory as it was in that revision
             file_id = tree.inventory.path2id(file)
             if not file_id:
@@ -578,13 +589,17 @@ class Branch(object):
         try:
             try:
                 return self.revision_store[revision_id]
-            except IndexError:
+            except (IndexError, KeyError):
                 raise bzrlib.errors.NoSuchRevision(self, revision_id)
         finally:
             self.unlock()
 
     #deprecated
     get_revision_xml = get_revision_xml_file
+
+    #deprecated
+    get_revision_xml = get_revision_xml_file
+
 
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
@@ -677,20 +692,20 @@ class Branch(object):
 
     def common_ancestor(self, other, self_revno=None, other_revno=None):
         """
-        >>> import commit
+        >>> from bzrlib.commit import commit
         >>> sb = ScratchBranch(files=['foo', 'foo~'])
         >>> sb.common_ancestor(sb) == (None, None)
         True
-        >>> commit.commit(sb, "Committing first revision", verbose=False)
+        >>> commit(sb, "Committing first revision", verbose=False)
         >>> sb.common_ancestor(sb)[0]
         1
         >>> clone = sb.clone()
-        >>> commit.commit(sb, "Committing second revision", verbose=False)
+        >>> commit(sb, "Committing second revision", verbose=False)
         >>> sb.common_ancestor(sb)[0]
         2
         >>> sb.common_ancestor(clone)[0]
         1
-        >>> commit.commit(clone, "Committing divergent second revision", 
+        >>> commit(clone, "Committing divergent second revision", 
         ...               verbose=False)
         >>> sb.common_ancestor(clone)[0]
         1
@@ -791,33 +806,35 @@ class Branch(object):
 
         pb = bzrlib.ui.ui_factory.progress_bar()
         pb.update('comparing histories')
-
+        if stop_revision is None:
+            other_revision = other.last_patch()
+        else:
+            other_revision = other.get_rev_id(stop_revision)
+        count = greedy_fetch(self, other, other_revision, pb)[0]
         try:
             revision_ids = self.missing_revisions(other, stop_revision)
         except DivergedBranches, e:
             try:
-                if stop_revision is None:
-                    end_revision = other.last_patch()
                 revision_ids = get_intervening_revisions(self.last_patch(), 
-                                                         end_revision, other)
+                                                         other_revision, self)
                 assert self.last_patch() not in revision_ids
             except bzrlib.errors.NotAncestor:
                 raise e
 
-        if len(revision_ids) > 0:
-            count = greedy_fetch(self, other, revision_ids[-1], pb)[0]
-        else:
-            count = 0
         self.append_revision(*revision_ids)
-        ## note("Added %d revisions." % count)
         pb.clear()
 
     def install_revisions(self, other, revision_ids, pb):
         if hasattr(other.revision_store, "prefetch"):
             other.revision_store.prefetch(revision_ids)
         if hasattr(other.inventory_store, "prefetch"):
-            inventory_ids = [other.get_revision(r).inventory_id
-                             for r in revision_ids]
+            inventory_ids = []
+            for rev_id in revision_ids:
+                try:
+                    revision = other.get_revision(rev_id).inventory_id
+                    inventory_ids.append(revision)
+                except bzrlib.errors.NoSuchRevision:
+                    pass
             other.inventory_store.prefetch(inventory_ids)
 
         if pb is None:
@@ -866,13 +883,6 @@ class Branch(object):
         from bzrlib.commit import commit
         commit(self, *args, **kw)
         
-
-    def lookup_revision(self, revision):
-        """Return the revision identifier for a given revision information."""
-        revno, info = self._get_revision_info(revision)
-        return info
-
-
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         history = self.revision_history()
@@ -880,20 +890,6 @@ class Branch(object):
             return history.index(revision_id) + 1
         except ValueError:
             raise bzrlib.errors.NoSuchRevision(self, revision_id)
-
-
-    def get_revision_info(self, revision):
-        """Return (revno, revision id) for revision identifier.
-
-        revision can be an integer, in which case it is assumed to be revno (though
-            this will translate negative values into positive ones)
-        revision can also be a string, in which case it is parsed for something like
-            'date:' or 'revid:' etc.
-        """
-        revno, rev_id = self._get_revision_info(revision)
-        if revno is None:
-            raise bzrlib.errors.NoSuchRevision(self, revision)
-        return revno, rev_id
 
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
@@ -904,172 +900,6 @@ class Branch(object):
         elif revno <= 0 or revno > len(history):
             raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
-
-    def _get_revision_info(self, revision):
-        """Return (revno, revision id) for revision specifier.
-
-        revision can be an integer, in which case it is assumed to be revno
-        (though this will translate negative values into positive ones)
-        revision can also be a string, in which case it is parsed for something
-        like 'date:' or 'revid:' etc.
-
-        A revid is always returned.  If it is None, the specifier referred to
-        the null revision.  If the revid does not occur in the revision
-        history, revno will be None.
-        """
-        
-        if revision is None:
-            return 0, None
-        revno = None
-        try:# Convert to int if possible
-            revision = int(revision)
-        except ValueError:
-            pass
-        revs = self.revision_history()
-        if isinstance(revision, int):
-            if revision < 0:
-                revno = len(revs) + revision + 1
-            else:
-                revno = revision
-            rev_id = self.get_rev_id(revno, revs)
-        elif isinstance(revision, basestring):
-            for prefix, func in Branch.REVISION_NAMESPACES.iteritems():
-                if revision.startswith(prefix):
-                    result = func(self, revs, revision)
-                    if len(result) > 1:
-                        revno, rev_id = result
-                    else:
-                        revno = result[0]
-                        rev_id = self.get_rev_id(revno, revs)
-                    break
-            else:
-                raise BzrError('No namespace registered for string: %r' %
-                               revision)
-        else:
-            raise TypeError('Unhandled revision type %s' % revision)
-
-        if revno is None:
-            if rev_id is None:
-                raise bzrlib.errors.NoSuchRevision(self, revision)
-        return revno, rev_id
-
-    def _namespace_revno(self, revs, revision):
-        """Lookup a revision by revision number"""
-        assert revision.startswith('revno:')
-        try:
-            return (int(revision[6:]),)
-        except ValueError:
-            return None
-    REVISION_NAMESPACES['revno:'] = _namespace_revno
-
-    def _namespace_revid(self, revs, revision):
-        assert revision.startswith('revid:')
-        rev_id = revision[len('revid:'):]
-        try:
-            return revs.index(rev_id) + 1, rev_id
-        except ValueError:
-            return None, rev_id
-    REVISION_NAMESPACES['revid:'] = _namespace_revid
-
-    def _namespace_last(self, revs, revision):
-        assert revision.startswith('last:')
-        try:
-            offset = int(revision[5:])
-        except ValueError:
-            return (None,)
-        else:
-            if offset <= 0:
-                raise BzrError('You must supply a positive value for --revision last:XXX')
-            return (len(revs) - offset + 1,)
-    REVISION_NAMESPACES['last:'] = _namespace_last
-
-    def _namespace_tag(self, revs, revision):
-        assert revision.startswith('tag:')
-        raise BzrError('tag: namespace registered, but not implemented.')
-    REVISION_NAMESPACES['tag:'] = _namespace_tag
-
-    def _namespace_date(self, revs, revision):
-        assert revision.startswith('date:')
-        import datetime
-        # Spec for date revisions:
-        #   date:value
-        #   value can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
-        #   it can also start with a '+/-/='. '+' says match the first
-        #   entry after the given date. '-' is match the first entry before the date
-        #   '=' is match the first entry after, but still on the given date.
-        #
-        #   +2005-05-12 says find the first matching entry after May 12th, 2005 at 0:00
-        #   -2005-05-12 says find the first matching entry before May 12th, 2005 at 0:00
-        #   =2005-05-12 says find the first match after May 12th, 2005 at 0:00 but before
-        #       May 13th, 2005 at 0:00
-        #
-        #   So the proper way of saying 'give me all entries for today' is:
-        #       -r {date:+today}:{date:-tomorrow}
-        #   The default is '=' when not supplied
-        val = revision[5:]
-        match_style = '='
-        if val[:1] in ('+', '-', '='):
-            match_style = val[:1]
-            val = val[1:]
-
-        today = datetime.datetime.today().replace(hour=0,minute=0,second=0,microsecond=0)
-        if val.lower() == 'yesterday':
-            dt = today - datetime.timedelta(days=1)
-        elif val.lower() == 'today':
-            dt = today
-        elif val.lower() == 'tomorrow':
-            dt = today + datetime.timedelta(days=1)
-        else:
-            import re
-            # This should be done outside the function to avoid recompiling it.
-            _date_re = re.compile(
-                    r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
-                    r'(,|T)?\s*'
-                    r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
-                )
-            m = _date_re.match(val)
-            if not m or (not m.group('date') and not m.group('time')):
-                raise BzrError('Invalid revision date %r' % revision)
-
-            if m.group('date'):
-                year, month, day = int(m.group('year')), int(m.group('month')), int(m.group('day'))
-            else:
-                year, month, day = today.year, today.month, today.day
-            if m.group('time'):
-                hour = int(m.group('hour'))
-                minute = int(m.group('minute'))
-                if m.group('second'):
-                    second = int(m.group('second'))
-                else:
-                    second = 0
-            else:
-                hour, minute, second = 0,0,0
-
-            dt = datetime.datetime(year=year, month=month, day=day,
-                    hour=hour, minute=minute, second=second)
-        first = dt
-        last = None
-        reversed = False
-        if match_style == '-':
-            reversed = True
-        elif match_style == '=':
-            last = dt + datetime.timedelta(days=1)
-
-        if reversed:
-            for i in range(len(revs)-1, -1, -1):
-                r = self.get_revision(revs[i])
-                # TODO: Handle timezone.
-                dt = datetime.datetime.fromtimestamp(r.timestamp)
-                if first >= dt and (last is None or dt >= last):
-                    return (i+1,)
-        else:
-            for i in range(len(revs)):
-                r = self.get_revision(revs[i])
-                # TODO: Handle timezone.
-                dt = datetime.datetime.fromtimestamp(r.timestamp)
-                if first <= dt and (last is None or dt <= last):
-                    return (i+1,)
-    REVISION_NAMESPACES['date:'] = _namespace_date
 
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
@@ -1087,7 +917,7 @@ class Branch(object):
 
     def working_tree(self):
         """Return a `Tree` for the working copy."""
-        from workingtree import WorkingTree
+        from bzrlib.workingtree import WorkingTree
         return WorkingTree(self.base, self.read_working_inventory())
 
 
@@ -1142,7 +972,7 @@ class Branch(object):
             from_abs = self.abspath(from_rel)
             to_abs = self.abspath(to_rel)
             try:
-                os.rename(from_abs, to_abs)
+                rename(from_abs, to_abs)
             except OSError, e:
                 raise BzrError("failed to rename %r to %r: %s"
                         % (from_abs, to_abs, e[1]),
@@ -1211,7 +1041,7 @@ class Branch(object):
                 result.append((f, dest_path))
                 inv.rename(inv.path2id(f), to_dir_id, name_tail)
                 try:
-                    os.rename(self.abspath(f), self.abspath(dest_path))
+                    rename(self.abspath(f), self.abspath(dest_path))
                 except OSError, e:
                     raise BzrError("failed to rename %r to %r: %s" % (f, dest_path, e[1]),
                             ["rename rolled back"])
@@ -1358,9 +1188,10 @@ class Branch(object):
             raise InvalidRevisionNumber(revno)
         
         
+        
 
 
-class ScratchBranch(Branch):
+class ScratchBranch(LocalBranch):
     """Special test class: a branch that cleans up after itself.
 
     >>> b = ScratchBranch()
@@ -1383,7 +1214,7 @@ class ScratchBranch(Branch):
         if base is None:
             base = mkdtemp()
             init = True
-        Branch.__init__(self, base, init=init)
+        LocalBranch.__init__(self, base, init=init)
         for d in dirs:
             os.mkdir(self.abspath(d))
             
@@ -1395,7 +1226,11 @@ class ScratchBranch(Branch):
         """
         >>> orig = ScratchBranch(files=["file1", "file2"])
         >>> clone = orig.clone()
-        >>> os.path.samefile(orig.base, clone.base)
+        >>> if os.name != 'nt':
+        ...   os.path.samefile(orig.base, clone.base)
+        ... else:
+        ...   orig.base == clone.base
+        ...
         False
         >>> os.path.isfile(os.path.join(clone.base, "file1"))
         True
@@ -1482,16 +1317,7 @@ def gen_root_id():
     return gen_file_id('TREE_ROOT')
 
 
-def pull_loc(branch):
-    # TODO: Should perhaps just make attribute be 'base' in
-    # RemoteBranch and Branch?
-    if hasattr(branch, "baseurl"):
-        return branch.baseurl
-    else:
-        return branch.base
-
-
-def copy_branch(branch_from, to_location, revision=None):
+def copy_branch(branch_from, to_location, revno=None):
     """Copy branch_from into the existing directory to_location.
 
     revision
@@ -1502,20 +1328,16 @@ def copy_branch(branch_from, to_location, revision=None):
         The name of a local directory that exists but is empty.
     """
     from bzrlib.merge import merge
-    from bzrlib.branch import Branch
 
     assert isinstance(branch_from, Branch)
     assert isinstance(to_location, basestring)
     
-    br_to = Branch(to_location, init=True)
+    br_to = Branch.initialize(to_location)
     br_to.set_root_id(branch_from.get_root_id())
-    if revision is None:
+    if revno is None:
         revno = branch_from.revno()
-    else:
-        revno, rev_id = branch_from.get_revision_info(revision)
     br_to.update_revisions(branch_from, stop_revision=revno)
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)
-    
-    from_location = pull_loc(branch_from)
-    br_to.set_parent(pull_loc(branch_from))
+    br_to.set_parent(branch_from.base)
+    return br_to

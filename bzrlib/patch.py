@@ -6,8 +6,13 @@ Diff and patch functionality
 __docformat__ = "restructuredtext"
 
 def write_to_cmd(args, input=""):
-    process = Popen(args, bufsize=len(input), stdin=PIPE, stdout=PIPE,
-                    stderr=PIPE, close_fds=True)
+    if os.name != 'nt':
+        process = Popen(args, bufsize=len(input), stdin=PIPE, stdout=PIPE,
+                        stderr=PIPE, close_fds=True)
+    else:
+        process = Popen(args, bufsize=len(input), stdin=PIPE, stdout=PIPE,
+                        stderr=PIPE)
+
     stdout, stderr = process.communicate(input)
     status = process.wait()
     if status < 0:

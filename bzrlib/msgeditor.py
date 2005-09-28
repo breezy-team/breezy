@@ -27,6 +27,11 @@ def _get_editor():
     """Return a sequence of possible editor binaries for the current platform"""
     from bzrlib.osutils import _read_config_value
     
+    try:
+        yield os.environ["BZR_EDITOR"]
+    except KeyError:
+        pass
+
     e = _read_config_value("editor")
     if e is not None:
         yield e
@@ -34,10 +39,12 @@ def _get_editor():
     try:
         yield os.environ["EDITOR"]
     except KeyError:
-        if os.name == "nt":
-            yield "notepad.exe"
-        elif os.name == "posix":
-            yield "/usr/bin/vi"
+        pass
+
+    if os.name == "nt":
+        yield "notepad.exe"
+    elif os.name == "posix":
+        yield "/usr/bin/vi"
 
 
 def _run_editor(filename):

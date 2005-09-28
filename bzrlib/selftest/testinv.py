@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
 from bzrlib.selftest import TestCase
 
 from bzrlib.inventory import Inventory, InventoryEntry
@@ -23,9 +24,10 @@ class TestInventory(TestCase):
 
     def test_is_within(self):
         from bzrlib.osutils import is_inside_any
-        
-        for dirs, fn in [(['src', 'doc'], 'src/foo.c'),
-                         (['src'], 'src/foo.c'),
+
+        SRC_FOO_C = os.path.join('src', 'foo.c')
+        for dirs, fn in [(['src', 'doc'], SRC_FOO_C),
+                         (['src'], SRC_FOO_C),
                          (['src'], 'src'),
                          ]:
             self.assert_(is_inside_any(dirs, fn))

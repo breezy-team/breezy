@@ -1,19 +1,18 @@
 import os
+import shutil
+import tempfile
 import unittest
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
-
-
-import tempfile
-import shutil
 from bzrlib.inventory import InventoryEntry, RootEntry
-from bzrlib.osutils import file_kind
+from bzrlib.osutils import file_kind, rename
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
                                 BackupBeforeChange, PermissionsMerge)
 from bzrlib.changeset import Inventory, apply_changeset, invert_dict
+
 
 class FalseTree(object):
     def __init__(self, realtree):
@@ -100,7 +99,7 @@ class MergeTree(object):
 
     def change_path(self, id, path):
         old_path = os.path.join(self.dir, self.inventory[id])
-        os.rename(old_path, self.abs_path(path))
+        rename(old_path, self.abs_path(path))
         self.inventory[id] = path
 
 
@@ -240,7 +239,7 @@ class MergeBuilder(object):
         os.chmod(tree.full_path(id), mode)
 
     def merge_changeset(self, merge_factory):
-        conflict_handler = changeset.ExceptionConflictHandler(self.this.dir)
+        conflict_handler = changeset.ExceptionConflictHandler()
         return make_merge_changeset(self.cset, self.this, self.base,
                                     self.other, conflict_handler,
                                     merge_factory)
@@ -475,7 +474,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         from bzrlib.merge import merge
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
-        branch = Branch("original", init=True)
+        branch = Branch.initialize("original")
         smart_add_branch(branch, ["original"], True, add_reporter_null)
         branch.commit("start branch.", verbose=False)
         # Mary branches it.
@@ -487,7 +486,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         file.close()
         branch.commit("change file1")
         # Mary does too
-        mary_branch = Branch("mary")
+        mary_branch = Branch.open("mary")
         file = open("mary/file2", "wt")
         file.write("Mary\n")
         file.close()

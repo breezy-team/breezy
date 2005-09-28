@@ -16,11 +16,13 @@
 
 """Test Store implementation
 """
+from cStringIO import StringIO
+
 from bzrlib.store import ImmutableStore
-import bzrlib.store
 from bzrlib.selftest import TestCase, TestCaseInTempDir
-from StringIO import StringIO
 from bzrlib.errors import BzrError
+import bzrlib.store
+
 
 class TestStore(TestCaseInTempDir):
 

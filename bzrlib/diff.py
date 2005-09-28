@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 # -*- coding: UTF-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
@@ -45,14 +44,16 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file):
     ud = difflib.unified_diff(oldlines, newlines,
                               fromfile=old_label, tofile=new_label)
 
+    ud = list(ud)
     # work-around for difflib being too smart for its own good
     # if /dev/null is "1,0", patch won't recognize it as /dev/null
     if not oldlines:
-        ud = list(ud)
         ud[2] = ud[2].replace('-1,0', '-0,0')
     elif not newlines:
-        ud = list(ud)
         ud[2] = ud[2].replace('+1,0', '+0,0')
+    # work around for difflib emitting random spaces after the label
+    ud[0] = ud[0][:-2] + '\n'
+    ud[1] = ud[1][:-2] + '\n'
 
     for line in ud:
         to_file.write(line)
@@ -156,15 +157,15 @@ def show_diff(b, revision, specific_files, external_diff_options=None,
         import sys
         output = sys.stdout
 
-    if revision == None:
+    if revision is None:
         old_tree = b.basis_tree()
     else:
-        old_tree = b.revision_tree(b.lookup_revision(revision))
+        old_tree = b.revision_tree(revision.in_history(b).rev_id)
 
-    if revision2 == None:
+    if revision2 is None:
         new_tree = b.working_tree()
     else:
-        new_tree = b.revision_tree(b.lookup_revision(revision2))
+        new_tree = b.revision_tree(revision2.in_history(b).rev_id)
 
     show_diff_trees(old_tree, new_tree, output, specific_files,
                     external_diff_options)
@@ -207,34 +208,32 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                           specific_files=specific_files)
 
     for path, file_id, kind in delta.removed:
-        print >>to_file, '*** removed %s %r' % (kind, path)
+        print >>to_file, '=== removed %s %r' % (kind, path)
         if kind == 'file':
             diff_file(old_label + path,
                       old_tree.get_file(file_id).readlines(),
                       DEVNULL, 
                       [],
                       to_file)
-
     for path, file_id, kind in delta.added:
-        print >>to_file, '*** added %s %r' % (kind, path)
+        print >>to_file, '=== added %s %r' % (kind, path)
         if kind == 'file':
             diff_file(DEVNULL,
                       [],
                       new_label + path,
                       new_tree.get_file(file_id).readlines(),
                       to_file)
-
     for old_path, new_path, file_id, kind, text_modified in delta.renamed:
-        print >>to_file, '*** renamed %s %r => %r' % (kind, old_path, new_path)
+        print >>to_file, '=== renamed %s %r => %r' % (kind, old_path, new_path)
         _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
                                     new_label, new_path, new_tree,
                                     text_modified, kind, to_file, diff_file)
-
     for path, file_id, kind in delta.modified:
-        print >>to_file, '*** modified %s %r' % (kind, path)
+        print >>to_file, '=== modified %s %r' % (kind, path)
         _maybe_diff_file_or_symlink(old_label, path, old_tree, file_id,
                                     new_label, path, new_tree,
                                     True, kind, to_file, diff_file)
+    
 
 def _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
                                 new_label, new_path, new_tree, text_modified,
@@ -252,5 +251,4 @@ def _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
 def _diff_symlink(old_tree, new_tree, file_id, to_file):
     t1 = old_tree.get_symlink_target(file_id)
     t2 = new_tree.get_symlink_target(file_id)
-    print >>to_file, '*** *** target changed %r => %r' % (t1, t2)
-    
+    print >>to_file, '=== target changed %r => %r' % (t1, t2)

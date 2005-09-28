@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 # Copyright (C) 2005 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
@@ -31,7 +29,7 @@ import urllib2
 import urlparse
 
 from bzrlib.errors import BzrError, BzrCheckError
-from bzrlib.branch import Branch, BZR_BRANCH_FORMAT
+from bzrlib.branch import Branch, LocalBranch, BZR_BRANCH_FORMAT
 from bzrlib.trace import mutter
 from bzrlib.xml import serializer_v4
 
@@ -78,7 +76,6 @@ else:
             return url_f
 
 
-
 def _find_remote_root(url):
     """Return the prefix URL that corresponds to the branch root."""
     orig_url = url
@@ -111,16 +108,17 @@ def _find_remote_root(url):
         url = urlparse.urlunparse((scheme, host, path, '', '', ''))
         
 
-class RemoteBranch(Branch):
+
+class RemoteBranch(LocalBranch):
 
     def __init__(self, baseurl, find_root=True):
         """Create new proxy for a remote branch."""
         # circular import protection
         from bzrlib.store import RemoteStore
         if find_root:
-            self.baseurl = _find_remote_root(baseurl)
+            self.base = _find_remote_root(baseurl)
         else:
-            self.baseurl = baseurl
+            self.base = baseurl
             self._check_format()
         self.inventory_store = RemoteStore(baseurl + '/.bzr/inventory-store/')
         self.text_store = RemoteStore(baseurl + '/.bzr/text-store/')
@@ -132,10 +130,20 @@ class RemoteBranch(Branch):
 
     __repr__ = __str__
 
+    def setup_caching(self, cache_root):
+        """Set up cached stores located under cache_root"""
+        from bzrlib.meta_store import CachedStore
+        for store_name in ('inventory_store', 'text_store', 'revision_store'):
+            if not isinstance(getattr(self, store_name), CachedStore):
+                cache_path = os.path.join(cache_root, store_name)
+                os.mkdir(cache_path)
+                new_store = CachedStore(getattr(self, store_name), cache_path)
+                setattr(self, store_name, new_store)
+
     def controlfile(self, filename, mode):
         if mode not in ('rb', 'rt', 'r'):
             raise BzrError("file mode %r not supported for remote branches" % mode)
-        return get_url(self.baseurl + '/.bzr/' + filename, False)
+        return get_url(self.base + '/.bzr/' + filename, False)
 
 
     def lock_read(self):
@@ -145,17 +153,17 @@ class RemoteBranch(Branch):
     def lock_write(self):
         from errors import LockError
         raise LockError("write lock not supported for remote branch %s"
-                        % self.baseurl)
+                        % self.base)
 
     def unlock(self):
         pass
     
 
     def relpath(self, path):
-        if not path.startswith(self.baseurl):
+        if not path.startswith(self.base):
             raise BzrError('path %r is not under base URL %r'
-                           % (path, self.baseurl))
-        pl = len(self.baseurl)
+                           % (path, self.base))
+        pl = len(self.base)
         return path[pl:].lstrip('/')
 
 
@@ -169,4 +177,5 @@ class RemoteBranch(Branch):
             raise BzrCheckError('revision stored as {%s} actually contains {%s}'
                                 % (revision_id, r.revision_id))
         return r
+
 
