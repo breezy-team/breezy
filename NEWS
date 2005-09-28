@@ -10,6 +10,10 @@ DEVELOPMENT HEAD
 
   IMPROVEMENTS:
 
+    * 'branch' now accepts a --basis parameter which will take advantage
+      of local history when making a new branch. This allows faster 
+      branching of remote branches. Contributed by Aaron Bentley.
+
   INTERNALS:
 
       

@@ -23,10 +23,11 @@ from bzrlib.trace import mutter, note
 from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
      rename, splitpath, sha_file, appendpath, file_kind
 
+from bzrlib.store import copy_all
 from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId, \
-     DivergedBranches, NotBranchError
+     DivergedBranches, NotBranchError, UnlistableStore, UnlistableBranch
 from bzrlib.textui import show_status
-from bzrlib.revision import Revision
+from bzrlib.revision import Revision, is_ancestor
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 import bzrlib.xml
@@ -835,8 +836,10 @@ class LocalBranch(Branch):
                                                          other_revision, self)
                 assert self.last_patch() not in revision_ids
             except bzrlib.errors.NotAncestor:
-                raise e
-
+                if is_ancestor(self.last_patch(), other_revision, self):
+                    revision_ids = []
+                else:
+                    raise e
         self.append_revision(*revision_ids)
         pb.clear()
 
@@ -1336,7 +1339,7 @@ def gen_root_id():
     return gen_file_id('TREE_ROOT')
 
 
-def copy_branch(branch_from, to_location, revno=None):
+def copy_branch(branch_from, to_location, revno=None, basis_branch=None):
     """Copy branch_from into the existing directory to_location.
 
     revision
@@ -1345,6 +1348,12 @@ def copy_branch(branch_from, to_location, revno=None):
 
     to_location
         The name of a local directory that exists but is empty.
+
+    revno
+        The revision to copy up to
+
+    basis_branch
+        A local branch to copy revisions from, related to branch_from
     """
     from bzrlib.merge import merge
 
@@ -1352,6 +1361,8 @@ def copy_branch(branch_from, to_location, revno=None):
     assert isinstance(to_location, basestring)
     
     br_to = Branch.initialize(to_location)
+    if basis_branch is not None:
+        copy_stores(basis_branch, br_to)
     br_to.set_root_id(branch_from.get_root_id())
     if revno is None:
         revno = branch_from.revno()
@@ -1360,3 +1371,15 @@ def copy_branch(branch_from, to_location, revno=None):
           check_clean=False, ignore_zero=True)
     br_to.set_parent(branch_from.base)
     return br_to
+
+def copy_stores(branch_from, branch_to):
+    """Copies all entries from branch stores to another branch's stores.
+    """
+    store_pairs = ((branch_from.text_store,      branch_to.text_store),
+                   (branch_from.inventory_store, branch_to.inventory_store),
+                   (branch_from.revision_store,  branch_to.revision_store))
+    try:
+        for from_store, to_store in store_pairs: 
+            copy_all(from_store, to_store)
+    except UnlistableStore:
+        raise UnlistableBranch(from_store)

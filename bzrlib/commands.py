@@ -352,6 +352,7 @@ def parse_spec(spec):
 # the type.
 OPTIONS = {
     'all':                    None,
+    'basis':                  str,
     'diff-options':           str,
     'help':                   None,
     'file':                   unicode,
