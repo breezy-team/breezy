@@ -45,8 +45,3 @@ class TestStore(TestCaseInTempDir):
         self.assertEqual(store_b['1'].read(), 'foo')
         store_c = RemoteStore('http://example.com/')
         self.assertRaises(UnlistableStore, copy_all, store_c, store_b)
-        
-
-TEST_CLASSES = [
-    TestStore,
-    ]
