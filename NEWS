@@ -1,5 +1,16 @@
-development head
+bzr 0.0.9 2005-09-23
 
+  BUG FIXES:
+
+    * Fixed "branch -r" option.
+
+    * Fix remote access to branches containing non-compressed history.
+      (Robert Collins).
+
+    * Better reliability of http server tests.  (John Arbash-Meinel)
+
+    * Merge graph maximum distance calculation fix.  (Aaron Bentley)
+   
   IMPROVEMENTS:
 
     * Status now accepted a -r argument to give status between chosen
