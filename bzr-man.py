@@ -91,15 +91,17 @@ class CommandListParser(Parser):
 
     def parse_line(self, line):
         m = self.usage_exp.match(line)
+	if line == '':
+		return
         if m:
             if self.state == 0:
                 if self.usage:
                     self.command_usage.append((self.command,self.usage,self.descr))
                     self.all_commands.append(self.command)
-                self.usage = line
+                self.usage = " ".join(line.split(" ")[1:])
                 self.command = m.groups()[0]
             else:
-                raise Error, "matching usage line in state %d" % state
+                raise RuntimeError, "matching usage line in state %d" % state
             self.state = 1
             return
         m = self.descr_exp.match(line)
@@ -107,10 +109,10 @@ class CommandListParser(Parser):
             if self.state == 1:
                 self.descr = m.groups()[0]
             else:
-                raise Error, "matching descr line in state %d" % state
+                raise RuntimeError, "matching descr line in state %d" % state
             self.state = 0
             return
-        raise Error, "Cannot parse this line"
+        raise RuntimeError, "Cannot parse this line ('%s')." % line
 
     def end_parse(self):
         if self.state == 0:
@@ -118,7 +120,7 @@ class CommandListParser(Parser):
                 self.command_usage.append((self.command,self.usage,self.descr))
                 self.all_commands.append(self.command)
         else:
-            raise Error, "ending parse in state %d" % state
+            raise RuntimeError, "ending parse in state %d" % state
 
     def write_to_manpage(self, outfile):
         bzrcmd = self.params["bzrcmd"]

@@ -18,6 +18,9 @@ development head
 
     * Various minor bug in windows support have been fixed, largely in the
       test suite. Contributed by Alexander Belchenko.
+
+    * bzr-man.py has been updated to work again. Contributed by
+      Rob Weir.
       
   INTERNALS:
 
