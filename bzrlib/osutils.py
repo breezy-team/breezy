@@ -16,6 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from shutil import copyfile
 from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 from cStringIO import StringIO
@@ -480,13 +481,6 @@ def appendpath(p1, p2):
         return os.path.join(p1, p2)
     
 
-def extern_command(cmd, ignore_errors = False):
-    mutter('external command: %s' % `cmd`)
-    if os.system(cmd):
-        if not ignore_errors:
-            raise BzrError('command failed')
-
-
 def _read_config_value(name):
     """Read a config value from the file ~/.bzr.conf/<name>
     Return None if the file does not exist"""
@@ -502,3 +496,20 @@ def _read_config_value(name):
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
     return StringIO(s).readlines()
+
+
+def hardlinks_good():
+    return sys.platform not in ('win32', 'cygwin', 'darwin')
+
+
+def link_or_copy(src, dest):
+    """Hardlink a file, or copy it if it can't be hardlinked."""
+    if not hardlinks_good():
+        copyfile(src, dest)
+        return
+    try:
+        os.link(src, dest)
+    except (OSError, IOError), e:
+        if e.errno != errno.EXDEV:
+            raise
+        copyfile(src, dest)

@@ -28,6 +28,7 @@ it's normally invoked.
 
 from cStringIO import StringIO
 import os
+import shutil
 import sys
 
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
@@ -223,6 +224,14 @@ class TestCommands(ExternalBase):
         os.chdir('..')
         self.runbzr('branch a b')
         self.runbzr('branch a c -r 1')
+        os.chdir('b')
+        self.runbzr('commit -m foo --unchanged')
+        os.chdir('..')
+        shutil.rmtree('a/.bzr/revision-store')
+        # naughty - abstraction violations RBC 20050928  
+        shutil.rmtree('a/.bzr/inventory-store', ignore_errors=True)
+        shutil.rmtree('a/.bzr/text-store', ignore_errors=True)
+        self.runbzr('branch a d --basis b')
 
     def test_merge(self):
         from bzrlib.branch import Branch
@@ -283,12 +292,23 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m blah3 --unchanged')
         self.runbzr('pull ../a', retcode=1)
         print "DECIDE IF PULL CAN CONVERGE, blackbox.py"
-##        os.chdir('../a')
-##        self.runbzr('merge ../b')
-##        self.runbzr('commit -m blah4 --unchanged')
-##        os.chdir('../b/subdir')
-##        self.runbzr('pull ../../a')
-##        assert a.revision_history()[-1] == b.revision_history()[-1]
+        return
+        os.chdir('../a')
+        self.runbzr('merge ../b')
+        self.runbzr('commit -m blah4 --unchanged')
+        os.chdir('../b/subdir')
+        self.runbzr('pull ../../a')
+        assert a.revision_history()[-1] == b.revision_history()[-1]
+        self.runbzr('commit -m blah5 --unchanged')
+        self.runbzr('commit -m blah6 --unchanged')
+        os.chdir('..')
+        self.runbzr('pull ../a')
+        os.chdir('../a')
+        self.runbzr('commit -m blah7 --unchanged')
+        self.runbzr('merge ../b')
+        self.runbzr('commit -m blah8 --unchanged')
+        self.runbzr('pull ../b')
+        self.runbzr('pull ../b')
         
     def test_add_reports(self):
         """add command prints the names of added files."""

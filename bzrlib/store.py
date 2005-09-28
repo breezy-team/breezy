@@ -32,7 +32,7 @@ import types
 from stat import ST_SIZE
 from StringIO import StringIO
 
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, UnlistableStore
 from bzrlib.trace import mutter
 import bzrlib.ui
 import bzrlib.osutils as osutils
@@ -159,21 +159,20 @@ class ImmutableStore(object):
         return count, failed
 
     def copy_multi_immutable(self, other, to_copy, pb, permit_failure=False):
-        from shutil import copyfile
         count = 0
         failed = set()
         for id in to_copy:
             p = self._path(id)
             other_p = other._path(id)
             try:
-                copyfile(other_p, p)
-            except IOError, e:
+                osutils.link_or_copy(other_p, p)
+            except (IOError, OSError), e:
                 if e.errno == errno.ENOENT:
                     if not permit_failure:
-                        copyfile(other_p+".gz", p+".gz")
+                        osutils.link_or_copy(other_p+".gz", p+".gz")
                     else:
                         try:
-                            copyfile(other_p+".gz", p+".gz")
+                            osutils.link_or_copy(other_p+".gz", p+".gz")
                         except IOError, e:
                             if e.errno == errno.ENOENT:
                                 failed.add(id)
@@ -265,3 +264,10 @@ class ImmutableScratchStore(ImmutableStore):
             os.remove(fpath)
         os.rmdir(self._basedir)
         mutter("%r destroyed" % self)
+
+def copy_all(store_from, store_to):
+    """Copy all ids from one store to another."""
+    if not hasattr(store_from, "__iter__"):
+        raise UnlistableStore(store_from)
+    ids = [f for f in store_from]
+    store_to.copy_multi(store_from, ids)

@@ -28,14 +28,15 @@ from bzrlib.osutils import (isdir, quotefn, compact_date, rand_bytes,
                             file_kind)
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
-                           DivergedBranches, LockError)
+                           DivergedBranches, LockError, UnlistableStore,
+                           UnlistableBranch)
 from bzrlib.textui import show_status
-from bzrlib.revision import Revision, validate_revision_id
+from bzrlib.revision import Revision, validate_revision_id, is_ancestor
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
 from bzrlib.weavestore import WeaveStore
-from bzrlib.store import ImmutableStore
+from bzrlib.store import copy_all, ImmutableStore
 import bzrlib.xml5
 import bzrlib.ui
 
@@ -196,6 +197,26 @@ class LocalBranch(Branch):
     # stuff like "revno:10", "revid:", etc.
     # This should match a prefix with a function which accepts
     REVISION_NAMESPACES = {}
+
+    def push_stores(self, branch_to):
+        """Copy the content of this branches store to branch_to."""
+        if (self._branch_format != branch_to._branch_format
+            or self._branch_format != 4):
+            from bzrlib.fetch import greedy_fetch
+            mutter("falling back to fetch logic to push between %s and %s",
+                   self, branch_to)
+            greedy_fetch(to_branch=branch_to, from_branch=self,
+                         revision=self.last_revision())
+            return
+
+        store_pairs = ((self.text_store,      branch_to.text_store),
+                       (self.inventory_store, branch_to.inventory_store),
+                       (self.revision_store,  branch_to.revision_store))
+        try:
+            for from_store, to_store in store_pairs: 
+                copy_all(from_store, to_store)
+        except UnlistableStore:
+            raise UnlistableBranch(from_store)
 
     def __init__(self, base, init=False, find_root=True,
                  relax_version_check=False):
@@ -881,6 +902,7 @@ class LocalBranch(Branch):
                          revision=pullable_revs[-1])
             self.append_revision(*pullable_revs)
     
+
     def commit(self, *args, **kw):
         from bzrlib.commit import Commit
         Commit().commit(self, *args, **kw)
@@ -1317,7 +1339,7 @@ def gen_root_id():
     return gen_file_id('TREE_ROOT')
 
 
-def copy_branch(branch_from, to_location, revision=None):
+def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     """Copy branch_from into the existing directory to_location.
 
     revision
@@ -1327,6 +1349,12 @@ def copy_branch(branch_from, to_location, revision=None):
 
     to_location
         The name of a local directory that exists but is empty.
+
+    revno
+        The revision to copy up to
+
+    basis_branch
+        A local branch to copy revisions from, related to branch_from
     """
     # TODO: This could be done *much* more efficiently by just copying
     # all the whole weaves and revisions, rather than getting one
@@ -1337,6 +1365,8 @@ def copy_branch(branch_from, to_location, revision=None):
     assert isinstance(to_location, basestring)
     
     br_to = Branch.initialize(to_location)
+    if basis_branch is not None:
+        basis_branch.push_stores(br_to)
     br_to.set_root_id(branch_from.get_root_id())
     if revision is None:
         revision = branch_from.last_revision()
