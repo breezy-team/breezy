@@ -1,3 +1,18 @@
+DEVELOPMENT HEAD
+
+  BUG FIXES:
+  
+    * bzr-man.py has been updated to work again. Contributed by
+      Rob Weir.
+
+    * Locking is now done with fcntl.lockf which works with NFS
+      file systems. Contributed by Harald Meland.
+
+  IMPROVEMENTS:
+
+  INTERNALS:
+
+      
 bzr 0.0.9 2005-09-23
 
   BUG FIXES:
@@ -11,6 +26,9 @@ bzr 0.0.9 2005-09-23
 
     * Merge graph maximum distance calculation fix.  (Aaron Bentley)
    
+    * Various minor bug in windows support have been fixed, largely in the
+      test suite. Contributed by Alexander Belchenko.
+
   IMPROVEMENTS:
 
     * Status now accepted a -r argument to give status between chosen
@@ -25,14 +43,6 @@ bzr 0.0.9 2005-09-23
     * There is now a bzr.bat file created by distutils when building on 
       Windows. Contributed by Alexander Belchenko.
 
-  BUG FIXES:
-
-    * Various minor bug in windows support have been fixed, largely in the
-      test suite. Contributed by Alexander Belchenko.
-
-    * bzr-man.py has been updated to work again. Contributed by
-      Rob Weir.
-      
   INTERNALS:
 
     * removed uuid() as it was unused.
