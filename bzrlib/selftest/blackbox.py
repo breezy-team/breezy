@@ -259,6 +259,28 @@ class TestCommands(ExternalBase):
         #        assert a.pending_merges() == [b.last_patch()], "Assertion %s %s" \
         #        % (a.pending_merges(), b.last_patch())
 
+    def test_merge_with_missing_file(self):
+        """Merge handles missing file conflicts"""
+        os.mkdir('a')
+        os.chdir('a')
+        os.mkdir('sub')
+        print >> file('sub/a.txt', 'wb'), "hello"
+        self.runbzr('init')
+        self.runbzr('add')
+        self.runbzr(('commit', '-m', 'added a'))
+        self.runbzr('branch . ../b')
+        print >> file('sub/a.txt', 'ab'), "there"
+        self.runbzr(('commit', '-m', 'Added there'))
+        os.unlink('sub/a.txt')
+        os.rmdir('sub')
+        self.runbzr(('commit', '-m', 'Removed a.txt'))
+        os.chdir('../b')
+        print >> file('sub/a.txt', 'ab'), "something"
+        self.runbzr(('commit', '-m', 'Modified a.txt'))
+        self.runbzr('merge ../a/')
+        assert os.path.exists('sub/a.txt.THIS')
+        assert os.path.exists('sub/a.txt.BASE')
+
     def test_pull(self):
         """Pull changes from one branch to another."""
         os.mkdir('a')

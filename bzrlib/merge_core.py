@@ -224,7 +224,11 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
         if contents.old_contents is None and contents.new_contents is None:
             return None
         if contents.new_contents is None:
+            this_contents = get_contents(entry, this)
             if this_path is not None and os.path.exists(this_path):
+                if this_contents != contents.old_contents:
+                    return conflict_handler.rem_contents_conflict(this_path, 
+                        this_contents, contents.old_contents)
                 return contents
             else:
                 return None
