@@ -25,7 +25,6 @@
 
 from pprint import pformat
 
-import testsweet
 from bzrlib.weave import Weave, WeaveFormatError, WeaveError
 from bzrlib.weavefile import write_weave, read_weave
 from bzrlib.selftest import TestCase
