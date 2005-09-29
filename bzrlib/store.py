@@ -14,6 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: Could remember a bias towards whether a particular store is typically
+# compressed or not.
+
 """
 Stores are the main data-storage mechanism for Bazaar-NG.
 
@@ -21,12 +24,19 @@ A store is a simple write-once container indexed by a universally
 unique ID.
 """
 
-import os, tempfile, types, osutils, gzip, errno
+import errno
+import gzip
+import os
+import tempfile
+import types
 from stat import ST_SIZE
 from StringIO import StringIO
+
 from bzrlib.errors import BzrError, UnlistableStore
 from bzrlib.trace import mutter
 import bzrlib.ui
+import bzrlib.osutils as osutils
+
 
 ######################################################################
 # stores
@@ -184,7 +194,8 @@ class ImmutableStore(object):
         return (os.access(p, os.R_OK)
                 or os.access(p + '.gz', os.R_OK))
 
-    # TODO: Guard against the same thing being stored twice, compressed and uncompresse
+    # TODO: Guard against the same thing being stored twice,
+    # compressed and uncompressed
 
     def __iter__(self):
         for f in os.listdir(self._basedir):

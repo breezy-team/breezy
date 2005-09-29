@@ -27,9 +27,12 @@
 
 # FIXME: doesn't work properly on files without trailing newlines
 
+import difflib
+import struct
+import sys
 import unittest
-import difflib, sys, struct
 from cStringIO import StringIO
+
 
 def linesplit(a):
     """Split into two lists: content and line positions.

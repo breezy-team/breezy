@@ -1,3 +1,35 @@
+DEVELOPMENT HEAD
+
+  BUG FIXES:
+  
+    * bzr-man.py has been updated to work again. Contributed by
+      Rob Weir.
+
+    * Locking is now done with fcntl.lockf which works with NFS
+      file systems. Contributed by Harald Meland.
+
+  IMPROVEMENTS:
+
+    * 'branch' now accepts a --basis parameter which will take advantage
+      of local history when making a new branch. This allows faster 
+      branching of remote branches. Contributed by Aaron Bentley.
+
+    * New tree format based on weave files, called version 5.
+      Existing branches can be upgraded to this format using 
+      'bzr upgrade'.
+
+  INTERNALS:
+
+    * Test case failures have the exception printed after the log 
+      for your viewing pleasure.
+
+
+  TESTING:
+
+    * Removed testsweet module so that tests can be run after 
+      bzr installed by 'bzr selftest'.
+
+      
 bzr 0.0.9 2005-09-23
 
   BUG FIXES:
@@ -11,9 +43,12 @@ bzr 0.0.9 2005-09-23
 
     * Merge graph maximum distance calculation fix.  (Aaron Bentley)
    
+    * Various minor bug in windows support have been fixed, largely in the
+      test suite. Contributed by Alexander Belchenko.
+
   IMPROVEMENTS:
 
-    * Status now accepted a -r argument to give status between chosen
+    * Status now accepts a -r argument to give status between chosen
       revisions. Contributed by Heikki Paajanen.
 
     * Revision arguments no longer use +/-/= to control ranges, instead
@@ -21,6 +56,17 @@ bzr 0.0.9 2005-09-23
       For example '$ bzr log -r date:yesterday..before:date:today' will
       select everything from yesterday and before today. Contributed by
       Robey Pointer
+
+    * There is now a bzr.bat file created by distutils when building on 
+      Windows. Contributed by Alexander Belchenko.
+
+  INTERNALS:
+
+    * Removed uuid() as it was unused.
+
+    * Improved 'fetch' code for pulling revisions from one branch into
+      another (used by pull, merged, etc.)
+
 
 bzr 0.0.8 2005-09-20
 
@@ -49,7 +95,6 @@ bzr 0.0.8 2005-09-20
   INTERNALS:
 
     * Refactor xml packing/unpacking.
-
 
   BUG FIXES: 
 

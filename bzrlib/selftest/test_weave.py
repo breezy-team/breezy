@@ -23,12 +23,12 @@
 
 """test suite for weave algorithm"""
 
-
-import testsweet
-from bzrlib.weave import Weave, WeaveFormatError
-from bzrlib.weavefile import write_weave, read_weave
 from pprint import pformat
 
+from bzrlib.weave import Weave, WeaveFormatError, WeaveError
+from bzrlib.weavefile import write_weave, read_weave
+from bzrlib.selftest import TestCase
+from bzrlib.osutils import sha_string
 
 try:
     set
@@ -48,7 +48,7 @@ TEXT_1 = ["Hello world",
 
 
 
-class TestBase(testsweet.TestBase):
+class TestBase(TestCase):
     def check_read_write(self, k):
         """Check the weave k can be written & re-read."""
         from tempfile import TemporaryFile
@@ -111,7 +111,15 @@ class StoreTwo(TestBase):
         self.assertEqual(k.get(0), TEXT_0)
         self.assertEqual(k.get(1), TEXT_1)
 
-        k.dump(self.TEST_LOG)
+
+
+class AddWithGivenSha(TestBase):
+    def runTest(self):
+        """Add with caller-supplied SHA-1"""
+        k = Weave()
+
+        t = 'text0'
+        k.add('text0', [], [t], sha1=sha_string(t))
 
 
 
@@ -125,6 +133,33 @@ class InvalidAdd(TestBase):
                           'text0',
                           [69],
                           ['new text!'])
+
+
+class RepeatedAdd(TestBase):
+    """Add the same version twice; harmless."""
+    def runTest(self):
+        k = Weave()
+        idx = k.add('text0', [], TEXT_0)
+        idx2 = k.add('text0', [], TEXT_0)
+        self.assertEqual(idx, idx2)
+
+
+
+class InvalidRepeatedAdd(TestBase):
+    def runTest(self):
+        k = Weave()
+        idx = k.add('text0', [], TEXT_0)
+        self.assertRaises(WeaveError,
+                          k.add,
+                          'text0',
+                          [],
+                          ['not the same text'])
+        self.assertRaises(WeaveError,
+                          k.add,
+                          'text0',
+                          [12],         # not the right parents
+                          TEXT_0)
+        
 
 
 class InsertLines(TestBase):
@@ -470,8 +505,6 @@ class IncludeVersions(TestBase):
         self.assertEqual(k.get(0),
                          ["first line"])
 
-        k.dump(self.TEST_LOG)
-
 
 class DivergedIncludes(TestBase):
     """Weave with two diverged texts based on version 0.
@@ -771,19 +804,8 @@ class MergeCases(TestBase):
     
 
 
-def testweave():
-    import testsweet
-    from unittest import TestSuite, TestLoader
-    import testweave
-
-    tl = TestLoader()
-    suite = TestSuite()
-    suite.addTest(tl.loadTestsFromModule(testweave))
-    
-    return int(not testsweet.run_suite(suite)) # for shell 0=true
-
-
 if __name__ == '__main__':
     import sys
-    sys.exit(testweave())
+    import unittest
+    sys.exit(unittest.main())
     

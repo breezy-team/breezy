@@ -310,8 +310,8 @@ class LongLogFormatter(LogFormatter):
         if self.show_ids:
             print >>to_file,  'revision-id:', rev.revision_id
 
-            for parent in rev.parents:
-                print >>to_file, 'parent:', parent.revision_id
+            for parent_id in rev.parent_ids:
+                print >>to_file, 'parent:', parent_id
             
         print >>to_file,  'committer:', rev.committer
 

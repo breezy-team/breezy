@@ -304,8 +304,8 @@ class RevisionSpec_ancestor(RevisionSpec):
         from branch import Branch
         from revision import common_ancestor, MultipleRevisionSources
         other_branch = Branch.open_containing(self.spec)
-        revision_a = branch.last_patch()
-        revision_b = other_branch.last_patch()
+        revision_a = branch.last_revision()
+        revision_b = other_branch.last_revision()
         for r, b in ((revision_a, branch), (revision_b, other_branch)):
             if r is None:
                 raise NoCommits(b)

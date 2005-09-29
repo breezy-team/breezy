@@ -18,7 +18,8 @@ from cStringIO import StringIO
 
 from bzrlib.selftest import TestCase
 from bzrlib.inventory import Inventory, InventoryEntry
-from bzrlib.xml import serializer_v4, serializer_v5
+from bzrlib.xml4 import serializer_v4
+from bzrlib.xml5 import serializer_v5
 
 _working_inventory_v4 = """<inventory file_id="TREE_ROOT">
 <entry file_id="bar-20050901064931-73b4b1138abc9cd2" kind="file" name="bar" parent_id="TREE_ROOT" />
@@ -43,7 +44,6 @@ _revision_v4 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
 """
 
 _revision_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
-    inventory_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
     inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
     revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
     timestamp="1125907235.211783886"
@@ -60,15 +60,15 @@ _revision_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
 _committed_inv_v5 = """<inventory>
 <file file_id="bar-20050901064931-73b4b1138abc9cd2" 
       name="bar" parent_id="TREE_ROOT" 
-      text_version="mbp@foo-123123" entry_version="mbp@foo-123123"
+      text_version="mbp@foo-123123" name_version="mbp@foo-123123"
       />
 <directory name="subdir"
            file_id="foo-20050801201819-4139aa4a272f4250"
            parent_id="TREE_ROOT" 
-           entry_version="mbp@foo-00"/>
+           name_version="mbp@foo-00"/>
 <file file_id="bar-20050824000535-6bc48cfad47ed134" 
       name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" 
-      entry_version="mbp@foo-00"
+      name_version="mbp@foo-00"
       text_version="mbp@foo-123123"/>
 </inventory>
 """
@@ -91,8 +91,8 @@ class TestSerializer(TestCase):
            "Martin Pool <mbp@sourcefrog.net>")
         eq(rev.inventory_id,
            "mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9")
-        eq(len(rev.parents), 1)
-        eq(rev.parents[0].revision_id,
+        eq(len(rev.parent_ids), 1)
+        eq(rev.parent_ids[0],
            "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
 
     def test_unpack_revision_5(self):
@@ -102,11 +102,9 @@ class TestSerializer(TestCase):
         eq = self.assertEqual
         eq(rev.committer,
            "Martin Pool <mbp@sourcefrog.net>")
-        eq(rev.inventory_id,
-           "mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9")
-        eq(len(rev.parents), 1)
+        eq(len(rev.parent_ids), 1)
         eq(rev.timezone, 36000)
-        eq(rev.parents[0].revision_id,
+        eq(rev.parent_ids[0],
            "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
 
     def test_unpack_inventory_5(self):
@@ -118,7 +116,7 @@ class TestSerializer(TestCase):
         ie = inv['bar-20050824000535-6bc48cfad47ed134']
         eq(ie.kind, 'file')
         eq(ie.text_version, 'mbp@foo-123123')
-        eq(ie.entry_version, 'mbp@foo-00')
+        eq(ie.name_version, 'mbp@foo-00')
         eq(ie.name, 'bar')
         eq(inv[ie.parent_id].kind, 'directory')
 

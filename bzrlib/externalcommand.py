@@ -21,6 +21,7 @@
 
 import os
 import sys
+
 from bzrlib.commands import Command
 
 
@@ -43,7 +44,7 @@ class ExternalCommand(Command):
     def __init__(self, path):
         self.path = path
 
- 
+
     def name(self):
         return self.path.split(os.sep)[-1]
 

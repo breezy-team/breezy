@@ -1,19 +1,18 @@
 import os
+import shutil
+import tempfile
 import unittest
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
-
-
-import tempfile
-import shutil
 from bzrlib.inventory import InventoryEntry, RootEntry
-from bzrlib.osutils import file_kind
+from bzrlib.osutils import file_kind, rename
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
                                 BackupBeforeChange, PermissionsMerge)
 from bzrlib.changeset import Inventory, apply_changeset, invert_dict
+
 
 class FalseTree(object):
     def __init__(self, realtree):
@@ -100,7 +99,7 @@ class MergeTree(object):
 
     def change_path(self, id, path):
         old_path = os.path.join(self.dir, self.inventory[id])
-        os.rename(old_path, self.abs_path(path))
+        rename(old_path, self.abs_path(path))
         self.inventory[id] = path
 
 
@@ -471,7 +470,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
     def test_trivial_star_merge(self):
         """Test that merges in a star shape Just Work.""" 
         from bzrlib.add import smart_add_branch, add_reporter_null
-        from bzrlib.branch import copy_branch
+        from bzrlib.clone import copy_branch
         from bzrlib.merge import merge
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))

@@ -68,9 +68,10 @@ class TreeDelta(object):
             self.modified, self.unchanged)
 
     def has_changed(self):
-        changes = len(self.added) + len(self.removed) + len(self.renamed)
-        changes += len(self.modified) 
-        return (changes != 0)
+        return bool(self.modified
+                    or self.added
+                    or self.removed
+                    or self.renamed)
 
     def touches_file_id(self, file_id):
         """Return True if file_id is modified by this delta."""

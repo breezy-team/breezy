@@ -16,12 +16,15 @@
 
 """Test Store implementation
 """
-from bzrlib.store import ImmutableStore, copy_all
-from bzrlib.remotebranch import RemoteStore
-from bzrlib.selftest import TestCaseInTempDir
+
 from StringIO import StringIO
-from bzrlib.errors import BzrError, UnlistableStore
 import os
+
+from bzrlib.remotebranch import RemoteStore
+from bzrlib.store import ImmutableStore, copy_all
+from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.errors import BzrError, UnlistableStore
+
 
 class TestStore(TestCaseInTempDir):
     def test_multiple_add(self):
@@ -42,8 +45,3 @@ class TestStore(TestCaseInTempDir):
         self.assertEqual(store_b['1'].read(), 'foo')
         store_c = RemoteStore('http://example.com/')
         self.assertRaises(UnlistableStore, copy_all, store_c, store_b)
-        
-
-TEST_CLASSES = [
-    TestStore,
-    ]

@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from trace import mutter
+from bzrlib.trace import mutter
 from bzrlib.store import ImmutableStore
+
 
 class CachedStore:
     """A store that caches data locally, to avoid repeated downloads.

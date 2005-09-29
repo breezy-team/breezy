@@ -58,7 +58,10 @@ class QuietFormatter(logging.Formatter):
         if record.levelno >= logging.WARNING:
             s += record.levelname + ': '
             
-        s += record.getMessage() 
+        s += record.getMessage()
+
+        ##import textwrap
+        ##s = textwrap.fill(s)
             
         if record.exc_info:
             # give just a summary of the exception, not the whole thing
@@ -101,17 +104,9 @@ def _rollover_trace_maybe(trace_fname):
             return
         old_fname = trace_fname + '.old'
 
-        try:
-            # must remove before rename on windows
-            os.remove(old_fname)
-        except OSError:
-            pass
+        from osutils import rename
+        rename(trace_fname, old_fname)
 
-        try:
-            # might fail if in use on windows
-            os.rename(trace_fname, old_fname)
-        except OSError:
-            pass
     except OSError:
         return
 

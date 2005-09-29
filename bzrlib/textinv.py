@@ -15,8 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from errors import BzrError
-from inventory import InventoryEntry, Inventory
+from bzrlib.errors import BzrError
+from bzrlib.inventory import InventoryEntry, Inventory
 
 
 START_MARK = "# bzr inventory format 3\n"

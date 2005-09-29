@@ -15,20 +15,31 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+# TODO: Maybe also keep the full path of the entry, and the children?
+# But those depend on its position within a particular inventory, and
+# it would be nice not to need to hold the backpointer here.
+
+# TODO: Perhaps split InventoryEntry into subclasses for files,
+# directories, etc etc.
+
+
 # This should really be an id randomly assigned when the tree is
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"
 
 
-import sys, os.path, types, re
+import os.path
+import re
+import sys
+import types
 
 import bzrlib
 from bzrlib.errors import BzrError, BzrCheckError
 
-from bzrlib.osutils import uuid, quotefn, splitpath, joinpath, appendpath
+from bzrlib.osutils import quotefn, splitpath, joinpath, appendpath
 from bzrlib.trace import mutter
 from bzrlib.errors import NotVersionedError
-        
+
 
 class InventoryEntry(object):
     """Description of a versioned file.
@@ -36,20 +47,31 @@ class InventoryEntry(object):
     An InventoryEntry has the following fields, which are also
     present in the XML inventory-entry element:
 
-    * *file_id*
-    * *name*: (only the basename within the directory, must not
-      contain slashes)
-    * *kind*: "directory" or "file"
-    * *directory_id*: (if absent/null means the branch root directory)
-    * *text_sha1*: only for files
-    * *text_size*: in bytes, only for files 
-    * *text_id*: identifier for the text version, only for files
+    file_id
 
-    InventoryEntries can also exist inside a WorkingTree
-    inventory, in which case they are not yet bound to a
-    particular revision of the file.  In that case the text_sha1,
-    text_size and text_id are absent.
+    name
+        (within the parent directory)
 
+    kind
+        'directory' or 'file'
+
+    parent_id
+        file_id of the parent directory, or ROOT_ID
+
+    name_version
+        the revision_id in which the name or parent of this file was
+        last changed
+
+    text_sha1
+        sha-1 of the text of the file
+        
+    text_size
+        size in bytes of the text of the file
+        
+    text_version
+        the revision_id in which the text of this file was introduced
+
+    (reading a version 4 tree created a text_id field.)
 
     >>> i = Inventory()
     >>> i.path2id('')
@@ -79,29 +101,22 @@ class InventoryEntry(object):
     InventoryEntry('2326', 'wibble.c', kind='file', parent_id='2325')
     >>> i['2326']
     InventoryEntry('2326', 'wibble.c', kind='file', parent_id='2325')
-    >>> for j in i.iter_entries():
-    ...     print j[0]
-    ...     assert i.path2id(j[0])
+    >>> for path, entry in i.iter_entries():
+    ...     print path.replace('\\\\', '/')     # for win32 os.sep
+    ...     assert i.path2id(path)
     ... 
     src
     src/bye.c
     src/hello.c
     src/wibble
     src/wibble/wibble.c
-    >>> i.id2path('2326')
+    >>> i.id2path('2326').replace('\\\\', '/')
     'src/wibble/wibble.c'
-
-    TODO: Maybe also keep the full path of the entry, and the children?
-           But those depend on its position within a particular inventory, and
-           it would be nice not to need to hold the backpointer here.
     """
-
-    # TODO: split InventoryEntry into subclasses for files,
-    # directories, etc etc.
-
+    
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
                  'text_id', 'parent_id', 'children',
-                 'text_version', 'entry_version', ]
+                 'text_version', 'name_version', ]
 
 
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
@@ -124,7 +139,7 @@ class InventoryEntry(object):
             raise BzrCheckError('InventoryEntry name %r is invalid' % name)
         
         self.text_version = None
-        self.entry_version = None
+        self.name_version = None
         self.text_sha1 = None
         self.text_size = None
         self.file_id = file_id
@@ -149,9 +164,12 @@ class InventoryEntry(object):
 
     def copy(self):
         other = InventoryEntry(self.file_id, self.name, self.kind,
-                               self.parent_id, text_id=self.text_id)
+                               self.parent_id)
+        other.text_id = self.text_id
         other.text_sha1 = self.text_sha1
         other.text_size = self.text_size
+        other.text_version = self.text_version
+        other.name_version = self.name_version
         # note that children are *not* copied; they're pulled across when
         # others are added
         return other
@@ -178,7 +196,7 @@ class InventoryEntry(object):
                and (self.parent_id == other.parent_id) \
                and (self.kind == other.kind) \
                and (self.text_version == other.text_version) \
-               and (self.entry_version == other.entry_version)
+               and (self.name_version == other.name_version)
 
 
     def __ne__(self, other):
@@ -260,6 +278,17 @@ class Inventory(object):
         #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
         self.root = RootEntry(root_id)
         self._byid = {self.root.file_id: self.root}
+
+
+    def copy(self):
+        other = Inventory(self.root.file_id)
+        # copy recursively so we know directories will be added before
+        # their children.  There are more efficient ways than this...
+        for path, entry in self.iter_entries():
+            if entry == self.root:
+                continue
+            other.add(entry.copy())
+        return other
 
 
     def __iter__(self):
@@ -471,7 +500,7 @@ class Inventory(object):
 
 
     def __ne__(self, other):
-        return not (self == other)
+        return not self.__eq__(other)
 
 
     def __hash__(self):
