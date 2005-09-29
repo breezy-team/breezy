@@ -152,3 +152,11 @@ class NoCommits(BzrError):
     def __init__(self, branch):
         msg = "Branch %s has no commits." % branch
         BzrError.__init__(self, msg)
+
+class UnlistableStore(BzrError):
+    def __init__(self, store):
+        BzrError.__init__(self, "Store %s is not listable" % store)
+
+class UnlistableBranch(BzrError):
+    def __init__(self, br):
+        BzrError.__init__(self, "Stores for branch %s are not listable" % br)

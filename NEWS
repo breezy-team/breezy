@@ -1,4 +1,37 @@
-development head
+DEVELOPMENT HEAD
+
+  BUG FIXES:
+  
+    * bzr-man.py has been updated to work again. Contributed by
+      Rob Weir.
+
+    * Locking is now done with fcntl.lockf which works with NFS
+      file systems. Contributed by Harald Meland.
+
+  IMPROVEMENTS:
+
+    * 'branch' now accepts a --basis parameter which will take advantage
+      of local history when making a new branch. This allows faster 
+      branching of remote branches. Contributed by Aaron Bentley.
+
+  INTERNALS:
+
+      
+bzr 0.0.9 2005-09-23
+
+  BUG FIXES:
+
+    * Fixed "branch -r" option.
+
+    * Fix remote access to branches containing non-compressed history.
+      (Robert Collins).
+
+    * Better reliability of http server tests.  (John Arbash-Meinel)
+
+    * Merge graph maximum distance calculation fix.  (Aaron Bentley)
+   
+    * Various minor bug in windows support have been fixed, largely in the
+      test suite. Contributed by Alexander Belchenko.
 
   IMPROVEMENTS:
 
@@ -14,11 +47,6 @@ development head
     * There is now a bzr.bat file created by distutils when building on 
       Windows. Contributed by Alexander Belchenko.
 
-  BUG FIXES:
-
-    * Various minor bug in windows support have been fixed, largely in the
-      test suite. Contributed by Alexander Belchenko.
-      
   INTERNALS:
 
     * removed uuid() as it was unused.
