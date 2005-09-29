@@ -132,15 +132,20 @@ class Branch(object):
         raise NotImplementedError('The Branch class is abstract')
 
     @staticmethod
-    def open(base, relax_version_check=False):
+    def open_downlevel(base):
+        """Open a branch which may be of an old format.
+        
+        Only local branches are supported."""
+        return LocalBranch(base, find_root=False, relax_version_check=True)
+        
+    @staticmethod
+    def open(base):
         """Open an existing branch, rooted at 'base' (url)"""
         if base and (base.startswith('http://') or base.startswith('https://')):
             from bzrlib.remotebranch import RemoteBranch
-            return RemoteBranch(base, find_root=False, 
-                                relax_version_check=relax_version_check)
+            return RemoteBranch(base, find_root=False)
         else:
-            return LocalBranch(base, find_root=False,
-                               relax_version_check=relax_version_check)
+            return LocalBranch(base, find_root=False)
 
     @staticmethod
     def open_containing(url):

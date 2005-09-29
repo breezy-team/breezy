@@ -149,7 +149,7 @@ class Convert(object):
 
 
     def _open_branch(self):
-        self.branch = Branch.open(self.base, relax_version_check=True)
+        self.branch = Branch.open_downlevel(self.base)
         if self.branch._branch_format == 5:
             note('this branch is already in the most current format')
             return False
