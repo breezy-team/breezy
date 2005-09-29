@@ -23,7 +23,7 @@ from bzrlib.branch import Branch
 from bzrlib.progress import ProgressBar
 from bzrlib.xml5 import serializer_v5
 from bzrlib.osutils import sha_string, split_lines
-from bzrlib.errors import NoSuchRevision
+from bzrlib.errors import InstallFailed, NoSuchRevision, WeaveError
 
 """Copying of history from one branch to another.
 
@@ -87,10 +87,10 @@ class Fetcher(object):
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
         self.to_branch = to_branch
         self.to_weaves = to_branch.weave_store
-	self.to_control = to_branch.control_weaves
+        self.to_control = to_branch.control_weaves
         self.from_branch = from_branch
         self.from_weaves = from_branch.weave_store
-	self.from_control = from_branch.control_weaves
+        self.from_control = from_branch.control_weaves
         self.failed_revisions = []
         self.count_copied = 0
         self.count_total = 0
@@ -99,13 +99,18 @@ class Fetcher(object):
             self.pb = bzrlib.ui.ui_factory.progress_bar()
         else:
             self.pb = pb
-        self.last_revision = self._find_last_revision(last_revision)
+        try:
+            self.last_revision = self._find_last_revision(last_revision)
+        except NoSuchRevision:
+            raise InstallFailed([last_revision])
         mutter('fetch up to rev {%s}', self.last_revision)
-        revs_to_fetch = self._compare_ancestries()
+        try:
+            revs_to_fetch = self._compare_ancestries()
+        except WeaveError:
+            raise InstallFailed([self.last_revision])
         self._copy_revisions(revs_to_fetch)
         self.new_ancestry = revs_to_fetch
 
-        
 
     def _find_last_revision(self, last_revision):
         """Find the limiting source revision.
@@ -118,10 +123,8 @@ class Fetcher(object):
         from_history = self.from_branch.revision_history()
         self.pb.update('get destination history')
         if last_revision:
-            if last_revision not in from_history:
-                raise NoSuchRevision(self.from_branch, last_revision)
-            else:
-                return last_revision
+            self.from_branch.get_revision(last_revision)
+            return last_revision
         elif from_history:
             return from_history[-1]
         else:
@@ -151,8 +154,6 @@ class Fetcher(object):
         mutter('need to get %d revisions in total', len(to_fetch))
         self.count_total = len(to_fetch)
         return to_fetch
-                
-
 
     def _copy_revisions(self, revs_to_fetch):
         i = 0

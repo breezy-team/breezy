@@ -317,7 +317,7 @@ class Commit(object):
         rev_tmp = StringIO()
         serializer_v5.write_revision(self.rev, rev_tmp)
         rev_tmp.seek(0)
-        self.branch.revision_store.add(rev_tmp, self.rev_id, compressed=False)
+        self.branch.revision_store.add(rev_tmp, self.rev_id, compressed=True)
         mutter('new revision_id is {%s}', self.rev_id)
 
 

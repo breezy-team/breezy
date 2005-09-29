@@ -34,11 +34,9 @@ def has_revision(branch, revision_id):
         return False
 
 
-
 class TestFetch(TestCaseInTempDir):
-    def SKIPPED_old_test_fetch(self):
-        """obsolete: new commit code depends on parents being present
-        so the test data no longer suits this test."""
+
+    def test_fetch(self):
         
         def new_branch(name):
             os.mkdir(name)
@@ -58,18 +56,20 @@ class TestFetch(TestCaseInTempDir):
         assert len(br_b.revision_history()) == 7
         assert greedy_fetch(br_b, br_a, br_a.revision_history()[3])[0] == 1
         assert has_revision(br_b, br_a.revision_history()[3])
-        assert not has_revision(br_a, br_b.revision_history()[3])
-        assert not has_revision(br_a, br_b.revision_history()[4])
+        assert not has_revision(br_a, br_b.revision_history()[6])
+        assert has_revision(br_a, br_b.revision_history()[5])
 
         # When a non-branch ancestor is missing, it should be a failure, not
         # exception
-        br_a4 = new_branch('br_a4')
-        count, failures = greedy_fetch(br_a4, br_a)
-        assert count == 6
-        assert failures == set((br_b.revision_history()[4],
-                                br_b.revision_history()[5])) 
+        print ("CANNOT TEST MISSING NON REVISION_HISTORY ANCESTORS WITHOUT"
+               " GHOSTS")
+#        br_a4 = new_branch('br_a4')
+#        count, failures = greedy_fetch(br_a4, br_a)
+#        self.assertEqual(count, 6)
+#        self.assertEqual(failures, set((br_b.revision_history()[4],
+#                                        br_b.revision_history()[5]))) 
 
-        assert greedy_fetch(br_a, br_b)[0] == 4
+        self.assertEqual(greedy_fetch(br_a, br_b)[0], 1)
         assert has_revision(br_a, br_b.revision_history()[3])
         assert has_revision(br_a, br_b.revision_history()[4])
 
@@ -83,12 +83,13 @@ class TestFetch(TestCaseInTempDir):
         assert greedy_fetch(br_a2, br_a)[0] == 9
         assert has_revision(br_a2, br_b.revision_history()[4])
         assert has_revision(br_a2, br_a.revision_history()[3])
+        assert has_revision(br_a2, br_a.revision_history()[2])
 
         br_a3 = new_branch('br_a3')
         assert greedy_fetch(br_a3, br_a2)[0] == 0
         for revno in range(4):
             assert not has_revision(br_a3, br_a.revision_history()[revno])
-        assert greedy_fetch(br_a3, br_a2, br_a.revision_history()[2])[0] == 3
+        self.assertEqual(greedy_fetch(br_a3, br_a2, br_a.revision_history()[2])[0], 3)
         fetched = greedy_fetch(br_a3, br_a2, br_a.revision_history()[3])[0]
         assert fetched == 3, "fetched %d instead of 3" % fetched
         # InstallFailed should be raised if the branch is missing the revision
@@ -100,10 +101,3 @@ class TestFetch(TestCaseInTempDir):
         br_a2.append_revision('a-b-c')
         self.assertRaises(bzrlib.errors.InstallFailed, greedy_fetch, br_a3,
                           br_a2)
-
-
-
-if __name__ == '__main__':
-    import unittest
-    unittest.main()
-    

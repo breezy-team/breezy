@@ -26,9 +26,8 @@ from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 
 class TestFetch(TestCaseWithWebserver):
     def runTest(self):
-        print "REENABLE ME?!!!!! testremotebranch"
-        return
-        from bzrlib.fetch import greedy_fetch, has_revision
+        from bzrlib.fetch import greedy_fetch
+        from bzrlib.selftest.testfetch import has_revision
 
         def new_branch(name):
             os.mkdir(name)
@@ -50,6 +49,7 @@ class TestFetch(TestCaseWithWebserver):
         to_unzip_output.write(content)
         to_unzip_output.close()
         
+        import pdb;pdb.set_trace()
         br_rem = Branch.open(self.get_remote_url(br_a.base))
         assert not has_revision(br_b, br_rem.revision_history()[3])
         assert has_revision(br_b, br_rem.revision_history()[2])

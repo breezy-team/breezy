@@ -119,7 +119,7 @@ class RemoteBranch(LocalBranch):
             self.base = _find_remote_root(baseurl)
         else:
             self.base = baseurl
-            self._check_format()
+            self._check_format(False)
 
         self.inventory_store = RemoteStore(baseurl + '/.bzr/inventory-store/')
         self.text_store = RemoteStore(baseurl + '/.bzr/text-store/')
