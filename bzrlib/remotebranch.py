@@ -139,7 +139,7 @@ class RemoteBranch(LocalBranch):
     def setup_caching(self, cache_root):
         """Set up cached stores located under cache_root"""
         from bzrlib.meta_store import CachedStore
-        for store_name in ('inventory_store', 'text_store', 'revision_store'):
+        for store_name in ('revision_store',):
             if not isinstance(getattr(self, store_name), CachedStore):
                 cache_path = os.path.join(cache_root, store_name)
                 os.mkdir(cache_path)
