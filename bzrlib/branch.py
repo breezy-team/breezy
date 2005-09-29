@@ -39,6 +39,7 @@ from bzrlib.inventory import Inventory
 from bzrlib.weavestore import WeaveStore
 from bzrlib.store import copy_all
 from bzrlib.store.compressed_text import CompressedTextStore
+from bzrlib.store.text import TextStore
 from bzrlib.transport import Transport
 import bzrlib.xml5
 import bzrlib.ui
@@ -231,18 +232,34 @@ class _Branch(Branch):
         if init:
             self._make_control()
         self._check_format(relax_version_check)
-        cfn = self.controlfilename
+
+        def get_store(name, compressed=True):
+            relpath = self._rel_controlfilename(name)
+            if compressed:
+                store = CompressedTextStore(self._transport.clone(relpath))
+            else:
+                store = TextStore(self._transport.clone(relpath))
+            if self._transport.should_cache():
+                from meta_store import CachedStore
+                cache_path = os.path.join(self.cache_root, name)
+                os.mkdir(cache_path)
+                store = CachedStore(store, cache_path)
+            return store
+        def get_weave(name):
+            relpath = self._rel_controlfilename(name)
+            ws = WeaveStore(self._transport.clone(relpath))
+            if self._transport.should_cache():
+                ws.enable_cache = True
+            return ws
+
         if self._branch_format == 4:
-            self.inventory_store = CompressedTextStore(cfn('inventory-store'))
-            self.text_store = CompressedTextStore(cfn('text-store'))
+            self.inventory_store = get_store('inventory-store')
+            self.text_store = get_store('text-store')
+            self.revision_store = get_store('revision-store')
         elif self._branch_format == 5:
-            self.control_weaves = WeaveStore(cfn([]))
-            self.weave_store = WeaveStore(cfn('weaves'))
-            if init:
-                # FIXME: Unify with make_control_files
-                self.control_weaves.put_empty_weave('inventory')
-                self.control_weaves.put_empty_weave('ancestry')
-        self.revision_store = CompressedTextStore(cfn('revision-store'))
+            self.control_weaves = get_weave([]))
+            self.weave_store = get_weave('weaves'))
+            self.revision_store = get_store('revision-store', compressed=False)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self._transport.base)
@@ -396,6 +413,8 @@ class _Branch(Branch):
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
+        from bzrlib.weavefile import write_weave_v5
+        from bzrlib.weave import Weave
         
         # Create an empty inventory
         sio = StringIO()
@@ -403,6 +422,10 @@ class _Branch(Branch):
         # them; they're not needed for now and so ommitted for
         # simplicity.
         bzrlib.xml5.serializer_v5.write_inventory(Inventory(), sio)
+        empty_inv = sio.getvalue()
+        sio = StringIO()
+        bzrlib.weavefile.write_weave_v5(Weave(), sio)
+        empty_weave = sio.getvalue()
 
         dirs = [[], 'revision-store', 'weaves']
         files = [('README', 
@@ -413,7 +436,9 @@ class _Branch(Branch):
             ('branch-name', ''),
             ('branch-lock', ''),
             ('pending-merges', ''),
-            ('inventory', sio.getvalue())
+            ('inventory', empty_inv),
+            ('inventory.weave', empty_weave),
+            ('ancestry.weave', empty_weave)
         ]
         cfn = self._rel_controlfilename
         self._transport.mkdir_multi([cfn(d) for d in dirs])

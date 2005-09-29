@@ -16,7 +16,6 @@
 
 from bzrlib.trace import mutter
 from bzrlib.store import Store
-from bzrlib.store.compressed_text import CompressedTextStore
 from bzrlib.transport.local import LocalTransport
 
 class CachedStore(Store):
@@ -26,7 +25,7 @@ class CachedStore(Store):
     """
     def __init__(self, store, cache_dir):
         self.source_store = store
-        self.cache_store = CompressedTextStore(LocalTransport(cache_dir))
+        self.cache_store = store.__class__(LocalTransport(cache_dir))
 
     def __getitem__(self, id):
         mutter("Cache add %s" % id)

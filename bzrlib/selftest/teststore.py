@@ -23,6 +23,7 @@ from bzrlib.store import copy_all
 from bzrlib.transport.local import LocalTransport
 from bzrlib.transport import NoSuchFile
 from bzrlib.store.compressed_text import CompressedTextStore
+from bzrlib.store.text import TextStore
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.errors import BzrError, UnlistableStore
 
@@ -95,6 +96,10 @@ def get_compressed_store():
     t = LocalTransport('.')
     return CompressedTextStore(t)
 
+def get_text_store():
+    t = LocalTransport('.')
+    return TextStore(t)
+
 class TestCompressedTextStore(TestCaseInTempDir):
     def test_multiple_add(self):
         """Multiple add with same ID should raise a BzrError"""
@@ -117,6 +122,37 @@ class TestCompressedTextStore(TestCaseInTempDir):
         store_a.add('foo', '1')
         os.mkdir('b')
         store_b = CompressedTextStore('b')
+        copy_all(store_a, store_b)
+        self.assertEqual(store_a['1'].read(), 'foo')
+        self.assertEqual(store_b['1'].read(), 'foo')
+        # TODO: Switch the exception form UnlistableStore to
+        #       or make Stores throw UnlistableStore if their
+        #       Transport doesn't support listing
+        # store_c = RemoteStore('http://example.com/')
+        # self.assertRaises(UnlistableStore, copy_all, store_c, store_b)
+
+class TestTextStore(TestCaseInTempDir):
+    def test_multiple_add(self):
+        """Multiple add with same ID should raise a BzrError"""
+        store = get_text_store()
+        test_multiple_add(self, store)
+
+    def test_get(self):
+        store = get_text_store()
+        test_get(self, store)
+
+    def test_ignore_get(self):
+        store = get_text_store()
+        test_ignore_get(self, store)
+
+
+    def test_copy_all(self):
+        """Test copying"""
+        os.mkdir('a')
+        store_a = TextStore('a')
+        store_a.add('foo', '1')
+        os.mkdir('b')
+        store_b = TextStore('b')
         copy_all(store_a, store_b)
         self.assertEqual(store_a['1'].read(), 'foo')
         self.assertEqual(store_b['1'].read(), 'foo')

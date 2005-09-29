@@ -24,35 +24,41 @@ import errno
 
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.weave import Weave
+from bzrlib.store import Store
 from bzrlib.atomicfile import AtomicFile
+from bzrlib.errors import NoSuchFile
+
+from cStringIO import StringIO
 
 
 
-
-class WeaveStore(object):
+class WeaveStore(Store):
     """Collection of several weave files in a directory.
 
     This has some shortcuts for reading and writing them.
     """
-    def __init__(self, dir, get_file=None):
-        self._dir = dir
+    def __init__(self, transport):
+        self._transport = transport
         self._cache = {}
-        self.enable_cache = False
-        if get_file is not None:
-            self.get_file = get_file
+	self.enable_cache = False
 
-    def get_file(self, filename):
-        return file(filename, 'rb')
 
     def filename(self, file_id):
-        return self._dir + os.sep + file_id + '.weave'
+        """Return the path relative to the transport root."""
+        return file_id + '.weave'
+
+    def _get(self, file_id):
+        return self._transport.get(self.filename(file_id))
+
+    def _put(self, file_id, f):
+        return self._transport.put(self.filename(file_id), f)
 
 
     def get_weave(self, file_id):
         if self.enable_cache:
             if file_id in self._cache:
                 return self._cache[file_id]
-        w = read_weave(self.get_file(self.filename(file_id)))
+        w = read_weave(self._get(file_id))
         if self.enable_cache:
             self._cache[file_id] = w
         return w
@@ -69,31 +75,23 @@ class WeaveStore(object):
     def get_weave_or_empty(self, file_id):
         """Return a weave, or an empty one if it doesn't exist.""" 
         try:
-            inf = self.get_file(self.filename(file_id))
-        except IOError, e:
-            if e.errno == errno.ENOENT:
-                return Weave(weave_name=file_id)
-            else:
-                raise
+            inf = self._get(file_id)
+        except NoSuchFile:
+            return Weave(weave_name=file_id)
         else:
             return read_weave(inf)
     
-
-    def put_empty_weave(self, file_id):
-        self.put_weave(file_id, Weave())
-
 
     def put_weave(self, file_id, weave):
         """Write back a modified weave"""
         if self.enable_cache:
             self._cache[file_id] = weave
-        weave_fn = self.filename(file_id)
-        af = AtomicFile(weave_fn)
-        try:
-            write_weave_v5(weave, af)
-            af.commit()
-        finally:
-            af.close()
+
+        sio = StringIO()
+        write_weave_v5(weave, sio)
+        sio.seek(0)
+
+        self._put(file_id, sio)
 
 
     def add_text(self, file_id, rev_id, new_lines, parents):
