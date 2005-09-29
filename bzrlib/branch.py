@@ -203,8 +203,8 @@ class LocalBranch(Branch):
         if (self._branch_format != branch_to._branch_format
             or self._branch_format != 4):
             from bzrlib.fetch import greedy_fetch
-            mutter("falling back to fetch logic to push between %s and %s",
-                   self, branch_to)
+            mutter("falling back to fetch logic to push between %s(%s) and %s(%s)",
+                   self, self._branch_format, branch_to, branch_to._branch_format)
             greedy_fetch(to_branch=branch_to, from_branch=self,
                          revision=self.last_revision())
             return
@@ -1365,6 +1365,7 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     assert isinstance(to_location, basestring)
     
     br_to = Branch.initialize(to_location)
+    mutter("copy branch from %s to %s", branch_from, br_to)
     if basis_branch is not None:
         basis_branch.push_stores(br_to)
     br_to.set_root_id(branch_from.get_root_id())
@@ -1374,4 +1375,5 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     merge((to_location, -1), (to_location, 0), this_dir=to_location,
           check_clean=False, ignore_zero=True)
     br_to.set_parent(branch_from.base)
+    mutter("copied")
     return br_to

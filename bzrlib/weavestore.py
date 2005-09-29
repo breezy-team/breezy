@@ -34,11 +34,15 @@ class WeaveStore(object):
 
     This has some shortcuts for reading and writing them.
     """
-    def __init__(self, dir):
+    def __init__(self, dir, get_file=None):
         self._dir = dir
         self._cache = {}
-	self.enable_cache = False
+        self.enable_cache = False
+        if get_file is not None:
+            self.get_file = get_file
 
+    def get_file(self, filename):
+        return file(filename, 'rb')
 
     def filename(self, file_id):
         return self._dir + os.sep + file_id + '.weave'
@@ -48,7 +52,7 @@ class WeaveStore(object):
         if self.enable_cache:
             if file_id in self._cache:
                 return self._cache[file_id]
-        w = read_weave(file(self.filename(file_id), 'rb'))
+        w = read_weave(self.get_file(self.filename(file_id)))
         if self.enable_cache:
             self._cache[file_id] = w
         return w
@@ -65,7 +69,7 @@ class WeaveStore(object):
     def get_weave_or_empty(self, file_id):
         """Return a weave, or an empty one if it doesn't exist.""" 
         try:
-            inf = file(self.filename(file_id), 'rb')
+            inf = self.get_file(self.filename(file_id))
         except IOError, e:
             if e.errno == errno.ENOENT:
                 return Weave(weave_name=file_id)

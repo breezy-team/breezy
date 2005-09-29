@@ -22,7 +22,8 @@ import sys
 import os
 
 from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
-        
+
+from bzrlib.selftest.testfetch import fetch_steps
 
 class TestFetch(TestCaseWithWebserver):
     def runTest(self):
@@ -49,42 +50,6 @@ class TestFetch(TestCaseWithWebserver):
         to_unzip_output.write(content)
         to_unzip_output.close()
         
-        import pdb;pdb.set_trace()
         br_rem = Branch.open(self.get_remote_url(br_a.base))
-        assert not has_revision(br_b, br_rem.revision_history()[3])
-        assert has_revision(br_b, br_rem.revision_history()[2])
-        assert len(br_b.revision_history()) == 7
-        assert greedy_fetch(br_b, br_rem, br_rem.revision_history()[2])[0] == 0
+        fetch_steps(self, br_rem, br_b, br_a)
 
-        # greedy_fetch is not supposed to alter the revision history
-        assert len(br_b.revision_history()) == 7
-        assert not has_revision(br_b, br_rem.revision_history()[3])
-
-        assert len(br_b.revision_history()) == 7
-        assert greedy_fetch(br_b, br_rem, br_rem.revision_history()[3])[0] == 1
-        assert has_revision(br_b, br_a.revision_history()[3])
-        assert not has_revision(br_rem, br_b.revision_history()[3])
-        assert not has_revision(br_rem, br_b.revision_history()[4])
-
-        # When a non-branch ancestor is missing, it should be a failure, not
-        # exception
-        br_a4 = new_branch('br_a4')
-        count, failures = greedy_fetch(br_a4, br_rem)
-        assert count == 6
-        assert failures == set((br_b.revision_history()[4],
-                                br_b.revision_history()[5])) 
-
-        assert greedy_fetch(br_a, br_b)[0] == 4
-        assert has_revision(br_a, br_b.revision_history()[3])
-        assert has_revision(br_a, br_b.revision_history()[4])
-
-        br_b2 = new_branch('br_b2')
-        assert greedy_fetch(br_b2, br_b)[0] == 7
-        assert has_revision(br_b2, br_b.revision_history()[4])
-        assert has_revision(br_b2, br_a.revision_history()[2])
-        assert not has_revision(br_b2, br_a.revision_history()[3])
-
-        br_a2 = new_branch('br_a2')
-        assert greedy_fetch(br_a2, br_rem)[0] == 9
-        assert has_revision(br_a2, br_b.revision_history()[4])
-        assert has_revision(br_a2, br_a.revision_history()[3])

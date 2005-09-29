@@ -101,7 +101,8 @@ class Fetcher(object):
             self.pb = pb
         try:
             self.last_revision = self._find_last_revision(last_revision)
-        except NoSuchRevision:
+        except NoSuchRevision, e:
+            mutter('failed getting last revision: %s', e)
             raise InstallFailed([last_revision])
         mutter('fetch up to rev {%s}', self.last_revision)
         try:

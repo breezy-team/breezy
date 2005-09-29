@@ -31,7 +31,9 @@ import urlparse
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.branch import Branch, LocalBranch, BZR_BRANCH_FORMAT_5
 from bzrlib.trace import mutter
+from bzrlib.weavestore import WeaveStore
 from bzrlib.xml5 import serializer_v5
+
 
 # velocitynet.com.au transparently proxies connections and thereby
 # breaks keep-alive -- sucks!
@@ -119,11 +121,14 @@ class RemoteBranch(LocalBranch):
             self.base = _find_remote_root(baseurl)
         else:
             self.base = baseurl
-            self._check_format(False)
+        self._check_format(False)
+        # is guaranteed to be a v5 store
 
-        self.inventory_store = RemoteStore(baseurl + '/.bzr/inventory-store/')
-        self.text_store = RemoteStore(baseurl + '/.bzr/text-store/')
-        self.revision_store = RemoteStore(baseurl + '/.bzr/revision-store/')
+        cfn = self.controlfilename
+        assert self._branch_format == 5
+        self.control_weaves = WeaveStore(cfn([]), get_url)
+        self.weave_store = WeaveStore(cfn('weaves'), get_url)
+        self.revision_store = RemoteStore(cfn('revision-store'))
 
     def __str__(self):
         b = getattr(self, 'baseurl', 'undefined')
@@ -189,6 +194,13 @@ class RemoteStore(object):
         if '/' in name:
             raise ValueError('invalid store id', name)
         return self._baseurl + '/' + name
+
+    def __contains__(self, fileid):
+        try:
+            self[fileid]
+            return True
+        except KeyError:
+            return False
         
     def __getitem__(self, fileid):
         p = self._path(fileid)
