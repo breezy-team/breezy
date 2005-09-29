@@ -448,7 +448,6 @@ def test_suite():
                    'bzrlib.selftest.testlog',
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
-                   'bzrlib.selftest.testremotebranch',
                    'bzrlib.selftest.testrevision',
                    'bzrlib.selftest.test_revision_info',
                    'bzrlib.selftest.test_merge_core',

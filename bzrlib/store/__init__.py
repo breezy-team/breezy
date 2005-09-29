@@ -24,7 +24,7 @@ A store is a simple write-once container indexed by a universally
 unique ID.
 """
 
-from bzrlib.errors import BzrError, UnlistableStore
+from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.trace import mutter
 import bzrlib.transport
 
@@ -65,10 +65,6 @@ class Store(object):
 
     def __iter__(self):
         raise NotImplementedError
-
-    def __del__(self):
-        """Delete an entry from the store."""
-        raise NotImplementedError('Children need to define delete rights.')
 
     def add(self, f, fileid):
         """Add a file object f to the store accessible from the given fileid"""
@@ -195,7 +191,7 @@ def copy_all(store_from, store_to):
         raise UnlistableStore(store_from)
     try:
         ids = [f for f in store_from]
-    except NotImplementedError:
+    except (NotImplementedError, TransportNotPossible):
         raise UnlistableStore(store_from)
     store_to.copy_multi(store_from, ids)
 

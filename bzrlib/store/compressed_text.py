@@ -250,7 +250,8 @@ class ScratchCompressedTextStore(CompressedTextStore):
     """
     def __init__(self):
         from transport import transport
-        super(ScratchCompressedTextStore, self).__init__(transport(tempfile.mkdtemp()))
+        t = transport(tempfile.mkdtemp())
+        super(ScratchCompressedTextStore, self).__init__(t)
 
     def __del__(self):
         self._transport.delete_multi(self._transport.list_dir('.'))

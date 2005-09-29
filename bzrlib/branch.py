@@ -36,10 +36,10 @@ from bzrlib.revision import Revision, validate_revision_id, is_ancestor
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
-from bzrlib.weavestore import WeaveStore
 from bzrlib.store import copy_all
 from bzrlib.store.compressed_text import CompressedTextStore
 from bzrlib.store.text import TextStore
+from bzrlib.store.weave import WeaveStore
 from bzrlib.transport import Transport
 import bzrlib.xml5
 import bzrlib.ui
@@ -257,8 +257,8 @@ class _Branch(Branch):
             self.text_store = get_store('text-store')
             self.revision_store = get_store('revision-store')
         elif self._branch_format == 5:
-            self.control_weaves = get_weave([]))
-            self.weave_store = get_weave('weaves'))
+            self.control_weaves = get_weave([])
+            self.weave_store = get_weave('weaves')
             self.revision_store = get_store('revision-store', compressed=False)
 
     def __str__(self):

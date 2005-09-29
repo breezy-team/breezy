@@ -16,16 +16,16 @@
 """Implementation of Transport over http.
 """
 
-from bzrlib.transport import Transport, register_transport, \
-    TransportNotPossible, NoSuchFile, NonRelativePath, \
-    TransportError
+from bzrlib.transport import Transport, register_transport
+from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
+                           NonRelativePath, TransportError)
 import os, errno
 from cStringIO import StringIO
 import urllib2
 import urlparse
 
 from bzrlib.errors import BzrError, BzrCheckError
-from bzrlib.branch import Branch, BZR_BRANCH_FORMAT
+from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 
 # velocitynet.com.au transparently proxies connections and thereby
