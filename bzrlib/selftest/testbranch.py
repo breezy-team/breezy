@@ -15,7 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-from bzrlib.branch import Branch, copy_branch
+from bzrlib.branch import Branch
+from bzrlib.clone import copy_branch
 from bzrlib.commit import commit
 from bzrlib.errors import NoSuchRevision, UnlistableBranch
 from bzrlib.selftest import TestCaseInTempDir

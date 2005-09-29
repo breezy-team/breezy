@@ -382,7 +382,7 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
-        from bzrlib.branch import copy_branch
+        from bzrlib.clone import copy_branch
         import tempfile
         import errno
         from shutil import rmtree
