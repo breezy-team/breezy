@@ -25,7 +25,7 @@ import bzrlib.osutils
 import bzrlib.revision
 from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
 from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
-from bzrlib.changeset import Inventory, Diff3Merge
+from bzrlib.changeset import Inventory, Diff3Merge, ReplaceContents
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError, UnrelatedBranches, NoCommonAncestor
 from bzrlib.errors import NoCommits
@@ -129,6 +129,11 @@ class MergeConflictHandler(ExceptionConflictHandler):
         self.conflict("Directory %s not removed because it is not empty"\
             % filename)
         return "skip"
+
+    def rem_contents_conflict(self, filename, this_contents, base_contents):
+        base_contents(filename+".BASE", self, False)
+        this_contents(filename+".THIS", self, False)
+        return ReplaceContents(this_contents, None)
 
     def finalize(self):
         if not self.ignore_zero:
