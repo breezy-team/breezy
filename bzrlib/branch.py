@@ -395,8 +395,11 @@ class LocalBranch(Branch):
         try:
             fmt = self.controlfile('branch-format', 'r').read()
         except IOError, e:
-            if e.errno == errno.ENOENT:
-                raise NotBranchError(self.base)
+            if hasattr(e, 'errno'):
+                if e.errno == errno.ENOENT:
+                    raise NotBranchError(self.base)
+                else:
+                    raise
             else:
                 raise
 
