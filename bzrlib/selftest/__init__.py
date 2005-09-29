@@ -462,6 +462,7 @@ def test_suite():
                    'bzrlib.selftest.whitebox',
                    'bzrlib.selftest.teststore',
                    'bzrlib.selftest.blackbox',
+                   'bzrlib.selftest.testtransport',
                    'bzrlib.selftest.testgraph',
                    ]
 

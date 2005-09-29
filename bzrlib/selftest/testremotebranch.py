@@ -25,10 +25,9 @@ from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 
 from bzrlib.selftest.testfetch import fetch_steps
 
-class TestFetch(TestCaseWithWebserver):
-    def runTest(self):
-        from bzrlib.fetch import greedy_fetch
-        from bzrlib.selftest.testfetch import has_revision
+class TestRemoteBranch(TestCaseWithWebserver):
+    def test_remote_branch(self):
+        from bzrlib.fetch import greedy_fetch, has_revision
 
         def new_branch(name):
             os.mkdir(name)
