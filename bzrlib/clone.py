@@ -18,13 +18,10 @@
 # all the whole weaves and revisions, rather than getting one
 # revision at a time.
 
-# TODO: Do we really need to invoke merge() to build the working directory?
-# That seems a bit of an abstraction inversion.
-
 import sys
 import os
 
-from bzrlib.merge import merge
+from bzrlib.merge import build_working_dir
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 
@@ -57,8 +54,7 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     if revision is None:
         revision = branch_from.last_revision()
     br_to.update_revisions(branch_from, stop_revision=revision)
-    merge((to_location, -1), (to_location, 0), this_dir=to_location,
-          check_clean=False, ignore_zero=True)
+    build_working_dir(to_location)
     br_to.set_parent(branch_from.base)
     mutter("copied")
     return br_to
