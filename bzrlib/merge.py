@@ -131,6 +131,8 @@ class MergeConflictHandler(ExceptionConflictHandler):
     def rem_contents_conflict(self, filename, this_contents, base_contents):
         base_contents(filename+".BASE", self, False)
         this_contents(filename+".THIS", self, False)
+        self.conflict("Other branch deleted locally modified file %s" %
+                      filename)
         return ReplaceContents(this_contents, None)
 
     def finalize(self):
