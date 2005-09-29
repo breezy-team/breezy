@@ -37,7 +37,7 @@ class TextStore(bzrlib.store.Store):
     the hash is used as the name, or something else known to be unique,
     such as a UUID.
 
-    Files are stored gzip compressed, with no delta compression.
+    Files are stored uncompressed, with no delta compression.
 
     """
 
@@ -128,7 +128,6 @@ class TextStore(bzrlib.store.Store):
         rel_paths = [self._relpath(fid) for fid in fileids]
         is_requested = []
 
-        #mutter('CompressedTextStore.get(permit_failure=%s)' % permit_failure)
         if permit_failure:
             existing_paths = []
             for path, has in zip(rel_paths,
@@ -150,11 +149,7 @@ class TextStore(bzrlib.store.Store):
             while not is_requested[count]:
                 yield None
                 count += 1
-            if hasattr(f, 'tell'):
-                yield gzip.GzipFile(mode='rb', fileobj=f)
-            else:
-                sio = StringIO(f.read())
-                yield gzip.GzipFile(mode='rb', fileobj=sio)
+            yield f
             count += 1
 
         while count < len(is_requested):

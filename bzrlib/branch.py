@@ -40,7 +40,7 @@ from bzrlib.store import copy_all
 from bzrlib.store.compressed_text import CompressedTextStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.weave import WeaveStore
-from bzrlib.transport import Transport
+from bzrlib.transport import Transport, get_transport
 import bzrlib.xml5
 import bzrlib.ui
 
@@ -131,7 +131,7 @@ class Branch(object):
     @staticmethod
     def open(base):
         """Open an existing branch, rooted at 'base' (url)"""
-        t = bzrlib.transport.transport(base)
+        t = get_transport(base)
         return _Branch(t)
 
     @staticmethod
@@ -140,14 +140,14 @@ class Branch(object):
         
         This probes for a branch at url, and searches upwards from there.
         """
-        t = bzrlib.transport.transport(url)
+        t = get_transport(url)
         t = find_branch_root(t)
         return _Branch(t)
 
     @staticmethod
     def initialize(base):
         """Create a new branch, rooted at 'base' (url)"""
-        t = bzrlib.transport.transport(base)
+        t = get_transport(base)
         return _Branch(t, init=True)
 
     def setup_caching(self, cache_root):
@@ -1286,6 +1286,8 @@ class ScratchBranch(_Branch):
         if base is None:
             base = mkdtemp()
             init = True
+        if isinstance(base, basestring):
+            base = get_transport(base)
         _Branch.__init__(self, base, init=init)
         for d in dirs:
             self._transport.mkdir(d)

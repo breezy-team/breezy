@@ -92,12 +92,12 @@ def test_ignore_get(tester, store):
     check_equals(tester, store, ['b', 'd', 'c'], ['other', None, 'something'],
             permit_failure=True)
 
-def get_compressed_store():
-    t = LocalTransport('.')
+def get_compressed_store(path='.'):
+    t = LocalTransport(path)
     return CompressedTextStore(t)
 
-def get_text_store():
-    t = LocalTransport('.')
+def get_text_store(path='.'):
+    t = LocalTransport(path)
     return TextStore(t)
 
 class TestCompressedTextStore(TestCaseInTempDir):
@@ -118,10 +118,10 @@ class TestCompressedTextStore(TestCaseInTempDir):
     def test_copy_all(self):
         """Test copying"""
         os.mkdir('a')
-        store_a = CompressedTextStore('a')
+        store_a = get_text_store('a')
         store_a.add('foo', '1')
         os.mkdir('b')
-        store_b = CompressedTextStore('b')
+        store_b = get_text_store('b')
         copy_all(store_a, store_b)
         self.assertEqual(store_a['1'].read(), 'foo')
         self.assertEqual(store_b['1'].read(), 'foo')
@@ -149,10 +149,10 @@ class TestTextStore(TestCaseInTempDir):
     def test_copy_all(self):
         """Test copying"""
         os.mkdir('a')
-        store_a = TextStore('a')
+        store_a = get_text_store('a')
         store_a.add('foo', '1')
         os.mkdir('b')
-        store_b = TextStore('b')
+        store_b = get_text_store('b')
         copy_all(store_a, store_b)
         self.assertEqual(store_a['1'].read(), 'foo')
         self.assertEqual(store_b['1'].read(), 'foo')

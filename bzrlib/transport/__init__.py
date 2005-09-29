@@ -340,7 +340,7 @@ class Transport(object):
         raise NotImplementedError
 
 
-def transport(base):
+def get_transport(base):
     global _protocol_handlers
     if base is None:
         base = '.'
