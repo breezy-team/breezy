@@ -4,12 +4,6 @@ A plugin for displaying what revisions are in 'other' but not in local.
 
 import bzrlib
 
-try:
-    set
-except NameError:
-    from sets import Set as set
-
-
 def show_missing(br_local, br_remote, verbose=False, quiet=False):
     """Show the revisions which exist in br_remote, that 
     do not exist in br_local.
