@@ -16,9 +16,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# Author: Martin Pool <mbp@canonical.com>
+# XXX: Some consideration of the problems that might occur if there are
+# files whose id differs only in case.  That should probably be forbidden.
 
 
+from cStringIO import StringIO
 import os
 import errno
 
@@ -27,8 +29,8 @@ from bzrlib.weave import Weave
 from bzrlib.store import Store
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.errors import NoSuchFile
+from bzrlib.trace import mutter
 
-from cStringIO import StringIO
 
 
 
@@ -37,6 +39,8 @@ class WeaveStore(Store):
 
     This has some shortcuts for reading and writing them.
     """
+    FILE_SUFFIX = '.weave'
+
     def __init__(self, transport):
         self._transport = transport
         self._cache = {}
@@ -45,7 +49,18 @@ class WeaveStore(Store):
 
     def filename(self, file_id):
         """Return the path relative to the transport root."""
-        return file_id + '.weave'
+        return file_id + WeaveStore.FILE_SUFFIX
+
+    def __iter__(self):
+        l = len(WeaveStore.FILE_SUFFIX)
+        for f in self._transport.list_dir('.'):
+            if f.endswith(WeaveStore.FILE_SUFFIX):
+                f = f[:-l]
+                yield f
+
+    def __contains__(self, fileid):
+        """"""
+        return self._transport.has(self.filename(fileid))
 
     def _get(self, file_id):
         return self._transport.get(self.filename(file_id))
@@ -101,3 +116,8 @@ class WeaveStore(Store):
         self.put_weave(file_id, w)
         
      
+    def copy_multi(self, from_store, file_ids):
+        assert isinstance(from_store, WeaveStore)
+        for f in file_ids:
+            mutter("copy weave {%s} into %s", f, self)
+            self._put(f, from_store._get(f))
