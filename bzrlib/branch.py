@@ -227,7 +227,8 @@ class _Branch(Branch):
         In the test suite, creation of new trees is tested using the
         `ScratchBranch` class.
         """
-        assert isinstance(transport, Transport)
+        assert isinstance(transport, Transport), \
+            "%r is not a Transport" % transport
         self._transport = transport
         if init:
             self._make_control()
