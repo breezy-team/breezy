@@ -160,11 +160,7 @@ class Convert(object):
 
 
     def _set_new_format(self):
-        f = self.branch.controlfile('branch-format', 'wb')
-        try:
-            f.write(BZR_BRANCH_FORMAT_5)
-        finally:
-            f.close()
+        self.branch.put_controlfile('branch-format', BZR_BRANCH_FORMAT_5)
 
 
     def _cleanup_spare_files(self):
@@ -191,7 +187,8 @@ class Convert(object):
     def _convert_working_inv(self):
         branch = self.branch
         inv = serializer_v4.read_inventory(branch.controlfile('inventory', 'rb'))
-        serializer_v5.write_inventory(inv, branch.controlfile('inventory', 'wb'))
+        new_inv_xml = serializer_v5.write_inventory_to_string(inv)
+        branch.put_controlfile('inventory', new_inv_xml)
 
 
 
