@@ -1020,6 +1020,9 @@ class cmd_commit(Command):
             show_status(b, specific_files=selected_list,
                         to_file=catcher)
             message = edit_commit_message(catcher.getvalue())
+
+            if message == "":
+                raise BzrCommandError("empty commit message specified")
             
             if message is None:
                 raise BzrCommandError("please specify a commit message"
