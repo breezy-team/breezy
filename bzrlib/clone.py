@@ -65,8 +65,6 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     to_location -- The destination directory; must either exist and be 
         empty, or not exist, in which case it is created.
 
-    revno -- This revision should be the head of the new branch.
-
     basis_branch
         A local branch to copy revisions from, related to branch_from. 
         This is used when branching from a remote (slow) branch, and we have
@@ -76,15 +74,14 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     assert isinstance(to_location, basestring)
     if basis_branch is not None:
         note("basis_branch is not supported for fast weave copy yet.")
+    history = _get_truncated_history(branch_from, revision)
     if not os.path.exists(to_location):
         os.mkdir(to_location)
     branch_to = Branch.initialize(to_location)
     mutter("copy branch from %s to %s", branch_from, branch_to)
     branch_to.set_root_id(branch_from.get_root_id())
-    if revision is None:
-        revision = branch_from.last_revision()
+    branch_to.append_revision(*history)
     _copy_control_weaves(branch_from, branch_to)
-    _copy_revision_history(branch_from, branch_to)
     _copy_text_weaves(branch_from, branch_to)
     _copy_revision_store(branch_from, branch_to)
     build_working_dir(to_location)
@@ -92,6 +89,18 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     mutter("copied")
     return branch_to
 
+
+
+def _get_truncated_history(branch_from, revision):
+    history = branch_from.revision_history()
+    if revision is None:
+        return history
+    try:
+        idx = history.index(revision)
+    except ValueError:
+        raise InvalidRevisionId('revision {%s} is not on the mainline of %s' 
+                                % (revision, branch_from))
+    return history[:idx+1]
 
 def _copy_text_weaves(branch_from, branch_to):
     # TODO: Handle UnlistableStore and fall back to getting a list of 
@@ -102,11 +111,6 @@ def _copy_text_weaves(branch_from, branch_to):
 def _copy_revision_store(branch_from, branch_to):
     # TODO: Copy all revisions mentioned in the ancestry of the selected revision
     copy_all(branch_from.revision_store, branch_to.revision_store)
-
-
-def _copy_revision_history(branch_from, branch_to):
-    ff = branch_from.controlfile('revision-history')
-    tf = branch_to.put_controlfile('revision-history', ff.read())
 
 
 def _copy_control_weaves(branch_from, branch_to):

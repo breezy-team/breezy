@@ -86,6 +86,21 @@ class TestFetch(TestCaseInTempDir):
         ## # basis branches currently disabled for weave format
         ## self.assertFalse(br_b.last_revision() in br_c.revision_history())
         ## br_c.get_revision(br_b.last_revision())
+
+    def test_copy_partial(self):
+        """Copy only part of the history of a branch."""
+        self.build_tree(['a/', 'a/one'])
+        br_a = Branch.initialize('a')
+        br_a.add(['one'])
+        br_a.commit('commit one', rev_id='u@d-1')
+        self.build_tree(['a/two'])
+        br_a.add(['two'])
+        br_a.commit('commit two', rev_id='u@d-2')
+        br_b = copy_branch(br_a, 'b', revision='u@d-1')
+        self.assertEqual(br_b.last_revision(), 'u@d-1')
+        self.assertTrue(os.path.exists('b/one'))
+        self.assertFalse(os.path.exists('b/two'))
+        
         
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        
 #         >>> from bzrlib.commit import commit
