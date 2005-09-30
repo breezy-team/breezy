@@ -83,8 +83,9 @@ class TestFetch(TestCaseInTempDir):
         os.mkdir('c')
         br_c = copy_branch(br_a, 'c', basis_branch=br_b)
         self.assertEqual(br_a.revision_history(), br_c.revision_history())
-        self.assertFalse(br_b.last_revision() in br_c.revision_history())
-        br_c.get_revision(br_b.last_revision())
+        ## # basis branches currently disabled for weave format
+        ## self.assertFalse(br_b.last_revision() in br_c.revision_history())
+        ## br_c.get_revision(br_b.last_revision())
         
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        
 #         >>> from bzrlib.commit import commit
