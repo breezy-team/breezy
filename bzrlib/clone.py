@@ -18,8 +18,8 @@
 # all the whole weaves and revisions, rather than getting one
 # revision at a time.
 
-import sys
 import os
+import sys
 
 from bzrlib.merge import build_working_dir
 from bzrlib.branch import Branch
@@ -34,8 +34,8 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
         The head of the new branch will be that revision.  Must be a
         revid or None.
 
-    to_location
-        The name of a local directory that exists but is empty.
+    to_location -- The destination directory; must either exist and be 
+        empty, or not exist, in which case it is created.
 
     revno
         The revision to copy up to
@@ -45,7 +45,8 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     """
     assert isinstance(branch_from, Branch)
     assert isinstance(to_location, basestring)
-    
+    if not os.path.exists(to_location):
+        os.mkdir(to_location)
     br_to = Branch.initialize(to_location)
     mutter("copy branch from %s to %s", branch_from, br_to)
     if basis_branch is not None:
