@@ -207,6 +207,42 @@ class TestCommands(ExternalBase):
         test.runbzr('add goodbye')
         test.runbzr('commit -m setup goodbye')
 
+    def test_export(self):
+        os.mkdir('branch')
+        os.chdir('branch')
+        self.example_branch()
+        self.runbzr('export ../latest')
+        self.assertEqual(file('../latest/goodbye', 'rt').read(), 'baz')
+        self.runbzr('export ../first -r 1')
+        assert not os.path.exists('../first/goodbye')
+        self.assertEqual(file('../first/hello', 'rt').read(), 'foo')
+        self.runbzr('export ../first.gz -r 1')
+        self.assertEqual(file('../first.gz/hello', 'rt').read(), 'foo')
+        self.runbzr('export ../first.bz2 -r 1')
+        self.assertEqual(file('../first.bz2/hello', 'rt').read(), 'foo')
+        self.runbzr('export ../first.tar -r 1')
+        assert os.path.isfile('../first.tar')
+        from tarfile import TarFile
+        tf = TarFile('../first.tar')
+        assert 'first/hello' in tf.getnames(), tf.getnames()
+        self.assertEqual(tf.extractfile('first/hello').read(), 'foo')
+        self.runbzr('export ../first.tar.gz -r 1')
+        assert os.path.isfile('../first.tar.gz')
+        self.runbzr('export ../first.tbz2 -r 1')
+        assert os.path.isfile('../first.tbz2')
+        self.runbzr('export ../first.tar.bz2 -r 1')
+        assert os.path.isfile('../first.tar.bz2')
+        self.runbzr('export ../first.tar.tbz2 -r 1')
+        assert os.path.isfile('../first.tar.tbz2')
+        from bz2 import BZ2File
+        tf = TarFile('../first.tar.tbz2', 
+                     fileobj=BZ2File('../first.tar.tbz2', 'r'))
+        assert 'first.tar/hello' in tf.getnames(), tf.getnames()
+        self.assertEqual(tf.extractfile('first.tar/hello').read(), 'foo')
+        self.runbzr('export ../first2.tar -r 1 --root pizza')
+        tf = TarFile('../first2.tar')
+        assert 'pizza/hello' in tf.getnames(), tf.getnames()
+
     def test_diff(self):
         self.example_branch()
         file('hello', 'wt').write('hello world!')
