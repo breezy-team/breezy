@@ -25,6 +25,8 @@ from bzrlib.merge import build_working_dir
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 
+# TODO: Optionally, after copying, discard any irrelevant information from
+# the destination - e.g. 
 
 def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     """Copy branch_from into the existing directory to_location.
@@ -41,7 +43,9 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
         The revision to copy up to
 
     basis_branch
-        A local branch to copy revisions from, related to branch_from
+        A local branch to copy revisions from, related to branch_from. 
+        This is used when branching from a remote (slow) branch, and we have
+        a local branch that might contain some relevant revisions.
     """
     assert isinstance(branch_from, Branch)
     assert isinstance(to_location, basestring)
