@@ -125,6 +125,8 @@ class Store(object):
         if pb is None:
             pb = bzrlib.ui.ui_factory.progress_bar()
 
+        # XXX: Is there any reason why we couldn't make this accept a generator
+        # and build a list as it finds things to copy?
         ids = list(ids) # Make sure we don't have a generator, since we iterate 2 times
         pb.update('preparing to copy')
         to_copy = []
@@ -187,6 +189,7 @@ class Store(object):
 
 def copy_all(store_from, store_to):
     """Copy all ids from one store to another."""
+    # TODO: Optional progress indicator
     if not hasattr(store_from, "__iter__"):
         raise UnlistableStore(store_from)
     try:
