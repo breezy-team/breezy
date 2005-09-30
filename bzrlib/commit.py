@@ -217,7 +217,7 @@ class Commit(object):
             self.new_inv = Inventory()
             self._store_entries()
             self._report_deletes()
-            self._set_name_versions()
+            self._set_revisions()
 
             if not (self.allow_pointless
                     or len(self.parents) > 1
@@ -367,13 +367,22 @@ class Commit(object):
         return r
 
 
-    def _set_name_versions(self):
-        """Pass over inventory and mark new entry version as needed.
+    def _set_revisions(self):
+        """Pass over inventory and mark new revisions as needed.
 
-        Files get a new name version when they are new, have a
-        different parent, or a different name from in the
-        basis inventory, or if the file is in a different place
-        to any of the parents."""
+        Entries get a new revision when they are modified in 
+        any way, which includes a merge with a new set of
+        parents that have the same entry. Currently we do not
+        check for that set being ancestors of each other - and
+        we should - only parallel children should count for this
+        test. I.e. if we are merging in revision FOO, and our
+        copy of file id BAR is identical to FOO.BAR, we should
+        generate a new revision of BAR IF and only IF FOO is
+        neither a child of our current tip, nor an ancestor of
+        our tip. The presence of FOO in our store should not 
+        affect this logic UNLESS we are doing a merge of FOO,
+        or a child of FOO.
+        """
         # XXX: Need to think more here about when the user has
         # made a specific decision on a particular value -- c.f.
         # mark-merge.  
@@ -388,14 +397,14 @@ class Commit(object):
                 previous_ie = previous_inv[file_id]
                 if ie.compatible_for_commit(previous_ie):
                     mutter("found compatible previous entry")
-                    compatible_priors.add(previous_ie.name_version)
+                    compatible_priors.add(previous_ie.revision)
             if len(compatible_priors) != 1:
-                mutter('new name_version for {%s}', file_id)
-                ie.name_version = self.rev_id
+                mutter('new revision for {%s}', file_id)
+                ie.revision = self.rev_id
             else:
-                ie.name_version = compatible_priors.pop()
-                mutter('name_version for {%s} inherited as {%s}',
-                       file_id, ie.name_version)
+                ie.revision = compatible_priors.pop()
+                mutter('revision for {%s} inherited as {%s}',
+                       file_id, ie.revision)
 
     def _store_entries(self):
         """Build revision inventory and store modified files.

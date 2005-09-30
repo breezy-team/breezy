@@ -58,7 +58,7 @@ class InventoryEntry(object):
     parent_id
         file_id of the parent directory, or ROOT_ID
 
-    name_version
+    revision
         the revision_id in which the name or parent of this file was
         last changed
 
@@ -116,7 +116,7 @@ class InventoryEntry(object):
     
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
                  'text_id', 'parent_id', 'children',
-                 'text_version', 'name_version', 'symlink_target']
+                 'text_version', 'revision', 'symlink_target']
 
     def compatible_for_commit(self, previous_ie):
         compatible = True
@@ -152,7 +152,7 @@ class InventoryEntry(object):
             raise BzrCheckError('InventoryEntry name %r is invalid' % name)
         
         self.text_version = None
-        self.name_version = None
+        self.revision = None
         self.text_sha1 = None
         self.text_size = None
         self.file_id = file_id
@@ -232,7 +232,7 @@ class InventoryEntry(object):
         other.text_size = self.text_size
         other.symlink_target = self.symlink_target
         other.text_version = self.text_version
-        other.name_version = self.name_version
+        other.revision = self.revision
         # note that children are *not* copied; they're pulled across when
         # others are added
         return other
@@ -259,7 +259,7 @@ class InventoryEntry(object):
                and (self.parent_id == other.parent_id) \
                and (self.kind == other.kind) \
                and (self.text_version == other.text_version) \
-               and (self.name_version == other.name_version)
+               and (self.revision == other.revision)
 
     def __ne__(self, other):
         return not (self == other)

@@ -287,8 +287,8 @@ class Convert(object):
                 ie = inv[file_id]
                 if ie.kind == 'root_directory':
                     continue
-                assert hasattr(ie, 'name_version'), \
-                    'no name_version on {%s} in {%s}' % \
+                assert hasattr(ie, 'revision'), \
+                    'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
                 if ie.kind == 'file':
                     assert hasattr(ie, 'text_version')
@@ -328,13 +328,13 @@ class Convert(object):
         parent_invs = map(self._load_updated_inventory, rev.parent_ids)
         for file_id in inv:
             ie = inv[file_id]
-            self._set_name_version(rev, ie, parent_invs)
+            self._set_revision(rev, ie, parent_invs)
             if ie.kind != 'file':
                 continue
             self._convert_file_version(rev, ie, parent_invs)
 
 
-    def _set_name_version(self, rev, ie, parent_invs):
+    def _set_revision(self, rev, ie, parent_invs):
         """Set name version for a file.
 
         Done in a slightly lazy way: if the file is renamed or in a merge revision
@@ -344,18 +344,18 @@ class Convert(object):
         if ie.kind == 'root_directory':
             return
         if len(parent_invs) != 1:
-            ie.name_version = rev.revision_id
+            ie.revision = rev.revision_id
         else:
             old_inv = parent_invs[0]
             if not old_inv.has_id(file_id):
-                ie.name_version = rev.revision_id
+                ie.revision = rev.revision_id
             else:
                 old_ie = old_inv[file_id]
                 if (old_ie.parent_id != ie.parent_id
                     or old_ie.name != ie.name):
-                    ie.name_version = rev.revision_id
+                    ie.revision = rev.revision_id
                 else:
-                    ie.name_version = old_ie.name_version
+                    ie.revision = old_ie.revision
 
 
 
