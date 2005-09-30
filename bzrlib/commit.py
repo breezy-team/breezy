@@ -364,44 +364,6 @@ class Commit(object):
                     r[ie.revision] = ie
         return r
 
-    def _snapshot_entry(self, path, ie, previous_entries):
-        """Store a single possibly changed inventory entry in the branch."""
-        mutter('parents of %s are %r', path, previous_entries)
-        if ie.revision is not None:
-            # not selected for commit
-            return
-        if ie.kind == 'symlink':
-            ie.read_symlink_target(self.branch.abspath(path))
-        if len(previous_entries) == 1:
-            # cannot be unchanged unless there is only one parent file rev.
-            parent_ie = previous_entries.values()[0]
-            unchanged = ie.unchanged(parent_ie, self.work_tree)
-            if unchanged:
-                mutter("found unchanged entry")
-                ie.revision = parent_ie.revision
-                self.report_entry_status(previous_entries, path, ie)
-                return 
-        mutter('new revision for {%s}', ie.file_id)
-        ie.revision = self.rev_id
-        if ie.kind != 'file':
-            self.report_entry_status(previous_entries, path, ie)
-            return
-        # file is either new, or a file merge; need to record
-        # a new version
-        self.report_entry_status(previous_entries, path, ie)
-        #if not unchanged:
-        self._commit_file(ie, previous_entries)
-
-    def report_entry_status(self, previous_entries, path, ie):
-        if len(previous_entries) > 1:
-            note('merged %s', path)
-        elif len(previous_entries) == 0:
-            note('added %s', path)
-        elif ie.revision == self.rev_id:
-            note('modified/renamed/reparented%s', path)
-        else:
-            note('unchanged %s', path)
-
     def _store_snapshot(self):
         """Pass over inventory and record a snapshot.
 
@@ -424,7 +386,12 @@ class Commit(object):
         # mark-merge.  
         for path, ie in self.new_inv.iter_entries():
             previous_entries = self._find_entry_parents(ie. file_id)
-            self._snapshot_entry(path, ie, previous_entries)
+            if ie.revision is None:
+                change = ie.snapshot(self.rev_id, path, previous_entries,
+                                     self.work_tree, self.weave_store)
+            else:
+                change = "unchanged"
+            note("%s %s", change, path)
 
     def _populate_new_inv(self):
         """Build revision inventory.
@@ -461,26 +428,7 @@ class Commit(object):
             if file_id not in self.new_inv:
                 note('deleted %s', self.basis_inv.id2path(file_id))
 
-    def _commit_file(self, new_ie, file_parents):                    
-        mutter('storing file {%s} in revision {%s}',
-               new_ie.file_id, new_ie.revision)
-        # special case to avoid diffing on renames or 
-        # reparenting
-        if (len(file_parents) == 1
-            and new_ie.text_sha1 == file_parents.values()[0].text_sha1
-            and new_ie.text_size == file_parents.values()[0].text_size):
-            previous_ie = file_parents.values()[0]
-            self.weave_store.add_identical_text(
-                new_ie.file_id, previous_ie.revision, 
-                new_ie.revision, file_parents)
-        else:
-            new_lines = self.work_tree.get_file(new_ie.file_id).readlines()
-            self._add_text_to_weave(new_ie.file_id, new_lines, file_parents)
-            new_ie.text_sha1 = sha_strings(new_lines)
-            new_ie.text_size = sum(map(len, new_lines))
 
-    def _add_text_to_weave(self, file_id, new_lines, parents):
-        self.weave_store.add_text(file_id, self.rev_id, new_lines, parents)
 
 def _gen_revision_id(branch, when):
     """Return new revision-id."""

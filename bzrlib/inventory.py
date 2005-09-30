@@ -115,6 +115,9 @@ class InventoryEntry(object):
                  'text_id', 'parent_id', 'children',
                  'revision', 'symlink_target']
 
+    def _add_text_to_weave(self, new_lines, parents, weave_store):
+        weave_store.add_text(self.file_id, self.revision, new_lines, parents)
+
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
         
@@ -218,6 +221,13 @@ class InventoryEntry(object):
         # others are added
         return other
 
+    def _get_snapshot_change(self, previous_entries):
+        if len(previous_entries) > 1:
+            return 'merged'
+        elif len(previous_entries) == 0:
+            return 'added'
+        else:
+            return 'modified/renamed/reparented'
 
     def __repr__(self):
         return ("%s(%r, %r, kind=%r, parent_id=%r)"
@@ -226,6 +236,48 @@ class InventoryEntry(object):
                    self.name,
                    self.kind,
                    self.parent_id))
+
+    def snapshot(self, revision, path, previous_entries, work_tree, 
+                 weave_store):
+        """Make a snapshot of this entry.
+        
+        This means that all its fields are populated, that it has its
+        text stored in the text store or weave.
+        """
+        mutter('new parents of %s are %r', path, previous_entries)
+        self._read_tree_state(path, work_tree)
+        if len(previous_entries) == 1:
+            # cannot be unchanged unless there is only one parent file rev.
+            parent_ie = previous_entries.values()[0]
+            if self._unchanged(path, parent_ie, work_tree):
+                mutter("found unchanged entry")
+                self.revision = parent_ie.revision
+                return "unchanged"
+        mutter('new revision for {%s}', self.file_id)
+        self.revision = revision
+        change = self._get_snapshot_change(previous_entries)
+        if self.kind != 'file':
+            return change
+        self._snapshot_text(previous_entries, work_tree, weave_store)
+        return change
+
+    def _snapshot_text(self, file_parents, work_tree, weave_store): 
+        mutter('storing file {%s} in revision {%s}',
+               self.file_id, self.revision)
+        # special case to avoid diffing on renames or 
+        # reparenting
+        if (len(file_parents) == 1
+            and self.text_sha1 == file_parents.values()[0].text_sha1
+            and self.text_size == file_parents.values()[0].text_size):
+            previous_ie = file_parents.values()[0]
+            weave_store.add_identical_text(
+                self.file_id, previous_ie.revision, 
+                self.revision, file_parents)
+        else:
+            new_lines = work_tree.get_file(self.file_id).readlines()
+            self._add_text_to_weave(new_lines, file_parents, weave_store)
+            self.text_sha1 = sha_strings(new_lines)
+            self.text_size = sum(map(len, new_lines))
 
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
@@ -247,7 +299,7 @@ class InventoryEntry(object):
     def __hash__(self):
         raise ValueError('not hashable')
 
-    def unchanged(self, previous_ie, work_tree):
+    def _unchanged(self, path, previous_ie, work_tree):
         compatible = True
         # different inv parent
         if previous_ie.parent_id != self.parent_id:
@@ -255,19 +307,23 @@ class InventoryEntry(object):
         # renamed
         elif previous_ie.name != self.name:
             compatible = False
-        # changed link target
-        elif (hasattr(self,'symlink_target')
-              and self.symlink_target != previous_ie.symlink_target):
-            compatible = False
-        if self.kind != 'file':
-            return compatible
-        self.text_sha1 = work_tree.get_file_sha1(self.file_id)
-        if self.text_sha1 != previous_ie.text_sha1:
-            compatible = False
-        else:
-            # FIXME: 20050930 probe for the text size when getting sha1
-            self.text_size = previous_ie.text_size
+        if self.kind == 'symlink':
+            if self.symlink_target != previous_ie.symlink_target:
+                compatible = False
+        if self.kind == 'file':
+            if self.text_sha1 != previous_ie.text_sha1:
+                compatible = False
+            else:
+                # FIXME: 20050930 probe for the text size when getting sha1
+                # in _read_tree_state
+                self.text_size = previous_ie.text_size
         return compatible
+
+    def _read_tree_state(self, path, work_tree):
+        if self.kind == 'symlink':
+            self.read_symlink_target(work_tree.abspath(path))
+        if self.kind == 'file':
+            self.text_sha1 = work_tree.get_file_sha1(self.file_id)
 
 
 class RootEntry(InventoryEntry):
