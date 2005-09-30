@@ -126,7 +126,7 @@ class Branch(object):
         """Open a branch which may be of an old format.
         
         Only local branches are supported."""
-        return _Branch(base, relax_version_check=True)
+        return _Branch(get_transport(base), relax_version_check=True)
         
     @staticmethod
     def open(base):
