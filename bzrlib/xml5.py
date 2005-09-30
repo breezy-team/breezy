@@ -53,8 +53,7 @@ class Serializer_v5(Serializer):
         if ie.text_size != None:
             e.set('text_size', '%d' % ie.text_size)
 
-        for f in ['text_version', 'text_sha1', 'revision', 
-                  'symlink_target']:
+        for f in ['text_sha1', 'revision', 'symlink_target']:
             v = getattr(ie, f)
             if v != None:
                 e.set(f, v)
@@ -126,7 +125,6 @@ class Serializer_v5(Serializer):
                             elt.get('name'),
                             kind,
                             parent_id)
-        ie.text_version = elt.get('text_version')
         ie.revision = elt.get('revision')
         ie.text_sha1 = elt.get('text_sha1')
         ie.symlink_target = elt.get('symlink_target')

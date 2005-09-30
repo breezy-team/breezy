@@ -59,8 +59,8 @@ class InventoryEntry(object):
         file_id of the parent directory, or ROOT_ID
 
     revision
-        the revision_id in which the name or parent of this file was
-        last changed
+        the revision_id in which this variationo f this file was 
+        introduced.
 
     text_sha1
         sha-1 of the text of the file
@@ -68,9 +68,6 @@ class InventoryEntry(object):
     text_size
         size in bytes of the text of the file
         
-    text_version
-        the revision_id in which the text of this file was introduced
-
     (reading a version 4 tree created a text_id field.)
 
     >>> i = Inventory()
@@ -116,21 +113,7 @@ class InventoryEntry(object):
     
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
                  'text_id', 'parent_id', 'children',
-                 'text_version', 'revision', 'symlink_target']
-
-    def compatible_for_commit(self, previous_ie):
-        compatible = True
-        # different inv parent
-        if previous_ie.parent_id != self.parent_id:
-            compatible = False
-        # renamed
-        elif previous_ie.name != self.name:
-            compatible = False
-        # changed link target
-        elif (hasattr(self,'symlink_target')
-              and self.symlink_target != previous_ie.symlink_target):
-            compatible = False
-        return compatible
+                 'revision', 'symlink_target']
 
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
@@ -151,7 +134,6 @@ class InventoryEntry(object):
         if '/' in name or '\\' in name:
             raise BzrCheckError('InventoryEntry name %r is invalid' % name)
         
-        self.text_version = None
         self.revision = None
         self.text_sha1 = None
         self.text_size = None
@@ -188,8 +170,8 @@ class InventoryEntry(object):
                 raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
                         % (self.parent_id, rev_id))
         if self.kind == 'file':
-            text_version = self.text_version
-            t = (self.file_id, text_version)
+            revision = self.revision
+            t = (self.file_id, revision)
             if t in checker.checked_texts:
                 prev_sha = checker.checked_texts[t] 
                 if prev_sha != self.text_sha1:
@@ -231,7 +213,6 @@ class InventoryEntry(object):
         other.text_sha1 = self.text_sha1
         other.text_size = self.text_size
         other.symlink_target = self.symlink_target
-        other.text_version = self.text_version
         other.revision = self.revision
         # note that children are *not* copied; they're pulled across when
         # others are added
@@ -258,7 +239,6 @@ class InventoryEntry(object):
                and (self.text_id == other.text_id) \
                and (self.parent_id == other.parent_id) \
                and (self.kind == other.kind) \
-               and (self.text_version == other.text_version) \
                and (self.revision == other.revision)
 
     def __ne__(self, other):
@@ -266,6 +246,28 @@ class InventoryEntry(object):
 
     def __hash__(self):
         raise ValueError('not hashable')
+
+    def unchanged(self, previous_ie, work_tree):
+        compatible = True
+        # different inv parent
+        if previous_ie.parent_id != self.parent_id:
+            compatible = False
+        # renamed
+        elif previous_ie.name != self.name:
+            compatible = False
+        # changed link target
+        elif (hasattr(self,'symlink_target')
+              and self.symlink_target != previous_ie.symlink_target):
+            compatible = False
+        if self.kind != 'file':
+            return compatible
+        self.text_sha1 = work_tree.get_file_sha1(self.file_id)
+        if self.text_sha1 != previous_ie.text_sha1:
+            compatible = False
+        else:
+            # FIXME: 20050930 probe for the text size when getting sha1
+            self.text_size = previous_ie.text_size
+        return compatible
 
 
 class RootEntry(InventoryEntry):

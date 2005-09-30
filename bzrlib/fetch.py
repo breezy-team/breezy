@@ -206,7 +206,7 @@ class Fetcher(object):
         for path, ie in inv.iter_entries():
             if ie.kind != 'file':
                 continue
-            if ie.text_version != rev_id:
+            if ie.revision != rev_id:
                 continue
             mutter('%s {%s} is changed in this revision',
                    path, ie.file_id)

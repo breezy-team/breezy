@@ -290,8 +290,6 @@ class Convert(object):
                 assert hasattr(ie, 'revision'), \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
-                if ie.kind == 'file':
-                    assert hasattr(ie, 'text_version')
 
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
         new_inv_sha1 = sha_string(new_inv_xml)
@@ -376,10 +374,11 @@ class Convert(object):
         for parent_inv in parent_invs:
             if parent_inv.has_id(file_id):
                 parent_ie = parent_inv[file_id]
-                old_text_version = parent_ie.text_version
-                assert old_text_version in self.converted_revs 
-                if old_text_version not in file_parents:
-                    file_parents.append(old_text_version)
+                old_revision = parent_ie.revision
+                # if this fails, its a ghost ?
+                assert old_revision in self.converted_revs 
+                if old_revision not in file_parents:
+                    file_parents.append(old_revision)
                 if parent_ie.text_sha1 != ie.text_sha1:
                     text_changed = True
         if len(file_parents) != 1 or text_changed:
@@ -387,13 +386,13 @@ class Convert(object):
             assert sha_strings(file_lines) == ie.text_sha1
             assert sum(map(len, file_lines)) == ie.text_size
             w.add(rev_id, file_parents, file_lines, ie.text_sha1)
-            ie.text_version = rev_id
+            ie.revision = rev_id
             self.text_count += 1
             ##mutter('import text {%s} of {%s}',
             ##       ie.text_id, file_id)
         else:
             ##mutter('text of {%s} unchanged from parent', file_id)
-            ie.text_version = file_parents[0]
+            ie.revision = file_parents[0]
         del ie.text_id
 
 

@@ -379,6 +379,10 @@ class Weave(object):
 
         return new_version
 
+    def add_identical(self, old_rev_id, new_rev_id, parents):
+        """Add an identical text to old_rev_id as new_rev_id."""
+        old_lines = self.get(self.lookup(old_rev_id))
+        self.add(new_rev_id, parents, old_lines)
 
     def inclusions(self, versions):
         """Return set of all ancestors of given version(s)."""

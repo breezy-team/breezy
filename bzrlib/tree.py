@@ -134,7 +134,7 @@ class RevisionTree(Tree):
     def get_file_lines(self, file_id):
         ie = self._inventory[file_id]
         weave = self.get_weave(file_id)
-        return weave.get(ie.text_version)
+        return weave.get(ie.revision)
         
 
     def get_file_text(self, file_id):
