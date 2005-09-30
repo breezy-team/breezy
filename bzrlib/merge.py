@@ -19,7 +19,6 @@ import os
 import tempfile
 import shutil
 import errno
-from fetch import greedy_fetch
 
 import bzrlib.osutils
 import bzrlib.revision
@@ -31,9 +30,11 @@ from bzrlib.errors import BzrCommandError, UnrelatedBranches, NoCommonAncestor
 from bzrlib.errors import NoCommits
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter, warning
-from bzrlib.fetch import greedy_fetch
+from bzrlib.fetch import greedy_fetch, fetch
 from bzrlib.revision import is_ancestor
 from bzrlib.osutils import rename
+from bzrlib.revision import common_ancestor, MultipleRevisionSources
+from bzrlib.errors import NoSuchRevision
 
 
 # comments from abentley on irc: merge happens in two stages, each
@@ -140,7 +141,7 @@ def get_tree(treespec, temp_root, label, local_branch=None):
     if revno is None:
         revision = None
     elif revno == -1:
-        revision = branch.last_patch()
+        revision = branch.last_revision()
     else:
         revision = branch.get_rev_id(revno)
     return branch, get_revid_tree(branch, revision, temp_root, label,
@@ -245,17 +246,16 @@ def merge(other_revision, base_revision,
     check_clean
         If true, this_dir must have no uncommitted changes before the
         merge begins.
-    all available ancestors of other_revision and base_revision are
+
+    All available ancestors of other_revision and base_revision are
     automatically pulled into the branch.
     """
-    from bzrlib.revision import common_ancestor, MultipleRevisionSources
-    from bzrlib.errors import NoSuchRevision
     tempdir = tempfile.mkdtemp(prefix="bzr-")
     try:
         if this_dir is None:
             this_dir = '.'
         this_branch = Branch.open_containing(this_dir)
-        this_rev_id = this_branch.last_patch()
+        this_rev_id = this_branch.last_revision()
         if this_rev_id is None:
             raise BzrCommandError("This branch has no commits")
         if check_clean:
@@ -266,7 +266,7 @@ def merge(other_revision, base_revision,
         other_branch, other_tree = get_tree(other_revision, tempdir, "other",
                                             this_branch)
         if other_revision[1] == -1:
-            other_rev_id = other_branch.last_patch()
+            other_rev_id = other_branch.last_revision()
             if other_rev_id is None:
                 raise NoCommits(other_branch)
             other_basis = other_rev_id
@@ -275,7 +275,7 @@ def merge(other_revision, base_revision,
             other_basis = other_rev_id
         else:
             other_rev_id = None
-            other_basis = other_branch.last_patch()
+            other_basis = other_branch.last_revision()
             if other_basis is None:
                 raise NoCommits(other_branch)
         if base_revision == [None, None]:
@@ -290,14 +290,14 @@ def merge(other_revision, base_revision,
         else:
             base_branch, base_tree = get_tree(base_revision, tempdir, "base")
             if base_revision[1] == -1:
-                base_rev_id = base_branch.last_patch()
+                base_rev_id = base_branch.last_revision()
             elif base_revision[1] is None:
                 base_rev_id = None
             else:
                 base_rev_id = base_branch.get_rev_id(base_revision[1])
-            multi_source = MultipleRevisionSources(this_branch, base_branch)
+            fetch(from_branch=base_branch, to_branch=this_branch)
             base_is_ancestor = is_ancestor(this_rev_id, base_rev_id,
-                                           multi_source)
+                                           this_branch)
         if file_list is None:
             interesting_ids = None
         else:

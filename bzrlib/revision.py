@@ -20,38 +20,6 @@ from bzrlib.graph import node_distances, select_farthest, all_descendants
 
 NULL_REVISION="null:"
 
-class RevisionReference(object):
-    """
-    Reference to a stored revision.
-
-    Includes the revision_id and revision_sha1.
-    """
-
-    def __eq__(self, other):
-        try:
-            return self.revision_id == other.revision_id and \
-                   self.revision_sha1 == other.revision_sha1
-        except AttributeError:
-            return False
-
-    def __init__(self, revision_id, revision_sha1=None):
-        self.revision_id = None
-        self.revision_sha1 = None
-        if revision_id == None \
-           or isinstance(revision_id, basestring):
-            self.revision_id = revision_id
-        else:
-            raise ValueError('bad revision_id %r' % revision_id)
-
-        if revision_sha1 != None:
-            if isinstance(revision_sha1, basestring) \
-               and len(revision_sha1) == 40:
-                self.revision_sha1 = revision_sha1
-            else:
-                raise ValueError('bad revision_sha1 %r' % revision_sha1)
-                
-
-
 class Revision(object):
     """Single revision on a branch.
 
@@ -61,38 +29,14 @@ class Revision(object):
 
     After bzr 0.0.5 revisions are allowed to have multiple parents.
 
-    parents
-        List of parent revisions, each is a RevisionReference.
+    parent_ids
+        List of parent revision_ids
     """
     
-    def __init__(self, inventory_id=None, inventory_sha1=None, 
-                       revision_id=None, timestamp=None,
-                       message=None, timezone=None,
-                       committer=None, parents=None):
-        self.inventory_id = inventory_id
-        self.inventory_sha1 = inventory_sha1
-        self.revision_id = revision_id
-        self.timestamp = timestamp
-        self.message = message
-        self.timezone = timezone
-        self.committer = committer
-        if parents is not None:
-            self.parents = parents
-        else:
-            self.parents = []
-
-    def __eq__(self, other):
-        try:
-            return self.inventory_id == other.inventory_id and \
-                   self.inventory_sha1 == other.inventory_sha1 and \
-                   self.revision_id == other.revision_id and \
-                   self.timestamp == other.timestamp and \
-                   self.message == other.message and \
-                   self.timezone == other.timezone and \
-                   self.committer == other.committer and \
-                   self.parents == other.parents 
-        except AttributeError:
-            return False
+    def __init__(self, **args):
+        self.__dict__.update(args)
+        self.parent_ids = []
+        self.parent_sha1s = []
 
     def __repr__(self):
         return "<Revision id %s>" % self.revision_id
@@ -100,8 +44,9 @@ class Revision(object):
     def __eq__(self, other):
         if not isinstance(other, Revision):
             return False
-        return (self.inventory_id == other.inventory_id
-                and self.inventory_sha1 == other.inventory_sha1
+        # FIXME: rbc 20050930 parent_ids are not being compared
+        return (
+                self.inventory_sha1 == other.inventory_sha1
                 and self.revision_id == other.revision_id
                 and self.timestamp == other.timestamp
                 and self.message == other.message
@@ -124,20 +69,18 @@ def validate_revision_id(rid):
     if not REVISION_ID_RE.match(rid):
         raise ValueError("malformed revision-id %r" % rid)
 
-def is_ancestor(revision_id, candidate_id, revision_source):
+
+def is_ancestor(revision_id, candidate_id, branch):
     """Return true if candidate_id is an ancestor of revision_id.
+
     A false negative will be returned if any intermediate descendent of
     candidate_id is not present in any of the revision_sources.
     
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
     """
-    if candidate_id is None:
-        return True
-    for ancestor_id, distance in iter_ancestors(revision_id, revision_source):
-        if ancestor_id == candidate_id:
-            return True
-    return False
+    return candidate_id in branch.get_ancestry(revision_id)
+
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
     ancestors = (revision_id,)
@@ -156,7 +99,7 @@ def iter_ancestors(revision_id, revision_source, only_present=False):
                     continue
             if only_present:
                 yield ancestor, distance
-            new_ancestors.extend([p.revision_id for p in revision.parents])
+            new_ancestors.extend(revision.parent_ids)
         ancestors = new_ancestors
         distance += 1
 
@@ -239,7 +182,7 @@ def revision_graph(revision, revision_source):
             else:
                 try:
                     rev = revision_source.get_revision(line)
-                    parents = [p.revision_id for p in rev.parents]
+                    parents = list(rev.parent_ids)
                     if len(parents) == 0:
                         parents = [NULL_REVISION]
                 except bzrlib.errors.NoSuchRevision:

@@ -18,10 +18,11 @@
 """
 
 import os
+from cStringIO import StringIO
 
 import bzrlib
 from bzrlib.trace import mutter, note
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import pumpfile, appendpath, fingerprint_file
 
@@ -75,6 +76,8 @@ class Tree(object):
                          doc="Inventory of this Tree")
 
     def _check_retrieved(self, ie, f):
+        if not __debug__:
+            return  
         fp = fingerprint_file(f)
         f.seek(0)
         
@@ -92,10 +95,10 @@ class Tree(object):
                      "store is probably damaged/corrupt"])
 
 
-    def print_file(self, fileid):
-        """Print file with id `fileid` to stdout."""
+    def print_file(self, file_id):
+        """Print file with id `file_id` to stdout."""
         import sys
-        pumpfile(self.get_file(fileid), sys.stdout)
+        sys.stdout.write(self.get_file_text(file_id))
         
         
     def export(self, dest, format='dir', root=None):
@@ -119,16 +122,27 @@ class RevisionTree(Tree):
            or at least passing a description to the constructor.
     """
     
-    def __init__(self, store, inv):
-        self._store = store
+    def __init__(self, weave_store, inv, revision_id):
+        self._weave_store = weave_store
         self._inventory = inv
+        self._revision_id = revision_id
+
+    def get_weave(self, file_id):
+        return self._weave_store.get_weave(file_id)
+
+
+    def get_file_lines(self, file_id):
+        ie = self._inventory[file_id]
+        weave = self.get_weave(file_id)
+        return weave.get(ie.text_version)
+        
+
+    def get_file_text(self, file_id):
+        return ''.join(self.get_file_lines(file_id))
+
 
     def get_file(self, file_id):
-        ie = self._inventory[file_id]
-        f = self._store[ie.text_id]
-        mutter("  get fileid{%s} from %r" % (file_id, self))
-        self._check_retrieved(ie, f)
-        return f
+        return StringIO(self.get_file_text(file_id))
 
     def get_file_size(self, file_id):
         return self._inventory[file_id].text_size

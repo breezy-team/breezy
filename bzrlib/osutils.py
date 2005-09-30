@@ -19,6 +19,7 @@
 from shutil import copyfile
 from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
+from cStringIO import StringIO
 import errno
 import os
 import re
@@ -232,6 +233,14 @@ def sha_file(f):
         if not b:
             break
         s.update(b)
+    return s.hexdigest()
+
+
+
+def sha_strings(strings):
+    """Return the sha-1 of concatenation of strings"""
+    s = sha.new()
+    map(s.update, strings)
     return s.hexdigest()
 
 
@@ -512,6 +521,11 @@ def _read_config_value(name):
         if e.errno == errno.ENOENT:
             return None
         raise
+
+
+def split_lines(s):
+    """Split s into lines, but without removing the newline characters."""
+    return StringIO(s).readlines()
 
 
 def hardlinks_good():

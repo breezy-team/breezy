@@ -1,0 +1,10 @@
+changes in weave branch:
+
+ * Remove RevisionReference class; Revision.parent_ids is now simply a
+   list of their ids and parent_sha1s is a list of their corresponding
+   sha1s (for old branches only at the moment.)
+
+ * New method-object style interface for Commit() and Fetch().
+
+ * Renamed Branch.last_patch() to Branch.last_revision(), since
+   we call them revisions not patches.

@@ -148,20 +148,6 @@ def _parse_revision_str(revstr):
     return revs
 
 
-def get_merge_type(typestring):
-    """Attempt to find the merge class/factory associated with a string."""
-    from merge import merge_types
-    try:
-        return merge_types[typestring][0]
-    except KeyError:
-        templ = '%s%%7s: %%s' % (' '*12)
-        lines = [templ % (f[0], f[1][1]) for f in merge_types.iteritems()]
-        type_list = '\n'.join(lines)
-        msg = "No known merge type %s. Supported types are:\n%s" %\
-            (typestring, type_list)
-        raise BzrCommandError(msg)
-
-
 def _builtin_commands():
     import bzrlib.builtins
     r = {}
@@ -381,7 +367,6 @@ OPTIONS = {
     'long':                   None,
     'root':                   str,
     'no-backup':              None,
-    'merge-type':             get_merge_type,
     'pattern':                str,
     }
 
@@ -671,7 +656,7 @@ def run_bzr_catch_errors(argv):
         bzrlib.trace.log_exception('assertion failed: ' + str(e))
         return 3
     except KeyboardInterrupt, e:
-        bzrlib.trace.note('interrupted')
+        bzrlib.trace.log_exception('interrupted')
         return 2
     except Exception, e:
         import errno

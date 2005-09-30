@@ -98,7 +98,7 @@ def read_weave(f):
 
 def read_weave_v5(f):
     from weave import Weave, WeaveFormatError
-    w = Weave()
+    w = Weave(getattr(f, 'name', None))
 
     l = f.readline()
     if l != FORMAT_1:

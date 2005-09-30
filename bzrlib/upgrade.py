@@ -1,138 +1,433 @@
-# Copyright (C) 2004, 2005 by Martin Pool
-# Copyright (C) 2005 by Canonical Ltd
-
+#! /usr/bin/python
+#
+# Copyright (C) 2005 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import errno
+"""Experiment in converting existing bzr branches to weaves."""
+
+# To make this properly useful
+#
+# 1. assign text version ids, and put those text versions into
+#    the inventory as they're converted.
+#
+# 2. keep track of the previous version of each file, rather than
+#    just using the last one imported
+#
+# 3. assign entry versions when files are added, renamed or moved.
+#
+# 4. when merged-in versions are observed, walk down through them
+#    to discover everything, then commit bottom-up
+#
+# 5. track ancestry as things are merged in, and commit that in each
+#    revision
+#
+# Perhaps it's best to first walk the whole graph and make a plan for
+# what should be imported in what order?  Need a kind of topological
+# sort of all revisions.  (Or do we, can we just before doing a revision
+# see that all its parents have either been converted or abandoned?)
+
+
+# Cannot import a revision until all its parents have been
+# imported.  in other words, we can only import revisions whose
+# parents have all been imported.  the first step must be to
+# import a revision with no parents, of which there must be at
+# least one.  (So perhaps it's useful to store forward pointers
+# from a list of parents to their children?)
+#
+# Another (equivalent?) approach is to build up the ordered
+# ancestry list for the last revision, and walk through that.  We
+# are going to need that.
+#
+# We don't want to have to recurse all the way back down the list.
+#
+# Suppose we keep a queue of the revisions able to be processed at
+# any point.  This starts out with all the revisions having no
+# parents.
+#
+# This seems like a generally useful algorithm...
+#
+# The current algorithm is dumb (O(n**2)?) but will do the job, and
+# takes less than a second on the bzr.dev branch.
+
+# This currently does a kind of lazy conversion of file texts, where a
+# new text is written in every version.  That's unnecessary but for
+# the moment saves us having to worry about when files need new
+# versions.
+
+
+if False:
+    try:
+        import psyco
+        psyco.full()
+    except ImportError:
+        pass
+
+
 import os
 import tempfile
+import sys
+import logging
+import shutil
 
-import bzrlib.errors
-import bzrlib.progress
-from bzrlib.xml import serializer_v4
-from bzrlib.osutils import rename
+from bzrlib.branch import Branch, find_branch, BZR_BRANCH_FORMAT_5
+from bzrlib.revfile import Revfile
+from bzrlib.weave import Weave
+from bzrlib.weavefile import read_weave, write_weave
+from bzrlib.progress import ProgressBar
+from bzrlib.atomicfile import AtomicFile
+from bzrlib.xml4 import serializer_v4
+from bzrlib.xml5 import serializer_v5
+from bzrlib.trace import mutter, note, warning, enable_default_logging
+from bzrlib.osutils import sha_strings, sha_string
+from bzrlib.commit import merge_ancestry_lines
 
 
-def upgrade(branch):
-    """
-    Upgrade branch to current format.
+class Convert(object):
+    def __init__(self, base_dir):
+        self.base = base_dir
+        self.converted_revs = set()
+        self.absent_revisions = set()
+        self.text_count = 0
+        self.revisions = {}
+        self.convert()
 
-    This causes objects to be rewritten into the current format.
 
-    If they change, their SHA-1 will of course change, which might
-    break any later signatures, or backreferences that check the
-    SHA-1.
+    def convert(self):
+        if not self._open_branch():
+            return
+        note('starting upgrade of %s', os.path.abspath(self.base))
+        self._backup_control_dir()
+        note('starting upgrade')
+        note('note: upgrade may be faster if all store files are ungzipped first')
+        self.pb = ProgressBar()
+        if not os.path.isdir(self.base + '/.bzr/weaves'):
+            os.mkdir(self.base + '/.bzr/weaves')
+        self.inv_weave = Weave('inventory')
+        self.anc_weave = Weave('ancestry')
+        self.ancestries = {}
+        # holds in-memory weaves for all files
+        self.text_weaves = {}
+        os.remove(self.branch.controlfilename('branch-format'))
+        self._convert_working_inv()
+        rev_history = self.branch.revision_history()
+        # to_read is a stack holding the revisions we still need to process;
+        # appending to it adds new highest-priority revisions
+        self.known_revisions = set(rev_history)
+        self.to_read = [rev_history[-1]]
+        while self.to_read:
+            rev_id = self.to_read.pop()
+            if (rev_id not in self.revisions
+                and rev_id not in self.absent_revisions):
+                self._load_one_rev(rev_id)
+        self.pb.clear()
+        to_import = self._make_order()
+        for i, rev_id in enumerate(to_import):
+            self.pb.update('converting revision', i, len(to_import))
+            self._convert_one_rev(rev_id)
+        self.pb.clear()
+        note('upgraded to weaves:')
+        note('  %6d revisions and inventories' % len(self.revisions))
+        note('  %6d absent revisions removed' % len(self.absent_revisions))
+        note('  %6d texts' % self.text_count)
+        self._write_all_weaves()
+        self._write_all_revs()
+        self._set_new_format()
+        self._cleanup_spare_files()
 
-    TODO: Check non-mainline revisions.
-    """
-    import sys
 
-    from bzrlib.trace import mutter
-    from bzrlib.errors import BzrCheckError
-    import bzrlib.ui
+    def _open_branch(self):
+        self.branch = Branch(self.base, relax_version_check=True)
+        if self.branch._branch_format == 5:
+            note('this branch is already in the most current format')
+            return False
+        if self.branch._branch_format != 4:
+            raise BzrError("cannot upgrade from branch format %r" %
+                           self.branch._branch_format)
+        return True
 
-    branch.lock_write()
 
-    pb = bzrlib.ui.ui_factory.progress_bar()
+    def _set_new_format(self):
+        f = self.branch.controlfile('branch-format', 'wb')
+        try:
+            f.write(BZR_BRANCH_FORMAT_5)
+        finally:
+            f.close()
 
-    try:
-        last_rev_id = None
 
-        history = branch.revision_history()
-        revno = 0
-        revcount = len(history)
+    def _cleanup_spare_files(self):
+        for n in 'merged-patches', 'pending-merged-patches':
+            p = self.branch.controlfilename(n)
+            if not os.path.exists(p):
+                continue
+            ## assert os.path.getsize(p) == 0
+            os.remove(p)
+        shutil.rmtree(self.base + '/.bzr/inventory-store')
+        shutil.rmtree(self.base + '/.bzr/text-store')
 
-        updated_revisions = []
 
-        # Set to True in the case that the previous revision entry
-        # was updated, since this will affect future revision entries
-        updated_previous_revision = False
+    def _backup_control_dir(self):
+        orig = self.base + '/.bzr'
+        backup = orig + '.backup'
+        note('making backup of tree history')
+        shutil.copytree(orig, backup)
+        note('%s has been backed up to %s', orig, backup)
+        note('if conversion fails, you can move this directory back to .bzr')
+        note('if it succeeds, you can remove this directory if you wish')
 
-        for rev_id in history:
-            revno += 1
-            pb.update('upgrading revision', revno, revcount)
-            rev = branch.get_revision(rev_id)
-            if rev.revision_id != rev_id:
-                raise BzrCheckError('wrong internal revision id in revision {%s}'
-                                    % rev_id)
 
-            last_rev_id = rev_id
+    def _convert_working_inv(self):
+        branch = self.branch
+        inv = serializer_v4.read_inventory(branch.controlfile('inventory', 'rb'))
+        serializer_v5.write_inventory(inv, branch.controlfile('inventory', 'wb'))
 
-            # if set to true, revision must be written out
-            updated = False
 
-            if rev.inventory_sha1 is None:
-                rev.inventory_sha1 = branch.get_inventory_sha1(rev.inventory_id)
-                updated = True
-                mutter("  set inventory_sha1 on {%s}" % rev_id)
 
-            for prr in rev.parents:
+    def _write_all_weaves(self):
+        write_a_weave(self.inv_weave, self.base + '/.bzr/inventory.weave')
+        write_a_weave(self.anc_weave, self.base + '/.bzr/ancestry.weave')
+        i = 0
+        try:
+            for file_id, file_weave in self.text_weaves.items():
+                self.pb.update('writing weave', i, len(self.text_weaves))
+                write_a_weave(file_weave, self.base + '/.bzr/weaves/%s.weave' % file_id)
+                i += 1
+        finally:
+            self.pb.clear()
+
+
+    def _write_all_revs(self):
+        """Write all revisions out in new form."""
+        shutil.rmtree(self.base + '/.bzr/revision-store')
+        os.mkdir(self.base + '/.bzr/revision-store')
+        try:
+            for i, rev_id in enumerate(self.converted_revs):
+                self.pb.update('write revision', i, len(self.converted_revs))
+                f = file(self.base + '/.bzr/revision-store/%s' % rev_id, 'wb')
                 try:
-                    actual_sha1 = branch.get_revision_sha1(prr.revision_id)
-                except bzrlib.errors.NoSuchRevision:
-                    mutter("parent {%s} of {%s} not present in branch; skipped"
-                           % (prr.revision_id, rev_id))
+                    serializer_v5.write_revision(self.revisions[rev_id], f)
+                finally:
+                    f.close()
+        finally:
+            self.pb.clear()
+
+            
+    def _load_one_rev(self, rev_id):
+        """Load a revision object into memory.
+
+        Any parents not either loaded or abandoned get queued to be
+        loaded."""
+        self.pb.update('loading revision',
+                       len(self.revisions),
+                       len(self.known_revisions))
+        if rev_id not in self.branch.revision_store:
+            self.pb.clear()
+            note('revision {%s} not present in branch; '
+                 'will not be converted',
+                 rev_id)
+            self.absent_revisions.add(rev_id)
+        else:
+            rev_xml = self.branch.revision_store[rev_id].read()
+            rev = serializer_v4.read_revision_from_string(rev_xml)
+            for parent_id in rev.parent_ids:
+                self.known_revisions.add(parent_id)
+                self.to_read.append(parent_id)
+            self.revisions[rev_id] = rev
+
+
+    def _load_old_inventory(self, rev_id):
+        assert rev_id not in self.converted_revs
+        old_inv_xml = self.branch.inventory_store[rev_id].read()
+        inv = serializer_v4.read_inventory_from_string(old_inv_xml)
+        rev = self.revisions[rev_id]
+        if rev.inventory_sha1:
+            assert rev.inventory_sha1 == sha_string(old_inv_xml), \
+                'inventory sha mismatch for {%s}' % rev_id
+        return inv
+        
+
+    def _load_updated_inventory(self, rev_id):
+        assert rev_id in self.converted_revs
+        inv_xml = self.inv_weave.get_text(rev_id)
+        inv = serializer_v5.read_inventory_from_string(inv_xml)
+        return inv
+
+
+    def _convert_one_rev(self, rev_id):
+        """Convert revision and all referenced objects to new format."""
+        rev = self.revisions[rev_id]
+        inv = self._load_old_inventory(rev_id)
+        for parent_id in rev.parent_ids[:]:
+            if parent_id in self.absent_revisions:
+                rev.parent_ids.remove(parent_id)
+                self.pb.clear()
+                note('remove {%s} as parent of {%s}', parent_id, rev_id)
+        self._convert_revision_contents(rev, inv)
+        self._store_new_weave(rev, inv)
+        self._make_rev_ancestry(rev)
+        self.converted_revs.add(rev_id)
+
+
+    def _store_new_weave(self, rev, inv):
+        # the XML is now updated with text versions
+        if __debug__:
+            for file_id in inv:
+                ie = inv[file_id]
+                if ie.kind == 'root_directory':
                     continue
-                    
-                if actual_sha1 != prr.revision_sha1:
-                    mutter("parent {%s} of {%s} sha1 mismatch: "
-                           "%s vs %s; fixed"
-                           % (prr.revision_id, rev_id,
-                              actual_sha1, prr.revision_sha1))
-                    prr.revision_sha1 = actual_sha1
-                    updated = True
+                assert hasattr(ie, 'name_version'), \
+                    'no name_version on {%s} in {%s}' % \
+                    (file_id, rev.revision_id)
+                if ie.kind == 'file':
+                    assert hasattr(ie, 'text_version')
 
-            if updated:
-                updated_previous_revision = True
-                # We had to update this revision entries hashes
-                # Now we need to write out a new value
-                # This is a little bit invasive, since we are *rewriting* a
-                # revision entry. I'm not supremely happy about it, but
-                # there should be *some* way of making old entries have
-                # the full meta information.
-                rev_tmp = tempfile.TemporaryFile()
-                serializer_v4.write_revision(rev, rev_tmp)
-                rev_tmp.seek(0)
+        new_inv_xml = serializer_v5.write_inventory_to_string(inv)
+        new_inv_sha1 = sha_string(new_inv_xml)
+        self.inv_weave.add(rev.revision_id, rev.parent_ids,
+                           new_inv_xml.splitlines(True),
+                           new_inv_sha1)
+        rev.inventory_sha1 = new_inv_sha1
 
-                tmpfd, tmp_path = tempfile.mkstemp(prefix=rev_id, suffix='.gz',
-                    dir=branch.controlfilename('revision-store'))
-                os.close(tmpfd)
 
-                try:
-                    # TODO: We may need to handle the case where the old revision
-                    # entry was not compressed (and thus did not end with .gz)
+    def _make_rev_ancestry(self, rev):
+        rev_id = rev.revision_id
+        for parent_id in rev.parent_ids:
+            assert parent_id in self.converted_revs
+        if rev.parent_ids:
+            lines = list(self.anc_weave.mash_iter(rev.parent_ids))
+        else:
+            lines = []
+        lines.append(rev_id + '\n')
+        if __debug__:
+            parent_ancestries = [self.ancestries[p] for p in rev.parent_ids]
+            new_lines = merge_ancestry_lines(rev_id, parent_ancestries)
+            assert set(lines) == set(new_lines)
+            self.ancestries[rev_id] = new_lines
+        self.anc_weave.add(rev_id, rev.parent_ids, lines)
 
-                    # Remove the old revision entry out of the way
-                    rev_path = branch.controlfilename(['revision-store', rev_id+'.gz'])
-                    rename(rev_path, tmp_path)
-                    branch.revision_store.add(rev_tmp, rev_id) # Add the new one
-                    os.remove(tmp_path) # Remove the old name
-                    mutter('    Updated revision entry {%s}' % rev_id)
-                except:
-                    # On any exception, restore the old entry
-                    rename(tmp_path, rev_path)
-                    raise
-                rev_tmp.close()
-                updated_revisions.append(rev_id)
+
+    def _convert_revision_contents(self, rev, inv):
+        """Convert all the files within a revision.
+
+        Also upgrade the inventory to refer to the text revision ids."""
+        rev_id = rev.revision_id
+        mutter('converting texts of revision {%s}',
+               rev_id)
+        parent_invs = map(self._load_updated_inventory, rev.parent_ids)
+        for file_id in inv:
+            ie = inv[file_id]
+            self._set_name_version(rev, ie, parent_invs)
+            if ie.kind != 'file':
+                continue
+            self._convert_file_version(rev, ie, parent_invs)
+
+
+    def _set_name_version(self, rev, ie, parent_invs):
+        """Set name version for a file.
+
+        Done in a slightly lazy way: if the file is renamed or in a merge revision
+        it gets a new version, otherwise the same as before.
+        """
+        file_id = ie.file_id
+        if ie.kind == 'root_directory':
+            return
+        if len(parent_invs) != 1:
+            ie.name_version = rev.revision_id
+        else:
+            old_inv = parent_invs[0]
+            if not old_inv.has_id(file_id):
+                ie.name_version = rev.revision_id
             else:
-                updated_previous_revision = False
+                old_ie = old_inv[file_id]
+                if (old_ie.parent_id != ie.parent_id
+                    or old_ie.name != ie.name):
+                    ie.name_version = rev.revision_id
+                else:
+                    ie.name_version = old_ie.name_version
 
+
+
+    def _convert_file_version(self, rev, ie, parent_invs):
+        """Convert one version of one file.
+
+        The file needs to be added into the weave if it is a merge
+        of >=2 parents or if it's changed from its parent.
+        """
+        file_id = ie.file_id
+        rev_id = rev.revision_id
+        w = self.text_weaves.get(file_id)
+        if w is None:
+            w = Weave(file_id)
+            self.text_weaves[file_id] = w
+        file_parents = []
+        text_changed = False
+        for parent_inv in parent_invs:
+            if parent_inv.has_id(file_id):
+                parent_ie = parent_inv[file_id]
+                old_text_version = parent_ie.text_version
+                assert old_text_version in self.converted_revs 
+                if old_text_version not in file_parents:
+                    file_parents.append(old_text_version)
+                if parent_ie.text_sha1 != ie.text_sha1:
+                    text_changed = True
+        if len(file_parents) != 1 or text_changed:
+            file_lines = self.branch.text_store[ie.text_id].readlines()
+            assert sha_strings(file_lines) == ie.text_sha1
+            assert sum(map(len, file_lines)) == ie.text_size
+            w.add(rev_id, file_parents, file_lines, ie.text_sha1)
+            ie.text_version = rev_id
+            self.text_count += 1
+            ##mutter('import text {%s} of {%s}',
+            ##       ie.text_id, file_id)
+        else:
+            ##mutter('text of {%s} unchanged from parent', file_id)
+            ie.text_version = file_parents[0]
+        del ie.text_id
+
+
+
+    def _make_order(self):
+        """Return a suitable order for importing revisions.
+
+        The order must be such that an revision is imported after all
+        its (present) parents.
+        """
+        todo = set(self.revisions.keys())
+        done = self.absent_revisions.copy()
+        o = []
+        while todo:
+            # scan through looking for a revision whose parents
+            # are all done
+            for rev_id in sorted(list(todo)):
+                rev = self.revisions[rev_id]
+                parent_ids = set(rev.parent_ids)
+                if parent_ids.issubset(done):
+                    # can take this one now
+                    o.append(rev_id)
+                    todo.remove(rev_id)
+                    done.add(rev_id)
+        return o
+
+
+def write_a_weave(weave, filename):
+    inv_wf = file(filename, 'wb')
+    try:
+        write_weave(weave, inv_wf)
     finally:
-        branch.unlock()
+        inv_wf.close()
 
-    pb.clear()
 
-    if updated_revisions:
-        print '%d revisions updated to current format' % len(updated_revisions)
+def upgrade(base_dir):
+    Convert(base_dir)

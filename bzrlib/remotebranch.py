@@ -29,9 +29,14 @@ import urllib2
 import urlparse
 
 from bzrlib.errors import BzrError, BzrCheckError
-from bzrlib.branch import Branch, LocalBranch, BZR_BRANCH_FORMAT
+from bzrlib.branch import Branch, LocalBranch, BZR_BRANCH_FORMAT_5
 from bzrlib.trace import mutter
-from bzrlib.xml import serializer_v4
+from bzrlib.weavestore import WeaveStore
+from bzrlib.xml5 import serializer_v5
+
+
+# velocitynet.com.au transparently proxies connections and thereby
+# breaks keep-alive -- sucks!
 
 
 ENABLE_URLGRABBER = False
@@ -86,8 +91,7 @@ def _find_remote_root(url):
             fmt = ff.read()
             ff.close()
 
-            fmt = fmt.rstrip('\r\n')
-            if fmt != BZR_BRANCH_FORMAT.rstrip('\r\n'):
+            if fmt != BZR_BRANCH_FORMAT_5:
                 raise BzrError("sorry, branch format %r not supported at url %s"
                                % (fmt, url))
             
@@ -119,10 +123,14 @@ class RemoteBranch(LocalBranch):
             self.base = _find_remote_root(baseurl)
         else:
             self.base = baseurl
-            self._check_format()
-        self.inventory_store = RemoteStore(baseurl + '/.bzr/inventory-store/')
-        self.text_store = RemoteStore(baseurl + '/.bzr/text-store/')
-        self.revision_store = RemoteStore(baseurl + '/.bzr/revision-store/')
+        self._check_format(False)
+        # is guaranteed to be a v5 store
+
+        cfn = self.controlfilename
+        assert self._branch_format == 5
+        self.control_weaves = WeaveStore(cfn([]), get_url)
+        self.weave_store = WeaveStore(cfn('weaves'), get_url)
+        self.revision_store = RemoteStore(cfn('revision-store'))
 
     def __str__(self):
         b = getattr(self, 'baseurl', 'undefined')
@@ -133,7 +141,7 @@ class RemoteBranch(LocalBranch):
     def setup_caching(self, cache_root):
         """Set up cached stores located under cache_root"""
         from bzrlib.meta_store import CachedStore
-        for store_name in ('inventory_store', 'text_store', 'revision_store'):
+        for store_name in ('revision_store',):
             if not isinstance(getattr(self, store_name), CachedStore):
                 cache_path = os.path.join(cache_root, store_name)
                 os.mkdir(cache_path)
@@ -172,10 +180,8 @@ class RemoteBranch(LocalBranch):
             revf = self.revision_store[revision_id]
         except KeyError:
             raise NoSuchRevision(self, revision_id)
-        r = serializer_v4.read_revision(revf)
+        r = serializer_v5.read_revision(revf)
         if r.revision_id != revision_id:
             raise BzrCheckError('revision stored as {%s} actually contains {%s}'
                                 % (revision_id, r.revision_id))
         return r
-
-

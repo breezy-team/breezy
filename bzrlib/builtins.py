@@ -21,7 +21,7 @@ import os
 import bzrlib
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
-from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError
+from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
 from bzrlib.branch import Branch
 from bzrlib import BZRDIR
 from bzrlib.commands import Command
@@ -407,9 +407,9 @@ class cmd_branch(Command):
             else:
                 basis_branch = None
             if len(revision) == 1 and revision[0] is not None:
-                revno = revision[0].in_history(br_from)[0]
+                revision_id = revision[0].in_history(br_from)[1]
             else:
-                revno = None
+                revision_id = None
             if to_location is None:
                 to_location = os.path.basename(from_location.rstrip("/\\"))
             try:
@@ -424,7 +424,7 @@ class cmd_branch(Command):
                 else:
                     raise
             try:
-                copy_branch(br_from, to_location, revno, basis_branch)
+                copy_branch(br_from, to_location, revision_id, basis_branch)
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
                 msg = "The branch %s has no revision %d." % (from_location, revision[0])
@@ -521,6 +521,15 @@ class cmd_revision_history(Command):
     def run(self):
         for patchid in Branch.open_containing('.').revision_history():
             print patchid
+
+
+class cmd_ancestry(Command):
+    """List all revisions merged into this branch."""
+    hidden = True
+    def run(self):
+        b = find_branch('.')
+        for revision_id in b.get_ancestry(b.last_revision()):
+            print revision_id
 
 
 class cmd_directories(Command):
@@ -920,7 +929,7 @@ class cmd_export(Command):
         import os.path
         b = Branch.open_containing('.')
         if revision is None:
-            rev_id = b.last_patch()
+            rev_id = b.last_revision()
         else:
             if len(revision) != 1:
                 raise BzrError('bzr export --revision takes exactly 1 argument')
@@ -984,6 +993,8 @@ class cmd_commit(Command):
     aliases = ['ci', 'checkin']
 
     # TODO: Give better message for -s, --summary, used by tla people
+
+    # XXX: verbose currently does nothing
     
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False):
@@ -1013,7 +1024,7 @@ class cmd_commit(Command):
             message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
         try:
-            b.commit(message, verbose=verbose,
+            b.commit(message,
                      specific_files=selected_list,
                      allow_pointless=unchanged)
         except PointlessCommit:
@@ -1062,13 +1073,15 @@ class cmd_upgrade(Command):
 
     The check command or bzr developers may sometimes advise you to run
     this command.
+
+    This version of this command upgrades from the full-text storage
+    used by bzr 0.0.8 and earlier to the weave format (v5).
     """
     takes_args = ['dir?']
 
     def run(self, dir='.'):
         from bzrlib.upgrade import upgrade
-        upgrade(Branch.open_containing(dir))
-
+        upgrade(dir)
 
 
 class cmd_whoami(Command):
@@ -1078,7 +1091,7 @@ class cmd_whoami(Command):
     def run(self, email=False):
         try:
             b = bzrlib.branch.Branch.open_containing('.')
-        except:
+        except NotBranchError:
             b = None
         
         if email:
@@ -1155,8 +1168,8 @@ class cmd_find_merge_base(Command):
         history_1 = branch1.revision_history()
         history_2 = branch2.revision_history()
 
-        last1 = branch1.last_patch()
-        last2 = branch2.last_patch()
+        last1 = branch1.last_revision()
+        last2 = branch2.last_revision()
 
         source = MultipleRevisionSources(branch1, branch2)
         
@@ -1312,9 +1325,27 @@ class cmd_shell_complete(Command):
         shellcomplete.shellcomplete(context)
 
 
+class cmd_fetch(Command):
+    """Copy in history from another branch but don't merge it.
+
+    This is an internal method used for pull and merge."""
+    hidden = True
+    takes_args = ['from_branch', 'to_branch']
+    def run(self, from_branch, to_branch):
+        from bzrlib.fetch import Fetcher
+        from bzrlib.branch import Branch
+        from_b = Branch(from_branch)
+        to_b = Branch(to_branch)
+        Fetcher(to_b, from_b)
+        
+
+
 class cmd_missing(Command):
     """What is missing in this branch relative to other branch.
     """
+    # TODO: rewrite this in terms of ancestry so that it shows only
+    # unmerged things
+    
     takes_args = ['remote?']
     aliases = ['mis', 'miss']
     # We don't have to add quiet to the list, because 

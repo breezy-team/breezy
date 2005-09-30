@@ -22,7 +22,14 @@ __author__ = "Martin Pool <mbp@canonical.com>"
 ######################################################################
 # exceptions 
 class BzrError(StandardError):
-    pass
+    def __str__(self):
+        if len(self.args) == 1:
+            return self.args[0]
+        elif len(self.args) == 2:
+            # further explanation or suggestions
+            return '\n  '.join([self.args[0]] + self.args[1])
+        else:
+            return `self.args`
 
 
 class BzrCheckError(BzrError):
@@ -30,9 +37,6 @@ class BzrCheckError(BzrError):
 
 
 class InvalidRevisionNumber(BzrError):
-    def __init__(self, revno):
-        self.args = [revno]
-        
     def __str__(self):
         return 'invalid revision number: %r' % self.args[0]
 
@@ -92,11 +96,20 @@ class NoSuchRevision(BzrError):
         BzrError.__init__(self, msg)
 
 
+class HistoryMissing(BzrError):
+    def __init__(self, branch, object_type, object_id):
+        self.branch = branch
+        BzrError.__init__(self,
+                          '%s is missing %s {%s}'
+                          % (branch, object_type, object_id))
+
+
 class DivergedBranches(BzrError):
     def __init__(self, branch1, branch2):
         BzrError.__init__(self, "These branches have diverged.")
         self.branch1 = branch1
         self.branch2 = branch2
+
 
 class UnrelatedBranches(BzrCommandError):
     def __init__(self):
@@ -160,3 +173,6 @@ class UnlistableStore(BzrError):
 class UnlistableBranch(BzrError):
     def __init__(self, br):
         BzrError.__init__(self, "Stores for branch %s are not listable" % br)
+
+
+from bzrlib.weave import WeaveError

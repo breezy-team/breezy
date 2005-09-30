@@ -14,7 +14,14 @@ DEVELOPMENT HEAD
       of local history when making a new branch. This allows faster 
       branching of remote branches. Contributed by Aaron Bentley.
 
+    * New tree format based on weave files, called version 5.
+      Existing branches can be upgraded to this format using 
+      'bzr upgrade'.
+
   INTERNALS:
+
+    * Test case failures have the exception printed after the log for your
+      viewing pleasure.
 
       
 bzr 0.0.9 2005-09-23
@@ -35,7 +42,7 @@ bzr 0.0.9 2005-09-23
 
   IMPROVEMENTS:
 
-    * Status now accepted a -r argument to give status between chosen
+    * Status now accepts a -r argument to give status between chosen
       revisions. Contributed by Heikki Paajanen.
 
     * Revision arguments no longer use +/-/= to control ranges, instead
@@ -49,10 +56,11 @@ bzr 0.0.9 2005-09-23
 
   INTERNALS:
 
-    * removed uuid() as it was unused.
+    * Removed uuid() as it was unused.
 
-    * Test case failures have the exception printed after the log for your
-      viewing pleasure.
+    * Improved 'fetch' code for pulling revisions from one branch into
+      another (used by pull, merged, etc.)
+
 
 bzr 0.0.8 2005-09-20
 
@@ -81,7 +89,6 @@ bzr 0.0.8 2005-09-20
   INTERNALS:
 
     * Refactor xml packing/unpacking.
-
 
   BUG FIXES: 
 

@@ -45,9 +45,6 @@ class TestBranch(TestCaseInTempDir):
         b.commit('commit pointless revision with one file',
                  allow_pointless=True)
 
-        b.add_pending_merge('mbp@892739123-2005-123123')
-        b.commit('commit new merge with no text changes',
-                 allow_pointless=False)
         
 
 
@@ -74,6 +71,9 @@ class PendingMerges(TestCaseInTempDir):
 
     def test_pending_merges(self):
         """Tracking pending-merged revisions."""
+        print "GHOST SUPPORT REMOVED"
+        return
+
         b = Branch.initialize('.')
 
         self.assertEquals(b.pending_merges(), [])
@@ -94,7 +94,10 @@ class PendingMerges(TestCaseInTempDir):
                            'wibble@fofof--20050401--1928390812')
         # list should be cleared when we do a commit
         self.assertEquals(b.pending_merges(), [])
-        
+ 
+
+class MoreTests(TestCaseInTempDir):
+
     def test_revert(self):
         """Test selected-file revert"""
         b = Branch.initialize('.')

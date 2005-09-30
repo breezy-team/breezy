@@ -14,6 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: Could remember a bias towards whether a particular store is typically
+# compressed or not.
+
 """
 Stores are the main data-storage mechanism for Bazaar-NG.
 
@@ -222,6 +225,9 @@ class ImmutableStore(Store):
         except OSError:
             return os.stat(p + '.gz')[ST_SIZE]
 
+    # TODO: Guard against the same thing being stored twice,
+    # compressed and uncompressed
+
     def __iter__(self):
         for f in os.listdir(self._basedir):
             if f[-3:] == '.gz':
@@ -318,6 +324,13 @@ class RemoteStore(object):
         except urllib2.URLError:
             raise KeyError(fileid)
 
+    def __contains__(self, fileid):
+        try:
+            self[fileid]
+            return True
+        except KeyError:
+            return False
+        
 
 class CachedStore:
     """A store that caches data locally, to avoid repeated downloads.

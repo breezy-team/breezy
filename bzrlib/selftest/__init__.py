@@ -24,8 +24,8 @@ import sys
 import errno
 import subprocess
 import shutil
-import testsweet
 
+import testsweet
 import bzrlib.commands
 import bzrlib.trace
 import bzrlib.fetch
@@ -68,7 +68,7 @@ class TestCase(unittest.TestCase):
 
         hdlr = logging.StreamHandler(self._log_file)
         hdlr.setLevel(logging.DEBUG)
-        hdlr.setFormatter(logging.Formatter('%(levelname)4.4s  %(message)s'))
+        hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
         logging.getLogger('').addHandler(hdlr)
         logging.getLogger('').setLevel(logging.DEBUG)
         self._log_hdlr = hdlr
@@ -153,8 +153,7 @@ class TestCase(unittest.TestCase):
         return self.run_bzr_captured(args, retcode)
 
     def check_inventory_shape(self, inv, shape):
-        """
-        Compare an inventory to a list of expected names.
+        """Compare an inventory to a list of expected names.
 
         Fail if they are not precisely equal.
         """
@@ -259,7 +258,9 @@ class TestCaseInTempDir(TestCase):
         super(TestCaseInTempDir, self).setUp()
         self._make_test_root()
         self._currentdir = os.getcwdu()
-        self.test_dir = os.path.join(self.TEST_ROOT, self.id())
+        short_id = self.id().replace('bzrlib.selftest.', '') \
+                   .replace('__main__.', '')
+        self.test_dir = os.path.join(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         
@@ -296,10 +297,12 @@ class MetaTestLog(TestCase):
 
 
 def selftest(verbose=False, pattern=".*"):
+    """Run the whole test suite under the enhanced runner"""
     return testsweet.run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
 
 
 def test_suite():
+    """Build and return TestSuite for the whole program."""
     from bzrlib.selftest.TestUtil import TestLoader, TestSuite
     import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
     import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
@@ -309,17 +312,16 @@ def test_suite():
 
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
-                   'bzrlib.selftest.test_parent',
                    'bzrlib.selftest.testinv',
-                   'bzrlib.selftest.testfetch',
+                   'bzrlib.selftest.test_ancestry',
+                   'bzrlib.selftest.test_commit',
+                   'bzrlib.selftest.test_commit_merge',
                    'bzrlib.selftest.versioning',
-                   'bzrlib.selftest.whitebox',
                    'bzrlib.selftest.testmerge3',
                    'bzrlib.selftest.testmerge',
                    'bzrlib.selftest.testhashcache',
                    'bzrlib.selftest.teststatus',
                    'bzrlib.selftest.testlog',
-                   'bzrlib.selftest.blackbox',
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
                    'bzrlib.selftest.testremotebranch',
@@ -329,9 +331,13 @@ def test_suite():
                    'bzrlib.selftest.test_smart_add',
                    'bzrlib.selftest.test_bad_files',
                    'bzrlib.selftest.testdiff',
+                   'bzrlib.selftest.test_parent',
                    'bzrlib.selftest.test_xml',
-                   'bzrlib.fetch',
+                   'bzrlib.selftest.test_weave',
+                   'bzrlib.selftest.testfetch',
+                   'bzrlib.selftest.whitebox',
                    'bzrlib.selftest.teststore',
+                   'bzrlib.selftest.blackbox',
                    'bzrlib.selftest.testgraph',
                    ]
 
