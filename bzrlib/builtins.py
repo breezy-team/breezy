@@ -936,13 +936,20 @@ class cmd_export(Command):
                 raise BzrError('bzr export --revision takes exactly 1 argument')
             rev_id = revision[0].in_history(b).rev_id
         t = b.revision_tree(rev_id)
-        root, ext = os.path.splitext(dest)
+        arg_root, ext = os.path.splitext(os.path.basename(dest))
+        if ext in ('.gz', '.bz2'):
+            new_root, new_ext = os.path.splitext(arg_root)
+            if new_ext == '.tar':
+                arg_root = new_root
+                ext = new_ext + ext
+        if root is None:
+            root = arg_root
         if not format:
             if ext in (".tar",):
                 format = "tar"
-            elif ext in (".gz", ".tgz"):
+            elif ext in (".tar.gz", ".tgz"):
                 format = "tgz"
-            elif ext in (".bz2", ".tbz2"):
+            elif ext in (".tar.bz2", ".tbz2"):
                 format = "tbz2"
             else:
                 format = "dir"

@@ -342,7 +342,8 @@ class Commit(object):
                 deleted_ids.append(ie.file_id)
         if deleted_ids:
             for file_id in deleted_ids:
-                del self.work_inv[file_id]
+                if file_id in self.work_inv:
+                    del self.work_inv[file_id]
             self.branch._write_inventory(self.work_inv)
 
 
