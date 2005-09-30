@@ -687,12 +687,10 @@ class _Branch(Branch):
     def append_revision(self, *revision_ids):
         for revision_id in revision_ids:
             mutter("add {%s} to revision-history" % revision_id)
-
-        rev_history = self.revision_history()
-        rev_history.extend(revision_ids)
-
         self.lock_write()
         try:
+            rev_history = self.revision_history()
+            rev_history.extend(revision_ids)
             self.put_controlfile('revision-history', '\n'.join(rev_history))
         finally:
             self.unlock()
