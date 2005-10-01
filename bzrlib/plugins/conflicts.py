@@ -17,6 +17,7 @@
 import bzrlib.status
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError
+from bzrlib.commands import register_command
 import os
 import errno
 
@@ -44,6 +45,8 @@ class cmd_conflicts(bzrlib.commands.Command):
     def run(self):
         for path in iter_conflicts(Branch.open_containing('.').working_tree()):
             print path
+
+register_command(cmd_conflicts)
 
 class cmd_resolve(bzrlib.commands.Command):
     """Mark a conflict as resolved.
@@ -77,7 +80,7 @@ class cmd_resolve(bzrlib.commands.Command):
                 else:
                     print "%s is not conflicted" % filename
                         
-            
+register_command(cmd_resolve)
 
 # monkey-patch the standard 'status' to give us conflicts, too.
 def _show_status(branch, **kwargs):
