@@ -59,7 +59,7 @@ class cmd_resolve(bzrlib.commands.Command):
                 raise BzrCommandError(
                     "command 'resolve' needs one or more FILE, or --all")
             tree = Branch.open_containing('.').working_tree()
-            file_list = list(iter_conflicts(tree))
+            file_list = list(tree.abspath(f) for f in iter_conflicts(tree))
         else:
             if all:
                 raise BzrCommandError(
