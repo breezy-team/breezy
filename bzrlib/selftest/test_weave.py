@@ -30,16 +30,6 @@ from bzrlib.weavefile import write_weave, read_weave
 from bzrlib.selftest import TestCase
 from bzrlib.osutils import sha_string
 
-try:
-    set
-    frozenset
-except NameError:
-    from sets import Set, ImmutableSet
-    set = Set
-    frozenset = ImmutableSet
-    del Set, ImmutableSet
-
-
 
 # texts for use in testing
 TEXT_0 = ["Hello world"]
