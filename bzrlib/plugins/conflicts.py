@@ -18,24 +18,9 @@ import bzrlib.status
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.commands import register_command
+from bzrlib.workingtree import CONFLICT_SUFFIXES
 import os
 import errno
-
-SUFFIXES = ('.THIS', '.BASE', '.OTHER')
-def get_conflicted_stem(path):
-    for suffix in SUFFIXES:
-        if path.endswith(suffix):
-            return path[:-len(suffix)]
-
-def iter_conflicts(tree):
-    conflicted = set()
-    for path in (s[0] for s in tree.list_files()):
-        stem = get_conflicted_stem(path)
-        if stem is None:
-            continue
-        if stem not in conflicted:
-            conflicted.add(stem)
-            yield stem
 
 class cmd_conflicts(bzrlib.commands.Command):
     """List files with conflicts.
@@ -43,7 +28,7 @@ class cmd_conflicts(bzrlib.commands.Command):
     files.)
     """
     def run(self):
-        for path in iter_conflicts(Branch.open_containing('.').working_tree()):
+        for path in Branch.open_containing('.').working_tree().iter_conflicts():
             print path
 
 register_command(cmd_conflicts)
@@ -59,14 +44,14 @@ class cmd_resolve(bzrlib.commands.Command):
                 raise BzrCommandError(
                     "command 'resolve' needs one or more FILE, or --all")
             tree = Branch.open_containing('.').working_tree()
-            file_list = list(tree.abspath(f) for f in iter_conflicts(tree))
+            file_list = list(tree.abspath(f) for f in tree.iter_conflicts())
         else:
             if all:
                 raise BzrCommandError(
                     "If --all is specified, no FILE may be provided")
         for filename in file_list:
             failures = 0
-            for suffix in SUFFIXES:
+            for suffix in CONFLICT_SUFFIXES:
                 try:
                     os.unlink(filename+suffix)
                 except OSError, e:
@@ -74,7 +59,7 @@ class cmd_resolve(bzrlib.commands.Command):
                         raise
                     else:
                         failures += 1
-            if failures == len(SUFFIXES):
+            if failures == len(CONFLICT_SUFFIXES):
                 if not os.path.exists(filename):
                     print "%s does not exist" % filename
                 else:
@@ -85,7 +70,7 @@ register_command(cmd_resolve)
 # monkey-patch the standard 'status' to give us conflicts, too.
 def _show_status(branch, **kwargs):
     old_show_status(branch, **kwargs)
-    conflicted = list(iter_conflicts(branch.working_tree()))
+    conflicted = list(branch.working_tree().iter_conflicts())
     if len(conflicted) > 0:
         print "conflicts:"
         for f in conflicted:
