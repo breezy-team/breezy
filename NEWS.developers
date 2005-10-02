@@ -8,3 +8,6 @@ changes in weave branch:
 
  * Renamed Branch.last_patch() to Branch.last_revision(), since
    we call them revisions not patches.
+
+ * Move copy_branch to bzrlib.clone.copy_branch.  The destination
+   directory is created if it doesn't exist.

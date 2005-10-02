@@ -470,7 +470,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
     def test_trivial_star_merge(self):
         """Test that merges in a star shape Just Work.""" 
         from bzrlib.add import smart_add_branch, add_reporter_null
-        from bzrlib.branch import copy_branch
+        from bzrlib.clone import copy_branch
         from bzrlib.merge import merge
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))

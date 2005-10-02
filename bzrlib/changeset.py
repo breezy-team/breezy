@@ -19,6 +19,7 @@ import patch
 import stat
 from bzrlib.trace import mutter
 from bzrlib.osutils import rename
+import bzrlib
 
 # XXX: mbp: I'm not totally convinced that we should handle conflicts
 # as part of changeset application, rather than only in the merge
@@ -862,7 +863,7 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
             continue
         new_path = os.path.join(dir, new_tree_path)
         old_path = changed_inventory.get(entry.id)
-        if os.path.exists(new_path):
+        if bzrlib.osutils.lexists(new_path):
             if conflict_handler.target_exists(entry, new_path, old_path) == \
                 "skip":
                 continue

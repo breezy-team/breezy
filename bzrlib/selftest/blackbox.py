@@ -214,6 +214,42 @@ class TestCommands(ExternalBase):
         test.runbzr('add goodbye')
         test.runbzr('commit -m setup goodbye')
 
+    def test_export(self):
+        os.mkdir('branch')
+        os.chdir('branch')
+        self.example_branch()
+        self.runbzr('export ../latest')
+        self.assertEqual(file('../latest/goodbye', 'rt').read(), 'baz')
+        self.runbzr('export ../first -r 1')
+        assert not os.path.exists('../first/goodbye')
+        self.assertEqual(file('../first/hello', 'rt').read(), 'foo')
+        self.runbzr('export ../first.gz -r 1')
+        self.assertEqual(file('../first.gz/hello', 'rt').read(), 'foo')
+        self.runbzr('export ../first.bz2 -r 1')
+        self.assertEqual(file('../first.bz2/hello', 'rt').read(), 'foo')
+        self.runbzr('export ../first.tar -r 1')
+        assert os.path.isfile('../first.tar')
+        from tarfile import TarFile
+        tf = TarFile('../first.tar')
+        assert 'first/hello' in tf.getnames(), tf.getnames()
+        self.assertEqual(tf.extractfile('first/hello').read(), 'foo')
+        self.runbzr('export ../first.tar.gz -r 1')
+        assert os.path.isfile('../first.tar.gz')
+        self.runbzr('export ../first.tbz2 -r 1')
+        assert os.path.isfile('../first.tbz2')
+        self.runbzr('export ../first.tar.bz2 -r 1')
+        assert os.path.isfile('../first.tar.bz2')
+        self.runbzr('export ../first.tar.tbz2 -r 1')
+        assert os.path.isfile('../first.tar.tbz2')
+        from bz2 import BZ2File
+        tf = TarFile('../first.tar.tbz2', 
+                     fileobj=BZ2File('../first.tar.tbz2', 'r'))
+        assert 'first.tar/hello' in tf.getnames(), tf.getnames()
+        self.assertEqual(tf.extractfile('first.tar/hello').read(), 'foo')
+        self.runbzr('export ../first2.tar -r 1 --root pizza')
+        tf = TarFile('../first2.tar')
+        assert 'pizza/hello' in tf.getnames(), tf.getnames()
+
     def test_diff(self):
         self.example_branch()
         file('hello', 'wt').write('hello world!')
@@ -267,6 +303,40 @@ class TestCommands(ExternalBase):
         self.log('pending merges: %s', a.pending_merges())
         #        assert a.pending_merges() == [b.last_revision()], "Assertion %s %s" \
         #        % (a.pending_merges(), b.last_revision())
+
+    def test_merge_with_missing_file(self):
+        """Merge handles missing file conflicts"""
+        os.mkdir('a')
+        os.chdir('a')
+        os.mkdir('sub')
+        print >> file('sub/a.txt', 'wb'), "hello"
+        print >> file('b.txt', 'wb'), "hello"
+        print >> file('sub/c.txt', 'wb'), "hello"
+        self.runbzr('init')
+        self.runbzr('add')
+        self.runbzr(('commit', '-m', 'added a'))
+        self.runbzr('branch . ../b')
+        print >> file('sub/a.txt', 'ab'), "there"
+        print >> file('b.txt', 'ab'), "there"
+        print >> file('sub/c.txt', 'ab'), "there"
+        self.runbzr(('commit', '-m', 'Added there'))
+        os.unlink('sub/a.txt')
+        os.unlink('sub/c.txt')
+        os.rmdir('sub')
+        os.unlink('b.txt')
+        self.runbzr(('commit', '-m', 'Removed a.txt'))
+        os.chdir('../b')
+        print >> file('sub/a.txt', 'ab'), "something"
+        print >> file('b.txt', 'ab'), "something"
+        print >> file('sub/c.txt', 'ab'), "something"
+        self.runbzr(('commit', '-m', 'Modified a.txt'))
+        self.runbzr('merge ../a/')
+        assert os.path.exists('sub/a.txt.THIS')
+        assert os.path.exists('sub/a.txt.BASE')
+        os.chdir('../a')
+        self.runbzr('merge ../b/')
+        assert os.path.exists('sub/a.txt.OTHER')
+        assert os.path.exists('sub/a.txt.BASE')
 
     def test_pull(self):
         """Pull changes from one branch to another."""

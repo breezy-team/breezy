@@ -382,7 +382,7 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
-        from bzrlib.branch import copy_branch
+        from bzrlib.clone import copy_branch
         import tempfile
         import errno
         from shutil import rmtree
@@ -935,13 +935,20 @@ class cmd_export(Command):
                 raise BzrError('bzr export --revision takes exactly 1 argument')
             rev_id = revision[0].in_history(b).rev_id
         t = b.revision_tree(rev_id)
-        root, ext = os.path.splitext(dest)
+        arg_root, ext = os.path.splitext(os.path.basename(dest))
+        if ext in ('.gz', '.bz2'):
+            new_root, new_ext = os.path.splitext(arg_root)
+            if new_ext == '.tar':
+                arg_root = new_root
+                ext = new_ext + ext
+        if root is None:
+            root = arg_root
         if not format:
             if ext in (".tar",):
                 format = "tar"
-            elif ext in (".gz", ".tgz"):
+            elif ext in (".tar.gz", ".tgz"):
                 format = "tgz"
-            elif ext in (".bz2", ".tbz2"):
+            elif ext in (".tar.bz2", ".tbz2"):
                 format = "tbz2"
             else:
                 format = "dir"
@@ -1373,9 +1380,7 @@ class cmd_missing(Command):
             # should not change the parent
             b.set_parent(remote)
         br_remote = Branch.open_containing(remote)
-
         return show_missing(b, br_remote, verbose=verbose, quiet=quiet)
-
 
 
 class cmd_plugins(Command):

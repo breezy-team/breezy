@@ -43,10 +43,19 @@ if version_info < NEED_VERS:
 if hasattr(os, "unsetenv"):
     os.unsetenv(REINVOKE)
 
-import bzrlib
-import bzrlib.commands
-import bzrlib.trace
+try:
+    import bzrlib
+    import bzrlib.commands
+    import bzrlib.trace
+except ImportError, e:
+    sys.stderr.write("bzr: ERROR: "
+                     "Couldn't import bzrlib and dependencies.\n"
+                     "Please check bzrlib is on your PYTHONPATH.\n"
+                     "\n")
+    raise
 
 if __name__ == '__main__':
     bzrlib.trace.enable_default_logging()
     sys.exit(bzrlib.commands.main(sys.argv))
+else:
+    pass    # should this give an error? - it can't be used as a lib

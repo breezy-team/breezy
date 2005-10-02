@@ -85,6 +85,8 @@ class Fetcher(object):
     count_texts -- number of file texts copied
     """
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
+        if to_branch == from_branch:
+            raise Exception("can't fetch from a branch to itself")
         self.to_branch = to_branch
         self.to_weaves = to_branch.weave_store
         self.to_control = to_branch.control_weaves

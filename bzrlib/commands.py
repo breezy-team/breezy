@@ -578,6 +578,8 @@ def run_bzr(argv):
     --profile
         Run under the Python profiler.
     """
+    # Load all of the transport methods
+    import bzrlib.transport.local, bzrlib.transport.http
     
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
 
@@ -668,7 +670,6 @@ def run_bzr_catch_errors(argv):
         else:
             bzrlib.trace.log_exception()
             return 2
-
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

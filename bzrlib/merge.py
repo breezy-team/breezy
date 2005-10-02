@@ -24,7 +24,7 @@ import bzrlib.osutils
 import bzrlib.revision
 from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
 from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
-from bzrlib.changeset import Inventory, Diff3Merge
+from bzrlib.changeset import Inventory, Diff3Merge, ReplaceContents
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError, UnrelatedBranches, NoCommonAncestor
 from bzrlib.errors import NoCommits
@@ -36,6 +36,9 @@ from bzrlib.osutils import rename
 from bzrlib.revision import common_ancestor, MultipleRevisionSources
 from bzrlib.errors import NoSuchRevision
 
+# TODO: build_working_dir can be built on something simpler than merge()
+
+# FIXME: merge() parameters seem oriented towards the command line
 
 # comments from abentley on irc: merge happens in two stages, each
 # of which generates a changeset object
@@ -50,10 +53,13 @@ class MergeConflictHandler(ExceptionConflictHandler):
     conflict that are not explicitly handled cause an exception and
     terminate the merge.
     """
-    def __init__(self, ignore_zero=False):
+    def __init__(self, this_tree, base_tree, other_tree, ignore_zero=False):
         ExceptionConflictHandler.__init__(self)
         self.conflicts = 0
         self.ignore_zero = ignore_zero
+        self.this_tree = this_tree
+        self.base_tree = base_tree
+        self.other_tree = other_tree
 
     def copy(self, source, dest):
         """Copy the text and mode of a file
@@ -130,6 +136,52 @@ class MergeConflictHandler(ExceptionConflictHandler):
         self.conflict("Directory %s not removed because it is not empty"\
             % filename)
         return "skip"
+
+    def rem_contents_conflict(self, filename, this_contents, base_contents):
+        base_contents(filename+".BASE", self, False)
+        this_contents(filename+".THIS", self, False)
+        self.conflict("Other branch deleted locally modified file %s" %
+                      filename)
+        return ReplaceContents(this_contents, None)
+
+    def abs_this_path(self, file_id):
+        """Return the absolute path for a file_id in the this tree."""
+        relpath = self.this_tree.id2path(file_id)
+        return self.this_tree.tree.abspath(relpath)
+
+    def add_missing_parents(self, file_id, tree):
+        """If some of the parents for file_id are missing, add them."""
+        entry = tree.tree.inventory[file_id]
+        if entry.parent_id not in self.this_tree:
+            return self.create_all_missing(entry.parent_id, tree)
+        else:
+            return self.abs_this_path(entry.parent_id)
+
+    def create_all_missing(self, file_id, tree):
+        """Add contents for a file_id and all its parents to a tree."""
+        entry = tree.tree.inventory[file_id]
+        if entry.parent_id is not None and entry.parent_id not in self.this_tree:
+            abspath = self.create_all_missing(entry.parent_id, tree)
+        else:
+            abspath = self.abs_this_path(entry.parent_id)
+        entry_path = os.path.join(abspath, entry.name)
+        if not os.path.isdir(entry_path):
+            self.create(file_id, entry_path, tree)
+        return entry_path
+
+    def create(self, file_id, path, tree, reverse=False):
+        """Uses tree data to create a filesystem object for the file_id"""
+        from merge_core import get_id_contents
+        get_id_contents(file_id, tree)(path, self, reverse)
+
+    def missing_for_merge(self, file_id, other_path):
+        """The file_id doesn't exist in THIS, but does in OTHER and BASE"""
+        self.conflict("Other branch modified locally deleted file %s" %
+                      other_path)
+        parent_dir = self.add_missing_parents(file_id, self.other_tree)
+        stem = os.path.join(parent_dir, os.path.basename(other_path))
+        self.create(file_id, stem+".OTHER", self.other_tree)
+        self.create(file_id, stem+".BASE", self.base_tree)
 
     def finalize(self):
         if not self.ignore_zero:
@@ -220,7 +272,7 @@ class MergeTree(object):
                     path = os.path.join(self.tempdir, "texts", id)
                     outfile = file(path, "wb")
                     outfile.write(self.tree.get_file(id).read())
-                    assert(os.path.exists(path))
+                    assert(bzrlib.osutils.lexists(path))
                 else:
                     assert kind == "symlink"
                     path = os.path.join(self.tempdir, "symlinks", id)
@@ -229,6 +281,19 @@ class MergeTree(object):
                 self.cached[id] = path
             return self.cached[id]
 
+
+def build_working_dir(to_dir):
+    """Build a working directory in an empty directory.
+
+    to_dir is a directory containing branch metadata but no working files,
+    typically constructed by cloning an existing branch. 
+
+    This is split out as a special idiomatic case of merge.  It could
+    eventually be done by just building the tree directly calling into 
+    lower-level code (e.g. constructing a changeset).
+    """
+    merge((to_dir, -1), (to_dir, 0), this_dir=to_dir,
+          check_clean=False, ignore_zero=True)
 
 
 def merge(other_revision, base_revision,
@@ -246,6 +311,9 @@ def merge(other_revision, base_revision,
     check_clean
         If true, this_dir must have no uncommitted changes before the
         merge begins.
+    ignore_zero - If true, suppress the "zero conflicts" message when 
+        there are no conflicts; should be set when doing something we expect
+        to complete perfectly.
 
     All available ancestors of other_revision and base_revision are
     automatically pulled into the branch.
@@ -359,7 +427,8 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
                              generate_cset_optimized, get_inventory,
-                             MergeConflictHandler(ignore_zero=ignore_zero),
+                             MergeConflictHandler(this_tree, base_tree,
+                             other_tree, ignore_zero=ignore_zero),
                              merge_factory=merge_factory, 
                              interesting_ids=interesting_ids)
 
