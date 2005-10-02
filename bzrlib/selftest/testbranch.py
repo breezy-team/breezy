@@ -33,9 +33,6 @@ class TestBranch(TestCaseInTempDir):
         br.append_revision("rev2", "rev3")
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
 
-
-class TestFetch(TestCaseInTempDir):
-
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
         from bzrlib.fetch import Fetcher
@@ -119,6 +116,30 @@ class TestFetch(TestCaseInTempDir):
 #     an identical tree without a ghost
 # fetch missing should rewrite the TOC of weaves to list newly available parents.
         
+    def test_pending_merges(self):
+        """Tracking pending-merged revisions."""
+        b = Branch.initialize('.')
+
+        self.assertEquals(b.pending_merges(), [])
+        b.add_pending_merge('foo@azkhazan-123123-abcabc')
+        self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
+        b.add_pending_merge('foo@azkhazan-123123-abcabc')
+        self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
+        b.add_pending_merge('wibble@fofof--20050401--1928390812')
+        self.assertEquals(b.pending_merges(),
+                          ['foo@azkhazan-123123-abcabc',
+                           'wibble@fofof--20050401--1928390812'])
+        b.commit("commit from base with two merges")
+        rev = b.get_revision(b.revision_history()[0])
+        self.assertEquals(len(rev.parent_ids), 2)
+        self.assertEquals(rev.parent_ids[0],
+                          'foo@azkhazan-123123-abcabc')
+        self.assertEquals(rev.parent_ids[1],
+                           'wibble@fofof--20050401--1928390812')
+        # list should be cleared when we do a commit
+        self.assertEquals(b.pending_merges(), [])
+ 
+
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        
 #         >>> from bzrlib.commit import commit
 #         >>> bzrlib.trace.silent = True
