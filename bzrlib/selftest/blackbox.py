@@ -33,6 +33,7 @@ import sys
 
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
 from bzrlib.branch import Branch
+from bzrlib.errors import BzrCommandError
 
 
 class ExternalBase(TestCaseInTempDir):
@@ -101,6 +102,13 @@ class TestCommands(ExternalBase):
         self.runbzr("commit -m empty", retcode=1)
         self.runbzr("add hello.txt")
         self.runbzr("commit -m added")
+
+    def test_empty_commit_message(self):
+        os.environ['BZR_EDITOR'] = 'touch' 
+        self.runbzr("init")
+        file('foo.c', 'wt').write('int main() {}')
+        self.runbzr(['add', 'foo.c'])
+        self.runbzr("commit", retcode=1) 
 
     def test_ignore_patterns(self):
         from bzrlib.branch import Branch
