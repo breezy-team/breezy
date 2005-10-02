@@ -184,8 +184,12 @@ class Fetcher(object):
                rev.committer,
                len(rev.parent_ids))
         self._copy_new_texts(rev_id, inv)
-        self._copy_inventory(rev_id, inv_xml, rev.parent_ids)
-        self._copy_ancestry(rev_id, rev.parent_ids)
+        parents = rev.parent_ids
+        for parent in parents:
+            if not self.to_branch.has_revision(parent):
+                parents.pop(parents.index(parent))
+        self._copy_inventory(rev_id, inv_xml, parents)
+        self._copy_ancestry(rev_id, parents)
         self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
 
 
