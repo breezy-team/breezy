@@ -233,15 +233,13 @@ class Commit(object):
         finally:
             self.branch.unlock()
 
-
-
     def _record_inventory(self):
         """Store the inventory for the new revision."""
         inv_text = serializer_v5.write_inventory_to_string(self.new_inv)
         self.inv_sha1 = sha_string(inv_text)
         s = self.branch.control_weaves
         s.add_text('inventory', self.rev_id,
-                   split_lines(inv_text), self.parents)
+                   split_lines(inv_text), self.present_parents)
 
     def _escape_commit_message(self):
         """Replace xml-incompatible control characters."""
@@ -270,39 +268,42 @@ class Commit(object):
         s = self.branch.control_weaves
         w = s.get_weave_or_empty('ancestry')
         lines = self._make_ancestry(w)
-        w.add(self.rev_id, self.parents, lines)
+        w.add(self.rev_id, self.present_parents, lines)
         s.put_weave('ancestry', w)
-
 
     def _make_ancestry(self, ancestry_weave):
         """Return merged ancestry lines.
 
         The lines are revision-ids followed by newlines."""
-        parent_ancestries = [ancestry_weave.get(p) for p in self.parents]
+        parent_ancestries = [ancestry_weave.get(p) for p in self.present_parents]
         new_lines = merge_ancestry_lines(self.rev_id, parent_ancestries)
         mutter('merged ancestry of {%s}:\n%s', self.rev_id, ''.join(new_lines))
         return new_lines
 
-
     def _gather_parents(self):
+        """Record the parents of a merge for merge detection."""
         pending_merges = self.branch.pending_merges()
         self.parents = []
         self.parent_trees = []
+        self.present_parents = []
         precursor_id = self.branch.last_revision()
         if precursor_id:
             self.parents.append(precursor_id)
-            self.parent_trees.append(self.basis_tree)
         self.parents += pending_merges
-        self.parent_trees.extend(map(self.branch.revision_tree, pending_merges))
-
+        for revision in self.parents:
+            if self.branch.has_revision(revision):
+                self.parent_trees.append(self.branch.revision_tree(revision))
+                self.present_parents.append(revision)
 
     def _check_parents_present(self):
         for parent_id in self.parents:
             mutter('commit parent revision {%s}', parent_id)
             if not self.branch.has_revision(parent_id):
-                warning("can't commit a merge from an absent parent")
-                raise HistoryMissing(self.branch, 'revision', parent_id)
-
+                if parent_id == self.branch.last_revision():
+                    warning("parent is pissing %r", parent_id)
+                    raise HistoryMissing(self.branch, 'revision', parent_id)
+                else:
+                    mutter("commit will ghost revision %r", parent_id)
             
     def _make_revision(self):
         """Record a new revision object for this commit."""

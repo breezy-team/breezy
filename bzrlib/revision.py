@@ -33,7 +33,8 @@ class Revision(object):
         List of parent revision_ids
     """
     
-    def __init__(self, **args):
+    def __init__(self, revision_id, **args):
+        self.revision_id = revision_id
         self.__dict__.update(args)
         self.parent_ids = []
         self.parent_sha1s = []

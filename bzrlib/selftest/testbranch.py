@@ -22,6 +22,7 @@ from bzrlib.errors import NoSuchRevision, UnlistableBranch
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.trace import mutter
 
+
 class TestBranch(TestCaseInTempDir):
 
     def test_append_revisions(self):
@@ -101,6 +102,22 @@ class TestFetch(TestCaseInTempDir):
         self.assertTrue(os.path.exists('b/one'))
         self.assertFalse(os.path.exists('b/two'))
         
+
+    def test_record_initial_ghost_merge(self):
+        """A pending merge with no revision present is still a merge."""
+        branch = Branch.initialize('.')
+        branch.add_pending_merge('non:existent@rev--ision--0--2')
+        branch.commit('pretend to merge nonexistent-revision', rev_id='first')
+        rev = branch.get_revision(branch.last_revision())
+        self.assertEqual(len(rev.parent_ids), 1)
+        # parent_sha1s is not populated now, WTF. rbc 20051003
+        self.assertEqual(len(rev.parent_sha1s), 0)
+        self.assertEqual(rev.parent_ids[0], 'non:existent@rev--ision--0--2')
+
+# TODO:
+# compare the gpg-to-sign info for a commit with a ghost and 
+#     an identical tree without a ghost
+# fetch missing should rewrite the TOC of weaves to list newly available parents.
         
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        
 #         >>> from bzrlib.commit import commit
