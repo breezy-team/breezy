@@ -111,7 +111,7 @@ class TestBranch(TestCaseInTempDir):
         self.assertEqual(len(rev.parent_sha1s), 0)
         self.assertEqual(rev.parent_ids[0], 'non:existent@rev--ision--0--2')
 
-# TODO:
+# TODO 20051003 RBC:
 # compare the gpg-to-sign info for a commit with a ghost and 
 #     an identical tree without a ghost
 # fetch missing should rewrite the TOC of weaves to list newly available parents.
