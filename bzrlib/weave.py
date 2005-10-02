@@ -94,7 +94,6 @@ import sha
 from difflib import SequenceMatcher
 
 
-from bzrlib.osutils import sha_strings
 
 
 class WeaveError(Exception):
@@ -273,6 +272,7 @@ class Weave(object):
         sha -- SHA-1 of the file, if known.  This is trusted to be
             correct if supplied.
         """
+        from bzrlib.osutils import sha_strings
 
         assert isinstance(name, basestring)
         if sha1 is None:
@@ -784,11 +784,8 @@ def weave_toc(w):
 
 
 
-def weave_stats(weave_file):
-    from bzrlib.progress import ProgressBar
+def weave_stats(weave_file, pb):
     from bzrlib.weavefile import read_weave
-
-    pb = ProgressBar()
 
     wf = file(weave_file, 'rb')
     w = read_weave(wf)
@@ -868,6 +865,12 @@ example:
 def main(argv):
     import sys
     import os
+    try:
+        import bzrlib
+    except ImportError:
+        # in case we're run directly from the subdirectory
+        sys.path.append('..')
+        import bzrlib
     from bzrlib.weavefile import write_weave, read_weave
     from bzrlib.progress import ProgressBar
 
@@ -940,7 +943,7 @@ def main(argv):
         weave_toc(readit())
 
     elif cmd == 'stats':
-        weave_stats(argv[2])
+        weave_stats(argv[2], ProgressBar())
         
     elif cmd == 'check':
         w = readit()

@@ -25,16 +25,118 @@ import errno
 import subprocess
 import shutil
 
-import testsweet
 import bzrlib.commands
 import bzrlib.trace
 import bzrlib.fetch
+from bzrlib.selftest import TestUtil
+from bzrlib.selftest.TestUtil import TestLoader, TestSuite
 
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
 
 from logging import debug, warning, error
+
+
+
+class EarlyStoppingTestResultAdapter(object):
+    """An adapter for TestResult to stop at the first first failure or error"""
+
+    def __init__(self, result):
+        self._result = result
+
+    def addError(self, test, err):
+        self._result.addError(test, err)
+        self._result.stop()
+
+    def addFailure(self, test, err):
+        self._result.addFailure(test, err)
+        self._result.stop()
+
+    def __getattr__(self, name):
+        return getattr(self._result, name)
+
+    def __setattr__(self, name, value):
+        if name == '_result':
+            object.__setattr__(self, name, value)
+        return setattr(self._result, name, value)
+
+
+class _MyResult(unittest._TextTestResult):
+    """
+    Custom TestResult.
+
+    No special behaviour for now.
+    """
+
+    def startTest(self, test):
+        unittest.TestResult.startTest(self, test)
+        # TODO: Maybe show test.shortDescription somewhere?
+        what = test.shortDescription() or test.id()        
+        if self.showAll:
+            self.stream.write('%-70.70s' % what)
+        self.stream.flush()
+
+    def addError(self, test, err):
+        super(_MyResult, self).addError(test, err)
+        self.stream.flush()
+
+    def addFailure(self, test, err):
+        super(_MyResult, self).addFailure(test, err)
+        self.stream.flush()
+
+    def addSuccess(self, test):
+        if self.showAll:
+            self.stream.writeln('OK')
+        elif self.dots:
+            self.stream.write('~')
+        self.stream.flush()
+        unittest.TestResult.addSuccess(self, test)
+
+    def printErrorList(self, flavour, errors):
+        for test, err in errors:
+            self.stream.writeln(self.separator1)
+            self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
+            if hasattr(test, '_get_log'):
+                self.stream.writeln()
+                self.stream.writeln('log from this test:')
+                print >>self.stream, test._get_log()
+            self.stream.writeln(self.separator2)
+            self.stream.writeln("%s" % err)
+
+
+class TextTestRunner(unittest.TextTestRunner):
+
+    def _makeResult(self):
+        result = _MyResult(self.stream, self.descriptions, self.verbosity)
+        return EarlyStoppingTestResultAdapter(result)
+
+
+class filteringVisitor(TestUtil.TestVisitor):
+    """I accruse all the testCases I visit that pass a regexp filter on id
+    into my suite
+    """
+
+    def __init__(self, filter):
+        import re
+        TestUtil.TestVisitor.__init__(self)
+        self._suite=None
+        self.filter=re.compile(filter)
+
+    def suite(self):
+        """answer the suite we are building"""
+        if self._suite is None:
+            self._suite=TestUtil.TestSuite()
+        return self._suite
+
+    def visitCase(self, aCase):
+        if self.filter.match(aCase.id()):
+            self.suite().addTest(aCase)
+
+class TestSkipped(Exception):
+    """Indicates that a test was intentionally skipped, rather than failing."""
+    # XXX: Not used yet
+
 
 class CommandFailed(Exception):
     pass
@@ -55,7 +157,6 @@ class TestCase(unittest.TestCase):
     BZRPATH = 'bzr'
 
     def setUp(self):
-        # this replaces the default testsweet.TestCase; we don't want logging changed
         unittest.TestCase.setUp(self)
         bzrlib.trace.disable_default_logging()
         self._enable_file_logging()
@@ -296,16 +397,39 @@ class MetaTestLog(TestCase):
         ##assert 0
 
 
+
+def run_suite(suite, name='test', verbose=False, pattern=".*"):
+    TestCaseInTempDir._TEST_NAME = name
+    if verbose:
+        verbosity = 2
+    else:
+        verbosity = 1
+    runner = TextTestRunner(stream=sys.stdout,
+                            descriptions=0,
+                            verbosity=verbosity)
+    visitor = filteringVisitor(pattern)
+    suite.visit(visitor)
+    result = runner.run(visitor.suite())
+    # This is still a little bogus, 
+    # but only a little. Folk not using our testrunner will
+    # have to delete their temp directories themselves.
+    if result.wasSuccessful():
+        if TestCaseInTempDir.TEST_ROOT is not None:
+            shutil.rmtree(TestCaseInTempDir.TEST_ROOT) 
+    else:
+        print "Failed tests working directories are in '%s'\n" % TestCaseInTempDir.TEST_ROOT
+    return result.wasSuccessful()
+
+
 def selftest(verbose=False, pattern=".*"):
     """Run the whole test suite under the enhanced runner"""
-    return testsweet.run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
+    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
 
 
 def test_suite():
     """Build and return TestSuite for the whole program."""
-    from bzrlib.selftest.TestUtil import TestLoader, TestSuite
-    import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
-    import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
+    import bzrlib.store, bzrlib.inventory, bzrlib.branch
+    import bzrlib.osutils, bzrlib.merge3, bzrlib.plugin
     from doctest import DocTestSuite
 
     global MODULES_TO_TEST, MODULES_TO_DOCTEST
@@ -324,7 +448,6 @@ def test_suite():
                    'bzrlib.selftest.testlog',
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
-                   'bzrlib.selftest.testremotebranch',
                    'bzrlib.selftest.testrevision',
                    'bzrlib.selftest.test_revision_info',
                    'bzrlib.selftest.test_merge_core',
@@ -338,6 +461,7 @@ def test_suite():
                    'bzrlib.selftest.whitebox',
                    'bzrlib.selftest.teststore',
                    'bzrlib.selftest.blackbox',
+                   'bzrlib.selftest.testtransport',
                    'bzrlib.selftest.testgraph',
                    ]
 
