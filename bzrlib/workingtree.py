@@ -37,6 +37,9 @@ class TreeEntry(object):
     this is a parallel hierarchy to InventoryEntry, and needs to become
     one of several things: decorates to that hierarchy, children of, or
     parents of it.
+    Another note is that these objects are currently only used when there is
+    no InventoryEntry available - i.e. for unversioned objects.
+    Perhaps they should be UnversionedEntry et al. ? - RBC 20051003
     """
  
     def __eq__(self, other):

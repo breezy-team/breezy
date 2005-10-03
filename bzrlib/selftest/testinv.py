@@ -73,3 +73,42 @@ class TestInventoryEntry(TestCaseInTempDir):
     def test_link_kind_character(self):
         dir = InventoryEntry('123', 'hello.c', 'symlink', ROOT_ID)
         self.assertEqual(dir.kind_character(), '')
+
+    def test_dir_detect_changes(self):
+        left = InventoryEntry('123', 'hello.c', 'directory', ROOT_ID)
+        left.text_sha1 = 123
+        left.executable = True
+        left.symlink_target='foo'
+        right = InventoryEntry('123', 'hello.c', 'directory', ROOT_ID)
+        right.text_sha1 = 321
+        right.symlink_target='bar'
+        self.assertEqual((False, False), left.detect_changes(right))
+        self.assertEqual((False, False), right.detect_changes(left))
+
+    def test_file_detect_changes(self):
+        left = InventoryEntry('123', 'hello.c', 'file', ROOT_ID)
+        left.text_sha1 = 123
+        right = InventoryEntry('123', 'hello.c', 'file', ROOT_ID)
+        right.text_sha1 = 123
+        self.assertEqual((False, False), left.detect_changes(right))
+        self.assertEqual((False, False), right.detect_changes(left))
+        left.executable = True
+        self.assertEqual((False, True), left.detect_changes(right))
+        self.assertEqual((False, True), right.detect_changes(left))
+        right.text_sha1 = 321
+        self.assertEqual((True, True), left.detect_changes(right))
+        self.assertEqual((True, True), right.detect_changes(left))
+
+    def test_symlink_detect_changes(self):
+        left = InventoryEntry('123', 'hello.c', 'symlink', ROOT_ID)
+        left.text_sha1 = 123
+        left.executable = True
+        left.symlink_target='foo'
+        right = InventoryEntry('123', 'hello.c', 'symlink', ROOT_ID)
+        right.text_sha1 = 321
+        right.symlink_target='foo'
+        self.assertEqual((False, False), left.detect_changes(right))
+        self.assertEqual((False, False), right.detect_changes(left))
+        left.symlink_target = 'different'
+        self.assertEqual((True, False), left.detect_changes(right))
+        self.assertEqual((True, False), right.detect_changes(left))

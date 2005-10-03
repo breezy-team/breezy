@@ -122,6 +122,28 @@ class InventoryEntry(object):
     def _add_text_to_weave(self, new_lines, parents, weave_store):
         weave_store.add_text(self.file_id, self.revision, new_lines, parents)
 
+    def detect_changes(self, old_entry):
+        """Return a (text_modified, meta_modified) from this to old_entry.
+        
+        _read_tree_state must have been called on self and old_entry prior to 
+        calling detect_changes.
+        """
+        if self.kind == 'file':
+            assert self.text_sha1 != None
+            assert old_entry.text_sha1 != None
+            text_modified = (self.text_sha1 != old_entry.text_sha1)
+            meta_modified = (self.executable != old_entry.executable)
+        elif self.kind == 'symlink':
+            # FIXME: which _modified field should we use ? RBC 20051003
+            text_modified = (self.symlink_target != old_entry.symlink_target)
+            if text_modified:
+                mutter("    symlink target changed")
+            meta_modified = False
+        else:
+            text_modified = False
+            meta_modified = False
+        return text_modified, meta_modified
+
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
         
@@ -170,12 +192,7 @@ class InventoryEntry(object):
             return ''
         raise RuntimeError('unreachable code')
 
-    def read_symlink_target(self, path):
-        if self.kind == 'symlink':
-            try:
-                self.symlink_target = os.readlink(path)
-            except OSError,e:
-                raise BzrError("os.readlink error, %s" % e)
+    known_kinds = ('file', 'directory', 'symlink', 'root_directory')
 
     def sorted_children(self):
         l = self.children.items()
@@ -343,7 +360,7 @@ class InventoryEntry(object):
 
     def _read_tree_state(self, path, work_tree):
         if self.kind == 'symlink':
-            self.read_symlink_target(work_tree.abspath(path))
+            self.symlink_target = work_tree.get_symlink_target(self.file_id)
         if self.kind == 'file':
             self.text_sha1 = work_tree.get_file_sha1(self.file_id)
             self.executable = work_tree.is_executable(self.file_id)
