@@ -112,7 +112,7 @@ class InventoryEntry(object):
     
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
                  'text_id', 'parent_id', 'children', 'executable', 
-                 'revision', 'symlink_target']
+                 'revision']
 
     def _add_text_to_weave(self, new_lines, parents, weave_store):
         weave_store.add_text(self.file_id, self.revision, new_lines, parents)
@@ -123,27 +123,14 @@ class InventoryEntry(object):
         _read_tree_state must have been called on self and old_entry prior to 
         calling detect_changes.
         """
-        if self.kind == 'file':
-            assert self.text_sha1 != None
-            assert old_entry.text_sha1 != None
-            text_modified = (self.text_sha1 != old_entry.text_sha1)
-            meta_modified = (self.executable != old_entry.executable)
-        elif self.kind == 'symlink':
-            # FIXME: which _modified field should we use ? RBC 20051003
-            text_modified = (self.symlink_target != old_entry.symlink_target)
-            if text_modified:
-                mutter("    symlink target changed")
-            meta_modified = False
-        else:
-            text_modified = False
-            meta_modified = False
-        return text_modified, meta_modified
+        return False, False
 
     def diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """Perform a diff from this to to_entry.
 
         text_diff will be used for textual difference calculation.
+        This is a template method, override _diff in child classes.
         """
         self._read_tree_state(tree.id2path(self.file_id), tree)
         if to_entry:
@@ -152,32 +139,12 @@ class InventoryEntry(object):
             assert self.kind == to_entry.kind
             to_entry._read_tree_state(to_tree.id2path(to_entry.file_id),
                                       to_tree)
-        if self.kind == 'file':
-            from_text = tree.get_file(self.file_id).readlines()
-            if to_entry:
-                to_text = to_tree.get_file(to_entry.file_id).readlines()
-            else:
-                to_text = []
-            if not reverse:
-                text_diff(from_label, from_text,
-                          to_label, to_text, output_to)
-            else:
-                text_diff(to_label, to_text,
-                          from_label, from_text, output_to)
-        elif self.kind == 'symlink':
-            from_text = self.symlink_target
-            if to_entry is not None:
-                to_text = to_entry.symlink_target
-                if reverse:
-                    temp = from_text
-                    from_text = to_text
-                    to_text = temp
-                print >>output_to, '=== target changed %r => %r' % (from_text, to_text)
-            else:
-                if not reverse:
-                    print >>output_to, '=== target was %r' % self.symlink_target
-                else:
-                    print >>output_to, '=== target is %r' % self.symlink_target
+        self._diff(text_diff, from_label, tree, to_label, to_entry, to_tree,
+                   output_to, reverse)
+
+    def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
+             output_to, reverse=False):
+        """Perform a diff between two entries of the same kind."""
 
     def get_tar_item(self, root, dp, now, tree):
         """Get a tarfile item and a file stream for its content."""
@@ -226,9 +193,7 @@ class InventoryEntry(object):
 
     def kind_character(self):
         """Return a short kind indicator useful for appending to names."""
-        if self.kind == 'symlink':
-            return ''
-        raise RuntimeError('unreachable code')
+        raise BzrError('unknown kind %r' % self.kind)
 
     known_kinds = ('file', 'directory', 'symlink', 'root_directory')
 
@@ -301,7 +266,7 @@ class InventoryEntry(object):
 
     def snapshot(self, revision, path, previous_entries, work_tree, 
                  weave_store):
-        """Make a snapshot of this entry.
+        """Make a snapshot of this entry which may or may not have changed.
         
         This means that all its fields are populated, that it has its
         text stored in the text store or weave.
@@ -315,12 +280,15 @@ class InventoryEntry(object):
                 mutter("found unchanged entry")
                 self.revision = parent_ie.revision
                 return "unchanged"
+        return self.snapshot_revision(revision, previous_entries, 
+                                      work_tree, weave_store)
+
+    def snapshot_revision(self, revision, previous_entries, work_tree,
+                          weave_store):
+        """Record this revision unconditionally."""
         mutter('new revision for {%s}', self.file_id)
         self.revision = revision
         change = self._get_snapshot_change(previous_entries)
-        if self.kind != 'file':
-            return change
-        self._snapshot_text(previous_entries, work_tree, weave_store)
         return change
 
     def _snapshot_text(self, file_parents, work_tree, weave_store): 
@@ -364,6 +332,10 @@ class InventoryEntry(object):
         raise ValueError('not hashable')
 
     def _unchanged(self, path, previous_ie, work_tree):
+        """Has this entry changed relative to previous_ie.
+
+        This method should be overriden in child classes.
+        """
         compatible = True
         # different inv parent
         if previous_ie.parent_id != self.parent_id:
@@ -371,24 +343,14 @@ class InventoryEntry(object):
         # renamed
         elif previous_ie.name != self.name:
             compatible = False
-        if self.kind == 'symlink':
-            if self.symlink_target != previous_ie.symlink_target:
-                compatible = False
-        if self.kind == 'file':
-            if self.text_sha1 != previous_ie.text_sha1:
-                compatible = False
-            else:
-                # FIXME: 20050930 probe for the text size when getting sha1
-                # in _read_tree_state
-                self.text_size = previous_ie.text_size
         return compatible
 
     def _read_tree_state(self, path, work_tree):
-        if self.kind == 'symlink':
-            self.symlink_target = work_tree.get_symlink_target(self.file_id)
-        if self.kind == 'file':
-            self.text_sha1 = work_tree.get_file_sha1(self.file_id)
-            self.executable = work_tree.is_executable(self.file_id)
+        """Populate fields in the inventory entry from the given tree.
+        
+        Note that this should be modified to be a noop on virtual trees
+        as all entries created there are prepopulated.
+        """
 
 
 class RootEntry(InventoryEntry):
@@ -483,6 +445,29 @@ class InventoryFile(InventoryEntry):
         other.revision = self.revision
         return other
 
+    def detect_changes(self, old_entry):
+        """See InventoryEntry.detect_changes."""
+        assert self.text_sha1 != None
+        assert old_entry.text_sha1 != None
+        text_modified = (self.text_sha1 != old_entry.text_sha1)
+        meta_modified = (self.executable != old_entry.executable)
+        return text_modified, meta_modified
+
+    def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
+             output_to, reverse=False):
+        """See InventoryEntry._diff."""
+        from_text = tree.get_file(self.file_id).readlines()
+        if to_entry:
+            to_text = to_tree.get_file(to_entry.file_id).readlines()
+        else:
+            to_text = []
+        if not reverse:
+            text_diff(from_label, from_text,
+                      to_label, to_text, output_to)
+        else:
+            text_diff(to_label, to_text,
+                      from_label, from_text, output_to)
+
     def has_text(self):
         """See InventoryEntry.has_text."""
         return True
@@ -512,9 +497,36 @@ class InventoryFile(InventoryEntry):
         if tree.is_executable(self.file_id):
             os.chmod(fullpath, 0755)
 
+    def _read_tree_state(self, path, work_tree):
+        """See InventoryEntry._read_tree_state."""
+        self.text_sha1 = work_tree.get_file_sha1(self.file_id)
+        self.executable = work_tree.is_executable(self.file_id)
+
+    def snapshot_revision(self, revision, previous_entries, work_tree,
+                          weave_store):
+        """See InventoryEntry.snapshot_revision."""
+        change = super(InventoryFile, self).snapshot_revision(revision, 
+            previous_entries, work_tree, weave_store)
+        self._snapshot_text(previous_entries, work_tree, weave_store)
+        return change
+
+    def _unchanged(self, path, previous_ie, work_tree):
+        """See InventoryEntry._unchanged."""
+        compatible = super(InventoryFile, self)._unchanged(path, previous_ie, 
+            work_tree)
+        if self.text_sha1 != previous_ie.text_sha1:
+            compatible = False
+        else:
+            # FIXME: 20050930 probe for the text size when getting sha1
+            # in _read_tree_state
+            self.text_size = previous_ie.text_size
+        return compatible
+
 
 class InventoryLink(InventoryEntry):
     """A file in an inventory."""
+
+    __slots__ = ['symlink_target']
 
     def _check(self, checker, rev_id, tree):
         """See InventoryEntry._check"""
@@ -530,6 +542,32 @@ class InventoryLink(InventoryEntry):
         other.symlink_target = self.symlink_target
         other.revision = self.revision
         return other
+
+    def detect_changes(self, old_entry):
+        """See InventoryEntry.detect_changes."""
+        # FIXME: which _modified field should we use ? RBC 20051003
+        text_modified = (self.symlink_target != old_entry.symlink_target)
+        if text_modified:
+            mutter("    symlink target changed")
+        meta_modified = False
+        return text_modified, meta_modified
+
+    def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
+             output_to, reverse=False):
+        """See InventoryEntry._diff."""
+        from_text = self.symlink_target
+        if to_entry is not None:
+            to_text = to_entry.symlink_target
+            if reverse:
+                temp = from_text
+                from_text = to_text
+                to_text = temp
+            print >>output_to, '=== target changed %r => %r' % (from_text, to_text)
+        else:
+            if not reverse:
+                print >>output_to, '=== target was %r' % self.symlink_target
+            else:
+                print >>output_to, '=== target is %r' % self.symlink_target
 
     def __init__(self, file_id, name, parent_id):
         super(InventoryLink, self).__init__(file_id, name, parent_id)
@@ -554,6 +592,18 @@ class InventoryLink(InventoryEntry):
             os.symlink(self.symlink_target, fullpath)
         except OSError,e:
             raise BzrError("Failed to create symlink %r -> %r, error: %s" % (fullpath, self.symlink_target, e))
+
+    def _read_tree_state(self, path, work_tree):
+        """See InventoryEntry._read_tree_state."""
+        self.symlink_target = work_tree.get_symlink_target(self.file_id)
+
+    def _unchanged(self, path, previous_ie, work_tree):
+        """See InventoryEntry._unchanged."""
+        compatible = super(InventoryLink, self)._unchanged(path, previous_ie, 
+            work_tree)
+        if self.symlink_target != previous_ie.symlink_target:
+            compatible = False
+        return compatible
 
 
 class Inventory(object):
