@@ -69,8 +69,6 @@ def write_text_inventory(inv, outf):
     outf.write(END_MARK)
 
 
-
-
 def read_text_inventory(tf):
     """Return an inventory read in from tf"""
     if tf.readline() != START_MARK:

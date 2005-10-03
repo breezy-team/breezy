@@ -31,12 +31,14 @@ ROOT_ID = "TREE_ROOT"
 import os.path
 import re
 import sys
+import tarfile
 import types
 
 import bzrlib
 from bzrlib.errors import BzrError, BzrCheckError
 
-from bzrlib.osutils import quotefn, splitpath, joinpath, appendpath, sha_strings
+from bzrlib.osutils import (pumpfile, quotefn, splitpath, joinpath,
+                            appendpath, sha_strings)
 from bzrlib.trace import mutter
 from bzrlib.errors import NotVersionedError
 
@@ -184,6 +186,30 @@ class InventoryEntry(object):
                 else:
                     print >>output_to, '=== target is %r' % self.symlink_target
 
+    def get_tar_item(self, root, dp, now, tree):
+        item = tarfile.TarInfo(os.path.join(root, dp))
+        # TODO: would be cool to actually set it to the timestamp of the
+        # revision it was last changed
+        item.mtime = now
+        if self.kind == 'directory':
+            item.type = tarfile.DIRTYPE
+            fileobj = None
+            item.name += '/'
+            item.size = 0
+            item.mode = 0755
+        elif self.kind == 'file':
+            item.type = tarfile.REGTYPE
+            fileobj = tree.get_file(self.file_id)
+            item.size = self.text_size
+            if tree.is_executable(self.file_id):
+                item.mode = 0755
+            else:
+                item.mode = 0644
+        else:
+            raise BzrError("don't know how to export {%s} of kind %r" %
+                    (self.file_id, self.kind))
+        return item, fileobj
+
     def has_text(self):
         """Return true if the object this entry represents has textual data.
 
@@ -243,6 +269,24 @@ class InventoryEntry(object):
         raise RuntimeError('unreachable code')
 
     known_kinds = ('file', 'directory', 'symlink', 'root_directory')
+
+    def put_on_disk(self, dest, dp, tree):
+        """Create a representation of self on disk in the prefix dest."""
+        fullpath = appendpath(dest, dp)
+        if self.kind == 'directory':
+            os.mkdir(fullpath)
+        elif self.kind == 'file':
+            pumpfile(tree.get_file(self.file_id), file(fullpath, 'wb'))
+            if tree.is_executable(self.file_id):
+                os.chmod(fullpath, 0755)
+        elif self.kind == 'symlink':
+            try:
+                os.symlink(self.symlink_target, fullpath)
+            except OSError,e:
+                raise BzrError("Failed to create symlink %r -> %r, error: %s" % (fullpath, self.symlink_target, e))
+        else:
+            raise BzrError("don't know how to export {%s} of kind %r" % (self.file_id, self.kind))
+        mutter("  export {%s} kind %s to %s" % (self.file_id, self.kind, fullpath))
 
     def sorted_children(self):
         l = self.children.items()

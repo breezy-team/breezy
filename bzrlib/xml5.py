@@ -45,7 +45,8 @@ class Serializer_v5(Serializer):
 
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
-        assert ie.kind in ('directory', 'file', 'symlink')
+        if not InventoryEntry.versionable_kind(ie.kind):
+            raise AssertionError('unsupported entry kind %s' % ie.kind)
         e = Element(ie.kind)
         e.set('name', ie.name)
         e.set('file_id', ie.file_id)
@@ -117,7 +118,7 @@ class Serializer_v5(Serializer):
 
     def _unpack_entry(self, elt):
         kind = elt.tag
-        if not kind in ('directory', 'file', 'symlink'):
+        if not InventoryEntry.versionable_kind(kind):
             raise AssertionError('unsupported entry kind %s' % kind)
 
         parent_id = elt.get('parent_id')

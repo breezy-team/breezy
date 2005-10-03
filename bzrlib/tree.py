@@ -24,7 +24,7 @@ import bzrlib
 from bzrlib.trace import mutter, note
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.inventory import Inventory
-from bzrlib.osutils import pumpfile, appendpath, fingerprint_file
+from bzrlib.osutils import appendpath, fingerprint_file
 
 
 exporters = {}
@@ -275,22 +275,8 @@ def dir_exporter(tree, dest, root):
     mutter('export version %r' % tree)
     inv = tree.inventory
     for dp, ie in inv.iter_entries():
-        kind = ie.kind
-        fullpath = appendpath(dest, dp)
-        if kind == 'directory':
-            os.mkdir(fullpath)
-        elif kind == 'file':
-            pumpfile(tree.get_file(ie.file_id), file(fullpath, 'wb'))
-            if tree.is_executable(ie.file_id):
-                os.chmod(fullpath, 0755)
-        elif kind == 'symlink':
-            try:
-                os.symlink(ie.symlink_target, fullpath)
-            except OSError,e:
-                raise BzrError("Failed to create symlink %r -> %r, error: %s" % (fullpath, ie.symlink_target, e))
-        else:
-            raise BzrError("don't know how to export {%s} of kind %r" % (ie.file_id, kind))
-        mutter("  export {%s} kind %s to %s" % (ie.file_id, kind, fullpath))
+        ie.put_on_disk(dest, dp, tree)
+
 exporters['dir'] = dir_exporter
 
 try:
@@ -339,30 +325,10 @@ else:
         inv = tree.inventory
         for dp, ie in inv.iter_entries():
             mutter("  export {%s} kind %s to %s" % (ie.file_id, ie.kind, dest))
-            item = tarfile.TarInfo(os.path.join(root, dp))
-            # TODO: would be cool to actually set it to the timestamp of the
-            # revision it was last changed
-            item.mtime = now
-            if ie.kind == 'directory':
-                item.type = tarfile.DIRTYPE
-                fileobj = None
-                item.name += '/'
-                item.size = 0
-                item.mode = 0755
-            elif ie.kind == 'file':
-                item.type = tarfile.REGTYPE
-                fileobj = tree.get_file(ie.file_id)
-                item.size = _find_file_size(fileobj)
-                if tree.is_executable(ie.file_id):
-                    item.mode = 0755
-                else:
-                    item.mode = 0644
-            else:
-                raise BzrError("don't know how to export {%s} of kind %r" %
-                        (ie.file_id, ie.kind))
-
+            item, fileobj = ie.get_tar_item(root, dp, now, tree)
             ball.addfile(item, fileobj)
         ball.close()
+
     exporters['tar'] = tar_exporter
 
     def tgz_exporter(tree, dest, root):
@@ -372,21 +338,3 @@ else:
     def tbz_exporter(tree, dest, root):
         tar_exporter(tree, dest, root, compression='bz2')
     exporters['tbz2'] = tbz_exporter
-
-
-def _find_file_size(fileobj):
-    offset = fileobj.tell()
-    try:
-        fileobj.seek(0, 2)
-        size = fileobj.tell()
-    except TypeError:
-        # gzip doesn't accept second argument to seek()
-        fileobj.seek(0)
-        size = 0
-        while True:
-            nread = len(fileobj.read())
-            if nread == 0:
-                break
-            size += nread
-    fileobj.seek(offset)
-    return size
