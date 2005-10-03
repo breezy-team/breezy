@@ -68,7 +68,7 @@ class TestInventory(TestCase):
 class TestInventoryEntry(TestCaseInTempDir):
 
     def test_file_kind_character(self):
-        file = InventoryEntry('123', 'hello.c', 'file', ROOT_ID)
+        file = inventory.InventoryFile('123', 'hello.c', ROOT_ID)
         self.assertEqual(file.kind_character(), '')
 
     def test_dir_kind_character(self):
@@ -91,9 +91,9 @@ class TestInventoryEntry(TestCaseInTempDir):
         self.assertEqual((False, False), right.detect_changes(left))
 
     def test_file_detect_changes(self):
-        left = InventoryEntry('123', 'hello.c', 'file', ROOT_ID)
+        left = inventory.InventoryFile('123', 'hello.c', ROOT_ID)
         left.text_sha1 = 123
-        right = InventoryEntry('123', 'hello.c', 'file', ROOT_ID)
+        right = inventory.InventoryFile('123', 'hello.c', ROOT_ID)
         right.text_sha1 = 123
         self.assertEqual((False, False), left.detect_changes(right))
         self.assertEqual((False, False), right.detect_changes(left))
@@ -119,7 +119,7 @@ class TestInventoryEntry(TestCaseInTempDir):
         self.assertEqual((True, False), right.detect_changes(left))
 
     def test_file_has_text(self):
-        file = InventoryEntry('123', 'hello.c', 'file', ROOT_ID)
+        file = inventory.InventoryFile('123', 'hello.c', ROOT_ID)
         self.failUnless(file.has_text())
 
     def test_directory_has_text(self):

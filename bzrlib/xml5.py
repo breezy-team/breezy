@@ -130,17 +130,21 @@ class Serializer_v5(Serializer):
             ie = inventory.InventoryDirectory(elt.get('file_id'),
                                               elt.get('name'),
                                               parent_id)
+        elif kind == 'file':
+            ie = inventory.InventoryFile(elt.get('file_id'),
+                                         elt.get('name'),
+                                         parent_id)
+            ie.text_sha1 = elt.get('text_sha1')
+            if elt.get('executable') == 'yes':
+                ie.executable = True
+            v = elt.get('text_size')
+            ie.text_size = v and int(v)
         else:
             ie = InventoryEntry(elt.get('file_id'),
                                 elt.get('name'),
                                 kind,
                                 parent_id)
-            ie.text_sha1 = elt.get('text_sha1')
             ie.symlink_target = elt.get('symlink_target')
-            if elt.get('executable') == 'yes':
-                ie.executable = True
-            v = elt.get('text_size')
-            ie.text_size = v and int(v)
         ie.revision = elt.get('revision')
 
         return ie

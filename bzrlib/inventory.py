@@ -77,29 +77,29 @@ class InventoryEntry(object):
     'TREE_ROOT'
     >>> i.add(InventoryDirectory('123', 'src', ROOT_ID))
     InventoryDirectory('123', 'src', parent_id='TREE_ROOT')
-    >>> i.add(InventoryEntry('2323', 'hello.c', 'file', parent_id='123'))
-    InventoryEntry('2323', 'hello.c', kind='file', parent_id='123')
+    >>> i.add(InventoryFile('2323', 'hello.c', parent_id='123'))
+    InventoryFile('2323', 'hello.c', parent_id='123')
     >>> for j in i.iter_entries():
     ...   print j
     ... 
     ('src', InventoryDirectory('123', 'src', parent_id='TREE_ROOT'))
-    ('src/hello.c', InventoryEntry('2323', 'hello.c', kind='file', parent_id='123'))
-    >>> i.add(InventoryEntry('2323', 'bye.c', 'file', '123'))
+    ('src/hello.c', InventoryFile('2323', 'hello.c', parent_id='123'))
+    >>> i.add(InventoryFile('2323', 'bye.c', '123'))
     Traceback (most recent call last):
     ...
     BzrError: inventory already contains entry with id {2323}
-    >>> i.add(InventoryEntry('2324', 'bye.c', 'file', '123'))
-    InventoryEntry('2324', 'bye.c', kind='file', parent_id='123')
+    >>> i.add(InventoryFile('2324', 'bye.c', '123'))
+    InventoryFile('2324', 'bye.c', parent_id='123')
     >>> i.add(InventoryDirectory('2325', 'wibble', '123'))
     InventoryDirectory('2325', 'wibble', parent_id='123')
     >>> i.path2id('src/wibble')
     '2325'
     >>> '2325' in i
     True
-    >>> i.add(InventoryEntry('2326', 'wibble.c', 'file', '2325'))
-    InventoryEntry('2326', 'wibble.c', kind='file', parent_id='2325')
+    >>> i.add(InventoryFile('2326', 'wibble.c', '2325'))
+    InventoryFile('2326', 'wibble.c', parent_id='2325')
     >>> i['2326']
-    InventoryEntry('2326', 'wibble.c', kind='file', parent_id='2325')
+    InventoryFile('2326', 'wibble.c', parent_id='2325')
     >>> for path, entry in i.iter_entries():
     ...     print path.replace('\\\\', '/')     # for win32 os.sep
     ...     assert i.path2id(path)
@@ -235,8 +235,6 @@ class InventoryEntry(object):
 
     def kind_character(self):
         """Return a short kind indicator useful for appending to names."""
-        if self.kind == 'file':
-            return ''
         if self.kind == 'symlink':
             return ''
         raise RuntimeError('unreachable code')
@@ -253,15 +251,7 @@ class InventoryEntry(object):
 
         If no content is available, return None.
         """
-        if self.kind == 'file':
-            item.type = tarfile.REGTYPE
-            fileobj = tree.get_file(self.file_id)
-            item.size = self.text_size
-            if tree.is_executable(self.file_id):
-                item.mode = 0755
-            else:
-                item.mode = 0644
-        elif self.kind == 'symlink':
+        if self.kind == 'symlink':
             iterm.type = tarfile.SYMTYPE
             fileobj = None
             item.size = 0
@@ -283,11 +273,7 @@ class InventoryEntry(object):
 
     def _put_on_disk(self, fullpath, tree):
         """Put this entry onto disk at fullpath, from tree tree."""
-        if self.kind == 'file':
-            pumpfile(tree.get_file(self.file_id), file(fullpath, 'wb'))
-            if tree.is_executable(self.file_id):
-                os.chmod(fullpath, 0755)
-        elif self.kind == 'symlink':
+        if self.kind == 'symlink':
             try:
                 os.symlink(self.symlink_target, fullpath)
             except OSError,e:
@@ -318,26 +304,7 @@ class InventoryEntry(object):
 
     def _check(self, checker, rev_id, tree):
         """Check this inventory entry for kind specific errors."""
-        if self.kind == 'file':
-            revision = self.revision
-            t = (self.file_id, revision)
-            if t in checker.checked_texts:
-                prev_sha = checker.checked_texts[t] 
-                if prev_sha != self.text_sha1:
-                    raise BzrCheckError('mismatched sha1 on {%s} in {%s}' %
-                                        (self.file_id, rev_id))
-                else:
-                    checker.repeated_text_cnt += 1
-                    return
-            mutter('check version {%s} of {%s}', rev_id, self.file_id)
-            file_lines = tree.get_file_lines(self.file_id)
-            checker.checked_text_cnt += 1 
-            if self.text_size != sum(map(len, file_lines)):
-                raise BzrCheckError('text {%s} wrong size' % self.text_id)
-            if self.text_sha1 != sha_strings(file_lines):
-                raise BzrCheckError('text {%s} wrong sha1' % self.text_id)
-            checker.checked_texts[t] = self.text_sha1
-        elif self.kind == 'symlink':
+        if self.kind == 'symlink':
             if self.text_sha1 != None or self.text_size != None or self.text_id != None:
                 raise BzrCheckError('symlink {%s} has text in revision {%s}'
                         % (self.file_id, rev_id))
@@ -352,10 +319,6 @@ class InventoryEntry(object):
     def copy(self):
         other = InventoryEntry(self.file_id, self.name, self.kind,
                                self.parent_id)
-        other.executable = self.executable
-        other.text_id = self.text_id
-        other.text_sha1 = self.text_sha1
-        other.text_size = self.text_size
         other.symlink_target = self.symlink_target
         other.revision = self.revision
         # note that children are *not* copied; they're pulled across when
@@ -540,6 +503,81 @@ class InventoryDirectory(InventoryEntry):
     def _put_on_disk(self, fullpath, tree):
         """See InventoryEntry._put_on_disk."""
         os.mkdir(fullpath)
+
+    def __repr__(self):
+        return ("%s(%r, %r, parent_id=%r)"
+                % (self.__class__.__name__,
+                   self.file_id,
+                   self.name,
+                   self.parent_id))
+
+
+class InventoryFile(InventoryEntry):
+    """A file in an inventory."""
+
+    def _check(self, checker, rev_id, tree):
+        """See InventoryEntry._check"""
+        revision = self.revision
+        t = (self.file_id, revision)
+        if t in checker.checked_texts:
+            prev_sha = checker.checked_texts[t] 
+            if prev_sha != self.text_sha1:
+                raise BzrCheckError('mismatched sha1 on {%s} in {%s}' %
+                                    (self.file_id, rev_id))
+            else:
+                checker.repeated_text_cnt += 1
+                return
+        mutter('check version {%s} of {%s}', rev_id, self.file_id)
+        file_lines = tree.get_file_lines(self.file_id)
+        checker.checked_text_cnt += 1 
+        if self.text_size != sum(map(len, file_lines)):
+            raise BzrCheckError('text {%s} wrong size' % self.text_id)
+        if self.text_sha1 != sha_strings(file_lines):
+            raise BzrCheckError('text {%s} wrong sha1' % self.text_id)
+        checker.checked_texts[t] = self.text_sha1
+
+    def copy(self):
+        other = InventoryFile(self.file_id, self.name, self.parent_id)
+        other.executable = self.executable
+        other.text_id = self.text_id
+        other.text_sha1 = self.text_sha1
+        other.text_size = self.text_size
+        other.revision = self.revision
+        return other
+
+    def __init__(self, file_id, name, parent_id):
+        super(InventoryFile, self).__init__(file_id, name, 'file',
+                                                 parent_id)
+
+    def kind_character(self):
+        """See InventoryEntry.kind_character."""
+        return ''
+
+    def __new__(cls, file_id, name, parent_id):
+        """Only present until the InventoryEntry.__new__ can go away."""
+        result = object.__new__(InventoryFile, file_id, name, 'directory',
+                                parent_id)
+        # type.__call__ is strange, it doesn't __init__ when the returned type
+        # differs
+        #result.__init__(file_id, name, 'directory', parent_id)
+        return result
+
+    def _put_in_tar(self, item, tree):
+        """See InventoryEntry._put_in_tar."""
+        item.type = tarfile.REGTYPE
+        fileobj = tree.get_file(self.file_id)
+        item.size = self.text_size
+        if tree.is_executable(self.file_id):
+            item.mode = 0755
+        else:
+            item.mode = 0644
+        return fileobj
+
+    def _put_on_disk(self, fullpath, tree):
+        """See InventoryEntry._put_on_disk."""
+        pumpfile(tree.get_file(self.file_id), file(fullpath, 'wb'))
+        if tree.is_executable(self.file_id):
+            os.chmod(fullpath, 0755)
 
     def __repr__(self):
         return ("%s(%r, %r, parent_id=%r)"
@@ -768,6 +806,8 @@ class Inventory(object):
 
         if kind == 'directory':
             ie = InventoryDirectory(file_id, parts[-1], parent_id)
+        elif kind == 'file':
+            ie = InventoryFile(file_id, parts[-1], parent_id)
         else:
             ie = InventoryEntry(file_id, parts[-1],
                                 kind=kind, parent_id=parent_id)

@@ -663,6 +663,8 @@ class _Branch(Branch):
                 continue
             if kind == 'directory':
                 inv.add(inventory.InventoryDirectory(file_id, name, parent))
+            elif kind == 'file':
+                inv.add(inventory.InventoryFile(file_id, name, parent))
             else:
                 inv.add(InventoryEntry(file_id, name, kind, parent))
         self._write_inventory(inv)

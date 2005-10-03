@@ -100,19 +100,22 @@ class _Serializer_v4(Serializer):
             ie = inventory.InventoryDirectory(elt.get('file_id'),
                                               elt.get('name'),
                                               parent_id)
+        elif kind == 'file':
+            ie = inventory.InventoryFile(elt.get('file_id'),
+                                         elt.get('name'),
+                                         parent_id)
+            ie.text_id = elt.get('text_id')
+            ie.text_sha1 = elt.get('text_sha1')
+            v = elt.get('text_size')
+            ie.text_size = v and int(v)
         else:
             ie = InventoryEntry(elt.get('file_id'),
                                 elt.get('name'),
                                 elt.get('kind'),
                                 parent_id)
-            ie.text_id = elt.get('text_id')
-            ie.text_sha1 = elt.get('text_sha1')
             ie.symlink_target = elt.get('symlink_target')
 
         ## mutter("read inventoryentry: %r" % (elt.attrib))
-
-        v = elt.get('text_size')
-        ie.text_size = v and int(v)
 
         return ie
 
