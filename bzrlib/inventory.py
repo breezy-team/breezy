@@ -172,6 +172,10 @@ class InventoryEntry(object):
         l.sort()
         return l
 
+    @staticmethod
+    def versionable_kind(kind):
+        return kind in ('file', 'directory', 'symlink')
+
     def check(self, checker, rev_id, inv, tree):
         if self.parent_id != None:
             if not inv.has_id(self.parent_id):

@@ -23,6 +23,7 @@ from cStringIO import StringIO
 
 
 import bzrlib
+from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn, compact_date, rand_bytes, 
                             rename, splitpath, sha_file, appendpath, 
@@ -578,8 +579,9 @@ class _Branch(Branch):
                     # maybe something better?
                     raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
 
-                if kind not in ('file', 'directory', 'symlink'):
-                    raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
+                if not InventoryEntry.versionable_kind(kind):
+                    raise BzrError('cannot add: not a versionable file ('
+                                   'i.e. regular file, symlink or directory): %s' % quotefn(f))
 
                 if file_id is None:
                     file_id = gen_file_id(f)
