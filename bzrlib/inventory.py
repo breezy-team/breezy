@@ -144,6 +144,46 @@ class InventoryEntry(object):
             meta_modified = False
         return text_modified, meta_modified
 
+    def diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
+             output_to, reverse=False):
+        """Perform a diff from this to to_entry.
+
+        text_diff will be used for textual difference calculation.
+        """
+        self._read_tree_state(tree.id2path(self.file_id), tree)
+        if to_entry:
+            # cannot diff from one kind to another - you must do a removal
+            # and an addif they do not match.
+            assert self.kind == to_entry.kind
+            to_entry._read_tree_state(to_tree.id2path(to_entry.file_id),
+                                      to_tree)
+        if self.kind == 'file':
+            from_text = tree.get_file(self.file_id).readlines()
+            if to_entry:
+                to_text = to_tree.get_file(to_entry.file_id).readlines()
+            else:
+                to_text = []
+            if not reverse:
+                text_diff(from_label, from_text,
+                          to_label, to_text, output_to)
+            else:
+                text_diff(to_label, to_text,
+                          from_label, from_text, output_to)
+        elif self.kind == 'symlink':
+            from_text = self.symlink_target
+            if to_entry is not None:
+                to_text = to_entry.symlink_target
+                if reverse:
+                    temp = from_text
+                    from_text = to_text
+                    to_text = temp
+                print >>output_to, '=== target changed %r => %r' % (from_text, to_text)
+            else:
+                if not reverse:
+                    print >>output_to, '=== target was %r' % self.symlink_target
+                else:
+                    print >>output_to, '=== target is %r' % self.symlink_target
+
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
         

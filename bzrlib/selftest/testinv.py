@@ -14,10 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from cStringIO import StringIO
 import os
-from bzrlib.selftest import TestCase, TestCaseInTempDir
 
+from bzrlib.branch import Branch
+from bzrlib.diff import internal_diff
 from bzrlib.inventory import Inventory, InventoryEntry, ROOT_ID
+from bzrlib.osutils import has_symlinks
+from bzrlib.selftest import TestCase, TestCaseInTempDir
 
 
 class TestInventory(TestCase):
@@ -112,3 +116,93 @@ class TestInventoryEntry(TestCaseInTempDir):
         left.symlink_target = 'different'
         self.assertEqual((True, False), left.detect_changes(right))
         self.assertEqual((True, False), right.detect_changes(left))
+
+
+class TestEntryDiffing(TestCaseInTempDir):
+
+    def setUp(self):
+        super(TestEntryDiffing, self).setUp()
+        self.branch = Branch.initialize('.')
+        print >> open('file', 'wb'), 'foo'
+        self.branch.add(['file'], ['fileid'])
+        if has_symlinks():
+            os.symlink('target1', 'symlink')
+            self.branch.add(['symlink'], ['linkid'])
+        self.branch.commit('message_1', rev_id = '1')
+        print >> open('file', 'wb'), 'bar'
+        if has_symlinks():
+            os.unlink('symlink')
+            os.symlink('target2', 'symlink')
+        self.tree_1 = self.branch.revision_tree('1')
+        self.inv_1 = self.branch.get_inventory('1')
+        self.file_1 = self.inv_1['fileid']
+        self.tree_2 = self.branch.working_tree()
+        self.inv_2 = self.branch.inventory
+        self.file_2 = self.inv_2['fileid']
+        if has_symlinks():
+            self.link_1 = self.inv_1['linkid']
+            self.link_2 = self.inv_2['linkid']
+
+    def test_file_diff_deleted(self):
+        output = StringIO()
+        self.file_1.diff(internal_diff, 
+                          "old_label", self.tree_1,
+                          "/dev/null", None, None,
+                          output)
+        self.assertEqual(output.getvalue(), "--- old_label\n"
+                                            "+++ /dev/null\n"
+                                            "@@ -1,1 +0,0 @@\n"
+                                            "-foo\n"
+                                            "\n")
+
+    def test_file_diff_added(self):
+        output = StringIO()
+        self.file_1.diff(internal_diff, 
+                          "new_label", self.tree_1,
+                          "/dev/null", None, None,
+                          output, reverse=True)
+        self.assertEqual(output.getvalue(), "--- /dev/null\n"
+                                            "+++ new_label\n"
+                                            "@@ -0,0 +1,1 @@\n"
+                                            "+foo\n"
+                                            "\n")
+
+    def test_file_diff_changed(self):
+        output = StringIO()
+        self.file_1.diff(internal_diff, 
+                          "/dev/null", self.tree_1, 
+                          "new_label", self.file_2, self.tree_2,
+                          output)
+        self.assertEqual(output.getvalue(), "--- /dev/null\n"
+                                            "+++ new_label\n"
+                                            "@@ -1,1 +1,1 @@\n"
+                                            "-foo\n"
+                                            "+bar\n"
+                                            "\n")
+        
+    def test_link_diff_deleted(self):
+        output = StringIO()
+        self.link_1.diff(internal_diff, 
+                          "old_label", self.tree_1,
+                          "/dev/null", None, None,
+                          output)
+        self.assertEqual(output.getvalue(),
+                         "=== target was 'target1'\n")
+
+    def test_link_diff_added(self):
+        output = StringIO()
+        self.link_1.diff(internal_diff, 
+                          "new_label", self.tree_1,
+                          "/dev/null", None, None,
+                          output, reverse=True)
+        self.assertEqual(output.getvalue(),
+                         "=== target is 'target1'\n")
+
+    def test_link_diff_changed(self):
+        output = StringIO()
+        self.link_1.diff(internal_diff, 
+                          "/dev/null", self.tree_1, 
+                          "new_label", self.link_2, self.tree_2,
+                          output)
+        self.assertEqual(output.getvalue(),
+                         "=== target changed 'target1' => 'target2'\n")

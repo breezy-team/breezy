@@ -543,3 +543,10 @@ def link_or_copy(src, dest):
         if e.errno != errno.EXDEV:
             raise
         copyfile(src, dest)
+
+
+def has_symlinks():
+    if hasattr(os, 'symlink'):
+        return True
+    else:
+        return False
