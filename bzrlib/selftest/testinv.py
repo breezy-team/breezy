@@ -15,9 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-from bzrlib.selftest import TestCase
+from bzrlib.selftest import TestCase, TestCaseInTempDir
 
-from bzrlib.inventory import Inventory, InventoryEntry
+from bzrlib.inventory import Inventory, InventoryEntry, ROOT_ID
 
 
 class TestInventory(TestCase):
@@ -59,3 +59,17 @@ class TestInventory(TestCase):
         ie = inv.add_path('foo.txt', 'file')
         ## XXX
 
+
+class TestInventoryEntry(TestCaseInTempDir):
+
+    def test_file_kind_character(self):
+        file = InventoryEntry('123', 'hello.c', 'file', ROOT_ID)
+        self.assertEqual(file.kind_character(), '')
+
+    def test_dir_kind_character(self):
+        dir = InventoryEntry('123', 'hello.c', 'directory', ROOT_ID)
+        self.assertEqual(dir.kind_character(), '/')
+
+    def test_link_kind_character(self):
+        dir = InventoryEntry('123', 'hello.c', 'symlink', ROOT_ID)
+        self.assertEqual(dir.kind_character(), '')

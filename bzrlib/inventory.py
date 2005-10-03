@@ -160,6 +160,16 @@ class InventoryEntry(object):
         else:
             raise BzrError("unhandled entry kind %r" % kind)
 
+    def kind_character(self):
+        """Return a short kind indicator useful for appending to names."""
+        if self.kind == 'directory':
+            return '/'
+        if self.kind == 'file':
+            return ''
+        if self.kind == 'symlink':
+            return ''
+        raise RuntimeError('unreachable code')
+
     def read_symlink_target(self, path):
         if self.kind == 'symlink':
             try:

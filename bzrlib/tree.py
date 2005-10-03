@@ -161,11 +161,12 @@ class RevisionTree(Tree):
     def list_files(self):
         # The only files returned by this are those from the version
         for path, entry in self.inventory.iter_entries():
-            yield path, 'V', entry.kind, entry.file_id
+            yield path, 'V', entry.kind, entry.file_id, entry
 
     def get_symlink_target(self, file_id):
         ie = self._inventory[file_id]
         return ie.symlink_target;
+
 
 class EmptyTree(Tree):
     def __init__(self):
@@ -178,8 +179,7 @@ class EmptyTree(Tree):
         return False
 
     def list_files(self):
-        if False:  # just to make it a generator
-            yield None
+        return iter([])
     
     def __contains__(self, file_id):
         return file_id in self._inventory
@@ -187,8 +187,6 @@ class EmptyTree(Tree):
     def get_file_sha1(self, file_id):
         assert self._inventory[file_id].kind == "root_directory"
         return None
-
-
 
 
 ######################################################################

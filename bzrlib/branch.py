@@ -991,6 +991,10 @@ class _Branch(Branch):
         """Return a `Tree` for the working copy."""
         from bzrlib.workingtree import WorkingTree
         # TODO: In the future, WorkingTree should utilize Transport
+        # RobertCollins 20051003 - I don't think it should - working trees are
+        # much more complex to keep consistent than our careful .bzr subset.
+        # instead, we should say that working trees are local only, and optimise
+        # for that.
         return WorkingTree(self._transport.base, self.read_working_inventory())
 
 
