@@ -339,9 +339,10 @@ class Commit(object):
                 continue
             if not self.work_tree.has_filename(path):
                 note('missing %s', path)
-                deleted_ids.append(ie.file_id)
+                deleted_ids.append((path, ie.file_id))
         if deleted_ids:
-            for file_id in deleted_ids:
+            deleted_ids.sort(reverse=True)
+            for path, file_id in deleted_ids:
                 del self.work_inv[file_id]
             self.branch._write_inventory(self.work_inv)
 
