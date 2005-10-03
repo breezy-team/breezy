@@ -45,6 +45,7 @@ def show_status(branch, show_unchanged=False,
         If two revisions show status between first and second.
     """
     import sys
+    from bzrlib.osutils import is_inside_any
     from bzrlib.delta import compare_trees
 
     if to_file == None:
@@ -84,11 +85,8 @@ def show_status(branch, show_unchanged=False,
             unknowns = new.unknowns()
             done_header = False
             for path in unknowns:
-                # FIXME: Should also match if the unknown file is within a
-                # specified directory.
-                if specific_files:
-                    if path not in specific_files:
-                        continue
+                if specific_files and not is_inside_any(specific_files, path):
+                    continue
                 if not done_header:
                     print >>to_file, 'unknown:'
                     done_header = True
