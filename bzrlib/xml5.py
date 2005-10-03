@@ -17,6 +17,7 @@
 
 from bzrlib.xml import ElementTree, SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
+import bzrlib.inventory as inventory
 from bzrlib.revision import Revision        
 from bzrlib.errors import BzrError
 
@@ -125,17 +126,22 @@ class Serializer_v5(Serializer):
         if parent_id == None:
             parent_id = ROOT_ID
 
-        ie = InventoryEntry(elt.get('file_id'),
-                            elt.get('name'),
-                            kind,
-                            parent_id)
+        if kind == 'directory':
+            ie = inventory.InventoryDirectory(elt.get('file_id'),
+                                              elt.get('name'),
+                                              parent_id)
+        else:
+            ie = InventoryEntry(elt.get('file_id'),
+                                elt.get('name'),
+                                kind,
+                                parent_id)
+            ie.text_sha1 = elt.get('text_sha1')
+            ie.symlink_target = elt.get('symlink_target')
+            if elt.get('executable') == 'yes':
+                ie.executable = True
+            v = elt.get('text_size')
+            ie.text_size = v and int(v)
         ie.revision = elt.get('revision')
-        ie.text_sha1 = elt.get('text_sha1')
-        ie.symlink_target = elt.get('symlink_target')
-        if elt.get('executable') == 'yes':
-            ie.executable = True
-        v = elt.get('text_size')
-        ie.text_size = v and int(v)
 
         return ie
 

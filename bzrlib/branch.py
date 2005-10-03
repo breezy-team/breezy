@@ -24,6 +24,7 @@ from cStringIO import StringIO
 
 import bzrlib
 from bzrlib.inventory import InventoryEntry
+import bzrlib.inventory as inventory
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn, compact_date, rand_bytes, 
                             rename, splitpath, sha_file, appendpath, 
@@ -660,7 +661,10 @@ class _Branch(Branch):
             name = os.path.basename(path)
             if name == "":
                 continue
-            inv.add(InventoryEntry(file_id, name, kind, parent))
+            if kind == 'directory':
+                inv.add(inventory.InventoryDirectory(file_id, name, parent))
+            else:
+                inv.add(InventoryEntry(file_id, name, kind, parent))
         self._write_inventory(inv)
 
     def unknowns(self):
