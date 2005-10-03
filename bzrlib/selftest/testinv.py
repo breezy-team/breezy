@@ -117,6 +117,18 @@ class TestInventoryEntry(TestCaseInTempDir):
         self.assertEqual((True, False), left.detect_changes(right))
         self.assertEqual((True, False), right.detect_changes(left))
 
+    def test_file_has_text(self):
+        file = InventoryEntry('123', 'hello.c', 'file', ROOT_ID)
+        self.failUnless(file.has_text())
+
+    def test_directory_has_text(self):
+        dir = InventoryEntry('123', 'hello.c', 'directory', ROOT_ID)
+        self.failIf(dir.has_text())
+
+    def test_link_has_text(self):
+        link = InventoryEntry('123', 'hello.c', 'symlink', ROOT_ID)
+        self.failIf(link.has_text())
+
 
 class TestEntryDiffing(TestCaseInTempDir):
 

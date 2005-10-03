@@ -184,6 +184,16 @@ class InventoryEntry(object):
                 else:
                     print >>output_to, '=== target is %r' % self.symlink_target
 
+    def has_text(self):
+        """Return true if the object this entry represents has textual data.
+
+        Note that textual data includes binary content.
+        """
+        if self.kind =='file':
+            return True
+        else:
+            return False
+
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
         
