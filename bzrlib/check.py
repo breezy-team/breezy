@@ -28,7 +28,7 @@
 
 import bzrlib.ui
 from bzrlib.trace import note, warning
-from bzrlib.osutils import rename, sha_string, fingerprint_file, sha_strings
+from bzrlib.osutils import rename, sha_string, fingerprint_file
 from bzrlib.trace import mutter
 from bzrlib.errors import BzrCheckError, NoSuchRevision
 from bzrlib.inventory import ROOT_ID
@@ -148,7 +148,8 @@ class Check(object):
                                     % (file_id, rev_id))
             seen_ids[file_id] = True
         for file_id in inv:
-            self._check_one_entry(rev_id, inv, tree, file_id)
+            ie = inv[file_id]
+            ie.check(self, rev_id, inv, tree)
         seen_names = {}
         for path, ie in inv.iter_entries():
             if path in seen_names:
@@ -156,42 +157,6 @@ class Check(object):
                                     'in inventory for revision {%s}'
                                     % (path, rev_id))
             seen_names[path] = True
-
-        
-    def _check_one_entry(self, rev_id, inv, tree, file_id):
-        ie = inv[file_id]
-        if ie.parent_id != None:
-            if not inv.has_id(ie.parent_id):
-                raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
-                        % (ie.parent_id, rev_id))
-        if ie.kind == 'file':
-            text_version = ie.text_version
-            t = (file_id, text_version)
-            if t in self.checked_texts:
-                prev_sha = self.checked_texts[t] 
-                if prev_sha != ie.text_sha1:
-                    raise BzrCheckError('mismatched sha1 on {%s} in {%s}' %
-                                        (file_id, rev_id))
-                else:
-                    self.repeated_text_cnt += 1
-                    return
-            mutter('check version {%s} of {%s}', rev_id, file_id)
-            file_lines = tree.get_file_lines(file_id)
-            self.checked_text_cnt += 1 
-            if ie.text_size != sum(map(len, file_lines)):
-                raise BzrCheckError('text {%s} wrong size' % ie.text_id)
-            if ie.text_sha1 != sha_strings(file_lines):
-                raise BzrCheckError('text {%s} wrong sha1' % ie.text_id)
-            self.checked_texts[t] = ie.text_sha1
-        elif ie.kind == 'directory':
-            if ie.text_sha1 != None or ie.text_size != None or ie.text_id != None:
-                raise BzrCheckError('directory {%s} has text in revision {%s}'
-                        % (file_id, rev_id))
-        elif ie.kind == 'root_directory':
-            pass
-        else:
-            raise BzrCheckError('unknown entry kind %r in revision {%s}' % 
-                                (ie.kind, rev_id))
 
 
 def check(branch):

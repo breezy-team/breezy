@@ -45,7 +45,7 @@ class Serializer_v5(Serializer):
 
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
-        assert ie.kind == 'directory' or ie.kind == 'file'
+        assert ie.kind in ('directory', 'file', 'symlink')
         e = Element(ie.kind)
         e.set('name', ie.name)
         e.set('file_id', ie.file_id)
@@ -53,7 +53,7 @@ class Serializer_v5(Serializer):
         if ie.text_size != None:
             e.set('text_size', '%d' % ie.text_size)
 
-        for f in ['text_version', 'text_sha1', 'name_version']:
+        for f in ['text_sha1', 'revision', 'symlink_target']:
             v = getattr(ie, f)
             if v != None:
                 e.set(f, v)
@@ -114,8 +114,8 @@ class Serializer_v5(Serializer):
 
     def _unpack_entry(self, elt):
         kind = elt.tag
-        assert kind == 'directory' or kind == 'file', \
-	    'unsupported entry kind %s' % kind
+        if not kind in ('directory', 'file', 'symlink'):
+            raise AssertionError('unsupported entry kind %s' % kind)
 
         parent_id = elt.get('parent_id')
         if parent_id == None:
@@ -125,9 +125,9 @@ class Serializer_v5(Serializer):
                             elt.get('name'),
                             kind,
                             parent_id)
-        ie.text_version = elt.get('text_version')
-        ie.name_version = elt.get('name_version')
+        ie.revision = elt.get('revision')
         ie.text_sha1 = elt.get('text_sha1')
+        ie.symlink_target = elt.get('symlink_target')
         v = elt.get('text_size')
         ie.text_size = v and int(v)
 

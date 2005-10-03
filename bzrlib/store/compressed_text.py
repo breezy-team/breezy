@@ -30,7 +30,7 @@ from bzrlib.errors import BzrError
 from StringIO import StringIO
 from stat import ST_SIZE
 
-class CompressedTextStore(bzrlib.store.Store):
+class CompressedTextStore(bzrlib.store.TransportStore):
     """Store that holds files indexed by unique names.
 
     Files can be added, but not modified once they are in.  Typically
@@ -56,8 +56,8 @@ class CompressedTextStore(bzrlib.store.Store):
     'goodbye'
     """
 
-    def __init__(self, basedir):
-        super(CompressedTextStore, self).__init__(basedir)
+    def __init__(self, transport):
+        super(CompressedTextStore, self).__init__(transport)
 
     def _check_fileid(self, fileid):
         if '\\' in fileid or '/' in fileid:
@@ -241,6 +241,7 @@ class CompressedTextStore(bzrlib.store.Store):
             total += st[ST_SIZE]
                 
         return count, total
+
 
 class ScratchCompressedTextStore(CompressedTextStore):
     """Self-destructing test subclass of CompressedTextStore.

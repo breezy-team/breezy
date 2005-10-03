@@ -251,4 +251,3 @@ class HttpTransport(Transport):
 
 register_transport('http://', HttpTransport)
 register_transport('https://', HttpTransport)
-

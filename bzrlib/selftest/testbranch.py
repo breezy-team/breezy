@@ -22,6 +22,7 @@ from bzrlib.errors import NoSuchRevision, UnlistableBranch
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.trace import mutter
 
+
 class TestBranch(TestCaseInTempDir):
 
     def test_append_revisions(self):
@@ -31,9 +32,6 @@ class TestBranch(TestCaseInTempDir):
         self.assertEquals(br.revision_history(), ["rev1",])
         br.append_revision("rev2", "rev3")
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
-
-
-class TestFetch(TestCaseInTempDir):
 
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
@@ -101,7 +99,47 @@ class TestFetch(TestCaseInTempDir):
         self.assertTrue(os.path.exists('b/one'))
         self.assertFalse(os.path.exists('b/two'))
         
+
+    def test_record_initial_ghost_merge(self):
+        """A pending merge with no revision present is still a merge."""
+        branch = Branch.initialize('.')
+        branch.add_pending_merge('non:existent@rev--ision--0--2')
+        branch.commit('pretend to merge nonexistent-revision', rev_id='first')
+        rev = branch.get_revision(branch.last_revision())
+        self.assertEqual(len(rev.parent_ids), 1)
+        # parent_sha1s is not populated now, WTF. rbc 20051003
+        self.assertEqual(len(rev.parent_sha1s), 0)
+        self.assertEqual(rev.parent_ids[0], 'non:existent@rev--ision--0--2')
+
+# TODO 20051003 RBC:
+# compare the gpg-to-sign info for a commit with a ghost and 
+#     an identical tree without a ghost
+# fetch missing should rewrite the TOC of weaves to list newly available parents.
         
+    def test_pending_merges(self):
+        """Tracking pending-merged revisions."""
+        b = Branch.initialize('.')
+
+        self.assertEquals(b.pending_merges(), [])
+        b.add_pending_merge('foo@azkhazan-123123-abcabc')
+        self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
+        b.add_pending_merge('foo@azkhazan-123123-abcabc')
+        self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
+        b.add_pending_merge('wibble@fofof--20050401--1928390812')
+        self.assertEquals(b.pending_merges(),
+                          ['foo@azkhazan-123123-abcabc',
+                           'wibble@fofof--20050401--1928390812'])
+        b.commit("commit from base with two merges")
+        rev = b.get_revision(b.revision_history()[0])
+        self.assertEquals(len(rev.parent_ids), 2)
+        self.assertEquals(rev.parent_ids[0],
+                          'foo@azkhazan-123123-abcabc')
+        self.assertEquals(rev.parent_ids[1],
+                           'wibble@fofof--20050401--1928390812')
+        # list should be cleared when we do a commit
+        self.assertEquals(b.pending_merges(), [])
+ 
+
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        
 #         >>> from bzrlib.commit import commit
 #         >>> bzrlib.trace.silent = True

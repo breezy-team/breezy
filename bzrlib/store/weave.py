@@ -115,6 +115,11 @@ class WeaveStore(Store):
         w.add(rev_id, parent_idxs, new_lines)
         self.put_weave(file_id, w)
         
+    def add_identical_text(self, file_id, old_rev_id, new_rev_id, parents):
+        w = self.get_weave_or_empty(file_id)
+        parent_idxs = map(w.lookup, parents)
+        w.add_identical(old_rev_id, new_rev_id, parent_idxs)
+        self.put_weave(file_id, w)
      
     def copy_multi(self, from_store, file_ids):
         assert isinstance(from_store, WeaveStore)

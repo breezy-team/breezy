@@ -520,10 +520,8 @@ class _Branch(Branch):
         
         mutter('wrote working inventory')
             
-
     inventory = property(read_working_inventory, _write_inventory, None,
                          """Inventory for the working copy.""")
-
 
     def add(self, files, ids=None):
         """Make files versioned.
@@ -578,10 +576,10 @@ class _Branch(Branch):
                     kind = file_kind(fullpath)
                 except OSError:
                     # maybe something better?
-                    raise BzrError('cannot add: not a regular file or directory: %s' % quotefn(f))
+                    raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
 
-                if kind != 'file' and kind != 'directory':
-                    raise BzrError('cannot add: not a regular file or directory: %s' % quotefn(f))
+                if kind not in ('file', 'directory', 'symlink'):
+                    raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
 
                 if file_id is None:
                     file_id = gen_file_id(f)
@@ -652,7 +650,6 @@ class _Branch(Branch):
         finally:
             self.unlock()
 
-
     # FIXME: this doesn't need to be a branch method
     def set_inventory(self, new_inventory_list):
         from bzrlib.inventory import Inventory, InventoryEntry
@@ -663,7 +660,6 @@ class _Branch(Branch):
                 continue
             inv.add(InventoryEntry(file_id, name, kind, parent))
         self._write_inventory(inv)
-
 
     def unknowns(self):
         """Return all unknown files.
@@ -695,7 +691,6 @@ class _Branch(Branch):
         finally:
             self.unlock()
 
-
     def has_revision(self, revision_id):
         """True if this branch has a copy of the revision.
 
@@ -703,7 +698,6 @@ class _Branch(Branch):
         or on the mainline."""
         return (revision_id is None
                 or revision_id in self.revision_store)
-
 
     def get_revision_xml_file(self, revision_id):
         """Return XML file object for revision object."""
@@ -719,6 +713,8 @@ class _Branch(Branch):
         finally:
             self.unlock()
 
+    #deprecated
+    get_revision_xml = get_revision_xml_file
 
     def get_revision_xml(self, revision_id):
         return self.get_revision_xml_file(revision_id).read()
@@ -737,7 +733,6 @@ class _Branch(Branch):
             
         assert r.revision_id == revision_id
         return r
-
 
     def get_revision_delta(self, revno):
         """Return the delta for one revision.
@@ -762,12 +757,16 @@ class _Branch(Branch):
 
     def get_revision_sha1(self, revision_id):
         """Hash the stored value of a revision, and return it."""
+        # In the future, revision entries will be signed. At that
+        # point, it is probably best *not* to include the signature
+        # in the revision hash. Because that lets you re-sign
+        # the revision, (add signatures/remove signatures) and still
+        # have all hash pointers stay consistent.
+        # But for now, just hash the contents.
         return bzrlib.osutils.sha_file(self.get_revision_xml_file(revision_id))
-
 
     def _get_ancestry_weave(self):
         return self.control_weaves.get_weave('ancestry')
-        
 
     def get_ancestry(self, revision_id):
         """Return a list of revision-ids integrated by a revision.
@@ -778,16 +777,13 @@ class _Branch(Branch):
         w = self._get_ancestry_weave()
         return [None] + [l[:-1] for l in w.get_iter(w.lookup(revision_id))]
 
-
     def get_inventory_weave(self):
         return self.control_weaves.get_weave('inventory')
-
 
     def get_inventory(self, revision_id):
         """Get Inventory object by hash."""
         xml = self.get_inventory_xml(revision_id)
         return bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
-
 
     def get_inventory_xml(self, revision_id):
         """Get inventory XML as a file object."""
@@ -798,12 +794,10 @@ class _Branch(Branch):
         except IndexError:
             raise bzrlib.errors.HistoryMissing(self, 'inventory', revision_id)
 
-
     def get_inventory_sha1(self, revision_id):
         """Return the sha1 hash of the inventory entry
         """
         return self.get_revision(revision_id).inventory_sha1
-
 
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""
@@ -815,7 +809,6 @@ class _Branch(Branch):
         else:
             return self.get_inventory(revision_id)
 
-
     def revision_history(self):
         """Return sequence of revision hashes on to this branch."""
         self.lock_read()
@@ -824,7 +817,6 @@ class _Branch(Branch):
                     self.controlfile('revision-history', 'r').readlines()]
         finally:
             self.unlock()
-
 
     def common_ancestor(self, other, self_revno=None, other_revno=None):
         """
@@ -1315,8 +1307,6 @@ class ScratchBranch(_Branch):
         copytree(self.base, base, symlinks=True)
         return ScratchBranch(base=base)
 
-
-        
     def __del__(self):
         self.destroy()
 

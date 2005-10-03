@@ -47,6 +47,7 @@ This is the underlying function for the branch/get/clone commands."""
 import os
 import sys
 
+import bzrlib
 from bzrlib.merge import build_working_dir
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter, note
@@ -75,7 +76,7 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     if basis_branch is not None:
         note("basis_branch is not supported for fast weave copy yet.")
     history = _get_truncated_history(branch_from, revision)
-    if not os.path.exists(to_location):
+    if not bzrlib.osutils.lexists(to_location):
         os.mkdir(to_location)
     branch_to = Branch.initialize(to_location)
     mutter("copy branch from %s to %s", branch_from, branch_to)
@@ -140,7 +141,7 @@ def copy_branch_slower(branch_from, to_location, revision=None, basis_branch=Non
     """
     assert isinstance(branch_from, Branch)
     assert isinstance(to_location, basestring)
-    if not os.path.exists(to_location):
+    if not bzrlib.osutils.lexists(to_location):
         os.mkdir(to_location)
     br_to = Branch.initialize(to_location)
     mutter("copy branch from %s to %s", branch_from, br_to)

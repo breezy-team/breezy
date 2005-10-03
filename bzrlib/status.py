@@ -38,6 +38,7 @@ def show_status(branch, show_unchanged=False,
 
     show_pending
         If set, write pending merges.
+
     revision
         If None the compare latest revision with working tree
         If one revision show compared it with working tree.
