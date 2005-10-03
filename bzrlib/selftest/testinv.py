@@ -19,7 +19,7 @@ import os
 
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
-from bzrlib.inventory import Inventory, InventoryEntry, ROOT_ID
+from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.inventory as inventory
 from bzrlib.osutils import has_symlinks
 from bzrlib.selftest import TestCase, TestCaseInTempDir
@@ -76,7 +76,7 @@ class TestInventoryEntry(TestCaseInTempDir):
         self.assertEqual(dir.kind_character(), '/')
 
     def test_link_kind_character(self):
-        dir = InventoryEntry('123', 'hello.c', 'symlink', ROOT_ID)
+        dir = inventory.InventoryLink('123', 'hello.c', ROOT_ID)
         self.assertEqual(dir.kind_character(), '')
 
     def test_dir_detect_changes(self):
@@ -105,11 +105,11 @@ class TestInventoryEntry(TestCaseInTempDir):
         self.assertEqual((True, True), right.detect_changes(left))
 
     def test_symlink_detect_changes(self):
-        left = InventoryEntry('123', 'hello.c', 'symlink', ROOT_ID)
+        left = inventory.InventoryLink('123', 'hello.c', ROOT_ID)
         left.text_sha1 = 123
         left.executable = True
         left.symlink_target='foo'
-        right = InventoryEntry('123', 'hello.c', 'symlink', ROOT_ID)
+        right = inventory.InventoryLink('123', 'hello.c', ROOT_ID)
         right.text_sha1 = 321
         right.symlink_target='foo'
         self.assertEqual((False, False), left.detect_changes(right))
@@ -127,7 +127,7 @@ class TestInventoryEntry(TestCaseInTempDir):
         self.failIf(dir.has_text())
 
     def test_link_has_text(self):
-        link = InventoryEntry('123', 'hello.c', 'symlink', ROOT_ID)
+        link = inventory.InventoryLink('123', 'hello.c', ROOT_ID)
         self.failIf(link.has_text())
 
 

@@ -139,12 +139,13 @@ class Serializer_v5(Serializer):
                 ie.executable = True
             v = elt.get('text_size')
             ie.text_size = v and int(v)
-        else:
-            ie = InventoryEntry(elt.get('file_id'),
-                                elt.get('name'),
-                                kind,
-                                parent_id)
+        elif kind == 'symlink':
+            ie = inventory.InventoryLink(elt.get('file_id'),
+                                         elt.get('name'),
+                                         parent_id)
             ie.symlink_target = elt.get('symlink_target')
+        else:
+            raise BzrError("unknown kind %r" % kind)
         ie.revision = elt.get('revision')
 
         return ie

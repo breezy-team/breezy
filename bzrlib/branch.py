@@ -661,12 +661,15 @@ class _Branch(Branch):
             name = os.path.basename(path)
             if name == "":
                 continue
+            # fixme, there should be a factory function inv,add_?? 
             if kind == 'directory':
                 inv.add(inventory.InventoryDirectory(file_id, name, parent))
             elif kind == 'file':
                 inv.add(inventory.InventoryFile(file_id, name, parent))
+            elif kind == 'symlink':
+                inv.add(inventory.InventoryLink(file_id, name, parent))
             else:
-                inv.add(InventoryEntry(file_id, name, kind, parent))
+                raise BzrError("unknown kind %r" % kind)
         self._write_inventory(inv)
 
     def unknowns(self):
