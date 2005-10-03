@@ -187,6 +187,7 @@ class InventoryEntry(object):
                     print >>output_to, '=== target is %r' % self.symlink_target
 
     def get_tar_item(self, root, dp, now, tree):
+        """Get a tarfile item and a file stream for its content."""
         item = tarfile.TarInfo(os.path.join(root, dp))
         # TODO: would be cool to actually set it to the timestamp of the
         # revision it was last changed
@@ -205,6 +206,12 @@ class InventoryEntry(object):
                 item.mode = 0755
             else:
                 item.mode = 0644
+        elif self.kind == 'symlink':
+            iterm.type = tarfile.SYMTYPE
+            fileobj = None
+            item.size = 0
+            item.mode = 0755
+            item.linkname = self.symlink_target
         else:
             raise BzrError("don't know how to export {%s} of kind %r" %
                     (self.file_id, self.kind))
