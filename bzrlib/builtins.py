@@ -651,7 +651,7 @@ class cmd_modified(Command):
         b = Branch.open_containing('.')
         td = compare_trees(b.basis_tree(), b.working_tree())
 
-        for path, id, kind in td.modified:
+        for path, id, kind, text_modified, meta_modified in td.modified:
             print path
 
 

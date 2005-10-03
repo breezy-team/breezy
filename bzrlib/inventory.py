@@ -53,14 +53,18 @@ class InventoryEntry(object):
         (within the parent directory)
 
     kind
-        'directory' or 'file'
+        'directory' or 'file' or 'symlink'
 
     parent_id
         file_id of the parent directory, or ROOT_ID
 
     revision
-        the revision_id in which this variationo f this file was 
+        the revision_id in which this variation of this file was 
         introduced.
+
+    executable
+        Indicates that this file should be executable on systems
+        that support it.
 
     text_sha1
         sha-1 of the text of the file
@@ -112,7 +116,7 @@ class InventoryEntry(object):
     """
     
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children',
+                 'text_id', 'parent_id', 'children', 'executable', 
                  'revision', 'symlink_target']
 
     def _add_text_to_weave(self, new_lines, parents, weave_store):
@@ -137,6 +141,7 @@ class InventoryEntry(object):
         if '/' in name or '\\' in name:
             raise BzrCheckError('InventoryEntry name %r is invalid' % name)
         
+        self.executable = False
         self.revision = None
         self.text_sha1 = None
         self.text_size = None
@@ -212,6 +217,7 @@ class InventoryEntry(object):
     def copy(self):
         other = InventoryEntry(self.file_id, self.name, self.kind,
                                self.parent_id)
+        other.executable = self.executable
         other.text_id = self.text_id
         other.text_sha1 = self.text_sha1
         other.text_size = self.text_size
@@ -283,15 +289,17 @@ class InventoryEntry(object):
         if not isinstance(other, InventoryEntry):
             return NotImplemented
 
-        return (self.file_id == other.file_id) \
-               and (self.name == other.name) \
-               and (other.symlink_target == self.symlink_target) \
-               and (self.text_sha1 == other.text_sha1) \
-               and (self.text_size == other.text_size) \
-               and (self.text_id == other.text_id) \
-               and (self.parent_id == other.parent_id) \
-               and (self.kind == other.kind) \
-               and (self.revision == other.revision)
+        return ((self.file_id == other.file_id)
+                and (self.name == other.name)
+                and (other.symlink_target == self.symlink_target)
+                and (self.text_sha1 == other.text_sha1)
+                and (self.text_size == other.text_size)
+                and (self.text_id == other.text_id)
+                and (self.parent_id == other.parent_id)
+                and (self.kind == other.kind)
+                and (self.revision == other.revision)
+                and (self.executable == other.executable)
+                )
 
     def __ne__(self, other):
         return not (self == other)
@@ -324,6 +332,7 @@ class InventoryEntry(object):
             self.read_symlink_target(work_tree.abspath(path))
         if self.kind == 'file':
             self.text_sha1 = work_tree.get_file_sha1(self.file_id)
+            self.executable = work_tree.is_executable(self.file_id)
 
 
 class RootEntry(InventoryEntry):

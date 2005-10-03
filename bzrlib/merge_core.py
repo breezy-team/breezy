@@ -257,10 +257,18 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
             raise Exception("Unhandled merge scenario")
 
 def make_merged_metadata(entry, base, other):
-    if entry.metadata_change is not None:
-        base_path = base.readonly_path(entry.id)
-        other_path = other.readonly_path(entry.id)    
-        return PermissionsMerge(base_path, other_path)
+    metadata = entry.metadata_change
+    if metadata is None:
+        return None
+    if isinstance(metadata, changeset.ChangeUnixPermissions):
+        if metadata.new_mode is None:
+            return None
+        elif metadata.old_mode is None:
+            return metadata
+        else:
+            base_path = base.readonly_path(entry.id)
+            other_path = other.readonly_path(entry.id)    
+            return PermissionsMerge(base_path, other_path)
     
 
 class PermissionsMerge(object):

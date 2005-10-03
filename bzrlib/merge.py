@@ -242,6 +242,9 @@ class MergeTree(object):
     def get_file_sha1(self, id):
         return self.tree.get_file_sha1(id)
 
+    def is_executable(self, id):
+        return self.tree.is_executable(id)
+
     def id2path(self, file_id):
         return self.tree.id2path(file_id)
 
@@ -273,6 +276,8 @@ class MergeTree(object):
                     outfile = file(path, "wb")
                     outfile.write(self.tree.get_file(id).read())
                     assert(bzrlib.osutils.lexists(path))
+                    if self.tree.is_executable(id):
+                        os.chmod(path, 0755)
                 else:
                     assert kind == "symlink"
                     path = os.path.join(self.tempdir, "symlinks", id)

@@ -223,17 +223,29 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                       new_label + path,
                       new_tree.get_file(file_id).readlines(),
                       to_file)
-    for old_path, new_path, file_id, kind, text_modified in delta.renamed:
-        print >>to_file, '=== renamed %s %r => %r' % (kind, old_path, new_path)
+    for (old_path, new_path, file_id, kind,
+         text_modified, meta_modified) in delta.renamed:
+        prop_str = get_prop_change(meta_modified)
+        print >>to_file, '=== renamed %s %r => %r%s' % (
+                          kind, old_path, new_path, prop_str)
         _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
                                     new_label, new_path, new_tree,
                                     text_modified, kind, to_file, diff_file)
-    for path, file_id, kind in delta.modified:
-        print >>to_file, '=== modified %s %r' % (kind, path)
-        _maybe_diff_file_or_symlink(old_label, path, old_tree, file_id,
-                                    new_label, path, new_tree,
-                                    True, kind, to_file, diff_file)
+    for path, file_id, kind, text_modified, meta_modified in delta.modified:
+        prop_str = get_prop_change(meta_modified)
+        print >>to_file, '=== modified %s %r%s' % (kind, path, prop_str)
+        if text_modified:
+            _maybe_diff_file_or_symlink(old_label, path, old_tree, file_id,
+                                        new_label, path, new_tree,
+                                        True, kind, to_file, diff_file)
     
+
+def get_prop_change(meta_modified):
+    if meta_modified:
+        return " (properties changed)"
+    else:
+        return  ""
+
 
 def _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
                                 new_label, new_path, new_tree, text_modified,

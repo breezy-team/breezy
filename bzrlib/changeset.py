@@ -1384,18 +1384,20 @@ class ChangesetGenerator(object):
 
         if cs_entry is None:
             return None
+
+        full_path_a = self.tree_a.readonly_path(id)
+        full_path_b = self.tree_b.readonly_path(id)
+        stat_a = self.lstat(full_path_a)
+        stat_b = self.lstat(full_path_b)
+
+        cs_entry.metadata_change = self.make_mode_change(stat_a, stat_b)
+
         if id in self.tree_a and id in self.tree_b:
             a_sha1 = self.tree_a.get_file_sha1(id)
             b_sha1 = self.tree_b.get_file_sha1(id)
             if None not in (a_sha1, b_sha1) and a_sha1 == b_sha1:
                 return cs_entry
 
-        full_path_a = self.tree_a.readonly_path(id)
-        full_path_b = self.tree_b.readonly_path(id)
-        stat_a = self.lstat(full_path_a)
-        stat_b = self.lstat(full_path_b)
-        
-        cs_entry.metadata_change = self.make_mode_change(stat_a, stat_b)
         cs_entry.contents_change = self.make_contents_change(full_path_a,
                                                              stat_a, 
                                                              full_path_b, 

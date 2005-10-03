@@ -58,6 +58,9 @@ class Serializer_v5(Serializer):
             if v != None:
                 e.set(f, v)
 
+        if ie.executable:
+            e.set('executable', 'yes')
+
         # to be conservative, we don't externalize the root pointers
         # for now, leaving them as null in the xml form.  in a future
         # version it will be implied by nested elements.
@@ -128,6 +131,8 @@ class Serializer_v5(Serializer):
         ie.revision = elt.get('revision')
         ie.text_sha1 = elt.get('text_sha1')
         ie.symlink_target = elt.get('symlink_target')
+        if elt.get('executable') == 'yes':
+            ie.executable = True
         v = elt.get('text_size')
         ie.text_size = v and int(v)
 

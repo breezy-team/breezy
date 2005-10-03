@@ -152,6 +152,9 @@ class RevisionTree(Tree):
         if ie.kind == "file":
             return ie.text_sha1
 
+    def is_executable(self, file_id):
+        return self._inventory[file_id].executable
+
     def has_filename(self, filename):
         return bool(self.inventory.path2id(filename))
 
@@ -280,6 +283,8 @@ def dir_exporter(tree, dest, root):
             os.mkdir(fullpath)
         elif kind == 'file':
             pumpfile(tree.get_file(ie.file_id), file(fullpath, 'wb'))
+            if tree.is_executable(ie.file_id):
+                os.chmod(fullpath, 0755)
         elif kind == 'symlink':
             try:
                 os.symlink(ie.symlink_target, fullpath)
@@ -350,7 +355,10 @@ else:
                 item.type = tarfile.REGTYPE
                 fileobj = tree.get_file(ie.file_id)
                 item.size = _find_file_size(fileobj)
-                item.mode = 0644
+                if tree.is_executable(ie.file_id):
+                    item.mode = 0755
+                else:
+                    item.mode = 0644
             else:
                 raise BzrError("don't know how to export {%s} of kind %r" %
                         (ie.file_id, ie.kind))
