@@ -32,19 +32,12 @@ class Revision(object):
     parent_ids
         List of parent revision_ids
     """
-    inventory_id = None
-    inventory_sha1 = None
-    revision_id = None
-    timestamp = None
-    message = None
-    timezone = None
-    committer = None
     
-    def __init__(self, **args):
+    def __init__(self, revision_id, **args):
+        self.revision_id = revision_id
         self.__dict__.update(args)
         self.parent_ids = []
         self.parent_sha1s = []
-
 
     def __repr__(self):
         return "<Revision id %s>" % self.revision_id
@@ -52,8 +45,9 @@ class Revision(object):
     def __eq__(self, other):
         if not isinstance(other, Revision):
             return False
-        return (self.inventory_id == other.inventory_id
-                and self.inventory_sha1 == other.inventory_sha1
+        # FIXME: rbc 20050930 parent_ids are not being compared
+        return (
+                self.inventory_sha1 == other.inventory_sha1
                 and self.revision_id == other.revision_id
                 and self.timestamp == other.timestamp
                 and self.message == other.message
@@ -64,7 +58,6 @@ class Revision(object):
         return not self.__eq__(other)
 
         
-
 REVISION_ID_RE = None
 
 def validate_revision_id(rid):
@@ -72,7 +65,7 @@ def validate_revision_id(rid):
     global REVISION_ID_RE
     if not REVISION_ID_RE:
         import re
-        REVISION_ID_RE = re.compile('[\w.-]+@[\w.-]+--?\d+--?[0-9a-f]+\Z')
+        REVISION_ID_RE = re.compile('[\w:.-]+@[\w%.-]+--?[\w]+--?[0-9a-f]+\Z')
 
     if not REVISION_ID_RE.match(rid):
         raise ValueError("malformed revision-id %r" % rid)
@@ -211,6 +204,7 @@ def revision_graph(revision, revision_source):
     assert root not in ancestors[root]
     return root, ancestors, descendants
 
+
 def combined_graph(revision_a, revision_b, revision_source):
     """Produce a combined ancestry graph.
     Return graph root, ancestors map, descendants map, set of common nodes"""
@@ -232,6 +226,7 @@ def combined_graph(revision_a, revision_b, revision_source):
         descendants[node].update(node_dec)
     return root, ancestors, descendants, common
 
+
 def common_ancestor(revision_a, revision_b, revision_source):
     try:
         root, ancestors, descendants, common = \
@@ -244,6 +239,7 @@ def common_ancestor(revision_a, revision_b, revision_source):
     if farthest is None or farthest == NULL_REVISION:
         raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
     return farthest
+
 
 class MultipleRevisionSources(object):
     """Proxy that looks in multiple branches for revisions."""

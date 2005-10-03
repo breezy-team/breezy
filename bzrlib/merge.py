@@ -36,6 +36,9 @@ from bzrlib.osutils import rename
 from bzrlib.revision import common_ancestor, MultipleRevisionSources
 from bzrlib.errors import NoSuchRevision
 
+# TODO: build_working_dir can be built on something simpler than merge()
+
+# FIXME: merge() parameters seem oriented towards the command line
 
 # comments from abentley on irc: merge happens in two stages, each
 # of which generates a changeset object
@@ -224,6 +227,7 @@ class MergeTree(object):
         self.tree = tree
         self.tempdir = tempdir
         os.mkdir(os.path.join(self.tempdir, "texts"))
+        os.mkdir(os.path.join(self.tempdir, "symlinks"))
         self.cached = {}
 
     def __iter__(self):
@@ -237,6 +241,9 @@ class MergeTree(object):
 
     def get_file_sha1(self, id):
         return self.tree.get_file_sha1(id)
+
+    def is_executable(self, id):
+        return self.tree.is_executable(id)
 
     def id2path(self, file_id):
         return self.tree.id2path(file_id)
@@ -260,16 +267,38 @@ class MergeTree(object):
         if self.root is not None:
             return self.tree.abspath(self.tree.id2path(id))
         else:
-            if self.tree.inventory[id].kind in ("directory", "root_directory"):
+            kind = self.tree.inventory[id].kind
+            if kind in ("directory", "root_directory"):
                 return self.tempdir
             if not self.cached.has_key(id):
-                path = os.path.join(self.tempdir, "texts", id)
-                outfile = file(path, "wb")
-                outfile.write(self.tree.get_file(id).read())
-                assert(os.path.exists(path))
+                if kind == "file":
+                    path = os.path.join(self.tempdir, "texts", id)
+                    outfile = file(path, "wb")
+                    outfile.write(self.tree.get_file(id).read())
+                    assert(bzrlib.osutils.lexists(path))
+                    if self.tree.is_executable(id):
+                        os.chmod(path, 0755)
+                else:
+                    assert kind == "symlink"
+                    path = os.path.join(self.tempdir, "symlinks", id)
+                    target = self.tree.get_symlink_target(id)
+                    os.symlink(target, path)
                 self.cached[id] = path
             return self.cached[id]
 
+
+def build_working_dir(to_dir):
+    """Build a working directory in an empty directory.
+
+    to_dir is a directory containing branch metadata but no working files,
+    typically constructed by cloning an existing branch. 
+
+    This is split out as a special idiomatic case of merge.  It could
+    eventually be done by just building the tree directly calling into 
+    lower-level code (e.g. constructing a changeset).
+    """
+    merge((to_dir, -1), (to_dir, 0), this_dir=to_dir,
+          check_clean=False, ignore_zero=True)
 
 
 def merge(other_revision, base_revision,
@@ -287,6 +316,9 @@ def merge(other_revision, base_revision,
     check_clean
         If true, this_dir must have no uncommitted changes before the
         merge begins.
+    ignore_zero - If true, suppress the "zero conflicts" message when 
+        there are no conflicts; should be set when doing something we expect
+        to complete perfectly.
 
     All available ancestors of other_revision and base_revision are
     automatically pulled into the branch.

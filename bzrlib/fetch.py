@@ -85,6 +85,8 @@ class Fetcher(object):
     count_texts -- number of file texts copied
     """
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
+        if to_branch == from_branch:
+            raise Exception("can't fetch from a branch to itself")
         self.to_branch = to_branch
         self.to_weaves = to_branch.weave_store
         self.to_control = to_branch.control_weaves
@@ -182,8 +184,12 @@ class Fetcher(object):
                rev.committer,
                len(rev.parent_ids))
         self._copy_new_texts(rev_id, inv)
-        self._copy_inventory(rev_id, inv_xml, rev.parent_ids)
-        self._copy_ancestry(rev_id, rev.parent_ids)
+        parents = rev.parent_ids
+        for parent in parents:
+            if not self.to_branch.has_revision(parent):
+                parents.pop(parents.index(parent))
+        self._copy_inventory(rev_id, inv_xml, parents)
+        self._copy_ancestry(rev_id, parents)
         self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
 
 
@@ -206,7 +212,7 @@ class Fetcher(object):
         for path, ie in inv.iter_entries():
             if ie.kind != 'file':
                 continue
-            if ie.text_version != rev_id:
+            if ie.revision != rev_id:
                 continue
             mutter('%s {%s} is changed in this revision',
                    path, ie.file_id)

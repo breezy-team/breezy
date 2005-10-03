@@ -51,5 +51,5 @@ if __name__ == '__main__':
     rp = b.relpath(sys.argv[1])
     tree = b.revision_tree(b.last_revision())
     file_id = tree.inventory.path2id(rp)
-    file_version = tree.inventory[file_id].text_version
+    file_version = tree.inventory[file_id].revision
     annotate_file(b, file_version, file_id, sys.stdout)

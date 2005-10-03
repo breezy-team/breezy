@@ -1,8 +1,10 @@
+import os.path
+
 import changeset
 from changeset import Inventory, apply_changeset, invert_dict
-import os.path
-from osutils import backup_file, rename
-from merge3 import Merge3
+from bzrlib.osutils import backup_file, rename
+from bzrlib.merge3 import Merge3
+import bzrlib
 
 class ApplyMerge3:
     """Contents-change wrapper around merge3.Merge3"""
@@ -206,6 +208,8 @@ def get_id_contents(file_id, tree):
     tree_entry = tree.tree.inventory[file_id]
     if tree_entry.kind == "file":
         return changeset.FileCreate(tree.get_file(file_id).read())
+    elif tree_entry.kind == "symlink":
+        return changeset.SymlinkCreate(tree.get_symlink_target(file_id))
     else:
         assert tree_entry.kind in ("root_directory", "directory")
         return changeset.dir_create
@@ -228,7 +232,7 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
             return None
         if contents.new_contents is None:
             this_contents = get_contents(entry, this)
-            if this_path is not None and os.path.exists(this_path):
+            if this_path is not None and bzrlib.osutils.lexists(this_path):
                 if this_contents != contents.old_contents:
                     return conflict_handler.rem_contents_conflict(this_path, 
                         this_contents, contents.old_contents)
@@ -236,7 +240,7 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
             else:
                 return None
         elif contents.old_contents is None:
-            if this_path is None or not os.path.exists(this_path):
+            if this_path is None or not bzrlib.osutils.lexists(this_path):
                 return contents
             else:
                 this_contents = get_contents(entry, this)
@@ -253,10 +257,18 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
             raise Exception("Unhandled merge scenario")
 
 def make_merged_metadata(entry, base, other):
-    if entry.metadata_change is not None:
-        base_path = base.readonly_path(entry.id)
-        other_path = other.readonly_path(entry.id)    
-        return PermissionsMerge(base_path, other_path)
+    metadata = entry.metadata_change
+    if metadata is None:
+        return None
+    if isinstance(metadata, changeset.ChangeUnixPermissions):
+        if metadata.new_mode is None:
+            return None
+        elif metadata.old_mode is None:
+            return metadata
+        else:
+            base_path = base.readonly_path(entry.id)
+            other_path = other.readonly_path(entry.id)    
+            return PermissionsMerge(base_path, other_path)
     
 
 class PermissionsMerge(object):

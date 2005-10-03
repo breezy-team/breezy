@@ -70,7 +70,7 @@ class cmd_status(Command):
     # relative to a revision, or between revisions
 
     takes_args = ['file*']
-    takes_options = ['all', 'show-ids', 'revision']
+    takes_options = ['all', 'show-ids']
     aliases = ['st', 'stat']
     
     def run(self, all=False, show_ids=False, file_list=None, revision=None):
@@ -556,7 +556,6 @@ class cmd_init(Command):
         bzr commit -m 'imported project'
     """
     def run(self):
-        from bzrlib.branch import Branch
         Branch.initialize('.')
 
 
@@ -652,7 +651,7 @@ class cmd_modified(Command):
         b = Branch.open_containing('.')
         td = compare_trees(b.basis_tree(), b.working_tree())
 
-        for path, id, kind in td.modified:
+        for path, id, kind, text_modified, meta_modified in td.modified:
             print path
 
 
@@ -1247,7 +1246,6 @@ class cmd_merge(Command):
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                from bzrlib.branch import Branch
                 b = Branch.open(branch)
 
                 base = [branch, revision[0].in_history(b).revno]
@@ -1278,7 +1276,6 @@ class cmd_revert(Command):
 
     def run(self, revision=None, no_backup=False, file_list=None):
         from bzrlib.merge import merge
-        from bzrlib.branch import Branch
         from bzrlib.commands import parse_spec
 
         if file_list is not None:
@@ -1383,9 +1380,7 @@ class cmd_missing(Command):
             # should not change the parent
             b.set_parent(remote)
         br_remote = Branch.open_containing(remote)
-
         return show_missing(b, br_remote, verbose=verbose, quiet=quiet)
-
 
 
 class cmd_plugins(Command):
