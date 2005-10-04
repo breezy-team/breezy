@@ -8,22 +8,28 @@ formatted as a Python data structure.
 This can be useful in tests that need to recreate directory
 contents."""
 
-# TODO: It'd be nice if this split long strings across 
-# multiple lines, relying on Python concatenation of consecutive
-# string constants.
-
 import sys
 import os
-import pprint
 
 from bzrlib.trace import enable_default_logging
 enable_default_logging()
 from bzrlib.selftest.treeshape import capture_tree_contents
 
 def main(argv):
+    # a lame reimplementation of pformat that splits multi-line
+    # strings into concatenated string literals.
     print '['
     for tt in capture_tree_contents('.'):
-        print `tt`, ','
+        assert isinstance(tt, tuple)
+        print '  ('
+        for val in tt:
+            if val == '':
+                print "    ''"
+            else:
+                for valline in val.splitlines(True):
+                    print '   ', repr(valline)
+            print '    ,'
+        print '  ),'
     print ']'
 
 if __name__ == '__main__':
