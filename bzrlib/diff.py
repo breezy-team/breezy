@@ -209,20 +209,13 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
     for path, file_id, kind in delta.removed:
         print >>to_file, '=== removed %s %r' % (kind, path)
-        if kind == 'file':
-            diff_file(old_label + path,
-                      old_tree.get_file(file_id).readlines(),
-                      DEVNULL, 
-                      [],
-                      to_file)
+        old_tree.inventory[file_id].diff(diff_file, old_label + path, old_tree,
+                                         DEVNULL, None, None, to_file)
     for path, file_id, kind in delta.added:
         print >>to_file, '=== added %s %r' % (kind, path)
-        if kind == 'file':
-            diff_file(DEVNULL,
-                      [],
-                      new_label + path,
-                      new_tree.get_file(file_id).readlines(),
-                      to_file)
+        new_tree.inventory[file_id].diff(diff_file, new_label + path, new_tree,
+                                         DEVNULL, None, None, to_file, 
+                                         reverse=True)
     for (old_path, new_path, file_id, kind,
          text_modified, meta_modified) in delta.renamed:
         prop_str = get_prop_change(meta_modified)
@@ -251,16 +244,8 @@ def _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
                                 new_label, new_path, new_tree, text_modified,
                                 kind, to_file, diff_file):
     if text_modified:
-        if kind == 'file':
-            diff_file(old_label + old_path,
-                      old_tree.get_file(file_id).readlines(),
-                      new_label + new_path,
-                      new_tree.get_file(file_id).readlines(),
-                      to_file)
-        elif kind == 'symlink':
-            _diff_symlink(old_tree, new_tree, file_id, to_file)
-            
-def _diff_symlink(old_tree, new_tree, file_id, to_file):
-    t1 = old_tree.get_symlink_target(file_id)
-    t2 = new_tree.get_symlink_target(file_id)
-    print >>to_file, '=== target changed %r => %r' % (t1, t2)
+        new_entry = new_tree.inventory[file_id]
+        old_tree.inventory[file_id].diff(diff_file,
+                                         old_label + old_path, old_tree,
+                                         new_label + new_path, new_entry, 
+                                         new_tree, to_file)

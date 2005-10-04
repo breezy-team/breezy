@@ -17,6 +17,7 @@
 
 from bzrlib.xml import ElementTree, SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
+import bzrlib.inventory as inventory
 from bzrlib.revision import Revision        
 from bzrlib.errors import BzrError
 
@@ -94,18 +95,28 @@ class _Serializer_v4(Serializer):
         if parent_id == None:
             parent_id = ROOT_ID
 
-        ie = InventoryEntry(elt.get('file_id'),
-                            elt.get('name'),
-                            elt.get('kind'),
-                            parent_id)
-        ie.text_id = elt.get('text_id')
-        ie.text_sha1 = elt.get('text_sha1')
-        ie.symlink_target = elt.get('symlink_target')
+        kind = elt.get('kind')
+        if kind == 'directory':
+            ie = inventory.InventoryDirectory(elt.get('file_id'),
+                                              elt.get('name'),
+                                              parent_id)
+        elif kind == 'file':
+            ie = inventory.InventoryFile(elt.get('file_id'),
+                                         elt.get('name'),
+                                         parent_id)
+            ie.text_id = elt.get('text_id')
+            ie.text_sha1 = elt.get('text_sha1')
+            v = elt.get('text_size')
+            ie.text_size = v and int(v)
+        elif kind == 'symlink':
+            ie = inventory.InventoryLink(elt.get('file_id'),
+                                         elt.get('name'),
+                                         parent_id)
+            ie.symlink_target = elt.get('symlink_target')
+        else:
+            raise BzrError("unknown kind %r" % kind)
 
         ## mutter("read inventoryentry: %r" % (elt.attrib))
-
-        v = elt.get('text_size')
-        ie.text_size = v and int(v)
 
         return ie
 

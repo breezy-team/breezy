@@ -324,7 +324,7 @@ class Convert(object):
         for file_id in inv:
             ie = inv[file_id]
             self._set_revision(rev, ie, parent_invs)
-            if ie.kind != 'file':
+            if not ie.has_text():
                 continue
             self._convert_file_version(rev, ie, parent_invs)
 

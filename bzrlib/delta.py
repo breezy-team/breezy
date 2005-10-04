@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter
 
 class TreeDelta(object):
@@ -171,7 +172,7 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
             kind = old_ie.kind
             assert kind == new_ie.kind
             
-            assert kind in ('file', 'directory', 'symlink', 'root_directory'), \
+            assert kind in InventoryEntry.known_kinds, \
                    'invalid file kind %r' % kind
 
             if kind == 'root_directory':
@@ -182,28 +183,13 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
                     and not is_inside_any(specific_files, new_inv.id2path(file_id))):
                     continue
 
-            if kind == 'file':
-                old_sha1 = old_tree.get_file_sha1(file_id)
-                new_sha1 = new_tree.get_file_sha1(file_id)
-                text_modified = (old_sha1 != new_sha1)
-                old_exec = old_tree.is_executable(file_id)
-                new_exec = new_tree.is_executable(file_id)
-                meta_modified = (old_exec != new_exec)
-            elif kind == 'symlink':
-                t1 = old_tree.get_symlink_target(file_id)
-                t2 = new_tree.get_symlink_target(file_id)
-                if t1 != t2:
-                    mutter("    symlink target changed")
-                    # FIXME: which should we use ?
-                    text_modified = True
-                    meta_modified = False
-                else:
-                    text_modified = False
-                    meta_modified = False
-            else:
-                ## mutter("no text to check for %r %r" % (file_id, kind))
-                text_modified = False
-                meta_modified = False
+            # temporary hack until all entries are populated before clients 
+            # get them
+            old_path = old_inv.id2path(file_id)
+            new_path = new_inv.id2path(file_id)
+            old_ie._read_tree_state(old_path, old_tree)
+            new_ie._read_tree_state(new_path, new_tree)
+            text_modified, meta_modified = new_ie.detect_changes(old_ie)
 
             # TODO: Can possibly avoid calculating path strings if the
             # two files are unchanged and their names and parents are
@@ -212,15 +198,15 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
             
             if (old_ie.name != new_ie.name
                 or old_ie.parent_id != new_ie.parent_id):
-                delta.renamed.append((old_inv.id2path(file_id),
-                                      new_inv.id2path(file_id),
+                delta.renamed.append((old_path,
+                                      new_path,
                                       file_id, kind,
                                       text_modified, meta_modified))
             elif text_modified or meta_modified:
-                delta.modified.append((new_inv.id2path(file_id), file_id, kind,
+                delta.modified.append((new_path, file_id, kind,
                                        text_modified, meta_modified))
             elif want_unchanged:
-                delta.unchanged.append((new_inv.id2path(file_id), file_id, kind))
+                delta.unchanged.append((new_path, file_id, kind))
         else:
             kind = old_inv.get_file_kind(file_id)
             if kind == 'root_directory':

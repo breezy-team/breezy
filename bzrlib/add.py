@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter, note, warning
 from bzrlib.errors import NotBranchError
 from bzrlib.branch import Branch
@@ -95,7 +96,7 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
 
         kind = bzrlib.osutils.file_kind(af)
 
-        if kind != 'file' and kind != 'directory' and kind != 'symlink':
+        if not InventoryEntry.versionable_kind(kind):
             if f in user_list:
                 raise BadFileKindError("cannot add %s of type %s" % (f, kind))
             else:
