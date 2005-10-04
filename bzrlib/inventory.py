@@ -19,10 +19,6 @@
 # But those depend on its position within a particular inventory, and
 # it would be nice not to need to hold the backpointer here.
 
-# TODO: Perhaps split InventoryEntry into subclasses for files,
-# directories, etc etc.
-
-
 # This should really be an id randomly assigned when the tree is
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"
@@ -31,12 +27,14 @@ ROOT_ID = "TREE_ROOT"
 import os.path
 import re
 import sys
+import tarfile
 import types
 
 import bzrlib
 from bzrlib.errors import BzrError, BzrCheckError
 
-from bzrlib.osutils import quotefn, splitpath, joinpath, appendpath, sha_strings
+from bzrlib.osutils import (pumpfile, quotefn, splitpath, joinpath,
+                            appendpath, sha_strings)
 from bzrlib.trace import mutter
 from bzrlib.errors import NotVersionedError
 
@@ -51,9 +49,6 @@ class InventoryEntry(object):
 
     name
         (within the parent directory)
-
-    kind
-        'directory' or 'file' or 'symlink'
 
     parent_id
         file_id of the parent directory, or ROOT_ID
@@ -77,31 +72,31 @@ class InventoryEntry(object):
     >>> i = Inventory()
     >>> i.path2id('')
     'TREE_ROOT'
-    >>> i.add(InventoryEntry('123', 'src', 'directory', ROOT_ID))
-    InventoryEntry('123', 'src', kind='directory', parent_id='TREE_ROOT')
-    >>> i.add(InventoryEntry('2323', 'hello.c', 'file', parent_id='123'))
-    InventoryEntry('2323', 'hello.c', kind='file', parent_id='123')
+    >>> i.add(InventoryDirectory('123', 'src', ROOT_ID))
+    InventoryDirectory('123', 'src', parent_id='TREE_ROOT')
+    >>> i.add(InventoryFile('2323', 'hello.c', parent_id='123'))
+    InventoryFile('2323', 'hello.c', parent_id='123')
     >>> for j in i.iter_entries():
     ...   print j
     ... 
-    ('src', InventoryEntry('123', 'src', kind='directory', parent_id='TREE_ROOT'))
-    ('src/hello.c', InventoryEntry('2323', 'hello.c', kind='file', parent_id='123'))
-    >>> i.add(InventoryEntry('2323', 'bye.c', 'file', '123'))
+    ('src', InventoryDirectory('123', 'src', parent_id='TREE_ROOT'))
+    ('src/hello.c', InventoryFile('2323', 'hello.c', parent_id='123'))
+    >>> i.add(InventoryFile('2323', 'bye.c', '123'))
     Traceback (most recent call last):
     ...
     BzrError: inventory already contains entry with id {2323}
-    >>> i.add(InventoryEntry('2324', 'bye.c', 'file', '123'))
-    InventoryEntry('2324', 'bye.c', kind='file', parent_id='123')
-    >>> i.add(InventoryEntry('2325', 'wibble', 'directory', '123'))
-    InventoryEntry('2325', 'wibble', kind='directory', parent_id='123')
+    >>> i.add(InventoryFile('2324', 'bye.c', '123'))
+    InventoryFile('2324', 'bye.c', parent_id='123')
+    >>> i.add(InventoryDirectory('2325', 'wibble', '123'))
+    InventoryDirectory('2325', 'wibble', parent_id='123')
     >>> i.path2id('src/wibble')
     '2325'
     >>> '2325' in i
     True
-    >>> i.add(InventoryEntry('2326', 'wibble.c', 'file', '2325'))
-    InventoryEntry('2326', 'wibble.c', kind='file', parent_id='2325')
+    >>> i.add(InventoryFile('2326', 'wibble.c', '2325'))
+    InventoryFile('2326', 'wibble.c', parent_id='2325')
     >>> i['2326']
-    InventoryEntry('2326', 'wibble.c', kind='file', parent_id='2325')
+    InventoryFile('2326', 'wibble.c', parent_id='2325')
     >>> for path, entry in i.iter_entries():
     ...     print path.replace('\\\\', '/')     # for win32 os.sep
     ...     assert i.path2id(path)
@@ -117,23 +112,68 @@ class InventoryEntry(object):
     
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
                  'text_id', 'parent_id', 'children', 'executable', 
-                 'revision', 'symlink_target']
+                 'revision']
 
     def _add_text_to_weave(self, new_lines, parents, weave_store):
         weave_store.add_text(self.file_id, self.revision, new_lines, parents)
 
-    def __init__(self, file_id, name, kind, parent_id, text_id=None):
+    def detect_changes(self, old_entry):
+        """Return a (text_modified, meta_modified) from this to old_entry.
+        
+        _read_tree_state must have been called on self and old_entry prior to 
+        calling detect_changes.
+        """
+        return False, False
+
+    def diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
+             output_to, reverse=False):
+        """Perform a diff from this to to_entry.
+
+        text_diff will be used for textual difference calculation.
+        This is a template method, override _diff in child classes.
+        """
+        self._read_tree_state(tree.id2path(self.file_id), tree)
+        if to_entry:
+            # cannot diff from one kind to another - you must do a removal
+            # and an addif they do not match.
+            assert self.kind == to_entry.kind
+            to_entry._read_tree_state(to_tree.id2path(to_entry.file_id),
+                                      to_tree)
+        self._diff(text_diff, from_label, tree, to_label, to_entry, to_tree,
+                   output_to, reverse)
+
+    def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
+             output_to, reverse=False):
+        """Perform a diff between two entries of the same kind."""
+
+    def get_tar_item(self, root, dp, now, tree):
+        """Get a tarfile item and a file stream for its content."""
+        item = tarfile.TarInfo(os.path.join(root, dp))
+        # TODO: would be cool to actually set it to the timestamp of the
+        # revision it was last changed
+        item.mtime = now
+        fileobj = self._put_in_tar(item, tree)
+        return item, fileobj
+
+    def has_text(self):
+        """Return true if the object this entry represents has textual data.
+
+        Note that textual data includes binary content.
+        """
+        return False
+
+    def __init__(self, file_id, name, parent_id, text_id=None):
         """Create an InventoryEntry
         
         The filename must be a single component, relative to the
         parent directory; it cannot be a whole path or relative name.
 
-        >>> e = InventoryEntry('123', 'hello.c', 'file', ROOT_ID)
+        >>> e = InventoryFile('123', 'hello.c', ROOT_ID)
         >>> e.name
         'hello.c'
         >>> e.file_id
         '123'
-        >>> e = InventoryEntry('123', 'src/hello.c', 'file', ROOT_ID)
+        >>> e = InventoryFile('123', 'src/hello.c', ROOT_ID)
         Traceback (most recent call last):
         BzrCheckError: InventoryEntry name 'src/hello.c' is invalid
         """
@@ -147,85 +187,67 @@ class InventoryEntry(object):
         self.text_size = None
         self.file_id = file_id
         self.name = name
-        self.kind = kind
         self.text_id = text_id
         self.parent_id = parent_id
         self.symlink_target = None
-        if kind == 'directory':
-            self.children = {}
-        elif kind == 'file':
-            pass
-        elif kind == 'symlink':
-            pass
-        else:
-            raise BzrError("unhandled entry kind %r" % kind)
 
-    def read_symlink_target(self, path):
-        if self.kind == 'symlink':
-            try:
-                self.symlink_target = os.readlink(path)
-            except OSError,e:
-                raise BzrError("os.readlink error, %s" % e)
+    def kind_character(self):
+        """Return a short kind indicator useful for appending to names."""
+        raise BzrError('unknown kind %r' % self.kind)
+
+    known_kinds = ('file', 'directory', 'symlink', 'root_directory')
+
+    def _put_in_tar(self, item, tree):
+        """populate item for stashing in a tar, and return the content stream.
+
+        If no content is available, return None.
+        """
+        raise BzrError("don't know how to export {%s} of kind %r" %
+                       (self.file_id, self.kind))
+
+    def put_on_disk(self, dest, dp, tree):
+        """Create a representation of self on disk in the prefix dest.
+        
+        This is a template method - implement _put_on_disk in subclasses.
+        """
+        fullpath = appendpath(dest, dp)
+        self._put_on_disk(fullpath, tree)
+        mutter("  export {%s} kind %s to %s" % (self.file_id, self.kind, fullpath))
+
+    def _put_on_disk(self, fullpath, tree):
+        """Put this entry onto disk at fullpath, from tree tree."""
+        raise BzrError("don't know how to export {%s} of kind %r" % (self.file_id, self.kind))
 
     def sorted_children(self):
         l = self.children.items()
         l.sort()
         return l
 
+    @staticmethod
+    def versionable_kind(kind):
+        return kind in ('file', 'directory', 'symlink')
+
     def check(self, checker, rev_id, inv, tree):
+        """Check this inventory entry is intact.
+
+        This is a template method, override _check for kind specific
+        tests.
+        """
         if self.parent_id != None:
             if not inv.has_id(self.parent_id):
                 raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
                         % (self.parent_id, rev_id))
-        if self.kind == 'file':
-            revision = self.revision
-            t = (self.file_id, revision)
-            if t in checker.checked_texts:
-                prev_sha = checker.checked_texts[t] 
-                if prev_sha != self.text_sha1:
-                    raise BzrCheckError('mismatched sha1 on {%s} in {%s}' %
-                                        (self.file_id, rev_id))
-                else:
-                    checker.repeated_text_cnt += 1
-                    return
-            mutter('check version {%s} of {%s}', rev_id, self.file_id)
-            file_lines = tree.get_file_lines(self.file_id)
-            checker.checked_text_cnt += 1 
-            if self.text_size != sum(map(len, file_lines)):
-                raise BzrCheckError('text {%s} wrong size' % self.text_id)
-            if self.text_sha1 != sha_strings(file_lines):
-                raise BzrCheckError('text {%s} wrong sha1' % self.text_id)
-            checker.checked_texts[t] = self.text_sha1
-        elif self.kind == 'directory':
-            if self.text_sha1 != None or self.text_size != None or self.text_id != None:
-                raise BzrCheckError('directory {%s} has text in revision {%s}'
-                        % (self.file_id, rev_id))
-        elif self.kind == 'root_directory':
-            pass
-        elif self.kind == 'symlink':
-            if self.text_sha1 != None or self.text_size != None or self.text_id != None:
-                raise BzrCheckError('symlink {%s} has text in revision {%s}'
-                        % (self.file_id, rev_id))
-            if self.symlink_target == None:
-                raise BzrCheckError('symlink {%s} has no target in revision {%s}'
-                        % (self.file_id, rev_id))
-        else:
-            raise BzrCheckError('unknown entry kind %r in revision {%s}' % 
-                                (self.kind, rev_id))
+        self._check(checker, rev_id, tree)
+
+    def _check(self, checker, rev_id, tree):
+        """Check this inventory entry for kind specific errors."""
+        raise BzrCheckError('unknown entry kind %r in revision {%s}' % 
+                            (self.kind, rev_id))
 
 
     def copy(self):
-        other = InventoryEntry(self.file_id, self.name, self.kind,
-                               self.parent_id)
-        other.executable = self.executable
-        other.text_id = self.text_id
-        other.text_sha1 = self.text_sha1
-        other.text_size = self.text_size
-        other.symlink_target = self.symlink_target
-        other.revision = self.revision
-        # note that children are *not* copied; they're pulled across when
-        # others are added
-        return other
+        """Clone this inventory entry."""
+        raise NotImplementedError
 
     def _get_snapshot_change(self, previous_entries):
         if len(previous_entries) > 1:
@@ -236,16 +258,15 @@ class InventoryEntry(object):
             return 'modified/renamed/reparented'
 
     def __repr__(self):
-        return ("%s(%r, %r, kind=%r, parent_id=%r)"
+        return ("%s(%r, %r, parent_id=%r)"
                 % (self.__class__.__name__,
                    self.file_id,
                    self.name,
-                   self.kind,
                    self.parent_id))
 
     def snapshot(self, revision, path, previous_entries, work_tree, 
                  weave_store):
-        """Make a snapshot of this entry.
+        """Make a snapshot of this entry which may or may not have changed.
         
         This means that all its fields are populated, that it has its
         text stored in the text store or weave.
@@ -259,12 +280,15 @@ class InventoryEntry(object):
                 mutter("found unchanged entry")
                 self.revision = parent_ie.revision
                 return "unchanged"
+        return self.snapshot_revision(revision, previous_entries, 
+                                      work_tree, weave_store)
+
+    def snapshot_revision(self, revision, previous_entries, work_tree,
+                          weave_store):
+        """Record this revision unconditionally."""
         mutter('new revision for {%s}', self.file_id)
         self.revision = revision
         change = self._get_snapshot_change(previous_entries)
-        if self.kind != 'file':
-            return change
-        self._snapshot_text(previous_entries, work_tree, weave_store)
         return change
 
     def _snapshot_text(self, file_parents, work_tree, weave_store): 
@@ -308,6 +332,10 @@ class InventoryEntry(object):
         raise ValueError('not hashable')
 
     def _unchanged(self, path, previous_ie, work_tree):
+        """Has this entry changed relative to previous_ie.
+
+        This method should be overriden in child classes.
+        """
         compatible = True
         # different inv parent
         if previous_ie.parent_id != self.parent_id:
@@ -315,27 +343,21 @@ class InventoryEntry(object):
         # renamed
         elif previous_ie.name != self.name:
             compatible = False
-        if self.kind == 'symlink':
-            if self.symlink_target != previous_ie.symlink_target:
-                compatible = False
-        if self.kind == 'file':
-            if self.text_sha1 != previous_ie.text_sha1:
-                compatible = False
-            else:
-                # FIXME: 20050930 probe for the text size when getting sha1
-                # in _read_tree_state
-                self.text_size = previous_ie.text_size
         return compatible
 
     def _read_tree_state(self, path, work_tree):
-        if self.kind == 'symlink':
-            self.read_symlink_target(work_tree.abspath(path))
-        if self.kind == 'file':
-            self.text_sha1 = work_tree.get_file_sha1(self.file_id)
-            self.executable = work_tree.is_executable(self.file_id)
+        """Populate fields in the inventory entry from the given tree.
+        
+        Note that this should be modified to be a noop on virtual trees
+        as all entries created there are prepopulated.
+        """
 
 
 class RootEntry(InventoryEntry):
+
+    def _check(self, checker, rev_id, tree):
+        """See InventoryEntry._check"""
+
     def __init__(self, file_id):
         self.file_id = file_id
         self.children = {}
@@ -350,6 +372,238 @@ class RootEntry(InventoryEntry):
         return (self.file_id == other.file_id) \
                and (self.children == other.children)
 
+
+class InventoryDirectory(InventoryEntry):
+    """A directory in an inventory."""
+
+    def _check(self, checker, rev_id, tree):
+        """See InventoryEntry._check"""
+        if self.text_sha1 != None or self.text_size != None or self.text_id != None:
+            raise BzrCheckError('directory {%s} has text in revision {%s}'
+                                % (self.file_id, rev_id))
+
+    def copy(self):
+        other = InventoryDirectory(self.file_id, self.name, self.parent_id)
+        other.revision = self.revision
+        # note that children are *not* copied; they're pulled across when
+        # others are added
+        return other
+
+    def __init__(self, file_id, name, parent_id):
+        super(InventoryDirectory, self).__init__(file_id, name, parent_id)
+        self.children = {}
+        self.kind = 'directory'
+
+    def kind_character(self):
+        """See InventoryEntry.kind_character."""
+        return '/'
+
+    def _put_in_tar(self, item, tree):
+        """See InventoryEntry._put_in_tar."""
+        item.type = tarfile.DIRTYPE
+        fileobj = None
+        item.name += '/'
+        item.size = 0
+        item.mode = 0755
+        return fileobj
+
+    def _put_on_disk(self, fullpath, tree):
+        """See InventoryEntry._put_on_disk."""
+        os.mkdir(fullpath)
+
+
+class InventoryFile(InventoryEntry):
+    """A file in an inventory."""
+
+    def _check(self, checker, rev_id, tree):
+        """See InventoryEntry._check"""
+        revision = self.revision
+        t = (self.file_id, revision)
+        if t in checker.checked_texts:
+            prev_sha = checker.checked_texts[t] 
+            if prev_sha != self.text_sha1:
+                raise BzrCheckError('mismatched sha1 on {%s} in {%s}' %
+                                    (self.file_id, rev_id))
+            else:
+                checker.repeated_text_cnt += 1
+                return
+        mutter('check version {%s} of {%s}', rev_id, self.file_id)
+        file_lines = tree.get_file_lines(self.file_id)
+        checker.checked_text_cnt += 1 
+        if self.text_size != sum(map(len, file_lines)):
+            raise BzrCheckError('text {%s} wrong size' % self.text_id)
+        if self.text_sha1 != sha_strings(file_lines):
+            raise BzrCheckError('text {%s} wrong sha1' % self.text_id)
+        checker.checked_texts[t] = self.text_sha1
+
+    def copy(self):
+        other = InventoryFile(self.file_id, self.name, self.parent_id)
+        other.executable = self.executable
+        other.text_id = self.text_id
+        other.text_sha1 = self.text_sha1
+        other.text_size = self.text_size
+        other.revision = self.revision
+        return other
+
+    def detect_changes(self, old_entry):
+        """See InventoryEntry.detect_changes."""
+        assert self.text_sha1 != None
+        assert old_entry.text_sha1 != None
+        text_modified = (self.text_sha1 != old_entry.text_sha1)
+        meta_modified = (self.executable != old_entry.executable)
+        return text_modified, meta_modified
+
+    def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
+             output_to, reverse=False):
+        """See InventoryEntry._diff."""
+        from_text = tree.get_file(self.file_id).readlines()
+        if to_entry:
+            to_text = to_tree.get_file(to_entry.file_id).readlines()
+        else:
+            to_text = []
+        if not reverse:
+            text_diff(from_label, from_text,
+                      to_label, to_text, output_to)
+        else:
+            text_diff(to_label, to_text,
+                      from_label, from_text, output_to)
+
+    def has_text(self):
+        """See InventoryEntry.has_text."""
+        return True
+
+    def __init__(self, file_id, name, parent_id):
+        super(InventoryFile, self).__init__(file_id, name, parent_id)
+        self.kind = 'file'
+
+    def kind_character(self):
+        """See InventoryEntry.kind_character."""
+        return ''
+
+    def _put_in_tar(self, item, tree):
+        """See InventoryEntry._put_in_tar."""
+        item.type = tarfile.REGTYPE
+        fileobj = tree.get_file(self.file_id)
+        item.size = self.text_size
+        if tree.is_executable(self.file_id):
+            item.mode = 0755
+        else:
+            item.mode = 0644
+        return fileobj
+
+    def _put_on_disk(self, fullpath, tree):
+        """See InventoryEntry._put_on_disk."""
+        pumpfile(tree.get_file(self.file_id), file(fullpath, 'wb'))
+        if tree.is_executable(self.file_id):
+            os.chmod(fullpath, 0755)
+
+    def _read_tree_state(self, path, work_tree):
+        """See InventoryEntry._read_tree_state."""
+        self.text_sha1 = work_tree.get_file_sha1(self.file_id)
+        self.executable = work_tree.is_executable(self.file_id)
+
+    def snapshot_revision(self, revision, previous_entries, work_tree,
+                          weave_store):
+        """See InventoryEntry.snapshot_revision."""
+        change = super(InventoryFile, self).snapshot_revision(revision, 
+            previous_entries, work_tree, weave_store)
+        self._snapshot_text(previous_entries, work_tree, weave_store)
+        return change
+
+    def _unchanged(self, path, previous_ie, work_tree):
+        """See InventoryEntry._unchanged."""
+        compatible = super(InventoryFile, self)._unchanged(path, previous_ie, 
+            work_tree)
+        if self.text_sha1 != previous_ie.text_sha1:
+            compatible = False
+        else:
+            # FIXME: 20050930 probe for the text size when getting sha1
+            # in _read_tree_state
+            self.text_size = previous_ie.text_size
+        return compatible
+
+
+class InventoryLink(InventoryEntry):
+    """A file in an inventory."""
+
+    __slots__ = ['symlink_target']
+
+    def _check(self, checker, rev_id, tree):
+        """See InventoryEntry._check"""
+        if self.text_sha1 != None or self.text_size != None or self.text_id != None:
+            raise BzrCheckError('symlink {%s} has text in revision {%s}'
+                    % (self.file_id, rev_id))
+        if self.symlink_target == None:
+            raise BzrCheckError('symlink {%s} has no target in revision {%s}'
+                    % (self.file_id, rev_id))
+
+    def copy(self):
+        other = InventoryLink(self.file_id, self.name, self.parent_id)
+        other.symlink_target = self.symlink_target
+        other.revision = self.revision
+        return other
+
+    def detect_changes(self, old_entry):
+        """See InventoryEntry.detect_changes."""
+        # FIXME: which _modified field should we use ? RBC 20051003
+        text_modified = (self.symlink_target != old_entry.symlink_target)
+        if text_modified:
+            mutter("    symlink target changed")
+        meta_modified = False
+        return text_modified, meta_modified
+
+    def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
+             output_to, reverse=False):
+        """See InventoryEntry._diff."""
+        from_text = self.symlink_target
+        if to_entry is not None:
+            to_text = to_entry.symlink_target
+            if reverse:
+                temp = from_text
+                from_text = to_text
+                to_text = temp
+            print >>output_to, '=== target changed %r => %r' % (from_text, to_text)
+        else:
+            if not reverse:
+                print >>output_to, '=== target was %r' % self.symlink_target
+            else:
+                print >>output_to, '=== target is %r' % self.symlink_target
+
+    def __init__(self, file_id, name, parent_id):
+        super(InventoryLink, self).__init__(file_id, name, parent_id)
+        self.kind = 'symlink'
+
+    def kind_character(self):
+        """See InventoryEntry.kind_character."""
+        return ''
+
+    def _put_in_tar(self, item, tree):
+        """See InventoryEntry._put_in_tar."""
+        iterm.type = tarfile.SYMTYPE
+        fileobj = None
+        item.size = 0
+        item.mode = 0755
+        item.linkname = self.symlink_target
+        return fileobj
+
+    def _put_on_disk(self, fullpath, tree):
+        """See InventoryEntry._put_on_disk."""
+        try:
+            os.symlink(self.symlink_target, fullpath)
+        except OSError,e:
+            raise BzrError("Failed to create symlink %r -> %r, error: %s" % (fullpath, self.symlink_target, e))
+
+    def _read_tree_state(self, path, work_tree):
+        """See InventoryEntry._read_tree_state."""
+        self.symlink_target = work_tree.get_symlink_target(self.file_id)
+
+    def _unchanged(self, path, previous_ie, work_tree):
+        """See InventoryEntry._unchanged."""
+        compatible = super(InventoryLink, self)._unchanged(path, previous_ie, 
+            work_tree)
+        if self.symlink_target != previous_ie.symlink_target:
+            compatible = False
+        return compatible
 
 
 class Inventory(object):
@@ -370,8 +624,8 @@ class Inventory(object):
     inserted, other than through the Inventory API.
 
     >>> inv = Inventory()
-    >>> inv.add(InventoryEntry('123-123', 'hello.c', 'file', ROOT_ID))
-    InventoryEntry('123-123', 'hello.c', kind='file', parent_id='TREE_ROOT')
+    >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
+    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT')
     >>> inv['123-123'].name
     'hello.c'
 
@@ -387,8 +641,8 @@ class Inventory(object):
     >>> [x[0] for x in inv.iter_entries()]
     ['hello.c']
     >>> inv = Inventory('TREE_ROOT-12345678-12345678')
-    >>> inv.add(InventoryEntry('123-123', 'hello.c', 'file', ROOT_ID))
-    InventoryEntry('123-123', 'hello.c', kind='file', parent_id='TREE_ROOT-12345678-12345678')
+    >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
+    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678')
     """
     def __init__(self, root_id=ROOT_ID):
         """Create or read an inventory.
@@ -486,8 +740,8 @@ class Inventory(object):
         """True if this entry contains a file with given id.
 
         >>> inv = Inventory()
-        >>> inv.add(InventoryEntry('123', 'foo.c', 'file', ROOT_ID))
-        InventoryEntry('123', 'foo.c', kind='file', parent_id='TREE_ROOT')
+        >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
+        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT')
         >>> '123' in inv
         True
         >>> '456' in inv
@@ -500,8 +754,8 @@ class Inventory(object):
         """Return the entry for given file_id.
 
         >>> inv = Inventory()
-        >>> inv.add(InventoryEntry('123123', 'hello.c', 'file', ROOT_ID))
-        InventoryEntry('123123', 'hello.c', kind='file', parent_id='TREE_ROOT')
+        >>> inv.add(InventoryFile('123123', 'hello.c', ROOT_ID))
+        InventoryFile('123123', 'hello.c', parent_id='TREE_ROOT')
         >>> inv['123123'].name
         'hello.c'
         """
@@ -569,8 +823,14 @@ class Inventory(object):
         if parent_id == None:
             raise NotVersionedError(parent_path)
 
-        ie = InventoryEntry(file_id, parts[-1],
-                            kind=kind, parent_id=parent_id)
+        if kind == 'directory':
+            ie = InventoryDirectory(file_id, parts[-1], parent_id)
+        elif kind == 'file':
+            ie = InventoryFile(file_id, parts[-1], parent_id)
+        elif kind == 'symlink':
+            ie = InventoryLink(file_id, parts[-1], parent_id)
+        else:
+            raise BzrError("unknown kind %r" % kind)
         return self.add(ie)
 
 
@@ -578,8 +838,8 @@ class Inventory(object):
         """Remove entry by id.
 
         >>> inv = Inventory()
-        >>> inv.add(InventoryEntry('123', 'foo.c', 'file', ROOT_ID))
-        InventoryEntry('123', 'foo.c', kind='file', parent_id='TREE_ROOT')
+        >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
+        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT')
         >>> '123' in inv
         True
         >>> del inv['123']
@@ -608,12 +868,12 @@ class Inventory(object):
         >>> i2 = Inventory()
         >>> i1 == i2
         True
-        >>> i1.add(InventoryEntry('123', 'foo', 'file', ROOT_ID))
-        InventoryEntry('123', 'foo', kind='file', parent_id='TREE_ROOT')
+        >>> i1.add(InventoryFile('123', 'foo', ROOT_ID))
+        InventoryFile('123', 'foo', parent_id='TREE_ROOT')
         >>> i1 == i2
         False
-        >>> i2.add(InventoryEntry('123', 'foo', 'file', ROOT_ID))
-        InventoryEntry('123', 'foo', kind='file', parent_id='TREE_ROOT')
+        >>> i2.add(InventoryFile('123', 'foo', ROOT_ID))
+        InventoryFile('123', 'foo', parent_id='TREE_ROOT')
         >>> i1 == i2
         True
         """

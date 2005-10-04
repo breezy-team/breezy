@@ -210,7 +210,7 @@ class Fetcher(object):
         # in memory until everything's done?  But this way is nicer
         # if it's interrupted.
         for path, ie in inv.iter_entries():
-            if ie.kind != 'file':
+            if not ie.has_text():
                 continue
             if ie.revision != rev_id:
                 continue
