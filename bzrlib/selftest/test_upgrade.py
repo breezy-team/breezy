@@ -65,14 +65,10 @@ class TestUpgrade(TestCaseInTempDir):
         its contents."""
         eq = self.assertEquals
         build_tree_contents(_ghost_template)
-        return 
-        # upgrade fails because some revisions are uncompressed!
-        assert False
         upgrade('.')
         b = Branch.open('.')
         revision_id = b.revision_history()[1]
         rev = b.get_revision(revision_id)
-        
 
 
 
@@ -156,33 +152,29 @@ _ghost_template = [
         'foo// f572d396fae9206628714fb2ce00f72e94f2258f 6 1128422956 1128422956 306900 770\n'
     ),
     ( './.bzr/text-store/', ),
-    ( './.bzr/text-store/foo-20051004104921-8de8118a71be45ba',
-        'hello\n'
+    ( './.bzr/text-store/foo-20051004104921-8de8118a71be45ba.gz',
+        '\x1f\x8b\x08\x081^BC\x00\x03foo-20051004104921-8de8118a71be45ba\x00\xcbH\xcd\xc9\xc9\xe7\x02\x00 0:6\x06\x00\x00\x00'
     ),
     ( './.bzr/inventory-store/', ),
-    ( './.bzr/inventory-store/mbp@sourcefrog.net-20051004104921-a98be2278dd30b7b',
-        '<inventory>\n'
-        '<entry file_id="foo-20051004104918-0379cb7c76354cde" kind="file" name="foo" text_id="foo-20051004104921-8de8118a71be45ba" text_sha1="f572d396fae9206628714fb2ce00f72e94f2258f" text_size="6" />\n'
-        '</inventory>\n'
+    ( './.bzr/inventory-store/mbp@sourcefrog.net-20051004104921-a98be2278dd30b7b.gz',
+        '\x1f\x8b\x08\x081^BC\x00\x03mbp@sourcefrog.net-20051004104921-a98be2278dd30b7b\x00m\x8f\xcb\n'
+        '\xc20\x10E\xf7~E\xc8\xbe83\xcd\x13\xaa\xbf"yL0\xa8-\xd4"\xd6\xaf7\x8a\x82\x0bw\xb38\xe7\xde;C\x1do<.\xd3\xbc\xee7C;\xe6U\x94z\xe6C\xcd;Y\xa6\xa9#\x00\x8d\x00\n'
+        'Ayt\x1d\xf4\xd6\xa7h\x935\xbdV)\xb3\x14\xa7:\xbe\xd0\xe6H1\x86\x0b\xbf5)\x16\xbe/\x7fC\x08;\x97\xd9!\xba`1\xb2\xd21|\xe8\xeb1`\xe3\xb5\xa5\xdc{S\x02{\x02c\xc8YT%Rb\x80b\x89\xbd*D\xda\x95\xafT\x1f\xad\xd2H\xb1m\xfb\xb7?\xcf<\x01W}\xb5\x8b\xd9\x00\x00\x00'
     ),
-    ( './.bzr/inventory-store/mbp@sourcefrog.net-20051004104937-c9b7a7bfcc0bb22d',
-        '<inventory>\n'
-        '<entry file_id="foo-20051004104918-0379cb7c76354cde" kind="file" name="foo" text_id="foo-20051004104921-8de8118a71be45ba" text_sha1="f572d396fae9206628714fb2ce00f72e94f2258f" text_size="6" />\n'
-        '</inventory>\n'
+    ( './.bzr/inventory-store/mbp@sourcefrog.net-20051004104937-c9b7a7bfcc0bb22d.gz',
+        '\x1f\x8b\x08\x08A^BC\x00\x03mbp@sourcefrog.net-20051004104937-c9b7a7bfcc0bb22d\x00m\x8f\xcb\n'
+        '\xc20\x10E\xf7~E\xc8\xbe83\xcd\x13\xaa\xbf"yL0\xa8-\xd4"\xd6\xaf7\x8a\x82\x0bw\xb38\xe7\xde;C\x1do<.\xd3\xbc\xee7C;\xe6U\x94z\xe6C\xcd;Y\xa6\xa9#\x00\x8d\x00\n'
+        'Ayt\x1d\xf4\xd6\xa7h\x935\xbdV)\xb3\x14\xa7:\xbe\xd0\xe6H1\x86\x0b\xbf5)\x16\xbe/\x7fC\x08;\x97\xd9!\xba`1\xb2\xd21|\xe8\xeb1`\xe3\xb5\xa5\xdc{S\x02{\x02c\xc8YT%Rb\x80b\x89\xbd*D\xda\x95\xafT\x1f\xad\xd2H\xb1m\xfb\xb7?\xcf<\x01W}\xb5\x8b\xd9\x00\x00\x00'
     ),
     ( './.bzr/revision-store/', ),
-    ( './.bzr/revision-store/mbp@sourcefrog.net-20051004104921-a98be2278dd30b7b',
-        '<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;" inventory_id="mbp@sourcefrog.net-20051004104921-a98be2278dd30b7b" inventory_sha1="b01abf9b0a0c61efa5deb5d89c06316b7bb98cd1" revision_id="mbp@sourcefrog.net-20051004104921-a98be2278dd30b7b" timestamp="1128422961.704761982" timezone="36000">\n'
-        '<message>first</message>\n'
-        '</revision>\n'
+    ( './.bzr/revision-store/mbp@sourcefrog.net-20051004104921-a98be2278dd30b7b.gz',
+        '\x1f\x8b\x08\x081^BC\x00\x03mbp@sourcefrog.net-20051004104921-a98be2278dd30b7b\x00\x9d\x8eMj\xc30\x14\x84\xf7>\x85\xd0"\xbb$\xef\xc9\xb6,\x11\xdb\xf4\x02\x85\xde\xa0\xe8\xe7\xd9\x11\xc4R\x90\xd4@{\xfa\x06\x8a\xa1\xd0]\x97\x03\xdf\xcc|c\xa6G(!E\xe6\xd2\xb6\x85Z)O\xfc\xd5\xe4\x1a"{K\xe9\xc6\x0e\xb7z\xd9\xec\xfd\xa5\xa4\x8f\xech\xc9i=E\xaa\x87\xb5^8\x0b\xf1A\xb1\xa6\xfc\xf9\x1e\xfc\xc4\xffRG\x01\xd0#@\x87\xd0i\x81G\xa3\x95%!\x06\xe5}\x0bv\xb0\xbf\x17\xca\xd5\xe0\xc4-\xa0\xb1\x8b\xb6`\xc0I\xa4\xc5\xf4\x9el\xef\x95v [\x94\xcf\x8e\xd5\xcay\xe4l\xf7\xfe\xf7u\r'
+        '\x1b\x95j\xb6\xfb\xc4\x11\x85\xea\x84\xd0\x12O\x03t\x83D\xad\xc4\x0f\xf0\x95"M\xbc\x95\x00\xc0\xe7f|6\x8aYi^B.u<\xef\xb1\x19\xcf\xbb\xce\xdc|\x038=\xc7\xe6R\x01\x00\x00'
     ),
-    ( './.bzr/revision-store/mbp@sourcefrog.net-20051004104937-c9b7a7bfcc0bb22d',
-        '<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;" inventory_id="mbp@sourcefrog.net-20051004104937-c9b7a7bfcc0bb22d" inventory_sha1="b01abf9b0a0c61efa5deb5d89c06316b7bb98cd1" revision_id="mbp@sourcefrog.net-20051004104937-c9b7a7bfcc0bb22d" timestamp="1128422977.211585045" timezone="36000">\n'
-        '<message>merge of ghost</message>\n'
-        '<parents>\n'
-        '<revision_ref revision_id="mbp@sourcefrog.net-20051004104921-a98be2278dd30b7b" revision_sha1="e860ba9f99b6c39e6f93ea7ffb2e0b82daa96ca6" />\n'
-        '<revision_ref revision_id="wibble@wobble-2" />\n'
-        '</parents>\n'
-        '</revision>\n'
+    ( './.bzr/revision-store/mbp@sourcefrog.net-20051004104937-c9b7a7bfcc0bb22d.gz',
+        '\x1f\x8b\x08\x08A^BC\x00\x03mbp@sourcefrog.net-20051004104937-c9b7a7bfcc0bb22d\x00\x9d\x90\xc1j\xc30\x0c\x86\xef}\n'
+        "\xe3Coie'\xb1c\x9a\x94\xbe\xc0`o0,[N\x03M\\\x1c\xafe{\xfae\x94n\x85\xc1`;Y\x88O\xd2\xff\xb9Mt\x19\xe6!N\xcc\xc5q\x1cr\xa6\xd4\xf1'\x9b\xf20\xb1\xe7\x18Ol}\xca\xbb\x11\xcf\x879\xbe&G!\xc5~3Q^\xf7y\xc7\xd90]h\xca1\xbd\xbd\x0c\xbe\xe3?\xa9B\x02\xd4\x02\xa0\x12P\x99R\x17\xce\xa0\xb6\x1a\x83s\x80(\xa5\x7f\xdc0\x1f\xad\xe88\x82\xb0\x18\x0c\x82\x05\xa7\x04\x05[{\xc2\xda7\xc6\x81*\x85B\x8dh\x1a\xe7\x05g\xf7\xdc\xff>\x9d\x87\x91\xe6l\xc7s\xc7\x85\x90M%\xa5\xd1z#\x85\xa8\x9b\x1a\xaa\xfa\x06\xbc\xc7\x89:^*\x00\xe0\xfbU\xbbL\xcc\xb6\xa7\xfdH\xa9'\x16\x03\xeb\x8fq\xce\xed\xf6\xde_\xb5g\x9b\x16\xa1y\xa9\xbe\x02&\n"
+        '\x7fJ+EaM\x83$\xa5n\xbc/a\x91~\xd0\xbd\xfd\x135\n'
+        '\xd0\x9a`\x0c*W\x1aR\xc1\x94du\x08(\t\xb0\x91\xdeZ\xa3\x9cU\x9cm\x7f\x8dr\x1d\x10Ot\xb8\xc6\xcf\xa7\x907|\xfb-\xb1\xbd\xd3\xfb\xd5\x07\xeeD\xee\x08*\x02\x00\x00'
     ),
 ]
