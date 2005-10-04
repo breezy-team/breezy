@@ -21,15 +21,19 @@ def main(argv):
     print '['
     for tt in capture_tree_contents('.'):
         assert isinstance(tt, tuple)
-        print '  ('
-        for val in tt:
+        print '    (', repr(tt[0]) + ',',
+        if len(tt) == 1:
+            print '),'
+        else:
+            assert len(tt) == 2
+            val = tt[1]
+            print
             if val == '':
-                print "    ''"
+                print "        ''"
             else:
                 for valline in val.splitlines(True):
-                    print '   ', repr(valline)
-            print '    ,'
-        print '  ),'
+                    print '       ', repr(valline)
+            print '    ),'
     print ']'
 
 if __name__ == '__main__':
