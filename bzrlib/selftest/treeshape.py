@@ -28,6 +28,9 @@ etc.
 # comparison.
 
 import os
+import stat
+
+from bzrlib.trace import warning
 
 def build_tree_contents(template):
     """Reconstitute some files from a text description.
@@ -52,7 +55,7 @@ def build_tree_contents(template):
                 f.close()
 
 
-def pack_tree_contents(top):
+def capture_tree_contents(top):
     """Make a Python datastructure description of a tree.
     
     If top is an absolute path the descriptions will be absolute."""
@@ -61,4 +64,13 @@ def pack_tree_contents(top):
         filenames.sort()
         for fn in filenames:
             fullpath = os.path.join(dirpath, fn)
-            yield (fullpath, file(fullpath, 'rb').read())
+            assert fullpath[-1] not in '@/'
+            info = os.lstat(fullpath)
+            if stat.S_ISLNK(info.st_mode):
+                yield (fullpath + '@', os.readlink(fullpath))
+            elif stat.S_ISREG(info.st_mode):
+                yield (fullpath, file(fullpath, 'rb').read())
+            else:
+                warning("can't capture file %s with mode %#o",
+                        fullpath, info.st_mode)
+                pass
