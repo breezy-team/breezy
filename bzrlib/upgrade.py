@@ -68,6 +68,9 @@
 # versions.
 
 
+# TODO: Don't create a progress bar here, have it passed by the caller.  
+# At least do it from the UI factory.
+
 if False:
     try:
         import psyco

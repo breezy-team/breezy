@@ -24,7 +24,8 @@ etc.
 
 # TODO: Script to write a description of a directory for testing
 # TODO: Helper that compares two structures and raises a helpful error
-# where they differ.
+# where they differ.  Option to ignore some files or directories in the 
+# comparison.
 
 import os
 
