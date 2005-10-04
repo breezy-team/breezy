@@ -237,6 +237,10 @@ class _Branch(Branch):
         self._check_format(relax_version_check)
 
         def get_store(name, compressed=True):
+            # FIXME: This approach of assuming stores are all entirely compressed
+            # or entirely uncompressed is tidy, but breaks upgrade from 
+            # some existing branches where there's a mixture; we probably 
+            # still want the option to look for both.
             relpath = self._rel_controlfilename(name)
             if compressed:
                 store = CompressedTextStore(self._transport.clone(relpath))
