@@ -32,8 +32,6 @@ from bzrlib.errors import NoSuchFile
 from bzrlib.trace import mutter
 
 
-
-
 class WeaveStore(Store):
     """Collection of several weave files in a directory.
 
@@ -44,7 +42,7 @@ class WeaveStore(Store):
     def __init__(self, transport):
         self._transport = transport
         self._cache = {}
-	self.enable_cache = False
+        self.enable_cache = False
 
 
     def filename(self, file_id):
@@ -67,7 +65,6 @@ class WeaveStore(Store):
 
     def _put(self, file_id, f):
         return self._transport.put(self.filename(file_id), f)
-
 
     def get_weave(self, file_id):
         if self.enable_cache:

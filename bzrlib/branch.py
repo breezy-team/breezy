@@ -156,6 +156,7 @@ class Branch(object):
         """Subclasses that care about caching should override this, and set
         up cached stores located under cache_root.
         """
+        self.cache_root = cache_root
 
 
 class _Branch(Branch):
@@ -242,11 +243,10 @@ class _Branch(Branch):
                 store = CompressedTextStore(self._transport.clone(relpath))
             else:
                 store = TextStore(self._transport.clone(relpath))
-            if self._transport.should_cache():
-                from meta_store import CachedStore
-                cache_path = os.path.join(self.cache_root, name)
-                os.mkdir(cache_path)
-                store = CachedStore(store, cache_path)
+            #if self._transport.should_cache():
+            #    cache_path = os.path.join(self.cache_root, name)
+            #    os.mkdir(cache_path)
+            #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
         def get_weave(name):
             relpath = self._rel_controlfilename(name)

@@ -189,6 +189,9 @@ class LocalTransport(Transport):
         else:
             return super(LocalTransport, self).copy_to(relpaths, other, pb=pb)
 
+    def listable(self):
+        """See Transport.listable."""
+        return True
 
     def list_dir(self, relpath):
         """Return a list of all files at the given location.

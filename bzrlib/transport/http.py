@@ -216,12 +216,9 @@ class HttpTransport(Transport):
         """Delete the item at relpath"""
         raise TransportNotPossible('http does not support delete()')
 
-    def list_dir(self, relpath):
-        """Return a list of all files at the given location.
-        WARNING: many transports do not support this, so trying avoid using
-        it if at all possible.
-        """
-        raise TransportNotPossible('http does not support list_dir()')
+    def listable(self):
+        """See Transport.listable."""
+        return False
 
     def stat(self, relpath):
         """Return the stat information for a file.
