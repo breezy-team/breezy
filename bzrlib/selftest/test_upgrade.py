@@ -27,47 +27,7 @@ from bzrlib.selftest import TestCase, TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.revision import is_ancestor
 from bzrlib.upgrade import upgrade
-
-
-# TODO: Hoist these to the test utility module
-# TODO: Script to write a description of a directory for testing
-# TODO: Helper that compares two structures and raises a helpful error
-# where they differ.
-
-def build_tree_contents(template):
-    """Reconstitute some files from a text description.
-
-    Each element of template is a tuple.  The first element is a filename,
-    with an optional ending character indicating the type.
-
-    The template is built relative to the Python process's current
-    working directory.
-    """
-    for tt in template:
-        name = tt[0]
-        if name[-1] == '/':
-            os.mkdir(name)
-        elif name[-1] == '@':
-            raise NotImplementedError('symlinks not handled yet')
-        else:
-            f = file(name, 'wb')
-            try:
-                f.write(tt[1])
-            finally:
-                f.close()
-
-
-def pack_tree_contents(top):
-    """Make a Python datastructure description of a tree.
-    
-    If top is an absolute path the descriptions will be absolute."""
-    for dirpath, dirnames, filenames in os.walk(top):
-        yield (dirpath + '/', )
-        filenames.sort()
-        for fn in filenames:
-            fullpath = os.path.join(dirpath, fn)
-            yield (fullpath, file(fullpath, 'rb').read())
-    
+from bzrlib.selftest.treeshape import build_tree_contents
 
 class TestUpgrade(TestCaseInTempDir):
     def test_build_tree(self):
