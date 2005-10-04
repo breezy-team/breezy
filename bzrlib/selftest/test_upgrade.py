@@ -69,6 +69,8 @@ class TestUpgrade(TestCaseInTempDir):
         b = Branch.open('.')
         revision_id = b.revision_history()[1]
         rev = b.get_revision(revision_id)
+        eq(len(rev.parent_ids), 2)
+        eq(rev.parent_ids[1], 'wibble@wobble-2')
 
 
 
