@@ -68,6 +68,9 @@
 # versions.
 
 
+# TODO: Don't create a progress bar here, have it passed by the caller.  
+# At least do it from the UI factory.
+
 if False:
     try:
         import psyco
@@ -86,7 +89,7 @@ from bzrlib.branch import Branch, find_branch, BZR_BRANCH_FORMAT_5
 from bzrlib.revfile import Revfile
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave
-from bzrlib.progress import ProgressBar
+from bzrlib.ui import ui_factory
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
@@ -112,7 +115,7 @@ class Convert(object):
         self._backup_control_dir()
         note('starting upgrade')
         note('note: upgrade may be faster if all store files are ungzipped first')
-        self.pb = ProgressBar()
+        self.pb = ui_factory.progress_bar()
         if not os.path.isdir(self.base + '/.bzr/weaves'):
             os.mkdir(self.base + '/.bzr/weaves')
         self.inv_weave = Weave('inventory')
@@ -140,7 +143,7 @@ class Convert(object):
         self.pb.clear()
         note('upgraded to weaves:')
         note('  %6d revisions and inventories' % len(self.revisions))
-        note('  %6d absent revisions removed' % len(self.absent_revisions))
+        note('  %6d revisions not present' % len(self.absent_revisions))
         note('  %6d texts' % self.text_count)
         self._write_all_weaves()
         self._write_all_revs()
@@ -232,7 +235,7 @@ class Convert(object):
         if rev_id not in self.branch.revision_store:
             self.pb.clear()
             note('revision {%s} not present in branch; '
-                 'will not be converted',
+                 'will be converted as a ghost',
                  rev_id)
             self.absent_revisions.add(rev_id)
         else:
@@ -266,18 +269,15 @@ class Convert(object):
         """Convert revision and all referenced objects to new format."""
         rev = self.revisions[rev_id]
         inv = self._load_old_inventory(rev_id)
-        for parent_id in rev.parent_ids[:]:
-            if parent_id in self.absent_revisions:
-                rev.parent_ids.remove(parent_id)
-                self.pb.clear()
-                note('remove {%s} as parent of {%s}', parent_id, rev_id)
-        self._convert_revision_contents(rev, inv)
-        self._store_new_weave(rev, inv)
-        self._make_rev_ancestry(rev)
+        present_parents = [p for p in rev.parent_ids
+                           if p not in self.absent_revisions]
+        self._convert_revision_contents(rev, inv, present_parents)
+        self._store_new_weave(rev, inv, present_parents)
+        self._make_rev_ancestry(rev, present_parents)
         self.converted_revs.add(rev_id)
 
 
-    def _store_new_weave(self, rev, inv):
+    def _store_new_weave(self, rev, inv, present_parents):
         # the XML is now updated with text versions
         if __debug__:
             for file_id in inv:
@@ -287,44 +287,44 @@ class Convert(object):
                 assert hasattr(ie, 'revision'), \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
-
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
         new_inv_sha1 = sha_string(new_inv_xml)
-        self.inv_weave.add(rev.revision_id, rev.parent_ids,
+        self.inv_weave.add(rev.revision_id, 
+                           present_parents,
                            new_inv_xml.splitlines(True),
                            new_inv_sha1)
         rev.inventory_sha1 = new_inv_sha1
 
 
-    def _make_rev_ancestry(self, rev):
+    def _make_rev_ancestry(self, rev, present_parents):
         rev_id = rev.revision_id
-        for parent_id in rev.parent_ids:
+        for parent_id in present_parents:
             assert parent_id in self.converted_revs
-        if rev.parent_ids:
-            lines = list(self.anc_weave.mash_iter(rev.parent_ids))
+        if present_parents:
+            lines = list(self.anc_weave.mash_iter(present_parents))
         else:
             lines = []
         lines.append(rev_id + '\n')
         if __debug__:
-            parent_ancestries = [self.ancestries[p] for p in rev.parent_ids]
+            parent_ancestries = [self.ancestries[p] for p in present_parents]
             new_lines = merge_ancestry_lines(rev_id, parent_ancestries)
             assert set(lines) == set(new_lines)
             self.ancestries[rev_id] = new_lines
-        self.anc_weave.add(rev_id, rev.parent_ids, lines)
+        self.anc_weave.add(rev_id, present_parents, lines)
 
 
-    def _convert_revision_contents(self, rev, inv):
+    def _convert_revision_contents(self, rev, inv, present_parents):
         """Convert all the files within a revision.
 
         Also upgrade the inventory to refer to the text revision ids."""
         rev_id = rev.revision_id
         mutter('converting texts of revision {%s}',
                rev_id)
-        parent_invs = map(self._load_updated_inventory, rev.parent_ids)
+        parent_invs = map(self._load_updated_inventory, present_parents)
         for file_id in inv:
             ie = inv[file_id]
             self._set_revision(rev, ie, parent_invs)
-            if ie.kind != 'file':
+            if not ie.has_text():
                 continue
             self._convert_file_version(rev, ie, parent_invs)
 

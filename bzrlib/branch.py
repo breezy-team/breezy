@@ -23,6 +23,8 @@ from cStringIO import StringIO
 
 
 import bzrlib
+from bzrlib.inventory import InventoryEntry
+import bzrlib.inventory as inventory
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn, compact_date, rand_bytes, 
                             rename, splitpath, sha_file, appendpath, 
@@ -235,6 +237,10 @@ class _Branch(Branch):
         self._check_format(relax_version_check)
 
         def get_store(name, compressed=True):
+            # FIXME: This approach of assuming stores are all entirely compressed
+            # or entirely uncompressed is tidy, but breaks upgrade from 
+            # some existing branches where there's a mixture; we probably 
+            # still want the option to look for both.
             relpath = self._rel_controlfilename(name)
             if compressed:
                 store = CompressedTextStore(self._transport.clone(relpath))
@@ -578,8 +584,9 @@ class _Branch(Branch):
                     # maybe something better?
                     raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
 
-                if kind not in ('file', 'directory', 'symlink'):
-                    raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
+                if not InventoryEntry.versionable_kind(kind):
+                    raise BzrError('cannot add: not a versionable file ('
+                                   'i.e. regular file, symlink or directory): %s' % quotefn(f))
 
                 if file_id is None:
                     file_id = gen_file_id(f)
@@ -658,7 +665,15 @@ class _Branch(Branch):
             name = os.path.basename(path)
             if name == "":
                 continue
-            inv.add(InventoryEntry(file_id, name, kind, parent))
+            # fixme, there should be a factory function inv,add_?? 
+            if kind == 'directory':
+                inv.add(inventory.InventoryDirectory(file_id, name, parent))
+            elif kind == 'file':
+                inv.add(inventory.InventoryFile(file_id, name, parent))
+            elif kind == 'symlink':
+                inv.add(inventory.InventoryLink(file_id, name, parent))
+            else:
+                raise BzrError("unknown kind %r" % kind)
         self._write_inventory(inv)
 
     def unknowns(self):
@@ -989,6 +1004,10 @@ class _Branch(Branch):
         """Return a `Tree` for the working copy."""
         from bzrlib.workingtree import WorkingTree
         # TODO: In the future, WorkingTree should utilize Transport
+        # RobertCollins 20051003 - I don't think it should - working trees are
+        # much more complex to keep consistent than our careful .bzr subset.
+        # instead, we should say that working trees are local only, and optimise
+        # for that.
         return WorkingTree(self._transport.base, self.read_working_inventory())
 
 

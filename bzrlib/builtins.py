@@ -796,16 +796,9 @@ class cmd_ls(Command):
             tree = b.working_tree()
         else:
             tree = b.revision_tree(revision.in_history(b).rev_id)
-
-        for fp, fc, kind, fid in tree.list_files():
+        for fp, fc, kind, fid, entry in tree.list_files():
             if verbose:
-                if kind == 'directory':
-                    kindch = '/'
-                elif kind == 'file':
-                    kindch = ''
-                else:
-                    kindch = '???'
-
+                kindch = entry.kind_character()
                 print '%-8s %s%s' % (fc, fp, kindch)
             else:
                 print fp
@@ -885,7 +878,7 @@ class cmd_ignored(Command):
     See also: bzr ignore"""
     def run(self):
         tree = Branch.open_containing('.').working_tree()
-        for path, file_class, kind, file_id in tree.list_files():
+        for path, file_class, kind, file_id, entry in tree.list_files():
             if file_class != 'I':
                 continue
             ## XXX: Slightly inefficient since this was already calculated

@@ -34,6 +34,7 @@ import os
 
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
 from bzrlib.branch import Branch
+from bzrlib.osutils import has_symlinks
 
 
 class ExternalBase(TestCaseInTempDir):
@@ -441,13 +442,6 @@ class TestCommands(ExternalBase):
         self.assertEquals(out, '')
         err.index('unknown command')
         
-
-
-def has_symlinks():
-    if hasattr(os, 'symlink'):
-        return True
-    else:
-        return False
 
 def listdir_sorted(dir):
     L = os.listdir(dir)

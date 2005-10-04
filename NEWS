@@ -26,6 +26,8 @@ DEVELOPMENT HEAD
     * Executable bits are tracked on files. Patch from Gustavo
       Niemeyer.
 
+    * 'bzr status' now shows unknown files inside a selected directory.
+      Patch from Heikki Paajanen.
 
   INTERNALS:
 

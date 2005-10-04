@@ -17,6 +17,7 @@
 
 from bzrlib.xml import ElementTree, SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
+import bzrlib.inventory as inventory
 from bzrlib.revision import Revision        
 from bzrlib.errors import BzrError
 
@@ -45,7 +46,8 @@ class Serializer_v5(Serializer):
 
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
-        assert ie.kind in ('directory', 'file', 'symlink')
+        if not InventoryEntry.versionable_kind(ie.kind):
+            raise AssertionError('unsupported entry kind %s' % ie.kind)
         e = Element(ie.kind)
         e.set('name', ie.name)
         e.set('file_id', ie.file_id)
@@ -117,24 +119,34 @@ class Serializer_v5(Serializer):
 
     def _unpack_entry(self, elt):
         kind = elt.tag
-        if not kind in ('directory', 'file', 'symlink'):
+        if not InventoryEntry.versionable_kind(kind):
             raise AssertionError('unsupported entry kind %s' % kind)
 
         parent_id = elt.get('parent_id')
         if parent_id == None:
             parent_id = ROOT_ID
 
-        ie = InventoryEntry(elt.get('file_id'),
-                            elt.get('name'),
-                            kind,
-                            parent_id)
+        if kind == 'directory':
+            ie = inventory.InventoryDirectory(elt.get('file_id'),
+                                              elt.get('name'),
+                                              parent_id)
+        elif kind == 'file':
+            ie = inventory.InventoryFile(elt.get('file_id'),
+                                         elt.get('name'),
+                                         parent_id)
+            ie.text_sha1 = elt.get('text_sha1')
+            if elt.get('executable') == 'yes':
+                ie.executable = True
+            v = elt.get('text_size')
+            ie.text_size = v and int(v)
+        elif kind == 'symlink':
+            ie = inventory.InventoryLink(elt.get('file_id'),
+                                         elt.get('name'),
+                                         parent_id)
+            ie.symlink_target = elt.get('symlink_target')
+        else:
+            raise BzrError("unknown kind %r" % kind)
         ie.revision = elt.get('revision')
-        ie.text_sha1 = elt.get('text_sha1')
-        ie.symlink_target = elt.get('symlink_target')
-        if elt.get('executable') == 'yes':
-            ie.executable = True
-        v = elt.get('text_size')
-        ie.text_size = v and int(v)
 
         return ie
 
