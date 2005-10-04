@@ -86,6 +86,10 @@ class Store(object):
             else:
                 yield False
 
+    def listable(self):
+        """Return True if this store is able to be listed."""
+        return hasattr(self, "__iter__")
+
     def get(self, fileids, permit_failure=False, pb=None):
         """Return a set of files, one for each requested entry.
         
@@ -200,6 +204,10 @@ class TransportStore(Store):
 
     __str__ = __repr__
 
+    def listable(self):
+        """Return True if this store is able to be listed."""
+        return self._transport.listable()
+
 
 class ImmutableMemoryStore(Store):
     """A memory only store."""
@@ -294,11 +302,8 @@ class CachedStore(Store):
 def copy_all(store_from, store_to):
     """Copy all ids from one store to another."""
     # TODO: Optional progress indicator
-    if not hasattr(store_from, "__iter__"):
+    if not store_from.listable():
         raise UnlistableStore(store_from)
-    try:
-        ids = [f for f in store_from]
-    except (NotImplementedError, TransportNotPossible):
-        raise UnlistableStore(store_from)
+    ids = [f for f in store_from]
     store_to.copy_multi(store_from, ids)
 

@@ -315,13 +315,17 @@ class Transport(object):
         count = self._iterate_over(relpaths, gather, pb, 'stat', expand=False)
         return stats
 
+    def listable(self):
+        """Return True if this store supports listing."""
+        raise NotImplementedError
 
     def list_dir(self, relpath):
         """Return a list of all files at the given location.
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
-        raise NotImplementedError
+        raise TransportNotPossible("This transport has not "
+                                   "implemented list_dir.")
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
