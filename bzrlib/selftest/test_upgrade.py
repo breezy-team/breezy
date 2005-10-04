@@ -78,9 +78,20 @@ class TestUpgrade(TestCaseInTempDir):
 
     def test_upgrade_simple(self):
         """Upgrade simple v0.0.4 format to v5"""
+        eq = self.assertEquals
         build_tree_contents(_upgrade1_template)
         upgrade('.')
         b = Branch.open('.')
+        eq(b._branch_format, 5)
+        rh = b.revision_history()
+        eq(rh,
+           ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
+            'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
+        t = b.revision_tree(rh[0])
+        foo_id = 'foo-20051004035605-91e788d1875603ae'
+        eq(t.get_file_text(foo_id), 'initial contents\n')
+        t = b.revision_tree(rh[1])
+        eq(t.get_file_text(foo_id), 'new contents\n')
 
 
 _upgrade1_template = \
@@ -91,16 +102,20 @@ _upgrade1_template = \
   'This is a Bazaar-NG control directory.\nDo not change any files in this directory.\n'),
  ('.bzr/branch-format', 'Bazaar-NG branch, format 0.0.4\n'),
  ('.bzr/revision-history',
-  'mbp@sourcefrog.net-20051004035611-176b16534b086b3c\nmbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd\n'),
+  'mbp@sourcefrog.net-20051004035611-176b16534b086b3c\n'
+  'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd\n'),
  ('.bzr/merged-patches', ''),
  ('.bzr/pending-merged-patches', ''),
  ('.bzr/branch-name', ''),
  ('.bzr/branch-lock', ''),
  ('.bzr/pending-merges', ''),
  ('.bzr/inventory',
-  '<inventory>\n<entry file_id="foo-20051004035605-91e788d1875603ae" kind="file" name="foo" />\n</inventory>\n'),
+  '<inventory>\n'
+  '<entry file_id="foo-20051004035605-91e788d1875603ae" kind="file" name="foo" />\n'
+  '</inventory>\n'),
  ('.bzr/stat-cache',
-  '### bzr hashcache v5\nfoo// be9f309239729f69a6309e970ef24941d31e042c 13 1128398176 1128398176 303464 770\n'),
+  '### bzr hashcache v5\n'
+  'foo// be9f309239729f69a6309e970ef24941d31e042c 13 1128398176 1128398176 303464 770\n'),
  ('.bzr/text-store/',),
  ('.bzr/text-store/foo-20051004035611-1591048e9dc7c2d4.gz',
   '\x1f\x8b\x08\x00[\xfdAC\x02\xff\xcb\xcc\xcb,\xc9L\xccQH\xce\xcf+I\xcd+)\xe6\x02\x00\xdd\xcc\xf90\x11\x00\x00\x00'),
