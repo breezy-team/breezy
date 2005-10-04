@@ -21,35 +21,6 @@
 
 """Weave - storage of related text file versions"""
 
-# before intset (r923) 2000 versions in 41.5s
-# with intset (r926) 2000 versions in 93s !!!
-# better to just use plain sets.
-
-# making _extract build and return a list, rather than being a generator
-# takes 37.94s
-
-# with python -O, r923 does 2000 versions in 36.87s
-
-# with optimizations to avoid mutating lists - 35.75!  I guess copying
-# all the elements every time costs more than the small manipulations.
-# a surprisingly small change.
-
-# r931, which avoids using a generator for extract, does 36.98s
-
-# with memoized inclusions, takes 41.49s; not very good
-
-# with slots, takes 37.35s; without takes 39.16, a bit surprising
-
-# with the delta calculation mixed in with the add method, rather than
-# separated, takes 36.78s
-
-# with delta folded in and mutation of the list, 36.13s
-
-# with all this and simplification of add code, 33s
-
-
-
-
 
 # TODO: Perhaps have copy method for Weave instances?
 
@@ -74,7 +45,7 @@
 
 # TODO: Parallel-extract that passes back each line along with a
 # description of which revisions include it.  Nice for checking all
-# shas in parallel.
+# shas or calculating stats in parallel.
 
 # TODO: Using a single _extract routine and then processing the output
 # is probably inefficient.  It's simple enough that we can afford to
