@@ -54,15 +54,12 @@ def fetch_steps(self, br_a, br_b, writable_a):
     assert not has_revision(br_a, br_b.revision_history()[6])
     assert has_revision(br_a, br_b.revision_history()[5])
 
-    # When a non-branch ancestor is missing, it should be a failure, not
-    # exception
-    print ("CANNOT TEST MISSING NON REVISION_HISTORY ANCESTORS WITHOUT"
-           " GHOSTS")
-#    br_a4 = new_branch('br_a4')
-#    count, failures = greedy_fetch(br_a4, br_a)
-#    self.assertEqual(count, 6)
-#    self.assertEqual(failures, set((br_b.revision_history()[4],
-#                                    br_b.revision_history()[5]))) 
+    # When a non-branch ancestor is missing, it should be unlisted...
+    # as its not present in the ancestry weave.
+    br_b4 = new_branch('br_4')
+    count, failures = greedy_fetch(br_b4, br_b)
+    self.assertEqual(count, 7)
+    self.assertEqual(failures, [])
 
     self.assertEqual(greedy_fetch(writable_a, br_b)[0], 1)
     assert has_revision(br_a, br_b.revision_history()[3])

@@ -42,7 +42,7 @@ def make_branches():
     b..3   a..3 merges b..4
     b..4   a..4
     b..5   a..5 merges b..5
-    b..6
+    b..6 merges a4
 
     so A is missing b6 at the start
     and B is missing a3, a4, a5
@@ -71,14 +71,10 @@ def make_branches():
     fetch(from_branch=br2, to_branch=br1)
     br1.add_pending_merge(br2.revision_history()[5])
     commit(br1, "Commit nine", rev_id="a@u-0-5")
-    # disabled - it makes testing fetch too hard,
-    # but can be easily reenabled (without the fetch
-    # when GHOSTS are supported. RBC 20050928
+    # DO NOT FETCH HERE - we WANT a GHOST.
     #fetch(from_branch=br1, to_branch=br2)
-    #br2.add_pending_merge(br1.revision_history()[4])
-    commit(br2, "Commit ten - no merge", rev_id="b@u-0-6")
-
-    #fetch(from_branch=br2, to_branch=br1)
+    br2.add_pending_merge(br1.revision_history()[4])
+    commit(br2, "Commit ten - ghost merge", rev_id="b@u-0-6")
     
     return br1, br2
 
@@ -138,7 +134,6 @@ class TestIsAncestor(TestCaseInTempDir):
         assert is_ancestor(revisions[3], revisions_2[4], br1)
         assert is_ancestor(revisions[3], revisions_2[3], sources)
         ## assert not is_ancestor(revisions[3], revisions_2[3], br1)
-
 
 
 class TestIntermediateRevisions(TestCaseInTempDir):
@@ -249,7 +244,7 @@ class TestCommonAncestor(TestCaseInTempDir):
                           revisions_2[4])
         fetch(from_branch=br2, to_branch=br1)
         self.assertEqual(common_ancestor(revisions[5], revisions_2[6], sources),
-                          revisions_2[5])
+                          revisions[4]) # revisions_2[5] is equally valid
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
                           revisions_2[5])
 
@@ -260,7 +255,6 @@ class TestCommonAncestor(TestCaseInTempDir):
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
         sources = MultipleRevisionSources(br1, br2)
-
         expected_ancestors_list = {revisions[3]:(0, 0), 
                                    revisions[2]:(1, 1),
                                    revisions_2[4]:(2, 1), 
@@ -273,7 +267,6 @@ class TestCommonAncestor(TestCaseInTempDir):
             self.assertEqual(ancestors_list[key], value, 
                               "key %r, %r != %r" % (key, ancestors_list[key],
                                                     value))
-
         self.assertEqual(common_ancestor(revisions[0], revisions[0], sources),
                           revisions[0])
         self.assertEqual(common_ancestor(revisions[1], revisions[2], sources),
@@ -287,9 +280,9 @@ class TestCommonAncestor(TestCaseInTempDir):
         self.assertEqual(common_ancestor(revisions[4], revisions_2[5], sources),
                           revisions_2[4])
         self.assertEqual(common_ancestor(revisions[5], revisions_2[6], sources),
-                          revisions_2[5])
+                          revisions[4]) # revisions_2[5] is equally valid
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
-                          revisions_2[5])
+                          revisions[4]) # revisions_2[5] is equally valid
 
     def test_combined(self):
         """combined_graph

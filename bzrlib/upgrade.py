@@ -284,11 +284,9 @@ class Convert(object):
                 ie = inv[file_id]
                 if ie.kind == 'root_directory':
                     continue
-                assert hasattr(ie, 'name_version'), \
-                    'no name_version on {%s} in {%s}' % \
+                assert hasattr(ie, 'revision'), \
+                    'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
-                if ie.kind == 'file':
-                    assert hasattr(ie, 'text_version')
 
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
         new_inv_sha1 = sha_string(new_inv_xml)
@@ -325,13 +323,13 @@ class Convert(object):
         parent_invs = map(self._load_updated_inventory, rev.parent_ids)
         for file_id in inv:
             ie = inv[file_id]
-            self._set_name_version(rev, ie, parent_invs)
+            self._set_revision(rev, ie, parent_invs)
             if ie.kind != 'file':
                 continue
             self._convert_file_version(rev, ie, parent_invs)
 
 
-    def _set_name_version(self, rev, ie, parent_invs):
+    def _set_revision(self, rev, ie, parent_invs):
         """Set name version for a file.
 
         Done in a slightly lazy way: if the file is renamed or in a merge revision
@@ -341,18 +339,18 @@ class Convert(object):
         if ie.kind == 'root_directory':
             return
         if len(parent_invs) != 1:
-            ie.name_version = rev.revision_id
+            ie.revision = rev.revision_id
         else:
             old_inv = parent_invs[0]
             if not old_inv.has_id(file_id):
-                ie.name_version = rev.revision_id
+                ie.revision = rev.revision_id
             else:
                 old_ie = old_inv[file_id]
                 if (old_ie.parent_id != ie.parent_id
                     or old_ie.name != ie.name):
-                    ie.name_version = rev.revision_id
+                    ie.revision = rev.revision_id
                 else:
-                    ie.name_version = old_ie.name_version
+                    ie.revision = old_ie.revision
 
 
 
@@ -373,10 +371,11 @@ class Convert(object):
         for parent_inv in parent_invs:
             if parent_inv.has_id(file_id):
                 parent_ie = parent_inv[file_id]
-                old_text_version = parent_ie.text_version
-                assert old_text_version in self.converted_revs 
-                if old_text_version not in file_parents:
-                    file_parents.append(old_text_version)
+                old_revision = parent_ie.revision
+                # if this fails, its a ghost ?
+                assert old_revision in self.converted_revs 
+                if old_revision not in file_parents:
+                    file_parents.append(old_revision)
                 if parent_ie.text_sha1 != ie.text_sha1:
                     text_changed = True
         if len(file_parents) != 1 or text_changed:
@@ -384,13 +383,13 @@ class Convert(object):
             assert sha_strings(file_lines) == ie.text_sha1
             assert sum(map(len, file_lines)) == ie.text_size
             w.add(rev_id, file_parents, file_lines, ie.text_sha1)
-            ie.text_version = rev_id
+            ie.revision = rev_id
             self.text_count += 1
             ##mutter('import text {%s} of {%s}',
             ##       ie.text_id, file_id)
         else:
             ##mutter('text of {%s} unchanged from parent', file_id)
-            ie.text_version = file_parents[0]
+            ie.revision = file_parents[0]
         del ie.text_id
 
 

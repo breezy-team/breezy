@@ -36,7 +36,7 @@ import types
 import bzrlib
 from bzrlib.errors import BzrError, BzrCheckError
 
-from bzrlib.osutils import quotefn, splitpath, joinpath, appendpath
+from bzrlib.osutils import quotefn, splitpath, joinpath, appendpath, sha_strings
 from bzrlib.trace import mutter
 from bzrlib.errors import NotVersionedError
 
@@ -53,14 +53,18 @@ class InventoryEntry(object):
         (within the parent directory)
 
     kind
-        'directory' or 'file'
+        'directory' or 'file' or 'symlink'
 
     parent_id
         file_id of the parent directory, or ROOT_ID
 
-    name_version
-        the revision_id in which the name or parent of this file was
-        last changed
+    revision
+        the revision_id in which this variation of this file was 
+        introduced.
+
+    executable
+        Indicates that this file should be executable on systems
+        that support it.
 
     text_sha1
         sha-1 of the text of the file
@@ -68,9 +72,6 @@ class InventoryEntry(object):
     text_size
         size in bytes of the text of the file
         
-    text_version
-        the revision_id in which the text of this file was introduced
-
     (reading a version 4 tree created a text_id field.)
 
     >>> i = Inventory()
@@ -115,9 +116,11 @@ class InventoryEntry(object):
     """
     
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children',
-                 'text_version', 'name_version', ]
+                 'text_id', 'parent_id', 'children', 'executable', 
+                 'revision', 'symlink_target']
 
+    def _add_text_to_weave(self, new_lines, parents, weave_store):
+        weave_store.add_text(self.file_id, self.revision, new_lines, parents)
 
     def __init__(self, file_id, name, kind, parent_id, text_id=None):
         """Create an InventoryEntry
@@ -138,8 +141,8 @@ class InventoryEntry(object):
         if '/' in name or '\\' in name:
             raise BzrCheckError('InventoryEntry name %r is invalid' % name)
         
-        self.text_version = None
-        self.name_version = None
+        self.executable = False
+        self.revision = None
         self.text_sha1 = None
         self.text_size = None
         self.file_id = file_id
@@ -147,33 +150,90 @@ class InventoryEntry(object):
         self.kind = kind
         self.text_id = text_id
         self.parent_id = parent_id
+        self.symlink_target = None
         if kind == 'directory':
             self.children = {}
         elif kind == 'file':
             pass
+        elif kind == 'symlink':
+            pass
         else:
             raise BzrError("unhandled entry kind %r" % kind)
 
-
+    def read_symlink_target(self, path):
+        if self.kind == 'symlink':
+            try:
+                self.symlink_target = os.readlink(path)
+            except OSError,e:
+                raise BzrError("os.readlink error, %s" % e)
 
     def sorted_children(self):
         l = self.children.items()
         l.sort()
         return l
 
+    def check(self, checker, rev_id, inv, tree):
+        if self.parent_id != None:
+            if not inv.has_id(self.parent_id):
+                raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
+                        % (self.parent_id, rev_id))
+        if self.kind == 'file':
+            revision = self.revision
+            t = (self.file_id, revision)
+            if t in checker.checked_texts:
+                prev_sha = checker.checked_texts[t] 
+                if prev_sha != self.text_sha1:
+                    raise BzrCheckError('mismatched sha1 on {%s} in {%s}' %
+                                        (self.file_id, rev_id))
+                else:
+                    checker.repeated_text_cnt += 1
+                    return
+            mutter('check version {%s} of {%s}', rev_id, self.file_id)
+            file_lines = tree.get_file_lines(self.file_id)
+            checker.checked_text_cnt += 1 
+            if self.text_size != sum(map(len, file_lines)):
+                raise BzrCheckError('text {%s} wrong size' % self.text_id)
+            if self.text_sha1 != sha_strings(file_lines):
+                raise BzrCheckError('text {%s} wrong sha1' % self.text_id)
+            checker.checked_texts[t] = self.text_sha1
+        elif self.kind == 'directory':
+            if self.text_sha1 != None or self.text_size != None or self.text_id != None:
+                raise BzrCheckError('directory {%s} has text in revision {%s}'
+                        % (self.file_id, rev_id))
+        elif self.kind == 'root_directory':
+            pass
+        elif self.kind == 'symlink':
+            if self.text_sha1 != None or self.text_size != None or self.text_id != None:
+                raise BzrCheckError('symlink {%s} has text in revision {%s}'
+                        % (self.file_id, rev_id))
+            if self.symlink_target == None:
+                raise BzrCheckError('symlink {%s} has no target in revision {%s}'
+                        % (self.file_id, rev_id))
+        else:
+            raise BzrCheckError('unknown entry kind %r in revision {%s}' % 
+                                (self.kind, rev_id))
+
 
     def copy(self):
         other = InventoryEntry(self.file_id, self.name, self.kind,
                                self.parent_id)
+        other.executable = self.executable
         other.text_id = self.text_id
         other.text_sha1 = self.text_sha1
         other.text_size = self.text_size
-        other.text_version = self.text_version
-        other.name_version = self.name_version
+        other.symlink_target = self.symlink_target
+        other.revision = self.revision
         # note that children are *not* copied; they're pulled across when
         # others are added
         return other
 
+    def _get_snapshot_change(self, previous_entries):
+        if len(previous_entries) > 1:
+            return 'merged'
+        elif len(previous_entries) == 0:
+            return 'added'
+        else:
+            return 'modified/renamed/reparented'
 
     def __repr__(self):
         return ("%s(%r, %r, kind=%r, parent_id=%r)"
@@ -183,21 +243,63 @@ class InventoryEntry(object):
                    self.kind,
                    self.parent_id))
 
-    
+    def snapshot(self, revision, path, previous_entries, work_tree, 
+                 weave_store):
+        """Make a snapshot of this entry.
+        
+        This means that all its fields are populated, that it has its
+        text stored in the text store or weave.
+        """
+        mutter('new parents of %s are %r', path, previous_entries)
+        self._read_tree_state(path, work_tree)
+        if len(previous_entries) == 1:
+            # cannot be unchanged unless there is only one parent file rev.
+            parent_ie = previous_entries.values()[0]
+            if self._unchanged(path, parent_ie, work_tree):
+                mutter("found unchanged entry")
+                self.revision = parent_ie.revision
+                return "unchanged"
+        mutter('new revision for {%s}', self.file_id)
+        self.revision = revision
+        change = self._get_snapshot_change(previous_entries)
+        if self.kind != 'file':
+            return change
+        self._snapshot_text(previous_entries, work_tree, weave_store)
+        return change
+
+    def _snapshot_text(self, file_parents, work_tree, weave_store): 
+        mutter('storing file {%s} in revision {%s}',
+               self.file_id, self.revision)
+        # special case to avoid diffing on renames or 
+        # reparenting
+        if (len(file_parents) == 1
+            and self.text_sha1 == file_parents.values()[0].text_sha1
+            and self.text_size == file_parents.values()[0].text_size):
+            previous_ie = file_parents.values()[0]
+            weave_store.add_identical_text(
+                self.file_id, previous_ie.revision, 
+                self.revision, file_parents)
+        else:
+            new_lines = work_tree.get_file(self.file_id).readlines()
+            self._add_text_to_weave(new_lines, file_parents, weave_store)
+            self.text_sha1 = sha_strings(new_lines)
+            self.text_size = sum(map(len, new_lines))
+
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
             return NotImplemented
 
-        return (self.file_id == other.file_id) \
-               and (self.name == other.name) \
-               and (self.text_sha1 == other.text_sha1) \
-               and (self.text_size == other.text_size) \
-               and (self.text_id == other.text_id) \
-               and (self.parent_id == other.parent_id) \
-               and (self.kind == other.kind) \
-               and (self.text_version == other.text_version) \
-               and (self.name_version == other.name_version)
-
+        return ((self.file_id == other.file_id)
+                and (self.name == other.name)
+                and (other.symlink_target == self.symlink_target)
+                and (self.text_sha1 == other.text_sha1)
+                and (self.text_size == other.text_size)
+                and (self.text_id == other.text_id)
+                and (self.parent_id == other.parent_id)
+                and (self.kind == other.kind)
+                and (self.revision == other.revision)
+                and (self.executable == other.executable)
+                )
 
     def __ne__(self, other):
         return not (self == other)
@@ -205,6 +307,32 @@ class InventoryEntry(object):
     def __hash__(self):
         raise ValueError('not hashable')
 
+    def _unchanged(self, path, previous_ie, work_tree):
+        compatible = True
+        # different inv parent
+        if previous_ie.parent_id != self.parent_id:
+            compatible = False
+        # renamed
+        elif previous_ie.name != self.name:
+            compatible = False
+        if self.kind == 'symlink':
+            if self.symlink_target != previous_ie.symlink_target:
+                compatible = False
+        if self.kind == 'file':
+            if self.text_sha1 != previous_ie.text_sha1:
+                compatible = False
+            else:
+                # FIXME: 20050930 probe for the text size when getting sha1
+                # in _read_tree_state
+                self.text_size = previous_ie.text_size
+        return compatible
+
+    def _read_tree_state(self, path, work_tree):
+        if self.kind == 'symlink':
+            self.read_symlink_target(work_tree.abspath(path))
+        if self.kind == 'file':
+            self.text_sha1 = work_tree.get_file_sha1(self.file_id)
+            self.executable = work_tree.is_executable(self.file_id)
 
 
 class RootEntry(InventoryEntry):

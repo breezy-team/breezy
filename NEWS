@@ -1,5 +1,6 @@
 DEVELOPMENT HEAD
 
+
   BUG FIXES:
   
     * bzr-man.py has been updated to work again. Contributed by
@@ -7,6 +8,7 @@ DEVELOPMENT HEAD
 
     * Locking is now done with fcntl.lockf which works with NFS
       file systems. Contributed by Harald Meland.
+
 
   IMPROVEMENTS:
 
@@ -17,6 +19,13 @@ DEVELOPMENT HEAD
     * New tree format based on weave files, called version 5.
       Existing branches can be upgraded to this format using 
       'bzr upgrade'.
+
+    * Symlinks are now versionable. Initial patch by 
+      Erik Toubro Nielsen, updated to head by Robert Collins.
+
+    * Executable bits are tracked on files. Patch from Gustavo
+      Niemeyer.
+
 
   INTERNALS:
 

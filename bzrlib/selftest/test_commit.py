@@ -145,14 +145,14 @@ class TestCommit(TestCaseInTempDir):
         self.assertFalse(tree1.has_filename('fruity'))
         self.check_inventory_shape(tree1.inventory, ['hello'])
         ie = tree1.inventory['hello-id']
-        eq(ie.name_version, 'test@rev-1')
+        eq(ie.revision, 'test@rev-1')
 
         tree2 = b.revision_tree('test@rev-2')
         eq(tree2.id2path('hello-id'), 'fruity')
         eq(tree2.get_file_text('hello-id'), 'contents of hello\n')
         self.check_inventory_shape(tree2.inventory, ['fruity'])
         ie = tree2.inventory['hello-id']
-        eq(ie.name_version, 'test@rev-2')
+        eq(ie.revision, 'test@rev-2')
 
 
     def test_reused_rev_id(self):
@@ -198,9 +198,9 @@ class TestCommit(TestCaseInTempDir):
                                    ['a', 'a/b/hello', 'a/b'])
 
         inv = b.get_revision_inventory(r4)
-        eq(inv['hello-id'].name_version, r4)
-        eq(inv['a-id'].name_version, r1)
-        eq(inv['b-id'].name_version, r3)
+        eq(inv['hello-id'].revision, r4)
+        eq(inv['a-id'].revision, r1)
+        eq(inv['b-id'].revision, r3)
 
         
     def test_removed_commit(self):

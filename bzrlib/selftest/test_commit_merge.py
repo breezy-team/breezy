@@ -91,8 +91,8 @@ class TestCommitMerge(TestCaseInTempDir):
         commit(by, 'merge from x', rev_id='y@u-0-2', allow_pointless=False)
         tree = by.revision_tree('y@u-0-2')
         inv = tree.inventory
-        self.assertEquals(inv['ecks-id'].text_version, 'x@u-0-1')
-        self.assertEquals(inv['why-id'].text_version, 'y@u-0-1')
+        self.assertEquals(inv['ecks-id'].revision, 'x@u-0-1')
+        self.assertEquals(inv['why-id'].revision, 'y@u-0-1')
 
         check(bx)
         check(by)

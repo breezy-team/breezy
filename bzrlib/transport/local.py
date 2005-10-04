@@ -30,7 +30,10 @@ class LocalTransport(Transport):
         """Set the base path where files will be stored."""
         if base.startswith('file://'):
             base = base[7:]
-        super(LocalTransport, self).__init__(os.path.realpath(base))
+        # realpath is incompatible with symlinks. When we traverse
+        # up we might be able to normpath stuff. RBC 20051003
+        super(LocalTransport, self).__init__(
+            os.path.normpath(os.path.abspath(base)))
 
     def should_cache(self):
         return False

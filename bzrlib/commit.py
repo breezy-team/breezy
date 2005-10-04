@@ -214,10 +214,9 @@ class Commit(object):
             self._check_parents_present()
             
             self._remove_deleted()
-            self.new_inv = Inventory()
-            self._store_entries()
+            self._populate_new_inv()
+            self._store_snapshot()
             self._report_deletes()
-            self._set_name_versions()
 
             if not (self.allow_pointless
                     or len(self.parents) > 1
@@ -234,15 +233,13 @@ class Commit(object):
         finally:
             self.branch.unlock()
 
-
-
     def _record_inventory(self):
         """Store the inventory for the new revision."""
         inv_text = serializer_v5.write_inventory_to_string(self.new_inv)
         self.inv_sha1 = sha_string(inv_text)
         s = self.branch.control_weaves
         s.add_text('inventory', self.rev_id,
-                   split_lines(inv_text), self.parents)
+                   split_lines(inv_text), self.present_parents)
 
     def _escape_commit_message(self):
         """Replace xml-incompatible control characters."""
@@ -271,39 +268,42 @@ class Commit(object):
         s = self.branch.control_weaves
         w = s.get_weave_or_empty('ancestry')
         lines = self._make_ancestry(w)
-        w.add(self.rev_id, self.parents, lines)
+        w.add(self.rev_id, self.present_parents, lines)
         s.put_weave('ancestry', w)
-
 
     def _make_ancestry(self, ancestry_weave):
         """Return merged ancestry lines.
 
         The lines are revision-ids followed by newlines."""
-        parent_ancestries = [ancestry_weave.get(p) for p in self.parents]
+        parent_ancestries = [ancestry_weave.get(p) for p in self.present_parents]
         new_lines = merge_ancestry_lines(self.rev_id, parent_ancestries)
         mutter('merged ancestry of {%s}:\n%s', self.rev_id, ''.join(new_lines))
         return new_lines
 
-
     def _gather_parents(self):
+        """Record the parents of a merge for merge detection."""
         pending_merges = self.branch.pending_merges()
         self.parents = []
         self.parent_trees = []
+        self.present_parents = []
         precursor_id = self.branch.last_revision()
         if precursor_id:
             self.parents.append(precursor_id)
-            self.parent_trees.append(self.basis_tree)
         self.parents += pending_merges
-        self.parent_trees.extend(map(self.branch.revision_tree, pending_merges))
-
+        for revision in self.parents:
+            if self.branch.has_revision(revision):
+                self.parent_trees.append(self.branch.revision_tree(revision))
+                self.present_parents.append(revision)
 
     def _check_parents_present(self):
         for parent_id in self.parents:
             mutter('commit parent revision {%s}', parent_id)
             if not self.branch.has_revision(parent_id):
-                warning("can't commit a merge from an absent parent")
-                raise HistoryMissing(self.branch, 'revision', parent_id)
-
+                if parent_id == self.branch.last_revision():
+                    warning("parent is pissing %r", parent_id)
+                    raise HistoryMissing(self.branch, 'revision', parent_id)
+                else:
+                    mutter("commit will ghost revision %r", parent_id)
             
     def _make_revision(self):
         """Record a new revision object for this commit."""
@@ -347,7 +347,7 @@ class Commit(object):
             self.branch._write_inventory(self.work_inv)
 
 
-    def _find_file_parents(self, file_id):
+    def _find_entry_parents(self, file_id):
         """Return the text versions and hashes for all file parents.
 
         Returned as a map from text version to inventory entry.
@@ -359,77 +359,54 @@ class Commit(object):
         for tree in self.parent_trees:
             if file_id in tree.inventory:
                 ie = tree.inventory[file_id]
-                assert ie.kind == 'file'
                 assert ie.file_id == file_id
-                if ie.text_version in r:
-                    assert r[ie.text_version] == ie
+                if ie.revision in r:
+                    assert r[ie.revision] == ie
                 else:
-                    r[ie.text_version] = ie
+                    r[ie.revision] = ie
         return r
 
+    def _store_snapshot(self):
+        """Pass over inventory and record a snapshot.
 
-    def _set_name_versions(self):
-        """Pass over inventory and mark new entry version as needed.
-
-        Files get a new name version when they are new, have a
-        different parent, or a different name from in the
-        basis inventory, or if the file is in a different place
-        to any of the parents."""
+        Entries get a new revision when they are modified in 
+        any way, which includes a merge with a new set of
+        parents that have the same entry. Currently we do not
+        check for that set being ancestors of each other - and
+        we should - only parallel children should count for this
+        test see find_entry_parents to correct this. FIXME <---
+        I.e. if we are merging in revision FOO, and our
+        copy of file id BAR is identical to FOO.BAR, we should
+        generate a new revision of BAR IF and only IF FOO is
+        neither a child of our current tip, nor an ancestor of
+        our tip. The presence of FOO in our store should not 
+        affect this logic UNLESS we are doing a merge of FOO,
+        or a child of FOO.
+        """
         # XXX: Need to think more here about when the user has
         # made a specific decision on a particular value -- c.f.
         # mark-merge.  
         for path, ie in self.new_inv.iter_entries():
-            old_version = None
-            file_id = ie.file_id
-            for parent_tree in self.parent_trees:
-                parent_inv = parent_tree.inventory
-                if file_id not in parent_inv:
-                    continue
-                parent_ie = parent_inv[file_id]
-                if parent_ie.parent_id != ie.parent_id:
-                    old_version = None
-                    break
-                elif parent_ie.name != ie.name:
-                    old_version = None
-                    break
-                elif old_version is None:
-                    old_version = parent_ie.name_version
-                elif old_version != parent_ie.name_version:
-                    old_version = None
-                    break
-                else:
-                    pass                # so far so good
-            if old_version is None:
-                mutter('new name_version for {%s}', file_id)
-                ie.name_version = self.rev_id
+            previous_entries = self._find_entry_parents(ie. file_id)
+            if ie.revision is None:
+                change = ie.snapshot(self.rev_id, path, previous_entries,
+                                     self.work_tree, self.weave_store)
             else:
-                mutter('name_version for {%s} inherited as {%s}',
-                       file_id, old_version)
-                ie.name_version = old_version
+                change = "unchanged"
+            note("%s %s", change, path)
 
+    def _populate_new_inv(self):
+        """Build revision inventory.
 
-    def _store_entries(self):
-        """Build revision inventory and store modified files.
-
-        This is called with new_inv a new empty inventory.  Depending on
-        which files are selected for commit, and which ones have
-        been modified or merged, new inventory entries are built
-        based on the working and parent inventories.
-
-        As a side-effect this stores new text versions for committed
-        files with text changes or merges.
-
-        Each entry can have one of several things happen:
-
-        carry_file -- carried from the previous version (if not
-            selected for commit)
-
-        commit_nonfile -- no text to worry about
-
-        commit_old_text -- same text, may have moved
-
-        commit_file -- new text version
+        This creates a new empty inventory. Depending on
+        which files are selected for commit, and what is present in the
+        current tree, the new inventory is populated. inventory entries 
+        which are candidates for modification have their revision set to
+        None; inventory entries that are carried over untouched have their
+        revision set to their prior value.
         """
+        mutter("Selecting files for commit with filter %s", self.specific_files)
+        self.new_inv = Inventory()
         for path, new_ie in self.work_inv.iter_entries():
             file_id = new_ie.file_id
             mutter('check %s {%s}', path, new_ie.file_id)
@@ -438,68 +415,21 @@ class Commit(object):
                     mutter('%s not selected for commit', path)
                     self._carry_file(file_id)
                     continue
-            if new_ie.kind != 'file':
-                self._commit_nonfile(file_id)
-                continue
-            
-            file_parents = self._find_file_parents(file_id)
-            mutter('parents of %s are %r', path, file_parents)
-            if len(file_parents) == 1:
-                parent_ie = file_parents.values()[0]
-                wc_sha1 = self.work_tree.get_file_sha1(file_id)
-                if parent_ie.text_sha1 == wc_sha1:
-                    # text not changed or merged
-                    self._commit_old_text(file_id, parent_ie)
-                    continue
-            # file is either new, or a file merge; need to record
-            # a new version
-            if len(file_parents) > 1:
-                note('merged %s', path)
-            elif len(file_parents) == 0:
-                note('added %s', path)
-            else:
-                note('modified %s', path)
-            self._commit_file(new_ie, file_id, file_parents)
-
-
-    def _commit_nonfile(self, file_id):
-        self.new_inv.add(self.work_inv[file_id].copy())
-
+            mutter('%s selected for commit', path)
+            ie = new_ie.copy()
+            ie.revision = None
+            self.new_inv.add(ie)
 
     def _carry_file(self, file_id):
         """Carry the file unchanged from the basis revision."""
         if self.basis_inv.has_id(file_id):
             self.new_inv.add(self.basis_inv[file_id].copy())
 
-
-    def _commit_old_text(self, file_id, parent_ie):
-        """Keep the same text as last time, but possibly a different name."""
-        ie = self.work_inv[file_id].copy()
-        ie.text_version = parent_ie.text_version
-        ie.text_size = parent_ie.text_size
-        ie.text_sha1 = parent_ie.text_sha1
-        self.new_inv.add(ie)
-
-
     def _report_deletes(self):
         for file_id in self.basis_inv:
             if file_id not in self.new_inv:
                 note('deleted %s', self.basis_inv.id2path(file_id))
 
-
-    def _commit_file(self, new_ie, file_id, file_parents):                    
-        mutter('store new text for {%s} in revision {%s}',
-               file_id, self.rev_id)
-        new_lines = self.work_tree.get_file(file_id).readlines()
-        self._add_text_to_weave(file_id, new_lines, file_parents)
-        new_ie.text_version = self.rev_id
-        new_ie.text_sha1 = sha_strings(new_lines)
-        new_ie.text_size = sum(map(len, new_lines))
-        self.new_inv.add(new_ie)
-
-
-    def _add_text_to_weave(self, file_id, new_lines, parents):
-        self.weave_store.add_text(file_id, self.rev_id, new_lines, parents)
 
 
 def _gen_revision_id(branch, when):

@@ -26,16 +26,18 @@ class TreeDelta(object):
     removed
         (path, id, kind)
     renamed
-        (oldpath, newpath, id, kind, text_modified)
+        (oldpath, newpath, id, kind, text_modified, meta_modified)
     modified
-        (path, id, kind)
+        (path, id, kind, text_modified, meta_modified)
     unchanged
         (path, id, kind)
 
     Each id is listed only once.
 
     Files that are both modified and renamed are listed only in
-    renamed, with the text_modified flag true.
+    renamed, with the text_modified flag true. The text_modified
+    applies either to the the content of the file or the target of the
+    symbolic link, depending of the kind of file.
 
     Files are only considered renamed if their name has changed or
     their parent directory has changed.  Renaming a directory
@@ -87,12 +89,17 @@ class TreeDelta(object):
 
     def show(self, to_file, show_ids=False, show_unchanged=False):
         def show_list(files):
-            for path, fid, kind in files:
+            for item in files:
+                path, fid, kind = item[:3]
+
                 if kind == 'directory':
                     path += '/'
                 elif kind == 'symlink':
                     path += '@'
-                    
+
+                if len(item) == 5 and item[4]:
+                    path += '*'
+
                 if show_ids:
                     print >>to_file, '  %-30s %s' % (path, fid)
                 else:
@@ -108,7 +115,10 @@ class TreeDelta(object):
 
         if self.renamed:
             print >>to_file, 'renamed:'
-            for oldpath, newpath, fid, kind, text_modified in self.renamed:
+            for (oldpath, newpath, fid, kind,
+                 text_modified, meta_modified) in self.renamed:
+                if meta_modified:
+                    newpath += '*'
                 if show_ids:
                     print >>to_file, '  %s => %s %s' % (oldpath, newpath, fid)
                 else:
@@ -176,9 +186,24 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
                 old_sha1 = old_tree.get_file_sha1(file_id)
                 new_sha1 = new_tree.get_file_sha1(file_id)
                 text_modified = (old_sha1 != new_sha1)
+                old_exec = old_tree.is_executable(file_id)
+                new_exec = new_tree.is_executable(file_id)
+                meta_modified = (old_exec != new_exec)
+            elif kind == 'symlink':
+                t1 = old_tree.get_symlink_target(file_id)
+                t2 = new_tree.get_symlink_target(file_id)
+                if t1 != t2:
+                    mutter("    symlink target changed")
+                    # FIXME: which should we use ?
+                    text_modified = True
+                    meta_modified = False
+                else:
+                    text_modified = False
+                    meta_modified = False
             else:
                 ## mutter("no text to check for %r %r" % (file_id, kind))
                 text_modified = False
+                meta_modified = False
 
             # TODO: Can possibly avoid calculating path strings if the
             # two files are unchanged and their names and parents are
@@ -190,9 +215,10 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
                 delta.renamed.append((old_inv.id2path(file_id),
                                       new_inv.id2path(file_id),
                                       file_id, kind,
-                                      text_modified))
-            elif text_modified:
-                delta.modified.append((new_inv.id2path(file_id), file_id, kind))
+                                      text_modified, meta_modified))
+            elif text_modified or meta_modified:
+                delta.modified.append((new_inv.id2path(file_id), file_id, kind,
+                                       text_modified, meta_modified))
             elif want_unchanged:
                 delta.unchanged.append((new_inv.id2path(file_id), file_id, kind))
         else:

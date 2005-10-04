@@ -53,7 +53,7 @@ class _Serializer_v4(Serializer):
         if ie.text_size != None:
             e.set('text_size', '%d' % ie.text_size)
 
-        for f in ['text_id', 'text_sha1']:
+        for f in ['text_id', 'text_sha1', 'symlink_target']:
             v = getattr(ie, f)
             if v != None:
                 e.set(f, v)
@@ -100,6 +100,7 @@ class _Serializer_v4(Serializer):
                             parent_id)
         ie.text_id = elt.get('text_id')
         ie.text_sha1 = elt.get('text_sha1')
+        ie.symlink_target = elt.get('symlink_target')
 
         ## mutter("read inventoryentry: %r" % (elt.attrib))
 
