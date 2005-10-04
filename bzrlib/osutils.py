@@ -95,6 +95,30 @@ def kind_marker(kind):
     else:
         raise BzrError('invalid file kind %r' % kind)
 
+def lexists(f):
+    try:
+        if hasattr(os, 'lstat'):
+            os.lstat(f)
+        else:
+            os.stat(f)
+        return True
+    except OSError,e:
+        if e.errno == errno.ENOENT:
+            return False;
+        else:
+            raise BzrError("lstat/stat of (%r): %r" % (f, e))
+
+def normalizepath(f):
+    if hasattr(os.path, 'realpath'):
+        F = os.path.realpath
+    else:
+        F = os.path.abspath
+    [p,e] = os.path.split(f)
+    if e == "" or e == "." or e == "..":
+        return F(f)
+    else:
+        return os.path.join(F(p), e)
+    
 
 def backup_file(fn):
     """Copy a file to a backup.
@@ -141,6 +165,12 @@ def isfile(f):
     except OSError:
         return False
 
+def islink(f):
+    """True if f is a symlink."""
+    try:
+        return S_ISLNK(os.lstat(f)[ST_MODE])
+    except OSError:
+        return False
 
 def is_inside(dir, fname):
     """True if fname is inside dir.

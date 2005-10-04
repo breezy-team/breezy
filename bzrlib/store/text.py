@@ -30,7 +30,8 @@ from bzrlib.errors import BzrError
 from cStringIO import StringIO
 from stat import ST_SIZE
 
-class TextStore(bzrlib.store.Store):
+
+class TextStore(bzrlib.store.TransportStore):
     """Store that holds files indexed by unique names.
 
     Files can be added, but not modified once they are in.  Typically
@@ -38,11 +39,10 @@ class TextStore(bzrlib.store.Store):
     such as a UUID.
 
     Files are stored uncompressed, with no delta compression.
-
     """
 
-    def __init__(self, basedir):
-        super(TextStore, self).__init__(basedir)
+    def __init__(self, transport):
+        super(TextStore, self).__init__(transport)
 
     def _check_fileid(self, fileid):
         if not isinstance(fileid, basestring):
@@ -190,6 +190,7 @@ class TextStore(bzrlib.store.Store):
             total += st[ST_SIZE]
                 
         return count, total
+
 
 class ScratchTextStore(TextStore):
     """Self-destructing test subclass of TextStore.

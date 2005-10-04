@@ -21,6 +21,7 @@
 # it's not predictable when it will be written out.
 
 import os
+import stat
 import fnmatch
         
 import bzrlib.tree
@@ -69,7 +70,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         inv = self._inventory
         for path, ie in inv.iter_entries():
-            if os.path.exists(self.abspath(path)):
+            if bzrlib.osutils.lexists(self.abspath(path)):
                 yield ie.file_id
 
 
@@ -83,7 +84,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return os.path.join(self.basedir, filename)
 
     def has_filename(self, filename):
-        return os.path.exists(self.abspath(filename))
+        return bzrlib.osutils.lexists(self.abspath(filename))
 
     def get_file(self, file_id):
         return self.get_file_byname(self.id2path(file_id))
@@ -106,7 +107,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if not inv.has_id(file_id):
             return False
         path = inv.id2path(file_id)
-        return os.path.exists(self.abspath(path))
+        return bzrlib.osutils.lexists(self.abspath(path))
 
 
     __contains__ = has_id
@@ -115,11 +116,21 @@ class WorkingTree(bzrlib.tree.Tree):
     def get_file_size(self, file_id):
         return os.path.getsize(self.id2abspath(file_id))
 
-
     def get_file_sha1(self, file_id):
         path = self._inventory.id2path(file_id)
         return self._hashcache.get_sha1(path)
 
+
+    def is_executable(self, file_id):
+        if os.name == "nt":
+            return self._inventory[file_id].executable
+        else:
+            path = self._inventory.id2path(file_id)
+            mode = os.lstat(self.abspath(path)).st_mode
+            return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
+
+    def get_symlink_target(self, file_id):
+        return os.readlink(self.id2path(file_id))
 
     def file_class(self, filename):
         if self.path2id(filename):

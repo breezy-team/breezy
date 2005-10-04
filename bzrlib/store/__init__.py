@@ -24,9 +24,12 @@ A store is a simple write-once container indexed by a universally
 unique ID.
 """
 
+from cStringIO import StringIO
+
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.trace import mutter
 import bzrlib.transport
+from bzrlib.transport.local import LocalTransport
 
 ######################################################################
 # stores
@@ -34,23 +37,14 @@ import bzrlib.transport
 class StoreError(Exception):
     pass
 
+
 class Store(object):
     """This class represents the abstract storage layout for saving information.
+    
+    Files can be added, but not modified once they are in.  Typically
+    the hash is used as the name, or something else known to be unique,
+    such as a UUID.
     """
-    _transport = None
-    _max_buffered_requests = 10
-
-    def __init__(self, transport):
-        assert isinstance(transport, bzrlib.transport.Transport)
-        self._transport = transport
-
-    def __repr__(self):
-        if self._transport is None:
-            return "%s(None)" % (self.__class__.__name__)
-        else:
-            return "%s(%r)" % (self.__class__.__name__, self._transport.base)
-
-    __str__ = __repr__
 
     def __len__(self):
         raise NotImplementedError('Children should define their length')
@@ -186,6 +180,116 @@ class Store(object):
 
         pb.clear()
         return len(to_copy), failed
+
+
+class TransportStore(Store):
+    """A TransportStore is a Store superclass for Stores that use Transports."""
+
+    _max_buffered_requests = 10
+
+    def __init__(self, transport):
+        assert isinstance(transport, bzrlib.transport.Transport)
+        super(TransportStore, self).__init__()
+        self._transport = transport
+
+    def __repr__(self):
+        if self._transport is None:
+            return "%s(None)" % (self.__class__.__name__)
+        else:
+            return "%s(%r)" % (self.__class__.__name__, self._transport.base)
+
+    __str__ = __repr__
+
+
+class ImmutableMemoryStore(Store):
+    """A memory only store."""
+
+    def __contains__(self, fileid):
+        return self._contents.has_key(fileid)
+
+    def __init__(self):
+        super(ImmutableMemoryStore, self).__init__()
+        self._contents = {}
+
+    def add(self, stream, fileid, compressed=True):
+        if self._contents.has_key(fileid):
+            raise StoreError("fileid %s already in the store" % fileid)
+        self._contents[fileid] = stream.read()
+
+    def __getitem__(self, fileid):
+        """Returns a file reading from a particular entry."""
+        if not self._contents.has_key(fileid):
+            raise IndexError
+        return StringIO(self._contents[fileid])
+
+    def _item_size(self, fileid):
+        return len(self._contents[fileid])
+
+    def __iter__(self):
+        return iter(self._contents.keys())
+
+    def total_size(self):
+        result = 0
+        count = 0
+        for fileid in self:
+            count += 1
+            result += self._item_size(fileid)
+        return count, result
+        
+
+class CachedStore(Store):
+    """A store that caches data locally, to avoid repeated downloads.
+    The precacache method should be used to avoid server round-trips for
+    every piece of data.
+    """
+
+    def __init__(self, store, cache_dir):
+        super(CachedStore, self).__init__()
+        self.source_store = store
+        # This clones the source store type with a locally bound
+        # transport. FIXME: it assumes a constructor is == cloning.
+        # clonable store - it might be nicer to actually have a clone()
+        # or something. RBC 20051003
+        self.cache_store = store.__class__(LocalTransport(cache_dir))
+
+    def __getitem__(self, id):
+        mutter("Cache add %s" % id)
+        if id not in self.cache_store:
+            self.cache_store.add(self.source_store[id], id)
+        return self.cache_store[id]
+
+    def __contains__(self, fileid):
+        if fileid in self.cache_store:
+            return True
+        if fileid in self.source_store:
+            # We could copy at this time
+            return True
+        return False
+
+    def get(self, fileids, permit_failure=False, pb=None):
+        fileids = list(fileids)
+        hasids = self.cache_store.has(fileids)
+        needs = set()
+        for has, fileid in zip(hasids, fileids):
+            if not has:
+                needs.add(fileid)
+        if needs:
+            self.cache_store.copy_multi(self.source_store, needs,
+                    permit_failure=permit_failure)
+        return self.cache_store.get(fileids,
+                permit_failure=permit_failure, pb=pb)
+
+    def prefetch(self, ids):
+        """Copy a series of ids into the cache, before they are used.
+        For remote stores that support pipelining or async downloads, this can
+        increase speed considerably.
+
+        Failures while prefetching are ignored.
+        """
+        mutter("Prefetch of ids %s" % ",".join(ids))
+        self.cache_store.copy_multi(self.source_store, ids, 
+                                    permit_failure=True)
+
 
 def copy_all(store_from, store_to):
     """Copy all ids from one store to another."""

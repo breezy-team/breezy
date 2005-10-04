@@ -227,6 +227,7 @@ class MergeTree(object):
         self.tree = tree
         self.tempdir = tempdir
         os.mkdir(os.path.join(self.tempdir, "texts"))
+        os.mkdir(os.path.join(self.tempdir, "symlinks"))
         self.cached = {}
 
     def __iter__(self):
@@ -240,6 +241,9 @@ class MergeTree(object):
 
     def get_file_sha1(self, id):
         return self.tree.get_file_sha1(id)
+
+    def is_executable(self, id):
+        return self.tree.is_executable(id)
 
     def id2path(self, file_id):
         return self.tree.id2path(file_id)
@@ -263,13 +267,22 @@ class MergeTree(object):
         if self.root is not None:
             return self.tree.abspath(self.tree.id2path(id))
         else:
-            if self.tree.inventory[id].kind in ("directory", "root_directory"):
+            kind = self.tree.inventory[id].kind
+            if kind in ("directory", "root_directory"):
                 return self.tempdir
             if not self.cached.has_key(id):
-                path = os.path.join(self.tempdir, "texts", id)
-                outfile = file(path, "wb")
-                outfile.write(self.tree.get_file(id).read())
-                assert(os.path.exists(path))
+                if kind == "file":
+                    path = os.path.join(self.tempdir, "texts", id)
+                    outfile = file(path, "wb")
+                    outfile.write(self.tree.get_file(id).read())
+                    assert(bzrlib.osutils.lexists(path))
+                    if self.tree.is_executable(id):
+                        os.chmod(path, 0755)
+                else:
+                    assert kind == "symlink"
+                    path = os.path.join(self.tempdir, "symlinks", id)
+                    target = self.tree.get_symlink_target(id)
+                    os.symlink(target, path)
                 self.cached[id] = path
             return self.cached[id]
 

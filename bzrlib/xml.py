@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 # -*- coding: UTF-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
@@ -72,4 +73,3 @@ class Serializer(object):
 
     def _read_element(self, f):
         return ElementTree().parse(f)
-
