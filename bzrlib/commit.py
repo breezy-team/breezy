@@ -311,7 +311,7 @@ class Commit(object):
             mutter('commit parent revision {%s}', parent_id)
             if not self.branch.has_revision(parent_id):
                 if parent_id == self.branch.last_revision():
-                    warning("parent is pissing %r", parent_id)
+                    warning("parent is missing %r", parent_id)
                     raise HistoryMissing(self.branch, 'revision', parent_id)
                 else:
                     mutter("commit will ghost revision %r", parent_id)
