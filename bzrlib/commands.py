@@ -38,6 +38,9 @@
 # Those objects can specify the expected type of the argument, which
 # would help with validation and shell completion.
 
+# TODO: "--profile=cum", to change sort order.  Is there any value in leaving
+# the profile output behind so it can be interactively examined?
+
 
 
 import sys
@@ -532,6 +535,7 @@ def _match_argform(cmd, takes_args, args):
 def apply_profiled(the_callable, *args, **kwargs):
     import hotshot
     import tempfile
+    import hotshot.stats
     pffileno, pfname = tempfile.mkstemp()
     try:
         prof = hotshot.Profile(pfname)
@@ -539,15 +543,12 @@ def apply_profiled(the_callable, *args, **kwargs):
             ret = prof.runcall(the_callable, *args, **kwargs) or 0
         finally:
             prof.close()
-
-        import hotshot.stats
         stats = hotshot.stats.load(pfname)
-        #stats.strip_dirs()
-        stats.sort_stats('time')
+        stats.strip_dirs()
+        stats.sort_stats('cum')   # 'time'
         ## XXX: Might like to write to stderr or the trace file instead but
         ## print_stats seems hardcoded to stdout
         stats.print_stats(20)
-
         return ret
     finally:
         os.close(pffileno)
