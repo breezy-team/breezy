@@ -102,26 +102,38 @@ def commit(*args, **kwargs):
 
 class NullCommitReporter(object):
     """I report on progress of a commit."""
-    def added(self, path):
+
+    def snapshot_change(self, change, path):
         pass
 
-    def removed(self, path):
+    def completed(self, revno, rev_id):
         pass
 
-    def renamed(self, old_path, new_path):
+    def deleted(self, file_id):
         pass
 
+    def escaped(self, escape_count, message):
+        pass
+
+    def missing(self, path):
+        pass
 
 class ReportCommitToLog(NullCommitReporter):
-    def added(self, path):
-        note('added %s', path)
 
-    def removed(self, path):
-        note('removed %s', path)
+    def snapshot_change(self, change, path):
+        note("%s %s", change, path)
 
-    def renamed(self, old_path, new_path):
-        note('renamed %s => %s', old_path, new_path)
+    def completed(self, revno, rev_id):
+        note('committed r%d {%s}', revno, rev_id)
+    
+    def deleted(self, file_id):
+        note('deleted %s', file_id)
 
+    def escaped(self, escape_count, message):
+        note("replaced %d control characters in message", escape_count)
+
+    def missing(self, path):
+        note('missing %s', path)
 
 class Commit(object):
     """Task of committing a new revision.
@@ -226,8 +238,7 @@ class Commit(object):
             self._record_inventory()
             self._record_ancestry()
             self._make_revision()
-            note('committed r%d {%s}', (self.branch.revno() + 1),
-                 self.rev_id)
+            self.reporter.completed(self.branch.revno()+1, self.rev_id)
             self.branch.append_revision(self.rev_id)
             self.branch.set_pending_merges([])
         finally:
@@ -258,7 +269,7 @@ class Commit(object):
             lambda match: match.group(0).encode('unicode_escape'),
             self.message)
         if escape_count:
-            note("replaced %d control characters in message", escape_count)
+            self.reporter.escaped(escape_count, self.message)
 
     def _record_ancestry(self):
         """Append merged revision ancestry to the ancestry file.
@@ -338,7 +349,7 @@ class Commit(object):
             if specific and not is_inside_any(specific, path):
                 continue
             if not self.work_tree.has_filename(path):
-                note('missing %s', path)
+                self.reporter.missing(path)
                 deleted_ids.append((path, ie.file_id))
         if deleted_ids:
             deleted_ids.sort(reverse=True)
@@ -393,7 +404,7 @@ class Commit(object):
                                      self.work_tree, self.weave_store)
             else:
                 change = "unchanged"
-            note("%s %s", change, path)
+            self.reporter.snapshot_change(change, path)
 
     def _populate_new_inv(self):
         """Build revision inventory.
@@ -428,7 +439,7 @@ class Commit(object):
     def _report_deletes(self):
         for file_id in self.basis_inv:
             if file_id not in self.new_inv:
-                note('deleted %s', self.basis_inv.id2path(file_id))
+                self.reporter.deleted(self.basis_inv.id2path(file_id))
 
 
 
