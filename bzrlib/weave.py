@@ -796,7 +796,7 @@ def weave_stats(weave_file, pb):
     vers = len(w)
     for i in range(vers):
         pb.update('checking sizes', i, vers)
-        for line in w.get_iter(i):
+        for origin, lineno, line in w._extract([i]):
             total += len(line)
 
     pb.clear()
