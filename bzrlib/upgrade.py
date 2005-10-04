@@ -89,7 +89,7 @@ from bzrlib.branch import Branch, find_branch, BZR_BRANCH_FORMAT_5
 from bzrlib.revfile import Revfile
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave
-from bzrlib.progress import ProgressBar
+from bzrlib.ui import ui_factory
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
@@ -115,7 +115,7 @@ class Convert(object):
         self._backup_control_dir()
         note('starting upgrade')
         note('note: upgrade may be faster if all store files are ungzipped first')
-        self.pb = ProgressBar()
+        self.pb = ui_factory.progress_bar()
         if not os.path.isdir(self.base + '/.bzr/weaves'):
             os.mkdir(self.base + '/.bzr/weaves')
         self.inv_weave = Weave('inventory')
