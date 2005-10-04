@@ -75,7 +75,6 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     assert isinstance(to_location, basestring)
     if basis_branch is not None:
         note("basis_branch is not supported for fast weave copy yet.")
-    print "xxxxxxxxxxx", branch_from.weave_store.listable(), branch_from.weave_store
     if not (branch_from.weave_store.listable()
             and branch_from.revision_store.listable()):
         return copy_branch_slower(branch_from, to_location, revision,
