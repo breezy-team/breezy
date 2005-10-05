@@ -59,6 +59,18 @@
 # variant that is passed a pre-cooked version of the single basis
 # version?
 
+# TODO: Have a way to go back and insert a revision V1 that is a parent 
+# of an already-stored revision V2.  This means some lines previously 
+# counted as new in V2 will be discovered to have actually come from V1.  
+# It is probably necessary to insert V1, then compute a whole new diff 
+# from the mashed ancestors to V2.  This must be repeated for every 
+# direct child of V1.  The deltas from V2 to its descendents won't change,
+# although their location within the weave may change.  It may be possible
+# to just adjust the location of those instructions rather than 
+# re-weaving the whole thing.  This is expected to be a fairly rare
+# operation, only used when inserting data that was previously a ghost.
+
+
 
 
 import sha
@@ -204,6 +216,10 @@ class Weave(object):
             raise WeaveError("name %r not present in weave %r" %
                              (name, self._weave_name))
 
+
+    def iter_names(self):
+        """Yield a list of all names in this weave."""
+        return iter(self._names)
 
     def idx_to_name(self, version):
         return self._names[version]
@@ -742,17 +758,27 @@ class Weave(object):
     def join(self, other):
         """Integrate versions from other into this weave.
 
-        The resulting weave contains all the history of both weaves; any version you 
-        could retrieve from either self or other can be retrieved from self after
-        this call.
+        The resulting weave contains all the history of both weaves; 
+        any version you could retrieve from either self or other can be 
+        retrieved from self after this call.
 
-        It is illegal for the two weaves to contain different values for any version.
+        It is illegal for the two weaves to contain different values 
+        for any version.
         """
         if other.numversions() == 0:
             return          # nothing to update, easy
+        self._check_consistent_with(other)
         raise NotImplementedError()
 
 
+    def _check_consistent_with(self, other):
+        """Make sure any versions present in both weaves have consistent values."""
+        for name in self._names:
+            if name not in other._names:
+                continue
+            if self._sha1s[self._names[name]] != other._sha1s[other._names[name]]:
+                raise WeaveError("inconsistent texts for version {%s} in %r and %r"
+                                 % name, self, other)
 
 
 
