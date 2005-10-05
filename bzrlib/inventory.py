@@ -159,6 +159,10 @@ class InventoryEntry(object):
         """Return true if the object this entry represents has textual data.
 
         Note that textual data includes binary content.
+
+        Also note that all entries get weave files created for them.
+        This attribute is primarily used when upgrading from old trees that
+        did not have the weave index for all inventory entries.
         """
         return False
 
@@ -276,7 +280,7 @@ class InventoryEntry(object):
         if len(previous_entries) == 1:
             # cannot be unchanged unless there is only one parent file rev.
             parent_ie = previous_entries.values()[0]
-            if self._unchanged(path, parent_ie, work_tree):
+            if self._unchanged(parent_ie):
                 mutter("found unchanged entry")
                 self.revision = parent_ie.revision
                 return "unchanged"
@@ -289,25 +293,17 @@ class InventoryEntry(object):
         mutter('new revision for {%s}', self.file_id)
         self.revision = revision
         change = self._get_snapshot_change(previous_entries)
+        self._snapshot_text(previous_entries, work_tree, weave_store)
         return change
 
     def _snapshot_text(self, file_parents, work_tree, weave_store): 
+        """Record the 'text' of this entry, whatever form that takes.
+        
+        This default implementation simply adds an empty text.
+        """
         mutter('storing file {%s} in revision {%s}',
                self.file_id, self.revision)
-        # special case to avoid diffing on renames or 
-        # reparenting
-        if (len(file_parents) == 1
-            and self.text_sha1 == file_parents.values()[0].text_sha1
-            and self.text_size == file_parents.values()[0].text_size):
-            previous_ie = file_parents.values()[0]
-            weave_store.add_identical_text(
-                self.file_id, previous_ie.revision, 
-                self.revision, file_parents)
-        else:
-            new_lines = work_tree.get_file(self.file_id).readlines()
-            self._add_text_to_weave(new_lines, file_parents, weave_store)
-            self.text_sha1 = sha_strings(new_lines)
-            self.text_size = sum(map(len, new_lines))
+        self._add_text_to_weave([], file_parents, weave_store)
 
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
@@ -331,7 +327,7 @@ class InventoryEntry(object):
     def __hash__(self):
         raise ValueError('not hashable')
 
-    def _unchanged(self, path, previous_ie, work_tree):
+    def _unchanged(self, previous_ie):
         """Has this entry changed relative to previous_ie.
 
         This method should be overriden in child classes.
@@ -502,18 +498,29 @@ class InventoryFile(InventoryEntry):
         self.text_sha1 = work_tree.get_file_sha1(self.file_id)
         self.executable = work_tree.is_executable(self.file_id)
 
-    def snapshot_revision(self, revision, previous_entries, work_tree,
-                          weave_store):
-        """See InventoryEntry.snapshot_revision."""
-        change = super(InventoryFile, self).snapshot_revision(revision, 
-            previous_entries, work_tree, weave_store)
-        self._snapshot_text(previous_entries, work_tree, weave_store)
-        return change
+    def _snapshot_text(self, file_parents, work_tree, weave_store): 
+        """See InventoryEntry._snapshot_text."""
+        mutter('storing file {%s} in revision {%s}',
+               self.file_id, self.revision)
+        # special case to avoid diffing on renames or 
+        # reparenting
+        if (len(file_parents) == 1
+            and self.text_sha1 == file_parents.values()[0].text_sha1
+            and self.text_size == file_parents.values()[0].text_size):
+            previous_ie = file_parents.values()[0]
+            weave_store.add_identical_text(
+                self.file_id, previous_ie.revision, 
+                self.revision, file_parents)
+        else:
+            new_lines = work_tree.get_file(self.file_id).readlines()
+            self._add_text_to_weave(new_lines, file_parents, weave_store)
+            self.text_sha1 = sha_strings(new_lines)
+            self.text_size = sum(map(len, new_lines))
 
-    def _unchanged(self, path, previous_ie, work_tree):
+
+    def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
-        compatible = super(InventoryFile, self)._unchanged(path, previous_ie, 
-            work_tree)
+        compatible = super(InventoryFile, self)._unchanged(previous_ie)
         if self.text_sha1 != previous_ie.text_sha1:
             compatible = False
         else:
@@ -597,10 +604,9 @@ class InventoryLink(InventoryEntry):
         """See InventoryEntry._read_tree_state."""
         self.symlink_target = work_tree.get_symlink_target(self.file_id)
 
-    def _unchanged(self, path, previous_ie, work_tree):
+    def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
-        compatible = super(InventoryLink, self)._unchanged(path, previous_ie, 
-            work_tree)
+        compatible = super(InventoryLink, self)._unchanged(previous_ie)
         if self.symlink_target != previous_ie.symlink_target:
             compatible = False
         return compatible

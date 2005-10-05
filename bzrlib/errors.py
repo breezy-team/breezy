@@ -27,7 +27,10 @@ class BzrError(StandardError):
             return self.args[0]
         elif len(self.args) == 2:
             # further explanation or suggestions
-            return '\n  '.join([self.args[0]] + self.args[1])
+            try:
+                return '\n  '.join([self.args[0]] + self.args[1])
+            except TypeError:
+                return "%r" % self
         else:
             return `self.args`
 
@@ -203,6 +206,10 @@ class NonRelativePath(TransportError):
 
 class NoSuchFile(TransportError, IOError):
     """A get() was issued for a file that doesn't exist."""
+
+    def __str__(self):
+        return self.msg
+
     def __init__(self, msg=None, orig_error=None):
         import errno
         TransportError.__init__(self, msg=msg, orig_error=orig_error)

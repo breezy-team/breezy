@@ -82,7 +82,7 @@ class Fetcher(object):
 
     count_copied -- number of revisions copied
 
-    count_texts -- number of file texts copied
+    count_weaves -- number of file weaves copied
     """
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
         if to_branch == from_branch:
@@ -96,7 +96,7 @@ class Fetcher(object):
         self.failed_revisions = []
         self.count_copied = 0
         self.count_total = 0
-        self.count_texts = 0
+        self.count_weaves = 0
         self.copied_file_ids = set()
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.progress_bar()
@@ -212,17 +212,15 @@ class Fetcher(object):
         # in memory until everything's done?  But this way is nicer
         # if it's interrupted.
         for path, ie in inv.iter_entries():
-            if not ie.has_text():
-                continue
             if ie.revision != rev_id:
                 continue
             mutter('%s {%s} is changed in this revision',
                    path, ie.file_id)
-            self._copy_one_text(rev_id, ie.file_id)
+            self._copy_one_weave(rev_id, ie.file_id)
 
 
-    def _copy_one_text(self, rev_id, file_id):
-        """Copy one file text."""
+    def _copy_one_weave(self, rev_id, file_id):
+        """Copy one file weave."""
         mutter('copy file {%s} modified in {%s}', file_id, rev_id)
         if file_id in self.copied_file_ids:
             mutter('file {%s} already copied', file_id)
@@ -231,7 +229,7 @@ class Fetcher(object):
         to_weave = self.to_weaves.get_weave_or_empty(file_id)
         to_weave.join(from_weave)
         self.to_weaves.put_weave(file_id, to_weave)
-        self.count_texts += 1
+        self.count_weaves += 1
         self.copied_file_ids.add(file_id)
         mutter('copied file {%s}', file_id)
 

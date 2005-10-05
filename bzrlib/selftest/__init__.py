@@ -380,6 +380,10 @@ class TestCaseInTempDir(TestCase):
                 print >>f, "contents of", name
                 f.close()
 
+    def failUnlessExists(self, path):
+        """Fail unless path, which may be abs or relative, exists."""
+        self.failUnless(os.path.exists(path))
+        
 
 class MetaTestLog(TestCase):
     def test_logging(self):
