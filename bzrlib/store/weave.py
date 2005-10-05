@@ -69,6 +69,7 @@ class WeaveStore(Store):
     def get_weave(self, file_id):
         if self.enable_cache:
             if file_id in self._cache:
+                mutter("cache hit in %s for %s", self, file_id)
                 return self._cache[file_id]
         w = read_weave(self._get(file_id))
         if self.enable_cache:

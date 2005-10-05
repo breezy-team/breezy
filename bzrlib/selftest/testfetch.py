@@ -24,6 +24,7 @@ from bzrlib.branch import Branch
 from bzrlib.fetch import greedy_fetch
 
 from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 
 
 def has_revision(branch, revision_id):
@@ -98,7 +99,40 @@ def fetch_steps(self, br_a, br_b, writable_a):
 class TestFetch(TestCaseInTempDir):
 
     def test_fetch(self):
-        
         #highest indices a: 5, b: 7
         br_a, br_b = make_branches()
         fetch_steps(self, br_a, br_b, br_a)
+
+
+class TestHttpFetch(TestCaseWithWebserver):
+
+    def setUp(self):
+        super(TestHttpFetch, self).setUp()
+        self.weblogs = []
+
+    def test_fetch(self):
+        #highest indices a: 5, b: 7
+        br_a, br_b = make_branches()
+        br_rem_a = Branch.open(self.get_remote_url(br_a._transport.base))
+        fetch_steps(self, br_rem_a, br_b, br_a)
+
+    def log(self, *args):
+        """Capture web server log messages for introspection."""
+        super(TestHttpFetch, self).log(*args)
+        if args[0].startswith("webserver"):
+            self.weblogs.append(args[0])
+
+    def test_weaves_are_retrieved_once(self):
+        self.build_tree(("source/", "source/file", "target/"))
+        branch = Branch.initialize("source")
+        branch.add(["file"], ["id"])
+        branch.commit("added file")
+        print >>open("source/file", 'w'), "blah"
+        branch.commit("changed file")
+        target = Branch.initialize("target/")
+        source = Branch.open(self.get_remote_url("source/"))
+        source.weave_store.enable_cache = False
+        self.assertEqual(greedy_fetch(target, source), (2, []))
+        weave_suffix = 'weaves/id.weave HTTP/1.1" 200 -'
+        self.assertEqual(1,
+            len([log for log in self.weblogs if log.endswith(weave_suffix)]))

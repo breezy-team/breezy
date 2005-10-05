@@ -119,7 +119,6 @@ class TestCompressedTextStore(TestCaseInTempDir):
         store = get_compressed_store()
         test_ignore_get(self, store)
 
-
     def test_total_size(self):
         store = get_compressed_store('.')
         store.add(StringIO('goodbye'), '123123')
@@ -137,6 +136,7 @@ class TestCompressedTextStore(TestCaseInTempDir):
         copy_all(store_a, store_b)
         self.assertEqual(store_a['1'].read(), 'foo')
         self.assertEqual(store_b['1'].read(), 'foo')
+
 
 class TestMemoryStore(TestCase):
     
@@ -176,6 +176,7 @@ class TestMemoryStore(TestCase):
         # store_c = RemoteStore('http://example.com/')
         # self.assertRaises(UnlistableStore, copy_all, store_c, store_b)
 
+
 class TestTextStore(TestCaseInTempDir):
     def test_multiple_add(self):
         """Multiple add with same ID should raise a BzrError"""
@@ -189,7 +190,6 @@ class TestTextStore(TestCaseInTempDir):
     def test_ignore_get(self):
         store = get_text_store()
         test_ignore_get(self, store)
-
 
     def test_copy_all(self):
         """Test copying"""

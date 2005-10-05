@@ -97,6 +97,7 @@ class Fetcher(object):
         self.count_copied = 0
         self.count_total = 0
         self.count_texts = 0
+        self.copied_file_ids = set()
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.progress_bar()
         else:
@@ -191,6 +192,7 @@ class Fetcher(object):
         self._copy_inventory(rev_id, inv_xml, parents)
         self._copy_ancestry(rev_id, parents)
         self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
+        mutter('copied revision %s', rev_id)
 
 
     def _copy_inventory(self, rev_id, inv_xml, parent_ids):
@@ -221,18 +223,17 @@ class Fetcher(object):
 
     def _copy_one_text(self, rev_id, file_id):
         """Copy one file text."""
-        mutter('copy text version {%s} of file {%s}',
-               rev_id, file_id)
+        mutter('copy file {%s} modified in {%s}', file_id, rev_id)
+        if file_id in self.copied_file_ids:
+            mutter('file {%s} already copied', file_id)
+            return
         from_weave = self.from_weaves.get_weave(file_id)
-        from_idx = from_weave.lookup(rev_id)
-        from_parents = map(from_weave.idx_to_name, from_weave.parents(from_idx))
-        text_lines = from_weave.get(from_idx)
         to_weave = self.to_weaves.get_weave_or_empty(file_id)
-        to_parents = map(to_weave.lookup, from_parents)
-        # it's ok to add even if the text is already there
-        to_weave.add(rev_id, to_parents, text_lines)
+        to_weave.join(from_weave)
         self.to_weaves.put_weave(file_id, to_weave)
         self.count_texts += 1
+        self.copied_file_ids.add(file_id)
+        mutter('copied file {%s}', file_id)
 
 
 fetch = Fetcher
