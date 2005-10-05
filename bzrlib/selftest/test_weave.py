@@ -827,6 +827,19 @@ class JoinWeavesTests(TestBase):
         eq(sorted(list(w1.iter_names())),
            ['b1', 'v1', 'v2', 'v3'])
 
+    def test_join_related(self):
+        wa = self.weave1.copy()
+        wb = self.weave1.copy()
+        wa.add('a1', ['v3'], ['hello\n', 'sweet\n', 'world\n'])
+        wb.add('b1', ['v3'], ['hello\n', 'pale blue\n', 'world\n'])
+        eq = self.assertEquals
+        eq(len(wa), 4)
+        eq(len(wb), 4)
+        wa.join(wb)
+        eq(len(wa), 5)
+        eq(wa.get_lines('b1'),
+           ['hello\n', 'pale blue\n', 'world\n'])
+
 
 if __name__ == '__main__':
     import sys

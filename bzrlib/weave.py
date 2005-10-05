@@ -22,8 +22,6 @@
 """Weave - storage of related text file versions"""
 
 
-# TODO: Perhaps have copy method for Weave instances?
-
 # XXX: If we do weaves this way, will a merge still behave the same
 # way if it's done in a different order?  That's a pretty desirable
 # property.
@@ -187,6 +185,19 @@ class Weave(object):
         self._name_map = {}
         self._weave_name = weave_name
 
+
+    def copy(self):
+        """Return a deep copy of self.
+        
+        The copy can be modified without affecting the original weave."""
+        other = Weave()
+        other._weave = self._weave[:]
+        other._parents = self._parents[:]
+        other._sha1s = self._sha1s[:]
+        other._names = self._names[:]
+        other._name_map = self._name_map.copy()
+        other._weave_name = self._weave_name
+        return other
 
     def __eq__(self, other):
         if not isinstance(other, Weave):
@@ -774,17 +785,23 @@ class Weave(object):
             # and adjusting the offsets.
             if self._check_version_consistent(other, other_idx, name):
                 continue
-            new_parents = []
-            for parent_idx in other._parents[other_idx]:
-                parent_name = other._names[parent_idx]
-                if parent_name not in self._names:
-                    # should never happen
-                    raise WeaveError("missing parent {%s} of {%s} in %r" 
-                                     % (parent_name, name, self))
-                new_parents.append(self._names[parent_name])
+            new_parents = self._imported_parents(other, other_idx)
             lines = other.get_lines(other_idx)
             sha1 = other._sha1s[other_idx]
             self.add(name, new_parents, lines, sha1)
+
+
+    def _imported_parents(self, other, other_idx):
+        """Return list of parents in self corresponding to indexes in other."""
+        new_parents = []
+        for parent_idx in other._parents[other_idx]:
+            parent_name = other._names[parent_idx]
+            if parent_name not in self._names:
+                # should not be possible
+                raise WeaveError("missing parent {%s} of {%s} in %r" 
+                                 % (parent_name, other._name_map[other_idx], self))
+            new_parents.append(self._name_map[parent_name])
+        return new_parents
 
     def _check_version_consistent(self, other, other_idx, name):
         """Check if a version in consistent in this and other.
