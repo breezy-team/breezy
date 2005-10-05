@@ -24,6 +24,7 @@ import sys
 import errno
 import subprocess
 import shutil
+import re
 
 import bzrlib.commands
 import bzrlib.trace
@@ -112,26 +113,18 @@ class TextTestRunner(unittest.TextTestRunner):
         return EarlyStoppingTestResultAdapter(result)
 
 
-class filteringVisitor(TestUtil.TestVisitor):
-    """I accruse all the testCases I visit that pass a regexp filter on id
-    into my suite
-    """
+def iter_suite_tests(suite):
+    """Return all tests in a suite, recursing through nested suites"""
+    for item in suite._tests:
+        if isinstance(item, unittest.TestCase):
+            yield item
+        elif isinstance(item, unittest.TestSuite):
+            for r in iter_suite_tests(item):
+                yield r
+        else:
+            raise Exception('unknown object %r inside test suite %r'
+                            % (item, suite))
 
-    def __init__(self, filter):
-        import re
-        TestUtil.TestVisitor.__init__(self)
-        self._suite=None
-        self.filter=re.compile(filter)
-
-    def suite(self):
-        """answer the suite we are building"""
-        if self._suite is None:
-            self._suite=TestUtil.TestSuite()
-        return self._suite
-
-    def visitCase(self, aCase):
-        if self.filter.match(aCase.id()):
-            self.suite().addTest(aCase)
 
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
@@ -397,8 +390,30 @@ class MetaTestLog(TestCase):
         ##assert 0
 
 
+def filter_suite_by_re(suite, pattern):
+    result = TestUtil.TestSuite()
+    filter_re = re.compile(pattern)
+    for test in iter_suite_tests(suite):
+        if filter_re.match(test.id()):
+            result.addTest(test)
+    return result
 
-def run_suite(suite, name='test', verbose=False, pattern=".*"):
+
+def filter_suite_by_names(suite, wanted_names):
+    """Return a new suite containing only selected tests.
+    
+    Names are considered to match if any name is a substring of the 
+    fully-qualified test id (i.e. the class ."""
+    result = TestSuite()
+    for test in iter_suite_tests(suite):
+        this_id = test.id()
+        for p in wanted_names:
+            if this_id.find(p) != -1:
+                result.addTest(test)
+    return result
+
+
+def run_suite(suite, name='test', verbose=False, pattern=".*", testnames=None):
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
@@ -407,9 +422,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*"):
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity)
-    visitor = filteringVisitor(pattern)
-    suite.visit(visitor)
-    result = runner.run(visitor.suite())
+    if testnames:
+        suite = filter_suite_by_names(suite, testnames)
+    if pattern != '.*':
+        suite = filter_suite_by_re(suite, pattern)
+    result = runner.run(suite)
     # This is still a little bogus, 
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
@@ -421,9 +438,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*"):
     return result.wasSuccessful()
 
 
-def selftest(verbose=False, pattern=".*"):
+def selftest(verbose=False, pattern=".*", testnames=None):
     """Run the whole test suite under the enhanced runner"""
-    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
+    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern,
+                     testnames=testnames)
 
 
 def test_suite():
@@ -464,6 +482,7 @@ def test_suite():
                    'bzrlib.selftest.testtransport',
                    'bzrlib.selftest.testgraph',
                    'bzrlib.selftest.testworkingtree',
+                   'bzrlib.selftest.test_upgrade',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,

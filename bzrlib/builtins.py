@@ -1101,10 +1101,20 @@ class cmd_whoami(Command):
 
 
 class cmd_selftest(Command):
-    """Run internal test suite"""
+    """Run internal test suite.
+    
+    This creates temporary test directories in the working directory,
+    but not existing data is affected.  These directories are deleted
+    if the tests pass, or left behind to help in debugging if they
+    fail.
+    
+    If arguments are given, they are regular expressions that say
+    which tests should run."""
+    # TODO: --list should give a list of all available tests
     hidden = True
+    takes_args = ['testnames*']
     takes_options = ['verbose', 'pattern']
-    def run(self, verbose=False, pattern=".*"):
+    def run(self, testnames_list=None, verbose=False, pattern=".*"):
         import bzrlib.ui
         from bzrlib.selftest import selftest
         # we don't want progress meters from the tests to go to the
@@ -1114,7 +1124,9 @@ class cmd_selftest(Command):
         bzrlib.trace.info('running tests...')
         try:
             bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-            result = selftest(verbose=verbose, pattern=pattern)
+            result = selftest(verbose=verbose, 
+                              pattern=pattern,
+                              testnames=testnames_list)
             if result:
                 bzrlib.trace.info('tests passed')
             else:

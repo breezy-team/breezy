@@ -19,8 +19,10 @@
 """Black-box tests for bzr.
 
 These check that it behaves properly when it's invoked through the regular
-command-line interface.
+command-line interface. This doesn't actually run a new interpreter but 
+rather starts again from the run_bzr function.
 """
+
 
 from cStringIO import StringIO
 import os
@@ -186,7 +188,6 @@ class TestCommands(ExternalBase):
         self.run_bzr_captured(['mv', 'subdir/b', 'a'])
         self.run_bzr_captured(['mv', 'a', 'c', 'subdir'])
         self.run_bzr_captured(['mv', 'subdir/a', 'subdir/newa'])
-
 
     def test_main_version(self):
         """Check output from version command and master option is reasonable"""
@@ -404,7 +405,7 @@ class TestCommands(ExternalBase):
                                          retcode=1)
         self.assertEquals(out, '')
         err.index('unknown command')
-        
+
 
 def listdir_sorted(dir):
     L = os.listdir(dir)

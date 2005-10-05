@@ -44,6 +44,9 @@ DEVELOPMENT HEAD
     * Removed testsweet module so that tests can be run after 
       bzr installed by 'bzr selftest'.
 
+    * 'bzr selftest' command-line arguments can now be partial ids
+      of tests to run, e.g. 'bzr selftest test_weave'
+
       
 bzr 0.0.9 2005-09-23
 
