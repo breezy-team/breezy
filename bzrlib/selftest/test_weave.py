@@ -791,7 +791,19 @@ class MergeCases(TestBase):
                      ['aaa', 'ddd', 'ccc'],
                      ['aaa', 'ccc'],
                      ['<<<<', 'aaa', '====', '>>>>', 'ccc'])
-    
+
+
+class JoinWeavesTests(TestBase):
+    def test_join_empty(self):
+        """Join two empty weaves."""
+        eq = self.assertEqual
+        w1 = Weave()
+        w2 = Weave()
+        w1.join(w2)
+        eq(w1.numversions(), 0)
+        
+
+
 
 
 if __name__ == '__main__':

@@ -739,6 +739,18 @@ class Weave(object):
                        state
 
                 
+    def join(self, other):
+        """Integrate versions from other into this weave.
+
+        The resulting weave contains all the history of both weaves; any version you 
+        could retrieve from either self or other can be retrieved from self after
+        this call.
+
+        It is illegal for the two weaves to contain different values for any version.
+        """
+        if other.numversions() == 0:
+            return          # nothing to update, easy
+        raise NotImplementedError()
 
 
 
