@@ -614,7 +614,6 @@ class Weave(object):
         If there is a chunk of the file where there's no diagreement,
         only one alternative is given.
         """
-
         # approach: find the included versions common to all the
         # merged versions
         raise NotImplementedError()
@@ -640,7 +639,7 @@ class Weave(object):
         If line1=line2, this is a pure insert; if newlines=[] this is a
         pure delete.  (Similar to difflib.)
         """
-
+        raise NotImplementedError()
 
             
     def plan_merge(self, ver_a, ver_b):
