@@ -794,6 +794,15 @@ class MergeCases(TestBase):
 
 
 class JoinWeavesTests(TestBase):
+    def setUp(self):
+        super(JoinWeavesTests, self).setUp()
+        self.weave1 = Weave()
+        self.lines1 = ['hello\n']
+        self.lines3 = ['hello\n', 'cruel\n', 'world\n']
+        self.weave1.add('v1', [], self.lines1)
+        self.weave1.add('v2', [0], ['hello\n', 'world\n'])
+        self.weave1.add('v3', [1], self.lines3)
+        
     def test_join_empty(self):
         """Join two empty weaves."""
         eq = self.assertEqual
@@ -802,8 +811,21 @@ class JoinWeavesTests(TestBase):
         w1.join(w2)
         eq(w1.numversions(), 0)
         
+    def test_join_empty_to_nonempty(self):
+        """Join empty weave onto nonempty."""
+        self.weave1.join(Weave())
+        self.assertEqual(len(self.weave1), 3)
 
-
+    def test_join_unrelated(self):
+        """Join two weaves with no history in common."""
+        wb = Weave()
+        wb.add('b1', [], ['line from b\n'])
+        w1 = self.weave1
+        w1.join(wb)
+        eq = self.assertEqual
+        eq(len(w1), 4)
+        eq(sorted(list(w1.iter_names())),
+           ['b1', 'v1', 'v2', 'v3'])
 
 
 if __name__ == '__main__':

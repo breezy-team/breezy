@@ -767,19 +767,43 @@ class Weave(object):
         """
         if other.numversions() == 0:
             return          # nothing to update, easy
-        self._check_consistent_with(other)
-        raise NotImplementedError()
-
-
-    def _check_consistent_with(self, other):
-        """Make sure any versions present in both weaves have consistent values."""
-        for name in self._names:
-            if name not in other._names:
+        # work through in index order to make sure we get all dependencies
+        for other_idx, name in enumerate(other._names):
+            # TODO: If all the parents of the other version are already 
+            # present then we can avoid some work by just taking the delta
+            # and adjusting the offsets.
+            if self._check_version_consistent(other, other_idx, name):
                 continue
-            if self._sha1s[self._names[name]] != other._sha1s[other._names[name]]:
-                raise WeaveError("inconsistent texts for version {%s} in %r and %r"
-                                 % name, self, other)
+            new_parents = []
+            for parent_idx in other._parents[other_idx]:
+                parent_name = other._names[parent_idx]
+                if parent_name not in self._names:
+                    # should never happen
+                    raise WeaveError("missing parent {%s} of {%s} in %r" 
+                                     % (parent_name, name, self))
+                new_parents.append(self._names[parent_name])
+            lines = other.get_lines(other_idx)
+            sha1 = other._sha1s[other_idx]
+            self.add(name, new_parents, lines, sha1)
 
+    def _check_version_consistent(self, other, other_idx, name):
+        """Check if a version in consistent in this and other.
+        
+        If present & correct return True;
+        if not present in self return False; 
+        if inconsistent raise error."""
+        this_idx = self._name_map.get(name, -1)
+        if this_idx != -1:
+            if self._sha1s[this_idx] != other._sha1s[other_idx]:
+                raise WeaveError("inconsistent texts for version {%s} in %r and %r"
+                                 % (name, self, other))
+            elif set(self._parents[this_idx]) != set(other._parents[other_idx]):
+                raise WeaveError("inconsistent parents for version {%s} in %r and %r"
+                                 % (name, self, other))
+            else:
+                return True         # ok!
+        else:
+            return False
 
 
 def weave_toc(w):
