@@ -695,10 +695,9 @@ class cmd_log(Command):
 
     --message allows you to give a regular expression, which will be evaluated
     so that only matching entries will be displayed.
-
-    TODO: Make --revision support uuid: and hash: [future tag:] notation.
-  
     """
+
+    # TODO: Make --revision support uuid: and hash: [future tag:] notation.
 
     takes_args = ['filename?']
     takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision',
