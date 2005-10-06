@@ -153,6 +153,7 @@ class SimpleLogTest(TestCaseInTempDir):
         
         # commit a log message with control characters
         msg = "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)])
+        self.log("original commit message: %r", msg)
         b.commit(msg)
         lf = LogCatcher()
         show_log(b, lf, verbose=True)
@@ -160,3 +161,17 @@ class SimpleLogTest(TestCaseInTempDir):
         self.log("escaped commit message: %r", committed_msg)
         self.assert_(msg != committed_msg)
         self.assert_(len(committed_msg) > len(msg))
+
+        # Check that log message with only XML-valid characters isn't
+        # escaped.  As ElementTree apparently does some kind of
+        # newline conversion, neither LF (\x0A) nor CR (\x0D) are
+        # included in the test commit message, even though they are
+        # valid XML 1.0 characters.
+        msg = "\x09" + ''.join([unichr(x) for x in range(0x20, 256)])
+        self.log("original commit message: %r", msg)
+        b.commit(msg)
+        lf = LogCatcher()
+        show_log(b, lf, verbose=True)
+        committed_msg = lf.logs[0].rev.message
+        self.log("escaped commit message: %r", committed_msg)
+        self.assert_(msg == committed_msg)
