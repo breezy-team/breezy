@@ -11,3 +11,10 @@ changes in weave branch:
 
  * Move copy_branch to bzrlib.clone.copy_branch.  The destination
    directory is created if it doesn't exist.
+
+ * Inventories now identify the files which were present by 
+   giving the revision *of that file*.
+
+ * Inventory and Revision XML contains a version identifier.  
+   This must be consistent with the overall branch version
+   but allows for more flexibility in future upgrades.
