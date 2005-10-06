@@ -1005,7 +1005,7 @@ class cmd_commit(Command):
     
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False):
-        from bzrlib.errors import PointlessCommit
+        from bzrlib.errors import PointlessCommit, ConflictsInTree
         from bzrlib.msgeditor import edit_commit_message
         from bzrlib.status import show_status
         from cStringIO import StringIO
@@ -1013,6 +1013,7 @@ class cmd_commit(Command):
         b = Branch.open_containing('.')
         if selected_list:
             selected_list = [b.relpath(s) for s in selected_list]
+
             
         if not message and not file:
             catcher = StringIO()
@@ -1039,6 +1040,9 @@ class cmd_commit(Command):
             # perhaps prepare the commit; get the message; then actually commit
             raise BzrCommandError("no changes to commit",
                                   ["use --unchanged to commit anyhow"])
+        except ConflictsInTree:
+            raise BzrCommandError("Conflicts detected in working tree.  "
+                'Use "bzr conflicts" to list, "bzr resolve FILE" to resolve.')
 
 
 class cmd_check(Command):

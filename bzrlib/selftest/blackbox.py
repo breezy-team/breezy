@@ -465,11 +465,13 @@ class TestCommands(ExternalBase):
         self.runbzr('merge ../other')
         result = self.runbzr('conflicts', backtick=1)
         self.assertEquals(result, "hello\nquestion\n")
-        result = self.runbzr('resolve hello')
+        self.runbzr('resolve hello')
         result = self.runbzr('conflicts', backtick=1)
         self.assertEquals(result, "question\n")
-        result = self.runbzr('resolve --all')
+        self.runbzr('commit -m conflicts', retcode=1)
+        self.runbzr('resolve --all')
         result = self.runbzr('conflicts', backtick=1)
+        self.runbzr('commit -m conflicts')
         self.assertEquals(result, "")
         
 
