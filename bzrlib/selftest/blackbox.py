@@ -440,6 +440,37 @@ class TestCommands(ExternalBase):
                                          retcode=1)
         self.assertEquals(out, '')
         err.index('unknown command')
+
+    def test_conflicts(self):
+        """Handling of merge conflicts"""
+        os.mkdir('base')
+        os.chdir('base')
+        file('hello', 'wb').write("hi world")
+        file('answer', 'wb').write("42")
+        self.runbzr('init')
+        self.runbzr('add')
+        self.runbzr('commit -m base')
+        self.runbzr('branch . ../other')
+        self.runbzr('branch . ../this')
+        os.chdir('../other')
+        file('hello', 'wb').write("Hello.")
+        file('answer', 'wb').write("Is anyone there?")
+        self.runbzr('commit -m other')
+        os.chdir('../this')
+        file('hello', 'wb').write("Hello, world")
+        self.runbzr('mv answer question')
+        file('question', 'wb').write("What do you get when you multiply six"
+                                   "times nine?")
+        self.runbzr('commit -m this')
+        self.runbzr('merge ../other')
+        result = self.runbzr('conflicts', backtick=1)
+        self.assertEquals(result, "hello\nquestion\n")
+        result = self.runbzr('resolve hello')
+        result = self.runbzr('conflicts', backtick=1)
+        self.assertEquals(result, "question\n")
+        result = self.runbzr('resolve --all')
+        result = self.runbzr('conflicts', backtick=1)
+        self.assertEquals(result, "")
         
 
 
