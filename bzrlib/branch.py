@@ -34,7 +34,7 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            DivergedBranches, LockError, UnlistableStore,
                            UnlistableBranch, NoSuchFile)
 from bzrlib.textui import show_status
-from bzrlib.revision import Revision, validate_revision_id, is_ancestor
+from bzrlib.revision import Revision, is_ancestor
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
@@ -1198,9 +1198,6 @@ class _Branch(Branch):
     def add_pending_merge(self, *revision_ids):
         # TODO: Perhaps should check at this point that the
         # history of the revision is actually present?
-        for rev_id in revision_ids:
-            validate_revision_id(rev_id)
-
         p = self.pending_merges()
         updated = False
         for rev_id in revision_ids:
