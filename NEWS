@@ -9,6 +9,9 @@ DEVELOPMENT HEAD
     * Locking is now done with fcntl.lockf which works with NFS
       file systems. Contributed by Harald Meland.
 
+    * Commit will no longer commit without a log message, an 
+      error is returned instead. Contributed by Jelmer Vernooij.
+
 
   IMPROVEMENTS:
 

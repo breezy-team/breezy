@@ -1007,12 +1007,12 @@ class cmd_commit(Command):
         if selected_list:
             selected_list = [b.relpath(s) for s in selected_list]
             
-        if not message and not file:
+        if message is None and not file:
             catcher = StringIO()
             show_status(b, specific_files=selected_list,
                         to_file=catcher)
             message = edit_commit_message(catcher.getvalue())
-            
+
             if message is None:
                 raise BzrCommandError("please specify a commit message"
                                       " with either --message or --file")
@@ -1023,6 +1023,9 @@ class cmd_commit(Command):
             import codecs
             message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
+        if message == "":
+                raise BzrCommandError("empty commit message specified")
+            
         try:
             b.commit(message,
                      specific_files=selected_list,
