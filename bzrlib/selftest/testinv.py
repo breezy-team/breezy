@@ -18,6 +18,7 @@ from cStringIO import StringIO
 import os
 
 from bzrlib.branch import Branch
+from bzrlib.clone import copy_branch
 import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
 from bzrlib.inventory import Inventory, ROOT_ID
@@ -295,3 +296,63 @@ class TestSnapshot(TestCaseInTempDir):
                                   self.branch.weave_store)
         # expected outcome - file_1 has a revision id of '2'
         self.assertEqual(self.file_active.revision, '2')
+
+
+class TestPreviousHeads(TestCaseInTempDir):
+
+    def setUp(self):
+        # we want several inventories, that respectively
+        # give use the following scenarios:
+        # A) fileid not in any inventory (A),
+        # B) fileid present in one inventory (B) and (A,B)
+        # C) fileid present in two inventories, and they
+        #   are not mutual descendents (B, C)
+        # D) fileid present in two inventories and one is
+        #   a descendent of the other. (B, D)
+        super(TestPreviousHeads, self).setUp()
+        self.build_tree(['file'])
+        self.branch = Branch.initialize('.')
+        self.branch.commit('new branch', allow_pointless=True, rev_id='A')
+        self.inv_A = self.branch.get_inventory('A')
+        self.branch.add(['file'], ['fileid'])
+        self.branch.commit('add file', rev_id='B')
+        self.inv_B = self.branch.get_inventory('B')
+        self.branch.put_controlfile('revision-history', 'A\n')
+        self.assertEqual(self.branch.revision_history(), ['A'])
+        self.branch.commit('another add of file', rev_id='C')
+        self.inv_C = self.branch.get_inventory('C')
+        self.branch.add_pending_merge('B')
+        self.branch.commit('merge in B', rev_id='D')
+        self.inv_D = self.branch.get_inventory('D')
+        self.file_active = self.branch.working_tree().inventory['fileid']
+        self.weave = self.branch.weave_store.get_weave('fileid')
+        
+    def get_previous_heads(self, inventories):
+        return self.file_active.find_previous_heads(inventories, self.weave)
+        
+    def test_fileid_in_no_inventory(self):
+        self.assertEqual({}, self.get_previous_heads([self.inv_A]))
+
+    def test_fileid_in_one_inventory(self):
+        self.assertEqual({'B':self.inv_B['fileid']},
+                         self.get_previous_heads([self.inv_B]))
+        self.assertEqual({'B':self.inv_B['fileid']},
+                         self.get_previous_heads([self.inv_A, self.inv_B]))
+        self.assertEqual({'B':self.inv_B['fileid']},
+                         self.get_previous_heads([self.inv_B, self.inv_A]))
+
+    def test_fileid_in_two_inventories_gives_both_entries(self):
+        self.assertEqual({'B':self.inv_B['fileid'],
+                          'C':self.inv_C['fileid']},
+                          self.get_previous_heads([self.inv_B, self.inv_C]))
+        self.assertEqual({'B':self.inv_B['fileid'],
+                          'C':self.inv_C['fileid']},
+                          self.get_previous_heads([self.inv_C, self.inv_B]))
+
+    def test_fileid_in_two_inventories_already_merged_gives_head(self):
+        self.assertEqual({'D':self.inv_D['fileid']},
+                         self.get_previous_heads([self.inv_B, self.inv_D]))
+        self.assertEqual({'D':self.inv_D['fileid']},
+                         self.get_previous_heads([self.inv_D, self.inv_B]))
+
+    # TODO: test two inventories with the same file revision 

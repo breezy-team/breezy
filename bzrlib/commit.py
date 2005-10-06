@@ -346,23 +346,15 @@ class Commit(object):
 
         Entries get a new revision when they are modified in 
         any way, which includes a merge with a new set of
-        parents that have the same entry. Currently we do not
-        check for that set being ancestors of each other - and
-        we should - only parallel children should count for this
-        test see find_entry_parents to correct this. FIXME <---
-        I.e. if we are merging in revision FOO, and our
-        copy of file id BAR is identical to FOO.BAR, we should
-        generate a new revision of BAR IF and only IF FOO is
-        neither a child of our current tip, nor an ancestor of
-        our tip. The presence of FOO in our store should not 
-        affect this logic UNLESS we are doing a merge of FOO,
-        or a child of FOO.
+        parents that have the same entry. 
         """
         # XXX: Need to think more here about when the user has
         # made a specific decision on a particular value -- c.f.
         # mark-merge.  
         for path, ie in self.new_inv.iter_entries():
-            previous_entries = ie.find_previous_heads(self.parent_invs)
+            previous_entries = ie.find_previous_heads(
+                self.parent_invs, 
+                self.weave_store.get_weave_or_empty(ie.file_id))
             if ie.revision is None:
                 change = ie.snapshot(self.rev_id, path, previous_entries,
                                      self.work_tree, self.weave_store)

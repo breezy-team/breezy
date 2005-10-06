@@ -146,7 +146,7 @@ class InventoryEntry(object):
              output_to, reverse=False):
         """Perform a diff between two entries of the same kind."""
 
-    def find_previous_heads(self, previous_inventories):
+    def find_previous_heads(self, previous_inventories, entry_weave):
         """Return the revisions and entries that directly preceed this.
 
         Returned as a map from revision to inventory entry.
@@ -155,7 +155,11 @@ class InventoryEntry(object):
         for which the file exists, and its revision is not a parent of
         any other. If the file is new, the set will be empty.
         """
+        def get_ancestors(weave, entry):
+            return set(map(weave.idx_to_name,
+                           weave.inclusions([weave.lookup(entry.revision)])))
         heads = {}
+        head_ancestors = {}
         for inv in previous_inventories:
             if self.file_id in inv:
                 ie = inv[self.file_id]
@@ -163,6 +167,23 @@ class InventoryEntry(object):
                 if ie.revision in heads:
                     assert heads[ie.revision] == ie
                 else:
+                    # may want to add it.
+                    # may already be covered:
+                    already_present = 0 != len(
+                        [head for head in heads 
+                         if ie.revision in head_ancestors[head]])
+                    if already_present:
+                        # an ancestor of a known head.
+                        continue
+                    # definately a head:
+                    ancestors = get_ancestors(entry_weave, ie)
+                    # may knock something else out:
+                    check_heads = list(heads.keys())
+                    for head in check_heads:
+                        if head in ancestors:
+                            # this head is not really a head
+                            heads.pop(head)
+                    head_ancestors[ie.revision] = ancestors
                     heads[ie.revision] = ie
         return heads
 
@@ -288,8 +309,8 @@ class InventoryEntry(object):
                    self.name,
                    self.parent_id))
 
-    def snapshot(self, revision, path, previous_entries, work_tree, 
-                 weave_store):
+    def snapshot(self, revision, path, previous_entries,
+                 work_tree, weave_store):
         """Make a snapshot of this entry which may or may not have changed.
         
         This means that all its fields are populated, that it has its

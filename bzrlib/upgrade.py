@@ -340,7 +340,7 @@ class Convert(object):
             w = Weave(file_id)
             self.text_weaves[file_id] = w
         text_changed = False
-        previous_entries = ie.find_previous_heads(parent_invs)
+        previous_entries = ie.find_previous_heads(parent_invs, w)
         for old_revision in previous_entries:
                 # if this fails, its a ghost ?
                 assert old_revision in self.converted_revs 
