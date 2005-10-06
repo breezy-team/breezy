@@ -12,6 +12,10 @@ DEVELOPMENT HEAD
     * Commit will no longer commit without a log message, an 
       error is returned instead. Contributed by Jelmer Vernooij.
 
+    * If you commit a specific file in a sub directory, any of its
+      parent directories that are added but not listed will be 
+      automatically included. Suggested by Michael Ellerman.
+
 
   IMPROVEMENTS:
 

@@ -78,7 +78,7 @@ from bzrlib.errors import (BzrError, PointlessCommit,
 from bzrlib.revision import Revision
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, ROOT_ID
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.atomicfile import AtomicFile
@@ -358,14 +358,34 @@ class Commit(object):
             if self.specific_files:
                 if not is_inside_any(self.specific_files, path):
                     mutter('%s not selected for commit', path)
-                    self._carry_file(file_id)
+                    self._carry_entry(file_id)
                     continue
-            mutter('%s selected for commit', path)
-            ie = new_ie.copy()
-            ie.revision = None
-            self.new_inv.add(ie)
+                else:
+                    # this is selected, ensure its parents are too.
+                    parent_id = new_ie.parent_id
+                    while parent_id != ROOT_ID:
+                        if not self.new_inv.has_id(parent_id):
+                            ie = self._select_entry(self.work_inv[parent_id])
+                            mutter('%s selected for commit because of %s',
+                                   self.new_inv.id2path(parent_id), path)
 
-    def _carry_file(self, file_id):
+                        ie = self.new_inv[parent_id]
+                        if ie.revision is not None:
+                            ie.revision = None
+                            mutter('%s selected for commit because of %s',
+                                   self.new_inv.id2path(parent_id), path)
+                        parent_id = ie.parent_id
+            mutter('%s selected for commit', path)
+            self._select_entry(new_ie)
+
+    def _select_entry(self, new_ie):
+        """Make new_ie be considered for committing."""
+        ie = new_ie.copy()
+        ie.revision = None
+        self.new_inv.add(ie)
+        return ie
+
+    def _carry_entry(self, file_id):
         """Carry the file unchanged from the basis revision."""
         if self.basis_inv.has_id(file_id):
             self.new_inv.add(self.basis_inv[file_id].copy())
