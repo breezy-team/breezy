@@ -649,8 +649,8 @@ def run_bzr_catch_errors(argv):
             bzrlib.trace.note('broken pipe')
             return 2
         else:
-            import pdb
-            pdb.pm()
+            ## import pdb
+            ## pdb.pm()
             bzrlib.trace.log_exception()
             return 2
 
