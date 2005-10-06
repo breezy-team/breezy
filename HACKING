@@ -163,11 +163,21 @@ tests subdirectory under the package being tested.
 
 For example, tests for merge3 in bzrlib belong in bzrlib/tests/test_merge3.py.
 
+
 Running tests
 =============
 Currently, bzr selftest is used to invoke tests.
 You can provide a pattern argument to run a subset. For example, 
-to run just the whitebox tests, run bzr selftest --pattern .*whitebox.*
+to run just the whitebox tests, run::
+
+  bzr selftest -v whitebox
+
+
+
+Errors and exceptions
+=====================
+
+[write me]
 
 
 Jargon
