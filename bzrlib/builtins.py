@@ -323,9 +323,10 @@ class cmd_pull(Command):
     If branches have diverged, you can use 'bzr merge' to pull the text changes
     from one into the other.
     """
+    takes_options = ['remember']
     takes_args = ['location?']
 
-    def run(self, location=None):
+    def run(self, location=None, remember=False):
         from bzrlib.merge import merge
         import tempfile
         from shutil import rmtree
@@ -357,7 +358,7 @@ class cmd_pull(Command):
                     "  Try merge.")
                 
             merge(('.', -1), ('.', old_revno), check_clean=False)
-            if location != stored_loc:
+            if stored_loc is None or remember:
                 br_to.set_parent(location)
         finally:
             rmtree(cache_root)

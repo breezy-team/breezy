@@ -419,6 +419,32 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m blah8 --unchanged')
         self.runbzr('pull ../b')
         self.runbzr('pull ../b')
+
+    def test_locations(self):
+        """Using and remembering different locations"""
+        os.mkdir('a')
+        os.chdir('a')
+        self.runbzr('init')
+        self.runbzr('pull', retcode=1)
+        self.runbzr('commit -m unchanged --unchanged')
+        self.runbzr('branch . ../b')
+        os.chdir('../b')
+        self.runbzr('pull')
+        self.runbzr('branch . ../c')
+        self.runbzr('pull ../c')
+        os.chdir('../a')
+        self.runbzr('pull ../b')
+        self.runbzr('pull')
+        self.runbzr('pull ../c')
+        self.runbzr('branch ../c ../d')
+        shutil.rmtree('../c')
+        self.runbzr('pull')
+        os.chdir('../b')
+        self.runbzr('pull')
+        os.chdir('../d')
+        self.runbzr('pull', retcode=1)
+        self.runbzr('pull ../a --remember')
+        self.runbzr('pull')
         
     def test_add_reports(self):
         """add command prints the names of added files."""
