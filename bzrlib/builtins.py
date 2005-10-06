@@ -338,7 +338,7 @@ class cmd_pull(Command):
             if stored_loc is None:
                 raise BzrCommandError("No pull location known or specified.")
             else:
-                print "Using last location: %s" % stored_loc
+                print "Using saved location: %s" % stored_loc
                 location = stored_loc
         cache_root = tempfile.mkdtemp()
         from bzrlib.errors import DivergedBranches
@@ -1233,13 +1233,18 @@ class cmd_merge(Command):
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type']
 
-    def run(self, branch='.', revision=None, force=False, 
+    def run(self, branch=None, revision=None, force=False, 
             merge_type=None):
         from bzrlib.merge import merge
         from bzrlib.merge_core import ApplyMerge3
         if merge_type is None:
             merge_type = ApplyMerge3
-
+        if branch is None:
+            branch = Branch.open_containing('.').get_parent()
+            if branch is None:
+                raise BzrCommandError("No merge location known or specified.")
+            else:
+                print "Using saved location: %s" % branch 
         if revision is None or len(revision) < 1:
             base = [None, None]
             other = [branch, -1]
