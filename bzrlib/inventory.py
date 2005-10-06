@@ -146,6 +146,26 @@ class InventoryEntry(object):
              output_to, reverse=False):
         """Perform a diff between two entries of the same kind."""
 
+    def find_previous_heads(self, previous_inventories):
+        """Return the revisions and entries that directly preceed this.
+
+        Returned as a map from revision to inventory entry.
+
+        This is a map containing the file revisions in all parents
+        for which the file exists, and its revision is not a parent of
+        any other. If the file is new, the set will be empty.
+        """
+        heads = {}
+        for inv in previous_inventories:
+            if self.file_id in inv:
+                ie = inv[self.file_id]
+                assert ie.file_id == self.file_id
+                if ie.revision in heads:
+                    assert heads[ie.revision] == ie
+                else:
+                    heads[ie.revision] = ie
+        return heads
+
     def get_tar_item(self, root, dp, now, tree):
         """Get a tarfile item and a file stream for its content."""
         item = tarfile.TarInfo(os.path.join(root, dp))

@@ -341,26 +341,6 @@ class Commit(object):
                     del self.work_inv[file_id]
             self.branch._write_inventory(self.work_inv)
 
-
-    def _find_entry_parents(self, file_id):
-        """Return the text versions and hashes for all file parents.
-
-        Returned as a map from text version to inventory entry.
-
-        This is a map containing the file versions in all parents
-        revisions containing the file.  If the file is new, the set
-        will be empty."""
-        r = {}
-        for inv in self.parent_invs:
-            if file_id in inv:
-                ie = inv[file_id]
-                assert ie.file_id == file_id
-                if ie.revision in r:
-                    assert r[ie.revision] == ie
-                else:
-                    r[ie.revision] = ie
-        return r
-
     def _store_snapshot(self):
         """Pass over inventory and record a snapshot.
 
@@ -382,7 +362,7 @@ class Commit(object):
         # made a specific decision on a particular value -- c.f.
         # mark-merge.  
         for path, ie in self.new_inv.iter_entries():
-            previous_entries = self._find_entry_parents(ie. file_id)
+            previous_entries = ie.find_previous_heads(self.parent_invs)
             if ie.revision is None:
                 change = ie.snapshot(self.rev_id, path, previous_entries,
                                      self.work_tree, self.weave_store)

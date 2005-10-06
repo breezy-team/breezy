@@ -340,27 +340,19 @@ class Convert(object):
             w = Weave(file_id)
             self.text_weaves[file_id] = w
         text_changed = False
-        previous_revisions = {}
-        for parent_inv in parent_invs:
-            if parent_inv.has_id(file_id):
-                previous_ie = parent_inv[file_id]
-                if previous_ie.revision in previous_revisions:
-                    assert previous_revisions[previous_ie.revision] == previous_ie
-                else:
-                    previous_revisions[previous_ie.revision] = previous_ie
-                old_revision = previous_ie.revision
-        for old_revision in previous_revisions:
+        previous_entries = ie.find_previous_heads(parent_invs)
+        for old_revision in previous_entries:
                 # if this fails, its a ghost ?
                 assert old_revision in self.converted_revs 
-        self.snapshot_ie(previous_revisions, ie, w, rev_id)
+        self.snapshot_ie(previous_entries, ie, w, rev_id)
         del ie.text_id
         assert getattr(ie, 'revision', None) is not None
 
     def snapshot_ie(self, previous_revisions, ie, w, rev_id):
         # TODO: convert this logic, which is ~= snapshot to
         # a call to:. This needs the path figured out. rather than a work_tree
-        # a v4 revision_tree can be given, or something that can give the
-        # text for the ie if it needs it.
+        # a v4 revision_tree can be given, or something that looks enough like
+        # one to give the file content to the entry if it needs it.
         # and we need something that looks like a weave store for snapshot to 
         # save against.
         #ie.snapshot(rev, PATH, previous_revisions, REVISION_TREE, InMemoryWeaveStore(self.text_weaves))
