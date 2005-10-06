@@ -134,6 +134,7 @@ class Branch(object):
     def open(base):
         """Open an existing branch, rooted at 'base' (url)"""
         t = get_transport(base)
+        mutter("trying to open %r with transport %r", base, t)
         return _Branch(t)
 
     @staticmethod
@@ -465,7 +466,7 @@ class _Branch(Branch):
             fmt = self.controlfile('branch-format', 'r').read()
         except NoSuchFile:
             raise NotBranchError(self.base)
-
+        mutter("got branch format %r", fmt)
         if fmt == BZR_BRANCH_FORMAT_5:
             self._branch_format = 5
         elif fmt == BZR_BRANCH_FORMAT_4:
