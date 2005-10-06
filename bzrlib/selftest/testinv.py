@@ -270,6 +270,7 @@ class TestSnapshot(TestCaseInTempDir):
     def test_snapshot_merge_identical_different_revid(self):
         # This tests that a commit with two identical parents, one of which has
         # a different revision id, results in a new revision id in the entry.
+        # 1->other, commit a merge of other against 1, results in 2.
         other_ie = inventory.InventoryFile('fileid', 'newname', self.file_1.parent_id)
         other_ie = inventory.InventoryFile('fileid', 'file', self.file_1.parent_id)
         other_ie.revision = '1'

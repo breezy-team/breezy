@@ -279,7 +279,7 @@ class Commit(object):
         """Record the parents of a merge for merge detection."""
         pending_merges = self.branch.pending_merges()
         self.parents = []
-        self.parent_trees = []
+        self.parent_invs = []
         self.present_parents = []
         precursor_id = self.branch.last_revision()
         if precursor_id:
@@ -287,7 +287,7 @@ class Commit(object):
         self.parents += pending_merges
         for revision in self.parents:
             if self.branch.has_revision(revision):
-                self.parent_trees.append(self.branch.revision_tree(revision))
+                self.parent_invs.append(self.branch.get_inventory(revision))
                 self.present_parents.append(revision)
 
     def _check_parents_present(self):
@@ -347,13 +347,13 @@ class Commit(object):
 
         Returned as a map from text version to inventory entry.
 
-        This is a set containing the file versions in all parents
+        This is a map containing the file versions in all parents
         revisions containing the file.  If the file is new, the set
         will be empty."""
         r = {}
-        for tree in self.parent_trees:
-            if file_id in tree.inventory:
-                ie = tree.inventory[file_id]
+        for inv in self.parent_invs:
+            if file_id in inv:
+                ie = inv[file_id]
                 assert ie.file_id == file_id
                 if ie.revision in r:
                     assert r[ie.revision] == ie

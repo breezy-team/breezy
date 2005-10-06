@@ -784,9 +784,7 @@ class _Branch(Branch):
         return self.control_weaves.get_weave('ancestry')
 
     def get_ancestry(self, revision_id):
-        """Return a list of revision-ids integrated by a revision.
-        """
-        # strip newlines
+        """Return a list of revision-ids integrated by a revision."""
         if revision_id is None:
             return [None]
         w = self._get_ancestry_weave()
