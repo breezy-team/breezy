@@ -463,6 +463,7 @@ def test_suite():
                    'bzrlib.selftest.blackbox',
                    'bzrlib.selftest.testtransport',
                    'bzrlib.selftest.testgraph',
+                   'bzrlib.selftest.test_conflicts',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
