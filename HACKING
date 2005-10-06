@@ -157,11 +157,11 @@ should be only in the command-line tool.
 
 Writing tests
 =============
-In general tests should be placed in a file named test_FOO.py where 
+In general tests should be placed in a file named testFOO.py where 
 FOO is the logical thing under test. That file should be placed in the
 tests subdirectory under the package being tested.
 
-For example, tests for merge3 in bzrlib belong in bzrlib/tests/test_merge3.py.
+For example, tests for merge3 in bzrlib belong in bzrlib/tests/testmerge3.py.
 
 Running tests
 =============
