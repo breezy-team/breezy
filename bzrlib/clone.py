@@ -75,6 +75,10 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     assert isinstance(to_location, basestring)
     if basis_branch is not None:
         note("basis_branch is not supported for fast weave copy yet.")
+    if not (branch_from.weave_store.listable()
+            and branch_from.revision_store.listable()):
+        return copy_branch_slower(branch_from, to_location, revision,
+                                  basis_branch)
     history = _get_truncated_history(branch_from, revision)
     if not bzrlib.osutils.lexists(to_location):
         os.mkdir(to_location)
@@ -91,7 +95,6 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     return branch_to
 
 
-
 def _get_truncated_history(branch_from, revision):
     history = branch_from.revision_history()
     if revision is None:
@@ -104,13 +107,10 @@ def _get_truncated_history(branch_from, revision):
     return history[:idx+1]
 
 def _copy_text_weaves(branch_from, branch_to):
-    # TODO: Handle UnlistableStore and fall back to getting a list of 
-    # all file-ids and copying them one by one.
     copy_all(branch_from.weave_store, branch_to.weave_store)
 
 
 def _copy_revision_store(branch_from, branch_to):
-    # TODO: Copy all revisions mentioned in the ancestry of the selected revision
     copy_all(branch_from.revision_store, branch_to.revision_store)
 
 

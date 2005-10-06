@@ -323,41 +323,7 @@ class Convert(object):
         parent_invs = map(self._load_updated_inventory, present_parents)
         for file_id in inv:
             ie = inv[file_id]
-            self._set_revision(rev, ie, parent_invs)
-            if not ie.has_text():
-                continue
             self._convert_file_version(rev, ie, parent_invs)
-
-
-    def _set_revision(self, rev, ie, parent_invs):
-        """Set name version for a file.
-        """
-        file_id = ie.file_id
-        if ie.kind == 'root_directory':
-            return
-        if len(parent_invs) == 0:
-            ie.revision = rev.revision_id
-        else:
-            matched_id = None
-            for p_inv in parent_invs:
-                if not p_inv.has_id(file_id):
-                    ie.revision = rev.revision_id
-                    break
-                old_ie = p_inv[file_id]
-                if (old_ie.parent_id != ie.parent_id
-                    or old_ie.name != ie.name
-                    or old_ie.text_sha1 != ie.text_sha1
-                    or old_ie.text_size != ie.text_size):
-                    ie.revision = rev.revision_id
-                    break
-                if matched_id is None:
-                    matched_id = old_ie.revision
-                elif matched_id != old_ie.revision:
-                    ie.revision = rev.revision_id
-                    break
-            else:
-                assert matched_id is not None
-                ie.revision = matched_id
 
     def _convert_file_version(self, rev, ie, parent_invs):
         """Convert one version of one file.
@@ -365,39 +331,48 @@ class Convert(object):
         The file needs to be added into the weave if it is a merge
         of >=2 parents or if it's changed from its parent.
         """
+        if ie.kind == 'root_directory':
+            return
         file_id = ie.file_id
         rev_id = rev.revision_id
         w = self.text_weaves.get(file_id)
         if w is None:
             w = Weave(file_id)
             self.text_weaves[file_id] = w
-        file_parents = []
         text_changed = False
-        for parent_inv in parent_invs:
-            if parent_inv.has_id(file_id):
-                parent_ie = parent_inv[file_id]
-                old_revision = parent_ie.revision
+        previous_entries = ie.find_previous_heads(parent_invs, w)
+        for old_revision in previous_entries:
                 # if this fails, its a ghost ?
                 assert old_revision in self.converted_revs 
-                if old_revision not in file_parents:
-                    file_parents.append(old_revision)
-                if parent_ie.text_sha1 != ie.text_sha1:
-                    text_changed = True
-        if len(file_parents) != 1 or text_changed:
+        self.snapshot_ie(previous_entries, ie, w, rev_id)
+        del ie.text_id
+        assert getattr(ie, 'revision', None) is not None
+
+    def snapshot_ie(self, previous_revisions, ie, w, rev_id):
+        # TODO: convert this logic, which is ~= snapshot to
+        # a call to:. This needs the path figured out. rather than a work_tree
+        # a v4 revision_tree can be given, or something that looks enough like
+        # one to give the file content to the entry if it needs it.
+        # and we need something that looks like a weave store for snapshot to 
+        # save against.
+        #ie.snapshot(rev, PATH, previous_revisions, REVISION_TREE, InMemoryWeaveStore(self.text_weaves))
+        if len(previous_revisions) == 1:
+            previous_ie = previous_revisions.values()[0]
+            if ie._unchanged(previous_ie):
+                ie.revision = previous_ie.revision
+                return
+        parent_indexes = map(w.lookup, previous_revisions)
+        if ie.has_text():
             file_lines = self.branch.text_store[ie.text_id].readlines()
             assert sha_strings(file_lines) == ie.text_sha1
             assert sum(map(len, file_lines)) == ie.text_size
-            w.add(rev_id, file_parents, file_lines, ie.text_sha1)
-            ie.revision = rev_id
+            w.add(rev_id, parent_indexes, file_lines, ie.text_sha1)
             self.text_count += 1
-            ##mutter('import text {%s} of {%s}',
-            ##       ie.text_id, file_id)
         else:
-            ##mutter('text of {%s} unchanged from parent', file_id)
-            ie.revision = file_parents[0]
-        del ie.text_id
-
-
+            w.add(rev_id, parent_indexes, [], None)
+        ie.revision = rev_id
+        ##mutter('import text {%s} of {%s}',
+        ##       ie.text_id, file_id)
 
     def _make_order(self):
         """Return a suitable order for importing revisions.

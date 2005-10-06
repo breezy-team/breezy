@@ -44,11 +44,6 @@
 # TODO: Update hashcache before and after - or does the WorkingTree
 # look after that?
 
-# This code requires all merge parents to be present in the branch.
-# We could relax this but for the sake of simplicity the constraint is
-# here for now.  It's not totally clear to me how we'd know which file
-# need new text versions if some parents are absent.  -- mbp 20050915
-
 # TODO: Rather than mashing together the ancestry and storing it back,
 # perhaps the weave should have single method which does it all in one
 # go, avoiding a lot of redundant work.
@@ -284,7 +279,7 @@ class Commit(object):
         """Record the parents of a merge for merge detection."""
         pending_merges = self.branch.pending_merges()
         self.parents = []
-        self.parent_trees = []
+        self.parent_invs = []
         self.present_parents = []
         precursor_id = self.branch.last_revision()
         if precursor_id:
@@ -292,7 +287,7 @@ class Commit(object):
         self.parents += pending_merges
         for revision in self.parents:
             if self.branch.has_revision(revision):
-                self.parent_trees.append(self.branch.revision_tree(revision))
+                self.parent_invs.append(self.branch.get_inventory(revision))
                 self.present_parents.append(revision)
 
     def _check_parents_present(self):
@@ -346,48 +341,20 @@ class Commit(object):
                     del self.work_inv[file_id]
             self.branch._write_inventory(self.work_inv)
 
-
-    def _find_entry_parents(self, file_id):
-        """Return the text versions and hashes for all file parents.
-
-        Returned as a map from text version to inventory entry.
-
-        This is a set containing the file versions in all parents
-        revisions containing the file.  If the file is new, the set
-        will be empty."""
-        r = {}
-        for tree in self.parent_trees:
-            if file_id in tree.inventory:
-                ie = tree.inventory[file_id]
-                assert ie.file_id == file_id
-                if ie.revision in r:
-                    assert r[ie.revision] == ie
-                else:
-                    r[ie.revision] = ie
-        return r
-
     def _store_snapshot(self):
         """Pass over inventory and record a snapshot.
 
         Entries get a new revision when they are modified in 
         any way, which includes a merge with a new set of
-        parents that have the same entry. Currently we do not
-        check for that set being ancestors of each other - and
-        we should - only parallel children should count for this
-        test see find_entry_parents to correct this. FIXME <---
-        I.e. if we are merging in revision FOO, and our
-        copy of file id BAR is identical to FOO.BAR, we should
-        generate a new revision of BAR IF and only IF FOO is
-        neither a child of our current tip, nor an ancestor of
-        our tip. The presence of FOO in our store should not 
-        affect this logic UNLESS we are doing a merge of FOO,
-        or a child of FOO.
+        parents that have the same entry. 
         """
         # XXX: Need to think more here about when the user has
         # made a specific decision on a particular value -- c.f.
         # mark-merge.  
         for path, ie in self.new_inv.iter_entries():
-            previous_entries = self._find_entry_parents(ie. file_id)
+            previous_entries = ie.find_previous_heads(
+                self.parent_invs, 
+                self.weave_store.get_weave_or_empty(ie.file_id))
             if ie.revision is None:
                 change = ie.snapshot(self.rev_id, path, previous_entries,
                                      self.work_tree, self.weave_store)

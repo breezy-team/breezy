@@ -19,7 +19,7 @@
 """Black-box tests for bzr.
 
 These check that it behaves properly when it's invoked through the regular
-command-line interface.  This doesn't actually run a new interpreter but 
+command-line interface. This doesn't actually run a new interpreter but 
 rather starts again from the run_bzr function.
 """
 
@@ -33,6 +33,7 @@ import os
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
 from bzrlib.branch import Branch
 from bzrlib.osutils import has_symlinks
+from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 
 
 class ExternalBase(TestCaseInTempDir):
@@ -676,4 +677,16 @@ class OldTests(ExternalBase):
             chdir("..")
         else:
             progress("skipping symlink tests")
-            
+
+
+class HttpTests(TestCaseWithWebserver):
+    """Test bzr ui commands against remote branches."""
+
+    def test_branch(self):
+        os.mkdir('from')
+        branch = Branch.initialize('from')
+        branch.commit('empty commit for nonsense', allow_pointless=True)
+        url = self.get_remote_url('from')
+        self.run_bzr('branch', url, 'to')
+        branch = Branch.open('to')
+        self.assertEqual(1, len(branch.revision_history()))

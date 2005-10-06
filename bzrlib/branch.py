@@ -34,7 +34,7 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            DivergedBranches, LockError, UnlistableStore,
                            UnlistableBranch, NoSuchFile)
 from bzrlib.textui import show_status
-from bzrlib.revision import Revision, validate_revision_id, is_ancestor
+from bzrlib.revision import Revision, is_ancestor
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
@@ -156,6 +156,7 @@ class Branch(object):
         """Subclasses that care about caching should override this, and set
         up cached stores located under cache_root.
         """
+        self.cache_root = cache_root
 
 
 class _Branch(Branch):
@@ -246,11 +247,10 @@ class _Branch(Branch):
                 store = CompressedTextStore(self._transport.clone(relpath))
             else:
                 store = TextStore(self._transport.clone(relpath))
-            if self._transport.should_cache():
-                from meta_store import CachedStore
-                cache_path = os.path.join(self.cache_root, name)
-                os.mkdir(cache_path)
-                store = CachedStore(store, cache_path)
+            #if self._transport.should_cache():
+            #    cache_path = os.path.join(self.cache_root, name)
+            #    os.mkdir(cache_path)
+            #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
         def get_weave(name):
             relpath = self._rel_controlfilename(name)
@@ -784,9 +784,7 @@ class _Branch(Branch):
         return self.control_weaves.get_weave('ancestry')
 
     def get_ancestry(self, revision_id):
-        """Return a list of revision-ids integrated by a revision.
-        """
-        # strip newlines
+        """Return a list of revision-ids integrated by a revision."""
         if revision_id is None:
             return [None]
         w = self._get_ancestry_weave()
@@ -1200,9 +1198,6 @@ class _Branch(Branch):
     def add_pending_merge(self, *revision_ids):
         # TODO: Perhaps should check at this point that the
         # history of the revision is actually present?
-        for rev_id in revision_ids:
-            validate_revision_id(rev_id)
-
         p = self.pending_merges()
         updated = False
         for rev_id in revision_ids:
