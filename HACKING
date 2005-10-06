@@ -162,6 +162,7 @@ FOO is the logical thing under test. That file should be placed in the
 tests subdirectory under the package being tested.
 
 For example, tests for merge3 in bzrlib belong in bzrlib/tests/testmerge3.py.
+See bzrlib/selftest/testsampler.py for a template test script.
 
 Running tests
 =============
