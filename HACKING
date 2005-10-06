@@ -1,6 +1,14 @@
 ============================
-guidelines for modifying bzr
+Guidelines for modifying bzr
 ============================
+
+.. contents::
+
+(The current version of this document is available in the file ``HACKING``
+in the source tree, or at http://bazaar-ng.org/hacking.html)
+
+Overall
+=======
 
 * New functionality should have test cases.  Preferably write the
   test before writing the code.
@@ -23,26 +31,21 @@ guidelines for modifying bzr
   function runs.  Import statements have a cost, so try to make sure
   they don't run inside hot functions.
 
-* Please write PEP-8__ compliant code.  
-
-  One often-missed requirement is that the first line of docstrings
-  should be a self-contained one-sentence summary.
-
-__ http://www.python.org/peps/pep-0008.html
-
 * Module names should always be given fully-qualified,
   i.e. ``bzrlib.hashcache`` not just ``hashcache``.
 
-* If you change the behaviour of an API in an incompatible way, please
-  be sure to change its name as well. For instance, if I add a keyword
-  parameter to branch.commit - thats fine. On the other hand, if I add
-  a keyword parameter to branch.commit which is a *required* transaction
-  object, I should rename the api - i.e. to 'branch.commit_transaction'.
-  This will prevent users of the old api outside of the tree getting
-  surprising results. 
-  Instead, they will get an Attribute error as the api is missing, and
-  will know to update their code. If in doubt, just ask on #bzr.
+Evolving interfaces
+-------------------
 
+If you change the behaviour of an API in an incompatible way, please
+be sure to change its name as well. For instance, if I add a keyword
+parameter to branch.commit - that's fine. On the other hand, if I add
+a keyword parameter to branch.commit which is a *required* transaction
+object, I should rename the api - i.e. to 'branch.commit_transaction'.
+
+This will prevent users of the old api getting surprising results. 
+Instead, they will get an Attribute error as the api is missing, and
+will know to update their code. If in doubt, just ask on #bzr.
 
 Documentation
 =============
@@ -57,6 +60,63 @@ mentioned, but new commands, changes in behaviour or fixed nontrivial
 bugs should be listed.  See the existing entries for an idea of what
 should be done.
 
+
+API documentation
+-----------------
+
+Functions, methods, classes and modules should have docstrings
+describing how they are used. 
+
+The first line of the docstring should be a self-contained sentence.
+
+For the special case of Command classes, this acts as the user-visible
+documentation shown by the help command.
+
+The docstrings should be formatted as reStructuredText_ (like this
+document), suitable for processing using the epydoc_ tool into HTML
+documentation.
+
+.. _reStructuredText: http://docutils.sourceforge.net/rst.html
+.. _epydoc: http://epydoc.sourceforge.net/
+
+
+
+Coding style
+============
+
+Please write PEP-8__ compliant code.  
+
+One often-missed requirement is that the first line of docstrings
+should be a self-contained one-sentence summary.
+
+__ http://www.python.org/peps/pep-0008.html
+
+
+
+Naming
+------
+
+Functions, methods or members that are in some sense "private" are given
+a leading underscore prefix.  This is just a hint that code outside the
+implementation should probably not use that interface.
+
+We prefer class names to be concatenated capital words (``TestCase``)
+and variables, methods and functions to be lowercase words joined by
+underscores (``revision_id``, ``get_revision``).
+
+For the purposes of naming some names are treated as single compound
+words: "filename", "revno".
+
+Consider naming classes as nouns and functions/methods as verbs.
+
+
+Standard names
+--------------
+
+``revision_id`` not ``rev_id`` or ``revid``
+
+Functions that transform one thing to another should be named ``x_to_y``
+(not ``x2y`` as occurs in some old code.)
 
 
 Writing output
@@ -109,3 +169,11 @@ Currently, bzr selftest is used to invoke tests.
 You can provide a pattern argument to run a subset. For example, 
 to run just the whitebox tests, run bzr selftest --pattern .*whitebox.*
 
+
+Jargon
+======
+
+revno
+    Integer identifier for a revision on the main line of a branch.
+    Revision 0 is always the null revision; others are 1-based
+    indexes into the branch's revision history.

@@ -54,9 +54,10 @@ class QuietFormatter(logging.Formatter):
     # can get the exception details is we suppress them here.
 
     def format(self, record):
-        s = 'bzr: '
         if record.levelno >= logging.WARNING:
-            s += record.levelname + ': '
+            s = 'bzr: ' + record.levelname + ': '
+        else:
+            s = ''
             
         s += record.getMessage()
 
