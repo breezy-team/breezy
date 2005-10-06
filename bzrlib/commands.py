@@ -355,6 +355,7 @@ OPTIONS = {
     'root':                   str,
     'no-backup':              None,
     'pattern':                str,
+    'remember':               None,
     }
 
 SHORT_OPTIONS = {
@@ -624,14 +625,10 @@ def main(argv):
 def run_bzr_catch_errors(argv):
     try:
         try:
-            try:
-                return run_bzr(argv)
-            finally:
-                # do this here inside the exception wrappers to catch EPIPE
-                sys.stdout.flush()
-        #wrap common errors as CommandErrors.
-        except (NotBranchError,), e:
-            raise BzrCommandError(str(e))
+            return run_bzr(argv)
+        finally:
+            # do this here inside the exception wrappers to catch EPIPE
+            sys.stdout.flush()
     except BzrCommandError, e:
         # command line syntax error, etc
         log_error(str(e))
@@ -653,6 +650,8 @@ def run_bzr_catch_errors(argv):
             bzrlib.trace.note('broken pipe')
             return 2
         else:
+            ## import pdb
+            ## pdb.pm()
             bzrlib.trace.log_exception()
             return 2
 

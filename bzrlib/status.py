@@ -1,19 +1,22 @@
 # (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import sys
+from bzrlib.osutils import is_inside_any
+from bzrlib.delta import compare_trees
 
 
 def show_status(branch, show_unchanged=False,
@@ -44,10 +47,6 @@ def show_status(branch, show_unchanged=False,
         If one revision show compared it with working tree.
         If two revisions show status between first and second.
     """
-    import sys
-    from bzrlib.osutils import is_inside_any
-    from bzrlib.delta import compare_trees
-
     if to_file == None:
         to_file = sys.stdout
     
@@ -82,15 +81,10 @@ def show_status(branch, show_unchanged=False,
                    show_unchanged=show_unchanged)
 
         if new_is_working_tree:
+            conflicts = new.iter_conflicts()
             unknowns = new.unknowns()
-            done_header = False
-            for path in unknowns:
-                if specific_files and not is_inside_any(specific_files, path):
-                    continue
-                if not done_header:
-                    print >>to_file, 'unknown:'
-                    done_header = True
-                print >>to_file, ' ', path
+            list_paths('unknown', unknowns, specific_files, to_file)
+            list_paths('conflicts', conflicts, specific_files, to_file)
             if show_pending and len(branch.pending_merges()) > 0:
                 print >>to_file, 'pending merges:'
                 for merge in branch.pending_merges():
@@ -98,3 +92,12 @@ def show_status(branch, show_unchanged=False,
     finally:
         branch.unlock()
         
+def list_paths(header, paths, specific_files, to_file):
+    done_header = False
+    for path in paths:
+        if specific_files and not is_inside_any(specific_files, path):
+            continue
+        if not done_header:
+            print >>to_file, '%s:' % header
+            done_header = True
+        print >>to_file, ' ', path

@@ -74,6 +74,7 @@ from bzrlib.osutils import (local_time_offset, username,
 from bzrlib.branch import gen_file_id
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
+                           ConflictsInTree
                            )
 from bzrlib.revision import Revision
 from bzrlib.trace import mutter, note, warning
@@ -97,26 +98,38 @@ def commit(*args, **kwargs):
 
 class NullCommitReporter(object):
     """I report on progress of a commit."""
-    def added(self, path):
+
+    def snapshot_change(self, change, path):
         pass
 
-    def removed(self, path):
+    def completed(self, revno, rev_id):
         pass
 
-    def renamed(self, old_path, new_path):
+    def deleted(self, file_id):
         pass
 
+    def escaped(self, escape_count, message):
+        pass
+
+    def missing(self, path):
+        pass
 
 class ReportCommitToLog(NullCommitReporter):
-    def added(self, path):
-        note('added %s', path)
 
-    def removed(self, path):
-        note('removed %s', path)
+    def snapshot_change(self, change, path):
+        note("%s %s", change, path)
 
-    def renamed(self, old_path, new_path):
-        note('renamed %s => %s', old_path, new_path)
+    def completed(self, revno, rev_id):
+        note('committed r%d {%s}', revno, rev_id)
+    
+    def deleted(self, file_id):
+        note('deleted %s', file_id)
 
+    def escaped(self, escape_count, message):
+        note("replaced %d control characters in message", escape_count)
+
+    def missing(self, path):
+        note('missing %s', path)
 
 class Commit(object):
     """Task of committing a new revision.
@@ -218,10 +231,12 @@ class Commit(object):
                     or self.new_inv != self.basis_inv):
                 raise PointlessCommit()
 
+            if len(list(self.work_tree.iter_conflicts()))>0:
+                raise ConflictsInTree
+
             self._record_inventory()
             self._make_revision()
-            note('committed r%d {%s}', (self.branch.revno() + 1),
-                 self.rev_id)
+            self.reporter.completed(self.branch.revno()+1, self.rev_id)
             self.branch.append_revision(self.rev_id)
             self.branch.set_pending_merges([])
         finally:
@@ -252,7 +267,7 @@ class Commit(object):
             lambda match: match.group(0).encode('unicode_escape'),
             self.message)
         if escape_count:
-            note("replaced %d control characters in message", escape_count)
+            self.reporter.escaped(escape_count, self.message)
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""
@@ -274,7 +289,7 @@ class Commit(object):
             mutter('commit parent revision {%s}', parent_id)
             if not self.branch.has_revision(parent_id):
                 if parent_id == self.branch.last_revision():
-                    warning("parent is pissing %r", parent_id)
+                    warning("parent is missing %r", parent_id)
                     raise HistoryMissing(self.branch, 'revision', parent_id)
                 else:
                     mutter("commit will ghost revision %r", parent_id)
@@ -311,12 +326,12 @@ class Commit(object):
             if specific and not is_inside_any(specific, path):
                 continue
             if not self.work_tree.has_filename(path):
-                note('missing %s', path)
-                deleted_ids.append(ie.file_id)
+                self.reporter.missing(path)
+                deleted_ids.append((path, ie.file_id))
         if deleted_ids:
-            for file_id in deleted_ids:
-                if file_id in self.work_inv:
-                    del self.work_inv[file_id]
+            deleted_ids.sort(reverse=True)
+            for path, file_id in deleted_ids:
+                del self.work_inv[file_id]
             self.branch._write_inventory(self.work_inv)
 
     def _store_snapshot(self):
@@ -338,7 +353,7 @@ class Commit(object):
                                      self.work_tree, self.weave_store)
             else:
                 change = "unchanged"
-            note("%s %s", change, path)
+            self.reporter.snapshot_change(change, path)
 
     def _populate_new_inv(self):
         """Build revision inventory.
@@ -393,7 +408,7 @@ class Commit(object):
     def _report_deletes(self):
         for file_id in self.basis_inv:
             if file_id not in self.new_inv:
-                note('deleted %s', self.basis_inv.id2path(file_id))
+                self.reporter.deleted(self.basis_inv.id2path(file_id))
 
 def _gen_revision_id(branch, when):
     """Return new revision-id."""

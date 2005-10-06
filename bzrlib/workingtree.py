@@ -275,6 +275,15 @@ class WorkingTree(bzrlib.tree.Tree):
             if not self.is_ignored(subp):
                 yield subp
 
+    def iter_conflicts(self):
+        conflicted = set()
+        for path in (s[0] for s in self.list_files()):
+            stem = get_conflicted_stem(path)
+            if stem is None:
+                continue
+            if stem not in conflicted:
+                conflicted.add(stem)
+                yield stem
 
     def extras(self):
         """Yield all unknown files in this WorkingTree.
@@ -366,4 +375,9 @@ class WorkingTree(bzrlib.tree.Tree):
                     return pat
         else:
             return None
-        
+
+CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
+def get_conflicted_stem(path):
+    for suffix in CONFLICT_SUFFIXES:
+        if path.endswith(suffix):
+            return path[:-len(suffix)]

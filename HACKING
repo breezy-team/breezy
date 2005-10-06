@@ -155,6 +155,7 @@ structured data, we should make it so.
 The policy about how output is presented in the text-mode client
 should be only in the command-line tool.
 
+
 Writing tests
 =============
 In general tests should be placed in a file named testFOO.py where 
@@ -164,11 +165,20 @@ tests subdirectory under the package being tested.
 For example, tests for merge3 in bzrlib belong in bzrlib/tests/testmerge3.py.
 See bzrlib/selftest/testsampler.py for a template test script.
 
+
 Running tests
 =============
 Currently, bzr selftest is used to invoke tests.
 You can provide a pattern argument to run a subset. For example, 
-to run just the whitebox tests, run bzr selftest --pattern .*whitebox.*
+to run just the whitebox tests, run::
+
+  bzr selftest -v whitebox
+
+
+Errors and exceptions
+=====================
+
+[write me]
 
 
 Jargon

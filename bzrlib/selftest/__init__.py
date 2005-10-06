@@ -488,6 +488,7 @@ def test_suite():
                    'bzrlib.selftest.testgraph',
                    'bzrlib.selftest.testworkingtree',
                    'bzrlib.selftest.test_upgrade',
+                   'bzrlib.selftest.test_conflicts',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
