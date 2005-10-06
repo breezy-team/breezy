@@ -18,6 +18,8 @@ import errno
 import patch
 import stat
 from bzrlib.trace import mutter
+from bzrlib.osutils import rename
+import bzrlib
 
 # XXX: mbp: I'm not totally convinced that we should handle conflicts
 # as part of changeset application, rather than only in the merge
@@ -41,7 +43,6 @@ def invert_dict(dict):
     for (key,value) in dict.iteritems():
         newdict[value] = key
     return newdict
-
 
        
 class ChangeUnixPermissions(object):
@@ -92,6 +93,7 @@ class ChangeUnixPermissions(object):
     def __ne__(self, other):
         return not (self == other)
 
+
 def dir_create(filename, conflict_handler, reverse):
     """Creates the directory, or deletes it if reverse is true.  Intended to be
     used with ReplaceContents.
@@ -117,14 +119,12 @@ def dir_create(filename, conflict_handler, reverse):
         try:
             os.rmdir(filename)
         except OSError, e:
-            if e.errno != 39:
+            if e.errno != errno.ENOTEMPTY:
                 raise
             if conflict_handler.rmdir_non_empty(filename) == "skip":
                 return
             os.rmdir(filename)
 
-                
-            
 
 class SymlinkCreate(object):
     """Creates or deletes a symlink (for use with ReplaceContents)"""
@@ -353,7 +353,7 @@ class Diff3Merge(object):
         status = patch.diff3(new_file, filename, base, other)
         if status == 0:
             os.chmod(new_file, os.stat(filename).st_mode)
-            os.rename(new_file, filename)
+            rename(new_file, filename)
             return
         else:
             assert(status == 1)
@@ -831,7 +831,7 @@ def rename_to_temp_delete(source_entries, inventory, dir, temp_dir,
             if src_path is not None:
                 src_path = os.path.join(dir, src_path)
                 try:
-                    os.rename(src_path, to_name)
+                    rename(src_path, to_name)
                     temp_name[entry.id] = to_name
                 except OSError, e:
                     if e.errno != errno.ENOENT:
@@ -863,7 +863,7 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
             continue
         new_path = os.path.join(dir, new_tree_path)
         old_path = changed_inventory.get(entry.id)
-        if os.path.exists(new_path):
+        if bzrlib.osutils.lexists(new_path):
             if conflict_handler.target_exists(entry, new_path, old_path) == \
                 "skip":
                 continue
@@ -874,7 +874,7 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
             if old_path is None:
                 continue
             try:
-                os.rename(old_path, new_path)
+                rename(old_path, new_path)
                 changed_inventory[entry.id] = new_tree_path
             except OSError, e:
                 raise Exception ("%s is missing" % new_path)
@@ -1384,18 +1384,20 @@ class ChangesetGenerator(object):
 
         if cs_entry is None:
             return None
+
+        full_path_a = self.tree_a.readonly_path(id)
+        full_path_b = self.tree_b.readonly_path(id)
+        stat_a = self.lstat(full_path_a)
+        stat_b = self.lstat(full_path_b)
+
+        cs_entry.metadata_change = self.make_mode_change(stat_a, stat_b)
+
         if id in self.tree_a and id in self.tree_b:
             a_sha1 = self.tree_a.get_file_sha1(id)
             b_sha1 = self.tree_b.get_file_sha1(id)
             if None not in (a_sha1, b_sha1) and a_sha1 == b_sha1:
                 return cs_entry
 
-        full_path_a = self.tree_a.readonly_path(id)
-        full_path_b = self.tree_b.readonly_path(id)
-        stat_a = self.lstat(full_path_a)
-        stat_b = self.lstat(full_path_b)
-        
-        cs_entry.metadata_change = self.make_mode_change(stat_a, stat_b)
         cs_entry.contents_change = self.make_contents_change(full_path_a,
                                                              stat_a, 
                                                              full_path_b, 

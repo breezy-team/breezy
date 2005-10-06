@@ -18,7 +18,7 @@
 
 import time
 
-from osutils import format_date
+from bzrlib.osutils import format_date
 
 
 def _countiter(it):
@@ -96,11 +96,11 @@ def show_info(b):
         print '  latest revision: %s' % format_date(lastrev.timestamp,
                                                     lastrev.timezone)
 
-    print
-    print 'text store:'
-    c, t = b.text_store.total_size()
-    print '  %8d file texts' % c
-    print '  %8d kB' % (t/1024)
+#     print
+#     print 'text store:'
+#     c, t = b.text_store.total_size()
+#     print '  %8d file texts' % c
+#     print '  %8d kB' % (t/1024)
 
     print
     print 'revision store:'
@@ -109,9 +109,9 @@ def show_info(b):
     print '  %8d kB' % (t/1024)
 
 
-    print
-    print 'inventory store:'
-    c, t = b.inventory_store.total_size()
-    print '  %8d inventories' % c
-    print '  %8d kB' % (t/1024)
+#     print
+#     print 'inventory store:'
+#     c, t = b.inventory_store.total_size()
+#     print '  %8d inventories' % c
+#     print '  %8d kB' % (t/1024)
 

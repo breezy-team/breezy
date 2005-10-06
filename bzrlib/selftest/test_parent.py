@@ -17,8 +17,11 @@
 
 import os
 from bzrlib.selftest import TestCaseInTempDir
-from bzrlib.branch import Branch, copy_branch
+from bzrlib.branch import Branch
+from bzrlib.clone import copy_branch
 
+
+"""Tests for Branch parent URL"""
 
 
 class TestParent(TestCaseInTempDir):

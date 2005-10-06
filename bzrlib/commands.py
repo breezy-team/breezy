@@ -24,14 +24,8 @@
 # Those objects can specify the expected type of the argument, which
 # would help with validation and shell completion.
 
-
-# TODO: Help messages for options.
-
-# TODO: Define arguments by objects, rather than just using names.
-# Those objects can specify the expected type of the argument, which
-# would help with validation and shell completion.
-
-
+# TODO: "--profile=cum", to change sort order.  Is there any value in leaving
+# the profile output behind so it can be interactively examined?
 
 import sys
 import os
@@ -139,20 +133,6 @@ def _parse_revision_str(revstr):
             else:
                 revs.append(RevisionSpec(x))
     return revs
-
-
-def get_merge_type(typestring):
-    """Attempt to find the merge class/factory associated with a string."""
-    from merge import merge_types
-    try:
-        return merge_types[typestring][0]
-    except KeyError:
-        templ = '%s%%7s: %%s' % (' '*12)
-        lines = [templ % (f[0], f[1][1]) for f in merge_types.iteritems()]
-        type_list = '\n'.join(lines)
-        msg = "No known merge type %s. Supported types are:\n%s" %\
-            (typestring, type_list)
-        raise BzrCommandError(msg)
 
 
 def _builtin_commands():
@@ -352,6 +332,7 @@ def parse_spec(spec):
 # the type.
 OPTIONS = {
     'all':                    None,
+    'basis':                  str,
     'diff-options':           str,
     'help':                   None,
     'file':                   unicode,
@@ -373,7 +354,6 @@ OPTIONS = {
     'long':                   None,
     'root':                   str,
     'no-backup':              None,
-    'merge-type':             get_merge_type,
     'pattern':                str,
     }
 
@@ -539,6 +519,7 @@ def _match_argform(cmd, takes_args, args):
 def apply_profiled(the_callable, *args, **kwargs):
     import hotshot
     import tempfile
+    import hotshot.stats
     pffileno, pfname = tempfile.mkstemp()
     try:
         prof = hotshot.Profile(pfname)
@@ -546,15 +527,12 @@ def apply_profiled(the_callable, *args, **kwargs):
             ret = prof.runcall(the_callable, *args, **kwargs) or 0
         finally:
             prof.close()
-
-        import hotshot.stats
         stats = hotshot.stats.load(pfname)
-        #stats.strip_dirs()
-        stats.sort_stats('time')
+        stats.strip_dirs()
+        stats.sort_stats('cum')   # 'time'
         ## XXX: Might like to write to stderr or the trace file instead but
         ## print_stats seems hardcoded to stdout
         stats.print_stats(20)
-
         return ret
     finally:
         os.close(pffileno)
@@ -585,6 +563,8 @@ def run_bzr(argv):
     --profile
         Run under the Python profiler.
     """
+    # Load all of the transport methods
+    import bzrlib.transport.local, bzrlib.transport.http
     
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
 
@@ -644,14 +624,10 @@ def main(argv):
 def run_bzr_catch_errors(argv):
     try:
         try:
-            try:
-                return run_bzr(argv)
-            finally:
-                # do this here inside the exception wrappers to catch EPIPE
-                sys.stdout.flush()
-        #wrap common errors as CommandErrors.
-        except (NotBranchError,), e:
-            raise BzrCommandError(str(e))
+            return run_bzr(argv)
+        finally:
+            # do this here inside the exception wrappers to catch EPIPE
+            sys.stdout.flush()
     except BzrCommandError, e:
         # command line syntax error, etc
         log_error(str(e))
@@ -663,7 +639,7 @@ def run_bzr_catch_errors(argv):
         bzrlib.trace.log_exception('assertion failed: ' + str(e))
         return 3
     except KeyboardInterrupt, e:
-        bzrlib.trace.note('interrupted')
+        bzrlib.trace.log_exception('interrupted')
         return 2
     except Exception, e:
         import errno
@@ -673,9 +649,10 @@ def run_bzr_catch_errors(argv):
             bzrlib.trace.note('broken pipe')
             return 2
         else:
+            ## import pdb
+            ## pdb.pm()
             bzrlib.trace.log_exception()
             return 2
-
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

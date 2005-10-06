@@ -18,7 +18,7 @@ import os
 import time
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.errors import NoCommonAncestor, NoCommits
-from bzrlib.branch import copy_branch
+from bzrlib.clone import copy_branch
 from bzrlib.merge import merge
 
 class TestRevisionNamespaces(TestCaseInTempDir):

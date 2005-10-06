@@ -109,6 +109,21 @@ def _enumerate_history(branch):
     return rh
 
 
+def _get_revision_delta(branch, revno):
+    """Return the delta for a mainline revision.
+    
+    This is used to show summaries in verbose logs, and also for finding 
+    revisions which touch a given file."""
+    # FIXME: The current version is very inefficient; it retrieves all revisions
+    # twice and reads the weave twice.  We ought to keep revisions in memory 
+    # in case they're used again, either in a general cache or perhaps 
+    # in this code.
+    # XXX: What are we supposed to do when showing a summary for something 
+    # other than a mainline revision.  The delta to it's first parent, or
+    # (more useful) the delta to a nominated other revision.
+    return branch.get_revision_delta(revno)
+
+
 def show_log(branch,
              lf,
              specific_fileid=None,
@@ -181,7 +196,7 @@ def show_log(branch,
 
     for revno, rev_id in cut_revs:
         if verbose or specific_fileid:
-            delta = branch.get_revision_delta(revno)
+            delta = _get_revision_delta(branch, revno)
             
         if specific_fileid:
             if not delta.touches_file_id(specific_fileid):
@@ -293,12 +308,8 @@ class LogFormatter(object):
 
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
-        
 
-
-
-
-
+    
 class LongLogFormatter(LogFormatter):
     def show(self, revno, rev, delta):
         from osutils import format_date
@@ -310,8 +321,8 @@ class LongLogFormatter(LogFormatter):
         if self.show_ids:
             print >>to_file,  'revision-id:', rev.revision_id
 
-            for parent in rev.parents:
-                print >>to_file, 'parent:', parent.revision_id
+            for parent_id in rev.parent_ids:
+                print >>to_file, 'parent:', parent_id
             
         print >>to_file,  'committer:', rev.committer
 
@@ -363,8 +374,12 @@ FORMATTERS = {'long': LongLogFormatter,
 
 
 def log_formatter(name, *args, **kwargs):
+    """Construct a formatter from arguments.
+
+    name -- Name of the formatter to construct; currently 'long' and
+        'short' are supported.
+    """
     from bzrlib.errors import BzrCommandError
-    
     try:
         return FORMATTERS[name](*args, **kwargs)
     except IndexError:

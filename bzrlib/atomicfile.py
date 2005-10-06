@@ -17,7 +17,7 @@
 
 
 from warnings import warn
-
+from osutils import rename
 
 class AtomicFile(object):
     """A file that does an atomic-rename to move into place.
@@ -65,16 +65,7 @@ class AtomicFile(object):
         self.f.close()
         self.f = None
         
-        if sys.platform == 'win32':
-            # windows cannot rename over an existing file
-            try:
-                os.remove(self.realfilename)
-            except OSError, e:
-                import errno
-                if e.errno != errno.ENOENT:
-                    raise
-                
-        os.rename(self.tmpfilename, self.realfilename)
+        rename(self.tmpfilename, self.realfilename)
 
 
     def abort(self):
@@ -97,6 +88,6 @@ class AtomicFile(object):
 
 
     def __del__(self):
-        if not self.closed:
+        if hasattr(self, 'closed') and not self.closed:
             warn("%r leaked" % self)
         

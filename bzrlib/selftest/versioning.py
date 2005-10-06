@@ -72,7 +72,7 @@ class TestVersioning(TestCaseInTempDir):
                           b.add,
                           'foo/hello')
         
-        self.check_and_upgrade()
+        self.check_branch()
 
 
     def test_add_in_unversioned(self):
@@ -117,7 +117,7 @@ class TestVersioning(TestCaseInTempDir):
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         eq(list(b.unknowns()), ['inertiatic'])
         run_bzr(['add', '--no-recurse', 'inertiatic'])
-        eq(list(b.unknowns()), ['inertiatic/esp'])
+        eq(list(b.unknowns()), ['inertiatic'+os.sep+'esp'])
         run_bzr(['add', 'inertiatic/esp'])
         eq(list(b.unknowns()), [])
 
@@ -152,23 +152,15 @@ class TestVersioning(TestCaseInTempDir):
         eq(run_bzr(['add']), 0)
         eq(list(b.unknowns()), [])
 
-        self.check_and_upgrade()
+        self.check_branch()
 
 
-    def check_and_upgrade(self):
+    def check_branch(self):
         """After all the above changes, run the check and upgrade commands.
 
         The upgrade should be a no-op."""
         b = Branch.open('.')
         debug('branch has %d revisions', b.revno())
-        
-        debug('check branch...')
-        from bzrlib.check import check
-        check(b)
-        
-        debug('upgrade branch...')
-        from bzrlib.upgrade import upgrade
-        upgrade(b)
         
         debug('check branch...')
         from bzrlib.check import check
@@ -197,6 +189,7 @@ class SubdirCommit(TestCaseInTempDir):
         for fn in ('a/one', 'b/two', 'top'):
             file(fn, 'w').write('new contents')
             
+        debug('start selective subdir commit')
         run_bzr('commit', 'a', '-m', 'commit a only')
         
         old = b.revision_tree(b.get_rev_id(1))
@@ -222,3 +215,8 @@ class SubdirCommit(TestCaseInTempDir):
         
         # TODO: factor out some kind of assert_tree_state() method
         
+
+if __name__ == '__main__':
+    import unittest
+    unittest.main()
+    

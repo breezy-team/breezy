@@ -4,6 +4,7 @@ import unittest
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
+from bzrlib.inventory import InventoryFile
 
 class TestSmartAdd(TestCaseInTempDir):
 
@@ -143,9 +144,8 @@ class TestSmartAddBranch(TestCaseInTempDir):
 class TestAddCallbacks(TestCaseInTempDir):
 
     def setUp(self):
-        from bzrlib.inventory import InventoryEntry
         super(TestAddCallbacks, self).setUp()
-        self.entry = InventoryEntry("id", "name", "file", None)
+        self.entry = InventoryFile("id", "name", None)
 
     def test_null_callback(self):
         from bzrlib.add import add_reporter_null

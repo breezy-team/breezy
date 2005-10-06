@@ -17,37 +17,50 @@
 
 import sys
 import os
+import errno
+from warnings import warn
+from cStringIO import StringIO
+
 
 import bzrlib
+from bzrlib.inventory import InventoryEntry
+import bzrlib.inventory as inventory
 from bzrlib.trace import mutter, note
-from bzrlib.osutils import isdir, quotefn, compact_date, rand_bytes, \
-     splitpath, \
-     sha_file, appendpath, file_kind
-
-from bzrlib.errors import BzrError, InvalidRevisionNumber, InvalidRevisionId, \
-     DivergedBranches, NotBranchError
+from bzrlib.osutils import (isdir, quotefn, compact_date, rand_bytes, 
+                            rename, splitpath, sha_file, appendpath, 
+                            file_kind)
+from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
+                           NoSuchRevision, HistoryMissing, NotBranchError,
+                           DivergedBranches, LockError, UnlistableStore,
+                           UnlistableBranch, NoSuchFile)
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
-import bzrlib.xml
+from bzrlib.inventory import Inventory
+from bzrlib.store import copy_all
+from bzrlib.store.compressed_text import CompressedTextStore
+from bzrlib.store.text import TextStore
+from bzrlib.store.weave import WeaveStore
+from bzrlib.transport import Transport, get_transport
+import bzrlib.xml5
 import bzrlib.ui
 
 
-
-BZR_BRANCH_FORMAT = "Bazaar-NG branch, format 0.0.4\n"
+BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
+BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
 
 
 # TODO: Some operations like log might retrieve the same revisions
 # repeatedly to calculate deltas.  We could perhaps have a weakref
-# cache in memory to make this faster.
+# cache in memory to make this faster.  In general anything can be
+# cached in memory between lock and unlock operations.
 
 def find_branch(*ignored, **ignored_too):
     # XXX: leave this here for about one release, then remove it
     raise NotImplementedError('find_branch() is not supported anymore, '
                               'please use one of the new branch constructors')
-
 def _relpath(base, path):
     """Return path relative to base, or raise exception.
 
@@ -75,38 +88,25 @@ def _relpath(base, path):
     return os.sep.join(s)
         
 
-def find_branch_root(f=None):
-    """Find the branch root enclosing f, or pwd.
+def find_branch_root(t):
+    """Find the branch root enclosing the transport's base.
 
-    f may be a filename or a URL.
+    t is a Transport object.
 
-    It is not necessary that f exists.
+    It is not necessary that the base of t exists.
 
     Basically we keep looking up until we find the control directory or
     run into the root.  If there isn't one, raises NotBranchError.
     """
-    if f == None:
-        f = os.getcwd()
-    elif hasattr(os.path, 'realpath'):
-        f = os.path.realpath(f)
-    else:
-        f = os.path.abspath(f)
-    if not os.path.exists(f):
-        raise BzrError('%r does not exist' % f)
-        
-
-    orig_f = f
-
+    orig_base = t.base
     while True:
-        if os.path.exists(os.path.join(f, bzrlib.BZRDIR)):
-            return f
-        head, tail = os.path.split(f)
-        if head == f:
+        if t.has(bzrlib.BZRDIR):
+            return t
+        new_t = t.clone('..')
+        if new_t.base == t.base:
             # reached the root, whatever that may be
-            raise NotBranchError('%s is not in a branch' % orig_f)
-        f = head
-
-
+            raise NotBranchError('%s is not in a branch' % orig_base)
+        t = new_t
 
 
 ######################################################################
@@ -124,40 +124,43 @@ class Branch(object):
         raise NotImplementedError('The Branch class is abstract')
 
     @staticmethod
+    def open_downlevel(base):
+        """Open a branch which may be of an old format.
+        
+        Only local branches are supported."""
+        return _Branch(get_transport(base), relax_version_check=True)
+        
+    @staticmethod
     def open(base):
         """Open an existing branch, rooted at 'base' (url)"""
-        if base and (base.startswith('http://') or base.startswith('https://')):
-            from bzrlib.remotebranch import RemoteBranch
-            return RemoteBranch(base, find_root=False)
-        else:
-            return LocalBranch(base, find_root=False)
+        t = get_transport(base)
+        mutter("trying to open %r with transport %r", base, t)
+        return _Branch(t)
 
     @staticmethod
     def open_containing(url):
-        """Open an existing branch, containing url (search upwards for the root)
+        """Open an existing branch which contains url.
+        
+        This probes for a branch at url, and searches upwards from there.
         """
-        if url and (url.startswith('http://') or url.startswith('https://')):
-            from bzrlib.remotebranch import RemoteBranch
-            return RemoteBranch(url)
-        else:
-            return LocalBranch(url)
+        t = get_transport(url)
+        t = find_branch_root(t)
+        return _Branch(t)
 
     @staticmethod
     def initialize(base):
         """Create a new branch, rooted at 'base' (url)"""
-        if base and (base.startswith('http://') or base.startswith('https://')):
-            from bzrlib.remotebranch import RemoteBranch
-            return RemoteBranch(base, init=True)
-        else:
-            return LocalBranch(base, init=True)
+        t = get_transport(base)
+        return _Branch(t, init=True)
 
     def setup_caching(self, cache_root):
         """Subclasses that care about caching should override this, and set
         up cached stores located under cache_root.
         """
+        self.cache_root = cache_root
 
 
-class LocalBranch(Branch):
+class _Branch(Branch):
     """A branch stored in the actual filesystem.
 
     Note that it's "local" in the context of the filesystem; it doesn't
@@ -181,45 +184,93 @@ class LocalBranch(Branch):
     _lock_mode = None
     _lock_count = None
     _lock = None
+    _inventory_weave = None
+    
+    # Map some sort of prefix into a namespace
+    # stuff like "revno:10", "revid:", etc.
+    # This should match a prefix with a function which accepts
+    REVISION_NAMESPACES = {}
 
-    def __init__(self, base, init=False, find_root=True):
+    def push_stores(self, branch_to):
+        """Copy the content of this branches store to branch_to."""
+        if (self._branch_format != branch_to._branch_format
+            or self._branch_format != 4):
+            from bzrlib.fetch import greedy_fetch
+            mutter("falling back to fetch logic to push between %s(%s) and %s(%s)",
+                   self, self._branch_format, branch_to, branch_to._branch_format)
+            greedy_fetch(to_branch=branch_to, from_branch=self,
+                         revision=self.last_revision())
+            return
+
+        store_pairs = ((self.text_store,      branch_to.text_store),
+                       (self.inventory_store, branch_to.inventory_store),
+                       (self.revision_store,  branch_to.revision_store))
+        try:
+            for from_store, to_store in store_pairs: 
+                copy_all(from_store, to_store)
+        except UnlistableStore:
+            raise UnlistableBranch(from_store)
+
+    def __init__(self, transport, init=False,
+                 relax_version_check=False):
         """Create new branch object at a particular location.
 
-        base -- Base directory for the branch. May be a file:// url.
+        transport -- A Transport object, defining how to access files.
+                (If a string, transport.transport() will be used to
+                create a Transport object)
         
         init -- If True, create new control files in a previously
              unversioned directory.  If False, the branch must already
              be versioned.
 
-        find_root -- If true and init is false, find the root of the
-             existing branch containing base.
+        relax_version_check -- If true, the usual check for the branch
+            version is not applied.  This is intended only for
+            upgrade/recovery type use; it's not guaranteed that
+            all operations will work on old format branches.
 
         In the test suite, creation of new trees is tested using the
         `ScratchBranch` class.
         """
-        from bzrlib.store import ImmutableStore
+        assert isinstance(transport, Transport), \
+            "%r is not a Transport" % transport
+        self._transport = transport
         if init:
-            self.base = os.path.realpath(base)
             self._make_control()
-        elif find_root:
-            self.base = find_branch_root(base)
-        else:
-            if base.startswith("file://"):
-                base = base[7:]
-            self.base = os.path.realpath(base)
-            if not isdir(self.controlfilename('.')):
-                raise NotBranchError("not a bzr branch: %s" % quotefn(base),
-                                     ['use "bzr init" to initialize a new working tree',
-                                      'current bzr can only operate from top-of-tree'])
-        self._check_format()
+        self._check_format(relax_version_check)
 
-        self.text_store = ImmutableStore(self.controlfilename('text-store'))
-        self.revision_store = ImmutableStore(self.controlfilename('revision-store'))
-        self.inventory_store = ImmutableStore(self.controlfilename('inventory-store'))
+        def get_store(name, compressed=True):
+            # FIXME: This approach of assuming stores are all entirely compressed
+            # or entirely uncompressed is tidy, but breaks upgrade from 
+            # some existing branches where there's a mixture; we probably 
+            # still want the option to look for both.
+            relpath = self._rel_controlfilename(name)
+            if compressed:
+                store = CompressedTextStore(self._transport.clone(relpath))
+            else:
+                store = TextStore(self._transport.clone(relpath))
+            #if self._transport.should_cache():
+            #    cache_path = os.path.join(self.cache_root, name)
+            #    os.mkdir(cache_path)
+            #    store = bzrlib.store.CachedStore(store, cache_path)
+            return store
+        def get_weave(name):
+            relpath = self._rel_controlfilename(name)
+            ws = WeaveStore(self._transport.clone(relpath))
+            if self._transport.should_cache():
+                ws.enable_cache = True
+            return ws
 
+        if self._branch_format == 4:
+            self.inventory_store = get_store('inventory-store')
+            self.text_store = get_store('text-store')
+            self.revision_store = get_store('revision-store')
+        elif self._branch_format == 5:
+            self.control_weaves = get_weave([])
+            self.weave_store = get_weave('weaves')
+            self.revision_store = get_store('revision-store', compressed=False)
 
     def __str__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.base)
+        return '%s(%r)' % (self.__class__.__name__, self._transport.base)
 
 
     __repr__ = __str__
@@ -227,21 +278,44 @@ class LocalBranch(Branch):
 
     def __del__(self):
         if self._lock_mode or self._lock:
-            from bzrlib.warnings import warn
+            # XXX: This should show something every time, and be suitable for
+            # headless operation and embedding
             warn("branch %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
+        # TODO: It might be best to do this somewhere else,
+        # but it is nice for a Branch object to automatically
+        # cache it's information.
+        # Alternatively, we could have the Transport objects cache requests
+        # See the earlier discussion about how major objects (like Branch)
+        # should never expect their __del__ function to run.
+        if hasattr(self, 'cache_root') and self.cache_root is not None:
+            try:
+                import shutil
+                shutil.rmtree(self.cache_root)
+            except:
+                pass
+            self.cache_root = None
+
+    def _get_base(self):
+        if self._transport:
+            return self._transport.base
+        return None
+
+    base = property(_get_base)
+
+
     def lock_write(self):
+        # TODO: Upgrade locking to support using a Transport,
+        # and potentially a remote locking protocol
         if self._lock_mode:
             if self._lock_mode != 'w':
-                from bzrlib.errors import LockError
                 raise LockError("can't upgrade to a write lock from %r" %
                                 self._lock_mode)
             self._lock_count += 1
         else:
-            from bzrlib.lock import WriteLock
-
-            self._lock = WriteLock(self.controlfilename('branch-lock'))
+            self._lock = self._transport.lock_write(
+                    self._rel_controlfilename('branch-lock'))
             self._lock_mode = 'w'
             self._lock_count = 1
 
@@ -252,15 +326,13 @@ class LocalBranch(Branch):
                    "invalid lock mode %r" % self._lock_mode
             self._lock_count += 1
         else:
-            from bzrlib.lock import ReadLock
-
-            self._lock = ReadLock(self.controlfilename('branch-lock'))
+            self._lock = self._transport.lock_read(
+                    self._rel_controlfilename('branch-lock'))
             self._lock_mode = 'r'
             self._lock_count = 1
                         
     def unlock(self):
         if not self._lock_mode:
-            from bzrlib.errors import LockError
             raise LockError('branch %r is not locked' % (self))
 
         if self._lock_count > 1:
@@ -272,19 +344,23 @@ class LocalBranch(Branch):
 
     def abspath(self, name):
         """Return absolute filename for something in the branch"""
-        return os.path.join(self.base, name)
+        return self._transport.abspath(name)
 
     def relpath(self, path):
         """Return path relative to this branch of something inside it.
 
         Raises an error if path is not in this branch."""
-        return _relpath(self.base, path)
+        return self._transport.relpath(path)
+
+
+    def _rel_controlfilename(self, file_or_path):
+        if isinstance(file_or_path, basestring):
+            file_or_path = [file_or_path]
+        return [bzrlib.BZRDIR] + file_or_path
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
-        if isinstance(file_or_path, basestring):
-            file_or_path = [file_or_path]
-        return os.path.join(self.base, bzrlib.BZRDIR, *file_or_path)
+        return self._transport.abspath(self._rel_controlfilename(file_or_path))
 
 
     def controlfile(self, file_or_path, mode='r'):
@@ -298,61 +374,110 @@ class LocalBranch(Branch):
         Controlfiles should almost never be opened in write mode but
         rather should be atomically copied and replaced using atomicfile.
         """
+        import codecs
 
-        fn = self.controlfilename(file_or_path)
-
-        if mode == 'rb' or mode == 'wb':
-            return file(fn, mode)
-        elif mode == 'r' or mode == 'w':
-            # open in binary mode anyhow so there's no newline translation;
-            # codecs uses line buffering by default; don't want that.
-            import codecs
-            return codecs.open(fn, mode + 'b', 'utf-8',
-                               buffering=60000)
+        relpath = self._rel_controlfilename(file_or_path)
+        #TODO: codecs.open() buffers linewise, so it was overloaded with
+        # a much larger buffer, do we need to do the same for getreader/getwriter?
+        if mode == 'rb': 
+            return self._transport.get(relpath)
+        elif mode == 'wb':
+            raise BzrError("Branch.controlfile(mode='wb') is not supported, use put_controlfiles")
+        elif mode == 'r':
+            return codecs.getreader('utf-8')(self._transport.get(relpath), errors='replace')
+        elif mode == 'w':
+            raise BzrError("Branch.controlfile(mode='w') is not supported, use put_controlfiles")
         else:
             raise BzrError("invalid controlfile mode %r" % mode)
 
+    def put_controlfile(self, path, f, encode=True):
+        """Write an entry as a controlfile.
+
+        :param path: The path to put the file, relative to the .bzr control
+                     directory
+        :param f: A file-like or string object whose contents should be copied.
+        :param encode:  If true, encode the contents as utf-8
+        """
+        self.put_controlfiles([(path, f)], encode=encode)
+
+    def put_controlfiles(self, files, encode=True):
+        """Write several entries as controlfiles.
+
+        :param files: A list of [(path, file)] pairs, where the path is the directory
+                      underneath the bzr control directory
+        :param encode:  If true, encode the contents as utf-8
+        """
+        import codecs
+        ctrl_files = []
+        for path, f in files:
+            if encode:
+                if isinstance(f, basestring):
+                    f = f.encode('utf-8', 'replace')
+                else:
+                    f = codecs.getwriter('utf-8')(f, errors='replace')
+            path = self._rel_controlfilename(path)
+            ctrl_files.append((path, f))
+        self._transport.put_multi(ctrl_files)
+
     def _make_control(self):
         from bzrlib.inventory import Inventory
+        from bzrlib.weavefile import write_weave_v5
+        from bzrlib.weave import Weave
         
-        os.mkdir(self.controlfilename([]))
-        self.controlfile('README', 'w').write(
-            "This is a Bazaar-NG control directory.\n"
-            "Do not change any files in this directory.\n")
-        self.controlfile('branch-format', 'w').write(BZR_BRANCH_FORMAT)
-        for d in ('text-store', 'inventory-store', 'revision-store'):
-            os.mkdir(self.controlfilename(d))
-        for f in ('revision-history', 'merged-patches',
-                  'pending-merged-patches', 'branch-name',
-                  'branch-lock',
-                  'pending-merges'):
-            self.controlfile(f, 'w').write('')
-        mutter('created control directory in ' + self.base)
-
+        # Create an empty inventory
+        sio = StringIO()
         # if we want per-tree root ids then this is the place to set
         # them; they're not needed for now and so ommitted for
         # simplicity.
-        f = self.controlfile('inventory','w')
-        bzrlib.xml.serializer_v4.write_inventory(Inventory(), f)
+        bzrlib.xml5.serializer_v5.write_inventory(Inventory(), sio)
+        empty_inv = sio.getvalue()
+        sio = StringIO()
+        bzrlib.weavefile.write_weave_v5(Weave(), sio)
+        empty_weave = sio.getvalue()
 
+        dirs = [[], 'revision-store', 'weaves']
+        files = [('README', 
+            "This is a Bazaar-NG control directory.\n"
+            "Do not change any files in this directory.\n"),
+            ('branch-format', BZR_BRANCH_FORMAT_5),
+            ('revision-history', ''),
+            ('branch-name', ''),
+            ('branch-lock', ''),
+            ('pending-merges', ''),
+            ('inventory', empty_inv),
+            ('inventory.weave', empty_weave),
+            ('ancestry.weave', empty_weave)
+        ]
+        cfn = self._rel_controlfilename
+        self._transport.mkdir_multi([cfn(d) for d in dirs])
+        self.put_controlfiles(files)
+        mutter('created control directory in ' + self._transport.base)
 
-    def _check_format(self):
+    def _check_format(self, relax_version_check):
         """Check this branch format is supported.
 
-        The current tool only supports the current unstable format.
+        The format level is stored, as an integer, in
+        self._branch_format for code that needs to check it later.
 
         In the future, we might need different in-memory Branch
         classes to support downlevel branches.  But not yet.
         """
-        # This ignores newlines so that we can open branches created
-        # on Windows from Linux and so on.  I think it might be better
-        # to always make all internal files in unix format.
-        fmt = self.controlfile('branch-format', 'r').read()
-        fmt = fmt.replace('\r\n', '\n')
-        if fmt != BZR_BRANCH_FORMAT:
+        try:
+            fmt = self.controlfile('branch-format', 'r').read()
+        except NoSuchFile:
+            raise NotBranchError(self.base)
+        mutter("got branch format %r", fmt)
+        if fmt == BZR_BRANCH_FORMAT_5:
+            self._branch_format = 5
+        elif fmt == BZR_BRANCH_FORMAT_4:
+            self._branch_format = 4
+
+        if (not relax_version_check
+            and self._branch_format != 5):
             raise BzrError('sorry, branch format %r not supported' % fmt,
                            ['use a different bzr version',
-                            'or remove the .bzr directory and "bzr init" again'])
+                            'or remove the .bzr directory'
+                            ' and "bzr init" again'])
 
     def get_root_id(self):
         """Return the id of this branches root"""
@@ -373,13 +498,12 @@ class LocalBranch(Branch):
 
     def read_working_inventory(self):
         """Read the working inventory."""
-        from bzrlib.inventory import Inventory
         self.lock_read()
         try:
             # ElementTree does its own conversion from UTF-8, so open in
             # binary.
             f = self.controlfile('inventory', 'rb')
-            return bzrlib.xml.serializer_v4.read_inventory(f)
+            return bzrlib.xml5.serializer_v5.read_inventory(f)
         finally:
             self.unlock()
             
@@ -390,25 +514,21 @@ class LocalBranch(Branch):
         That is to say, the inventory describing changes underway, that
         will be committed to the next revision.
         """
-        from bzrlib.atomicfile import AtomicFile
-        
+        from cStringIO import StringIO
         self.lock_write()
         try:
-            f = AtomicFile(self.controlfilename('inventory'), 'wb')
-            try:
-                bzrlib.xml.serializer_v4.write_inventory(inv, f)
-                f.commit()
-            finally:
-                f.close()
+            sio = StringIO()
+            bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
+            sio.seek(0)
+            # Transport handles atomicity
+            self.put_controlfile('inventory', sio)
         finally:
             self.unlock()
         
         mutter('wrote working inventory')
             
-
     inventory = property(read_working_inventory, _write_inventory, None,
                          """Inventory for the working copy.""")
-
 
     def add(self, files, ids=None):
         """Make files versioned.
@@ -463,10 +583,11 @@ class LocalBranch(Branch):
                     kind = file_kind(fullpath)
                 except OSError:
                     # maybe something better?
-                    raise BzrError('cannot add: not a regular file or directory: %s' % quotefn(f))
+                    raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
 
-                if kind != 'file' and kind != 'directory':
-                    raise BzrError('cannot add: not a regular file or directory: %s' % quotefn(f))
+                if not InventoryEntry.versionable_kind(kind):
+                    raise BzrError('cannot add: not a versionable file ('
+                                   'i.e. regular file, symlink or directory): %s' % quotefn(f))
 
                 if file_id is None:
                     file_id = gen_file_id(f)
@@ -537,7 +658,6 @@ class LocalBranch(Branch):
         finally:
             self.unlock()
 
-
     # FIXME: this doesn't need to be a branch method
     def set_inventory(self, new_inventory_list):
         from bzrlib.inventory import Inventory, InventoryEntry
@@ -546,9 +666,16 @@ class LocalBranch(Branch):
             name = os.path.basename(path)
             if name == "":
                 continue
-            inv.add(InventoryEntry(file_id, name, kind, parent))
+            # fixme, there should be a factory function inv,add_?? 
+            if kind == 'directory':
+                inv.add(inventory.InventoryDirectory(file_id, name, parent))
+            elif kind == 'file':
+                inv.add(inventory.InventoryFile(file_id, name, parent))
+            elif kind == 'symlink':
+                inv.add(inventory.InventoryLink(file_id, name, parent))
+            else:
+                raise BzrError("unknown kind %r" % kind)
         self._write_inventory(inv)
-
 
     def unknowns(self):
         """Return all unknown files.
@@ -570,22 +697,23 @@ class LocalBranch(Branch):
 
 
     def append_revision(self, *revision_ids):
-        from bzrlib.atomicfile import AtomicFile
-
         for revision_id in revision_ids:
             mutter("add {%s} to revision-history" % revision_id)
-
-        rev_history = self.revision_history()
-        rev_history.extend(revision_ids)
-
-        f = AtomicFile(self.controlfilename('revision-history'))
+        self.lock_write()
         try:
-            for rev_id in rev_history:
-                print >>f, rev_id
-            f.commit()
+            rev_history = self.revision_history()
+            rev_history.extend(revision_ids)
+            self.put_controlfile('revision-history', '\n'.join(rev_history))
         finally:
-            f.close()
+            self.unlock()
 
+    def has_revision(self, revision_id):
+        """True if this branch has a copy of the revision.
+
+        This does not necessarily imply the revision is merge
+        or on the mainline."""
+        return (revision_id is None
+                or revision_id in self.revision_store)
 
     def get_revision_xml_file(self, revision_id):
         """Return XML file object for revision object."""
@@ -601,9 +729,11 @@ class LocalBranch(Branch):
         finally:
             self.unlock()
 
-
     #deprecated
     get_revision_xml = get_revision_xml_file
+
+    def get_revision_xml(self, revision_id):
+        return self.get_revision_xml_file(revision_id).read()
 
 
     def get_revision(self, revision_id):
@@ -611,7 +741,7 @@ class LocalBranch(Branch):
         xml_file = self.get_revision_xml_file(revision_id)
 
         try:
-            r = bzrlib.xml.serializer_v4.read_revision(xml_file)
+            r = bzrlib.xml5.serializer_v5.read_revision(xml_file)
         except SyntaxError, e:
             raise bzrlib.errors.BzrError('failed to unpack revision_xml',
                                          [revision_id,
@@ -619,7 +749,6 @@ class LocalBranch(Branch):
             
         assert r.revision_id == revision_id
         return r
-
 
     def get_revision_delta(self, revno):
         """Return the delta for one revision.
@@ -642,8 +771,6 @@ class LocalBranch(Branch):
 
         return compare_trees(old_tree, new_tree)
 
-        
-
     def get_revision_sha1(self, revision_id):
         """Hash the stored value of a revision, and return it."""
         # In the future, revision entries will be signed. At that
@@ -652,58 +779,60 @@ class LocalBranch(Branch):
         # the revision, (add signatures/remove signatures) and still
         # have all hash pointers stay consistent.
         # But for now, just hash the contents.
-        return bzrlib.osutils.sha_file(self.get_revision_xml(revision_id))
+        return bzrlib.osutils.sha_file(self.get_revision_xml_file(revision_id))
 
+    def get_ancestry(self, revision_id):
+        """Return a list of revision-ids integrated by a revision.
+        
+        This currently returns a list, but the ordering is not guaranteed:
+        treat it as a set.
+        """
+        if revision_id is None:
+            return [None]
+        w = self.control_weaves.get_weave('inventory')
+        return [None] + map(w.idx_to_name,
+                            w.inclusions([w.lookup(revision_id)]))
 
-    def get_inventory(self, inventory_id):
-        """Get Inventory object by hash.
+    def get_inventory_weave(self):
+        return self.control_weaves.get_weave('inventory')
 
-        TODO: Perhaps for this and similar methods, take a revision
-               parameter which can be either an integer revno or a
-               string hash."""
-        from bzrlib.inventory import Inventory
+    def get_inventory(self, revision_id):
+        """Get Inventory object by hash."""
+        xml = self.get_inventory_xml(revision_id)
+        return bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
 
-        f = self.get_inventory_xml_file(inventory_id)
-        return bzrlib.xml.serializer_v4.read_inventory(f)
-
-
-    def get_inventory_xml(self, inventory_id):
+    def get_inventory_xml(self, revision_id):
         """Get inventory XML as a file object."""
-        return self.inventory_store[inventory_id]
+        try:
+            assert isinstance(revision_id, basestring), type(revision_id)
+            iw = self.get_inventory_weave()
+            return iw.get_text(iw.lookup(revision_id))
+        except IndexError:
+            raise bzrlib.errors.HistoryMissing(self, 'inventory', revision_id)
 
-    get_inventory_xml_file = get_inventory_xml
-            
-
-    def get_inventory_sha1(self, inventory_id):
+    def get_inventory_sha1(self, revision_id):
         """Return the sha1 hash of the inventory entry
         """
-        return sha_file(self.get_inventory_xml(inventory_id))
-
+        return self.get_revision(revision_id).inventory_sha1
 
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""
-        # bzr 0.0.6 imposes the constraint that the inventory_id
+        # TODO: Unify this with get_inventory()
+        # bzr 0.0.6 and later imposes the constraint that the inventory_id
         # must be the same as its revision, so this is trivial.
         if revision_id == None:
-            from bzrlib.inventory import Inventory
             return Inventory(self.get_root_id())
         else:
             return self.get_inventory(revision_id)
 
-
     def revision_history(self):
-        """Return sequence of revision hashes on to this branch.
-
-        >>> ScratchBranch().revision_history()
-        []
-        """
+        """Return sequence of revision hashes on to this branch."""
         self.lock_read()
         try:
             return [l.rstrip('\r\n') for l in
                     self.controlfile('revision-history', 'r').readlines()]
         finally:
             self.unlock()
-
 
     def common_ancestor(self, other, self_revno=None, other_revno=None):
         """
@@ -759,7 +888,7 @@ class LocalBranch(Branch):
         return len(self.revision_history())
 
 
-    def last_patch(self):
+    def last_revision(self):
         """Return last patch hash, or None if no history.
         """
         ph = self.revision_history()
@@ -770,7 +899,8 @@ class LocalBranch(Branch):
 
 
     def missing_revisions(self, other, stop_revision=None, diverged_ok=False):
-        """
+        """Return a list of new revisions that would perfectly fit.
+        
         If self and other have not diverged, return a list of the revisions
         present in other, but missing from self.
 
@@ -796,6 +926,9 @@ class LocalBranch(Branch):
         Traceback (most recent call last):
         DivergedBranches: These branches have diverged.
         """
+        # FIXME: If the branches have diverged, but the latest
+        # revision in this branch is completely merged into the other,
+        # then we should still be able to pull.
         self_history = self.revision_history()
         self_len = len(self_history)
         other_history = other.revision_history()
@@ -807,99 +940,37 @@ class LocalBranch(Branch):
 
         if stop_revision is None:
             stop_revision = other_len
-        elif stop_revision > other_len:
-            raise bzrlib.errors.NoSuchRevision(self, stop_revision)
-        
+        else:
+            assert isinstance(stop_revision, int)
+            if stop_revision > other_len:
+                raise bzrlib.errors.NoSuchRevision(self, stop_revision)
         return other_history[self_len:stop_revision]
 
-
     def update_revisions(self, other, stop_revision=None):
-        """Pull in all new revisions from other branch.
-        """
+        """Pull in new perfect-fit revisions."""
         from bzrlib.fetch import greedy_fetch
         from bzrlib.revision import get_intervening_revisions
-
-        pb = bzrlib.ui.ui_factory.progress_bar()
-        pb.update('comparing histories')
         if stop_revision is None:
-            other_revision = other.last_patch()
-        else:
-            other_revision = other.get_rev_id(stop_revision)
-        count = greedy_fetch(self, other, other_revision, pb)[0]
-        try:
-            revision_ids = self.missing_revisions(other, stop_revision)
-        except DivergedBranches, e:
-            try:
-                revision_ids = get_intervening_revisions(self.last_patch(), 
-                                                         other_revision, self)
-                assert self.last_patch() not in revision_ids
-            except bzrlib.errors.NotAncestor:
-                raise e
-
-        self.append_revision(*revision_ids)
-        pb.clear()
-
-    def install_revisions(self, other, revision_ids, pb):
-        if hasattr(other.revision_store, "prefetch"):
-            other.revision_store.prefetch(revision_ids)
-        if hasattr(other.inventory_store, "prefetch"):
-            inventory_ids = []
-            for rev_id in revision_ids:
-                try:
-                    revision = other.get_revision(rev_id).inventory_id
-                    inventory_ids.append(revision)
-                except bzrlib.errors.NoSuchRevision:
-                    pass
-            other.inventory_store.prefetch(inventory_ids)
-
-        if pb is None:
-            pb = bzrlib.ui.ui_factory.progress_bar()
-                
-        revisions = []
-        needed_texts = set()
-        i = 0
-
-        failures = set()
-        for i, rev_id in enumerate(revision_ids):
-            pb.update('fetching revision', i+1, len(revision_ids))
-            try:
-                rev = other.get_revision(rev_id)
-            except bzrlib.errors.NoSuchRevision:
-                failures.add(rev_id)
-                continue
-
-            revisions.append(rev)
-            inv = other.get_inventory(str(rev.inventory_id))
-            for key, entry in inv.iter_entries():
-                if entry.text_id is None:
-                    continue
-                if entry.text_id not in self.text_store:
-                    needed_texts.add(entry.text_id)
-
-        pb.clear()
-                    
-        count, cp_fail = self.text_store.copy_multi(other.text_store, 
-                                                    needed_texts)
-        #print "Added %d texts." % count 
-        inventory_ids = [ f.inventory_id for f in revisions ]
-        count, cp_fail = self.inventory_store.copy_multi(other.inventory_store, 
-                                                         inventory_ids)
-        #print "Added %d inventories." % count 
-        revision_ids = [ f.revision_id for f in revisions]
-
-        count, cp_fail = self.revision_store.copy_multi(other.revision_store, 
-                                                          revision_ids,
-                                                          permit_failure=True)
-        assert len(cp_fail) == 0 
-        return count, failures
-       
+            stop_revision = other.last_revision()
+        greedy_fetch(to_branch=self, from_branch=other,
+                     revision=stop_revision)
+        pullable_revs = self.missing_revisions(
+            other, other.revision_id_to_revno(stop_revision))
+        if pullable_revs:
+            greedy_fetch(to_branch=self,
+                         from_branch=other,
+                         revision=pullable_revs[-1])
+            self.append_revision(*pullable_revs)
+    
 
     def commit(self, *args, **kw):
-        from bzrlib.commit import commit
-        commit(self, *args, **kw)
-        
+        from bzrlib.commit import Commit
+        Commit().commit(self, *args, **kw)
+    
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
+        if revision_id is None:
+            return 0
         history = self.revision_history()
         try:
             return history.index(revision_id) + 1
@@ -916,7 +987,6 @@ class LocalBranch(Branch):
             raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
-
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
@@ -928,13 +998,18 @@ class LocalBranch(Branch):
             return EmptyTree()
         else:
             inv = self.get_revision_inventory(revision_id)
-            return RevisionTree(self.text_store, inv)
+            return RevisionTree(self.weave_store, inv, revision_id)
 
 
     def working_tree(self):
         """Return a `Tree` for the working copy."""
         from bzrlib.workingtree import WorkingTree
-        return WorkingTree(self.base, self.read_working_inventory())
+        # TODO: In the future, WorkingTree should utilize Transport
+        # RobertCollins 20051003 - I don't think it should - working trees are
+        # much more complex to keep consistent than our careful .bzr subset.
+        # instead, we should say that working trees are local only, and optimise
+        # for that.
+        return WorkingTree(self._transport.base, self.read_working_inventory())
 
 
     def basis_tree(self):
@@ -942,12 +1017,7 @@ class LocalBranch(Branch):
 
         If there are no revisions yet, return an `EmptyTree`.
         """
-        r = self.last_patch()
-        if r == None:
-            return EmptyTree()
-        else:
-            return RevisionTree(self.text_store, self.get_revision_inventory(r))
-
+        return self.revision_tree(self.last_revision())
 
 
     def rename_one(self, from_rel, to_rel):
@@ -988,7 +1058,7 @@ class LocalBranch(Branch):
             from_abs = self.abspath(from_rel)
             to_abs = self.abspath(to_rel)
             try:
-                os.rename(from_abs, to_abs)
+                rename(from_abs, to_abs)
             except OSError, e:
                 raise BzrError("failed to rename %r to %r: %s"
                         % (from_abs, to_abs, e[1]),
@@ -1057,7 +1127,7 @@ class LocalBranch(Branch):
                 result.append((f, dest_path))
                 inv.rename(inv.path2id(f), to_dir_id, name_tail)
                 try:
-                    os.rename(self.abspath(f), self.abspath(dest_path))
+                    rename(self.abspath(f), self.abspath(dest_path))
                 except OSError, e:
                     raise BzrError("failed to rename %r to %r: %s" % (f, dest_path, e[1]),
                             ["rename rolled back"])
@@ -1119,8 +1189,8 @@ class LocalBranch(Branch):
         These are revisions that have been merged into the working
         directory but not yet committed.
         """
-        cfn = self.controlfilename('pending-merges')
-        if not os.path.exists(cfn):
+        cfn = self._rel_controlfilename('pending-merges')
+        if not self._transport.has(cfn):
             return []
         p = []
         for l in self.controlfile('pending-merges', 'r').readlines():
@@ -1128,29 +1198,23 @@ class LocalBranch(Branch):
         return p
 
 
-    def add_pending_merge(self, revision_id):
-        from bzrlib.revision import validate_revision_id
-
-        validate_revision_id(revision_id)
-
+    def add_pending_merge(self, *revision_ids):
+        # TODO: Perhaps should check at this point that the
+        # history of the revision is actually present?
         p = self.pending_merges()
-        if revision_id in p:
-            return
-        p.append(revision_id)
-        self.set_pending_merges(p)
-
+        updated = False
+        for rev_id in revision_ids:
+            if rev_id in p:
+                continue
+            p.append(rev_id)
+            updated = True
+        if updated:
+            self.set_pending_merges(p)
 
     def set_pending_merges(self, rev_list):
-        from bzrlib.atomicfile import AtomicFile
         self.lock_write()
         try:
-            f = AtomicFile(self.controlfilename('pending-merges'))
-            try:
-                for l in rev_list:
-                    print >>f, l
-                f.commit()
-            finally:
-                f.close()
+            self.put_controlfile('pending-merges', '\n'.join(rev_list))
         finally:
             self.unlock()
 
@@ -1207,7 +1271,7 @@ class LocalBranch(Branch):
         
 
 
-class ScratchBranch(LocalBranch):
+class ScratchBranch(_Branch):
     """Special test class: a branch that cleans up after itself.
 
     >>> b = ScratchBranch()
@@ -1230,19 +1294,25 @@ class ScratchBranch(LocalBranch):
         if base is None:
             base = mkdtemp()
             init = True
-        LocalBranch.__init__(self, base, init=init)
+        if isinstance(base, basestring):
+            base = get_transport(base)
+        _Branch.__init__(self, base, init=init)
         for d in dirs:
-            os.mkdir(self.abspath(d))
+            self._transport.mkdir(d)
             
         for f in files:
-            file(os.path.join(self.base, f), 'w').write('content of %s' % f)
+            self._transport.put(f, 'content of %s' % f)
 
 
     def clone(self):
         """
         >>> orig = ScratchBranch(files=["file1", "file2"])
         >>> clone = orig.clone()
-        >>> os.path.samefile(orig.base, clone.base)
+        >>> if os.name != 'nt':
+        ...   os.path.samefile(orig.base, clone.base)
+        ... else:
+        ...   orig.base == clone.base
+        ...
         False
         >>> os.path.isfile(os.path.join(clone.base, "file1"))
         True
@@ -1254,8 +1324,6 @@ class ScratchBranch(LocalBranch):
         copytree(self.base, base, symlinks=True)
         return ScratchBranch(base=base)
 
-
-        
     def __del__(self):
         self.destroy()
 
@@ -1274,7 +1342,7 @@ class ScratchBranch(LocalBranch):
                 for name in files:
                     os.chmod(os.path.join(root, name), 0700)
             rmtree(self.base)
-        self.base = None
+        self._transport = None
 
     
 
@@ -1331,27 +1399,3 @@ def gen_root_id():
     return gen_file_id('TREE_ROOT')
 
 
-def copy_branch(branch_from, to_location, revno=None):
-    """Copy branch_from into the existing directory to_location.
-
-    revision
-        If not None, only revisions up to this point will be copied.
-        The head of the new branch will be that revision.
-
-    to_location
-        The name of a local directory that exists but is empty.
-    """
-    from bzrlib.merge import merge
-
-    assert isinstance(branch_from, Branch)
-    assert isinstance(to_location, basestring)
-    
-    br_to = Branch.initialize(to_location)
-    br_to.set_root_id(branch_from.get_root_id())
-    if revno is None:
-        revno = branch_from.revno()
-    br_to.update_revisions(branch_from, stop_revision=revno)
-    merge((to_location, -1), (to_location, 0), this_dir=to_location,
-          check_clean=False, ignore_zero=True)
-    br_to.set_parent(branch_from.base)
-    return br_to

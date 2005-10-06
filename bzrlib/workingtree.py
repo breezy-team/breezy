@@ -21,12 +21,68 @@
 # it's not predictable when it will be written out.
 
 import os
+import stat
 import fnmatch
         
 import bzrlib.tree
 from bzrlib.osutils import appendpath, file_kind, isdir, splitpath
 from bzrlib.errors import BzrCheckError
 from bzrlib.trace import mutter
+
+class TreeEntry(object):
+    """An entry that implements the minium interface used by commands.
+
+    This needs further inspection, it may be better to have 
+    InventoryEntries without ids - though that seems wrong. For now,
+    this is a parallel hierarchy to InventoryEntry, and needs to become
+    one of several things: decorates to that hierarchy, children of, or
+    parents of it.
+    Another note is that these objects are currently only used when there is
+    no InventoryEntry available - i.e. for unversioned objects.
+    Perhaps they should be UnversionedEntry et al. ? - RBC 20051003
+    """
+ 
+    def __eq__(self, other):
+        # yes, this us ugly, TODO: best practice __eq__ style.
+        return (isinstance(other, TreeEntry)
+                and other.__class__ == self.__class__)
+ 
+    def kind_character(self):
+        return "???"
+
+
+class TreeDirectory(TreeEntry):
+    """See TreeEntry. This is a directory in a working tree."""
+
+    def __eq__(self, other):
+        return (isinstance(other, TreeDirectory)
+                and other.__class__ == self.__class__)
+
+    def kind_character(self):
+        return "/"
+
+
+class TreeFile(TreeEntry):
+    """See TreeEntry. This is a regular file in a working tree."""
+
+    def __eq__(self, other):
+        return (isinstance(other, TreeFile)
+                and other.__class__ == self.__class__)
+
+    def kind_character(self):
+        return ''
+
+
+class TreeLink(TreeEntry):
+    """See TreeEntry. This is a symlink in a working tree."""
+
+    def __eq__(self, other):
+        return (isinstance(other, TreeLink)
+                and other.__class__ == self.__class__)
+
+    def kind_character(self):
+        return ''
+
 
 class WorkingTree(bzrlib.tree.Tree):
     """Working copy tree.
@@ -69,7 +125,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         inv = self._inventory
         for path, ie in inv.iter_entries():
-            if os.path.exists(self.abspath(path)):
+            if bzrlib.osutils.lexists(self.abspath(path)):
                 yield ie.file_id
 
 
@@ -83,7 +139,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return os.path.join(self.basedir, filename)
 
     def has_filename(self, filename):
-        return os.path.exists(self.abspath(filename))
+        return bzrlib.osutils.lexists(self.abspath(filename))
 
     def get_file(self, file_id):
         return self.get_file_byname(self.id2path(file_id))
@@ -95,6 +151,10 @@ class WorkingTree(bzrlib.tree.Tree):
         ## XXX: badly named; this isn't in the store at all
         return self.abspath(self.id2path(file_id))
 
+
+    def id2abspath(self, file_id):
+        return self.abspath(self.id2path(file_id))
+
                 
     def has_id(self, file_id):
         # files that have been deleted are excluded
@@ -102,21 +162,30 @@ class WorkingTree(bzrlib.tree.Tree):
         if not inv.has_id(file_id):
             return False
         path = inv.id2path(file_id)
-        return os.path.exists(self.abspath(path))
+        return bzrlib.osutils.lexists(self.abspath(path))
 
 
     __contains__ = has_id
     
 
     def get_file_size(self, file_id):
-        # is this still called?
-        raise NotImplementedError()
-
+        return os.path.getsize(self.id2abspath(file_id))
 
     def get_file_sha1(self, file_id):
         path = self._inventory.id2path(file_id)
         return self._hashcache.get_sha1(path)
 
+
+    def is_executable(self, file_id):
+        if os.name == "nt":
+            return self._inventory[file_id].executable
+        else:
+            path = self._inventory.id2path(file_id)
+            mode = os.lstat(self.abspath(path)).st_mode
+            return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
+
+    def get_symlink_target(self, file_id):
+        return os.readlink(self.id2path(file_id))
 
     def file_class(self, filename):
         if self.path2id(filename):
@@ -171,7 +240,20 @@ class WorkingTree(bzrlib.tree.Tree):
                                             "now of kind %r"
                                             % (fap, f_ie.kind, f_ie.file_id, fk))
 
-                yield fp, c, fk, (f_ie and f_ie.file_id)
+                # make a last minute entry
+                if f_ie:
+                    entry = f_ie
+                else:
+                    if fk == 'directory':
+                        entry = TreeDirectory()
+                    elif fk == 'file':
+                        entry = TreeFile()
+                    elif fk == 'symlink':
+                        entry = TreeLink()
+                    else:
+                        entry = TreeEntry()
+                
+                yield fp, c, fk, (f_ie and f_ie.file_id), entry
 
                 if fk != 'directory':
                     continue

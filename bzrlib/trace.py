@@ -54,11 +54,15 @@ class QuietFormatter(logging.Formatter):
     # can get the exception details is we suppress them here.
 
     def format(self, record):
-        s = 'bzr: '
         if record.levelno >= logging.WARNING:
-            s += record.levelname + ': '
+            s = 'bzr: ' + record.levelname + ': '
+        else:
+            s = ''
             
-        s += record.getMessage() 
+        s += record.getMessage()
+
+        ##import textwrap
+        ##s = textwrap.fill(s)
             
         if record.exc_info:
             # give just a summary of the exception, not the whole thing
@@ -101,17 +105,9 @@ def _rollover_trace_maybe(trace_fname):
             return
         old_fname = trace_fname + '.old'
 
-        try:
-            # must remove before rename on windows
-            os.remove(old_fname)
-        except OSError:
-            pass
+        from osutils import rename
+        rename(trace_fname, old_fname)
 
-        try:
-            # might fail if in use on windows
-            os.rename(trace_fname, old_fname)
-        except OSError:
-            pass
     except OSError:
         return
 
@@ -168,10 +164,9 @@ def log_exception(msg=None):
     if msg == None:
         ei = sys.exc_info()
         msg = str(ei[1])
-
     if msg and (msg[-1] == '\n'):
         msg = msg[:-1]
-        
+    ## msg = "(%s) %s" % (str(type(ei[1])), msg)
     _bzr_logger.exception(msg)
 
 

@@ -1,334 +1,402 @@
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+# XXX: Can we do any better about making interrupted commits change
+# nothing?  Perhaps the best approach is to integrate commit of
+# AtomicFiles with releasing the lock on the Branch.
 
-def commit(branch, message,
-           timestamp=None,
-           timezone=None,
-           committer=None,
-           verbose=True,
-           specific_files=None,
-           rev_id=None,
-           allow_pointless=True):
-    """Commit working copy as a new revision.
+# TODO: Separate 'prepare' phase where we find a list of potentially
+# committed files.  We then can then pause the commit to prompt for a
+# commit message, knowing the summary will be the same as what's
+# actually used for the commit.  (But perhaps simpler to simply get
+# the tree status, then use that for a selective commit?)
 
-    The basic approach is to add all the file texts into the
-    store, then the inventory, then make a new revision pointing
-    to that inventory and store that.
+# The newly committed revision is going to have a shape corresponding
+# to that of the working inventory.  Files that are not in the
+# working tree and that were in the predecessor are reported as
+# removed --- this can include files that were either removed from the
+# inventory or deleted in the working tree.  If they were only
+# deleted from disk, they are removed from the working inventory.
 
-    This is not quite safe if the working copy changes during the
-    commit; for the moment that is simply not allowed.  A better
-    approach is to make a temporary copy of the files before
-    computing their hashes, and then add those hashes in turn to
-    the inventory.  This should mean at least that there are no
-    broken hash pointers.  There is no way we can get a snapshot
-    of the whole directory at an instant.  This would also have to
-    be robust against files disappearing, moving, etc.  So the
-    whole thing is a bit hard.
+# We then consider the remaining entries, which will be in the new
+# version.  Directory entries are simply copied across.  File entries
+# must be checked to see if a new version of the file should be
+# recorded.  For each parent revision inventory, we check to see what
+# version of the file was present.  If the file was present in at
+# least one tree, and if it was the same version in all the trees,
+# then we can just refer to that version.  Otherwise, a new version
+# representing the merger of the file versions must be added.
 
-    This raises PointlessCommit if there are no changes, no new merges,
-    and allow_pointless  is false.
+# TODO: Update hashcache before and after - or does the WorkingTree
+# look after that?
 
-    timestamp -- if not None, seconds-since-epoch for a
-         postdated/predated commit.
+# TODO: Rather than mashing together the ancestry and storing it back,
+# perhaps the weave should have single method which does it all in one
+# go, avoiding a lot of redundant work.
 
-    specific_files
-        If true, commit only those files.
+# TODO: Perhaps give a warning if one of the revisions marked as
+# merged is already in the ancestry, and then don't record it as a
+# distinct parent.
 
-    rev_id
-        If set, use this as the new revision id.
-        Useful for test or import commands that need to tightly
-        control what revisions are assigned.  If you duplicate
-        a revision id that exists elsewhere it is your own fault.
-        If null (default), a time/random revision id is generated.
+# TODO: If the file is newly merged but unchanged from the version it
+# merges from, then it should still be reported as newly added
+# relative to the basis revision.
+
+
+import os
+import re
+import sys
+import time
+import pdb
+
+from binascii import hexlify
+from cStringIO import StringIO
+
+from bzrlib.osutils import (local_time_offset, username,
+                            rand_bytes, compact_date, user_email,
+                            kind_marker, is_inside_any, quotefn,
+                            sha_string, sha_strings, sha_file, isdir, isfile,
+                            split_lines)
+from bzrlib.branch import gen_file_id
+from bzrlib.errors import (BzrError, PointlessCommit,
+                           HistoryMissing,
+                           )
+from bzrlib.revision import Revision
+from bzrlib.trace import mutter, note, warning
+from bzrlib.xml5 import serializer_v5
+from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.weave import Weave
+from bzrlib.weavefile import read_weave, write_weave_v5
+from bzrlib.atomicfile import AtomicFile
+
+
+def commit(*args, **kwargs):
+    """Commit a new revision to a branch.
+
+    Function-style interface for convenience of old callers.
+
+    New code should use the Commit class instead.
     """
+    ## XXX: Remove this in favor of Branch.commit?
+    Commit().commit(*args, **kwargs)
 
-    import time, tempfile, re
 
-    from bzrlib.osutils import local_time_offset, username
-    from bzrlib.branch import gen_file_id
-    from bzrlib.errors import BzrError, PointlessCommit
-    from bzrlib.revision import Revision, RevisionReference
-    from bzrlib.trace import mutter, note
-    from bzrlib.xml import serializer_v4
+class NullCommitReporter(object):
+    """I report on progress of a commit."""
+    def added(self, path):
+        pass
 
-    branch.lock_write()
+    def removed(self, path):
+        pass
 
-    try:
-        # First walk over the working inventory; and both update that
-        # and also build a new revision inventory.  The revision
-        # inventory needs to hold the text-id, sha1 and size of the
-        # actual file versions committed in the revision.  (These are
-        # not present in the working inventory.)  We also need to
-        # detect missing/deleted files, and remove them from the
-        # working inventory.
+    def renamed(self, old_path, new_path):
+        pass
 
-        work_tree = branch.working_tree()
-        work_inv = work_tree.inventory
-        basis = branch.basis_tree()
-        basis_inv = basis.inventory
 
-        if verbose:
-            # note('looking for changes...')
-            # print 'looking for changes...'
-            # disabled; should be done at a higher level
-            pass
+class ReportCommitToLog(NullCommitReporter):
+    def added(self, path):
+        note('added %s', path)
 
-        pending_merges = branch.pending_merges()
+    def removed(self, path):
+        note('removed %s', path)
 
-        missing_ids, new_inv, any_changes = \
-                     _gather_commit(branch,
-                                    work_tree,
-                                    work_inv,
-                                    basis_inv,
-                                    specific_files,
-                                    verbose)
+    def renamed(self, old_path, new_path):
+        note('renamed %s => %s', old_path, new_path)
 
-        if not (any_changes or allow_pointless or pending_merges):
-            raise PointlessCommit()
 
-        for file_id in missing_ids:
-            # Any files that have been deleted are now removed from the
-            # working inventory.  Files that were not selected for commit
-            # are left as they were in the working inventory and ommitted
-            # from the revision inventory.
+class Commit(object):
+    """Task of committing a new revision.
 
-            # have to do this later so we don't mess up the iterator.
-            # since parents may be removed before their children we
-            # have to test.
+    This is a MethodObject: it accumulates state as the commit is
+    prepared, and then it is discarded.  It doesn't represent
+    historical revisions, just the act of recording a new one.
 
-            # FIXME: There's probably a better way to do this; perhaps
-            # the workingtree should know how to filter itbranch.
-            if work_inv.has_id(file_id):
-                del work_inv[file_id]
+            missing_ids
+            Modified to hold a list of files that have been deleted from
+            the working directory; these should be removed from the
+            working inventory.
+    """
+    def __init__(self,
+                 reporter=None):
+        if reporter is not None:
+            self.reporter = reporter
+        else:
+            self.reporter = NullCommitReporter()
 
-        if rev_id is None:
-            rev_id = _gen_revision_id(branch, time.time())
-        inv_id = rev_id
-
-        inv_tmp = tempfile.TemporaryFile()
         
-        serializer_v4.write_inventory(new_inv, inv_tmp)
-        inv_tmp.seek(0)
-        branch.inventory_store.add(inv_tmp, inv_id)
-        mutter('new inventory_id is {%s}' % inv_id)
+    def commit(self,
+               branch, message,
+               timestamp=None,
+               timezone=None,
+               committer=None,
+               specific_files=None,
+               rev_id=None,
+               allow_pointless=True,
+               verbose=False):
+        """Commit working copy as a new revision.
 
-        # We could also just sha hash the inv_tmp file
-        # however, in the case that branch.inventory_store.add()
-        # ever actually does anything special
-        inv_sha1 = branch.get_inventory_sha1(inv_id)
+        timestamp -- if not None, seconds-since-epoch for a
+             postdated/predated commit.
 
-        branch._write_inventory(work_inv)
+        specific_files -- If true, commit only those files.
 
-        if timestamp == None:
-            timestamp = time.time()
+        rev_id -- If set, use this as the new revision id.
+            Useful for test or import commands that need to tightly
+            control what revisions are assigned.  If you duplicate
+            a revision id that exists elsewhere it is your own fault.
+            If null (default), a time/random revision id is generated.
 
-        if committer == None:
-            committer = username(branch)
+        allow_pointless -- If true (default), commit even if nothing
+            has changed and no merges are recorded.
+        """
+        mutter('preparing to commit')
 
-        if timezone == None:
-            timezone = local_time_offset()
+        self.branch = branch
+        self.weave_store = branch.weave_store
+        self.rev_id = rev_id
+        self.specific_files = specific_files
+        self.allow_pointless = allow_pointless
 
-        mutter("building commit log message")
+        if timestamp is None:
+            self.timestamp = time.time()
+        else:
+            self.timestamp = long(timestamp)
+            
+        if rev_id is None:
+            self.rev_id = _gen_revision_id(self.branch, self.timestamp)
+        else:
+            self.rev_id = rev_id
+
+        if committer is None:
+            self.committer = username(self.branch)
+        else:
+            assert isinstance(committer, basestring), type(committer)
+            self.committer = committer
+
+        if timezone is None:
+            self.timezone = local_time_offset()
+        else:
+            self.timezone = int(timezone)
+
+        assert isinstance(message, basestring), type(message)
+        self.message = message
+        self._escape_commit_message()
+
+        self.branch.lock_write()
+        try:
+            self.work_tree = self.branch.working_tree()
+            self.work_inv = self.work_tree.inventory
+            self.basis_tree = self.branch.basis_tree()
+            self.basis_inv = self.basis_tree.inventory
+
+            self._gather_parents()
+            if len(self.parents) > 1 and self.specific_files:
+                raise NotImplementedError('selected-file commit of merges is not supported yet')
+            self._check_parents_present()
+            
+            self._remove_deleted()
+            self._populate_new_inv()
+            self._store_snapshot()
+            self._report_deletes()
+
+            if not (self.allow_pointless
+                    or len(self.parents) > 1
+                    or self.new_inv != self.basis_inv):
+                raise PointlessCommit()
+
+            self._record_inventory()
+            self._make_revision()
+            note('committed r%d {%s}', (self.branch.revno() + 1),
+                 self.rev_id)
+            self.branch.append_revision(self.rev_id)
+            self.branch.set_pending_merges([])
+        finally:
+            self.branch.unlock()
+
+    def _record_inventory(self):
+        """Store the inventory for the new revision."""
+        inv_text = serializer_v5.write_inventory_to_string(self.new_inv)
+        self.inv_sha1 = sha_string(inv_text)
+        s = self.branch.control_weaves
+        s.add_text('inventory', self.rev_id,
+                   split_lines(inv_text), self.present_parents)
+
+    def _escape_commit_message(self):
+        """Replace xml-incompatible control characters."""
         # Python strings can include characters that can't be
         # represented in well-formed XML; escape characters that
         # aren't listed in the XML specification
         # (http://www.w3.org/TR/REC-xml/#NT-Char).
-        if isinstance(message, unicode):
+        if isinstance(self.message, unicode):
             char_pattern = u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]'
         else:
             # Use a regular 'str' as pattern to avoid having re.subn
             # return 'unicode' results.
             char_pattern = '[^x09\x0A\x0D\x20-\xFF]'
-        message, escape_count = re.subn(
+        self.message, escape_count = re.subn(
             char_pattern,
             lambda match: match.group(0).encode('unicode_escape'),
-            message)
+            self.message)
         if escape_count:
             note("replaced %d control characters in message", escape_count)
-        rev = Revision(timestamp=timestamp,
-                       timezone=timezone,
-                       committer=committer,
-                       message = message,
-                       inventory_id=inv_id,
-                       inventory_sha1=inv_sha1,
-                       revision_id=rev_id)
 
-        rev.parents = []
-        precursor_id = branch.last_patch()
+    def _gather_parents(self):
+        """Record the parents of a merge for merge detection."""
+        pending_merges = self.branch.pending_merges()
+        self.parents = []
+        self.parent_invs = []
+        self.present_parents = []
+        precursor_id = self.branch.last_revision()
         if precursor_id:
-            precursor_sha1 = branch.get_revision_sha1(precursor_id)
-            rev.parents.append(RevisionReference(precursor_id, precursor_sha1))
-        for merge_rev in pending_merges:
-            rev.parents.append(RevisionReference(merge_rev))            
+            self.parents.append(precursor_id)
+        self.parents += pending_merges
+        for revision in self.parents:
+            if self.branch.has_revision(revision):
+                self.parent_invs.append(self.branch.get_inventory(revision))
+                self.present_parents.append(revision)
 
-        rev_tmp = tempfile.TemporaryFile()
-        serializer_v4.write_revision(rev, rev_tmp)
+    def _check_parents_present(self):
+        for parent_id in self.parents:
+            mutter('commit parent revision {%s}', parent_id)
+            if not self.branch.has_revision(parent_id):
+                if parent_id == self.branch.last_revision():
+                    warning("parent is pissing %r", parent_id)
+                    raise HistoryMissing(self.branch, 'revision', parent_id)
+                else:
+                    mutter("commit will ghost revision %r", parent_id)
+            
+    def _make_revision(self):
+        """Record a new revision object for this commit."""
+        self.rev = Revision(timestamp=self.timestamp,
+                            timezone=self.timezone,
+                            committer=self.committer,
+                            message=self.message,
+                            inventory_sha1=self.inv_sha1,
+                            revision_id=self.rev_id)
+        self.rev.parent_ids = self.parents
+        rev_tmp = StringIO()
+        serializer_v5.write_revision(self.rev, rev_tmp)
         rev_tmp.seek(0)
-        branch.revision_store.add(rev_tmp, rev_id)
-        mutter("new revision_id is {%s}" % rev_id)
+        self.branch.revision_store.add(rev_tmp, self.rev_id)
+        mutter('new revision_id is {%s}', self.rev_id)
 
-        ## XXX: Everything up to here can simply be orphaned if we abort
-        ## the commit; it will leave junk files behind but that doesn't
-        ## matter.
+    def _remove_deleted(self):
+        """Remove deleted files from the working inventories.
 
-        ## TODO: Read back the just-generated changeset, and make sure it
-        ## applies and recreates the right state.
+        This is done prior to taking the working inventory as the
+        basis for the new committed inventory.
 
-        ## TODO: Also calculate and store the inventory SHA1
-        mutter("committing patch r%d" % (branch.revno() + 1))
+        This returns true if any files
+        *that existed in the basis inventory* were deleted.
+        Files that were added and deleted
+        in the working copy don't matter.
+        """
+        specific = self.specific_files
+        deleted_ids = []
+        for path, ie in self.work_inv.iter_entries():
+            if specific and not is_inside_any(specific, path):
+                continue
+            if not self.work_tree.has_filename(path):
+                note('missing %s', path)
+                deleted_ids.append(ie.file_id)
+        if deleted_ids:
+            for file_id in deleted_ids:
+                if file_id in self.work_inv:
+                    del self.work_inv[file_id]
+            self.branch._write_inventory(self.work_inv)
 
-        branch.append_revision(rev_id)
+    def _store_snapshot(self):
+        """Pass over inventory and record a snapshot.
 
-        branch.set_pending_merges([])
+        Entries get a new revision when they are modified in 
+        any way, which includes a merge with a new set of
+        parents that have the same entry. 
+        """
+        # XXX: Need to think more here about when the user has
+        # made a specific decision on a particular value -- c.f.
+        # mark-merge.  
+        for path, ie in self.new_inv.iter_entries():
+            previous_entries = ie.find_previous_heads(
+                self.parent_invs, 
+                self.weave_store.get_weave_or_empty(ie.file_id))
+            if ie.revision is None:
+                change = ie.snapshot(self.rev_id, path, previous_entries,
+                                     self.work_tree, self.weave_store)
+            else:
+                change = "unchanged"
+            note("%s %s", change, path)
 
-        if verbose:
-            # disabled; should go through logging
-            # note("commited r%d" % branch.revno())
-            # print ("commited r%d" % branch.revno())
-            pass
-    finally:
-        branch.unlock()
+    def _populate_new_inv(self):
+        """Build revision inventory.
 
+        This creates a new empty inventory. Depending on
+        which files are selected for commit, and what is present in the
+        current tree, the new inventory is populated. inventory entries 
+        which are candidates for modification have their revision set to
+        None; inventory entries that are carried over untouched have their
+        revision set to their prior value.
+        """
+        mutter("Selecting files for commit with filter %s", self.specific_files)
+        self.new_inv = Inventory()
+        for path, new_ie in self.work_inv.iter_entries():
+            file_id = new_ie.file_id
+            mutter('check %s {%s}', path, new_ie.file_id)
+            if self.specific_files:
+                if not is_inside_any(self.specific_files, path):
+                    mutter('%s not selected for commit', path)
+                    self._carry_entry(file_id)
+                    continue
+                else:
+                    # this is selected, ensure its parents are too.
+                    parent_id = new_ie.parent_id
+                    while parent_id != ROOT_ID:
+                        if not self.new_inv.has_id(parent_id):
+                            ie = self._select_entry(self.work_inv[parent_id])
+                            mutter('%s selected for commit because of %s',
+                                   self.new_inv.id2path(parent_id), path)
 
+                        ie = self.new_inv[parent_id]
+                        if ie.revision is not None:
+                            ie.revision = None
+                            mutter('%s selected for commit because of %s',
+                                   self.new_inv.id2path(parent_id), path)
+                        parent_id = ie.parent_id
+            mutter('%s selected for commit', path)
+            self._select_entry(new_ie)
+
+    def _select_entry(self, new_ie):
+        """Make new_ie be considered for committing."""
+        ie = new_ie.copy()
+        ie.revision = None
+        self.new_inv.add(ie)
+        return ie
+
+    def _carry_entry(self, file_id):
+        """Carry the file unchanged from the basis revision."""
+        if self.basis_inv.has_id(file_id):
+            self.new_inv.add(self.basis_inv[file_id].copy())
+
+    def _report_deletes(self):
+        for file_id in self.basis_inv:
+            if file_id not in self.new_inv:
+                note('deleted %s', self.basis_inv.id2path(file_id))
 
 def _gen_revision_id(branch, when):
     """Return new revision-id."""
-    from binascii import hexlify
-    from bzrlib.osutils import rand_bytes, compact_date, user_email
-
     s = '%s-%s-' % (user_email(branch), compact_date(when))
     s += hexlify(rand_bytes(8))
     return s
-
-
-def _gather_commit(branch, work_tree, work_inv, basis_inv, specific_files,
-                   verbose):
-    """Build inventory preparatory to commit.
-
-    Returns missing_ids, new_inv, any_changes.
-
-    This adds any changed files into the text store, and sets their
-    test-id, sha and size in the returned inventory appropriately.
-
-    missing_ids
-        Modified to hold a list of files that have been deleted from
-        the working directory; these should be removed from the
-        working inventory.
-    """
-    from bzrlib.inventory import Inventory
-    from bzrlib.osutils import isdir, isfile, sha_string, quotefn, \
-         local_time_offset, username, kind_marker, is_inside_any
-    
-    from bzrlib.branch import gen_file_id
-    from bzrlib.errors import BzrError
-    from bzrlib.revision import Revision
-    from bzrlib.trace import mutter, note
-
-    any_changes = False
-    inv = Inventory(work_inv.root.file_id)
-    missing_ids = []
-    
-    for path, entry in work_inv.iter_entries():
-        ## TODO: Check that the file kind has not changed from the previous
-        ## revision of this file (if any).
-
-        p = branch.abspath(path)
-        file_id = entry.file_id
-        mutter('commit prep file %s, id %r ' % (p, file_id))
-
-        if specific_files and not is_inside_any(specific_files, path):
-            mutter('  skipping file excluded from commit')
-            if basis_inv.has_id(file_id):
-                # carry over with previous state
-                inv.add(basis_inv[file_id].copy())
-            else:
-                # omit this from committed inventory
-                pass
-            continue
-
-        if not work_tree.has_id(file_id):
-            if verbose:
-                print('deleted %s%s' % (path, kind_marker(entry.kind)))
-            any_changes = True
-            mutter("    file is missing, removing from inventory")
-            missing_ids.append(file_id)
-            continue
-
-        # this is present in the new inventory; may be new, modified or
-        # unchanged.
-        old_ie = basis_inv.has_id(file_id) and basis_inv[file_id]
-        
-        entry = entry.copy()
-        inv.add(entry)
-
-        if old_ie:
-            old_kind = old_ie.kind
-            if old_kind != entry.kind:
-                raise BzrError("entry %r changed kind from %r to %r"
-                        % (file_id, old_kind, entry.kind))
-
-        if entry.kind == 'directory':
-            if not isdir(p):
-                raise BzrError("%s is entered as directory but not a directory"
-                               % quotefn(p))
-        elif entry.kind == 'file':
-            if not isfile(p):
-                raise BzrError("%s is entered as file but is not a file" % quotefn(p))
-
-            new_sha1 = work_tree.get_file_sha1(file_id)
-
-            if (old_ie
-                and old_ie.text_sha1 == new_sha1):
-                ## assert content == basis.get_file(file_id).read()
-                entry.text_id = old_ie.text_id
-                entry.text_sha1 = new_sha1
-                entry.text_size = old_ie.text_size
-                mutter('    unchanged from previous text_id {%s}' %
-                       entry.text_id)
-            else:
-                content = file(p, 'rb').read()
-
-                # calculate the sha again, just in case the file contents
-                # changed since we updated the cache
-                entry.text_sha1 = sha_string(content)
-                entry.text_size = len(content)
-
-                entry.text_id = gen_file_id(entry.name)
-                branch.text_store.add(content, entry.text_id)
-                mutter('    stored with text_id {%s}' % entry.text_id)
-
-        if verbose:
-            marked = path + kind_marker(entry.kind)
-            if not old_ie:
-                print 'added', marked
-                any_changes = True
-            elif old_ie == entry:
-                pass                    # unchanged
-            elif (old_ie.name == entry.name
-                  and old_ie.parent_id == entry.parent_id):
-                print 'modified', marked
-                any_changes = True
-            else:
-                print 'renamed', marked
-                any_changes = True
-        elif old_ie != entry:
-            any_changes = True
-
-    return missing_ids, inv, any_changes
-
-

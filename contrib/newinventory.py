@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from xml import ElementTree, Element
+from bzrlib.xml import ElementTree, Element
 
 
 def write_inventory(inv, f):
     el = Element('inventory', {'version': '2'})
     el.text = '\n'
-    
+
     root = Element('root_directory', {'id': inv.root.file_id})
     root.tail = root.text = '\n'
     el.append(root)

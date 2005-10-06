@@ -21,37 +21,6 @@
 
 """Weave - storage of related text file versions"""
 
-# before intset (r923) 2000 versions in 41.5s
-# with intset (r926) 2000 versions in 93s !!!
-# better to just use plain sets.
-
-# making _extract build and return a list, rather than being a generator
-# takes 37.94s
-
-# with python -O, r923 does 2000 versions in 36.87s
-
-# with optimizations to avoid mutating lists - 35.75!  I guess copying
-# all the elements every time costs more than the small manipulations.
-# a surprisingly small change.
-
-# r931, which avoids using a generator for extract, does 36.98s
-
-# with memoized inclusions, takes 41.49s; not very good
-
-# with slots, takes 37.35s; without takes 39.16, a bit surprising
-
-# with the delta calculation mixed in with the add method, rather than
-# separated, takes 36.78s
-
-# with delta folded in and mutation of the list, 36.13s
-
-# with all this and simplification of add code, 33s
-
-
-
-
-
-# TODO: Perhaps have copy method for Weave instances?
 
 # XXX: If we do weaves this way, will a merge still behave the same
 # way if it's done in a different order?  That's a pretty desirable
@@ -74,7 +43,7 @@
 
 # TODO: Parallel-extract that passes back each line along with a
 # description of which revisions include it.  Nice for checking all
-# shas in parallel.
+# shas or calculating stats in parallel.
 
 # TODO: Using a single _extract routine and then processing the output
 # is probably inefficient.  It's simple enough that we can afford to
@@ -84,9 +53,27 @@
 # TODO: Perhaps the API should work only in names to hide the integer
 # indexes from the user?
 
+# TODO: Is there any potential performance win by having an add()
+# variant that is passed a pre-cooked version of the single basis
+# version?
+
+# TODO: Have a way to go back and insert a revision V1 that is a parent 
+# of an already-stored revision V2.  This means some lines previously 
+# counted as new in V2 will be discovered to have actually come from V1.  
+# It is probably necessary to insert V1, then compute a whole new diff 
+# from the mashed ancestors to V2.  This must be repeated for every 
+# direct child of V1.  The deltas from V2 to its descendents won't change,
+# although their location within the weave may change.  It may be possible
+# to just adjust the location of those instructions rather than 
+# re-weaving the whole thing.  This is expected to be a fairly rare
+# operation, only used when inserting data that was previously a ghost.
+
+
 
 
 import sha
+from difflib import SequenceMatcher
+
 
 
 
@@ -113,7 +100,7 @@ class Weave(object):
 
     * a nonnegative index number.
 
-    * a version-id string. (not implemented yet)
+    * a version-id string.
 
     Typically the index number will be valid only inside this weave and
     the version-id is used to reference it in the larger world.
@@ -181,17 +168,36 @@ class Weave(object):
 
     _name_map
         For each name, the version number.
+
+    _weave_name
+        Descriptive name of this weave; typically the filename if known.
+        Set by read_weave.
     """
 
-    __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map']
+    __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
+                 '_weave_name']
     
-    def __init__(self):
+    def __init__(self, weave_name=None):
         self._weave = []
         self._parents = []
         self._sha1s = []
         self._names = []
         self._name_map = {}
+        self._weave_name = weave_name
 
+
+    def copy(self):
+        """Return a deep copy of self.
+        
+        The copy can be modified without affecting the original weave."""
+        other = Weave()
+        other._weave = self._weave[:]
+        other._parents = self._parents[:]
+        other._sha1s = self._sha1s[:]
+        other._names = self._names[:]
+        other._name_map = self._name_map.copy()
+        other._weave_name = self._weave_name
+        return other
 
     def __eq__(self, other):
         if not isinstance(other, Weave):
@@ -205,14 +211,48 @@ class Weave(object):
         return not self.__eq__(other)
 
 
+    def maybe_lookup(self, name_or_index):
+        """Convert possible symbolic name to index, or pass through indexes."""
+        if isinstance(name_or_index, (int, long)):
+            return name_or_index
+        else:
+            return self.lookup(name_or_index)
+
+        
     def lookup(self, name):
+        """Convert symbolic version name to index."""
         try:
             return self._name_map[name]
         except KeyError:
-            raise WeaveError("name %s not present in weave" % name)
+            raise WeaveError("name %r not present in weave %r" %
+                             (name, self._weave_name))
+
+
+    def iter_names(self):
+        """Yield a list of all names in this weave."""
+        return iter(self._names)
+
+    def idx_to_name(self, version):
+        return self._names[version]
+
+
+    def _check_repeated_add(self, name, parents, text, sha1):
+        """Check that a duplicated add is OK.
+
+        If it is, return the (old) index; otherwise raise an exception.
+        """
+        idx = self.lookup(name)
+        if sorted(self._parents[idx]) != sorted(parents):
+            raise WeaveError("name \"%s\" already present in weave "
+                             "with different parents" % name)
+        if sha1 != self._sha1s[idx]:
+            raise WeaveError("name \"%s\" already present in weave "
+                             "with different text" % name)            
+        return idx
+        
 
         
-    def add(self, name, parents, text):
+    def add(self, name, parents, text, sha1=None):
         """Add a single text on top of the weave.
   
         Returns the index number of the newly added version.
@@ -225,20 +265,24 @@ class Weave(object):
             List or set of direct parent version numbers.
             
         text
-            Sequence of lines to be added in the new version."""
+            Sequence of lines to be added in the new version.
+
+        sha -- SHA-1 of the file, if known.  This is trusted to be
+            correct if supplied.
+        """
+        from bzrlib.osutils import sha_strings
 
         assert isinstance(name, basestring)
+        if sha1 is None:
+            sha1 = sha_strings(text)
         if name in self._name_map:
-            raise WeaveError("name %r already present in weave" % name)
-        
+            return self._check_repeated_add(name, parents, text, sha1)
+
+        parents = map(self.maybe_lookup, parents)
         self._check_versions(parents)
         ## self._check_lines(text)
         new_version = len(self._parents)
 
-        s = sha.new()
-        map(s.update, text)
-        sha1 = s.hexdigest()
-        del s
 
         # if we abort after here the (in-memory) weave will be corrupt because only
         # some fields are updated
@@ -293,7 +337,6 @@ class Weave(object):
         #print 'basis_lines:', basis_lines
         #print 'new_lines:  ', lines
 
-        from difflib import SequenceMatcher
         s = SequenceMatcher(None, basis_lines, text)
 
         # offset gives the number of lines that have been inserted
@@ -334,20 +377,25 @@ class Weave(object):
 
         return new_version
 
+    def add_identical(self, old_rev_id, new_rev_id, parents):
+        """Add an identical text to old_rev_id as new_rev_id."""
+        old_lines = self.get(self.lookup(old_rev_id))
+        self.add(new_rev_id, parents, old_lines)
 
     def inclusions(self, versions):
         """Return set of all ancestors of given version(s)."""
         i = set(versions)
-        v = max(versions)
-        try:
-            while v >= 0:
-                if v in i:
-                    # include all its parents
-                    i.update(self._parents[v])
-                v -= 1
-            return i
-        except IndexError:
-            raise ValueError("version %d not present in weave" % v)
+        for v in xrange(max(versions), 0, -1):
+            if v in i:
+                # include all its parents
+                i.update(self._parents[v])
+        return i
+        ## except IndexError:
+        ##     raise ValueError("version %d not present in weave" % v)
+
+
+    def parents(self, version):
+        return self._parents[version]
 
 
     def minimal_parents(self, version):
@@ -393,15 +441,16 @@ class Weave(object):
                 raise IndexError("invalid version number %r" % i)
 
     
-    def annotate(self, index):
-        return list(self.annotate_iter(index))
+    def annotate(self, name_or_index):
+        return list(self.annotate_iter(name_or_index))
 
 
-    def annotate_iter(self, version):
+    def annotate_iter(self, name_or_index):
         """Yield list of (index-id, line) pairs for the specified version.
 
         The index indicates when the line originated in the weave."""
-        for origin, lineno, text in self._extract([version]):
+        incls = [self.maybe_lookup(name_or_index)]
+        for origin, lineno, text in self._extract(incls):
             yield origin, text
 
 
@@ -451,6 +500,10 @@ class Weave(object):
 
         The set typically but not necessarily corresponds to a version.
         """
+        for i in versions:
+            if not isinstance(i, int):
+                raise ValueError(i)
+            
         included = self.inclusions(versions)
 
         istack = []
@@ -501,18 +554,28 @@ class Weave(object):
     
 
 
-    def get_iter(self, version):
+    def get_iter(self, name_or_index):
         """Yield lines for the specified version."""
-        for origin, lineno, line in self._extract([version]):
+        incls = [self.maybe_lookup(name_or_index)]
+        for origin, lineno, line in self._extract(incls):
             yield line
 
 
-    def get(self, index):
-        return list(self.get_iter(index))
+    def get_text(self, name_or_index):
+        return ''.join(self.get_iter(name_or_index))
+        assert isinstance(version, int)
+
+
+    def get_lines(self, name_or_index):
+        return list(self.get_iter(name_or_index))
+
+
+    get = get_lines
 
 
     def mash_iter(self, included):
         """Return composed version of multiple included versions."""
+        included = map(self.maybe_lookup, included)
         for origin, lineno, text in self._extract(included):
             yield text
 
@@ -578,7 +641,6 @@ class Weave(object):
         If there is a chunk of the file where there's no diagreement,
         only one alternative is given.
         """
-
         # approach: find the included versions common to all the
         # merged versions
         raise NotImplementedError()
@@ -604,7 +666,7 @@ class Weave(object):
         If line1=line2, this is a pure insert; if newlines=[] this is a
         pure delete.  (Similar to difflib.)
         """
-
+        raise NotImplementedError()
 
             
     def plan_merge(self, ver_a, ver_b):
@@ -704,9 +766,75 @@ class Weave(object):
                        state
 
                 
+    def join(self, other):
+        """Integrate versions from other into this weave.
+
+        The resulting weave contains all the history of both weaves; 
+        any version you could retrieve from either self or other can be 
+        retrieved from self after this call.
+
+        It is illegal for the two weaves to contain different values 
+        for any version.
+        """
+        if other.numversions() == 0:
+            return          # nothing to update, easy
+        # work through in index order to make sure we get all dependencies
+        for other_idx, name in enumerate(other._names):
+            # TODO: If all the parents of the other version are already 
+            # present then we can avoid some work by just taking the delta
+            # and adjusting the offsets.
+            if self._check_version_consistent(other, other_idx, name):
+                continue
+            new_parents = self._imported_parents(other, other_idx)
+            lines = other.get_lines(other_idx)
+            sha1 = other._sha1s[other_idx]
+            self.add(name, new_parents, lines, sha1)
 
 
+    def _imported_parents(self, other, other_idx):
+        """Return list of parents in self corresponding to indexes in other."""
+        new_parents = []
+        for parent_idx in other._parents[other_idx]:
+            parent_name = other._names[parent_idx]
+            if parent_name not in self._names:
+                # should not be possible
+                raise WeaveError("missing parent {%s} of {%s} in %r" 
+                                 % (parent_name, other._name_map[other_idx], self))
+            new_parents.append(self._name_map[parent_name])
+        return new_parents
 
+    def _check_version_consistent(self, other, other_idx, name):
+        """Check if a version in consistent in this and other.
+
+        To be consistent it must have:
+
+         * the same text
+         * the same direct parents (by name, not index, and disregarding
+           order)
+        
+        If present & correct return True;
+        if not present in self return False; 
+        if inconsistent raise error."""
+        this_idx = self._name_map.get(name, -1)
+        if this_idx != -1:
+            if self._sha1s[this_idx] != other._sha1s[other_idx]:
+                raise WeaveError("inconsistent texts for version {%s} "
+                                 "when joining weaves"
+                                 % (name))
+            self_parents = self._parents[this_idx]
+            other_parents = other._parents[other_idx]
+            n1 = [self._names[i] for i in self_parents]
+            n2 = [other._names[i] for i in other_parents]
+            n1.sort()
+            n2.sort()
+            if n1 != n2:
+                raise WeaveError("inconsistent parents for version {%s}: "
+                                 "%s vs %s"
+                                 % (name, n1, n2))
+            else:
+                return True         # ok!
+        else:
+            return False
 
 
 def weave_toc(w):
@@ -723,11 +851,8 @@ def weave_toc(w):
 
 
 
-def weave_stats(weave_file):
-    from bzrlib.progress import ProgressBar
+def weave_stats(weave_file, pb):
     from bzrlib.weavefile import read_weave
-
-    pb = ProgressBar()
 
     wf = file(weave_file, 'rb')
     w = read_weave(wf)
@@ -738,7 +863,7 @@ def weave_stats(weave_file):
     vers = len(w)
     for i in range(vers):
         pb.update('checking sizes', i, vers)
-        for line in w.get_iter(i):
+        for origin, lineno, line in w._extract([i]):
             total += len(line)
 
     pb.clear()
@@ -775,6 +900,8 @@ usage:
         Display composite of all selected versions.
     weave merge WEAVEFILE VERSION1 VERSION2 > OUT
         Auto-merge two versions and display conflicts.
+    weave diff WEAVEFILE VERSION1 VERSION2 
+        Show differences between two versions.
 
 example:
 
@@ -805,7 +932,13 @@ example:
 def main(argv):
     import sys
     import os
-    from weavefile import write_weave, read_weave
+    try:
+        import bzrlib
+    except ImportError:
+        # in case we're run directly from the subdirectory
+        sys.path.append('..')
+        import bzrlib
+    from bzrlib.weavefile import write_weave, read_weave
     from bzrlib.progress import ProgressBar
 
     try:
@@ -848,6 +981,18 @@ def main(argv):
         w = readit()
         sys.stdout.writelines(w.mash_iter(map(int, argv[3:])))
 
+    elif cmd == 'diff':
+        from difflib import unified_diff
+        w = readit()
+        fn = argv[2]
+        v1, v2 = map(int, argv[3:5])
+        lines1 = w.get(v1)
+        lines2 = w.get(v2)
+        diff_gen = unified_diff(lines1, lines2,
+                                '%s version %d' % (fn, v1),
+                                '%s version %d' % (fn, v2))
+        sys.stdout.writelines(diff_gen)
+            
     elif cmd == 'annotate':
         w = readit()
         # newline is added to all lines regardless; too hard to get
@@ -865,7 +1010,7 @@ def main(argv):
         weave_toc(readit())
 
     elif cmd == 'stats':
-        weave_stats(argv[2])
+        weave_stats(argv[2], ProgressBar())
         
     elif cmd == 'check':
         w = readit()

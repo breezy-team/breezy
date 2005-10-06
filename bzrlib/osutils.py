@@ -1,32 +1,40 @@
 # Bazaar-NG -- distributed version control
-
+#
 # Copyright (C) 2005 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, types, re, time, errno, sys
+from shutil import copyfile
 from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
-        S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
+                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
+from cStringIO import StringIO
+import errno
+import os
+import re
+import sha
+import sys
+import time
+import types
 
+import bzrlib
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
-import bzrlib
+
 
 def make_readonly(filename):
     """Make a filename read-only."""
-    # TODO: probably needs to be fixed for windows
     mod = os.stat(filename).st_mode
     mod = mod & 0777555
     os.chmod(filename, mod)
@@ -49,7 +57,7 @@ def quotefn(f):
     # TODO: I'm not really sure this is the best format either.x
     global _QUOTE_RE
     if _QUOTE_RE == None:
-        _QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/_~-])')
+        _QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/\\_~-])')
         
     if _QUOTE_RE.search(f):
         return '"' + f + '"'
@@ -87,7 +95,30 @@ def kind_marker(kind):
     else:
         raise BzrError('invalid file kind %r' % kind)
 
+def lexists(f):
+    try:
+        if hasattr(os, 'lstat'):
+            os.lstat(f)
+        else:
+            os.stat(f)
+        return True
+    except OSError,e:
+        if e.errno == errno.ENOENT:
+            return False;
+        else:
+            raise BzrError("lstat/stat of (%r): %r" % (f, e))
 
+def normalizepath(f):
+    if hasattr(os.path, 'realpath'):
+        F = os.path.realpath
+    else:
+        F = os.path.abspath
+    [p,e] = os.path.split(f)
+    if e == "" or e == "." or e == "..":
+        return F(f)
+    else:
+        return os.path.join(F(p), e)
+    
 
 def backup_file(fn):
     """Copy a file to a backup.
@@ -96,7 +127,6 @@ def backup_file(fn):
 
     If the file is already a backup, it's not copied.
     """
-    import os
     if fn[-1] == '~':
         return
     bfn = fn + '~'
@@ -113,18 +143,11 @@ def backup_file(fn):
     finally:
         outf.close()
 
-def rename(path_from, path_to):
-    """Basically the same as os.rename() just special for win32"""
-    if sys.platform == 'win32':
-        try:
-            os.remove(path_to)
-        except OSError, e:
-            if e.errno != e.ENOENT:
-                raise
-    os.rename(path_from, path_to)
-
-
-
+if os.name == 'nt':
+    import shutil
+    rename = shutil.move
+else:
+    rename = os.rename
 
 
 def isdir(f):
@@ -135,7 +158,6 @@ def isdir(f):
         return False
 
 
-
 def isfile(f):
     """True if f is a regular file."""
     try:
@@ -143,6 +165,12 @@ def isfile(f):
     except OSError:
         return False
 
+def islink(f):
+    """True if f is a symlink."""
+    try:
+        return S_ISLNK(os.lstat(f)[ST_MODE])
+    except OSError:
+        return False
 
 def is_inside(dir, fname):
     """True if fname is inside dir.
@@ -154,11 +182,11 @@ def is_inside(dir, fname):
     The empty string as a dir name is taken as top-of-tree and matches 
     everything.
     
-    >>> is_inside('src', 'src/foo.c')
+    >>> is_inside('src', os.path.join('src', 'foo.c'))
     True
     >>> is_inside('src', 'srccontrol')
     False
-    >>> is_inside('src', 'src/a/a/a/foo.c')
+    >>> is_inside('src', os.path.join('src', 'a', 'a', 'a', 'foo.c'))
     True
     >>> is_inside('foo.c', 'foo.c')
     True
@@ -174,10 +202,10 @@ def is_inside(dir, fname):
     
     if dir == '':
         return True
-    
+
     if dir[-1] != os.sep:
         dir += os.sep
-    
+
     return fname.startswith(dir)
 
 
@@ -195,16 +223,7 @@ def pumpfile(fromfile, tofile):
     tofile.write(fromfile.read())
 
 
-def uuid():
-    """Return a new UUID"""
-    try:
-        return file('/proc/sys/kernel/random/uuid').readline().rstrip('\n')
-    except IOError:
-        return chomp(os.popen('uuidgen').readline())
-
-
 def sha_file(f):
-    import sha
     if hasattr(f, 'tell'):
         assert f.tell() == 0
     s = sha.new()
@@ -217,16 +236,21 @@ def sha_file(f):
     return s.hexdigest()
 
 
+
+def sha_strings(strings):
+    """Return the sha-1 of concatenation of strings"""
+    s = sha.new()
+    map(s.update, strings)
+    return s.hexdigest()
+
+
 def sha_string(f):
-    import sha
     s = sha.new()
     s.update(f)
     return s.hexdigest()
 
 
-
 def fingerprint_file(f):
-    import sha
     s = sha.new()
     b = f.read()
     s.update(b)
@@ -242,7 +266,7 @@ def config_dir():
     
     TODO: Global option --config-dir to override this.
     """
-    return os.path.expanduser("~/.bzr.conf")
+    return os.path.join(os.path.expanduser("~"), ".bzr.conf")
 
 
 def _auto_user_id():
@@ -352,11 +376,11 @@ def user_email(branch):
     if e:
         m = re.search(r'[\w+.-]+@[\w+.-]+', e)
         if not m:
-            raise BzrError("%r doesn't seem to contain a reasonable email address" % e)
+            raise BzrError("%r doesn't seem to contain "
+                           "a reasonable email address" % e)
         return m.group(0)
 
     return _auto_user_id()[1]
-    
 
 
 def compare_files(a, b):
@@ -369,7 +393,6 @@ def compare_files(a, b):
             return False
         if ai == '':
             return True
-
 
 
 def local_time_offset(t=None):
@@ -488,13 +511,6 @@ def appendpath(p1, p2):
         return os.path.join(p1, p2)
     
 
-def extern_command(cmd, ignore_errors = False):
-    mutter('external command: %s' % `cmd`)
-    if os.system(cmd):
-        if not ignore_errors:
-            raise BzrError('command failed')
-
-
 def _read_config_value(name):
     """Read a config value from the file ~/.bzr.conf/<name>
     Return None if the file does not exist"""
@@ -507,3 +523,30 @@ def _read_config_value(name):
         raise
 
 
+def split_lines(s):
+    """Split s into lines, but without removing the newline characters."""
+    return StringIO(s).readlines()
+
+
+def hardlinks_good():
+    return sys.platform not in ('win32', 'cygwin', 'darwin')
+
+
+def link_or_copy(src, dest):
+    """Hardlink a file, or copy it if it can't be hardlinked."""
+    if not hardlinks_good():
+        copyfile(src, dest)
+        return
+    try:
+        os.link(src, dest)
+    except (OSError, IOError), e:
+        if e.errno != errno.EXDEV:
+            raise
+        copyfile(src, dest)
+
+
+def has_symlinks():
+    if hasattr(os, 'symlink'):
+        return True
+    else:
+        return False

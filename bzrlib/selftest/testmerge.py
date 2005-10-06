@@ -1,10 +1,14 @@
+import os
+
 from bzrlib.branch import Branch
 from bzrlib.commit import commit
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.merge import merge
 from bzrlib.errors import UnrelatedBranches, NoCommits
 from bzrlib.revision import common_ancestor
-import os
+from bzrlib.fetch import fetch
+
+
 class TestMerge(TestCaseInTempDir):
     """Test appending more than one revision"""
     def test_pending(self):
@@ -33,6 +37,9 @@ class TestMerge(TestCaseInTempDir):
         """When base is forced to revno 0, pending_merges is set"""
         br2 = self.test_unrelated()
         br1 = Branch.open('.')
+        fetch(from_branch=br2, to_branch=br1)
+        # merge all of branch 2 into branch 1 even though they 
+        # are not related.
         merge(['branch2', -1], ['branch2', 0])
         self.assertEquals(len(br1.pending_merges()), 1)
         return (br1, br2)
@@ -41,5 +48,5 @@ class TestMerge(TestCaseInTempDir):
         """Merge base is sane when two unrelated branches are merged"""
         br1, br2 = self.test_pending_with_null()
         commit(br1, "blah")
-        last = br1.last_patch()
+        last = br1.last_revision()
         self.assertEquals(common_ancestor(last, last, br1), last)
