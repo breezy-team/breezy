@@ -95,7 +95,6 @@ from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
 from bzrlib.trace import mutter, note, warning, enable_default_logging
 from bzrlib.osutils import sha_strings, sha_string
-from bzrlib.commit import merge_ancestry_lines
 
 
 class Convert(object):
@@ -119,8 +118,6 @@ class Convert(object):
         if not os.path.isdir(self.base + '/.bzr/weaves'):
             os.mkdir(self.base + '/.bzr/weaves')
         self.inv_weave = Weave('inventory')
-        self.anc_weave = Weave('ancestry')
-        self.ancestries = {}
         # holds in-memory weaves for all files
         self.text_weaves = {}
         os.remove(self.branch.controlfilename('branch-format'))
@@ -197,7 +194,6 @@ class Convert(object):
 
     def _write_all_weaves(self):
         write_a_weave(self.inv_weave, self.base + '/.bzr/inventory.weave')
-        write_a_weave(self.anc_weave, self.base + '/.bzr/ancestry.weave')
         i = 0
         try:
             for file_id, file_weave in self.text_weaves.items():
@@ -273,7 +269,6 @@ class Convert(object):
                            if p not in self.absent_revisions]
         self._convert_revision_contents(rev, inv, present_parents)
         self._store_new_weave(rev, inv, present_parents)
-        self._make_rev_ancestry(rev, present_parents)
         self.converted_revs.add(rev_id)
 
 
@@ -294,24 +289,6 @@ class Convert(object):
                            new_inv_xml.splitlines(True),
                            new_inv_sha1)
         rev.inventory_sha1 = new_inv_sha1
-
-
-    def _make_rev_ancestry(self, rev, present_parents):
-        rev_id = rev.revision_id
-        for parent_id in present_parents:
-            assert parent_id in self.converted_revs
-        if present_parents:
-            lines = list(self.anc_weave.mash_iter(present_parents))
-        else:
-            lines = []
-        lines.append(rev_id + '\n')
-        if __debug__:
-            parent_ancestries = [self.ancestries[p] for p in present_parents]
-            new_lines = merge_ancestry_lines(rev_id, parent_ancestries)
-            assert set(lines) == set(new_lines)
-            self.ancestries[rev_id] = new_lines
-        self.anc_weave.add(rev_id, present_parents, lines)
-
 
     def _convert_revision_contents(self, rev, inv, present_parents):
         """Convert all the files within a revision.

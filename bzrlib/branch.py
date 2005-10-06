@@ -34,7 +34,7 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            DivergedBranches, LockError, UnlistableStore,
                            UnlistableBranch, NoSuchFile)
 from bzrlib.textui import show_status
-from bzrlib.revision import Revision, is_ancestor
+from bzrlib.revision import Revision
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
@@ -780,15 +780,17 @@ class _Branch(Branch):
         # But for now, just hash the contents.
         return bzrlib.osutils.sha_file(self.get_revision_xml_file(revision_id))
 
-    def _get_ancestry_weave(self):
-        return self.control_weaves.get_weave('ancestry')
-
     def get_ancestry(self, revision_id):
-        """Return a list of revision-ids integrated by a revision."""
+        """Return a list of revision-ids integrated by a revision.
+        
+        This currently returns a list, but the ordering is not guaranteed:
+        treat it as a set.
+        """
         if revision_id is None:
             return [None]
-        w = self._get_ancestry_weave()
-        return [None] + [l[:-1] for l in w.get_iter(w.lookup(revision_id))]
+        w = self.control_weaves.get_weave('inventory')
+        return [None] + map(w.idx_to_name,
+                            w.inclusions([w.lookup(revision_id)]))
 
     def get_inventory_weave(self):
         return self.control_weaves.get_weave('inventory')

@@ -56,7 +56,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
     assert has_revision(br_a, br_b.revision_history()[5])
 
     # When a non-branch ancestor is missing, it should be unlisted...
-    # as its not present in the ancestry weave.
+    # as its not reference from the inventory weave.
     br_b4 = new_branch('br_4')
     count, failures = greedy_fetch(br_b4, br_b)
     self.assertEqual(count, 7)

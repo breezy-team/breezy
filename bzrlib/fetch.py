@@ -190,7 +190,6 @@ class Fetcher(object):
             if not self.to_branch.has_revision(parent):
                 parents.pop(parents.index(parent))
         self._copy_inventory(rev_id, inv_xml, parents)
-        self._copy_ancestry(rev_id, parents)
         self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
         mutter('copied revision %s', rev_id)
 
@@ -199,13 +198,6 @@ class Fetcher(object):
         self.to_control.add_text('inventory', rev_id,
                                 split_lines(inv_xml), parent_ids)
 
-
-    def _copy_ancestry(self, rev_id, parent_ids):
-        ancestry_lines = self.from_control.get_lines('ancestry', rev_id)
-        self.to_control.add_text('ancestry', rev_id, ancestry_lines,
-                                 parent_ids)
-
-        
     def _copy_new_texts(self, rev_id, inv):
         """Copy any new texts occuring in this revision."""
         # TODO: Rather than writing out weaves every time, hold them
