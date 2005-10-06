@@ -465,6 +465,8 @@ class TestCommands(ExternalBase):
         self.runbzr('merge ../other')
         result = self.runbzr('conflicts', backtick=1)
         self.assertEquals(result, "hello\nquestion\n")
+        result = self.runbzr('status', backtick=1)
+        assert "conflicts:\n  hello\n  question\n" in result, result
         self.runbzr('resolve hello')
         result = self.runbzr('conflicts', backtick=1)
         self.assertEquals(result, "question\n")

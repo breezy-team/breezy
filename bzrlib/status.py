@@ -82,15 +82,10 @@ def show_status(branch, show_unchanged=False,
                    show_unchanged=show_unchanged)
 
         if new_is_working_tree:
+            conflicts = new.iter_conflicts()
             unknowns = new.unknowns()
-            done_header = False
-            for path in unknowns:
-                if specific_files and not is_inside_any(specific_files, path):
-                    continue
-                if not done_header:
-                    print >>to_file, 'unknown:'
-                    done_header = True
-                print >>to_file, ' ', path
+            list_paths('unknown', unknowns, specific_files, to_file)
+            list_paths('conflicts', conflicts, specific_files, to_file)
             if show_pending and len(branch.pending_merges()) > 0:
                 print >>to_file, 'pending merges:'
                 for merge in branch.pending_merges():
@@ -98,3 +93,12 @@ def show_status(branch, show_unchanged=False,
     finally:
         branch.unlock()
         
+def list_paths(header, paths, specific_files, to_file):
+    done_header = False
+    for path in paths:
+        if specific_files and not is_inside_any(specific_files, path):
+            continue
+        if not done_header:
+            print >>to_file, '%s:' % header
+            done_header = True
+        print >>to_file, ' ', path

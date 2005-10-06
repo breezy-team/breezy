@@ -66,15 +66,3 @@ class cmd_resolve(bzrlib.commands.Command):
                     print "%s is not conflicted" % filename
                         
 register_command(cmd_resolve)
-
-# monkey-patch the standard 'status' to give us conflicts, too.
-def _show_status(branch, **kwargs):
-    old_show_status(branch, **kwargs)
-    conflicted = list(branch.working_tree().iter_conflicts())
-    if len(conflicted) > 0:
-        print "conflicts:"
-        for f in conflicted:
-            print " ", f
-
-old_show_status = bzrlib.status.show_status
-bzrlib.status.show_status = _show_status 
