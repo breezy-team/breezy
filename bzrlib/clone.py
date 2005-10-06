@@ -117,7 +117,7 @@ def _copy_revision_store(branch_from, branch_to):
 def _copy_control_weaves(branch_from, branch_to):
     to_control = branch_to.control_weaves
     from_control = branch_from.control_weaves
-    to_control.copy_multi(from_control, ['inventory', 'ancestry'])
+    to_control.copy_multi(from_control, ['inventory'])
 
     
 def copy_branch_slower(branch_from, to_location, revision=None, basis_branch=None):

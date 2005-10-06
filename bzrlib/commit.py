@@ -219,7 +219,6 @@ class Commit(object):
                 raise PointlessCommit()
 
             self._record_inventory()
-            self._record_ancestry()
             self._make_revision()
             note('committed r%d {%s}', (self.branch.revno() + 1),
                  self.rev_id)
@@ -254,26 +253,6 @@ class Commit(object):
             self.message)
         if escape_count:
             note("replaced %d control characters in message", escape_count)
-
-    def _record_ancestry(self):
-        """Append merged revision ancestry to the ancestry file.
-
-        This should be the merged ancestry of all parents, plus the
-        new revision id."""
-        s = self.branch.control_weaves
-        w = s.get_weave_or_empty('ancestry')
-        lines = self._make_ancestry(w)
-        w.add(self.rev_id, self.present_parents, lines)
-        s.put_weave('ancestry', w)
-
-    def _make_ancestry(self, ancestry_weave):
-        """Return merged ancestry lines.
-
-        The lines are revision-ids followed by newlines."""
-        parent_ancestries = [ancestry_weave.get(p) for p in self.present_parents]
-        new_lines = merge_ancestry_lines(self.rev_id, parent_ancestries)
-        mutter('merged ancestry of {%s}:\n%s', self.rev_id, ''.join(new_lines))
-        return new_lines
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""
@@ -314,7 +293,6 @@ class Commit(object):
         rev_tmp.seek(0)
         self.branch.revision_store.add(rev_tmp, self.rev_id)
         mutter('new revision_id is {%s}', self.rev_id)
-
 
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.
@@ -397,36 +375,8 @@ class Commit(object):
             if file_id not in self.new_inv:
                 note('deleted %s', self.basis_inv.id2path(file_id))
 
-
-
 def _gen_revision_id(branch, when):
     """Return new revision-id."""
     s = '%s-%s-' % (user_email(branch), compact_date(when))
     s += hexlify(rand_bytes(8))
     return s
-
-
-
-    
-def merge_ancestry_lines(rev_id, ancestries):
-    """Return merged ancestry lines.
-
-    rev_id -- id of the new revision
-    
-    ancestries -- a sequence of ancestries for parent revisions,
-        as newline-terminated line lists.
-    """
-    if len(ancestries) == 0:
-        return [rev_id + '\n']
-    seen = set(ancestries[0])
-    ancs = ancestries[0][:]    
-    for parent_ancestry in ancestries[1:]:
-        for line in parent_ancestry:
-            assert line[-1] == '\n'
-            if line not in seen:
-                ancs.append(line)
-                seen.add(line)
-    r = rev_id + '\n'
-    assert r not in seen
-    ancs.append(r)
-    return ancs
