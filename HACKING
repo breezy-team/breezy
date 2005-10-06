@@ -32,6 +32,19 @@ Overall
   i.e. ``bzrlib.hashcache`` not just ``hashcache``.
 
 
+Evolving interfaces
+-------------------
+
+If you change the behaviour of an API in an incompatible way, please
+be sure to change its name as well. For instance, if I add a keyword
+parameter to branch.commit - that's fine. On the other hand, if I add
+a keyword parameter to branch.commit which is a *required* transaction
+object, I should rename the api - i.e. to 'branch.commit_transaction'.
+
+This will prevent users of the old api getting surprising results. 
+Instead, they will get an Attribute error as the api is missing, and
+will know to update their code. If in doubt, just ask on #bzr.
+
 
 Documentation
 =============
