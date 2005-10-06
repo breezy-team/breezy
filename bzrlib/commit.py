@@ -79,6 +79,7 @@ from bzrlib.osutils import (local_time_offset, username,
 from bzrlib.branch import gen_file_id
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
+                           ConflictsInTree
                            )
 from bzrlib.revision import Revision
 from bzrlib.trace import mutter, note, warning
@@ -234,6 +235,9 @@ class Commit(object):
                     or len(self.parents) > 1
                     or self.new_inv != self.basis_inv):
                 raise PointlessCommit()
+
+            if len(list(self.work_tree.iter_conflicts()))>0:
+                raise ConflictsInTree
 
             self._record_inventory()
             self._record_ancestry()
