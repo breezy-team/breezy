@@ -791,7 +791,54 @@ class MergeCases(TestBase):
                      ['aaa', 'ddd', 'ccc'],
                      ['aaa', 'ccc'],
                      ['<<<<', 'aaa', '====', '>>>>', 'ccc'])
-    
+
+
+class JoinWeavesTests(TestBase):
+    def setUp(self):
+        super(JoinWeavesTests, self).setUp()
+        self.weave1 = Weave()
+        self.lines1 = ['hello\n']
+        self.lines3 = ['hello\n', 'cruel\n', 'world\n']
+        self.weave1.add('v1', [], self.lines1)
+        self.weave1.add('v2', [0], ['hello\n', 'world\n'])
+        self.weave1.add('v3', [1], self.lines3)
+        
+    def test_join_empty(self):
+        """Join two empty weaves."""
+        eq = self.assertEqual
+        w1 = Weave()
+        w2 = Weave()
+        w1.join(w2)
+        eq(w1.numversions(), 0)
+        
+    def test_join_empty_to_nonempty(self):
+        """Join empty weave onto nonempty."""
+        self.weave1.join(Weave())
+        self.assertEqual(len(self.weave1), 3)
+
+    def test_join_unrelated(self):
+        """Join two weaves with no history in common."""
+        wb = Weave()
+        wb.add('b1', [], ['line from b\n'])
+        w1 = self.weave1
+        w1.join(wb)
+        eq = self.assertEqual
+        eq(len(w1), 4)
+        eq(sorted(list(w1.iter_names())),
+           ['b1', 'v1', 'v2', 'v3'])
+
+    def test_join_related(self):
+        wa = self.weave1.copy()
+        wb = self.weave1.copy()
+        wa.add('a1', ['v3'], ['hello\n', 'sweet\n', 'world\n'])
+        wb.add('b1', ['v3'], ['hello\n', 'pale blue\n', 'world\n'])
+        eq = self.assertEquals
+        eq(len(wa), 4)
+        eq(len(wb), 4)
+        wa.join(wb)
+        eq(len(wa), 5)
+        eq(wa.get_lines('b1'),
+           ['hello\n', 'pale blue\n', 'world\n'])
 
 
 if __name__ == '__main__':

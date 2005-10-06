@@ -22,8 +22,6 @@
 """Weave - storage of related text file versions"""
 
 
-# TODO: Perhaps have copy method for Weave instances?
-
 # XXX: If we do weaves this way, will a merge still behave the same
 # way if it's done in a different order?  That's a pretty desirable
 # property.
@@ -58,6 +56,18 @@
 # TODO: Is there any potential performance win by having an add()
 # variant that is passed a pre-cooked version of the single basis
 # version?
+
+# TODO: Have a way to go back and insert a revision V1 that is a parent 
+# of an already-stored revision V2.  This means some lines previously 
+# counted as new in V2 will be discovered to have actually come from V1.  
+# It is probably necessary to insert V1, then compute a whole new diff 
+# from the mashed ancestors to V2.  This must be repeated for every 
+# direct child of V1.  The deltas from V2 to its descendents won't change,
+# although their location within the weave may change.  It may be possible
+# to just adjust the location of those instructions rather than 
+# re-weaving the whole thing.  This is expected to be a fairly rare
+# operation, only used when inserting data that was previously a ghost.
+
 
 
 
@@ -176,6 +186,19 @@ class Weave(object):
         self._weave_name = weave_name
 
 
+    def copy(self):
+        """Return a deep copy of self.
+        
+        The copy can be modified without affecting the original weave."""
+        other = Weave()
+        other._weave = self._weave[:]
+        other._parents = self._parents[:]
+        other._sha1s = self._sha1s[:]
+        other._names = self._names[:]
+        other._name_map = self._name_map.copy()
+        other._weave_name = self._weave_name
+        return other
+
     def __eq__(self, other):
         if not isinstance(other, Weave):
             return False
@@ -204,6 +227,10 @@ class Weave(object):
             raise WeaveError("name %r not present in weave %r" %
                              (name, self._weave_name))
 
+
+    def iter_names(self):
+        """Yield a list of all names in this weave."""
+        return iter(self._names)
 
     def idx_to_name(self, version):
         return self._names[version]
@@ -614,7 +641,6 @@ class Weave(object):
         If there is a chunk of the file where there's no diagreement,
         only one alternative is given.
         """
-
         # approach: find the included versions common to all the
         # merged versions
         raise NotImplementedError()
@@ -640,7 +666,7 @@ class Weave(object):
         If line1=line2, this is a pure insert; if newlines=[] this is a
         pure delete.  (Similar to difflib.)
         """
-
+        raise NotImplementedError()
 
             
     def plan_merge(self, ver_a, ver_b):
@@ -740,9 +766,61 @@ class Weave(object):
                        state
 
                 
+    def join(self, other):
+        """Integrate versions from other into this weave.
+
+        The resulting weave contains all the history of both weaves; 
+        any version you could retrieve from either self or other can be 
+        retrieved from self after this call.
+
+        It is illegal for the two weaves to contain different values 
+        for any version.
+        """
+        if other.numversions() == 0:
+            return          # nothing to update, easy
+        # work through in index order to make sure we get all dependencies
+        for other_idx, name in enumerate(other._names):
+            # TODO: If all the parents of the other version are already 
+            # present then we can avoid some work by just taking the delta
+            # and adjusting the offsets.
+            if self._check_version_consistent(other, other_idx, name):
+                continue
+            new_parents = self._imported_parents(other, other_idx)
+            lines = other.get_lines(other_idx)
+            sha1 = other._sha1s[other_idx]
+            self.add(name, new_parents, lines, sha1)
 
 
+    def _imported_parents(self, other, other_idx):
+        """Return list of parents in self corresponding to indexes in other."""
+        new_parents = []
+        for parent_idx in other._parents[other_idx]:
+            parent_name = other._names[parent_idx]
+            if parent_name not in self._names:
+                # should not be possible
+                raise WeaveError("missing parent {%s} of {%s} in %r" 
+                                 % (parent_name, other._name_map[other_idx], self))
+            new_parents.append(self._name_map[parent_name])
+        return new_parents
 
+    def _check_version_consistent(self, other, other_idx, name):
+        """Check if a version in consistent in this and other.
+        
+        If present & correct return True;
+        if not present in self return False; 
+        if inconsistent raise error."""
+        this_idx = self._name_map.get(name, -1)
+        if this_idx != -1:
+            if self._sha1s[this_idx] != other._sha1s[other_idx]:
+                raise WeaveError("inconsistent texts for version {%s} in %r and %r"
+                                 % (name, self, other))
+            elif set(self._parents[this_idx]) != set(other._parents[other_idx]):
+                raise WeaveError("inconsistent parents for version {%s} in %r and %r"
+                                 % (name, self, other))
+            else:
+                return True         # ok!
+        else:
+            return False
 
 
 def weave_toc(w):

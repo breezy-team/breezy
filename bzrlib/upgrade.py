@@ -331,28 +331,33 @@ class Convert(object):
 
     def _set_revision(self, rev, ie, parent_invs):
         """Set name version for a file.
-
-        Done in a slightly lazy way: if the file is renamed or in a merge revision
-        it gets a new version, otherwise the same as before.
         """
         file_id = ie.file_id
         if ie.kind == 'root_directory':
             return
-        if len(parent_invs) != 1:
+        if len(parent_invs) == 0:
             ie.revision = rev.revision_id
         else:
-            old_inv = parent_invs[0]
-            if not old_inv.has_id(file_id):
-                ie.revision = rev.revision_id
-            else:
-                old_ie = old_inv[file_id]
-                if (old_ie.parent_id != ie.parent_id
-                    or old_ie.name != ie.name):
+            matched_id = None
+            for p_inv in parent_invs:
+                if not p_inv.has_id(file_id):
                     ie.revision = rev.revision_id
-                else:
-                    ie.revision = old_ie.revision
-
-
+                    break
+                old_ie = p_inv[file_id]
+                if (old_ie.parent_id != ie.parent_id
+                    or old_ie.name != ie.name
+                    or old_ie.text_sha1 != ie.text_sha1
+                    or old_ie.text_size != ie.text_size):
+                    ie.revision = rev.revision_id
+                    break
+                if matched_id is None:
+                    matched_id = old_ie.revision
+                elif matched_id != old_ie.revision:
+                    ie.revision = rev.revision_id
+                    break
+            else:
+                assert matched_id is not None
+                ie.revision = matched_id
 
     def _convert_file_version(self, rev, ie, parent_invs):
         """Convert one version of one file.
