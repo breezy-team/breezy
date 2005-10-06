@@ -44,11 +44,6 @@
 # TODO: Update hashcache before and after - or does the WorkingTree
 # look after that?
 
-# This code requires all merge parents to be present in the branch.
-# We could relax this but for the sake of simplicity the constraint is
-# here for now.  It's not totally clear to me how we'd know which file
-# need new text versions if some parents are absent.  -- mbp 20050915
-
 # TODO: Rather than mashing together the ancestry and storing it back,
 # perhaps the weave should have single method which does it all in one
 # go, avoiding a lot of redundant work.

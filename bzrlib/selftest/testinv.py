@@ -18,10 +18,11 @@ from cStringIO import StringIO
 import os
 
 from bzrlib.branch import Branch
+import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
 from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.inventory as inventory
-from bzrlib.osutils import has_symlinks
+from bzrlib.osutils import has_symlinks, rename
 from bzrlib.selftest import TestCase, TestCaseInTempDir
 
 
@@ -65,7 +66,7 @@ class TestInventory(TestCase):
         ## XXX
 
 
-class TestInventoryEntry(TestCaseInTempDir):
+class TestInventoryEntry(TestCase):
 
     def test_file_kind_character(self):
         file = inventory.InventoryFile('123', 'hello.c', ROOT_ID)
@@ -219,3 +220,77 @@ class TestEntryDiffing(TestCaseInTempDir):
                           output)
         self.assertEqual(output.getvalue(),
                          "=== target changed 'target1' => 'target2'\n")
+
+
+class TestSnapshot(TestCaseInTempDir):
+
+    def setUp(self):
+        # for full testing we'll need a branch
+        # with a subdir to test parent changes.
+        # and a file, link and dir under that.
+        # but right now I only need one attribute
+        # to change, and then test merge patterns
+        # with fake parent entries.
+        super(TestSnapshot, self).setUp()
+        self.branch = Branch.initialize('.')
+        self.build_tree(['subdir/', 'subdir/file'])
+        self.branch.add(['subdir', 'subdir/file'], ['dirid', 'fileid'])
+        if has_symlinks():
+            pass
+        self.branch.commit('message_1', rev_id = '1')
+        self.tree_1 = self.branch.revision_tree('1')
+        self.inv_1 = self.branch.get_inventory('1')
+        self.file_1 = self.inv_1['fileid']
+        self.work_tree = self.branch.working_tree()
+        self.file_active = self.work_tree.inventory['fileid']
+
+    def test_snapshot_new_revision(self):
+        # This tests that a simple commit with no parents makes a new
+        # revision value in the inventory entry
+        self.file_active.snapshot('2', 'subdir/file', {}, self.work_tree, 
+                                  self.branch.weave_store)
+        # expected outcome - file_1 has a revision id of '2', and we can get
+        # its text of 'file contents' out of the weave.
+        self.assertEqual(self.file_1.revision, '1')
+        self.assertEqual(self.file_active.revision, '2')
+        # this should be a separate test probably, but lets check it once..
+        lines = self.branch.weave_store.get_lines('fileid','2')
+        self.assertEqual(lines, ['contents of subdir/file\n'])
+
+    def test_snapshot_unchanged(self):
+        #This tests that a simple commit does not make a new entry for
+        # an unchanged inventory entry
+        self.file_active.snapshot('2', 'subdir/file', {'1':self.file_1},
+                                  self.work_tree, self.branch.weave_store)
+        self.assertEqual(self.file_1.revision, '1')
+        self.assertEqual(self.file_active.revision, '1')
+        self.assertRaises(errors.WeaveError,
+                          self.branch.weave_store.get_lines, 'fileid', '2')
+
+    def test_snapshot_merge_identical_different_revid(self):
+        # This tests that a commit with two identical parents, one of which has
+        # a different revision id, results in a new revision id in the entry.
+        other_ie = inventory.InventoryFile('fileid', 'newname', self.file_1.parent_id)
+        other_ie = inventory.InventoryFile('fileid', 'file', self.file_1.parent_id)
+        other_ie.revision = '1'
+        other_ie.text_sha1 = self.file_1.text_sha1
+        other_ie.text_size = self.file_1.text_size
+        self.assertEqual(self.file_1, other_ie)
+        other_ie.revision = 'other'
+        self.assertNotEqual(self.file_1, other_ie)
+        self.branch.weave_store.add_identical_text('fileid', '1', 'other', ['1'])
+        self.file_active.snapshot('2', 'subdir/file', 
+                                  {'1':self.file_1, 'other':other_ie},
+                                  self.work_tree, self.branch.weave_store)
+        self.assertEqual(self.file_active.revision, '2')
+
+    def test_snapshot_changed(self):
+        # This tests that a commit with one different parent results in a new
+        # revision id in the entry.
+        self.file_active.name='newname'
+        rename('subdir/file', 'subdir/newname')
+        self.file_active.snapshot('2', 'subdir/newname', {'1':self.file_1}, 
+                                  self.work_tree, 
+                                  self.branch.weave_store)
+        # expected outcome - file_1 has a revision id of '2'
+        self.assertEqual(self.file_active.revision, '2')
