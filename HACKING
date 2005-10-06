@@ -8,7 +8,10 @@ guidelines for modifying bzr
   In general, you can test at either the command-line level or the
   internal API level.  Choose whichever is appropriate: if adding a
   new command, or a new command option, then call through run_bzr().
-  It is not necessary to do both.
+  It is not necessary to do both. Tests that test the command line level
+  are appropriate for checking the UI behaves well - bug fixes and
+  core improvements should be tested closer to the code that is doing the
+  work. Command line level tests should be placed in 'blackbox.py'.
 
 * Before fixing a bug, write a test case so that it does not regress.
 
@@ -30,6 +33,15 @@ __ http://www.python.org/peps/pep-0008.html
 * Module names should always be given fully-qualified,
   i.e. ``bzrlib.hashcache`` not just ``hashcache``.
 
+* If you change the behaviour of an API in an incompatible way, please
+  be sure to change its name as well. For instance, if I add a keyword
+  parameter to branch.commit - thats fine. On the other hand, if I add
+  a keyword parameter to branch.commit which is a *required* transaction
+  object, I should rename the api - i.e. to 'branch.commit_transaction'.
+  This will prevent users of the old api outside of the tree getting
+  surprising results. 
+  Instead, they will get an Attribute error as the api is missing, and
+  will know to update their code. If in doubt, just ask on #bzr.
 
 
 Documentation
