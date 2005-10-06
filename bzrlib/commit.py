@@ -246,7 +246,7 @@ class Commit(object):
         else:
             # Use a regular 'str' as pattern to avoid having re.subn
             # return 'unicode' results.
-            char_pattern = '[^x09\x0A\x0D\x20-\xFF]'
+            char_pattern = '[^\x09\x0A\x0D\x20-\xFF]'
         self.message, escape_count = re.subn(
             char_pattern,
             lambda match: match.group(0).encode('unicode_escape'),
