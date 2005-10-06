@@ -840,6 +840,30 @@ class JoinWeavesTests(TestBase):
         eq(wa.get_lines('b1'),
            ['hello\n', 'pale blue\n', 'world\n'])
 
+    def test_join_unordered(self):
+        """Join weaves where indexes differ.
+        
+        The source weave contains a different version at index 0."""
+        wa = self.weave1.copy()
+        wb = Weave()
+        wb.add('x1', [], ['line from x1\n'])
+        wb.add('v1', [], ['hello\n'])
+        wb.add('v2', ['v1'], ['hello\n', 'world\n'])
+        wa.join(wb)
+        eq = self.assertEquals
+        eq(sorted(wa.iter_names()), ['v1', 'v2', 'v3', 'x1',])
+        eq(wa.get_text('x1'), 'line from x1\n')
+        eq(wa.get_lines('v2'), ['hello\n', 'world\n'])
+
+    def test_join_with_ghosts(self):
+        """Join that inserts parents of an existing revision.
+
+        This can happen when merging from another branch who
+        knows about revisions the destination does not.  In 
+        this test the second weave knows of an additional parent of 
+        v2.  Any revisions which are in common still have to have the 
+        same text."""
+
 
 if __name__ == '__main__':
     import sys
