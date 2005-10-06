@@ -36,6 +36,11 @@ bzr 0.1 2005-10-06
     * 'bzr status' now shows unknown files inside a selected directory.
       Patch from Heikki Paajanen.
 
+    * Merge conflicts are recorded in .bzr. Two new commands 'conflicts'
+      and 'resolve' have needed added, which list and remove those 
+      merge conflicts respectively. A conflicted tree cannot be committed
+      in. Contributed by Aaron Bentley.
+
 
   INTERNALS:
 

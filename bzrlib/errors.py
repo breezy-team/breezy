@@ -244,3 +244,6 @@ class ConnectionReset(TransportError):
     """The connection has been closed."""
     pass
 
+class ConflictsInTree(BzrError):
+    def __init__(self):
+        BzrError.__init__(self, "Working tree has conflicts.")
