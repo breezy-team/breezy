@@ -74,7 +74,7 @@
 import sha
 from difflib import SequenceMatcher
 
-
+from bzrlib.trace import mutter
 
 
 class WeaveError(Exception):
@@ -396,6 +396,11 @@ class Weave(object):
 
     def parents(self, version):
         return self._parents[version]
+
+
+    def parent_names(self, version):
+        """Return version names for parents of a version."""
+        return map(self.idx_to_name, self._parents[self.lookup(version)])
 
 
     def minimal_parents(self, version):
@@ -774,7 +779,7 @@ class Weave(object):
         retrieved from self after this call.
 
         It is illegal for the two weaves to contain different values 
-        for any version.
+        or different parents for any version.  See also reweave().
         """
         if other.numversions() == 0:
             return          # nothing to update, easy
@@ -828,6 +833,8 @@ class Weave(object):
             n1.sort()
             n2.sort()
             if n1 != n2:
+                # XXX: Perhaps return a specific exception for this so
+                # we can retry through reweave().
                 raise WeaveError("inconsistent parents for version {%s}: "
                                  "%s vs %s"
                                  % (name, n1, n2))
@@ -835,6 +842,85 @@ class Weave(object):
                 return True         # ok!
         else:
             return False
+
+
+def reweave(wa, wb):
+    """Combine two weaves and return the result.
+
+    This works even if a revision R has different parents in 
+    wa and wb.  In the resulting weave all the parents are given.
+
+    This is done by just building up a new weave, maintaining ordering 
+    of the versions in the two inputs.  More efficient approaches
+    might be possible but it should only be necessary to do 
+    this operation rarely, when a new previously ghost version is 
+    inserted.
+    """
+    wr = Weave()
+    ia = ib = 0
+    queue_a = range(wa.numversions())
+    queue_b = range(wb.numversions())
+    # first determine combined parents of all versions
+    # map from version name -> all parent names
+    combined_parents = _reweave_parent_graphs(wa, wb)
+    mutter("combined parents: %r", combined_parents)
+    order = _make_reweave_order(wa._names, wb._names, combined_parents)
+    mutter("order to reweave: %r", order)
+    for name in order:
+        if name in wa._name_map:
+            lines = wa.get_lines(name)
+            if name in wb._name_map:
+                assert lines == wb.get_lines(name)
+        else:
+            lines = wb.get_lines(name)
+        wr.add(name, combined_parents[name], lines)
+    return wr
+
+
+def _reweave_parent_graphs(wa, wb):
+    """Return combined parent ancestry for two weaves.
+    
+    Returned as a list of (version_name, set(parent_names))"""
+    combined = {}
+    for weave in [wa, wb]:
+        for idx, name in enumerate(weave._names):
+            p = combined.setdefault(name, set())
+            p.update(map(weave.idx_to_name, weave._parents[idx]))
+    return combined
+
+
+def _make_reweave_order(wa_order, wb_order, combined_parents):
+    """Return an order to reweave versions respecting parents."""
+    done = set()
+    result = []
+    ia = ib = 0
+    next_a = next_b = None
+    len_a = len(wa_order)
+    len_b = len(wb_order)
+    while ia < len(wa_order) or ib < len(wb_order):
+        if ia < len_a:
+            next_a = wa_order[ia]
+            if next_a in done:
+                ia += 1
+                continue
+            if combined_parents[next_a].issubset(done):
+                ia += 1
+                result.append(next_a)
+                done.add(next_a)
+                continue
+        if ib < len_b:
+            next_b = wb_order[ib]
+            if next_b in done:
+                ib += 1
+                continue
+            elif combined_parents[next_b].issubset(done):
+                ib += 1
+                result.append(next_b)
+                done.add(next_b)
+                continue
+        raise WeaveError("don't know how to reweave at {%s} and {%s}"
+                         % (next_a, next_b))
+    return result
 
 
 def weave_toc(w):
