@@ -398,6 +398,11 @@ class Weave(object):
         return self._parents[version]
 
 
+    def parent_names(self, version):
+        """Return version names for parents of a version."""
+        return map(self.idx_to_name, self._parents[self.lookup(version)])
+
+
     def minimal_parents(self, version):
         """Find the minimal set of parents for the version."""
         included = self._parents[version]
