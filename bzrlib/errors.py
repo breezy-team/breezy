@@ -102,6 +102,10 @@ class AlreadyCommitted(LockError):
     """A rollback was requested, but is not able to be accomplished."""
 
 
+class ReadOnlyError(LockError):
+    """A write attempt was made in a read only transaction."""
+
+
 class PointlessCommit(Exception):
     """Commit failed because nothing was changed."""
 

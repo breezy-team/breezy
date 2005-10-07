@@ -821,12 +821,13 @@ class _Branch(Branch):
         """
         if revision_id is None:
             return [None]
-        w = self.control_weaves.get_weave('inventory')
+        w = self.get_inventory_weave()
         return [None] + map(w.idx_to_name,
                             w.inclusions([w.lookup(revision_id)]))
 
     def get_inventory_weave(self):
-        return self.control_weaves.get_weave('inventory')
+        return self.control_weaves.get_weave('inventory',
+                                             self.get_transaction())
 
     def get_inventory(self, revision_id):
         """Get Inventory object by hash."""

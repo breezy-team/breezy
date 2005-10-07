@@ -196,7 +196,8 @@ class Fetcher(object):
 
     def _copy_inventory(self, rev_id, inv_xml, parent_ids):
         self.to_control.add_text('inventory', rev_id,
-                                split_lines(inv_xml), parent_ids)
+                                split_lines(inv_xml), parent_ids,
+                                self.to_branch.get_transaction())
 
     def _copy_new_texts(self, rev_id, inv):
         """Copy any new texts occuring in this revision."""
@@ -217,10 +218,13 @@ class Fetcher(object):
         if file_id in self.copied_file_ids:
             mutter('file {%s} already copied', file_id)
             return
-        from_weave = self.from_weaves.get_weave(file_id)
-        to_weave = self.to_weaves.get_weave_or_empty(file_id)
+        from_weave = self.from_weaves.get_weave(file_id, 
+            self.from_branch.get_transaction())
+        to_weave = self.to_weaves.get_weave_or_empty(file_id,
+            self.to_branch.get_transaction())
         to_weave.join(from_weave)
-        self.to_weaves.put_weave(file_id, to_weave)
+        self.to_weaves.put_weave(file_id, to_weave,
+            self.to_branch.get_transaction())
         self.count_weaves += 1
         self.copied_file_ids.add(file_id)
         mutter('copied file {%s}', file_id)

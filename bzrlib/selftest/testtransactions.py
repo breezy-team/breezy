@@ -38,6 +38,11 @@ class TestReadOnlyTransaction(TestCase):
     def test_register_clean(self):
         transaction = transactions.ReadOnlyTransaction()
         transaction.register_clean("anobject")
+
+    def test_register_dirty_raises(self):
+        transaction = transactions.ReadOnlyTransaction()
+        self.assertRaises(errors.ReadOnlyError, 
+                          transaction.register_dirty,"anobject")
     
     def test_commit_raises(self):
         transaction = transactions.ReadOnlyTransaction()
@@ -73,6 +78,10 @@ class TestPassThroughTransaction(TestCase):
     def test_register_clean(self):
         transaction = transactions.PassThroughTransaction()
         transaction.register_clean("anobject")
+    
+    def test_register_dirty(self):
+        transaction = transactions.PassThroughTransaction()
+        transaction.register_dirty("anobject")
     
     def test_commit_nothing_returns(self):
         transaction = transactions.PassThroughTransaction()

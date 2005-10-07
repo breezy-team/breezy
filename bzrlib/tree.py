@@ -128,7 +128,11 @@ class RevisionTree(Tree):
         self._revision_id = revision_id
 
     def get_weave(self, file_id):
-        return self._weave_store.get_weave(file_id)
+        # FIXME: RevisionTree should be given a branch
+        # not a store, or the store should know the branch.
+        import bzrlib.transactions as transactions
+        return self._weave_store.get_weave(file_id,
+            transactions.PassThroughTransaction())
 
 
     def get_file_lines(self, file_id):

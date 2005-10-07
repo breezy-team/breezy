@@ -63,6 +63,11 @@ class ReadOnlyTransaction(object):
     def register_clean(self, an_object):
         """Register an_object as being clean."""
 
+    def register_dirty(self, an_object):
+        """Register an_object as being dirty."""
+        raise errors.ReadOnlyError(
+            "Cannot dirty objects in a read only transaction")
+
     def rollback(self):
         """Let people call this even though nothing has to happen."""
 
@@ -90,6 +95,9 @@ class PassThroughTransaction(object):
 
     def register_clean(self, an_object):
         """Register an_object as being clean."""
+
+    def register_dirty(self, an_object):
+        """Register an_object as being dirty."""
 
     def rollback(self):
         """Cannot rollback a pass through transaction."""
