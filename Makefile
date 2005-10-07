@@ -9,6 +9,7 @@ check:
 
 clean: executables
 	./setup.py clean
+	find . -name "*.pyc" | xargs rm
 
 .PHONY: all
 

@@ -114,10 +114,6 @@ def _get_revision_delta(branch, revno):
     
     This is used to show summaries in verbose logs, and also for finding 
     revisions which touch a given file."""
-    # FIXME: The current version is very inefficient; it retrieves all revisions
-    # twice and reads the weave twice.  We ought to keep revisions in memory 
-    # in case they're used again, either in a general cache or perhaps 
-    # in this code.
     # XXX: What are we supposed to do when showing a summary for something 
     # other than a mainline revision.  The delta to it's first parent, or
     # (more useful) the delta to a nominated other revision.
@@ -154,6 +150,22 @@ def show_log(branch,
     end_revision
         If not None, only show revisions <= end_revision
     """
+    branch.lock_read()
+    try:
+        _show_log(branch, lf, specific_fileid, verbose, direction,
+                  start_revision, end_revision, search)
+    finally:
+        branch.unlock()
+    
+def _show_log(branch,
+             lf,
+             specific_fileid=None,
+             verbose=False,
+             direction='reverse',
+             start_revision=None,
+             end_revision=None,
+             search=None):
+    """Worker function for show_log - see show_log."""
     from bzrlib.osutils import format_date
     from bzrlib.errors import BzrCheckError
     from bzrlib.textui import show_status
