@@ -458,6 +458,7 @@ def test_suite():
 
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
+                   'bzrlib.selftest.testidentitymap',
                    'bzrlib.selftest.testinv',
                    'bzrlib.selftest.test_ancestry',
                    'bzrlib.selftest.test_commit',
@@ -484,6 +485,7 @@ def test_suite():
                    'bzrlib.selftest.teststore',
                    'bzrlib.selftest.blackbox',
                    'bzrlib.selftest.testsampler',
+                   'bzrlib.selftest.testtransactions',
                    'bzrlib.selftest.testtransport',
                    'bzrlib.selftest.testgraph',
                    'bzrlib.selftest.testworkingtree',

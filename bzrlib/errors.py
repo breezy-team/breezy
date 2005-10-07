@@ -94,6 +94,14 @@ class LockError(Exception):
             Exception.__init__(self)
 
 
+class CommitNotPossible(LockError):
+    """A commit was attempted but we do not have a write lock open."""
+
+
+class AlreadyCommitted(LockError):
+    """A rollback was requested, but is not able to be accomplished."""
+
+
 class PointlessCommit(Exception):
     """Commit failed because nothing was changed."""
 
