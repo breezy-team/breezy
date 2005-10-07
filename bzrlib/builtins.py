@@ -323,9 +323,10 @@ class cmd_pull(Command):
     If branches have diverged, you can use 'bzr merge' to pull the text changes
     from one into the other.
     """
+    takes_options = ['remember']
     takes_args = ['location?']
 
-    def run(self, location=None):
+    def run(self, location=None, remember=False):
         from bzrlib.merge import merge
         import tempfile
         from shutil import rmtree
@@ -337,7 +338,7 @@ class cmd_pull(Command):
             if stored_loc is None:
                 raise BzrCommandError("No pull location known or specified.")
             else:
-                print "Using last location: %s" % stored_loc
+                print "Using saved location: %s" % stored_loc
                 location = stored_loc
         cache_root = tempfile.mkdtemp()
         from bzrlib.errors import DivergedBranches
@@ -357,7 +358,7 @@ class cmd_pull(Command):
                     "  Try merge.")
                 
             merge(('.', -1), ('.', old_revno), check_clean=False)
-            if location != stored_loc:
+            if stored_loc is None or remember:
                 br_to.set_parent(location)
         finally:
             rmtree(cache_root)
@@ -997,7 +998,7 @@ class cmd_commit(Command):
     
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False):
-        from bzrlib.errors import PointlessCommit
+        from bzrlib.errors import PointlessCommit, ConflictsInTree
         from bzrlib.msgeditor import edit_commit_message
         from bzrlib.status import show_status
         from cStringIO import StringIO
@@ -1005,6 +1006,7 @@ class cmd_commit(Command):
         b = Branch.open_containing('.')
         if selected_list:
             selected_list = [b.relpath(s) for s in selected_list]
+
             
         if message is None and not file:
             catcher = StringIO()
@@ -1034,6 +1036,9 @@ class cmd_commit(Command):
             # perhaps prepare the commit; get the message; then actually commit
             raise BzrCommandError("no changes to commit",
                                   ["use --unchanged to commit anyhow"])
+        except ConflictsInTree:
+            raise BzrCommandError("Conflicts detected in working tree.  "
+                'Use "bzr conflicts" to list, "bzr resolve FILE" to resolve.')
 
 
 class cmd_check(Command):
@@ -1234,13 +1239,18 @@ class cmd_merge(Command):
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type']
 
-    def run(self, branch='.', revision=None, force=False, 
+    def run(self, branch=None, revision=None, force=False, 
             merge_type=None):
         from bzrlib.merge import merge
         from bzrlib.merge_core import ApplyMerge3
         if merge_type is None:
             merge_type = ApplyMerge3
-
+        if branch is None:
+            branch = Branch.open_containing('.').get_parent()
+            if branch is None:
+                raise BzrCommandError("No merge location known or specified.")
+            else:
+                print "Using saved location: %s" % branch 
         if revision is None or len(revision) < 1:
             base = [None, None]
             other = [branch, -1]

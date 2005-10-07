@@ -358,9 +358,10 @@ class Diff3Merge(object):
         else:
             assert(status == 1)
             def get_lines(filename):
-                my_file = file(base, "rb")
+                my_file = file(filename, "rb")
                 lines = my_file.readlines()
                 my_file.close()
+                return lines
             base_lines = get_lines(base)
             other_lines = get_lines(other)
             conflict_handler.merge_conflict(new_file, filename, base_lines, 

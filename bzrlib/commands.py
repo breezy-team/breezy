@@ -355,6 +355,7 @@ OPTIONS = {
     'root':                   str,
     'no-backup':              None,
     'pattern':                str,
+    'remember':               None,
     }
 
 SHORT_OPTIONS = {
