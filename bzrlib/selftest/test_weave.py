@@ -897,6 +897,8 @@ class JoinWeavesTests(TestBase):
         eq = self.assertEquals
         eq(sorted(wc.iter_names()), ['v1', 'v2', 'v3', 'x1',])
         eq(wc.get_text('x1'), 'line from x1\n')
+        eq(wc.get_lines('v2'), ['hello\n', 'world\n'])
+        eq(wc.parent_names('v2'), ['v1', 'x1'])
 
 
 if __name__ == '__main__':
