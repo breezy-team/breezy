@@ -102,17 +102,20 @@ class Fetcher(object):
         else:
             self.pb = pb
         try:
-            self.last_revision = self._find_last_revision(last_revision)
-        except NoSuchRevision, e:
-            mutter('failed getting last revision: %s', e)
-            raise InstallFailed([last_revision])
-        mutter('fetch up to rev {%s}', self.last_revision)
-        try:
-            revs_to_fetch = self._compare_ancestries()
-        except WeaveError:
-            raise InstallFailed([self.last_revision])
-        self._copy_revisions(revs_to_fetch)
-        self.new_ancestry = revs_to_fetch
+            try:
+                self.last_revision = self._find_last_revision(last_revision)
+            except NoSuchRevision, e:
+                mutter('failed getting last revision: %s', e)
+                raise InstallFailed([last_revision])
+            mutter('fetch up to rev {%s}', self.last_revision)
+            try:
+                revs_to_fetch = self._compare_ancestries()
+            except WeaveError:
+                raise InstallFailed([self.last_revision])
+            self._copy_revisions(revs_to_fetch)
+            self.new_ancestry = revs_to_fetch
+        finally:
+            self.pb.clear()
 
 
     def _find_last_revision(self, last_revision):
