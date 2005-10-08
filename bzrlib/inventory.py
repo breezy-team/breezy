@@ -166,6 +166,14 @@ class InventoryEntry(object):
                 ie = inv[self.file_id]
                 assert ie.file_id == self.file_id
                 if ie.revision in heads:
+                    # fixup logic, there was a bug in revision updates.
+                    # with x bit support.
+                    try:
+                        if heads[ie.revision].executable != ie.executable:
+                            heads[ie.revision].executable = False
+                            ie.executable = False
+                    except AttributeError:
+                        pass
                     assert heads[ie.revision] == ie
                 else:
                     # may want to add it.
