@@ -1,4 +1,4 @@
-DEVELOPMENT HEAD
+bzr 0.1 2005-10-06
 
 
   BUG FIXES:
@@ -8,6 +8,26 @@ DEVELOPMENT HEAD
 
     * Locking is now done with fcntl.lockf which works with NFS
       file systems. Contributed by Harald Meland.
+
+    * When a merge encounters a file that has been deleted on
+      one side and modified on the other, the old contents are
+      written out to foo.BASE and foo.SIDE, where SIDE is this
+      or OTHER. Contributed by Aaron Bentley.
+
+    * Export was choosing incorrect file paths for the content of
+      the tarball, this has been fixed by Aaron Bentley.
+
+    * Commit will no longer commit without a log message, an 
+      error is returned instead. Contributed by Jelmer Vernooij.
+
+    * If you commit a specific file in a sub directory, any of its
+      parent directories that are added but not listed will be 
+      automatically included. Suggested by Michael Ellerman.
+
+    * bzr commit and upgrade did not correctly record new revisions
+      for files with only a change to their executable status.
+      bzr will correct this when it encounters it. Fixed by
+      Robert Collins
 
 
   IMPROVEMENTS:
@@ -29,10 +49,23 @@ DEVELOPMENT HEAD
     * 'bzr status' now shows unknown files inside a selected directory.
       Patch from Heikki Paajanen.
 
+    * Merge conflicts are recorded in .bzr. Two new commands 'conflicts'
+      and 'resolve' have needed added, which list and remove those 
+      merge conflicts respectively. A conflicted tree cannot be committed
+      in. Contributed by Aaron Bentley.
+
+
   INTERNALS:
 
     * Test case failures have the exception printed after the log 
       for your viewing pleasure.
+
+    * InventoryEntry is now an abstract base class, use one of the
+      concrete InventoryDirectory etc classes instead.
+
+    * Branch raises an UnsupportedFormatError when it detects a 
+      bzr branch it cannot understand. This allows for precise
+      handling of such circumstances.
 
 
   TESTING:

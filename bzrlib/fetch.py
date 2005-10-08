@@ -17,13 +17,14 @@
 import os
 from cStringIO import StringIO
 
-import bzrlib.errors
+import bzrlib
+import bzrlib.errors as errors
+from bzrlib.errors import InstallFailed, NoSuchRevision, WeaveError
 from bzrlib.trace import mutter, note, warning
 from bzrlib.branch import Branch
 from bzrlib.progress import ProgressBar
 from bzrlib.xml5 import serializer_v5
 from bzrlib.osutils import sha_string, split_lines
-from bzrlib.errors import InstallFailed, NoSuchRevision, WeaveError
 
 """Copying of history from one branch to another.
 
@@ -82,7 +83,7 @@ class Fetcher(object):
 
     count_copied -- number of revisions copied
 
-    count_texts -- number of file texts copied
+    count_weaves -- number of file weaves copied
     """
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
         if to_branch == from_branch:
@@ -96,7 +97,8 @@ class Fetcher(object):
         self.failed_revisions = []
         self.count_copied = 0
         self.count_total = 0
-        self.count_texts = 0
+        self.count_weaves = 0
+        self.copied_file_ids = set()
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.progress_bar()
         else:
@@ -192,50 +194,47 @@ class Fetcher(object):
             if not self.to_branch.has_revision(parent):
                 parents.pop(parents.index(parent))
         self._copy_inventory(rev_id, inv_xml, parents)
-        self._copy_ancestry(rev_id, parents)
         self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
+        mutter('copied revision %s', rev_id)
 
 
     def _copy_inventory(self, rev_id, inv_xml, parent_ids):
         self.to_control.add_text('inventory', rev_id,
-                                split_lines(inv_xml), parent_ids)
+                                split_lines(inv_xml), parent_ids,
+                                self.to_branch.get_transaction())
 
-
-    def _copy_ancestry(self, rev_id, parent_ids):
-        ancestry_lines = self.from_control.get_lines('ancestry', rev_id)
-        self.to_control.add_text('ancestry', rev_id, ancestry_lines,
-                                 parent_ids)
-
-        
     def _copy_new_texts(self, rev_id, inv):
         """Copy any new texts occuring in this revision."""
         # TODO: Rather than writing out weaves every time, hold them
         # in memory until everything's done?  But this way is nicer
         # if it's interrupted.
         for path, ie in inv.iter_entries():
-            if not ie.has_text():
-                continue
             if ie.revision != rev_id:
                 continue
             mutter('%s {%s} is changed in this revision',
                    path, ie.file_id)
-            self._copy_one_text(rev_id, ie.file_id)
+            self._copy_one_weave(rev_id, ie.file_id)
 
 
-    def _copy_one_text(self, rev_id, file_id):
-        """Copy one file text."""
-        mutter('copy text version {%s} of file {%s}',
-               rev_id, file_id)
-        from_weave = self.from_weaves.get_weave(file_id)
-        from_idx = from_weave.lookup(rev_id)
-        from_parents = map(from_weave.idx_to_name, from_weave.parents(from_idx))
-        text_lines = from_weave.get(from_idx)
-        to_weave = self.to_weaves.get_weave_or_empty(file_id)
-        to_parents = map(to_weave.lookup, from_parents)
-        # it's ok to add even if the text is already there
-        to_weave.add(rev_id, to_parents, text_lines)
-        self.to_weaves.put_weave(file_id, to_weave)
-        self.count_texts += 1
+    def _copy_one_weave(self, rev_id, file_id):
+        """Copy one file weave."""
+        mutter('copy file {%s} modified in {%s}', file_id, rev_id)
+        if file_id in self.copied_file_ids:
+            mutter('file {%s} already copied', file_id)
+            return
+        from_weave = self.from_weaves.get_weave(file_id,
+            self.from_branch.get_transaction())
+        to_weave = self.to_weaves.get_weave_or_empty(file_id,
+            self.to_branch.get_transaction())
+        try:
+            to_weave.join(from_weave)
+        except errors.WeaveParentMismatch:
+            to_weave.reweave(from_weave)
+        self.to_weaves.put_weave(file_id, to_weave,
+            self.to_branch.get_transaction())
+        self.count_weaves += 1
+        self.copied_file_ids.add(file_id)
+        mutter('copied file {%s}', file_id)
 
 
 fetch = Fetcher

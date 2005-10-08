@@ -19,7 +19,7 @@
 """Black-box tests for bzr.
 
 These check that it behaves properly when it's invoked through the regular
-command-line interface.  This doesn't actually run a new interpreter but 
+command-line interface. This doesn't actually run a new interpreter but 
 rather starts again from the run_bzr function.
 """
 
@@ -30,9 +30,11 @@ import shutil
 import sys
 import os
 
-from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
 from bzrlib.branch import Branch
+from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import has_symlinks
+from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
+from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 
 
 class ExternalBase(TestCaseInTempDir):
@@ -101,6 +103,12 @@ class TestCommands(ExternalBase):
         self.runbzr("commit -m empty", retcode=1)
         self.runbzr("add hello.txt")
         self.runbzr("commit -m added")
+
+    def test_empty_commit_message(self):
+        self.runbzr("init")
+        file('foo.c', 'wt').write('int main() {}')
+        self.runbzr(['add', 'foo.c'])
+        self.runbzr(["commit", "-m", ""] , retcode=1) 
 
     def test_ignore_patterns(self):
         from bzrlib.branch import Branch
@@ -301,40 +309,6 @@ class TestCommands(ExternalBase):
         self.log('pending merges: %s', a.pending_merges())
         #        assert a.pending_merges() == [b.last_revision()], "Assertion %s %s" \
         #        % (a.pending_merges(), b.last_patch())
-
-    def test_merge_with_missing_file(self):
-        """Merge handles missing file conflicts"""
-        os.mkdir('a')
-        os.chdir('a')
-        os.mkdir('sub')
-        print >> file('sub/a.txt', 'wb'), "hello"
-        print >> file('b.txt', 'wb'), "hello"
-        print >> file('sub/c.txt', 'wb'), "hello"
-        self.runbzr('init')
-        self.runbzr('add')
-        self.runbzr(('commit', '-m', 'added a'))
-        self.runbzr('branch . ../b')
-        print >> file('sub/a.txt', 'ab'), "there"
-        print >> file('b.txt', 'ab'), "there"
-        print >> file('sub/c.txt', 'ab'), "there"
-        self.runbzr(('commit', '-m', 'Added there'))
-        os.unlink('sub/a.txt')
-        os.unlink('sub/c.txt')
-        os.rmdir('sub')
-        os.unlink('b.txt')
-        self.runbzr(('commit', '-m', 'Removed a.txt'))
-        os.chdir('../b')
-        print >> file('sub/a.txt', 'ab'), "something"
-        print >> file('b.txt', 'ab'), "something"
-        print >> file('sub/c.txt', 'ab'), "something"
-        self.runbzr(('commit', '-m', 'Modified a.txt'))
-        self.runbzr('merge ../a/')
-        assert os.path.exists('sub/a.txt.THIS')
-        assert os.path.exists('sub/a.txt.BASE')
-        os.chdir('../a')
-        self.runbzr('merge ../b/')
-        assert os.path.exists('sub/a.txt.OTHER')
-        assert os.path.exists('sub/a.txt.BASE')
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""
@@ -772,4 +746,16 @@ class OldTests(ExternalBase):
             chdir("..")
         else:
             progress("skipping symlink tests")
-            
+
+
+class HttpTests(TestCaseWithWebserver):
+    """Test bzr ui commands against remote branches."""
+
+    def test_branch(self):
+        os.mkdir('from')
+        branch = Branch.initialize('from')
+        branch.commit('empty commit for nonsense', allow_pointless=True)
+        url = self.get_remote_url('from')
+        self.run_bzr('branch', url, 'to')
+        branch = Branch.open('to')
+        self.assertEqual(1, len(branch.revision_history()))

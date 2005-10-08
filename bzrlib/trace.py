@@ -54,9 +54,10 @@ class QuietFormatter(logging.Formatter):
     # can get the exception details is we suppress them here.
 
     def format(self, record):
-        s = 'bzr: '
         if record.levelno >= logging.WARNING:
-            s += record.levelname + ': '
+            s = 'bzr: ' + record.levelname + ': '
+        else:
+            s = ''
             
         s += record.getMessage()
 
@@ -163,10 +164,9 @@ def log_exception(msg=None):
     if msg == None:
         ei = sys.exc_info()
         msg = str(ei[1])
-
     if msg and (msg[-1] == '\n'):
         msg = msg[:-1]
-        
+    ## msg = "(%s) %s" % (str(type(ei[1])), msg)
     _bzr_logger.exception(msg)
 
 

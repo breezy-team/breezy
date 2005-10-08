@@ -234,3 +234,15 @@ class TestCommit(TestCaseInTempDir):
         for i in range(4):
             anc = b.get_ancestry(rev_ids[i])
             eq(anc, [None] + rev_ids[:i+1])
+
+    def test_commit_new_subdir_child_selective(self):
+        b = Branch.initialize('.')
+        self.build_tree(['dir/', 'dir/file1', 'dir/file2'])
+        b.add(['dir', 'dir/file1', 'dir/file2'],
+              ['dirid', 'file1id', 'file2id'])
+        b.commit('dir/file1', specific_files=['dir/file1'], rev_id='1')
+        inv = b.get_inventory('1')
+        self.assertEqual('1', inv['dirid'].revision)
+        self.assertEqual('1', inv['file1id'].revision)
+        # FIXME: This should raise a KeyError I think, rbc20051006
+        self.assertRaises(BzrError, inv.__getitem__, 'file2id')

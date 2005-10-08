@@ -1,15 +1,15 @@
 # Copyright (C) 2005 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -29,12 +29,14 @@ from bzrlib.revision import is_ancestor
 from bzrlib.upgrade import upgrade
 from bzrlib.selftest.treeshape import build_tree_contents
 
+
 class TestUpgrade(TestCaseInTempDir):
+    
     def test_build_tree(self):
         """Test tree-building test helper"""
         build_tree_contents(_upgrade1_template)
-        self.assertTrue(os.path.exists('foo'))
-        self.assertTrue(os.path.exists('.bzr/README'))
+        self.failUnlessExists('foo')
+        self.failUnlessExists('.bzr/README')
 
     def test_upgrade_simple(self):
         """Upgrade simple v0.0.4 format to v5"""
@@ -72,6 +74,11 @@ class TestUpgrade(TestCaseInTempDir):
         eq(len(rev.parent_ids), 2)
         eq(rev.parent_ids[1], 'wibble@wobble-2')
 
+    def test_upgrade_makes_dir_weaves(self):
+        build_tree_contents(_upgrade_dir_template)
+        upgrade('.')
+        self.failUnlessExists(
+            '.bzr/weaves/dir-20051005095101-da1441ea3fa6917a.weave')
 
 
 _upgrade1_template = \
@@ -179,4 +186,55 @@ _ghost_template = [
         '\x7fJ+EaM\x83$\xa5n\xbc/a\x91~\xd0\xbd\xfd\x135\n'
         '\xd0\x9a`\x0c*W\x1aR\xc1\x94du\x08(\t\xb0\x91\xdeZ\xa3\x9cU\x9cm\x7f\x8dr\x1d\x10Ot\xb8\xc6\xcf\xa7\x907|\xfb-\xb1\xbd\xd3\xfb\xd5\x07\xeeD\xee\x08*\x02\x00\x00'
     ),
+]
+
+_upgrade_dir_template = [
+    ( './.bzr/', ),
+    ( './.bzr/README',
+        'This is a Bazaar-NG control directory.\n'
+        'Do not change any files in this directory.\n'
+    ),
+    ( './.bzr/branch-format',
+        'Bazaar-NG branch, format 0.0.4\n'
+    ),
+    ( './.bzr/branch-lock',
+        ''
+    ),
+    ( './.bzr/branch-name',
+        ''
+    ),
+    ( './.bzr/inventory',
+        '<inventory>\n'
+        '<entry file_id="dir-20051005095101-da1441ea3fa6917a" kind="directory" name="dir" />\n'
+        '</inventory>\n'
+    ),
+    ( './.bzr/merged-patches',
+        ''
+    ),
+    ( './.bzr/pending-merged-patches',
+        ''
+    ),
+    ( './.bzr/pending-merges',
+        ''
+    ),
+    ( './.bzr/revision-history',
+        'robertc@robertcollins.net-20051005095108-6065fbd8e7d8617e\n'
+    ),
+    ( './.bzr/stat-cache',
+        '### bzr hashcache v5\n'
+    ),
+    ( './.bzr/text-store/', ),
+    ( './.bzr/inventory-store/', ),
+    ( './.bzr/inventory-store/robertc@robertcollins.net-20051005095108-6065fbd8e7d8617e.gz',
+        '\x1f\x8b\x08\x00\x0c\xa2CC\x02\xff\xb3\xc9\xcc+K\xcd+\xc9/\xaa\xb4\xe3\xb2\x012\x8a*\x15\xd22sR\xe33Sl\x95R2\x8bt\x8d\x0c\x0cL\r'
+        "\x81\xd8\xc0\x12H\x19\xea\xa6$\x1a\x9a\x98\x18\xa6&\x1a\xa7%\x9aY\x1a\x9a'*)dg\xe6A\x94\xa6&\x83LQR\xc8K\xccM\x05\x0b()\xe8\x03\xcd\xd4G\xb2\x00\x00\xc2<\x94\xb1m\x00\x00\x00"
+    ),
+    ( './.bzr/revision-store/', ),
+    ( './.bzr/revision-store/robertc@robertcollins.net-20051005095108-6065fbd8e7d8617e.gz',
+        '\x1f\x8b\x08\x00\x0c\xa2CC\x02\xff\xa5OKj\xc30\x14\xdc\xfb\x14B\x8b\xec\x92<I\xd6\xc7\xc42\x85\xde\xa0\x17(\xb6\xf4\x9c\n'
+        'l\xa9H"\x90\x9c\xbe\xa6\xa9\xa1\x9b\xae\xbax\x0c\xcc\xe71\xd3g\xbc\x85\x12R$.\xadk\xa8\x15\xb3\xa5oi\xc2\\\xc9kZ\x96\x10\x0b9,\xf5\x92\xbf)\xf7\xf2\x83O\xe5\x14\xb1\x1e\xae\xf5BI\x887\x8c5\xe5\xfb{\xf0\x96\xfei>r\x00\xc9\xb6\x83n\x03sT\xa0\xe4<y\x83\xda\x1b\xc54\xfe~T>Ff\xe9\xcc:\xdd\x8e\xa6E\xc7@\xa2\x82I\xaaNL\xbas\\313)\x00\xb9\xe6\xe0(\xd9\x87\xfc\xb7A\r'
+        "+\x96:\xae\x9f\x962\xc6\x8d\x04i\x949\x01\x97R\xb7\x1d\x17O\xc3#E\xb4T(\x00\xa0C\xd3o\x892^q\x18\xbd'>\xe4\xfe\xbc\x13M\x7f\xde{\r"
+        '\xcd\x17\x85\xea\xba\x03l\x01\x00\x00'
+    ),
+    ( './dir/', ),
 ]

@@ -18,10 +18,12 @@ from cStringIO import StringIO
 import os
 
 from bzrlib.branch import Branch
+from bzrlib.clone import copy_branch
+import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
 from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.inventory as inventory
-from bzrlib.osutils import has_symlinks
+from bzrlib.osutils import has_symlinks, rename
 from bzrlib.selftest import TestCase, TestCaseInTempDir
 
 
@@ -65,7 +67,7 @@ class TestInventory(TestCase):
         ## XXX
 
 
-class TestInventoryEntry(TestCaseInTempDir):
+class TestInventoryEntry(TestCase):
 
     def test_file_kind_character(self):
         file = inventory.InventoryFile('123', 'hello.c', ROOT_ID)
@@ -219,3 +221,146 @@ class TestEntryDiffing(TestCaseInTempDir):
                           output)
         self.assertEqual(output.getvalue(),
                          "=== target changed 'target1' => 'target2'\n")
+
+
+class TestSnapshot(TestCaseInTempDir):
+
+    def setUp(self):
+        # for full testing we'll need a branch
+        # with a subdir to test parent changes.
+        # and a file, link and dir under that.
+        # but right now I only need one attribute
+        # to change, and then test merge patterns
+        # with fake parent entries.
+        super(TestSnapshot, self).setUp()
+        self.branch = Branch.initialize('.')
+        self.build_tree(['subdir/', 'subdir/file'])
+        self.branch.add(['subdir', 'subdir/file'], ['dirid', 'fileid'])
+        if has_symlinks():
+            pass
+        self.branch.commit('message_1', rev_id = '1')
+        self.tree_1 = self.branch.revision_tree('1')
+        self.inv_1 = self.branch.get_inventory('1')
+        self.file_1 = self.inv_1['fileid']
+        self.work_tree = self.branch.working_tree()
+        self.file_active = self.work_tree.inventory['fileid']
+
+    def test_snapshot_new_revision(self):
+        # This tests that a simple commit with no parents makes a new
+        # revision value in the inventory entry
+        self.file_active.snapshot('2', 'subdir/file', {}, self.work_tree, 
+                                  self.branch.weave_store,
+                                  self.branch.get_transaction())
+        # expected outcome - file_1 has a revision id of '2', and we can get
+        # its text of 'file contents' out of the weave.
+        self.assertEqual(self.file_1.revision, '1')
+        self.assertEqual(self.file_active.revision, '2')
+        # this should be a separate test probably, but lets check it once..
+        lines = self.branch.weave_store.get_lines('fileid','2',
+            self.branch.get_transaction())
+        self.assertEqual(lines, ['contents of subdir/file\n'])
+
+    def test_snapshot_unchanged(self):
+        #This tests that a simple commit does not make a new entry for
+        # an unchanged inventory entry
+        self.file_active.snapshot('2', 'subdir/file', {'1':self.file_1},
+                                  self.work_tree, self.branch.weave_store,
+                                  self.branch.get_transaction())
+        self.assertEqual(self.file_1.revision, '1')
+        self.assertEqual(self.file_active.revision, '1')
+        self.assertRaises(errors.WeaveError,
+                          self.branch.weave_store.get_lines, 'fileid', '2',
+                          self.branch.get_transaction())
+
+    def test_snapshot_merge_identical_different_revid(self):
+        # This tests that a commit with two identical parents, one of which has
+        # a different revision id, results in a new revision id in the entry.
+        # 1->other, commit a merge of other against 1, results in 2.
+        other_ie = inventory.InventoryFile('fileid', 'newname', self.file_1.parent_id)
+        other_ie = inventory.InventoryFile('fileid', 'file', self.file_1.parent_id)
+        other_ie.revision = '1'
+        other_ie.text_sha1 = self.file_1.text_sha1
+        other_ie.text_size = self.file_1.text_size
+        self.assertEqual(self.file_1, other_ie)
+        other_ie.revision = 'other'
+        self.assertNotEqual(self.file_1, other_ie)
+        self.branch.weave_store.add_identical_text('fileid', '1', 'other', ['1'],
+            self.branch.get_transaction())
+        self.file_active.snapshot('2', 'subdir/file', 
+                                  {'1':self.file_1, 'other':other_ie},
+                                  self.work_tree, self.branch.weave_store,
+                                  self.branch.get_transaction())
+        self.assertEqual(self.file_active.revision, '2')
+
+    def test_snapshot_changed(self):
+        # This tests that a commit with one different parent results in a new
+        # revision id in the entry.
+        self.file_active.name='newname'
+        rename('subdir/file', 'subdir/newname')
+        self.file_active.snapshot('2', 'subdir/newname', {'1':self.file_1}, 
+                                  self.work_tree, 
+                                  self.branch.weave_store,
+                                  self.branch.get_transaction())
+        # expected outcome - file_1 has a revision id of '2'
+        self.assertEqual(self.file_active.revision, '2')
+
+
+class TestPreviousHeads(TestCaseInTempDir):
+
+    def setUp(self):
+        # we want several inventories, that respectively
+        # give use the following scenarios:
+        # A) fileid not in any inventory (A),
+        # B) fileid present in one inventory (B) and (A,B)
+        # C) fileid present in two inventories, and they
+        #   are not mutual descendents (B, C)
+        # D) fileid present in two inventories and one is
+        #   a descendent of the other. (B, D)
+        super(TestPreviousHeads, self).setUp()
+        self.build_tree(['file'])
+        self.branch = Branch.initialize('.')
+        self.branch.commit('new branch', allow_pointless=True, rev_id='A')
+        self.inv_A = self.branch.get_inventory('A')
+        self.branch.add(['file'], ['fileid'])
+        self.branch.commit('add file', rev_id='B')
+        self.inv_B = self.branch.get_inventory('B')
+        self.branch.put_controlfile('revision-history', 'A\n')
+        self.assertEqual(self.branch.revision_history(), ['A'])
+        self.branch.commit('another add of file', rev_id='C')
+        self.inv_C = self.branch.get_inventory('C')
+        self.branch.add_pending_merge('B')
+        self.branch.commit('merge in B', rev_id='D')
+        self.inv_D = self.branch.get_inventory('D')
+        self.file_active = self.branch.working_tree().inventory['fileid']
+        self.weave = self.branch.weave_store.get_weave('fileid',
+            self.branch.get_transaction())
+        
+    def get_previous_heads(self, inventories):
+        return self.file_active.find_previous_heads(inventories, self.weave)
+        
+    def test_fileid_in_no_inventory(self):
+        self.assertEqual({}, self.get_previous_heads([self.inv_A]))
+
+    def test_fileid_in_one_inventory(self):
+        self.assertEqual({'B':self.inv_B['fileid']},
+                         self.get_previous_heads([self.inv_B]))
+        self.assertEqual({'B':self.inv_B['fileid']},
+                         self.get_previous_heads([self.inv_A, self.inv_B]))
+        self.assertEqual({'B':self.inv_B['fileid']},
+                         self.get_previous_heads([self.inv_B, self.inv_A]))
+
+    def test_fileid_in_two_inventories_gives_both_entries(self):
+        self.assertEqual({'B':self.inv_B['fileid'],
+                          'C':self.inv_C['fileid']},
+                          self.get_previous_heads([self.inv_B, self.inv_C]))
+        self.assertEqual({'B':self.inv_B['fileid'],
+                          'C':self.inv_C['fileid']},
+                          self.get_previous_heads([self.inv_C, self.inv_B]))
+
+    def test_fileid_in_two_inventories_already_merged_gives_head(self):
+        self.assertEqual({'D':self.inv_D['fileid']},
+                         self.get_previous_heads([self.inv_B, self.inv_D]))
+        self.assertEqual({'D':self.inv_D['fileid']},
+                         self.get_previous_heads([self.inv_D, self.inv_B]))
+
+    # TODO: test two inventories with the same file revision 

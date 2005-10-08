@@ -696,10 +696,9 @@ class cmd_log(Command):
 
     --message allows you to give a regular expression, which will be evaluated
     so that only matching entries will be displayed.
-
-    TODO: Make --revision support uuid: and hash: [future tag:] notation.
-  
     """
+
+    # TODO: Make --revision support uuid: and hash: [future tag:] notation.
 
     takes_args = ['filename?']
     takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision',
@@ -1009,12 +1008,12 @@ class cmd_commit(Command):
             selected_list = [b.relpath(s) for s in selected_list]
 
             
-        if not message and not file:
+        if message is None and not file:
             catcher = StringIO()
             show_status(b, specific_files=selected_list,
                         to_file=catcher)
             message = edit_commit_message(catcher.getvalue())
-            
+
             if message is None:
                 raise BzrCommandError("please specify a commit message"
                                       " with either --message or --file")
@@ -1025,6 +1024,9 @@ class cmd_commit(Command):
             import codecs
             message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
+        if message == "":
+                raise BzrCommandError("empty commit message specified")
+            
         try:
             b.commit(message,
                      specific_files=selected_list,

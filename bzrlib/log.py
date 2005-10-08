@@ -109,6 +109,17 @@ def _enumerate_history(branch):
     return rh
 
 
+def _get_revision_delta(branch, revno):
+    """Return the delta for a mainline revision.
+    
+    This is used to show summaries in verbose logs, and also for finding 
+    revisions which touch a given file."""
+    # XXX: What are we supposed to do when showing a summary for something 
+    # other than a mainline revision.  The delta to it's first parent, or
+    # (more useful) the delta to a nominated other revision.
+    return branch.get_revision_delta(revno)
+
+
 def show_log(branch,
              lf,
              specific_fileid=None,
@@ -139,6 +150,22 @@ def show_log(branch,
     end_revision
         If not None, only show revisions <= end_revision
     """
+    branch.lock_read()
+    try:
+        _show_log(branch, lf, specific_fileid, verbose, direction,
+                  start_revision, end_revision, search)
+    finally:
+        branch.unlock()
+    
+def _show_log(branch,
+             lf,
+             specific_fileid=None,
+             verbose=False,
+             direction='reverse',
+             start_revision=None,
+             end_revision=None,
+             search=None):
+    """Worker function for show_log - see show_log."""
     from bzrlib.osutils import format_date
     from bzrlib.errors import BzrCheckError
     from bzrlib.textui import show_status
@@ -181,7 +208,7 @@ def show_log(branch,
 
     for revno, rev_id in cut_revs:
         if verbose or specific_fileid:
-            delta = branch.get_revision_delta(revno)
+            delta = _get_revision_delta(branch, revno)
             
         if specific_fileid:
             if not delta.touches_file_id(specific_fileid):
@@ -293,12 +320,8 @@ class LogFormatter(object):
 
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
-        
 
-
-
-
-
+    
 class LongLogFormatter(LogFormatter):
     def show(self, revno, rev, delta):
         from osutils import format_date
@@ -363,8 +386,12 @@ FORMATTERS = {'long': LongLogFormatter,
 
 
 def log_formatter(name, *args, **kwargs):
+    """Construct a formatter from arguments.
+
+    name -- Name of the formatter to construct; currently 'long' and
+        'short' are supported.
+    """
     from bzrlib.errors import BzrCommandError
-    
     try:
         return FORMATTERS[name](*args, **kwargs)
     except IndexError:

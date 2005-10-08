@@ -23,13 +23,21 @@ __author__ = "Martin Pool <mbp@canonical.com>"
 # exceptions 
 class BzrError(StandardError):
     def __str__(self):
+        # XXX: Should we show the exception class in 
+        # exceptions that don't provide their own message?  
+        # maybe it should be done at a higher level
+        ## n = self.__class__.__name__ + ': '
+        n = ''
         if len(self.args) == 1:
-            return self.args[0]
+            return n + self.args[0]
         elif len(self.args) == 2:
             # further explanation or suggestions
-            return '\n  '.join([self.args[0]] + self.args[1])
+            try:
+                return n + '\n  '.join([self.args[0]] + self.args[1])
+            except TypeError:
+                return n + "%r" % self
         else:
-            return `self.args`
+            return n + `self.args`
 
 
 class BzrCheckError(BzrError):
@@ -47,12 +55,20 @@ class InvalidRevisionId(BzrError):
 
 class BzrCommandError(BzrError):
     # Error from malformed user command
-    pass
+    def __str__(self):
+        return self.args[0]
 
 
 class NotBranchError(BzrError):
     """Specified path is not in a branch"""
-    pass
+    def __str__(self):
+        return 'not a branch: %s' % self.args[0]
+
+
+class UnsupportedFormatError(BzrError):
+    """Specified path is a bzr branch that we cannot read."""
+    def __str__(self):
+        return 'unsupported branch format: %s' % self.args[0]
 
 
 class NotVersionedError(BzrError):
@@ -82,6 +98,18 @@ class LockError(Exception):
             Exception.__init__(self, e)
         else:
             Exception.__init__(self)
+
+
+class CommitNotPossible(LockError):
+    """A commit was attempted but we do not have a write lock open."""
+
+
+class AlreadyCommitted(LockError):
+    """A rollback was requested, but is not able to be accomplished."""
+
+
+class ReadOnlyError(LockError):
+    """A write attempt was made in a read only transaction."""
 
 
 class PointlessCommit(Exception):
@@ -175,7 +203,7 @@ class UnlistableBranch(BzrError):
         BzrError.__init__(self, "Stores for branch %s are not listable" % br)
 
 
-from bzrlib.weave import WeaveError
+from bzrlib.weave import WeaveError, WeaveParentMismatch
 
 class TransportError(BzrError):
     """All errors thrown by Transport implementations should derive
@@ -203,6 +231,12 @@ class NonRelativePath(TransportError):
 
 class NoSuchFile(TransportError, IOError):
     """A get() was issued for a file that doesn't exist."""
+
+    # XXX: Is multiple inheritance for exceptions really needed?
+
+    def __str__(self):
+        return 'no such file: ' + self.msg
+
     def __init__(self, msg=None, orig_error=None):
         import errno
         TransportError.__init__(self, msg=msg, orig_error=orig_error)
@@ -214,6 +248,7 @@ class FileExists(TransportError, OSError):
 
     mkdir() can throw this, but put() just overwites existing files.
     """
+    # XXX: Is multiple inheritance for exceptions really needed?
     def __init__(self, msg=None, orig_error=None):
         import errno
         TransportError.__init__(self, msg=msg, orig_error=orig_error)

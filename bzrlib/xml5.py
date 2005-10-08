@@ -35,7 +35,8 @@ class Serializer_v5(Serializer):
     
     def _pack_inventory(self, inv):
         """Convert to XML Element"""
-        e = Element('inventory')
+        e = Element('inventory',
+                    format='5')
         e.text = '\n'
         if inv.root.file_id not in (None, ROOT_ID):
             e.set('file_id', inv.root.file_id)
@@ -82,15 +83,14 @@ class Serializer_v5(Serializer):
                        timestamp = '%.9f' % rev.timestamp,
                        revision_id = rev.revision_id,
                        inventory_sha1 = rev.inventory_sha1,
+                       format='5',
                        )
         if rev.timezone:
             root.set('timezone', str(rev.timezone))
         root.text = '\n'
-
         msg = SubElement(root, 'message')
         msg.text = rev.message
         msg.tail = '\n'
-
         if rev.parent_ids:
             pelts = SubElement(root, 'parents')
             pelts.tail = pelts.text = '\n'
@@ -100,7 +100,6 @@ class Serializer_v5(Serializer):
                 p.tail = '\n'
                 p.set('revision_id', parent_id)
         return root
-
     
 
     def _unpack_inventory(self, elt):
@@ -108,6 +107,11 @@ class Serializer_v5(Serializer):
         """
         assert elt.tag == 'inventory'
         root_id = elt.get('file_id') or ROOT_ID
+        format = elt.get('format')
+        if format is not None:
+            if format != '5':
+                raise BzrError("invalid format version %r on inventory"
+                                % format)
         inv = Inventory(root_id)
         for e in elt:
             ie = self._unpack_entry(e)
@@ -154,13 +158,16 @@ class Serializer_v5(Serializer):
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
         assert elt.tag == 'revision'
-        
+        format = elt.get('format')
+        if format is not None:
+            if format != '5':
+                raise BzrError("invalid format version %r on inventory"
+                                % format)
         rev = Revision(committer = elt.get('committer'),
                        timestamp = float(elt.get('timestamp')),
                        revision_id = elt.get('revision_id'),
                        inventory_sha1 = elt.get('inventory_sha1')
                        )
-
         parents = elt.find('parents') or []
         for p in parents:
             assert p.tag == 'revision_ref', \
@@ -172,7 +179,6 @@ class Serializer_v5(Serializer):
 
         rev.message = elt.findtext('message') # text of <message>
         return rev
-
 
 
 serializer_v5 = Serializer_v5()

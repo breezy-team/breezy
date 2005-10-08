@@ -39,6 +39,9 @@ class TestAncestry(TestCaseInTempDir):
                  rev_id='tester@foo--2')
 
         ancs = b.get_ancestry('tester@foo--2')
+        self.assertEqual([None, 'tester@foo--1', 'tester@foo--2'], ancs)
+        self.assertEqual([None, 'tester@foo--1'], 
+                         b.get_ancestry('tester@foo--1'))
 
     def test_none_is_always_an_ancestor(self):
         b = Branch.initialize('.')

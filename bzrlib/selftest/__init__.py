@@ -380,6 +380,10 @@ class TestCaseInTempDir(TestCase):
                 print >>f, "contents of", name
                 f.close()
 
+    def failUnlessExists(self, path):
+        """Fail unless path, which may be abs or relative, exists."""
+        self.failUnless(os.path.exists(path))
+        
 
 class MetaTestLog(TestCase):
     def test_logging(self):
@@ -454,6 +458,7 @@ def test_suite():
 
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
+                   'bzrlib.selftest.testidentitymap',
                    'bzrlib.selftest.testinv',
                    'bzrlib.selftest.test_ancestry',
                    'bzrlib.selftest.test_commit',
@@ -479,6 +484,8 @@ def test_suite():
                    'bzrlib.selftest.whitebox',
                    'bzrlib.selftest.teststore',
                    'bzrlib.selftest.blackbox',
+                   'bzrlib.selftest.testsampler',
+                   'bzrlib.selftest.testtransactions',
                    'bzrlib.selftest.testtransport',
                    'bzrlib.selftest.testgraph',
                    'bzrlib.selftest.testworkingtree',
