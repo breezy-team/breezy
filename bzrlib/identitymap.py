@@ -1,0 +1,63 @@
+# Copyright (C) 2005 by Canonical Ltd
+#   Authors: Robert Collins <robert.collins@canonical.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+"""This module provides an IdentityMap."""
+
+
+import bzrlib.errors as errors
+
+
+class IdentityMap(object):
+    """An in memory map from object id to instance.
+    
+    An IdentityMap maps from keys to single instances of objects in memory.
+    We have explicit calls on the map for the root of each inheritance tree
+    that is store in the map. Look for find_CLASS and add_CLASS methods.
+    """
+
+    def add_weave(self, id, weave):
+        """Add weave to the map with a given id."""
+        if self._weave_key(id) in self._map:
+            raise errors.BzrError('weave %s already in the identity map' % id)
+        self._map[self._weave_key(id)] = weave
+
+    def find_weave(self, id):
+        """Return the weave for 'id', or None if it is not present."""
+        return self._map.get(self._weave_key(id), None)
+
+    def __init__(self):
+        super(IdentityMap, self).__init__()
+        self._map = {}
+
+    def _weave_key(self, id):
+        """Return the key for a weaves id."""
+        return "weave-" + id
+
+        
+class NullIdentityMap(object):
+    """A pretend in memory map from object id to instance.
+    
+    A NullIdentityMap is an Identity map that does not store anything in it.
+    """
+
+    def add_weave(self, id, weave):
+        """See IdentityMap.add_weave."""
+
+    def find_weave(self, id):
+        """See IdentityMap.find_weave."""
+        return None
+

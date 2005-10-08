@@ -24,17 +24,112 @@ import sys
 import errno
 import subprocess
 import shutil
-import testsweet
+import re
 
 import bzrlib.commands
 import bzrlib.trace
 import bzrlib.fetch
+from bzrlib.selftest import TestUtil
+from bzrlib.selftest.TestUtil import TestLoader, TestSuite
 
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
 
 from logging import debug, warning, error
+
+
+
+class EarlyStoppingTestResultAdapter(object):
+    """An adapter for TestResult to stop at the first first failure or error"""
+
+    def __init__(self, result):
+        self._result = result
+
+    def addError(self, test, err):
+        self._result.addError(test, err)
+        self._result.stop()
+
+    def addFailure(self, test, err):
+        self._result.addFailure(test, err)
+        self._result.stop()
+
+    def __getattr__(self, name):
+        return getattr(self._result, name)
+
+    def __setattr__(self, name, value):
+        if name == '_result':
+            object.__setattr__(self, name, value)
+        return setattr(self._result, name, value)
+
+
+class _MyResult(unittest._TextTestResult):
+    """
+    Custom TestResult.
+
+    No special behaviour for now.
+    """
+
+    def startTest(self, test):
+        unittest.TestResult.startTest(self, test)
+        # TODO: Maybe show test.shortDescription somewhere?
+        what = test.shortDescription() or test.id()        
+        if self.showAll:
+            self.stream.write('%-70.70s' % what)
+        self.stream.flush()
+
+    def addError(self, test, err):
+        super(_MyResult, self).addError(test, err)
+        self.stream.flush()
+
+    def addFailure(self, test, err):
+        super(_MyResult, self).addFailure(test, err)
+        self.stream.flush()
+
+    def addSuccess(self, test):
+        if self.showAll:
+            self.stream.writeln('OK')
+        elif self.dots:
+            self.stream.write('~')
+        self.stream.flush()
+        unittest.TestResult.addSuccess(self, test)
+
+    def printErrorList(self, flavour, errors):
+        for test, err in errors:
+            self.stream.writeln(self.separator1)
+            self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
+            if hasattr(test, '_get_log'):
+                self.stream.writeln()
+                self.stream.writeln('log from this test:')
+                print >>self.stream, test._get_log()
+            self.stream.writeln(self.separator2)
+            self.stream.writeln("%s" % err)
+
+
+class TextTestRunner(unittest.TextTestRunner):
+
+    def _makeResult(self):
+        result = _MyResult(self.stream, self.descriptions, self.verbosity)
+        return EarlyStoppingTestResultAdapter(result)
+
+
+def iter_suite_tests(suite):
+    """Return all tests in a suite, recursing through nested suites"""
+    for item in suite._tests:
+        if isinstance(item, unittest.TestCase):
+            yield item
+        elif isinstance(item, unittest.TestSuite):
+            for r in iter_suite_tests(item):
+                yield r
+        else:
+            raise Exception('unknown object %r inside test suite %r'
+                            % (item, suite))
+
+
+class TestSkipped(Exception):
+    """Indicates that a test was intentionally skipped, rather than failing."""
+    # XXX: Not used yet
+
 
 class CommandFailed(Exception):
     pass
@@ -55,7 +150,6 @@ class TestCase(unittest.TestCase):
     BZRPATH = 'bzr'
 
     def setUp(self):
-        # this replaces the default testsweet.TestCase; we don't want logging changed
         unittest.TestCase.setUp(self)
         bzrlib.trace.disable_default_logging()
         self._enable_file_logging()
@@ -68,7 +162,7 @@ class TestCase(unittest.TestCase):
 
         hdlr = logging.StreamHandler(self._log_file)
         hdlr.setLevel(logging.DEBUG)
-        hdlr.setFormatter(logging.Formatter('%(levelname)4.4s  %(message)s'))
+        hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
         logging.getLogger('').addHandler(hdlr)
         logging.getLogger('').setLevel(logging.DEBUG)
         self._log_hdlr = hdlr
@@ -153,8 +247,7 @@ class TestCase(unittest.TestCase):
         return self.run_bzr_captured(args, retcode)
 
     def check_inventory_shape(self, inv, shape):
-        """
-        Compare an inventory to a list of expected names.
+        """Compare an inventory to a list of expected names.
 
         Fail if they are not precisely equal.
         """
@@ -259,7 +352,9 @@ class TestCaseInTempDir(TestCase):
         super(TestCaseInTempDir, self).setUp()
         self._make_test_root()
         self._currentdir = os.getcwdu()
-        self.test_dir = os.path.join(self.TEST_ROOT, self.id())
+        short_id = self.id().replace('bzrlib.selftest.', '') \
+                   .replace('__main__.', '')
+        self.test_dir = os.path.join(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         
@@ -285,6 +380,10 @@ class TestCaseInTempDir(TestCase):
                 print >>f, "contents of", name
                 f.close()
 
+    def failUnlessExists(self, path):
+        """Fail unless path, which may be abs or relative, exists."""
+        self.failUnless(os.path.exists(path))
+        
 
 class MetaTestLog(TestCase):
     def test_logging(self):
@@ -295,44 +394,103 @@ class MetaTestLog(TestCase):
         ##assert 0
 
 
-def selftest(verbose=False, pattern=".*"):
-    return testsweet.run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
+def filter_suite_by_re(suite, pattern):
+    result = TestUtil.TestSuite()
+    filter_re = re.compile(pattern)
+    for test in iter_suite_tests(suite):
+        if filter_re.match(test.id()):
+            result.addTest(test)
+    return result
+
+
+def filter_suite_by_names(suite, wanted_names):
+    """Return a new suite containing only selected tests.
+    
+    Names are considered to match if any name is a substring of the 
+    fully-qualified test id (i.e. the class ."""
+    result = TestSuite()
+    for test in iter_suite_tests(suite):
+        this_id = test.id()
+        for p in wanted_names:
+            if this_id.find(p) != -1:
+                result.addTest(test)
+    return result
+
+
+def run_suite(suite, name='test', verbose=False, pattern=".*", testnames=None):
+    TestCaseInTempDir._TEST_NAME = name
+    if verbose:
+        verbosity = 2
+    else:
+        verbosity = 1
+    runner = TextTestRunner(stream=sys.stdout,
+                            descriptions=0,
+                            verbosity=verbosity)
+    if testnames:
+        suite = filter_suite_by_names(suite, testnames)
+    if pattern != '.*':
+        suite = filter_suite_by_re(suite, pattern)
+    result = runner.run(suite)
+    # This is still a little bogus, 
+    # but only a little. Folk not using our testrunner will
+    # have to delete their temp directories themselves.
+    if result.wasSuccessful():
+        if TestCaseInTempDir.TEST_ROOT is not None:
+            shutil.rmtree(TestCaseInTempDir.TEST_ROOT) 
+    else:
+        print "Failed tests working directories are in '%s'\n" % TestCaseInTempDir.TEST_ROOT
+    return result.wasSuccessful()
+
+
+def selftest(verbose=False, pattern=".*", testnames=None):
+    """Run the whole test suite under the enhanced runner"""
+    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern,
+                     testnames=testnames)
 
 
 def test_suite():
-    from bzrlib.selftest.TestUtil import TestLoader, TestSuite
-    import bzrlib, bzrlib.store, bzrlib.inventory, bzrlib.branch
-    import bzrlib.osutils, bzrlib.commands, bzrlib.merge3, bzrlib.plugin
+    """Build and return TestSuite for the whole program."""
+    import bzrlib.store, bzrlib.inventory, bzrlib.branch
+    import bzrlib.osutils, bzrlib.merge3, bzrlib.plugin
     from doctest import DocTestSuite
 
     global MODULES_TO_TEST, MODULES_TO_DOCTEST
 
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
-                   'bzrlib.selftest.test_parent',
+                   'bzrlib.selftest.testidentitymap',
                    'bzrlib.selftest.testinv',
-                   'bzrlib.selftest.testfetch',
+                   'bzrlib.selftest.test_ancestry',
+                   'bzrlib.selftest.test_commit',
+                   'bzrlib.selftest.test_commit_merge',
                    'bzrlib.selftest.versioning',
-                   'bzrlib.selftest.whitebox',
                    'bzrlib.selftest.testmerge3',
                    'bzrlib.selftest.testmerge',
                    'bzrlib.selftest.testhashcache',
                    'bzrlib.selftest.teststatus',
                    'bzrlib.selftest.testlog',
-                   'bzrlib.selftest.blackbox',
                    'bzrlib.selftest.testrevisionnamespaces',
                    'bzrlib.selftest.testbranch',
-                   'bzrlib.selftest.testremotebranch',
                    'bzrlib.selftest.testrevision',
                    'bzrlib.selftest.test_revision_info',
                    'bzrlib.selftest.test_merge_core',
                    'bzrlib.selftest.test_smart_add',
                    'bzrlib.selftest.test_bad_files',
                    'bzrlib.selftest.testdiff',
+                   'bzrlib.selftest.test_parent',
                    'bzrlib.selftest.test_xml',
-                   'bzrlib.fetch',
+                   'bzrlib.selftest.test_weave',
+                   'bzrlib.selftest.testfetch',
+                   'bzrlib.selftest.whitebox',
                    'bzrlib.selftest.teststore',
+                   'bzrlib.selftest.blackbox',
+                   'bzrlib.selftest.testsampler',
+                   'bzrlib.selftest.testtransactions',
+                   'bzrlib.selftest.testtransport',
                    'bzrlib.selftest.testgraph',
+                   'bzrlib.selftest.testworkingtree',
+                   'bzrlib.selftest.test_upgrade',
+                   'bzrlib.selftest.test_conflicts',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,

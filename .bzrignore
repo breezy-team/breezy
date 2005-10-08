@@ -18,3 +18,5 @@ test.log
 build
 ./ID
 ./tags
+.bzr-shelf
+bzrlib/plugins/*

@@ -1,4 +1,5 @@
-DEVELOPMENT HEAD
+bzr 0.1 2005-10-06
+
 
   BUG FIXES:
   
@@ -16,13 +17,55 @@ DEVELOPMENT HEAD
     * Export was choosing incorrect file paths for the content of
       the tarball, this has been fixed by Aaron Bentley.
 
+    * Commit will no longer commit without a log message, an 
+      error is returned instead. Contributed by Jelmer Vernooij.
+
+    * If you commit a specific file in a sub directory, any of its
+      parent directories that are added but not listed will be 
+      automatically included. Suggested by Michael Ellerman.
+
+
   IMPROVEMENTS:
 
     * 'branch' now accepts a --basis parameter which will take advantage
       of local history when making a new branch. This allows faster 
       branching of remote branches. Contributed by Aaron Bentley.
 
+    * New tree format based on weave files, called version 5.
+      Existing branches can be upgraded to this format using 
+      'bzr upgrade'.
+
+    * Symlinks are now versionable. Initial patch by 
+      Erik Toubro Nielsen, updated to head by Robert Collins.
+
+    * Executable bits are tracked on files. Patch from Gustavo
+      Niemeyer.
+
+    * 'bzr status' now shows unknown files inside a selected directory.
+      Patch from Heikki Paajanen.
+
+    * Merge conflicts are recorded in .bzr. Two new commands 'conflicts'
+      and 'resolve' have needed added, which list and remove those 
+      merge conflicts respectively. A conflicted tree cannot be committed
+      in. Contributed by Aaron Bentley.
+
+
   INTERNALS:
+
+    * Test case failures have the exception printed after the log 
+      for your viewing pleasure.
+
+    * InventoryEntry is now an abstract base class, use one of the
+      concrete InventoryDirectory etc classes instead.
+
+
+  TESTING:
+
+    * Removed testsweet module so that tests can be run after 
+      bzr installed by 'bzr selftest'.
+
+    * 'bzr selftest' command-line arguments can now be partial ids
+      of tests to run, e.g. 'bzr selftest test_weave'
 
       
 bzr 0.0.9 2005-09-23
@@ -43,7 +86,7 @@ bzr 0.0.9 2005-09-23
 
   IMPROVEMENTS:
 
-    * Status now accepted a -r argument to give status between chosen
+    * Status now accepts a -r argument to give status between chosen
       revisions. Contributed by Heikki Paajanen.
 
     * Revision arguments no longer use +/-/= to control ranges, instead
@@ -57,10 +100,11 @@ bzr 0.0.9 2005-09-23
 
   INTERNALS:
 
-    * removed uuid() as it was unused.
+    * Removed uuid() as it was unused.
 
-    * Test case failures have the exception printed after the log for your
-      viewing pleasure.
+    * Improved 'fetch' code for pulling revisions from one branch into
+      another (used by pull, merged, etc.)
+
 
 bzr 0.0.8 2005-09-20
 
@@ -89,7 +133,6 @@ bzr 0.0.8 2005-09-20
   INTERNALS:
 
     * Refactor xml packing/unpacking.
-
 
   BUG FIXES: 
 

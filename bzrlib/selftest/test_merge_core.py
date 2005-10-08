@@ -6,7 +6,8 @@ import unittest
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
-from bzrlib.inventory import InventoryEntry, RootEntry
+from bzrlib.inventory import RootEntry
+import bzrlib.inventory as inventory
 from bzrlib.osutils import file_kind, rename
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
@@ -38,7 +39,14 @@ class FalseTree(object):
                 break
         if path != dir:
             raise Exception("Can't find parent for %s" % name)
-        return InventoryEntry(file_id, name, kind, parent_id)
+        if kind not in ('directory', 'file', 'symlink'):
+            raise ValueError('unknown kind %r' % kind)
+        if kind == 'directory':
+            return inventory.InventoryDirectory(file_id, name, parent_id)
+        elif kind == 'file':
+            return inventory.InventoryFile(file_id, name, parent_id)
+        else:
+            return inventory.InventoryLink(file_id, name, parent_id)
 
 
 class MergeTree(object):
@@ -470,7 +478,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
     def test_trivial_star_merge(self):
         """Test that merges in a star shape Just Work.""" 
         from bzrlib.add import smart_add_branch, add_reporter_null
-        from bzrlib.branch import copy_branch
+        from bzrlib.clone import copy_branch
         from bzrlib.merge import merge
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))

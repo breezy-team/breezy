@@ -23,16 +23,21 @@
 # TODO: Perhaps return more details on the file to avoid statting it
 # again: nonexistent, file type, size, etc
 
+# TODO: Perhaps use a Python pickle instead of a text file; might be faster.
+
 
 
 CACHE_HEADER = "### bzr hashcache v5\n"
 
 import os, stat, time
+import sha
 
 from bzrlib.osutils import sha_file
 from bzrlib.trace import mutter, warning
+from bzrlib.atomicfile import AtomicFile
 
 
+FP_MODE_COLUMN = 5
 
 def _fingerprint(abspath):
     try:
@@ -47,7 +52,7 @@ def _fingerprint(abspath):
     # we discard any high precision because it's not reliable; perhaps we
     # could do better on some systems?
     return (fs.st_size, long(fs.st_mtime),
-            long(fs.st_ctime), fs.st_ino, fs.st_dev)
+            long(fs.st_ctime), fs.st_ino, fs.st_dev, fs.st_mode)
 
 
 class HashCache(object):
@@ -135,7 +140,6 @@ class HashCache(object):
                 del self._cache[path]
 
 
-
     def get_sha1(self, path):
         """Return the sha1 of a file.
         """
@@ -161,7 +165,16 @@ class HashCache(object):
             return cache_sha1
         
         self.miss_count += 1
-        digest = sha_file(file(abspath, 'rb', buffering=65000))
+
+
+        mode = file_fp[FP_MODE_COLUMN]
+        if stat.S_ISREG(mode):
+            digest = sha_file(file(abspath, 'rb', buffering=65000))
+        elif stat.S_ISLNK(mode):
+            link_target = os.readlink(abspath)
+            digest = sha.new(os.readlink(abspath)).hexdigest()
+        else:
+            raise BzrError("file %r: unknown file stat mode: %o"%(abspath,mode))
 
         now = int(time.time())
         if file_fp[1] >= now or file_fp[2] >= now:
@@ -177,16 +190,10 @@ class HashCache(object):
             self.update_count += 1
             self.needs_write = True
             self._cache[path] = (digest, file_fp)
-        
         return digest
         
-
-
-
     def write(self):
         """Write contents of cache to file."""
-        from atomicfile import AtomicFile
-
         outf = AtomicFile(self.cache_file_name(), 'wb')
         try:
             print >>outf, CACHE_HEADER,
@@ -243,7 +250,7 @@ class HashCache(object):
 
             pos += 3
             fields = l[pos:].split(' ')
-            if len(fields) != 6:
+            if len(fields) != 7:
                 warning("bad line in hashcache: %r" % l)
                 continue
 

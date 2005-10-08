@@ -19,6 +19,7 @@
 from shutil import copyfile
 from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
+from cStringIO import StringIO
 import errno
 import os
 import re
@@ -94,6 +95,30 @@ def kind_marker(kind):
     else:
         raise BzrError('invalid file kind %r' % kind)
 
+def lexists(f):
+    try:
+        if hasattr(os, 'lstat'):
+            os.lstat(f)
+        else:
+            os.stat(f)
+        return True
+    except OSError,e:
+        if e.errno == errno.ENOENT:
+            return False;
+        else:
+            raise BzrError("lstat/stat of (%r): %r" % (f, e))
+
+def normalizepath(f):
+    if hasattr(os.path, 'realpath'):
+        F = os.path.realpath
+    else:
+        F = os.path.abspath
+    [p,e] = os.path.split(f)
+    if e == "" or e == "." or e == "..":
+        return F(f)
+    else:
+        return os.path.join(F(p), e)
+    
 
 def backup_file(fn):
     """Copy a file to a backup.
@@ -140,6 +165,12 @@ def isfile(f):
     except OSError:
         return False
 
+def islink(f):
+    """True if f is a symlink."""
+    try:
+        return S_ISLNK(os.lstat(f)[ST_MODE])
+    except OSError:
+        return False
 
 def is_inside(dir, fname):
     """True if fname is inside dir.
@@ -202,6 +233,14 @@ def sha_file(f):
         if not b:
             break
         s.update(b)
+    return s.hexdigest()
+
+
+
+def sha_strings(strings):
+    """Return the sha-1 of concatenation of strings"""
+    s = sha.new()
+    map(s.update, strings)
     return s.hexdigest()
 
 
@@ -484,6 +523,11 @@ def _read_config_value(name):
         raise
 
 
+def split_lines(s):
+    """Split s into lines, but without removing the newline characters."""
+    return StringIO(s).readlines()
+
+
 def hardlinks_good():
     return sys.platform not in ('win32', 'cygwin', 'darwin')
 
@@ -499,3 +543,10 @@ def link_or_copy(src, dest):
         if e.errno != errno.EXDEV:
             raise
         copyfile(src, dest)
+
+
+def has_symlinks():
+    if hasattr(os, 'symlink'):
+        return True
+    else:
+        return False

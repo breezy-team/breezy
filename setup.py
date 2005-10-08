@@ -51,7 +51,7 @@ class my_build_scripts(build_scripts):
 ########################
 
 setup(name='bzr',
-      version='0.0.6',
+      version='0.1',
       author='Martin Pool',
       author_email='mbp@sourcefrog.net',
       url='http://www.bazaar-ng.org/',
@@ -61,6 +61,8 @@ setup(name='bzr',
                 'bzrlib.plugins',
                 'bzrlib.selftest',
                 'bzrlib.util',
+                'bzrlib.transport',
+                'bzrlib.store',
                 'bzrlib.util.elementtree',
                 'bzrlib.util.effbot.org',
                 ],

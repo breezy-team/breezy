@@ -27,7 +27,7 @@ from bzrlib.revisionspec import RevisionSpec
 class BranchStatus(TestCaseInTempDir):
     
     def test_branch_status(self): 
-        """Basic 'bzr mkdir' operation"""
+        """Test basic branch status"""
         from cStringIO import StringIO
         from bzrlib.status import show_status
         from bzrlib.branch import Branch
@@ -93,3 +93,48 @@ class BranchStatus(TestCaseInTempDir):
                            '  bye.c\n',
                            '  hello.c\n'])
 
+    def test_branch_status_specific_files(self): 
+        """Tests branch status with given specific files"""
+        from cStringIO import StringIO
+        from bzrlib.status import show_status
+        from bzrlib.branch import Branch
+        
+        b = Branch.initialize('.')
+
+        self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
+        b.add('directory')
+        b.add('test.c')
+        b.commit('testing')
+        
+        tof = StringIO()
+        show_status(b, to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['unknown:\n',
+                           '  bye.c\n',
+                           '  dir2\n',
+                           '  directory/hello.c\n'
+                           ])
+
+        tof = StringIO()
+        show_status(b, specific_files=['bye.c','test.c','absent.c'], to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['unknown:\n',
+                           '  bye.c\n'
+                           ])
+        
+        tof = StringIO()
+        show_status(b, specific_files=['directory'], to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['unknown:\n',
+                           '  directory/hello.c\n'
+                           ])
+        tof = StringIO()
+        show_status(b, specific_files=['dir2'], to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['unknown:\n',
+                           '  dir2\n'
+                           ])

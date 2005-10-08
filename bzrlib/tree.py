@@ -18,12 +18,13 @@
 """
 
 import os
+from cStringIO import StringIO
 
 import bzrlib
 from bzrlib.trace import mutter, note
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.inventory import Inventory
-from bzrlib.osutils import pumpfile, appendpath, fingerprint_file
+from bzrlib.osutils import appendpath, fingerprint_file
 
 
 exporters = {}
@@ -75,6 +76,8 @@ class Tree(object):
                          doc="Inventory of this Tree")
 
     def _check_retrieved(self, ie, f):
+        if not __debug__:
+            return  
         fp = fingerprint_file(f)
         f.seek(0)
         
@@ -92,10 +95,10 @@ class Tree(object):
                      "store is probably damaged/corrupt"])
 
 
-    def print_file(self, fileid):
-        """Print file with id `fileid` to stdout."""
+    def print_file(self, file_id):
+        """Print file with id `file_id` to stdout."""
         import sys
-        pumpfile(self.get_file(fileid), sys.stdout)
+        sys.stdout.write(self.get_file_text(file_id))
         
         
     def export(self, dest, format='dir', root=None):
@@ -119,16 +122,31 @@ class RevisionTree(Tree):
            or at least passing a description to the constructor.
     """
     
-    def __init__(self, store, inv):
-        self._store = store
+    def __init__(self, weave_store, inv, revision_id):
+        self._weave_store = weave_store
         self._inventory = inv
+        self._revision_id = revision_id
+
+    def get_weave(self, file_id):
+        # FIXME: RevisionTree should be given a branch
+        # not a store, or the store should know the branch.
+        import bzrlib.transactions as transactions
+        return self._weave_store.get_weave(file_id,
+            transactions.PassThroughTransaction())
+
+
+    def get_file_lines(self, file_id):
+        ie = self._inventory[file_id]
+        weave = self.get_weave(file_id)
+        return weave.get(ie.revision)
+        
+
+    def get_file_text(self, file_id):
+        return ''.join(self.get_file_lines(file_id))
+
 
     def get_file(self, file_id):
-        ie = self._inventory[file_id]
-        f = self._store[ie.text_id]
-        mutter("  get fileid{%s} from %r" % (file_id, self))
-        self._check_retrieved(ie, f)
-        return f
+        return StringIO(self.get_file_text(file_id))
 
     def get_file_size(self, file_id):
         return self._inventory[file_id].text_size
@@ -138,25 +156,34 @@ class RevisionTree(Tree):
         if ie.kind == "file":
             return ie.text_sha1
 
+    def is_executable(self, file_id):
+        return self._inventory[file_id].executable
+
     def has_filename(self, filename):
         return bool(self.inventory.path2id(filename))
 
     def list_files(self):
         # The only files returned by this are those from the version
         for path, entry in self.inventory.iter_entries():
-            yield path, 'V', entry.kind, entry.file_id
+            yield path, 'V', entry.kind, entry.file_id, entry
+
+    def get_symlink_target(self, file_id):
+        ie = self._inventory[file_id]
+        return ie.symlink_target;
 
 
 class EmptyTree(Tree):
     def __init__(self):
         self._inventory = Inventory()
 
+    def get_symlink_target(self, file_id):
+        return None
+
     def has_filename(self, filename):
         return False
 
     def list_files(self):
-        if False:  # just to make it a generator
-            yield None
+        return iter([])
     
     def __contains__(self, file_id):
         return file_id in self._inventory
@@ -164,8 +191,6 @@ class EmptyTree(Tree):
     def get_file_sha1(self, file_id):
         assert self._inventory[file_id].kind == "root_directory"
         return None
-
-
 
 
 ######################################################################
@@ -254,15 +279,8 @@ def dir_exporter(tree, dest, root):
     mutter('export version %r' % tree)
     inv = tree.inventory
     for dp, ie in inv.iter_entries():
-        kind = ie.kind
-        fullpath = appendpath(dest, dp)
-        if kind == 'directory':
-            os.mkdir(fullpath)
-        elif kind == 'file':
-            pumpfile(tree.get_file(ie.file_id), file(fullpath, 'wb'))
-        else:
-            raise BzrError("don't know how to export {%s} of kind %r" % (ie.file_id, kind))
-        mutter("  export {%s} kind %s to %s" % (ie.file_id, kind, fullpath))
+        ie.put_on_disk(dest, dp, tree)
+
 exporters['dir'] = dir_exporter
 
 try:
@@ -311,27 +329,10 @@ else:
         inv = tree.inventory
         for dp, ie in inv.iter_entries():
             mutter("  export {%s} kind %s to %s" % (ie.file_id, ie.kind, dest))
-            item = tarfile.TarInfo(os.path.join(root, dp))
-            # TODO: would be cool to actually set it to the timestamp of the
-            # revision it was last changed
-            item.mtime = now
-            if ie.kind == 'directory':
-                item.type = tarfile.DIRTYPE
-                fileobj = None
-                item.name += '/'
-                item.size = 0
-                item.mode = 0755
-            elif ie.kind == 'file':
-                item.type = tarfile.REGTYPE
-                fileobj = tree.get_file(ie.file_id)
-                item.size = _find_file_size(fileobj)
-                item.mode = 0644
-            else:
-                raise BzrError("don't know how to export {%s} of kind %r" %
-                        (ie.file_id, ie.kind))
-
+            item, fileobj = ie.get_tar_item(root, dp, now, tree)
             ball.addfile(item, fileobj)
         ball.close()
+
     exporters['tar'] = tar_exporter
 
     def tgz_exporter(tree, dest, root):
@@ -341,21 +342,3 @@ else:
     def tbz_exporter(tree, dest, root):
         tar_exporter(tree, dest, root, compression='bz2')
     exporters['tbz2'] = tbz_exporter
-
-
-def _find_file_size(fileobj):
-    offset = fileobj.tell()
-    try:
-        fileobj.seek(0, 2)
-        size = fileobj.tell()
-    except TypeError:
-        # gzip doesn't accept second argument to seek()
-        fileobj.seek(0)
-        size = 0
-        while True:
-            nread = len(fileobj.read())
-            if nread == 0:
-                break
-            size += nread
-    fileobj.seek(offset)
-    return size

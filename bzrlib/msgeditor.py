@@ -114,7 +114,7 @@ def edit_commit_message(infotext, ignoreline=None):
             msg.append(line)
             
         if len(msg) == 0:
-            return None
+            return ""
         # delete empty lines at the end
         del msg[lastline:]
         # add a newline at the end, if needed

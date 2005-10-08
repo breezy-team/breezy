@@ -23,22 +23,12 @@
 
 """test suite for weave algorithm"""
 
-
-import testsweet
-from bzrlib.weave import Weave, WeaveFormatError
-from bzrlib.weavefile import write_weave, read_weave
 from pprint import pformat
 
-
-try:
-    set
-    frozenset
-except NameError:
-    from sets import Set, ImmutableSet
-    set = Set
-    frozenset = ImmutableSet
-    del Set, ImmutableSet
-
+from bzrlib.weave import Weave, WeaveFormatError, WeaveError
+from bzrlib.weavefile import write_weave, read_weave
+from bzrlib.selftest import TestCase
+from bzrlib.osutils import sha_string
 
 
 # texts for use in testing
@@ -48,7 +38,7 @@ TEXT_1 = ["Hello world",
 
 
 
-class TestBase(testsweet.TestBase):
+class TestBase(TestCase):
     def check_read_write(self, k):
         """Check the weave k can be written & re-read."""
         from tempfile import TemporaryFile
@@ -111,7 +101,15 @@ class StoreTwo(TestBase):
         self.assertEqual(k.get(0), TEXT_0)
         self.assertEqual(k.get(1), TEXT_1)
 
-        k.dump(self.TEST_LOG)
+
+
+class AddWithGivenSha(TestBase):
+    def runTest(self):
+        """Add with caller-supplied SHA-1"""
+        k = Weave()
+
+        t = 'text0'
+        k.add('text0', [], [t], sha1=sha_string(t))
 
 
 
@@ -125,6 +123,33 @@ class InvalidAdd(TestBase):
                           'text0',
                           [69],
                           ['new text!'])
+
+
+class RepeatedAdd(TestBase):
+    """Add the same version twice; harmless."""
+    def runTest(self):
+        k = Weave()
+        idx = k.add('text0', [], TEXT_0)
+        idx2 = k.add('text0', [], TEXT_0)
+        self.assertEqual(idx, idx2)
+
+
+
+class InvalidRepeatedAdd(TestBase):
+    def runTest(self):
+        k = Weave()
+        idx = k.add('text0', [], TEXT_0)
+        self.assertRaises(WeaveError,
+                          k.add,
+                          'text0',
+                          [],
+                          ['not the same text'])
+        self.assertRaises(WeaveError,
+                          k.add,
+                          'text0',
+                          [12],         # not the right parents
+                          TEXT_0)
+        
 
 
 class InsertLines(TestBase):
@@ -470,8 +495,6 @@ class IncludeVersions(TestBase):
         self.assertEqual(k.get(0),
                          ["first line"])
 
-        k.dump(self.TEST_LOG)
-
 
 class DivergedIncludes(TestBase):
     """Weave with two diverged texts based on version 0.
@@ -768,22 +791,110 @@ class MergeCases(TestBase):
                      ['aaa', 'ddd', 'ccc'],
                      ['aaa', 'ccc'],
                      ['<<<<', 'aaa', '====', '>>>>', 'ccc'])
-    
 
 
-def testweave():
-    import testsweet
-    from unittest import TestSuite, TestLoader
-    import testweave
+class JoinWeavesTests(TestBase):
+    def setUp(self):
+        super(JoinWeavesTests, self).setUp()
+        self.weave1 = Weave()
+        self.lines1 = ['hello\n']
+        self.lines3 = ['hello\n', 'cruel\n', 'world\n']
+        self.weave1.add('v1', [], self.lines1)
+        self.weave1.add('v2', [0], ['hello\n', 'world\n'])
+        self.weave1.add('v3', [1], self.lines3)
+        
+    def test_join_empty(self):
+        """Join two empty weaves."""
+        eq = self.assertEqual
+        w1 = Weave()
+        w2 = Weave()
+        w1.join(w2)
+        eq(w1.numversions(), 0)
+        
+    def test_join_empty_to_nonempty(self):
+        """Join empty weave onto nonempty."""
+        self.weave1.join(Weave())
+        self.assertEqual(len(self.weave1), 3)
 
-    tl = TestLoader()
-    suite = TestSuite()
-    suite.addTest(tl.loadTestsFromModule(testweave))
-    
-    return int(not testsweet.run_suite(suite)) # for shell 0=true
+    def test_join_unrelated(self):
+        """Join two weaves with no history in common."""
+        wb = Weave()
+        wb.add('b1', [], ['line from b\n'])
+        w1 = self.weave1
+        w1.join(wb)
+        eq = self.assertEqual
+        eq(len(w1), 4)
+        eq(sorted(list(w1.iter_names())),
+           ['b1', 'v1', 'v2', 'v3'])
+
+    def test_join_related(self):
+        wa = self.weave1.copy()
+        wb = self.weave1.copy()
+        wa.add('a1', ['v3'], ['hello\n', 'sweet\n', 'world\n'])
+        wb.add('b1', ['v3'], ['hello\n', 'pale blue\n', 'world\n'])
+        eq = self.assertEquals
+        eq(len(wa), 4)
+        eq(len(wb), 4)
+        wa.join(wb)
+        eq(len(wa), 5)
+        eq(wa.get_lines('b1'),
+           ['hello\n', 'pale blue\n', 'world\n'])
+
+    def test_join_parent_disagreement(self):
+        """Cannot join weaves with different parents for a version."""
+        wa = Weave()
+        wb = Weave()
+        wa.add('v1', [], ['hello\n'])
+        wb.add('v0', [], [])
+        wb.add('v1', ['v0'], ['hello\n'])
+        self.assertRaises(WeaveError,
+                          wa.join, wb)
+
+    def test_join_text_disagreement(self):
+        """Cannot join weaves with different texts for a version."""
+        wa = Weave()
+        wb = Weave()
+        wa.add('v1', [], ['hello\n'])
+        wb.add('v1', [], ['not\n', 'hello\n'])
+        self.assertRaises(WeaveError,
+                          wa.join, wb)
+
+    def test_join_unordered(self):
+        """Join weaves where indexes differ.
+        
+        The source weave contains a different version at index 0."""
+        wa = self.weave1.copy()
+        wb = Weave()
+        wb.add('x1', [], ['line from x1\n'])
+        wb.add('v1', [], ['hello\n'])
+        wb.add('v2', ['v1'], ['hello\n', 'world\n'])
+        wa.join(wb)
+        eq = self.assertEquals
+        eq(sorted(wa.iter_names()), ['v1', 'v2', 'v3', 'x1',])
+        eq(wa.get_text('x1'), 'line from x1\n')
+
+    def test_join_with_ghosts(self):
+        """Join that inserts parents of an existing revision.
+
+        This can happen when merging from another branch who
+        knows about revisions the destination does not.  In 
+        this test the second weave knows of an additional parent of 
+        v2.  Any revisions which are in common still have to have the 
+        same text."""
+        return ###############################
+        wa = self.weave1.copy()
+        wb = Weave()
+        wb.add('x1', [], ['line from x1\n'])
+        wb.add('v1', [], ['hello\n'])
+        wb.add('v2', ['v1', 'x1'], ['hello\n', 'world\n'])
+        wa.join(wb)
+        eq = self.assertEquals
+        eq(sorted(wa.iter_names()), ['v1', 'v2', 'v3', 'x1',])
+        eq(wa.get_text('x1'), 'line from x1\n')
 
 
 if __name__ == '__main__':
     import sys
-    sys.exit(testweave())
+    import unittest
+    sys.exit(unittest.main())
     

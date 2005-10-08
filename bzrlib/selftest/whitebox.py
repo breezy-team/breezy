@@ -45,9 +45,6 @@ class TestBranch(TestCaseInTempDir):
         b.commit('commit pointless revision with one file',
                  allow_pointless=True)
 
-        b.add_pending_merge('mbp@892739123-2005-123123')
-        b.commit('commit new merge with no text changes',
-                 allow_pointless=False)
         
 
 
@@ -70,31 +67,8 @@ class TestRevisionId(TestCase):
                           'Martin Pool <mbp@sourcefrog.net>-20050311061123-96a255005c7c9dbe')
 
 
-class PendingMerges(TestCaseInTempDir):
+class MoreTests(TestCaseInTempDir):
 
-    def test_pending_merges(self):
-        """Tracking pending-merged revisions."""
-        b = Branch.initialize('.')
-
-        self.assertEquals(b.pending_merges(), [])
-        b.add_pending_merge('foo@azkhazan-123123-abcabc')
-        self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
-        b.add_pending_merge('foo@azkhazan-123123-abcabc')
-        self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
-        b.add_pending_merge('wibble@fofof--20050401--1928390812')
-        self.assertEquals(b.pending_merges(),
-                          ['foo@azkhazan-123123-abcabc',
-                           'wibble@fofof--20050401--1928390812'])
-        b.commit("commit from base with two merges")
-        rev = b.get_revision(b.revision_history()[0])
-        self.assertEquals(len(rev.parents), 2)
-        self.assertEquals(rev.parents[0].revision_id,
-                          'foo@azkhazan-123123-abcabc')
-        self.assertEquals(rev.parents[1].revision_id,
-                           'wibble@fofof--20050401--1928390812')
-        # list should be cleared when we do a commit
-        self.assertEquals(b.pending_merges(), [])
-        
     def test_revert(self):
         """Test selected-file revert"""
         b = Branch.initialize('.')
