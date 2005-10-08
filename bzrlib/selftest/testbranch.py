@@ -19,11 +19,11 @@ from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
 from bzrlib.commit import commit
 import bzrlib.errors as errors
-from bzrlib.errors import NoSuchRevision, UnlistableBranch
+from bzrlib.errors import NoSuchRevision, UnlistableBranch, NotBranchError
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
-
+from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 
 class TestBranch(TestCaseInTempDir):
 
@@ -141,7 +141,16 @@ class TestBranch(TestCaseInTempDir):
         # list should be cleared when we do a commit
         self.assertEquals(b.pending_merges(), [])
  
-
+class TestRemote(TestCaseWithWebserver):
+    def test_open_containing(self):
+        self.assertRaises(NotBranchError, Branch.open_containing,
+                          self.get_remote_url(''))
+        self.assertRaises(NotBranchError, Branch.open_containing,
+                          self.get_remote_url('g/p/q'))
+        b = Branch.initialize('.')
+        Branch.open_containing(self.get_remote_url(''))
+        Branch.open_containing(self.get_remote_url('g/p/q'))
+        
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        
 #         >>> from bzrlib.commit import commit
 #         >>> bzrlib.trace.silent = True
