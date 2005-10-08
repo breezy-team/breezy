@@ -694,12 +694,18 @@ class OldTests(ExternalBase):
             runbzr('remove d2/link1')
             assert self.capture('unknowns') == 'd2/link1\n'
             runbzr(['commit', '-m', '5: remove d2/link1'])
+            # try with the rm alias
+            runbzr('add d2/link1')
+            runbzr(['commit', '-m', '6: add d2/link1'])
+            runbzr('rm d2/link1')
+            assert self.capture('unknowns') == 'd2/link1\n'
+            runbzr(['commit', '-m', '7: remove d2/link1'])
     
             os.mkdir("d1")
             runbzr('add d1')
             runbzr('rename d2/link3 d1/link3new')
             assert self.capture('unknowns') == 'd2/link1\n'
-            runbzr(['commit', '-m', '6: remove d2/link1, move/rename link3'])
+            runbzr(['commit', '-m', '8: remove d2/link1, move/rename link3'])
             
             runbzr(['check'])
             
@@ -737,9 +743,9 @@ class OldTests(ExternalBase):
             assert listdir_sorted("d2")== [ "link3" ]
             chdir("..")
             
-            runbzr(['export', '-r', '6', 'exp6.tmp'])
+            runbzr(['export', '-r', '8', 'exp6.tmp'])
             chdir("exp6.tmp")
-            assert listdir_sorted(".") == [ "d1", "d2", "link2" ]
+            self.assertEqual(listdir_sorted("."), [ "d1", "d2", "link2"])
             assert listdir_sorted("d1") == [ "link3new" ]
             assert listdir_sorted("d2") == []
             assert os.readlink("d1/link3new") == "NOWHERE3"

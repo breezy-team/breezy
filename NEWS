@@ -54,6 +54,8 @@ bzr 0.1 2005-10-06
       merge conflicts respectively. A conflicted tree cannot be committed
       in. Contributed by Aaron Bentley.
 
+    * 'rm' is now an alias for 'remove'.
+
 
   INTERNALS:
 
