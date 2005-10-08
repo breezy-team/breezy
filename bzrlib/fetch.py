@@ -17,13 +17,14 @@
 import os
 from cStringIO import StringIO
 
-import bzrlib.errors
+import bzrlib
+import bzrlib.errors as errors
+from bzrlib.errors import InstallFailed, NoSuchRevision, WeaveError
 from bzrlib.trace import mutter, note, warning
 from bzrlib.branch import Branch
 from bzrlib.progress import ProgressBar
 from bzrlib.xml5 import serializer_v5
 from bzrlib.osutils import sha_string, split_lines
-from bzrlib.errors import InstallFailed, NoSuchRevision, WeaveError
 
 """Copying of history from one branch to another.
 
@@ -218,11 +219,14 @@ class Fetcher(object):
         if file_id in self.copied_file_ids:
             mutter('file {%s} already copied', file_id)
             return
-        from_weave = self.from_weaves.get_weave(file_id, 
+        from_weave = self.from_weaves.get_weave(file_id,
             self.from_branch.get_transaction())
         to_weave = self.to_weaves.get_weave_or_empty(file_id,
             self.to_branch.get_transaction())
-        to_weave.join(from_weave)
+        try:
+            to_weave.join(from_weave)
+        except errors.WeaveParentMismatch:
+            to_weave.reweave(from_weave)
         self.to_weaves.put_weave(file_id, to_weave,
             self.to_branch.get_transaction())
         self.count_weaves += 1

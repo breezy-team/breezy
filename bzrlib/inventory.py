@@ -166,6 +166,14 @@ class InventoryEntry(object):
                 ie = inv[self.file_id]
                 assert ie.file_id == self.file_id
                 if ie.revision in heads:
+                    # fixup logic, there was a bug in revision updates.
+                    # with x bit support.
+                    try:
+                        if heads[ie.revision].executable != ie.executable:
+                            heads[ie.revision].executable = False
+                            ie.executable = False
+                    except AttributeError:
+                        pass
                     assert heads[ie.revision] == ie
                 else:
                     # may want to add it.
@@ -571,6 +579,8 @@ class InventoryFile(InventoryEntry):
             # FIXME: 20050930 probe for the text size when getting sha1
             # in _read_tree_state
             self.text_size = previous_ie.text_size
+        if self.executable != previous_ie.executable:
+            compatible = False
         return compatible
 
 
