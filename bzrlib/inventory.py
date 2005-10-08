@@ -579,6 +579,8 @@ class InventoryFile(InventoryEntry):
             # FIXME: 20050930 probe for the text size when getting sha1
             # in _read_tree_state
             self.text_size = previous_ie.text_size
+        if self.executable != previous_ie.executable:
+            compatible = False
         return compatible
 
 
