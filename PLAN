@@ -1,0 +1,3 @@
+- set bzr:revision as SVN revision property
+- use UUID-revno or bzr:revision for imported revisions
+- svnpull / svnpush commands
