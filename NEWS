@@ -63,6 +63,10 @@ bzr 0.1 2005-10-06
     * InventoryEntry is now an abstract base class, use one of the
       concrete InventoryDirectory etc classes instead.
 
+    * Branch raises an UnsupportedFormatError when it detects a 
+      bzr branch it cannot understand. This allows for precise
+      handling of such circumstances.
+
 
   TESTING:
 

@@ -14,12 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from os.path import dirname
+
+import bzrlib.errors as errors
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter, note, warning
 from bzrlib.errors import NotBranchError
 from bzrlib.branch import Branch
 from bzrlib.osutils import quotefn
-from os.path import dirname
 
 def glob_expand_for_win32(file_list):
     import glob
@@ -116,6 +118,8 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
                 sub_tree = True
             except NotBranchError:
                 sub_tree = False
+            except errors.UnsupportedFormatError:
+                sub_tree = True
         else:
             sub_tree = False
 

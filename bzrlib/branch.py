@@ -506,7 +506,8 @@ class _Branch(Branch):
 
         if (not relax_version_check
             and self._branch_format != 5):
-            raise BzrError('sorry, branch format %r not supported' % fmt,
+            raise errors.UnsupportedFormatError(
+                           'sorry, branch format %r not supported' % fmt,
                            ['use a different bzr version',
                             'or remove the .bzr directory'
                             ' and "bzr init" again'])
