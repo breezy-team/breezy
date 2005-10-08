@@ -96,6 +96,8 @@ def fetch_steps(self, br_a, br_b, writable_a):
                       br_a2)
 
 
+    #TODO: test that fetch correctly does reweaving when needed. RBC 20051008
+
 class TestFetch(TestCaseInTempDir):
 
     def test_fetch(self):

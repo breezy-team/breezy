@@ -185,7 +185,7 @@ class UnlistableBranch(BzrError):
         BzrError.__init__(self, "Stores for branch %s are not listable" % br)
 
 
-from bzrlib.weave import WeaveError
+from bzrlib.weave import WeaveError, WeaveParentMismatch
 
 class TransportError(BzrError):
     """All errors thrown by Transport implementations should derive

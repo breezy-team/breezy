@@ -18,13 +18,14 @@
 
 
 # TODO: tests regarding version names
-
-
+# TODO: rbc 20050108 test that join does not leave an inconsistent weave 
+#       if it fails.
 
 """test suite for weave algorithm"""
 
 from pprint import pformat
 
+import bzrlib.errors as errors
 from bzrlib.weave import Weave, WeaveFormatError, WeaveError, reweave
 from bzrlib.weavefile import write_weave, read_weave
 from bzrlib.selftest import TestCase
@@ -879,6 +880,16 @@ class JoinWeavesTests(TestBase):
         eq = self.assertEquals
         eq(sorted(wr.iter_names()), ['v1', 'v2', 'v3'])
         eq(wr.get_lines('v3'), ['hello\n', 'cruel\n', 'world\n'])
+        self.weave1.reweave(wb)
+        self.assertEquals(wr, self.weave1)
+
+    def test_join_with_ghosts_raises_parent_mismatch(self):
+        wa = self.weave1.copy()
+        wb = Weave()
+        wb.add('x1', [], ['line from x1\n'])
+        wb.add('v1', [], ['hello\n'])
+        wb.add('v2', ['v1', 'x1'], ['hello\n', 'world\n'])
+        self.assertRaises(errors.WeaveParentMismatch, wa.join, wb)
 
     def test_reweave_with_ghosts(self):
         """Join that inserts parents of an existing revision.
@@ -899,6 +910,8 @@ class JoinWeavesTests(TestBase):
         eq(wc.get_text('x1'), 'line from x1\n')
         eq(wc.get_lines('v2'), ['hello\n', 'world\n'])
         eq(wc.parent_names('v2'), ['v1', 'x1'])
+        self.weave1.reweave(wb)
+        self.assertEquals(wc, self.weave1)
 
 
 if __name__ == '__main__':

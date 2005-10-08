@@ -83,6 +83,10 @@ class WeaveError(Exception):
 
 class WeaveFormatError(WeaveError):
     """Weave invariant violated"""
+
+
+class WeaveParentMismatch(WeaveError):
+    """Parents are mismatched between two revisions."""
     
 
 class Weave(object):
@@ -783,13 +787,16 @@ class Weave(object):
         """
         if other.numversions() == 0:
             return          # nothing to update, easy
+        # two loops so that we do not change ourselves before verifying it
+        # will be ok
         # work through in index order to make sure we get all dependencies
+        for other_idx, name in enumerate(other._names):
+            if self._check_version_consistent(other, other_idx, name):
+                continue
         for other_idx, name in enumerate(other._names):
             # TODO: If all the parents of the other version are already 
             # present then we can avoid some work by just taking the delta
             # and adjusting the offsets.
-            if self._check_version_consistent(other, other_idx, name):
-                continue
             new_parents = self._imported_parents(other, other_idx)
             lines = other.get_lines(other_idx)
             sha1 = other._sha1s[other_idx]
@@ -833,15 +840,18 @@ class Weave(object):
             n1.sort()
             n2.sort()
             if n1 != n2:
-                # XXX: Perhaps return a specific exception for this so
-                # we can retry through reweave().
-                raise WeaveError("inconsistent parents for version {%s}: "
-                                 "%s vs %s"
-                                 % (name, n1, n2))
+                raise WeaveParentMismatch("inconsistent parents "
+                    "for version {%s}: %s vs %s" % (name, n1, n2))
             else:
                 return True         # ok!
         else:
             return False
+
+    def reweave(self, other):
+        """Reweave self with other."""
+        new_weave = reweave(self, other)
+        for attr in self.__slots__:
+            setattr(self, attr, getattr(new_weave, attr))
 
 
 def reweave(wa, wb):
