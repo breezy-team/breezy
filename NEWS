@@ -29,6 +29,9 @@ bzr 0.1 2005-10-06
       bzr will correct this when it encounters it. Fixed by
       Robert Collins
 
+    * HTTP tests now force off the use of http_proxy for the duration.
+      Contributed by Gustavo Niemeyer.
+
 
   IMPROVEMENTS:
 
