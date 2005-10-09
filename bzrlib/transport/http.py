@@ -89,7 +89,8 @@ class HttpTransport(Transport):
                     # In most filesystems, a request for the parent
                     # of root, just returns root.
                     continue
-                basepath.pop()
+                if len(basepath) > 0:
+                    basepath.pop()
             elif p == '.':
                 continue # No-op
             else:

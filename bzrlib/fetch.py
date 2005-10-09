@@ -104,6 +104,12 @@ class Fetcher(object):
         else:
             self.pb = pb
         try:
+            self._fetch_revisions(last_revision)
+        finally:
+            self.pb.clear()
+
+    def _fetch_revisions(self, last_revision):
+        try:
             self.last_revision = self._find_last_revision(last_revision)
         except NoSuchRevision, e:
             mutter('failed getting last revision: %s', e)
@@ -115,7 +121,6 @@ class Fetcher(object):
             raise InstallFailed([self.last_revision])
         self._copy_revisions(revs_to_fetch)
         self.new_ancestry = revs_to_fetch
-
 
     def _find_last_revision(self, last_revision):
         """Find the limiting source revision.
