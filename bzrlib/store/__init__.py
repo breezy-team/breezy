@@ -25,6 +25,7 @@ unique ID.
 """
 
 from cStringIO import StringIO
+from stat import ST_MODE, S_ISDIR
 from zlib import adler32
 
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
@@ -204,6 +205,19 @@ class TransportStore(Store):
             return "%s(%r)" % (self.__class__.__name__, self._transport.base)
 
     __str__ = __repr__
+
+    def _iter_relpaths(self):
+        """Iter the relative paths of files in the transports sub-tree."""
+        transport = self._transport
+        queue = list(transport.list_dir('.'))
+        while queue:
+            relpath = queue.pop(0)
+            st = transport.stat(relpath)
+            if S_ISDIR(st[ST_MODE]):
+                for i, basename in enumerate(transport.list_dir(relpath)):
+                    queue.insert(i, relpath+'/'+basename)
+            else:
+                yield relpath, st
 
     def listable(self):
         """Return True if this store is able to be listed."""

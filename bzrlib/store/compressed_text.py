@@ -29,7 +29,7 @@ from bzrlib.trace import mutter
 from bzrlib.errors import BzrError, FileExists
 
 from StringIO import StringIO
-from stat import ST_SIZE, ST_MODE, S_ISDIR
+from stat import ST_SIZE
 
 class CompressedTextStore(bzrlib.store.TransportStore):
     """Store that holds files indexed by unique names.
@@ -205,18 +205,6 @@ class CompressedTextStore(bzrlib.store.TransportStore):
         while count < len(is_requested):
             yield None
             count += 1
-
-    def _iter_relpaths(self):
-        transport = self._transport
-        queue = list(transport.list_dir('.'))
-        while queue:
-            relpath = queue.pop(0)
-            st = transport.stat(relpath)
-            if S_ISDIR(st[ST_MODE]):
-                for i, basename in enumerate(transport.list_dir(relpath)):
-                    queue.insert(i, relpath+'/'+basename)
-            else:
-                yield relpath, st
 
     def __iter__(self):
         for relpath, st in self._iter_relpaths():

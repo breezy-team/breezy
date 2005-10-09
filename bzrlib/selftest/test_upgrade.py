@@ -77,8 +77,11 @@ class TestUpgrade(TestCaseInTempDir):
     def test_upgrade_makes_dir_weaves(self):
         build_tree_contents(_upgrade_dir_template)
         upgrade('.')
+        # this is the path to the literal file. As format changes 
+        # occur it needs to be updated. FIXME: ask the store for the
+        # path.
         self.failUnlessExists(
-            '.bzr/weaves/dir-20051005095101-da1441ea3fa6917a.weave')
+            '.bzr/weaves/de/dir-20051005095101-da1441ea3fa6917a.weave')
 
 
 _upgrade1_template = \

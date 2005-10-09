@@ -21,19 +21,18 @@
 
 
 from cStringIO import StringIO
-from stat import ST_MODE, S_ISDIR
 import os
 import errno
 
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.weave import Weave
-from bzrlib.store import Store, hash_prefix
+from bzrlib.store import TransportStore, hash_prefix
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.errors import NoSuchFile, FileExists
 from bzrlib.trace import mutter
 
 
-class WeaveStore(Store):
+class WeaveStore(TransportStore):
     """Collection of several weave files in a directory.
 
     This has some shortcuts for reading and writing them.
@@ -50,18 +49,6 @@ class WeaveStore(Store):
             return hash_prefix(file_id) + file_id + WeaveStore.FILE_SUFFIX
         else:
             return file_id + WeaveStore.FILE_SUFFIX
-
-    def _iter_relpaths(self):
-        transport = self._transport
-        queue = list(transport.list_dir('.'))
-        while queue:
-            relpath = queue.pop(0)
-            st = transport.stat(relpath)
-            if S_ISDIR(st[ST_MODE]):
-                for i, basename in enumerate(transport.list_dir(relpath)):
-                    queue.insert(i, relpath+'/'+basename)
-            else:
-                yield relpath, st
 
     def __iter__(self):
         l = len(WeaveStore.FILE_SUFFIX)

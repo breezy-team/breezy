@@ -59,6 +59,10 @@ bzr 0.1 2005-10-06
 
     * 'rm' is now an alias for 'remove'.
 
+    * Stores now split out their content in a single byte prefixed hash,
+      dropping the density of files per directory by 256. Contributed by
+      Gustavo Niemeyer.
+
 
   INTERNALS:
 
