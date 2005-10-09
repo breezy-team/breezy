@@ -51,6 +51,7 @@ import bzrlib.ui
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
 BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
+BZR_BRANCH_FORMAT_6 = "Bazaar-NG branch, format 6\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
 
 
@@ -240,24 +241,26 @@ class _Branch(Branch):
             self._make_control()
         self._check_format(relax_version_check)
 
-        def get_store(name, compressed=True):
+        def get_store(name, compressed=True, prefixed=False):
             # FIXME: This approach of assuming stores are all entirely compressed
             # or entirely uncompressed is tidy, but breaks upgrade from 
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
             relpath = self._rel_controlfilename(name)
             if compressed:
-                store = CompressedTextStore(self._transport.clone(relpath))
+                store = CompressedTextStore(self._transport.clone(relpath),
+                                            prefixed=prefixed)
             else:
-                store = TextStore(self._transport.clone(relpath))
+                store = TextStore(self._transport.clone(relpath),
+                                  prefixed=prefixed)
             #if self._transport.should_cache():
             #    cache_path = os.path.join(self.cache_root, name)
             #    os.mkdir(cache_path)
             #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
-        def get_weave(name):
+        def get_weave(name, prefixed=False):
             relpath = self._rel_controlfilename(name)
-            ws = WeaveStore(self._transport.clone(relpath))
+            ws = WeaveStore(self._transport.clone(relpath), prefixed=prefixed)
             if self._transport.should_cache():
                 ws.enable_cache = True
             return ws
@@ -270,6 +273,11 @@ class _Branch(Branch):
             self.control_weaves = get_weave([])
             self.weave_store = get_weave('weaves')
             self.revision_store = get_store('revision-store', compressed=False)
+        elif self._branch_format == 6:
+            self.control_weaves = get_weave([])
+            self.weave_store = get_weave('weaves', prefixed=True)
+            self.revision_store = get_store('revision-store', compressed=False,
+                                            prefixed=True)
         self._transaction = None
 
     def __str__(self):
@@ -471,7 +479,7 @@ class _Branch(Branch):
         files = [('README', 
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.\n"),
-            ('branch-format', BZR_BRANCH_FORMAT_5),
+            ('branch-format', BZR_BRANCH_FORMAT_6),
             ('revision-history', ''),
             ('branch-name', ''),
             ('branch-lock', ''),
@@ -499,13 +507,15 @@ class _Branch(Branch):
         except NoSuchFile:
             raise NotBranchError(self.base)
         mutter("got branch format %r", fmt)
-        if fmt == BZR_BRANCH_FORMAT_5:
+        if fmt == BZR_BRANCH_FORMAT_6:
+            self._branch_format = 6
+        elif fmt == BZR_BRANCH_FORMAT_5:
             self._branch_format = 5
         elif fmt == BZR_BRANCH_FORMAT_4:
             self._branch_format = 4
 
         if (not relax_version_check
-            and self._branch_format != 5):
+            and self._branch_format not in (5, 6)):
             raise errors.UnsupportedFormatError(
                            'sorry, branch format %r not supported' % fmt,
                            ['use a different bzr version',

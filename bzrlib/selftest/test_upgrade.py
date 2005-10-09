@@ -39,12 +39,12 @@ class TestUpgrade(TestCaseInTempDir):
         self.failUnlessExists('.bzr/README')
 
     def test_upgrade_simple(self):
-        """Upgrade simple v0.0.4 format to v5"""
+        """Upgrade simple v0.0.4 format to v6"""
         eq = self.assertEquals
         build_tree_contents(_upgrade1_template)
         upgrade('.')
         b = Branch.open('.')
-        eq(b._branch_format, 5)
+        eq(b._branch_format, 6)
         rh = b.revision_history()
         eq(rh,
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',

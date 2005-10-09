@@ -21,14 +21,15 @@
 
 
 from cStringIO import StringIO
+from stat import ST_MODE, S_ISDIR
 import os
 import errno
 
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.weave import Weave
-from bzrlib.store import Store
+from bzrlib.store import Store, hash_prefix
 from bzrlib.atomicfile import AtomicFile
-from bzrlib.errors import NoSuchFile
+from bzrlib.errors import NoSuchFile, FileExists
 from bzrlib.trace import mutter
 
 
@@ -39,19 +40,34 @@ class WeaveStore(Store):
     """
     FILE_SUFFIX = '.weave'
 
-    def __init__(self, transport):
+    def __init__(self, transport, prefixed=False):
         self._transport = transport
+        self._prefixed = prefixed
 
     def filename(self, file_id):
         """Return the path relative to the transport root."""
-        return file_id + WeaveStore.FILE_SUFFIX
+        if self._prefixed:
+            return hash_prefix(file_id) + file_id + WeaveStore.FILE_SUFFIX
+        else:
+            return file_id + WeaveStore.FILE_SUFFIX
+
+    def _iter_relpaths(self):
+        transport = self._transport
+        queue = list(transport.list_dir('.'))
+        while queue:
+            relpath = queue.pop(0)
+            st = transport.stat(relpath)
+            if S_ISDIR(st[ST_MODE]):
+                for i, basename in enumerate(transport.list_dir(relpath)):
+                    queue.insert(i, relpath+'/'+basename)
+            else:
+                yield relpath, st
 
     def __iter__(self):
         l = len(WeaveStore.FILE_SUFFIX)
-        for f in self._transport.list_dir('.'):
-            if f.endswith(WeaveStore.FILE_SUFFIX):
-                f = f[:-l]
-                yield f
+        for relpath, st in self._iter_relpaths():
+            if relpath.endswith(WeaveStore.FILE_SUFFIX):
+                yield os.path.basename(relpath[:-l])
 
     def __contains__(self, fileid):
         """"""
@@ -61,6 +77,11 @@ class WeaveStore(Store):
         return self._transport.get(self.filename(file_id))
 
     def _put(self, file_id, f):
+        if self._prefixed:
+            try:
+                self._transport.mkdir(hash_prefix(file_id))
+            except FileExists:
+                pass
         return self._transport.put(self.filename(file_id), f)
 
     def get_weave(self, file_id, transaction):

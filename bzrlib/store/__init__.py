@@ -25,6 +25,7 @@ unique ID.
 """
 
 from cStringIO import StringIO
+from zlib import adler32
 
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.trace import mutter
@@ -306,4 +307,7 @@ def copy_all(store_from, store_to):
         raise UnlistableStore(store_from)
     ids = [f for f in store_from]
     store_to.copy_multi(store_from, ids)
+
+def hash_prefix(file_id):
+    return "%02x/" % (adler32(file_id) & 0xff)
 

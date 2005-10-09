@@ -85,7 +85,8 @@ import sys
 import logging
 import shutil
 
-from bzrlib.branch import Branch, find_branch, BZR_BRANCH_FORMAT_5
+from bzrlib.branch import Branch, find_branch
+from bzrlib.branch import BZR_BRANCH_FORMAT_5, BZR_BRANCH_FORMAT_6
 from bzrlib.revfile import Revfile
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave
@@ -112,9 +113,38 @@ class Convert(object):
             return
         note('starting upgrade of %s', os.path.abspath(self.base))
         self._backup_control_dir()
-        note('starting upgrade')
-        note('note: upgrade may be faster if all store files are ungzipped first')
         self.pb = ui_factory.progress_bar()
+        if self.old_format == 4:
+            note('starting upgrade from format 4 to 5')
+            self._convert_to_weaves()
+            self._open_branch()
+        if self.old_format == 5:
+            note('starting upgrade from format 5 to 6')
+            self._convert_to_prefixed()
+            self._open_branch()
+        note("finished")
+
+
+    def _convert_to_prefixed(self):
+        from bzrlib.store import hash_prefix
+        for store_name in ["weaves", "revision-store"]:
+            note("adding prefixes to %s" % store_name) 
+            store_dir = os.path.join(self.base, ".bzr", store_name)
+            for filename in os.listdir(store_dir):
+                if filename.endswith(".weave") or filename.endswith(".gz"):
+                    file_id = os.path.splitext(filename)[0]
+                else:
+                    file_id = filename
+                prefix_dir = os.path.join(store_dir, hash_prefix(file_id))
+                if not os.path.isdir(prefix_dir):
+                    os.mkdir(prefix_dir)
+                os.rename(os.path.join(store_dir, filename),
+                          os.path.join(prefix_dir, filename))
+        self._set_new_format(BZR_BRANCH_FORMAT_6)
+
+
+    def _convert_to_weaves(self):
+        note('note: upgrade may be faster if all store files are ungzipped first')
         if not os.path.isdir(self.base + '/.bzr/weaves'):
             os.mkdir(self.base + '/.bzr/weaves')
         self.inv_weave = Weave('inventory')
@@ -144,23 +174,24 @@ class Convert(object):
         note('  %6d texts' % self.text_count)
         self._write_all_weaves()
         self._write_all_revs()
-        self._set_new_format()
         self._cleanup_spare_files()
+        self._set_new_format(BZR_BRANCH_FORMAT_5)
 
 
     def _open_branch(self):
         self.branch = Branch.open_downlevel(self.base)
-        if self.branch._branch_format == 5:
-            note('this branch is already in the most current format')
+        self.old_format = self.branch._branch_format
+        if self.old_format == 6:
+            note('this branch is in the most current format')
             return False
-        if self.branch._branch_format != 4:
+        if self.old_format not in (4, 5):
             raise BzrError("cannot upgrade from branch format %r" %
                            self.branch._branch_format)
         return True
 
 
-    def _set_new_format(self):
-        self.branch.put_controlfile('branch-format', BZR_BRANCH_FORMAT_5)
+    def _set_new_format(self, format):
+        self.branch.put_controlfile('branch-format', format)
 
 
     def _cleanup_spare_files(self):
