@@ -41,6 +41,9 @@ bzr 0.1 2005-10-06
     * Fix problems in merging weave-based branches that have 
       different partial views of history.
 
+    * Symlink support: working with symlinks when not in the root of a 
+      bzr tree was broken, patch from Scott James Remnant.
+
 
   IMPROVEMENTS:
 
