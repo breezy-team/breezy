@@ -412,16 +412,6 @@ def set_interesting(inventory_a, inventory_b, interesting_ids):
              source_file.interesting = source_file.id in interesting_ids
 
 
-def generate_cset_optimized(tree_a, tree_b, interesting_ids=None):
-    """Generate a changeset.  If interesting_ids is supplied, only changes
-    to those files will be shown.  Metadata changes are stripped.
-    """ 
-    cset =  generate_changeset(tree_a, tree_b, interesting_ids)
-    for entry in cset.entries.itervalues():
-        entry.metadata_change = None
-    return cset
-
-
 def merge_inner(this_branch, other_tree, base_tree, tempdir, 
                 ignore_zero=False, merge_type=ApplyMerge3, backup_files=False,
                 interesting_ids=None):
@@ -438,7 +428,7 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
         return tree.tree.inventory
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
-                             generate_cset_optimized, get_inventory,
+                             generate_changeset, get_inventory,
                              MergeConflictHandler(this_tree, base_tree,
                              other_tree, ignore_zero=ignore_zero),
                              merge_factory=merge_factory, 

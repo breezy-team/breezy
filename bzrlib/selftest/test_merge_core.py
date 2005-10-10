@@ -11,7 +11,7 @@ import bzrlib.inventory as inventory
 from bzrlib.osutils import file_kind, rename
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
-                                BackupBeforeChange, PermissionsMerge)
+                               BackupBeforeChange, ExecFlagMerge)
 from bzrlib.changeset import Inventory, apply_changeset, invert_dict
 
 
@@ -223,11 +223,10 @@ class MergeBuilder(object):
             self.change_perms_tree(id, self.other, other)
 
         if base is not None or other is not None:
-            old_perms = os.stat(self.base.full_path(id)).st_mode &077
-            new_perms = os.stat(self.other.full_path(id)).st_mode &077
-            contents = changeset.ChangeUnixPermissions(old_perms, 
-                                                       new_perms)
-            self.cset.entries[id].metadata_change = contents
+            old_exec = bool(os.stat(self.base.full_path(id)).st_mode & 0111)
+            new_exec = bool(os.stat(self.other.full_path(id)).st_mode & 0111)
+            metadata = changeset.ChangeExecFlag(old_exec, new_exec)
+            self.cset.entries[id].metadata_change = metadata
 
     def change_name_tree(self, id, tree, name):
         new_path = tree.child_path(self.cset.entries[id].parent, name)
@@ -448,30 +447,21 @@ class MergeTest(unittest.TestCase):
     def test_perms_merge(self):
         builder = MergeBuilder()
         builder.add_file("1", "0", "name1", "text1", 0755)
-        builder.change_perms("1", other=0655)
+        builder.change_perms("1", other=0644)
         builder.add_file("2", "0", "name2", "text2", 0755)
-        builder.change_perms("2", base=0655)
+        builder.change_perms("2", base=0644)
         builder.add_file("3", "0", "name3", "text3", 0755)
-        builder.change_perms("3", this=0655)
+        builder.change_perms("3", this=0644)
         cset = builder.merge_changeset(ApplyMerge3)
         assert(cset.entries["1"].metadata_change is not None)
-        assert(isinstance(cset.entries["1"].metadata_change,
-                          PermissionsMerge))
-        assert(isinstance(cset.entries["2"].metadata_change,
-                          PermissionsMerge))
+        assert(isinstance(cset.entries["1"].metadata_change, ExecFlagMerge))
+        assert(isinstance(cset.entries["2"].metadata_change, ExecFlagMerge))
         assert(cset.entries["3"].is_boring())
         builder.apply_changeset(cset)
-        assert(os.stat(builder.this.full_path("1")).st_mode &0777 == 0655)
+        assert(os.stat(builder.this.full_path("1")).st_mode &0777 == 0644)
         assert(os.stat(builder.this.full_path("2")).st_mode &0777 == 0755)
-        assert(os.stat(builder.this.full_path("3")).st_mode &0777 == 0655)
+        assert(os.stat(builder.this.full_path("3")).st_mode &0777 == 0644)
         builder.cleanup();
-        builder = MergeBuilder()
-        builder.add_file("1", "0", "name1", "text1", 0755)
-        builder.change_perms("1", other=0655, base=0555)
-        cset = builder.merge_changeset(ApplyMerge3)
-        self.assertRaises(changeset.MergePermissionConflict, 
-                     builder.apply_changeset, cset)
-        builder.cleanup()
 
 class FunctionalMergeTest(TestCaseInTempDir):
 

@@ -260,18 +260,18 @@ def make_merged_metadata(entry, base, other):
     metadata = entry.metadata_change
     if metadata is None:
         return None
-    if isinstance(metadata, changeset.ChangeUnixPermissions):
-        if metadata.new_mode is None:
+    if isinstance(metadata, changeset.ChangeExecFlag):
+        if metadata.new_exec_flag is None:
             return None
-        elif metadata.old_mode is None:
+        elif metadata.old_exec_flag is None:
             return metadata
         else:
             base_path = base.readonly_path(entry.id)
             other_path = other.readonly_path(entry.id)    
-            return PermissionsMerge(base_path, other_path)
+            return ExecFlagMerge(base_path, other_path)
     
 
-class PermissionsMerge(object):
+class ExecFlagMerge(object):
     def __init__(self, base_path, other_path):
         self.base_path = base_path
         self.other_path = other_path
@@ -283,14 +283,26 @@ class PermissionsMerge(object):
         else:
             base = self.other_path
             other = self.base_path
-        base_stat = os.stat(base).st_mode
-        other_stat = os.stat(other).st_mode
-        this_stat = os.stat(filename).st_mode
-        if base_stat &0777 == other_stat &0777:
-            return
-        elif this_stat &0777 == other_stat &0777:
-            return
-        elif this_stat &0777 == base_stat &0777:
-            os.chmod(filename, other_stat)
-        else:
-            conflict_handler.permission_conflict(filename, base, other)
+        base_mode = os.stat(base).st_mode
+        base_exec_flag = bool(base_mode & 0111)
+        other_mode = os.stat(other).st_mode
+        other_exec_flag = bool(other_mode & 0111)
+        this_mode = os.stat(filename).st_mode
+        this_exec_flag = bool(this_mode & 0111)
+        if (base_exec_flag != other_exec_flag and
+            this_exec_flag != other_exec_flag):
+            assert this_exec_flag == base_exec_flag
+            current_mode = os.stat(filename).st_mode
+            if other_exec_flag:
+                umask = os.umask(0)
+                os.umask(umask)
+                to_mode = current_mode | (0100 & ~umask)
+                # Enable x-bit for others only if they can read it.
+                if current_mode & 0004:
+                    to_mode |= 0001 & ~umask
+                if current_mode & 0040:
+                    to_mode |= 0010 & ~umask
+            else:
+                to_mode = current_mode & ~0111
+            os.chmod(filename, to_mode)
+
