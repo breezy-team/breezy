@@ -89,7 +89,8 @@ class HttpTransport(Transport):
                     # In most filesystems, a request for the parent
                     # of root, just returns root.
                     continue
-                basepath.pop()
+                if len(basepath) > 0:
+                    basepath.pop()
             elif p == '.':
                 continue # No-op
             else:
@@ -144,9 +145,9 @@ class HttpTransport(Transport):
         try:
             return get_url(self.abspath(relpath))
         except (BzrError, urllib2.URLError, IOError), e:
-            raise NoSuchFile(orig_error=e)
-        except Exception,e:
-            raise HttpTransportError(orig_error=e)
+            raise NoSuchFile(msg = "Error retrieving %s" 
+                             % self.abspath(relpath),
+                             orig_error=e)
 
     def get_partial(self, relpath, start, length=None):
         """Get just part of a file.

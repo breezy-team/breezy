@@ -65,6 +65,12 @@ class NotBranchError(BzrError):
         return 'not a branch: %s' % self.args[0]
 
 
+class UnsupportedFormatError(BzrError):
+    """Specified path is a bzr branch that we cannot read."""
+    def __str__(self):
+        return 'unsupported branch format: %s' % self.args[0]
+
+
 class NotVersionedError(BzrError):
     """Specified object is not versioned."""
 
@@ -197,7 +203,7 @@ class UnlistableBranch(BzrError):
         BzrError.__init__(self, "Stores for branch %s are not listable" % br)
 
 
-from bzrlib.weave import WeaveError
+from bzrlib.weave import WeaveError, WeaveParentMismatch
 
 class TransportError(BzrError):
     """All errors thrown by Transport implementations should derive

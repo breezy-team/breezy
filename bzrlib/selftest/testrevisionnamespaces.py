@@ -16,10 +16,14 @@
 
 import os
 import time
+
+from bzrlib.branch import Branch
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.errors import NoCommonAncestor, NoCommits
+from bzrlib.errors import NoSuchRevision
 from bzrlib.clone import copy_branch
 from bzrlib.merge import merge
+from bzrlib.revisionspec import RevisionSpec
 
 class TestRevisionNamespaces(TestCaseInTempDir):
 
@@ -27,9 +31,6 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         """Test revision specifiers.
 
         These identify revisions by date, etc."""
-        from bzrlib.errors import NoSuchRevision
-        from bzrlib.branch import Branch
-        from bzrlib.revisionspec import RevisionSpec
 
         b = Branch.initialize('.')
 
@@ -78,3 +79,18 @@ class TestRevisionNamespaces(TestCaseInTempDir):
                           'b@r-0-4')
         self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
                           'b@r-0-4')
+
+    def test_branch_namespace(self):
+        """Ensure that the branch namespace pulls in the requisite content."""
+        self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
+        branch = Branch.initialize('branch1')
+        branch.add(['file'])
+        branch.commit('add file')
+        copy_branch(branch, 'branch2')
+        print >> open('branch2/file', 'w'), 'new content'
+        branch2 = Branch.open('branch2')
+        branch2.commit('update file', rev_id='A')
+        spec = RevisionSpec('branch:./branch2/.bzr/../')
+        rev_info = spec.in_history(branch)
+        self.assertEqual(rev_info, (None, 'A'))
+

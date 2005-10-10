@@ -25,7 +25,10 @@ unique ID.
 """
 
 from cStringIO import StringIO
+from stat import ST_MODE, S_ISDIR
+from zlib import adler32
 
+import bzrlib.errors as errors
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.trace import mutter
 import bzrlib.transport
@@ -191,6 +194,14 @@ class TransportStore(Store):
 
     _max_buffered_requests = 10
 
+    def __getitem__(self, fileid):
+        """Returns a file reading from a particular entry."""
+        fn = self._relpath(fileid)
+        try:
+            return self._transport.get(fn)
+        except errors.NoSuchFile:
+            raise KeyError(fileid)
+
     def __init__(self, transport):
         assert isinstance(transport, bzrlib.transport.Transport)
         super(TransportStore, self).__init__()
@@ -203,6 +214,19 @@ class TransportStore(Store):
             return "%s(%r)" % (self.__class__.__name__, self._transport.base)
 
     __str__ = __repr__
+
+    def _iter_relpaths(self):
+        """Iter the relative paths of files in the transports sub-tree."""
+        transport = self._transport
+        queue = list(transport.list_dir('.'))
+        while queue:
+            relpath = queue.pop(0)
+            st = transport.stat(relpath)
+            if S_ISDIR(st[ST_MODE]):
+                for i, basename in enumerate(transport.list_dir(relpath)):
+                    queue.insert(i, relpath+'/'+basename)
+            else:
+                yield relpath, st
 
     def listable(self):
         """Return True if this store is able to be listed."""
@@ -306,4 +330,7 @@ def copy_all(store_from, store_to):
         raise UnlistableStore(store_from)
     ids = [f for f in store_from]
     store_to.copy_multi(store_from, ids)
+
+def hash_prefix(file_id):
+    return "%02x/" % (adler32(file_id) & 0xff)
 

@@ -1,5 +1,11 @@
 bzr 0.1 2005-10-06
 
+  NOTES:
+
+    * 'bzr branch' over http initially gives a very high estimate
+      of completion time but it should fall as the first few 
+      revisions are pulled in.  branch is still slow on 
+      high-latency connections.
 
   BUG FIXES:
   
@@ -9,12 +15,34 @@ bzr 0.1 2005-10-06
     * Locking is now done with fcntl.lockf which works with NFS
       file systems. Contributed by Harald Meland.
 
+    * When a merge encounters a file that has been deleted on
+      one side and modified on the other, the old contents are
+      written out to foo.BASE and foo.SIDE, where SIDE is this
+      or OTHER. Contributed by Aaron Bentley.
+
+    * Export was choosing incorrect file paths for the content of
+      the tarball, this has been fixed by Aaron Bentley.
+
     * Commit will no longer commit without a log message, an 
       error is returned instead. Contributed by Jelmer Vernooij.
 
     * If you commit a specific file in a sub directory, any of its
       parent directories that are added but not listed will be 
       automatically included. Suggested by Michael Ellerman.
+
+    * bzr commit and upgrade did not correctly record new revisions
+      for files with only a change to their executable status.
+      bzr will correct this when it encounters it. Fixed by
+      Robert Collins
+
+    * HTTP tests now force off the use of http_proxy for the duration.
+      Contributed by Gustavo Niemeyer.
+
+    * Fix problems in merging weave-based branches that have 
+      different partial views of history.
+
+    * Symlink support: working with symlinks when not in the root of a 
+      bzr tree was broken, patch from Scott James Remnant.
 
 
   IMPROVEMENTS:
@@ -41,6 +69,19 @@ bzr 0.1 2005-10-06
       merge conflicts respectively. A conflicted tree cannot be committed
       in. Contributed by Aaron Bentley.
 
+    * 'rm' is now an alias for 'remove'.
+
+    * Stores now split out their content in a single byte prefixed hash,
+      dropping the density of files per directory by 256. Contributed by
+      Gustavo Niemeyer.
+
+    * 'bzr diff -r branch:URL' will now perform a diff between two branches.
+      Contributed by Robert Collins.
+
+    * 'bzr log' with the default formatter will show merged revisions,
+      indented to the right. Initial implementation contributed by Gustavo
+      Niemeyer, made incremental by Robert Collins.
+
 
   INTERNALS:
 
@@ -49,6 +90,10 @@ bzr 0.1 2005-10-06
 
     * InventoryEntry is now an abstract base class, use one of the
       concrete InventoryDirectory etc classes instead.
+
+    * Branch raises an UnsupportedFormatError when it detects a 
+      bzr branch it cannot understand. This allows for precise
+      handling of such circumstances.
 
 
   TESTING:

@@ -31,6 +31,7 @@ import sys
 import os
 
 from bzrlib.branch import Branch
+from bzrlib.clone import copy_branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import has_symlinks
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
@@ -265,6 +266,25 @@ class TestCommands(ExternalBase):
         output = self.runbzr('diff -r last:3..last:1', backtick=1)
         self.assert_('\n+baz' in output)
 
+    def test_diff_branches(self):
+        self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
+        branch = Branch.initialize('branch1')
+        branch.add(['file'])
+        branch.commit('add file')
+        copy_branch(branch, 'branch2')
+        print >> open('branch2/file', 'w'), 'new content'
+        branch2 = Branch.open('branch2')
+        branch2.commit('update file')
+        # should open branch1 and diff against branch2, 
+        output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 'branch1'])
+        self.assertEquals(("=== modified file 'file'\n"
+                           "--- file\n"
+                           "+++ file\n"
+                           "@@ -1,1 +1,1 @@\n"
+                           "-new content\n"
+                           "+contents of branch1/file\n"
+                           "\n", ''), output)
+
     def test_branch(self):
         """Branch from one branch to another."""
         os.mkdir('a')
@@ -309,40 +329,6 @@ class TestCommands(ExternalBase):
         self.log('pending merges: %s', a.pending_merges())
         #        assert a.pending_merges() == [b.last_revision()], "Assertion %s %s" \
         #        % (a.pending_merges(), b.last_patch())
-
-    def test_merge_with_missing_file(self):
-        """Merge handles missing file conflicts"""
-        os.mkdir('a')
-        os.chdir('a')
-        os.mkdir('sub')
-        print >> file('sub/a.txt', 'wb'), "hello"
-        print >> file('b.txt', 'wb'), "hello"
-        print >> file('sub/c.txt', 'wb'), "hello"
-        self.runbzr('init')
-        self.runbzr('add')
-        self.runbzr(('commit', '-m', 'added a'))
-        self.runbzr('branch . ../b')
-        print >> file('sub/a.txt', 'ab'), "there"
-        print >> file('b.txt', 'ab'), "there"
-        print >> file('sub/c.txt', 'ab'), "there"
-        self.runbzr(('commit', '-m', 'Added there'))
-        os.unlink('sub/a.txt')
-        os.unlink('sub/c.txt')
-        os.rmdir('sub')
-        os.unlink('b.txt')
-        self.runbzr(('commit', '-m', 'Removed a.txt'))
-        os.chdir('../b')
-        print >> file('sub/a.txt', 'ab'), "something"
-        print >> file('b.txt', 'ab'), "something"
-        print >> file('sub/c.txt', 'ab'), "something"
-        self.runbzr(('commit', '-m', 'Modified a.txt'))
-        self.runbzr('merge ../a/')
-        assert os.path.exists('sub/a.txt.THIS')
-        assert os.path.exists('sub/a.txt.BASE')
-        os.chdir('../a')
-        self.runbzr('merge ../b/')
-        assert os.path.exists('sub/a.txt.OTHER')
-        assert os.path.exists('sub/a.txt.BASE')
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""
@@ -728,12 +714,18 @@ class OldTests(ExternalBase):
             runbzr('remove d2/link1')
             assert self.capture('unknowns') == 'd2/link1\n'
             runbzr(['commit', '-m', '5: remove d2/link1'])
+            # try with the rm alias
+            runbzr('add d2/link1')
+            runbzr(['commit', '-m', '6: add d2/link1'])
+            runbzr('rm d2/link1')
+            assert self.capture('unknowns') == 'd2/link1\n'
+            runbzr(['commit', '-m', '7: remove d2/link1'])
     
             os.mkdir("d1")
             runbzr('add d1')
             runbzr('rename d2/link3 d1/link3new')
             assert self.capture('unknowns') == 'd2/link1\n'
-            runbzr(['commit', '-m', '6: remove d2/link1, move/rename link3'])
+            runbzr(['commit', '-m', '8: remove d2/link1, move/rename link3'])
             
             runbzr(['check'])
             
@@ -771,9 +763,9 @@ class OldTests(ExternalBase):
             assert listdir_sorted("d2")== [ "link3" ]
             chdir("..")
             
-            runbzr(['export', '-r', '6', 'exp6.tmp'])
+            runbzr(['export', '-r', '8', 'exp6.tmp'])
             chdir("exp6.tmp")
-            assert listdir_sorted(".") == [ "d1", "d2", "link2" ]
+            self.assertEqual(listdir_sorted("."), [ "d1", "d2", "link2"])
             assert listdir_sorted("d1") == [ "link3new" ]
             assert listdir_sorted("d2") == []
             assert os.readlink("d1/link3new") == "NOWHERE3"

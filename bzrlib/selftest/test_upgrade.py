@@ -39,12 +39,12 @@ class TestUpgrade(TestCaseInTempDir):
         self.failUnlessExists('.bzr/README')
 
     def test_upgrade_simple(self):
-        """Upgrade simple v0.0.4 format to v5"""
+        """Upgrade simple v0.0.4 format to v6"""
         eq = self.assertEquals
         build_tree_contents(_upgrade1_template)
         upgrade('.')
         b = Branch.open('.')
-        eq(b._branch_format, 5)
+        eq(b._branch_format, 6)
         rh = b.revision_history()
         eq(rh,
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
@@ -77,8 +77,11 @@ class TestUpgrade(TestCaseInTempDir):
     def test_upgrade_makes_dir_weaves(self):
         build_tree_contents(_upgrade_dir_template)
         upgrade('.')
+        # this is the path to the literal file. As format changes 
+        # occur it needs to be updated. FIXME: ask the store for the
+        # path.
         self.failUnlessExists(
-            '.bzr/weaves/dir-20051005095101-da1441ea3fa6917a.weave')
+            '.bzr/weaves/de/dir-20051005095101-da1441ea3fa6917a.weave')
 
 
 _upgrade1_template = \

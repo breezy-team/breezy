@@ -137,9 +137,15 @@ class TestCaseWithWebserver(TestCaseInTempDir):
         self._http_thread = threading.Thread(target=self._http_start)
         self._http_thread.setDaemon(True)
         self._http_thread.start()
+        self._http_proxy = os.environ.get("http_proxy")
+        if self._http_proxy is not None:
+            del os.environ["http_proxy"]
 
     def tearDown(self):
         self._http_running = False
         self._http_thread.join()
+        if self._http_proxy is not None:
+            import os
+            os.environ["http_proxy"] = self._http_proxy
         TestCaseInTempDir.tearDown(self)
 

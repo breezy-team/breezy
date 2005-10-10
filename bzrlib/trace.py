@@ -161,13 +161,15 @@ def log_exception(msg=None):
     The exception string representation is used as the error
     summary, unless msg is given.
     """
+    command = ' '.join(repr(arg) for arg in sys.argv)
+    prefix = "command: %s\npwd: %s\n" % (command, os.getcwd())
     if msg == None:
         ei = sys.exc_info()
         msg = str(ei[1])
     if msg and (msg[-1] == '\n'):
         msg = msg[:-1]
     ## msg = "(%s) %s" % (str(type(ei[1])), msg)
-    _bzr_logger.exception(msg)
+    _bzr_logger.exception(prefix + msg)
 
 
 

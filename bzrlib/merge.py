@@ -29,7 +29,7 @@ from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError, UnrelatedBranches, NoCommonAncestor
 from bzrlib.errors import NoCommits
 from bzrlib.delta import compare_trees
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import mutter, warning, note
 from bzrlib.fetch import greedy_fetch, fetch
 from bzrlib.revision import is_ancestor
 from bzrlib.osutils import rename
@@ -39,6 +39,8 @@ from bzrlib.errors import NoSuchRevision
 # TODO: build_working_dir can be built on something simpler than merge()
 
 # FIXME: merge() parameters seem oriented towards the command line
+# NOTABUG: merge is a helper for commandline functions.  merge_inner is the
+#          the core functionality.
 
 # comments from abentley on irc: merge happens in two stages, each
 # of which generates a changeset object
@@ -140,6 +142,11 @@ class MergeConflictHandler(ExceptionConflictHandler):
     def rem_contents_conflict(self, filename, this_contents, base_contents):
         base_contents(filename+".BASE", self, False)
         this_contents(filename+".THIS", self, False)
+        return ReplaceContents(this_contents, None)
+
+    def rem_contents_conflict(self, filename, this_contents, base_contents):
+        base_contents(filename+".BASE", self, False)
+        this_contents(filename+".THIS", self, False)
         self.conflict("Other branch deleted locally modified file %s" %
                       filename)
         return ReplaceContents(this_contents, None)
@@ -185,7 +192,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def finalize(self):
         if not self.ignore_zero:
-            print "%d conflicts encountered.\n" % self.conflicts
+            note("%d conflicts encountered.\n" % self.conflicts)
             
 def get_tree(treespec, temp_root, label, local_branch=None):
     location, revno = treespec
@@ -405,16 +412,6 @@ def set_interesting(inventory_a, inventory_b, interesting_ids):
              source_file.interesting = source_file.id in interesting_ids
 
 
-def generate_cset_optimized(tree_a, tree_b, interesting_ids=None):
-    """Generate a changeset.  If interesting_ids is supplied, only changes
-    to those files will be shown.  Metadata changes are stripped.
-    """ 
-    cset =  generate_changeset(tree_a, tree_b, interesting_ids)
-    for entry in cset.entries.itervalues():
-        entry.metadata_change = None
-    return cset
-
-
 def merge_inner(this_branch, other_tree, base_tree, tempdir, 
                 ignore_zero=False, merge_type=ApplyMerge3, backup_files=False,
                 interesting_ids=None):
@@ -431,7 +428,7 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
         return tree.tree.inventory
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
-                             generate_cset_optimized, get_inventory,
+                             generate_changeset, get_inventory,
                              MergeConflictHandler(this_tree, base_tree,
                              other_tree, ignore_zero=ignore_zero),
                              merge_factory=merge_factory, 

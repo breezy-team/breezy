@@ -96,6 +96,8 @@ def fetch_steps(self, br_a, br_b, writable_a):
                       br_a2)
 
 
+    #TODO: test that fetch correctly does reweaving when needed. RBC 20051008
+
 class TestFetch(TestCaseInTempDir):
 
     def test_fetch(self):
@@ -133,6 +135,13 @@ class TestHttpFetch(TestCaseWithWebserver):
         source = Branch.open(self.get_remote_url("source/"))
         source.weave_store.enable_cache = False
         self.assertEqual(greedy_fetch(target, source), (2, []))
-        weave_suffix = 'weaves/id.weave HTTP/1.1" 200 -'
+        # this is the path to the literal file. As format changes 
+        # occur it needs to be updated. FIXME: ask the store for the
+        # path.
+        weave_suffix = 'weaves/ce/id.weave HTTP/1.1" 200 -'
         self.assertEqual(1,
             len([log for log in self.weblogs if log.endswith(weave_suffix)]))
+        inventory_weave_suffix = 'inventory.weave HTTP/1.1" 200 -'
+        self.assertEqual(1,
+            len([log for log in self.weblogs if log.endswith(
+                inventory_weave_suffix)]))

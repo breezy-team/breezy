@@ -140,7 +140,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
         oldtmpf.close()                 # and delete
         newtmpf.close()
 
-def show_diff(b, revision, specific_files, external_diff_options=None,
+def show_diff(b, from_spec, specific_files, external_diff_options=None,
               revision2=None, output=None):
     """Shortcut for showing the diff to the working tree.
 
@@ -148,7 +148,7 @@ def show_diff(b, revision, specific_files, external_diff_options=None,
         Branch.
 
     revision
-        None for each, or otherwise the old revision to compare against.
+        None for 'basis tree', or otherwise the old revision to compare against.
     
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
@@ -157,10 +157,10 @@ def show_diff(b, revision, specific_files, external_diff_options=None,
         import sys
         output = sys.stdout
 
-    if revision is None:
+    if from_spec is None:
         old_tree = b.basis_tree()
     else:
-        old_tree = b.revision_tree(revision.in_history(b).rev_id)
+        old_tree = b.revision_tree(from_spec.in_history(b).rev_id)
 
     if revision2 is None:
         new_tree = b.working_tree()

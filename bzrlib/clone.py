@@ -75,24 +75,28 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     assert isinstance(to_location, basestring)
     if basis_branch is not None:
         note("basis_branch is not supported for fast weave copy yet.")
-    if not (branch_from.weave_store.listable()
-            and branch_from.revision_store.listable()):
-        return copy_branch_slower(branch_from, to_location, revision,
-                                  basis_branch)
-    history = _get_truncated_history(branch_from, revision)
-    if not bzrlib.osutils.lexists(to_location):
-        os.mkdir(to_location)
-    branch_to = Branch.initialize(to_location)
-    mutter("copy branch from %s to %s", branch_from, branch_to)
-    branch_to.set_root_id(branch_from.get_root_id())
-    branch_to.append_revision(*history)
-    _copy_control_weaves(branch_from, branch_to)
-    _copy_text_weaves(branch_from, branch_to)
-    _copy_revision_store(branch_from, branch_to)
-    build_working_dir(to_location)
-    branch_to.set_parent(branch_from.base)
-    mutter("copied")
-    return branch_to
+    branch_from.lock_read()
+    try:
+        if not (branch_from.weave_store.listable()
+                and branch_from.revision_store.listable()):
+            return copy_branch_slower(branch_from, to_location, revision,
+                                      basis_branch)
+        history = _get_truncated_history(branch_from, revision)
+        if not bzrlib.osutils.lexists(to_location):
+            os.mkdir(to_location)
+        branch_to = Branch.initialize(to_location)
+        mutter("copy branch from %s to %s", branch_from, branch_to)
+        branch_to.set_root_id(branch_from.get_root_id())
+        branch_to.append_revision(*history)
+        _copy_control_weaves(branch_from, branch_to)
+        _copy_text_weaves(branch_from, branch_to)
+        _copy_revision_store(branch_from, branch_to)
+        build_working_dir(to_location)
+        branch_to.set_parent(branch_from.base)
+        mutter("copied")
+        return branch_to
+    finally:
+        branch_from.unlock()
 
 
 def _get_truncated_history(branch_from, revision):
