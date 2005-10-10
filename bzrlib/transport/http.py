@@ -145,8 +145,8 @@ class HttpTransport(Transport):
         try:
             return get_url(self.abspath(relpath))
         except (BzrError, urllib2.URLError, IOError), e:
-            raise NoSuchFile(msg = "Error retrieving %s" 
-                             % self.abspath(relpath),
+            raise NoSuchFile(msg = "Error retrieving %s: %s" 
+                             % (self.abspath(relpath), str(e)),
                              orig_error=e)
 
     def get_partial(self, relpath, start, length=None):
