@@ -31,6 +31,7 @@ import sys
 import os
 
 from bzrlib.branch import Branch
+from bzrlib.clone import copy_branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import has_symlinks
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
@@ -264,6 +265,25 @@ class TestCommands(ExternalBase):
         self.assert_('\n+hello world!' in output)
         output = self.runbzr('diff -r last:3..last:1', backtick=1)
         self.assert_('\n+baz' in output)
+
+    def test_diff_branches(self):
+        self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
+        branch = Branch.initialize('branch1')
+        branch.add(['file'])
+        branch.commit('add file')
+        copy_branch(branch, 'branch2')
+        print >> open('branch2/file', 'w'), 'new content'
+        branch2 = Branch.open('branch2')
+        branch2.commit('update file')
+        # should open branch1 and diff against branch2, 
+        output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 'branch1'])
+        self.assertEquals(("=== modified file 'file'\n"
+                           "--- file\n"
+                           "+++ file\n"
+                           "@@ -1,1 +1,1 @@\n"
+                           "-new content\n"
+                           "+contents of branch1/file\n"
+                           "\n", ''), output)
 
     def test_branch(self):
         """Branch from one branch to another."""
