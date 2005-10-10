@@ -72,6 +72,13 @@ bzr 0.1 2005-10-06
       dropping the density of files per directory by 256. Contributed by
       Gustavo Niemeyer.
 
+    * 'bzr diff -r branch:URL' will now perform a diff between two branches.
+      Contributed by Robert Collins.
+
+    * 'bzr log' with the default formatter will show merged revisions,
+      indented to the right. Initial implementation contributed by Gustavo
+      Niemeyer, made incremental by Robert Collins.
+
 
   INTERNALS:
 

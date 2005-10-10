@@ -28,6 +28,7 @@ from cStringIO import StringIO
 from stat import ST_MODE, S_ISDIR
 from zlib import adler32
 
+import bzrlib.errors as errors
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.trace import mutter
 import bzrlib.transport
@@ -192,6 +193,14 @@ class TransportStore(Store):
     """A TransportStore is a Store superclass for Stores that use Transports."""
 
     _max_buffered_requests = 10
+
+    def __getitem__(self, fileid):
+        """Returns a file reading from a particular entry."""
+        fn = self._relpath(fileid)
+        try:
+            return self._transport.get(fn)
+        except errors.NoSuchFile:
+            raise KeyError(fileid)
 
     def __init__(self, transport):
         assert isinstance(transport, bzrlib.transport.Transport)

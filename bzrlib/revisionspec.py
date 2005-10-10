@@ -151,6 +151,16 @@ class RevisionSpec(object):
         revs = branch.revision_history()
         return self._match_on_and_check(branch, revs)
 
+        # FIXME: in_history is somewhat broken,
+        # it will return non-history revisions in many
+        # circumstances. The expected facility is that
+        # in_history only returns revision-history revs,
+        # in_store returns any rev. RBC 20051010
+    # aliases for now, when we fix the core logic, then they
+    # will do what you expect.
+    in_store = in_history
+    in_branch = in_store
+        
     def __repr__(self):
         # this is mostly for helping with testing
         return '<%s %s%s>' % (self.__class__.__name__,
@@ -318,3 +328,27 @@ class RevisionSpec_ancestor(RevisionSpec):
         return RevisionInfo(branch, revno, rev_id)
         
 SPEC_TYPES.append(RevisionSpec_ancestor)
+
+class RevisionSpec_branch(RevisionSpec):
+    """A branch: revision specifier.
+
+    This takes the path to a branch and returns its tip revision id.
+    """
+    prefix = 'branch:'
+
+    def _match_on(self, branch, revs):
+        from branch import Branch
+        from fetch import greedy_fetch
+        other_branch = Branch.open_containing(self.spec)
+        revision_b = other_branch.last_revision()
+        if revision_b is None:
+            raise NoCommits(other_branch)
+        # pull in the remote revisions so we can diff
+        greedy_fetch(branch, other_branch, revision=revision_b)
+        try:
+            revno = branch.revision_id_to_revno(revision_b)
+        except NoSuchRevision:
+            revno = None
+        return RevisionInfo(branch, revno, revision_b)
+        
+SPEC_TYPES.append(RevisionSpec_branch)

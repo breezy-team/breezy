@@ -218,13 +218,7 @@ class CompressedTextStore(bzrlib.store.TransportStore):
 
     def __getitem__(self, fileid):
         """Returns a file reading from a particular entry."""
-        fn = self._relpath(fileid)
-        # This will throw if the file doesn't exist.
-        try:
-            f = self._transport.get(fn)
-        except:
-            raise KeyError('This store (%s) does not contain %s' % (self, fileid))
-
+        f = super(CompressedTextStore, self).__getitem__(fileid)
         # gzip.GzipFile.read() requires a tell() function
         # but some transports return objects that cannot seek
         # so buffer them in a StringIO instead
@@ -234,7 +228,6 @@ class CompressedTextStore(bzrlib.store.TransportStore):
             from cStringIO import StringIO
             sio = StringIO(f.read())
             return gzip.GzipFile(mode='rb', fileobj=sio)
-            
 
     def total_size(self):
         """Return (count, bytes)
