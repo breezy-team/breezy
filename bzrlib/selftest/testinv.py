@@ -196,6 +196,8 @@ class TestEntryDiffing(TestCaseInTempDir):
                                             "\n")
         
     def test_link_diff_deleted(self):
+        if not has_symlinks():
+            return
         output = StringIO()
         self.link_1.diff(internal_diff, 
                           "old_label", self.tree_1,
@@ -205,6 +207,8 @@ class TestEntryDiffing(TestCaseInTempDir):
                          "=== target was 'target1'\n")
 
     def test_link_diff_added(self):
+        if not has_symlinks():
+            return
         output = StringIO()
         self.link_1.diff(internal_diff, 
                           "new_label", self.tree_1,
@@ -214,6 +218,8 @@ class TestEntryDiffing(TestCaseInTempDir):
                          "=== target is 'target1'\n")
 
     def test_link_diff_changed(self):
+        if not has_symlinks():
+            return
         output = StringIO()
         self.link_1.diff(internal_diff, 
                           "/dev/null", self.tree_1, 

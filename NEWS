@@ -24,6 +24,14 @@ bzr 0.1 2005-10-06
       parent directories that are added but not listed will be 
       automatically included. Suggested by Michael Ellerman.
 
+    * bzr commit and upgrade did not correctly record new revisions
+      for files with only a change to their executable status.
+      bzr will correct this when it encounters it. Fixed by
+      Robert Collins
+
+    * HTTP tests now force off the use of http_proxy for the duration.
+      Contributed by Gustavo Niemeyer.
+
 
   IMPROVEMENTS:
 
@@ -49,6 +57,15 @@ bzr 0.1 2005-10-06
       merge conflicts respectively. A conflicted tree cannot be committed
       in. Contributed by Aaron Bentley.
 
+    * 'rm' is now an alias for 'remove'.
+
+    * Stores now split out their content in a single byte prefixed hash,
+      dropping the density of files per directory by 256. Contributed by
+      Gustavo Niemeyer.
+
+    * 'bzr diff -r branch:URL' will now perform a diff between two branches.
+      Contributed by Robert Collins.
+
 
   INTERNALS:
 
@@ -57,6 +74,10 @@ bzr 0.1 2005-10-06
 
     * InventoryEntry is now an abstract base class, use one of the
       concrete InventoryDirectory etc classes instead.
+
+    * Branch raises an UnsupportedFormatError when it detects a 
+      bzr branch it cannot understand. This allows for precise
+      handling of such circumstances.
 
 
   TESTING:

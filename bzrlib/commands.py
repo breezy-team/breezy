@@ -71,7 +71,7 @@ def _parse_revision_str(revstr):
     """This handles a revision string -> revno.
 
     This always returns a list.  The list will have one element for
-    each revision.
+    each revision specifier supplied.
 
     >>> _parse_revision_str('234')
     [<RevisionSpec_int 234>]
@@ -85,7 +85,7 @@ def _parse_revision_str(revstr):
     [<RevisionSpec_int 234>, <RevisionSpec None>]
     >>> _parse_revision_str('234..456..789') # Maybe this should be an error
     [<RevisionSpec_int 234>, <RevisionSpec_int 456>, <RevisionSpec_int 789>]
-    >>> _parse_revision_str('234....789') # Error?
+    >>> _parse_revision_str('234....789') #Error ?
     [<RevisionSpec_int 234>, <RevisionSpec None>, <RevisionSpec_int 789>]
     >>> _parse_revision_str('revid:test@other.com-234234')
     [<RevisionSpec_revid revid:test@other.com-234234>]
@@ -113,6 +113,8 @@ def _parse_revision_str(revstr):
     Traceback (most recent call last):
       ...
     BzrError: No namespace registered for string: 'abc'
+    >>> _parse_revision_str('branch:../branch2')
+    [<RevisionSpec_branch branch:../branch2>]
     """
     import re
     old_format_re = re.compile('\d*:\d*')
@@ -127,11 +129,20 @@ def _parse_revision_str(revstr):
             else:
                 revs.append(RevisionSpec(None))
     else:
+        next_prefix = None
         for x in revstr.split('..'):
             if not x:
                 revs.append(RevisionSpec(None))
+            elif x[-1] == ':':
+                # looks like a namespace:.. has happened
+                next_prefix = x + '..'
             else:
+                if next_prefix is not None:
+                    x = next_prefix + x
                 revs.append(RevisionSpec(x))
+                next_prefix = None
+        if next_prefix is not None:
+            revs.append(RevisionSpec(next_prefix))
     return revs
 
 

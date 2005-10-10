@@ -29,7 +29,7 @@ from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError, UnrelatedBranches, NoCommonAncestor
 from bzrlib.errors import NoCommits
 from bzrlib.delta import compare_trees
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import mutter, warning, note
 from bzrlib.fetch import greedy_fetch, fetch
 from bzrlib.revision import is_ancestor
 from bzrlib.osutils import rename
@@ -39,6 +39,8 @@ from bzrlib.errors import NoSuchRevision
 # TODO: build_working_dir can be built on something simpler than merge()
 
 # FIXME: merge() parameters seem oriented towards the command line
+# NOTABUG: merge is a helper for commandline functions.  merge_inner is the
+#          the core functionality.
 
 # comments from abentley on irc: merge happens in two stages, each
 # of which generates a changeset object
@@ -190,7 +192,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def finalize(self):
         if not self.ignore_zero:
-            print "%d conflicts encountered.\n" % self.conflicts
+            note("%d conflicts encountered.\n" % self.conflicts)
             
 def get_tree(treespec, temp_root, label, local_branch=None):
     location, revno = treespec
