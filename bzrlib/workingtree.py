@@ -185,7 +185,7 @@ class WorkingTree(bzrlib.tree.Tree):
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
 
     def get_symlink_target(self, file_id):
-        return os.readlink(self.id2path(file_id))
+        return os.readlink(self.id2abspath(file_id))
 
     def file_class(self, filename):
         if self.path2id(filename):
