@@ -248,7 +248,8 @@ class Commit(object):
         self.inv_sha1 = sha_string(inv_text)
         s = self.branch.control_weaves
         s.add_text('inventory', self.rev_id,
-                   split_lines(inv_text), self.present_parents)
+                   split_lines(inv_text), self.present_parents,
+                   self.branch.get_transaction())
 
     def _escape_commit_message(self):
         """Replace xml-incompatible control characters."""
@@ -347,10 +348,12 @@ class Commit(object):
         for path, ie in self.new_inv.iter_entries():
             previous_entries = ie.find_previous_heads(
                 self.parent_invs, 
-                self.weave_store.get_weave_or_empty(ie.file_id))
+                self.weave_store.get_weave_or_empty(ie.file_id,
+                    self.branch.get_transaction()))
             if ie.revision is None:
                 change = ie.snapshot(self.rev_id, path, previous_entries,
-                                     self.work_tree, self.weave_store)
+                                     self.work_tree, self.weave_store,
+                                     self.branch.get_transaction())
             else:
                 change = "unchanged"
             self.reporter.snapshot_change(change, path)

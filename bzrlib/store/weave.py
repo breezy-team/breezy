@@ -26,35 +26,35 @@ import errno
 
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.weave import Weave
-from bzrlib.store import Store
+from bzrlib.store import TransportStore, hash_prefix
 from bzrlib.atomicfile import AtomicFile
-from bzrlib.errors import NoSuchFile
+from bzrlib.errors import NoSuchFile, FileExists
 from bzrlib.trace import mutter
 
 
-class WeaveStore(Store):
+class WeaveStore(TransportStore):
     """Collection of several weave files in a directory.
 
     This has some shortcuts for reading and writing them.
     """
     FILE_SUFFIX = '.weave'
 
-    def __init__(self, transport):
+    def __init__(self, transport, prefixed=False):
         self._transport = transport
-        self._cache = {}
-        self.enable_cache = False
-
+        self._prefixed = prefixed
 
     def filename(self, file_id):
         """Return the path relative to the transport root."""
-        return file_id + WeaveStore.FILE_SUFFIX
+        if self._prefixed:
+            return hash_prefix(file_id) + file_id + WeaveStore.FILE_SUFFIX
+        else:
+            return file_id + WeaveStore.FILE_SUFFIX
 
     def __iter__(self):
         l = len(WeaveStore.FILE_SUFFIX)
-        for f in self._transport.list_dir('.'):
-            if f.endswith(WeaveStore.FILE_SUFFIX):
-                f = f[:-l]
-                yield f
+        for relpath, st in self._iter_relpaths():
+            if relpath.endswith(WeaveStore.FILE_SUFFIX):
+                yield os.path.basename(relpath[:-l])
 
     def __contains__(self, fileid):
         """"""
@@ -64,42 +64,46 @@ class WeaveStore(Store):
         return self._transport.get(self.filename(file_id))
 
     def _put(self, file_id, f):
+        if self._prefixed:
+            try:
+                self._transport.mkdir(hash_prefix(file_id))
+            except FileExists:
+                pass
         return self._transport.put(self.filename(file_id), f)
 
-    def get_weave(self, file_id):
-        if self.enable_cache:
-            if file_id in self._cache:
-                mutter("cache hit in %s for %s", self, file_id)
-                return self._cache[file_id]
+    def get_weave(self, file_id, transaction):
+        weave = transaction.map.find_weave(file_id)
+        if weave:
+            mutter("cache hit in %s for %s", self, file_id)
+            return weave
         w = read_weave(self._get(file_id))
-        if self.enable_cache:
-            self._cache[file_id] = w
+        transaction.map.add_weave(file_id, w)
+        transaction.register_clean(w)
         return w
 
 
-    def get_lines(self, file_id, rev_id):
+    def get_lines(self, file_id, rev_id, transaction):
         """Return text from a particular version of a weave.
 
         Returned as a list of lines."""
-        w = self.get_weave(file_id)
+        w = self.get_weave(file_id, transaction)
         return w.get(w.lookup(rev_id))
     
-
-    def get_weave_or_empty(self, file_id):
+    def get_weave_or_empty(self, file_id, transaction):
         """Return a weave, or an empty one if it doesn't exist.""" 
         try:
-            inf = self._get(file_id)
+            return self.get_weave(file_id, transaction)
         except NoSuchFile:
-            return Weave(weave_name=file_id)
-        else:
-            return read_weave(inf)
-    
+            weave = Weave(weave_name=file_id)
+            transaction.map.add_weave(file_id, weave)
+            transaction.register_clean(weave)
+            return weave
 
-    def put_weave(self, file_id, weave):
+    def put_weave(self, file_id, weave, transaction):
         """Write back a modified weave"""
-        if self.enable_cache:
-            self._cache[file_id] = weave
-
+        transaction.register_dirty(weave)
+        # TODO FOR WRITE TRANSACTIONS: this should be done in a callback
+        # from the transaction, when it decides to save.
         sio = StringIO()
         write_weave_v5(weave, sio)
         sio.seek(0)
@@ -107,17 +111,18 @@ class WeaveStore(Store):
         self._put(file_id, sio)
 
 
-    def add_text(self, file_id, rev_id, new_lines, parents):
-        w = self.get_weave_or_empty(file_id)
+    def add_text(self, file_id, rev_id, new_lines, parents, transaction):
+        w = self.get_weave_or_empty(file_id, transaction)
         parent_idxs = map(w.lookup, parents)
         w.add(rev_id, parent_idxs, new_lines)
-        self.put_weave(file_id, w)
+        self.put_weave(file_id, w, transaction)
         
-    def add_identical_text(self, file_id, old_rev_id, new_rev_id, parents):
-        w = self.get_weave_or_empty(file_id)
+    def add_identical_text(self, file_id, old_rev_id, new_rev_id, parents,
+                           transaction):
+        w = self.get_weave_or_empty(file_id, transaction)
         parent_idxs = map(w.lookup, parents)
         w.add_identical(old_rev_id, new_rev_id, parent_idxs)
-        self.put_weave(file_id, w)
+        self.put_weave(file_id, w, transaction)
      
     def copy_multi(self, from_store, file_ids):
         assert isinstance(from_store, WeaveStore)

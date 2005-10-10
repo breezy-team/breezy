@@ -17,13 +17,14 @@
 import os
 from cStringIO import StringIO
 
-import bzrlib.errors
+import bzrlib
+import bzrlib.errors as errors
+from bzrlib.errors import InstallFailed, NoSuchRevision, WeaveError
 from bzrlib.trace import mutter, note, warning
 from bzrlib.branch import Branch
 from bzrlib.progress import ProgressBar
 from bzrlib.xml5 import serializer_v5
 from bzrlib.osutils import sha_string, split_lines
-from bzrlib.errors import InstallFailed, NoSuchRevision, WeaveError
 
 """Copying of history from one branch to another.
 
@@ -103,6 +104,12 @@ class Fetcher(object):
         else:
             self.pb = pb
         try:
+            self._fetch_revisions(last_revision)
+        finally:
+            self.pb.clear()
+
+    def _fetch_revisions(self, last_revision):
+        try:
             self.last_revision = self._find_last_revision(last_revision)
         except NoSuchRevision, e:
             mutter('failed getting last revision: %s', e)
@@ -114,7 +121,6 @@ class Fetcher(object):
             raise InstallFailed([self.last_revision])
         self._copy_revisions(revs_to_fetch)
         self.new_ancestry = revs_to_fetch
-
 
     def _find_last_revision(self, last_revision):
         """Find the limiting source revision.
@@ -196,7 +202,8 @@ class Fetcher(object):
 
     def _copy_inventory(self, rev_id, inv_xml, parent_ids):
         self.to_control.add_text('inventory', rev_id,
-                                split_lines(inv_xml), parent_ids)
+                                split_lines(inv_xml), parent_ids,
+                                self.to_branch.get_transaction())
 
     def _copy_new_texts(self, rev_id, inv):
         """Copy any new texts occuring in this revision."""
@@ -217,10 +224,16 @@ class Fetcher(object):
         if file_id in self.copied_file_ids:
             mutter('file {%s} already copied', file_id)
             return
-        from_weave = self.from_weaves.get_weave(file_id)
-        to_weave = self.to_weaves.get_weave_or_empty(file_id)
-        to_weave.join(from_weave)
-        self.to_weaves.put_weave(file_id, to_weave)
+        from_weave = self.from_weaves.get_weave(file_id,
+            self.from_branch.get_transaction())
+        to_weave = self.to_weaves.get_weave_or_empty(file_id,
+            self.to_branch.get_transaction())
+        try:
+            to_weave.join(from_weave)
+        except errors.WeaveParentMismatch:
+            to_weave.reweave(from_weave)
+        self.to_weaves.put_weave(file_id, to_weave,
+            self.to_branch.get_transaction())
         self.count_weaves += 1
         self.copied_file_ids.add(file_id)
         mutter('copied file {%s}', file_id)

@@ -18,10 +18,12 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
 from bzrlib.commit import commit
-from bzrlib.errors import NoSuchRevision, UnlistableBranch
+import bzrlib.errors as errors
+from bzrlib.errors import NoSuchRevision, UnlistableBranch, NotBranchError
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.trace import mutter
-
+import bzrlib.transactions as transactions
+from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 
 class TestBranch(TestCaseInTempDir):
 
@@ -138,8 +140,19 @@ class TestBranch(TestCaseInTempDir):
                            'wibble@fofof--20050401--1928390812')
         # list should be cleared when we do a commit
         self.assertEquals(b.pending_merges(), [])
- 
 
+
+class TestRemote(TestCaseWithWebserver):
+
+    def test_open_containing(self):
+        self.assertRaises(NotBranchError, Branch.open_containing,
+                          self.get_remote_url(''))
+        self.assertRaises(NotBranchError, Branch.open_containing,
+                          self.get_remote_url('g/p/q'))
+        b = Branch.initialize('.')
+        Branch.open_containing(self.get_remote_url(''))
+        Branch.open_containing(self.get_remote_url('g/p/q'))
+        
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        
 #         >>> from bzrlib.commit import commit
 #         >>> bzrlib.trace.silent = True
@@ -158,3 +171,60 @@ class TestBranch(TestCaseInTempDir):
 #         Added 0 revisions.
 #         >>> br1.text_store.total_size() == br2.text_store.total_size()
 #         True
+
+class InstrumentedTransaction(object):
+
+    def finish(self):
+        self.calls.append('finish')
+
+    def __init__(self):
+        self.calls = []
+
+
+class TestBranchTransaction(TestCaseInTempDir):
+
+    def setUp(self):
+        super(TestBranchTransaction, self).setUp()
+        self.branch = Branch.initialize('.')
+        
+    def test_default_get_transaction(self):
+        """branch.get_transaction on a new branch should give a PassThrough."""
+        self.failUnless(isinstance(self.branch.get_transaction(),
+                                   transactions.PassThroughTransaction))
+
+    def test__set_new_transaction(self):
+        self.branch._set_transaction(transactions.ReadOnlyTransaction())
+
+    def test__set_over_existing_transaction_raises(self):
+        self.branch._set_transaction(transactions.ReadOnlyTransaction())
+        self.assertRaises(errors.LockError,
+                          self.branch._set_transaction,
+                          transactions.ReadOnlyTransaction())
+
+    def test_finish_no_transaction_raises(self):
+        self.assertRaises(errors.LockError, self.branch._finish_transaction)
+
+    def test_finish_readonly_transaction_works(self):
+        self.branch._set_transaction(transactions.ReadOnlyTransaction())
+        self.branch._finish_transaction()
+        self.assertEqual(None, self.branch._transaction)
+
+    def test_unlock_calls_finish(self):
+        self.branch.lock_read()
+        transaction = InstrumentedTransaction()
+        self.branch._transaction = transaction
+        self.branch.unlock()
+        self.assertEqual(['finish'], transaction.calls)
+
+    def test_lock_read_acquires_ro_transaction(self):
+        self.branch.lock_read()
+        self.failUnless(isinstance(self.branch.get_transaction(),
+                                   transactions.ReadOnlyTransaction))
+        self.branch.unlock()
+        
+    def test_lock_write_acquires_passthrough_transaction(self):
+        self.branch.lock_write()
+        # cannot use get_transaction as its magic
+        self.failUnless(isinstance(self.branch._transaction,
+                                   transactions.PassThroughTransaction))
+        self.branch.unlock()

@@ -344,40 +344,6 @@ class TestCommands(ExternalBase):
         assert os.path.exists('sub/a.txt.OTHER')
         assert os.path.exists('sub/a.txt.BASE')
 
-    def test_merge_with_missing_file(self):
-        """Merge handles missing file conflicts"""
-        os.mkdir('a')
-        os.chdir('a')
-        os.mkdir('sub')
-        print >> file('sub/a.txt', 'wb'), "hello"
-        print >> file('b.txt', 'wb'), "hello"
-        print >> file('sub/c.txt', 'wb'), "hello"
-        self.runbzr('init')
-        self.runbzr('add')
-        self.runbzr(('commit', '-m', 'added a'))
-        self.runbzr('branch . ../b')
-        print >> file('sub/a.txt', 'ab'), "there"
-        print >> file('b.txt', 'ab'), "there"
-        print >> file('sub/c.txt', 'ab'), "there"
-        self.runbzr(('commit', '-m', 'Added there'))
-        os.unlink('sub/a.txt')
-        os.unlink('sub/c.txt')
-        os.rmdir('sub')
-        os.unlink('b.txt')
-        self.runbzr(('commit', '-m', 'Removed a.txt'))
-        os.chdir('../b')
-        print >> file('sub/a.txt', 'ab'), "something"
-        print >> file('b.txt', 'ab'), "something"
-        print >> file('sub/c.txt', 'ab'), "something"
-        self.runbzr(('commit', '-m', 'Modified a.txt'))
-        self.runbzr('merge ../a/')
-        assert os.path.exists('sub/a.txt.THIS')
-        assert os.path.exists('sub/a.txt.BASE')
-        os.chdir('../a')
-        self.runbzr('merge ../b/')
-        assert os.path.exists('sub/a.txt.OTHER')
-        assert os.path.exists('sub/a.txt.BASE')
-
     def test_pull(self):
         """Pull changes from one branch to another."""
         os.mkdir('a')
@@ -728,12 +694,18 @@ class OldTests(ExternalBase):
             runbzr('remove d2/link1')
             assert self.capture('unknowns') == 'd2/link1\n'
             runbzr(['commit', '-m', '5: remove d2/link1'])
+            # try with the rm alias
+            runbzr('add d2/link1')
+            runbzr(['commit', '-m', '6: add d2/link1'])
+            runbzr('rm d2/link1')
+            assert self.capture('unknowns') == 'd2/link1\n'
+            runbzr(['commit', '-m', '7: remove d2/link1'])
     
             os.mkdir("d1")
             runbzr('add d1')
             runbzr('rename d2/link3 d1/link3new')
             assert self.capture('unknowns') == 'd2/link1\n'
-            runbzr(['commit', '-m', '6: remove d2/link1, move/rename link3'])
+            runbzr(['commit', '-m', '8: remove d2/link1, move/rename link3'])
             
             runbzr(['check'])
             
@@ -771,9 +743,9 @@ class OldTests(ExternalBase):
             assert listdir_sorted("d2")== [ "link3" ]
             chdir("..")
             
-            runbzr(['export', '-r', '6', 'exp6.tmp'])
+            runbzr(['export', '-r', '8', 'exp6.tmp'])
             chdir("exp6.tmp")
-            assert listdir_sorted(".") == [ "d1", "d2", "link2" ]
+            self.assertEqual(listdir_sorted("."), [ "d1", "d2", "link2"])
             assert listdir_sorted("d1") == [ "link3new" ]
             assert listdir_sorted("d2") == []
             assert os.readlink("d1/link3new") == "NOWHERE3"

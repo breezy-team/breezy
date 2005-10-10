@@ -114,8 +114,9 @@ class InventoryEntry(object):
                  'text_id', 'parent_id', 'children', 'executable', 
                  'revision']
 
-    def _add_text_to_weave(self, new_lines, parents, weave_store):
-        weave_store.add_text(self.file_id, self.revision, new_lines, parents)
+    def _add_text_to_weave(self, new_lines, parents, weave_store, transaction):
+        weave_store.add_text(self.file_id, self.revision, new_lines, parents,
+                             transaction)
 
     def detect_changes(self, old_entry):
         """Return a (text_modified, meta_modified) from this to old_entry.
@@ -165,6 +166,14 @@ class InventoryEntry(object):
                 ie = inv[self.file_id]
                 assert ie.file_id == self.file_id
                 if ie.revision in heads:
+                    # fixup logic, there was a bug in revision updates.
+                    # with x bit support.
+                    try:
+                        if heads[ie.revision].executable != ie.executable:
+                            heads[ie.revision].executable = False
+                            ie.executable = False
+                    except AttributeError:
+                        pass
                     assert heads[ie.revision] == ie
                 else:
                     # may want to add it.
@@ -310,7 +319,7 @@ class InventoryEntry(object):
                    self.parent_id))
 
     def snapshot(self, revision, path, previous_entries,
-                 work_tree, weave_store):
+                 work_tree, weave_store, transaction):
         """Make a snapshot of this entry which may or may not have changed.
         
         This means that all its fields are populated, that it has its
@@ -326,25 +335,26 @@ class InventoryEntry(object):
                 self.revision = parent_ie.revision
                 return "unchanged"
         return self.snapshot_revision(revision, previous_entries, 
-                                      work_tree, weave_store)
+                                      work_tree, weave_store, transaction)
 
     def snapshot_revision(self, revision, previous_entries, work_tree,
-                          weave_store):
+                          weave_store, transaction):
         """Record this revision unconditionally."""
         mutter('new revision for {%s}', self.file_id)
         self.revision = revision
         change = self._get_snapshot_change(previous_entries)
-        self._snapshot_text(previous_entries, work_tree, weave_store)
+        self._snapshot_text(previous_entries, work_tree, weave_store,
+                            transaction)
         return change
 
-    def _snapshot_text(self, file_parents, work_tree, weave_store): 
+    def _snapshot_text(self, file_parents, work_tree, weave_store, transaction): 
         """Record the 'text' of this entry, whatever form that takes.
         
         This default implementation simply adds an empty text.
         """
         mutter('storing file {%s} in revision {%s}',
                self.file_id, self.revision)
-        self._add_text_to_weave([], file_parents, weave_store)
+        self._add_text_to_weave([], file_parents, weave_store, transaction)
 
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
@@ -539,7 +549,7 @@ class InventoryFile(InventoryEntry):
         self.text_sha1 = work_tree.get_file_sha1(self.file_id)
         self.executable = work_tree.is_executable(self.file_id)
 
-    def _snapshot_text(self, file_parents, work_tree, weave_store): 
+    def _snapshot_text(self, file_parents, work_tree, weave_store, transaction):
         """See InventoryEntry._snapshot_text."""
         mutter('storing file {%s} in revision {%s}',
                self.file_id, self.revision)
@@ -551,10 +561,11 @@ class InventoryFile(InventoryEntry):
             previous_ie = file_parents.values()[0]
             weave_store.add_identical_text(
                 self.file_id, previous_ie.revision, 
-                self.revision, file_parents)
+                self.revision, file_parents, transaction)
         else:
             new_lines = work_tree.get_file(self.file_id).readlines()
-            self._add_text_to_weave(new_lines, file_parents, weave_store)
+            self._add_text_to_weave(new_lines, file_parents, weave_store,
+                                    transaction)
             self.text_sha1 = sha_strings(new_lines)
             self.text_size = sum(map(len, new_lines))
 
@@ -568,6 +579,8 @@ class InventoryFile(InventoryEntry):
             # FIXME: 20050930 probe for the text size when getting sha1
             # in _read_tree_state
             self.text_size = previous_ie.text_size
+        if self.executable != previous_ie.executable:
+            compatible = False
         return compatible
 
 

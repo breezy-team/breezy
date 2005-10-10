@@ -29,6 +29,7 @@ from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn, compact_date, rand_bytes, 
                             rename, splitpath, sha_file, appendpath, 
                             file_kind)
+import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
                            DivergedBranches, LockError, UnlistableStore,
@@ -42,6 +43,7 @@ from bzrlib.store import copy_all
 from bzrlib.store.compressed_text import CompressedTextStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.weave import WeaveStore
+import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 import bzrlib.xml5
 import bzrlib.ui
@@ -49,6 +51,7 @@ import bzrlib.ui
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
 BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
+BZR_BRANCH_FORMAT_6 = "Bazaar-NG branch, format 6\n"
 ## TODO: Maybe include checks for common corruption of newlines, etc?
 
 
@@ -238,24 +241,26 @@ class _Branch(Branch):
             self._make_control()
         self._check_format(relax_version_check)
 
-        def get_store(name, compressed=True):
+        def get_store(name, compressed=True, prefixed=False):
             # FIXME: This approach of assuming stores are all entirely compressed
             # or entirely uncompressed is tidy, but breaks upgrade from 
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
             relpath = self._rel_controlfilename(name)
             if compressed:
-                store = CompressedTextStore(self._transport.clone(relpath))
+                store = CompressedTextStore(self._transport.clone(relpath),
+                                            prefixed=prefixed)
             else:
-                store = TextStore(self._transport.clone(relpath))
+                store = TextStore(self._transport.clone(relpath),
+                                  prefixed=prefixed)
             #if self._transport.should_cache():
             #    cache_path = os.path.join(self.cache_root, name)
             #    os.mkdir(cache_path)
             #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
-        def get_weave(name):
+        def get_weave(name, prefixed=False):
             relpath = self._rel_controlfilename(name)
-            ws = WeaveStore(self._transport.clone(relpath))
+            ws = WeaveStore(self._transport.clone(relpath), prefixed=prefixed)
             if self._transport.should_cache():
                 ws.enable_cache = True
             return ws
@@ -268,6 +273,12 @@ class _Branch(Branch):
             self.control_weaves = get_weave([])
             self.weave_store = get_weave('weaves')
             self.revision_store = get_store('revision-store', compressed=False)
+        elif self._branch_format == 6:
+            self.control_weaves = get_weave([])
+            self.weave_store = get_weave('weaves', prefixed=True)
+            self.revision_store = get_store('revision-store', compressed=False,
+                                            prefixed=True)
+        self._transaction = None
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self._transport.base)
@@ -304,6 +315,32 @@ class _Branch(Branch):
 
     base = property(_get_base)
 
+    def _finish_transaction(self):
+        """Exit the current transaction."""
+        if self._transaction is None:
+            raise errors.LockError('Branch %s is not in a transaction' %
+                                   self)
+        transaction = self._transaction
+        self._transaction = None
+        transaction.finish()
+
+    def get_transaction(self):
+        """Return the current active transaction.
+
+        If no transaction is active, this returns a passthrough object
+        for which all data is immedaitely flushed and no caching happens.
+        """
+        if self._transaction is None:
+            return transactions.PassThroughTransaction()
+        else:
+            return self._transaction
+
+    def _set_transaction(self, new_transaction):
+        """Set a new active transaction."""
+        if self._transaction is not None:
+            raise errors.LockError('Branch %s is in a transaction already.' %
+                                   self)
+        self._transaction = new_transaction
 
     def lock_write(self):
         # TODO: Upgrade locking to support using a Transport,
@@ -318,6 +355,7 @@ class _Branch(Branch):
                     self._rel_controlfilename('branch-lock'))
             self._lock_mode = 'w'
             self._lock_count = 1
+            self._set_transaction(transactions.PassThroughTransaction())
 
 
     def lock_read(self):
@@ -330,6 +368,7 @@ class _Branch(Branch):
                     self._rel_controlfilename('branch-lock'))
             self._lock_mode = 'r'
             self._lock_count = 1
+            self._set_transaction(transactions.ReadOnlyTransaction())
                         
     def unlock(self):
         if not self._lock_mode:
@@ -338,6 +377,7 @@ class _Branch(Branch):
         if self._lock_count > 1:
             self._lock_count -= 1
         else:
+            self._finish_transaction()
             self._lock.unlock()
             self._lock = None
             self._lock_mode = self._lock_count = None
@@ -439,7 +479,7 @@ class _Branch(Branch):
         files = [('README', 
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.\n"),
-            ('branch-format', BZR_BRANCH_FORMAT_5),
+            ('branch-format', BZR_BRANCH_FORMAT_6),
             ('revision-history', ''),
             ('branch-name', ''),
             ('branch-lock', ''),
@@ -467,14 +507,17 @@ class _Branch(Branch):
         except NoSuchFile:
             raise NotBranchError(self.base)
         mutter("got branch format %r", fmt)
-        if fmt == BZR_BRANCH_FORMAT_5:
+        if fmt == BZR_BRANCH_FORMAT_6:
+            self._branch_format = 6
+        elif fmt == BZR_BRANCH_FORMAT_5:
             self._branch_format = 5
         elif fmt == BZR_BRANCH_FORMAT_4:
             self._branch_format = 4
 
         if (not relax_version_check
-            and self._branch_format != 5):
-            raise BzrError('sorry, branch format %r not supported' % fmt,
+            and self._branch_format not in (5, 6)):
+            raise errors.UnsupportedFormatError(
+                           'sorry, branch format %r not supported' % fmt,
                            ['use a different bzr version',
                             'or remove the .bzr directory'
                             ' and "bzr init" again'])
@@ -789,12 +832,13 @@ class _Branch(Branch):
         """
         if revision_id is None:
             return [None]
-        w = self.control_weaves.get_weave('inventory')
+        w = self.get_inventory_weave()
         return [None] + map(w.idx_to_name,
                             w.inclusions([w.lookup(revision_id)]))
 
     def get_inventory_weave(self):
-        return self.control_weaves.get_weave('inventory')
+        return self.control_weaves.get_weave('inventory',
+                                             self.get_transaction())
 
     def get_inventory(self, revision_id):
         """Get Inventory object by hash."""

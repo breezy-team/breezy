@@ -475,6 +475,7 @@ class cmd_remove(Command):
     """
     takes_args = ['file+']
     takes_options = ['verbose']
+    aliases = ['rm']
     
     def run(self, file_list, verbose=False):
         b = Branch.open_containing(file_list[0])
