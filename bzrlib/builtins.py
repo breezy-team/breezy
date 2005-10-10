@@ -263,9 +263,9 @@ class cmd_rename(Command):
 
     See also the 'move' command, which moves files into a different
     directory without changing their name.
-
-    TODO: Some way to rename multiple files without invoking bzr for each
-    one?"""
+    """
+    # TODO: Some way to rename multiple files without invoking 
+    # bzr for each one?"""
     takes_args = ['from_name', 'to_name']
     
     def run(self, from_name, to_name):
@@ -438,11 +438,10 @@ class cmd_branch(Command):
 
 class cmd_renames(Command):
     """Show list of renamed files.
-
-    TODO: Option to show renames between two historical versions.
-
-    TODO: Only show renames under dir, rather than in the whole branch.
     """
+    # TODO: Option to show renames between two historical versions.
+
+    # TODO: Only show renames under dir, rather than in the whole branch.
     takes_args = ['dir?']
 
     def run(self, dir='.'):
@@ -567,26 +566,24 @@ class cmd_diff(Command):
     If files are listed, only the changes in those files are listed.
     Otherwise, all changes for the tree are listed.
 
-    TODO: Allow diff across branches.
-
-    TODO: Option to use external diff command; could be GNU diff, wdiff,
-          or a graphical diff.
-
-    TODO: Python difflib is not exactly the same as unidiff; should
-          either fix it up or prefer to use an external diff.
-
-    TODO: If a directory is given, diff everything under that.
-
-    TODO: Selected-file diff is inefficient and doesn't show you
-          deleted files.
-
-    TODO: This probably handles non-Unix newlines poorly.
-
     examples:
         bzr diff
         bzr diff -r1
         bzr diff -r1..2
     """
+    # TODO: Allow diff across branches.
+    # TODO: Option to use external diff command; could be GNU diff, wdiff,
+    #       or a graphical diff.
+
+    # TODO: Python difflib is not exactly the same as unidiff; should
+    #       either fix it up or prefer to use an external diff.
+
+    # TODO: If a directory is given, diff everything under that.
+
+    # TODO: Selected-file diff is inefficient and doesn't show you
+    #       deleted files.
+
+    # TODO: This probably handles non-Unix newlines poorly.
     
     takes_args = ['file*']
     takes_options = ['revision', 'diff-options']
@@ -623,19 +620,17 @@ class cmd_diff(Command):
 
 class cmd_deleted(Command):
     """List files deleted in the working tree.
-
-    TODO: Show files deleted since a previous revision, or between two revisions.
     """
+    # TODO: Show files deleted since a previous revision, or
+    # between two revisions.
+    # TODO: Much more efficient way to do this: read in new
+    # directories with readdir, rather than stating each one.  Same
+    # level of effort but possibly much less IO.  (Or possibly not,
+    # if the directories are very large...)
     def run(self, show_ids=False):
         b = Branch.open_containing('.')
         old = b.basis_tree()
         new = b.working_tree()
-
-        ## TODO: Much more efficient way to do this: read in new
-        ## directories with readdir, rather than stating each one.  Same
-        ## level of effort but possibly much less IO.  (Or possibly not,
-        ## if the directories are very large...)
-
         for path, ie in old.inventory.iter_entries():
             if not new.has_id(ie.file_id):
                 if show_ids:
@@ -787,9 +782,8 @@ class cmd_touching_revisions(Command):
 
 class cmd_ls(Command):
     """List files in a tree.
-
-    TODO: Take a revision or remote path and list that tree instead.
     """
+    # TODO: Take a revision or remote path and list that tree instead.
     hidden = True
     def run(self, revision=None, verbose=False):
         b = Branch.open_containing('.')
@@ -984,19 +978,18 @@ class cmd_commit(Command):
     A selected-file commit may fail in some cases where the committed
     tree would be invalid, such as trying to commit a file in a
     newly-added directory that is not itself committed.
-
-    TODO: Run hooks on tree to-be-committed, and after commit.
-
-    TODO: Strict commit that fails if there are unknown or deleted files.
     """
+    # TODO: Run hooks on tree to-be-committed, and after commit.
+
+    # TODO: Strict commit that fails if there are unknown or deleted files.
+    # TODO: Give better message for -s, --summary, used by tla people
+
+    # XXX: verbose currently does nothing
+
     takes_args = ['selected*']
     takes_options = ['message', 'file', 'verbose', 'unchanged']
     aliases = ['ci', 'checkin']
 
-    # TODO: Give better message for -s, --summary, used by tla people
-
-    # XXX: verbose currently does nothing
-    
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False):
         from bzrlib.errors import PointlessCommit, ConflictsInTree
@@ -1172,10 +1165,9 @@ class cmd_rocks(Command):
 
 class cmd_find_merge_base(Command):
     """Find and print a base revision for merging two branches.
-
-    TODO: Options to specify revisions on either side, as if
-          merging only part of the history.
     """
+    # TODO: Options to specify revisions on either side, as if
+    #       merging only part of the history.
     takes_args = ['branch', 'other']
     hidden = True
     
