@@ -181,15 +181,13 @@ class TestIntermediateRevisions(TestCaseInTempDir):
                                         self.br1.revision_history()), 
                          ['a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4', 
                           'a@u-0-5'])
-        print ("testrevision.py 191 - intervene appears to return b..6 even"
-               "though it is not reachable!")
-#        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-6', 
-#                         self.br1.revision_history()), 
-#                         ['a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4', 
-#                          'b@u-0-6'])
-#        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-5'), 
-#                         ['a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4', 
-#                          'b@u-0-5'])
+        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-6', 
+                         self.br1.revision_history()), 
+                         ['a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4', 
+                          'b@u-0-6'])
+        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-5'), 
+                         ['a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4', 
+                          'b@u-0-5'])
         self.assertEqual(self.intervene('b@u-0-3', 'b@u-0-6', 
                          self.br2.revision_history()), 
                          ['b@u-0-4', 'b@u-0-5', 'b@u-0-6'])
