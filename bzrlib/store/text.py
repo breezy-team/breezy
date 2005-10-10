@@ -144,18 +144,6 @@ class TextStore(bzrlib.store.TransportStore):
     def __len__(self):
         return len(list(self._iter_relpath()))
 
-    def __getitem__(self, fileid):
-        """Returns a file reading from a particular entry."""
-        fn = self._relpath(fileid)
-        # This will throw if the file doesn't exist.
-        try:
-            f = self._transport.get(fn)
-        except:
-            raise KeyError('This store (%s) does not contain %s' % (self, fileid))
-
-        return f
-            
-
     def total_size(self):
         """Return (count, bytes)
 

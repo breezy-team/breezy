@@ -81,7 +81,6 @@ class WeaveStore(TransportStore):
         transaction.register_clean(w)
         return w
 
-
     def get_lines(self, file_id, rev_id, transaction):
         """Return text from a particular version of a weave.
 
@@ -107,9 +106,7 @@ class WeaveStore(TransportStore):
         sio = StringIO()
         write_weave_v5(weave, sio)
         sio.seek(0)
-
         self._put(file_id, sio)
-
 
     def add_text(self, file_id, rev_id, new_lines, parents, transaction):
         w = self.get_weave_or_empty(file_id, transaction)
