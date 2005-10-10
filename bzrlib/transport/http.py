@@ -148,8 +148,6 @@ class HttpTransport(Transport):
             raise NoSuchFile(msg = "Error retrieving %s" 
                              % self.abspath(relpath),
                              orig_error=e)
-        except Exception,e:
-            raise HttpTransportError(orig_error=e)
 
     def get_partial(self, relpath, start, length=None):
         """Get just part of a file.
