@@ -15,3 +15,4 @@ testrev.*
 /tmp
 # do want this after all
 + CHANGELOG
+/build
