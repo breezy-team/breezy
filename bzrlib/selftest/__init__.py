@@ -463,6 +463,7 @@ def test_suite():
                    'bzrlib.selftest.test_ancestry',
                    'bzrlib.selftest.test_commit',
                    'bzrlib.selftest.test_commit_merge',
+                   'bzrlib.selftest.testconfig',
                    'bzrlib.selftest.versioning',
                    'bzrlib.selftest.testmerge3',
                    'bzrlib.selftest.testmerge',

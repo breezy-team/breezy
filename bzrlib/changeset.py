@@ -45,50 +45,57 @@ def invert_dict(dict):
     return newdict
 
        
-class ChangeUnixPermissions(object):
+class ChangeExecFlag(object):
     """This is two-way change, suitable for file modification, creation,
     deletion"""
-    def __init__(self, old_mode, new_mode):
-        self.old_mode = old_mode
-        self.new_mode = new_mode
+    def __init__(self, old_exec_flag, new_exec_flag):
+        self.old_exec_flag = old_exec_flag
+        self.new_exec_flag = new_exec_flag
 
     def apply(self, filename, conflict_handler, reverse=False):
         if not reverse:
-            from_mode = self.old_mode
-            to_mode = self.new_mode
+            from_exec_flag = self.old_exec_flag
+            to_exec_flag = self.new_exec_flag
         else:
-            from_mode = self.new_mode
-            to_mode = self.old_mode
+            from_exec_flag = self.new_exec_flag
+            to_exec_flag = self.old_exec_flag
         try:
-            current_mode = os.stat(filename).st_mode &0777
+            current_exec_flag = bool(os.stat(filename).st_mode & 0111)
         except OSError, e:
             if e.errno == errno.ENOENT:
-                if conflict_handler.missing_for_chmod(filename) == "skip":
+                if conflict_handler.missing_for_exec_flag(filename) == "skip":
                     return
                 else:
-                    current_mode = from_mode
+                    current_exec_flag = from_exec_flag
 
-        if from_mode is not None and current_mode != from_mode:
-            if conflict_handler.wrong_old_perms(filename, from_mode, 
-                                                current_mode) != "continue":
+        if from_exec_flag is not None and current_exec_flag != from_exec_flag:
+            if conflict_handler.wrong_old_exec_flag(filename,
+                        from_exec_flag, current_exec_flag) != "continue":
                 return
 
-        if to_mode is not None:
+        if to_exec_flag is not None:
+            current_mode = os.stat(filename).st_mode
+            if to_exec_flag:
+                umask = os.umask(0)
+                os.umask(umask)
+                to_mode = current_mode | (0100 & ~umask)
+                # Enable x-bit for others only if they can read it.
+                if current_mode & 0004:
+                    to_mode |= 0001 & ~umask
+                if current_mode & 0040:
+                    to_mode |= 0010 & ~umask
+            else:
+                to_mode = current_mode & ~0111
             try:
                 os.chmod(filename, to_mode)
             except IOError, e:
                 if e.errno == errno.ENOENT:
-                    conflict_handler.missing_for_chmod(filename)
+                    conflict_handler.missing_for_exec_flag(filename)
 
     def __eq__(self, other):
-        if not isinstance(other, ChangeUnixPermissions):
-            return False
-        elif self.old_mode != other.old_mode:
-            return False
-        elif self.new_mode != other.new_mode:
-            return False
-        else:
-            return True
+        return (isinstance(other, ChangeExecFlag) and
+                self.old_exec_flag == other.old_exec_flag and
+                self.new_exec_flag == other.new_exec_flag)
 
     def __ne__(self, other):
         return not (self == other)
@@ -916,31 +923,16 @@ class MergeConflict(Exception):
         Exception.__init__(self, "Conflict applying changes to %s" % this_path)
         self.this_path = this_path
 
-class MergePermissionConflict(Exception):
-    def __init__(self, this_path, base_path, other_path):
-        this_perms = os.stat(this_path).st_mode & 0755
-        base_perms = os.stat(base_path).st_mode & 0755
-        other_perms = os.stat(other_path).st_mode & 0755
-        msg = """Conflicting permission for %s
-this: %o
-base: %o
-other: %o
-        """ % (this_path, this_perms, base_perms, other_perms)
-        self.this_path = this_path
-        self.base_path = base_path
-        self.other_path = other_path
-        Exception.__init__(self, msg)
-
 class WrongOldContents(Exception):
     def __init__(self, filename):
         msg = "Contents mismatch deleting %s" % filename
         self.filename = filename
         Exception.__init__(self, msg)
 
-class WrongOldPermissions(Exception):
-    def __init__(self, filename, old_perms, new_perms):
-        msg = "Permission missmatch on %s:\n" \
-        "Expected 0%o, got 0%o." % (filename, old_perms, new_perms)
+class WrongOldExecFlag(Exception):
+    def __init__(self, filename, old_exec_flag, new_exec_flag):
+        msg = "Executable flag missmatch on %s:\n" \
+        "Expected %s, got %s." % (filename, old_exec_flag, new_exec_flag)
         self.filename = filename
         Exception.__init__(self, msg)
 
@@ -964,7 +956,7 @@ class PatchTargetMissing(Exception):
         Exception.__init__(self, msg)
         self.filename = filename
 
-class MissingPermsFile(Exception):
+class MissingForSetExec(Exception):
     def __init__(self, filename):
         msg = "Attempt to change permissions on  %s, which does not exist" %\
             filename
@@ -1027,17 +1019,14 @@ class ExceptionConflictHandler(object):
         os.unlink(new_file)
         raise MergeConflict(this_path)
 
-    def permission_conflict(self, this_path, base_path, other_path):
-        raise MergePermissionConflict(this_path, base_path, other_path)
-
     def wrong_old_contents(self, filename, expected_contents):
         raise WrongOldContents(filename)
 
     def rem_contents_conflict(self, filename, this_contents, base_contents):
         raise RemoveContentsConflict(filename)
 
-    def wrong_old_perms(self, filename, old_perms, new_perms):
-        raise WrongOldPermissions(filename, old_perms, new_perms)
+    def wrong_old_exec_flag(self, filename, old_exec_flag, new_exec_flag):
+        raise WrongOldExecFlag(filename, old_exec_flag, new_exec_flag)
 
     def rmdir_non_empty(self, filename):
         raise DeletingNonEmptyDirectory(filename)
@@ -1048,8 +1037,8 @@ class ExceptionConflictHandler(object):
     def patch_target_missing(self, filename, contents):
         raise PatchTargetMissing(filename)
 
-    def missing_for_chmod(self, filename):
-        raise MissingPermsFile(filename)
+    def missing_for_exec_flag(self, filename):
+        raise MissingForExecFlag(filename)
 
     def missing_for_rm(self, filename, change):
         raise MissingForRm(filename)
@@ -1265,9 +1254,9 @@ def compose_metadata(old_entry, new_entry):
         return new_meta
     elif new_meta is None:
         return old_meta
-    elif isinstance(old_meta, ChangeUnixPermissions) and \
-        isinstance(new_meta, ChangeUnixPermissions):
-        return ChangeUnixPermissions(old_meta.old_mode, new_meta.new_mode)
+    elif (isinstance(old_meta, ChangeExecFlag) and
+          isinstance(new_meta, ChangeExecFlag)):
+        return ChangeExecFlag(old_meta.old_exec_flag, new_meta.new_exec_flag)
     else:
         return ApplySequence(old_meta, new_meta)
 
@@ -1391,7 +1380,7 @@ class ChangesetGenerator(object):
         stat_a = self.lstat(full_path_a)
         stat_b = self.lstat(full_path_b)
 
-        cs_entry.metadata_change = self.make_mode_change(stat_a, stat_b)
+        cs_entry.metadata_change = self.make_exec_flag_change(stat_a, stat_b)
 
         if id in self.tree_a and id in self.tree_b:
             a_sha1 = self.tree_a.get_file_sha1(id)
@@ -1405,16 +1394,15 @@ class ChangesetGenerator(object):
                                                              stat_b)
         return cs_entry
 
-    def make_mode_change(self, stat_a, stat_b):
-        mode_a = None
+    def make_exec_flag_change(self, stat_a, stat_b):
+        exec_flag_a = exec_flag_b = None
         if stat_a is not None and not stat.S_ISLNK(stat_a.st_mode):
-            mode_a = stat_a.st_mode & 0777
-        mode_b = None
+            exec_flag_a = bool(stat_a.st_mode & 0111)
         if stat_b is not None and not stat.S_ISLNK(stat_b.st_mode):
-            mode_b = stat_b.st_mode & 0777
-        if mode_a == mode_b:
+            exec_flag_b = bool(stat_b.st_mode & 0111)
+        if exec_flag_a == exec_flag_b:
             return None
-        return ChangeUnixPermissions(mode_a, mode_b)
+        return ChangeExecFlag(exec_flag_a, exec_flag_b)
 
     def make_contents_change(self, full_path_a, stat_a, full_path_b, stat_b):
         if stat_a is None and stat_b is None:

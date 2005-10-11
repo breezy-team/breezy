@@ -39,9 +39,10 @@ class WeaveStore(TransportStore):
     """
     FILE_SUFFIX = '.weave'
 
-    def __init__(self, transport, prefixed=False):
+    def __init__(self, transport, prefixed=False, precious=False):
         self._transport = transport
         self._prefixed = prefixed
+        self._precious = precious
 
     def filename(self, file_id):
         """Return the path relative to the transport root."""
@@ -78,7 +79,7 @@ class WeaveStore(TransportStore):
             return weave
         w = read_weave(self._get(file_id))
         transaction.map.add_weave(file_id, w)
-        transaction.register_clean(w)
+        transaction.register_clean(w, precious=self._precious)
         return w
 
     def get_lines(self, file_id, rev_id, transaction):
@@ -95,7 +96,7 @@ class WeaveStore(TransportStore):
         except NoSuchFile:
             weave = Weave(weave_name=file_id)
             transaction.map.add_weave(file_id, weave)
-            transaction.register_clean(weave)
+            transaction.register_clean(weave, precious=self._precious)
             return weave
 
     def put_weave(self, file_id, weave, transaction):

@@ -1,5 +1,25 @@
+DEVELOPMENT HEAD
+
+
+  IMPROVEMENTS:
+
+    * The config directory is now ~/.bazaar, and there is a single file 
+      ~/.bazaar/bazaar.conf storing email, editor and other preferences.
+    
+
+  INTERNALS:
+
+    * Config options have moved from bzrlib.osutils to bzrlib.config.
+
+
 bzr 0.1 2005-10-06
 
+  NOTES:
+
+    * 'bzr branch' over http initially gives a very high estimate
+      of completion time but it should fall as the first few 
+      revisions are pulled in.  branch is still slow on 
+      high-latency connections.
 
   BUG FIXES:
   
@@ -31,6 +51,12 @@ bzr 0.1 2005-10-06
 
     * HTTP tests now force off the use of http_proxy for the duration.
       Contributed by Gustavo Niemeyer.
+
+    * Fix problems in merging weave-based branches that have 
+      different partial views of history.
+
+    * Symlink support: working with symlinks when not in the root of a 
+      bzr tree was broken, patch from Scott James Remnant.
 
 
   IMPROVEMENTS:

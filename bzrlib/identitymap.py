@@ -29,11 +29,25 @@ class IdentityMap(object):
     that is store in the map. Look for find_CLASS and add_CLASS methods.
     """
 
+    def add_revision_history(self, revision_history):
+        """Add a revision_history object to the map.
+
+        There can only be one!
+        """
+        if self._revision_history is not None:
+            raise errors.BzrError("A revision history (%s) is already "
+                                  "identity map" % self._revision_history)
+        self._revision_history = revision_history
+
     def add_weave(self, id, weave):
         """Add weave to the map with a given id."""
         if self._weave_key(id) in self._map:
             raise errors.BzrError('weave %s already in the identity map' % id)
         self._map[self._weave_key(id)] = weave
+        self._reverse_map[weave] = self._weave_key(id)
+
+    def find_revision_history(self):
+        return self._revision_history
 
     def find_weave(self, id):
         """Return the weave for 'id', or None if it is not present."""
@@ -42,6 +56,20 @@ class IdentityMap(object):
     def __init__(self):
         super(IdentityMap, self).__init__()
         self._map = {}
+        self._reverse_map = {}
+        self._revision_history = None
+
+    def remove_object(self, an_object):
+        """Remove object from map."""
+        if isinstance(an_object, list):
+            if self._revision_history is an_object:
+                self._revision_history = None
+            else:
+                raise KeyError('%r not in identity map' % an_object)
+        else:
+            self._map.pop(self._reverse_map[an_object])
+            self._reverse_map.pop(an_object)
+        
 
     def _weave_key(self, id):
         """Return the key for a weaves id."""
@@ -57,7 +85,12 @@ class NullIdentityMap(object):
     def add_weave(self, id, weave):
         """See IdentityMap.add_weave."""
 
+    def add_revision_history(self, revision_history):
+        """See IdentityMap.add_revision_history."""
+
     def find_weave(self, id):
         """See IdentityMap.find_weave."""
         return None
 
+    def find_revision_history(self):
+        """See IdentityMap.find_revision_history."""

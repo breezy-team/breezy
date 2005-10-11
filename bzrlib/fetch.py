@@ -103,9 +103,11 @@ class Fetcher(object):
             self.pb = bzrlib.ui.ui_factory.progress_bar()
         else:
             self.pb = pb
+        self.from_branch.lock_read()
         try:
             self._fetch_revisions(last_revision)
         finally:
+            self.from_branch.unlock()
             self.pb.clear()
 
     def _fetch_revisions(self, last_revision):
@@ -115,6 +117,9 @@ class Fetcher(object):
             mutter('failed getting last revision: %s', e)
             raise InstallFailed([last_revision])
         mutter('fetch up to rev {%s}', self.last_revision)
+        if (self.last_revision is not None and 
+            self.to_branch.has_revision(self.last_revision)):
+            return
         try:
             revs_to_fetch = self._compare_ancestries()
         except WeaveError:
