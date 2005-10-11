@@ -179,13 +179,15 @@ class cmd_add(Command):
     get added when you add a file in the directory.
     """
     takes_args = ['file*']
-    takes_options = ['verbose', 'no-recurse']
+    takes_options = ['no-recurse', 'quiet']
     
-    def run(self, file_list, verbose=False, no_recurse=False):
-        # verbose currently has no effect
-        from bzrlib.add import smart_add, add_reporter_print
-        smart_add(file_list, not no_recurse, add_reporter_print)
-
+    def run(self, file_list, no_recurse=False, quiet=False):
+        from bzrlib.add import smart_add, add_reporter_print, add_reporter_null
+        if quiet:
+            reporter = add_reporter_null
+        else:
+            reporter = add_reporter_print
+        smart_add(file_list, not no_recurse, reporter)
 
 
 class cmd_mkdir(Command):

@@ -5,11 +5,16 @@ DEVELOPMENT HEAD
 
     * The config directory is now ~/.bazaar, and there is a single file 
       ~/.bazaar/bazaar.conf storing email, editor and other preferences.
+      (Robert Collins)
+
+    * 'bzr add' no longer takes a --verbose option, and a --quiet option
+      has been added that suppresses all output.
     
 
   INTERNALS:
 
     * Config options have moved from bzrlib.osutils to bzrlib.config.
+      (Robert Collins)
 
 
   TESTING:

@@ -454,6 +454,15 @@ class TestCommands(ExternalBase):
                            'added top.txt',],
                           results)
 
+    def test_add_quiet_is(self):
+        """add -q does not print the names of added files."""
+        b = Branch.initialize('.')
+        self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
+        out = self.run_bzr_captured(['add', '-q'], retcode = 0)[0]
+        # the ordering is not defined at the moment
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEquals([''], results)
+
     def test_unknown_command(self):
         """Handling of unknown command."""
         out, err = self.run_bzr_captured(['fluffy-badger'],

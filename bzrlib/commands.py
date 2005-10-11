@@ -350,6 +350,7 @@ OPTIONS = {
     'force':                  None,
     'format':                 unicode,
     'forward':                None,
+    'quiet':                  None,
     'message':                unicode,
     'no-recurse':             None,
     'profile':                None,
@@ -376,6 +377,7 @@ SHORT_OPTIONS = {
     'r':                      'revision',
     'v':                      'verbose',
     'l':                      'long',
+    'q':                      'quiet',
 }
 
 
