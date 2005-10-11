@@ -14,6 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: Move this into builtins
+
+# TODO: 'bzr resolve' should accept a directory name and work from that 
+# point down
+
+# TODO: bzr revert should resolve; even when reverting the whole tree
+# or particular directories
+
 import bzrlib.status
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError
