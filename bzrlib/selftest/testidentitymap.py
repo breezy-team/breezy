@@ -52,6 +52,24 @@ class TestIdentityMap(TestCase):
         map.add_weave("id", weave)
         map.remove_object(weave)
         map.add_weave("id", weave)
+        rev_history = [1]
+        map.add_revision_history(rev_history)
+        map.remove_object(rev_history)
+
+    def test_add_revision_history(self):
+        map = identitymap.IdentityMap()
+        rev_history = [1,2,3]
+        map.add_revision_history(rev_history)
+        self.assertEqual(rev_history, map.find_revision_history())
+
+    def test_double_add_revision_history(self):
+        map = identitymap.IdentityMap()
+        revision_history = [1]
+        map.add_revision_history(revision_history)
+        self.assertRaises(errors.BzrError,
+                          map.add_revision_history,
+                          revision_history)
+        self.assertEqual(revision_history, map.find_revision_history())
 
  
 class TestNullIdentityMap(TestCase):
@@ -79,3 +97,15 @@ class TestNullIdentityMap(TestCase):
         map = identitymap.NullIdentityMap()
         self.assertEqual(None, getattr(map, 'remove_object', None))
 
+    def test_add_revision_history(self):
+        map = identitymap.NullIdentityMap()
+        rev_history = [1,2,3]
+        map.add_revision_history(rev_history)
+        self.assertEqual(None, map.find_revision_history())
+
+    def test_double_add_revision_history(self):
+        map = identitymap.NullIdentityMap()
+        revision_history = [1]
+        map.add_revision_history(revision_history)
+        map.add_revision_history(revision_history)
+        self.assertEqual(None, map.find_revision_history())

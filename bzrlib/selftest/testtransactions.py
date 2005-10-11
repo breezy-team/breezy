@@ -41,7 +41,7 @@ class DummyWeave(object):
 
 class TestSymbols(TestCase):
 
-    def test_symbols(self):
+    def test_public_symbols(self):
         from bzrlib.transactions import ReadOnlyTransaction
         from bzrlib.transactions import PassThroughTransaction
 
@@ -133,6 +133,20 @@ class TestReadOnlyTransaction(TestCase):
                                         precious=True)
         self.assertEqual(DummyWeave('a weave'),
                          self.transaction.map.find_weave("id"))
+
+    def test_precious_revision_history(self):
+        """Disabled test until revision-history is a real object."""
+        print "Disabled: test_precious_revision_history"
+        return
+        self.transaction.set_cache_size(0)
+        history = []
+        self.transaction.map.add_revision_history(history)
+        self.assertEqual(history, self.transaction.map.find_revision_history())
+        history = None
+        # add an object, should not fall out even with no references.
+        self.transaction.register_clean(
+            self.transaction.map.find_revision_history(), precious=True)
+        self.assertEqual([], self.transaction.map.find_revision_history())
 
 
 class TestPassThroughTransaction(TestCase):

@@ -877,8 +877,18 @@ class _Branch(Branch):
         """Return sequence of revision hashes on to this branch."""
         self.lock_read()
         try:
-            return [l.rstrip('\r\n') for l in
+            transaction = self.get_transaction()
+            history = transaction.map.find_revision_history()
+            if history is not None:
+                mutter("cache hit for revision-history in %s", self)
+                return list(history)
+            history = [l.rstrip('\r\n') for l in
                     self.controlfile('revision-history', 'r').readlines()]
+            transaction.map.add_revision_history(history)
+            # this call is disabled because revision_history is 
+            # not really an object yet, and the transaction is for objects.
+            # transaction.register_clean(history, precious=True)
+            return list(history)
         finally:
             self.unlock()
 

@@ -145,3 +145,9 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertEqual(1,
             len([log for log in self.weblogs if log.endswith(
                 inventory_weave_suffix)]))
+        # this r-h check test will prevent regressions, but it currently already 
+        # passes, before the patch to cache-rh is applied :[
+        revision_history_suffix = 'revision-history HTTP/1.1" 200 -'
+        self.assertEqual(1,
+            len([log for log in self.weblogs if log.endswith(
+                revision_history_suffix)]))
