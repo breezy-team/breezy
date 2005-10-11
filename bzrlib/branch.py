@@ -358,7 +358,6 @@ class _Branch(Branch):
             self._lock_count = 1
             self._set_transaction(transactions.PassThroughTransaction())
 
-
     def lock_read(self):
         mutter("lock read: %s (%s)", self, self._lock_count)
         if self._lock_mode:
@@ -371,6 +370,8 @@ class _Branch(Branch):
             self._lock_mode = 'r'
             self._lock_count = 1
             self._set_transaction(transactions.ReadOnlyTransaction())
+            # 5K may be excessive, but hey, its a knob.
+            self.get_transaction().set_cache_size(5000)
                         
     def unlock(self):
         mutter("unlock: %s (%s)", self, self._lock_count)
@@ -876,8 +877,18 @@ class _Branch(Branch):
         """Return sequence of revision hashes on to this branch."""
         self.lock_read()
         try:
-            return [l.rstrip('\r\n') for l in
+            transaction = self.get_transaction()
+            history = transaction.map.find_revision_history()
+            if history is not None:
+                mutter("cache hit for revision-history in %s", self)
+                return list(history)
+            history = [l.rstrip('\r\n') for l in
                     self.controlfile('revision-history', 'r').readlines()]
+            transaction.map.add_revision_history(history)
+            # this call is disabled because revision_history is 
+            # not really an object yet, and the transaction is for objects.
+            # transaction.register_clean(history, precious=True)
+            return list(history)
         finally:
             self.unlock()
 
@@ -999,6 +1010,9 @@ class _Branch(Branch):
         from bzrlib.revision import get_intervening_revisions
         if stop_revision is None:
             stop_revision = other.last_revision()
+        if (stop_revision is not None and 
+            stop_revision in self.revision_history()):
+            return
         greedy_fetch(to_branch=self, from_branch=other,
                      revision=stop_revision)
         pullable_revs = self.missing_revisions(

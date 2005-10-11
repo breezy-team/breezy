@@ -117,6 +117,9 @@ class Fetcher(object):
             mutter('failed getting last revision: %s', e)
             raise InstallFailed([last_revision])
         mutter('fetch up to rev {%s}', self.last_revision)
+        if (self.last_revision is not None and 
+            self.to_branch.has_revision(self.last_revision)):
+            return
         try:
             revs_to_fetch = self._compare_ancestries()
         except WeaveError:
