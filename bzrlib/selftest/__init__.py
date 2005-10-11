@@ -491,6 +491,7 @@ def test_suite():
                    'bzrlib.selftest.testworkingtree',
                    'bzrlib.selftest.test_upgrade',
                    'bzrlib.selftest.test_conflicts',
+                   'bzrlib.selftest.testtestament',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
