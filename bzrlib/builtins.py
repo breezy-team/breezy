@@ -1120,9 +1120,9 @@ class cmd_selftest(Command):
     which tests should run."""
     # TODO: --list should give a list of all available tests
     hidden = True
-    takes_args = ['testnames*']
-    takes_options = ['verbose', 'pattern']
-    def run(self, testnames_list=None, verbose=False, pattern=".*"):
+    takes_args = ['testspecs*']
+    takes_options = ['verbose']
+    def run(self, testspecs_list=None, verbose=False):
         import bzrlib.ui
         from bzrlib.selftest import selftest
         # we don't want progress meters from the tests to go to the
@@ -1132,9 +1132,12 @@ class cmd_selftest(Command):
         bzrlib.trace.info('running tests...')
         try:
             bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
+            if testspecs_list is not None:
+                pattern = '|'.join(testspecs_list)
+            else:
+                pattern = ".*"
             result = selftest(verbose=verbose, 
-                              pattern=pattern,
-                              testnames=testnames_list)
+                              pattern=pattern)
             if result:
                 bzrlib.trace.info('tests passed')
             else:

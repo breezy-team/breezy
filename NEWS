@@ -12,6 +12,12 @@ DEVELOPMENT HEAD
     * Config options have moved from bzrlib.osutils to bzrlib.config.
 
 
+  TESTING:
+
+    * The --pattern option has been removed, now test specifiers on the
+      command line can be simple strings, or regexps, or both.
+
+
 bzr 0.1 2005-10-06
 
   NOTES:
