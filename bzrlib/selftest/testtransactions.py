@@ -27,50 +27,115 @@ from bzrlib.selftest import TestCase, TestCaseInTempDir
 import bzrlib.transactions as transactions
 
 
-class TestReadOnlyTransaction(TestCase):
+class DummyWeave(object):
+    """A class that can be instantiated and compared."""
+
+    def __init__(self, message):
+        self._message = message
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        return self._message == other._message
+
+
+class TestSymbols(TestCase):
 
     def test_symbols(self):
         from bzrlib.transactions import ReadOnlyTransaction
+        from bzrlib.transactions import PassThroughTransaction
 
-    def test_construct(self):
-        transactions.ReadOnlyTransaction()
+
+class TestReadOnlyTransaction(TestCase):
+
+    def setUp(self):
+        self.transaction = transactions.ReadOnlyTransaction()
+        super(TestReadOnlyTransaction, self).setUp()
 
     def test_register_clean(self):
-        transaction = transactions.ReadOnlyTransaction()
-        transaction.register_clean("anobject")
+        self.transaction.register_clean("anobject")
 
     def test_register_dirty_raises(self):
-        transaction = transactions.ReadOnlyTransaction()
         self.assertRaises(errors.ReadOnlyError, 
-                          transaction.register_dirty,"anobject")
+                          self.transaction.register_dirty,"anobject")
     
     def test_commit_raises(self):
-        transaction = transactions.ReadOnlyTransaction()
-        self.assertRaises(errors.CommitNotPossible, transaction.commit)
+        self.assertRaises(errors.CommitNotPossible, self.transaction.commit)
 
     def test_map(self):
-        transaction = transactions.ReadOnlyTransaction()
-        self.assertNotEqual(None, getattr(transaction, "map", None))
+        self.assertNotEqual(None, getattr(self.transaction, "map", None))
     
     def test_add_and_get(self):
-        transaction = transactions.ReadOnlyTransaction()
         weave = "a weave"
-        transaction.map.add_weave("id", weave)
-        self.assertEqual(weave, transaction.map.find_weave("id"))
+        self.transaction.map.add_weave("id", weave)
+        self.assertEqual(weave, self.transaction.map.find_weave("id"))
 
     def test_rollback_returns(self):
-        transaction = transactions.ReadOnlyTransaction()
-        transaction.rollback()
+        self.transaction.rollback()
 
     def test_finish_returns(self):
-        transaction = transactions.ReadOnlyTransaction()
-        transaction.finish()
+        self.transaction.finish()
 
+    def test_zero_size_cache(self):
+        self.transaction.set_cache_size(0)
+        weave = DummyWeave('a weave')
+        self.transaction.map.add_weave("id", weave)
+        self.assertEqual(weave, self.transaction.map.find_weave("id"))
+        weave = None
+        # add an object, should fall right out if there are no references
+        self.transaction.register_clean(self.transaction.map.find_weave("id"))
+        self.assertEqual(None, self.transaction.map.find_weave("id"))
+        # but if we have a reference it should stick around
+        weave = DummyWeave("another weave")
+        self.transaction.map.add_weave("id", weave)
+        self.transaction.register_clean(self.transaction.map.find_weave("id"))
+        self.assertEqual(weave, self.transaction.map.find_weave("id"))
+        del weave
+        # its not a weakref system
+        self.assertEqual(DummyWeave("another weave"),
+                         self.transaction.map.find_weave("id"))
         
-class TestPassThroughTransaction(TestCase):
+    def test_small_cache(self):
+        self.transaction.set_cache_size(1)
+        # add an object, should not fall right out if there are no references
+        #sys.getrefcounts(foo)
+        self.transaction.map.add_weave("id", DummyWeave("a weave"))
+        self.transaction.register_clean(self.transaction.map.find_weave("id"))
+        self.assertEqual(DummyWeave("a weave"),
+                         self.transaction.map.find_weave("id"))
+        self.transaction.map.add_weave("id2", DummyWeave("a weave also"))
+        self.transaction.register_clean(self.transaction.map.find_weave("id2"))
+        # currently a fifo
+        self.assertEqual(None, self.transaction.map.find_weave("id"))
+        self.assertEqual(DummyWeave("a weave also"),
+                         self.transaction.map.find_weave("id2"))
 
-    def test_symbols(self):
-        from bzrlib.transactions import PassThroughTransaction
+    def test_small_cache_with_references(self):
+        # if we have a reference it should stick around
+        weave = "a weave"
+        weave2 = "another weave"
+        self.transaction.map.add_weave("id", weave)
+        self.transaction.map.add_weave("id2", weave2)
+        self.assertEqual(weave, self.transaction.map.find_weave("id"))
+        self.assertEqual(weave2, self.transaction.map.find_weave("id2"))
+        weave = None
+        # its not a weakref system
+        self.assertEqual("a weave", self.transaction.map.find_weave("id"))
+
+    def test_precious_with_zero_size_cache(self):
+        self.transaction.set_cache_size(0)
+        weave = DummyWeave('a weave')
+        self.transaction.map.add_weave("id", weave)
+        self.assertEqual(weave, self.transaction.map.find_weave("id"))
+        weave = None
+        # add an object, should not fall out even with no references.
+        self.transaction.register_clean(self.transaction.map.find_weave("id"),
+                                        precious=True)
+        self.assertEqual(DummyWeave('a weave'),
+                         self.transaction.map.find_weave("id"))
+
+
+class TestPassThroughTransaction(TestCase):
 
     def test_construct(self):
         transactions.PassThroughTransaction()
@@ -104,3 +169,10 @@ class TestPassThroughTransaction(TestCase):
     def test_finish_returns(self):
         transaction = transactions.PassThroughTransaction()
         transaction.finish()
+
+    def test_cache_is_ignored(self):
+        transaction = transactions.PassThroughTransaction()
+        transaction.set_cache_size(100)
+        weave = "a weave"
+        transaction.map.add_weave("id", weave)
+        self.assertEqual(None, transaction.map.find_weave("id"))

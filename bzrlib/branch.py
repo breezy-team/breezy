@@ -371,6 +371,8 @@ class _Branch(Branch):
             self._lock_mode = 'r'
             self._lock_count = 1
             self._set_transaction(transactions.ReadOnlyTransaction())
+            # 5K may be excessive, but hey, its a knob.
+            self.get_transaction().set_cache_size(5000)
                         
     def unlock(self):
         mutter("unlock: %s (%s)", self, self._lock_count)
