@@ -29,6 +29,7 @@ import time
 import types
 
 import bzrlib
+from bzrlib.config import config_dir
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 
@@ -257,16 +258,6 @@ def fingerprint_file(f):
     size = len(b)
     return {'size': size,
             'sha1': s.hexdigest()}
-
-
-def config_dir():
-    """Return per-user configuration directory.
-
-    By default this is ~/.bzr.conf/
-    
-    TODO: Global option --config-dir to override this.
-    """
-    return os.path.join(os.path.expanduser("~"), ".bzr.conf")
 
 
 def _auto_user_id():
