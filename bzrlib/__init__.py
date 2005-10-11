@@ -39,7 +39,7 @@ user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
 __copyright__ = "Copyright 2005 Canonical Development Ltd."
-__version__ = '0.1rc3pre'
+__version__ = '0.1'
 
 
 def get_bzr_revision():
