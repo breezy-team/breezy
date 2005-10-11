@@ -20,11 +20,12 @@ import logging
 import unittest
 import tempfile
 import os
-import sys
 import errno
-import subprocess
-import shutil
 import re
+import shutil
+import subprocess
+import sys
+import time
 
 import bzrlib.commands
 import bzrlib.trace
@@ -70,6 +71,9 @@ class _MyResult(unittest._TextTestResult):
     No special behaviour for now.
     """
 
+    def _elapsedTime(self):
+        return "(Took %.3fs)" % (time.time() - self._start_time)
+
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
         # TODO: Maybe show test.shortDescription somewhere?
@@ -77,18 +81,27 @@ class _MyResult(unittest._TextTestResult):
         if self.showAll:
             self.stream.write('%-70.70s' % what)
         self.stream.flush()
+        self._start_time = time.time()
 
     def addError(self, test, err):
-        super(_MyResult, self).addError(test, err)
+        unittest.TestResult.addError(self, test, err)
+        if self.showAll:
+            self.stream.writeln("ERROR %s" % self._elapsedTime())
+        elif self.dots:
+            self.stream.write('E')
         self.stream.flush()
 
     def addFailure(self, test, err):
-        super(_MyResult, self).addFailure(test, err)
+        unittest.TestResult.addFailure(self, test, err)
+        if self.showAll:
+            self.stream.writeln("FAIL %s" % self._elapsedTime())
+        elif self.dots:
+            self.stream.write('F')
         self.stream.flush()
 
     def addSuccess(self, test):
         if self.showAll:
-            self.stream.writeln('OK')
+            self.stream.writeln('OK %s' % self._elapsedTime())
         elif self.dots:
             self.stream.write('~')
         self.stream.flush()
