@@ -341,13 +341,10 @@ class cmd_pull(Command):
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
         cache_root = tempfile.mkdtemp()
-        from bzrlib.errors import DivergedBranches
-        br_from = Branch.open_containing(location)
-        location = br_from.base
-        old_revno = br_to.revno()
         try:
             from bzrlib.errors import DivergedBranches
             br_from = Branch.open(location)
+            br_from.lock_read()
             br_from.setup_caching(cache_root)
             location = br_from.base
             old_revno = br_to.revno()
@@ -361,6 +358,7 @@ class cmd_pull(Command):
             if stored_loc is None or remember:
                 br_to.set_parent(location)
         finally:
+            br_from.unlock()
             rmtree(cache_root)
 
 
