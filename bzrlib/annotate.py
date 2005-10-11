@@ -16,6 +16,14 @@
 
 """File annotate based on weave storage"""
 
+# TODO: Choice of more or less verbose formats:
+# 
+# short: just show revno
+# long: revno, author, date
+# interposed: show more details between blocks of modified lines
+
+# TODO: Show which revision caused a line to merge into the parent
+
 import sys
 import os
 import time
