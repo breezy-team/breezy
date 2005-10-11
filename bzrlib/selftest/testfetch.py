@@ -133,7 +133,6 @@ class TestHttpFetch(TestCaseWithWebserver):
         branch.commit("changed file")
         target = Branch.initialize("target/")
         source = Branch.open(self.get_remote_url("source/"))
-        source.weave_store.enable_cache = False
         self.assertEqual(greedy_fetch(target, source), (2, []))
         # this is the path to the literal file. As format changes 
         # occur it needs to be updated. FIXME: ask the store for the
@@ -145,3 +144,18 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertEqual(1,
             len([log for log in self.weblogs if log.endswith(
                 inventory_weave_suffix)]))
+        # this r-h check test will prevent regressions, but it currently already 
+        # passes, before the patch to cache-rh is applied :[
+        revision_history_suffix = 'revision-history HTTP/1.1" 200 -'
+        self.assertEqual(1,
+            len([log for log in self.weblogs if log.endswith(
+                revision_history_suffix)]))
+        for log in self.weblogs:
+            print log
+        self.weblogs = []
+        # check there is nothing more to fetch
+        source = Branch.open(self.get_remote_url("source/"))
+        self.assertEqual(greedy_fetch(target, source), (0, []))
+        self.failUnless(self.weblogs[0].endswith('branch-format HTTP/1.1" 200 -'))
+        self.failUnless(self.weblogs[1].endswith('revision-history HTTP/1.1" 200 -'))
+        self.assertEqual(2, len(self.weblogs))
