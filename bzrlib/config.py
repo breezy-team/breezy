@@ -17,13 +17,147 @@
 
 """Configuration that affects the behaviour of Bazaar."""
 
+from ConfigParser import ConfigParser
 import os
+import errno
+import re
+
+import bzrlib
+
 
 def config_dir():
     """Return per-user configuration directory.
 
-    By default this is ~/.bazaar.conf/
+    By default this is ~/.bazaar/
     
     TODO: Global option --config-dir to override this.
     """
-    return os.path.join(os.path.expanduser("~"), ".bazaar.conf")
+    return os.path.join(os.path.expanduser("~"), ".bazaar")
+
+
+def config_filename():
+    """Return per-user configuration ini file filename."""
+    return os.path.join(config_dir(), 'bazaar.conf')
+
+
+def _get_config_parser(file=None):
+    parser = ConfigParser()
+    if file is not None:
+        parser.readfp(file)
+    else:
+        parser.read([config_filename()])
+    return parser
+
+
+def _get_user_id(branch=None, parser = None):
+    """Return the full user id from a file or environment variable.
+
+    e.g. "John Hacker <jhacker@foo.org>"
+
+    branch
+        A branch to use for a per-branch configuration, or None.
+
+    The following are searched in order:
+
+    1. $BZREMAIL
+    2. .bzr/email for this branch.
+    3. ~/.bzr.conf/email
+    4. $EMAIL
+    """
+    v = os.environ.get('BZREMAIL')
+    if v:
+        return v.decode(bzrlib.user_encoding)
+
+    if branch:
+        try:
+            return (branch.controlfile("email", "r") 
+                    .read()
+                    .decode(bzrlib.user_encoding)
+                    .rstrip("\r\n"))
+        except IOError, e:
+            if e.errno != errno.ENOENT:
+                raise
+        except BzrError, e:
+            pass
+    
+    if not parser:
+        parser = _get_config_parser()
+    if parser.has_option('DEFAULT', 'email'):
+        email = parser.get('DEFAULT', 'email')
+        if email is not None:
+            return email
+
+    v = os.environ.get('EMAIL')
+    if v:
+        return v.decode(bzrlib.user_encoding)
+    else:    
+        return None
+
+
+def _auto_user_id():
+    """Calculate automatic user identification.
+
+    Returns (realname, email).
+
+    Only used when none is set in the environment or the id file.
+
+    This previously used the FQDN as the default domain, but that can
+    be very slow on machines where DNS is broken.  So now we simply
+    use the hostname.
+    """
+    import socket
+
+    # XXX: Any good way to get real user name on win32?
+
+    try:
+        import pwd
+        uid = os.getuid()
+        w = pwd.getpwuid(uid)
+        gecos = w.pw_gecos.decode(bzrlib.user_encoding)
+        username = w.pw_name.decode(bzrlib.user_encoding)
+        comma = gecos.find(',')
+        if comma == -1:
+            realname = gecos
+        else:
+            realname = gecos[:comma]
+        if not realname:
+            realname = username
+
+    except ImportError:
+        import getpass
+        realname = username = getpass.getuser().decode(bzrlib.user_encoding)
+
+    return realname, (username + '@' + socket.gethostname())
+
+
+def username(branch):
+    """Return email-style username.
+
+    Something similar to 'Martin Pool <mbp@sourcefrog.net>'
+
+    TODO: Check it's reasonably well-formed.
+    """
+    v = _get_user_id(branch)
+    if v:
+        return v
+    
+    name, email = _auto_user_id()
+    if name:
+        return '%s <%s>' % (name, email)
+    else:
+        return email
+
+
+def user_email(branch):
+    """Return just the email component of a username."""
+    e = _get_user_id(branch)
+    if e:
+        m = re.search(r'[\w+.-]+@[\w+.-]+', e)
+        if not m:
+            raise BzrError("%r doesn't seem to contain "
+                           "a reasonable email address" % e)
+        return m.group(0)
+
+    return _auto_user_id()[1]
+
+

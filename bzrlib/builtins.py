@@ -1103,9 +1103,9 @@ class cmd_whoami(Command):
             b = None
         
         if email:
-            print bzrlib.osutils.user_email(b)
+            print bzrlib.config.user_email(b)
         else:
-            print bzrlib.osutils.username(b)
+            print bzrlib.config.username(b)
 
 
 class cmd_selftest(Command):
