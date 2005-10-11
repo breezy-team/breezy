@@ -892,51 +892,6 @@ class _Branch(Branch):
         finally:
             self.unlock()
 
-    def common_ancestor(self, other, self_revno=None, other_revno=None):
-        """
-        >>> from bzrlib.commit import commit
-        >>> sb = ScratchBranch(files=['foo', 'foo~'])
-        >>> sb.common_ancestor(sb) == (None, None)
-        True
-        >>> commit(sb, "Committing first revision", verbose=False)
-        >>> sb.common_ancestor(sb)[0]
-        1
-        >>> clone = sb.clone()
-        >>> commit(sb, "Committing second revision", verbose=False)
-        >>> sb.common_ancestor(sb)[0]
-        2
-        >>> sb.common_ancestor(clone)[0]
-        1
-        >>> commit(clone, "Committing divergent second revision", 
-        ...               verbose=False)
-        >>> sb.common_ancestor(clone)[0]
-        1
-        >>> sb.common_ancestor(clone) == clone.common_ancestor(sb)
-        True
-        >>> sb.common_ancestor(sb) != clone.common_ancestor(clone)
-        True
-        >>> clone2 = sb.clone()
-        >>> sb.common_ancestor(clone2)[0]
-        2
-        >>> sb.common_ancestor(clone2, self_revno=1)[0]
-        1
-        >>> sb.common_ancestor(clone2, other_revno=1)[0]
-        1
-        """
-        my_history = self.revision_history()
-        other_history = other.revision_history()
-        if self_revno is None:
-            self_revno = len(my_history)
-        if other_revno is None:
-            other_revno = len(other_history)
-        indices = range(min((self_revno, other_revno)))
-        indices.reverse()
-        for r in indices:
-            if my_history[r] == other_history[r]:
-                return r+1, my_history[r]
-        return None, None
-
-
     def revno(self):
         """Return current revision number for this branch.
 
