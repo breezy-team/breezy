@@ -50,6 +50,7 @@ all the changes since the previous revision that touched hello.c.
 """
 
 
+import bzrlib.errors as errors
 from bzrlib.tree import EmptyTree
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter
@@ -206,6 +207,7 @@ def _show_log(branch,
     else:
         raise ValueError('invalid direction %r' % direction)
 
+    revision_history = branch.revision_history()
     for revno, rev_id in cut_revs:
         if verbose or specific_fileid:
             delta = _get_revision_delta(branch, revno)
@@ -225,7 +227,24 @@ def _show_log(branch,
                 continue
 
         lf.show(revno, rev, delta)
-
+        if revno == 1:
+            excludes = set()
+        else:
+            # revno is 1 based, so -2 to get back 1 less.
+            excludes = set(branch.get_ancestry(revision_history[revno - 2]))
+        pending = list(rev.parent_ids)
+        while pending:
+            rev_id = pending.pop()
+            if rev_id in excludes:
+                continue
+            # prevent showing merged revs twice if they multi-path.
+            excludes.add(rev_id)
+            try:
+                rev = branch.get_revision(rev_id)
+            except errors.NoSuchRevision:
+                continue
+            pending.extend(rev.parent_ids)
+            lf.show_merge(rev)
 
 
 def deltas_for_log_dummy(branch, which_revs):
@@ -321,6 +340,9 @@ class LogFormatter(object):
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
 
+    def show_merge(self, rev):
+        pass
+
     
 class LongLogFormatter(LogFormatter):
     def show(self, revno, rev, delta):
@@ -353,6 +375,32 @@ class LongLogFormatter(LogFormatter):
         if delta != None:
             delta.show(to_file, self.show_ids)
 
+    def show_merge(self, rev):
+        from osutils import format_date
+
+        to_file = self.to_file
+
+        indent = '    '
+
+        print >>to_file,  indent+'-' * 60
+        print >>to_file,  indent+'merged:', rev.revision_id
+        if self.show_ids:
+            for parent_id in rev.parent_ids:
+                print >>to_file, indent+'parent:', parent_id
+            
+        print >>to_file,  indent+'committer:', rev.committer
+
+        date_str = format_date(rev.timestamp,
+                               rev.timezone or 0,
+                               self.show_timezone)
+        print >>to_file,  indent+'timestamp: %s' % date_str
+
+        print >>to_file,  indent+'message:'
+        if not rev.message:
+            print >>to_file,  indent+'  (no message)'
+        else:
+            for l in rev.message.split('\n'):
+                print >>to_file,  indent+'  ' + l
 
 
 class ShortLogFormatter(LogFormatter):

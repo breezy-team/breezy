@@ -1,5 +1,11 @@
 bzr 0.1 2005-10-06
 
+  NOTES:
+
+    * 'bzr branch' over http initially gives a very high estimate
+      of completion time but it should fall as the first few 
+      revisions are pulled in.  branch is still slow on 
+      high-latency connections.
 
   BUG FIXES:
   
@@ -29,6 +35,15 @@ bzr 0.1 2005-10-06
       bzr will correct this when it encounters it. Fixed by
       Robert Collins
 
+    * HTTP tests now force off the use of http_proxy for the duration.
+      Contributed by Gustavo Niemeyer.
+
+    * Fix problems in merging weave-based branches that have 
+      different partial views of history.
+
+    * Symlink support: working with symlinks when not in the root of a 
+      bzr tree was broken, patch from Scott James Remnant.
+
 
   IMPROVEMENTS:
 
@@ -53,6 +68,19 @@ bzr 0.1 2005-10-06
       and 'resolve' have needed added, which list and remove those 
       merge conflicts respectively. A conflicted tree cannot be committed
       in. Contributed by Aaron Bentley.
+
+    * 'rm' is now an alias for 'remove'.
+
+    * Stores now split out their content in a single byte prefixed hash,
+      dropping the density of files per directory by 256. Contributed by
+      Gustavo Niemeyer.
+
+    * 'bzr diff -r branch:URL' will now perform a diff between two branches.
+      Contributed by Robert Collins.
+
+    * 'bzr log' with the default formatter will show merged revisions,
+      indented to the right. Initial implementation contributed by Gustavo
+      Niemeyer, made incremental by Robert Collins.
 
 
   INTERNALS:

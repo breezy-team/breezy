@@ -26,32 +26,36 @@ import errno
 
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.weave import Weave
-from bzrlib.store import Store
+from bzrlib.store import TransportStore, hash_prefix
 from bzrlib.atomicfile import AtomicFile
-from bzrlib.errors import NoSuchFile
+from bzrlib.errors import NoSuchFile, FileExists
 from bzrlib.trace import mutter
 
 
-class WeaveStore(Store):
+class WeaveStore(TransportStore):
     """Collection of several weave files in a directory.
 
     This has some shortcuts for reading and writing them.
     """
     FILE_SUFFIX = '.weave'
 
-    def __init__(self, transport):
+    def __init__(self, transport, prefixed=False, precious=False):
         self._transport = transport
+        self._prefixed = prefixed
+        self._precious = precious
 
     def filename(self, file_id):
         """Return the path relative to the transport root."""
-        return file_id + WeaveStore.FILE_SUFFIX
+        if self._prefixed:
+            return hash_prefix(file_id) + file_id + WeaveStore.FILE_SUFFIX
+        else:
+            return file_id + WeaveStore.FILE_SUFFIX
 
     def __iter__(self):
         l = len(WeaveStore.FILE_SUFFIX)
-        for f in self._transport.list_dir('.'):
-            if f.endswith(WeaveStore.FILE_SUFFIX):
-                f = f[:-l]
-                yield f
+        for relpath, st in self._iter_relpaths():
+            if relpath.endswith(WeaveStore.FILE_SUFFIX):
+                yield os.path.basename(relpath[:-l])
 
     def __contains__(self, fileid):
         """"""
@@ -61,6 +65,11 @@ class WeaveStore(Store):
         return self._transport.get(self.filename(file_id))
 
     def _put(self, file_id, f):
+        if self._prefixed:
+            try:
+                self._transport.mkdir(hash_prefix(file_id))
+            except FileExists:
+                pass
         return self._transport.put(self.filename(file_id), f)
 
     def get_weave(self, file_id, transaction):
@@ -70,9 +79,8 @@ class WeaveStore(Store):
             return weave
         w = read_weave(self._get(file_id))
         transaction.map.add_weave(file_id, w)
-        transaction.register_clean(w)
+        transaction.register_clean(w, precious=self._precious)
         return w
-
 
     def get_lines(self, file_id, rev_id, transaction):
         """Return text from a particular version of a weave.
@@ -88,7 +96,7 @@ class WeaveStore(Store):
         except NoSuchFile:
             weave = Weave(weave_name=file_id)
             transaction.map.add_weave(file_id, weave)
-            transaction.register_clean(weave)
+            transaction.register_clean(weave, precious=self._precious)
             return weave
 
     def put_weave(self, file_id, weave, transaction):
@@ -99,9 +107,7 @@ class WeaveStore(Store):
         sio = StringIO()
         write_weave_v5(weave, sio)
         sio.seek(0)
-
         self._put(file_id, sio)
-
 
     def add_text(self, file_id, rev_id, new_lines, parents, transaction):
         w = self.get_weave_or_empty(file_id, transaction)

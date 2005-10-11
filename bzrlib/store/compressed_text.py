@@ -24,8 +24,9 @@ do any sort of delta compression.
 import os, tempfile, gzip
 
 import bzrlib.store
+from bzrlib.store import hash_prefix
 from bzrlib.trace import mutter
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, FileExists
 
 from StringIO import StringIO
 from stat import ST_SIZE
@@ -56,8 +57,9 @@ class CompressedTextStore(bzrlib.store.TransportStore):
     'goodbye'
     """
 
-    def __init__(self, transport):
+    def __init__(self, transport, prefixed=False):
         super(CompressedTextStore, self).__init__(transport)
+        self._prefixed = prefixed
 
     def _check_fileid(self, fileid):
         if '\\' in fileid or '/' in fileid:
@@ -65,7 +67,10 @@ class CompressedTextStore(bzrlib.store.TransportStore):
 
     def _relpath(self, fileid):
         self._check_fileid(fileid)
-        return fileid + '.gz'
+        if self._prefixed:
+            return hash_prefix(fileid) + fileid + ".gz"
+        else:
+            return fileid + ".gz"
 
     def add(self, f, fileid):
         """Add contents of a file into the store.
@@ -88,6 +93,11 @@ class CompressedTextStore(bzrlib.store.TransportStore):
         if self._transport.has(fn):
             raise BzrError("store %r already contains id %r" % (self._transport.base, fileid))
 
+        if self._prefixed:
+            try:
+                self._transport.mkdir(hash_prefix(fileid))
+            except FileExists:
+                pass
 
         sio = StringIO()
         gf = gzip.GzipFile(mode='wb', fileobj=sio)
@@ -197,26 +207,18 @@ class CompressedTextStore(bzrlib.store.TransportStore):
             count += 1
 
     def __iter__(self):
-        # TODO: case-insensitive?
-        for f in self._transport.list_dir('.'):
-            if f[-3:] == '.gz':
-                yield f[:-3]
+        for relpath, st in self._iter_relpaths():
+            if relpath.endswith(".gz"):
+                yield os.path.basename(relpath)[:-3]
             else:
-                yield f
+                yield os.path.basename(relpath)
 
     def __len__(self):
-        return len([f for f in self._transport.list_dir('.')])
-
+        return len(list(self._iter_relpath()))
 
     def __getitem__(self, fileid):
         """Returns a file reading from a particular entry."""
-        fn = self._relpath(fileid)
-        # This will throw if the file doesn't exist.
-        try:
-            f = self._transport.get(fn)
-        except:
-            raise KeyError('This store (%s) does not contain %s' % (self, fileid))
-
+        f = super(CompressedTextStore, self).__getitem__(fileid)
         # gzip.GzipFile.read() requires a tell() function
         # but some transports return objects that cannot seek
         # so buffer them in a StringIO instead
@@ -226,7 +228,6 @@ class CompressedTextStore(bzrlib.store.TransportStore):
             from cStringIO import StringIO
             sio = StringIO(f.read())
             return gzip.GzipFile(mode='rb', fileobj=sio)
-            
 
     def total_size(self):
         """Return (count, bytes)
@@ -235,8 +236,7 @@ class CompressedTextStore(bzrlib.store.TransportStore):
         the content."""
         total = 0
         count = 0
-        relpaths = [self._relpath(fid) for fid in self]
-        for st in self._transport.stat_multi(relpaths):
+        for relpath, st in self._iter_relpaths():
             count += 1
             total += st[ST_SIZE]
                 

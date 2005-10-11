@@ -140,8 +140,10 @@ class TestBranch(TestCaseInTempDir):
                            'wibble@fofof--20050401--1928390812')
         # list should be cleared when we do a commit
         self.assertEquals(b.pending_merges(), [])
- 
+
+
 class TestRemote(TestCaseWithWebserver):
+
     def test_open_containing(self):
         self.assertRaises(NotBranchError, Branch.open_containing,
                           self.get_remote_url(''))
