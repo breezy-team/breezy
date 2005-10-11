@@ -348,13 +348,15 @@ class cmd_pull(Command):
             br_from.setup_caching(cache_root)
             location = br_from.base
             old_revno = br_to.revno()
+            old_revision_history = br_to.revision_history()
             try:
                 br_to.update_revisions(br_from)
             except DivergedBranches:
                 raise BzrCommandError("These branches have diverged."
                     "  Try merge.")
-                
-            merge(('.', -1), ('.', old_revno), check_clean=False)
+            new_revision_history = br_to.revision_history()
+            if new_revision_history != old_revision_history:
+                merge(('.', -1), ('.', old_revno), check_clean=False)
             if stored_loc is None or remember:
                 br_to.set_parent(location)
         finally:
