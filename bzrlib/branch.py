@@ -358,7 +358,6 @@ class _Branch(Branch):
             self._lock_count = 1
             self._set_transaction(transactions.PassThroughTransaction())
 
-
     def lock_read(self):
         mutter("lock read: %s (%s)", self, self._lock_count)
         if self._lock_mode:
