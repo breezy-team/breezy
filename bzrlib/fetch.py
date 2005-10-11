@@ -103,9 +103,11 @@ class Fetcher(object):
             self.pb = bzrlib.ui.ui_factory.progress_bar()
         else:
             self.pb = pb
+        self.from_branch.lock_read()
         try:
             self._fetch_revisions(last_revision)
         finally:
+            self.from_branch.unlock()
             self.pb.clear()
 
     def _fetch_revisions(self, last_revision):

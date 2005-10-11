@@ -141,3 +141,7 @@ class TestHttpFetch(TestCaseWithWebserver):
         weave_suffix = 'weaves/ce/id.weave HTTP/1.1" 200 -'
         self.assertEqual(1,
             len([log for log in self.weblogs if log.endswith(weave_suffix)]))
+        inventory_weave_suffix = 'inventory.weave HTTP/1.1" 200 -'
+        self.assertEqual(1,
+            len([log for log in self.weblogs if log.endswith(
+                inventory_weave_suffix)]))
