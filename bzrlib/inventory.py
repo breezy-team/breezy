@@ -398,6 +398,10 @@ class InventoryEntry(object):
         Note that this should be modified to be a noop on virtual trees
         as all entries created there are prepopulated.
         """
+        # TODO: Rather than running this manually, we should check the 
+        # working sha1 and other expensive properties when they're
+        # first requested, or preload them if they're already known
+        pass            # nothing to do by default
 
 
 class RootEntry(InventoryEntry):
