@@ -150,8 +150,6 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertEqual(1,
             len([log for log in self.weblogs if log.endswith(
                 revision_history_suffix)]))
-        for log in self.weblogs:
-            print log
         self.weblogs = []
         # check there is nothing more to fetch
         source = Branch.open(self.get_remote_url("source/"))

@@ -1010,7 +1010,8 @@ class _Branch(Branch):
         from bzrlib.revision import get_intervening_revisions
         if stop_revision is None:
             stop_revision = other.last_revision()
-        if stop_revision is not None and self.has_revision(stop_revision):
+        if (stop_revision is not None and 
+            stop_revision in self.revision_history()):
             return
         greedy_fetch(to_branch=self, from_branch=other,
                      revision=stop_revision)
