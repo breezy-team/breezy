@@ -984,9 +984,6 @@ class _Branch(Branch):
         Traceback (most recent call last):
         DivergedBranches: These branches have diverged.
         """
-        # FIXME: If the branches have diverged, but the latest
-        # revision in this branch is completely merged into the other,
-        # then we should still be able to pull.
         self_history = self.revision_history()
         self_len = len(self_history)
         other_history = other.revision_history()
@@ -1006,6 +1003,9 @@ class _Branch(Branch):
 
     def update_revisions(self, other, stop_revision=None):
         """Pull in new perfect-fit revisions."""
+        # FIXME: If the branches have diverged, but the latest
+        # revision in this branch is completely merged into the other,
+        # then we should still be able to pull.
         from bzrlib.fetch import greedy_fetch
         from bzrlib.revision import get_intervening_revisions
         if stop_revision is None:
