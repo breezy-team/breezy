@@ -1,3 +1,17 @@
+DEVELOPMENT HEAD
+
+
+  IMPROVEMENTS:
+
+    * The config directory is now ~/.bazaar, and there is a single file 
+      ~/.bazaar/bazaar.conf storing email, editor and other preferences.
+    
+
+  INTERNALS:
+
+    * Config options have moved from bzrlib.osutils to bzrlib.config.
+
+
 bzr 0.1 2005-10-06
 
   NOTES:

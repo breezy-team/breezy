@@ -113,3 +113,8 @@ class TestConfigItems(TestCase):
         parser = config._get_config_parser(file=config_file)
         self.assertEqual(None,
                          config._get_user_id(parser = parser))
+
+    def test_configured_edit(self):
+        config_file = StringIO(sample_config_text)
+        parser = config._get_config_parser(file=config_file)
+        self.assertEqual("vim", config.get_editor(parser = parser))

@@ -49,6 +49,13 @@ def _get_config_parser(file=None):
     return parser
 
 
+def get_editor(parser=None):
+    if parser is None:
+        parser = _get_config_parser()
+    if parser.has_option('DEFAULT', 'editor'):
+        return parser.get('DEFAULT', 'editor')
+
+
 def _get_user_id(branch=None, parser = None):
     """Return the full user id from a file or environment variable.
 
@@ -80,7 +87,7 @@ def _get_user_id(branch=None, parser = None):
         except BzrError, e:
             pass
     
-    if not parser:
+    if parser is None:
         parser = _get_config_parser()
     if parser.has_option('DEFAULT', 'email'):
         email = parser.get('DEFAULT', 'email')

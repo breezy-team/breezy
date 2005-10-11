@@ -388,18 +388,6 @@ def appendpath(p1, p2):
         return os.path.join(p1, p2)
     
 
-def _read_config_value(name):
-    """Read a config value from the file ~/.bzr.conf/<name>
-    Return None if the file does not exist"""
-    try:
-        f = file(os.path.join(config_dir(), name), "r")
-        return f.read().decode(bzrlib.user_encoding).rstrip("\r\n")
-    except IOError, e:
-        if e.errno == errno.ENOENT:
-            return None
-        raise
-
-
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
     return StringIO(s).readlines()

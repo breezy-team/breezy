@@ -21,18 +21,18 @@
 
 import os
 from subprocess import call
+
+import bzrlib.config as config
 from bzrlib.errors import BzrError
 
 def _get_editor():
     """Return a sequence of possible editor binaries for the current platform"""
-    from bzrlib.osutils import _read_config_value
-    
     try:
         yield os.environ["BZR_EDITOR"]
     except KeyError:
         pass
 
-    e = _read_config_value("editor")
+    e = config.get_editor()
     if e is not None:
         yield e
         
