@@ -24,7 +24,7 @@
 
 
 import os
-from bzrlib.osutils import config_dir
+from bzrlib.config import config_dir
 DEFAULT_PLUGIN_PATH = os.path.join(config_dir(), 'plugins')
 
 all_plugins = []
