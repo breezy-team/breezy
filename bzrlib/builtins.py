@@ -815,8 +815,9 @@ class cmd_ignore(Command):
     To remove patterns from the ignore list, edit the .bzrignore file.
 
     If the pattern contains a slash, it is compared to the whole path
-    from the branch root.  Otherwise, it is comapred to only the last
-    component of the path.
+    from the branch root.  Otherwise, it is compared to only the last
+    component of the path.  To match a file only in the root directory,
+    prepend './'.
 
     Ignore patterns are case-insensitive on case-insensitive systems.
 
@@ -826,6 +827,7 @@ class cmd_ignore(Command):
         bzr ignore ./Makefile
         bzr ignore '*.class'
     """
+    # TODO: Complain if the filename is absolute
     takes_args = ['name_pattern']
     
     def run(self, name_pattern):
