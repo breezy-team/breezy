@@ -388,20 +388,21 @@ class cmd_branch(Command):
         import errno
         from shutil import rmtree
         cache_root = tempfile.mkdtemp()
+        if revision is None:
+            revision = [None]
+        elif len(revision) > 1:
+            raise BzrCommandError(
+                'bzr branch --revision takes exactly 1 revision value')
         try:
-            if revision is None:
-                revision = [None]
-            elif len(revision) > 1:
-                raise BzrCommandError(
-                    'bzr branch --revision takes exactly 1 revision value')
-            try:
-                br_from = Branch.open(from_location)
-            except OSError, e:
-                if e.errno == errno.ENOENT:
-                    raise BzrCommandError('Source location "%s" does not'
-                                          ' exist.' % to_location)
-                else:
-                    raise
+            br_from = Branch.open(from_location)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise BzrCommandError('Source location "%s" does not'
+                                      ' exist.' % to_location)
+            else:
+                raise
+        br_from.lock_read()
+        try:
             br_from.setup_caching(cache_root)
             if basis is not None:
                 basis_branch = Branch.open_containing(basis)
@@ -433,6 +434,7 @@ class cmd_branch(Command):
             except bzrlib.errors.UnlistableBranch:
                 msg = "The branch %s cannot be used as a --basis"
         finally:
+            br_from.unlock()
             rmtree(cache_root)
 
 
