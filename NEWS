@@ -1,3 +1,17 @@
+bzr 0.1.1 2005-10-12
+
+  BUG FIXES:
+
+    * Fix problem in pulling over http from machines that do not 
+      allow directories to be listed.
+
+    * Avoid harmless warning about invalid hash cache after 
+      upgrading branch format.
+
+  PERFORMANCE: 
+  
+    * Avoid some unnecessary http operations in branch and pull.
+
 bzr 0.1 2005-10-11
 
   NOTES:
