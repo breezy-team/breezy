@@ -461,7 +461,6 @@ class cmd_info(Command):
     
     def run(self, branch=None):
         import info
-
         b = Branch.open_containing(branch)
         info.show_info(b)
 
