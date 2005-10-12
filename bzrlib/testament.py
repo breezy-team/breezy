@@ -41,6 +41,28 @@ the future extend this to allow signatures indicating not just that a
 particular version is authentic but that it has other properties.
 """
 
+from cStringIO import StringIO
+import string
+
+
+def contains_whitespace(s):
+    """True if there are any whitespace characters in s."""
+    for ch in string.whitespace:
+        if ch in s:
+            return True
+    else:
+        return False
+
+
+def contains_linebreaks(s):
+    """True if there is any vertical whitespace in s."""
+    for ch in '\f\n\r':
+        if ch in s:
+            return True
+    else:
+        return False
+
+    
 class Testament(object):
     """Reduced summary of a revision.
 
@@ -62,4 +84,32 @@ class Testament(object):
         t.timezone = rev.timezone or 0
         t.timestamp = rev.timestamp
         t.message = rev.message
+        t.inventory = branch.get_inventory(revision_id)
         return t
+
+    def text_form_1_to_file(self, f):
+        """Convert to externalizable text form.
+
+        The result is returned in utf-8, because it should be signed or
+        hashed in that encoding.
+        """
+        # TODO: Set right encoding
+        print >>f, 'bazaar-ng testament version 1'
+        assert not contains_whitespace(self.revision_id)
+        print >>f, 'revision-id:', self.revision_id
+        assert not contains_linebreaks(self.committer)
+        print >>f, 'committer:', self.committer
+        # TODO: perhaps write timestamp in a more readable form
+        print >>f, 'timestamp:', self.timestamp
+        print >>f, 'timezone:', self.timezone
+        # inventory length contains the root, which is not shown here
+        print >>f, 'entries:', len(self.inventory) - 1
+        print >>f, 'message:'
+        for l in self.message.splitlines():
+            print >>f, '  ' + l
+
+    def to_text_form_1(self):
+        s = StringIO()
+        self.text_form_1_to_file(s)
+        return s.getvalue()
+
