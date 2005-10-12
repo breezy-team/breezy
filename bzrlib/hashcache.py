@@ -101,12 +101,10 @@ class HashCache(object):
         self.update_count = 0
         self._cache = {}
 
-
     def cache_file_name(self):
+        # FIXME: duplicate path logic here, this should be 
+        # something like 'branch.controlfile'.
         return os.sep.join([self.basedir, '.bzr', 'stat-cache'])
-
-
-
 
     def clear(self):
         """Discard all cached information.
