@@ -148,6 +148,7 @@ class TestCase(unittest.TestCase):
     routine, and to build and check bzr trees."""
 
     BZRPATH = 'bzr'
+    _log_file_name = None
 
     def setUp(self):
         unittest.TestCase.setUp(self)
@@ -182,8 +183,10 @@ class TestCase(unittest.TestCase):
 
     def _get_log(self):
         """Return as a string the log for this test"""
-        return open(self._log_file_name).read()
-
+        if self._log_file_name:
+            return open(self._log_file_name).read()
+        else:
+            return ''
 
     def capture(self, cmd):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
