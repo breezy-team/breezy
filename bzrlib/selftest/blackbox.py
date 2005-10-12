@@ -173,6 +173,12 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m f')
         os.unlink('symlink')
         self.runbzr('revert')
+        self.failUnlessExists('symlink')
+        os.unlink('symlink')
+        os.symlink('a-different-path', 'symlink')
+        self.runbzr('revert')
+        self.assertEqual('/unlikely/to/exist',
+                         os.readlink('symlink'))
         
         file('hello', 'wt').write('xyz')
         self.runbzr('commit -m xyz hello')

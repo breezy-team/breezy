@@ -132,6 +132,10 @@ def backup_file(fn):
         return
     bfn = fn + '~'
 
+    if has_symlinks() and os.path.islink(fn):
+        target = os.readlink(fn)
+        os.symlink(target, bfn)
+        return
     inf = file(fn, 'rb')
     try:
         content = inf.read()

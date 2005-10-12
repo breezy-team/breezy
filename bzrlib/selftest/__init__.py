@@ -30,6 +30,7 @@ import time
 import bzrlib.commands
 import bzrlib.trace
 import bzrlib.fetch
+import bzrlib.osutils as osutils
 from bzrlib.selftest import TestUtil
 from bzrlib.selftest.TestUtil import TestLoader, TestSuite
 
@@ -395,7 +396,7 @@ class TestCaseInTempDir(TestCase):
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(os.path.exists(path))
+        self.failUnless(osutils.lexists(path))
         
 
 class MetaTestLog(TestCase):
