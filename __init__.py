@@ -37,7 +37,7 @@ class cmd_uncommit(bzrlib.commands.Command):
 
         if revision is None:
             revno = b.revno()
-            rev_id = b.last_patch()
+            rev_id = b.last_revision()
         else:
             revno, rev_id = revision[0].in_history(b)
         if rev_id is None:
