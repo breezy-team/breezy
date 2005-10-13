@@ -16,7 +16,8 @@
 
 """Test testaments for gpg signing."""
 
-import difflib
+# TODO: Testaments with symlinks, x-bits
+
 import os
 from sha import sha
 import sys

@@ -68,7 +68,7 @@ Testament format 1
 
 from cStringIO import StringIO
 import string
-import sha
+from sha import sha
 
 
 def contains_whitespace(s):
@@ -169,7 +169,7 @@ class Testament(object):
 
     def as_short_text(self):
         """Return short digest-based testament."""
-        s = sha.sha()
+        s = sha()
         map(s.update, self.as_text_lines())
         return ('bazaar-ng testament short form 1\n'
                 'revision %s\n'
