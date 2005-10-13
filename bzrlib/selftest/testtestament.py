@@ -97,3 +97,9 @@ inventory:
   file src/foo.c
 """
         self.assertEqualDiff(text_form, expect)
+        actual_short = t.as_short_text()
+        self.assertEqualDiff(actual_short, """\
+bazaar-ng testament short form 1
+revision test@user-2
+sha1 e64f0a98937f8b0d2602ea5f521938752b90a430
+""")

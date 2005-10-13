@@ -66,6 +66,7 @@ Testament format 1
 
 from cStringIO import StringIO
 import string
+import sha
 
 
 def contains_whitespace(s):
@@ -143,4 +144,12 @@ class Testament(object):
         s = StringIO()
         self.text_form_1_to_file(s)
         return s.getvalue()
+
+    def as_short_text(self):
+        """Return short digest-based testament."""
+        s = sha.sha(self.to_text_form_1())
+        return ('bazaar-ng testament short form 1\n'
+                'revision %s\n'
+                'sha1 %s\n'
+                % (self.revision_id, s.hexdigest()))
 
