@@ -20,15 +20,17 @@ import logging
 import unittest
 import tempfile
 import os
-import sys
 import errno
-import subprocess
-import shutil
 import re
+import shutil
+import subprocess
+import sys
+import time
 
 import bzrlib.commands
 import bzrlib.trace
 import bzrlib.fetch
+import bzrlib.osutils as osutils
 from bzrlib.selftest import TestUtil
 from bzrlib.selftest.TestUtil import TestLoader, TestSuite
 
@@ -70,6 +72,9 @@ class _MyResult(unittest._TextTestResult):
     No special behaviour for now.
     """
 
+    def _elapsedTime(self):
+        return "(Took %.3fs)" % (time.time() - self._start_time)
+
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
         # TODO: Maybe show test.shortDescription somewhere?
@@ -77,18 +82,27 @@ class _MyResult(unittest._TextTestResult):
         if self.showAll:
             self.stream.write('%-70.70s' % what)
         self.stream.flush()
+        self._start_time = time.time()
 
     def addError(self, test, err):
-        super(_MyResult, self).addError(test, err)
+        unittest.TestResult.addError(self, test, err)
+        if self.showAll:
+            self.stream.writeln("ERROR %s" % self._elapsedTime())
+        elif self.dots:
+            self.stream.write('E')
         self.stream.flush()
 
     def addFailure(self, test, err):
-        super(_MyResult, self).addFailure(test, err)
+        unittest.TestResult.addFailure(self, test, err)
+        if self.showAll:
+            self.stream.writeln("FAIL %s" % self._elapsedTime())
+        elif self.dots:
+            self.stream.write('F')
         self.stream.flush()
 
     def addSuccess(self, test):
         if self.showAll:
-            self.stream.writeln('OK')
+            self.stream.writeln('OK %s' % self._elapsedTime())
         elif self.dots:
             self.stream.write('~')
         self.stream.flush()
@@ -382,7 +396,7 @@ class TestCaseInTempDir(TestCase):
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(os.path.exists(path))
+        self.failUnless(osutils.lexists(path))
         
 
 class MetaTestLog(TestCase):
@@ -398,26 +412,12 @@ def filter_suite_by_re(suite, pattern):
     result = TestUtil.TestSuite()
     filter_re = re.compile(pattern)
     for test in iter_suite_tests(suite):
-        if filter_re.match(test.id()):
+        if filter_re.search(test.id()):
             result.addTest(test)
     return result
 
 
-def filter_suite_by_names(suite, wanted_names):
-    """Return a new suite containing only selected tests.
-    
-    Names are considered to match if any name is a substring of the 
-    fully-qualified test id (i.e. the class ."""
-    result = TestSuite()
-    for test in iter_suite_tests(suite):
-        this_id = test.id()
-        for p in wanted_names:
-            if this_id.find(p) != -1:
-                result.addTest(test)
-    return result
-
-
-def run_suite(suite, name='test', verbose=False, pattern=".*", testnames=None):
+def run_suite(suite, name='test', verbose=False, pattern=".*"):
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
@@ -426,8 +426,6 @@ def run_suite(suite, name='test', verbose=False, pattern=".*", testnames=None):
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity)
-    if testnames:
-        suite = filter_suite_by_names(suite, testnames)
     if pattern != '.*':
         suite = filter_suite_by_re(suite, pattern)
     result = runner.run(suite)
@@ -442,10 +440,9 @@ def run_suite(suite, name='test', verbose=False, pattern=".*", testnames=None):
     return result.wasSuccessful()
 
 
-def selftest(verbose=False, pattern=".*", testnames=None):
+def selftest(verbose=False, pattern=".*"):
     """Run the whole test suite under the enhanced runner"""
-    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern,
-                     testnames=testnames)
+    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
 
 
 def test_suite():
@@ -463,6 +460,7 @@ def test_suite():
                    'bzrlib.selftest.test_ancestry',
                    'bzrlib.selftest.test_commit',
                    'bzrlib.selftest.test_commit_merge',
+                   'bzrlib.selftest.testconfig',
                    'bzrlib.selftest.versioning',
                    'bzrlib.selftest.testmerge3',
                    'bzrlib.selftest.testmerge',

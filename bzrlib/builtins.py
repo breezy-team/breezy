@@ -179,13 +179,15 @@ class cmd_add(Command):
     get added when you add a file in the directory.
     """
     takes_args = ['file*']
-    takes_options = ['verbose', 'no-recurse']
+    takes_options = ['no-recurse', 'quiet']
     
-    def run(self, file_list, verbose=False, no_recurse=False):
-        # verbose currently has no effect
-        from bzrlib.add import smart_add, add_reporter_print
-        smart_add(file_list, not no_recurse, add_reporter_print)
-
+    def run(self, file_list, no_recurse=False, quiet=False):
+        from bzrlib.add import smart_add, add_reporter_print, add_reporter_null
+        if quiet:
+            reporter = add_reporter_null
+        else:
+            reporter = add_reporter_print
+        smart_add(file_list, not no_recurse, reporter)
 
 
 class cmd_mkdir(Command):
@@ -462,7 +464,6 @@ class cmd_info(Command):
     
     def run(self, branch=None):
         import info
-
         b = Branch.open_containing(branch)
         info.show_info(b)
 
@@ -1051,11 +1052,11 @@ class cmd_check(Command):
     detect data corruption or bzr bugs.
     """
     takes_args = ['dir?']
+    takes_options = ['verbose']
 
-    def run(self, dir='.'):
+    def run(self, dir='.', verbose=False):
         from bzrlib.check import check
-
-        check(Branch.open_containing(dir))
+        check(Branch.open_containing(dir), verbose)
 
 
 class cmd_scan_cache(Command):
@@ -1105,9 +1106,9 @@ class cmd_whoami(Command):
             b = None
         
         if email:
-            print bzrlib.osutils.user_email(b)
+            print bzrlib.config.user_email(b)
         else:
-            print bzrlib.osutils.username(b)
+            print bzrlib.config.username(b)
 
 
 class cmd_selftest(Command):
@@ -1122,9 +1123,9 @@ class cmd_selftest(Command):
     which tests should run."""
     # TODO: --list should give a list of all available tests
     hidden = True
-    takes_args = ['testnames*']
-    takes_options = ['verbose', 'pattern']
-    def run(self, testnames_list=None, verbose=False, pattern=".*"):
+    takes_args = ['testspecs*']
+    takes_options = ['verbose']
+    def run(self, testspecs_list=None, verbose=False):
         import bzrlib.ui
         from bzrlib.selftest import selftest
         # we don't want progress meters from the tests to go to the
@@ -1134,9 +1135,12 @@ class cmd_selftest(Command):
         bzrlib.trace.info('running tests...')
         try:
             bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
+            if testspecs_list is not None:
+                pattern = '|'.join(testspecs_list)
+            else:
+                pattern = ".*"
             result = selftest(verbose=verbose, 
-                              pattern=pattern,
-                              testnames=testnames_list)
+                              pattern=pattern)
             if result:
                 bzrlib.trace.info('tests passed')
             else:

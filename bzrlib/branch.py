@@ -91,27 +91,6 @@ def _relpath(base, path):
     return os.sep.join(s)
         
 
-def find_branch_root(t):
-    """Find the branch root enclosing the transport's base.
-
-    t is a Transport object.
-
-    It is not necessary that the base of t exists.
-
-    Basically we keep looking up until we find the control directory or
-    run into the root.  If there isn't one, raises NotBranchError.
-    """
-    orig_base = t.base
-    while True:
-        if t.has(bzrlib.BZRDIR):
-            return t
-        new_t = t.clone('..')
-        if new_t.base == t.base:
-            # reached the root, whatever that may be
-            raise NotBranchError('%s is not in a branch' % orig_base)
-        t = new_t
-
-
 ######################################################################
 # branch objects
 
@@ -145,10 +124,21 @@ class Branch(object):
         """Open an existing branch which contains url.
         
         This probes for a branch at url, and searches upwards from there.
+
+        Basically we keep looking up until we find the control directory or
+        run into the root.  If there isn't one, raises NotBranchError.
         """
         t = get_transport(url)
-        t = find_branch_root(t)
-        return _Branch(t)
+        while True:
+            try:
+                return _Branch(t)
+            except NotBranchError:
+                pass
+            new_t = t.clone('..')
+            if new_t.base == t.base:
+                # reached the root, whatever that may be
+                raise NotBranchError('%s is not in a branch' % url)
+            t = new_t
 
     @staticmethod
     def initialize(base):

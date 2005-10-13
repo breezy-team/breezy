@@ -74,7 +74,6 @@ class TestVersioning(TestCaseInTempDir):
         
         self.check_branch()
 
-
     def test_add_in_unversioned(self):
         """Try to add a file in an unversioned directory.
 
@@ -154,7 +153,6 @@ class TestVersioning(TestCaseInTempDir):
 
         self.check_branch()
 
-
     def check_branch(self):
         """After all the above changes, run the check and upgrade commands.
 
@@ -164,7 +162,7 @@ class TestVersioning(TestCaseInTempDir):
         
         debug('check branch...')
         from bzrlib.check import check
-        check(b)
+        check(b, False)
         
 
         

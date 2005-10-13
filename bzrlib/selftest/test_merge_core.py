@@ -171,14 +171,12 @@ class MergeBuilder(object):
                 if change.old_contents is None and change.new_contents is None:
                     change = None
 
-
     def add_dir(self, id, parent, name, mode):
         path = self.get_cset_path(parent, name)
         self.base.add_dir(id, parent, name, mode)
         self.cset.add_entry(changeset.ChangesetEntry(id, parent, path))
         self.this.add_dir(id, parent, name, mode)
         self.other.add_dir(id, parent, name, mode)
-
 
     def change_name(self, id, base=None, this=None, other=None):
         if base is not None:
@@ -310,6 +308,7 @@ class MergeBuilder(object):
 
     def cleanup(self):
         shutil.rmtree(self.dir)
+
 
 class MergeTest(unittest.TestCase):
     def test_change_name(self):
@@ -473,6 +472,7 @@ class MergeTest(unittest.TestCase):
         assert(os.stat(builder.this.full_path("2")).st_mode &0777 == 0755)
         assert(os.stat(builder.this.full_path("3")).st_mode &0777 == 0644)
         builder.cleanup();
+
 
 class FunctionalMergeTest(TestCaseInTempDir):
 

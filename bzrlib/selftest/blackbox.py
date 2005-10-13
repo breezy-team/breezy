@@ -173,6 +173,12 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m f')
         os.unlink('symlink')
         self.runbzr('revert')
+        self.failUnlessExists('symlink')
+        os.unlink('symlink')
+        os.symlink('a-different-path', 'symlink')
+        self.runbzr('revert')
+        self.assertEqual('/unlikely/to/exist',
+                         os.readlink('symlink'))
         
         file('hello', 'wt').write('xyz')
         self.runbzr('commit -m xyz hello')
@@ -453,6 +459,15 @@ class TestCommands(ExternalBase):
                            'added dir'+os.sep+'sub.txt',
                            'added top.txt',],
                           results)
+
+    def test_add_quiet_is(self):
+        """add -q does not print the names of added files."""
+        b = Branch.initialize('.')
+        self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
+        out = self.run_bzr_captured(['add', '-q'], retcode = 0)[0]
+        # the ordering is not defined at the moment
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEquals([''], results)
 
     def test_unknown_command(self):
         """Handling of unknown command."""

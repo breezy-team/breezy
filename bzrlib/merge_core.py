@@ -29,7 +29,6 @@ class ApplyMerge3:
     def __ne__(self, other):
         return not (self == other)
 
-
     def apply(self, filename, conflict_handler, reverse=False):
         new_file = filename+".new" 
         if not reverse:
@@ -43,6 +42,11 @@ class ApplyMerge3:
                 raise Exception("%s not in tree" % self.file_id)
                 return ()
             return tree.get_file(self.file_id).readlines()
+        ### garh. 
+        other_entry = other.tree.inventory[self.file_id]
+        if other_entry.kind == 'symlink':
+            self.apply_symlink(other_entry, base, other, filename)
+            return
         base_lines = get_lines(base)
         other_lines = get_lines(other)
         m3 = Merge3(base_lines, file(filename, "rb").readlines(), other_lines)
@@ -65,6 +69,36 @@ class ApplyMerge3:
         else:
             conflict_handler.merge_conflict(new_file, filename, base_lines,
                                             other_lines)
+
+    def apply_symlink(self, other_entry, base, other, filename):
+        if self.file_id in base:
+            base_entry = base.tree.inventory[self.file_id]
+            base_entry._read_tree_state(base.tree)
+        else:
+            base_entry = None
+        other_entry._read_tree_state(other.tree)
+        if not base_entry or other_entry.detect_changes(base_entry):
+            other_change = True
+        else:
+            other_change = False
+        this_link = os.readlink(filename)
+        if not base_entry or base_entry.symlink_target != this_link:
+            this_change = True
+        else:
+            this_change = False
+        if this_change and not other_change:
+            pass
+        elif not this_change and other_change:
+            os.unlink(filename)
+            os.symlink(other_entry.symlink_target, filename)
+        elif this_change and other_change:
+            # conflict
+            os.unlink(filename)
+            os.symlink(other_entry.symlink_target, filename + '.OTHER')
+            os.symlink(this_link, filename + '.THIS')
+            if base_entry is not None:
+                os.symlink(other_entry.symlink_target, filename + '.BASE')
+            note("merge3 conflict in '%s'.\n", filename)
 
 
 class BackupBeforeChange:
@@ -243,6 +277,9 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
                                                            other_path)
         elif isinstance(contents.old_contents, changeset.TreeFileCreate) and \
             isinstance(contents.new_contents, changeset.TreeFileCreate):
+            return make_merge()
+        elif (isinstance(contents.old_contents, changeset.SymlinkCreate)
+              and isinstance(contents.new_contents, changeset.SymlinkCreate)):
             return make_merge()
         else:
             raise Exception("Unhandled merge scenario %r" % contents)
