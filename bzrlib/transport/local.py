@@ -74,8 +74,8 @@ class LocalTransport(Transport):
             path = self.abspath(relpath)
             return open(path, 'rb')
         except IOError,e:
-            if e.errno == errno.ENOENT:
-                raise NoSuchFile('File %r does not exist' % path, orig_error=e)
+            if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                raise NoSuchFile('File or directory %r does not exist' % path, orig_error=e)
             raise LocalTransportError(orig_error=e)
 
     def get_partial(self, relpath, start, length=None):

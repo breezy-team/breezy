@@ -179,13 +179,15 @@ class cmd_add(Command):
     get added when you add a file in the directory.
     """
     takes_args = ['file*']
-    takes_options = ['verbose', 'no-recurse']
+    takes_options = ['no-recurse', 'quiet']
     
-    def run(self, file_list, verbose=False, no_recurse=False):
-        # verbose currently has no effect
-        from bzrlib.add import smart_add, add_reporter_print
-        smart_add(file_list, not no_recurse, add_reporter_print)
-
+    def run(self, file_list, no_recurse=False, quiet=False):
+        from bzrlib.add import smart_add, add_reporter_print, add_reporter_null
+        if quiet:
+            reporter = add_reporter_null
+        else:
+            reporter = add_reporter_print
+        smart_add(file_list, not no_recurse, reporter)
 
 
 class cmd_mkdir(Command):
@@ -264,9 +266,9 @@ class cmd_rename(Command):
 
     See also the 'move' command, which moves files into a different
     directory without changing their name.
-
-    TODO: Some way to rename multiple files without invoking bzr for each
-    one?"""
+    """
+    # TODO: Some way to rename multiple files without invoking 
+    # bzr for each one?"""
     takes_args = ['from_name', 'to_name']
     
     def run(self, from_name, to_name):
@@ -438,11 +440,10 @@ class cmd_branch(Command):
 
 class cmd_renames(Command):
     """Show list of renamed files.
-
-    TODO: Option to show renames between two historical versions.
-
-    TODO: Only show renames under dir, rather than in the whole branch.
     """
+    # TODO: Option to show renames between two historical versions.
+
+    # TODO: Only show renames under dir, rather than in the whole branch.
     takes_args = ['dir?']
 
     def run(self, dir='.'):
@@ -462,7 +463,6 @@ class cmd_info(Command):
     
     def run(self, branch=None):
         import info
-
         b = Branch.open_containing(branch)
         info.show_info(b)
 
@@ -567,26 +567,24 @@ class cmd_diff(Command):
     If files are listed, only the changes in those files are listed.
     Otherwise, all changes for the tree are listed.
 
-    TODO: Allow diff across branches.
-
-    TODO: Option to use external diff command; could be GNU diff, wdiff,
-          or a graphical diff.
-
-    TODO: Python difflib is not exactly the same as unidiff; should
-          either fix it up or prefer to use an external diff.
-
-    TODO: If a directory is given, diff everything under that.
-
-    TODO: Selected-file diff is inefficient and doesn't show you
-          deleted files.
-
-    TODO: This probably handles non-Unix newlines poorly.
-
     examples:
         bzr diff
         bzr diff -r1
         bzr diff -r1..2
     """
+    # TODO: Allow diff across branches.
+    # TODO: Option to use external diff command; could be GNU diff, wdiff,
+    #       or a graphical diff.
+
+    # TODO: Python difflib is not exactly the same as unidiff; should
+    #       either fix it up or prefer to use an external diff.
+
+    # TODO: If a directory is given, diff everything under that.
+
+    # TODO: Selected-file diff is inefficient and doesn't show you
+    #       deleted files.
+
+    # TODO: This probably handles non-Unix newlines poorly.
     
     takes_args = ['file*']
     takes_options = ['revision', 'diff-options']
@@ -623,19 +621,17 @@ class cmd_diff(Command):
 
 class cmd_deleted(Command):
     """List files deleted in the working tree.
-
-    TODO: Show files deleted since a previous revision, or between two revisions.
     """
+    # TODO: Show files deleted since a previous revision, or
+    # between two revisions.
+    # TODO: Much more efficient way to do this: read in new
+    # directories with readdir, rather than stating each one.  Same
+    # level of effort but possibly much less IO.  (Or possibly not,
+    # if the directories are very large...)
     def run(self, show_ids=False):
         b = Branch.open_containing('.')
         old = b.basis_tree()
         new = b.working_tree()
-
-        ## TODO: Much more efficient way to do this: read in new
-        ## directories with readdir, rather than stating each one.  Same
-        ## level of effort but possibly much less IO.  (Or possibly not,
-        ## if the directories are very large...)
-
         for path, ie in old.inventory.iter_entries():
             if not new.has_id(ie.file_id):
                 if show_ids:
@@ -787,9 +783,8 @@ class cmd_touching_revisions(Command):
 
 class cmd_ls(Command):
     """List files in a tree.
-
-    TODO: Take a revision or remote path and list that tree instead.
     """
+    # TODO: Take a revision or remote path and list that tree instead.
     hidden = True
     def run(self, revision=None, verbose=False):
         b = Branch.open_containing('.')
@@ -821,8 +816,9 @@ class cmd_ignore(Command):
     To remove patterns from the ignore list, edit the .bzrignore file.
 
     If the pattern contains a slash, it is compared to the whole path
-    from the branch root.  Otherwise, it is comapred to only the last
-    component of the path.
+    from the branch root.  Otherwise, it is compared to only the last
+    component of the path.  To match a file only in the root directory,
+    prepend './'.
 
     Ignore patterns are case-insensitive on case-insensitive systems.
 
@@ -832,6 +828,7 @@ class cmd_ignore(Command):
         bzr ignore ./Makefile
         bzr ignore '*.class'
     """
+    # TODO: Complain if the filename is absolute
     takes_args = ['name_pattern']
     
     def run(self, name_pattern):
@@ -984,19 +981,18 @@ class cmd_commit(Command):
     A selected-file commit may fail in some cases where the committed
     tree would be invalid, such as trying to commit a file in a
     newly-added directory that is not itself committed.
-
-    TODO: Run hooks on tree to-be-committed, and after commit.
-
-    TODO: Strict commit that fails if there are unknown or deleted files.
     """
+    # TODO: Run hooks on tree to-be-committed, and after commit.
+
+    # TODO: Strict commit that fails if there are unknown or deleted files.
+    # TODO: Give better message for -s, --summary, used by tla people
+
+    # XXX: verbose currently does nothing
+
     takes_args = ['selected*']
     takes_options = ['message', 'file', 'verbose', 'unchanged']
     aliases = ['ci', 'checkin']
 
-    # TODO: Give better message for -s, --summary, used by tla people
-
-    # XXX: verbose currently does nothing
-    
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False):
         from bzrlib.errors import PointlessCommit, ConflictsInTree
@@ -1049,11 +1045,11 @@ class cmd_check(Command):
     detect data corruption or bzr bugs.
     """
     takes_args = ['dir?']
+    takes_options = ['verbose']
 
-    def run(self, dir='.'):
+    def run(self, dir='.', verbose=False):
         from bzrlib.check import check
-
-        check(Branch.open_containing(dir))
+        check(Branch.open_containing(dir), verbose)
 
 
 class cmd_scan_cache(Command):
@@ -1120,9 +1116,9 @@ class cmd_selftest(Command):
     which tests should run."""
     # TODO: --list should give a list of all available tests
     hidden = True
-    takes_args = ['testnames*']
-    takes_options = ['verbose', 'pattern']
-    def run(self, testnames_list=None, verbose=False, pattern=".*"):
+    takes_args = ['testspecs*']
+    takes_options = ['verbose']
+    def run(self, testspecs_list=None, verbose=False):
         import bzrlib.ui
         from bzrlib.selftest import selftest
         # we don't want progress meters from the tests to go to the
@@ -1132,9 +1128,12 @@ class cmd_selftest(Command):
         bzrlib.trace.info('running tests...')
         try:
             bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
+            if testspecs_list is not None:
+                pattern = '|'.join(testspecs_list)
+            else:
+                pattern = ".*"
             result = selftest(verbose=verbose, 
-                              pattern=pattern,
-                              testnames=testnames_list)
+                              pattern=pattern)
             if result:
                 bzrlib.trace.info('tests passed')
             else:
@@ -1172,10 +1171,9 @@ class cmd_rocks(Command):
 
 class cmd_find_merge_base(Command):
     """Find and print a base revision for merging two branches.
-
-    TODO: Options to specify revisions on either side, as if
-          merging only part of the history.
     """
+    # TODO: Options to specify revisions on either side, as if
+    #       merging only part of the history.
     takes_args = ['branch', 'other']
     hidden = True
     

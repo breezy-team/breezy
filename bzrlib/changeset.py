@@ -1277,6 +1277,7 @@ class UnsuppportedFiletype(Exception):
 def generate_changeset(tree_a, tree_b, interesting_ids=None):
     return ChangesetGenerator(tree_a, tree_b, interesting_ids)()
 
+
 class ChangesetGenerator(object):
     def __init__(self, tree_a, tree_b, interesting_ids=None):
         object.__init__(self)
