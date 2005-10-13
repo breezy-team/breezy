@@ -8,7 +8,7 @@ from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
-from bzrlib.osutils import file_kind, rename
+from bzrlib.osutils import file_kind, rename, sha_file
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
                                BackupBeforeChange, ExecFlagMerge)
@@ -120,6 +120,8 @@ class MergeTree(object):
     def get_symlink_target(self, file_id):
         return os.readlink(self.full_path(file_id))
 
+    def get_file_sha1(self, file_id):
+        return sha_file(file(self.full_path(file_id), "rb"))
 
 class MergeBuilder(object):
     def __init__(self):
@@ -155,7 +157,7 @@ class MergeBuilder(object):
                     change = changeset.ReplaceContents(None, None)
                     self.cset.entries[id].contents_change = change
                     def create_file(tree):
-                        return changeset.FileCreate(tree.get_file(id).read())
+                        return changeset.TreeFileCreate(tree, id)
                     if not other:
                         change.new_contents = create_file(self.other)
                     if not base:
@@ -218,8 +220,7 @@ class MergeBuilder(object):
         if base is not None or other is not None:
             old_contents = file(self.base.full_path(id)).read()
             new_contents = file(self.other.full_path(id)).read()
-            contents = changeset.ReplaceFileContents(old_contents, 
-                                                     new_contents)
+            contents = changeset.ReplaceFileContents(self.base, self.other, id)
             self.cset.entries[id].contents_change = contents
 
     def change_perms(self, id, base=None, this=None, other=None):

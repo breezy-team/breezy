@@ -13,7 +13,13 @@ class ApplyMerge3:
         self.file_id = file_id
         self.base = base
         self.other = other
- 
+
+    def is_creation(self):
+        return False
+
+    def is_deletion(self):
+        return False
+
     def __eq__(self, other):
         if not isinstance(other, ApplyMerge3):
             return False
@@ -65,7 +71,13 @@ class BackupBeforeChange:
     """Contents-change wrapper to back up file first"""
     def __init__(self, contents_change):
         self.contents_change = contents_change
- 
+
+    def is_creation(self):
+        return self.contents_change.is_creation()
+
+    def is_deletion(self):
+        return self.contents_change.is_deletion()
+
     def __eq__(self, other):
         if not isinstance(other, BackupBeforeChange):
             return False
@@ -229,11 +241,11 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
                     other_path = other.readonly_path(entry.id)    
                     conflict_handler.new_contents_conflict(this_path, 
                                                            other_path)
-        elif isinstance(contents.old_contents, changeset.FileCreate) and \
-            isinstance(contents.new_contents, changeset.FileCreate):
+        elif isinstance(contents.old_contents, changeset.TreeFileCreate) and \
+            isinstance(contents.new_contents, changeset.TreeFileCreate):
             return make_merge()
         else:
-            raise Exception("Unhandled merge scenario")
+            raise Exception("Unhandled merge scenario %r" % contents)
 
 def make_merged_metadata(entry, base, other):
     metadata = entry.metadata_change
