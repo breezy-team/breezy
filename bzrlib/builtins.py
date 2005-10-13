@@ -1440,3 +1440,29 @@ class cmd_testament(Command):
                 sys.stdout.write(t.as_short_text())
         finally:
             b.unlock()
+
+
+class cmd_annotate(Command):
+    """Show the origin of each line in a file.
+
+    This prints out the given file with an annotation on the 
+    left side indicating which revision, author and date introduced the 
+    change.
+    """
+    # TODO: annotate directories; showing when each file was last changed
+    # TODO: annotate a previous version of a file
+    aliases = ['blame', 'praise']
+    takes_args = ['filename']
+
+    def run(self, filename):
+        from bzrlib.annotate import annotate_file
+        b = Branch.open_containing(filename)
+        b.lock_read()
+        try:
+            rp = b.relpath(filename)
+            tree = b.revision_tree(b.last_revision())
+            file_id = tree.inventory.path2id(rp)
+            file_version = tree.inventory[file_id].revision
+            annotate_file(b, file_version, file_id, sys.stdout)
+        finally:
+            b.unlock()
