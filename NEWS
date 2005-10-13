@@ -1,3 +1,11 @@
+UNRELEASED CHANGES
+
+  INTERNALS:
+
+    * New 'manifest' command and concept for making gpg-signatures 
+      of revisions that are not tied to a particular internal
+      representation.
+  
 bzr 0.1.1 2005-10-12
 
   BUG FIXES:
