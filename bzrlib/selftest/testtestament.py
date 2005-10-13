@@ -82,7 +82,22 @@ inventory:
         t = Testament.from_revision(self.b, 'test@user-2')
         text_form = t.as_text()
         self.log('testament text form:\n' + text_form)
-        expect = """\
+        self.assertEqualDiff(text_form, REV_2_TESTAMENT)
+        actual_short = t.as_short_text()
+        self.assertEqualDiff(actual_short, """\
+bazaar-ng testament short form 1
+revision test@user-2
+sha1 %s
+""" % sha(REV_2_TESTAMENT).hexdigest())
+
+    def test_testament_command(self):
+        """Testament containing a file and a directory."""
+        out, err = self.run_bzr_captured(['testament', '--long'])
+        self.assertEqualDiff(err, '')
+        self.assertEqualDiff(out, REV_2_TESTAMENT)
+
+
+REV_2_TESTAMENT = """\
 bazaar-ng testament version 1
 revision-id: test@user-2
 committer: test@user
@@ -97,10 +112,3 @@ inventory:
   directory src src-id
   file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
 """
-        self.assertEqualDiff(text_form, expect)
-        actual_short = t.as_short_text()
-        self.assertEqualDiff(actual_short, """\
-bazaar-ng testament short form 1
-revision test@user-2
-sha1 %s
-""" % sha(expect).hexdigest())

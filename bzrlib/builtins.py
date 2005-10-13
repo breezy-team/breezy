@@ -1414,3 +1414,23 @@ class cmd_plugins(Command):
                 print '\t', d.split('\n')[0]
 
 
+class cmd_testament(Command):
+    """Show testament (signing-form) of a revision."""
+    takes_options = ['revision', 'long']
+    takes_args = ['branch?']
+    def run(self, branch='.', revision=None, long=False):
+        from bzrlib.testament import Testament
+        b = Branch.open_containing(branch)
+        b.lock_read()
+        try:
+            if revision is None:
+                rev_id = b.last_revision()
+            else:
+                rev_id = revision[0].in_history(b).rev_id
+            t = Testament.from_revision(b, rev_id)
+            if long:
+                sys.stdout.writelines(t.as_text_lines())
+            else:
+                sys.stdout.write(t.as_short_text())
+        finally:
+            b.unlock()

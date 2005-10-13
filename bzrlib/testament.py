@@ -66,6 +66,9 @@ Testament format 1
 
 # TODO: perhaps write timestamp in a more readable form
 
+# TODO: Perhaps these should just be different formats in which inventories/
+# revisions can be serialized.
+
 from cStringIO import StringIO
 import string
 from sha import sha
@@ -105,7 +108,7 @@ class Testament(object):
         """Produce a new testament from a historical revision"""
         t = cls()
         rev = branch.get_revision(revision_id)
-        t.revision_id = revision_id
+        t.revision_id = str(revision_id)
         t.committer = rev.committer
         t.timezone = rev.timezone or 0
         t.timestamp = rev.timestamp
