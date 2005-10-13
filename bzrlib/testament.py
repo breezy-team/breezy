@@ -152,7 +152,7 @@ class Testament(object):
 
     def _escape_path(self, path):
         assert not contains_linebreaks(path)
-        return unicode(path.replace('\\', '\\\\').replace(' ', '\ ')).encode('utf-8')
+        return unicode(path.replace('\\', '/').replace(' ', '\ ')).encode('utf-8')
 
     def _entry_to_line(self, path, ie):
         """Turn an inventory entry into a testament line"""
@@ -164,6 +164,9 @@ class Testament(object):
             # TODO: avoid switching on kind
             assert ie.text_sha1
             l += ' ' + ie.text_sha1
+        elif ie.kind == 'symlink':
+            assert ie.symlink_target
+            l += ' ' + self._escape_path(ie.symlink_target)
         l += '\n'
         return l
 
@@ -175,7 +178,7 @@ class Testament(object):
         s = sha()
         map(s.update, self.as_text_lines())
         return ('bazaar-ng testament short form 1\n'
-                'revision %s\n'
-                'sha1 %s\n'
+                'revision-id: %s\n'
+                'sha1: %s\n'
                 % (self.revision_id, s.hexdigest()))
 

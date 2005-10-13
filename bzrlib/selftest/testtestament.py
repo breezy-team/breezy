@@ -16,7 +16,7 @@
 
 """Test testaments for gpg signing."""
 
-# TODO: Testaments with symlinks, x-bits
+# TODO: Testaments with x-bits
 
 import os
 from sha import sha
@@ -27,6 +27,7 @@ from bzrlib.selftest.treeshape import build_tree_contents
 from bzrlib.branch import Branch
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter
+from bzrlib.osutils import has_symlinks
 
 class TestamentTests(TestCaseInTempDir):
     def setUp(self):
@@ -64,7 +65,45 @@ class TestamentTests(TestCaseInTempDir):
         t = Testament.from_revision(self.b, 'test@user-1')
         text_form = t.as_text()
         self.log('testament text form:\n' + text_form)
-        expect = """\
+        self.assertEqual(text_form, REV_1_TESTAMENT)
+
+    def test_testament_with_contents(self):
+        """Testament containing a file and a directory."""
+        t = Testament.from_revision(self.b, 'test@user-2')
+        text_form = t.as_text()
+        self.log('testament text form:\n' + text_form)
+        self.assertEqualDiff(text_form, REV_2_TESTAMENT)
+        actual_short = t.as_short_text()
+        self.assertEqualDiff(actual_short, REV_2_SHORT)
+
+    def test_testament_command(self):
+        """Testament containing a file and a directory."""
+        out, err = self.run_bzr_captured(['testament', '--long'])
+        self.assertEqualDiff(err, '')
+        self.assertEqualDiff(out, REV_2_TESTAMENT)
+
+    def test_testament_command_2(self):
+        """Command getting short testament of previous version."""
+        out, err = self.run_bzr_captured(['testament', '-r1'])
+        self.assertEqualDiff(err, '')
+        self.assertEqualDiff(out, REV_1_SHORT)
+
+    def test_testament_symlinks(self):
+        """Testament containing symlink (where possible)"""
+        if not has_symlinks():
+            return
+        os.symlink('wibble/linktarget', 'link')
+        self.b.add(['link'], ['link-id'])
+        self.b.commit(message='add symlink',
+                 timestamp=1129025493,
+                 timezone=36000,
+                 rev_id='test@user-3',
+                 committer='test@user')
+        t = Testament.from_revision(self.b, 'test@user-3')
+        self.assertEqualDiff(t.as_text(), REV_3_TESTAMENT)
+
+
+REV_1_TESTAMENT = """\
 bazaar-ng testament version 1
 revision-id: test@user-1
 committer: test@user
@@ -75,26 +114,12 @@ message:
   initial null commit
 inventory:
 """
-        self.assertEqual(text_form, expect)
 
-    def test_testament_with_contents(self):
-        """Testament containing a file and a directory."""
-        t = Testament.from_revision(self.b, 'test@user-2')
-        text_form = t.as_text()
-        self.log('testament text form:\n' + text_form)
-        self.assertEqualDiff(text_form, REV_2_TESTAMENT)
-        actual_short = t.as_short_text()
-        self.assertEqualDiff(actual_short, """\
+REV_1_SHORT = """\
 bazaar-ng testament short form 1
-revision test@user-2
-sha1 %s
-""" % sha(REV_2_TESTAMENT).hexdigest())
-
-    def test_testament_command(self):
-        """Testament containing a file and a directory."""
-        out, err = self.run_bzr_captured(['testament', '--long'])
-        self.assertEqualDiff(err, '')
-        self.assertEqualDiff(out, REV_2_TESTAMENT)
+revision-id: test@user-1
+sha1: %s
+""" % sha(REV_1_TESTAMENT).hexdigest()
 
 
 REV_2_TESTAMENT = """\
@@ -109,6 +134,31 @@ message:
   add files and directories
 inventory:
   file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73
+  directory src src-id
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
+"""
+
+
+REV_2_SHORT = """\
+bazaar-ng testament short form 1
+revision-id: test@user-2
+sha1: %s
+""" % sha(REV_2_TESTAMENT).hexdigest()
+
+
+REV_3_TESTAMENT = """\
+bazaar-ng testament version 1
+revision-id: test@user-3
+committer: test@user
+timestamp: 1129025493
+timezone: 36000
+parents:
+  test@user-2
+message:
+  add symlink
+inventory:
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73
+  symlink link link-id wibble/linktarget
   directory src src-id
   file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
 """
