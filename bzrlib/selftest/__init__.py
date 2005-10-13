@@ -157,7 +157,11 @@ class TestCase(unittest.TestCase):
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines."""
-        return ''.join(difflib.ndiff(a.splitlines(True), b.splitlines(True)))
+        difflines = difflib.ndiff(a.splitlines(True),
+                                  b.splitlines(True),
+                                  linejunk=lambda x: False,
+                                  charjunk=lambda x: False)
+        return ''.join(difflines)
 
     def assertEqualDiff(self, a, b):
         """Assert two texts are equal, if not raise an exception.
