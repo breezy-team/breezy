@@ -16,15 +16,16 @@
 
 
 from cStringIO import StringIO
-import logging
-import unittest
-import tempfile
-import os
-import sys
+import difflib
 import errno
-import subprocess
-import shutil
+import logging
+import os
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
 
 import bzrlib.commands
 import bzrlib.trace
@@ -155,7 +156,22 @@ class TestCase(unittest.TestCase):
         bzrlib.trace.disable_default_logging()
         self._enable_file_logging()
 
+    def _ndiff_strings(self, a, b):
+        """Return ndiff between two strings containing lines."""
+        return ''.join(difflib.ndiff(a.splitlines(True), b.splitlines(True)))
 
+    def assertEqualDiff(self, a, b):
+        """Assert two texts are equal, if not raise an exception.
+        
+        This is intended for use with multi-line strings where it can 
+        be hard to find the differences by eye.
+        """
+        # TODO: perhaps override assertEquals to call this for strings?
+        if a == b:
+            return
+        raise AssertionError("texts not equal:\n" + 
+                             self._ndiff_strings(a, b))      
+        
     def _enable_file_logging(self):
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
 
