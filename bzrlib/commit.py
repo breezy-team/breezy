@@ -66,12 +66,13 @@ import pdb
 from binascii import hexlify
 from cStringIO import StringIO
 
-from bzrlib.osutils import (local_time_offset, username,
-                            rand_bytes, compact_date, user_email,
+from bzrlib.osutils import (local_time_offset,
+                            rand_bytes, compact_date,
                             kind_marker, is_inside_any, quotefn,
                             sha_string, sha_strings, sha_file, isdir, isfile,
                             split_lines)
 from bzrlib.branch import gen_file_id
+import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
                            ConflictsInTree
@@ -195,7 +196,7 @@ class Commit(object):
             self.rev_id = rev_id
 
         if committer is None:
-            self.committer = username(self.branch)
+            self.committer = bzrlib.config.username(self.branch)
         else:
             assert isinstance(committer, basestring), type(committer)
             self.committer = committer
@@ -415,6 +416,6 @@ class Commit(object):
 
 def _gen_revision_id(branch, when):
     """Return new revision-id."""
-    s = '%s-%s-' % (user_email(branch), compact_date(when))
+    s = '%s-%s-' % (bzrlib.config.user_email(branch), compact_date(when))
     s += hexlify(rand_bytes(8))
     return s

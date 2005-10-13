@@ -29,6 +29,7 @@ import time
 import types
 
 import bzrlib
+from bzrlib.config import config_dir, _get_user_id
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 
@@ -131,6 +132,10 @@ def backup_file(fn):
         return
     bfn = fn + '~'
 
+    if has_symlinks() and os.path.islink(fn):
+        target = os.readlink(fn)
+        os.symlink(target, bfn)
+        return
     inf = file(fn, 'rb')
     try:
         content = inf.read()
@@ -257,130 +262,6 @@ def fingerprint_file(f):
     size = len(b)
     return {'size': size,
             'sha1': s.hexdigest()}
-
-
-def config_dir():
-    """Return per-user configuration directory.
-
-    By default this is ~/.bzr.conf/
-    
-    TODO: Global option --config-dir to override this.
-    """
-    return os.path.join(os.path.expanduser("~"), ".bzr.conf")
-
-
-def _auto_user_id():
-    """Calculate automatic user identification.
-
-    Returns (realname, email).
-
-    Only used when none is set in the environment or the id file.
-
-    This previously used the FQDN as the default domain, but that can
-    be very slow on machines where DNS is broken.  So now we simply
-    use the hostname.
-    """
-    import socket
-
-    # XXX: Any good way to get real user name on win32?
-
-    try:
-        import pwd
-        uid = os.getuid()
-        w = pwd.getpwuid(uid)
-        gecos = w.pw_gecos.decode(bzrlib.user_encoding)
-        username = w.pw_name.decode(bzrlib.user_encoding)
-        comma = gecos.find(',')
-        if comma == -1:
-            realname = gecos
-        else:
-            realname = gecos[:comma]
-        if not realname:
-            realname = username
-
-    except ImportError:
-        import getpass
-        realname = username = getpass.getuser().decode(bzrlib.user_encoding)
-
-    return realname, (username + '@' + socket.gethostname())
-
-
-def _get_user_id(branch):
-    """Return the full user id from a file or environment variable.
-
-    e.g. "John Hacker <jhacker@foo.org>"
-
-    branch
-        A branch to use for a per-branch configuration, or None.
-
-    The following are searched in order:
-
-    1. $BZREMAIL
-    2. .bzr/email for this branch.
-    3. ~/.bzr.conf/email
-    4. $EMAIL
-    """
-    v = os.environ.get('BZREMAIL')
-    if v:
-        return v.decode(bzrlib.user_encoding)
-
-    if branch:
-        try:
-            return (branch.controlfile("email", "r") 
-                    .read()
-                    .decode(bzrlib.user_encoding)
-                    .rstrip("\r\n"))
-        except IOError, e:
-            if e.errno != errno.ENOENT:
-                raise
-        except BzrError, e:
-            pass
-    
-    try:
-        return (open(os.path.join(config_dir(), "email"))
-                .read()
-                .decode(bzrlib.user_encoding)
-                .rstrip("\r\n"))
-    except IOError, e:
-        if e.errno != errno.ENOENT:
-            raise e
-
-    v = os.environ.get('EMAIL')
-    if v:
-        return v.decode(bzrlib.user_encoding)
-    else:    
-        return None
-
-
-def username(branch):
-    """Return email-style username.
-
-    Something similar to 'Martin Pool <mbp@sourcefrog.net>'
-
-    TODO: Check it's reasonably well-formed.
-    """
-    v = _get_user_id(branch)
-    if v:
-        return v
-    
-    name, email = _auto_user_id()
-    if name:
-        return '%s <%s>' % (name, email)
-    else:
-        return email
-
-
-def user_email(branch):
-    """Return just the email component of a username."""
-    e = _get_user_id(branch)
-    if e:
-        m = re.search(r'[\w+.-]+@[\w+.-]+', e)
-        if not m:
-            raise BzrError("%r doesn't seem to contain "
-                           "a reasonable email address" % e)
-        return m.group(0)
-
-    return _auto_user_id()[1]
 
 
 def compare_files(a, b):
@@ -510,18 +391,6 @@ def appendpath(p1, p2):
     else:
         return os.path.join(p1, p2)
     
-
-def _read_config_value(name):
-    """Read a config value from the file ~/.bzr.conf/<name>
-    Return None if the file does not exist"""
-    try:
-        f = file(os.path.join(config_dir(), name), "r")
-        return f.read().decode(bzrlib.user_encoding).rstrip("\r\n")
-    except IOError, e:
-        if e.errno == errno.ENOENT:
-            return None
-        raise
-
 
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""

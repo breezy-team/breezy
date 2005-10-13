@@ -1,15 +1,15 @@
 # (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -133,13 +133,12 @@ class InventoryEntry(object):
         text_diff will be used for textual difference calculation.
         This is a template method, override _diff in child classes.
         """
-        self._read_tree_state(tree.id2path(self.file_id), tree)
+        self._read_tree_state(tree)
         if to_entry:
             # cannot diff from one kind to another - you must do a removal
             # and an addif they do not match.
             assert self.kind == to_entry.kind
-            to_entry._read_tree_state(to_tree.id2path(to_entry.file_id),
-                                      to_tree)
+            to_entry._read_tree_state(to_tree)
         self._diff(text_diff, from_label, tree, to_label, to_entry, to_tree,
                    output_to, reverse)
 
@@ -326,7 +325,7 @@ class InventoryEntry(object):
         text stored in the text store or weave.
         """
         mutter('new parents of %s are %r', path, previous_entries)
-        self._read_tree_state(path, work_tree)
+        self._read_tree_state(work_tree)
         if len(previous_entries) == 1:
             # cannot be unchanged unless there is only one parent file rev.
             parent_ie = previous_entries.values()[0]
@@ -392,7 +391,7 @@ class InventoryEntry(object):
             compatible = False
         return compatible
 
-    def _read_tree_state(self, path, work_tree):
+    def _read_tree_state(self, work_tree):
         """Populate fields in the inventory entry from the given tree.
         
         Note that this should be modified to be a noop on virtual trees
@@ -548,7 +547,7 @@ class InventoryFile(InventoryEntry):
         if tree.is_executable(self.file_id):
             os.chmod(fullpath, 0755)
 
-    def _read_tree_state(self, path, work_tree):
+    def _read_tree_state(self, work_tree):
         """See InventoryEntry._read_tree_state."""
         self.text_sha1 = work_tree.get_file_sha1(self.file_id)
         self.executable = work_tree.is_executable(self.file_id)
@@ -658,7 +657,7 @@ class InventoryLink(InventoryEntry):
         except OSError,e:
             raise BzrError("Failed to create symlink %r -> %r, error: %s" % (fullpath, self.symlink_target, e))
 
-    def _read_tree_state(self, path, work_tree):
+    def _read_tree_state(self, work_tree):
         """See InventoryEntry._read_tree_state."""
         self.symlink_target = work_tree.get_symlink_target(self.file_id)
 

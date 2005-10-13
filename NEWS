@@ -5,7 +5,31 @@ UNRELEASED CHANGES
     * New 'manifest' command and concept for making gpg-signatures 
       of revisions that are not tied to a particular internal
       representation.
-  
+
+  IMPROVEMENTS:
+
+    * The config directory is now ~/.bazaar, and there is a single file 
+      ~/.bazaar/bazaar.conf storing email, editor and other preferences.
+      (Robert Collins)
+
+    * 'bzr add' no longer takes a --verbose option, and a --quiet option
+      has been added that suppresses all output.
+    
+  INTERNALS:
+
+    * Config options have moved from bzrlib.osutils to bzrlib.config.
+      (Robert Collins)
+
+  TESTING:
+
+    * The --pattern option has been removed, now test specifiers on the
+      command line can be simple strings, or regexps, or both.
+
+    * Passing -v to selftest will now show the time each test took to 
+      complete, which will aid in analysing performance regressions and
+      related questions.
+
+
 bzr 0.1.1 2005-10-12
 
   BUG FIXES:
@@ -19,6 +43,7 @@ bzr 0.1.1 2005-10-12
   PERFORMANCE: 
   
     * Avoid some unnecessary http operations in branch and pull.
+
 
 bzr 0.1 2005-10-11
 
