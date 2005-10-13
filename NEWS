@@ -9,7 +9,10 @@ DEVELOPMENT HEAD
 
     * 'bzr add' no longer takes a --verbose option, and a --quiet option
       has been added that suppresses all output.
-    
+ 
+    * 'bzr check' now accepts -v for verbose reporting, and checks for
+      ghosts in the branch.
+
 
   INTERNALS:
 

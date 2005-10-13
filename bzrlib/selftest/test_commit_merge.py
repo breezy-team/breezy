@@ -94,5 +94,5 @@ class TestCommitMerge(TestCaseInTempDir):
         self.assertEquals(inv['ecks-id'].revision, 'x@u-0-1')
         self.assertEquals(inv['why-id'].revision, 'y@u-0-1')
 
-        check(bx)
-        check(by)
+        check(bx, False)
+        check(by, False)
