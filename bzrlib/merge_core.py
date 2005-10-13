@@ -252,8 +252,9 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
             elif contents.old_contents == contents.new_contents:
                 return None
             else:
-                conflict_handler.threeway_contents_conflict(this_contents,
-                    contents.old_contents, contents.new_contents)
+                conflict_handler.threeway_contents_conflict(this_path, 
+                    this_contents, contents.old_contents,
+                    contents.new_contents)
                 
 
 def make_merged_metadata(entry, base, other):

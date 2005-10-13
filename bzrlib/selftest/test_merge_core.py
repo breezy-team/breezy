@@ -13,6 +13,7 @@ from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
                                BackupBeforeChange, ExecFlagMerge)
 from bzrlib.changeset import Inventory, apply_changeset, invert_dict
+from bzrlib.changeset import get_contents, ReplaceContents
 
 
 class FalseTree(object):
@@ -65,6 +66,13 @@ class MergeTree(object):
         assert not os.path.exists(full_path)
         file(full_path, "wb").write(contents)
         os.chmod(self.abs_path(path), mode)
+        self.inventory[id] = path
+
+    def add_symlink(self, id, parent, name, target):
+        path = self.child_path(parent, name)
+        full_path = self.abs_path(path)
+        assert not os.path.exists(full_path)
+        os.symlink(target, full_path)
         self.inventory[id] = path
 
     def remove_file(self, id):
@@ -146,6 +154,13 @@ class MergeBuilder(object):
         path = self.get_cset_path(parent, name)
         self.cset.add_entry(changeset.ChangesetEntry(id, parent, path))
 
+    def add_symlink(self, id, parent, name, contents):
+        self.base.add_symlink(id, parent, name, contents)
+        self.this.add_symlink(id, parent, name, contents)
+        self.other.add_symlink(id, parent, name, contents)
+        path = self.get_cset_path(parent, name)
+        self.cset.add_entry(changeset.ChangesetEntry(id, parent, path))
+
     def remove_file(self, id, base=False, this=False, other=False):
         for option, tree in ((base, self.base), (this, self.this), 
                              (other, self.other)):
@@ -221,6 +236,22 @@ class MergeBuilder(object):
             contents = changeset.ReplaceFileContents(self.base, self.other, id)
             self.cset.entries[id].contents_change = contents
 
+    def change_target(self, id, base=None, this=None, other=None):
+        if base is not None:
+            self.change_target_tree(id, self.base, base)
+
+        if this is not None:
+            self.change_target_tree(id, self.this, this)
+
+        if other is not None:
+            self.change_target_tree(id, self.other, other)
+
+        if base is not None or other is not None:
+            old_contents = get_contents(self.base, id)
+            new_contents = get_contents(self.other, id)
+            contents = ReplaceContents(old_contents, new_contents)
+            self.cset.entries[id].contents_change = contents
+
     def change_perms(self, id, base=None, this=None, other=None):
         if base is not None:
             self.change_perms_tree(id, self.base, base)
@@ -250,6 +281,11 @@ class MergeBuilder(object):
         mode = os.stat(path).st_mode
         file(path, "w").write(contents)
         os.chmod(path, mode)
+
+    def change_target_tree(self, id, tree, target):
+        path = tree.full_path(id)
+        os.unlink(path)
+        os.symlink(target, path)
 
     def change_perms_tree(self, id, tree, mode):
         os.chmod(tree.full_path(id), mode)
@@ -438,20 +474,29 @@ class MergeTest(unittest.TestCase):
                           cset)
         builder.cleanup()
 
+    def test_symlink_conflicts(self):
         builder = MergeBuilder()
-        builder.add_file("1", "0", "name1", "text1", 0755)
-        builder.change_contents("1", other="text4", base="text3")
-        builder.remove_file("1", base=True)
-        self.assertRaises(changeset.NewContentsConflict,
-                          builder.merge_changeset, merge_factory)
+        builder.add_symlink("2", "0", "name2", "target1")
+        builder.change_target("2", other="target4", base="text3")
+        self.assertRaises(changeset.ThreewayContentsConflict,
+                          builder.merge_changeset, ApplyMerge3)
         builder.cleanup()
 
+    def test_symlink_merge(self):
         builder = MergeBuilder()
-        builder.add_file("1", "0", "name1", "text1", 0755)
-        builder.change_contents("1", other="text4", base="text3")
-        builder.remove_file("1", this=True)
-        self.assertRaises(changeset.MissingForMerge, builder.merge_changeset, 
-                          merge_factory)
+        builder.add_symlink("1", "0", "name1", "target1")
+        builder.add_symlink("2", "0", "name2", "target1")
+        builder.add_symlink("3", "0", "name3", "target1")
+        builder.change_target("1", this="target2")
+        builder.change_target("2", base="target2")
+        builder.change_target("3", other="target2")
+        assert builder.cset.entries['2'].contents_change !=\
+            builder.cset.entries['3'].contents_change
+        cset = builder.merge_changeset(ApplyMerge3)
+        builder.apply_changeset(cset)
+        self.assertEqual(builder.this.get_symlink_target("1"), "target2")
+        self.assertEqual(builder.this.get_symlink_target("2"), "target1")
+        self.assertEqual(builder.this.get_symlink_target("3"), "target2")
         builder.cleanup()
 
     def test_perms_merge(self):

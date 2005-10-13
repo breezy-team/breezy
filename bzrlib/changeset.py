@@ -144,6 +144,9 @@ class SymlinkCreate(object):
         """
         self.target = contents
 
+    def __repr__(self):
+        return "SymlinkCreate(%s)" % self.target
+
     def __call__(self, filename, conflict_handler, reverse):
         """Creates or destroys the symlink.
 
@@ -243,7 +246,7 @@ class TreeFileCreate(object):
         self.file_id = file_id
 
     def __repr__(self):
-        return "TreeFileCreate(%i)" % self.id
+        return "TreeFileCreate(%s)" % self.file_id
 
     def __eq__(self, other):
         if not isinstance(other, TreeFileCreate):
