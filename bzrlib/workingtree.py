@@ -376,6 +376,9 @@ class WorkingTree(bzrlib.tree.Tree):
         else:
             return None
 
+    def kind(self, file_id):
+        return file_kind(self.id2abspath(file_id))
+
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 def get_conflicted_stem(path):
     for suffix in CONFLICT_SUFFIXES:

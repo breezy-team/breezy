@@ -110,6 +110,13 @@ class MergeTree(object):
         rename(old_path, self.abs_path(path))
         self.inventory[id] = path
 
+    def is_executable(self, file_id):
+        mode = os.lstat(self.full_path(file_id)).st_mode
+        return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
+
+    def kind(self, file_id):
+        kind = file_kind(self.full_path(file_id))
+
 
 class MergeBuilder(object):
     def __init__(self):

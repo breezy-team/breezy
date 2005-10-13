@@ -1380,7 +1380,7 @@ class ChangesetGenerator(object):
         stat_a = self.lstat(full_path_a)
         stat_b = self.lstat(full_path_b)
 
-        cs_entry.metadata_change = self.make_exec_flag_change(stat_a, stat_b)
+        cs_entry.metadata_change = self.make_exec_flag_change(id)
 
         if id in self.tree_a and id in self.tree_b:
             a_sha1 = self.tree_a.get_file_sha1(id)
@@ -1394,12 +1394,14 @@ class ChangesetGenerator(object):
                                                              stat_b)
         return cs_entry
 
-    def make_exec_flag_change(self, stat_a, stat_b):
+    def make_exec_flag_change(self, file_id):
         exec_flag_a = exec_flag_b = None
-        if stat_a is not None and not stat.S_ISLNK(stat_a.st_mode):
-            exec_flag_a = bool(stat_a.st_mode & 0111)
-        if stat_b is not None and not stat.S_ISLNK(stat_b.st_mode):
-            exec_flag_b = bool(stat_b.st_mode & 0111)
+        if file_id in self.tree_a and self.tree_a.kind(file_id) == "file":
+            exec_flag_a = self.tree_a.is_executable(file_id)
+
+        if file_id in self.tree_b and self.tree_b.kind(file_id) == "file":
+            exec_flag_b = self.tree_b.is_executable(file_id)
+
         if exec_flag_a == exec_flag_b:
             return None
         return ChangeExecFlag(exec_flag_a, exec_flag_b)

@@ -293,6 +293,9 @@ class MergeTree(object):
                 self.cached[id] = path
             return self.cached[id]
 
+    def kind(self, file_id):
+        return self.tree.kind(file_id)
+
 
 def build_working_dir(to_dir):
     """Build a working directory in an empty directory.
