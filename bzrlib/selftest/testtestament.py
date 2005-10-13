@@ -16,10 +16,12 @@
 
 """Test testaments for gpg signing."""
 
+import difflib
 import os
 import sys
 
 from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.selftest.treeshape import build_tree_contents
 from bzrlib.branch import Branch
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter
@@ -33,6 +35,15 @@ class TestamentTests(TestCaseInTempDir):
                  timestamp=1129025423, # 'Tue Oct 11 20:10:23 2005'
                  timezone=0,
                  rev_id='test@user-1')
+        build_tree_contents([('hello', 'contents of hello file'),
+                             ('src/', ),
+                             ('src/foo.c', 'int main()\n{\n}')])
+        b.add(['hello', 'src', 'src/foo.c'])
+        b.commit(message='add files and directories',
+                 timestamp=1129025483,
+                 timezone=36000,
+                 rev_id='test@user-2',
+                 committer='test@user')
 
     def test_null_testament(self):
         """Testament for a revision with no contents."""
@@ -57,9 +68,32 @@ committer: test@user
 timestamp: 1129025423.0
 timezone: 0
 entries: 0
+parents:
 message:
   initial null commit
+inventory:
 """
         self.assertEqual(text_form, expect)
 
-
+    def test_testament_with_contents(self):
+        """Testament containing a file and a directory."""
+        t = Testament.from_revision(self.b, 'test@user-2')
+        text_form = t.to_text_form_1()
+        self.log('testament text form:\n' + text_form)
+        expect = """\
+bazaar-ng testament version 1
+revision-id: test@user-2
+committer: test@user
+timestamp: 1129025483.0
+timezone: 36000
+entries: 3
+parents:
+  test@user-1
+message:
+  add files and directories
+inventory:
+  file hello
+  directory src
+  file src/foo.c
+"""
+        self.assertEqualDiff(text_form, expect)
