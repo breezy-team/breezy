@@ -54,6 +54,7 @@ import bzrlib.errors as errors
 from bzrlib.tree import EmptyTree
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter
+import re
 
 
 def find_touching_revisions(branch, file_id):
@@ -408,7 +409,8 @@ class ShortLogFormatter(LogFormatter):
         from bzrlib.osutils import format_date
 
         to_file = self.to_file
-
+        date_str = format_date(rev.timestamp, rev.timezone or 0,
+                            self.show_timezone)
         print >>to_file, "%5d %s\t%s" % (revno, rev.committer,
                 format_date(rev.timestamp, rev.timezone or 0,
                             self.show_timezone))
@@ -426,10 +428,39 @@ class ShortLogFormatter(LogFormatter):
             delta.show(to_file, self.show_ids)
         print
 
+class LineLogFormatter(LogFormatter):
+    def truncate(self, str, max_len):
+        if len(str) <= max_len:
+            return str
+        return str[:max_len-3]+'...'
 
+    def date_string(self, rev):
+        from bzrlib.osutils import format_date
+        return format_date(rev.timestamp, rev.timezone or 0, 
+                           self.show_timezone, date_fmt="%Y-%m-%d",
+                           show_offset=False)
+
+    def message(self, rev):
+        if not rev.message:
+            return '(no message)'
+        else:
+            return rev.message
+
+    def short_committer(self, rev):
+        return re.sub('<.*@.*>', '', rev.committer).strip(' ')
+    
+    def show(self, revno, rev, delta):
+        print >> self.to_file, self.log_string(rev, 79) 
+
+    def log_string(self, rev, max_chars):
+        out = [self.truncate(self.short_committer(rev), 20)]
+        out.append(self.date_string(rev))
+        out.append(self.message(rev).replace('\n', ' '))
+        return self.truncate(" ".join(out).rstrip('\n'), max_chars)
 
 FORMATTERS = {'long': LongLogFormatter,
               'short': ShortLogFormatter,
+              'line': LineLogFormatter,
               }
 
 

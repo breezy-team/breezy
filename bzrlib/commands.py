@@ -352,6 +352,7 @@ OPTIONS = {
     'forward':                None,
     'message':                unicode,
     'no-recurse':             None,
+    'line':                   None,
     'profile':                None,
     'revision':               _parse_revision_str,
     'short':                  None,

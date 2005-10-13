@@ -703,7 +703,7 @@ class cmd_log(Command):
 
     takes_args = ['filename?']
     takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision',
-                     'long', 'message', 'short',]
+                     'long', 'message', 'short', 'line',]
     
     def run(self, filename=None, timezone='original',
             verbose=False,
@@ -712,7 +712,8 @@ class cmd_log(Command):
             revision=None,
             message=None,
             long=False,
-            short=False):
+            short=False,
+            line=False):
         from bzrlib.log import log_formatter, show_log
         import codecs
 
@@ -751,10 +752,11 @@ class cmd_log(Command):
         # in e.g. the default C locale.
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
-        if not short:
-            log_format = 'long'
-        else:
+        log_format = 'long'
+        if short:
             log_format = 'short'
+        if line:
+            log_format = 'line'
         lf = log_formatter(log_format,
                            show_ids=show_ids,
                            to_file=outf,

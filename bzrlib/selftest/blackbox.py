@@ -639,7 +639,7 @@ class OldTests(ExternalBase):
         f.close()
 
         f = file('msg.tmp', 'wt')
-        f.write('this is my new commit\n')
+        f.write('this is my new commit\nand it has multiple lines, for fun')
         f.close()
 
         runbzr('commit -F msg.tmp')
@@ -653,10 +653,15 @@ class OldTests(ExternalBase):
         runbzr('log -v --forward')
         runbzr('log -m', retcode=1)
         log_out = capture('log -m commit')
-        assert "this is my new commit" in log_out
+        assert "this is my new commit\n  and" in log_out
         assert "rename nested" not in log_out
         assert 'revision-id' not in log_out
         assert 'revision-id' in capture('log --show-ids -m commit')
+
+        log_out = capture('log --line')
+        for line in log_out.splitlines():
+            assert len(line) <= 79, len(line)
+        assert "this is my new commit and" in log_out
 
 
         progress("file with spaces in name")
