@@ -190,6 +190,10 @@ class MergeConflictHandler(ExceptionConflictHandler):
         self.create(file_id, stem+".OTHER", self.other_tree)
         self.create(file_id, stem+".BASE", self.base_tree)
 
+    def threeway_contents_conflict(filename, this_contents, base_contents,
+                                   other_contents):
+        self.conflict("Three-way conflict merging %s" % filename)
+
     def finalize(self):
         if not self.ignore_zero:
             note("%d conflicts encountered.\n" % self.conflicts)

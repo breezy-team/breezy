@@ -1064,6 +1064,11 @@ class NewContentsConflict(Exception):
         msg = "Conflicting contents for new file %s" % (filename)
         Exception.__init__(self, msg)
 
+class ThreewayContentsConflict(Exception):
+    def __init__(self, filename):
+        msg = "Conflicting contents for file %s" % (filename)
+        Exception.__init__(self, msg)
+
 
 class MissingForMerge(Exception):
     def __init__(self, filename):
@@ -1134,6 +1139,10 @@ class ExceptionConflictHandler(object):
 
     def new_contents_conflict(self, filename, other_contents):
         raise NewContentsConflict(filename)
+
+    def threeway_contents_conflict(self, filename, this_contents,
+                                   base_contents, other_contents):
+        raise ThreewayContentsConflict(filename)
 
     def finalize(self):
         pass
