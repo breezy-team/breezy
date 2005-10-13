@@ -87,6 +87,7 @@ import shutil
 
 from bzrlib.branch import Branch, find_branch
 from bzrlib.branch import BZR_BRANCH_FORMAT_5, BZR_BRANCH_FORMAT_6
+import bzrlib.hashcache as hashcache
 from bzrlib.revfile import Revfile
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave
@@ -122,6 +123,9 @@ class Convert(object):
             note('starting upgrade from format 5 to 6')
             self._convert_to_prefixed()
             self._open_branch()
+        cache = hashcache.HashCache(os.path.abspath(self.base))
+        cache.clear()
+        cache.write()
         note("finished")
 
 
