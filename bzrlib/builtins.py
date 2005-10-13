@@ -1466,3 +1466,9 @@ class cmd_annotate(Command):
             annotate_file(b, file_version, file_id, sys.stdout)
         finally:
             b.unlock()
+
+# these get imported and then picked up by the scan for cmd_*
+# TODO: Some more consistent way to split command definitions across files;
+# we do need to load at least some information about them to know of 
+# aliases.
+from bzrlib.conflicts import cmd_resolve, cmd_conflicts
