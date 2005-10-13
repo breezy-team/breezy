@@ -1375,11 +1375,6 @@ class ChangesetGenerator(object):
         if cs_entry is None:
             return None
 
-        full_path_a = self.tree_a.readonly_path(id)
-        full_path_b = self.tree_b.readonly_path(id)
-        stat_a = self.lstat(full_path_a)
-        stat_b = self.lstat(full_path_b)
-
         cs_entry.metadata_change = self.make_exec_flag_change(id)
 
         if id in self.tree_a and id in self.tree_b:
@@ -1388,10 +1383,7 @@ class ChangesetGenerator(object):
             if None not in (a_sha1, b_sha1) and a_sha1 == b_sha1:
                 return cs_entry
 
-        cs_entry.contents_change = self.make_contents_change(full_path_a,
-                                                             stat_a, 
-                                                             full_path_b, 
-                                                             stat_b)
+        cs_entry.contents_change = self.make_contents_change(id)
         return cs_entry
 
     def make_exec_flag_change(self, file_id):
@@ -1406,45 +1398,30 @@ class ChangesetGenerator(object):
             return None
         return ChangeExecFlag(exec_flag_a, exec_flag_b)
 
-    def make_contents_change(self, full_path_a, stat_a, full_path_b, stat_b):
-        if stat_a is None and stat_b is None:
-            return None
-        if None not in (stat_a, stat_b) and stat.S_ISDIR(stat_a.st_mode) and\
-            stat.S_ISDIR(stat_b.st_mode):
-            return None
-        if None not in (stat_a, stat_b) and stat.S_ISREG(stat_a.st_mode) and\
-            stat.S_ISREG(stat_b.st_mode):
-            if stat_a.st_ino == stat_b.st_ino and \
-                stat_a.st_dev == stat_b.st_dev:
-                return None
+    def make_contents_change(self, file_id):
+        kind_a = kind_b = None
+        if file_id in self.tree_a:
+            kind_a = self.tree_a.kind(file_id)
+        if file_id in self.tree_b:
+            kind_b = self.tree_b.kind(file_id)
 
-        a_contents = self.get_contents(stat_a, full_path_a)
-        b_contents = self.get_contents(stat_b, full_path_b)
+        a_contents = self.get_contents(self.tree_a, file_id, kind_a)
+        b_contents = self.get_contents(self.tree_b, file_id, kind_b)
         if a_contents == b_contents:
             return None
         return ReplaceContents(a_contents, b_contents)
 
-    def get_contents(self, stat_result, full_path):
-        if stat_result is None:
+    def get_contents(self, tree, file_id, kind):
+        if kind is None:
             return None
-        elif stat.S_ISREG(stat_result.st_mode):
-            return FileCreate(file(full_path, "rb").read())
-        elif stat.S_ISDIR(stat_result.st_mode):
+        elif kind == "file":
+            return FileCreate(tree.get_file(file_id).read())
+        elif kind in ("directory", "root_directory"):
             return dir_create
-        elif stat.S_ISLNK(stat_result.st_mode):
-            return SymlinkCreate(os.readlink(full_path))
+        elif kind == "symlink":
+            return SymlinkCreate(tree.get_symlink_target(file_id))
         else:
             raise UnsupportedFiletype(full_path, stat_result)
-
-    def lstat(self, full_path):
-        stat_result = None
-        if full_path is not None:
-            try:
-                stat_result = os.lstat(full_path)
-            except OSError, e:
-                if e.errno != errno.ENOENT:
-                    raise
-        return stat_result
 
 
 def full_path(entry, tree):

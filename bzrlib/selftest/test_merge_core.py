@@ -117,6 +117,9 @@ class MergeTree(object):
     def kind(self, file_id):
         kind = file_kind(self.full_path(file_id))
 
+    def get_symlink_target(self, file_id):
+        return os.readlink(self.full_path(file_id))
+
 
 class MergeBuilder(object):
     def __init__(self):

@@ -296,6 +296,9 @@ class MergeTree(object):
     def kind(self, file_id):
         return self.tree.kind(file_id)
 
+    def get_symlink_target(self, file_id):
+        return self.tree.get_symlink_target(file_id)
+
 
 def build_working_dir(to_dir):
     """Build a working directory in an empty directory.
