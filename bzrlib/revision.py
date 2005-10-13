@@ -33,8 +33,9 @@ class Revision(object):
         List of parent revision_ids
     """
     
-    def __init__(self, revision_id, **args):
+    def __init__(self, revision_id, properties=None, **args):
         self.revision_id = revision_id
+        self.properties = properties or {}
         self.__dict__.update(args)
         self.parent_ids = []
         self.parent_sha1s = []
@@ -52,7 +53,8 @@ class Revision(object):
                 and self.timestamp == other.timestamp
                 and self.message == other.message
                 and self.timezone == other.timezone
-                and self.committer == other.committer)
+                and self.committer == other.committer
+                and self.properties == other.properties)
 
     def __ne__(self, other):
         return not self.__eq__(other)
