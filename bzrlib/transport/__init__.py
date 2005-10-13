@@ -30,13 +30,14 @@ _protocol_handlers = {
 
 def register_transport(prefix, klass, override=True):
     global _protocol_handlers
-
+    # trace messages commented out because they're typically 
+    # run during import before trace is set up
     if _protocol_handlers.has_key(prefix):
         if override:
-            mutter('overriding transport: %s => %s' % (prefix, klass.__name__))
+            ## mutter('overriding transport: %s => %s' % (prefix, klass.__name__))
             _protocol_handlers[prefix] = klass
     else:
-        mutter('registering transport: %s => %s' % (prefix, klass.__name__))
+        ## mutter('registering transport: %s => %s' % (prefix, klass.__name__))
         _protocol_handlers[prefix] = klass
 
 class Transport(object):
