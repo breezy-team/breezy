@@ -37,47 +37,42 @@ from bzrlib.branch import gen_root_id
 
 class Check(object):
     """Check a branch"""
+
     def __init__(self, branch):
         self.branch = branch
-        branch.lock_read()
-        try:
-            branch.weave_store.enable_cache = True
-            branch.control_weaves.enable_cache = True
-            self.run()
-        finally:
-            branch.unlock()
-            branch.weave_store.enable_cache = False
-            branch.control_weaves.enable_cache = False
-
-
-    def run(self):
-        branch = self.branch
-
-
         self.checked_text_cnt = 0
         self.checked_rev_cnt = 0
+        self.ghosts = []
         self.repeated_text_cnt = 0
+        self.missing_parent_links = {}
         self.missing_inventory_sha_cnt = 0
         self.missing_revision_cnt = 0
         # maps (file-id, version) -> sha1
         self.checked_texts = {}
 
-        history = branch.revision_history()
-        revno = 0
-        revcount = len(history)
+    def check(self):
+        self.branch.lock_read()
+        try:
+            self.history = self.branch.revision_history()
+            if not len(self.history):
+                # nothing to see here
+                return
+            self.planned_revisions = self.branch.get_ancestry(self.history[-1])
+            self.planned_revisions.remove(None)
+            revno = 0
+    
+            self.progress = bzrlib.ui.ui_factory.progress_bar()
+            while revno < len(self.planned_revisions):
+                rev_id = self.planned_revisions[revno]
+                self.progress.update('checking revision', revno,
+                                     len(self.planned_revisions))
+                revno += 1
+                self.check_one_rev(rev_id)
+            self.progress.clear()
+        finally:
+            self.branch.unlock()
 
-        last_rev_id = None
-        self.progress = bzrlib.ui.ui_factory.progress_bar()
-        for rev_id in history:
-            self.progress.update('checking revision', revno, revcount)
-            revno += 1
-            self.check_one_rev(rev_id, last_rev_id)
-            last_rev_id = rev_id
-        self.progress.clear()
-        self.report_results()
-
-
-    def report_results(self):
+    def report_results(self, verbose):
         note('checked branch %s format %d',
              self.branch.base, 
              self.branch._branch_format)
@@ -86,14 +81,26 @@ class Check(object):
         note('%6d unique file texts', self.checked_text_cnt)
         note('%6d repeated file texts', self.repeated_text_cnt)
         if self.missing_inventory_sha_cnt:
-            note('%d revisions are missing inventory_sha1',
+            note('%6d revisions are missing inventory_sha1',
                  self.missing_inventory_sha_cnt)
         if self.missing_revision_cnt:
-            note('%d revisions are mentioned but not present',
+            note('%6d revisions are mentioned but not present',
                  self.missing_revision_cnt)
+        if len(self.ghosts):
+            note('%6d ghost revisions', len(self.ghosts))
+            if verbose:
+                for ghost in self.ghosts:
+                    note('      %s', ghost)
+        if len(self.missing_parent_links):
+            note('%6d revisions missing parents in ancestry', 
+                 len(self.missing_parent_links))
+            if verbose:
+                for link, linkers in self.missing_parent_links.items():
+                    note('      %s should be in the ancestry for:', link)
+                    for linker in linkers:
+                        note('       * %s', linker)
 
-
-    def check_one_rev(self, rev_id, last_rev_id):
+    def check_one_rev(self, rev_id):
         """Check one revision.
 
         rev_id - the one to check
@@ -103,24 +110,52 @@ class Check(object):
 
         # mutter('    revision {%s}' % rev_id)
         branch = self.branch
-        rev = branch.get_revision(rev_id)
+        try:
+            rev_history_position = self.history.index(rev_id)
+        except ValueError:
+            rev_history_position = None
+        last_rev_id = None
+        if rev_history_position:
+            rev = branch.get_revision(rev_id)
+            if rev_history_position > 0:
+                last_rev_id = self.history[rev_history_position - 1]
+        else:
+            rev = branch.get_revision(rev_id)
+                
         if rev.revision_id != rev_id:
             raise BzrCheckError('wrong internal revision id in revision {%s}'
                                 % rev_id)
 
         # check the previous history entry is a parent of this entry
         if rev.parent_ids:
-            if last_rev_id is None:
+            if last_rev_id is None and rev_history_position is not None:
+                # what if the start is a ghost ? i.e. conceptually the 
+                # baz imports
                 raise BzrCheckError("revision {%s} has %d parents, but is the "
                                     "start of the branch"
                                     % (rev_id, len(rev.parent_ids)))
-            for parent_id in rev.parent_ids:
-                if parent_id == last_rev_id:
-                    break
-            else:
-                raise BzrCheckError("previous revision {%s} not listed among "
-                                    "parents of {%s}"
-                                    % (last_rev_id, rev_id))
+            if last_rev_id is not None:
+                for parent_id in rev.parent_ids:
+                    if parent_id == last_rev_id:
+                        break
+                else:
+                    raise BzrCheckError("previous revision {%s} not listed among "
+                                        "parents of {%s}"
+                                        % (last_rev_id, rev_id))
+            for parent in rev.parent_ids:
+                if not parent in self.planned_revisions:
+                    missing_links = self.missing_parent_links.get(parent, [])
+                    missing_links.append(rev_id)
+                    self.missing_parent_links[parent] = missing_links
+                    # list based so slow, TODO have a planned_revisions list and set.
+                    if self.branch.has_revision(parent):
+                        missing_ancestry = self.branch.get_ancestry(parent)
+                        for missing in missing_ancestry:
+                            if (missing is not None 
+                                and missing not in self.planned_revisions):
+                                self.planned_revisions.append(missing)
+                    else:
+                        self.ghosts.append(rev_id)
         elif last_rev_id:
             raise BzrCheckError("revision {%s} has no parents listed "
                                 "but preceded by {%s}"
@@ -159,6 +194,8 @@ class Check(object):
             seen_names[path] = True
 
 
-def check(branch):
+def check(branch, verbose):
     """Run consistency checks on a branch."""
-    Check(branch)
+    checker = Check(branch)
+    checker.check()
+    checker.report_results(verbose)

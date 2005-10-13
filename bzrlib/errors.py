@@ -29,7 +29,7 @@ class BzrError(StandardError):
         ## n = self.__class__.__name__ + ': '
         n = ''
         if len(self.args) == 1:
-            return n + self.args[0]
+            return str(self.args[0])
         elif len(self.args) == 2:
             # further explanation or suggestions
             try:

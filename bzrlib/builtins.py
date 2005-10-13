@@ -1050,11 +1050,11 @@ class cmd_check(Command):
     detect data corruption or bzr bugs.
     """
     takes_args = ['dir?']
+    takes_options = ['verbose']
 
-    def run(self, dir='.'):
+    def run(self, dir='.', verbose=False):
         from bzrlib.check import check
-
-        check(Branch.open_containing(dir))
+        check(Branch.open_containing(dir), verbose)
 
 
 class cmd_scan_cache(Command):
