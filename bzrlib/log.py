@@ -228,24 +228,25 @@ def _show_log(branch,
                 continue
 
         lf.show(revno, rev, delta)
-        if revno == 1:
-            excludes = set()
-        else:
-            # revno is 1 based, so -2 to get back 1 less.
-            excludes = set(branch.get_ancestry(revision_history[revno - 2]))
-        pending = list(rev.parent_ids)
-        while pending:
-            rev_id = pending.pop()
-            if rev_id in excludes:
-                continue
-            # prevent showing merged revs twice if they multi-path.
-            excludes.add(rev_id)
-            try:
-                rev = branch.get_revision(rev_id)
-            except errors.NoSuchRevision:
-                continue
-            pending.extend(rev.parent_ids)
-            lf.show_merge(rev)
+        if hasattr(lf, 'show_merge'):
+            if revno == 1:
+                excludes = set()
+            else:
+                # revno is 1 based, so -2 to get back 1 less.
+                excludes = set(branch.get_ancestry(revision_history[revno - 2]))
+            pending = list(rev.parent_ids)
+            while pending:
+                rev_id = pending.pop()
+                if rev_id in excludes:
+                    continue
+                # prevent showing merged revs twice if they multi-path.
+                excludes.add(rev_id)
+                try:
+                    rev = branch.get_revision(rev_id)
+                except errors.NoSuchRevision:
+                    continue
+                pending.extend(rev.parent_ids)
+                lf.show_merge(rev)
 
 
 def deltas_for_log_dummy(branch, which_revs):
@@ -340,9 +341,6 @@ class LogFormatter(object):
 
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
-
-    def show_merge(self, rev):
-        pass
 
     
 class LongLogFormatter(LogFormatter):
