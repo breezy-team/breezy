@@ -456,6 +456,10 @@ class LineLogFormatter(LogFormatter):
         out.append(self.message(rev).replace('\n', ' '))
         return self.truncate(" ".join(out).rstrip('\n'), max_chars)
 
+def line_log(rev, max_chars):
+    lf = LineLogFormatter(None)
+    return lf.log_string(rev, max_chars)
+
 FORMATTERS = {'long': LongLogFormatter,
               'short': ShortLogFormatter,
               'line': LineLogFormatter,
@@ -465,8 +469,8 @@ FORMATTERS = {'long': LongLogFormatter,
 def log_formatter(name, *args, **kwargs):
     """Construct a formatter from arguments.
 
-    name -- Name of the formatter to construct; currently 'long' and
-        'short' are supported.
+    name -- Name of the formatter to construct; currently 'long', 'short' and
+        'line' are supported.
     """
     from bzrlib.errors import BzrCommandError
     try:
