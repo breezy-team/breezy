@@ -178,8 +178,8 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def create(self, file_id, path, tree, reverse=False):
         """Uses tree data to create a filesystem object for the file_id"""
-        from merge_core import get_id_contents
-        get_id_contents(file_id, tree)(path, self, reverse)
+        from changeset import get_contents
+        get_contents(tree, file_id)(path, self, reverse)
 
     def missing_for_merge(self, file_id, other_path):
         """The file_id doesn't exist in THIS, but does in OTHER and BASE"""

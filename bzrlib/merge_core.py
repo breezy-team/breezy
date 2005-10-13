@@ -5,6 +5,7 @@ from changeset import Inventory, apply_changeset, invert_dict
 from bzrlib.osutils import backup_file, rename
 from bzrlib.merge3 import Merge3
 import bzrlib
+from changeset import get_contents
 
 class ApplyMerge3:
     """Contents-change wrapper around merge3.Merge3"""
@@ -105,12 +106,6 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
 def make_merge_changeset(cset, this, base, other, 
                          conflict_handler, merge_factory):
     new_cset = changeset.Changeset()
-    def get_this_contents(id):
-        path = this.readonly_path(id)
-        if os.path.isdir(path):
-            return changeset.dir_create
-        else:
-            return changeset.FileCreate(file(path, "rb").read())
 
     for entry in cset.entries.itervalues():
         if entry.is_boring():
@@ -199,22 +194,6 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
     return new_entry
 
 
-def get_contents(entry, tree):
-    return get_id_contents(entry.id, tree)
-
-def get_id_contents(file_id, tree):
-    """Get a contents change element suitable for use with ReplaceContents
-    """
-    tree_entry = tree.tree.inventory[file_id]
-    if tree_entry.kind == "file":
-        return changeset.FileCreate(tree.get_file(file_id).read())
-    elif tree_entry.kind == "symlink":
-        return changeset.SymlinkCreate(tree.get_symlink_target(file_id))
-    else:
-        assert tree_entry.kind in ("root_directory", "directory")
-        return changeset.dir_create
-
-
 def make_merged_contents(entry, this, base, other, conflict_handler,
                          merge_factory):
     contents = entry.contents_change
@@ -231,7 +210,7 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
         if contents.old_contents is None and contents.new_contents is None:
             return None
         if contents.new_contents is None:
-            this_contents = get_contents(entry, this)
+            this_contents = get_contents(this, entry.id)
             if this_path is not None and bzrlib.osutils.lexists(this_path):
                 if this_contents != contents.old_contents:
                     return conflict_handler.rem_contents_conflict(this_path, 
@@ -243,7 +222,7 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
             if this_path is None or not bzrlib.osutils.lexists(this_path):
                 return contents
             else:
-                this_contents = get_contents(entry, this)
+                this_contents = get_contents(this, entry.id)
                 if this_contents == contents.new_contents:
                     return None
                 else:

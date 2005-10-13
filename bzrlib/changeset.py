@@ -1267,12 +1267,13 @@ def changeset_is_null(changeset):
             return False
     return True
 
-class UnsuppportedFiletype(Exception):
-    def __init__(self, full_path, stat_result):
-        msg = "The file \"%s\" is not a supported filetype." % full_path
+class UnsupportedFiletype(Exception):
+    def __init__(self, kind, full_path):
+        msg = "The file \"%s\" is a %s, which is not a supported filetype." \
+            % (full_path, kind)
         Exception.__init__(self, msg)
         self.full_path = full_path
-        self.stat_result = stat_result
+        self.kind = kind
 
 def generate_changeset(tree_a, tree_b, interesting_ids=None):
     return ChangesetGenerator(tree_a, tree_b, interesting_ids)()
@@ -1399,29 +1400,26 @@ class ChangesetGenerator(object):
         return ChangeExecFlag(exec_flag_a, exec_flag_b)
 
     def make_contents_change(self, file_id):
-        kind_a = kind_b = None
-        if file_id in self.tree_a:
-            kind_a = self.tree_a.kind(file_id)
-        if file_id in self.tree_b:
-            kind_b = self.tree_b.kind(file_id)
-
-        a_contents = self.get_contents(self.tree_a, file_id, kind_a)
-        b_contents = self.get_contents(self.tree_b, file_id, kind_b)
+        a_contents = get_contents(self.tree_a, file_id)
+        b_contents = get_contents(self.tree_b, file_id)
         if a_contents == b_contents:
             return None
         return ReplaceContents(a_contents, b_contents)
 
-    def get_contents(self, tree, file_id, kind):
-        if kind is None:
-            return None
-        elif kind == "file":
-            return FileCreate(tree.get_file(file_id).read())
-        elif kind in ("directory", "root_directory"):
-            return dir_create
-        elif kind == "symlink":
-            return SymlinkCreate(tree.get_symlink_target(file_id))
-        else:
-            raise UnsupportedFiletype(full_path, stat_result)
+
+def get_contents(tree, file_id):
+    """Return the appropriate contents to create a copy of file_id from tree"""
+    if file_id not in tree:
+        return None
+    kind = tree.kind(file_id)
+    if kind == "file":
+        return FileCreate(tree.get_file(file_id).read())
+    elif kind in ("directory", "root_directory"):
+        return dir_create
+    elif kind == "symlink":
+        return SymlinkCreate(tree.get_symlink_target(file_id))
+    else:
+        raise UnsupportedFiletype(kind, tree.id2path(file_id))
 
 
 def full_path(entry, tree):
