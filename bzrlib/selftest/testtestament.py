@@ -18,6 +18,7 @@
 
 import difflib
 import os
+from sha import sha
 import sys
 
 from bzrlib.selftest import TestCaseInTempDir
@@ -37,8 +38,9 @@ class TestamentTests(TestCaseInTempDir):
                  rev_id='test@user-1')
         build_tree_contents([('hello', 'contents of hello file'),
                              ('src/', ),
-                             ('src/foo.c', 'int main()\n{\n}')])
-        b.add(['hello', 'src', 'src/foo.c'])
+                             ('src/foo.c', 'int main()\n{\n}\n')])
+        b.add(['hello', 'src', 'src/foo.c'],
+              ['hello-id', 'src-id', 'foo.c-id'])
         b.commit(message='add files and directories',
                  timestamp=1129025483,
                  timezone=36000,
@@ -59,15 +61,14 @@ class TestamentTests(TestCaseInTempDir):
     def test_testment_text_form(self):
         """Conversion of testament to canonical text form."""
         t = Testament.from_revision(self.b, 'test@user-1')
-        text_form = t.to_text_form_1()
+        text_form = t.as_text()
         self.log('testament text form:\n' + text_form)
         expect = """\
 bazaar-ng testament version 1
 revision-id: test@user-1
 committer: test@user
-timestamp: 1129025423.0
+timestamp: 1129025423
 timezone: 0
-entries: 0
 parents:
 message:
   initial null commit
@@ -78,28 +79,27 @@ inventory:
     def test_testament_with_contents(self):
         """Testament containing a file and a directory."""
         t = Testament.from_revision(self.b, 'test@user-2')
-        text_form = t.to_text_form_1()
+        text_form = t.as_text()
         self.log('testament text form:\n' + text_form)
         expect = """\
 bazaar-ng testament version 1
 revision-id: test@user-2
 committer: test@user
-timestamp: 1129025483.0
+timestamp: 1129025483
 timezone: 36000
-entries: 3
 parents:
   test@user-1
 message:
   add files and directories
 inventory:
-  file hello
-  directory src
-  file src/foo.c
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73
+  directory src src-id
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
 """
         self.assertEqualDiff(text_form, expect)
         actual_short = t.as_short_text()
         self.assertEqualDiff(actual_short, """\
 bazaar-ng testament short form 1
 revision test@user-2
-sha1 e64f0a98937f8b0d2602ea5f521938752b90a430
-""")
+sha1 %s
+""" % sha(expect).hexdigest())

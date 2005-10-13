@@ -64,6 +64,8 @@ Testament format 1
 # fix is when verifying a revision to make sure that every file mentioned 
 # in the revision has compatible ancestry links.
 
+# TODO: perhaps write timestamp in a more readable form
+
 from cStringIO import StringIO
 import string
 import sha
@@ -110,44 +112,65 @@ class Testament(object):
         t.message = rev.message
         t.parent_ids = rev.parent_ids[:]
         t.inventory = branch.get_inventory(revision_id)
+        assert not contains_whitespace(t.revision_id)
+        assert not contains_linebreaks(t.committer)
         return t
 
-    def text_form_1_to_file(self, f):
-        """Convert to externalizable text form.
+    def as_text_lines(self):
+        """Yield text form as a sequence of lines.
 
         The result is returned in utf-8, because it should be signed or
         hashed in that encoding.
         """
-        # TODO: Set right encoding
-        print >>f, 'bazaar-ng testament version 1'
-        assert not contains_whitespace(self.revision_id)
-        print >>f, 'revision-id:', self.revision_id
-        assert not contains_linebreaks(self.committer)
-        print >>f, 'committer:', self.committer
-        # TODO: perhaps write timestamp in a more readable form
-        print >>f, 'timestamp:', self.timestamp
-        print >>f, 'timezone:', self.timezone
+        r = []
+        def a(s):
+            r.append(s)
+        a('bazaar-ng testament version 1\n')
+        a('revision-id: %s\n' % self.revision_id)
+        a('committer: %s\n' % self.committer)
+        a('timestamp: %d\n' % self.timestamp)
+        a('timezone: %d\n' % self.timezone)
         # inventory length contains the root, which is not shown here
-        print >>f, 'entries:', len(self.inventory) - 1
-        print >>f, 'parents:'
+        a('parents:\n')
         for parent_id in sorted(self.parent_ids):
             assert not contains_whitespace(parent_id)
-            print >>f, '  ' + parent_id
-        print >>f, 'message:'
+            a('  %s\n' % parent_id)
+        a('message:\n')
         for l in self.message.splitlines():
-            print >>f, '  ' + l
-        print >>f, 'inventory:'
+            a('  %s\n' % l)
+        a('inventory:\n')
         for path, ie in self.inventory.iter_entries():
-            print >>f, ' ', ie.kind, path
+            a(self._entry_to_line(path, ie))
+        if __debug__:
+            for l in r:
+                assert isinstance(l, str), \
+                    '%r of type %s is not a plain string' % (l, type(l))
+        return r
 
-    def to_text_form_1(self):
-        s = StringIO()
-        self.text_form_1_to_file(s)
-        return s.getvalue()
+    def _escape_path(self, path):
+        assert not contains_linebreaks(path)
+        return unicode(path.replace('\\', '\\\\').replace(' ', '\ ')).encode('utf-8')
+
+    def _entry_to_line(self, path, ie):
+        """Turn an inventory entry into a testament line"""
+        l = '  ' + str(ie.kind)
+        l += ' ' + self._escape_path(path)
+        assert not contains_whitespace(ie.file_id)
+        l += ' ' + unicode(ie.file_id).encode('utf-8')
+        if ie.kind == 'file':
+            # TODO: avoid switching on kind
+            assert ie.text_sha1
+            l += ' ' + ie.text_sha1
+        l += '\n'
+        return l
+
+    def as_text(self):
+        return ''.join(self.as_text_lines())
 
     def as_short_text(self):
         """Return short digest-based testament."""
-        s = sha.sha(self.to_text_form_1())
+        s = sha.sha()
+        map(s.update, self.as_text_lines())
         return ('bazaar-ng testament short form 1\n'
                 'revision %s\n'
                 'sha1 %s\n'
