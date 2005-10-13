@@ -407,7 +407,8 @@ def local_time_offset(t=None):
         return -time.timezone
 
     
-def format_date(t, offset=0, timezone='original'):
+def format_date(t, offset=0, timezone='original', date_fmt=None, 
+                show_offset=True):
     ## TODO: Perhaps a global option to use either universal or local time?
     ## Or perhaps just let people set $TZ?
     assert isinstance(t, float)
@@ -425,9 +426,13 @@ def format_date(t, offset=0, timezone='original'):
     else:
         raise BzrError("unsupported timezone format %r" % timezone,
                        ['options are "utc", "original", "local"'])
-
-    return (time.strftime("%a %Y-%m-%d %H:%M:%S", tt)
-            + ' %+03d%02d' % (offset / 3600, (offset / 60) % 60))
+    if date_fmt is None:
+        date_fmt = "%a %Y-%m-%d %H:%M:%S"
+    if show_offset:
+        offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
+    else:
+        offset_str = ''
+    return (time.strftime(date_fmt, tt) +  offset_str)
 
 
 def compact_date(when):
