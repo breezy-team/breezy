@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: Some kind of command-line display of revision properties: 
+# perhaps show them in log -v and allow them as options to the commit command.
 
 import bzrlib.errors
 from bzrlib.graph import node_distances, select_farthest, all_descendants
