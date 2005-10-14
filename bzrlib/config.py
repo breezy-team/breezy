@@ -143,8 +143,12 @@ class GlobalConfig(Config):
 
     def _string_to_signature_policy(self, signature_string):
         """Convert a string to a signing policy."""
+        if signature_string.lower() == 'check-available':
+            return CHECK_IF_POSSIBLE
         if signature_string.lower() == 'ignore':
             return CHECK_NEVER
+        if signature_string.lower() == 'require':
+            return CHECK_ALWAYS
         raise errors.BzrError("Invalid signatures policy '%s'"
                               % signature_string)
 

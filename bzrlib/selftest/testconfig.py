@@ -34,8 +34,16 @@ sample_config_text = ("[DEFAULT]\n"
                       "gpg_signing_command=gnome-gpg\n")
 
 
+sample_always_signatures = ("[DEFAULT]\n"
+                            "signatures=require\n")
+
+
 sample_ignore_signatures = ("[DEFAULT]\n"
                             "signatures=ignore\n")
+
+
+sample_maybe_signatures = ("[DEFAULT]\n"
+                            "signatures=check-available\n")
 
 
 sample_branches_text = ("[http://www.example.com]\n"
@@ -248,6 +256,20 @@ class TestGlobalConfigItems(TestConfigItems):
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_config_parser(file=config_file)
         self.assertEqual("vim", my_config.get_editor())
+
+    def test_signatures_always(self):
+        config_file = StringIO(sample_always_signatures)
+        my_config = config.GlobalConfig()
+        my_config._parser = my_config._get_config_parser(file=config_file)
+        self.assertEqual(config.CHECK_ALWAYS,
+                         my_config.signature_checking())
+
+    def test_signatures_if_possible(self):
+        config_file = StringIO(sample_maybe_signatures)
+        my_config = config.GlobalConfig()
+        my_config._parser = my_config._get_config_parser(file=config_file)
+        self.assertEqual(config.CHECK_IF_POSSIBLE,
+                         my_config.signature_checking())
 
     def test_signatures_ignore(self):
         config_file = StringIO(sample_ignore_signatures)
