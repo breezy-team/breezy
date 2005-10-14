@@ -29,7 +29,6 @@ import time
 import types
 
 import bzrlib
-from bzrlib.config import config_dir, _get_user_id
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 
