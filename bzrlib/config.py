@@ -245,6 +245,10 @@ class BranchConfig(Config):
         
         return self._get_location_config()._get_user_id()
 
+    def _get_signature_checking(self):
+        """See Config._get_signature_checking."""
+        return self._get_location_config()._get_signature_checking()
+
     def __init__(self, branch):
         super(BranchConfig, self).__init__()
         self._location_config = None

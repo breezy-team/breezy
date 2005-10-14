@@ -434,3 +434,10 @@ class TestBranchConfigItems(TestConfigItems):
         self.assertEqual("Robert Collins <robertc@example.org>",
                          my_config.username())
     
+    def test_signatures_forced(self):
+        branch = FakeBranch()
+        my_config = config.BranchConfig(branch)
+        config_file = StringIO(sample_always_signatures)
+        (my_config._get_location_config().
+            _get_global_config()._get_parser(config_file))
+        self.assertEqual(config.CHECK_ALWAYS, my_config.signature_checking())
