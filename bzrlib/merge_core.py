@@ -107,7 +107,7 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
     cset = changeset_function(base, other, interesting_ids)
     new_cset = make_merge_changeset(cset, this, base, other, 
                                     conflict_handler, merge_factory)
-    result = apply_changeset(new_cset, invert_invent(this.tree.inventory),
+    result = apply_changeset(new_cset, invert_invent(this.inventory),
                              this.basedir, conflict_handler, False)
     conflict_handler.finalize()
     return result
@@ -160,7 +160,7 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
         assert hasattr(tree, "__contains__"), "%s" % tree
         if not tree.has_or_had_id(file_id):
             return (None, None, "")
-        entry = tree.tree.inventory[file_id]
+        entry = tree.inventory[file_id]
         my_dir = tree.id2path(entry.parent_id)
         if my_dir is None:
             my_dir = ""

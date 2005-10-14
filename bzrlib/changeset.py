@@ -944,7 +944,8 @@ def rename_to_temp_delete(source_entries, inventory, dir, temp_dir,
                 except OSError, e:
                     if e.errno != errno.ENOENT:
                         raise
-                    if conflict_handler.missing_for_rename(src_path) == "skip":
+                    if conflict_handler.missing_for_rename(src_path, to_name) \
+                        == "skip":
                         continue
 
     return temp_name
@@ -1071,8 +1072,8 @@ class MissingForRm(Exception):
 
 
 class MissingForRename(Exception):
-    def __init__(self, filename):
-        msg = "Attempt to move missing path %s" % (filename)
+    def __init__(self, filename, to_path):
+        msg = "Attempt to move missing path %s to %s" % (filename, to_path)
         Exception.__init__(self, msg)
         self.filename = filename
 
@@ -1148,8 +1149,8 @@ class ExceptionConflictHandler(object):
     def missing_for_rm(self, filename, change):
         raise MissingForRm(filename)
 
-    def missing_for_rename(self, filename):
-        raise MissingForRename(filename)
+    def missing_for_rename(self, filename, to_path):
+        raise MissingForRename(filename, to_path)
 
     def missing_for_merge(self, file_id, other_path):
         raise MissingForMerge(other_path)
@@ -1429,7 +1430,7 @@ class ChangesetGenerator(object):
     def get_entry(self, file_id, tree):
         if not tree.has_or_had_id(file_id):
             return None
-        return tree.tree.inventory[file_id]
+        return tree.inventory[file_id]
 
     def get_entry_parent(self, entry):
         if entry is None:

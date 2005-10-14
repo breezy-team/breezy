@@ -153,12 +153,11 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def abs_this_path(self, file_id):
         """Return the absolute path for a file_id in the this tree."""
-        relpath = self.this_tree.id2path(file_id)
-        return self.this_tree.tree.abspath(relpath)
+        return self.this_tree.id2abspath(file_id)
 
     def add_missing_parents(self, file_id, tree):
         """If some of the parents for file_id are missing, add them."""
-        entry = tree.tree.inventory[file_id]
+        entry = tree.inventory[file_id]
         if entry.parent_id not in self.this_tree:
             return self.create_all_missing(entry.parent_id, tree)
         else:
@@ -166,7 +165,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def create_all_missing(self, file_id, tree):
         """Add contents for a file_id and all its parents to a tree."""
-        entry = tree.tree.inventory[file_id]
+        entry = tree.inventory[file_id]
         if entry.parent_id is not None and entry.parent_id not in self.this_tree:
             abspath = self.create_all_missing(entry.parent_id, tree)
         else:
@@ -242,6 +241,7 @@ class MergeAdapterTree(object):
         else:
             self.basedir = None
         self.tree = tree
+        self.inventory = tree.inventory
         self.tempdir = tempdir
         os.mkdir(os.path.join(self.tempdir, "texts"))
         os.mkdir(os.path.join(self.tempdir, "symlinks"))
@@ -373,7 +373,7 @@ def merge(other_revision, base_revision,
             for fname in file_list:
                 path = this_branch.relpath(fname)
                 found_id = False
-                for tree in (this_tree, base_tree.tree, other_tree.tree):
+                for tree in (this_tree, base_tree, other_tree):
                     file_id = tree.inventory.path2id(path)
                     if file_id is not None:
                         interesting_ids.add(file_id)
@@ -412,7 +412,7 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
     this_tree = get_tree((this_branch.base, None), tempdir, "this")[1]
 
     def get_inventory(tree):
-        return tree.tree.inventory
+        return tree.inventory
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
                              generate_changeset, get_inventory,
