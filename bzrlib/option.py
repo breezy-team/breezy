@@ -112,7 +112,7 @@ class Option(object):
     OPTIONS = {}
     SHORT_OPTIONS = {}
 
-    def __init__(self, name, help='', type=None):
+    def __init__(self, name, help='', type=None, argname=None):
         """Make a new command option.
 
         name -- regular name of the command, used in the double-dash
@@ -123,12 +123,19 @@ class Option(object):
 
         type -- function called to parse the option argument, or 
             None (default) if this option doesn't take an argument.
+
+        argname -- name of option argument, if any
         """
         # TODO: perhaps a subclass that automatically does 
         # --option, --no-option for reversable booleans
         self.name = name
         self.help = help
         self.type = type
+        if type is None:
+            assert argname is None
+        elif argname is None:
+            argname = 'ARG'
+        self.argname = argname
 
     def short_name(self):
         """Return the single character option for this command, if any.
@@ -157,12 +164,13 @@ _global_option('revision', type=_parse_revision_str)
 _global_option('short')
 _global_option('show-ids', 
                help='show internal object ids')
-_global_option('timezone', type=str)
-_global_option('verbose',)
-##               help='display more information')
+_global_option('timezone', 
+               type=str,
+               help='display timezone as local, original, or utc')
+_global_option('verbose',
+               help='display more information')
 _global_option('version')
 _global_option('email')
-_global_option('unchanged')
 _global_option('update')
 _global_option('long')
 _global_option('root', type=str)

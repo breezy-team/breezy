@@ -703,7 +703,8 @@ class cmd_log(Command):
                      'show-ids', 'revision',
                      'long', 
                      Option('message',
-                            help='show revisions whose message matches this regexp'),
+                            help='show revisions whose message matches this regexp',
+                            type=str),
                      'short',]
     
     def run(self, filename=None, timezone='original',
@@ -716,7 +717,8 @@ class cmd_log(Command):
             short=False):
         from bzrlib.log import log_formatter, show_log
         import codecs
-
+        assert isinstance(message, basestring), \
+            "invalid message argument %r" % message
         direction = (forward and 'forward') or 'reverse'
         
         if filename:
@@ -995,8 +997,12 @@ class cmd_commit(Command):
     # XXX: verbose currently does nothing
 
     takes_args = ['selected*']
-    takes_options = ['message', 'verbose', 'unchanged',
-                     Option('file', type=str, help='file containing commit message'),
+    takes_options = ['message', 'verbose', 
+                     Option('unchanged',
+                            help='commit even if nothing has changed'),
+                     Option('file', type=str, 
+                            argname='msgfile',
+                            help='file containing commit message'),
                      ]
     aliases = ['ci', 'checkin']
 

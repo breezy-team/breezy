@@ -125,6 +125,8 @@ def help_on_command_options(cmd, outfile=None):
     outfile.write('\noptions:\n')
     for option_name, option in sorted(options.items()):
         l = '    --' + option_name
+        if option.type is not None:
+            l += ' ' + option.argname.upper()
         short_name = option.short_name()
         if short_name:
             assert len(short_name) == 1

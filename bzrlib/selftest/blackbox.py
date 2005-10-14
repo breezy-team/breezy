@@ -218,16 +218,6 @@ class TestCommands(ExternalBase):
         self.log(tmp_output)
         self.assertEquals(output, tmp_output)
 
-    def test_option_help(self):
-        """Options have help strings."""
-        out, err = self.run_bzr_captured(['commit', '--help'])
-        self.assertContainsRe(out, r'--file.*file containing commit message')
-
-    def test_option_help_global(self):
-        """Global options have help strings."""
-        out, err = self.run_bzr_captured(['help', 'status'])
-        self.assertContainsRe(out, r'--show-ids.*show internal object')
-
     def example_branch(test):
         test.runbzr('init')
         file('hello', 'wt').write('foo')
@@ -810,3 +800,5 @@ class HttpTests(TestCaseWithWebserver):
         self.run_bzr('branch', url, 'to')
         branch = Branch.open('to')
         self.assertEqual(1, len(branch.revision_history()))
+
+

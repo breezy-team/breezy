@@ -182,6 +182,7 @@ class Command(object):
 
         Maps from long option name to option object."""
         r = dict()
+        r['help'] = Option.OPTIONS['help']
         for o in self.takes_options:
             if not isinstance(o, Option):
                 o = Option.OPTIONS[o]
@@ -190,19 +191,17 @@ class Command(object):
 
     def run_argv(self, argv):
         """Parse command line and run."""
-        args, opts = parse_args(argv)
-
+        args, opts = parse_args(self, argv)
         if 'help' in opts:  # e.g. bzr add --help
             from bzrlib.help import help_on_command
             help_on_command(self.name())
             return 0
-
+        # XXX: This should be handled by the parser
         allowed_names = self.options().keys()
         for oname in opts:
             if oname not in allowed_names:
                 raise BzrCommandError("option '--%s' is not allowed for command %r"
                                       % (oname, self.name()))
-
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
         cmdopts = {}
@@ -269,37 +268,19 @@ def parse_spec(spec):
         parsed = [spec, None]
     return parsed
 
-def parse_args(argv):
+def parse_args(command, argv):
     """Parse command line.
     
     Arguments and options are parsed at this level before being passed
     down to specific command handlers.  This routine knows, from a
     lookup table, something about the available options, what optargs
     they take, and which commands will accept them.
-
-    >>> parse_args('--help'.split())
-    ([], {'help': True})
-    >>> parse_args('help -- --invalidcmd'.split())
-    (['help', '--invalidcmd'], {})
-    >>> parse_args('--version'.split())
-    ([], {'version': True})
-    >>> parse_args('status --all'.split())
-    (['status'], {'all': True})
-    >>> parse_args('commit --message=biter'.split())
-    (['commit'], {'message': u'biter'})
-    >>> parse_args('log -r 500'.split())
-    (['log'], {'revision': [<RevisionSpec_int 500>]})
-    >>> parse_args('log -r500..600'.split())
-    (['log'], {'revision': [<RevisionSpec_int 500>, <RevisionSpec_int 600>]})
-    >>> parse_args('log -vr500..600'.split())
-    (['log'], {'verbose': True, 'revision': [<RevisionSpec_int 500>, <RevisionSpec_int 600>]})
-    >>> parse_args('log -rrevno:500..600'.split()) #the r takes an argument
-    (['log'], {'revision': [<RevisionSpec_revno revno:500>, <RevisionSpec_int 600>]})
     """
     # TODO: chop up this beast
     args = []
     opts = {}
 
+    cmd_options = command.options()
     argsover = False
     while argv:
         a = argv.pop(0)
@@ -317,8 +298,9 @@ def parse_args(argv):
                     optname, optarg = a[2:].split('=', 1)
                 else:
                     optname = a[2:]
-                if optname not in Option.OPTIONS:
-                    raise BzrError('unknown long option %r' % a)
+                if optname not in cmd_options:
+                    raise BzrCommandError('unknown long option %r for command %s' 
+                            % (a, command.name))
             else:
                 shortopt = a[1:]
                 if shortopt in Option.SHORT_OPTIONS:
@@ -355,7 +337,8 @@ def parse_args(argv):
                 # XXX: Do we ever want to support this, e.g. for -r?
                 raise BzrError('repeated option %r' % a)
                 
-            optargfn = Option.OPTIONS[optname].type
+            option_obj = cmd_options[optname]
+            optargfn = option_obj.type
             if optargfn:
                 if optarg == None:
                     if not argv:
@@ -369,10 +352,7 @@ def parse_args(argv):
                 opts[optname] = True
         else:
             args.append(a)
-
     return args, opts
-
-
 
 
 def _match_argform(cmd, takes_args, args):
