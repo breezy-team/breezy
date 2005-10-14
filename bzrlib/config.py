@@ -19,6 +19,7 @@
 
 from ConfigParser import ConfigParser
 import os
+from fnmatch import fnmatch
 import errno
 import re
 
@@ -144,10 +145,36 @@ class LocationConfig(Config):
         TODO: perhaps return a NullSection that thunks through to the 
               global config.
         """
-        sections = self._get_branches_config_parser().sections()
+        parser = self._get_branches_config_parser()
+        sections = parser.sections()
+        location_names = self.location.split('/')
+        matches=[]
         for section in sections:
-            if section == self.location:
-                return section
+            section_names = section.split('/')
+            if section.endswith('/'):
+                del section_names[-1]
+            names = zip(location_names, section_names)
+            matched = True
+            for name in names:
+                if not fnmatch(name[0], name[1]):
+                    matched = False
+                    break
+            if not matched:
+                continue
+            # so, for the common prefix they matched.
+            # if section is longer, no match.
+            if len(section_names) > len(location_names):
+                continue
+            # if path is longer, and recurse is not true, no match
+            if len(section_names) < len(location_names):
+                if (parser.has_option(section, 'recurse')
+                    and not parser.getboolean(section, 'recurse')):
+                    continue
+            matches.append((len(section_names), section))
+        if not len(matches):
+            return None
+        matches.sort(reverse=True)
+        return matches[0][1]
 
     def _get_user_id(self):
         return self._get_global_config()._get_user_id()
