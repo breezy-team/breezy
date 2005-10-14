@@ -213,9 +213,9 @@ class TestConfigItems(TestCase):
         if os.environ.get('BZREMAIL') is not None:
             del os.environ['BZREMAIL']
         if self.bzr_email is not None:
-            os.environ['BZREMAIL'] = bzr_email
+            os.environ['BZREMAIL'] = self.bzr_email
         if self.email is not None:
-            os.environ['EMAIL'] = email
+            os.environ['EMAIL'] = self.email
         super(TestConfigItems, self).tearDown()
 
 

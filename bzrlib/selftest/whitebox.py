@@ -45,27 +45,6 @@ class TestBranch(TestCaseInTempDir):
         b.commit('commit pointless revision with one file',
                  allow_pointless=True)
 
-        
-
-
-class TestRevisionId(TestCase):
-    
-    def test_validate_revision_id(self):
-        from bzrlib.revision import validate_revision_id
-        validate_revision_id('mbp@sourcefrog.net-20050311061123-96a255005c7c9dbe')
-        self.assertRaises(ValueError,
-                          validate_revision_id,
-                          ' asdkjas')
-        self.assertRaises(ValueError,
-                          validate_revision_id,
-                          'mbp@sourcefrog.net-20050311061123-96a255005c7c9dbe\n')
-        self.assertRaises(ValueError,
-                          validate_revision_id,
-                          ' mbp@sourcefrog.net-20050311061123-96a255005c7c9dbe')
-        self.assertRaises(ValueError,
-                          validate_revision_id,
-                          'Martin Pool <mbp@sourcefrog.net>-20050311061123-96a255005c7c9dbe')
-
 
 class MoreTests(TestCaseInTempDir):
 

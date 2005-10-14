@@ -16,15 +16,15 @@
 
 
 from cStringIO import StringIO
-import logging
-import unittest
-import tempfile
-import os
+import difflib
 import errno
+import logging
+import os
 import re
 import shutil
-import subprocess
 import sys
+import tempfile
+import unittest
 import time
 
 import bzrlib.commands
@@ -162,13 +162,33 @@ class TestCase(unittest.TestCase):
     routine, and to build and check bzr trees."""
 
     BZRPATH = 'bzr'
+    _log_file_name = None
 
     def setUp(self):
         unittest.TestCase.setUp(self)
         bzrlib.trace.disable_default_logging()
         self._enable_file_logging()
 
+    def _ndiff_strings(self, a, b):
+        """Return ndiff between two strings containing lines."""
+        difflines = difflib.ndiff(a.splitlines(True),
+                                  b.splitlines(True),
+                                  linejunk=lambda x: False,
+                                  charjunk=lambda x: False)
+        return ''.join(difflines)
 
+    def assertEqualDiff(self, a, b):
+        """Assert two texts are equal, if not raise an exception.
+        
+        This is intended for use with multi-line strings where it can 
+        be hard to find the differences by eye.
+        """
+        # TODO: perhaps override assertEquals to call this for strings?
+        if a == b:
+            return
+        raise AssertionError("texts not equal:\n" + 
+                             self._ndiff_strings(a, b))      
+        
     def _enable_file_logging(self):
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
 
@@ -196,8 +216,10 @@ class TestCase(unittest.TestCase):
 
     def _get_log(self):
         """Return as a string the log for this test"""
-        return open(self._log_file_name).read()
-
+        if self._log_file_name:
+            return open(self._log_file_name).read()
+        else:
+            return ''
 
     def capture(self, cmd):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
@@ -489,6 +511,8 @@ def test_suite():
                    'bzrlib.selftest.testworkingtree',
                    'bzrlib.selftest.test_upgrade',
                    'bzrlib.selftest.test_conflicts',
+                   'bzrlib.selftest.testtestament',
+                   'bzrlib.selftest.testannotate',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,

@@ -57,19 +57,6 @@ class Revision(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-        
-REVISION_ID_RE = None
-
-def validate_revision_id(rid):
-    """Check rid is syntactically valid for a revision id."""
-    global REVISION_ID_RE
-    if not REVISION_ID_RE:
-        import re
-        REVISION_ID_RE = re.compile('[\w:.-]+@[\w%.-]+--?[\w]+--?[0-9a-f]+\Z')
-
-    if not REVISION_ID_RE.match(rid):
-        raise ValueError("malformed revision-id %r" % rid)
-
 
 def is_ancestor(revision_id, candidate_id, branch):
     """Return true if candidate_id is an ancestor of revision_id.
