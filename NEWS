@@ -8,6 +8,9 @@ UNRELEASED CHANGES
 
     * 'bzr add' no longer takes a --verbose option, and a --quiet option
       has been added that suppresses all output.
+
+    * Improved zsh completion support in contrib/zsh, from Clint
+      Adams.
     
   INTERNALS:
 
