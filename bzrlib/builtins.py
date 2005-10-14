@@ -390,20 +390,21 @@ class cmd_branch(Command):
         import errno
         from shutil import rmtree
         cache_root = tempfile.mkdtemp()
+        if revision is None:
+            revision = [None]
+        elif len(revision) > 1:
+            raise BzrCommandError(
+                'bzr branch --revision takes exactly 1 revision value')
         try:
-            if revision is None:
-                revision = [None]
-            elif len(revision) > 1:
-                raise BzrCommandError(
-                    'bzr branch --revision takes exactly 1 revision value')
-            try:
-                br_from = Branch.open(from_location)
-            except OSError, e:
-                if e.errno == errno.ENOENT:
-                    raise BzrCommandError('Source location "%s" does not'
-                                          ' exist.' % to_location)
-                else:
-                    raise
+            br_from = Branch.open(from_location)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise BzrCommandError('Source location "%s" does not'
+                                      ' exist.' % to_location)
+            else:
+                raise
+        br_from.lock_read()
+        try:
             br_from.setup_caching(cache_root)
             if basis is not None:
                 basis_branch = Branch.open_containing(basis)
@@ -435,6 +436,7 @@ class cmd_branch(Command):
             except bzrlib.errors.UnlistableBranch:
                 msg = "The branch %s cannot be used as a --basis"
         finally:
+            br_from.unlock()
             rmtree(cache_root)
 
 
@@ -1419,3 +1421,55 @@ class cmd_plugins(Command):
                 print '\t', d.split('\n')[0]
 
 
+class cmd_testament(Command):
+    """Show testament (signing-form) of a revision."""
+    takes_options = ['revision', 'long']
+    takes_args = ['branch?']
+    def run(self, branch='.', revision=None, long=False):
+        from bzrlib.testament import Testament
+        b = Branch.open_containing(branch)
+        b.lock_read()
+        try:
+            if revision is None:
+                rev_id = b.last_revision()
+            else:
+                rev_id = revision[0].in_history(b).rev_id
+            t = Testament.from_revision(b, rev_id)
+            if long:
+                sys.stdout.writelines(t.as_text_lines())
+            else:
+                sys.stdout.write(t.as_short_text())
+        finally:
+            b.unlock()
+
+
+class cmd_annotate(Command):
+    """Show the origin of each line in a file.
+
+    This prints out the given file with an annotation on the 
+    left side indicating which revision, author and date introduced the 
+    change.
+    """
+    # TODO: annotate directories; showing when each file was last changed
+    # TODO: annotate a previous version of a file
+    aliases = ['blame', 'praise']
+    takes_args = ['filename']
+
+    def run(self, filename):
+        from bzrlib.annotate import annotate_file
+        b = Branch.open_containing(filename)
+        b.lock_read()
+        try:
+            rp = b.relpath(filename)
+            tree = b.revision_tree(b.last_revision())
+            file_id = tree.inventory.path2id(rp)
+            file_version = tree.inventory[file_id].revision
+            annotate_file(b, file_version, file_id, sys.stdout)
+        finally:
+            b.unlock()
+
+# these get imported and then picked up by the scan for cmd_*
+# TODO: Some more consistent way to split command definitions across files;
+# we do need to load at least some information about them to know of 
+# aliases.
+from bzrlib.conflicts import cmd_resolve, cmd_conflicts

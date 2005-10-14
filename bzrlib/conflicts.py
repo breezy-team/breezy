@@ -14,13 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: Move this into builtins
+
+# TODO: 'bzr resolve' should accept a directory name and work from that 
+# point down
+
+# TODO: bzr revert should resolve; even when reverting the whole tree
+# or particular directories
+
+import os
+import errno
+
 import bzrlib.status
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.commands import register_command
 from bzrlib.workingtree import CONFLICT_SUFFIXES
-import os
-import errno
 
 class cmd_conflicts(bzrlib.commands.Command):
     """List files with conflicts.
@@ -30,8 +39,6 @@ class cmd_conflicts(bzrlib.commands.Command):
     def run(self):
         for path in Branch.open_containing('.').working_tree().iter_conflicts():
             print path
-
-register_command(cmd_conflicts)
 
 class cmd_resolve(bzrlib.commands.Command):
     """Mark a conflict as resolved.
@@ -64,5 +71,3 @@ class cmd_resolve(bzrlib.commands.Command):
                     print "%s does not exist" % filename
                 else:
                     print "%s is not conflicted" % filename
-                        
-register_command(cmd_resolve)

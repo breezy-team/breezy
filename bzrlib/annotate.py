@@ -39,20 +39,29 @@ def annotate_file(branch, rev_id, file_id, to_file=None):
     for origin, text in w.annotate_iter(rev_id):
         text = text.rstrip('\r\n')
         if origin == last_origin:
-            print '         | %s' % (text)
+            anno = ''
         else:
             last_origin = origin
             line_rev_id = w.idx_to_name(origin)
-            if line_rev_id in rh:
-                revno = rh.index(line_rev_id) + 1
-                print '%8d | %s' % (revno, text)
-            elif branch.has_revision(line_rev_id):
-                rev = branch.get_revision(line_rev_id)
-                date_str = time.strftime('%Y%m%d', time.gmtime(rev.timestamp + rev.timezone))
-                print '%8s | %s' % (date_str, text)
+            if not branch.has_revision(line_rev_id):
+                anno = '???'
             else:
-                print '%8.8s | %s' % (line_rev_id, text)
-
+                if line_rev_id in rh:
+                    revno_str = str(rh.index(line_rev_id) + 1)
+                else:
+                    revno_str = 'merge'
+            rev = branch.get_revision(line_rev_id)
+            tz = rev.timezone or 0
+            date_str = time.strftime('%Y%m%d', 
+                                     time.gmtime(rev.timestamp + tz))
+            # a lazy way to get something like the email address
+            # TODO: Get real email address
+            author = line_rev_id
+            if '@' in author:
+                author = author[:author.index('@')]
+            author = author[:12]
+            anno = '%5s %-12s %8s' % (revno_str, author, date_str)
+        print '%-27.27s | %s' % (anno, text)
 
 
 if __name__ == '__main__':
