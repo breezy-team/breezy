@@ -184,12 +184,27 @@ class Serializer_v5(Serializer):
             assert p.tag == 'revision_ref', \
                    "bad parent node tag %r" % p.tag
             rev.parent_ids.append(p.get('revision_id'))
-
+        self._unpack_revision_properties(elt, rev)
         v = elt.get('timezone')
         rev.timezone = v and int(v)
-
         rev.message = elt.findtext('message') # text of <message>
         return rev
+
+
+    def _unpack_revision_properties(self, elt, rev):
+        """Unpack properties onto a revision."""
+        props_elt = elt.find('properties')
+        assert len(rev.properties) == 0
+        if not props_elt:
+            return
+        for prop_elt in props_elt:
+            assert prop_elt.tag == 'property', \
+                "bad tag under properties list: %r" % p.tag
+            name = prop_elt.get('name')
+            value = prop_elt.text
+            assert name not in rev.properties, \
+                "repeated property %r" % p.name
+            rev.properties[name] = value
 
 
 serializer_v5 = Serializer_v5()

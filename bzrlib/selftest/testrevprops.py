@@ -15,6 +15,17 @@ class TestRevProps(TestCaseInTempDir):
                  revprops=props,
                  allow_pointless=True,
                  rev_id='test@user-1')
+        rev = b.get_revision('test@user-1')
+        self.assertTrue('flavor' in rev.properties)
+        self.assertEquals(rev.properties['flavor'], 'choc-mint')
+        self.assertEquals(rev.properties['condiment'], 'chilli')
+        self.assertEquals(sorted(rev.properties.items()),
+                          [('condiment', 'chilli'),
+                           ('flavor', 'choc-mint')])
+
+        # TODO: try properties with newlines and indenting
+
+        # TODO: property names with newlines are disallowed
 
         # TODO: Can't add non-string properties
 
