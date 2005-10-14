@@ -20,6 +20,11 @@ class OptionTests(TestCase):
         ## eq(parse_args(cmd_log(),  '-r 500'.split()),
         ##   ([], {'revision': RevisionSpec_int(500)}))
 
+    def test_no_more_opts(self):
+        """Terminated options"""
+        self.assertEquals(parse_args(cmd_commit(), ['--', '-file-with-dashes']),
+                          (['-file-with-dashes'], {}))
+
     def test_option_help(self):
         """Options have help strings."""
         out, err = self.run_bzr_captured(['commit', '--help'])

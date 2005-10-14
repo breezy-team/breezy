@@ -717,7 +717,7 @@ class cmd_log(Command):
             short=False):
         from bzrlib.log import log_formatter, show_log
         import codecs
-        assert isinstance(message, basestring), \
+        assert message is None or isinstance(message, basestring), \
             "invalid message argument %r" % message
         direction = (forward and 'forward') or 'reverse'
         

@@ -276,7 +276,7 @@ def parse_args(command, argv):
     lookup table, something about the available options, what optargs
     they take, and which commands will accept them.
     """
-    # TODO: chop up this beast
+    # TODO: chop up this beast; make it a method of the Command
     args = []
     opts = {}
 
@@ -284,15 +284,18 @@ def parse_args(command, argv):
     argsover = False
     while argv:
         a = argv.pop(0)
-        if not argsover and a[0] == '-':
+        if argsover:
+            args.append(a)
+            continue
+        elif a == '--':
+            # We've received a standalone -- No more flags
+            argsover = True
+            continue
+        if a[0] == '-':
             # option names must not be unicode
             a = str(a)
             optarg = None
             if a[1] == '-':
-                if a == '--':
-                    # We've received a standalone -- No more flags
-                    argsover = True
-                    continue
                 mutter("  got option %r" % a)
                 if '=' in a:
                     optname, optarg = a[2:].split('=', 1)
