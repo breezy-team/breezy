@@ -298,8 +298,8 @@ class TestLocationConfig(TestConfigItems):
         self.assertEqual('/a/', my_config._get_section())
 
     def test__get_section_explicit_over_glob(self):
-        my_config = self.get_location_config('/a/c')
-        self.assertEqual('/a/c/', my_config._get_section())
+        self.get_location_config('/a/c')
+        self.assertEqual('/a/c', self.my_config._get_section())
 
     def get_location_config(self, location):
         global_file = StringIO(sample_config_text)

@@ -144,7 +144,10 @@ class LocationConfig(Config):
         TODO: perhaps return a NullSection that thunks through to the 
               global config.
         """
-        return 'http://www.example.com'
+        sections = self._get_branches_config_parser().sections()
+        for section in sections:
+            if section == self.location:
+                return section
 
     def _get_user_id(self):
         return self._get_global_config()._get_user_id()
