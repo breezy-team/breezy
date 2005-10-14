@@ -81,10 +81,15 @@ class InstrumentedConfig(config.Config):
     def __init__(self):
         super(InstrumentedConfig, self).__init__()
         self._calls = []
+        self._signatures = config.CHECK_NEVER
 
     def _get_user_id(self):
         self._calls.append('_get_user_id')
         return "Robert Collins <robert.collins@example.org>"
+
+    def _get_signature_checking(self):
+        self._calls.append('_get_signature_checking')
+        return self._signatures
 
 
 class TestConfig(TestCase):
@@ -111,12 +116,18 @@ class TestConfig(TestCase):
         self.assertEqual(config.CHECK_IF_POSSIBLE,
                          my_config.signature_checking())
 
-#    def test_signatures(self):
-#        my_config = InstrumentedConfig()
-#        self.assertEqual('Robert Collins <robert.collins@example.org>',
-#                         my_config.username())
-#        self.assertEqual(['_get_user_id'], my_config._calls)
-#
+    def test_signatures_template_method(self):
+        my_config = InstrumentedConfig()
+        self.assertEqual(config.CHECK_NEVER, my_config.signature_checking())
+        self.assertEqual(['_get_signature_checking'], my_config._calls)
+
+    def test_signatures_template_method_none(self):
+        my_config = InstrumentedConfig()
+        my_config._signatures = None
+        self.assertEqual(config.CHECK_IF_POSSIBLE,
+                         my_config.signature_checking())
+        self.assertEqual(['_get_signature_checking'], my_config._calls)
+
 
 class TestConfigPath(TestCase):
 

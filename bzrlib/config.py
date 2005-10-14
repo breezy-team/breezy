@@ -39,6 +39,9 @@ class Config(object):
         """Get the users pop up editor."""
         raise NotImplementedError
 
+    def _get_signature_checking(self):
+        """Template method to override signature checking policy."""
+
     def __init__(self):
         super(Config, self).__init__()
 
@@ -84,7 +87,11 @@ class Config(object):
 
     def signature_checking(self):
         """What is the current policy for signature checking?."""
+        policy = self._get_signature_checking()
+        if policy is not None:
+            return policy
         return CHECK_IF_POSSIBLE
+
 
 class GlobalConfig(Config):
     """The configuration that should be used for a specific location."""
