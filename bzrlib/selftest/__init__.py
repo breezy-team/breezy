@@ -188,6 +188,12 @@ class TestCase(unittest.TestCase):
             return
         raise AssertionError("texts not equal:\n" + 
                              self._ndiff_strings(a, b))      
+
+    def assertContainsRe(self, haystack, needle_re):
+        """Assert that a contains something matching a regular expression."""
+        if not re.search(needle_re, haystack):
+            raise AssertionError('pattern "%s" not found in "%s"'
+                    % (needle_re, haystack))
         
     def _enable_file_logging(self):
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
