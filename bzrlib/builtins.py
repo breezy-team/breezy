@@ -26,7 +26,7 @@ from bzrlib.errors import DivergedBranches
 from bzrlib.branch import Branch
 from bzrlib import BZRDIR
 from bzrlib.commands import Command
-
+from bzrlib.option import Option
 
 class cmd_status(Command):
     """Display status summary.
@@ -992,7 +992,9 @@ class cmd_commit(Command):
     # XXX: verbose currently does nothing
 
     takes_args = ['selected*']
-    takes_options = ['message', 'file', 'verbose', 'unchanged']
+    takes_options = ['message', 'verbose', 'unchanged',
+                     Option('file', type=str, help='file containing commit message'),
+                     ]
     aliases = ['ci', 'checkin']
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
@@ -1006,7 +1008,6 @@ class cmd_commit(Command):
         if selected_list:
             selected_list = [b.relpath(s) for s in selected_list]
 
-            
         if message is None and not file:
             catcher = StringIO()
             show_status(b, specific_files=selected_list,

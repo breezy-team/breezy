@@ -26,9 +26,9 @@ rather starts again from the run_bzr function.
 
 from cStringIO import StringIO
 import os
+import re
 import shutil
 import sys
-import os
 
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
@@ -217,6 +217,11 @@ class TestCommands(ExternalBase):
         self.log('bzr --version output:')
         self.log(tmp_output)
         self.assertEquals(output, tmp_output)
+
+    def test_option_help(self):
+        """Options have help strings"""
+        out, err = self.run_bzr_captured(['commit', '--help'])
+        self.assertContainsRe(out, r'--file.*file containing commit message')
 
     def example_branch(test):
         test.runbzr('init')

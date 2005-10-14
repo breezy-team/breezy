@@ -158,14 +158,15 @@ class Command(object):
         repeated, etc.
 
     takes_options
-        List of options that may be given for this command.
+        List of options that may be given for this command.  These can
+        be either strings, referring to globally-defined options,
+        or option objects.  Retrieve through options().
 
     hidden
         If true, this command isn't advertised.  This is typically
         for commands intended for expert users.
     """
     aliases = []
-    
     takes_args = []
     takes_options = []
 
@@ -176,6 +177,16 @@ class Command(object):
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
 
+    def options(self):
+        """Return dict of valid options for this command.
+
+        Maps from long option name to option object."""
+        r = dict()
+        for o in self.takes_options:
+            if not isinstance(o, Option):
+                o = Option.OPTIONS[o]
+            r[o.name] = o
+        return r
 
     def run_argv(self, argv):
         """Parse command line and run."""
@@ -186,10 +197,9 @@ class Command(object):
             help_on_command(self.name())
             return 0
 
-        # check options are reasonable
-        allowed = self.takes_options
+        allowed_names = self.options().keys()
         for oname in opts:
-            if oname not in allowed:
+            if oname not in allowed_names:
                 raise BzrCommandError("option '--%s' is not allowed for command %r"
                                       % (oname, self.name()))
 
