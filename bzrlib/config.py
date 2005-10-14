@@ -128,15 +128,25 @@ class GlobalConfig(Config):
         email=John Hacker <jhacker@foo.org>
         """
         if self._get_config_parser().has_option('DEFAULT', 'email'):
-            email = self._get_config_parser().get('DEFAULT', 'email')
-            if email is not None:
-                return email
+            return self._get_config_parser().get('DEFAULT', 'email')
     
+    def _get_signature_checking(self):
+        """See Config._get_signature_checking."""
+        if self._get_config_parser().has_option('DEFAULT', 'signatures'):
+            return self._string_to_signature_policy(
+                self._get_config_parser().get('DEFAULT', 'signatures'))
+
     def __init__(self):
         super(GlobalConfig, self).__init__()
         self._branches_parser = None
         self._parser = None
 
+    def _string_to_signature_policy(self, signature_string):
+        """Convert a string to a signing policy."""
+        if signature_string.lower() == 'ignore':
+            return CHECK_NEVER
+        raise errors.BzrError("Invalid signatures policy '%s'"
+                              % signature_string)
 
 class LocationConfig(Config):
     """A configuration object that gives the policy for a location."""

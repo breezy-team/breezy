@@ -34,6 +34,10 @@ sample_config_text = ("[DEFAULT]\n"
                       "gpg_signing_command=gnome-gpg\n")
 
 
+sample_ignore_signatures = ("[DEFAULT]\n"
+                            "signatures=ignore\n")
+
+
 sample_branches_text = ("[http://www.example.com]\n"
                         "# Top level policy\n"
                         "email=Robert Collins <robertc@example.org>\n"
@@ -41,13 +45,16 @@ sample_branches_text = ("[http://www.example.com]\n"
                         "# different project, forces global lookup\n"
                         "recurse=false\n"
                         "[/b/]\n"
+                        "signatures=require\n"
                         "# test trailing / matching with no children\n"
                         "[/a/]\n"
+                        "signatures=check-available\n"
                         "# test trailing / matching\n"
                         "[/a/*]\n"
                         "#subdirs will match but not the parent\n"
                         "recurse=False\n"
                         "[/a/c]\n"
+                        "signatures=ignore\n"
                         "#testing explicit beats globs\n")
 
 
@@ -242,6 +249,13 @@ class TestGlobalConfigItems(TestConfigItems):
         my_config._parser = my_config._get_config_parser(file=config_file)
         self.assertEqual("vim", my_config.get_editor())
 
+    def test_signatures_ignore(self):
+        config_file = StringIO(sample_ignore_signatures)
+        my_config = config.GlobalConfig()
+        my_config._parser = my_config._get_config_parser(file=config_file)
+        self.assertEqual(config.CHECK_NEVER,
+                         my_config.signature_checking())
+
 
 class TestLocationConfig(TestConfigItems):
 
@@ -346,11 +360,12 @@ class TestLocationConfig(TestConfigItems):
         self.get_location_config('http://www.example.com/foo')
         self.assertEqual('Robert Collins <robertc@example.org>',
                          self.my_config.username())
-        
-#> signatures=check-if-available
-#> signatures=require
-#> signatures=ignore
 
+    def test_signatures_when_available(self):
+        self.get_location_config('/a/')
+        self.assertEqual(config.CHECK_IF_POSSIBLE,
+                         self.my_config.signature_checking())
+        
 
 class TestBranchConfigItems(TestConfigItems):
 
