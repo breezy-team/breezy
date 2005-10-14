@@ -165,24 +165,30 @@ class TestConfigPath(TestCase):
         self.assertEqual(config.branches_config_filename(),
                          '/home/bogus/.bazaar/branches.conf')
 
+class TestIniConfig(TestCase):
+
+    def test_contructs(self):
+        my_config = config.IniBasedConfig("nothing")
+
+    def test_from_fp(self):
+        config_file = StringIO(sample_config_text)
+        my_config = config.IniBasedConfig(None)
+        self.failUnless(
+            isinstance(my_config._get_parser(file=config_file),
+                        ConfigParser))
+
+    def test_cached(self):
+        config_file = StringIO(sample_config_text)
+        my_config = config.IniBasedConfig(None)
+        parser = my_config._get_parser(file=config_file)
+        self.failUnless(my_config._get_parser() is parser)
+
+
 
 class TestGetConfig(TestCase):
 
     def test_constructs(self):
         my_config = config.GlobalConfig()
-
-    def test_from_fp(self):
-        config_file = StringIO(sample_config_text)
-        my_config = config.GlobalConfig()
-        self.failUnless(
-            isinstance(my_config._get_config_parser(file=config_file),
-                        ConfigParser))
-
-    def test_cached(self):
-        config_file = StringIO(sample_config_text)
-        my_config = config.GlobalConfig()
-        parser = my_config._get_config_parser(file=config_file)
-        self.failUnless(my_config._get_config_parser() is parser)
 
     def test_calls_read_filenames(self):
         # replace the class that is constructured, to check its parameters
@@ -190,7 +196,7 @@ class TestGetConfig(TestCase):
         config.ConfigParser = InstrumentedConfigParser
         my_config = config.GlobalConfig()
         try:
-            parser = my_config._get_config_parser()
+            parser = my_config._get_parser()
         finally:
             config.ConfigParser = oldparserclass
         self.failUnless(isinstance(parser, InstrumentedConfigParser))
@@ -241,40 +247,40 @@ class TestGlobalConfigItems(TestConfigItems):
     def test_user_id(self):
         config_file = StringIO(sample_config_text)
         my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_config_parser(file=config_file)
+        my_config._parser = my_config._get_parser(file=config_file)
         self.assertEqual("Robert Collins <robertc@example.com>",
                          my_config._get_user_id())
 
     def test_absent_user_id(self):
         config_file = StringIO("")
         my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_config_parser(file=config_file)
+        my_config._parser = my_config._get_parser(file=config_file)
         self.assertEqual(None, my_config._get_user_id())
 
     def test_configured_editor(self):
         config_file = StringIO(sample_config_text)
         my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_config_parser(file=config_file)
+        my_config._parser = my_config._get_parser(file=config_file)
         self.assertEqual("vim", my_config.get_editor())
 
     def test_signatures_always(self):
         config_file = StringIO(sample_always_signatures)
         my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_config_parser(file=config_file)
+        my_config._parser = my_config._get_parser(file=config_file)
         self.assertEqual(config.CHECK_ALWAYS,
                          my_config.signature_checking())
 
     def test_signatures_if_possible(self):
         config_file = StringIO(sample_maybe_signatures)
         my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_config_parser(file=config_file)
+        my_config._parser = my_config._get_parser(file=config_file)
         self.assertEqual(config.CHECK_IF_POSSIBLE,
                          my_config.signature_checking())
 
     def test_signatures_ignore(self):
         config_file = StringIO(sample_ignore_signatures)
         my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_config_parser(file=config_file)
+        my_config._parser = my_config._get_parser(file=config_file)
         self.assertEqual(config.CHECK_NEVER,
                          my_config.signature_checking())
 
@@ -285,26 +291,13 @@ class TestLocationConfig(TestConfigItems):
         my_config = config.LocationConfig('http://example.com')
         self.assertRaises(TypeError, config.LocationConfig)
 
-    def test_cached(self):
-        config_file = StringIO(sample_config_text)
-        my_config = config.LocationConfig('http://example.com')
-        parser = my_config._get_branches_config_parser(file=config_file)
-        self.failUnless(my_config._get_branches_config_parser() is parser)
-
-    def test_branches_from_fp(self):
-        config_file = StringIO(sample_config_text)
-        my_config = config.LocationConfig('http://example.com')
-        self.failUnless(isinstance(
-            my_config._get_branches_config_parser(file=config_file),
-            ConfigParser))
-
     def test_branch_calls_read_filenames(self):
         # replace the class that is constructured, to check its parameters
         oldparserclass = config.ConfigParser
         config.ConfigParser = InstrumentedConfigParser
         my_config = config.LocationConfig('http://www.example.com')
         try:
-            parser = my_config._get_branches_config_parser()
+            parser = my_config._get_parser()
         finally:
             config.ConfigParser = oldparserclass
         self.failUnless(isinstance(parser, InstrumentedConfigParser))
@@ -357,16 +350,23 @@ class TestLocationConfig(TestConfigItems):
         self.get_location_config('/a/foo/bar')
         self.assertEqual('/a/', self.my_config._get_section())
 
+    def test__get_section_trailing_slash_with_children(self):
+        self.get_location_config('/a/')
+        self.assertEqual('/a/', self.my_config._get_section())
+
     def test__get_section_explicit_over_glob(self):
         self.get_location_config('/a/c')
         self.assertEqual('/a/c', self.my_config._get_section())
 
-    def get_location_config(self, location):
-        global_file = StringIO(sample_config_text)
+    def get_location_config(self, location, global_config=None):
+        if global_config is None:
+            global_file = StringIO(sample_config_text)
+        else:
+            global_file = StringIO(global_config)
         branches_file = StringIO(sample_branches_text)
         self.my_config = config.LocationConfig(location)
-        self.my_config._get_branches_config_parser(branches_file)
-        self.my_config._get_global_config()._get_config_parser(global_file)
+        self.my_config._get_parser(branches_file)
+        self.my_config._get_global_config()._get_parser(global_file)
 
     def test_location_without_username(self):
         self.get_location_config('http://www.example.com/useglobal')
@@ -383,9 +383,25 @@ class TestLocationConfig(TestConfigItems):
         self.assertEqual('Robert Collins <robertc@example.org>',
                          self.my_config.username())
 
+    def test_signatures_not_set(self):
+        self.get_location_config('http://www.example.com',
+                                 global_config=sample_ignore_signatures)
+        self.assertEqual(config.CHECK_NEVER,
+                         self.my_config.signature_checking())
+
+    def test_signatures_never(self):
+        self.get_location_config('/a/c')
+        self.assertEqual(config.CHECK_NEVER,
+                         self.my_config.signature_checking())
+        
     def test_signatures_when_available(self):
-        self.get_location_config('/a/')
+        self.get_location_config('/a/', global_config=sample_ignore_signatures)
         self.assertEqual(config.CHECK_IF_POSSIBLE,
+                         self.my_config.signature_checking())
+        
+    def test_signatures_always(self):
+        self.get_location_config('/b')
+        self.assertEqual(config.CHECK_ALWAYS,
                          self.my_config.signature_checking())
         
 
@@ -405,7 +421,7 @@ class TestBranchConfigItems(TestConfigItems):
         branch.email = None
         config_file = StringIO(sample_config_text)
         (my_config._get_location_config().
-            _get_global_config()._get_config_parser(config_file))
+            _get_global_config()._get_parser(config_file))
         self.assertEqual("Robert Collins <robertc@example.com>",
                          my_config._get_user_id())
         branch.email = "John"
