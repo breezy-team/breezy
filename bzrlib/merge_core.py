@@ -210,7 +210,10 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
     contents = entry.contents_change
     if contents is None:
         return None
-    this_path = this.readonly_path(entry.id)
+    if entry.id in this:
+        this_path = this.id2abspath(entry.id)
+    else:
+        this_path = None
     def make_merge():
         if this_path is None:
             return conflict_handler.missing_for_merge(entry.id, 
@@ -237,9 +240,8 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
                 if this_contents == contents.new_contents:
                     return None
                 else:
-                    other_path = other.readonly_path(entry.id)    
                     conflict_handler.new_contents_conflict(this_path, 
-                                                           other_path)
+                                                           other_contents)
         elif isinstance(contents.old_contents, changeset.TreeFileCreate) and \
             isinstance(contents.new_contents, changeset.TreeFileCreate):
             return make_merge()
@@ -261,33 +263,30 @@ def make_merged_metadata(entry, base, other):
     metadata = entry.metadata_change
     if metadata is None:
         return None
-    if isinstance(metadata, changeset.ChangeExecFlag):
-        if metadata.new_exec_flag is None:
-            return None
-        elif metadata.old_exec_flag is None:
-            return metadata
-        else:
-            base_path = base.readonly_path(entry.id)
-            other_path = other.readonly_path(entry.id)    
-            return ExecFlagMerge(base_path, other_path)
+    assert isinstance(metadata, changeset.ChangeExecFlag)
+    if metadata.new_exec_flag is None:
+        return None
+    elif metadata.old_exec_flag is None:
+        return metadata
+    else:
+        return ExecFlagMerge(base, other, entry.id)
     
 
 class ExecFlagMerge(object):
-    def __init__(self, base_path, other_path):
-        self.base_path = base_path
-        self.other_path = other_path
+    def __init__(self, base_tree, other_tree, file_id):
+        self.base_tree = base_tree
+        self.other_tree = other_tree
+        self.file_id = file_id
 
     def apply(self, filename, conflict_handler, reverse=False):
         if not reverse:
-            base = self.base_path
-            other = self.other_path
+            base = self.base_tree
+            other = self.other_tree
         else:
-            base = self.other_path
-            other = self.base_path
-        base_mode = os.stat(base).st_mode
-        base_exec_flag = bool(base_mode & 0111)
-        other_mode = os.stat(other).st_mode
-        other_exec_flag = bool(other_mode & 0111)
+            base = self.other_tree
+            other = self.base_tree
+        base_exec_flag = base.is_executable(self.file_id)
+        other_exec_flag = other.is_executable(self.file_id)
         this_mode = os.stat(filename).st_mode
         this_exec_flag = bool(this_mode & 0111)
         if (base_exec_flag != other_exec_flag and

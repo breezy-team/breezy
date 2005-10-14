@@ -2,6 +2,7 @@ import os
 import shutil
 import tempfile
 import unittest
+import stat
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
@@ -107,11 +108,14 @@ class MergeTree(object):
         return file_id in self
 
     def get_file(self, file_id):
-        path = self.readonly_path(file_id)
+        path = self.full_path(file_id)
         return file(path, "rb")
 
     def id2path(self, file_id):
         return self.inventory[file_id]
+
+    def id2abspath(self, id):
+        return self.full_path(id)
 
     def change_path(self, id, path):
         old_path = os.path.join(self.dir, self.inventory[id])
@@ -120,7 +124,7 @@ class MergeTree(object):
 
     def is_executable(self, file_id):
         mode = os.lstat(self.full_path(file_id)).st_mode
-        return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
+        return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def kind(self, file_id):
         return file_kind(self.full_path(file_id))
@@ -263,8 +267,8 @@ class MergeBuilder(object):
             self.change_perms_tree(id, self.other, other)
 
         if base is not None or other is not None:
-            old_exec = bool(os.stat(self.base.full_path(id)).st_mode & 0111)
-            new_exec = bool(os.stat(self.other.full_path(id)).st_mode & 0111)
+            old_exec = self.base.is_executable(id)
+            new_exec = self.other.is_executable(id)
             metadata = changeset.ChangeExecFlag(old_exec, new_exec)
             self.cset.entries[id].metadata_change = metadata
 
@@ -513,9 +517,9 @@ class MergeTest(unittest.TestCase):
         assert(isinstance(cset.entries["2"].metadata_change, ExecFlagMerge))
         assert(cset.entries["3"].is_boring())
         builder.apply_changeset(cset)
-        assert(os.stat(builder.this.full_path("1")).st_mode &0777 == 0644)
-        assert(os.stat(builder.this.full_path("2")).st_mode &0777 == 0755)
-        assert(os.stat(builder.this.full_path("3")).st_mode &0777 == 0644)
+        assert(os.lstat(builder.this.full_path("1")).st_mode &0100 == 0000)
+        assert(os.lstat(builder.this.full_path("2")).st_mode &0100 == 0100)
+        assert(os.lstat(builder.this.full_path("3")).st_mode &0100 == 0000)
         builder.cleanup();
 
 

@@ -124,7 +124,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def new_contents_conflict(self, filename, other_contents):
         """Conflicting contents for newly added file."""
-        self.copy(other_contents, filename + ".OTHER")
+        other.contents.apply(filename + ".OTHER")
         self.conflict("Conflict in newly added file %s" % filename)
     
 
@@ -232,7 +232,7 @@ class MergeAdapterTree(object):
     """MergeAdapterTree adapts a normal tree for merge_inner to use.
 
     The interface the merge_inner needs is nearly but not quite
-    the same as that of bzrlib.tree with the exception of readonly_path.
+    the same as that of bzrlib.tree.
     """
     
     def __init__(self, tree, tempdir):
@@ -278,36 +278,14 @@ class MergeAdapterTree(object):
             return True
         return self.tree.inventory.has_id(file_id)
 
-    def readonly_path(self, id):
-        if id not in self.tree:
-            return None
-        if self.root is not None:
-            return self.tree.abspath(self.tree.id2path(id))
-        else:
-            kind = self.tree.inventory[id].kind
-            if kind in ("directory", "root_directory"):
-                return self.tempdir
-            if not self.cached.has_key(id):
-                if kind == "file":
-                    path = os.path.join(self.tempdir, "texts", id)
-                    outfile = file(path, "wb")
-                    outfile.write(self.tree.get_file(id).read())
-                    assert(bzrlib.osutils.lexists(path))
-                    if self.tree.is_executable(id):
-                        os.chmod(path, 0755)
-                else:
-                    assert kind == "symlink"
-                    path = os.path.join(self.tempdir, "symlinks", id)
-                    target = self.tree.get_symlink_target(id)
-                    os.symlink(target, path)
-                self.cached[id] = path
-            return self.cached[id]
-
     def kind(self, file_id):
         return self.tree.kind(file_id)
 
     def get_symlink_target(self, file_id):
         return self.tree.get_symlink_target(file_id)
+
+    def id2abspath(self, file_id):
+        return self.tree.id2abspath(file_id)
 
 
 def build_working_dir(to_dir):
