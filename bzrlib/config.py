@@ -177,6 +177,10 @@ class LocationConfig(Config):
         return matches[0][1]
 
     def _get_user_id(self):
+        section = self._get_section()
+        if section is not None:
+            if self._get_branches_config_parser().has_option(section, 'email'):
+                return self._get_branches_config_parser().get(section, 'email')
         return self._get_global_config()._get_user_id()
 
 

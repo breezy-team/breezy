@@ -320,11 +320,11 @@ class TestLocationConfig(TestConfigItems):
         self.assertEqual('Robert Collins <robertc@example.com>',
                          self.my_config.username())
 
-#    def test_overriding_location(self):
-#        self.get_location_config('http://www.example.com/foo')
-#        self.assertEqual('Robert Collins <robertc@example.org>',
-#                         self.my_config.username())
-#        
+    def test_overriding_location(self):
+        self.get_location_config('http://www.example.com/foo')
+        self.assertEqual('Robert Collins <robertc@example.org>',
+                         self.my_config.username())
+        
 
 #> signatures=check-if-available
 #> signatures=require
