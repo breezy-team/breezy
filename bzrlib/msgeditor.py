@@ -32,7 +32,7 @@ def _get_editor():
     except KeyError:
         pass
 
-    e = config.get_editor()
+    e = config.GlobalConfig().get_editor()
     if e is not None:
         yield e
         

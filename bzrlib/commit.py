@@ -190,13 +190,14 @@ class Commit(object):
         else:
             self.timestamp = long(timestamp)
             
+        config = bzrlib.config.BranchConfig(self.branch)
         if rev_id is None:
-            self.rev_id = _gen_revision_id(self.branch, self.timestamp)
+            self.rev_id = _gen_revision_id(config, self.timestamp)
         else:
             self.rev_id = rev_id
 
         if committer is None:
-            self.committer = bzrlib.config.username(self.branch)
+            self.committer = config.username()
         else:
             assert isinstance(committer, basestring), type(committer)
             self.committer = committer
@@ -414,8 +415,8 @@ class Commit(object):
             if file_id not in self.new_inv:
                 self.reporter.deleted(self.basis_inv.id2path(file_id))
 
-def _gen_revision_id(branch, when):
+def _gen_revision_id(config, when):
     """Return new revision-id."""
-    s = '%s-%s-' % (bzrlib.config.user_email(branch), compact_date(when))
+    s = '%s-%s-' % (config.user_email(), compact_date(when))
     s += hexlify(rand_bytes(8))
     return s

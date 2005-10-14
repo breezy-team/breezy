@@ -23,6 +23,152 @@ import errno
 import re
 
 import bzrlib
+import bzrlib.errors as errors
+
+
+class Config(object):
+    """A configuration policy - what username, editor, gpg needs etc."""
+
+    def get_editor(self):
+        """Get the users pop up editor."""
+        raise NotImplementedError
+
+    def __init__(self):
+        super(Config, self).__init__()
+
+    def user_email(self):
+        """Return just the email component of a username."""
+        e = self.username()
+        m = re.search(r'[\w+.-]+@[\w+.-]+', e)
+        if not m:
+            raise BzrError("%r doesn't seem to contain "
+                           "a reasonable email address" % e)
+        return m.group(0)
+
+    def username(self):
+        """Return email-style username.
+    
+        Something similar to 'Martin Pool <mbp@sourcefrog.net>'
+        
+        $BZREMAIL can be set to override this, then
+        the concrete policy type is checked, and finally
+        $EMAIL is examinged.
+        but if none is found, a reasonable default is (hopefully)
+        created.
+    
+        TODO: Check it's reasonably well-formed.
+        """
+        v = os.environ.get('BZREMAIL')
+        if v:
+            return v.decode(bzrlib.user_encoding)
+    
+        v = self._get_user_id()
+        if v:
+            return v
+        
+        v = os.environ.get('EMAIL')
+        if v:
+            return v.decode(bzrlib.user_encoding)
+
+        name, email = _auto_user_id()
+        if name:
+            return '%s <%s>' % (name, email)
+        else:
+            return email
+
+
+class GlobalConfig(Config):
+    """The configuration that should be used for a specific location."""
+
+    def _get_parser(self, filename=None, file=None):
+        parser = ConfigParser()
+        if file is not None:
+            parser.readfp(file)
+        else:
+            parser.read([filename])
+        return parser
+
+    def _get_config_parser(self, file=None):
+        if self._parser is None:
+            self._parser =  self._get_parser(config_filename(), file)
+        return self._parser
+    
+    def _get_branches_config_parser(self, file=None):
+        if self._branches_parser is None:
+            self._branches_parser = self._get_parser(
+                branches_config_filename(), file)
+        return self._branches_parser
+
+    def get_editor(self):
+        if self._get_config_parser().has_option('DEFAULT', 'editor'):
+            return self._get_config_parser().get('DEFAULT', 'editor')
+
+    def _get_user_id(self, branch=None):
+        """Return the full user id from the global config file.
+    
+        e.g. "John Hacker <jhacker@foo.org>"
+        from 
+        [DEFAULT]
+        email=John Hacker <jhacker@foo.org>
+        """
+        if self._get_config_parser().has_option('DEFAULT', 'email'):
+            email = self._get_config_parser().get('DEFAULT', 'email')
+            if email is not None:
+                return email
+    
+    def __init__(self):
+        super(GlobalConfig, self).__init__()
+        self._branches_parser = None
+        self._parser = None
+
+
+class LocationConfig(Config):
+    """A configuration object that gives the policy for a location."""
+
+    def __init__(self, location):
+        self._global_config = None
+        self.location = location
+
+    def _get_branches_config_parser(self, file=None):
+        return self._get_global_config()._get_branches_config_parser(file)
+
+    def _get_global_config(self):
+        if self._global_config is None:
+            self._global_config = GlobalConfig()
+        return self._global_config
+
+    def _get_user_id(self):
+        return self._get_global_config()._get_user_id()
+
+
+class BranchConfig(Config):
+    """A configuration object giving the policy for a branch."""
+
+    def _get_location_config(self):
+        if self._location_config is None:
+            self._location_config = LocationConfig(self.branch.base)
+        return self._location_config
+
+    def _get_user_id(self):
+        """Return the full user id for the branch.
+    
+        e.g. "John Hacker <jhacker@foo.org>"
+        This is looked up in the email controlfile for the branch.
+        """
+        try:
+            return (self.branch.controlfile("email", "r") 
+                    .read()
+                    .decode(bzrlib.user_encoding)
+                    .rstrip("\r\n"))
+        except errors.NoSuchFile, e:
+            pass
+        
+        return self._get_location_config()._get_user_id()
+
+    def __init__(self, branch):
+        super(BranchConfig, self).__init__()
+        self._location_config = None
+        self.branch = branch
 
 
 def config_dir():
@@ -40,65 +186,9 @@ def config_filename():
     return os.path.join(config_dir(), 'bazaar.conf')
 
 
-def _get_config_parser(file=None):
-    parser = ConfigParser()
-    if file is not None:
-        parser.readfp(file)
-    else:
-        parser.read([config_filename()])
-    return parser
-
-
-def get_editor(parser=None):
-    if parser is None:
-        parser = _get_config_parser()
-    if parser.has_option('DEFAULT', 'editor'):
-        return parser.get('DEFAULT', 'editor')
-
-
-def _get_user_id(branch=None, parser = None):
-    """Return the full user id from a file or environment variable.
-
-    e.g. "John Hacker <jhacker@foo.org>"
-
-    branch
-        A branch to use for a per-branch configuration, or None.
-
-    The following are searched in order:
-
-    1. $BZREMAIL
-    2. .bzr/email for this branch.
-    3. ~/.bzr.conf/email
-    4. $EMAIL
-    """
-    v = os.environ.get('BZREMAIL')
-    if v:
-        return v.decode(bzrlib.user_encoding)
-
-    if branch:
-        try:
-            return (branch.controlfile("email", "r") 
-                    .read()
-                    .decode(bzrlib.user_encoding)
-                    .rstrip("\r\n"))
-        except IOError, e:
-            if e.errno != errno.ENOENT:
-                raise
-        except BzrError, e:
-            pass
-    
-    if parser is None:
-        parser = _get_config_parser()
-    if parser.has_option('DEFAULT', 'email'):
-        email = parser.get('DEFAULT', 'email')
-        if email is not None:
-            return email
-
-    v = os.environ.get('EMAIL')
-    if v:
-        return v.decode(bzrlib.user_encoding)
-    else:    
-        return None
+def branches_config_filename():
+    """Return per-user configuration ini file filename."""
+    return os.path.join(config_dir(), 'branches.conf')
 
 
 def _auto_user_id():
@@ -135,36 +225,5 @@ def _auto_user_id():
         realname = username = getpass.getuser().decode(bzrlib.user_encoding)
 
     return realname, (username + '@' + socket.gethostname())
-
-
-def username(branch):
-    """Return email-style username.
-
-    Something similar to 'Martin Pool <mbp@sourcefrog.net>'
-
-    TODO: Check it's reasonably well-formed.
-    """
-    v = _get_user_id(branch)
-    if v:
-        return v
-    
-    name, email = _auto_user_id()
-    if name:
-        return '%s <%s>' % (name, email)
-    else:
-        return email
-
-
-def user_email(branch):
-    """Return just the email component of a username."""
-    e = _get_user_id(branch)
-    if e:
-        m = re.search(r'[\w+.-]+@[\w+.-]+', e)
-        if not m:
-            raise BzrError("%r doesn't seem to contain "
-                           "a reasonable email address" % e)
-        return m.group(0)
-
-    return _auto_user_id()[1]
 
 

@@ -303,7 +303,7 @@ class _Branch(Branch):
             return self._transport.base
         return None
 
-    base = property(_get_base)
+    base = property(_get_base, doc="The URL for the root of this branch.")
 
     def _finish_transaction(self):
         """Exit the current transaction."""
