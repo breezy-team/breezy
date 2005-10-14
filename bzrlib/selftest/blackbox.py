@@ -219,9 +219,14 @@ class TestCommands(ExternalBase):
         self.assertEquals(output, tmp_output)
 
     def test_option_help(self):
-        """Options have help strings"""
+        """Options have help strings."""
         out, err = self.run_bzr_captured(['commit', '--help'])
         self.assertContainsRe(out, r'--file.*file containing commit message')
+
+    def test_option_help_global(self):
+        """Global options have help strings."""
+        out, err = self.run_bzr_captured(['help', 'status'])
+        self.assertContainsRe(out, r'--show-ids.*show internal object')
 
     def example_branch(test):
         test.runbzr('init')
