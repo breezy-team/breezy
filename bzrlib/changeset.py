@@ -944,8 +944,7 @@ def rename_to_temp_delete(source_entries, inventory, dir, temp_dir,
                 except OSError, e:
                     if e.errno != errno.ENOENT:
                         raise
-                    if conflict_handler.missing_for_rename(src_path, to_name) \
-                        == "skip":
+                    if conflict_handler.missing_for_rename(src_path) == "skip":
                         continue
 
     return temp_name
@@ -967,7 +966,6 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
     :type reverse: bool
     """
     for entry in target_entries:
-        print entry.contents_change
         new_tree_path = entry.get_new_path(inventory, changeset, reverse)
         if new_tree_path is None:
             continue
@@ -1073,8 +1071,8 @@ class MissingForRm(Exception):
 
 
 class MissingForRename(Exception):
-    def __init__(self, filename, to_path):
-        msg = "Attempt to move missing path %s to %s" % (filename, to_path)
+    def __init__(self, filename):
+        msg = "Attempt to move missing path %s" % (filename)
         Exception.__init__(self, msg)
         self.filename = filename
 
@@ -1150,8 +1148,8 @@ class ExceptionConflictHandler(object):
     def missing_for_rm(self, filename, change):
         raise MissingForRm(filename)
 
-    def missing_for_rename(self, filename, to_path):
-        raise MissingForRename(filename, to_path)
+    def missing_for_rename(self, filename):
+        raise MissingForRename(filename)
 
     def missing_for_merge(self, file_id, other_path):
         raise MissingForMerge(other_path)
@@ -1224,7 +1222,7 @@ def apply_changeset_tree(cset, tree, reverse=False):
     r_inventory = {}
     for entry in tree.source_inventory().itervalues():
         inventory[entry.id] = entry.path
-    new_inventory = apply_changeset(cset, r_inventory, tree.root,
+    new_inventory = apply_changeset(cset, r_inventory, tree.basedir,
                                     reverse=reverse)
     new_entries, remove_entries = \
         get_inventory_change(inventory, new_inventory, cset, reverse)
@@ -1429,9 +1427,9 @@ class ChangesetGenerator(object):
             yield self.get_entry(file_id, tree)
 
     def get_entry(self, file_id, tree):
-        if not tree.has_id(file_id, allow_root=True):
+        if not tree.has_or_had_id(file_id):
             return None
-        return tree.inventory[file_id]
+        return tree.tree.inventory[file_id]
 
     def get_entry_parent(self, entry):
         if entry is None:
@@ -1439,7 +1437,7 @@ class ChangesetGenerator(object):
         return entry.parent_id
 
     def get_path(self, file_id, tree):
-        if not tree.has_id(file_id, allow_root=True):
+        if not tree.has_or_had_id(file_id):
             return None
         path = tree.id2path(file_id)
         if path == '':
@@ -1535,7 +1533,7 @@ def get_contents(tree, file_id):
 
 
 def full_path(entry, tree):
-    return os.path.join(tree.root, entry.path)
+    return os.path.join(tree.basedir, entry.path)
 
 def new_delete_entry(entry, tree, inventory, delete):
     if entry.path == "":

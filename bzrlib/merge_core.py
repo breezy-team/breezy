@@ -107,7 +107,7 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
     cset = changeset_function(base, other, interesting_ids)
     new_cset = make_merge_changeset(cset, this, base, other, 
                                     conflict_handler, merge_factory)
-    result = apply_changeset(new_cset, invert_invent(this.inventory),
+    result = apply_changeset(new_cset, invert_invent(this.tree.inventory),
                              this.basedir, conflict_handler, False)
     conflict_handler.finalize()
     return result
@@ -127,7 +127,6 @@ def make_merge_changeset(cset, this, base, other,
             new_contents = make_merged_contents(entry, this, base, other, 
                                                 conflict_handler,
                                                 merge_factory)
-            print new_contents.is_creation()
             new_entry.contents_change = new_contents
             new_entry.metadata_change = make_merged_metadata(entry, base, other)
             new_cset.add_entry(new_entry)
@@ -159,9 +158,9 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
     from bzrlib.trace import mutter
     def entry_data(file_id, tree):
         assert hasattr(tree, "__contains__"), "%s" % tree
-        if not tree.has_id(file_id, allow_root=True):
+        if not tree.has_or_had_id(file_id):
             return (None, None, "")
-        entry = tree.inventory[file_id]
+        entry = tree.tree.inventory[file_id]
         my_dir = tree.id2path(entry.parent_id)
         if my_dir is None:
             my_dir = ""

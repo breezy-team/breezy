@@ -55,8 +55,11 @@ class Tree(object):
         """True if the tree has given filename."""
         raise NotImplementedError()
 
-    def has_id(self, file_id, allow_root=False):
-        if allow_root and file_id == self.inventory.root.file_id:
+    def has_id(self, file_id):
+        return self.inventory.has_id(file_id)
+
+    def has_or_had_id(self, file_id):
+        if file_id == self.inventory.root.file_id:
             return True
         return self.inventory.has_id(file_id)
 

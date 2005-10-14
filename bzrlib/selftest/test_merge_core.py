@@ -29,14 +29,14 @@ class FalseTree(object):
         return entry
         
     def make_inventory_entry(self, file_id):
-        path = self._realtree.inventory_dict.get(file_id)
+        path = self._realtree.inventory.get(file_id)
         if path is None:
             return None
         if path == "":
             return RootEntry(file_id)
         dir, name = os.path.split(path)
         kind = file_kind(self._realtree.abs_path(path))
-        for parent_id, path in self._realtree.inventory_dict.iteritems():
+        for parent_id, path in self._realtree.inventory.iteritems():
             if path == dir:
                 break
         if path != dir:
@@ -55,11 +55,11 @@ class MergeTree(object):
     def __init__(self, dir):
         self.dir = dir;
         os.mkdir(dir)
-        self.inventory_dict = {'0': ""}
-        self.inventory = FalseTree(self)
+        self.inventory = {'0': ""}
+        self.tree = FalseTree(self)
     
     def child_path(self, parent, name):
-        return os.path.join(self.inventory_dict[parent], name)
+        return os.path.join(self.inventory[parent], name)
 
     def add_file(self, id, parent, name, contents, mode):
         path = self.child_path(parent, name)
@@ -67,18 +67,18 @@ class MergeTree(object):
         assert not os.path.exists(full_path)
         file(full_path, "wb").write(contents)
         os.chmod(self.abs_path(path), mode)
-        self.inventory_dict[id] = path
+        self.inventory[id] = path
 
     def add_symlink(self, id, parent, name, target):
         path = self.child_path(parent, name)
         full_path = self.abs_path(path)
         assert not os.path.exists(full_path)
         os.symlink(target, full_path)
-        self.inventory_dict[id] = path
+        self.inventory[id] = path
 
     def remove_file(self, id):
         os.unlink(self.full_path(id))
-        del self.inventory_dict[id]
+        del self.inventory[id]
 
     def add_dir(self, id, parent, name, mode):
         path = self.child_path(parent, name)
@@ -86,14 +86,14 @@ class MergeTree(object):
         assert not os.path.exists(full_path)
         os.mkdir(self.abs_path(path))
         os.chmod(self.abs_path(path), mode)
-        self.inventory_dict[id] = path
+        self.inventory[id] = path
 
     def abs_path(self, path):
         return os.path.join(self.dir, path)
 
     def full_path(self, id):
         try:
-            tree_path = self.inventory_dict[id]
+            tree_path = self.inventory[id]
         except KeyError:
             return None
         return self.abs_path(tree_path)
@@ -102,10 +102,9 @@ class MergeTree(object):
         return self.full_path(id)
 
     def __contains__(self, file_id):
-        return file_id in self.inventory_dict
+        return file_id in self.inventory
 
-    def has_id(self, file_id, allow_root=False):
-        assert allow_root == True
+    def has_or_had_id(self, file_id):
         return file_id in self
 
     def get_file(self, file_id):
@@ -113,15 +112,15 @@ class MergeTree(object):
         return file(path, "rb")
 
     def id2path(self, file_id):
-        return self.inventory_dict[file_id]
+        return self.inventory[file_id]
 
     def id2abspath(self, id):
         return self.full_path(id)
 
     def change_path(self, id, path):
-        old_path = os.path.join(self.dir, self.inventory_dict[id])
+        old_path = os.path.join(self.dir, self.inventory[id])
         rename(old_path, self.abs_path(path))
-        self.inventory_dict[id] = path
+        self.inventory[id] = path
 
     def is_executable(self, file_id):
         mode = os.lstat(self.full_path(file_id)).st_mode
@@ -341,11 +340,11 @@ class MergeBuilder(object):
 
     def apply_changeset(self, cset, conflict_handler=None, reverse=False):
         inventory_change = changeset.apply_changeset(cset,
-                                                     self.this.inventory_dict,
+                                                     self.this.inventory,
                                                      self.this.dir,
                                                      conflict_handler, reverse)
-        self.this.inventory_dict =  self.apply_inv_change(inventory_change, 
-                                                     self.this.inventory_dict)
+        self.this.inventory =  self.apply_inv_change(inventory_change, 
+                                                     self.this.inventory)
 
     def cleanup(self):
         shutil.rmtree(self.dir)
@@ -369,7 +368,7 @@ class MergeTest(unittest.TestCase):
         for tree in (builder.this, builder.other, builder.base):
             assert(tree.dir != builder.dir and 
                    tree.dir.startswith(builder.dir))
-            for path in tree.inventory_dict.itervalues():
+            for path in tree.inventory.itervalues():
                 fullpath = tree.abs_path(path)
                 assert(fullpath.startswith(tree.dir))
                 assert(not path.startswith(tree.dir))
@@ -392,11 +391,11 @@ class MergeTest(unittest.TestCase):
         builder.add_file("4", "1", "file2", "hello2", 0644)
         builder.add_file("5", "1", "file3", "hello3", 0644)
         builder.change_parent("3", other="2")
-        assert(Inventory(builder.other.inventory_dict).get_parent("3") == "2")
+        assert(Inventory(builder.other.inventory).get_parent("3") == "2")
         builder.change_parent("4", this="2")
-        assert(Inventory(builder.this.inventory_dict).get_parent("4") == "2")
+        assert(Inventory(builder.this.inventory).get_parent("4") == "2")
         builder.change_parent("5", base="2")
-        assert(Inventory(builder.base.inventory_dict).get_parent("5") == "2")
+        assert(Inventory(builder.base.inventory).get_parent("5") == "2")
         cset = builder.merge_changeset(ApplyMerge3)
         for id in ("1", "2", "4", "5"):
             assert(cset.entries[id].is_boring())
