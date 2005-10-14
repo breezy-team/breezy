@@ -117,7 +117,7 @@ def help_on_command(cmdname, outfile=None):
 
 
 def help_on_options(options, outfile=None):
-    from bzrlib.commands import SHORT_OPTIONS
+    from bzrlib.option import Option
     
     if not options:
         return
@@ -128,10 +128,11 @@ def help_on_options(options, outfile=None):
     outfile.write('\noptions:\n')
     for on in options:
         l = '    --' + on
-        for shortname, longname in SHORT_OPTIONS.items():
-            if longname == on:
+        for shortname, longopt in Option.SHORT_OPTIONS.items():
+            if longopt.name == on:
                 l += ', -' + shortname
                 break
+        l += (30 - len(l)) * ' ' + Option.OPTIONS[on].help
         outfile.write(l + '\n')
 
 

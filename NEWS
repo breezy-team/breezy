@@ -1,11 +1,5 @@
 UNRELEASED CHANGES
 
-  INTERNALS:
-
-    * New 'manifest' command and concept for making gpg-signatures 
-      of revisions that are not tied to a particular internal
-      representation.
-
   IMPROVEMENTS:
 
     * The config directory is now ~/.bazaar, and there is a single file 
@@ -29,6 +23,17 @@ UNRELEASED CHANGES
       complete, which will aid in analysing performance regressions and
       related questions.
 
+  INTERNALS:
+
+    * New 'manifest' command and concept for making gpg-signatures 
+      of revisions that are not tied to a particular internal
+      representation.
+
+    * Improved command line option definitions allowing explanations
+      for individual options, among other things.  Contributed by 
+      Magnus Therning.
+
+    
 
 bzr 0.1.1 2005-10-12
 

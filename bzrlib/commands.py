@@ -38,6 +38,7 @@ from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib import BZRDIR
+from bzrlib.option import Option
 
 plugin_cmds = {}
 
@@ -65,85 +66,6 @@ def _squish_command_name(cmd):
 def _unsquish_command_name(cmd):
     assert cmd.startswith("cmd_")
     return cmd[4:].replace('_','-')
-
-
-def _parse_revision_str(revstr):
-    """This handles a revision string -> revno.
-
-    This always returns a list.  The list will have one element for
-    each revision specifier supplied.
-
-    >>> _parse_revision_str('234')
-    [<RevisionSpec_int 234>]
-    >>> _parse_revision_str('234..567')
-    [<RevisionSpec_int 234>, <RevisionSpec_int 567>]
-    >>> _parse_revision_str('..')
-    [<RevisionSpec None>, <RevisionSpec None>]
-    >>> _parse_revision_str('..234')
-    [<RevisionSpec None>, <RevisionSpec_int 234>]
-    >>> _parse_revision_str('234..')
-    [<RevisionSpec_int 234>, <RevisionSpec None>]
-    >>> _parse_revision_str('234..456..789') # Maybe this should be an error
-    [<RevisionSpec_int 234>, <RevisionSpec_int 456>, <RevisionSpec_int 789>]
-    >>> _parse_revision_str('234....789') #Error ?
-    [<RevisionSpec_int 234>, <RevisionSpec None>, <RevisionSpec_int 789>]
-    >>> _parse_revision_str('revid:test@other.com-234234')
-    [<RevisionSpec_revid revid:test@other.com-234234>]
-    >>> _parse_revision_str('revid:test@other.com-234234..revid:test@other.com-234235')
-    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revid revid:test@other.com-234235>]
-    >>> _parse_revision_str('revid:test@other.com-234234..23')
-    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_int 23>]
-    >>> _parse_revision_str('date:2005-04-12')
-    [<RevisionSpec_date date:2005-04-12>]
-    >>> _parse_revision_str('date:2005-04-12 12:24:33')
-    [<RevisionSpec_date date:2005-04-12 12:24:33>]
-    >>> _parse_revision_str('date:2005-04-12T12:24:33')
-    [<RevisionSpec_date date:2005-04-12T12:24:33>]
-    >>> _parse_revision_str('date:2005-04-12,12:24:33')
-    [<RevisionSpec_date date:2005-04-12,12:24:33>]
-    >>> _parse_revision_str('-5..23')
-    [<RevisionSpec_int -5>, <RevisionSpec_int 23>]
-    >>> _parse_revision_str('-5')
-    [<RevisionSpec_int -5>]
-    >>> _parse_revision_str('123a')
-    Traceback (most recent call last):
-      ...
-    BzrError: No namespace registered for string: '123a'
-    >>> _parse_revision_str('abc')
-    Traceback (most recent call last):
-      ...
-    BzrError: No namespace registered for string: 'abc'
-    >>> _parse_revision_str('branch:../branch2')
-    [<RevisionSpec_branch branch:../branch2>]
-    """
-    import re
-    old_format_re = re.compile('\d*:\d*')
-    m = old_format_re.match(revstr)
-    revs = []
-    if m:
-        warning('Colon separator for revision numbers is deprecated.'
-                ' Use .. instead')
-        for rev in revstr.split(':'):
-            if rev:
-                revs.append(RevisionSpec(int(rev)))
-            else:
-                revs.append(RevisionSpec(None))
-    else:
-        next_prefix = None
-        for x in revstr.split('..'):
-            if not x:
-                revs.append(RevisionSpec(None))
-            elif x[-1] == ':':
-                # looks like a namespace:.. has happened
-                next_prefix = x + '..'
-            else:
-                if next_prefix is not None:
-                    x = next_prefix + x
-                revs.append(RevisionSpec(x))
-                next_prefix = None
-        if next_prefix is not None:
-            revs.append(RevisionSpec(next_prefix))
-    return revs
 
 
 def _builtin_commands():
@@ -337,50 +259,6 @@ def parse_spec(spec):
         parsed = [spec, None]
     return parsed
 
-
-# list of all available options; the rhs can be either None for an
-# option that takes no argument, or a constructor function that checks
-# the type.
-OPTIONS = {
-    'all':                    None,
-    'basis':                  str,
-    'diff-options':           str,
-    'help':                   None,
-    'file':                   unicode,
-    'force':                  None,
-    'format':                 unicode,
-    'forward':                None,
-    'quiet':                  None,
-    'message':                unicode,
-    'no-recurse':             None,
-    'profile':                None,
-    'revision':               _parse_revision_str,
-    'short':                  None,
-    'show-ids':               None,
-    'timezone':               str,
-    'verbose':                None,
-    'version':                None,
-    'email':                  None,
-    'unchanged':              None,
-    'update':                 None,
-    'long':                   None,
-    'root':                   str,
-    'no-backup':              None,
-    'pattern':                str,
-    'remember':               None,
-    }
-
-SHORT_OPTIONS = {
-    'F':                      'file', 
-    'h':                      'help',
-    'm':                      'message',
-    'r':                      'revision',
-    'v':                      'verbose',
-    'l':                      'long',
-    'q':                      'quiet',
-}
-
-
 def parse_args(argv):
     """Parse command line.
     
@@ -428,29 +306,29 @@ def parse_args(argv):
                     optname, optarg = a[2:].split('=', 1)
                 else:
                     optname = a[2:]
-                if optname not in OPTIONS:
+                if optname not in Option.OPTIONS:
                     raise BzrError('unknown long option %r' % a)
             else:
                 shortopt = a[1:]
-                if shortopt in SHORT_OPTIONS:
+                if shortopt in Option.SHORT_OPTIONS:
                     # Multi-character options must have a space to delimit
                     # their value
-                    optname = SHORT_OPTIONS[shortopt]
+                    optname = Option.SHORT_OPTIONS[shortopt].name
                 else:
                     # Single character short options, can be chained,
                     # and have their value appended to their name
                     shortopt = a[1:2]
-                    if shortopt not in SHORT_OPTIONS:
+                    if shortopt not in Option.SHORT_OPTIONS:
                         # We didn't find the multi-character name, and we
                         # didn't find the single char name
                         raise BzrError('unknown short option %r' % a)
-                    optname = SHORT_OPTIONS[shortopt]
+                    optname = Option.SHORT_OPTIONS[shortopt].name
 
                     if a[2:]:
                         # There are extra things on this option
                         # see if it is the value, or if it is another
                         # short option
-                        optargfn = OPTIONS[optname]
+                        optargfn = Option.OPTIONS[optname].type
                         if optargfn is None:
                             # This option does not take an argument, so the
                             # next entry is another short option, pack it back
@@ -465,7 +343,7 @@ def parse_args(argv):
                 # XXX: Do we ever want to support this, e.g. for -r?
                 raise BzrError('repeated option %r' % a)
                 
-            optargfn = OPTIONS[optname]
+            optargfn = Option.OPTIONS[optname].type
             if optargfn:
                 if optarg == None:
                     if not argv:
