@@ -273,11 +273,6 @@ class MergeAdapterTree(object):
             return True
         return self.tree.inventory.has_id(file_id)
 
-    def has_or_had_id(self, file_id):
-        if file_id == self.tree.inventory.root.file_id:
-            return True
-        return self.tree.inventory.has_id(file_id)
-
     def kind(self, file_id):
         return self.tree.kind(file_id)
 
