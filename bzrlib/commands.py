@@ -296,6 +296,7 @@ def parse_args(argv):
     >>> parse_args('log -rrevno:500..600'.split()) #the r takes an argument
     (['log'], {'revision': [<RevisionSpec_revno revno:500>, <RevisionSpec_int 600>]})
     """
+    # TODO: chop up this beast
     args = []
     opts = {}
 
@@ -323,6 +324,7 @@ def parse_args(argv):
                 if shortopt in Option.SHORT_OPTIONS:
                     # Multi-character options must have a space to delimit
                     # their value
+                    # ^^^ what does this mean? mbp 20051014
                     optname = Option.SHORT_OPTIONS[shortopt].name
                 else:
                     # Single character short options, can be chained,
