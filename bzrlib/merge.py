@@ -154,11 +154,11 @@ class MergeConflictHandler(ExceptionConflictHandler):
     def abs_this_path(self, file_id):
         """Return the absolute path for a file_id in the this tree."""
         relpath = self.this_tree.id2path(file_id)
-        return self.this_tree.tree.abspath(relpath)
+        return self.this_tree.abspath(relpath)
 
     def add_missing_parents(self, file_id, tree):
         """If some of the parents for file_id are missing, add them."""
-        entry = tree.tree.inventory[file_id]
+        entry = tree.inventory[file_id]
         if entry.parent_id not in self.this_tree:
             return self.create_all_missing(entry.parent_id, tree)
         else:
@@ -166,7 +166,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def create_all_missing(self, file_id, tree):
         """Add contents for a file_id and all its parents to a tree."""
-        entry = tree.tree.inventory[file_id]
+        entry = tree.inventory[file_id]
         if entry.parent_id is not None and entry.parent_id not in self.this_tree:
             abspath = self.create_all_missing(entry.parent_id, tree)
         else:
@@ -198,7 +198,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
         if not self.ignore_zero:
             note("%d conflicts encountered.\n" % self.conflicts)
             
-def get_tree(treespec, temp_root, label, local_branch=None):
+def get_tree(treespec, local_branch=None):
     location, revno = treespec
     branch = Branch.open_containing(location)
     if revno is None:
@@ -207,21 +207,17 @@ def get_tree(treespec, temp_root, label, local_branch=None):
         revision = branch.last_revision()
     else:
         revision = branch.get_rev_id(revno)
-    return branch, get_revid_tree(branch, revision, temp_root, label,
-                                  local_branch)
+    return branch, get_revid_tree(branch, revision, local_branch)
 
-def get_revid_tree(branch, revision, temp_root, label, local_branch):
+def get_revid_tree(branch, revision, local_branch):
     if revision is None:
-        base_tree = branch.working_tree()
+        return branch.working_tree()
     else:
         if local_branch is not None:
             greedy_fetch(local_branch, branch, revision)
-            base_tree = local_branch.revision_tree(revision)
+            return local_branch.revision_tree(revision)
         else:
-            base_tree = branch.revision_tree(revision)
-    temp_path = os.path.join(temp_root, label)
-    os.mkdir(temp_path)
-    return MergeAdapterTree(base_tree, temp_path)
+            return branch.revision_tree(revision)
 
 
 def file_exists(tree, file_id):
@@ -332,8 +328,7 @@ def merge(other_revision, base_revision,
                                     this_branch.basis_tree(), False)
             if changes.has_changed():
                 raise BzrCommandError("Working tree has uncommitted changes.")
-        other_branch, other_tree = get_tree(other_revision, tempdir, "other",
-                                            this_branch)
+        other_branch, other_tree = get_tree(other_revision, this_branch)
         if other_revision[1] == -1:
             other_rev_id = other_branch.last_revision()
             if other_rev_id is None:
@@ -353,11 +348,10 @@ def merge(other_revision, base_revision,
                                               this_branch)
             except NoCommonAncestor:
                 raise UnrelatedBranches()
-            base_tree = get_revid_tree(this_branch, base_rev_id, tempdir, 
-                                       "base", None)
+            base_tree = get_revid_tree(this_branch, base_rev_id, None)
             base_is_ancestor = True
         else:
-            base_branch, base_tree = get_tree(base_revision, tempdir, "base")
+            base_branch, base_tree = get_tree(base_revision)
             if base_revision[1] == -1:
                 base_rev_id = base_branch.last_revision()
             elif base_revision[1] is None:
@@ -375,7 +369,7 @@ def merge(other_revision, base_revision,
             for fname in file_list:
                 path = this_branch.relpath(fname)
                 found_id = False
-                for tree in (this_tree, base_tree.tree, other_tree.tree):
+                for tree in (this_tree, base_tree, other_tree):
                     file_id = tree.inventory.path2id(path)
                     if file_id is not None:
                         interesting_ids.add(file_id)
@@ -411,10 +405,10 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
             contents_change = BackupBeforeChange(contents_change)
         return contents_change
 
-    this_tree = get_tree((this_branch.base, None), tempdir, "this")[1]
+    this_tree = get_tree((this_branch.base, None))[1]
 
     def get_inventory(tree):
-        return tree.tree.inventory
+        return tree.inventory
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
                              generate_changeset, get_inventory,
@@ -433,7 +427,8 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
             path = path[2:]
         adjust_ids.append((path, id))
     if len(adjust_ids) > 0:
-        this_branch.set_inventory(regen_inventory(this_branch, this_tree.root,
+        this_branch.set_inventory(regen_inventory(this_branch,
+                                                  this_tree.basedir,
                                                   adjust_ids))
 
 

@@ -156,9 +156,11 @@ class WorkingTree(bzrlib.tree.Tree):
         return self.abspath(self.id2path(file_id))
 
                 
-    def has_id(self, file_id):
+    def has_id(self, file_id, allow_root=False):
         # files that have been deleted are excluded
-        inv = self._inventory
+        inv = self.inventory
+        if allow_root and file_id == inv.root.file_id:
+            return True
         if not inv.has_id(file_id):
             return False
         path = inv.id2path(file_id)
