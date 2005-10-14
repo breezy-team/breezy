@@ -137,6 +137,15 @@ class LocationConfig(Config):
             self._global_config = GlobalConfig()
         return self._global_config
 
+    def _get_section(self):
+        """Get the section we should look in for config items.
+
+        Returns None if none exists. 
+        TODO: perhaps return a NullSection that thunks through to the 
+              global config.
+        """
+        return 'http://www.example.com'
+
     def _get_user_id(self):
         return self._get_global_config()._get_user_id()
 

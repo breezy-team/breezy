@@ -263,8 +263,9 @@ class TestLocationConfig(TestConfigItems):
         self.assertEqual(None, my_config._get_section())
         
     def test__get_section_exact(self):
-        my_config = self.get_location_config('http://www.example.com')
-        self.assertEqual('http://www.example.com', my_config._get_section())
+        self.get_location_config('http://www.example.com')
+        self.assertEqual('http://www.example.com',
+                         self.my_config._get_section())
    
     def test__get_section_suffix_does_not(self):
         my_config = self.get_location_config('http://www.example.com-com')
