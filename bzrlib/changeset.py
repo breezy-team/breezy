@@ -17,6 +17,8 @@ import os.path
 import errno
 import patch
 import stat
+from tempfile import mkdtemp
+from shutil import rmtree
 from bzrlib.trace import mutter
 from bzrlib.osutils import rename, sha_file
 import bzrlib
@@ -429,32 +431,44 @@ class Diff3Merge(object):
     def __ne__(self, other):
         return not (self == other)
 
+    def dump_file(self, temp_dir, name, tree):
+        out_path = os.path.join(temp_dir, name)
+        out_file = file(out_path, "wb")
+        in_file = tree.get_file(self.file_id)
+        for line in in_file:
+            out_file.write(line)
+        return out_path
+
     def apply(self, filename, conflict_handler, reverse=False):
-        new_file = filename+".new"
-        base_file = self.base.readonly_path(self.file_id)
-        other_file = self.other.readonly_path(self.file_id)
-        if not reverse:
-            base = base_file
-            other = other_file
-        else:
-            base = other_file
-            other = base_file
-        status = patch.diff3(new_file, filename, base, other)
-        if status == 0:
-            os.chmod(new_file, os.stat(filename).st_mode)
-            rename(new_file, filename)
-            return
-        else:
-            assert(status == 1)
-            def get_lines(filename):
-                my_file = file(filename, "rb")
-                lines = my_file.readlines()
-                my_file.close()
-                return lines
-            base_lines = get_lines(base)
-            other_lines = get_lines(other)
-            conflict_handler.merge_conflict(new_file, filename, base_lines, 
-                                            other_lines)
+        temp_dir = mkdtemp(prefix="bzr-")
+        try:
+            new_file = filename+".new"
+            base_file = self.dump_file(temp_dir, "base", self.base)
+            other_file = self.dump_file(temp_dir, "other", self.other)
+            if not reverse:
+                base = base_file
+                other = other_file
+            else:
+                base = other_file
+                other = base_file
+            status = patch.diff3(new_file, filename, base, other)
+            if status == 0:
+                os.chmod(new_file, os.stat(filename).st_mode)
+                rename(new_file, filename)
+                return
+            else:
+                assert(status == 1)
+                def get_lines(filename):
+                    my_file = file(filename, "rb")
+                    lines = my_file.readlines()
+                    my_file.close()
+                    return lines
+                base_lines = get_lines(base)
+                other_lines = get_lines(other)
+                conflict_handler.merge_conflict(new_file, filename, base_lines, 
+                                                other_lines)
+        finally:
+            rmtree(temp_dir)
 
 
 def CreateDir():
