@@ -197,7 +197,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
         if not self.ignore_zero:
             note("%d conflicts encountered.\n" % self.conflicts)
             
-def get_tree(treespec, temp_root, label, local_branch=None):
+def get_tree(treespec, local_branch=None):
     location, revno = treespec
     branch = Branch.open_containing(location)
     if revno is None:
@@ -206,10 +206,9 @@ def get_tree(treespec, temp_root, label, local_branch=None):
         revision = branch.last_revision()
     else:
         revision = branch.get_rev_id(revno)
-    return branch, get_revid_tree(branch, revision, temp_root, label,
-                                  local_branch)
+    return branch, get_revid_tree(branch, revision, local_branch)
 
-def get_revid_tree(branch, revision, temp_root, label, local_branch):
+def get_revid_tree(branch, revision, local_branch):
     if revision is None:
         base_tree = branch.working_tree()
     else:
@@ -218,68 +217,12 @@ def get_revid_tree(branch, revision, temp_root, label, local_branch):
             base_tree = local_branch.revision_tree(revision)
         else:
             base_tree = branch.revision_tree(revision)
-    temp_path = os.path.join(temp_root, label)
-    os.mkdir(temp_path)
-    return MergeAdapterTree(base_tree, temp_path)
+    return base_tree
 
 
 def file_exists(tree, file_id):
     return tree.has_filename(tree.id2path(file_id))
     
-
-class MergeAdapterTree(object):
-    """MergeAdapterTree adapts a normal tree for merge_inner to use.
-
-    The interface the merge_inner needs is nearly but not quite
-    the same as that of bzrlib.tree.
-    """
-    
-    def __init__(self, tree, tempdir):
-        object.__init__(self)
-        if hasattr(tree, "basedir"):
-            self.basedir = tree.basedir
-        else:
-            self.basedir = None
-        self.tree = tree
-        self.inventory = tree.inventory
-        self.tempdir = tempdir
-        os.mkdir(os.path.join(self.tempdir, "texts"))
-        os.mkdir(os.path.join(self.tempdir, "symlinks"))
-        self.cached = {}
-
-    def __iter__(self):
-        return self.tree.__iter__()
-
-    def __contains__(self, file_id):
-        return file_id in self.tree
-
-    def get_file(self, file_id):
-        return self.tree.get_file(file_id)
-
-    def get_file_sha1(self, id):
-        return self.tree.get_file_sha1(id)
-
-    def is_executable(self, id):
-        return self.tree.is_executable(id)
-
-    def id2path(self, file_id):
-        return self.tree.id2path(file_id)
-
-    def has_id(self, file_id):
-        return self.tree.has_id(file_id)
-
-    def has_or_had_id(self, file_id):
-        return self.tree.has_or_had_id(file_id)
-
-    def kind(self, file_id):
-        return self.tree.kind(file_id)
-
-    def get_symlink_target(self, file_id):
-        return self.tree.get_symlink_target(file_id)
-
-    def id2abspath(self, file_id):
-        return self.tree.id2abspath(file_id)
-
 
 def build_working_dir(to_dir):
     """Build a working directory in an empty directory.
@@ -330,8 +273,7 @@ def merge(other_revision, base_revision,
                                     this_branch.basis_tree(), False)
             if changes.has_changed():
                 raise BzrCommandError("Working tree has uncommitted changes.")
-        other_branch, other_tree = get_tree(other_revision, tempdir, "other",
-                                            this_branch)
+        other_branch, other_tree = get_tree(other_revision, this_branch)
         if other_revision[1] == -1:
             other_rev_id = other_branch.last_revision()
             if other_rev_id is None:
@@ -351,11 +293,10 @@ def merge(other_revision, base_revision,
                                               this_branch)
             except NoCommonAncestor:
                 raise UnrelatedBranches()
-            base_tree = get_revid_tree(this_branch, base_rev_id, tempdir, 
-                                       "base", None)
+            base_tree = get_revid_tree(this_branch, base_rev_id, None)
             base_is_ancestor = True
         else:
-            base_branch, base_tree = get_tree(base_revision, tempdir, "base")
+            base_branch, base_tree = get_tree(base_revision)
             if base_revision[1] == -1:
                 base_rev_id = base_branch.last_revision()
             elif base_revision[1] is None:
@@ -409,7 +350,7 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
             contents_change = BackupBeforeChange(contents_change)
         return contents_change
 
-    this_tree = get_tree((this_branch.base, None), tempdir, "this")[1]
+    this_tree = get_tree((this_branch.base, None))[1]
 
     def get_inventory(tree):
         return tree.inventory
