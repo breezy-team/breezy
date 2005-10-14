@@ -24,6 +24,7 @@ import errno
 import os
 import re
 import sha
+import string
 import sys
 import time
 import types
@@ -417,5 +418,23 @@ def link_or_copy(src, dest):
 def has_symlinks():
     if hasattr(os, 'symlink'):
         return True
+    else:
+        return False
+        
+
+def contains_whitespace(s):
+    """True if there are any whitespace characters in s."""
+    for ch in string.whitespace:
+        if ch in s:
+            return True
+    else:
+        return False
+
+
+def contains_linebreaks(s):
+    """True if there is any vertical whitespace in s."""
+    for ch in '\f\n\r':
+        if ch in s:
+            return True
     else:
         return False
