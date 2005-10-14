@@ -692,16 +692,19 @@ class cmd_log(Command):
     To request a range of logs, you can use the command -r begin:end
     -r revision requests a specific revision, -r :end or -r begin: are
     also valid.
-
-    --message allows you to give a regular expression, which will be evaluated
-    so that only matching entries will be displayed.
     """
 
     # TODO: Make --revision support uuid: and hash: [future tag:] notation.
 
     takes_args = ['filename?']
-    takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision',
-                     'long', 'message', 'short',]
+    takes_options = [Option('forward', 
+                            help='show from oldest to newest'),
+                     'timezone', 'verbose', 
+                     'show-ids', 'revision',
+                     'long', 
+                     Option('message',
+                            help='show revisions whose message matches this regexp'),
+                     'short',]
     
     def run(self, filename=None, timezone='original',
             verbose=False,
