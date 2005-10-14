@@ -125,11 +125,13 @@ def help_on_command_options(cmd, outfile=None):
     outfile.write('\noptions:\n')
     for option_name, option in sorted(options.items()):
         l = '    --' + option_name
-        for shortname, longopt in Option.SHORT_OPTIONS.items():
-            if longopt.name == option_name:
-                l += ', -' + shortname
-                break
+        short_name = option.short_name()
+        if short_name:
+            assert len(short_name) == 1
+            l += ', -' + shortname
         l += (30 - len(l)) * ' ' + option.help
+        # TODO: split help over multiple lines with correct indenting and 
+        # wrapping
         outfile.write(l + '\n')
 
 

@@ -106,46 +106,75 @@ def _parse_merge_type(typestring):
 
 
 class Option(object):
+    """Description of a command line option"""
+    # TODO: Some way to show in help a description of the option argument
+
     OPTIONS = {}
     SHORT_OPTIONS = {}
 
-    def __init__(self, name, help='help string', type=None):
-        # need to add some description of the parameters here
+    def __init__(self, name, help='', type=None):
+        """Make a new command option.
+
+        name -- regular name of the command, used in the double-dash
+            form and also as the parameter to the command's run() 
+            method.
+
+        help -- help message displayed in command help
+
+        type -- function called to parse the option argument, or 
+            None (default) if this option doesn't take an argument.
+        """
+        # TODO: perhaps a subclass that automatically does 
+        # --option, --no-option for reversable booleans
         self.name = name
         self.help = help
         self.type = type
+
+    def short_name(self):
+        """Return the single character option for this command, if any.
+
+        Short options are globally registered.
+        """
+        return Option.SHORT_OPTIONS.get(self.name)
+
 
 def _global_option(name, **kwargs):
     """Register o as a global option."""
     Option.OPTIONS[name] = Option(name, **kwargs)
 
-_global_option('all', type=None)
+_global_option('all')
 _global_option('basis', type=str)
 _global_option('diff-options', type=str)
-_global_option('help', type=None)
+_global_option('help')
 _global_option('file', type=unicode)
-_global_option('force', type=None)
+_global_option('force')
 _global_option('format', type=unicode)
-_global_option('forward', type=None)
+_global_option('forward')
 _global_option('message', type=unicode)
-_global_option('no-recurse', type=None)
-_global_option('profile', type=None)
+_global_option('no-recurse')
+_global_option('profile')
 _global_option('revision', type=_parse_revision_str)
-_global_option('short', type=None)
-_global_option('show-ids', type=None)
+_global_option('short')
+_global_option('show-ids')
 _global_option('timezone', type=str)
-_global_option('verbose', type=None)
-_global_option('version', type=None)
-_global_option('email', type=None)
-_global_option('unchanged', type=None)
-_global_option('update', type=None)
-_global_option('long', type=None)
+_global_option('verbose')
+_global_option('version')
+_global_option('email')
+_global_option('unchanged')
+_global_option('update')
+_global_option('long')
 _global_option('root', type=str)
-_global_option('no-backup', type=None)
+_global_option('no-backup')
 _global_option('merge-type', type=_parse_merge_type)
 _global_option('pattern', type=str)
-_global_option('quiet', type=None)
-_global_option('remember', type=None)
+_global_option('quiet')
+_global_option('remember')
+
+
+def _global_short(short_name, long_name):
+    assert short_name not in Option.SHORT_OPTIONS
+    Option.SHORT_OPTIONS[short_name] = Option.OPTIONS[long_name]
+    
 
 Option.SHORT_OPTIONS['F'] = Option.OPTIONS['file']
 Option.SHORT_OPTIONS['h'] = Option.OPTIONS['help']
