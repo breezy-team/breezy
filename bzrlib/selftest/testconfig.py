@@ -33,6 +33,24 @@ sample_config_text = ("[DEFAULT]\n"
                       "editor=vim\n"
                       "gpg_signing_command=gnome-gpg\n")
 
+
+sample_branches_text = ("[http://www.example.com]\n"
+                        "# Top level policy\n"
+                        "email=Robert Collins <robertc@example.org>\n"
+                        "[http://www.example.com/useglobal]\n"
+                        "# different project, forces global lookup\n"
+                        "recurse=false\n"
+                        "[/b/]\n"
+                        "# test trailing / matching with no children\n"
+                        "[/a/]\n"
+                        "# test trailing / matching\n"
+                        "[/a/*]\n"
+                        "#subdirs will match but not the parent\n"
+                        "recurse=False\n"
+                        "[/a/c]\n"
+                        "#testing explicit beats globs\n")
+
+
 class InstrumentedConfigParser(object):
     """A config parser look-enough-alike to record calls made to it."""
 
@@ -142,44 +160,6 @@ class TestGetConfig(TestCase):
         self.assertEqual(parser._calls, [('read', [config.config_filename()])])
 
 
-class TestLocationConfig(TestCase):
-
-    def test_constructs(self):
-        my_config = config.LocationConfig('http://example.com')
-        self.assertRaises(TypeError, config.LocationConfig)
-
-    def test_cached(self):
-        config_file = StringIO(sample_config_text)
-        my_config = config.LocationConfig('http://example.com')
-        parser = my_config._get_branches_config_parser(file=config_file)
-        self.failUnless(my_config._get_branches_config_parser() is parser)
-
-    def test_branches_from_fp(self):
-        config_file = StringIO(sample_config_text)
-        my_config = config.LocationConfig('http://example.com')
-        self.failUnless(isinstance(
-            my_config._get_branches_config_parser(file=config_file),
-            ConfigParser))
-
-    def test_branch_calls_read_filenames(self):
-        # replace the class that is constructured, to check its parameters
-        oldparserclass = config.ConfigParser
-        config.ConfigParser = InstrumentedConfigParser
-        my_config = config.LocationConfig('http://www.example.com')
-        try:
-            parser = my_config._get_branches_config_parser()
-        finally:
-            config.ConfigParser = oldparserclass
-        self.failUnless(isinstance(parser, InstrumentedConfigParser))
-        self.assertEqual(parser._calls, [('read', [config.branches_config_filename()])])
-
-    def test_get_global_config(self):
-        my_config = config.LocationConfig('http://example.com')
-        global_config = my_config._get_global_config()
-        self.failUnless(isinstance(global_config, config.GlobalConfig))
-        self.failUnless(global_config is my_config._get_global_config())
-
-
 class TestBranchConfig(TestCaseInTempDir):
 
     def test_constructs(self):
@@ -241,11 +221,108 @@ class TestGlobalConfigItems(TestConfigItems):
         self.assertEqual("vim", my_config.get_editor())
 
 
-#class TestLocationConfigItems(TestConfigItems):
-#    
-#    def test_location_username(self):
+class TestLocationConfig(TestConfigItems):
+
+    def test_constructs(self):
+        my_config = config.LocationConfig('http://example.com')
+        self.assertRaises(TypeError, config.LocationConfig)
+
+    def test_cached(self):
+        config_file = StringIO(sample_config_text)
+        my_config = config.LocationConfig('http://example.com')
+        parser = my_config._get_branches_config_parser(file=config_file)
+        self.failUnless(my_config._get_branches_config_parser() is parser)
+
+    def test_branches_from_fp(self):
+        config_file = StringIO(sample_config_text)
+        my_config = config.LocationConfig('http://example.com')
+        self.failUnless(isinstance(
+            my_config._get_branches_config_parser(file=config_file),
+            ConfigParser))
+
+    def test_branch_calls_read_filenames(self):
+        # replace the class that is constructured, to check its parameters
+        oldparserclass = config.ConfigParser
+        config.ConfigParser = InstrumentedConfigParser
+        my_config = config.LocationConfig('http://www.example.com')
+        try:
+            parser = my_config._get_branches_config_parser()
+        finally:
+            config.ConfigParser = oldparserclass
+        self.failUnless(isinstance(parser, InstrumentedConfigParser))
+        self.assertEqual(parser._calls, [('read', [config.branches_config_filename()])])
+
+    def test_get_global_config(self):
+        my_config = config.LocationConfig('http://example.com')
+        global_config = my_config._get_global_config()
+        self.failUnless(isinstance(global_config, config.GlobalConfig))
+        self.failUnless(global_config is my_config._get_global_config())
+
+    def test__get_section_no_match(self):
+        my_config = self.get_location_config('/')
+        self.assertEqual(None, my_config._get_section())
+        
+    def test__get_section_exact(self):
+        my_config = self.get_location_config('http://www.example.com')
+        self.assertEqual('http://www.example.com', my_config._get_section())
+   
+    def test__get_section_suffix_does_not(self):
+        my_config = self.get_location_config('http://www.example.com-com')
+        self.assertEqual(None, my_config._get_section())
+
+    def test__get_section_subdir_recursive(self):
+        my_config = self.get_location_config('http://www.example.com/com')
+        self.assertEqual('http://www.example.com', my_config._get_section())
+
+    def test__get_section_subdir_matches(self):
+        my_config = self.get_location_config('http://www.example.com/useglobal')
+        self.assertEqual('http://www.example.com/useglobal',
+                         my_config._get_section())
+
+    def test__get_section_subdir_nonrecursive(self):
+        my_config = self.get_location_config(
+            'http://www.example.com/useglobal/childbranch')
+        self.assertEqual('http://www.example.com', my_config._get_section())
+
+    def test__get_section_subdir_trailing_slash(self):
+        my_config = self.get_location_config('/b')
+        self.assertEqual('/b/', my_config._get_section())
+
+    def test__get_section_subdir_child(self):
+        my_config = self.get_location_config('/a/foo')
+        self.assertEqual('/a/*', my_config._get_section())
+
+    def test__get_section_subdir_child_child(self):
+        my_config = self.get_location_config('/a/foo/bar')
+        self.assertEqual('/a/', my_config._get_section())
+
+    def test__get_section_explicit_over_glob(self):
+        my_config = self.get_location_config('/a/c')
+        self.assertEqual('/a/c/', my_config._get_section())
+
+    def get_location_config(self, location):
+        global_file = StringIO(sample_config_text)
+        branches_file = StringIO(sample_branches_text)
+        self.my_config = config.LocationConfig(location)
+        self.my_config._get_branches_config_parser(branches_file)
+        self.my_config._get_global_config()._get_config_parser(global_file)
+
+    def test_location_without_username(self):
+        self.get_location_config('http://www.example.com/useglobal')
+        self.assertEqual('Robert Collins <robertc@example.com>',
+                         self.my_config.username())
+
+    def test_location_not_listed(self):
+        self.get_location_config('/home/robertc/sources')
+        self.assertEqual('Robert Collins <robertc@example.com>',
+                         self.my_config.username())
+
+#    def test_overriding_location(self):
+#        self.get_location_config('http://www.example.com/foo')
+#        self.assertEqual('Robert Collins <robertc@example.org>',
+#                         self.my_config.username())
 #        
-#
+
 #> signatures=check-if-available
 #> signatures=require
 #> signatures=ignore
