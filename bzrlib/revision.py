@@ -17,6 +17,7 @@
 
 import bzrlib.errors
 from bzrlib.graph import node_distances, select_farthest, all_descendants
+from bzrlib.osutils import contains_whitespace
 
 NULL_REVISION="null:"
 
@@ -31,11 +32,17 @@ class Revision(object):
 
     parent_ids
         List of parent revision_ids
+
+    properties
+        Dictionary of revision properties.  These are attached to the
+        revision as extra metadata.  The name must be a single 
+        word; the value can be an arbitrary string.
     """
     
     def __init__(self, revision_id, properties=None, **args):
         self.revision_id = revision_id
         self.properties = properties or {}
+        self._check_properties()
         self.__dict__.update(args)
         self.parent_ids = []
         self.parent_sha1s = []
@@ -58,6 +65,16 @@ class Revision(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def _check_properties(self):
+        """Verify that all revision properties are OK.
+        """
+        for name, value in self.properties.iteritems():
+            if not isinstance(name, basestring) or contains_whitespace(name):
+                raise ValueError("invalid property name %r" % name)
+            if not isinstance(value, basestring):
+                raise ValueError("invalid property value %r for %r" % 
+                                 (name, value))
 
 
 def is_ancestor(revision_id, candidate_id, branch):

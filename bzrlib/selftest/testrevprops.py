@@ -10,7 +10,7 @@ class TestRevProps(TestCaseInTempDir):
         """Simple revision properties"""
         b = Branch.initialize('.')
         props = dict(flavor='choc-mint', 
-                     condiment='chilli')
+                     condiment='orange\n  mint\n\tcandy')
         b.commit(message='initial null commit', 
                  revprops=props,
                  allow_pointless=True,
@@ -18,16 +18,18 @@ class TestRevProps(TestCaseInTempDir):
         rev = b.get_revision('test@user-1')
         self.assertTrue('flavor' in rev.properties)
         self.assertEquals(rev.properties['flavor'], 'choc-mint')
-        self.assertEquals(rev.properties['condiment'], 'chilli')
         self.assertEquals(sorted(rev.properties.items()),
-                          [('condiment', 'chilli'),
+                          [('condiment', 'orange\n  mint\n\tcandy'),
                            ('flavor', 'choc-mint')])
 
-        # TODO: try properties with newlines and indenting
-
-        # TODO: property names with newlines are disallowed
-
-        # TODO: Can't add non-string properties
-
-        # TODO: Properties are retrieved correctly
-
+    def test_invalid_revprops(self):
+        """Invalid revision properties"""
+        b = Branch.initialize('.')
+        self.assertRaises(ValueError,
+                          b.commit, 
+                          message='invalid',
+                          revprops={'what a silly property': 'fine'})
+        self.assertRaises(ValueError,
+                          b.commit, 
+                          message='invalid',
+                          revprops=dict(number=13))
