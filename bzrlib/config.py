@@ -27,6 +27,11 @@ import bzrlib
 import bzrlib.errors as errors
 
 
+CHECK_IF_POSSIBLE=0
+CHECK_ALWAYS=1
+CHECK_NEVER=2
+
+
 class Config(object):
     """A configuration policy - what username, editor, gpg needs etc."""
 
@@ -77,6 +82,9 @@ class Config(object):
         else:
             return email
 
+    def signature_checking(self):
+        """What is the current policy for signature checking?."""
+        return CHECK_IF_POSSIBLE
 
 class GlobalConfig(Config):
     """The configuration that should be used for a specific location."""

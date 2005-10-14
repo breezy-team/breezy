@@ -105,7 +105,18 @@ class TestConfig(TestCase):
         self.assertEqual('Robert Collins <robert.collins@example.org>',
                          my_config.username())
         self.assertEqual(['_get_user_id'], my_config._calls)
- 
+
+    def test_signatures_default(self):
+        my_config = config.Config()
+        self.assertEqual(config.CHECK_IF_POSSIBLE,
+                         my_config.signature_checking())
+
+#    def test_signatures(self):
+#        my_config = InstrumentedConfig()
+#        self.assertEqual('Robert Collins <robert.collins@example.org>',
+#                         my_config.username())
+#        self.assertEqual(['_get_user_id'], my_config._calls)
+#
 
 class TestConfigPath(TestCase):
 
@@ -325,7 +336,6 @@ class TestLocationConfig(TestConfigItems):
         self.assertEqual('Robert Collins <robertc@example.org>',
                          self.my_config.username())
         
-
 #> signatures=check-if-available
 #> signatures=require
 #> signatures=ignore
