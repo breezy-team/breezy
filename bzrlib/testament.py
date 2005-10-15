@@ -73,25 +73,8 @@ from cStringIO import StringIO
 import string
 from sha import sha
 
+from bzrlib.osutils import contains_whitespace, contains_linebreaks
 
-def contains_whitespace(s):
-    """True if there are any whitespace characters in s."""
-    for ch in string.whitespace:
-        if ch in s:
-            return True
-    else:
-        return False
-
-
-def contains_linebreaks(s):
-    """True if there is any vertical whitespace in s."""
-    for ch in '\f\n\r':
-        if ch in s:
-            return True
-    else:
-        return False
-
-    
 class Testament(object):
     """Reduced summary of a revision.
 

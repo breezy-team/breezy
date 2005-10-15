@@ -160,7 +160,8 @@ class Commit(object):
                specific_files=None,
                rev_id=None,
                allow_pointless=True,
-               verbose=False):
+               verbose=False,
+               revprops=None):
         """Commit working copy as a new revision.
 
         timestamp -- if not None, seconds-since-epoch for a
@@ -176,6 +177,8 @@ class Commit(object):
 
         allow_pointless -- If true (default), commit even if nothing
             has changed and no merges are recorded.
+
+        revprops -- Properties for new revision
         """
         mutter('preparing to commit')
 
@@ -184,6 +187,7 @@ class Commit(object):
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
+        self.revprops = revprops
 
         if timestamp is None:
             self.timestamp = time.time()
@@ -304,7 +308,8 @@ class Commit(object):
                             committer=self.committer,
                             message=self.message,
                             inventory_sha1=self.inv_sha1,
-                            revision_id=self.rev_id)
+                            revision_id=self.rev_id,
+                            properties=self.revprops)
         self.rev.parent_ids = self.parents
         rev_tmp = StringIO()
         serializer_v5.write_revision(self.rev, rev_tmp)

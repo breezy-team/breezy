@@ -513,6 +513,7 @@ def test_suite():
                    'bzrlib.selftest.test_conflicts',
                    'bzrlib.selftest.testtestament',
                    'bzrlib.selftest.testannotate',
+                   'bzrlib.selftest.testrevprops',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,

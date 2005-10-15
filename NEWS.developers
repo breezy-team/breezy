@@ -1,4 +1,9 @@
-changes in weave branch:
+DEVELOPMENT HEAD
+
+ * Properties can be set on Revisions by passing 'revprops=' to
+   Branch.commit(), and retrieved by looking at Revision.properties.
+
+bzr 0.1
 
  * Remove RevisionReference class; Revision.parent_ids is now simply a
    list of their ids and parent_sha1s is a list of their corresponding
