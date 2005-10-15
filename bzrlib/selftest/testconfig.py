@@ -97,9 +97,9 @@ class TestConfigItems(TestCase):
     def tearDown(self):
         os.environ['HOME'] = self.oldenv
         if self.bzr_email is not None:
-            os.environ['BZREMAIL'] = bzr_email
+            os.environ['BZREMAIL'] = self.bzr_email
         if self.email is not None:
-            os.environ['EMAIL'] = email
+            os.environ['EMAIL'] = self.email
         super(TestConfigItems, self).tearDown()
 
     def test_user_id(self):

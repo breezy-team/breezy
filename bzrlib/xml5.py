@@ -22,9 +22,6 @@ from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 
 
-
-
-
 class Serializer_v5(Serializer):
     """Version 5 serializer
 
@@ -99,8 +96,22 @@ class Serializer_v5(Serializer):
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
                 p.set('revision_id', parent_id)
+        if rev.properties:
+            self._pack_revision_properties(rev, root)
         return root
-    
+
+
+    def _pack_revision_properties(self, rev, under_element):
+        top_elt = SubElement(under_element, 'properties')
+        for prop_name, prop_value in sorted(rev.properties.items()):
+            assert isinstance(prop_name, basestring) 
+            assert isinstance(prop_value, basestring) 
+            prop_elt = SubElement(top_elt, 'property')
+            prop_elt.set('name', prop_name)
+            prop_elt.text = prop_value
+            prop_elt.tail = '\n'
+        top_elt.tail = '\n'
+
 
     def _unpack_inventory(self, elt):
         """Construct from XML Element
@@ -173,12 +184,27 @@ class Serializer_v5(Serializer):
             assert p.tag == 'revision_ref', \
                    "bad parent node tag %r" % p.tag
             rev.parent_ids.append(p.get('revision_id'))
-
+        self._unpack_revision_properties(elt, rev)
         v = elt.get('timezone')
         rev.timezone = v and int(v)
-
         rev.message = elt.findtext('message') # text of <message>
         return rev
+
+
+    def _unpack_revision_properties(self, elt, rev):
+        """Unpack properties onto a revision."""
+        props_elt = elt.find('properties')
+        assert len(rev.properties) == 0
+        if not props_elt:
+            return
+        for prop_elt in props_elt:
+            assert prop_elt.tag == 'property', \
+                "bad tag under properties list: %r" % p.tag
+            name = prop_elt.get('name')
+            value = prop_elt.text
+            assert name not in rev.properties, \
+                "repeated property %r" % p.name
+            rev.properties[name] = value
 
 
 serializer_v5 = Serializer_v5()

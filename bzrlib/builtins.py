@@ -266,9 +266,9 @@ class cmd_rename(Command):
 
     See also the 'move' command, which moves files into a different
     directory without changing their name.
-
-    TODO: Some way to rename multiple files without invoking bzr for each
-    one?"""
+    """
+    # TODO: Some way to rename multiple files without invoking 
+    # bzr for each one?"""
     takes_args = ['from_name', 'to_name']
     
     def run(self, from_name, to_name):
@@ -390,20 +390,21 @@ class cmd_branch(Command):
         import errno
         from shutil import rmtree
         cache_root = tempfile.mkdtemp()
+        if revision is None:
+            revision = [None]
+        elif len(revision) > 1:
+            raise BzrCommandError(
+                'bzr branch --revision takes exactly 1 revision value')
         try:
-            if revision is None:
-                revision = [None]
-            elif len(revision) > 1:
-                raise BzrCommandError(
-                    'bzr branch --revision takes exactly 1 revision value')
-            try:
-                br_from = Branch.open(from_location)
-            except OSError, e:
-                if e.errno == errno.ENOENT:
-                    raise BzrCommandError('Source location "%s" does not'
-                                          ' exist.' % to_location)
-                else:
-                    raise
+            br_from = Branch.open(from_location)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise BzrCommandError('Source location "%s" does not'
+                                      ' exist.' % to_location)
+            else:
+                raise
+        br_from.lock_read()
+        try:
             br_from.setup_caching(cache_root)
             if basis is not None:
                 basis_branch = Branch.open_containing(basis)
@@ -435,16 +436,16 @@ class cmd_branch(Command):
             except bzrlib.errors.UnlistableBranch:
                 msg = "The branch %s cannot be used as a --basis"
         finally:
+            br_from.unlock()
             rmtree(cache_root)
 
 
 class cmd_renames(Command):
     """Show list of renamed files.
-
-    TODO: Option to show renames between two historical versions.
-
-    TODO: Only show renames under dir, rather than in the whole branch.
     """
+    # TODO: Option to show renames between two historical versions.
+
+    # TODO: Only show renames under dir, rather than in the whole branch.
     takes_args = ['dir?']
 
     def run(self, dir='.'):
@@ -568,26 +569,24 @@ class cmd_diff(Command):
     If files are listed, only the changes in those files are listed.
     Otherwise, all changes for the tree are listed.
 
-    TODO: Allow diff across branches.
-
-    TODO: Option to use external diff command; could be GNU diff, wdiff,
-          or a graphical diff.
-
-    TODO: Python difflib is not exactly the same as unidiff; should
-          either fix it up or prefer to use an external diff.
-
-    TODO: If a directory is given, diff everything under that.
-
-    TODO: Selected-file diff is inefficient and doesn't show you
-          deleted files.
-
-    TODO: This probably handles non-Unix newlines poorly.
-
     examples:
         bzr diff
         bzr diff -r1
         bzr diff -r1..2
     """
+    # TODO: Allow diff across branches.
+    # TODO: Option to use external diff command; could be GNU diff, wdiff,
+    #       or a graphical diff.
+
+    # TODO: Python difflib is not exactly the same as unidiff; should
+    #       either fix it up or prefer to use an external diff.
+
+    # TODO: If a directory is given, diff everything under that.
+
+    # TODO: Selected-file diff is inefficient and doesn't show you
+    #       deleted files.
+
+    # TODO: This probably handles non-Unix newlines poorly.
     
     takes_args = ['file*']
     takes_options = ['revision', 'diff-options']
@@ -624,19 +623,17 @@ class cmd_diff(Command):
 
 class cmd_deleted(Command):
     """List files deleted in the working tree.
-
-    TODO: Show files deleted since a previous revision, or between two revisions.
     """
+    # TODO: Show files deleted since a previous revision, or
+    # between two revisions.
+    # TODO: Much more efficient way to do this: read in new
+    # directories with readdir, rather than stating each one.  Same
+    # level of effort but possibly much less IO.  (Or possibly not,
+    # if the directories are very large...)
     def run(self, show_ids=False):
         b = Branch.open_containing('.')
         old = b.basis_tree()
         new = b.working_tree()
-
-        ## TODO: Much more efficient way to do this: read in new
-        ## directories with readdir, rather than stating each one.  Same
-        ## level of effort but possibly much less IO.  (Or possibly not,
-        ## if the directories are very large...)
-
         for path, ie in old.inventory.iter_entries():
             if not new.has_id(ie.file_id):
                 if show_ids:
@@ -790,9 +787,8 @@ class cmd_touching_revisions(Command):
 
 class cmd_ls(Command):
     """List files in a tree.
-
-    TODO: Take a revision or remote path and list that tree instead.
     """
+    # TODO: Take a revision or remote path and list that tree instead.
     hidden = True
     def run(self, revision=None, verbose=False):
         b = Branch.open_containing('.')
@@ -824,8 +820,9 @@ class cmd_ignore(Command):
     To remove patterns from the ignore list, edit the .bzrignore file.
 
     If the pattern contains a slash, it is compared to the whole path
-    from the branch root.  Otherwise, it is comapred to only the last
-    component of the path.
+    from the branch root.  Otherwise, it is compared to only the last
+    component of the path.  To match a file only in the root directory,
+    prepend './'.
 
     Ignore patterns are case-insensitive on case-insensitive systems.
 
@@ -835,6 +832,7 @@ class cmd_ignore(Command):
         bzr ignore ./Makefile
         bzr ignore '*.class'
     """
+    # TODO: Complain if the filename is absolute
     takes_args = ['name_pattern']
     
     def run(self, name_pattern):
@@ -987,19 +985,18 @@ class cmd_commit(Command):
     A selected-file commit may fail in some cases where the committed
     tree would be invalid, such as trying to commit a file in a
     newly-added directory that is not itself committed.
-
-    TODO: Run hooks on tree to-be-committed, and after commit.
-
-    TODO: Strict commit that fails if there are unknown or deleted files.
     """
+    # TODO: Run hooks on tree to-be-committed, and after commit.
+
+    # TODO: Strict commit that fails if there are unknown or deleted files.
+    # TODO: Give better message for -s, --summary, used by tla people
+
+    # XXX: verbose currently does nothing
+
     takes_args = ['selected*']
     takes_options = ['message', 'file', 'verbose', 'unchanged']
     aliases = ['ci', 'checkin']
 
-    # TODO: Give better message for -s, --summary, used by tla people
-
-    # XXX: verbose currently does nothing
-    
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False):
         from bzrlib.errors import PointlessCommit, ConflictsInTree
@@ -1178,10 +1175,9 @@ class cmd_rocks(Command):
 
 class cmd_find_merge_base(Command):
     """Find and print a base revision for merging two branches.
-
-    TODO: Options to specify revisions on either side, as if
-          merging only part of the history.
     """
+    # TODO: Options to specify revisions on either side, as if
+    #       merging only part of the history.
     takes_args = ['branch', 'other']
     hidden = True
     
@@ -1426,3 +1422,55 @@ class cmd_plugins(Command):
                 print '\t', d.split('\n')[0]
 
 
+class cmd_testament(Command):
+    """Show testament (signing-form) of a revision."""
+    takes_options = ['revision', 'long']
+    takes_args = ['branch?']
+    def run(self, branch='.', revision=None, long=False):
+        from bzrlib.testament import Testament
+        b = Branch.open_containing(branch)
+        b.lock_read()
+        try:
+            if revision is None:
+                rev_id = b.last_revision()
+            else:
+                rev_id = revision[0].in_history(b).rev_id
+            t = Testament.from_revision(b, rev_id)
+            if long:
+                sys.stdout.writelines(t.as_text_lines())
+            else:
+                sys.stdout.write(t.as_short_text())
+        finally:
+            b.unlock()
+
+
+class cmd_annotate(Command):
+    """Show the origin of each line in a file.
+
+    This prints out the given file with an annotation on the 
+    left side indicating which revision, author and date introduced the 
+    change.
+    """
+    # TODO: annotate directories; showing when each file was last changed
+    # TODO: annotate a previous version of a file
+    aliases = ['blame', 'praise']
+    takes_args = ['filename']
+
+    def run(self, filename):
+        from bzrlib.annotate import annotate_file
+        b = Branch.open_containing(filename)
+        b.lock_read()
+        try:
+            rp = b.relpath(filename)
+            tree = b.revision_tree(b.last_revision())
+            file_id = tree.inventory.path2id(rp)
+            file_version = tree.inventory[file_id].revision
+            annotate_file(b, file_version, file_id, sys.stdout)
+        finally:
+            b.unlock()
+
+# these get imported and then picked up by the scan for cmd_*
+# TODO: Some more consistent way to split command definitions across files;
+# we do need to load at least some information about them to know of 
+# aliases.
+from bzrlib.conflicts import cmd_resolve, cmd_conflicts

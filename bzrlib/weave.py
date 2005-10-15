@@ -50,25 +50,21 @@
 # have slight specializations for different ways its used: annotate,
 # basis for add, get, etc.
 
-# TODO: Perhaps the API should work only in names to hide the integer
-# indexes from the user?
+# TODO: Probably the API should work only in names to hide the integer
+# indexes from the user.
 
 # TODO: Is there any potential performance win by having an add()
 # variant that is passed a pre-cooked version of the single basis
 # version?
 
-# TODO: Have a way to go back and insert a revision V1 that is a parent 
-# of an already-stored revision V2.  This means some lines previously 
-# counted as new in V2 will be discovered to have actually come from V1.  
-# It is probably necessary to insert V1, then compute a whole new diff 
-# from the mashed ancestors to V2.  This must be repeated for every 
-# direct child of V1.  The deltas from V2 to its descendents won't change,
-# although their location within the weave may change.  It may be possible
-# to just adjust the location of those instructions rather than 
-# re-weaving the whole thing.  This is expected to be a fairly rare
-# operation, only used when inserting data that was previously a ghost.
+# TODO: Reweave can possibly be made faster by remembering diffs
+# where the basis and destination are unchanged.
 
-
+# FIXME: Sometimes we will be given a parents list for a revision
+# that includes some redundant parents (i.e. already a parent of 
+# something in the list.)  We should eliminate them.  This can 
+# be done fairly efficiently because the sequence numbers constrain
+# the possible relationships.
 
 
 import sha

@@ -14,9 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: Some kind of command-line display of revision properties: 
+# perhaps show them in log -v and allow them as options to the commit command.
 
 import bzrlib.errors
 from bzrlib.graph import node_distances, select_farthest, all_descendants
+from bzrlib.osutils import contains_whitespace
 
 NULL_REVISION="null:"
 
@@ -31,10 +34,17 @@ class Revision(object):
 
     parent_ids
         List of parent revision_ids
+
+    properties
+        Dictionary of revision properties.  These are attached to the
+        revision as extra metadata.  The name must be a single 
+        word; the value can be an arbitrary string.
     """
     
-    def __init__(self, revision_id, **args):
+    def __init__(self, revision_id, properties=None, **args):
         self.revision_id = revision_id
+        self.properties = properties or {}
+        self._check_properties()
         self.__dict__.update(args)
         self.parent_ids = []
         self.parent_sha1s = []
@@ -52,23 +62,21 @@ class Revision(object):
                 and self.timestamp == other.timestamp
                 and self.message == other.message
                 and self.timezone == other.timezone
-                and self.committer == other.committer)
+                and self.committer == other.committer
+                and self.properties == other.properties)
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
-        
-REVISION_ID_RE = None
-
-def validate_revision_id(rid):
-    """Check rid is syntactically valid for a revision id."""
-    global REVISION_ID_RE
-    if not REVISION_ID_RE:
-        import re
-        REVISION_ID_RE = re.compile('[\w:.-]+@[\w%.-]+--?[\w]+--?[0-9a-f]+\Z')
-
-    if not REVISION_ID_RE.match(rid):
-        raise ValueError("malformed revision-id %r" % rid)
+    def _check_properties(self):
+        """Verify that all revision properties are OK.
+        """
+        for name, value in self.properties.iteritems():
+            if not isinstance(name, basestring) or contains_whitespace(name):
+                raise ValueError("invalid property name %r" % name)
+            if not isinstance(value, basestring):
+                raise ValueError("invalid property value %r for %r" % 
+                                 (name, value))
 
 
 def is_ancestor(revision_id, candidate_id, branch):

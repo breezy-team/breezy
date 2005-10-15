@@ -1,5 +1,10 @@
-DEVELOPMENT HEAD
+UNRELEASED CHANGES
 
+  INTERNALS:
+
+    * New 'manifest' command and concept for making gpg-signatures 
+      of revisions that are not tied to a particular internal
+      representation.
 
   IMPROVEMENTS:
 
@@ -19,7 +24,6 @@ DEVELOPMENT HEAD
     * Config options have moved from bzrlib.osutils to bzrlib.config.
       (Robert Collins)
 
-
   TESTING:
 
     * The --pattern option has been removed, now test specifiers on the
@@ -30,7 +34,22 @@ DEVELOPMENT HEAD
       related questions.
 
 
-bzr 0.1 2005-10-06
+bzr 0.1.1 2005-10-12
+
+  BUG FIXES:
+
+    * Fix problem in pulling over http from machines that do not 
+      allow directories to be listed.
+
+    * Avoid harmless warning about invalid hash cache after 
+      upgrading branch format.
+
+  PERFORMANCE: 
+  
+    * Avoid some unnecessary http operations in branch and pull.
+
+
+bzr 0.1 2005-10-11
 
   NOTES:
 
