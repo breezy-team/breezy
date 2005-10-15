@@ -179,15 +179,23 @@ class MetaInfoHeader(object):
         It fills out the internal self.revision_list with Revision
         entries which should be in the changeset.
         """
-        source = MultipleRevisionSources(self.target_branch, self.base_branch)
-        if self.starting_rev_id is None:
-            self.starting_rev_id = common_ancestor(self.target_rev_id, 
-                self.base_rev_id, source)
+        # Performance, without locking here, a new lock is taken and
+        # broken for every revision (6k+ total locks for the bzr.dev tree)
+        self.target_branch.lock_read()
+        self.base_branch.lock_read()
+        try:
+            source = MultipleRevisionSources(self.target_branch, self.base_branch)
+            if self.starting_rev_id is None:
+                self.starting_rev_id = common_ancestor(self.target_rev_id, 
+                    self.base_rev_id, source)
 
-        rev_id_list = get_intervening_revisions(self.starting_rev_id,
-            self.target_rev_id, source, self.target_branch.revision_history())
+            rev_id_list = get_intervening_revisions(self.starting_rev_id,
+                self.target_rev_id, source, self.target_branch.revision_history())
 
-        self.revision_list = [source.get_revision(rid) for rid in rev_id_list]
+            self.revision_list = [source.get_revision(rid) for rid in rev_id_list]
+        finally:
+            self.base_branch.unlock()
+            self.target_branch.unlock()
 
     def _write(self, txt, key=None, encode=True, indent=1):
         from common import encode as _encode
