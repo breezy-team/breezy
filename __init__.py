@@ -116,7 +116,10 @@ class cmd_changeset(Command):
             b_target_path, target_revno = parse_spec(target)
             target_branch = Branch.open_containing(b_target_path)
             if target_revno is None or target_revno == -1:
-                target_rev_id = target_branch.last_patch()
+                if hasattr(target_branch, 'last_patch'):
+                    target_rev_id = target_branch.last_patch()
+                else:
+                    target_rev_id = target_branch.last_revision()
             else:
                 target_rev_id = target_branch.get_rev_id(target_revno)
 
@@ -131,7 +134,10 @@ class cmd_changeset(Command):
                 base_path, base_revno = parse_spec(base)
                 base_branch = Branch.open_containing(base_path)
                 if base_revno is None or base_revno == -1:
-                    base_rev_id = base_branch.last_patch()
+                    if hasattr(target_branch, 'last_patch'):
+                        base_rev_id = target_branch.last_patch()
+                    else:
+                        base_rev_id = target_branch.last_revision()
                 else:
                     base_rev_id = base_branch.get_rev_id(base_revno)
 

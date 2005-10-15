@@ -4,15 +4,15 @@ Just some work for generating a changeset.
 """
 
 import bzrlib
+import os
 
 from bzrlib.inventory import ROOT_ID
-from bzrlib.errors import BzrCommandError
+from bzrlib.errors import BzrCommandError, NotAncestor
 from bzrlib.trace import warning, mutter
-
-try:
-    set
-except NameError:
-    from sets import Set as set
+from collections import deque
+from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
+                             get_intervening_revisions)
+from bzrlib.diff import internal_diff
 
 def _fake_working_revision(branch):
     """Fake a Revision object for the working tree.
@@ -33,89 +33,32 @@ def _fake_working_revision(branch):
             precursor=precursor,
             precursor_sha1=precursor_sha1)
 
-def _get_revision_set(branch, target_rev_id=None):
-    """Get the set of all revisions that are in the ancestry
-    of this branch.
-    """
-    if target_rev_id is None:
-        if hasattr(branch, 'last_revision'):
-            target_rev_id = branch.last_revision()
-        else:
-            target_rev_id = branch.last_patch()
-    if hasattr(branch, 'get_ancestry'):
-        return branch.get_ancestry(target_rev_id)
-
-    this_revs = set()
-    to_search = [target_rev_id]
-
-    while len(to_search) > 0:
-        rev_id = to_search.pop(0)
-        if rev_id in this_revs:
-            continue
-        this_revs.add(rev_id)
-        if rev_id in branch.revision_store:
-            rev = branch.get_revision(rev_id)
-        else:
-            warning('Could not find revision for rev: {%s}'
-                    % rev_id)
-            continue
-        for parent in rev.parents:
-            if parent.revision_id not in this_revs:
-                to_search.append(parent.revision_id)
-    return this_revs
-
-def _find_best_base(target_branch, target_rev_id, base_branch, base_rev_id):
-    """Find the best base revision based on ancestry.
-    All revisions should already be pulled into the local tree.
-    """
-    if base_rev_id is None:
-        # We have a complete changeset, None has to be the best base
-        return None
-    this_revs = _get_revision_set(target_branch, target_rev_id)
-
-    # This does a breadth first search through history, looking for
-    # something which matches
-    checked = set()
-    to_check = [base_rev_id]
-    while len(to_check) > 0:
-        # Removing the '0' would make this depth-first search
-        rev_id = to_check.pop(0)
-        if rev_id in checked:
-            continue
-        checked.add(rev_id)
-        if rev_id in this_revs:
-            return rev_id
-
-        if rev_id in target_branch.revision_store:
-            rev = target_branch.get_revision(rev_id)
-        elif (rev_id in base_branch.revision_store):
-            rev = base_branch.get_revision(rev_id)
-        else:
-            # Should we just continue here?
-            warning('Could not find revision for rev: {%s}'
-                    % rev_id)
-            continue
-
-
-        for parent in rev.parents:
-            if parent.revision_id not in checked:
-                to_check.append(parent.revision_id)
-    return None
-
 def _create_ancestry_to_rev(branch, ancestor_rev_id, this_rev_id):
-    """Return a listing of revisions, which traces back from this_rev_id
-    all the way back to the ancestor_rev_id.
+    """Return a listing of revisions, tracing from this_rev_id to ancestor_rev_id.
+
+    This attempts to use branch.revision_history() as much as possible. 
+    Because for changesets, that is generally what you want to show.
     """
     # This is an optimization, when both target and base
     # exist in the revision history, we should already have
     # a valid listing of revision ancestry.
     rh = branch.revision_history()
-    if ancestor_rev_id is None:
-        rh.reverse()
-        rh.append(None)
-        return rh
+    rh_set = set(rh)
 
-    if ancestor_rev_id in rh and this_rev_id in rh:
+    ancestry = set(branch.get_ancestry(this_rev_id))
+    if ancestor_rev_id not in ancestry:
+        raise NotAncestor(this_rev_id, ancestor_rev_id)
+    # First, if ancestor_rev_id is None, then
+    # we just need to trace back to the revision history
+    # and then return the rest
+    if ancestor_rev_id is None:
+        if this_rev_id in rh_set:
+            rh = rh[:rh.index(this_rev_id)+1]
+            rh.reverse()
+            rh.append(None)
+            return rh
+
+    if ancestor_rev_id in rh_set and this_rev_id in rh_set:
         ancestor_idx = rh.index(ancestor_rev_id)
         this_rev_idx = rh.index(this_rev_id)
         if ancestor_idx > this_rev_idx:
@@ -151,10 +94,10 @@ def _create_ancestry_to_rev(branch, ancestor_rev_id, this_rev_id):
     # first search.
     checked_rev_ids = set()
 
-    cur_trails = [[this_rev_id]]
+    cur_trails = deque([[this_rev_id]])
     
     while len(cur_trails) > 0:
-        cur_trail = cur_trails.pop(0)
+        cur_trail = cur_trails.popleft()
         cur_rev_id = cur_trail[-1]
         if cur_rev_id in checked_rev_ids:
             continue
@@ -171,9 +114,9 @@ def _create_ancestry_to_rev(branch, ancestor_rev_id, this_rev_id):
                     ' trace ancestry.' % cur_rev_id)
             continue
 
-        for parent in rev.parents:
-            if parent.revision_id not in checked_rev_ids:
-                cur_trails.append(cur_trail + [parent.revision_id])
+        for p_id in rev.parent_ids:
+            if p_id not in checked_rev_ids:
+                cur_trails.append(cur_trail + [p_id])
 
     raise BzrCommandError('Revision id {%s} not an ancestor of {%s}'
             % (ancestor_rev_id, this_rev_id))
@@ -236,23 +179,15 @@ class MetaInfoHeader(object):
         It fills out the internal self.revision_list with Revision
         entries which should be in the changeset.
         """
+        source = MultipleRevisionSources(self.target_branch, self.base_branch)
         if self.starting_rev_id is None:
-            self.starting_rev_id = _find_best_base(self.target_branch,
-                    self.target_rev_id,
-                    self.base_branch, self.base_rev_id)
+            self.starting_rev_id = common_ancestor(self.target_rev_id, 
+                self.base_rev_id, source)
 
-        rev_id_list = _create_ancestry_to_rev(self.target_branch,
-                self.starting_rev_id, self.target_rev_id)
+        rev_id_list = get_intervening_revisions(self.starting_rev_id,
+            self.target_rev_id, source, self.target_branch.revision_history())
 
-        assert rev_id_list[-1] == self.starting_rev_id
-        # The last entry should be starting_rev_id which should
-        # exist in both base and target, so we don't need to
-        # include it in the changeset
-        rev_id_list.pop()
-        rev_id_list.reverse()
-
-        self.revision_list = [self.target_branch.get_revision(rid) 
-                                for rid in rev_id_list]
+        self.revision_list = [source.get_revision(rid) for rid in rev_id_list]
 
     def _write(self, txt, key=None, encode=True, indent=1):
         from common import encode as _encode
@@ -318,10 +253,11 @@ class MetaInfoHeader(object):
         write = self._write
 
         # What should we print out for an Empty base revision?
-        if len(self.revision_list[0].parents) == 0:
+        if len(self.revision_list[0].parent_ids) == 0:
             assumed_base = None
         else:
-            assumed_base = self.revision_list[0].parents[0].revision_id
+            assumed_base = self.revision_list[0].parent_ids[0]
+
         if (self.base_revision is not None 
                 and self.base_revision.revision_id != assumed_base):
             base = self.base_revision.revision_id
@@ -346,19 +282,17 @@ class MetaInfoHeader(object):
             date = format_highres_date(rev.timestamp, rev.timezone)
             if date != self.date:
                 write(date, key='date', indent=4)
-            if rev.inventory_id != rev_id:
-                write(rev.inventory_id, key='inventory id', indent=4)
             write(rev.inventory_sha1, key='inventory sha1', indent=4)
-            if len(rev.parents) > 0:
+            if len(rev.parent_ids) > 0:
                 write(txt='', key='parents', indent=4)
-                for parent in rev.parents:
-                    p_id = parent.revision_id
-                    p_sha1 = parent.revision_sha1
+                for p_id in rev.parent_ids:
+                    p_sha1 = self.target_branch.get_revision_sha1(p_id)
                     if p_sha1 is None:
                         warning('Rev id {%s} parent {%s} missing sha hash.'
                                 % (rev_id, p_id))
-                        p_sha1 = self.target_branch.get_revision_sha1(p_id)
-                    write(p_id + '\t' + p_sha1, indent=7)
+                        write(p_id + '\t' + p_sha1, indent=7)
+                    else:
+                        write(p_id, indent=7)
             if rev.message and rev.message != self.message:
                 write('', key='message', indent=4)
                 for line in rev.message.split('\n'):
@@ -366,88 +300,87 @@ class MetaInfoHeader(object):
 
     def _write_diffs(self):
         """Write out the specific diffs"""
-        from bzrlib.diff import internal_diff
-        from common import guess_text_id
-        from os.path import join as pjoin
+        def pjoin(*args):
+            # Only forward slashes in changesets
+            return os.path.join(*args).replace('\\', '/')
+
+        def _maybe_diff(old_label, old_path, old_tree, file_id,
+                        new_label, new_path, new_tree, text_modified,
+                        kind, to_file, diff_file):
+            if text_modified:
+                new_entry = new_tree.inventory[file_id]
+                old_tree.inventory[file_id].diff(diff_file,
+                                                 pjoin(old_label, old_path), old_tree,
+                                                 pjoin(new_label, new_path), new_entry, 
+                                                 new_tree, to_file)
         DEVNULL = '/dev/null'
 
         diff_file = internal_diff
         # Get the target tree so that we can check for
         # Appropriate text ids.
         rev_id = self.target_rev_id
-        tree = self.target_tree
+
+        new_label = self.target_label
+        new_tree = self.target_tree
+
+        old_tree = self.base_tree
+        old_label = self.base_label
 
         write = self._write
+        to_file = self.to_file
 
 
-        def get_text_id_str(file_id, kind, modified=True):
-            """This returns an empty string if guess_text_id == real_text_id.
-            Otherwise it returns a string suitable for printing, indicating
-            the file's id.
-            """
-            guess_id = guess_text_id(tree, file_id, rev_id,
-                    kind, modified=modified)
-            real_id = tree.inventory[file_id].text_id
-            if guess_id != real_id:
-                return ' // text-id:' + real_id
+        def get_rev_id_str(file_id, kind):
+            last_changed_rev_id = new_tree.inventory[file_id].revision
+
+            if rev_id != last_changed_rev_id:
+                return ' // last-changed:' + last_changed_rev_id
             else:
                 return ''
 
-
         for path, file_id, kind in self.delta.removed:
-            # We don't care about text ids for removed files
             write('=== removed %s %s' % (kind, path), indent=0)
-            if kind == 'file' and self.full_remove:
-                diff_file(pjoin(self.base_label, path),
-                          self.base_tree.get_file(file_id).readlines(),
-                          DEVNULL, 
-                          [],
-                          self.to_file)
-    
+            if self.full_remove:
+                old_tree.inventory[file_id].diff(diff_file, pjoin(old_label, path), old_tree,
+                                                 DEVNULL, None, None, to_file)
         for path, file_id, kind in self.delta.added:
             write('=== added %s %s // file-id:%s%s' % (kind,
-                    path, file_id, get_text_id_str(file_id, kind)),
+                    path, file_id, get_rev_id_str(file_id, kind)),
                     indent=0)
-            if kind == 'file':
-                diff_file(DEVNULL,
-                          [],
-                          pjoin(self.target_label, path),
-                          self.target_tree.get_file(file_id).readlines(),
-                          self.to_file)
-    
-        for old_path, new_path, file_id, kind, text_modified in self.delta.renamed:
+            new_tree.inventory[file_id].diff(diff_file, pjoin(new_label, path), new_tree,
+                                             DEVNULL, None, None, to_file, 
+                                             reverse=True)
+        for (old_path, new_path, file_id, kind,
+             text_modified, meta_modified) in self.delta.renamed:
+            # TODO: Handle meta_modified
+            #prop_str = get_prop_change(meta_modified)
             write('=== renamed %s %s // %s%s' % (kind,
                     old_path, new_path,
-                    get_text_id_str(file_id, kind, modified=text_modified)),
+                    get_rev_id_str(file_id, kind)),
                     indent=0)
-            if self.full_rename and kind == 'file':
-                diff_file(pjoin(self.base_label, old_path),
-                          self.base_tree.get_file(file_id).readlines(),
-                          DEVNULL, 
-                          [],
-                          self.to_file)
-                diff_file(DEVNULL,
-                          [],
-                          pjoin(self.target_label, new_path),
-                          self.target_tree.get_file(file_id).readlines(),
-                          self.to_file)
-            elif text_modified:
-                    diff_file(pjoin(self.base_label, old_path),
-                              self.base_tree.get_file(file_id).readlines(),
-                              pjoin(self.target_label, new_path),
-                              self.target_tree.get_file(file_id).readlines(),
-                              self.to_file)
-    
-        for path, file_id, kind in self.delta.modified:
+            if self.full_rename:
+                # Looks like a delete + add
+                old_tree.inventory[file_id].diff(diff_file, pjoin(old_label, path), old_tree,
+                                                 DEVNULL, None, None, to_file)
+                new_tree.inventory[file_id].diff(diff_file, pjoin(new_label, path), new_tree,
+                                                 DEVNULL, None, None, to_file, 
+                                                 reverse=True)
+            else:
+                _maybe_diff(old_label, old_path, old_tree, file_id,
+                            new_label, new_path, new_tree,
+                            text_modified, kind, to_file, diff_file)
+
+        for (path, file_id, kind,
+             text_modified, meta_modified) in self.delta.modified:
+            # TODO: Handle meta_modified
+            #prop_str = get_prop_change(meta_modified)
             write('=== modified %s %s%s' % (kind,
-                    path, get_text_id_str(file_id, kind)),
+                    path, get_rev_id_str(file_id, kind)),
                     indent=0)
-            if kind == 'file':
-                diff_file(pjoin(self.base_label, path),
-                          self.base_tree.get_file(file_id).readlines(),
-                          pjoin(self.target_label, path),
-                          self.target_tree.get_file(file_id).readlines(),
-                          self.to_file)
+            _maybe_diff(old_label, path, old_tree, file_id,
+                        new_label, path, new_tree,
+                        text_modified, kind, to_file, diff_file)
+ 
 
 def show_changeset(base_branch, base_rev_id,
         target_branch, target_rev_id,

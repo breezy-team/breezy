@@ -74,37 +74,6 @@ class ChangesetTree(object):
         """
         self.base_tree = self.branch.revision_tree(self.changeset_info.base)
         
-def guess_text_id(tree, file_id, rev_id, kind, modified=True):
-    """This returns the estimated text_id for a given file.
-    The idea is that in general the text_id should be the id last
-    revision which modified the file.
-
-    :param tree: This should be the base tree for a changeset, since that
-                 is all the target has for guessing.
-    :param file_id: The file id to guess the text_id for.
-    :param rev_id: The target revision id
-    :param modified: Was the file modified between base and target?
-    """
-    from bzrlib.errors import BzrError
-    if kind == 'directory':
-        return None
-    if modified:
-        # If the file was modified in an intermediate stage
-        # (not in the final target), this won't be correct
-        # but it is our best guess.
-        # TODO: In the current code, text-ids are randomly generated
-        # using the filename as the base. In the future they will
-        # probably follow this format.
-        return file_id + '-' + rev_id
-    # The file was not actually modified in this changeset
-    # so the text_id should be equal to it's previous value
-    if not file_id in tree.inventory:
-        raise BzrError('Unable to generate text_id for file_id {%s}'
-            ', file does not exist in tree.' % file_id)
-    # This is the last known text_id for this file
-    # so assume that it is being used.
-    return tree.inventory[file_id].text_id
-
 def encode(s):
     """Take a unicode string, and make sure to escape it for
     use in a changeset.
