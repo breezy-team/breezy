@@ -15,15 +15,54 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Configuration that affects the behaviour of Bazaar."""
+"""Configuration that affects the behaviour of Bazaar.
+
+Currently this configuration resides in ~/.bazaar/bazaar.conf
+and ~/.bazaar/branches.conf, which is written to by bzr.
+
+In bazaar.config the following options may be set:
+[DEFAULT]
+editor=name-of-program
+email=Your Name <your@email.address>
+check_signatures=require|ignore|check-available(default)
+create_signatures=always|never|when-required(default)
+
+in branches.conf, you specify the url of a branch and options for it.
+Wildcards may be used - * and ? as normal in shell completion. Options
+set in both bazaar.conf and branches.conf are overriden by the branches.conf
+setting.
+[/home/robertc/source]
+recurse=False|True(default)
+email= as above
+check_signatures= as abive 
+create_signatures= as above.
+
+explanation of options
+----------------------
+editor - this option sets the pop up editor to use during commits.
+email - this option sets the user id bzr will use when committing.
+check_signatures - this option controls whether bzr will require good gpg
+                   signatures, ignore them, or check them if they are 
+                   present.
+create_signatures - this option controls whether bzr will always create 
+                    gpg signatures, never create them, or create them if the
+                    branch is configured to require them.
+                    NB: This option is planned, but not implemented yet.
+"""
 
 from ConfigParser import ConfigParser
 import os
+from fnmatch import fnmatch
 import errno
 import re
 
 import bzrlib
 import bzrlib.errors as errors
+
+
+CHECK_IF_POSSIBLE=0
+CHECK_ALWAYS=1
+CHECK_NEVER=2
 
 
 class Config(object):
@@ -32,6 +71,9 @@ class Config(object):
     def get_editor(self):
         """Get the users pop up editor."""
         raise NotImplementedError
+
+    def _get_signature_checking(self):
+        """Template method to override signature checking policy."""
 
     def __init__(self):
         super(Config, self).__init__()
@@ -76,69 +118,147 @@ class Config(object):
         else:
             return email
 
+    def signature_checking(self):
+        """What is the current policy for signature checking?."""
+        policy = self._get_signature_checking()
+        if policy is not None:
+            return policy
+        return CHECK_IF_POSSIBLE
 
-class GlobalConfig(Config):
-    """The configuration that should be used for a specific location."""
+    def signature_needed(self):
+        """Is a signature needed when committing ?."""
+        policy = self._get_signature_checking()
+        if policy == CHECK_ALWAYS:
+            return True
+        return False
 
-    def _get_parser(self, filename=None, file=None):
+
+class IniBasedConfig(Config):
+    """A configuration policy that draws from ini files."""
+
+    def _get_parser(self, file=None):
+        if self._parser is not None:
+            return self._parser
         parser = ConfigParser()
         if file is not None:
             parser.readfp(file)
         else:
-            parser.read([filename])
+            parser.read([self._get_filename()])
+        self._parser = parser
         return parser
 
-    def _get_config_parser(self, file=None):
-        if self._parser is None:
-            self._parser =  self._get_parser(config_filename(), file)
-        return self._parser
-    
-    def _get_branches_config_parser(self, file=None):
-        if self._branches_parser is None:
-            self._branches_parser = self._get_parser(
-                branches_config_filename(), file)
-        return self._branches_parser
+    def _get_section(self):
+        """Override this to define the section used by the config."""
+        return "DEFAULT"
 
-    def get_editor(self):
-        if self._get_config_parser().has_option('DEFAULT', 'editor'):
-            return self._get_config_parser().get('DEFAULT', 'editor')
+    def _get_signature_checking(self):
+        """See Config._get_signature_checking."""
+        section = self._get_section()
+        if section is None:
+            return None
+        if self._get_parser().has_option(section, 'check_signatures'):
+            return self._string_to_signature_policy(
+                self._get_parser().get(section, 'check_signatures'))
 
-    def _get_user_id(self, branch=None):
-        """Return the full user id from the global config file.
-    
-        e.g. "John Hacker <jhacker@foo.org>"
-        from 
-        [DEFAULT]
-        email=John Hacker <jhacker@foo.org>
-        """
-        if self._get_config_parser().has_option('DEFAULT', 'email'):
-            email = self._get_config_parser().get('DEFAULT', 'email')
-            if email is not None:
-                return email
-    
-    def __init__(self):
-        super(GlobalConfig, self).__init__()
-        self._branches_parser = None
+    def _get_user_id(self):
+        """Get the user id from the 'email' key in the current section."""
+        section = self._get_section()
+        if section is not None:
+            if self._get_parser().has_option(section, 'email'):
+                return self._get_parser().get(section, 'email')
+
+    def __init__(self, get_filename):
+        super(IniBasedConfig, self).__init__()
+        self._get_filename = get_filename
         self._parser = None
 
+    def _string_to_signature_policy(self, signature_string):
+        """Convert a string to a signing policy."""
+        if signature_string.lower() == 'check-available':
+            return CHECK_IF_POSSIBLE
+        if signature_string.lower() == 'ignore':
+            return CHECK_NEVER
+        if signature_string.lower() == 'require':
+            return CHECK_ALWAYS
+        raise errors.BzrError("Invalid signatures policy '%s'"
+                              % signature_string)
 
-class LocationConfig(Config):
+
+class GlobalConfig(IniBasedConfig):
+    """The configuration that should be used for a specific location."""
+
+    def get_editor(self):
+        if self._get_parser().has_option(self._get_section(), 'editor'):
+            return self._get_parser().get(self._get_section(), 'editor')
+
+    def __init__(self):
+        super(GlobalConfig, self).__init__(config_filename)
+
+
+class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""
 
     def __init__(self, location):
+        super(LocationConfig, self).__init__(branches_config_filename)
         self._global_config = None
         self.location = location
-
-    def _get_branches_config_parser(self, file=None):
-        return self._get_global_config()._get_branches_config_parser(file)
 
     def _get_global_config(self):
         if self._global_config is None:
             self._global_config = GlobalConfig()
         return self._global_config
 
+    def _get_section(self):
+        """Get the section we should look in for config items.
+
+        Returns None if none exists. 
+        TODO: perhaps return a NullSection that thunks through to the 
+              global config.
+        """
+        sections = self._get_parser().sections()
+        location_names = self.location.split('/')
+        if self.location.endswith('/'):
+            del location_names[-1]
+        matches=[]
+        for section in sections:
+            section_names = section.split('/')
+            if section.endswith('/'):
+                del section_names[-1]
+            names = zip(location_names, section_names)
+            matched = True
+            for name in names:
+                if not fnmatch(name[0], name[1]):
+                    matched = False
+                    break
+            if not matched:
+                continue
+            # so, for the common prefix they matched.
+            # if section is longer, no match.
+            if len(section_names) > len(location_names):
+                continue
+            # if path is longer, and recurse is not true, no match
+            if len(section_names) < len(location_names):
+                if (self._get_parser().has_option(section, 'recurse')
+                    and not self._get_parser().getboolean(section, 'recurse')):
+                    continue
+            matches.append((len(section_names), section))
+        if not len(matches):
+            return None
+        matches.sort(reverse=True)
+        return matches[0][1]
+
     def _get_user_id(self):
+        user_id = super(LocationConfig, self)._get_user_id()
+        if user_id is not None:
+            return user_id
         return self._get_global_config()._get_user_id()
+
+    def _get_signature_checking(self):
+        """See Config._get_signature_checking."""
+        check = super(LocationConfig, self)._get_signature_checking()
+        if check is not None:
+            return check
+        return self._get_global_config()._get_signature_checking()
 
 
 class BranchConfig(Config):
@@ -164,6 +284,10 @@ class BranchConfig(Config):
             pass
         
         return self._get_location_config()._get_user_id()
+
+    def _get_signature_checking(self):
+        """See Config._get_signature_checking."""
+        return self._get_location_config()._get_signature_checking()
 
     def __init__(self, branch):
         super(BranchConfig, self).__init__()

@@ -6,6 +6,11 @@ UNRELEASED CHANGES
       of revisions that are not tied to a particular internal
       representation.
 
+    * Configuration is now done via the config.Config interface:
+      Depending on whether you have a Branch, a Location or no information
+      available, construct a *Config, and use its signature_checking,
+      username and user_email methods.
+
   IMPROVEMENTS:
 
     * The config directory is now ~/.bazaar, and there is a single file 
