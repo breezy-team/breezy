@@ -47,6 +47,7 @@ check_signatures - this option controls whether bzr will require good gpg
 create_signatures - this option controls whether bzr will always create 
                     gpg signatures, never create them, or create them if the
                     branch is configured to require them.
+                    NB: This option is planned, but not implemented yet.
 """
 
 from ConfigParser import ConfigParser
@@ -124,6 +125,13 @@ class Config(object):
             return policy
         return CHECK_IF_POSSIBLE
 
+    def signature_needed(self):
+        """Is a signature needed when committing ?."""
+        policy = self._get_signature_checking()
+        if policy == CHECK_ALWAYS:
+            return True
+        return False
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -148,9 +156,9 @@ class IniBasedConfig(Config):
         section = self._get_section()
         if section is None:
             return None
-        if self._get_parser().has_option(section, 'signatures'):
+        if self._get_parser().has_option(section, 'check_signatures'):
             return self._string_to_signature_policy(
-                self._get_parser().get(section, 'signatures'))
+                self._get_parser().get(section, 'check_signatures'))
 
     def _get_user_id(self):
         """Get the user id from the 'email' key in the current section."""

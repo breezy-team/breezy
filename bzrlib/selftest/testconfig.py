@@ -35,15 +35,15 @@ sample_config_text = ("[DEFAULT]\n"
 
 
 sample_always_signatures = ("[DEFAULT]\n"
-                            "signatures=require\n")
+                            "check_signatures=require\n")
 
 
 sample_ignore_signatures = ("[DEFAULT]\n"
-                            "signatures=ignore\n")
+                            "check_signatures=ignore\n")
 
 
 sample_maybe_signatures = ("[DEFAULT]\n"
-                            "signatures=check-available\n")
+                            "check_signatures=check-available\n")
 
 
 sample_branches_text = ("[http://www.example.com]\n"
@@ -53,16 +53,16 @@ sample_branches_text = ("[http://www.example.com]\n"
                         "# different project, forces global lookup\n"
                         "recurse=false\n"
                         "[/b/]\n"
-                        "signatures=require\n"
+                        "check_signatures=require\n"
                         "# test trailing / matching with no children\n"
                         "[/a/]\n"
-                        "signatures=check-available\n"
+                        "check_signatures=check-available\n"
                         "# test trailing / matching\n"
                         "[/a/*]\n"
                         "#subdirs will match but not the parent\n"
                         "recurse=False\n"
                         "[/a/c]\n"
-                        "signatures=ignore\n"
+                        "check_signatures=ignore\n"
                         "#testing explicit beats globs\n")
 
 
@@ -269,6 +269,7 @@ class TestGlobalConfigItems(TestConfigItems):
         my_config._parser = my_config._get_parser(file=config_file)
         self.assertEqual(config.CHECK_ALWAYS,
                          my_config.signature_checking())
+        self.assertEqual(True, my_config.signature_needed())
 
     def test_signatures_if_possible(self):
         config_file = StringIO(sample_maybe_signatures)
@@ -276,6 +277,7 @@ class TestGlobalConfigItems(TestConfigItems):
         my_config._parser = my_config._get_parser(file=config_file)
         self.assertEqual(config.CHECK_IF_POSSIBLE,
                          my_config.signature_checking())
+        self.assertEqual(False, my_config.signature_needed())
 
     def test_signatures_ignore(self):
         config_file = StringIO(sample_ignore_signatures)
@@ -283,6 +285,7 @@ class TestGlobalConfigItems(TestConfigItems):
         my_config._parser = my_config._get_parser(file=config_file)
         self.assertEqual(config.CHECK_NEVER,
                          my_config.signature_checking())
+        self.assertEqual(False, my_config.signature_needed())
 
 
 class TestLocationConfig(TestConfigItems):
