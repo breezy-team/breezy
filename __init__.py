@@ -106,7 +106,10 @@ class cmd_changeset(Command):
                 base_revno, base_rev_id = base_info.in_history(target_branch)
             else:
                 target_rev = target_branch.get_revision(target_rev_id)
-                base_rev_id = target_rev.parents[0].revision_id
+                if hasattr(target_rev, 'parent_ids'):
+                    base_rev_id = target_rev.parent_ids[0]
+                else:
+                    base_rev_id = target_rev.parents[0].revision_id
         else:
             if target is None:
                 target = './@'
@@ -120,7 +123,10 @@ class cmd_changeset(Command):
             if base is None:
                 base_branch = target_branch
                 target_rev = target_branch.get_revision(target_rev_id)
-                base_rev_id = target_rev.parents[0].revision_id
+                if hasattr(target_rev, 'parent_ids'):
+                    base_rev_id = target_rev.parent_ids[0]
+                else:
+                    base_rev_id = target_rev.parents[0].revision_id
             else:
                 base_path, base_revno = parse_spec(base)
                 base_branch = Branch.open_containing(base_path)

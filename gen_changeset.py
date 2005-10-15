@@ -37,11 +37,16 @@ def _get_revision_set(branch, target_rev_id=None):
     """Get the set of all revisions that are in the ancestry
     of this branch.
     """
-    this_revs = set()
     if target_rev_id is None:
-        to_search = [branch.last_patch()]
-    else:
-        to_search = [target_rev_id]
+        if hasattr(branch, 'last_revision'):
+            target_rev_id = branch.last_revision()
+        else:
+            target_rev_id = branch.last_patch()
+    if hasattr(branch, 'get_ancestry'):
+        return branch.get_ancestry(target_rev_id)
+
+    this_revs = set()
+    to_search = [target_rev_id]
 
     while len(to_search) > 0:
         rev_id = to_search.pop(0)
