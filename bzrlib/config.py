@@ -15,7 +15,39 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Configuration that affects the behaviour of Bazaar."""
+"""Configuration that affects the behaviour of Bazaar.
+
+Currently this configuration resides in ~/.bazaar/bazaar.conf
+and ~/.bazaar/branches.conf, which is written to by bzr.
+
+In bazaar.config the following options may be set:
+[DEFAULT]
+editor=name-of-program
+email=Your Name <your@email.address>
+check_signatures=require|ignore|check-available(default)
+create_signatures=always|never|when-required(default)
+
+in branches.conf, you specify the url of a branch and options for it.
+Wildcards may be used - * and ? as normal in shell completion. Options
+set in both bazaar.conf and branches.conf are overriden by the branches.conf
+setting.
+[/home/robertc/source]
+recurse=False|True(default)
+email= as above
+check_signatures= as abive 
+create_signatures= as above.
+
+explanation of options
+----------------------
+editor - this option sets the pop up editor to use during commits.
+email - this option sets the user id bzr will use when committing.
+check_signatures - this option controls whether bzr will require good gpg
+                   signatures, ignore them, or check them if they are 
+                   present.
+create_signatures - this option controls whether bzr will always create 
+                    gpg signatures, never create them, or create them if the
+                    branch is configured to require them.
+"""
 
 from ConfigParser import ConfigParser
 import os
