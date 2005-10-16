@@ -59,8 +59,8 @@ class LocalTransport(Transport):
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
         """
-        from bzrlib.branch import _relpath
-        return _relpath(self.base, abspath)
+        from bzrlib.osutils import relpath
+        return relpath(self.base, abspath)
 
     def has(self, relpath):
         return os.access(self.abspath(relpath), os.F_OK)

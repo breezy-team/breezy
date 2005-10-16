@@ -614,7 +614,8 @@ class OldTests(ExternalBase):
         runbzr("add sub1")
         runbzr("rename sub1 sub2")
         runbzr("move hello.txt sub2")
-        assert capture("relpath sub2/hello.txt") == os.path.join("sub2", "hello.txt\n")
+        self.assertEqual(capture("relpath sub2/hello.txt"),
+                         os.path.join("sub2", "hello.txt\n"))
 
         assert exists("sub2")
         assert exists("sub2/hello.txt")
