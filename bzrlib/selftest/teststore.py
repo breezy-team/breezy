@@ -84,13 +84,15 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
 
     def test_total_size(self):
         store = self.get_store('.')
+        store.register_suffix('dsc')
         store.add(StringIO('goodbye'), '123123')
-        store.add(StringIO('goodbye2'), '123123', '.dsc')
+        store.add(StringIO('goodbye2'), '123123', 'dsc')
         # these get gzipped - content should be stable
         self.assertEqual(store.total_size(), (2, 55))
         
     def test__relpath_suffixed(self):
         my_store = CompressedTextStore(MockTransport(), True)
+        my_store.register_suffix('dsc')
         self.assertEqual('45/foo.dsc.gz', my_store._relpath('foo', ['dsc']))
 
 
@@ -208,10 +210,15 @@ class TestTransportStore(TestCase):
         self.assertRaises(ValueError, my_store._relpath, '/foo')
         self.assertRaises(ValueError, my_store._relpath, 'foo/')
 
-    def test__relpath_invalid_suffixes(self):
+    def test_register_invalid_suffixes(self):
         my_store = store.TransportStore(MockTransport())
-        self.assertRaises(ValueError, my_store._relpath, 'foo', '/')
-        self.assertRaises(ValueError, my_store._relpath, 'foo', '.gz/bar')
+        self.assertRaises(ValueError, my_store.register_suffix, '/')
+        self.assertRaises(ValueError, my_store.register_suffix, '.gz/bar')
+
+    def test__relpath_unregister_suffixes(self):
+        my_store = store.TransportStore(MockTransport())
+        self.assertRaises(ValueError, my_store._relpath, 'foo', ['gz'])
+        self.assertRaises(ValueError, my_store._relpath, 'foo', ['dsc', 'gz'])
 
     def test__relpath_simple(self):
         my_store = store.TransportStore(MockTransport())
@@ -223,11 +230,15 @@ class TestTransportStore(TestCase):
 
     def test__relpath_simple_suffixed(self):
         my_store = store.TransportStore(MockTransport())
+        my_store.register_suffix('gz')
+        my_store.register_suffix('bar')
         self.assertEqual('foo.gz', my_store._relpath('foo', ['gz']))
         self.assertEqual('foo.gz.bar', my_store._relpath('foo', ['gz', 'bar']))
 
     def test__relpath_prefixed_suffixed(self):
         my_store = store.TransportStore(MockTransport(), True)
+        my_store.register_suffix('gz')
+        my_store.register_suffix('bar')
         self.assertEqual('45/foo.gz', my_store._relpath('foo', ['gz']))
         self.assertEqual('45/foo.gz.bar',
                          my_store._relpath('foo', ['gz', 'bar']))
@@ -247,12 +258,14 @@ class TestTransportStore(TestCase):
     def test_add_simple_suffixed(self):
         stream = StringIO("content")
         my_store = InstrumentedTransportStore(MockTransport())
+        my_store.register_suffix('dsc')
         my_store.add(stream, "foo", 'dsc')
         self.assertEqual([("_add", "foo.dsc", stream)], my_store._calls)
         
     def test_add_simple_suffixed(self):
         stream = StringIO("content")
         my_store = InstrumentedTransportStore(MockTransport(), True)
+        my_store.register_suffix('dsc')
         my_store.add(stream, "foo", 'dsc')
         self.assertEqual([("_add", "45/foo.dsc", stream)], my_store._calls)
 

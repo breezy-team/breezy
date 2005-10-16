@@ -109,6 +109,10 @@ class CompressedTextStore(bzrlib.store.TransportStore):
         assert count == len(to_copy)
         return count, failed
 
+    def __init__(self, transport, prefixed=False):
+        super(CompressedTextStore, self).__init__(transport, prefixed)
+        self.register_suffix('gz')
+
     def __iter__(self):
         for relpath, st in self._iter_relpaths():
             if relpath.endswith(".gz"):

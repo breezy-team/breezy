@@ -243,6 +243,7 @@ class TransportStore(Store):
         super(TransportStore, self).__init__()
         self._transport = transport
         self._prefixed = prefixed
+        self._suffixes = set()
 
     def __len__(self):
         return len(list(self._iter_relpath()))
@@ -250,6 +251,8 @@ class TransportStore(Store):
     def _relpath(self, fileid, suffixes=[]):
         self._check_fileid(fileid)
         for suffix in suffixes:
+            if not suffix in self._suffixes:
+                raise ValueError("Unregistered suffix %r" % suffix)
             self._check_fileid(suffix)
         if self._prefixed:
             path = [hash_prefix(fileid) + fileid]
@@ -282,6 +285,11 @@ class TransportStore(Store):
     def listable(self):
         """Return True if this store is able to be listed."""
         return self._transport.listable()
+
+    def register_suffix(self, suffix):
+        """Register a suffix as being expected in this store."""
+        self._check_fileid(suffix)
+        self._suffixes.add(suffix)
 
     def total_size(self):
         """Return (count, bytes)

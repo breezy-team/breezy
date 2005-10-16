@@ -1012,7 +1012,6 @@ class _Branch(Branch):
                          from_branch=other,
                          revision=pullable_revs[-1])
             self.append_revision(*pullable_revs)
-    
 
     def commit(self, *args, **kw):
         from bzrlib.commit import Commit
@@ -1050,7 +1049,6 @@ class _Branch(Branch):
         else:
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self.weave_store, inv, revision_id)
-
 
     def working_tree(self):
         """Return a `Tree` for the working copy."""
