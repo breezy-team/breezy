@@ -59,51 +59,6 @@ class TextStore(bzrlib.store.TransportStore):
         relpaths = (self._relpath(fid) for fid in fileids)
         return self._transport.has_multi(relpaths, pb=pb)
 
-    def get(self, fileids, permit_failure=False, pb=None):
-        """Return a set of files, one for each requested entry.
-        
-        TODO: Write some tests to make sure that permit_failure is
-              handled correctly.
-
-        TODO: What should the exception be for a missing file?
-              KeyError, or NoSuchFile?
-        """
-
-        # This next code gets a bit hairy because it can allow
-        # to not request a file which doesn't seem to exist.
-        # Also, the same fileid may be requested twice, so we
-        # can't just build up a map.
-        rel_paths = [self._relpath(fid) for fid in fileids]
-        is_requested = []
-
-        if permit_failure:
-            existing_paths = []
-            for path, has in zip(rel_paths,
-                    self._transport.has_multi(rel_paths)):
-                if has:
-                    existing_paths.append(path)
-                    is_requested.append(True)
-                else:
-                    is_requested.append(False)
-            #mutter('Retrieving %s out of %s' % (existing_paths, rel_paths))
-        else:
-            #mutter('Retrieving all %s' % (rel_paths, ))
-            existing_paths = rel_paths
-            is_requested = [True for x in rel_paths]
-
-        count = 0
-        for f in self._transport.get_multi(existing_paths, pb=pb):
-            assert count < len(is_requested)
-            while not is_requested[count]:
-                yield None
-                count += 1
-            yield f
-            count += 1
-
-        while count < len(is_requested):
-            yield None
-            count += 1
-
     def __iter__(self):
         for relpath, st in self._iter_relpaths():
             yield os.path.basename(relpath)

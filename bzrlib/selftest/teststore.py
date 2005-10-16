@@ -30,118 +30,66 @@ import bzrlib.store as store
 import bzrlib.transport as transport
 
 
-def fill_store(store):
-    store.add(StringIO('hello'), 'a')
-    store.add(StringIO('other'), 'b')
-    store.add(StringIO('something'), 'c')
-    store.add(StringIO('goodbye'), '123123')
+class TestStores(object):
 
+    def check_content(self, store, fileid, value):
+        f = store[fileid]
+        self.assertEqual(f.read(), value)
 
-def check_equals(tester, store, files, values, permit_failure=False):
-    files = store.get(files, permit_failure=permit_failure)
-    count = 0
-    for f, v in zip(files, values):
-        count += 1
-        if v is None:
-            tester.assert_(f is None)
-        else:
-            tester.assertEqual(f.read(), v)
-    tester.assertEqual(count, len(values))
-    # We need to check to make sure there are no more
-    # files to be returned, I'm using a cheezy way
-    # Convert to a list, and there shouldn't be any left
-    tester.assertEqual(len(list(files)), 0)
-
-
-def test_multiple_add(tester, store):
-    fill_store(store)
-    tester.assertRaises(BzrError, store.add, StringIO('goodbye'), '123123')
-
-
-def test_get(tester, store):
-    fill_store(store)
-
-    check_equals(tester, store, ['a'], ['hello'])
-    check_equals(tester, store, ['b', 'c'], ['other', 'something'])
-
-    # Make sure that requesting a non-existing file fails
-    tester.assertRaises(NoSuchFile, check_equals, tester, store,
-            ['d'], [None])
-    tester.assertRaises(NoSuchFile, check_equals, tester, store,
-            ['a', 'd'], ['hello', None])
-    tester.assertRaises(NoSuchFile, check_equals, tester, store,
-            ['d', 'a'], [None, 'hello'])
-    tester.assertRaises(NoSuchFile, check_equals, tester, store,
-            ['d', 'd', 'd'], [None, None, None])
-    tester.assertRaises(NoSuchFile, check_equals, tester, store,
-            ['a', 'd', 'b'], ['hello', None, 'other'])
-
-
-def test_ignore_get(tester, store):
-    fill_store(store)
-
-    files = store.get(['d'], permit_failure=True)
-    files = list(files)
-    tester.assertEqual(len(files), 1)
-    tester.assert_(files[0] is None)
-
-    check_equals(tester, store, ['a', 'd'], ['hello', None],
-            permit_failure=True)
-    check_equals(tester, store, ['d', 'a'], [None, 'hello'],
-            permit_failure=True)
-    check_equals(tester, store, ['d', 'd'], [None, None],
-            permit_failure=True)
-    check_equals(tester, store, ['a', 'd', 'b'], ['hello', None, 'other'],
-            permit_failure=True)
-    check_equals(tester, store, ['a', 'd', 'b'], ['hello', None, 'other'],
-            permit_failure=True)
-    check_equals(tester, store, ['b', 'd', 'c'], ['other', None, 'something'],
-            permit_failure=True)
-
-
-def get_compressed_store(path='.'):
-    t = LocalTransport(path)
-    return CompressedTextStore(t)
-
-
-def get_text_store(path='.'):
-    t = LocalTransport(path)
-    return TextStore(t)
-
-
-class TestCompressedTextStore(TestCaseInTempDir):
-
-    def test_multiple_add(self):
-        """Multiple add with same ID should raise a BzrError"""
-        store = get_compressed_store()
-        test_multiple_add(self, store)
-
-    def test_get(self):
-        store = get_compressed_store()
-        test_get(self, store)
-
-    def test_ignore_get(self):
-        store = get_compressed_store()
-        test_ignore_get(self, store)
-
-    def test_total_size(self):
-        store = get_compressed_store('.')
+    def fill_store(self, store):
+        store.add(StringIO('hello'), 'a')
+        store.add(StringIO('other'), 'b')
+        store.add(StringIO('something'), 'c')
         store.add(StringIO('goodbye'), '123123')
-        store.add(StringIO('goodbye2'), '123123.dsc')
-        # these get gzipped - content should be stable
-        self.assertEqual(store.total_size(), (2, 55))
-        
+
     def test_copy_all(self):
         """Test copying"""
         os.mkdir('a')
-        store_a = get_text_store('a')
+        store_a = self.get_store('a')
         store_a.add('foo', '1')
         os.mkdir('b')
-        store_b = get_text_store('b')
+        store_b = self.get_store('b')
         copy_all(store_a, store_b)
         self.assertEqual(store_a['1'].read(), 'foo')
         self.assertEqual(store_b['1'].read(), 'foo')
+        # TODO: Switch the exception form UnlistableStore to
+        #       or make Stores throw UnlistableStore if their
+        #       Transport doesn't support listing
+        # store_c = RemoteStore('http://example.com/')
+        # self.assertRaises(UnlistableStore, copy_all, store_c, store_b)
 
+    def test_get(self):
+        store = self.get_store()
+        self.fill_store(store)
+    
+        self.check_content(store, 'a', 'hello')
+        self.check_content(store, 'b', 'other')
+        self.check_content(store, 'c', 'something')
+    
+        # Make sure that requesting a non-existing file fails
+        self.assertRaises(KeyError, self.check_content, store, 'd', None)
+
+
+    def test_multiple_add(self):
+        """Multiple add with same ID should raise a BzrError"""
+        store = self.get_store()
+        self.fill_store(store)
+        self.assertRaises(BzrError, store.add, StringIO('goodbye'), '123123')
+
+
+class TestCompressedTextStore(TestCaseInTempDir, TestStores):
+
+    def get_store(self, path='.'):
+        t = LocalTransport(path)
+        return CompressedTextStore(t)
+
+    def test_total_size(self):
+        store = self.get_store('.')
+        store.add(StringIO('goodbye'), '123123')
+        store.add(StringIO('goodbye2'), '123123', '.dsc')
+        # these get gzipped - content should be stable
+        self.assertEqual(store.total_size(), (2, 55))
+        
     def test__relpath_suffixed(self):
         my_store = CompressedTextStore(MockTransport(), True)
         self.assertEqual('45/foo.dsc.gz', my_store._relpath('foo', ['dsc']))
@@ -186,30 +134,17 @@ class TestMemoryStore(TestCase):
         # self.assertRaises(UnlistableStore, copy_all, store_c, store_b)
 
 
-class TestTextStore(TestCaseInTempDir):
-    def test_multiple_add(self):
-        """Multiple add with same ID should raise a BzrError"""
-        store = get_text_store()
-        test_multiple_add(self, store)
+class TestTextStore(TestCaseInTempDir, TestStores):
 
-    def test_get(self):
-        store = get_text_store()
-        test_get(self, store)
+    def get_store(self, path='.'):
+        t = LocalTransport(path)
+        return TextStore(t)
 
-    def test_ignore_get(self):
-        store = get_text_store()
-        test_ignore_get(self, store)
-
-    def test_copy_all(self):
-        """Test copying"""
-        os.mkdir('a')
-        store_a = get_text_store('a')
-        store_a.add('foo', '1')
-        os.mkdir('b')
-        store_b = get_text_store('b')
-        copy_all(store_a, store_b)
-        self.assertEqual(store_a['1'].read(), 'foo')
-        self.assertEqual(store_b['1'].read(), 'foo')
+    def test_total_size(self):
+        store = self.get_store()
+        store.add(StringIO('goodbye'), '123123')
+        store.add(StringIO('goodbye2'), '123123.dsc')
+        self.assertEqual(store.total_size(), (2, 15))
         # TODO: Switch the exception form UnlistableStore to
         #       or make Stores throw UnlistableStore if their
         #       Transport doesn't support listing

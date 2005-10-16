@@ -93,22 +93,6 @@ class Store(object):
         """Return True if this store is able to be listed."""
         return hasattr(self, "__iter__")
 
-    def get(self, fileids, permit_failure=False, pb=None):
-        """Return a set of files, one for each requested entry.
-        
-        :param permit_failure: If true, return None for entries which do not 
-                               exist.
-        :return: A list or generator of file-like objects, one for each id.
-        """
-        for fileid in fileids:
-            try:
-                yield self[fileid]
-            except KeyError:
-                if permit_failure:
-                    yield None
-                else:
-                    raise
-
     def copy_multi(self, other, ids, pb=None, permit_failure=False):
         """Copy texts for ids from other into self.
 
@@ -337,19 +321,6 @@ class CachedStore(Store):
             # We could copy at this time
             return True
         return False
-
-    def get(self, fileids, permit_failure=False, pb=None):
-        fileids = list(fileids)
-        hasids = self.cache_store.has(fileids)
-        needs = set()
-        for has, fileid in zip(hasids, fileids):
-            if not has:
-                needs.add(fileid)
-        if needs:
-            self.cache_store.copy_multi(self.source_store, needs,
-                    permit_failure=permit_failure)
-        return self.cache_store.get(fileids,
-                permit_failure=permit_failure, pb=pb)
 
     def prefetch(self, ids):
         """Copy a series of ids into the cache, before they are used.
