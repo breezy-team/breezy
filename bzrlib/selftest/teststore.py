@@ -235,6 +235,12 @@ class TestTransportStore(TestCase):
         self.assertRaises(ValueError, my_store._relpath, '/foo')
         self.assertRaises(ValueError, my_store._relpath, 'foo/')
 
+    def test__relpath_invalid_suffixes(self):
+        my_store = store.TransportStore(MockTransport())
+        self.assertRaises(ValueError, my_store._relpath, 'foo', '/')
+        self.assertRaises(ValueError, my_store._relpath, 'foo', '.gz/bar')
+
+
     def test__relpath_simple(self):
         my_store = store.TransportStore(MockTransport())
         self.assertEqual("foo", my_store._relpath('foo'))
@@ -246,3 +252,8 @@ class TestTransportStore(TestCase):
     def test__relpath_simple_suffixed(self):
         my_store = store.TransportStore(MockTransport())
         self.assertEqual('foo.gz', my_store._relpath('foo', ['gz']))
+
+    def test__relpath_prefixed_suffixed(self):
+        my_store = store.TransportStore(MockTransport(), True)
+        self.assertEqual('45/foo.gz', my_store._relpath('foo', ['gz']))
+

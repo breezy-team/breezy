@@ -216,6 +216,8 @@ class TransportStore(Store):
 
     def _relpath(self, fileid, suffixes=[]):
         self._check_fileid(fileid)
+        for suffix in suffixes:
+            self._check_fileid(suffix)
         if self._prefixed:
             path = [hash_prefix(fileid) + fileid]
         else:
