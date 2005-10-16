@@ -227,6 +227,24 @@ class LocalTransport(Transport):
         from bzrlib.lock import WriteLock
         return WriteLock(self.abspath(relpath))
 
+
+class ScratchTransport(LocalTransport):
+    """A transport that works in a temporary dir and cleans up after itself.
+    
+    The dir only exists for the lifetime of the Python object.
+    Obviously you should not put anything precious in it.
+    """
+
+    def __init__(self):
+        base = tempfile.mkdtemp()
+        super(ScratchTransport, self).__init__(base)
+
+    def __del__(self):
+        self.delete_multi(self._transport.list_dir('.'))
+        os.rmdir(self._transport.base)
+        mutter("%r destroyed" % self)
+        super(ScratchTransport, self).__del__()
+
 # If nothing else matches, try the LocalTransport
 register_transport(None, LocalTransport)
 register_transport('file://', LocalTransport)

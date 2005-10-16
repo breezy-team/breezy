@@ -130,19 +130,5 @@ class CompressedTextStore(bzrlib.store.TransportStore):
             return gzip.GzipFile(mode='rb', fileobj=sio)
 
 
-class ScratchCompressedTextStore(CompressedTextStore):
-    """Self-destructing test subclass of CompressedTextStore.
-
-    The Store only exists for the lifetime of the Python object.
-    Obviously you should not put anything precious in it.
-    """
-    def __init__(self):
-        from transport import transport
-        t = transport(tempfile.mkdtemp())
-        super(ScratchCompressedTextStore, self).__init__(t)
-
-    def __del__(self):
-        self._transport.delete_multi(self._transport.list_dir('.'))
-        os.rmdir(self._transport.base)
-        mutter("%r destroyed" % self)
-
+def ScratchTextStore():
+    return TextStore(ScratchTransport())

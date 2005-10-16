@@ -52,18 +52,5 @@ class TextStore(bzrlib.store.TransportStore):
             yield os.path.basename(relpath)
 
 
-class ScratchTextStore(TextStore):
-    """Self-destructing test subclass of TextStore.
-
-    The Store only exists for the lifetime of the Python object.
-    Obviously you should not put anything precious in it.
-    """
-    def __init__(self):
-        from transport import transport
-        super(ScratchTextStore, self).__init__(transport(tempfile.mkdtemp()))
-
-    def __del__(self):
-        self._transport.delete_multi(self._transport.list_dir('.'))
-        os.rmdir(self._transport.base)
-        mutter("%r destroyed" % self)
-
+def ScratchTextStore():
+    return TextStore(ScratchTransport())
