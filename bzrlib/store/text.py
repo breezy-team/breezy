@@ -51,9 +51,6 @@ class TextStore(bzrlib.store.TransportStore):
         for relpath, st in self._iter_relpaths():
             yield os.path.basename(relpath)
 
-    def __len__(self):
-        return len(list(self._iter_relpath()))
-
 
 class ScratchTextStore(TextStore):
     """Self-destructing test subclass of TextStore.

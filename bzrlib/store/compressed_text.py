@@ -116,9 +116,6 @@ class CompressedTextStore(bzrlib.store.TransportStore):
             else:
                 yield os.path.basename(relpath)
 
-    def __len__(self):
-        return len(list(self._iter_relpath()))
-
     def _get(self, filename):
         """Returns a file reading from a particular entry."""
         f = self._transport.get(filename)

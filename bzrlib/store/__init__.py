@@ -244,6 +244,9 @@ class TransportStore(Store):
         self._transport = transport
         self._prefixed = prefixed
 
+    def __len__(self):
+        return len(list(self._iter_relpath()))
+
     def _relpath(self, fileid, suffixes=[]):
         self._check_fileid(fileid)
         for suffix in suffixes:
