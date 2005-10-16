@@ -109,15 +109,6 @@ class CompressedTextStore(bzrlib.store.TransportStore):
         assert count == len(to_copy)
         return count, failed
 
-    def has(self, fileids, pb=None):
-        """Return True/False for each entry in fileids.
-
-        :param fileids: A List or generator yielding file ids.
-        :return: A generator or list returning True/False for each entry.
-        """
-        relpaths = (self._relpath(fid) for fid in fileids)
-        return self._transport.has_multi(relpaths, pb=pb)
-
     def __iter__(self):
         for relpath, st in self._iter_relpaths():
             if relpath.endswith(".gz"):

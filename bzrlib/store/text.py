@@ -44,14 +44,8 @@ class TextStore(bzrlib.store.TransportStore):
     def _add(self, fn, f):
         self._transport.put(fn, f)
 
-    def has(self, fileids, pb=None):
-        """Return True/False for each entry in fileids.
-
-        :param fileids: A List or generator yielding file ids.
-        :return: A generator or list returning True/False for each entry.
-        """
-        relpaths = (self._relpath(fid) for fid in fileids)
-        return self._transport.has_multi(relpaths, pb=pb)
+    def _get(self, fn):
+        return self._transport.get(fn)
 
     def __iter__(self):
         for relpath, st in self._iter_relpaths():

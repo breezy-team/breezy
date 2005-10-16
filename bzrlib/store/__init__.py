@@ -229,8 +229,14 @@ class TransportStore(Store):
         except errors.NoSuchFile:
             raise KeyError(fileid)
 
-    def _get(self, fn):
-        return self._transport.get(fn)
+    def has(self, fileids, pb=None):
+        """Return True/False for each entry in fileids.
+
+        :param fileids: A List or generator yielding file ids.
+        :return: A generator or list returning True/False for each entry.
+        """
+        relpaths = (self._relpath(fid) for fid in fileids)
+        return self._transport.has_multi(relpaths, pb=pb)
 
     def __init__(self, transport, prefixed=False):
         assert isinstance(transport, bzrlib.transport.Transport)
