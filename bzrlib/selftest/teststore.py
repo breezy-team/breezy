@@ -142,6 +142,10 @@ class TestCompressedTextStore(TestCaseInTempDir):
         self.assertEqual(store_a['1'].read(), 'foo')
         self.assertEqual(store_b['1'].read(), 'foo')
 
+    def test__relpath_suffixed(self):
+        my_store = CompressedTextStore(MockTransport(), True)
+        self.assertEqual('45/foo.dsc.gz', my_store._relpath('foo', ['dsc']))
+
 
 class TestMemoryStore(TestCase):
     
@@ -286,10 +290,13 @@ class TestTransportStore(TestCase):
     def test__relpath_simple_suffixed(self):
         my_store = store.TransportStore(MockTransport())
         self.assertEqual('foo.gz', my_store._relpath('foo', ['gz']))
+        self.assertEqual('foo.gz.bar', my_store._relpath('foo', ['gz', 'bar']))
 
     def test__relpath_prefixed_suffixed(self):
         my_store = store.TransportStore(MockTransport(), True)
         self.assertEqual('45/foo.gz', my_store._relpath('foo', ['gz']))
+        self.assertEqual('45/foo.gz.bar',
+                         my_store._relpath('foo', ['gz', 'bar']))
 
     def test_add_simple(self):
         stream = StringIO("content")

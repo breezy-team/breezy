@@ -57,8 +57,9 @@ class CompressedTextStore(bzrlib.store.TransportStore):
     'goodbye'
     """
 
-    def _relpath(self, fileid):
-        return super(CompressedTextStore, self)._relpath(fileid, ['gz'])
+    def _relpath(self, fileid, suffixes=[]):
+        suffixes = suffixes + ['gz']
+        return super(CompressedTextStore, self)._relpath(fileid, suffixes)
 
     def _add(self, fn, f):
         from cStringIO import StringIO
