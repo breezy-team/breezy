@@ -6,10 +6,18 @@ UNRELEASED CHANGES
       of revisions that are not tied to a particular internal
       representation.
 
-    * Configuration is now done via the config.Config interface:
+    * Config options have moved from bzrlib.osutils to bzrlib.config.
+      Configuration is now done via the config.Config interface:
       Depending on whether you have a Branch, a Location or no information
       available, construct a *Config, and use its signature_checking,
-      username and user_email methods.
+      username and user_email methods. (Robert Collins)
+
+    * Plugins are now loaded under bzrlib.plugins, not bzrlib.plugin, and
+      they are made available for other plugins to use. You should not 
+      import other plugins during the __init__ of your plugin though, as 
+      no ordering is guaranteed, and the plugins directory is not on the
+      python path.
+
 
   IMPROVEMENTS:
 
@@ -23,11 +31,6 @@ UNRELEASED CHANGES
     * 'bzr check' now accepts -v for verbose reporting, and checks for
       ghosts in the branch.
 
-
-  INTERNALS:
-
-    * Config options have moved from bzrlib.osutils to bzrlib.config.
-      (Robert Collins)
 
   TESTING:
 
