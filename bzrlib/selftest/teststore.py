@@ -291,3 +291,14 @@ class TestTransportStore(TestCase):
         my_store = store.TransportStore(MockTransport(), True)
         self.assertEqual('45/foo.gz', my_store._relpath('foo', ['gz']))
 
+    def test_add_simple(self):
+        stream = StringIO("content")
+        my_store = InstrumentedTransportStore(MockTransport())
+        my_store.add(stream, "foo")
+        self.assertEqual([("_add", "foo", stream)], my_store._calls)
+
+    def test_add_prefixed(self):
+        stream = StringIO("content")
+        my_store = InstrumentedTransportStore(MockTransport(), True)
+        my_store.add(stream, "foo")
+        self.assertEqual([("_add", "45/foo", stream)], my_store._calls)
