@@ -222,6 +222,29 @@ class MockTransport(transport.Transport):
         super(MockTransport, self).__init__(url)
 
 
+class InstrumentedTransportStore(store.TransportStore):
+    """An instrumented TransportStore.
+
+    Here we replace template method worker methods with calls that record the
+    expected results.
+    """
+
+    def _add(self, filename, file):
+        self._calls.append(("_add", filename, file))
+
+    def __init__(self, transport, prefixed=False):
+        super(InstrumentedTransportStore, self).__init__(transport, prefixed)
+        self._calls = []
+
+
+class TestInstrumentedTransportStore(TestCase):
+
+    def test__add_records(self):
+        my_store = InstrumentedTransportStore(MockTransport())
+        my_store.add("filename", "file")
+        self.assertEqual([("_add", "filename", "file")], my_store._calls)
+
+
 class TestMockTransport(TestCase):
 
     def test_isinstance(self):
