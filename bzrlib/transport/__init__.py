@@ -40,6 +40,7 @@ def register_transport(prefix, klass, override=True):
         ## mutter('registering transport: %s => %s' % (prefix, klass.__name__))
         _protocol_handlers[prefix] = klass
 
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.

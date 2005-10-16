@@ -46,19 +46,6 @@ class TextStore(bzrlib.store.TransportStore):
         super(TextStore, self).__init__(transport)
         self._prefixed = prefixed
 
-    def _check_fileid(self, fileid):
-        if not isinstance(fileid, basestring):
-            raise TypeError('Fileids should be a string type: %s %r' % (type(fileid), fileid))
-        if '\\' in fileid or '/' in fileid:
-            raise ValueError("invalid store id %r" % fileid)
-
-    def _relpath(self, fileid):
-        self._check_fileid(fileid)
-        if self._prefixed:
-            return hash_prefix(fileid) + fileid
-        else:
-            return fileid
-
     def add(self, f, fileid):
         """Add contents of a file into the store.
 

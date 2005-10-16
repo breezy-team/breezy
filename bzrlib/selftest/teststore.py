@@ -14,19 +14,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Test Store implementation
-"""
+"""Test Store implementations."""
+
 from cStringIO import StringIO
 import os
 
+from bzrlib.errors import BzrError, UnlistableStore
 from bzrlib.store import copy_all
 from bzrlib.transport.local import LocalTransport
 from bzrlib.transport import NoSuchFile
 from bzrlib.store.compressed_text import CompressedTextStore
 from bzrlib.store.text import TextStore
 from bzrlib.selftest import TestCase, TestCaseInTempDir
-from bzrlib.errors import BzrError, UnlistableStore
-import bzrlib.store
+import bzrlib.store as store
+import bzrlib.transport as transport
 
 
 def fill_store(store):
@@ -34,6 +35,7 @@ def fill_store(store):
     store.add(StringIO('other'), 'b')
     store.add(StringIO('something'), 'c')
     store.add(StringIO('goodbye'), '123123')
+
 
 def check_equals(tester, store, files, values, permit_failure=False):
     files = store.get(files, permit_failure=permit_failure)
@@ -50,9 +52,11 @@ def check_equals(tester, store, files, values, permit_failure=False):
     # Convert to a list, and there shouldn't be any left
     tester.assertEquals(len(list(files)), 0)
 
+
 def test_multiple_add(tester, store):
     fill_store(store)
     tester.assertRaises(BzrError, store.add, StringIO('goodbye'), '123123')
+
 
 def test_get(tester, store):
     fill_store(store)
@@ -71,6 +75,7 @@ def test_get(tester, store):
             ['d', 'd', 'd'], [None, None, None])
     tester.assertRaises(NoSuchFile, check_equals, tester, store,
             ['a', 'd', 'b'], ['hello', None, 'other'])
+
 
 def test_ignore_get(tester, store):
     fill_store(store)
@@ -141,7 +146,7 @@ class TestCompressedTextStore(TestCaseInTempDir):
 class TestMemoryStore(TestCase):
     
     def get_store(self):
-        return bzrlib.store.ImmutableMemoryStore()
+        return store.ImmutableMemoryStore()
     
     def test_imports(self):
         from bzrlib.store import ImmutableMemoryStore
@@ -160,10 +165,10 @@ class TestMemoryStore(TestCase):
         self.failIf('aa' in store)
 
     def test_adding_fails_when_present(self):
-        store = self.get_store()
-        store.add(StringIO('hello'), 'aa')
-        self.assertRaises(bzrlib.store.StoreError,
-                          store.add, StringIO('hello'), 'aa')
+        my_store = self.get_store()
+        my_store.add(StringIO('hello'), 'aa')
+        self.assertRaises(store.StoreError,
+                          my_store.add, StringIO('hello'), 'aa')
 
     def test_total_size(self):
         store = self.get_store()
@@ -206,3 +211,27 @@ class TestTextStore(TestCaseInTempDir):
         #       Transport doesn't support listing
         # store_c = RemoteStore('http://example.com/')
         # self.assertRaises(UnlistableStore, copy_all, store_c, store_b)
+
+
+class MockTransport(transport.Transport):
+    """A fake transport for testing with."""
+
+    def __init__(self, url=None):
+        if url is None:
+            url = "http://example.com"
+        super(MockTransport, self).__init__(url)
+
+
+class TestMockTransport(TestCase):
+
+    def test_isinstance(self):
+        self.failUnless(isinstance(MockTransport(), transport.Transport))
+
+
+class TestTransportStore(TestCase):
+    
+    def test__relpath_invalid(self):
+        my_store = store.TransportStore(MockTransport())
+        self.assertRaises(ValueError, my_store._relpath, '/foo')
+        self.assertRaises(ValueError, my_store._relpath, 'foo/')
+

@@ -194,6 +194,12 @@ class TransportStore(Store):
 
     _max_buffered_requests = 10
 
+    def _check_fileid(self, fileid):
+        if not isinstance(fileid, basestring):
+            raise TypeError('Fileids should be a string type: %s %r' % (type(fileid), fileid))
+        if '\\' in fileid or '/' in fileid:
+            raise ValueError("invalid store id %r" % fileid)
+
     def __getitem__(self, fileid):
         """Returns a file reading from a particular entry."""
         fn = self._relpath(fileid)
@@ -206,6 +212,13 @@ class TransportStore(Store):
         assert isinstance(transport, bzrlib.transport.Transport)
         super(TransportStore, self).__init__()
         self._transport = transport
+
+    def _relpath(self, fileid):
+        self._check_fileid(fileid)
+        if self._prefixed:
+            return hash_prefix(fileid) + fileid
+        else:
+            return fileid
 
     def __repr__(self):
         if self._transport is None:

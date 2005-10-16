@@ -61,10 +61,6 @@ class CompressedTextStore(bzrlib.store.TransportStore):
         super(CompressedTextStore, self).__init__(transport)
         self._prefixed = prefixed
 
-    def _check_fileid(self, fileid):
-        if '\\' in fileid or '/' in fileid:
-            raise ValueError("invalid store id %r" % fileid)
-
     def _relpath(self, fileid):
         self._check_fileid(fileid)
         if self._prefixed:
