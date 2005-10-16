@@ -209,6 +209,10 @@ class TransportStore(Store):
         if '\\' in fileid or '/' in fileid:
             raise ValueError("invalid store id %r" % fileid)
 
+    def __contains__(self, fileid):
+        fn = self._relpath(fileid)
+        return self._transport.has(fn)
+
     def _get(self, filename):
         """Return an vanilla file stream for clients to read from.
 

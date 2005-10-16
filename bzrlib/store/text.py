@@ -44,11 +44,6 @@ class TextStore(bzrlib.store.TransportStore):
     def _add(self, fn, f):
         self._transport.put(fn, f)
 
-    def __contains__(self, fileid):
-        """"""
-        fn = self._relpath(fileid)
-        return self._transport.has(fn)
-
     def has(self, fileids, pb=None):
         """Return True/False for each entry in fileids.
 

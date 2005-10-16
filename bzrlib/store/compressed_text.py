@@ -109,11 +109,6 @@ class CompressedTextStore(bzrlib.store.TransportStore):
         assert count == len(to_copy)
         return count, failed
 
-    def __contains__(self, fileid):
-        """"""
-        fn = self._relpath(fileid)
-        return self._transport.has(fn)
-
     def has(self, fileids, pb=None):
         """Return True/False for each entry in fileids.
 
