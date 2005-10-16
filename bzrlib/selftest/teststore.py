@@ -271,12 +271,14 @@ class TestTransportStore(TestCase):
         self.assertEqual([("_add", "45/foo.dsc", stream)], my_store._calls)
 
     def get_populated_store(self, prefixed=False):
-        stream = StringIO("signature")
         my_store = TextStore(MemoryTransport(), prefixed)
         my_store.register_suffix('sig')
+        stream = StringIO("signature")
         my_store.add(stream, "foo", 'sig')
         stream = StringIO("content")
         my_store.add(stream, "foo")
+        stream = StringIO("signature for missing base")
+        my_store.add(stream, "missing", 'sig')
         return my_store
         
     def test_has_simple(self):
@@ -290,3 +292,9 @@ class TestTransportStore(TestCase):
         self.assertEqual(True, my_store.has_id('foo', 'sig'))
         my_store = self.get_populated_store(True)
         self.assertEqual(True, my_store.has_id('foo', 'sig'))
+
+    def test_has_suffixed_no_base(self):
+        my_store = self.get_populated_store()
+        self.assertEqual(False, my_store.has_id('missing'))
+        my_store = self.get_populated_store(True)
+        self.assertEqual(False, my_store.has_id('missing'))
