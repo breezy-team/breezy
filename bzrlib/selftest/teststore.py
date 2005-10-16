@@ -28,6 +28,7 @@ from bzrlib.store.text import TextStore
 from bzrlib.selftest import TestCase, TestCaseInTempDir
 import bzrlib.store as store
 import bzrlib.transport as transport
+from bzrlib.transport.memory import MemoryTransport
 
 
 class TestStores(object):
@@ -268,3 +269,16 @@ class TestTransportStore(TestCase):
         my_store.register_suffix('dsc')
         my_store.add(stream, "foo", 'dsc')
         self.assertEqual([("_add", "45/foo.dsc", stream)], my_store._calls)
+
+    def get_populated_store(self, prefixed=False):
+        stream = StringIO("signature")
+        my_store = TextStore(MemoryTransport(), prefixed)
+        my_store.register_suffix('sig')
+        my_store.add(stream, "foo", 'sig')
+        stream = StringIO("content")
+        my_store.add(stream, "foo")
+        return my_store
+        
+    def test_has_simple(self):
+        my_store = self.get_populated_store()
+        self.assertEqual(True, my_store.has_id('foo'))
