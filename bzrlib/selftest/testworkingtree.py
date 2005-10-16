@@ -72,3 +72,10 @@ class TestWorkingTree(TestCaseInTempDir):
         self.assertEqual(branch.base, tree.branch.base)
         self.assertEqual(branch.inventory, tree._inventory)
         self.assertEqual(branch.base, tree.basedir)
+
+    def test_basic_relpath(self):
+        # for comprehensive relpath tests, see whitebox.py.
+        branch = Branch.initialize('.')
+        tree = WorkingTree(branch.base)
+        self.assertEqual('child',
+                         tree.relpath(os.path.join(os.getcwd(), 'child')))

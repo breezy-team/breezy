@@ -363,9 +363,9 @@ class _Branch(Branch):
 
         Raises an error if path is not in this branch.
         XXX: Robert Collins 20051017 what is this used for? why is it a branch
-        method and not a tree method.
+        method and not a tree method. -> moving to WorkingTree.
         """
-        return self._transport.relpath(path)
+        return self.working_tree().relpath(path)
 
     def _rel_controlfilename(self, file_or_path):
         if isinstance(file_or_path, basestring):

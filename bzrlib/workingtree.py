@@ -26,7 +26,7 @@ import fnmatch
  
 from bzrlib.branch import Branch
 import bzrlib.tree
-from bzrlib.osutils import appendpath, file_kind, isdir, splitpath
+from bzrlib.osutils import appendpath, file_kind, isdir, splitpath, relpath
 from bzrlib.errors import BzrCheckError
 from bzrlib.trace import mutter
 
@@ -148,6 +148,10 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def abspath(self, filename):
         return os.path.join(self.basedir, filename)
+
+    def relpath(self, abspath):
+        """Return the local path portion from a given absolute path."""
+        return relpath(self.basedir, abspath)
 
     def has_filename(self, filename):
         return bzrlib.osutils.lexists(self.abspath(filename))
