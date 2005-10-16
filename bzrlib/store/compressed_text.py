@@ -134,9 +134,9 @@ class CompressedTextStore(bzrlib.store.TransportStore):
     def __len__(self):
         return len(list(self._iter_relpath()))
 
-    def get(self, fileid):
+    def _get(self, filename):
         """Returns a file reading from a particular entry."""
-        f = super(CompressedTextStore, self).get(fileid)
+        f = self._transport.get(filename)
         # gzip.GzipFile.read() requires a tell() function
         # but some transports return objects that cannot seek
         # so buffer them in a StringIO instead

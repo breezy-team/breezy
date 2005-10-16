@@ -209,13 +209,24 @@ class TransportStore(Store):
         if '\\' in fileid or '/' in fileid:
             raise ValueError("invalid store id %r" % fileid)
 
+    def _get(self, filename):
+        """Return an vanilla file stream for clients to read from.
+
+        This is the body of a template method on 'get', and should be 
+        implemented by subclasses.
+        """
+        raise NotImplementedError
+
     def get(self, fileid):
         """Returns a file reading from a particular entry."""
         fn = self._relpath(fileid)
         try:
-            return self._transport.get(fn)
+            return self._get(fn)
         except errors.NoSuchFile:
             raise KeyError(fileid)
+
+    def _get(self, fn):
+        return self._transport.get(fn)
 
     def __init__(self, transport, prefixed=False):
         assert isinstance(transport, bzrlib.transport.Transport)
