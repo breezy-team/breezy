@@ -309,3 +309,16 @@ class TestTransportStore(TestCase):
         my_store = InstrumentedTransportStore(MockTransport(), True)
         my_store.add(stream, "foo")
         self.assertEqual([("_add", "45/foo", stream)], my_store._calls)
+
+    def test_add_simple_suffixed(self):
+        stream = StringIO("content")
+        my_store = InstrumentedTransportStore(MockTransport())
+        my_store.add(stream, "foo", 'dsc')
+        self.assertEqual([("_add", "foo.dsc", stream)], my_store._calls)
+        
+    def test_add_simple_suffixed(self):
+        stream = StringIO("content")
+        my_store = InstrumentedTransportStore(MockTransport(), True)
+        my_store.add(stream, "foo", 'dsc')
+        self.assertEqual([("_add", "45/foo.dsc", stream)], my_store._calls)
+
