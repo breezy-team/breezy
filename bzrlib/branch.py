@@ -64,32 +64,6 @@ def find_branch(*ignored, **ignored_too):
     # XXX: leave this here for about one release, then remove it
     raise NotImplementedError('find_branch() is not supported anymore, '
                               'please use one of the new branch constructors')
-def _relpath(base, path):
-    """Return path relative to base, or raise exception.
-
-    The path may be either an absolute path or a path relative to the
-    current working directory.
-
-    Lifted out of Branch.relpath for ease of testing.
-
-    os.path.commonprefix (python2.4) has a bad bug that it works just
-    on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
-    avoids that problem."""
-    rp = os.path.abspath(path)
-
-    s = []
-    head = rp
-    while len(head) >= len(base):
-        if head == base:
-            break
-        head, tail = os.path.split(head)
-        if tail:
-            s.insert(0, tail)
-    else:
-        raise NotBranchError("path %r is not within branch %r" % (rp, base))
-
-    return os.sep.join(s)
-        
 
 ######################################################################
 # branch objects
@@ -377,15 +351,21 @@ class _Branch(Branch):
             self._lock_mode = self._lock_count = None
 
     def abspath(self, name):
-        """Return absolute filename for something in the branch"""
+        """Return absolute filename for something in the branch
+        
+        XXX: Robert Collins 20051017 what is this used for? why is it a branch
+        method and not a tree method.
+        """
         return self._transport.abspath(name)
 
     def relpath(self, path):
         """Return path relative to this branch of something inside it.
 
-        Raises an error if path is not in this branch."""
+        Raises an error if path is not in this branch.
+        XXX: Robert Collins 20051017 what is this used for? why is it a branch
+        method and not a tree method.
+        """
         return self._transport.relpath(path)
-
 
     def _rel_controlfilename(self, file_or_path):
         if isinstance(file_or_path, basestring):

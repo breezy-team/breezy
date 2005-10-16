@@ -108,11 +108,11 @@ class MoreTests(TestCaseInTempDir):
     def test_relpath(self):
         """test for branch path lookups
     
-        Branch.relpath and bzrlib.branch._relpath do a simple but subtle
+        bzrlib.osutils._relpath do a simple but subtle
         job: given a path (either relative to cwd or absolute), work out
         if it is inside a branch and return the path relative to the base.
         """
-        from bzrlib.branch import _relpath
+        from bzrlib.osutils import relpath
         import tempfile, shutil
         
         savedir = os.getcwdu()
@@ -121,7 +121,7 @@ class MoreTests(TestCaseInTempDir):
         dtmp = os.path.realpath(dtmp)
 
         def rp(p):
-            return _relpath(dtmp, p)
+            return relpath(dtmp, p)
         
         try:
             # check paths inside dtmp while standing outside it

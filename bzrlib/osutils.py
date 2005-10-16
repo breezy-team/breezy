@@ -30,7 +30,7 @@ import time
 import types
 
 import bzrlib
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, NotBranchError
 from bzrlib.trace import mutter
 
 
@@ -437,3 +437,30 @@ def contains_linebreaks(s):
             return True
     else:
         return False
+
+
+def relpath(base, path):
+    """Return path relative to base, or raise exception.
+
+    The path may be either an absolute path or a path relative to the
+    current working directory.
+
+    os.path.commonprefix (python2.4) has a bad bug that it works just
+    on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
+    avoids that problem."""
+    rp = os.path.abspath(path)
+
+    s = []
+    head = rp
+    while len(head) >= len(base):
+        if head == base:
+            break
+        head, tail = os.path.split(head)
+        if tail:
+            s.insert(0, tail)
+    else:
+        # XXX This should raise a NotChildPath exception, as its not tied
+        # to branch anymore.
+        raise NotBranchError("path %r is not within branch %r" % (rp, base))
+
+    return os.sep.join(s)
