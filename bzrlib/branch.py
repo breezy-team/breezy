@@ -358,15 +358,6 @@ class _Branch(Branch):
         """
         return self._transport.abspath(name)
 
-    def relpath(self, path):
-        """Return path relative to this branch of something inside it.
-
-        Raises an error if path is not in this branch.
-        XXX: Robert Collins 20051017 what is this used for? why is it a branch
-        method and not a tree method. -> moving to WorkingTree.
-        """
-        return self.working_tree().relpath(path)
-
     def _rel_controlfilename(self, file_or_path):
         if isinstance(file_or_path, basestring):
             file_or_path = [file_or_path]

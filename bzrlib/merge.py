@@ -390,7 +390,7 @@ def merge(other_revision, base_revision,
             interesting_ids = set()
             this_tree = this_branch.working_tree()
             for fname in file_list:
-                path = this_branch.relpath(fname)
+                path = this_tree.relpath(fname)
                 found_id = False
                 for tree in (this_tree, base_tree.tree, other_tree.tree):
                     file_id = tree.inventory.path2id(path)
