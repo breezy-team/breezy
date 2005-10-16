@@ -45,12 +45,12 @@ def check_equals(tester, store, files, values, permit_failure=False):
         if v is None:
             tester.assert_(f is None)
         else:
-            tester.assertEquals(f.read(), v)
-    tester.assertEquals(count, len(values))
+            tester.assertEqual(f.read(), v)
+    tester.assertEqual(count, len(values))
     # We need to check to make sure there are no more
     # files to be returned, I'm using a cheezy way
     # Convert to a list, and there shouldn't be any left
-    tester.assertEquals(len(list(files)), 0)
+    tester.assertEqual(len(list(files)), 0)
 
 
 def test_multiple_add(tester, store):
@@ -82,7 +82,7 @@ def test_ignore_get(tester, store):
 
     files = store.get(['d'], permit_failure=True)
     files = list(files)
-    tester.assertEquals(len(files), 1)
+    tester.assertEqual(len(files), 1)
     tester.assert_(files[0] is None)
 
     check_equals(tester, store, ['a', 'd'], ['hello', None],
@@ -238,3 +238,11 @@ class TestTransportStore(TestCase):
     def test__relpath_simple(self):
         my_store = store.TransportStore(MockTransport())
         self.assertEqual("foo", my_store._relpath('foo'))
+
+    def test__relpath_prefixed(self):
+        my_store = store.TransportStore(MockTransport(), True)
+        self.assertEqual('45/foo', my_store._relpath('foo'))
+
+    def test__relpath_simple_suffixed(self):
+        my_store = store.TransportStore(MockTransport())
+        self.assertEqual('foo.gz', my_store._relpath('foo', ['gz']))

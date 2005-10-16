@@ -214,12 +214,14 @@ class TransportStore(Store):
         self._transport = transport
         self._prefixed = prefixed
 
-    def _relpath(self, fileid):
+    def _relpath(self, fileid, suffixes=[]):
         self._check_fileid(fileid)
         if self._prefixed:
-            return hash_prefix(fileid) + fileid
+            path = [hash_prefix(fileid) + fileid]
         else:
-            return fileid
+            path = [fileid]
+        path.extend(suffixes)
+        return '.'.join(path)
 
     def __repr__(self):
         if self._transport is None:

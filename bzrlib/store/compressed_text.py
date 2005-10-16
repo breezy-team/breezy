@@ -58,11 +58,7 @@ class CompressedTextStore(bzrlib.store.TransportStore):
     """
 
     def _relpath(self, fileid):
-        self._check_fileid(fileid)
-        if self._prefixed:
-            return hash_prefix(fileid) + fileid + ".gz"
-        else:
-            return fileid + ".gz"
+        return super(CompressedTextStore, self)._relpath(fileid, ['gz'])
 
     def add(self, f, fileid):
         """Add contents of a file into the store.
