@@ -29,7 +29,6 @@ from bzrlib.trace import mutter
 from bzrlib.errors import BzrError, FileExists
 
 from StringIO import StringIO
-from stat import ST_SIZE
 
 class CompressedTextStore(bzrlib.store.TransportStore):
     """Store that holds files indexed by unique names.
@@ -146,19 +145,6 @@ class CompressedTextStore(bzrlib.store.TransportStore):
             from cStringIO import StringIO
             sio = StringIO(f.read())
             return gzip.GzipFile(mode='rb', fileobj=sio)
-
-    def total_size(self):
-        """Return (count, bytes)
-
-        This is the (compressed) size stored on disk, not the size of
-        the content."""
-        total = 0
-        count = 0
-        for relpath, st in self._iter_relpaths():
-            count += 1
-            total += st[ST_SIZE]
-                
-        return count, total
 
 
 class ScratchCompressedTextStore(CompressedTextStore):

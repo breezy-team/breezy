@@ -25,7 +25,7 @@ unique ID.
 """
 
 from cStringIO import StringIO
-from stat import ST_MODE, S_ISDIR
+from stat import ST_MODE, S_ISDIR, ST_SIZE
 from zlib import adler32
 
 import bzrlib.errors as errors
@@ -269,6 +269,19 @@ class TransportStore(Store):
     def listable(self):
         """Return True if this store is able to be listed."""
         return self._transport.listable()
+
+    def total_size(self):
+        """Return (count, bytes)
+
+        This is the (compressed) size stored on disk, not the size of
+        the content."""
+        total = 0
+        count = 0
+        for relpath, st in self._iter_relpaths():
+            count += 1
+            total += st[ST_SIZE]
+                
+        return count, total
 
 
 class ImmutableMemoryStore(Store):

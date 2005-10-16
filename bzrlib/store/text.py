@@ -29,7 +29,6 @@ from bzrlib.trace import mutter
 from bzrlib.errors import BzrError
 
 from cStringIO import StringIO
-from stat import ST_SIZE
 
 
 class TextStore(bzrlib.store.TransportStore):
@@ -65,19 +64,6 @@ class TextStore(bzrlib.store.TransportStore):
 
     def __len__(self):
         return len(list(self._iter_relpath()))
-
-    def total_size(self):
-        """Return (count, bytes)
-
-        This is the (compressed) size stored on disk, not the size of
-        the content."""
-        total = 0
-        count = 0
-        for relpath, st in self._iter_relpaths():
-            count += 1
-            total += st[ST_SIZE]
-                
-        return count, total
 
 
 class ScratchTextStore(TextStore):
