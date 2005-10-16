@@ -194,6 +194,25 @@ class TransportStore(Store):
 
     _max_buffered_requests = 10
 
+    def add(self, f, fileid):
+        """Add contents of a file into the store.
+
+        f -- A file-like object, or string
+        """
+        mutter("add store entry %r" % (fileid))
+            
+        fn = self._relpath(fileid)
+        if self._transport.has(fn):
+            raise BzrError("store %r already contains id %r" % (self._transport.base, fileid))
+
+        if self._prefixed:
+            try:
+                self._transport.mkdir(hash_prefix(fileid))
+            except errors.FileExists:
+                pass
+
+        self._add(fn, f)
+
     def _check_fileid(self, fileid):
         if not isinstance(fileid, basestring):
             raise TypeError('Fileids should be a string type: %s %r' % (type(fileid), fileid))

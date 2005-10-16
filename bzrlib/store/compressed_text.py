@@ -60,33 +60,13 @@ class CompressedTextStore(bzrlib.store.TransportStore):
     def _relpath(self, fileid):
         return super(CompressedTextStore, self)._relpath(fileid, ['gz'])
 
-    def add(self, f, fileid):
-        """Add contents of a file into the store.
-
-        f -- An open file, or file-like object."""
-        # TODO: implement an add_multi which can do some of it's
-        #       own piplelining, and possible take advantage of
-        #       transport.put_multi(). The problem is that
-        #       entries potentially need to be compressed as they
-        #       are received, which implies translation, which
-        #       means it isn't as straightforward as we would like.
+    def _add(self, fn, f):
         from cStringIO import StringIO
         from bzrlib.osutils import pumpfile
         
-        mutter("add store entry %r" % (fileid))
         if isinstance(f, basestring):
             f = StringIO(f)
             
-        fn = self._relpath(fileid)
-        if self._transport.has(fn):
-            raise BzrError("store %r already contains id %r" % (self._transport.base, fileid))
-
-        if self._prefixed:
-            try:
-                self._transport.mkdir(hash_prefix(fileid))
-            except FileExists:
-                pass
-
         sio = StringIO()
         gf = gzip.GzipFile(mode='wb', fileobj=sio)
         # if pumpfile handles files that don't fit in ram,

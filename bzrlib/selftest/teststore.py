@@ -240,7 +240,6 @@ class TestTransportStore(TestCase):
         self.assertRaises(ValueError, my_store._relpath, 'foo', '/')
         self.assertRaises(ValueError, my_store._relpath, 'foo', '.gz/bar')
 
-
     def test__relpath_simple(self):
         my_store = store.TransportStore(MockTransport())
         self.assertEqual("foo", my_store._relpath('foo'))

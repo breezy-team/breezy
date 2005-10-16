@@ -26,7 +26,7 @@ import os, tempfile
 import bzrlib.store
 from bzrlib.store import hash_prefix
 from bzrlib.trace import mutter
-from bzrlib.errors import BzrError, FileExists
+from bzrlib.errors import BzrError
 
 from cStringIO import StringIO
 from stat import ST_SIZE
@@ -42,23 +42,7 @@ class TextStore(bzrlib.store.TransportStore):
     Files are stored uncompressed, with no delta compression.
     """
 
-    def add(self, f, fileid):
-        """Add contents of a file into the store.
-
-        f -- A file-like object, or string
-        """
-        mutter("add store entry %r" % (fileid))
-            
-        fn = self._relpath(fileid)
-        if self._transport.has(fn):
-            raise BzrError("store %r already contains id %r" % (self._transport.base, fileid))
-
-        if self._prefixed:
-            try:
-                self._transport.mkdir(hash_prefix(fileid))
-            except FileExists:
-                pass
-
+    def _add(self, fn, f):
         self._transport.put(fn, f)
 
     def __contains__(self, fileid):
