@@ -57,10 +57,6 @@ class CompressedTextStore(bzrlib.store.TransportStore):
     'goodbye'
     """
 
-    def __init__(self, transport, prefixed=False):
-        super(CompressedTextStore, self).__init__(transport)
-        self._prefixed = prefixed
-
     def _relpath(self, fileid):
         self._check_fileid(fileid)
         if self._prefixed:

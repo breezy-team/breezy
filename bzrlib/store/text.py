@@ -42,10 +42,6 @@ class TextStore(bzrlib.store.TransportStore):
     Files are stored uncompressed, with no delta compression.
     """
 
-    def __init__(self, transport, prefixed=False):
-        super(TextStore, self).__init__(transport)
-        self._prefixed = prefixed
-
     def add(self, f, fileid):
         """Add contents of a file into the store.
 

@@ -208,10 +208,11 @@ class TransportStore(Store):
         except errors.NoSuchFile:
             raise KeyError(fileid)
 
-    def __init__(self, transport):
+    def __init__(self, transport, prefixed=False):
         assert isinstance(transport, bzrlib.transport.Transport)
         super(TransportStore, self).__init__()
         self._transport = transport
+        self._prefixed = prefixed
 
     def _relpath(self, fileid):
         self._check_fileid(fileid)
