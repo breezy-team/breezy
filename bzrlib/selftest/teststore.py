@@ -282,3 +282,11 @@ class TestTransportStore(TestCase):
     def test_has_simple(self):
         my_store = self.get_populated_store()
         self.assertEqual(True, my_store.has_id('foo'))
+        my_store = self.get_populated_store(True)
+        self.assertEqual(True, my_store.has_id('foo'))
+
+    def test_has_suffixed(self):
+        my_store = self.get_populated_store()
+        self.assertEqual(True, my_store.has_id('foo', 'sig'))
+        my_store = self.get_populated_store(True)
+        self.assertEqual(True, my_store.has_id('foo', 'sig'))

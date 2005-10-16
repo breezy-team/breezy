@@ -80,8 +80,11 @@ class Store(object):
         for f, fileid in entries:
             self.add(f, fileid)
 
-    def has_id(self, file_id):
-        """Return True or false for the presence of file_id in the store."""
+    def has_id(self, file_id, suffix=None):
+        """Return True or false for the presence of file_id in the store.
+        
+        suffix, if present, is a per file suffix, i.e. for digital signature 
+        data."""
         raise NotImplementedError
 
     def listable(self):
@@ -189,7 +192,7 @@ class TransportStore(Store):
 
         if self._prefixed:
             try:
-                self._transport.mkdir(hash_prefix(fileid))
+                self._transport.mkdir(hash_prefix(fileid)[:-1])
             except errors.FileExists:
                 pass
 
@@ -201,8 +204,12 @@ class TransportStore(Store):
         if '\\' in fileid or '/' in fileid:
             raise ValueError("invalid store id %r" % fileid)
 
-    def has_id(self, fileid):
-        fn = self._relpath(fileid)
+    def has_id(self, fileid, suffix=None):
+        """See Store.has_id."""
+        if suffix is not None:
+            fn = self._relpath(fileid, [suffix])
+        else:
+            fn = self._relpath(fileid)
         return self._transport.has(fn)
 
     def _get(self, filename):
@@ -300,10 +307,11 @@ class CachedStore(Store):
             self.cache_store.add(self.source_store.get(id), id)
         return self.cache_store.get(id)
 
-    def has_id(self, fileid):
-        if fileid in self.cache_store:
+    def has_id(self, fileid, suffix=None):
+        """See Store.has_id."""
+        if self.cache_store.has_id(fileid, suffix):
             return True
-        if fileid in self.source_store:
+        if self.source_store.has_id(fileid, suffix):
             # We could copy at this time
             return True
         return False

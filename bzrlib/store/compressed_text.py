@@ -24,7 +24,6 @@ do any sort of delta compression.
 import os, tempfile, gzip
 
 import bzrlib.store
-from bzrlib.store import hash_prefix
 from bzrlib.trace import mutter
 from bzrlib.errors import BzrError, FileExists
 
