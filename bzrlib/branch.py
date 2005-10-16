@@ -1060,7 +1060,7 @@ class _Branch(Branch):
         # much more complex to keep consistent than our careful .bzr subset.
         # instead, we should say that working trees are local only, and optimise
         # for that.
-        return WorkingTree(self._transport.base, self.read_working_inventory())
+        return WorkingTree(self.base, branch=self)
 
 
     def basis_tree(self):
