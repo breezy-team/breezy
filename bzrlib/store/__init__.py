@@ -52,8 +52,11 @@ class Store(object):
     def __len__(self):
         raise NotImplementedError('Children should define their length')
 
-    def __getitem__(self, fileid):
+    def get(self, file_id):
         """Returns a file reading from a particular entry."""
+
+    def __getitem__(self, fileid):
+        """DEPRECATED. Please use .get(file_id) instead."""
         raise NotImplementedError
 
     def __contains__(self, fileid):
@@ -146,7 +149,7 @@ class Store(object):
             buffered_requests = []
             for fileid in to_copy:
                 try:
-                    f = other[fileid]
+                    f = other.get(fileid)
                 except KeyError:
                     if permit_failure:
                         failed.add(fileid)
@@ -206,7 +209,7 @@ class TransportStore(Store):
         if '\\' in fileid or '/' in fileid:
             raise ValueError("invalid store id %r" % fileid)
 
-    def __getitem__(self, fileid):
+    def get(self, fileid):
         """Returns a file reading from a particular entry."""
         fn = self._relpath(fileid)
         try:
@@ -272,7 +275,7 @@ class ImmutableMemoryStore(Store):
             raise StoreError("fileid %s already in the store" % fileid)
         self._contents[fileid] = stream.read()
 
-    def __getitem__(self, fileid):
+    def get(self, fileid):
         """Returns a file reading from a particular entry."""
         if not self._contents.has_key(fileid):
             raise IndexError
@@ -308,11 +311,11 @@ class CachedStore(Store):
         # or something. RBC 20051003
         self.cache_store = store.__class__(LocalTransport(cache_dir))
 
-    def __getitem__(self, id):
+    def get(self, id):
         mutter("Cache add %s" % id)
         if id not in self.cache_store:
-            self.cache_store.add(self.source_store[id], id)
-        return self.cache_store[id]
+            self.cache_store.add(self.source_store.get(id), id)
+        return self.cache_store.get(id)
 
     def __contains__(self, fileid):
         if fileid in self.cache_store:

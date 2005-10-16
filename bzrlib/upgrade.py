@@ -270,7 +270,7 @@ class Convert(object):
                  rev_id)
             self.absent_revisions.add(rev_id)
         else:
-            rev_xml = self.branch.revision_store[rev_id].read()
+            rev_xml = self.branch.revision_store.get(rev_id).read()
             rev = serializer_v4.read_revision_from_string(rev_xml)
             for parent_id in rev.parent_ids:
                 self.known_revisions.add(parent_id)
@@ -280,7 +280,7 @@ class Convert(object):
 
     def _load_old_inventory(self, rev_id):
         assert rev_id not in self.converted_revs
-        old_inv_xml = self.branch.inventory_store[rev_id].read()
+        old_inv_xml = self.branch.inventory_store.get(rev_id).read()
         inv = serializer_v4.read_inventory_from_string(old_inv_xml)
         rev = self.revisions[rev_id]
         if rev.inventory_sha1:
@@ -375,7 +375,7 @@ class Convert(object):
                 return
         parent_indexes = map(w.lookup, previous_revisions)
         if ie.has_text():
-            file_lines = self.branch.text_store[ie.text_id].readlines()
+            file_lines = self.branch.text_store.get(ie.text_id).readlines()
             assert sha_strings(file_lines) == ie.text_sha1
             assert sum(map(len, file_lines)) == ie.text_size
             w.add(rev_id, parent_indexes, file_lines, ie.text_sha1)

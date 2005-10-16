@@ -760,7 +760,7 @@ class _Branch(Branch):
         self.lock_read()
         try:
             try:
-                return self.revision_store[revision_id]
+                return self.revision_store.get(revision_id)
             except (IndexError, KeyError):
                 raise bzrlib.errors.NoSuchRevision(self, revision_id)
         finally:

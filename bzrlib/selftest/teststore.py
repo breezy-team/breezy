@@ -33,7 +33,7 @@ import bzrlib.transport as transport
 class TestStores(object):
 
     def check_content(self, store, fileid, value):
-        f = store[fileid]
+        f = store.get(fileid)
         self.assertEqual(f.read(), value)
 
     def fill_store(self, store):
@@ -50,8 +50,8 @@ class TestStores(object):
         os.mkdir('b')
         store_b = self.get_store('b')
         copy_all(store_a, store_b)
-        self.assertEqual(store_a['1'].read(), 'foo')
-        self.assertEqual(store_b['1'].read(), 'foo')
+        self.assertEqual(store_a.get('1').read(), 'foo')
+        self.assertEqual(store_b.get('1').read(), 'foo')
         # TODO: Switch the exception form UnlistableStore to
         #       or make Stores throw UnlistableStore if their
         #       Transport doesn't support listing
@@ -68,7 +68,6 @@ class TestStores(object):
     
         # Make sure that requesting a non-existing file fails
         self.assertRaises(KeyError, self.check_content, store, 'd', None)
-
 
     def test_multiple_add(self):
         """Multiple add with same ID should raise a BzrError"""
@@ -106,11 +105,11 @@ class TestMemoryStore(TestCase):
     def test_add_and_retrieve(self):
         store = self.get_store()
         store.add(StringIO('hello'), 'aa')
-        self.assertNotEqual(store['aa'], None)
-        self.assertEqual(store['aa'].read(), 'hello')
+        self.assertNotEqual(store.get('aa'), None)
+        self.assertEqual(store.get('aa').read(), 'hello')
         store.add(StringIO('hello world'), 'bb')
-        self.assertNotEqual(store['bb'], None)
-        self.assertEqual(store['bb'].read(), 'hello world')
+        self.assertNotEqual(store.get('bb'), None)
+        self.assertEqual(store.get('bb').read(), 'hello world')
 
     def test_missing_is_absent(self):
         store = self.get_store()

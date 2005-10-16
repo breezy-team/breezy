@@ -53,7 +53,7 @@ class CompressedTextStore(bzrlib.store.TransportStore):
     Entries can be retrieved as files, which may then be read.
 
     >>> st.add(StringIO('goodbye'), '123123')
-    >>> st['123123'].read()
+    >>> st.get('123123').read()
     'goodbye'
     """
 
@@ -134,9 +134,9 @@ class CompressedTextStore(bzrlib.store.TransportStore):
     def __len__(self):
         return len(list(self._iter_relpath()))
 
-    def __getitem__(self, fileid):
+    def get(self, fileid):
         """Returns a file reading from a particular entry."""
-        f = super(CompressedTextStore, self).__getitem__(fileid)
+        f = super(CompressedTextStore, self).get(fileid)
         # gzip.GzipFile.read() requires a tell() function
         # but some transports return objects that cannot seek
         # so buffer them in a StringIO instead
