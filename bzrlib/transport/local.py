@@ -16,12 +16,19 @@
 """Implementation of Transport for the local filesystem.
 """
 
+import os
+import errno
+import shutil
+import tempfile
+
+from bzrlib.trace import mutter
 from bzrlib.transport import Transport, register_transport, \
     TransportError, NoSuchFile, FileExists
-import os, errno
+
 
 class LocalTransportError(TransportError):
     pass
+
 
 class LocalTransport(Transport):
     """This is the transport agent for local filesystem access."""
@@ -235,15 +242,14 @@ class ScratchTransport(LocalTransport):
     Obviously you should not put anything precious in it.
     """
 
-    def __init__(self):
-        base = tempfile.mkdtemp()
+    def __init__(self, base=None):
+        if base is None:
+            base = tempfile.mkdtemp()
         super(ScratchTransport, self).__init__(base)
 
     def __del__(self):
-        self.delete_multi(self._transport.list_dir('.'))
-        os.rmdir(self._transport.base)
+        shutil.rmtree(self.base, ignore_errors=True)
         mutter("%r destroyed" % self)
-        super(ScratchTransport, self).__del__()
 
 # If nothing else matches, try the LocalTransport
 register_transport(None, LocalTransport)

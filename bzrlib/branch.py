@@ -1329,25 +1329,24 @@ class ScratchBranch(_Branch):
     >>> isdir(b.base)
     True
     >>> bd = b.base
-    >>> b.destroy()
+    >>> b._transport.__del__()
     >>> isdir(bd)
     False
     """
-    def __init__(self, files=[], dirs=[], base=None):
+
+    def __init__(self, files=[], dirs=[], transport=None):
         """Make a test branch.
 
         This creates a temporary directory and runs init-tree in it.
 
         If any files are listed, they are created in the working copy.
         """
-        from tempfile import mkdtemp
-        init = False
-        if base is None:
-            base = mkdtemp()
-            init = True
-        if isinstance(base, basestring):
-            base = get_transport(base)
-        _Branch.__init__(self, base, init=init)
+        if transport is None:
+            transport = bzrlib.transport.local.ScratchTransport()
+            super(ScratchBranch, self).__init__(transport, init=True)
+        else:
+            super(ScratchBranch, self).__init__(transport)
+
         for d in dirs:
             self._transport.mkdir(d)
             
@@ -1373,28 +1372,8 @@ class ScratchBranch(_Branch):
         base = mkdtemp()
         os.rmdir(base)
         copytree(self.base, base, symlinks=True)
-        return ScratchBranch(base=base)
-
-    def __del__(self):
-        self.destroy()
-
-    def destroy(self):
-        """Destroy the test branch, removing the scratch directory."""
-        from shutil import rmtree
-        try:
-            if self.base:
-                mutter("delete ScratchBranch %s" % self.base)
-                rmtree(self.base)
-        except OSError, e:
-            # Work around for shutil.rmtree failing on Windows when
-            # readonly files are encountered
-            mutter("hit exception in destroying ScratchBranch: %s" % e)
-            for root, dirs, files in os.walk(self.base, topdown=False):
-                for name in files:
-                    os.chmod(os.path.join(root, name), 0700)
-            rmtree(self.base)
-        self._transport = None
-
+        return ScratchBranch(
+            transport=bzrlib.transport.local.ScratchTransport(base))
     
 
 ######################################################################
