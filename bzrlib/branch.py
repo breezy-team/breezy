@@ -962,10 +962,7 @@ class _Branch(Branch):
         greedy_fetch(to_branch=self, from_branch=other,
                      revision=stop_revision)
         pullable_revs = self.pullable_revisions(other, stop_revision)
-        if pullable_revs:
-            greedy_fetch(to_branch=self,
-                         from_branch=other,
-                         revision=pullable_revs[-1])
+        if len(pullable_revs) > 0:
             self.append_revision(*pullable_revs)
 
     def pullable_revisions(self, other, stop_revision):
