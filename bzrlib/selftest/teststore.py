@@ -216,10 +216,16 @@ class TestTextStore(TestCaseInTempDir):
 class MockTransport(transport.Transport):
     """A fake transport for testing with."""
 
+    def has(self, filename):
+        return False
+
     def __init__(self, url=None):
         if url is None:
             url = "http://example.com"
         super(MockTransport, self).__init__(url)
+
+    def mkdir(self, filename):
+        return
 
 
 class InstrumentedTransportStore(store.TransportStore):
@@ -241,7 +247,7 @@ class TestInstrumentedTransportStore(TestCase):
 
     def test__add_records(self):
         my_store = InstrumentedTransportStore(MockTransport())
-        my_store.add("filename", "file")
+        my_store._add("filename", "file")
         self.assertEqual([("_add", "filename", "file")], my_store._calls)
 
 
@@ -249,6 +255,12 @@ class TestMockTransport(TestCase):
 
     def test_isinstance(self):
         self.failUnless(isinstance(MockTransport(), transport.Transport))
+
+    def test_has(self):
+        self.assertEqual(False, MockTransport().has('foo'))
+
+    def test_mkdir(self):
+        MockTransport().mkdir('45')
 
 
 class TestTransportStore(TestCase):
