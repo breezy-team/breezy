@@ -24,6 +24,7 @@
 
 
 import os
+import bzrlib
 from bzrlib.config import config_dir
 DEFAULT_PLUGIN_PATH = os.path.join(config_dir(), 'plugins')
 
@@ -110,9 +111,10 @@ def load_plugins():
                 plugin_info = imp.find_module(name, [d])
                 mutter('load plugin %r' % (plugin_info,))
                 try:
-                    plugin = imp.load_module('bzrlib.plugin.' + name,
+                    plugin = imp.load_module('bzrlib.plugins.' + name,
                                              *plugin_info)
                     all_plugins.append(plugin)
+                    setattr(bzrlib.plugins, name, plugin)
                 finally:
                     if plugin_info[0] is not None:
                         plugin_info[0].close()

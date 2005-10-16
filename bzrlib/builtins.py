@@ -1099,13 +1099,14 @@ class cmd_whoami(Command):
     def run(self, email=False):
         try:
             b = bzrlib.branch.Branch.open_containing('.')
+            config = bzrlib.config.BranchConfig(b)
         except NotBranchError:
-            b = None
+            config = bzrlib.config.GlobalConfig()
         
         if email:
-            print bzrlib.config.user_email(b)
+            print config.user_email()
         else:
-            print bzrlib.config.username(b)
+            print config.username()
 
 
 class cmd_selftest(Command):
