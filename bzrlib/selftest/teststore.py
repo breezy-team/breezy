@@ -120,7 +120,7 @@ class TestMemoryStore(TestCase):
     def test_adding_fails_when_present(self):
         my_store = self.get_store()
         my_store.add(StringIO('hello'), 'aa')
-        self.assertRaises(store.StoreError,
+        self.assertRaises(BzrError,
                           my_store.add, StringIO('hello'), 'aa')
 
     def test_total_size(self):

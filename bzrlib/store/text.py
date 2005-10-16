@@ -48,7 +48,7 @@ class TextStore(bzrlib.store.TransportStore):
         return self._transport.get(fn)
 
     def __iter__(self):
-        for relpath, st in self._iter_relpaths():
+        for relpath in self._transport.iter_files_recursive():
             yield os.path.basename(relpath)
 
 

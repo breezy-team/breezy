@@ -114,7 +114,7 @@ class CompressedTextStore(bzrlib.store.TransportStore):
         self.register_suffix('gz')
 
     def __iter__(self):
-        for relpath, st in self._iter_relpaths():
+        for relpath in self._transport.iter_files_recursive():
             if relpath.endswith(".gz"):
                 yield os.path.basename(relpath)[:-3]
             else:

@@ -103,13 +103,6 @@ class HttpTransport(Transport):
         return urlparse.urlunparse((self._proto,
                 self._host, path, '', '', ''))
 
-    def relpath(self, abspath):
-        if not abspath.startswith(self.base):
-            raise NonRelativePath('path %r is not under base URL %r'
-                           % (abspath, self.base))
-        pl = len(self.base)
-        return abspath[pl:].lstrip('/')
-
     def has(self, relpath):
         """Does the target location exist?
 
@@ -148,28 +141,6 @@ class HttpTransport(Transport):
             raise NoSuchFile(msg = "Error retrieving %s: %s" 
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
-
-    def get_partial(self, relpath, start, length=None):
-        """Get just part of a file.
-
-        :param relpath: Path to the file, relative to base
-        :param start: The starting position to read from
-        :param length: The length to read. A length of None indicates
-                       read to the end of the file.
-        :return: A file-like object containing at least the specified bytes.
-                 Some implementations may return objects which can be read
-                 past this length, but this is not guaranteed.
-        """
-        # TODO: You can make specialized http requests for just
-        # a portion of the file. Figure out how to do that.
-        # For now, urllib2 returns files that cannot seek() so
-        # we just read bytes off the beginning, until we
-        # get to the point that we care about.
-        f = self.get(relpath)
-        # TODO: read in smaller chunks, in case things are
-        # buffered internally.
-        f.read(start)
-        return f
 
     def put(self, relpath, f):
         """Copy the file-like or string object into the location.

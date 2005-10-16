@@ -25,13 +25,13 @@ unique ID.
 """
 
 from cStringIO import StringIO
-from stat import ST_MODE, S_ISDIR, ST_SIZE
 from zlib import adler32
 
+import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.trace import mutter
-import bzrlib.transport
+import bzrlib.transport as transport
 from bzrlib.transport.local import LocalTransport
 
 ######################################################################
@@ -238,10 +238,10 @@ class TransportStore(Store):
         relpaths = (self._relpath(fid) for fid in fileids)
         return self._transport.has_multi(relpaths, pb=pb)
 
-    def __init__(self, transport, prefixed=False):
-        assert isinstance(transport, bzrlib.transport.Transport)
+    def __init__(self, a_transport, prefixed=False):
+        assert isinstance(a_transport, transport.Transport)
         super(TransportStore, self).__init__()
-        self._transport = transport
+        self._transport = a_transport
         self._prefixed = prefixed
         self._suffixes = set()
 
@@ -269,19 +269,6 @@ class TransportStore(Store):
 
     __str__ = __repr__
 
-    def _iter_relpaths(self):
-        """Iter the relative paths of files in the transports sub-tree."""
-        transport = self._transport
-        queue = list(transport.list_dir('.'))
-        while queue:
-            relpath = queue.pop(0)
-            st = transport.stat(relpath)
-            if S_ISDIR(st[ST_MODE]):
-                for i, basename in enumerate(transport.list_dir(relpath)):
-                    queue.insert(i, relpath+'/'+basename)
-            else:
-                yield relpath, st
-
     def listable(self):
         """Return True if this store is able to be listed."""
         return self._transport.listable()
@@ -298,47 +285,15 @@ class TransportStore(Store):
         the content."""
         total = 0
         count = 0
-        for relpath, st in self._iter_relpaths():
+        for relpath in self._transport.iter_files_recursive():
             count += 1
-            total += st[ST_SIZE]
+            total += self._transport.stat(relpath).st_size
                 
         return count, total
 
 
-class ImmutableMemoryStore(Store):
-    """A memory only store."""
-
-    def __contains__(self, fileid):
-        return self._contents.has_key(fileid)
-
-    def __init__(self):
-        super(ImmutableMemoryStore, self).__init__()
-        self._contents = {}
-
-    def add(self, stream, fileid, compressed=True):
-        if self._contents.has_key(fileid):
-            raise StoreError("fileid %s already in the store" % fileid)
-        self._contents[fileid] = stream.read()
-
-    def get(self, fileid):
-        """Returns a file reading from a particular entry."""
-        if not self._contents.has_key(fileid):
-            raise IndexError
-        return StringIO(self._contents[fileid])
-
-    def _item_size(self, fileid):
-        return len(self._contents[fileid])
-
-    def __iter__(self):
-        return iter(self._contents.keys())
-
-    def total_size(self):
-        result = 0
-        count = 0
-        for fileid in self:
-            count += 1
-            result += self._item_size(fileid)
-        return count, result
+def ImmutableMemoryStore():
+    return bzrlib.store.text.TextStore(transport.memory.MemoryTransport())
         
 
 class CachedStore(Store):
