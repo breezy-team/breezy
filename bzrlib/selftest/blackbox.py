@@ -401,8 +401,6 @@ class TestCommands(ExternalBase):
         os.chdir('../b')
         self.runbzr('commit -m blah3 --unchanged')
         self.runbzr('pull ../a', retcode=1)
-        print "DECIDE IF PULL CAN CONVERGE, blackbox.py"
-        return
         os.chdir('../a')
         self.runbzr('merge ../b')
         self.runbzr('commit -m blah4 --unchanged')

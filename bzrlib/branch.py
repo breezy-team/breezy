@@ -35,7 +35,8 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            DivergedBranches, LockError, UnlistableStore,
                            UnlistableBranch, NoSuchFile)
 from bzrlib.textui import show_status
-from bzrlib.revision import Revision
+from bzrlib.revision import Revision, is_ancestor, get_intervening_revisions
+
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
@@ -952,22 +953,37 @@ class _Branch(Branch):
         # revision in this branch is completely merged into the other,
         # then we should still be able to pull.
         from bzrlib.fetch import greedy_fetch
-        from bzrlib.revision import get_intervening_revisions
         if stop_revision is None:
             stop_revision = other.last_revision()
+        ### Should this be checking is_ancestor instead of revision_history?
         if (stop_revision is not None and 
             stop_revision in self.revision_history()):
             return
         greedy_fetch(to_branch=self, from_branch=other,
                      revision=stop_revision)
-        pullable_revs = self.missing_revisions(
-            other, other.revision_id_to_revno(stop_revision))
+        pullable_revs = self.pullable_revisions(other, stop_revision)
         if pullable_revs:
             greedy_fetch(to_branch=self,
                          from_branch=other,
                          revision=pullable_revs[-1])
             self.append_revision(*pullable_revs)
-    
+
+    def pullable_revisions(self, other, stop_revision):
+        other_revno = other.revision_id_to_revno(stop_revision)
+        try:
+            return self.missing_revisions(other, other_revno)
+        except DivergedBranches, e:
+            try:
+                pullable_revs = get_intervening_revisions(self.last_revision(),
+                                                          stop_revision, self)
+                assert self.last_revision() not in pullable_revs
+                return pullable_revs
+            except bzrlib.errors.NotAncestor:
+                if is_ancestor(self.last_revision(), stop_revision, self):
+                    return []
+                else:
+                    raise e
+        
 
     def commit(self, *args, **kw):
         from bzrlib.commit import Commit
