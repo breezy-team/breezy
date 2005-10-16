@@ -51,7 +51,6 @@ class TestCommit(TestCaseInTempDir):
         tree2 = b.revision_tree(rh[1])
         eq(tree2.get_file_text(file_id), 'version 2')
 
-
     def test_delete_commit(self):
         """Test a commit with a deleted file"""
         b = Branch.initialize('.')

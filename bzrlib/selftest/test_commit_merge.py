@@ -44,7 +44,9 @@ class TestCommitMerge(TestCaseInTempDir):
         commit(bx, 'commit one', rev_id='x@u-0-1', allow_pointless=True)
         commit(by, 'commit two', rev_id='y@u-0-1', allow_pointless=True)
 
-        fetch(from_branch=bx, to_branch=by)
+        fetcher = fetch(from_branch=bx, to_branch=by)
+        self.assertEqual(1, fetcher.count_copied)
+        self.assertEqual([], fetcher.failed_revisions)
         # just having the history there does nothing
         self.assertRaises(PointlessCommit,
                           commit,

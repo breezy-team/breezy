@@ -59,9 +59,9 @@ class Store(object):
         """DEPRECATED. Please use .get(file_id) instead."""
         raise NotImplementedError
 
-    def __contains__(self, fileid):
-        """"""
-        raise NotImplementedError
+    #def __contains__(self, fileid):
+    #    """Deprecated, please use has_id"""
+    #    raise NotImplementedError
 
     def __iter__(self):
         raise NotImplementedError
@@ -80,17 +80,9 @@ class Store(object):
         for f, fileid in entries:
             self.add(f, fileid)
 
-    def has(self, fileids):
-        """Return True/False for each entry in fileids.
-
-        :param fileids: A List or generator yielding file ids.
-        :return: A generator or list returning True/False for each entry.
-        """
-        for fileid in fileids:
-            if fileid in self:
-                yield True
-            else:
-                yield False
+    def has_id(self, file_id):
+        """Return True or false for the presence of file_id in the store."""
+        raise NotImplementedError
 
     def listable(self):
         """Return True if this store is able to be listed."""
@@ -118,8 +110,8 @@ class Store(object):
         ids = list(ids) # Make sure we don't have a generator, since we iterate 2 times
         pb.update('preparing to copy')
         to_copy = []
-        for file_id, has in zip(ids, self.has(ids)):
-            if not has:
+        for file_id in ids:
+            if not self.has_id(file_id):
                 to_copy.append(file_id)
         return self._do_copy(other, to_copy, pb, permit_failure=permit_failure)
 
@@ -209,7 +201,7 @@ class TransportStore(Store):
         if '\\' in fileid or '/' in fileid:
             raise ValueError("invalid store id %r" % fileid)
 
-    def __contains__(self, fileid):
+    def has_id(self, fileid):
         fn = self._relpath(fileid)
         return self._transport.has(fn)
 
@@ -228,15 +220,6 @@ class TransportStore(Store):
             return self._get(fn)
         except errors.NoSuchFile:
             raise KeyError(fileid)
-
-    def has(self, fileids, pb=None):
-        """Return True/False for each entry in fileids.
-
-        :param fileids: A List or generator yielding file ids.
-        :return: A generator or list returning True/False for each entry.
-        """
-        relpaths = (self._relpath(fid) for fid in fileids)
-        return self._transport.has_multi(relpaths, pb=pb)
 
     def __init__(self, a_transport, prefixed=False):
         assert isinstance(a_transport, transport.Transport)
@@ -317,7 +300,7 @@ class CachedStore(Store):
             self.cache_store.add(self.source_store.get(id), id)
         return self.cache_store.get(id)
 
-    def __contains__(self, fileid):
+    def has_id(self, fileid):
         if fileid in self.cache_store:
             return True
         if fileid in self.source_store:

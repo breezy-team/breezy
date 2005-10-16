@@ -268,4 +268,3 @@ class TestTransportStore(TestCase):
         my_store.register_suffix('dsc')
         my_store.add(stream, "foo", 'dsc')
         self.assertEqual([("_add", "45/foo.dsc", stream)], my_store._calls)
-

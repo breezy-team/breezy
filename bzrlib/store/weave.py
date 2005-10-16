@@ -57,8 +57,7 @@ class WeaveStore(TransportStore):
             if relpath.endswith(WeaveStore.FILE_SUFFIX):
                 yield os.path.basename(relpath[:-l])
 
-    def __contains__(self, fileid):
-        """"""
+    def has_id(self, fileid):
         return self._transport.has(self.filename(fileid))
 
     def _get(self, file_id):

@@ -750,7 +750,7 @@ class _Branch(Branch):
         This does not necessarily imply the revision is merge
         or on the mainline."""
         return (revision_id is None
-                or revision_id in self.revision_store)
+                or self.revision_store.has_id(revision_id))
 
     def get_revision_xml_file(self, revision_id):
         """Return XML file object for revision object."""

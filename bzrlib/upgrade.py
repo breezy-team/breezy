@@ -263,7 +263,7 @@ class Convert(object):
         self.pb.update('loading revision',
                        len(self.revisions),
                        len(self.known_revisions))
-        if rev_id not in self.branch.revision_store:
+        if not self.branch.revision_store.has_id(rev_id):
             self.pb.clear()
             note('revision {%s} not present in branch; '
                  'will be converted as a ghost',
