@@ -21,7 +21,7 @@ This store keeps compressed versions of the full text. It does not
 do any sort of delta compression.
 """
 
-import os, tempfile, gzip
+import gzip
 
 import bzrlib.store
 from bzrlib.trace import mutter
@@ -111,13 +111,6 @@ class CompressedTextStore(bzrlib.store.TransportStore):
     def __init__(self, transport, prefixed=False):
         super(CompressedTextStore, self).__init__(transport, prefixed)
         self.register_suffix('gz')
-
-    def __iter__(self):
-        for relpath in self._transport.iter_files_recursive():
-            if relpath.endswith(".gz"):
-                yield os.path.basename(relpath)[:-3]
-            else:
-                yield os.path.basename(relpath)
 
     def _get(self, filename):
         """Returns a file reading from a particular entry."""

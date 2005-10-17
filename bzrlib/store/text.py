@@ -21,8 +21,6 @@ This store keeps uncompressed versions of the full text. It does not
 do any sort of delta compression.
 """
 
-import os, tempfile
-
 import bzrlib.store
 from bzrlib.store import hash_prefix
 from bzrlib.trace import mutter
@@ -46,10 +44,6 @@ class TextStore(bzrlib.store.TransportStore):
 
     def _get(self, fn):
         return self._transport.get(fn)
-
-    def __iter__(self):
-        for relpath in self._transport.iter_files_recursive():
-            yield os.path.basename(relpath)
 
 
 def ScratchTextStore():

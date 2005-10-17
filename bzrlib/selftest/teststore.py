@@ -270,8 +270,8 @@ class TestTransportStore(TestCase):
         my_store.add(stream, "foo", 'dsc')
         self.assertEqual([("_add", "45/foo.dsc", stream)], my_store._calls)
 
-    def get_populated_store(self, prefixed=False):
-        my_store = TextStore(MemoryTransport(), prefixed)
+    def get_populated_store(self, prefixed=False, store_class=TextStore):
+        my_store = store_class(MemoryTransport(), prefixed)
         my_store.register_suffix('sig')
         stream = StringIO("signature")
         my_store.add(stream, "foo", 'sig')
@@ -318,3 +318,27 @@ class TestTransportStore(TestCase):
         my_store = self.get_populated_store(True)
         self.assertEqual('signature for missing base',
                          my_store.get('missing', 'sig').read())
+
+    def test___iter__no_suffix(self):
+        my_store = TextStore(MemoryTransport(), False)
+        stream = StringIO("content")
+        my_store.add(stream, "foo")
+        self.assertEqual(set(['foo']),
+                         set(my_store.__iter__()))
+
+    def test___iter__(self):
+        self.assertEqual(set(['foo']),
+                         set(self.get_populated_store().__iter__()))
+        self.assertEqual(set(['foo']),
+                         set(self.get_populated_store(True).__iter__()))
+
+    def test___iter__compressed(self):
+        self.assertEqual(set(['foo']),
+                         set(self.get_populated_store(
+                             store_class=CompressedTextStore).__iter__()))
+        self.assertEqual(set(['foo']),
+                         set(self.get_populated_store(
+                             True, CompressedTextStore).__iter__()))
+
+    def test___len__(self):
+        self.assertEqual(1, len(self.get_populated_store()))

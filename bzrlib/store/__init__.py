@@ -24,6 +24,7 @@ A store is a simple write-once container indexed by a universally
 unique ID.
 """
 
+import os
 from cStringIO import StringIO
 from zlib import adler32
 
@@ -241,6 +242,20 @@ class TransportStore(Store):
         self._transport = a_transport
         self._prefixed = prefixed
         self._suffixes = set()
+
+    def __iter__(self):
+        for relpath in self._transport.iter_files_recursive():
+            # worst case is one of each suffix.
+            name = os.path.basename(relpath)
+            if name.endswith('.gz'):
+                name = name[:-3]
+            skip = False
+            for count in range(len(self._suffixes)):
+                for suffix in self._suffixes:
+                    if name.endswith('.' + suffix):
+                        skip = True
+            if not skip:
+                yield name
 
     def __len__(self):
         return len(list(self.__iter__()))
