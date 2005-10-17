@@ -75,16 +75,6 @@ class Store(object):
         """Add a file object f to the store accessible from the given fileid"""
         raise NotImplementedError('Children of Store must define their method of adding entries.')
 
-    def add_multi(self, entries):
-        """Add a series of file-like or string objects to the store with the given
-        identities.
-        
-        :param entries: A list of tuples of file,id pairs [(file1, id1), (file2, id2), ...]
-                        This could also be a generator yielding (file,id) pairs.
-        """
-        for f, fileid in entries:
-            self.add(f, fileid)
-
     def has_id(self, file_id, suffix=None):
         """Return True or false for the presence of file_id in the store.
         
@@ -170,7 +160,8 @@ class Store(object):
 
             assert count == len(to_copy)
 
-        self.add_multi(buffer_requests())
+        for f, fileid in buffer_requests():
+            self.add(f, fileid)
 
         pb.clear()
         return len(to_copy), failed
@@ -337,17 +328,6 @@ class CachedStore(Store):
             # We could copy at this time
             return True
         return False
-
-    def prefetch(self, ids):
-        """Copy a series of ids into the cache, before they are used.
-        For remote stores that support pipelining or async downloads, this can
-        increase speed considerably.
-
-        Failures while prefetching are ignored.
-        """
-        mutter("Prefetch of ids %s" % ",".join(ids))
-        self.cache_store.copy_multi(self.source_store, ids, 
-                                    permit_failure=True)
 
 
 def copy_all(store_from, store_to):
