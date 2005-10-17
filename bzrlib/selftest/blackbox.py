@@ -26,9 +26,9 @@ rather starts again from the run_bzr function.
 
 from cStringIO import StringIO
 import os
+import re
 import shutil
 import sys
-import os
 
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
@@ -614,7 +614,8 @@ class OldTests(ExternalBase):
         runbzr("add sub1")
         runbzr("rename sub1 sub2")
         runbzr("move hello.txt sub2")
-        assert capture("relpath sub2/hello.txt") == os.path.join("sub2", "hello.txt\n")
+        self.assertEqual(capture("relpath sub2/hello.txt"),
+                         os.path.join("sub2", "hello.txt\n"))
 
         assert exists("sub2")
         assert exists("sub2/hello.txt")
@@ -805,3 +806,5 @@ class HttpTests(TestCaseWithWebserver):
         self.run_bzr('branch', url, 'to')
         branch = Branch.open('to')
         self.assertEqual(1, len(branch.revision_history()))
+
+

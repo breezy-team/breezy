@@ -1,10 +1,48 @@
 UNRELEASED CHANGES
 
+  IMPROVEMENTS:
+
+    * The config directory is now ~/.bazaar, and there is a single file 
+      ~/.bazaar/bazaar.conf storing email, editor and other preferences.
+      (Robert Collins)
+
+    * 'bzr add' no longer takes a --verbose option, and a --quiet option
+      has been added that suppresses all output.
+
+    * Improved zsh completion support in contrib/zsh, from Clint
+      Adams.
+
+    * Builtin 'bzr annotate' command, by Martin Pool with improvements from 
+      Goffredo Baroncelli.
+    
+    * 'bzr check' now accepts -v for verbose reporting, and checks for
+      ghosts in the branch.
+
+  TESTING:
+
+    * The 'bzr selftest --pattern' option for has been removed, now 
+      test specifiers on the command line can be simple strings, or 
+      regexps, or both.
+
+    * Passing -v to selftest will now show the time each test took to 
+      complete, which will aid in analysing performance regressions and
+      related questions.
+
+    * 'bzr selftest' runs all tests, even if one feels, unless '--one'
+      is given.
+
   INTERNALS:
 
     * New 'manifest' command and concept for making gpg-signatures 
       of revisions that are not tied to a particular internal
       representation.
+
+    * Config options have moved from bzrlib.osutils to bzrlib.config.
+      (Robert Collins)
+
+    * Improved command line option definitions allowing explanations
+      for individual options, among other things.  Contributed by 
+      Magnus Therning.
 
     * Config options have moved from bzrlib.osutils to bzrlib.config.
       Configuration is now done via the config.Config interface:
@@ -16,36 +54,12 @@ UNRELEASED CHANGES
       they are made available for other plugins to use. You should not 
       import other plugins during the __init__ of your plugin though, as 
       no ordering is guaranteed, and the plugins directory is not on the
-      python path.
+      python path. (Robert Collins)
 
-
-  IMPROVEMENTS:
-
-    * The config directory is now ~/.bazaar, and there is a single file 
-      ~/.bazaar/bazaar.conf storing email, editor and other preferences.
-      (Robert Collins)
-
-    * 'bzr add' no longer takes a --verbose option, and a --quiet option
-      has been added that suppresses all output.
- 
-    * 'bzr check' now accepts -v for verbose reporting, and checks for
-      ghosts in the branch.
-
-
-  INTERNALS:
-
-    * Config options have moved from bzrlib.osutils to bzrlib.config.
-      (Robert Collins)
-
-  TESTING:
-
-    * The --pattern option has been removed, now test specifiers on the
-      command line can be simple strings, or regexps, or both.
-
-    * Passing -v to selftest will now show the time each test took to 
-      complete, which will aid in analysing performance regressions and
-      related questions.
-
+    * Branch.relpath has been moved to WorkingTree.relpath. WorkingTree no
+      no longer takes an inventory, rather it takes an option branch
+      parameter, and if None is given will open the branch at basedir 
+      implicitly. (Robert Collins)
 
 bzr 0.1.1 2005-10-12
 

@@ -38,6 +38,7 @@ from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib import BZRDIR
+from bzrlib.option import Option
 
 plugin_cmds = {}
 
@@ -65,85 +66,6 @@ def _squish_command_name(cmd):
 def _unsquish_command_name(cmd):
     assert cmd.startswith("cmd_")
     return cmd[4:].replace('_','-')
-
-
-def _parse_revision_str(revstr):
-    """This handles a revision string -> revno.
-
-    This always returns a list.  The list will have one element for
-    each revision specifier supplied.
-
-    >>> _parse_revision_str('234')
-    [<RevisionSpec_int 234>]
-    >>> _parse_revision_str('234..567')
-    [<RevisionSpec_int 234>, <RevisionSpec_int 567>]
-    >>> _parse_revision_str('..')
-    [<RevisionSpec None>, <RevisionSpec None>]
-    >>> _parse_revision_str('..234')
-    [<RevisionSpec None>, <RevisionSpec_int 234>]
-    >>> _parse_revision_str('234..')
-    [<RevisionSpec_int 234>, <RevisionSpec None>]
-    >>> _parse_revision_str('234..456..789') # Maybe this should be an error
-    [<RevisionSpec_int 234>, <RevisionSpec_int 456>, <RevisionSpec_int 789>]
-    >>> _parse_revision_str('234....789') #Error ?
-    [<RevisionSpec_int 234>, <RevisionSpec None>, <RevisionSpec_int 789>]
-    >>> _parse_revision_str('revid:test@other.com-234234')
-    [<RevisionSpec_revid revid:test@other.com-234234>]
-    >>> _parse_revision_str('revid:test@other.com-234234..revid:test@other.com-234235')
-    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revid revid:test@other.com-234235>]
-    >>> _parse_revision_str('revid:test@other.com-234234..23')
-    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_int 23>]
-    >>> _parse_revision_str('date:2005-04-12')
-    [<RevisionSpec_date date:2005-04-12>]
-    >>> _parse_revision_str('date:2005-04-12 12:24:33')
-    [<RevisionSpec_date date:2005-04-12 12:24:33>]
-    >>> _parse_revision_str('date:2005-04-12T12:24:33')
-    [<RevisionSpec_date date:2005-04-12T12:24:33>]
-    >>> _parse_revision_str('date:2005-04-12,12:24:33')
-    [<RevisionSpec_date date:2005-04-12,12:24:33>]
-    >>> _parse_revision_str('-5..23')
-    [<RevisionSpec_int -5>, <RevisionSpec_int 23>]
-    >>> _parse_revision_str('-5')
-    [<RevisionSpec_int -5>]
-    >>> _parse_revision_str('123a')
-    Traceback (most recent call last):
-      ...
-    BzrError: No namespace registered for string: '123a'
-    >>> _parse_revision_str('abc')
-    Traceback (most recent call last):
-      ...
-    BzrError: No namespace registered for string: 'abc'
-    >>> _parse_revision_str('branch:../branch2')
-    [<RevisionSpec_branch branch:../branch2>]
-    """
-    import re
-    old_format_re = re.compile('\d*:\d*')
-    m = old_format_re.match(revstr)
-    revs = []
-    if m:
-        warning('Colon separator for revision numbers is deprecated.'
-                ' Use .. instead')
-        for rev in revstr.split(':'):
-            if rev:
-                revs.append(RevisionSpec(int(rev)))
-            else:
-                revs.append(RevisionSpec(None))
-    else:
-        next_prefix = None
-        for x in revstr.split('..'):
-            if not x:
-                revs.append(RevisionSpec(None))
-            elif x[-1] == ':':
-                # looks like a namespace:.. has happened
-                next_prefix = x + '..'
-            else:
-                if next_prefix is not None:
-                    x = next_prefix + x
-                revs.append(RevisionSpec(x))
-                next_prefix = None
-        if next_prefix is not None:
-            revs.append(RevisionSpec(next_prefix))
-    return revs
 
 
 def _builtin_commands():
@@ -236,14 +158,15 @@ class Command(object):
         repeated, etc.
 
     takes_options
-        List of options that may be given for this command.
+        List of options that may be given for this command.  These can
+        be either strings, referring to globally-defined options,
+        or option objects.  Retrieve through options().
 
     hidden
         If true, this command isn't advertised.  This is typically
         for commands intended for expert users.
     """
     aliases = []
-    
     takes_args = []
     takes_options = []
 
@@ -254,23 +177,31 @@ class Command(object):
         if self.__doc__ == Command.__doc__:
             warn("No help message set for %r" % self)
 
+    def options(self):
+        """Return dict of valid options for this command.
+
+        Maps from long option name to option object."""
+        r = dict()
+        r['help'] = Option.OPTIONS['help']
+        for o in self.takes_options:
+            if not isinstance(o, Option):
+                o = Option.OPTIONS[o]
+            r[o.name] = o
+        return r
 
     def run_argv(self, argv):
         """Parse command line and run."""
-        args, opts = parse_args(argv)
-
+        args, opts = parse_args(self, argv)
         if 'help' in opts:  # e.g. bzr add --help
             from bzrlib.help import help_on_command
             help_on_command(self.name())
             return 0
-
-        # check options are reasonable
-        allowed = self.takes_options
+        # XXX: This should be handled by the parser
+        allowed_names = self.options().keys()
         for oname in opts:
-            if oname not in allowed:
+            if oname not in allowed_names:
                 raise BzrCommandError("option '--%s' is not allowed for command %r"
                                       % (oname, self.name()))
-
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
         cmdopts = {}
@@ -337,121 +268,64 @@ def parse_spec(spec):
         parsed = [spec, None]
     return parsed
 
-
-# list of all available options; the rhs can be either None for an
-# option that takes no argument, or a constructor function that checks
-# the type.
-OPTIONS = {
-    'all':                    None,
-    'basis':                  str,
-    'diff-options':           str,
-    'help':                   None,
-    'file':                   unicode,
-    'force':                  None,
-    'format':                 unicode,
-    'forward':                None,
-    'quiet':                  None,
-    'message':                unicode,
-    'no-recurse':             None,
-    'line':                   None,
-    'profile':                None,
-    'revision':               _parse_revision_str,
-    'short':                  None,
-    'show-ids':               None,
-    'timezone':               str,
-    'verbose':                None,
-    'version':                None,
-    'email':                  None,
-    'unchanged':              None,
-    'update':                 None,
-    'long':                   None,
-    'root':                   str,
-    'no-backup':              None,
-    'pattern':                str,
-    'remember':               None,
-    }
-
-SHORT_OPTIONS = {
-    'F':                      'file', 
-    'h':                      'help',
-    'm':                      'message',
-    'r':                      'revision',
-    'v':                      'verbose',
-    'l':                      'long',
-    'q':                      'quiet',
-}
-
-
-def parse_args(argv):
+def parse_args(command, argv):
     """Parse command line.
     
     Arguments and options are parsed at this level before being passed
     down to specific command handlers.  This routine knows, from a
     lookup table, something about the available options, what optargs
     they take, and which commands will accept them.
-
-    >>> parse_args('--help'.split())
-    ([], {'help': True})
-    >>> parse_args('help -- --invalidcmd'.split())
-    (['help', '--invalidcmd'], {})
-    >>> parse_args('--version'.split())
-    ([], {'version': True})
-    >>> parse_args('status --all'.split())
-    (['status'], {'all': True})
-    >>> parse_args('commit --message=biter'.split())
-    (['commit'], {'message': u'biter'})
-    >>> parse_args('log -r 500'.split())
-    (['log'], {'revision': [<RevisionSpec_int 500>]})
-    >>> parse_args('log -r500..600'.split())
-    (['log'], {'revision': [<RevisionSpec_int 500>, <RevisionSpec_int 600>]})
-    >>> parse_args('log -vr500..600'.split())
-    (['log'], {'verbose': True, 'revision': [<RevisionSpec_int 500>, <RevisionSpec_int 600>]})
-    >>> parse_args('log -rrevno:500..600'.split()) #the r takes an argument
-    (['log'], {'revision': [<RevisionSpec_revno revno:500>, <RevisionSpec_int 600>]})
     """
+    # TODO: chop up this beast; make it a method of the Command
     args = []
     opts = {}
 
+    cmd_options = command.options()
     argsover = False
     while argv:
         a = argv.pop(0)
-        if not argsover and a[0] == '-':
+        if argsover:
+            args.append(a)
+            continue
+        elif a == '--':
+            # We've received a standalone -- No more flags
+            argsover = True
+            continue
+        if a[0] == '-':
             # option names must not be unicode
             a = str(a)
             optarg = None
             if a[1] == '-':
-                if a == '--':
-                    # We've received a standalone -- No more flags
-                    argsover = True
-                    continue
                 mutter("  got option %r" % a)
                 if '=' in a:
                     optname, optarg = a[2:].split('=', 1)
                 else:
                     optname = a[2:]
-                if optname not in OPTIONS:
-                    raise BzrError('unknown long option %r' % a)
+                if optname not in cmd_options:
+                    raise BzrCommandError('unknown long option %r for command %s' 
+                            % (a, command.name))
             else:
                 shortopt = a[1:]
-                if shortopt in SHORT_OPTIONS:
+                if shortopt in Option.SHORT_OPTIONS:
                     # Multi-character options must have a space to delimit
                     # their value
-                    optname = SHORT_OPTIONS[shortopt]
+                    # ^^^ what does this mean? mbp 20051014
+                    optname = Option.SHORT_OPTIONS[shortopt].name
                 else:
                     # Single character short options, can be chained,
                     # and have their value appended to their name
                     shortopt = a[1:2]
-                    if shortopt not in SHORT_OPTIONS:
+                    if shortopt not in Option.SHORT_OPTIONS:
                         # We didn't find the multi-character name, and we
                         # didn't find the single char name
                         raise BzrError('unknown short option %r' % a)
-                    optname = SHORT_OPTIONS[shortopt]
+                    optname = Option.SHORT_OPTIONS[shortopt].name
 
                     if a[2:]:
                         # There are extra things on this option
                         # see if it is the value, or if it is another
                         # short option
-                        optargfn = OPTIONS[optname]
+                        optargfn = Option.OPTIONS[optname].type
                         if optargfn is None:
                             # This option does not take an argument, so the
                             # next entry is another short option, pack it back
@@ -466,7 +340,8 @@ def parse_args(argv):
                 # XXX: Do we ever want to support this, e.g. for -r?
                 raise BzrError('repeated option %r' % a)
                 
-            optargfn = OPTIONS[optname]
+            option_obj = cmd_options[optname]
+            optargfn = option_obj.type
             if optargfn:
                 if optarg == None:
                     if not argv:
@@ -480,10 +355,7 @@ def parse_args(argv):
                 opts[optname] = True
         else:
             args.append(a)
-
     return args, opts
-
-
 
 
 def _match_argform(cmd, takes_args, args):

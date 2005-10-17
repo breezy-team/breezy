@@ -26,6 +26,8 @@ from bzrlib.errors import DivergedBranches
 from bzrlib.branch import Branch
 from bzrlib import BZRDIR
 from bzrlib.commands import Command
+from bzrlib.option import Option
+from bzrlib.workingtree import WorkingTree
 
 
 class cmd_status(Command):
@@ -77,7 +79,8 @@ class cmd_status(Command):
     def run(self, all=False, show_ids=False, file_list=None, revision=None):
         if file_list:
             b = Branch.open_containing(file_list[0])
-            file_list = [b.relpath(x) for x in file_list]
+            tree = WorkingTree(b.base, b)
+            file_list = [tree.relpath(x) for x in file_list]
             # special case: only one path was given and it's the root
             # of the branch
             if file_list == ['']:
@@ -214,8 +217,8 @@ class cmd_relpath(Command):
     hidden = True
     
     def run(self, filename):
-        print Branch.open_containing(filename).relpath(filename)
-
+        branch = Branch.open_containing(filename)
+        print WorkingTree(branch.base, branch).relpath(filename)
 
 
 class cmd_inventory(Command):
@@ -252,7 +255,8 @@ class cmd_move(Command):
         b = Branch.open_containing('.')
 
         # TODO: glob expansion on windows?
-        b.move([b.relpath(s) for s in source_list], b.relpath(dest))
+        tree = WorkingTree(b.base, b)
+        b.move([tree.relpath(s) for s in source_list], tree.relpath(dest))
 
 
 class cmd_rename(Command):
@@ -273,8 +277,8 @@ class cmd_rename(Command):
     
     def run(self, from_name, to_name):
         b = Branch.open_containing('.')
-        b.rename_one(b.relpath(from_name), b.relpath(to_name))
-
+        tree = WorkingTree(b.base, b)
+        b.rename_one(tree.relpath(from_name), tree.relpath(to_name))
 
 
 class cmd_mv(Command):
@@ -295,8 +299,8 @@ class cmd_mv(Command):
         if len(names_list) < 2:
             raise BzrCommandError("missing file argument")
         b = Branch.open_containing(names_list[0])
-
-        rel_names = [b.relpath(x) for x in names_list]
+        tree = WorkingTree(b.base, b)
+        rel_names = [tree.relpath(x) for x in names_list]
         
         if os.path.isdir(names_list[-1]):
             # move into existing directory
@@ -481,7 +485,8 @@ class cmd_remove(Command):
     
     def run(self, file_list, verbose=False):
         b = Branch.open_containing(file_list[0])
-        b.remove([b.relpath(f) for f in file_list], verbose=verbose)
+        tree = WorkingTree(b.base, b)
+        b.remove([tree.relpath(f) for f in file_list], verbose=verbose)
 
 
 class cmd_file_id(Command):
@@ -495,7 +500,8 @@ class cmd_file_id(Command):
     takes_args = ['filename']
     def run(self, filename):
         b = Branch.open_containing(filename)
-        i = b.inventory.path2id(b.relpath(filename))
+        tree = WorkingTree(b.base, b)
+        i = b.inventory.path2id(tree.relpath(filename))
         if i == None:
             raise BzrError("%r is not a versioned file" % filename)
         else:
@@ -512,7 +518,8 @@ class cmd_file_path(Command):
     def run(self, filename):
         b = Branch.open_containing(filename)
         inv = b.inventory
-        fid = inv.path2id(b.relpath(filename))
+        tree = WorkingTree(b.base, b)
+        fid = inv.path2id(tree.relpath(filename))
         if fid == None:
             raise BzrError("%r is not a versioned file" % filename)
         for fip in inv.get_idpath(fid):
@@ -597,7 +604,8 @@ class cmd_diff(Command):
 
         if file_list:
             b = Branch.open_containing(file_list[0])
-            file_list = [b.relpath(f) for f in file_list]
+            tree = WorkingTree(b.base, b)
+            file_list = [tree.relpath(f) for f in file_list]
             if file_list == ['']:
                 # just pointing to top-of-tree
                 file_list = None
@@ -692,16 +700,22 @@ class cmd_log(Command):
     To request a range of logs, you can use the command -r begin:end
     -r revision requests a specific revision, -r :end or -r begin: are
     also valid.
-
-    --message allows you to give a regular expression, which will be evaluated
-    so that only matching entries will be displayed.
     """
 
     # TODO: Make --revision support uuid: and hash: [future tag:] notation.
 
     takes_args = ['filename?']
-    takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision',
-                     'long', 'message', 'short', 'line',]
+    takes_options = [Option('forward', 
+                            help='show from oldest to newest'),
+                     'timezone', 'verbose', 
+                     'show-ids', 'revision',
+                     Option('line', help='format with one line per revision'),
+                     'long', 
+                     Option('message',
+                            help='show revisions whose message matches this regexp',
+                            type=str),
+                     Option('short', help='use moderately short format'),
+                     ]
     
     def run(self, filename=None, timezone='original',
             verbose=False,
@@ -714,12 +728,14 @@ class cmd_log(Command):
             line=False):
         from bzrlib.log import log_formatter, show_log
         import codecs
-
+        assert message is None or isinstance(message, basestring), \
+            "invalid message argument %r" % message
         direction = (forward and 'forward') or 'reverse'
         
         if filename:
             b = Branch.open_containing(filename)
-            fp = b.relpath(filename)
+            tree = WorkingTree(b.base, b)
+            fp = tree.relpath(filename)
             if fp:
                 file_id = b.read_working_inventory().path2id(fp)
             else:
@@ -780,7 +796,8 @@ class cmd_touching_revisions(Command):
     def run(self, filename):
         b = Branch.open_containing(filename)
         inv = b.read_working_inventory()
-        file_id = inv.path2id(b.relpath(filename))
+        tree = WorkingTree(b.base, b)
+        file_id = inv.path2id(tree.relpath(filename))
         for revno, revision_id, what in bzrlib.log.find_touching_revisions(b, file_id):
             print "%6d %s" % (revno, what)
 
@@ -962,7 +979,8 @@ class cmd_cat(Command):
         elif len(revision) != 1:
             raise BzrCommandError("bzr cat --revision takes exactly one number")
         b = Branch.open_containing('.')
-        b.print_file(b.relpath(filename), revision[0].in_history(b).revno)
+        tree = WorkingTree(b.base, b)
+        b.print_file(tree.relpath(filename), revision[0].in_history(b).revno)
 
 
 class cmd_local_time_offset(Command):
@@ -994,7 +1012,13 @@ class cmd_commit(Command):
     # XXX: verbose currently does nothing
 
     takes_args = ['selected*']
-    takes_options = ['message', 'file', 'verbose', 'unchanged']
+    takes_options = ['message', 'verbose', 
+                     Option('unchanged',
+                            help='commit even if nothing has changed'),
+                     Option('file', type=str, 
+                            argname='msgfile',
+                            help='file containing commit message'),
+                     ]
     aliases = ['ci', 'checkin']
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
@@ -1005,10 +1029,9 @@ class cmd_commit(Command):
         from cStringIO import StringIO
 
         b = Branch.open_containing('.')
+        tree = WorkingTree(b.base, b)
         if selected_list:
-            selected_list = [b.relpath(s) for s in selected_list]
-
-            
+            selected_list = [tree.relpath(s) for s in selected_list]
         if message is None and not file:
             catcher = StringIO()
             show_status(b, specific_files=selected_list,
@@ -1118,12 +1141,16 @@ class cmd_selftest(Command):
     fail.
     
     If arguments are given, they are regular expressions that say
-    which tests should run."""
+    which tests should run.
+    """
     # TODO: --list should give a list of all available tests
     hidden = True
     takes_args = ['testspecs*']
-    takes_options = ['verbose']
-    def run(self, testspecs_list=None, verbose=False):
+    takes_options = ['verbose', 
+                     Option('one', help='stop when one test fails'),
+                    ]
+
+    def run(self, testspecs_list=None, verbose=False, one=False):
         import bzrlib.ui
         from bzrlib.selftest import selftest
         # we don't want progress meters from the tests to go to the
@@ -1138,7 +1165,8 @@ class cmd_selftest(Command):
             else:
                 pattern = ".*"
             result = selftest(verbose=verbose, 
-                              pattern=pattern)
+                              pattern=pattern,
+                              stop_on_failure=one)
             if result:
                 bzrlib.trace.info('tests passed')
             else:
@@ -1450,25 +1478,33 @@ class cmd_testament(Command):
 class cmd_annotate(Command):
     """Show the origin of each line in a file.
 
-    This prints out the given file with an annotation on the 
-    left side indicating which revision, author and date introduced the 
-    change.
+    This prints out the given file with an annotation on the left side
+    indicating which revision, author and date introduced the change.
+
+    If the origin is the same for a run of consecutive lines, it is 
+    shown only at the top, unless the --all option is given.
     """
     # TODO: annotate directories; showing when each file was last changed
     # TODO: annotate a previous version of a file
+    # TODO: if the working copy is modified, show annotations on that 
+    #       with new uncommitted lines marked
     aliases = ['blame', 'praise']
     takes_args = ['filename']
+    takes_options = [Option('all', help='show annotations on all lines'),
+                     Option('long', help='show date in annotations'),
+                     ]
 
-    def run(self, filename):
+    def run(self, filename, all=False, long=False):
         from bzrlib.annotate import annotate_file
         b = Branch.open_containing(filename)
         b.lock_read()
         try:
-            rp = b.relpath(filename)
+            tree = WorkingTree(b.base, b)
+            rp = tree.relpath(filename)
             tree = b.revision_tree(b.last_revision())
             file_id = tree.inventory.path2id(rp)
             file_version = tree.inventory[file_id].revision
-            annotate_file(b, file_version, file_id, sys.stdout)
+            annotate_file(b, file_version, file_id, long, all, sys.stdout)
         finally:
             b.unlock()
 
