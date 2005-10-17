@@ -22,6 +22,11 @@
 
 # TODO: Show which revision caused a line to merge into the parent
 
+# TODO: With --long, show entire email address, not just the first bit
+
+# TODO: perhaps abbreviate timescales depending on how recent they are
+# e.g. "3:12 Tue", "13 Oct", "Oct 2005", etc.  
+
 import sys
 import os
 import time

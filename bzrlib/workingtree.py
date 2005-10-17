@@ -179,6 +179,10 @@ class WorkingTree(bzrlib.tree.Tree):
         path = inv.id2path(file_id)
         return bzrlib.osutils.lexists(self.abspath(path))
 
+    def has_or_had_id(self, file_id):
+        if file_id == self.inventory.root.file_id:
+            return True
+        return self.inventory.has_id(file_id)
 
     __contains__ = has_id
     
@@ -390,6 +394,9 @@ class WorkingTree(bzrlib.tree.Tree):
                     return pat
         else:
             return None
+
+    def kind(self, file_id):
+        return file_kind(self.id2abspath(file_id))
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 def get_conflicted_stem(path):

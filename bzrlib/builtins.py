@@ -709,11 +709,13 @@ class cmd_log(Command):
                             help='show from oldest to newest'),
                      'timezone', 'verbose', 
                      'show-ids', 'revision',
+                     Option('line', help='format with one line per revision'),
                      'long', 
                      Option('message',
                             help='show revisions whose message matches this regexp',
                             type=str),
-                     'short',]
+                     Option('short', help='use moderately short format'),
+                     ]
     
     def run(self, filename=None, timezone='original',
             verbose=False,
@@ -722,7 +724,8 @@ class cmd_log(Command):
             revision=None,
             message=None,
             long=False,
-            short=False):
+            short=False,
+            line=False):
         from bzrlib.log import log_formatter, show_log
         import codecs
         assert message is None or isinstance(message, basestring), \
@@ -763,10 +766,11 @@ class cmd_log(Command):
         # in e.g. the default C locale.
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
-        if not short:
-            log_format = 'long'
-        else:
+        log_format = 'long'
+        if short:
             log_format = 'short'
+        if line:
+            log_format = 'line'
         lf = log_formatter(log_format,
                            show_ids=show_ids,
                            to_file=outf,

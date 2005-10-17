@@ -20,8 +20,9 @@ UNRELEASED CHANGES
 
   TESTING:
 
-    * The --pattern option has been removed, now test specifiers on the
-      command line can be simple strings, or regexps, or both.
+    * The 'bzr selftest --pattern' option for has been removed, now 
+      test specifiers on the command line can be simple strings, or 
+      regexps, or both.
 
     * Passing -v to selftest will now show the time each test took to 
       complete, which will aid in analysing performance regressions and
