@@ -326,7 +326,9 @@ class TestCommands(ExternalBase):
         # We can't merge when there are in-tree changes
         self.runbzr('merge ../b', retcode=1)
         self.runbzr(['commit', '-m', "Like an epidemic of u's"])
-        self.runbzr('merge ../b')
+        self.runbzr('merge ../b -r last:1..last:1')
+        self.runbzr('revert --no-backup')
+        self.runbzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
         a = Branch.open('.')

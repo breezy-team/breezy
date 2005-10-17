@@ -1261,13 +1261,15 @@ class cmd_merge(Command):
         else:
             if len(revision) == 1:
                 base = [None, None]
-                other = [branch, revision[0].in_history(branch).revno]
+                other_branch = Branch.open_containing(branch)
+                revno = revision[0].in_history(other_branch).revno
+                other = [branch, revno]
             else:
                 assert len(revision) == 2
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                b = Branch.open(branch)
+                b = Branch.open_containing(branch)
 
                 base = [branch, revision[0].in_history(b).revno]
                 other = [branch, revision[1].in_history(b).revno]
