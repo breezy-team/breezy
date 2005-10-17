@@ -36,6 +36,8 @@ UNRELEASED CHANGES
     * 'bzr check' now accepts -v for verbose reporting, and checks for
       ghosts in the branch.
 
+    * New command 're-sign' which will regenerate the gpg signature for 
+      a revision.
 
   TESTING:
 

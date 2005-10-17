@@ -242,6 +242,7 @@ class _Branch(Branch):
             self.weave_store = get_weave('weaves', prefixed=True)
             self.revision_store = get_store('revision-store', compressed=False,
                                             prefixed=True)
+        self.revision_store.register_suffix('sig')
         self._transaction = None
 
     def __str__(self):

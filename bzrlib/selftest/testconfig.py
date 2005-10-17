@@ -275,6 +275,12 @@ class TestGlobalConfigItems(TestCase):
         self.assertEqual("gnome-gpg", my_config.gpg_signing_command())
         self.assertEqual(False, my_config.signature_needed())
 
+    def test_gpg_signing_command_unset(self):
+        config_file = StringIO("")
+        my_config = config.GlobalConfig()
+        my_config._parser = my_config._get_parser(file=config_file)
+        self.assertEqual("gpg", my_config.gpg_signing_command())
+
 
 class TestLocationConfig(TestCase):
 

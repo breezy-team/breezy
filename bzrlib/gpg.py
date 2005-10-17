@@ -22,6 +22,15 @@ import subprocess
 
 import bzrlib.errors as errors
 
+class LoopbackGPGStrategy(object):
+
+    def __init__(self, ignored):
+        """Real strategies take a configuration."""
+
+    def sign(self, content):
+        return content
+
+
 class GPGStrategy(object):
     """GPG Signing and checking facilities."""
         
@@ -43,9 +52,11 @@ class GPGStrategy(object):
                 if process.returncode != 0:
                     raise errors.SigningFailed(self._command_line())
                 return result
-            except IOError, e:
+            except OSError, e:
                 if e.errno == errno.EPIPE:
                     raise errors.SigningFailed(self._command_line())
+                else:
+                    raise
         except ValueError:
             # bad subprocess parameters, should never happen.
             raise
