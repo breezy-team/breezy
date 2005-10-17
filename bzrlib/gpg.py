@@ -15,24 +15,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for signing and verifying blobs of data via gpg."""
+"""GPG signing and checking logic."""
 
-# import system imports here
-import os
-import sys
+import subprocess
 
-import bzrlib.gpg as gpg
-from bzrlib.selftest import TestCase, TestCaseInTempDir
 
-class FakeConfig(object):
-
-    def gpg_signing_command(self):
-        return "gnome-gpg"
+class GPGStrategy(object):
+    """GPG Signing and checking facilities."""
         
+    def _command_line(self):
+        return self._config.gpg_signing_command() + ' --clearsign'
 
-class TestCommandLine(TestCase):
-
-    def test_signing_command_line(self):
-        my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual('gnome-gpg --clearsign',
-                         my_gpg._command_line())
+    def __init__(self, config):
+        self._config = config
