@@ -439,7 +439,7 @@ class MetaTestLog(TestCase):
         logging.info('an info message')
         warning('something looks dodgy...')
         logging.debug('hello, test is running')
-        assert 0
+        ## assert 0
 
 
 def filter_suite_by_re(suite, pattern):
