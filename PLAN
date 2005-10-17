@@ -1,3 +1,27 @@
-- set bzr:revision as SVN revision property
-- use UUID-revno or bzr:revision for imported revisions
-- svnpull / svnpush commands
+- svnpull
+ - Maybe store latest known revision somewhere ?
+ - walk over revno's and see if they already exist locally
+  - if they don't, pull them in, use UUID-revno as revision
+ - keep list of bzr revisions and to what SVN commit they belong
+  - use revision properties (svn:revision) ?
+
+- svnpush
+ - for all local revisions that don't have svn:revision set:
+  - send to remote server
+  - set bzr:revision as SVN revision property
+
+class SvnBranch:
+	def __init__(self,url):
+		pass
+		
+	def num_revisions(self):
+		pass
+	
+	def uuid():
+		pass
+
+	def get_revision(self,revno):
+		pass
+
+	def add_revision(self):
+		pass
