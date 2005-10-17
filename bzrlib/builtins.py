@@ -1497,20 +1497,13 @@ class cmd_re_sign(Command):
         b = Branch.open_containing('.')
         gpg_strategy = gpg.GPGStrategy(config.BranchConfig(b))
         if revision_id is not None:
-            self.sign_one(gpg_strategy, b, revision_id)
+            b.sign_revision(revision_id, gpg_strategy)
         elif revision is not None:
             for rev in revision:
                 if rev is None:
                     raise BzrCommandError('You cannot specify a NULL revision.')
                 revno, rev_id = rev.in_history(b)
-                self.sign_one(gpg_strategy, b, rev_id)
-
-    def sign_one(self, gpg_strategy, b, revision_id):
-        import bzrlib.testament as testament
-        from cStringIO import StringIO
-        plaintext = testament.Testament.from_revision(b, revision_id).as_short_text()
-        b.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), revision_id, "sig")
-    
+                b.sign_revision(rev_id, gpg_strategy)
 
 
 # these get imported and then picked up by the scan for cmd_*

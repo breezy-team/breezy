@@ -43,6 +43,7 @@ from bzrlib.store import copy_all
 from bzrlib.store.compressed_text import CompressedTextStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.weave import WeaveStore
+from bzrlib.testament import Testament
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 import bzrlib.xml5
@@ -1288,8 +1289,14 @@ class _Branch(Branch):
         if revno < 1 or revno > self.revno():
             raise InvalidRevisionNumber(revno)
         
-        
-        
+    def sign_revision(self, revision_id, gpg_strategy):
+        self.lock_write()
+        try:
+            plaintext = Testament.from_revision(self, revision_id).as_short_text()
+            self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
+                                    revision_id, "sig")
+        finally:
+            self.unlock()
 
 
 class ScratchBranch(_Branch):
