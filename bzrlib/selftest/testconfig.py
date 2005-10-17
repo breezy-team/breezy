@@ -153,6 +153,7 @@ class TestConfigPath(TestCase):
 
     def tearDown(self):
         os.environ['HOME'] = self.oldenv
+        super(TestConfigPath, self).tearDown()
     
     def test_config_dir(self):
         self.assertEqual(config.config_dir(), '/home/bogus/.bazaar')
@@ -218,31 +219,7 @@ class TestBranchConfig(TestCaseInTempDir):
         self.failUnless(location_config is my_config._get_location_config())
 
 
-class TestConfigItems(TestCase):
-
-    def setUp(self):
-        super(TestConfigItems, self).setUp()
-        self.bzr_email = os.environ.get('BZREMAIL')
-        if self.bzr_email is not None:
-            del os.environ['BZREMAIL']
-        self.email = os.environ.get('EMAIL')
-        if self.email is not None:
-            del os.environ['EMAIL']
-        self.oldenv = os.environ.get('HOME', None)
-        os.environ['HOME'] = os.getcwd()
-
-    def tearDown(self):
-        os.environ['HOME'] = self.oldenv
-        if os.environ.get('BZREMAIL') is not None:
-            del os.environ['BZREMAIL']
-        if self.bzr_email is not None:
-            os.environ['BZREMAIL'] = self.bzr_email
-        if self.email is not None:
-            os.environ['EMAIL'] = self.email
-        super(TestConfigItems, self).tearDown()
-
-
-class TestGlobalConfigItems(TestConfigItems):
+class TestGlobalConfigItems(TestCase):
 
     def test_user_id(self):
         config_file = StringIO(sample_config_text)
@@ -288,7 +265,7 @@ class TestGlobalConfigItems(TestConfigItems):
         self.assertEqual(False, my_config.signature_needed())
 
 
-class TestLocationConfig(TestConfigItems):
+class TestLocationConfig(TestCase):
 
     def test_constructs(self):
         my_config = config.LocationConfig('http://example.com')
@@ -408,7 +385,7 @@ class TestLocationConfig(TestConfigItems):
                          self.my_config.signature_checking())
         
 
-class TestBranchConfigItems(TestConfigItems):
+class TestBranchConfigItems(TestCase):
 
     def test_user_id(self):
         branch = FakeBranch()
