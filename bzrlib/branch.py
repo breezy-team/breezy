@@ -184,8 +184,6 @@ class _Branch(Branch):
         """Create new branch object at a particular location.
 
         transport -- A Transport object, defining how to access files.
-                (If a string, transport.transport() will be used to
-                create a Transport object)
         
         init -- If True, create new control files in a previously
              unversioned directory.  If False, the branch must already
