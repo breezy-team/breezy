@@ -20,7 +20,7 @@
 Currently this configuration resides in ~/.bazaar/bazaar.conf
 and ~/.bazaar/branches.conf, which is written to by bzr.
 
-In bazaar.config the following options may be set:
+In bazaar.conf the following options may be set:
 [DEFAULT]
 editor=name-of-program
 email=Your Name <your@email.address>
