@@ -152,14 +152,16 @@ def _global_option(name, **kwargs):
 _global_option('all')
 _global_option('basis', type=str)
 _global_option('diff-options', type=str)
-_global_option('help')
+_global_option('help',
+               help='show help message')
 _global_option('file', type=unicode)
 _global_option('force')
 _global_option('format', type=unicode)
 _global_option('forward')
 _global_option('message', type=unicode)
 _global_option('no-recurse')
-_global_option('profile')
+_global_option('profile',
+               help='show performance profiling information')
 _global_option('revision', type=_parse_revision_str)
 _global_option('short')
 _global_option('show-ids', 
