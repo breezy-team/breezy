@@ -54,8 +54,12 @@ Therefore:
 # python exceptions?   A list of values with no names seems less useful 
 # to me.
 
-# TODO: perhaps convert the exception to a string at the moment it's 
-# constructed to make sure it will succeed
+# TODO: Perhaps convert the exception to a string at the moment it's 
+# constructed to make sure it will succeed.  But that says nothing about
+# exceptions that are never raised.
+
+# TODO: Convert all the other error classes here to BzrNewError, and eliminate
+# the old one.
 
 
 class BzrError(StandardError):
@@ -94,17 +98,26 @@ class BzrNewError(BzrError):
                 % (self.__class__.__name__, str(e))
 
 
-class BzrCheckError(BzrError):
-    pass
+class BzrCheckError(BzrNewError):
+    """Internal check failed: %(message)s"""
+    def __init__(self, message):
+        self.message = message
 
 
-class InvalidRevisionNumber(BzrError):
-    def __str__(self):
-        return 'invalid revision number: %r' % self.args[0]
+class InvalidEntryName(BzrNewError):
+    """Invalid entry name: %(name)s"""
+    def __init__(self, name):
+        self.name = name
 
 
-class InvalidRevisionId(BzrError):
-    pass
+class InvalidRevisionNumber(BzrNewError):
+    """Invalid revision number %(revno)d"""
+    def __init__(self, revno):
+        self.revno = revno
+
+
+class InvalidRevisionId(BzrNewError):
+    """Invalid revision-id"""
 
 
 class BzrCommandError(BzrError):
@@ -143,16 +156,10 @@ class ForbiddenFileError(BzrError):
 
 
 class LockError(Exception):
-    """All exceptions from the lock/unlock functions should be from
-    this exception class.  They will be translated as necessary. The
-    original exception is available as e.original_error
-    """
-    def __init__(self, e=None):
-        self.original_error = e
-        if e:
-            Exception.__init__(self, e)
-        else:
-            Exception.__init__(self)
+    """Lock error"""
+    # All exceptions from the lock/unlock functions should be from
+    # this exception class.  They will be translated as necessary. The
+    # original exception is available as e.original_error
 
 
 class CommitNotPossible(LockError):
@@ -167,7 +174,7 @@ class ReadOnlyError(LockError):
     """A write attempt was made in a read only transaction."""
 
 
-class PointlessCommit(Exception):
+class PointlessCommit(BzrNewError):
     """Commit failed because nothing was changed."""
 
 

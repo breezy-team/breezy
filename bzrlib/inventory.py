@@ -31,12 +31,11 @@ import tarfile
 import types
 
 import bzrlib
-from bzrlib.errors import BzrError, BzrCheckError
-
 from bzrlib.osutils import (pumpfile, quotefn, splitpath, joinpath,
                             appendpath, sha_strings)
 from bzrlib.trace import mutter
-from bzrlib.errors import NotVersionedError
+from bzrlib.errors import (NotVersionedError, InvalidEntryName,
+                           BzrError, BzrCheckError)
 
 
 class InventoryEntry(object):
@@ -229,12 +228,11 @@ class InventoryEntry(object):
         '123'
         >>> e = InventoryFile('123', 'src/hello.c', ROOT_ID)
         Traceback (most recent call last):
-        BzrCheckError: InventoryEntry name 'src/hello.c' is invalid
+        InvalidEntryName: Invalid entry name: src/hello.c
         """
         assert isinstance(name, basestring), name
         if '/' in name or '\\' in name:
-            raise BzrCheckError('InventoryEntry name %r is invalid' % name)
-        
+            raise InvalidEntryName(name=name)
         self.executable = False
         self.revision = None
         self.text_sha1 = None
