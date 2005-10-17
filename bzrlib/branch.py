@@ -293,7 +293,7 @@ class _Branch(Branch):
         """Return the current active transaction.
 
         If no transaction is active, this returns a passthrough object
-        for which all data is immedaitely flushed and no caching happens.
+        for which all data is immediately flushed and no caching happens.
         """
         if self._transaction is None:
             return transactions.PassThroughTransaction()
