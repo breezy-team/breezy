@@ -19,7 +19,8 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.trace import mutter
-from bzrlib.workingtree import TreeEntry, TreeDirectory, TreeFile, TreeLink
+from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
+                                WorkingTree)
 
 class TestTreeDirectory(TestCaseInTempDir):
 
@@ -57,3 +58,24 @@ class TestWorkingTree(TestCaseInTempDir):
         self.assertEqual(files[0], ('dir', '?', 'directory', None, TreeDirectory()))
         self.assertEqual(files[1], ('file', '?', 'file', None, TreeFile()))
         self.assertEqual(files[2], ('symlink', '?', 'symlink', None, TreeLink()))
+
+    def test_construct_with_branch(self):
+        branch = Branch.initialize('.')
+        tree = WorkingTree(branch.base, branch)
+        self.assertEqual(branch, tree.branch)
+        self.assertEqual(branch.inventory, tree._inventory)
+        self.assertEqual(branch.base, tree.basedir)
+    
+    def test_construct_without_branch(self):
+        branch = Branch.initialize('.')
+        tree = WorkingTree(branch.base)
+        self.assertEqual(branch.base, tree.branch.base)
+        self.assertEqual(branch.inventory, tree._inventory)
+        self.assertEqual(branch.base, tree.basedir)
+
+    def test_basic_relpath(self):
+        # for comprehensive relpath tests, see whitebox.py.
+        branch = Branch.initialize('.')
+        tree = WorkingTree(branch.base)
+        self.assertEqual('child',
+                         tree.relpath(os.path.join(os.getcwd(), 'child')))

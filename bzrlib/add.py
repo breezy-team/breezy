@@ -93,7 +93,7 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
     count = 0
 
     for f in file_list:
-        rf = branch.relpath(f)
+        rf = tree.relpath(f)
         af = branch.abspath(rf)
 
         kind = bzrlib.osutils.file_kind(af)

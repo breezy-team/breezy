@@ -217,14 +217,20 @@ def get_revid_tree(branch, revision, temp_root, label, local_branch):
             base_tree = branch.revision_tree(revision)
     temp_path = os.path.join(temp_root, label)
     os.mkdir(temp_path)
-    return MergeTree(base_tree, temp_path)
+    return MergeAdapterTree(base_tree, temp_path)
 
 
 def file_exists(tree, file_id):
     return tree.has_filename(tree.id2path(file_id))
     
 
-class MergeTree(object):
+class MergeAdapterTree(object):
+    """MergeAdapterTree adapts a normal tree for merge_inner to use.
+
+    The interface the merge_inner needs is nearly but not quite
+    the same as that of bzrlib.tree with the exception of readonly_path.
+    """
+    
     def __init__(self, tree, tempdir):
         object.__init__(self)
         if hasattr(tree, "basedir"):
@@ -384,7 +390,7 @@ def merge(other_revision, base_revision,
             interesting_ids = set()
             this_tree = this_branch.working_tree()
             for fname in file_list:
-                path = this_branch.relpath(fname)
+                path = this_tree.relpath(fname)
                 found_id = False
                 for tree in (this_tree, base_tree.tree, other_tree.tree):
                     file_id = tree.inventory.path2id(path)
