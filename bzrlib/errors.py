@@ -265,3 +265,8 @@ class ConnectionReset(TransportError):
 class ConflictsInTree(BzrError):
     def __init__(self):
         BzrError.__init__(self, "Working tree has conflicts.")
+
+class SigningFailed(BzrError):
+    def __init__(self, command_line):
+        BzrError.__init__(self, "Failed to gpg sign data with command '%s'"
+                               % command_line)

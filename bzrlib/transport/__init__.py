@@ -40,6 +40,7 @@ def register_transport(prefix, klass, override=True):
         ## mutter('registering transport: %s => %s' % (prefix, klass.__name__))
         _protocol_handlers[prefix] = klass
 
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -122,16 +123,33 @@ class Transport(object):
     def abspath(self, relpath):
         """Return the full url to the given relative path.
         This can be supplied with a string or a list
+
+        XXX: Robert Collins 20051016 - is this really needed in the public
+             interface ?
         """
         raise NotImplementedError
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
+
+        This default implementation is not suitable for filesystems with
+        aliasing, such as that given by symlinks, where a path may not 
+        start with our base, but still be a relpath once aliasing is 
+        resolved.
         """
-        raise NotImplementedError
+        if not abspath.startswith(self.base):
+            raise NonRelativePath('path %r is not under base URL %r'
+                           % (abspath, self.base))
+        pl = len(self.base)
+        return abspath[pl:].lstrip('/')
+
 
     def has(self, relpath):
-        """Does the target location exist?"""
+        """Does the file relpath exist?
+        
+        Note that some transports MAY allow querying on directories, but this
+        is not part of the protocol.
+        """
         raise NotImplementedError
 
     def has_multi(self, relpaths, pb=None):
@@ -142,6 +160,14 @@ class Transport(object):
             self._update_pb(pb, 'has', count, total)
             yield self.has(relpath)
             count += 1
+
+    def iter_files_recursive(self):
+        """Iter the relative paths of files in the transports sub-tree.
+        
+        As with other listing functions, only some transports implement this,.
+        you may check via is_listable to determine if it will.
+        """
+        raise NotImplementedError
 
     def get(self, relpath):
         """Get the file at the given relative path.
@@ -165,39 +191,6 @@ class Transport(object):
         for relpath in relpaths:
             self._update_pb(pb, 'get', count, total)
             yield self.get(relpath)
-            count += 1
-
-    def get_partial(self, relpath, start, length=None):
-        """Get just part of a file.
-
-        :param relpath: Path to the file, relative to base
-        :param start: The starting position to read from
-        :param length: The length to read. A length of None indicates
-                       read to the end of the file.
-        :return: A file-like object containing at least the specified bytes.
-                 Some implementations may return objects which can be read
-                 past this length, but this is not guaranteed.
-        """
-        raise NotImplementedError
-
-    def get_partial_multi(self, offsets, pb=None):
-        """Put a set of files or strings into the location.
-
-        Requesting multiple portions of the same file can be dangerous.
-
-        :param offsets: A list of tuples of relpath, start, length
-                         [(path1, start1, length1),
-                          (path2, start2, length2),
-                          (path3, start3), ...]
-                         length is optional, defaulting to None
-        :param pb:  An optional ProgressBar for indicating percent done.
-        :return: A generator of file-like objects.
-        """
-        total = self._get_total(offsets)
-        count = 0
-        for offset in offsets:
-            self._update_pb(pb, 'get_partial', count, total)
-            yield self.get_partial(*offset)
             count += 1
 
     def put(self, relpath, f):
@@ -301,6 +294,11 @@ class Transport(object):
         """Return the stat information for a file.
         WARNING: This may not be implementable for all protocols, so use
         sparingly.
+        NOTE: This returns an object with fields such as 'st_size'. It MAY
+        or MAY NOT return the literal result of an os.stat() call, so all
+        access should be via named fields.
+        ALSO NOTE: Stats of directories may not be supported on some 
+        transports.
         """
         raise NotImplementedError
 

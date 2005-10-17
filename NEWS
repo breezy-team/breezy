@@ -36,6 +36,14 @@ UNRELEASED CHANGES
     * 'bzr check' now accepts -v for verbose reporting, and checks for
       ghosts in the branch.
 
+    * New command 're-sign' which will regenerate the gpg signature for 
+      a revision.
+
+    * If you set check_signatures=require for a path in 
+      ~/.bazaar/branches.conf then bzr will invoke your
+      gpg_signing_command (defaults to gpg) and record a digital signature
+      of your commit.
+      
 
   TESTING:
 

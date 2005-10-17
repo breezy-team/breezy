@@ -20,10 +20,20 @@ import os
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.commit import Commit
+from bzrlib.config import BranchConfig
 from bzrlib.errors import PointlessCommit, BzrError
 
 
 # TODO: Test commit with some added, and added-but-missing files
+
+class MustSignConfig(BranchConfig):
+
+    def signature_needed(self):
+        return True
+
+    def gpg_signing_command(self):
+        return ['cat', '-']
+
 
 class TestCommit(TestCaseInTempDir):
 
@@ -50,7 +60,6 @@ class TestCommit(TestCaseInTempDir):
 
         tree2 = b.revision_tree(rh[1])
         eq(tree2.get_file_text(file_id), 'version 2')
-
 
     def test_delete_commit(self):
         """Test a commit with a deleted file"""
@@ -246,3 +255,22 @@ class TestCommit(TestCaseInTempDir):
         self.assertEqual('1', inv['file1id'].revision)
         # FIXME: This should raise a KeyError I think, rbc20051006
         self.assertRaises(BzrError, inv.__getitem__, 'file2id')
+
+    def test_signed_commit(self):
+        import bzrlib.gpg
+        import bzrlib.commit as commit
+        oldstrategy = bzrlib.gpg.GPGStrategy
+        branch = Branch.initialize('.')
+        branch.commit("base", allow_pointless=True, rev_id='A')
+        self.failIf(branch.revision_store.has_id('A', 'sig'))
+        try:
+            from bzrlib.testament import Testament
+            # monkey patch gpg signing mechanism
+            bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
+            commit.Commit(config=MustSignConfig(branch)).commit(branch, "base",
+                                                      allow_pointless=True,
+                                                      rev_id='B')
+            self.assertEqual(Testament.from_revision(branch,'B').as_short_text(),
+                             branch.revision_store.get('B', 'sig').read())
+        finally:
+            bzrlib.gpg.GPGStrategy = oldstrategy

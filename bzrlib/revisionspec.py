@@ -57,7 +57,7 @@ class RevisionInfo(object):
         # TODO: otherwise, it should depend on how I was built -
         # if it's in_history(branch), then check revision_history(),
         # if it's in_store(branch), do the check below
-        return self.rev_id in self.branch.revision_store
+        return self.branch.revision_store.has_id(self.rev_id)
 
     def __len__(self):
         return 2

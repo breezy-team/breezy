@@ -26,6 +26,7 @@ from bzrlib.errors import DivergedBranches
 from bzrlib.branch import Branch
 from bzrlib import BZRDIR
 from bzrlib.commands import Command
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib.workingtree import WorkingTree
 
 
@@ -104,7 +105,6 @@ class cmd_cat_revision(Command):
     takes_options = ['revision']
     
     def run(self, revision_id=None, revision=None):
-        from bzrlib.revisionspec import RevisionSpec
 
         if revision_id is not None and revision is not None:
             raise BzrCommandError('You can only supply one of revision_id or --revision')
@@ -136,7 +136,6 @@ class cmd_revision_info(Command):
     takes_args = ['revision_info*']
     takes_options = ['revision']
     def run(self, revision=None, revision_info_list=[]):
-        from bzrlib.revisionspec import RevisionSpec
 
         revs = []
         if revision is not None:
@@ -1478,6 +1477,34 @@ class cmd_annotate(Command):
             annotate_file(b, file_version, file_id, sys.stdout)
         finally:
             b.unlock()
+
+
+class cmd_re_sign(Command):
+    """Create a digital signature for an existing revision."""
+    # TODO be able to replace existing ones.
+
+    hidden = True # is this right ?
+    takes_args = ['revision_id?']
+    takes_options = ['revision']
+    
+    def run(self, revision_id=None, revision=None):
+        import bzrlib.config as config
+        import bzrlib.gpg as gpg
+        if revision_id is not None and revision is not None:
+            raise BzrCommandError('You can only supply one of revision_id or --revision')
+        if revision_id is None and revision is None:
+            raise BzrCommandError('You must supply either --revision or a revision_id')
+        b = Branch.open_containing('.')
+        gpg_strategy = gpg.GPGStrategy(config.BranchConfig(b))
+        if revision_id is not None:
+            b.sign_revision(revision_id, gpg_strategy)
+        elif revision is not None:
+            for rev in revision:
+                if rev is None:
+                    raise BzrCommandError('You cannot specify a NULL revision.')
+                revno, rev_id = rev.in_history(b)
+                b.sign_revision(rev_id, gpg_strategy)
+
 
 # these get imported and then picked up by the scan for cmd_*
 # TODO: Some more consistent way to split command definitions across files;

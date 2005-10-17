@@ -43,6 +43,7 @@ from bzrlib.store import copy_all
 from bzrlib.store.compressed_text import CompressedTextStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.weave import WeaveStore
+from bzrlib.testament import Testament
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 import bzrlib.xml5
@@ -242,6 +243,7 @@ class _Branch(Branch):
             self.weave_store = get_weave('weaves', prefixed=True)
             self.revision_store = get_store('revision-store', compressed=False,
                                             prefixed=True)
+        self.revision_store.register_suffix('sig')
         self._transaction = None
 
     def __str__(self):
@@ -721,7 +723,7 @@ class _Branch(Branch):
         This does not necessarily imply the revision is merge
         or on the mainline."""
         return (revision_id is None
-                or revision_id in self.revision_store)
+                or self.revision_store.has_id(revision_id))
 
     def get_revision_xml_file(self, revision_id):
         """Return XML file object for revision object."""
@@ -731,7 +733,7 @@ class _Branch(Branch):
         self.lock_read()
         try:
             try:
-                return self.revision_store[revision_id]
+                return self.revision_store.get(revision_id)
             except (IndexError, KeyError):
                 raise bzrlib.errors.NoSuchRevision(self, revision_id)
         finally:
@@ -983,7 +985,6 @@ class _Branch(Branch):
                          from_branch=other,
                          revision=pullable_revs[-1])
             self.append_revision(*pullable_revs)
-    
 
     def commit(self, *args, **kw):
         from bzrlib.commit import Commit
@@ -1021,7 +1022,6 @@ class _Branch(Branch):
         else:
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self.weave_store, inv, revision_id)
-
 
     def working_tree(self):
         """Return a `Tree` for the working copy."""
@@ -1289,8 +1289,14 @@ class _Branch(Branch):
         if revno < 1 or revno > self.revno():
             raise InvalidRevisionNumber(revno)
         
-        
-        
+    def sign_revision(self, revision_id, gpg_strategy):
+        self.lock_write()
+        try:
+            plaintext = Testament.from_revision(self, revision_id).as_short_text()
+            self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
+                                    revision_id, "sig")
+        finally:
+            self.unlock()
 
 
 class ScratchBranch(_Branch):
@@ -1300,25 +1306,24 @@ class ScratchBranch(_Branch):
     >>> isdir(b.base)
     True
     >>> bd = b.base
-    >>> b.destroy()
+    >>> b._transport.__del__()
     >>> isdir(bd)
     False
     """
-    def __init__(self, files=[], dirs=[], base=None):
+
+    def __init__(self, files=[], dirs=[], transport=None):
         """Make a test branch.
 
         This creates a temporary directory and runs init-tree in it.
 
         If any files are listed, they are created in the working copy.
         """
-        from tempfile import mkdtemp
-        init = False
-        if base is None:
-            base = mkdtemp()
-            init = True
-        if isinstance(base, basestring):
-            base = get_transport(base)
-        _Branch.__init__(self, base, init=init)
+        if transport is None:
+            transport = bzrlib.transport.local.ScratchTransport()
+            super(ScratchBranch, self).__init__(transport, init=True)
+        else:
+            super(ScratchBranch, self).__init__(transport)
+
         for d in dirs:
             self._transport.mkdir(d)
             
@@ -1344,28 +1349,8 @@ class ScratchBranch(_Branch):
         base = mkdtemp()
         os.rmdir(base)
         copytree(self.base, base, symlinks=True)
-        return ScratchBranch(base=base)
-
-    def __del__(self):
-        self.destroy()
-
-    def destroy(self):
-        """Destroy the test branch, removing the scratch directory."""
-        from shutil import rmtree
-        try:
-            if self.base:
-                mutter("delete ScratchBranch %s" % self.base)
-                rmtree(self.base)
-        except OSError, e:
-            # Work around for shutil.rmtree failing on Windows when
-            # readonly files are encountered
-            mutter("hit exception in destroying ScratchBranch: %s" % e)
-            for root, dirs, files in os.walk(self.base, topdown=False):
-                for name in files:
-                    os.chmod(os.path.join(root, name), 0700)
-            rmtree(self.base)
-        self._transport = None
-
+        return ScratchBranch(
+            transport=bzrlib.transport.local.ScratchTransport(base))
     
 
 ######################################################################
