@@ -16,7 +16,12 @@ UNRELEASED CHANGES
       they are made available for other plugins to use. You should not 
       import other plugins during the __init__ of your plugin though, as 
       no ordering is guaranteed, and the plugins directory is not on the
-      python path.
+      python path. (Robert Collins)
+
+    * Branch.relpath has been moved to WorkingTree.relpath. WorkingTree no
+      no longer takes an inventory, rather it takes an option branch
+      parameter, and if None is given will open the branch at basedir 
+      implicitly. (Robert Collins)
 
 
   IMPROVEMENTS:

@@ -23,9 +23,10 @@
 import os
 import stat
 import fnmatch
-        
+ 
+from bzrlib.branch import Branch
 import bzrlib.tree
-from bzrlib.osutils import appendpath, file_kind, isdir, splitpath
+from bzrlib.osutils import appendpath, file_kind, isdir, splitpath, relpath
 from bzrlib.errors import BzrCheckError
 from bzrlib.trace import mutter
 
@@ -93,13 +94,23 @@ class WorkingTree(bzrlib.tree.Tree):
     It is possible for a `WorkingTree` to have a filename which is
     not listed in the Inventory and vice versa.
     """
-    def __init__(self, basedir, inv):
+    def __init__(self, basedir, branch=None):
+        """Construct a WorkingTree for basedir.
+
+        If the branch is not supplied, it is opened automatically.
+        If the branch is supplied, it must be the branch for this basedir.
+        (branch.base is not cross checked, because for remote branches that
+        would be meaningless).
+        """
         from bzrlib.hashcache import HashCache
         from bzrlib.trace import note, mutter
 
-        self._inventory = inv
+        if branch is None:
+            branch = Branch.open(basedir)
+        self._inventory = branch.inventory
+        self.path2id = self._inventory.path2id
+        self.branch = branch
         self.basedir = basedir
-        self.path2id = inv.path2id
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -137,6 +148,10 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def abspath(self, filename):
         return os.path.join(self.basedir, filename)
+
+    def relpath(self, abspath):
+        """Return the local path portion from a given absolute path."""
+        return relpath(self.basedir, abspath)
 
     def has_filename(self, filename):
         return bzrlib.osutils.lexists(self.abspath(filename))

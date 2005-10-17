@@ -26,6 +26,7 @@ from bzrlib.errors import DivergedBranches
 from bzrlib.branch import Branch
 from bzrlib import BZRDIR
 from bzrlib.commands import Command
+from bzrlib.workingtree import WorkingTree
 
 
 class cmd_status(Command):
@@ -77,7 +78,8 @@ class cmd_status(Command):
     def run(self, all=False, show_ids=False, file_list=None, revision=None):
         if file_list:
             b = Branch.open_containing(file_list[0])
-            file_list = [b.relpath(x) for x in file_list]
+            tree = WorkingTree(b.base, b)
+            file_list = [tree.relpath(x) for x in file_list]
             # special case: only one path was given and it's the root
             # of the branch
             if file_list == ['']:
@@ -214,8 +216,8 @@ class cmd_relpath(Command):
     hidden = True
     
     def run(self, filename):
-        print Branch.open_containing(filename).relpath(filename)
-
+        branch = Branch.open_containing(filename)
+        print WorkingTree(branch.base, branch).relpath(filename)
 
 
 class cmd_inventory(Command):
@@ -252,7 +254,8 @@ class cmd_move(Command):
         b = Branch.open_containing('.')
 
         # TODO: glob expansion on windows?
-        b.move([b.relpath(s) for s in source_list], b.relpath(dest))
+        tree = WorkingTree(b.base, b)
+        b.move([tree.relpath(s) for s in source_list], tree.relpath(dest))
 
 
 class cmd_rename(Command):
@@ -273,8 +276,8 @@ class cmd_rename(Command):
     
     def run(self, from_name, to_name):
         b = Branch.open_containing('.')
-        b.rename_one(b.relpath(from_name), b.relpath(to_name))
-
+        tree = WorkingTree(b.base, b)
+        b.rename_one(tree.relpath(from_name), tree.relpath(to_name))
 
 
 class cmd_mv(Command):
@@ -295,8 +298,8 @@ class cmd_mv(Command):
         if len(names_list) < 2:
             raise BzrCommandError("missing file argument")
         b = Branch.open_containing(names_list[0])
-
-        rel_names = [b.relpath(x) for x in names_list]
+        tree = WorkingTree(b.base, b)
+        rel_names = [tree.relpath(x) for x in names_list]
         
         if os.path.isdir(names_list[-1]):
             # move into existing directory
@@ -481,7 +484,8 @@ class cmd_remove(Command):
     
     def run(self, file_list, verbose=False):
         b = Branch.open_containing(file_list[0])
-        b.remove([b.relpath(f) for f in file_list], verbose=verbose)
+        tree = WorkingTree(b.base, b)
+        b.remove([tree.relpath(f) for f in file_list], verbose=verbose)
 
 
 class cmd_file_id(Command):
@@ -495,7 +499,8 @@ class cmd_file_id(Command):
     takes_args = ['filename']
     def run(self, filename):
         b = Branch.open_containing(filename)
-        i = b.inventory.path2id(b.relpath(filename))
+        tree = WorkingTree(b.base, b)
+        i = b.inventory.path2id(tree.relpath(filename))
         if i == None:
             raise BzrError("%r is not a versioned file" % filename)
         else:
@@ -512,7 +517,8 @@ class cmd_file_path(Command):
     def run(self, filename):
         b = Branch.open_containing(filename)
         inv = b.inventory
-        fid = inv.path2id(b.relpath(filename))
+        tree = WorkingTree(b.base, b)
+        fid = inv.path2id(tree.relpath(filename))
         if fid == None:
             raise BzrError("%r is not a versioned file" % filename)
         for fip in inv.get_idpath(fid):
@@ -597,7 +603,8 @@ class cmd_diff(Command):
 
         if file_list:
             b = Branch.open_containing(file_list[0])
-            file_list = [b.relpath(f) for f in file_list]
+            tree = WorkingTree(b.base, b)
+            file_list = [tree.relpath(f) for f in file_list]
             if file_list == ['']:
                 # just pointing to top-of-tree
                 file_list = None
@@ -718,7 +725,8 @@ class cmd_log(Command):
         
         if filename:
             b = Branch.open_containing(filename)
-            fp = b.relpath(filename)
+            tree = WorkingTree(b.base, b)
+            fp = tree.relpath(filename)
             if fp:
                 file_id = b.read_working_inventory().path2id(fp)
             else:
@@ -778,7 +786,8 @@ class cmd_touching_revisions(Command):
     def run(self, filename):
         b = Branch.open_containing(filename)
         inv = b.read_working_inventory()
-        file_id = inv.path2id(b.relpath(filename))
+        tree = WorkingTree(b.base, b)
+        file_id = inv.path2id(tree.relpath(filename))
         for revno, revision_id, what in bzrlib.log.find_touching_revisions(b, file_id):
             print "%6d %s" % (revno, what)
 
@@ -960,7 +969,8 @@ class cmd_cat(Command):
         elif len(revision) != 1:
             raise BzrCommandError("bzr cat --revision takes exactly one number")
         b = Branch.open_containing('.')
-        b.print_file(b.relpath(filename), revision[0].in_history(b).revno)
+        tree = WorkingTree(b.base, b)
+        b.print_file(tree.relpath(filename), revision[0].in_history(b).revno)
 
 
 class cmd_local_time_offset(Command):
@@ -1003,9 +1013,9 @@ class cmd_commit(Command):
         from cStringIO import StringIO
 
         b = Branch.open_containing('.')
+        tree = WorkingTree(b.base, b)
         if selected_list:
-            selected_list = [b.relpath(s) for s in selected_list]
-
+            selected_list = [tree.relpath(s) for s in selected_list]
             
         if message is None and not file:
             catcher = StringIO()
@@ -1460,7 +1470,8 @@ class cmd_annotate(Command):
         b = Branch.open_containing(filename)
         b.lock_read()
         try:
-            rp = b.relpath(filename)
+            tree = WorkingTree(b.base, b)
+            rp = tree.relpath(filename)
             tree = b.revision_tree(b.last_revision())
             file_id = tree.inventory.path2id(rp)
             file_version = tree.inventory[file_id].revision
