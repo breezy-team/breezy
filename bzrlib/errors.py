@@ -147,12 +147,10 @@ class BadFileKindError(BzrError):
     """Specified file is of a kind that cannot be added.
 
     (For example a symlink or device file.)"""
-    pass
 
 
 class ForbiddenFileError(BzrError):
     """Cannot operate on a file because it is a control file."""
-    pass
 
 
 class LockError(Exception):
@@ -175,7 +173,7 @@ class ReadOnlyError(LockError):
 
 
 class PointlessCommit(BzrNewError):
-    """Commit failed because nothing was changed."""
+    """No changes to commit"""
 
 
 class NoSuchRevision(BzrError):
