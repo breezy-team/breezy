@@ -111,7 +111,12 @@ class Store(object):
             if self.has_id(fileid):
                 continue
             try:
-                self._copy_one(fileid, other, pb)
+                self._copy_one(fileid, None, other, pb)
+                for suffix in self._suffixes:
+                    try:
+                        self._copy_one(fileid, suffix, other, pb)
+                    except KeyError:
+                        pass
                 pb.update('copy', count, len(ids))
             except KeyError:
                 if permit_failure:
@@ -122,7 +127,7 @@ class Store(object):
         pb.clear()
         return count, failed
 
-    def _copy_one(self, fileid, other, pb):
+    def _copy_one(self, fileid, suffix, other, pb):
         """Most generic copy-one object routine.
         
         Subclasses can override this to provide an optimised
@@ -130,8 +135,8 @@ class Store(object):
         should call this if they have no optimised facility for a 
         specific 'other'.
         """
-        f = other.get(fileid)
-        self.add(f, fileid)
+        f = other.get(fileid, suffix)
+        self.add(f, fileid, suffix)
 
 
 class TransportStore(Store):
@@ -183,7 +188,7 @@ class TransportStore(Store):
 
     def get(self, fileid, suffix=None):
         """See Store.get()."""
-        if suffix is None:
+        if suffix is None or suffix == 'gz':
             fn = self._relpath(fileid)
         else:
             fn = self._relpath(fileid, [suffix])
@@ -197,6 +202,8 @@ class TransportStore(Store):
         super(TransportStore, self).__init__()
         self._transport = a_transport
         self._prefixed = prefixed
+        # conflating the .gz extension and user suffixes was a mistake.
+        # RBC 20051017 - TODO SOON, separate them again.
         self._suffixes = set()
 
     def __iter__(self):

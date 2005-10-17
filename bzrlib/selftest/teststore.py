@@ -342,3 +342,14 @@ class TestTransportStore(TestCase):
 
     def test___len__(self):
         self.assertEqual(1, len(self.get_populated_store()))
+
+    def test_copy_suffixes(self):
+        from_store = self.get_populated_store()
+        to_store = CompressedTextStore(MemoryTransport(), True)
+        to_store.register_suffix('sig')
+        copy_all(from_store, to_store)
+        self.assertEqual(1, len(to_store))
+        self.assertEqual(set(['foo']), set(to_store.__iter__()))
+        self.assertEqual('content', to_store.get('foo').read())
+        self.assertEqual('signature', to_store.get('foo', 'sig').read())
+        self.assertRaises(KeyError, to_store.get, 'missing', 'sig')
