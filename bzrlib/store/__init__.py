@@ -102,75 +102,40 @@ class Store(object):
         """
         if pb is None:
             pb = bzrlib.ui.ui_factory.progress_bar()
-
-        # XXX: Is there any reason why we couldn't make this accept a generator
-        # and build a list as it finds things to copy?
-        ids = list(ids) # Make sure we don't have a generator, since we iterate 2 times
         pb.update('preparing to copy')
-        to_copy = []
-        for file_id in ids:
-            if not self.has_id(file_id):
-                to_copy.append(file_id)
-        return self._do_copy(other, to_copy, pb, permit_failure=permit_failure)
-
-    def _do_copy(self, other, to_copy, pb, permit_failure=False):
-        """This is the standard copying mechanism, just get them one at
-        a time from remote, and store them locally.
-
-        :param other: Another Store object
-        :param to_copy: A list of entry ids to copy
-        :param pb: A ProgressBar object to display completion status.
-        :param permit_failure: Allow missing entries to be ignored
-        :return: (n_copied, [failed])
-            The number of entries copied, and a list of failed entries.
-        """
-        # This should be updated to use add_multi() rather than
-        # the current methods of buffering requests.
-        # One question, is it faster to queue up 1-10 and then copy 1-10
-        # then queue up 11-20, copy 11-20
-        # or to queue up 1-10, copy 1, queue 11, copy 2, etc?
-        # sort of pipeline versus batch.
-
-        # We can't use self._transport.copy_to because we don't know
-        # whether the local tree is in the same format as other
         failed = set()
-        def buffer_requests():
-            count = 0
-            buffered_requests = []
-            for fileid in to_copy:
-                try:
-                    f = other.get(fileid)
-                except KeyError:
-                    if permit_failure:
-                        failed.add(fileid)
-                        continue
-                    else:
-                        raise
-
-                buffered_requests.append((f, fileid))
-                if len(buffered_requests) > self._max_buffered_requests:
-                    yield buffered_requests.pop(0)
-                    count += 1
-                    pb.update('copy', count, len(to_copy))
-
-            for req in buffered_requests:
-                yield req
-                count += 1
-                pb.update('copy', count, len(to_copy))
-
-            assert count == len(to_copy)
-
-        for f, fileid in buffer_requests():
-            self.add(f, fileid)
-
+        count = 0
+        ids = list(ids) # get the list for showing a length.
+        for fileid in ids:
+            count += 1
+            if self.has_id(fileid):
+                continue
+            try:
+                self._copy_one(fileid, other, pb)
+                pb.update('copy', count, len(ids))
+            except KeyError:
+                if permit_failure:
+                    failed.add(fileid)
+                else:
+                    raise
+        assert count == len(ids)
         pb.clear()
-        return len(to_copy), failed
+        return count, failed
+
+    def _copy_one(self, fileid, other, pb):
+        """Most generic copy-one object routine.
+        
+        Subclasses can override this to provide an optimised
+        copy between their own instances. Such overriden routines
+        should call this if they have no optimised facility for a 
+        specific 'other'.
+        """
+        f = other.get(fileid)
+        self.add(f, fileid)
 
 
 class TransportStore(Store):
     """A TransportStore is a Store superclass for Stores that use Transports."""
-
-    _max_buffered_requests = 10
 
     def add(self, f, fileid, suffix=None):
         """Add contents of a file into the store.

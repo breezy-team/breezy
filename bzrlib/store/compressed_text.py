@@ -78,35 +78,13 @@ class CompressedTextStore(bzrlib.store.TransportStore):
         sio.seek(0)
         self._transport.put(fn, sio)
 
-    def _do_copy(self, other, to_copy, pb, permit_failure=False):
-        if isinstance(other, CompressedTextStore):
-            return self._copy_multi_text(other, to_copy, pb,
-                    permit_failure=permit_failure)
-        return super(CompressedTextStore, self)._do_copy(other, to_copy,
-                pb, permit_failure=permit_failure)
-
-    def _copy_multi_text(self, other, to_copy, pb,
-            permit_failure=False):
-        # Because of _transport, we can no longer assume
-        # that they are on the same filesystem, we can, however
-        # assume that we only need to copy the exact bytes,
-        # we don't need to process the files.
-
-        failed = set()
-        if permit_failure:
-            new_to_copy = set()
-            for fileid, has in zip(to_copy, other.has(to_copy)):
-                if has:
-                    new_to_copy.add(fileid)
-                else:
-                    failed.add(fileid)
-            to_copy = new_to_copy
-            #mutter('_copy_multi_text copying %s, failed %s' % (to_copy, failed))
-
-        paths = [self._relpath(fileid) for fileid in to_copy]
-        count = other._transport.copy_to(paths, self._transport, pb=pb)
-        assert count == len(to_copy)
-        return count, failed
+    def _copy_one(self, fileid, other, pb):
+        if not (isinstance(other, CompressedTextStore)
+            and other._prefixed == self._prefixed):
+            return super(CompressedTextStore, self)._copy_one(fileid, 
+                                                              other, pb)
+        path = self._relpath(fileid)
+        assert other._transport.copy_to([path], self._transport, pb=pb) == 1
 
     def __init__(self, transport, prefixed=False):
         super(CompressedTextStore, self).__init__(transport, prefixed)
