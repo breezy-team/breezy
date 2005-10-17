@@ -33,9 +33,13 @@ UNRELEASED CHANGES
 
   INTERNALS:
 
-    * New 'manifest' command and concept for making gpg-signatures 
+    * New 'testament' command and concept for making gpg-signatures 
       of revisions that are not tied to a particular internal
-      representation.
+      representation.  (Martin Pool).
+
+    * Per-revision properties ('revprops') as key-value associated 
+      strings on each revision created when the revision is committed.
+      Intended mainly for the use of external tools.  (Martin Pool).
 
     * Config options have moved from bzrlib.osutils to bzrlib.config.
       (Robert Collins)
