@@ -79,15 +79,17 @@ class cmd_status(Command):
     
     def run(self, all=False, show_ids=False, file_list=None, revision=None):
         if file_list:
-            b = Branch.open_containing(file_list[0])
-            tree = WorkingTree(b.base, b)
-            file_list = [tree.relpath(x) for x in file_list]
-            # special case: only one path was given and it's the root
-            # of the branch
-            if file_list == ['']:
+            b, relpath = Branch.open_containing(file_list[0])
+            if relpath == '' and len(file_list) == 1:
                 file_list = None
+            else:
+                # generate relative paths.
+                # note that if this is a remote branch, we would want
+                # relpath against the transport. RBC 20051018
+                tree = WorkingTree(b.base, b)
+                file_list = [tree.relpath(x) for x in file_list]
         else:
-            b = Branch.open_containing('.')
+            b = Branch.open_containing('.')[0]
             
         from bzrlib.status import show_status
         show_status(b, show_unchanged=all, show_ids=show_ids,
@@ -111,7 +113,7 @@ class cmd_cat_revision(Command):
             raise BzrCommandError('You can only supply one of revision_id or --revision')
         if revision_id is None and revision is None:
             raise BzrCommandError('You must supply either --revision or a revision_id')
-        b = Branch.open_containing('.')
+        b = Branch.open_containing('.')[0]
         if revision_id is not None:
             sys.stdout.write(b.get_revision_xml_file(revision_id).read())
         elif revision is not None:
@@ -127,7 +129,7 @@ class cmd_revno(Command):
 
     This is equal to the number of revisions on this branch."""
     def run(self):
-        print Branch.open_containing('.').revno()
+        print Branch.open_containing('.')[0].revno()
 
 
 class cmd_revision_info(Command):
@@ -147,7 +149,7 @@ class cmd_revision_info(Command):
         if len(revs) == 0:
             raise BzrCommandError('You must supply a revision identifier')
 
-        b = Branch.open_containing('.')
+        b = Branch.open_containing('.')[0]
 
         for rev in revs:
             revinfo = rev.in_history(b)
@@ -205,7 +207,7 @@ class cmd_mkdir(Command):
         for d in dir_list:
             os.mkdir(d)
             if not b:
-                b = Branch.open_containing(d)
+                b = Branch.open_containing(d)[0]
             b.add([d])
             print 'added', d
 
@@ -216,8 +218,8 @@ class cmd_relpath(Command):
     hidden = True
     
     def run(self, filename):
-        branch = Branch.open_containing(filename)
-        print WorkingTree(branch.base, branch).relpath(filename)
+        branch, relpath = Branch.open_containing(filename)
+        print relpath
 
 
 class cmd_inventory(Command):
@@ -225,7 +227,7 @@ class cmd_inventory(Command):
     takes_options = ['revision', 'show-ids']
     
     def run(self, revision=None, show_ids=False):
-        b = Branch.open_containing('.')
+        b = Branch.open_containing('.')[0]
         if revision is None:
             inv = b.read_working_inventory()
         else:
@@ -251,7 +253,7 @@ class cmd_move(Command):
     """
     takes_args = ['source$', 'dest']
     def run(self, source_list, dest):
-        b = Branch.open_containing('.')
+        b = Branch.open_containing('.')[0]
 
         # TODO: glob expansion on windows?
         tree = WorkingTree(b.base, b)
@@ -275,7 +277,7 @@ class cmd_rename(Command):
     takes_args = ['from_name', 'to_name']
     
     def run(self, from_name, to_name):
-        b = Branch.open_containing('.')
+        b = Branch.open_containing('.')[0]
         tree = WorkingTree(b.base, b)
         b.rename_one(tree.relpath(from_name), tree.relpath(to_name))
 
@@ -297,7 +299,7 @@ class cmd_mv(Command):
     def run(self, names_list):
         if len(names_list) < 2:
             raise BzrCommandError("missing file argument")
-        b = Branch.open_containing(names_list[0])
+        b = Branch.open_containing(names_list[0])[0]
         tree = WorkingTree(b.base, b)
         rel_names = [tree.relpath(x) for x in names_list]
         
@@ -338,7 +340,7 @@ class cmd_pull(Command):
         from shutil import rmtree
         import errno
         
-        br_to = Branch.open_containing('.')
+        br_to = Branch.open_containing('.')[0]
         stored_loc = br_to.get_parent()
         if location is None:
             if stored_loc is None:
@@ -410,7 +412,7 @@ class cmd_branch(Command):
         try:
             br_from.setup_caching(cache_root)
             if basis is not None:
-                basis_branch = Branch.open_containing(basis)
+                basis_branch = Branch.open_containing(basis)[0]
             else:
                 basis_branch = None
             if len(revision) == 1 and revision[0] is not None:
@@ -452,7 +454,7 @@ class cmd_renames(Command):
     takes_args = ['dir?']
 
     def run(self, dir='.'):
-        b = Branch.open_containing(dir)
+        b = Branch.open_containing(dir)[0]
         old_inv = b.basis_tree().inventory
         new_inv = b.read_working_inventory()
 
@@ -468,7 +470,7 @@ class cmd_info(Command):
     
     def run(self, branch=None):
         import info
-        b = Branch.open_containing(branch)
+        b = Branch.open_containing(branch)[0]
         info.show_info(b)
 
 
@@ -483,7 +485,7 @@ class cmd_remove(Command):
     aliases = ['rm']
     
     def run(self, file_list, verbose=False):
-        b = Branch.open_containing(file_list[0])
+        b = Branch.open_containing(file_list[0])[0]
         tree = WorkingTree(b.base, b)
         b.remove([tree.relpath(f) for f in file_list], verbose=verbose)
 
@@ -498,9 +500,8 @@ class cmd_file_id(Command):
     hidden = True
     takes_args = ['filename']
     def run(self, filename):
-        b = Branch.open_containing(filename)
-        tree = WorkingTree(b.base, b)
-        i = b.inventory.path2id(tree.relpath(filename))
+        b, relpath = Branch.open_containing(filename)
+        i = b.inventory.path2id(relpath)
         if i == None:
             raise BzrError("%r is not a versioned file" % filename)
         else:
@@ -515,10 +516,9 @@ class cmd_file_path(Command):
     hidden = True
     takes_args = ['filename']
     def run(self, filename):
-        b = Branch.open_containing(filename)
+        b, relpath = Branch.open_containing(filename)
         inv = b.inventory
-        tree = WorkingTree(b.base, b)
-        fid = inv.path2id(tree.relpath(filename))
+        fid = inv.path2id(relpath)
         if fid == None:
             raise BzrError("%r is not a versioned file" % filename)
         for fip in inv.get_idpath(fid):
@@ -529,7 +529,7 @@ class cmd_revision_history(Command):
     """Display list of revision ids on this branch."""
     hidden = True
     def run(self):
-        for patchid in Branch.open_containing('.').revision_history():
+        for patchid in Branch.open_containing('.')[0].revision_history():
             print patchid
 
 
@@ -545,7 +545,7 @@ class cmd_ancestry(Command):
 class cmd_directories(Command):
     """Display list of versioned directories in this branch."""
     def run(self):
-        for name, ie in Branch.open_containing('.').read_working_inventory().directories():
+        for name, ie in Branch.open_containing('.')[0].read_working_inventory().directories():
             if name == '':
                 print '.'
             else:
@@ -602,14 +602,14 @@ class cmd_diff(Command):
         from bzrlib.diff import show_diff
 
         if file_list:
-            b = Branch.open_containing(file_list[0])
+            b = Branch.open_containing(file_list[0])[0]
             tree = WorkingTree(b.base, b)
             file_list = [tree.relpath(f) for f in file_list]
             if file_list == ['']:
                 # just pointing to top-of-tree
                 file_list = None
         else:
-            b = Branch.open_containing('.')
+            b = Branch.open_containing('.')[0]
 
         if revision is not None:
             if len(revision) == 1:
@@ -638,7 +638,7 @@ class cmd_deleted(Command):
     # level of effort but possibly much less IO.  (Or possibly not,
     # if the directories are very large...)
     def run(self, show_ids=False):
-        b = Branch.open_containing('.')
+        b = Branch.open_containing('.')[0]
         old = b.basis_tree()
         new = b.working_tree()
         for path, ie in old.inventory.iter_entries():
@@ -655,7 +655,7 @@ class cmd_modified(Command):
     def run(self):
         from bzrlib.delta import compare_trees
 
-        b = Branch.open_containing('.')
+        b = Branch.open_containing('.')[0]
         td = compare_trees(b.basis_tree(), b.working_tree())
 
         for path, id, kind, text_modified, meta_modified in td.modified:
@@ -667,7 +667,7 @@ class cmd_added(Command):
     """List files added in working tree."""
     hidden = True
     def run(self):
-        b = Branch.open_containing('.')
+        b = Branch.open_containing('.')[0]
         wt = b.working_tree()
         basis_inv = b.basis_tree().inventory
         inv = wt.inventory
@@ -689,7 +689,7 @@ class cmd_root(Command):
     takes_args = ['filename?']
     def run(self, filename=None):
         """Print the branch root."""
-        b = Branch.open_containing(filename)
+        b = Branch.open_containing(filename)[0]
         print b.base
 
 
@@ -732,15 +732,13 @@ class cmd_log(Command):
         direction = (forward and 'forward') or 'reverse'
         
         if filename:
-            b = Branch.open_containing(filename)
-            tree = WorkingTree(b.base, b)
-            fp = tree.relpath(filename)
-            if fp:
+            b, fp = Branch.open_containing(filename)
+            if fp != '':
                 file_id = b.read_working_inventory().path2id(fp)
             else:
                 file_id = None  # points to branch root
         else:
-            b = Branch.open_containing('.')
+            b, relpath = Branch.open_containing('.')
             file_id = None
 
         if revision is None:
@@ -793,10 +791,9 @@ class cmd_touching_revisions(Command):
     hidden = True
     takes_args = ["filename"]
     def run(self, filename):
-        b = Branch.open_containing(filename)
+        b, relpath = Branch.open_containing(filename)[0]
         inv = b.read_working_inventory()
-        tree = WorkingTree(b.base, b)
-        file_id = inv.path2id(tree.relpath(filename))
+        file_id = inv.path2id(relpath)
         for revno, revision_id, what in bzrlib.log.find_touching_revisions(b, file_id):
             print "%6d %s" % (revno, what)
 
@@ -807,7 +804,7 @@ class cmd_ls(Command):
     # TODO: Take a revision or remote path and list that tree instead.
     hidden = True
     def run(self, revision=None, verbose=False):
-        b = Branch.open_containing('.')
+        b, relpath = Branch.open_containing('.')[0]
         if revision == None:
             tree = b.working_tree()
         else:
@@ -825,7 +822,7 @@ class cmd_unknowns(Command):
     """List unknown files."""
     def run(self):
         from bzrlib.osutils import quotefn
-        for f in Branch.open_containing('.').unknowns():
+        for f in Branch.open_containing('.')[0].unknowns():
             print quotefn(f)
 
 
@@ -855,7 +852,7 @@ class cmd_ignore(Command):
         from bzrlib.atomicfile import AtomicFile
         import os.path
 
-        b = Branch.open_containing('.')
+        b, relpath = Branch.open_containing('.')
         ifn = b.abspath('.bzrignore')
 
         if os.path.exists(ifn):
@@ -895,7 +892,7 @@ class cmd_ignored(Command):
 
     See also: bzr ignore"""
     def run(self):
-        tree = Branch.open_containing('.').working_tree()
+        tree = Branch.open_containing('.')[0].working_tree()
         for path, file_class, kind, file_id, entry in tree.list_files():
             if file_class != 'I':
                 continue
@@ -919,7 +916,7 @@ class cmd_lookup_revision(Command):
         except ValueError:
             raise BzrCommandError("not a valid revision-number: %r" % revno)
 
-        print Branch.open_containing('.').get_rev_id(revno)
+        print Branch.open_containing('.')[0].get_rev_id(revno)
 
 
 class cmd_export(Command):
@@ -938,7 +935,7 @@ class cmd_export(Command):
     takes_options = ['revision', 'format', 'root']
     def run(self, dest, revision=None, format=None, root=None):
         import os.path
-        b = Branch.open_containing('.')
+        b = Branch.open_containing('.')[0]
         if revision is None:
             rev_id = b.last_revision()
         else:
@@ -977,9 +974,8 @@ class cmd_cat(Command):
             raise BzrCommandError("bzr cat requires a revision number")
         elif len(revision) != 1:
             raise BzrCommandError("bzr cat --revision takes exactly one number")
-        b = Branch.open_containing('.')
-        tree = WorkingTree(b.base, b)
-        b.print_file(tree.relpath(filename), revision[0].in_history(b).revno)
+        b, relpath = Branch.open_containing(filename)
+        b.print_file(relpath, revision[0].in_history(b).revno)
 
 
 class cmd_local_time_offset(Command):
@@ -1027,7 +1023,7 @@ class cmd_commit(Command):
         from bzrlib.status import show_status
         from cStringIO import StringIO
 
-        b = Branch.open_containing('.')
+        b = Branch.open_containing('.')[0]
         tree = WorkingTree(b.base, b)
         if selected_list:
             selected_list = [tree.relpath(s) for s in selected_list]
@@ -1075,7 +1071,7 @@ class cmd_check(Command):
 
     def run(self, dir='.', verbose=False):
         from bzrlib.check import check
-        check(Branch.open_containing(dir), verbose)
+        check(Branch.open_containing(dir)[0], verbose)
 
 
 class cmd_scan_cache(Command):
@@ -1120,7 +1116,7 @@ class cmd_whoami(Command):
     
     def run(self, email=False):
         try:
-            b = bzrlib.branch.Branch.open_containing('.')
+            b = bzrlib.branch.Branch.open_containing('.')[0]
             config = bzrlib.config.BranchConfig(b)
         except NotBranchError:
             config = bzrlib.config.GlobalConfig()
@@ -1212,8 +1208,8 @@ class cmd_find_merge_base(Command):
     def run(self, branch, other):
         from bzrlib.revision import common_ancestor, MultipleRevisionSources
         
-        branch1 = Branch.open_containing(branch)
-        branch2 = Branch.open_containing(other)
+        branch1 = Branch.open_containing(branch)[0]
+        branch2 = Branch.open_containing(other)[0]
 
         history_1 = branch1.revision_history()
         history_2 = branch2.revision_history()
@@ -1277,7 +1273,7 @@ class cmd_merge(Command):
         if merge_type is None:
             merge_type = ApplyMerge3
         if branch is None:
-            branch = Branch.open_containing('.').get_parent()
+            branch = Branch.open_containing('.')[0].get_parent()
             if branch is None:
                 raise BzrCommandError("No merge location known or specified.")
             else:
@@ -1334,7 +1330,7 @@ class cmd_revert(Command):
         elif len(revision) != 1:
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:
-            b = Branch.open_containing('.')
+            b = Branch.open_containing('.')[0]
             revno = revision[0].in_history(b).revno
         merge(('.', revno), parse_spec('.'),
               check_clean=False,
@@ -1342,7 +1338,7 @@ class cmd_revert(Command):
               backup_files=not no_backup,
               file_list=file_list)
         if not file_list:
-            Branch.open_containing('.').set_pending_merges([])
+            Branch.open_containing('.')[0].set_pending_merges([])
 
 
 class cmd_assert_fail(Command):
@@ -1414,7 +1410,7 @@ class cmd_missing(Command):
         if verbose and quiet:
             raise BzrCommandError('Cannot pass both quiet and verbose')
 
-        b = Branch.open_containing('.')
+        b = Branch.open_containing('.')[0]
         parent = b.get_parent()
         if remote is None:
             if parent is None:
@@ -1427,7 +1423,7 @@ class cmd_missing(Command):
             # We only update parent if it did not exist, missing
             # should not change the parent
             b.set_parent(remote)
-        br_remote = Branch.open_containing(remote)
+        br_remote = Branch.open_containing(remote)[0]
         return show_missing(b, br_remote, verbose=verbose, quiet=quiet)
 
 
@@ -1456,7 +1452,7 @@ class cmd_testament(Command):
     takes_args = ['branch?']
     def run(self, branch='.', revision=None, long=False):
         from bzrlib.testament import Testament
-        b = Branch.open_containing(branch)
+        b = Branch.open_containing(branch)[0]
         b.lock_read()
         try:
             if revision is None:
@@ -1493,13 +1489,12 @@ class cmd_annotate(Command):
 
     def run(self, filename, all=False, long=False):
         from bzrlib.annotate import annotate_file
-        b = Branch.open_containing(filename)
+        b, relpath = Branch.open_containing(filename)
         b.lock_read()
         try:
             tree = WorkingTree(b.base, b)
-            rp = tree.relpath(filename)
             tree = b.revision_tree(b.last_revision())
-            file_id = tree.inventory.path2id(rp)
+            file_id = tree.inventory.path2id(relpath)
             file_version = tree.inventory[file_id].revision
             annotate_file(b, file_version, file_id, long, all, sys.stdout)
         finally:
@@ -1521,7 +1516,7 @@ class cmd_re_sign(Command):
             raise BzrCommandError('You can only supply one of revision_id or --revision')
         if revision_id is None and revision is None:
             raise BzrCommandError('You must supply either --revision or a revision_id')
-        b = Branch.open_containing('.')
+        b = Branch.open_containing('.')[0]
         gpg_strategy = gpg.GPGStrategy(config.BranchConfig(b))
         if revision_id is not None:
             b.sign_revision(revision_id, gpg_strategy)

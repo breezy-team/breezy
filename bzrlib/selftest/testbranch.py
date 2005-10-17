@@ -167,8 +167,10 @@ class TestRemote(TestCaseWithWebserver):
         self.assertRaises(NotBranchError, Branch.open_containing,
                           self.get_remote_url('g/p/q'))
         b = Branch.initialize('.')
-        Branch.open_containing(self.get_remote_url(''))
-        Branch.open_containing(self.get_remote_url('g/p/q'))
+        branch, relpath = Branch.open_containing(self.get_remote_url(''))
+        self.assertEqual('', relpath)
+        branch, relpath = Branch.open_containing(self.get_remote_url('g/p/q'))
+        self.assertEqual('g/p/q', relpath)
         
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        
 #         >>> from bzrlib.commit import commit

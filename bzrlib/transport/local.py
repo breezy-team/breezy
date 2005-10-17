@@ -68,6 +68,8 @@ class LocalTransport(Transport):
         """Return the local path portion from a given absolute path.
         """
         from bzrlib.osutils import relpath
+        if abspath is None:
+            abspath = '.'
         return relpath(self.base, abspath)
 
     def has(self, relpath):

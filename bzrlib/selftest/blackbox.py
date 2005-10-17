@@ -821,4 +821,15 @@ class HttpTests(TestCaseWithWebserver):
         branch = Branch.open('to')
         self.assertEqual(1, len(branch.revision_history()))
 
+    def test_log(self):
+        self.build_tree(['branch/', 'branch/file'])
+        branch = Branch.initialize('branch')
+        branch.add(['file'])
+        branch.commit('add file', rev_id='A')
+        url = self.get_remote_url('branch/file')
+        output = self.capture('log %s' % url)
+        self.assertEqual(7, len(output.split('\n')))
+        
+
+
 

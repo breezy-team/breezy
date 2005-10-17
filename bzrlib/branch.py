@@ -125,11 +125,12 @@ class Branch(object):
 
         Basically we keep looking up until we find the control directory or
         run into the root.  If there isn't one, raises NotBranchError.
+        If there is one, it is returned, along with the unused portion of url.
         """
         t = get_transport(url)
         while True:
             try:
-                return _Branch(t)
+                return _Branch(t), t.relpath(url)
             except NotBranchError:
                 pass
             new_t = t.clone('..')

@@ -92,7 +92,7 @@ if __name__ == '__main__':
     from bzrlib.workingtree import WorkingTree
 
     enable_default_logging()
-    b = Branch.open_containing(sys.argv[1])
+    b = Branch.open_containing(sys.argv[1])[0]
     tree = WorkingTree(b.base, b)
     rp = tree.relpath(sys.argv[1])
     tree = b.revision_tree(b.last_revision())
