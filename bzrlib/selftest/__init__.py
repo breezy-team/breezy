@@ -33,7 +33,7 @@ import bzrlib.fetch
 import bzrlib.osutils as osutils
 from bzrlib.selftest import TestUtil
 from bzrlib.selftest.TestUtil import TestLoader, TestSuite
-
+from bzrlib.selftest.treeshape import build_tree_contents
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
@@ -421,6 +421,9 @@ class TestCaseInTempDir(TestCase):
                 f = file(name, 'wt')
                 print >>f, "contents of", name
                 f.close()
+
+    def build_tree_contents(self, shape):
+        bzrlib.selftest.build_tree_contents(shape)
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""

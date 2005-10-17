@@ -1455,16 +1455,23 @@ class cmd_testament(Command):
 class cmd_annotate(Command):
     """Show the origin of each line in a file.
 
-    This prints out the given file with an annotation on the 
-    left side indicating which revision, author and date introduced the 
-    change.
+    This prints out the given file with an annotation on the left side
+    indicating which revision, author and date introduced the change.
+
+    If the origin is the same for a run of consecutive lines, it is 
+    shown only at the top, unless the --all option is given.
     """
     # TODO: annotate directories; showing when each file was last changed
     # TODO: annotate a previous version of a file
+    # TODO: if the working copy is modified, show annotations on that 
+    #       with new uncommitted lines marked
     aliases = ['blame', 'praise']
     takes_args = ['filename']
+    takes_options = [Option('all', help='show annotations on all lines'),
+                     Option('long', help='show date in annotations'),
+                     ]
 
-    def run(self, filename):
+    def run(self, filename, all=False, long=False):
         from bzrlib.annotate import annotate_file
         b = Branch.open_containing(filename)
         b.lock_read()
@@ -1473,7 +1480,7 @@ class cmd_annotate(Command):
             tree = b.revision_tree(b.last_revision())
             file_id = tree.inventory.path2id(rp)
             file_version = tree.inventory[file_id].revision
-            annotate_file(b, file_version, file_id, sys.stdout)
+            annotate_file(b, file_version, file_id, long, all, sys.stdout)
         finally:
             b.unlock()
 

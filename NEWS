@@ -11,6 +11,9 @@ UNRELEASED CHANGES
 
     * Improved zsh completion support in contrib/zsh, from Clint
       Adams.
+
+    * Builtin 'bzr annotate' command, by Martin Pool with improvements from 
+      Goffredo Baroncelli.
     
   INTERNALS:
 
