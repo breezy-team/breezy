@@ -124,7 +124,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def new_contents_conflict(self, filename, other_contents):
         """Conflicting contents for newly added file."""
-        self.copy(other_contents, filename + ".OTHER")
+        other.contents.apply(filename + ".OTHER")
         self.conflict("Conflict in newly added file %s" % filename)
     
 
@@ -153,12 +153,11 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def abs_this_path(self, file_id):
         """Return the absolute path for a file_id in the this tree."""
-        relpath = self.this_tree.id2path(file_id)
-        return self.this_tree.tree.abspath(relpath)
+        return self.this_tree.id2abspath(file_id)
 
     def add_missing_parents(self, file_id, tree):
         """If some of the parents for file_id are missing, add them."""
-        entry = tree.tree.inventory[file_id]
+        entry = tree.inventory[file_id]
         if entry.parent_id not in self.this_tree:
             return self.create_all_missing(entry.parent_id, tree)
         else:
@@ -166,7 +165,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def create_all_missing(self, file_id, tree):
         """Add contents for a file_id and all its parents to a tree."""
-        entry = tree.tree.inventory[file_id]
+        entry = tree.inventory[file_id]
         if entry.parent_id is not None and entry.parent_id not in self.this_tree:
             abspath = self.create_all_missing(entry.parent_id, tree)
         else:
@@ -178,8 +177,8 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def create(self, file_id, path, tree, reverse=False):
         """Uses tree data to create a filesystem object for the file_id"""
-        from merge_core import get_id_contents
-        get_id_contents(file_id, tree)(path, self, reverse)
+        from changeset import get_contents
+        get_contents(tree, file_id)(path, self, reverse)
 
     def missing_for_merge(self, file_id, other_path):
         """The file_id doesn't exist in THIS, but does in OTHER and BASE"""
@@ -190,11 +189,15 @@ class MergeConflictHandler(ExceptionConflictHandler):
         self.create(file_id, stem+".OTHER", self.other_tree)
         self.create(file_id, stem+".BASE", self.base_tree)
 
+    def threeway_contents_conflict(filename, this_contents, base_contents,
+                                   other_contents):
+        self.conflict("Three-way conflict merging %s" % filename)
+
     def finalize(self):
         if not self.ignore_zero:
             note("%d conflicts encountered.\n" % self.conflicts)
             
-def get_tree(treespec, temp_root, label, local_branch=None):
+def get_tree(treespec, local_branch=None):
     location, revno = treespec
     branch = Branch.open_containing(location)
     if revno is None:
@@ -203,10 +206,9 @@ def get_tree(treespec, temp_root, label, local_branch=None):
         revision = branch.last_revision()
     else:
         revision = branch.get_rev_id(revno)
-    return branch, get_revid_tree(branch, revision, temp_root, label,
-                                  local_branch)
+    return branch, get_revid_tree(branch, revision, local_branch)
 
-def get_revid_tree(branch, revision, temp_root, label, local_branch):
+def get_revid_tree(branch, revision, local_branch):
     if revision is None:
         base_tree = branch.working_tree()
     else:
@@ -215,90 +217,12 @@ def get_revid_tree(branch, revision, temp_root, label, local_branch):
             base_tree = local_branch.revision_tree(revision)
         else:
             base_tree = branch.revision_tree(revision)
-    temp_path = os.path.join(temp_root, label)
-    os.mkdir(temp_path)
-    return MergeAdapterTree(base_tree, temp_path)
+    return base_tree
 
 
 def file_exists(tree, file_id):
     return tree.has_filename(tree.id2path(file_id))
     
-
-class MergeAdapterTree(object):
-    """MergeAdapterTree adapts a normal tree for merge_inner to use.
-
-    The interface the merge_inner needs is nearly but not quite
-    the same as that of bzrlib.tree with the exception of readonly_path.
-    """
-    
-    def __init__(self, tree, tempdir):
-        object.__init__(self)
-        if hasattr(tree, "basedir"):
-            self.root = tree.basedir
-        else:
-            self.root = None
-        self.tree = tree
-        self.tempdir = tempdir
-        os.mkdir(os.path.join(self.tempdir, "texts"))
-        os.mkdir(os.path.join(self.tempdir, "symlinks"))
-        self.cached = {}
-
-    def __iter__(self):
-        return self.tree.__iter__()
-
-    def __contains__(self, file_id):
-        return file_id in self.tree
-
-    def get_file(self, file_id):
-        return self.tree.get_file(file_id)
-
-    def get_file_sha1(self, id):
-        return self.tree.get_file_sha1(id)
-
-    def is_executable(self, id):
-        return self.tree.is_executable(id)
-
-    def id2path(self, file_id):
-        return self.tree.id2path(file_id)
-
-    def has_id(self, file_id):
-        return self.tree.has_id(file_id)
-
-    def has_or_had_id(self, file_id):
-        if file_id == self.tree.inventory.root.file_id:
-            return True
-        return self.tree.inventory.has_id(file_id)
-
-    def has_or_had_id(self, file_id):
-        if file_id == self.tree.inventory.root.file_id:
-            return True
-        return self.tree.inventory.has_id(file_id)
-
-    def readonly_path(self, id):
-        if id not in self.tree:
-            return None
-        if self.root is not None:
-            return self.tree.abspath(self.tree.id2path(id))
-        else:
-            kind = self.tree.inventory[id].kind
-            if kind in ("directory", "root_directory"):
-                return self.tempdir
-            if not self.cached.has_key(id):
-                if kind == "file":
-                    path = os.path.join(self.tempdir, "texts", id)
-                    outfile = file(path, "wb")
-                    outfile.write(self.tree.get_file(id).read())
-                    assert(bzrlib.osutils.lexists(path))
-                    if self.tree.is_executable(id):
-                        os.chmod(path, 0755)
-                else:
-                    assert kind == "symlink"
-                    path = os.path.join(self.tempdir, "symlinks", id)
-                    target = self.tree.get_symlink_target(id)
-                    os.symlink(target, path)
-                self.cached[id] = path
-            return self.cached[id]
-
 
 def build_working_dir(to_dir):
     """Build a working directory in an empty directory.
@@ -349,8 +273,7 @@ def merge(other_revision, base_revision,
                                     this_branch.basis_tree(), False)
             if changes.has_changed():
                 raise BzrCommandError("Working tree has uncommitted changes.")
-        other_branch, other_tree = get_tree(other_revision, tempdir, "other",
-                                            this_branch)
+        other_branch, other_tree = get_tree(other_revision, this_branch)
         if other_revision[1] == -1:
             other_rev_id = other_branch.last_revision()
             if other_rev_id is None:
@@ -370,11 +293,10 @@ def merge(other_revision, base_revision,
                                               this_branch)
             except NoCommonAncestor:
                 raise UnrelatedBranches()
-            base_tree = get_revid_tree(this_branch, base_rev_id, tempdir, 
-                                       "base", None)
+            base_tree = get_revid_tree(this_branch, base_rev_id, None)
             base_is_ancestor = True
         else:
-            base_branch, base_tree = get_tree(base_revision, tempdir, "base")
+            base_branch, base_tree = get_tree(base_revision)
             if base_revision[1] == -1:
                 base_rev_id = base_branch.last_revision()
             elif base_revision[1] is None:
@@ -392,7 +314,7 @@ def merge(other_revision, base_revision,
             for fname in file_list:
                 path = this_tree.relpath(fname)
                 found_id = False
-                for tree in (this_tree, base_tree.tree, other_tree.tree):
+                for tree in (this_tree, base_tree, other_tree):
                     file_id = tree.inventory.path2id(path)
                     if file_id is not None:
                         interesting_ids.add(file_id)
@@ -428,10 +350,10 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
             contents_change = BackupBeforeChange(contents_change)
         return contents_change
 
-    this_tree = get_tree((this_branch.base, None), tempdir, "this")[1]
+    this_tree = get_tree((this_branch.base, None))[1]
 
     def get_inventory(tree):
-        return tree.tree.inventory
+        return tree.inventory
 
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
                              generate_changeset, get_inventory,
@@ -450,7 +372,8 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
             path = path[2:]
         adjust_ids.append((path, id))
     if len(adjust_ids) > 0:
-        this_branch.set_inventory(regen_inventory(this_branch, this_tree.root,
+        this_branch.set_inventory(regen_inventory(this_branch, 
+                                                  this_tree.basedir,
                                                   adjust_ids))
 
 

@@ -69,6 +69,7 @@ Testament format 1
 # TODO: Perhaps these should just be different formats in which inventories/
 # revisions can be serialized.
 
+from copy import copy
 from cStringIO import StringIO
 import string
 from sha import sha
@@ -98,6 +99,7 @@ class Testament(object):
         t.message = rev.message
         t.parent_ids = rev.parent_ids[:]
         t.inventory = branch.get_inventory(revision_id)
+        t.revprops = copy(rev.properties)
         assert not contains_whitespace(t.revision_id)
         assert not contains_linebreaks(t.committer)
         return t
@@ -127,6 +129,7 @@ class Testament(object):
         a('inventory:\n')
         for path, ie in self.inventory.iter_entries():
             a(self._entry_to_line(path, ie))
+        r.extend(self._revprops_to_lines())
         if __debug__:
             for l in r:
                 assert isinstance(l, str), \
@@ -165,3 +168,17 @@ class Testament(object):
                 'sha1: %s\n'
                 % (self.revision_id, s.hexdigest()))
 
+    def _revprops_to_lines(self):
+        """Pack up revision properties."""
+        if not self.revprops:
+            return []
+        r = ['properties:\n']
+        for name, value in sorted(self.revprops.items()):
+            assert isinstance(name, str)
+            assert not contains_whitespace(name)
+            r.append('  %s:\n' % name)
+            for line in value.splitlines():
+                if not isinstance(line, str):
+                    line = line.encode('utf-8')
+                r.append('    %s\n' % line)
+        return r

@@ -26,9 +26,9 @@ rather starts again from the run_bzr function.
 
 from cStringIO import StringIO
 import os
+import re
 import shutil
 import sys
-import os
 
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
@@ -401,8 +401,6 @@ class TestCommands(ExternalBase):
         os.chdir('../b')
         self.runbzr('commit -m blah3 --unchanged')
         self.runbzr('pull ../a', retcode=1)
-        print "DECIDE IF PULL CAN CONVERGE, blackbox.py"
-        return
         os.chdir('../a')
         self.runbzr('merge ../b')
         self.runbzr('commit -m blah4 --unchanged')
@@ -671,7 +669,7 @@ class OldTests(ExternalBase):
         f.close()
 
         f = file('msg.tmp', 'wt')
-        f.write('this is my new commit\n')
+        f.write('this is my new commit\nand it has multiple lines, for fun')
         f.close()
 
         runbzr('commit -F msg.tmp')
@@ -685,10 +683,15 @@ class OldTests(ExternalBase):
         runbzr('log -v --forward')
         runbzr('log -m', retcode=1)
         log_out = capture('log -m commit')
-        assert "this is my new commit" in log_out
+        assert "this is my new commit\n  and" in log_out
         assert "rename nested" not in log_out
         assert 'revision-id' not in log_out
         assert 'revision-id' in capture('log --show-ids -m commit')
+
+        log_out = capture('log --line')
+        for line in log_out.splitlines():
+            assert len(line) <= 79, len(line)
+        assert "this is my new commit and" in log_out
 
 
         progress("file with spaces in name")
@@ -817,3 +820,5 @@ class HttpTests(TestCaseWithWebserver):
         self.run_bzr('branch', url, 'to')
         branch = Branch.open('to')
         self.assertEqual(1, len(branch.revision_history()))
+
+

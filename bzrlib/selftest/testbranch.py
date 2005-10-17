@@ -25,6 +25,10 @@ from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
 from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 
+# TODO: Make a branch using basis branch, and check that it 
+# doesn't request any files that could have been avoided, by 
+# hooking into the Transport.
+
 class TestBranch(TestCaseInTempDir):
 
     def test_append_revisions(self):
@@ -83,9 +87,6 @@ class TestBranch(TestCaseInTempDir):
         os.mkdir('c')
         br_c = copy_branch(br_a, 'c', basis_branch=br_b)
         self.assertEqual(br_a.revision_history(), br_c.revision_history())
-        ## # basis branches currently disabled for weave format
-        ## self.assertFalse(br_b.last_revision() in br_c.revision_history())
-        ## br_c.get_revision(br_b.last_revision())
 
     def test_copy_partial(self):
         """Copy only part of the history of a branch."""

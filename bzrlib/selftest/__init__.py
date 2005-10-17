@@ -33,7 +33,7 @@ import bzrlib.fetch
 import bzrlib.osutils as osutils
 from bzrlib.selftest import TestUtil
 from bzrlib.selftest.TestUtil import TestLoader, TestSuite
-
+from bzrlib.selftest.treeshape import build_tree_contents
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
@@ -121,10 +121,13 @@ class _MyResult(unittest._TextTestResult):
 
 
 class TextTestRunner(unittest.TextTestRunner):
+    stop_on_failure = False
 
     def _makeResult(self):
         result = _MyResult(self.stream, self.descriptions, self.verbosity)
-        return EarlyStoppingTestResultAdapter(result)
+        if self.stop_on_failure:
+            result = EarlyStoppingTestResultAdapter(result)
+        return result
 
 
 def iter_suite_tests(suite):
@@ -196,6 +199,12 @@ class TestCase(unittest.TestCase):
             return
         raise AssertionError("texts not equal:\n" + 
                              self._ndiff_strings(a, b))      
+
+    def assertContainsRe(self, haystack, needle_re):
+        """Assert that a contains something matching a regular expression."""
+        if not re.search(needle_re, haystack):
+            raise AssertionError('pattern "%s" not found in "%s"'
+                    % (needle_re, haystack))
         
     def _enable_file_logging(self):
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
@@ -433,6 +442,9 @@ class TestCaseInTempDir(TestCase):
                 print >>f, "contents of", name
                 f.close()
 
+    def build_tree_contents(self, shape):
+        bzrlib.selftest.build_tree_contents(shape)
+
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
         self.failUnless(osutils.lexists(path))
@@ -444,7 +456,7 @@ class MetaTestLog(TestCase):
         logging.info('an info message')
         warning('something looks dodgy...')
         logging.debug('hello, test is running')
-        ##assert 0
+        ## assert 0
 
 
 def filter_suite_by_re(suite, pattern):
@@ -456,7 +468,8 @@ def filter_suite_by_re(suite, pattern):
     return result
 
 
-def run_suite(suite, name='test', verbose=False, pattern=".*"):
+def run_suite(suite, name='test', verbose=False, pattern=".*",
+              stop_on_failure=False):
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
@@ -465,6 +478,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*"):
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity)
+    runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
         suite = filter_suite_by_re(suite, pattern)
     result = runner.run(suite)
@@ -479,9 +493,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*"):
     return result.wasSuccessful()
 
 
-def selftest(verbose=False, pattern=".*"):
+def selftest(verbose=False, pattern=".*", stop_on_failure=True):
     """Run the whole test suite under the enhanced runner"""
-    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
+    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern,
+                     stop_on_failure=stop_on_failure)
 
 
 def test_suite():
@@ -532,6 +547,7 @@ def test_suite():
                    'bzrlib.selftest.testtestament',
                    'bzrlib.selftest.testannotate',
                    'bzrlib.selftest.testrevprops',
+                   'bzrlib.selftest.testoptions',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,

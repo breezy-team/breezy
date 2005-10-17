@@ -18,6 +18,17 @@
 __copyright__ = "Copyright (C) 2005 Canonical Ltd."
 __author__ = "Martin Pool <mbp@canonical.com>"
 
+# TODO: Change to a standard exception pattern: 
+#
+# - docstring of exceptions is a template for formatting the exception
+#   so the __str__ method can be defined only in the superclass
+# - the arguments to the exception are interpolated into this string
+#
+# when printing the exception we'd then require special handling only
+# for built-in exceptions with no decent __str__ method, such as 
+# ValueError and AssertionError.  See 
+# scott@canonical.com--2005/hct--devel--0.10 util/errors.py
+
 
 ######################################################################
 # exceptions 

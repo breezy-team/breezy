@@ -28,17 +28,14 @@ def shellcomplete_on_command(cmdname, outfile = None):
         outfile.write(aname + '\n')
 
 
-def shellcomplete_on_option(options, outfile = None):
-    import commands
-    
+def shellcomplete_on_option(options, outfile=None):
+    from bzrlib.option import Option
     if not options:
         return
-    
     if outfile == None:
         outfile = sys.stdout
-
     for on in options:
-        for shortname, longname in commands.SHORT_OPTIONS.items():
+        for shortname, longname in Option.SHORT_OPTIONS.items():
             if longname == on:
                 l = '"(--' + on + ' -' + shortname + ')"{--' + on + ',-' + shortname + '}'
                 break

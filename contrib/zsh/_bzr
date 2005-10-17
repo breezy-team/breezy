@@ -9,13 +9,12 @@
 # how to get zsh to reload this file when it changes, other than by
 # starting a new zsh.
 
-# This is not very useful at the moment because it only completes on
-# commands and breaks filename expansion for other arguments.
+local _bzr_subcommands expl curcontext="$curcontext"
 
+_bzr_subcommands=(${(f)"$(_call_program bzr bzr shell-complete)"})
 
-_arguments -S "1::bzr command:($(bzr help commands | grep -v '^   '))"
-
-
-# Local variables:
-# mode: shell-script
-# End:
+if (( CURRENT == 2 )); then
+  _describe -t subcommand 'subcommand' _bzr_subcommands
+else
+# this part missing
+fi

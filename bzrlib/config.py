@@ -20,7 +20,7 @@
 Currently this configuration resides in ~/.bazaar/bazaar.conf
 and ~/.bazaar/branches.conf, which is written to by bzr.
 
-In bazaar.config the following options may be set:
+In bazaar.conf the following options may be set:
 [DEFAULT]
 editor=name-of-program
 email=Your Name <your@email.address>
@@ -381,3 +381,18 @@ def _auto_user_id():
     return realname, (username + '@' + socket.gethostname())
 
 
+def extract_email_address(e):
+    """Return just the address part of an email string.
+    
+    That is just the user@domain part, nothing else. 
+    This part is required to contain only ascii characters.
+    If it can't be extracted, raises an error.
+    
+    >>> extract_email_address('Jane Tester <jane@test.com>')
+    "jane@test.com"
+    """
+    m = re.search(r'[\w+.-]+@[\w+.-]+', e)
+    if not m:
+        raise BzrError("%r doesn't seem to contain "
+                       "a reasonable email address" % e)
+    return m.group(0)

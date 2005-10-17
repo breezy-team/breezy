@@ -58,6 +58,11 @@ class Tree(object):
     def has_id(self, file_id):
         return self.inventory.has_id(file_id)
 
+    def has_or_had_id(self, file_id):
+        if file_id == self.inventory.root.file_id:
+            return True
+        return self.inventory.has_id(file_id)
+
     __contains__ = has_id
 
     def __iter__(self):
@@ -157,6 +162,9 @@ class RevisionTree(Tree):
             return ie.text_sha1
 
     def is_executable(self, file_id):
+        ie = self._inventory[file_id]
+        if ie.kind != "file":
+            return None 
         return self._inventory[file_id].executable
 
     def has_filename(self, filename):
@@ -171,6 +179,8 @@ class RevisionTree(Tree):
         ie = self._inventory[file_id]
         return ie.symlink_target;
 
+    def kind(self, file_id):
+        return self._inventory[file_id].kind
 
 class EmptyTree(Tree):
     def __init__(self):
