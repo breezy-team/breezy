@@ -52,8 +52,12 @@ class Store(object):
     def __len__(self):
         raise NotImplementedError('Children should define their length')
 
-    def get(self, file_id):
-        """Returns a file reading from a particular entry."""
+    def get(self, file_id, suffix=None):
+        """Returns a file reading from a particular entry.
+        
+        If suffix is present, retrieve the named suffix for file_id.
+        """
+        raise NotImplementedError
 
     def __getitem__(self, fileid):
         """DEPRECATED. Please use .get(file_id) instead."""
@@ -220,9 +224,12 @@ class TransportStore(Store):
         """
         raise NotImplementedError
 
-    def get(self, fileid):
-        """Returns a file reading from a particular entry."""
-        fn = self._relpath(fileid)
+    def get(self, fileid, suffix=None):
+        """See Store.get()."""
+        if suffix is None:
+            fn = self._relpath(fileid)
+        else:
+            fn = self._relpath(fileid, [suffix])
         try:
             return self._get(fn)
         except errors.NoSuchFile:
@@ -236,7 +243,7 @@ class TransportStore(Store):
         self._suffixes = set()
 
     def __len__(self):
-        return len(list(self._iter_relpath()))
+        return len(list(self.__iter__()))
 
     def _relpath(self, fileid, suffixes=[]):
         self._check_fileid(fileid)

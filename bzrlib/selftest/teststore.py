@@ -298,3 +298,23 @@ class TestTransportStore(TestCase):
         self.assertEqual(False, my_store.has_id('missing'))
         my_store = self.get_populated_store(True)
         self.assertEqual(False, my_store.has_id('missing'))
+
+    def test_get_simple(self):
+        my_store = self.get_populated_store()
+        self.assertEqual('content', my_store.get('foo').read())
+        my_store = self.get_populated_store(True)
+        self.assertEqual('content', my_store.get('foo').read())
+
+    def test_get_suffixed(self):
+        my_store = self.get_populated_store()
+        self.assertEqual('signature', my_store.get('foo', 'sig').read())
+        my_store = self.get_populated_store(True)
+        self.assertEqual('signature', my_store.get('foo', 'sig').read())
+
+    def test_get_suffixed_no_base(self):
+        my_store = self.get_populated_store()
+        self.assertEqual('signature for missing base',
+                         my_store.get('missing', 'sig').read())
+        my_store = self.get_populated_store(True)
+        self.assertEqual('signature for missing base',
+                         my_store.get('missing', 'sig').read())
