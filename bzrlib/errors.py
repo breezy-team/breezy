@@ -126,6 +126,8 @@ class ReadOnlyError(LockError):
 class PointlessCommit(Exception):
     """Commit failed because nothing was changed."""
 
+class StrictCommitFailed(Exception):
+    """Commit refused because there are unknowns in the tree."""
 
 class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):
