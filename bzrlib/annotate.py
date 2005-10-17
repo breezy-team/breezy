@@ -18,33 +18,55 @@
 
 # TODO: Choice of more or less verbose formats:
 # 
-# short: just show revno
-# long: revno, author, date
 # interposed: show more details between blocks of modified lines
 
 # TODO: Show which revision caused a line to merge into the parent
+
+# TODO: With --long, show entire email address, not just the first bit
+
+# TODO: perhaps abbreviate timescales depending on how recent they are
+# e.g. "3:12 Tue", "13 Oct", "Oct 2005", etc.  
 
 import sys
 import os
 import time
 
 import bzrlib.weave
+from bzrlib.config import extract_email_address
 
-def annotate_file(branch, rev_id, file_id, to_file=None):
+
+def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
+        to_file=None):
     if to_file is None:
         to_file = sys.stdout
+
+    prevanno=''
+    for (revno_str, author, date_str, line_rev_id, text ) in \
+            _annotate_file(branch, rev_id, file_id ):
+
+        if verbose:
+            anno = '%5s %-12s %8s ' % (revno_str, author[:12], date_str)
+        else:
+            anno = "%5s %-7s " % ( revno_str, author[:7] )
+
+        if anno.lstrip() == "" and full: anno = prevanno
+        print >>to_file, '%s| %s' % (anno, text)
+        prevanno=anno
+
+def _annotate_file(branch, rev_id, file_id ):
+
     rh = branch.revision_history()
     w = branch.weave_store.get_weave(file_id, branch.get_transaction())
     last_origin = None
     for origin, text in w.annotate_iter(rev_id):
         text = text.rstrip('\r\n')
         if origin == last_origin:
-            anno = ''
+            (revno_str, author, date_str) = ('','','')
         else:
             last_origin = origin
             line_rev_id = w.idx_to_name(origin)
             if not branch.has_revision(line_rev_id):
-                anno = '???'
+                (revno_str, author, date_str) = ('?','?','?')
             else:
                 if line_rev_id in rh:
                     revno_str = str(rh.index(line_rev_id) + 1)
@@ -56,12 +78,12 @@ def annotate_file(branch, rev_id, file_id, to_file=None):
                                      time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
-            author = line_rev_id
-            if '@' in author:
-                author = author[:author.index('@')]
-            author = author[:12]
-            anno = '%5s %-12s %8s' % (revno_str, author, date_str)
-        print '%-27.27s | %s' % (anno, text)
+            author = rev.committer
+            try:
+                author = extract_email_address(author)
+            except BzrError:
+                pass        # use the whole name
+        yield (revno_str, author, date_str, line_rev_id, text)
 
 
 if __name__ == '__main__':
@@ -76,4 +98,4 @@ if __name__ == '__main__':
     tree = b.revision_tree(b.last_revision())
     file_id = tree.inventory.path2id(rp)
     file_version = tree.inventory[file_id].revision
-    annotate_file(b, file_version, file_id, sys.stdout)
+    annotate_file(b, file_version, file_id, to_file = sys.stdout)

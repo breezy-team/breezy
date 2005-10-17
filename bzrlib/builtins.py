@@ -19,14 +19,15 @@ import sys
 import os
 
 import bzrlib
-import bzrlib.trace
-from bzrlib.trace import mutter, note, log_error, warning
-from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
-from bzrlib.errors import DivergedBranches
-from bzrlib.branch import Branch
 from bzrlib import BZRDIR
 from bzrlib.commands import Command
+from bzrlib.branch import Branch
+from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
+from bzrlib.errors import DivergedBranches
+from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
+import bzrlib.trace
+from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.workingtree import WorkingTree
 
 
@@ -698,16 +699,22 @@ class cmd_log(Command):
     To request a range of logs, you can use the command -r begin:end
     -r revision requests a specific revision, -r :end or -r begin: are
     also valid.
-
-    --message allows you to give a regular expression, which will be evaluated
-    so that only matching entries will be displayed.
     """
 
     # TODO: Make --revision support uuid: and hash: [future tag:] notation.
 
     takes_args = ['filename?']
-    takes_options = ['forward', 'timezone', 'verbose', 'show-ids', 'revision',
-                     'long', 'message', 'short',]
+    takes_options = [Option('forward', 
+                            help='show from oldest to newest'),
+                     'timezone', 'verbose', 
+                     'show-ids', 'revision',
+                     Option('line', help='format with one line per revision'),
+                     'long', 
+                     Option('message',
+                            help='show revisions whose message matches this regexp',
+                            type=str),
+                     Option('short', help='use moderately short format'),
+                     ]
     
     def run(self, filename=None, timezone='original',
             verbose=False,
@@ -716,10 +723,12 @@ class cmd_log(Command):
             revision=None,
             message=None,
             long=False,
-            short=False):
+            short=False,
+            line=False):
         from bzrlib.log import log_formatter, show_log
         import codecs
-
+        assert message is None or isinstance(message, basestring), \
+            "invalid message argument %r" % message
         direction = (forward and 'forward') or 'reverse'
         
         if filename:
@@ -756,10 +765,11 @@ class cmd_log(Command):
         # in e.g. the default C locale.
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
-        if not short:
-            log_format = 'long'
-        else:
+        log_format = 'long'
+        if short:
             log_format = 'short'
+        if line:
+            log_format = 'line'
         lf = log_formatter(log_format,
                            show_ids=show_ids,
                            to_file=outf,
@@ -1001,7 +1011,13 @@ class cmd_commit(Command):
     # XXX: verbose currently does nothing
 
     takes_args = ['selected*']
-    takes_options = ['message', 'file', 'verbose', 'unchanged']
+    takes_options = ['message', 'verbose', 
+                     Option('unchanged',
+                            help='commit even if nothing has changed'),
+                     Option('file', type=str, 
+                            argname='msgfile',
+                            help='file containing commit message'),
+                     ]
     aliases = ['ci', 'checkin']
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
@@ -1015,7 +1031,6 @@ class cmd_commit(Command):
         tree = WorkingTree(b.base, b)
         if selected_list:
             selected_list = [tree.relpath(s) for s in selected_list]
-            
         if message is None and not file:
             catcher = StringIO()
             show_status(b, specific_files=selected_list,
@@ -1125,12 +1140,16 @@ class cmd_selftest(Command):
     fail.
     
     If arguments are given, they are regular expressions that say
-    which tests should run."""
+    which tests should run.
+    """
     # TODO: --list should give a list of all available tests
     hidden = True
     takes_args = ['testspecs*']
-    takes_options = ['verbose']
-    def run(self, testspecs_list=None, verbose=False):
+    takes_options = ['verbose', 
+                     Option('one', help='stop when one test fails'),
+                    ]
+
+    def run(self, testspecs_list=None, verbose=False, one=False):
         import bzrlib.ui
         from bzrlib.selftest import selftest
         # we don't want progress meters from the tests to go to the
@@ -1145,7 +1164,8 @@ class cmd_selftest(Command):
             else:
                 pattern = ".*"
             result = selftest(verbose=verbose, 
-                              pattern=pattern)
+                              pattern=pattern,
+                              stop_on_failure=one)
             if result:
                 bzrlib.trace.info('tests passed')
             else:
@@ -1455,16 +1475,23 @@ class cmd_testament(Command):
 class cmd_annotate(Command):
     """Show the origin of each line in a file.
 
-    This prints out the given file with an annotation on the 
-    left side indicating which revision, author and date introduced the 
-    change.
+    This prints out the given file with an annotation on the left side
+    indicating which revision, author and date introduced the change.
+
+    If the origin is the same for a run of consecutive lines, it is 
+    shown only at the top, unless the --all option is given.
     """
     # TODO: annotate directories; showing when each file was last changed
     # TODO: annotate a previous version of a file
+    # TODO: if the working copy is modified, show annotations on that 
+    #       with new uncommitted lines marked
     aliases = ['blame', 'praise']
     takes_args = ['filename']
+    takes_options = [Option('all', help='show annotations on all lines'),
+                     Option('long', help='show date in annotations'),
+                     ]
 
-    def run(self, filename):
+    def run(self, filename, all=False, long=False):
         from bzrlib.annotate import annotate_file
         b = Branch.open_containing(filename)
         b.lock_read()
@@ -1474,7 +1501,7 @@ class cmd_annotate(Command):
             tree = b.revision_tree(b.last_revision())
             file_id = tree.inventory.path2id(rp)
             file_version = tree.inventory[file_id].revision
-            annotate_file(b, file_version, file_id, sys.stdout)
+            annotate_file(b, file_version, file_id, long, all, sys.stdout)
         finally:
             b.unlock()
 

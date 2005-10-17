@@ -35,7 +35,8 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            DivergedBranches, LockError, UnlistableStore,
                            UnlistableBranch, NoSuchFile)
 from bzrlib.textui import show_status
-from bzrlib.revision import Revision
+from bzrlib.revision import Revision, is_ancestor, get_intervening_revisions
+
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
@@ -855,51 +856,6 @@ class _Branch(Branch):
         finally:
             self.unlock()
 
-    def common_ancestor(self, other, self_revno=None, other_revno=None):
-        """
-        >>> from bzrlib.commit import commit
-        >>> sb = ScratchBranch(files=['foo', 'foo~'])
-        >>> sb.common_ancestor(sb) == (None, None)
-        True
-        >>> commit(sb, "Committing first revision", verbose=False)
-        >>> sb.common_ancestor(sb)[0]
-        1
-        >>> clone = sb.clone()
-        >>> commit(sb, "Committing second revision", verbose=False)
-        >>> sb.common_ancestor(sb)[0]
-        2
-        >>> sb.common_ancestor(clone)[0]
-        1
-        >>> commit(clone, "Committing divergent second revision", 
-        ...               verbose=False)
-        >>> sb.common_ancestor(clone)[0]
-        1
-        >>> sb.common_ancestor(clone) == clone.common_ancestor(sb)
-        True
-        >>> sb.common_ancestor(sb) != clone.common_ancestor(clone)
-        True
-        >>> clone2 = sb.clone()
-        >>> sb.common_ancestor(clone2)[0]
-        2
-        >>> sb.common_ancestor(clone2, self_revno=1)[0]
-        1
-        >>> sb.common_ancestor(clone2, other_revno=1)[0]
-        1
-        """
-        my_history = self.revision_history()
-        other_history = other.revision_history()
-        if self_revno is None:
-            self_revno = len(my_history)
-        if other_revno is None:
-            other_revno = len(other_history)
-        indices = range(min((self_revno, other_revno)))
-        indices.reverse()
-        for r in indices:
-            if my_history[r] == other_history[r]:
-                return r+1, my_history[r]
-        return None, None
-
-
     def revno(self):
         """Return current revision number for this branch.
 
@@ -947,9 +903,6 @@ class _Branch(Branch):
         Traceback (most recent call last):
         DivergedBranches: These branches have diverged.
         """
-        # FIXME: If the branches have diverged, but the latest
-        # revision in this branch is completely merged into the other,
-        # then we should still be able to pull.
         self_history = self.revision_history()
         self_len = len(self_history)
         other_history = other.revision_history()
@@ -969,23 +922,38 @@ class _Branch(Branch):
 
     def update_revisions(self, other, stop_revision=None):
         """Pull in new perfect-fit revisions."""
+        # FIXME: If the branches have diverged, but the latest
+        # revision in this branch is completely merged into the other,
+        # then we should still be able to pull.
         from bzrlib.fetch import greedy_fetch
-        from bzrlib.revision import get_intervening_revisions
         if stop_revision is None:
             stop_revision = other.last_revision()
+        ### Should this be checking is_ancestor instead of revision_history?
         if (stop_revision is not None and 
             stop_revision in self.revision_history()):
             return
         greedy_fetch(to_branch=self, from_branch=other,
                      revision=stop_revision)
-        pullable_revs = self.missing_revisions(
-            other, other.revision_id_to_revno(stop_revision))
-        if pullable_revs:
-            greedy_fetch(to_branch=self,
-                         from_branch=other,
-                         revision=pullable_revs[-1])
+        pullable_revs = self.pullable_revisions(other, stop_revision)
+        if len(pullable_revs) > 0:
             self.append_revision(*pullable_revs)
 
+    def pullable_revisions(self, other, stop_revision):
+        other_revno = other.revision_id_to_revno(stop_revision)
+        try:
+            return self.missing_revisions(other, other_revno)
+        except DivergedBranches, e:
+            try:
+                pullable_revs = get_intervening_revisions(self.last_revision(),
+                                                          stop_revision, self)
+                assert self.last_revision() not in pullable_revs
+                return pullable_revs
+            except bzrlib.errors.NotAncestor:
+                if is_ancestor(self.last_revision(), stop_revision, self):
+                    return []
+                else:
+                    raise e
+        
     def commit(self, *args, **kw):
         from bzrlib.commit import Commit
         Commit().commit(self, *args, **kw)

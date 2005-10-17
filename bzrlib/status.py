@@ -17,6 +17,8 @@
 import sys
 from bzrlib.osutils import is_inside_any
 from bzrlib.delta import compare_trees
+from bzrlib.log import line_log
+from bzrlib.errors import NoSuchRevision
 
 
 def show_status(branch, show_unchanged=False,
@@ -88,7 +90,12 @@ def show_status(branch, show_unchanged=False,
             if show_pending and len(branch.pending_merges()) > 0:
                 print >>to_file, 'pending merges:'
                 for merge in branch.pending_merges():
-                    print >> to_file, ' ', merge
+                    try:
+                        m_revision = branch.get_revision(merge)
+                        print >> to_file, ' ', line_log(m_revision, 77)
+                    except NoSuchRevision:
+                        print >> to_file, ' ', merge 
+                        
     finally:
         branch.unlock()
         

@@ -112,26 +112,28 @@ def help_on_command(cmdname, outfile=None):
     outfile.write(doc)
     if doc[-1] != '\n':
         outfile.write('\n')
-    
-    help_on_options(cmd_object.takes_options, outfile=None)
+    help_on_command_options(cmd_object, outfile=None)
 
 
-def help_on_options(options, outfile=None):
-    from bzrlib.commands import SHORT_OPTIONS
-    
+def help_on_command_options(cmd, outfile=None):
+    from bzrlib.option import Option
+    options = cmd.options()
     if not options:
         return
-    
     if outfile == None:
         outfile = sys.stdout
-
     outfile.write('\noptions:\n')
-    for on in options:
-        l = '    --' + on
-        for shortname, longname in SHORT_OPTIONS.items():
-            if longname == on:
-                l += ', -' + shortname
-                break
+    for option_name, option in sorted(options.items()):
+        l = '    --' + option_name
+        if option.type is not None:
+            l += ' ' + option.argname.upper()
+        short_name = option.short_name()
+        if short_name:
+            assert len(short_name) == 1
+            l += ', -' + shortname
+        l += (30 - len(l)) * ' ' + option.help
+        # TODO: split help over multiple lines with correct indenting and 
+        # wrapping
         outfile.write(l + '\n')
 
 

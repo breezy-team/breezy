@@ -111,11 +111,7 @@ class Fetcher(object):
             self.pb.clear()
 
     def _fetch_revisions(self, last_revision):
-        try:
-            self.last_revision = self._find_last_revision(last_revision)
-        except NoSuchRevision, e:
-            mutter('failed getting last revision: %s', e)
-            raise InstallFailed([last_revision])
+        self.last_revision = self._find_last_revision(last_revision)
         mutter('fetch up to rev {%s}', self.last_revision)
         if (self.last_revision is not None and 
             self.to_branch.has_revision(self.last_revision)):
@@ -134,13 +130,12 @@ class Fetcher(object):
 
         Returns the revision_id, or returns None if there's no history
         in the source branch."""
+        if last_revision:
+            return last_revision
         self.pb.update('get source history')
         from_history = self.from_branch.revision_history()
         self.pb.update('get destination history')
-        if last_revision:
-            self.from_branch.get_revision(last_revision)
-            return last_revision
-        elif from_history:
+        if from_history:
             return from_history[-1]
         else:
             return None                 # no history in the source branch
