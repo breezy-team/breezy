@@ -28,6 +28,9 @@ UNRELEASED CHANGES
       complete, which will aid in analysing performance regressions and
       related questions.
 
+    * 'bzr selftest' runs all tests, even if one feels, unless '--one'
+      is given.
+
   INTERNALS:
 
     * New 'manifest' command and concept for making gpg-signatures 

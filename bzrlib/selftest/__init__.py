@@ -121,10 +121,13 @@ class _MyResult(unittest._TextTestResult):
 
 
 class TextTestRunner(unittest.TextTestRunner):
+    stop_on_failure = False
 
     def _makeResult(self):
         result = _MyResult(self.stream, self.descriptions, self.verbosity)
-        return EarlyStoppingTestResultAdapter(result)
+        if self.stop_on_failure:
+            result = EarlyStoppingTestResultAdapter(result)
+        return result
 
 
 def iter_suite_tests(suite):
@@ -436,7 +439,7 @@ class MetaTestLog(TestCase):
         logging.info('an info message')
         warning('something looks dodgy...')
         logging.debug('hello, test is running')
-        ##assert 0
+        assert 0
 
 
 def filter_suite_by_re(suite, pattern):
@@ -448,7 +451,8 @@ def filter_suite_by_re(suite, pattern):
     return result
 
 
-def run_suite(suite, name='test', verbose=False, pattern=".*"):
+def run_suite(suite, name='test', verbose=False, pattern=".*",
+              stop_on_failure=False):
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
@@ -457,6 +461,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*"):
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity)
+    runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
         suite = filter_suite_by_re(suite, pattern)
     result = runner.run(suite)
@@ -471,9 +476,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*"):
     return result.wasSuccessful()
 
 
-def selftest(verbose=False, pattern=".*"):
+def selftest(verbose=False, pattern=".*", stop_on_failure=True):
     """Run the whole test suite under the enhanced runner"""
-    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
+    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern,
+                     stop_on_failure=stop_on_failure)
 
 
 def test_suite():

@@ -1141,12 +1141,16 @@ class cmd_selftest(Command):
     fail.
     
     If arguments are given, they are regular expressions that say
-    which tests should run."""
+    which tests should run.
+    """
     # TODO: --list should give a list of all available tests
     hidden = True
     takes_args = ['testspecs*']
-    takes_options = ['verbose']
-    def run(self, testspecs_list=None, verbose=False):
+    takes_options = ['verbose', 
+                     Option('one', help='stop when one test fails'),
+                    ]
+
+    def run(self, testspecs_list=None, verbose=False, one=False):
         import bzrlib.ui
         from bzrlib.selftest import selftest
         # we don't want progress meters from the tests to go to the
@@ -1161,7 +1165,8 @@ class cmd_selftest(Command):
             else:
                 pattern = ".*"
             result = selftest(verbose=verbose, 
-                              pattern=pattern)
+                              pattern=pattern,
+                              stop_on_failure=one)
             if result:
                 bzrlib.trace.info('tests passed')
             else:
