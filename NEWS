@@ -29,7 +29,7 @@ UNRELEASED CHANGES
       related questions.
 
     * 'bzr selftest' runs all tests, even if one feels, unless '--one'
-      is given.
+      is given. (Martin Pool)
 
   INTERNALS:
 
@@ -64,6 +64,9 @@ UNRELEASED CHANGES
       no longer takes an inventory, rather it takes an option branch
       parameter, and if None is given will open the branch at basedir 
       implicitly. (Robert Collins)
+
+    * Cleaner exception structure and error reporting.  Suggested by 
+      Scott James Remnant.  (Martin Pool)
 
 bzr 0.1.1 2005-10-12
 

@@ -112,7 +112,7 @@ class Branch(object):
             new_t = t.clone('..')
             if new_t.base == t.base:
                 # reached the root, whatever that may be
-                raise NotBranchError('%s is not in a branch' % url)
+                raise NotBranchError(path=url)
             t = new_t
 
     @staticmethod
@@ -471,7 +471,7 @@ class _Branch(Branch):
         try:
             fmt = self.controlfile('branch-format', 'r').read()
         except NoSuchFile:
-            raise NotBranchError(self.base)
+            raise NotBranchError(path=self.base)
         mutter("got branch format %r", fmt)
         if fmt == BZR_BRANCH_FORMAT_6:
             self._branch_format = 6

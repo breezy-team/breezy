@@ -533,7 +533,9 @@ def test_suite():
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
-              bzrlib.osutils, bzrlib.commands, bzrlib.merge3):
+              bzrlib.osutils, bzrlib.commands, bzrlib.merge3,
+              bzrlib.errors,
+              ):
         if m not in MODULES_TO_DOCTEST:
             MODULES_TO_DOCTEST.append(m)
 
