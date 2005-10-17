@@ -14,19 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
-# TODO: Change to a standard exception pattern: 
-#
-# - docstring of exceptions is a template for formatting the exception
-#   so the __str__ method can be defined only in the superclass
-# - the arguments to the exception are interpolated into this string
-#
-# when printing the exception we'd then require special handling only
-# for built-in exceptions with no decent __str__ method, such as 
-# ValueError and AssertionError.  See 
-# scott@canonical.com--2005/hct--devel--0.10 util/errors.py
-
-
 """Exceptions for bzr, and reporting of them.
 
 Exceptions are caught at a high level to report errors to the user, and
@@ -63,6 +50,13 @@ Therefore:
 
 # based on Scott James Remnant's hct error classes
 
+# TODO: is there any value in providing the .args field used by standard
+# python exceptions?   A list of values with no names seems less useful 
+# to me.
+
+# TODO: perhaps convert the exception to a string at the moment it's 
+# constructed to make sure it will succeed
+
 
 class BzrError(StandardError):
     def __str__(self):
@@ -83,7 +77,7 @@ class BzrError(StandardError):
             return n + `self.args`
 
 
-class BzrNewError(Exception):
+class BzrNewError(BzrError):
     """bzr error"""
     # base classes should override the docstring with their human-
     # readable explanation
@@ -119,20 +113,12 @@ class BzrCommandError(BzrError):
         return self.args[0]
 
 
-class NotBranchError(BzrError):
-    """Specified path is not in a branch"""
+class NotBranchError(BzrNewError):
+    """Not a branch: %(path)s"""
     def __init__(self, path):
-        BzrError.__init__(self, path)
+        BzrNewError.__init__(self)
+        self.path = path
 
-    def __str__(self):
-        return 'not a branch: %s' % self.args[0]
-
-## class NotBranchError(BzrNewError):
-##     """Not a branch: %(path)s"""
-##     def __init__(self, path):
-##         BzrNewError.__init__(self)
-##         self.path = path
-## 
 
 class UnsupportedFormatError(BzrError):
     """Specified path is a bzr branch that we cannot read."""
