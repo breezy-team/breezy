@@ -21,18 +21,32 @@
 import os
 import sys
 
+import bzrlib.errors as errors
 import bzrlib.gpg as gpg
 from bzrlib.selftest import TestCase, TestCaseInTempDir
 
 class FakeConfig(object):
 
     def gpg_signing_command(self):
-        return "gnome-gpg"
+        return "false"
         
 
 class TestCommandLine(TestCase):
 
     def test_signing_command_line(self):
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual('gnome-gpg --clearsign',
+        self.assertEqual(['false',  '--clearsign'],
                          my_gpg._command_line())
+
+    def test_checks_return_code(self):
+        # This test needs a unix like platform - one with 'false' to run.
+        # if you have one, please make this work :)
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        self.assertRaises(errors.SigningFailed, my_gpg.sign, 'content')
+
+    def test_returns_output(self):
+        # This test needs a 'cat' command or similar to work.
+        my_gpg = gpg.GPGStrategy(FakeConfig())
+        my_gpg._command_line = lambda:["cat", "-"]
+        self.assertEqual("some content\nwith newlines\n",
+                         my_gpg.sign("some content\nwith newlines\n"))
