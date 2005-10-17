@@ -15,15 +15,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
 from bzrlib.commit import commit
 import bzrlib.errors as errors
 from bzrlib.errors import NoSuchRevision, UnlistableBranch, NotBranchError
+import bzrlib.gpg
 from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
-from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 
 # TODO: Make a branch using basis branch, and check that it 
 # doesn't request any files that could have been avoided, by 
@@ -143,13 +145,18 @@ class TestBranch(TestCaseInTempDir):
         self.assertEquals(b.pending_merges(), [])
 
     def test_sign_existing_revision(self):
-        import bzrlib.gpg
         branch = Branch.initialize('.')
         branch.commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
         branch.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
         self.assertEqual(Testament.from_revision(branch, 'A').as_short_text(),
                          branch.revision_store.get('A', 'sig').read())
+
+    def test_store_signature(self):
+        branch = Branch.initialize('.')
+        branch.store_revision_signature(bzrlib.gpg.LoopbackGPGStrategy(None),
+                                        'FOO', 'A')
+        self.assertEqual('FOO', branch.revision_store.get('A', 'sig').read())
 
 
 class TestRemote(TestCaseWithWebserver):

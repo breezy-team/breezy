@@ -1258,9 +1258,12 @@ class _Branch(Branch):
             raise InvalidRevisionNumber(revno)
         
     def sign_revision(self, revision_id, gpg_strategy):
+        plaintext = Testament.from_revision(self, revision_id).as_short_text()
+        self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+
+    def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         self.lock_write()
         try:
-            plaintext = Testament.from_revision(self, revision_id).as_short_text()
             self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
                                     revision_id, "sig")
         finally:
