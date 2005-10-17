@@ -16,13 +16,13 @@
 
 import os
 
-from bzrlib.branch import Branch
+from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.clone import copy_branch
 from bzrlib.commit import commit
 import bzrlib.errors as errors
 from bzrlib.errors import NoSuchRevision, UnlistableBranch, NotBranchError
 import bzrlib.gpg
-from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.selftest import TestCase, TestCaseInTempDir
 from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
@@ -196,6 +196,60 @@ class InstrumentedTransaction(object):
 
     def __init__(self):
         self.calls = []
+
+
+class TestDecorator(object):
+
+    def __init__(self):
+        self._calls = []
+
+    def lock_read(self):
+        self._calls.append('lr')
+
+    def lock_write(self):
+        self._calls.append('lw')
+
+    def unlock(self):
+        self._calls.append('ul')
+
+    @needs_read_lock
+    def do_with_read(self):
+        return 1
+
+    @needs_read_lock
+    def except_with_read(self):
+        raise RuntimeError
+
+    @needs_write_lock
+    def do_with_write(self):
+        return 2
+
+    @needs_write_lock
+    def except_with_write(self):
+        raise RuntimeError
+
+
+class TestDecorators(TestCase):
+
+    def test_needs_read_lock(self):
+        branch = TestDecorator()
+        self.assertEqual(1, branch.do_with_read())
+        self.assertEqual(['lr', 'ul'], branch._calls)
+
+    def test_excepts_in_read_lock(self):
+        branch = TestDecorator()
+        self.assertRaises(RuntimeError, branch.except_with_read)
+        self.assertEqual(['lr', 'ul'], branch._calls)
+
+    def test_needs_write_lock(self):
+        branch = TestDecorator()
+        self.assertEqual(2, branch.do_with_write())
+        self.assertEqual(['lw', 'ul'], branch._calls)
+
+    def test_excepts_in_write_lock(self):
+        branch = TestDecorator()
+        self.assertRaises(RuntimeError, branch.except_with_write)
+        self.assertEqual(['lw', 'ul'], branch._calls)
 
 
 class TestBranchTransaction(TestCaseInTempDir):
