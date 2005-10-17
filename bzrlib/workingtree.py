@@ -24,7 +24,7 @@ import os
 import stat
 import fnmatch
  
-from bzrlib.branch import Branch
+from bzrlib.branch import Branch, needs_read_lock, needs_write_lock, quotefn
 import bzrlib.tree
 from bzrlib.osutils import appendpath, file_kind, isdir, splitpath, relpath
 from bzrlib.errors import BzrCheckError
@@ -94,6 +94,7 @@ class WorkingTree(bzrlib.tree.Tree):
     It is possible for a `WorkingTree` to have a filename which is
     not listed in the Inventory and vice versa.
     """
+
     def __init__(self, basedir, branch=None):
         """Construct a WorkingTree for basedir.
 
@@ -397,6 +398,65 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
+
+    def lock_read(self):
+        """See Branch.lock_read, and WorkingTree.unlock."""
+        return self.branch.lock_read()
+
+    def lock_write(self):
+        """See Branch.lock_write, and WorkingTree.unlock."""
+        return self.branch.lock_write()
+
+    @needs_write_lock
+    def remove(self, files, verbose=False):
+        """Remove nominated files from the working inventory..
+
+        This does not remove their text.  This does not run on XXX on what? RBC
+
+        TODO: Refuse to remove modified files unless --force is given?
+
+        TODO: Do something useful with directories.
+
+        TODO: Should this remove the text or not?  Tough call; not
+        removing may be useful and the user can just use use rm, and
+        is the opposite of add.  Removing it is consistent with most
+        other tools.  Maybe an option.
+        """
+        ## TODO: Normalize names
+        ## TODO: Remove nested loops; better scalability
+        if isinstance(files, basestring):
+            files = [files]
+
+        inv = self.inventory
+
+        # do this before any modifications
+        for f in files:
+            fid = inv.path2id(f)
+            if not fid:
+                raise BzrError("cannot remove unversioned file %s" % quotefn(f))
+            mutter("remove inventory entry %s {%s}" % (quotefn(f), fid))
+            if verbose:
+                # having remove it, it must be either ignored or unknown
+                if self.is_ignored(f):
+                    new_status = 'I'
+                else:
+                    new_status = '?'
+                show_status(new_status, inv[fid].kind, quotefn(f))
+            del inv[fid]
+
+        self.branch._write_inventory(inv)
+
+    def unlock(self):
+        """See Branch.unlock.
+        
+        WorkingTree locking just uses the Branch locking facilities.
+        This is current because all working trees have an embedded branch
+        within them. IF in the future, we were to make branch data shareable
+        between multiple working trees, i.e. via shared storage, then we 
+        would probably want to lock both the local tree, and the branch.
+        """
+        return self.branch.unlock()
+
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 def get_conflicted_stem(path):

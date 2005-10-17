@@ -50,3 +50,10 @@ class TestCommandLine(TestCase):
         my_gpg._command_line = lambda:["cat", "-"]
         self.assertEqual("some content\nwith newlines\n",
                          my_gpg.sign("some content\nwith newlines\n"))
+
+
+class TestDisabled(TestCase):
+
+    def test_sign(self):
+        self.assertRaises(errors.SigningFailed,
+                          gpg.DisabledGPGStrategy(None).sign, 'content')

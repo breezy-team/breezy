@@ -22,7 +22,18 @@ import subprocess
 
 import bzrlib.errors as errors
 
+class DisabledGPGStrategy(object):
+    """A GPG Strategy that makes everything fail."""
+
+    def __init__(self, ignored):
+        """Real strategies take a configuration."""
+
+    def sign(self, content):
+        raise errors.SigningFailed('Signing is disabled.')
+
+
 class LoopbackGPGStrategy(object):
+    """A GPG Strategy that acts like 'cat' - data is just passed through."""
 
     def __init__(self, ignored):
         """Real strategies take a configuration."""

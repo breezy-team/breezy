@@ -313,7 +313,7 @@ class RevisionSpec_ancestor(RevisionSpec):
     def _match_on(self, branch, revs):
         from branch import Branch
         from revision import common_ancestor, MultipleRevisionSources
-        other_branch = Branch.open_containing(self.spec)
+        other_branch = Branch.open_containing(self.spec)[0]
         revision_a = branch.last_revision()
         revision_b = other_branch.last_revision()
         for r, b in ((revision_a, branch), (revision_b, other_branch)):
@@ -339,7 +339,7 @@ class RevisionSpec_branch(RevisionSpec):
     def _match_on(self, branch, revs):
         from branch import Branch
         from fetch import greedy_fetch
-        other_branch = Branch.open_containing(self.spec)
+        other_branch = Branch.open_containing(self.spec)[0]
         revision_b = other_branch.last_revision()
         if revision_b is None:
             raise NoCommits(other_branch)

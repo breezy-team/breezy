@@ -21,7 +21,7 @@ from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.commit import Commit
 from bzrlib.config import BranchConfig
-from bzrlib.errors import PointlessCommit, BzrError
+from bzrlib.errors import PointlessCommit, BzrError, SigningFailed
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -274,3 +274,28 @@ class TestCommit(TestCaseInTempDir):
                              branch.revision_store.get('B', 'sig').read())
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
+
+    def test_commit_failed_signature(self):
+        import bzrlib.gpg
+        import bzrlib.commit as commit
+        oldstrategy = bzrlib.gpg.GPGStrategy
+        branch = Branch.initialize('.')
+        branch.commit("base", allow_pointless=True, rev_id='A')
+        self.failIf(branch.revision_store.has_id('A', 'sig'))
+        try:
+            from bzrlib.testament import Testament
+            # monkey patch gpg signing mechanism
+            bzrlib.gpg.GPGStrategy = bzrlib.gpg.DisabledGPGStrategy
+            config = MustSignConfig(branch)
+            self.assertRaises(SigningFailed,
+                              commit.Commit(config=config).commit,
+                              branch, "base",
+                              allow_pointless=True,
+                              rev_id='B')
+            branch = Branch.open('.')
+            self.assertEqual(branch.revision_history(), ['A'])
+            self.failIf(branch.revision_store.has_id('B'))
+        finally:
+            bzrlib.gpg.GPGStrategy = oldstrategy
+
+
