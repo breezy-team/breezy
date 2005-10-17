@@ -633,46 +633,6 @@ class _Branch(Branch):
             raise BzrError("%r is not present in revision %s" % (file, revno))
         tree.print_file(file_id)
 
-    @needs_write_lock
-    def remove(self, files, verbose=False):
-        """Mark nominated files for removal from the inventory.
-
-        This does not remove their text.  This does not run on 
-
-        TODO: Refuse to remove modified files unless --force is given?
-
-        TODO: Do something useful with directories.
-
-        TODO: Should this remove the text or not?  Tough call; not
-        removing may be useful and the user can just use use rm, and
-        is the opposite of add.  Removing it is consistent with most
-        other tools.  Maybe an option.
-        """
-        ## TODO: Normalize names
-        ## TODO: Remove nested loops; better scalability
-        if isinstance(files, basestring):
-            files = [files]
-
-        tree = self.working_tree()
-        inv = tree.inventory
-
-        # do this before any modifications
-        for f in files:
-            fid = inv.path2id(f)
-            if not fid:
-                raise BzrError("cannot remove unversioned file %s" % quotefn(f))
-            mutter("remove inventory entry %s {%s}" % (quotefn(f), fid))
-            if verbose:
-                # having remove it, it must be either ignored or unknown
-                if tree.is_ignored(f):
-                    new_status = 'I'
-                else:
-                    new_status = '?'
-                show_status(new_status, inv[fid].kind, quotefn(f))
-            del inv[fid]
-
-        self._write_inventory(inv)
-
     # FIXME: this doesn't need to be a branch method
     def set_inventory(self, new_inventory_list):
         from bzrlib.inventory import Inventory, InventoryEntry
@@ -704,7 +664,7 @@ class _Branch(Branch):
         >>> b.add('foo')
         >>> list(b.unknowns())
         []
-        >>> b.remove('foo')
+        >>> WorkingTree(b.base, b).remove('foo')
         >>> list(b.unknowns())
         ['foo']
         """

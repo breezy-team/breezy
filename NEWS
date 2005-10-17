@@ -69,6 +69,10 @@ UNRELEASED CHANGES
       parameter, and if None is given will open the branch at basedir 
       implicitly. (Robert Collins)
 
+    * Branch.remove has been moved to WorkingTree, which has also gained
+      lock_read, lock_write and unlock methods for convenience. (Robert
+      Collins)
+
     * Two decorators, needs_read_lock and needs_write_lock have been added
       to the branch module. Use these to cause a function to run in a
       read or write lock respectively. (Robert Collins)

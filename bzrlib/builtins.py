@@ -487,7 +487,7 @@ class cmd_remove(Command):
     def run(self, file_list, verbose=False):
         b = Branch.open_containing(file_list[0])[0]
         tree = WorkingTree(b.base, b)
-        b.remove([tree.relpath(f) for f in file_list], verbose=verbose)
+        tree.remove([tree.relpath(f) for f in file_list], verbose=verbose)
 
 
 class cmd_file_id(Command):
