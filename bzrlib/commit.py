@@ -56,6 +56,12 @@
 # merges from, then it should still be reported as newly added
 # relative to the basis revision.
 
+# TODO: Do checks that the tree can be committed *before* running the 
+# editor; this should include checks for a pointless commit and for 
+# unknown or missing files.
+
+# TODO: If commit fails, leave the message in a file somewhere.
+
 
 import os
 import re
