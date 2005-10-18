@@ -27,8 +27,12 @@ class NonAsciiTest(TestCaseInTempDir):
     def test_add_in_nonascii_branch(self):
         """Test adding in a non-ASCII branch."""
         br_dir = u"\u1234"
-        os.mkdir(br_dir)
-        os.chdir(br_dir)
+        try:
+            os.mkdir(br_dir)
+            os.chdir(br_dir)
+        except EncodingError:
+            self.log("filesystem can't accomodate nonascii names")
+            return
         br = Branch.initialize(u".")
         file("a", "w").write("hello")
         br.add(["a"], ["a-id"])
