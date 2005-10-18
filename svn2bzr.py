@@ -95,6 +95,56 @@ class BranchCreator(object):
         self._filter = []
         self._log = log or get_logger()
 
+        self._do_cache = {}
+
+    def _do(self, branch, action, path):
+        last = self._do_cache.get(branch)
+        if last and action == last[0]:
+            last[1].append(path)
+        else:
+            if last:
+                self._do_now(branch, *last)
+            self._do_cache[branch] = (action, [path])
+
+    def _do_now(self, branch, action, paths):
+        if action == "add":
+            branch.add(paths)
+        elif action == "remove":
+            branch.remove(paths)
+        else:
+            raise RuntimeError, "Unknown action: %r" % action
+
+    def _new_branch(self, branch):
+        # Ugly, but let's wait until that API stabilizes. Right
+        # now branch.working_tree() will open the branch again.
+        branch.__wt = branch.working_tree()
+
+    def _remove_branch(self, branch):
+        raise NotImplementedError
+            
+    def _get_branch(self, path):
+        raise NotImplementedError
+
+    def _get_all_branches(self):
+        raise NotImplementedError
+
+    def _get_branch_path(self, path):
+        path = self.unprefix(path)
+        if self.is_good(path):
+            branch = self._get_branch(path)
+            if branch:
+                abspath = os.path.join(self._root, path)
+                return branch, branch.__wt.relpath(abspath)
+        return None, None
+
+    def _get_tree(self, branch, revision=None):
+        if revision is None:
+            return branch.__wt
+        else:
+            revno = self._revisions[revision][branch]
+            revid = branch.get_rev_id(revno)
+            return branch.revision_tree(revid)
+
     def add_filter(self, include, regexp):
         self._filter.append((include, re.compile(regexp)))
 
@@ -114,45 +164,20 @@ class BranchCreator(object):
         else:
             return None
 
-    def _remove_branch(self, branch):
-        raise NotImplementedError
-            
-    def _get_branch(self, path):
-        raise NotImplementedError
-
-    def _get_all_branches(self):
-        raise NotImplementedError
-
-    def _get_branch_path(self, path):
-        path = self.unprefix(path)
-        if self.is_good(path):
-            branch = self._get_branch(path)
-            if branch:
-                abspath = os.path.join(self._root, path)
-                return branch, branch.relpath(abspath)
-        return None, None
-
-    def _get_tree(self, branch, revision=None):
-        if revision is None:
-            return branch.working_tree()
-        else:
-            revno = self._revisions[revision][branch]
-            revid = branch.get_rev_id(revno)
-            return branch.revision_tree(revid)
 
     def add_file(self, path, content):
         branch, path_branch = self._get_branch_path(path)
         if branch:
-            abspath = branch.abspath(path_branch)
+            abspath = branch.__wt.abspath(path_branch)
             self._log.debug("Adding file: %s" % abspath)
             open(abspath, "w").write(content)
-            branch.add(path_branch)
+            self._do(branch, "add", path_branch)
             self._changed[branch] = True
 
     def change_file(self, path, content):
         branch, path_branch = self._get_branch_path(path)
         if branch:
-            abspath = branch.abspath(path_branch)
+            abspath = branch.__wt.abspath(path_branch)
             self._log.debug("Changing file: %s" % abspath)
             open(abspath, "w").write(content)
             self._changed[branch] = True
@@ -162,11 +187,11 @@ class BranchCreator(object):
         if dest_branch:
             orig_entry = self._dump.get_entry(orig_revno, orig_path)
             orig_content = self._dump.get_entry_content(orig_entry)
-            abspath = dest_branch.abspath(dest_path_branch)
+            abspath = dest_branch.__wt.abspath(dest_path_branch)
             self._log.debug("Copying file: %s at %d to %s" %
                             (orig_path, orig_revno, abspath))
             open(abspath, "w").write(orig_content)
-            dest_branch.add(dest_path_branch)
+            self._do(dest_branch, "add", dest_path_branch)
             self._changed[dest_branch] = True
 
     def add_dir(self, path):
@@ -178,11 +203,11 @@ class BranchCreator(object):
         if branch and path_branch:
             # Due to filtering, the directory may be added
             # without adding parent directories.
-            abspath = branch.abspath(path_branch)
+            abspath = branch.__wt.abspath(path_branch)
             self._log.debug("Adding dir: %s" % abspath)
             if os.path.isdir(os.path.dirname(abspath)):
                 os.mkdir(abspath)
-                branch.add(path_branch)
+                self._do(branch, "add", path_branch)
             else:
                 path_parts = path_branch.split('/')
                 dir = branch.base
@@ -190,7 +215,8 @@ class BranchCreator(object):
                     dir = "%s/%s" % (dir, part)
                     if not os.path.isdir(dir):
                         os.mkdir(dir)
-                        branch.add(branch.relpath(dir))
+                        self._do(branch, "add",
+                                 branch.__wt.relpath(dir))
             self._changed[branch] = True
 
     def copy_dir(self, orig_path, orig_revno, dest_path):
@@ -242,13 +268,13 @@ class BranchCreator(object):
             self.remove(orig_path)
             self.copy(orig_path, orig_revno, dest_path)
         else:
-            orig_abspath = orig_branch.abspath(orig_path_branch)
+            orig_abspath = orig_branch.__wt.abspath(orig_path_branch)
             if not os.path.exists(orig_abspath):
                 # Was previously removed, as usual in svn.
                 orig_branch.revert([orig_path_branch])
             self._log.debug("Moving: %s to %s" %
                             (orig_abspath,
-                             dest_branch.abspath(dest_path_branch)))
+                             dest_branch.__wt.abspath(dest_path_branch)))
             if (os.path.dirname(orig_path_branch) ==
                 os.path.dirname(dest_path_branch)):
                 orig_branch.rename_one(orig_path_branch,
@@ -260,13 +286,13 @@ class BranchCreator(object):
     def remove(self, path):
         branch, path_branch = self._get_branch_path(path)
         if branch:
-            abspath = branch.abspath(path_branch)
+            abspath = branch.__wt.abspath(path_branch)
             if not path_branch:
                 # Do we want to remove the branch or its content?
                 self._log.debug("Removing branch: %s" % abspath)
                 self._remove_branch(branch)
             elif os.path.exists(abspath):
-                branch.remove(path_branch)
+                self._do(branch, "remove", path_branch)
                 if os.path.isdir(abspath):
                     self._log.debug("Removing dir: %s" % abspath)
                     shutil.rmtree(abspath)
@@ -279,7 +305,7 @@ class BranchCreator(object):
                             break
                         try:
                             os.rmdir(abspath)
-                            branch.remove(relpath)
+                            self._do(branch, "remove", relpath)
                         except OSError:
                             break
                 elif os.path.isfile(abspath):
@@ -291,8 +317,11 @@ class BranchCreator(object):
         if self._changed:
             self._log.info("Committing revision %d" % revno)
             for branch in self._changed:
-                branch.commit(message, committer=committer, timestamp=timestamp,
-                              verbose=False)
+                if branch in self._do_cache:
+                    self._do_now(branch, *self._do_cache[branch])
+                branch.commit(message, committer=committer,
+                              timestamp=timestamp, verbose=False)
+            self._do_cache.clear()
         else:
             self._log.info("Nothing changed in revision %d" % revno)
         self._revisions[revno] = revs = {}
@@ -397,6 +426,7 @@ class SingleBranchCreator(BranchCreator):
     def _get_branch(self, path):
         if not self._branch:
             self._branch = Branch.initialize(self._root)
+            self._new_branch(self._branch)
         return self._branch
 
     def _get_all_branches(self):
@@ -434,7 +464,9 @@ class DynamicBranchCreator(BranchCreator):
             if self.is_good(unpref_path) and self._want_branch(unpref_path):
                 branch_path = os.path.join(self._root, unpref_path)
                 os.makedirs(branch_path)
-                self._branches[unpref_path] = Branch.initialize(branch_path)
+                branch = Branch.initialize(branch_path)
+                self._branches[unpref_path] = branch
+                self._new_branch(branch)
         else:
             BranchCreator.add_dir(self, path)
  
@@ -460,7 +492,9 @@ class DynamicBranchCreator(BranchCreator):
             revno = self._revisions[orig_revno][orig_branch]
             os.makedirs(dest_abspath)
             copy_branch(orig_branch, dest_abspath, revno)
-            self._branches[unpref_dest_path] = Branch.open(dest_abspath)
+            branch = Branch.open(dest_abspath)
+            self._branches[unpref_dest_path] = branch
+            self._new_branch(branch)
 
     def remove(self, path):
         unpref_path = self.unprefix(path)
