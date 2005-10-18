@@ -1,6 +1,8 @@
 UNRELEASED CHANGES
 
   IMPROVEMENTS:
+    * The config files are now read using ConfigObj, so '=' should be used as
+      a separator, not ':'.
 
     * The config directory is now ~/.bazaar, and there is a single file 
       ~/.bazaar/bazaar.conf storing email, editor and other preferences.
