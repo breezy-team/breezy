@@ -657,7 +657,7 @@ class _Branch(Branch):
 
         These are files in the working directory that are not versioned or
         control files or ignored.
-        
+        >>> from bzrlib.workingtree import WorkingTree
         >>> b = ScratchBranch(files=['foo', 'foo~'])
         >>> list(b.unknowns())
         ['foo']
