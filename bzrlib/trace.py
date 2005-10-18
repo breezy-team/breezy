@@ -152,7 +152,7 @@ def log_startup(argv):
           sys.platform)
 
     debug('  arguments: %r', argv)
-    debug('  working dir: %s', os.getcwdu())
+    debug('  working dir: %r', os.getcwdu())
 
 
 def log_exception(msg=None):
