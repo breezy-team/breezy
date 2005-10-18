@@ -89,6 +89,13 @@ UNRELEASED CHANGES
       ignore diverged history and pull anyway.
       (Robert Collins)
 
+    * config.Config has a 'get_user_option' call that accepts an option name.
+      This will be looked up in branches.conf and bazaar.conf as normal.
+      It is intended that this be used by plugins to support options - 
+      options of built in programs should have specific methods on the config.
+      (Robert Collins)
+
+
 bzr 0.1.1 2005-10-12
 
   BUG FIXES:
