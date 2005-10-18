@@ -110,6 +110,13 @@ UNRELEASED CHANGES
       options of built in programs should have specific methods on the config.
       (Robert Collins)
 
+    * merge.merge_inner now has tempdir as an optional parameter. (Robert
+      Collins)
+
+    * Tree.kind is not recorded at the top level of the hierarchy, as it was
+      missing on EmptyTree, leading to a bug with merge on EmptyTrees.
+      (Robert Collins)
+
   BUG FIXES:
 
     * Better handling of branches in directories with non-ascii names. 

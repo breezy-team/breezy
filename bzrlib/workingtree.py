@@ -52,6 +52,7 @@ from bzrlib.osutils import appendpath, file_kind, isdir, splitpath, relpath
 from bzrlib.errors import BzrCheckError, DivergedBranches, NotVersionedError
 from bzrlib.trace import mutter
 
+
 class TreeEntry(object):
     """An entry that implements the minium interface used by commands.
 
@@ -332,10 +333,9 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_write_lock
     def pull(self, source, remember=False, clobber=False):
-        from bzrlib.merge import merge
+        from bzrlib.merge import merge_inner
         source.lock_read()
         try:
-            old_revno = self.branch.revno()
             old_revision_history = self.branch.revision_history()
             try:
                 self.branch.update_revisions(source)
@@ -345,7 +345,13 @@ class WorkingTree(bzrlib.tree.Tree):
                 self.branch.set_revision_history(source.revision_history())
             new_revision_history = self.branch.revision_history()
             if new_revision_history != old_revision_history:
-                merge((self.basedir, -1), (self.basedir, old_revno), check_clean=False)
+                if len(old_revision_history):
+                    other_revision = old_revision_history[-1]
+                else:
+                    other_revision = None
+                merge_inner(self.branch,
+                            self.branch.basis_tree(), 
+                            self.branch.revision_tree(other_revision))
             if self.branch.get_parent() is None or remember:
                 self.branch.set_parent(source.base)
         finally:
