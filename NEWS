@@ -42,6 +42,10 @@ UNRELEASED CHANGES
     * 'bzr selftest' runs all tests, even if one feels, unless '--one'
       is given.
 
+    * There is a new method for TestCaseInTempDir, assertFileEqual, which
+      will check that a given content is equal to the content of the named
+      file.
+
   INTERNALS:
 
     * New 'manifest' command and concept for making gpg-signatures 
