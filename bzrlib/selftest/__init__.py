@@ -537,6 +537,7 @@ def test_suite():
                    'bzrlib.selftest.testannotate',
                    'bzrlib.selftest.testrevprops',
                    'bzrlib.selftest.testoptions',
+                   'bzrlib.selftest.testhttp',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
