@@ -50,7 +50,7 @@ create_signatures - this option controls whether bzr will always create
                     NB: This option is planned, but not implemented yet.
 """
 
-from ConfigParser import ConfigParser
+from util.configobj.configobj import ConfigObj, ConfigObjError
 import os
 from fnmatch import fnmatch
 import errno
@@ -137,35 +137,59 @@ class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
 
     def _get_parser(self, file=None):
-        if self._parser is not None:
-            return self._parser
-        parser = ConfigParser()
-        if file is not None:
-            parser.readfp(file)
+        if file is None:
+            input = self._get_filename()
         else:
-            parser.read([self._get_filename()])
-        self._parser = parser
-        return parser
+            input = file
+        if self._parser is None:
+            try:
+                self._parser = ConfigObj(input)
+            except ConfigObjError, e:
+                raise errors.ParseConfigError(e.errors, e.config.filename)
+        return self._parser
 
     def _get_section(self):
         """Override this to define the section used by the config."""
         return "DEFAULT"
 
+    def _config_val(self, name, section=None):
+        if section is None:
+            section = self._get_section()
+        if section is None:
+            raise KeyError(name)
+        # Throw KeyError if name or section not present
+        if section == "DEFAULT":
+            try:
+                return self._get_parser()[name]
+            except KeyError:
+                pass
+        return self._get_parser()[section][name]
+
+    def _config_bool(self, name, section=None):
+        val = self._config_val(name, section).lower()
+        if val in ('1', 'yes', 'true', 'on'):
+            return True
+        elif val in ('0', 'no', 'false', 'off'):
+            return False
+        else:
+            raise ValueError("Value %r is not boolean" % val)
+
+        
+
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
-        section = self._get_section()
-        if section is None:
+        try:
+            policy = self._config_val('check_signatures')
+        except KeyError:
             return None
-        if self._get_parser().has_option(section, 'check_signatures'):
-            return self._string_to_signature_policy(
-                self._get_parser().get(section, 'check_signatures'))
+        return self._string_to_signature_policy(policy)
 
     def _get_user_id(self):
         """Get the user id from the 'email' key in the current section."""
-        section = self._get_section()
-        if section is not None:
-            if self._get_parser().has_option(section, 'email'):
-                return self._get_parser().get(section, 'email')
+        try:
+            return self._config_val('email')
+        except KeyError:
+            pass
 
     def __init__(self, get_filename):
         super(IniBasedConfig, self).__init__()
@@ -188,8 +212,10 @@ class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
 
     def get_editor(self):
-        if self._get_parser().has_option(self._get_section(), 'editor'):
-            return self._get_parser().get(self._get_section(), 'editor')
+        try:
+            return self._config_val('editor')
+        except KeyError:
+            pass
 
     def __init__(self):
         super(GlobalConfig, self).__init__(config_filename)
@@ -215,7 +241,7 @@ class LocationConfig(IniBasedConfig):
         TODO: perhaps return a NullSection that thunks through to the 
               global config.
         """
-        sections = self._get_parser().sections()
+        sections = self._get_parser()
         location_names = self.location.split('/')
         if self.location.endswith('/'):
             del location_names[-1]
@@ -238,9 +264,11 @@ class LocationConfig(IniBasedConfig):
                 continue
             # if path is longer, and recurse is not true, no match
             if len(section_names) < len(location_names):
-                if (self._get_parser().has_option(section, 'recurse')
-                    and not self._get_parser().getboolean(section, 'recurse')):
-                    continue
+                try:
+                    if not self._config_bool('recurse', section=section):
+                        continue
+                except KeyError:
+                    pass
             matches.append((len(section_names), section))
         if not len(matches):
             return None
