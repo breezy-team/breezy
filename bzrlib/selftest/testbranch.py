@@ -142,6 +142,15 @@ class TestBranch(TestCaseInTempDir):
         # list should be cleared when we do a commit
         self.assertEquals(b.pending_merges(), [])
 
+    def test_sign_existing_revision(self):
+        import bzrlib.gpg
+        branch = Branch.initialize('.')
+        branch.commit("base", allow_pointless=True, rev_id='A')
+        from bzrlib.testament import Testament
+        branch.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        self.assertEqual(Testament.from_revision(branch, 'A').as_short_text(),
+                         branch.revision_store.get('A', 'sig').read())
+
 
 class TestRemote(TestCaseWithWebserver):
 

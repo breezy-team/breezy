@@ -77,6 +77,7 @@ from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
                            ConflictsInTree
                            )
+import bzrlib.gpg as gpg
 from bzrlib.revision import Revision
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
@@ -145,12 +146,16 @@ class Commit(object):
             working inventory.
     """
     def __init__(self,
-                 reporter=None):
+                 reporter=None,
+                 config=None):
         if reporter is not None:
             self.reporter = reporter
         else:
             self.reporter = NullCommitReporter()
-
+        if config is not None:
+            self.config = config
+        else:
+            self.config = None
         
     def commit(self,
                branch, message,
@@ -194,14 +199,16 @@ class Commit(object):
         else:
             self.timestamp = long(timestamp)
             
-        config = bzrlib.config.BranchConfig(self.branch)
+        if self.config is None:
+            self.config = bzrlib.config.BranchConfig(self.branch)
+
         if rev_id is None:
-            self.rev_id = _gen_revision_id(config, self.timestamp)
+            self.rev_id = _gen_revision_id(self.config, self.timestamp)
         else:
             self.rev_id = rev_id
 
         if committer is None:
-            self.committer = config.username()
+            self.committer = self.config.username()
         else:
             assert isinstance(committer, basestring), type(committer)
             self.committer = committer
@@ -315,6 +322,8 @@ class Commit(object):
         serializer_v5.write_revision(self.rev, rev_tmp)
         rev_tmp.seek(0)
         self.branch.revision_store.add(rev_tmp, self.rev_id)
+        if self.config.signature_needed():
+            self.branch.sign_revision(self.rev_id, gpg.GPGStrategy(self.config))
         mutter('new revision_id is {%s}', self.rev_id)
 
     def _remove_deleted(self):

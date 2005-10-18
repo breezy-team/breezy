@@ -284,3 +284,8 @@ class ParseConfigError(BzrError):
         message = "Error(s) parsing config file %s:\n%s" % \
             (filename, ('\n'.join(e.message for e in errors)))
         BzrError.__init__(self, message)
+
+class SigningFailed(BzrError):
+    def __init__(self, command_line):
+        BzrError.__init__(self, "Failed to gpg sign data with command '%s'"
+                               % command_line)

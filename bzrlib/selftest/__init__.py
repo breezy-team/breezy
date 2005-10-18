@@ -169,6 +169,14 @@ class TestCase(unittest.TestCase):
 
     def setUp(self):
         unittest.TestCase.setUp(self)
+        self.oldenv = os.environ.get('HOME', None)
+        os.environ['HOME'] = os.getcwd()
+        self.bzr_email = os.environ.get('BZREMAIL')
+        if self.bzr_email is not None:
+            del os.environ['BZREMAIL']
+        self.email = os.environ.get('EMAIL')
+        if self.email is not None:
+            del os.environ['EMAIL']
         bzrlib.trace.disable_default_logging()
         self._enable_file_logging()
 
@@ -214,6 +222,15 @@ class TestCase(unittest.TestCase):
         self._log_file_name = name
 
     def tearDown(self):
+        os.environ['HOME'] = self.oldenv
+        if os.environ.get('BZREMAIL') is not None:
+            del os.environ['BZREMAIL']
+        if self.bzr_email is not None:
+            os.environ['BZREMAIL'] = self.bzr_email
+        if os.environ.get('EMAIL') is not None:
+            del os.environ['EMAIL']
+        if self.email is not None:
+            os.environ['EMAIL'] = self.email
         logging.getLogger('').removeHandler(self._log_hdlr)
         bzrlib.trace.enable_default_logging()
         logging.debug('%s teardown', self.id())
@@ -394,7 +411,6 @@ class TestCaseInTempDir(TestCase):
         os.mkdir(os.path.join(TestCaseInTempDir.TEST_ROOT, '.bzr'))
 
     def setUp(self):
-        super(TestCaseInTempDir, self).setUp()
         self._make_test_root()
         self._currentdir = os.getcwdu()
         short_id = self.id().replace('bzrlib.selftest.', '') \
@@ -402,6 +418,7 @@ class TestCaseInTempDir(TestCase):
         self.test_dir = os.path.join(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
+        super(TestCaseInTempDir, self).setUp()
         
     def tearDown(self):
         os.chdir(self._currentdir)
@@ -492,6 +509,7 @@ def test_suite():
 
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
+                   'bzrlib.selftest.testgpg',
                    'bzrlib.selftest.testidentitymap',
                    'bzrlib.selftest.testinv',
                    'bzrlib.selftest.test_ancestry',
