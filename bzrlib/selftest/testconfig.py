@@ -57,6 +57,7 @@ sample_branches_text = ("[http://www.example.com]\n"
                         "# test trailing / matching with no children\n"
                         "[/a/]\n"
                         "check_signatures=check-available\n"
+                        "gpg_signing_command=false\n"
                         "# test trailing / matching\n"
                         "[/a/*]\n"
                         "#subdirs will match but not the parent\n"
@@ -143,6 +144,10 @@ class TestConfig(TestCase):
                          my_config.signature_checking())
         self.assertEqual(['_get_signature_checking'], my_config._calls)
 
+    def test_gpg_signing_command_default(self):
+        my_config = config.Config()
+        self.assertEqual('gpg', my_config.gpg_signing_command())
+
 
 class TestConfigPath(TestCase):
 
@@ -153,6 +158,7 @@ class TestConfigPath(TestCase):
 
     def tearDown(self):
         os.environ['HOME'] = self.oldenv
+        super(TestConfigPath, self).tearDown()
     
     def test_config_dir(self):
         self.assertEqual(config.config_dir(), '/home/bogus/.bazaar')
@@ -182,7 +188,6 @@ class TestIniConfig(TestCase):
         my_config = config.IniBasedConfig(None)
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
-
 
 
 class TestGetConfig(TestCase):
@@ -218,31 +223,7 @@ class TestBranchConfig(TestCaseInTempDir):
         self.failUnless(location_config is my_config._get_location_config())
 
 
-class TestConfigItems(TestCase):
-
-    def setUp(self):
-        super(TestConfigItems, self).setUp()
-        self.bzr_email = os.environ.get('BZREMAIL')
-        if self.bzr_email is not None:
-            del os.environ['BZREMAIL']
-        self.email = os.environ.get('EMAIL')
-        if self.email is not None:
-            del os.environ['EMAIL']
-        self.oldenv = os.environ.get('HOME', None)
-        os.environ['HOME'] = os.getcwd()
-
-    def tearDown(self):
-        os.environ['HOME'] = self.oldenv
-        if os.environ.get('BZREMAIL') is not None:
-            del os.environ['BZREMAIL']
-        if self.bzr_email is not None:
-            os.environ['BZREMAIL'] = self.bzr_email
-        if self.email is not None:
-            os.environ['EMAIL'] = self.email
-        super(TestConfigItems, self).tearDown()
-
-
-class TestGlobalConfigItems(TestConfigItems):
+class TestGlobalConfigItems(TestCase):
 
     def test_user_id(self):
         config_file = StringIO(sample_config_text)
@@ -287,8 +268,21 @@ class TestGlobalConfigItems(TestConfigItems):
                          my_config.signature_checking())
         self.assertEqual(False, my_config.signature_needed())
 
+    def test_gpg_signing_command(self):
+        config_file = StringIO(sample_config_text)
+        my_config = config.GlobalConfig()
+        my_config._parser = my_config._get_parser(file=config_file)
+        self.assertEqual("gnome-gpg", my_config.gpg_signing_command())
+        self.assertEqual(False, my_config.signature_needed())
 
-class TestLocationConfig(TestConfigItems):
+    def test_gpg_signing_command_unset(self):
+        config_file = StringIO("")
+        my_config = config.GlobalConfig()
+        my_config._parser = my_config._get_parser(file=config_file)
+        self.assertEqual("gpg", my_config.gpg_signing_command())
+
+
+class TestLocationConfig(TestCase):
 
     def test_constructs(self):
         my_config = config.LocationConfig('http://example.com')
@@ -407,8 +401,16 @@ class TestLocationConfig(TestConfigItems):
         self.assertEqual(config.CHECK_ALWAYS,
                          self.my_config.signature_checking())
         
+    def test_gpg_signing_command(self):
+        self.get_location_config('/b')
+        self.assertEqual("gnome-gpg", self.my_config.gpg_signing_command())
 
-class TestBranchConfigItems(TestConfigItems):
+    def test_gpg_signing_command_missing(self):
+        self.get_location_config('/a')
+        self.assertEqual("false", self.my_config.gpg_signing_command())
+
+
+class TestBranchConfigItems(TestCase):
 
     def test_user_id(self):
         branch = FakeBranch()
@@ -444,3 +446,11 @@ class TestBranchConfigItems(TestConfigItems):
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
         self.assertEqual(config.CHECK_ALWAYS, my_config.signature_checking())
+
+    def test_gpg_signing_command(self):
+        branch = FakeBranch()
+        my_config = config.BranchConfig(branch)
+        config_file = StringIO(sample_config_text)
+        (my_config._get_location_config().
+            _get_global_config()._get_parser(config_file))
+        self.assertEqual('gnome-gpg', my_config.gpg_signing_command())

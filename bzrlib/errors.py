@@ -141,8 +141,11 @@ class UnsupportedFormatError(BzrError):
         return 'unsupported branch format: %s' % self.args[0]
 
 
-class NotVersionedError(BzrError):
-    """Specified object is not versioned."""
+class NotVersionedError(BzrNewError):
+    """%(path)s is not versioned"""
+    def __init__(self, path):
+        BzrNewError.__init__(self)
+        self.path = path
 
 
 class BadFileKindError(BzrError):
@@ -327,3 +330,8 @@ class ConnectionReset(TransportError):
 class ConflictsInTree(BzrError):
     def __init__(self):
         BzrError.__init__(self, "Working tree has conflicts.")
+
+class SigningFailed(BzrError):
+    def __init__(self, command_line):
+        BzrError.__init__(self, "Failed to gpg sign data with command '%s'"
+                               % command_line)

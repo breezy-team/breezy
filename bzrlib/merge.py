@@ -199,7 +199,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
             
 def get_tree(treespec, local_branch=None):
     location, revno = treespec
-    branch = Branch.open_containing(location)
+    branch = Branch.open_containing(location)[0]
     if revno is None:
         revision = None
     elif revno == -1:
@@ -264,7 +264,7 @@ def merge(other_revision, base_revision,
     try:
         if this_dir is None:
             this_dir = '.'
-        this_branch = Branch.open_containing(this_dir)
+        this_branch = Branch.open_containing(this_dir)[0]
         this_rev_id = this_branch.last_revision()
         if this_rev_id is None:
             raise BzrCommandError("This branch has no commits")

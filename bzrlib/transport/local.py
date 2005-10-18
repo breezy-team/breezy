@@ -13,16 +13,25 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-"""Implementation of Transport for the local filesystem.
-"""
 
+"""Transport for the local filesystem.
+
+This is a fairly thin wrapper on regular file IO."""
+
+import os
+import errno
+import shutil
+from stat import ST_MODE, S_ISDIR, ST_SIZE
+import tempfile
+
+from bzrlib.trace import mutter
 from bzrlib.transport import Transport, register_transport, \
     TransportError, NoSuchFile, FileExists
 from bzrlib.osutils import abspath
-import os, errno
 
 class LocalTransportError(TransportError):
     pass
+
 
 class LocalTransport(Transport):
     """This is the transport agent for local filesystem access."""
@@ -61,6 +70,8 @@ class LocalTransport(Transport):
         """Return the local path portion from a given absolute path.
         """
         from bzrlib.osutils import relpath
+        if abspath is None:
+            abspath = '.'
         return relpath(self.base, abspath)
 
     def has(self, relpath):
@@ -77,30 +88,6 @@ class LocalTransport(Transport):
         except IOError,e:
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
                 raise NoSuchFile('File or directory %r does not exist' % path, orig_error=e)
-            raise LocalTransportError(orig_error=e)
-
-    def get_partial(self, relpath, start, length=None):
-        """Get just part of a file.
-
-        :param relpath: Path to the file, relative to base
-        :param start: The starting position to read from
-        :param length: The length to read. A length of None indicates
-                       read to the end of the file.
-        :return: A file-like object containing at least the specified bytes.
-                 Some implementations may return objects which can be read
-                 past this length, but this is not guaranteed.
-        """
-        # LocalTransport.get_partial() doesn't care about the length
-        # argument, because it is using a local file, and thus just
-        # returns the file seek'ed to the appropriate location.
-        try:
-            path = self.abspath(relpath)
-            f = open(path, 'rb')
-            f.seek(start, 0)
-            return f
-        except IOError,e:
-            if e.errno == errno.ENOENT:
-                raise NoSuchFile('File %r does not exist' % path, orig_error=e)
             raise LocalTransportError(orig_error=e)
 
     def put(self, relpath, f):
@@ -123,6 +110,18 @@ class LocalTransport(Transport):
             fp.commit()
         finally:
             fp.close()
+
+    def iter_files_recursive(self):
+        """Iter the relative paths of files in the transports sub-tree."""
+        queue = list(self.list_dir('.'))
+        while queue:
+            relpath = queue.pop(0)
+            st = self.stat(relpath)
+            if S_ISDIR(st[ST_MODE]):
+                for i, basename in enumerate(self.list_dir(relpath)):
+                    queue.insert(i, relpath+'/'+basename)
+            else:
+                yield relpath
 
     def mkdir(self, relpath):
         """Create a directory at the given path."""
@@ -227,6 +226,23 @@ class LocalTransport(Transport):
         """
         from bzrlib.lock import WriteLock
         return WriteLock(self.abspath(relpath))
+
+
+class ScratchTransport(LocalTransport):
+    """A transport that works in a temporary dir and cleans up after itself.
+    
+    The dir only exists for the lifetime of the Python object.
+    Obviously you should not put anything precious in it.
+    """
+
+    def __init__(self, base=None):
+        if base is None:
+            base = tempfile.mkdtemp()
+        super(ScratchTransport, self).__init__(base)
+
+    def __del__(self):
+        shutil.rmtree(self.base, ignore_errors=True)
+        mutter("%r destroyed" % self)
 
 # If nothing else matches, try the LocalTransport
 register_transport(None, LocalTransport)

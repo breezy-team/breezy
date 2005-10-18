@@ -20,12 +20,13 @@
 Currently this configuration resides in ~/.bazaar/bazaar.conf
 and ~/.bazaar/branches.conf, which is written to by bzr.
 
-In bazaar.config the following options may be set:
+In bazaar.conf the following options may be set:
 [DEFAULT]
 editor=name-of-program
 email=Your Name <your@email.address>
 check_signatures=require|ignore|check-available(default)
 create_signatures=always|never|when-required(default)
+gpg_signing_command=name-of-program
 
 in branches.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
@@ -74,6 +75,17 @@ class Config(object):
 
     def _get_signature_checking(self):
         """Template method to override signature checking policy."""
+
+    def gpg_signing_command(self):
+        """What program should be used to sign signatures?"""
+        result = self._gpg_signing_command()
+        if result is None:
+            result = "gpg"
+        return result
+
+    def _gpg_signing_command(self):
+        """See gpg_signing_command()."""
+        return None
 
     def __init__(self):
         super(Config, self).__init__()
@@ -167,6 +179,13 @@ class IniBasedConfig(Config):
             if self._get_parser().has_option(section, 'email'):
                 return self._get_parser().get(section, 'email')
 
+    def _gpg_signing_command(self):
+        """See Config.gpg_signing_command."""
+        section = self._get_section()
+        if section is not None:
+            if self._get_parser().has_option(section, 'gpg_signing_command'):
+                return self._get_parser().get(section, 'gpg_signing_command')
+
     def __init__(self, get_filename):
         super(IniBasedConfig, self).__init__()
         self._get_filename = get_filename
@@ -247,6 +266,13 @@ class LocationConfig(IniBasedConfig):
         matches.sort(reverse=True)
         return matches[0][1]
 
+    def _gpg_signing_command(self):
+        """See Config.gpg_signing_command."""
+        command = super(LocationConfig, self)._gpg_signing_command()
+        if command is not None:
+            return command
+        return self._get_global_config()._gpg_signing_command()
+
     def _get_user_id(self):
         user_id = super(LocationConfig, self)._get_user_id()
         if user_id is not None:
@@ -289,6 +315,10 @@ class BranchConfig(Config):
         """See Config._get_signature_checking."""
         return self._get_location_config()._get_signature_checking()
 
+    def _gpg_signing_command(self):
+        """See Config.gpg_signing_command."""
+        return self._get_location_config()._gpg_signing_command()
+        
     def __init__(self, branch):
         super(BranchConfig, self).__init__()
         self._location_config = None
