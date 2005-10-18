@@ -538,6 +538,7 @@ def test_suite():
                    'bzrlib.selftest.testrevprops',
                    'bzrlib.selftest.testoptions',
                    'bzrlib.selftest.testhttp',
+                   'bzrlib.selftest.testnonascii',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,

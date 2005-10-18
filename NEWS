@@ -72,6 +72,11 @@ UNRELEASED CHANGES
     * Cleaner exception structure and error reporting.  Suggested by 
       Scott James Remnant.  (Martin Pool)
 
+  BUG FIXES:
+
+    * Better handling of branches in directories with non-ascii names. 
+      (Joel Rosdahl, Panagiotis Papadakos)
+
 bzr 0.1.1 2005-10-12
 
   BUG FIXES:

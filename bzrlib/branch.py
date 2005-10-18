@@ -28,7 +28,7 @@ import bzrlib.inventory as inventory
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn, compact_date, rand_bytes, 
                             rename, splitpath, sha_file, appendpath, 
-                            file_kind)
+                            file_kind, abspath)
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
@@ -693,13 +693,13 @@ class _Branch(Branch):
         control files or ignored.
         
         >>> b = ScratchBranch(files=['foo', 'foo~'])
-        >>> list(b.unknowns())
+        >>> map(str, b.unknowns())
         ['foo']
         >>> b.add('foo')
         >>> list(b.unknowns())
         []
         >>> b.remove('foo')
-        >>> list(b.unknowns())
+        >>> map(str, b.unknowns())
         ['foo']
         """
         return self.working_tree().unknowns()
