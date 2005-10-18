@@ -137,15 +137,16 @@ class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
 
     def _get_parser(self, file=None):
+        if self._parser is not None:
+            return self._parser
         if file is None:
             input = self._get_filename()
         else:
             input = file
-        if self._parser is None:
-            try:
-                self._parser = ConfigObj(input)
-            except ConfigObjError, e:
-                raise errors.ParseConfigError(e.errors, e.config.filename)
+        try:
+            self._parser = ConfigObj(input)
+        except ConfigObjError, e:
+            raise errors.ParseConfigError(e.errors, e.config.filename)
         return self._parser
 
     def _get_section(self):
