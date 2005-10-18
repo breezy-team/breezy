@@ -28,9 +28,6 @@ from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 
-# velocitynet.com.au transparently proxies connections and thereby
-# breaks keep-alive -- sucks!
-
 
 def get_url(url):
     import urllib2
@@ -78,24 +75,31 @@ class HttpTransport(Transport):
         This can be supplied with a string or a list
         """
         if isinstance(relpath, basestring):
-            relpath = [relpath]
+            relpath_parts = relpath.split('/')
+        else:
+            # TODO: Don't call this with an array - no magic interfaces
+            relpath_parts = relpath[:]
+        if len(relpath_parts) > 1:
+            if relpath_parts[0] == '':
+                raise ValueError("path %r within branch %r seems to be absolute"
+                                 % (relpath, self._path))
+            if relpath_parts[-1] == '':
+                raise ValueError("path %r within branch %r seems to be a directory"
+                                 % (relpath, self._path))
         basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
-
-        for p in relpath:
+        for p in relpath_parts:
             if p == '..':
-                if len(basepath) < 0:
+                if len(basepath) == 0:
                     # In most filesystems, a request for the parent
                     # of root, just returns root.
                     continue
-                if len(basepath) > 0:
-                    basepath.pop()
-            elif p == '.':
+                basepath.pop()
+            elif p == '.' or p == '':
                 continue # No-op
             else:
                 basepath.append(p)
-
         # Possibly, we could use urlparse.urljoin() here, but
         # I'm concerned about when it chooses to strip the last
         # portion of the path, and when it doesn't.

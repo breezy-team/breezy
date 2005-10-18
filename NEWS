@@ -2,6 +2,10 @@ UNRELEASED CHANGES
 
   IMPROVEMENTS:
 
+    * New 'bzr commit --strict' option refuses to commit if there are 
+      any unknown files in the tree.  To commit, make sure all files are 
+      either ignored, added, or deleted.  (Michael Ellerman)
+
     * The config directory is now ~/.bazaar, and there is a single file 
       ~/.bazaar/bazaar.conf storing email, editor and other preferences.
       (Robert Collins)
@@ -40,17 +44,21 @@ UNRELEASED CHANGES
       related questions. (Robert Collins)
 
     * 'bzr selftest' runs all tests, even if one feels, unless '--one'
-      is given.
+      is given. (Martin Pool)
 
     * There is a new method for TestCaseInTempDir, assertFileEqual, which
       will check that a given content is equal to the content of the named
-      file.
+      file. (Robert Collins)
 
   INTERNALS:
 
-    * New 'manifest' command and concept for making gpg-signatures 
+    * New 'testament' command and concept for making gpg-signatures 
       of revisions that are not tied to a particular internal
-      representation.
+      representation.  (Martin Pool).
+
+    * Per-revision properties ('revprops') as key-value associated 
+      strings on each revision created when the revision is committed.
+      Intended mainly for the use of external tools.  (Martin Pool).
 
     * Config options have moved from bzrlib.osutils to bzrlib.config.
       (Robert Collins)
@@ -76,6 +84,9 @@ UNRELEASED CHANGES
       parameter, and if None is given will open the branch at basedir 
       implicitly. (Robert Collins)
 
+    * Cleaner exception structure and error reporting.  Suggested by 
+      Scott James Remnant.  (Martin Pool)
+
     * Branch.remove has been moved to WorkingTree, which has also gained
       lock_read, lock_write and unlock methods for convenience. (Robert
       Collins)
@@ -99,6 +110,10 @@ UNRELEASED CHANGES
       options of built in programs should have specific methods on the config.
       (Robert Collins)
 
+  BUG FIXES:
+
+    * Better handling of branches in directories with non-ascii names. 
+      (Joel Rosdahl, Panagiotis Papadakos)
 
 bzr 0.1.1 2005-10-12
 

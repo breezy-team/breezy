@@ -3,7 +3,7 @@ import unittest
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import Branch
-from bzrlib.errors import NotBranchError, NotVersionedError
+from bzrlib.errors import NotBranchError
 from bzrlib.inventory import InventoryFile
 
 class TestSmartAdd(TestCaseInTempDir):

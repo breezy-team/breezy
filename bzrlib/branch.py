@@ -28,12 +28,12 @@ import bzrlib.inventory as inventory
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn, compact_date, rand_bytes, 
                             rename, splitpath, sha_file, appendpath, 
-                            file_kind)
+                            file_kind, abspath)
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
                            DivergedBranches, LockError, UnlistableStore,
-                           UnlistableBranch, NoSuchFile)
+                           UnlistableBranch, NoSuchFile, NotVersionedError)
 from bzrlib.textui import show_status
 from bzrlib.revision import Revision, is_ancestor, get_intervening_revisions
 
@@ -136,7 +136,7 @@ class Branch(object):
             new_t = t.clone('..')
             if new_t.base == t.base:
                 # reached the root, whatever that may be
-                raise NotBranchError('%s is not in a branch' % url)
+                raise NotBranchError(path=url)
             t = new_t
 
     @staticmethod
@@ -496,7 +496,7 @@ class _Branch(Branch):
         try:
             fmt = self.controlfile('branch-format', 'r').read()
         except NoSuchFile:
-            raise NotBranchError(self.base)
+            raise NotBranchError(path=self.base)
         mutter("got branch format %r", fmt)
         if fmt == BZR_BRANCH_FORMAT_6:
             self._branch_format = 6
@@ -657,16 +657,17 @@ class _Branch(Branch):
 
         These are files in the working directory that are not versioned or
         control files or ignored.
+        
         >>> from bzrlib.workingtree import WorkingTree
         >>> b = ScratchBranch(files=['foo', 'foo~'])
-        >>> list(b.unknowns())
+        >>> map(str, b.unknowns())
         ['foo']
         >>> b.add('foo')
         >>> list(b.unknowns())
         []
         >>> WorkingTree(b.base, b).remove('foo')
         >>> list(b.unknowns())
-        ['foo']
+        [u'foo']
         """
         return self.working_tree().unknowns()
 
@@ -949,7 +950,7 @@ class _Branch(Branch):
     def working_tree(self):
         """Return a `Tree` for the working copy."""
         from bzrlib.workingtree import WorkingTree
-        # TODO: In the future, WorkingTree should utilize Transport
+        # TODO: In the future, perhaps WorkingTree should utilize Transport
         # RobertCollins 20051003 - I don't think it should - working trees are
         # much more complex to keep consistent than our careful .bzr subset.
         # instead, we should say that working trees are local only, and optimise
@@ -1082,7 +1083,6 @@ class _Branch(Branch):
             If true (default) backups are made of files before
             they're renamed.
         """
-        from bzrlib.errors import NotVersionedError, BzrError
         from bzrlib.atomicfile import AtomicFile
         from bzrlib.osutils import backup_file
         
@@ -1095,7 +1095,7 @@ class _Branch(Branch):
         for fn in filenames:
             file_id = inv.path2id(fn)
             if not file_id:
-                raise NotVersionedError("not a versioned file", fn)
+                raise NotVersionedError(path=fn)
             if not old_inv.has_id(file_id):
                 raise BzrError("file not present in old tree", fn, file_id)
             nids.append((fn, file_id))

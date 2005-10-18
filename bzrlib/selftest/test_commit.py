@@ -19,6 +19,7 @@ import os
 
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
+from bzrlib.workingtree import WorkingTree
 from bzrlib.commit import Commit
 from bzrlib.config import BranchConfig
 from bzrlib.errors import PointlessCommit, BzrError, SigningFailed
@@ -213,13 +214,15 @@ class TestCommit(TestCaseInTempDir):
 
         
     def test_removed_commit(self):
-        """Test a commit with a removed file"""
+        """Commit with a removed file"""
         b = Branch.initialize('.')
+        wt = b.working_tree()
         file('hello', 'w').write('hello world')
         b.add(['hello'], ['hello-id'])
         b.commit(message='add hello')
 
-        b.working_tree().remove('hello')
+        wt = b.working_tree()  # FIXME: kludge for aliasing of working inventory
+        wt.remove('hello')
         b.commit('removed hello', rev_id='rev2')
 
         tree = b.revision_tree('rev2')
@@ -255,6 +258,24 @@ class TestCommit(TestCaseInTempDir):
         self.assertEqual('1', inv['file1id'].revision)
         # FIXME: This should raise a KeyError I think, rbc20051006
         self.assertRaises(BzrError, inv.__getitem__, 'file2id')
+
+    def test_strict_commit(self):
+        """Try and commit with unknown files and strict = True, should fail."""
+        from bzrlib.errors import StrictCommitFailed
+        b = Branch.initialize('.')
+        file('hello', 'w').write('hello world')
+        b.add('hello')
+        file('goodbye', 'w').write('goodbye cruel world!')
+        self.assertRaises(StrictCommitFailed, b.commit,
+            message='add hello but not goodbye', strict=True)
+
+    def test_nonstrict_commit(self):
+        """Try and commit with unknown files and strict = False, should work."""
+        b = Branch.initialize('.')
+        file('hello', 'w').write('hello world')
+        b.add('hello')
+        file('goodbye', 'w').write('goodbye cruel world!')
+        b.commit(message='add hello but not goodbye', strict=False)
 
     def test_signed_commit(self):
         import bzrlib.gpg
@@ -297,5 +318,3 @@ class TestCommit(TestCaseInTempDir):
             self.failIf(branch.revision_store.has_id('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
-
-

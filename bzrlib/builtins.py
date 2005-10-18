@@ -985,7 +985,9 @@ class cmd_commit(Command):
     """
     # TODO: Run hooks on tree to-be-committed, and after commit.
 
-    # TODO: Strict commit that fails if there are unknown or deleted files.
+    # TODO: Strict commit that fails if there are deleted files.
+    #       (what does "deleted files" mean ??)
+
     # TODO: Give better message for -s, --summary, used by tla people
 
     # XXX: verbose currently does nothing
@@ -997,12 +999,16 @@ class cmd_commit(Command):
                      Option('file', type=str, 
                             argname='msgfile',
                             help='file containing commit message'),
+                     Option('strict',
+                            help="refuse to commit if there are unknown "
+                            "files in the working tree."),
                      ]
     aliases = ['ci', 'checkin']
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
-            unchanged=False):
-        from bzrlib.errors import PointlessCommit, ConflictsInTree
+            unchanged=False, strict=False):
+        from bzrlib.errors import (PointlessCommit, ConflictsInTree,
+                StrictCommitFailed)
         from bzrlib.msgeditor import edit_commit_message
         from bzrlib.status import show_status
         from cStringIO import StringIO
@@ -1031,9 +1037,8 @@ class cmd_commit(Command):
                 raise BzrCommandError("empty commit message specified")
             
         try:
-            b.commit(message,
-                     specific_files=selected_list,
-                     allow_pointless=unchanged)
+            b.commit(message, specific_files=selected_list,
+                     allow_pointless=unchanged, strict=strict)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
@@ -1042,6 +1047,9 @@ class cmd_commit(Command):
         except ConflictsInTree:
             raise BzrCommandError("Conflicts detected in working tree.  "
                 'Use "bzr conflicts" to list, "bzr resolve FILE" to resolve.')
+        except StrictCommitFailed:
+            raise BzrCommandError("Commit refused because there are unknown "
+                                  "files in the working tree.")
 
 
 class cmd_check(Command):
