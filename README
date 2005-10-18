@@ -1,0 +1,8 @@
+This is a plugin to implement 'switch' for bzr.
+Switch needs to:
+ * Be able to determine the path a branch should be pushed to.
+   (bzr publish)
+ * Trigger a push if a branch is out of date. (uses bzrtools).
+ * Be able to pull down a new branches revisions. (uses standard pull).
+ * Be able to replace the revision history of this branch with
+   working_tree.pull(that_branch, clobber=True)
