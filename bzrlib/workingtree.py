@@ -27,7 +27,7 @@ import fnmatch
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock, quotefn
 import bzrlib.tree
 from bzrlib.osutils import appendpath, file_kind, isdir, splitpath, relpath
-from bzrlib.errors import BzrCheckError
+from bzrlib.errors import BzrCheckError, DivergedBranches
 from bzrlib.trace import mutter
 
 class TreeEntry(object):
@@ -304,6 +304,27 @@ class WorkingTree(bzrlib.tree.Tree):
             if stem not in conflicted:
                 conflicted.add(stem)
                 yield stem
+
+    @needs_write_lock
+    def pull(self, source, remember=False, clobber=False):
+        from bzrlib.merge import merge
+        source.lock_read()
+        try:
+            old_revno = self.branch.revno()
+            old_revision_history = self.branch.revision_history()
+            try:
+                self.branch.update_revisions(source)
+            except DivergedBranches:
+                if not clobber:
+                    raise
+                self.branch.set_revision_history(source.revision_history())
+            new_revision_history = self.branch.revision_history()
+            if new_revision_history != old_revision_history:
+                merge((self.basedir, -1), (self.basedir, old_revno), check_clean=False)
+            if self.branch.get_parent() is None or remember:
+                self.branch.set_parent(source.base)
+        finally:
+            source.unlock()
 
     def extras(self):
         """Yield all unknown files in this WorkingTree.

@@ -26,6 +26,9 @@ UNRELEASED CHANGES
       gpg_signing_command (defaults to gpg) and record a digital signature
       of your commit. (Robert Collins)
 
+    * 'bzr pull' now accepts '--clobber' which will discard local changes
+      and make this branch identical to the source branch. (Robert Collins)
+
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 
@@ -38,6 +41,10 @@ UNRELEASED CHANGES
 
     * 'bzr selftest' runs all tests, even if one feels, unless '--one'
       is given.
+
+    * There is a new method for TestCaseInTempDir, assertFileEqual, which
+      will check that a given content is equal to the content of the named
+      file.
 
   INTERNALS:
 
@@ -80,6 +87,17 @@ UNRELEASED CHANGES
     * Branch.open_containing now returns a tuple (Branch, relative-path),
       which allows direct access to the common case of 'get me this file
       from its branch'. (Robert Collins)
+
+    * 'pull' has been factored out of the command as WorkingTree.pull().
+      A new option to WorkingTree.pull has been added, clobber, which will
+      ignore diverged history and pull anyway.
+      (Robert Collins)
+
+    * config.Config has a 'get_user_option' call that accepts an option name.
+      This will be looked up in branches.conf and bazaar.conf as normal.
+      It is intended that this be used by plugins to support options - 
+      options of built in programs should have specific methods on the config.
+      (Robert Collins)
 
 
 bzr 0.1.1 2005-10-12

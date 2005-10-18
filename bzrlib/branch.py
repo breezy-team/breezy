@@ -657,7 +657,7 @@ class _Branch(Branch):
 
         These are files in the working directory that are not versioned or
         control files or ignored.
-        
+        >>> from bzrlib.workingtree import WorkingTree
         >>> b = ScratchBranch(files=['foo', 'foo~'])
         >>> list(b.unknowns())
         ['foo']
@@ -676,6 +676,10 @@ class _Branch(Branch):
             mutter("add {%s} to revision-history" % revision_id)
         rev_history = self.revision_history()
         rev_history.extend(revision_ids)
+        self.set_revision_history(rev_history)
+
+    @needs_write_lock
+    def set_revision_history(self, rev_history):
         self.put_controlfile('revision-history', '\n'.join(rev_history))
 
     def has_revision(self, revision_id):

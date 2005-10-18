@@ -219,7 +219,7 @@ class TestCommit(TestCaseInTempDir):
         b.add(['hello'], ['hello-id'])
         b.commit(message='add hello')
 
-        b.remove('hello')
+        b.working_tree().remove('hello')
         b.commit('removed hello', rev_id='rev2')
 
         tree = b.revision_tree('rev2')
