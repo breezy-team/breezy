@@ -2,6 +2,10 @@ UNRELEASED CHANGES
 
   IMPROVEMENTS:
 
+    * New 'bzr commit --strict' option refuses to commit if there are 
+      any unknown files in the tree.  To commit, make sure all files are 
+      either ignored, added, or deleted.  (Michael Ellerman)
+
     * The config directory is now ~/.bazaar, and there is a single file 
       ~/.bazaar/bazaar.conf storing email, editor and other preferences.
       (Robert Collins)

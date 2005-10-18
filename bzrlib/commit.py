@@ -75,7 +75,8 @@ from bzrlib.branch import gen_file_id
 import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
-                           ConflictsInTree
+                           ConflictsInTree,
+                           StrictCommitFailed
                            )
 from bzrlib.revision import Revision
 from bzrlib.trace import mutter, note, warning
@@ -160,6 +161,7 @@ class Commit(object):
                specific_files=None,
                rev_id=None,
                allow_pointless=True,
+               strict=False,
                verbose=False,
                revprops=None):
         """Commit working copy as a new revision.
@@ -178,6 +180,9 @@ class Commit(object):
         allow_pointless -- If true (default), commit even if nothing
             has changed and no merges are recorded.
 
+        strict -- If true, don't allow a commit if the working tree
+            contains unknown files.
+
         revprops -- Properties for new revision
         """
         mutter('preparing to commit')
@@ -188,6 +193,9 @@ class Commit(object):
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
         self.revprops = revprops
+
+        if strict and branch.unknowns():
+            raise StrictCommitFailed()
 
         if timestamp is None:
             self.timestamp = time.time()

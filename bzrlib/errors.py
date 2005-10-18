@@ -125,6 +125,8 @@ class BzrCommandError(BzrError):
     def __str__(self):
         return self.args[0]
 
+class StrictCommitFailed(Exception):
+    """Commit refused because there are unknowns in the tree."""
 
 class NotBranchError(BzrNewError):
     """Not a branch: %(path)s"""

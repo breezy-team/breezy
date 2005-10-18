@@ -246,3 +246,21 @@ class TestCommit(TestCaseInTempDir):
         self.assertEqual('1', inv['file1id'].revision)
         # FIXME: This should raise a KeyError I think, rbc20051006
         self.assertRaises(BzrError, inv.__getitem__, 'file2id')
+
+    def test_strict_commit(self):
+        """Try and commit with unknown files and strict = True, should fail."""
+        from bzrlib.errors import StrictCommitFailed
+        b = Branch.initialize('.')
+        file('hello', 'w').write('hello world')
+        b.add('hello')
+        file('goodbye', 'w').write('goodbye cruel world!')
+        self.assertRaises(StrictCommitFailed, b.commit,
+            message='add hello but not goodbye', strict=True)
+
+    def test_nonstrict_commit(self):
+        """Try and commit with unknown files and strict = False, should work."""
+        b = Branch.initialize('.')
+        file('hello', 'w').write('hello world')
+        b.add('hello')
+        file('goodbye', 'w').write('goodbye cruel world!')
+        b.commit(message='add hello but not goodbye', strict=False)
