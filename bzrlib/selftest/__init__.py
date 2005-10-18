@@ -173,7 +173,14 @@ class TestCase(unittest.TestCase):
         self._enable_file_logging()
 
     def _ndiff_strings(self, a, b):
-        """Return ndiff between two strings containing lines."""
+        """Return ndiff between two strings containing lines.
+        
+        A trailing newline is added if missing to make the strings
+        print properly."""
+        if b and b[-1] != '\n':
+            b += '\n'
+        if a and a[-1] != '\n':
+            a += '\n'
         difflines = difflib.ndiff(a.splitlines(True),
                                   b.splitlines(True),
                                   linejunk=lambda x: False,
