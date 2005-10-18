@@ -31,7 +31,8 @@ from bzrlib.selftest import TestCase, TestCaseInTempDir
 sample_config_text = ("[DEFAULT]\n"
                       "email=Robert Collins <robertc@example.com>\n"
                       "editor=vim\n"
-                      "gpg_signing_command=gnome-gpg\n")
+                      "gpg_signing_command=gnome-gpg\n"
+                      "user_global_option=something\n")
 
 
 sample_always_signatures = ("[DEFAULT]\n"
@@ -58,6 +59,7 @@ sample_branches_text = ("[http://www.example.com]\n"
                         "[/a/]\n"
                         "check_signatures=check-available\n"
                         "gpg_signing_command=false\n"
+                        "user_local_option=local\n"
                         "# test trailing / matching\n"
                         "[/a/*]\n"
                         "#subdirs will match but not the parent\n"
@@ -147,6 +149,10 @@ class TestConfig(TestCase):
     def test_gpg_signing_command_default(self):
         my_config = config.Config()
         self.assertEqual('gpg', my_config.gpg_signing_command())
+
+    def test_get_user_option_default(self):
+        my_config = config.Config()
+        self.assertEqual(None, my_config.get_user_option('no_option'))
 
 
 class TestConfigPath(TestCase):
@@ -272,18 +278,35 @@ class TestGlobalConfigItems(TestCase):
                          my_config.signature_checking())
         self.assertEqual(False, my_config.signature_needed())
 
-    def test_gpg_signing_command(self):
+    def _get_sample_config(self):
         config_file = StringIO(sample_config_text)
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
+        return my_config
+
+    def test_gpg_signing_command(self):
+        my_config = self._get_sample_config()
         self.assertEqual("gnome-gpg", my_config.gpg_signing_command())
         self.assertEqual(False, my_config.signature_needed())
 
-    def test_gpg_signing_command_unset(self):
+    def _get_empty_config(self):
         config_file = StringIO("")
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
+        return my_config
+
+    def test_gpg_signing_command_unset(self):
+        my_config = self._get_empty_config()
         self.assertEqual("gpg", my_config.gpg_signing_command())
+
+    def test_get_user_option_default(self):
+        my_config = self._get_empty_config()
+        self.assertEqual(None, my_config.get_user_option('no_option'))
+
+    def test_get_user_option_global(self):
+        my_config = self._get_sample_config()
+        self.assertEqual("something",
+                         my_config.get_user_option('user_global_option'))
 
 
 class TestLocationConfig(TestCase):
@@ -415,6 +438,16 @@ class TestLocationConfig(TestCase):
         self.get_location_config('/a')
         self.assertEqual("false", self.my_config.gpg_signing_command())
 
+    def test_get_user_option_global(self):
+        self.get_location_config('/a')
+        self.assertEqual('something',
+                         self.my_config.get_user_option('user_global_option'))
+
+    def test_get_user_option_local(self):
+        self.get_location_config('/a')
+        self.assertEqual('local',
+                         self.my_config.get_user_option('user_local_option'))
+
 
 class TestBranchConfigItems(TestCase):
 
@@ -460,3 +493,12 @@ class TestBranchConfigItems(TestCase):
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
         self.assertEqual('gnome-gpg', my_config.gpg_signing_command())
+
+    def test_get_user_option_global(self):
+        branch = FakeBranch()
+        my_config = config.BranchConfig(branch)
+        config_file = StringIO(sample_config_text)
+        (my_config._get_location_config().
+            _get_global_config()._get_parser(config_file))
+        self.assertEqual('something',
+                         my_config.get_user_option('user_global_option'))

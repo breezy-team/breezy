@@ -18,28 +18,35 @@ UNRELEASED CHANGES
       Goffredo Baroncelli.
     
     * 'bzr check' now accepts -v for verbose reporting, and checks for
-      ghosts in the branch.
+      ghosts in the branch. (Robert Collins)
 
     * New command 're-sign' which will regenerate the gpg signature for 
-      a revision.
+      a revision. (Robert Collins)
 
     * If you set check_signatures=require for a path in 
       ~/.bazaar/branches.conf then bzr will invoke your
       gpg_signing_command (defaults to gpg) and record a digital signature
-      of your commit.
+      of your commit. (Robert Collins)
+
+    * 'bzr pull' now accepts '--clobber' which will discard local changes
+      and make this branch identical to the source branch. (Robert Collins)
 
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 
       test specifiers on the command line can be simple strings, or 
-      regexps, or both.
+      regexps, or both. (Robert Collins)
 
     * Passing -v to selftest will now show the time each test took to 
       complete, which will aid in analysing performance regressions and
-      related questions.
+      related questions. (Robert Collins)
 
     * 'bzr selftest' runs all tests, even if one feels, unless '--one'
       is given.
+
+    * There is a new method for TestCaseInTempDir, assertFileEqual, which
+      will check that a given content is equal to the content of the named
+      file.
 
   INTERNALS:
 
@@ -70,6 +77,29 @@ UNRELEASED CHANGES
       no longer takes an inventory, rather it takes an option branch
       parameter, and if None is given will open the branch at basedir 
       implicitly. (Robert Collins)
+
+    * Branch.remove has been moved to WorkingTree, which has also gained
+      lock_read, lock_write and unlock methods for convenience. (Robert
+      Collins)
+
+    * Two decorators, needs_read_lock and needs_write_lock have been added
+      to the branch module. Use these to cause a function to run in a
+      read or write lock respectively. (Robert Collins)
+
+    * Branch.open_containing now returns a tuple (Branch, relative-path),
+      which allows direct access to the common case of 'get me this file
+      from its branch'. (Robert Collins)
+
+    * 'pull' has been factored out of the command as WorkingTree.pull().
+      A new option to WorkingTree.pull has been added, clobber, which will
+      ignore diverged history and pull anyway.
+      (Robert Collins)
+
+    * config.Config has a 'get_user_option' call that accepts an option name.
+      This will be looked up in branches.conf and bazaar.conf as normal.
+      It is intended that this be used by plugins to support options - 
+      options of built in programs should have specific methods on the config.
+      (Robert Collins)
 
 
 bzr 0.1.1 2005-10-12

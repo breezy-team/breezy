@@ -79,6 +79,7 @@ from bzrlib.errors import (BzrError, PointlessCommit,
                            )
 import bzrlib.gpg as gpg
 from bzrlib.revision import Revision
+from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID
@@ -321,9 +322,11 @@ class Commit(object):
         rev_tmp = StringIO()
         serializer_v5.write_revision(self.rev, rev_tmp)
         rev_tmp.seek(0)
-        self.branch.revision_store.add(rev_tmp, self.rev_id)
         if self.config.signature_needed():
-            self.branch.sign_revision(self.rev_id, gpg.GPGStrategy(self.config))
+            plaintext = Testament(self.rev, self.new_inv).as_short_text()
+            self.branch.store_revision_signature(gpg.GPGStrategy(self.config),
+                                                 plaintext, self.rev_id)
+        self.branch.revision_store.add(rev_tmp, self.rev_id)
         mutter('new revision_id is {%s}', self.rev_id)
 
     def _remove_deleted(self):

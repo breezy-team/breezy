@@ -20,7 +20,7 @@
 Currently this configuration resides in ~/.bazaar/bazaar.conf
 and ~/.bazaar/branches.conf, which is written to by bzr.
 
-In bazaar.config the following options may be set:
+In bazaar.conf the following options may be set:
 [DEFAULT]
 editor=name-of-program
 email=Your Name <your@email.address>
@@ -75,6 +75,14 @@ class Config(object):
 
     def _get_signature_checking(self):
         """Template method to override signature checking policy."""
+
+    def _get_user_option(self, option_name):
+        """Template method to provide a user option."""
+        return None
+
+    def get_user_option(self, option_name):
+        """Get a generic option - no special process, no default."""
+        return self._get_user_option(option_name)
 
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
@@ -204,6 +212,13 @@ class IniBasedConfig(Config):
         except KeyError:
             pass
 
+    def _get_user_option(self, option_name):
+        """See Config._get_user_option."""
+        try:
+            return self._config_val(option_name)
+        except KeyError:
+            pass
+
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
         try:
@@ -308,6 +323,14 @@ class LocationConfig(IniBasedConfig):
             return user_id
         return self._get_global_config()._get_user_id()
 
+    def _get_user_option(self, option_name):
+        """See Config._get_user_option."""
+        option_value = super(LocationConfig, 
+                             self)._get_user_option(option_name)
+        if option_value is not None:
+            return option_value
+        return self._get_global_config()._get_user_option(option_name)
+
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
         check = super(LocationConfig, self)._get_signature_checking()
@@ -343,6 +366,10 @@ class BranchConfig(Config):
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
         return self._get_location_config()._get_signature_checking()
+
+    def _get_user_option(self, option_name):
+        """See Config._get_user_option."""
+        return self._get_location_config()._get_user_option(option_name)
 
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""

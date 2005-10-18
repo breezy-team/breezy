@@ -402,7 +402,15 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m blah2 --unchanged')
         os.chdir('../b')
         self.runbzr('commit -m blah3 --unchanged')
+        # no clobber
         self.runbzr('pull ../a', retcode=1)
+        os.chdir('..')
+        self.runbzr('branch b clobberme')
+        os.chdir('clobberme')
+        self.runbzr('pull --clobber ../a')
+        clobbered = Branch.open('.')
+        self.assertEqual(clobbered.revision_history(),
+                         a.revision_history())
         os.chdir('../a')
         self.runbzr('merge ../b')
         self.runbzr('commit -m blah4 --unchanged')
@@ -822,5 +830,16 @@ class HttpTests(TestCaseWithWebserver):
         self.run_bzr('branch', url, 'to')
         branch = Branch.open('to')
         self.assertEqual(1, len(branch.revision_history()))
+
+    def test_log(self):
+        self.build_tree(['branch/', 'branch/file'])
+        branch = Branch.initialize('branch')
+        branch.add(['file'])
+        branch.commit('add file', rev_id='A')
+        url = self.get_remote_url('branch/file')
+        output = self.capture('log %s' % url)
+        self.assertEqual(7, len(output.split('\n')))
+        
+
 
 
