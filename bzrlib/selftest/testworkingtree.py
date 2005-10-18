@@ -93,3 +93,13 @@ class TestWorkingTree(TestCaseInTempDir):
         self.assertEqual('w', tree.branch._lock_mode)
         tree.unlock()
         self.assertEqual(None, tree.branch._lock_count)
+        
+    def test_pull(self):
+        self.build_tree(['from/', 'from/file', 'to/'])
+        br_a = Branch.initialize('from')
+        br_a.add('file')
+        br_a.commit('foo', rev_id='A')
+        br_b = Branch.initialize('to')
+        br_b.working_tree().pull(br_a)
+        self.failUnless(br_b.has_revision('A'))
+        self.assertEqual(['A'], br_b.revision_history())

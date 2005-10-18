@@ -348,28 +348,12 @@ class cmd_pull(Command):
             else:
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
-        cache_root = tempfile.mkdtemp()
         br_from = Branch.open(location)
-        br_from.lock_read()
         try:
-            br_from.setup_caching(cache_root)
-            location = br_from.base
-            old_revno = br_to.revno()
-            old_revision_history = br_to.revision_history()
-            try:
-                br_to.update_revisions(br_from)
-            except DivergedBranches:
-                raise BzrCommandError("These branches have diverged."
-                    "  Try merge.")
-            new_revision_history = br_to.revision_history()
-            if new_revision_history != old_revision_history:
-                merge(('.', -1), ('.', old_revno), check_clean=False)
-            if stored_loc is None or remember:
-                br_to.set_parent(location)
-        finally:
-            br_from.unlock()
-            rmtree(cache_root)
-
+            br_to.working_tree().pull(br_from, remember)
+        except DivergedBranches:
+            raise BzrCommandError("These branches have diverged."
+                                  "  Try merge.")
 
 
 class cmd_branch(Command):

@@ -81,6 +81,8 @@ UNRELEASED CHANGES
       which allows direct access to the common case of 'get me this file
       from its branch'. (Robert Collins)
 
+    * 'pull' has been factored out of the command as WorkingTree.pull().
+      (Robert Collins)
 
 bzr 0.1.1 2005-10-12
 
