@@ -52,6 +52,7 @@ from bzrlib.merge import build_working_dir
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter, note
 from bzrlib.store import copy_all
+from bzrlib.errors import InvalidRevisionId
 
 def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     """Copy branch_from into the existing directory to_location.
