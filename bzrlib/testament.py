@@ -82,7 +82,7 @@ class Testament(object):
     Testaments can be 
 
       - produced from a revision
-      - writen to a stream
+      - written to a stream
       - loaded from a stream
       - compared to a revision
     """
