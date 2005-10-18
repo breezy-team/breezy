@@ -150,6 +150,7 @@ def _global_option(name, **kwargs):
     Option.OPTIONS[name] = Option(name, **kwargs)
 
 _global_option('all')
+_global_option('clobber')
 _global_option('basis', type=str)
 _global_option('diff-options', type=str)
 _global_option('help',

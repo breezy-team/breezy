@@ -331,10 +331,10 @@ class cmd_pull(Command):
     If branches have diverged, you can use 'bzr merge' to pull the text changes
     from one into the other.
     """
-    takes_options = ['remember']
+    takes_options = ['remember', 'clobber']
     takes_args = ['location?']
 
-    def run(self, location=None, remember=False):
+    def run(self, location=None, remember=False, clobber=False):
         from bzrlib.merge import merge
         import tempfile
         from shutil import rmtree
@@ -350,7 +350,7 @@ class cmd_pull(Command):
                 location = stored_loc
         br_from = Branch.open(location)
         try:
-            br_to.working_tree().pull(br_from, remember)
+            br_to.working_tree().pull(br_from, remember, clobber)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try merge.")

@@ -306,7 +306,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 yield stem
 
     @needs_write_lock
-    def pull(self, source, remember=False):
+    def pull(self, source, remember=False, clobber=False):
         from bzrlib.merge import merge
         source.lock_read()
         try:
@@ -315,8 +315,9 @@ class WorkingTree(bzrlib.tree.Tree):
             try:
                 self.branch.update_revisions(source)
             except DivergedBranches:
-                if True:
+                if not clobber:
                     raise
+                self.branch.set_revision_history(source.revision_history())
             new_revision_history = self.branch.revision_history()
             if new_revision_history != old_revision_history:
                 merge((self.basedir, -1), (self.basedir, old_revno), check_clean=False)
