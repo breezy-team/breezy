@@ -29,16 +29,40 @@ def test_suite():
 
 
 sample_config=("[DEFAULT]\n"
-               "publishing_root=rsync://example.com/home/archives\n")
+               "publishing_root=rsync://example.com/home/archives\n"
+               "publishing_product=demo\n")
+
+
+sample_version_config=(sample_config + 
+                       "publishing_version=0\n")
 
 
 class TestTest(TestCaseInTempDir):
 
     def test_get_publishing_root(self):
-        branch = FakeBranch()
-        my_config = config.BranchConfig(branch)
-        config_file = StringIO(sample_config)
-        (my_config._get_location_config().
-            _get_global_config()._get_parser(config_file))
+        my_config = self.get_config()
         self.assertEqual("rsync://example.com/home/archives", 
                          my_config.get_user_option("publishing_root"))
+
+    def test_get_publising_product(self):
+        my_config = self.get_config()
+        self.assertEqual("demo",
+                         my_config.get_user_option("publishing_product"))
+
+#    def test_get_publishing_version(self):
+#        my_config = self.get_config()
+#        self.assertEqual(None,
+#                         my_config.get_user_option("publishing_version"))
+#
+#    def test_get_present_publishing_version(self):
+#        my_config = self.get_config(sample_version_config)
+#        self.assertEqual('0',
+#                         my_config.get_user_option("publishing_version"))
+
+    def get_config(self, text=sample_config):
+        branch = FakeBranch()
+        my_config = config.BranchConfig(branch)
+        config_file = StringIO(text)
+        (my_config._get_location_config().
+            _get_global_config()._get_parser(config_file))
+        return my_config
