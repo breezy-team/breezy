@@ -303,7 +303,7 @@ def parse_args(command, argv):
                     optname = a[2:]
                 if optname not in cmd_options:
                     raise BzrCommandError('unknown long option %r for command %s' 
-                            % (a, command.name))
+                            % (a, command.name()))
             else:
                 shortopt = a[1:]
                 if shortopt in Option.SHORT_OPTIONS:
