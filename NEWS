@@ -121,6 +121,10 @@ UNRELEASED CHANGES
       doing what it was intended to. See WorkingTree.__init__ for a comment
       about future directions. (Robert Collins/Martin Pool)
 
+    * bzrlib.transport.http has been modified so that only 404 urllib errors
+      are returned as NoSuchFile. Other exceptions will propogate as normal.
+      This allows debuging of actual errors. (Robert Collins)
+
   BUG FIXES:
 
     * Better handling of branches in directories with non-ascii names. 

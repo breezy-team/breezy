@@ -125,10 +125,10 @@ class HttpTransport(Transport):
             f.read()
             f.close()
             return True
-        except BzrError:
-            return False
-        except urllib2.URLError:
-            return False
+        except urllib2.URLError, e:
+            if e.code == 404:
+                return False
+            raise
         except IOError, e:
             if e.errno == errno.ENOENT:
                 return False
@@ -141,7 +141,13 @@ class HttpTransport(Transport):
         """
         try:
             return get_url(self.abspath(relpath))
-        except (BzrError, urllib2.URLError, IOError), e:
+        except urllib2.URLError, e:
+            if e.code == 404:
+                raise NoSuchFile(msg = "Error retrieving %s: %s" 
+                                 % (self.abspath(relpath), str(e)),
+                                 orig_error=e)
+            raise
+        except (BzrError, IOError), e:
             raise NoSuchFile(msg = "Error retrieving %s: %s" 
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
