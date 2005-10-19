@@ -241,7 +241,7 @@ def build_working_dir(to_dir):
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
           this_dir=None, backup_files=False, merge_type=ApplyMerge3,
-          file_list=None):
+          file_list=None, show_base=False):
     """Merge changes into a tree.
 
     base_revision
@@ -324,7 +324,8 @@ def merge(other_revision, base_revision,
                                           " tree." % fname)
         merge_inner(this_branch, other_tree, base_tree, tempdir, 
                     ignore_zero=ignore_zero, backup_files=backup_files, 
-                    merge_type=merge_type, interesting_ids=interesting_ids)
+                    merge_type=merge_type, interesting_ids=interesting_ids,
+                    show_base=show_base)
         if base_is_ancestor and other_rev_id is not None\
             and other_rev_id not in this_branch.revision_history():
             this_branch.add_pending_merge(other_rev_id)
@@ -342,10 +343,13 @@ def set_interesting(inventory_a, inventory_b, interesting_ids):
 
 def merge_inner(this_branch, other_tree, base_tree, tempdir, 
                 ignore_zero=False, merge_type=ApplyMerge3, backup_files=False,
-                interesting_ids=None):
+                interesting_ids=None, show_base=False):
 
     def merge_factory(file_id, base, other):
-        contents_change = merge_type(file_id, base, other)
+        if show_base is True:
+            contents_change = merge_type(file_id, base, other, show_base=True)
+        else:
+            contents_change = merge_type(file_id, base, other)
         if backup_files:
             contents_change = BackupBeforeChange(contents_change)
         return contents_change
