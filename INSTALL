@@ -1,0 +1,26 @@
+bzr install instructions
+************************
+
+Dependencies
+------------
+
+bzr requires Python2.4 and cElementTree:
+
+  http://effbot.org/zone/element-index.htm
+
+If you wish to access branches over sftp, you will need paramiko and
+pycrypto:
+
+  http://www.lag.net/paramiko/
+
+Installation
+------------
+
+To install bzr as a user, run
+
+  python setup.py install --home ~ 
+
+To install system-wide, run (as root)
+
+  python setup.py install
+

@@ -30,6 +30,8 @@ UNRELEASED CHANGES
       gpg_signing_command (defaults to gpg) and record a digital signature
       of your commit. (Robert Collins)
 
+    * New sftp transport, based on Paramiko.  (Robey Pointer)
+
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 
@@ -91,6 +93,9 @@ UNRELEASED CHANGES
     * Branch.open_containing now returns a tuple (Branch, relative-path),
       which allows direct access to the common case of 'get me this file
       from its branch'. (Robert Collins)
+
+    * Transports can register using register_lazy_transport, and they 
+      will be loaded when first used.  (Martin Pool)
 
   BUG FIXES:
 
