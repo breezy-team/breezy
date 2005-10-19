@@ -491,7 +491,8 @@ class DynamicBranchCreator(BranchCreator):
             orig_branch = self._get_branch(unpref_orig_path)
             revno = self._revisions[orig_revno][orig_branch]
             os.makedirs(dest_abspath)
-            copy_branch(orig_branch, dest_abspath, revno)
+            revid = orig_branch.get_rev_id(revno)
+            copy_branch(orig_branch, dest_abspath, revid)
             branch = Branch.open(dest_abspath)
             self._branches[unpref_dest_path] = branch
             self._new_branch(branch)
