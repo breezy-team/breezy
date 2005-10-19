@@ -667,7 +667,7 @@ class _Branch(Branch):
         []
         >>> WorkingTree(b.base, b).remove('foo')
         >>> list(b.unknowns())
-        ['foo']
+        [u'foo']
         """
         return self.working_tree().unknowns()
 
