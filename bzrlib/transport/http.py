@@ -74,6 +74,7 @@ class HttpTransport(Transport):
         """Return the full url to the given relative path.
         This can be supplied with a string or a list
         """
+        assert isinstance(relpath, basestring)
         if isinstance(relpath, basestring):
             relpath_parts = relpath.split('/')
         else:

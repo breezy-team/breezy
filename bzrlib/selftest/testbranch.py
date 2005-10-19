@@ -116,7 +116,6 @@ class TestBranch(TestCaseInTempDir):
         self.assertTrue(os.path.exists('b/one'))
         self.assertFalse(os.path.exists('b/two'))
         
-
     def test_record_initial_ghost_merge(self):
         """A pending merge with no revision present is still a merge."""
         branch = Branch.initialize('.')
@@ -169,6 +168,14 @@ class TestBranch(TestCaseInTempDir):
         branch.store_revision_signature(bzrlib.gpg.LoopbackGPGStrategy(None),
                                         'FOO', 'A')
         self.assertEqual('FOO', branch.revision_store.get('A', 'sig').read())
+
+    def test__relcontrolfilename(self):
+        branch = Branch.initialize('.')
+        self.assertEqual('.bzr/%25', branch._rel_controlfilename('%'))
+        
+    def test__relcontrolfilename_empty(self):
+        branch = Branch.initialize('.')
+        self.assertEqual('.bzr', branch._rel_controlfilename(''))
 
 
 class TestRemote(TestCaseWithWebserver):

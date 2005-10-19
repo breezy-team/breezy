@@ -356,3 +356,9 @@ def get_transport(base):
 
 # Local transport should always be initialized
 import bzrlib.transport.local
+
+def urlescape(relpath):
+    """Escape relpath to be a valid url."""
+    # TODO utf8 it first. utf8relpath = relpath.encode('utf8')
+    import urllib
+    return urllib.quote(relpath)

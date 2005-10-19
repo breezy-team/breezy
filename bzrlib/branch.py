@@ -259,11 +259,11 @@ class _Branch(Branch):
             self.text_store = get_store('text-store')
             self.revision_store = get_store('revision-store')
         elif self._branch_format == 5:
-            self.control_weaves = get_weave([])
+            self.control_weaves = get_weave('')
             self.weave_store = get_weave('weaves')
             self.revision_store = get_store('revision-store', compressed=False)
         elif self._branch_format == 6:
-            self.control_weaves = get_weave([])
+            self.control_weaves = get_weave('')
             self.weave_store = get_weave('weaves', prefixed=True)
             self.revision_store = get_store('revision-store', compressed=False,
                                             prefixed=True)
@@ -385,9 +385,11 @@ class _Branch(Branch):
         return self._transport.abspath(name)
 
     def _rel_controlfilename(self, file_or_path):
-        if isinstance(file_or_path, basestring):
-            file_or_path = [file_or_path]
-        return [bzrlib.BZRDIR] + file_or_path
+        if not isinstance(file_or_path, basestring):
+            file_or_path = '/'.join(file_or_path)
+        if file_or_path == '':
+            return bzrlib.BZRDIR
+        return bzrlib.transport.urlescape(bzrlib.BZRDIR + '/' + file_or_path)
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""

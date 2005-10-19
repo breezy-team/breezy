@@ -125,6 +125,10 @@ UNRELEASED CHANGES
       are returned as NoSuchFile. Other exceptions will propogate as normal.
       This allows debuging of actual errors. (Robert Collins)
 
+    * bzrlib.transport.Transport now accepts *ONLY* url escaped relative paths
+      to apis like 'put', 'get' and 'has'. This is to provide consistent
+      behaviour - it operates on url's only. (Robert Collins)
+
   BUG FIXES:
 
     * Better handling of branches in directories with non-ascii names. 
