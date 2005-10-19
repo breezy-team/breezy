@@ -90,19 +90,22 @@ class Testament(object):
     @classmethod
     def from_revision(cls, branch, revision_id):
         """Produce a new testament from a historical revision"""
-        t = cls()
         rev = branch.get_revision(revision_id)
-        t.revision_id = str(revision_id)
-        t.committer = rev.committer
-        t.timezone = rev.timezone or 0
-        t.timestamp = rev.timestamp
-        t.message = rev.message
-        t.parent_ids = rev.parent_ids[:]
-        t.inventory = branch.get_inventory(revision_id)
-        t.revprops = copy(rev.properties)
-        assert not contains_whitespace(t.revision_id)
-        assert not contains_linebreaks(t.committer)
-        return t
+        inventory = branch.get_inventory(revision_id)
+        return cls(rev, inventory)
+
+    def __init__(self, rev, inventory):
+        """Create a new testament for rev using inventory."""
+        self.revision_id = str(rev.revision_id)
+        self.committer = rev.committer
+        self.timezone = rev.timezone or 0
+        self.timestamp = rev.timestamp
+        self.message = rev.message
+        self.parent_ids = rev.parent_ids[:]
+        self.inventory = inventory
+        self.revprops = copy(rev.properties)
+        assert not contains_whitespace(self.revision_id)
+        assert not contains_linebreaks(self.committer)
 
     def as_text_lines(self):
         """Yield text form as a sequence of lines.
@@ -132,7 +135,7 @@ class Testament(object):
         r.extend(self._revprops_to_lines())
         if __debug__:
             for l in r:
-                assert isinstance(l, str), \
+                assert isinstance(l, basestring), \
                     '%r of type %s is not a plain string' % (l, type(l))
         return r
 

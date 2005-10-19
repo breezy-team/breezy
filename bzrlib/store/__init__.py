@@ -24,14 +24,15 @@ A store is a simple write-once container indexed by a universally
 unique ID.
 """
 
+import os
 from cStringIO import StringIO
-from stat import ST_MODE, S_ISDIR
 from zlib import adler32
 
+import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.trace import mutter
-import bzrlib.transport
+import bzrlib.transport as transport
 from bzrlib.transport.local import LocalTransport
 
 ######################################################################
@@ -52,13 +53,20 @@ class Store(object):
     def __len__(self):
         raise NotImplementedError('Children should define their length')
 
-    def __getitem__(self, fileid):
-        """Returns a file reading from a particular entry."""
+    def get(self, file_id, suffix=None):
+        """Returns a file reading from a particular entry.
+        
+        If suffix is present, retrieve the named suffix for file_id.
+        """
         raise NotImplementedError
 
-    def __contains__(self, fileid):
-        """"""
+    def __getitem__(self, fileid):
+        """DEPRECATED. Please use .get(file_id) instead."""
         raise NotImplementedError
+
+    #def __contains__(self, fileid):
+    #    """Deprecated, please use has_id"""
+    #    raise NotImplementedError
 
     def __iter__(self):
         raise NotImplementedError
@@ -67,47 +75,16 @@ class Store(object):
         """Add a file object f to the store accessible from the given fileid"""
         raise NotImplementedError('Children of Store must define their method of adding entries.')
 
-    def add_multi(self, entries):
-        """Add a series of file-like or string objects to the store with the given
-        identities.
+    def has_id(self, file_id, suffix=None):
+        """Return True or false for the presence of file_id in the store.
         
-        :param entries: A list of tuples of file,id pairs [(file1, id1), (file2, id2), ...]
-                        This could also be a generator yielding (file,id) pairs.
-        """
-        for f, fileid in entries:
-            self.add(f, fileid)
-
-    def has(self, fileids):
-        """Return True/False for each entry in fileids.
-
-        :param fileids: A List or generator yielding file ids.
-        :return: A generator or list returning True/False for each entry.
-        """
-        for fileid in fileids:
-            if fileid in self:
-                yield True
-            else:
-                yield False
+        suffix, if present, is a per file suffix, i.e. for digital signature 
+        data."""
+        raise NotImplementedError
 
     def listable(self):
         """Return True if this store is able to be listed."""
         return hasattr(self, "__iter__")
-
-    def get(self, fileids, permit_failure=False, pb=None):
-        """Return a set of files, one for each requested entry.
-        
-        :param permit_failure: If true, return None for entries which do not 
-                               exist.
-        :return: A list or generator of file-like objects, one for each id.
-        """
-        for fileid in fileids:
-            try:
-                yield self[fileid]
-            except KeyError:
-                if permit_failure:
-                    yield None
-                else:
-                    raise
 
     def copy_multi(self, other, ids, pb=None, permit_failure=False):
         """Copy texts for ids from other into self.
@@ -125,87 +102,139 @@ class Store(object):
         """
         if pb is None:
             pb = bzrlib.ui.ui_factory.progress_bar()
-
-        # XXX: Is there any reason why we couldn't make this accept a generator
-        # and build a list as it finds things to copy?
-        ids = list(ids) # Make sure we don't have a generator, since we iterate 2 times
         pb.update('preparing to copy')
-        to_copy = []
-        for file_id, has in zip(ids, self.has(ids)):
-            if not has:
-                to_copy.append(file_id)
-        return self._do_copy(other, to_copy, pb, permit_failure=permit_failure)
-
-    def _do_copy(self, other, to_copy, pb, permit_failure=False):
-        """This is the standard copying mechanism, just get them one at
-        a time from remote, and store them locally.
-
-        :param other: Another Store object
-        :param to_copy: A list of entry ids to copy
-        :param pb: A ProgressBar object to display completion status.
-        :param permit_failure: Allow missing entries to be ignored
-        :return: (n_copied, [failed])
-            The number of entries copied, and a list of failed entries.
-        """
-        # This should be updated to use add_multi() rather than
-        # the current methods of buffering requests.
-        # One question, is it faster to queue up 1-10 and then copy 1-10
-        # then queue up 11-20, copy 11-20
-        # or to queue up 1-10, copy 1, queue 11, copy 2, etc?
-        # sort of pipeline versus batch.
-
-        # We can't use self._transport.copy_to because we don't know
-        # whether the local tree is in the same format as other
         failed = set()
-        def buffer_requests():
-            count = 0
-            buffered_requests = []
-            for fileid in to_copy:
-                try:
-                    f = other[fileid]
-                except KeyError:
-                    if permit_failure:
-                        failed.add(fileid)
-                        continue
-                    else:
-                        raise
-
-                buffered_requests.append((f, fileid))
-                if len(buffered_requests) > self._max_buffered_requests:
-                    yield buffered_requests.pop(0)
-                    count += 1
-                    pb.update('copy', count, len(to_copy))
-
-            for req in buffered_requests:
-                yield req
-                count += 1
-                pb.update('copy', count, len(to_copy))
-
-            assert count == len(to_copy)
-
-        self.add_multi(buffer_requests())
-
+        count = 0
+        ids = list(ids) # get the list for showing a length.
+        for fileid in ids:
+            count += 1
+            if self.has_id(fileid):
+                continue
+            try:
+                self._copy_one(fileid, None, other, pb)
+                for suffix in self._suffixes:
+                    try:
+                        self._copy_one(fileid, suffix, other, pb)
+                    except KeyError:
+                        pass
+                pb.update('copy', count, len(ids))
+            except KeyError:
+                if permit_failure:
+                    failed.add(fileid)
+                else:
+                    raise
+        assert count == len(ids)
         pb.clear()
-        return len(to_copy), failed
+        return count, failed
+
+    def _copy_one(self, fileid, suffix, other, pb):
+        """Most generic copy-one object routine.
+        
+        Subclasses can override this to provide an optimised
+        copy between their own instances. Such overriden routines
+        should call this if they have no optimised facility for a 
+        specific 'other'.
+        """
+        f = other.get(fileid, suffix)
+        self.add(f, fileid, suffix)
 
 
 class TransportStore(Store):
     """A TransportStore is a Store superclass for Stores that use Transports."""
 
-    _max_buffered_requests = 10
+    def add(self, f, fileid, suffix=None):
+        """Add contents of a file into the store.
 
-    def __getitem__(self, fileid):
-        """Returns a file reading from a particular entry."""
-        fn = self._relpath(fileid)
+        f -- A file-like object, or string
+        """
+        mutter("add store entry %r" % (fileid))
+        
+        if suffix is not None:
+            fn = self._relpath(fileid, [suffix])
+        else:
+            fn = self._relpath(fileid)
+        if self._transport.has(fn):
+            raise BzrError("store %r already contains id %r" % (self._transport.base, fileid))
+
+        if self._prefixed:
+            try:
+                self._transport.mkdir(hash_prefix(fileid)[:-1])
+            except errors.FileExists:
+                pass
+
+        self._add(fn, f)
+
+    def _check_fileid(self, fileid):
+        if not isinstance(fileid, basestring):
+            raise TypeError('Fileids should be a string type: %s %r' % (type(fileid), fileid))
+        if '\\' in fileid or '/' in fileid:
+            raise ValueError("invalid store id %r" % fileid)
+
+    def has_id(self, fileid, suffix=None):
+        """See Store.has_id."""
+        if suffix is not None:
+            fn = self._relpath(fileid, [suffix])
+        else:
+            fn = self._relpath(fileid)
+        return self._transport.has(fn)
+
+    def _get(self, filename):
+        """Return an vanilla file stream for clients to read from.
+
+        This is the body of a template method on 'get', and should be 
+        implemented by subclasses.
+        """
+        raise NotImplementedError
+
+    def get(self, fileid, suffix=None):
+        """See Store.get()."""
+        if suffix is None or suffix == 'gz':
+            fn = self._relpath(fileid)
+        else:
+            fn = self._relpath(fileid, [suffix])
         try:
-            return self._transport.get(fn)
+            return self._get(fn)
         except errors.NoSuchFile:
             raise KeyError(fileid)
 
-    def __init__(self, transport):
-        assert isinstance(transport, bzrlib.transport.Transport)
+    def __init__(self, a_transport, prefixed=False):
+        assert isinstance(a_transport, transport.Transport)
         super(TransportStore, self).__init__()
-        self._transport = transport
+        self._transport = a_transport
+        self._prefixed = prefixed
+        # conflating the .gz extension and user suffixes was a mistake.
+        # RBC 20051017 - TODO SOON, separate them again.
+        self._suffixes = set()
+
+    def __iter__(self):
+        for relpath in self._transport.iter_files_recursive():
+            # worst case is one of each suffix.
+            name = os.path.basename(relpath)
+            if name.endswith('.gz'):
+                name = name[:-3]
+            skip = False
+            for count in range(len(self._suffixes)):
+                for suffix in self._suffixes:
+                    if name.endswith('.' + suffix):
+                        skip = True
+            if not skip:
+                yield name
+
+    def __len__(self):
+        return len(list(self.__iter__()))
+
+    def _relpath(self, fileid, suffixes=[]):
+        self._check_fileid(fileid)
+        for suffix in suffixes:
+            if not suffix in self._suffixes:
+                raise ValueError("Unregistered suffix %r" % suffix)
+            self._check_fileid(suffix)
+        if self._prefixed:
+            path = [hash_prefix(fileid) + fileid]
+        else:
+            path = [fileid]
+        path.extend(suffixes)
+        return '.'.join(path)
 
     def __repr__(self):
         if self._transport is None:
@@ -215,58 +244,31 @@ class TransportStore(Store):
 
     __str__ = __repr__
 
-    def _iter_relpaths(self):
-        """Iter the relative paths of files in the transports sub-tree."""
-        transport = self._transport
-        queue = list(transport.list_dir('.'))
-        while queue:
-            relpath = queue.pop(0)
-            st = transport.stat(relpath)
-            if S_ISDIR(st[ST_MODE]):
-                for i, basename in enumerate(transport.list_dir(relpath)):
-                    queue.insert(i, relpath+'/'+basename)
-            else:
-                yield relpath, st
-
     def listable(self):
         """Return True if this store is able to be listed."""
         return self._transport.listable()
 
-
-class ImmutableMemoryStore(Store):
-    """A memory only store."""
-
-    def __contains__(self, fileid):
-        return self._contents.has_key(fileid)
-
-    def __init__(self):
-        super(ImmutableMemoryStore, self).__init__()
-        self._contents = {}
-
-    def add(self, stream, fileid, compressed=True):
-        if self._contents.has_key(fileid):
-            raise StoreError("fileid %s already in the store" % fileid)
-        self._contents[fileid] = stream.read()
-
-    def __getitem__(self, fileid):
-        """Returns a file reading from a particular entry."""
-        if not self._contents.has_key(fileid):
-            raise IndexError
-        return StringIO(self._contents[fileid])
-
-    def _item_size(self, fileid):
-        return len(self._contents[fileid])
-
-    def __iter__(self):
-        return iter(self._contents.keys())
+    def register_suffix(self, suffix):
+        """Register a suffix as being expected in this store."""
+        self._check_fileid(suffix)
+        self._suffixes.add(suffix)
 
     def total_size(self):
-        result = 0
+        """Return (count, bytes)
+
+        This is the (compressed) size stored on disk, not the size of
+        the content."""
+        total = 0
         count = 0
-        for fileid in self:
+        for relpath in self._transport.iter_files_recursive():
             count += 1
-            result += self._item_size(fileid)
-        return count, result
+            total += self._transport.stat(relpath).st_size
+                
+        return count, total
+
+
+def ImmutableMemoryStore():
+    return bzrlib.store.text.TextStore(transport.memory.MemoryTransport())
         
 
 class CachedStore(Store):
@@ -284,43 +286,20 @@ class CachedStore(Store):
         # or something. RBC 20051003
         self.cache_store = store.__class__(LocalTransport(cache_dir))
 
-    def __getitem__(self, id):
+    def get(self, id):
         mutter("Cache add %s" % id)
         if id not in self.cache_store:
-            self.cache_store.add(self.source_store[id], id)
-        return self.cache_store[id]
+            self.cache_store.add(self.source_store.get(id), id)
+        return self.cache_store.get(id)
 
-    def __contains__(self, fileid):
-        if fileid in self.cache_store:
+    def has_id(self, fileid, suffix=None):
+        """See Store.has_id."""
+        if self.cache_store.has_id(fileid, suffix):
             return True
-        if fileid in self.source_store:
+        if self.source_store.has_id(fileid, suffix):
             # We could copy at this time
             return True
         return False
-
-    def get(self, fileids, permit_failure=False, pb=None):
-        fileids = list(fileids)
-        hasids = self.cache_store.has(fileids)
-        needs = set()
-        for has, fileid in zip(hasids, fileids):
-            if not has:
-                needs.add(fileid)
-        if needs:
-            self.cache_store.copy_multi(self.source_store, needs,
-                    permit_failure=permit_failure)
-        return self.cache_store.get(fileids,
-                permit_failure=permit_failure, pb=pb)
-
-    def prefetch(self, ids):
-        """Copy a series of ids into the cache, before they are used.
-        For remote stores that support pipelining or async downloads, this can
-        increase speed considerably.
-
-        Failures while prefetching are ignored.
-        """
-        mutter("Prefetch of ids %s" % ",".join(ids))
-        self.cache_store.copy_multi(self.source_store, ids, 
-                                    permit_failure=True)
 
 
 def copy_all(store_from, store_to):

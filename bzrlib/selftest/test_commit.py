@@ -19,11 +19,22 @@ import os
 
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
+from bzrlib.workingtree import WorkingTree
 from bzrlib.commit import Commit
-from bzrlib.errors import PointlessCommit, BzrError
+from bzrlib.config import BranchConfig
+from bzrlib.errors import PointlessCommit, BzrError, SigningFailed
 
 
 # TODO: Test commit with some added, and added-but-missing files
+
+class MustSignConfig(BranchConfig):
+
+    def signature_needed(self):
+        return True
+
+    def gpg_signing_command(self):
+        return ['cat', '-']
+
 
 class TestCommit(TestCaseInTempDir):
 
@@ -50,7 +61,6 @@ class TestCommit(TestCaseInTempDir):
 
         tree2 = b.revision_tree(rh[1])
         eq(tree2.get_file_text(file_id), 'version 2')
-
 
     def test_delete_commit(self):
         """Test a commit with a deleted file"""
@@ -204,13 +214,15 @@ class TestCommit(TestCaseInTempDir):
 
         
     def test_removed_commit(self):
-        """Test a commit with a removed file"""
+        """Commit with a removed file"""
         b = Branch.initialize('.')
+        wt = b.working_tree()
         file('hello', 'w').write('hello world')
         b.add(['hello'], ['hello-id'])
         b.commit(message='add hello')
 
-        b.remove('hello')
+        wt = b.working_tree()  # FIXME: kludge for aliasing of working inventory
+        wt.remove('hello')
         b.commit('removed hello', rev_id='rev2')
 
         tree = b.revision_tree('rev2')
@@ -246,3 +258,63 @@ class TestCommit(TestCaseInTempDir):
         self.assertEqual('1', inv['file1id'].revision)
         # FIXME: This should raise a KeyError I think, rbc20051006
         self.assertRaises(BzrError, inv.__getitem__, 'file2id')
+
+    def test_strict_commit(self):
+        """Try and commit with unknown files and strict = True, should fail."""
+        from bzrlib.errors import StrictCommitFailed
+        b = Branch.initialize('.')
+        file('hello', 'w').write('hello world')
+        b.add('hello')
+        file('goodbye', 'w').write('goodbye cruel world!')
+        self.assertRaises(StrictCommitFailed, b.commit,
+            message='add hello but not goodbye', strict=True)
+
+    def test_nonstrict_commit(self):
+        """Try and commit with unknown files and strict = False, should work."""
+        b = Branch.initialize('.')
+        file('hello', 'w').write('hello world')
+        b.add('hello')
+        file('goodbye', 'w').write('goodbye cruel world!')
+        b.commit(message='add hello but not goodbye', strict=False)
+
+    def test_signed_commit(self):
+        import bzrlib.gpg
+        import bzrlib.commit as commit
+        oldstrategy = bzrlib.gpg.GPGStrategy
+        branch = Branch.initialize('.')
+        branch.commit("base", allow_pointless=True, rev_id='A')
+        self.failIf(branch.revision_store.has_id('A', 'sig'))
+        try:
+            from bzrlib.testament import Testament
+            # monkey patch gpg signing mechanism
+            bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
+            commit.Commit(config=MustSignConfig(branch)).commit(branch, "base",
+                                                      allow_pointless=True,
+                                                      rev_id='B')
+            self.assertEqual(Testament.from_revision(branch,'B').as_short_text(),
+                             branch.revision_store.get('B', 'sig').read())
+        finally:
+            bzrlib.gpg.GPGStrategy = oldstrategy
+
+    def test_commit_failed_signature(self):
+        import bzrlib.gpg
+        import bzrlib.commit as commit
+        oldstrategy = bzrlib.gpg.GPGStrategy
+        branch = Branch.initialize('.')
+        branch.commit("base", allow_pointless=True, rev_id='A')
+        self.failIf(branch.revision_store.has_id('A', 'sig'))
+        try:
+            from bzrlib.testament import Testament
+            # monkey patch gpg signing mechanism
+            bzrlib.gpg.GPGStrategy = bzrlib.gpg.DisabledGPGStrategy
+            config = MustSignConfig(branch)
+            self.assertRaises(SigningFailed,
+                              commit.Commit(config=config).commit,
+                              branch, "base",
+                              allow_pointless=True,
+                              rev_id='B')
+            branch = Branch.open('.')
+            self.assertEqual(branch.revision_history(), ['A'])
+            self.failIf(branch.revision_store.has_id('B'))
+        finally:
+            bzrlib.gpg.GPGStrategy = oldstrategy

@@ -29,7 +29,9 @@ from bzrlib.testament import Testament
 from bzrlib.trace import mutter
 from bzrlib.osutils import has_symlinks
 
+
 class TestamentTests(TestCaseInTempDir):
+
     def setUp(self):
         super(TestamentTests, self).setUp()
         b = self.b = Branch.initialize('.')
@@ -114,6 +116,14 @@ class TestamentTests(TestCaseInTempDir):
                       revprops=props)
         t = Testament.from_revision(self.b, 'test@user-3')
         self.assertEqualDiff(t.as_text(), REV_PROPS_TESTAMENT)
+
+    def test___init__(self):
+        revision = self.b.get_revision('test@user-2')
+        inventory = self.b.get_inventory('test@user-2')
+        testament_1 = Testament(revision, inventory).as_short_text()
+        testament_2 = Testament.from_revision(self.b, 
+                                              'test@user-2').as_short_text()
+        self.assertEqual(testament_1, testament_2)
                     
 
 REV_1_TESTAMENT = """\
