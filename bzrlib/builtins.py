@@ -70,9 +70,12 @@ class cmd_status(Command):
     If a revision argument is given, the status is calculated against
     that revision, or between two revisions if two are provided.
     """
+    
     # XXX: FIXME: bzr status should accept a -r option to show changes
     # relative to a revision, or between revisions
 
+    # TODO: --no-recurse, --recurse options
+    
     takes_args = ['file*']
     takes_options = ['all', 'show-ids']
     aliases = ['st', 'stat']
