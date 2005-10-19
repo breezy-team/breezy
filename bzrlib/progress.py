@@ -39,6 +39,7 @@ not to clutter log files.
 import sys
 import time
 import os
+from collections import deque
 
 
 def _width():
@@ -166,6 +167,7 @@ class TTYProgressBar(_BaseProgressBar):
         self.width = _width()
         self.start_time = None
         self.last_update = None
+        self.last_updates = deque()
     
 
     def throttle(self):
@@ -179,6 +181,7 @@ class TTYProgressBar(_BaseProgressBar):
             if interval > 0 and interval < self.MIN_PAUSE:
                 return True
 
+        self.last_updates.append(now - self.last_update)
         self.last_update = now
         return False
         
@@ -206,7 +209,8 @@ class TTYProgressBar(_BaseProgressBar):
             return 
         
         if self.show_eta and self.start_time and total_cnt:
-            eta = get_eta(self.start_time, current_cnt, total_cnt)
+            eta = get_eta(self.start_time, current_cnt, total_cnt,
+                    last_updates = self.last_updates)
             eta_str = " " + str_tdelta(eta)
         else:
             eta_str = ""
@@ -280,7 +284,7 @@ def str_tdelta(delt):
                              delt % 60)
 
 
-def get_eta(start_time, current, total, enough_samples=3):
+def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_recent=10):
     if start_time is None:
         return None
 
@@ -301,6 +305,17 @@ def get_eta(start_time, current, total, enough_samples=3):
     total_duration = float(elapsed) * float(total) / float(current)
 
     assert total_duration >= elapsed
+
+    if last_updates and len(last_updates) >= n_recent:
+        while len(last_updates) > n_recent:
+            last_updates.popleft()
+        avg = sum(last_updates) / float(len(last_updates))
+        time_left = avg * (total - current)
+
+        old_time_left = total_duration - elapsed
+
+        # We could return the average, or some other value here
+        return (time_left + old_time_left) / 2
 
     return total_duration - elapsed
 

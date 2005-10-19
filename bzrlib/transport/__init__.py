@@ -356,3 +356,13 @@ def get_transport(base):
 
 # Local transport should always be initialized
 import bzrlib.transport.local
+
+
+def register_builtin_transports():
+    """Register all builtin transport modules.
+    
+    This happens as a sideeffect of importing the modules.
+    """
+    import bzrlib.transport.local, \
+           bzrlib.transport.http, \
+           bzrlib.transport.sftp
