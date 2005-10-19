@@ -533,7 +533,7 @@ class cmd_ancestry(Command):
     hidden = True
     @display_command
     def run(self):
-        b = find_branch('.')
+        b = Branch.open_containing('.')[0]
         for revision_id in b.get_ancestry(b.last_revision()):
             print revision_id
 
