@@ -243,7 +243,3 @@ class ScratchTransport(LocalTransport):
     def __del__(self):
         shutil.rmtree(self.base, ignore_errors=True)
         mutter("%r destroyed" % self)
-
-# If nothing else matches, try the LocalTransport
-register_transport(None, LocalTransport)
-register_transport('file://', LocalTransport)

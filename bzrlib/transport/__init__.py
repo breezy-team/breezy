@@ -354,15 +354,22 @@ def get_transport(base):
     # which has a lookup of None
     return _protocol_handlers[None](base)
 
-# Local transport should always be initialized
-import bzrlib.transport.local
 
+def register_lazy_transport(scheme, module, classname):
+    """Register lazy-loaded transport class.
 
-def register_builtin_transports():
-    """Register all builtin transport modules.
-    
-    This happens as a sideeffect of importing the modules.
+    When opening a URL with the given scheme, load the module and then
+    instantiate the particular class.  
     """
-    import bzrlib.transport.local, \
-           bzrlib.transport.http, \
-           bzrlib.transport.sftp
+    def _loader(base):
+        mod = __import__(module, globals(), locals(), [classname])
+        klass = getattr(mod, classname)
+        return klass(base)
+    register_transport(scheme, _loader)
+    
+# If nothing else matches, try the LocalTransport
+register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
+register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
+register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
+register_lazy_transport('http://', 'bzrlib.transport.http', 'HttpTransport')
+register_lazy_transport('https://', 'bzrlib.transport.http', 'HttpTransport')

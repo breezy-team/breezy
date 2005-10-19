@@ -14,9 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""
-Implementation of Transport over SFTP, using paramiko.
-"""
+"""Implementation of Transport over SFTP, using paramiko."""
 
 import getpass
 import os
@@ -32,7 +30,7 @@ from bzrlib.transport import Transport, register_transport
 try:
     import paramiko
 except ImportError:
-    error('The SFTP plugin requires paramiko.')
+    error('The SFTP transport requires paramiko.')
     raise
 
 
@@ -443,7 +441,3 @@ class SFTPTransport (Transport):
         except IOError:
             pass
         return False
-
-
-register_transport('sftp://', SFTPTransport)
-
