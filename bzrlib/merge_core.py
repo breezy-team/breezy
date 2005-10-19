@@ -9,10 +9,11 @@ from changeset import get_contents
 
 class ApplyMerge3:
     """Contents-change wrapper around merge3.Merge3"""
-    def __init__(self, file_id, base, other):
+    def __init__(self, file_id, base, other, show_base=False):
         self.file_id = file_id
         self.base = base
         self.other = other
+        self.show_base = show_base
 
     def is_creation(self):
         return False
@@ -49,8 +50,13 @@ class ApplyMerge3:
         new_conflicts = False
         output_file = file(new_file, "wb")
         start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
+        if self.show_base is True:
+            base_marker = '|' * 7
+        else:
+            base_marker = None
         for line in m3.merge_lines(name_a = "TREE", name_b = "MERGE-SOURCE", 
-                       start_marker=start_marker):
+                       name_base = "BASE-REVISION",
+                       start_marker=start_marker, base_marker=base_marker):
             if line.startswith(start_marker):
                 new_conflicts = True
                 output_file.write(line.replace(start_marker, '<' * 7))

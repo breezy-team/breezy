@@ -497,7 +497,19 @@ class TestCommands(ExternalBase):
         file('question', 'wb').write("What do you get when you multiply six"
                                    "times nine?")
         self.runbzr('commit -m this')
+        self.runbzr('merge ../other --show-base')
+        conflict_text = file('hello').read()
+        assert '<<<<<<<' in conflict_text
+        assert '>>>>>>>' in conflict_text
+        assert '=======' in conflict_text
+        assert '|||||||' in conflict_text
+        assert 'hi world' in conflict_text
+        self.runbzr('revert')
+        self.runbzr('resolve --all')
         self.runbzr('merge ../other')
+        conflict_text = file('hello').read()
+        assert '|||||||' not in conflict_text
+        assert 'hi world' not in conflict_text
         result = self.runbzr('conflicts', backtick=1)
         self.assertEquals(result, "hello\nquestion\n")
         result = self.runbzr('status', backtick=1)

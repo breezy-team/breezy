@@ -1,8 +1,13 @@
 UNRELEASED CHANGES
 
   IMPROVEMENTS:
+    * merge now takes a --show-base option to include the base text in
+      conflicts.
+      (Aaron Bentley)
+
     * The config files are now read using ConfigObj, so '=' should be used as
       a separator, not ':'.
+      (Aaron Bentley)
 
     * The config directory is now ~/.bazaar, and there is a single file 
       ~/.bazaar/bazaar.conf storing email, editor and other preferences.

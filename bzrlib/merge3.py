@@ -76,16 +76,19 @@ class Merge3(object):
     def merge_lines(self,
                     name_a=None,
                     name_b=None,
+                    name_base=None,
                     start_marker='<<<<<<<',
                     mid_marker='=======',
                     end_marker='>>>>>>>',
-                    show_base=False):
+                    base_marker=None):
         """Return merge in cvs-like form.
         """
         if name_a:
             start_marker = start_marker + ' ' + name_a
         if name_b:
             end_marker = end_marker + ' ' + name_b
+        if name_base and base_marker:
+            base_marker = base_marker + ' ' + name_base
             
         for t in self.merge_regions():
             what = t[0]
@@ -102,6 +105,10 @@ class Merge3(object):
                 yield start_marker + '\n'
                 for i in range(t[3], t[4]):
                     yield self.a[i]
+                if base_marker is not None:
+                    yield base_marker + '\n'
+                    for i in range(t[1], t[2]):
+                        yield self.base[i]
                 yield mid_marker + '\n'
                 for i in range(t[5], t[6]):
                     yield self.b[i]
