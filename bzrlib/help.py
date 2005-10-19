@@ -20,6 +20,7 @@
 # executable files with reasonable names.
 
 # TODO: `help commands --all` should show hidden commands
+import textwrap
 
 global_help = \
 """Bazaar-NG -- a free distributed version-control tool
@@ -134,7 +135,8 @@ def help_on_command_options(cmd, outfile=None):
         l += (30 - len(l)) * ' ' + option.help
         # TODO: split help over multiple lines with correct indenting and 
         # wrapping
-        outfile.write(l + '\n')
+        wrapped = textwrap.fill(l, initial_indent='', subsequent_indent=30*' ')
+        outfile.write(wrapped + '\n')
 
 
 def help_commands(outfile=None):
