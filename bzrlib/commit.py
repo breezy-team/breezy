@@ -56,6 +56,12 @@
 # merges from, then it should still be reported as newly added
 # relative to the basis revision.
 
+# TODO: Do checks that the tree can be committed *before* running the 
+# editor; this should include checks for a pointless commit and for 
+# unknown or missing files.
+
+# TODO: If commit fails, leave the message in a file somewhere.
+
 
 import os
 import re
@@ -75,7 +81,8 @@ from bzrlib.branch import gen_file_id
 import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
-                           ConflictsInTree
+                           ConflictsInTree,
+                           StrictCommitFailed
                            )
 import bzrlib.gpg as gpg
 from bzrlib.revision import Revision
@@ -166,6 +173,7 @@ class Commit(object):
                specific_files=None,
                rev_id=None,
                allow_pointless=True,
+               strict=False,
                verbose=False,
                revprops=None):
         """Commit working copy as a new revision.
@@ -184,6 +192,9 @@ class Commit(object):
         allow_pointless -- If true (default), commit even if nothing
             has changed and no merges are recorded.
 
+        strict -- If true, don't allow a commit if the working tree
+            contains unknown files.
+
         revprops -- Properties for new revision
         """
         mutter('preparing to commit')
@@ -194,6 +205,9 @@ class Commit(object):
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
         self.revprops = revprops
+
+        if strict and branch.unknowns():
+            raise StrictCommitFailed()
 
         if timestamp is None:
             self.timestamp = time.time()

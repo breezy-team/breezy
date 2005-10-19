@@ -13,8 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-"""Implementation of Transport for the local filesystem.
-"""
+
+"""Transport for the local filesystem.
+
+This is a fairly thin wrapper on regular file IO."""
 
 import os
 import errno
@@ -25,7 +27,7 @@ import tempfile
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, register_transport, \
     TransportError, NoSuchFile, FileExists
-
+from bzrlib.osutils import abspath
 
 class LocalTransportError(TransportError):
     pass
@@ -41,7 +43,7 @@ class LocalTransport(Transport):
         # realpath is incompatible with symlinks. When we traverse
         # up we might be able to normpath stuff. RBC 20051003
         super(LocalTransport, self).__init__(
-            os.path.normpath(os.path.abspath(base)))
+            os.path.normpath(abspath(base)))
 
     def should_cache(self):
         return False

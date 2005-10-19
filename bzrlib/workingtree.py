@@ -14,11 +14,33 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# TODO: Don't allow WorkingTrees to be constructed for remote branches.
+"""WorkingTree object and friends.
+
+A WorkingTree represents the editable working copy of a branch.
+Operations which represent the WorkingTree are also done here, 
+such as renaming or adding files.  The WorkingTree has an inventory 
+which is updated by these operations.  A commit produces a 
+new revision based on the workingtree and its inventory.
+
+At the moment every WorkingTree has its own branch.  Remote
+WorkingTrees aren't supported.
+
+To get a WorkingTree, call Branch.working_tree():
+"""
+
+
+# TODO: Don't allow WorkingTrees to be constructed for remote branches if 
+# they don't work.
 
 # FIXME: I don't know if writing out the cache from the destructor is really a
-# good idea, because destructors are considered poor taste in Python, and
-# it's not predictable when it will be written out.
+# good idea, because destructors are considered poor taste in Python, and it's
+# not predictable when it will be written out.
+
+# TODO: Give the workingtree sole responsibility for the working inventory;
+# remove the variable and references to it from the branch.  This may require
+# updating the commit code so as to update the inventory within the working
+# copy, and making sure there's only one WorkingTree for any directory on disk.
+# At the momenthey may alias the inventory and have old copies of it in memory.
 
 import os
 import stat
@@ -27,7 +49,7 @@ import fnmatch
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock, quotefn
 import bzrlib.tree
 from bzrlib.osutils import appendpath, file_kind, isdir, splitpath, relpath
-from bzrlib.errors import BzrCheckError, DivergedBranches
+from bzrlib.errors import BzrCheckError, DivergedBranches, NotVersionedError
 from bzrlib.trace import mutter
 
 class TreeEntry(object):
@@ -105,9 +127,12 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         from bzrlib.hashcache import HashCache
         from bzrlib.trace import note, mutter
-
+        assert isinstance(basedir, basestring), \
+            "base directory %r is not a string" % basedir
         if branch is None:
             branch = Branch.open(basedir)
+        assert isinstance(branch, Branch), \
+            "branch %r is not a Branch" % branch
         self._inventory = branch.inventory
         self.path2id = self._inventory.path2id
         self.branch = branch
@@ -454,7 +479,9 @@ class WorkingTree(bzrlib.tree.Tree):
         for f in files:
             fid = inv.path2id(f)
             if not fid:
-                raise BzrError("cannot remove unversioned file %s" % quotefn(f))
+                # TODO: Perhaps make this just a warning, and continue?
+                # This tends to happen when 
+                raise NotVersionedError(path=f)
             mutter("remove inventory entry %s {%s}" % (quotefn(f), fid))
             if verbose:
                 # having remove it, it must be either ignored or unknown
