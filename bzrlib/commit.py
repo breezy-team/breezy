@@ -209,9 +209,6 @@ class Commit(object):
         if strict and branch.unknowns():
             raise StrictCommitFailed()
 
-        if strict and branch.unknowns():
-            raise StrictCommitFailed()
-
         if timestamp is None:
             self.timestamp = time.time()
         else:
