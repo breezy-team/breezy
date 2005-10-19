@@ -107,8 +107,7 @@ def _get_truncated_history(branch_from, revision):
     try:
         idx = history.index(revision)
     except ValueError:
-        raise InvalidRevisionId('revision {%s} is not on the mainline of %s' 
-                                % (revision, branch_from))
+        raise InvalidRevisionId
     return history[:idx+1]
 
 def _copy_text_weaves(branch_from, branch_to):
