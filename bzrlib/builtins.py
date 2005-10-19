@@ -420,7 +420,7 @@ class cmd_branch(Command):
                 copy_branch(br_from, to_location, revision_id, basis_branch)
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
-                msg = "The branch %s has no revision %d." % (from_location, revision[0])
+                msg = "The branch %s has no revision %s." % (from_location, revision[0])
                 raise BzrCommandError(msg)
             except bzrlib.errors.UnlistableBranch:
                 msg = "The branch %s cannot be used as a --basis"
