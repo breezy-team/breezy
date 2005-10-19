@@ -20,7 +20,7 @@ import os
 
 import bzrlib
 from bzrlib import BZRDIR
-from bzrlib.commands import Command
+from bzrlib.commands import Command, display_command
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
 from bzrlib.errors import DivergedBranches
@@ -77,6 +77,7 @@ class cmd_status(Command):
     takes_options = ['all', 'show-ids']
     aliases = ['st', 'stat']
     
+    @display_command
     def run(self, all=False, show_ids=False, file_list=None, revision=None):
         if file_list:
             b, relpath = Branch.open_containing(file_list[0])
@@ -107,6 +108,7 @@ class cmd_cat_revision(Command):
     takes_args = ['revision_id?']
     takes_options = ['revision']
     
+    @display_command
     def run(self, revision_id=None, revision=None):
 
         if revision_id is not None and revision is not None:
@@ -128,6 +130,7 @@ class cmd_revno(Command):
     """Show current revision number.
 
     This is equal to the number of revisions on this branch."""
+    @display_command
     def run(self):
         print Branch.open_containing('.')[0].revno()
 
@@ -138,6 +141,7 @@ class cmd_revision_info(Command):
     hidden = True
     takes_args = ['revision_info*']
     takes_options = ['revision']
+    @display_command
     def run(self, revision=None, revision_info_list=[]):
 
         revs = []
@@ -217,6 +221,7 @@ class cmd_relpath(Command):
     takes_args = ['filename']
     hidden = True
     
+    @display_command
     def run(self, filename):
         branch, relpath = Branch.open_containing(filename)
         print relpath
@@ -226,6 +231,7 @@ class cmd_inventory(Command):
     """Show inventory of the current working copy or a revision."""
     takes_options = ['revision', 'show-ids']
     
+    @display_command
     def run(self, revision=None, show_ids=False):
         b = Branch.open_containing('.')[0]
         if revision is None:
@@ -437,6 +443,7 @@ class cmd_renames(Command):
     # TODO: Only show renames under dir, rather than in the whole branch.
     takes_args = ['dir?']
 
+    @display_command
     def run(self, dir='.'):
         b = Branch.open_containing(dir)[0]
         old_inv = b.basis_tree().inventory
@@ -452,6 +459,7 @@ class cmd_info(Command):
     """Show statistical information about a branch."""
     takes_args = ['branch?']
     
+    @display_command
     def run(self, branch=None):
         import info
         b = Branch.open_containing(branch)[0]
@@ -483,6 +491,7 @@ class cmd_file_id(Command):
     """
     hidden = True
     takes_args = ['filename']
+    @display_command
     def run(self, filename):
         b, relpath = Branch.open_containing(filename)
         i = b.inventory.path2id(relpath)
@@ -499,6 +508,7 @@ class cmd_file_path(Command):
     starting at the branch root."""
     hidden = True
     takes_args = ['filename']
+    @display_command
     def run(self, filename):
         b, relpath = Branch.open_containing(filename)
         inv = b.inventory
@@ -512,6 +522,7 @@ class cmd_file_path(Command):
 class cmd_revision_history(Command):
     """Display list of revision ids on this branch."""
     hidden = True
+    @display_command
     def run(self):
         for patchid in Branch.open_containing('.')[0].revision_history():
             print patchid
@@ -520,6 +531,7 @@ class cmd_revision_history(Command):
 class cmd_ancestry(Command):
     """List all revisions merged into this branch."""
     hidden = True
+    @display_command
     def run(self):
         b = find_branch('.')
         for revision_id in b.get_ancestry(b.last_revision()):
@@ -528,6 +540,7 @@ class cmd_ancestry(Command):
 
 class cmd_directories(Command):
     """Display list of versioned directories in this branch."""
+    @display_command
     def run(self):
         for name, ie in Branch.open_containing('.')[0].read_working_inventory().directories():
             if name == '':
@@ -582,6 +595,7 @@ class cmd_diff(Command):
     takes_options = ['revision', 'diff-options']
     aliases = ['di', 'dif']
 
+    @display_command
     def run(self, revision=None, file_list=None, diff_options=None):
         from bzrlib.diff import show_diff
 
@@ -621,6 +635,7 @@ class cmd_deleted(Command):
     # directories with readdir, rather than stating each one.  Same
     # level of effort but possibly much less IO.  (Or possibly not,
     # if the directories are very large...)
+    @display_command
     def run(self, show_ids=False):
         b = Branch.open_containing('.')[0]
         old = b.basis_tree()
@@ -636,6 +651,7 @@ class cmd_deleted(Command):
 class cmd_modified(Command):
     """List files modified in working tree."""
     hidden = True
+    @display_command
     def run(self):
         from bzrlib.delta import compare_trees
 
@@ -650,6 +666,7 @@ class cmd_modified(Command):
 class cmd_added(Command):
     """List files added in working tree."""
     hidden = True
+    @display_command
     def run(self):
         b = Branch.open_containing('.')[0]
         wt = b.working_tree()
@@ -671,6 +688,7 @@ class cmd_root(Command):
     The root is the nearest enclosing directory with a .bzr control
     directory."""
     takes_args = ['filename?']
+    @display_command
     def run(self, filename=None):
         """Print the branch root."""
         b = Branch.open_containing(filename)[0]
@@ -699,7 +717,7 @@ class cmd_log(Command):
                             type=str),
                      Option('short', help='use moderately short format'),
                      ]
-    
+    @display_command
     def run(self, filename=None, timezone='original',
             verbose=False,
             show_ids=False,
@@ -774,6 +792,7 @@ class cmd_touching_revisions(Command):
     A more user-friendly interface is "bzr log FILE"."""
     hidden = True
     takes_args = ["filename"]
+    @display_command
     def run(self, filename):
         b, relpath = Branch.open_containing(filename)[0]
         inv = b.read_working_inventory()
@@ -787,6 +806,7 @@ class cmd_ls(Command):
     """
     # TODO: Take a revision or remote path and list that tree instead.
     hidden = True
+    @display_command
     def run(self, revision=None, verbose=False):
         b, relpath = Branch.open_containing('.')[0]
         if revision == None:
@@ -804,6 +824,7 @@ class cmd_ls(Command):
 
 class cmd_unknowns(Command):
     """List unknown files."""
+    @display_command
     def run(self):
         from bzrlib.osutils import quotefn
         for f in Branch.open_containing('.')[0].unknowns():
@@ -875,6 +896,7 @@ class cmd_ignored(Command):
     """List ignored files and the patterns that matched them.
 
     See also: bzr ignore"""
+    @display_command
     def run(self):
         tree = Branch.open_containing('.')[0].working_tree()
         for path, file_class, kind, file_id, entry in tree.list_files():
@@ -894,6 +916,7 @@ class cmd_lookup_revision(Command):
     hidden = True
     takes_args = ['revno']
     
+    @display_command
     def run(self, revno):
         try:
             revno = int(revno)
@@ -953,6 +976,7 @@ class cmd_cat(Command):
     takes_options = ['revision']
     takes_args = ['filename']
 
+    @display_command
     def run(self, filename, revision=None):
         if revision is None:
             raise BzrCommandError("bzr cat requires a revision number")
@@ -965,6 +989,7 @@ class cmd_cat(Command):
 class cmd_local_time_offset(Command):
     """Show the offset in seconds from GMT to local time."""
     hidden = True    
+    @display_command
     def run(self):
         print bzrlib.osutils.local_time_offset()
 
@@ -1098,6 +1123,7 @@ class cmd_whoami(Command):
     """Show bzr user id."""
     takes_options = ['email']
     
+    @display_command
     def run(self, email=False):
         try:
             b = bzrlib.branch.Branch.open_containing('.')[0]
@@ -1171,12 +1197,14 @@ def show_version():
 
 class cmd_version(Command):
     """Show version of bzr."""
+    @display_command
     def run(self):
         show_version()
 
 class cmd_rocks(Command):
     """Statement of optimism."""
     hidden = True
+    @display_command
     def run(self):
         print "it sure does!"
 
@@ -1189,6 +1217,7 @@ class cmd_find_merge_base(Command):
     takes_args = ['branch', 'other']
     hidden = True
     
+    @display_command
     def run(self, branch, other):
         from bzrlib.revision import common_ancestor, MultipleRevisionSources
         
@@ -1342,6 +1371,7 @@ class cmd_help(Command):
     takes_args = ['topic?']
     aliases = ['?']
     
+    @display_command
     def run(self, topic=None, long=False):
         import help
         if topic is None and long:
@@ -1357,6 +1387,7 @@ class cmd_shell_complete(Command):
     aliases = ['s-c']
     hidden = True
     
+    @display_command
     def run(self, context=None):
         import shellcomplete
         shellcomplete.shellcomplete(context)
@@ -1389,6 +1420,7 @@ class cmd_missing(Command):
     # unknown options are parsed as booleans
     takes_options = ['verbose', 'quiet']
 
+    @display_command
     def run(self, remote=None, verbose=False, quiet=False):
         from bzrlib.errors import BzrCommandError
         from bzrlib.missing import show_missing
@@ -1416,6 +1448,7 @@ class cmd_missing(Command):
 class cmd_plugins(Command):
     """List plugins"""
     hidden = True
+    @display_command
     def run(self):
         import bzrlib.plugin
         from inspect import getdoc
@@ -1436,6 +1469,7 @@ class cmd_testament(Command):
     """Show testament (signing-form) of a revision."""
     takes_options = ['revision', 'long']
     takes_args = ['branch?']
+    @display_command
     def run(self, branch='.', revision=None, long=False):
         from bzrlib.testament import Testament
         b = Branch.open_containing(branch)[0]
@@ -1473,6 +1507,7 @@ class cmd_annotate(Command):
                      Option('long', help='show date in annotations'),
                      ]
 
+    @display_command
     def run(self, filename, all=False, long=False):
         from bzrlib.annotate import annotate_file
         b, relpath = Branch.open_containing(filename)

@@ -31,6 +31,7 @@ import sys
 import os
 from warnings import warn
 from inspect import getdoc
+import errno
 
 import bzrlib
 import bzrlib.trace
@@ -499,6 +500,14 @@ def run_bzr(argv):
         ret = cmd_obj.run_argv(argv)
     return ret or 0
 
+def display_command(func):
+    def ignore_pipe(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except IOError, e:
+            if e.errno != errno.EPIPE:
+                raise
+    return ignore_pipe
 
 def main(argv):
     import bzrlib.ui
