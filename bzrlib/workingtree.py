@@ -141,6 +141,10 @@ class WorkingTree(bzrlib.tree.Tree):
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
+        # two possible ways offer themselves : in self._unlock, write the cache
+        # if needed, or, when the cache sees a change, append it to the hash
+        # cache file, and have the parser take the most recent entry for a
+        # given path only.
         hc = self._hashcache = HashCache(basedir)
         hc.read()
         hc.scan()
@@ -148,12 +152,6 @@ class WorkingTree(bzrlib.tree.Tree):
         if hc.needs_write:
             mutter("write hc")
             hc.write()
-            
-            
-    def __del__(self):
-        if self._hashcache.needs_write:
-            self._hashcache.write()
-
 
     def __iter__(self):
         """Iterate through file_ids for this tree.

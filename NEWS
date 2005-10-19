@@ -117,6 +117,10 @@ UNRELEASED CHANGES
       missing on EmptyTree, leading to a bug with merge on EmptyTrees.
       (Robert Collins)
 
+    * WorkingTree.__del__ has been removed, it was non deterministic and not 
+      doing what it was intended to. See WorkingTree.__init__ for a comment
+      about future directions. (Robert Collins/Martin Pool)
+
   BUG FIXES:
 
     * Better handling of branches in directories with non-ascii names. 
