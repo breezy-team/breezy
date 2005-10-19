@@ -206,8 +206,10 @@ class Commit(object):
         self.allow_pointless = allow_pointless
         self.revprops = revprops
 
-        if strict and branch.unknowns():
-            raise StrictCommitFailed()
+        if strict:
+            # raise an exception as soon as we find a single unknown.
+            for unknown in branch.unknowns():
+                raise StrictCommitFailed()
 
         if timestamp is None:
             self.timestamp = time.time()

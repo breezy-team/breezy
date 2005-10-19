@@ -269,6 +269,15 @@ class TestCommit(TestCaseInTempDir):
         self.assertRaises(StrictCommitFailed, b.commit,
             message='add hello but not goodbye', strict=True)
 
+    def test_strict_commit_without_unknowns(self):
+        """Try and commit with no unknown files and strict = True,
+        should work."""
+        from bzrlib.errors import StrictCommitFailed
+        b = Branch.initialize('.')
+        file('hello', 'w').write('hello world')
+        b.add('hello')
+        b.commit(message='add hello', strict=True)
+
     def test_nonstrict_commit(self):
         """Try and commit with unknown files and strict = False, should work."""
         b = Branch.initialize('.')
@@ -276,6 +285,14 @@ class TestCommit(TestCaseInTempDir):
         b.add('hello')
         file('goodbye', 'w').write('goodbye cruel world!')
         b.commit(message='add hello but not goodbye', strict=False)
+
+    def test_nonstrict_commit_without_unknowns(self):
+        """Try and commit with no unknown files and strict = False,
+        should work."""
+        b = Branch.initialize('.')
+        file('hello', 'w').write('hello world')
+        b.add('hello')
+        b.commit(message='add hello', strict=False)
 
     def test_signed_commit(self):
         import bzrlib.gpg
