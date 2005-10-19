@@ -17,9 +17,12 @@
 
 import os
 from cStringIO import StringIO
-from bzrlib.selftest import TestCaseInTempDir
-from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
+
 from bzrlib.errors import NoSuchFile, FileExists, TransportNotPossible
+from bzrlib.selftest import TestCase, TestCaseInTempDir
+from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.transport import memory
+
 
 def _append(fn, txt):
     """Append the given text (file-like object) to the supplied filename."""
@@ -431,68 +434,6 @@ class TestTransportMixIn(object):
                 'some text for the\nthird file created\n'
                 'some garbage\nto put in three\n')
 
-    def test_get_partial(self):
-        t = self.get_transport()
-
-        contents = [
-            ('f1', 
-                'here is some text\nand a bit more\n'
-                'adding more\ntext to two\n'),
-            ('f2',
-                'this is a string\nand some more stuff\n'
-                'appending to\none\n'),
-            ('f3',
-                'some text for the\nthird file created\n'
-                'some garbage\nto put in three\n')
-        ]
-        if self.readonly:
-            for f, val in contents:
-                open(f, 'wb').write(val)
-        else:
-            t.put_multi(contents)
-
-        self.assertRaises(NoSuchFile,
-                t.get_partial, 'a-missing-file', 20)
-        self.assertRaises(NoSuchFile,
-                t.get_partial, 'another-missing-file', 20, 30)
-        f = t.get_partial('f1', 33)
-        self.assertEqual(f.read(), 
-                'adding more\ntext to two\n')
-        f = t.get_partial('f1', 33, 10)
-        self.assertEqual(f.read(10), 
-                'adding mor')
-
-        del f
-
-        offsets = [('f2', 37), ('f3', 20, 10), ('f1', 10, 20)]
-        values = ['appending to\none\n',
-                  'ird file c',
-                  'me text\nand a bit mo'
-                 ]
-        contents_f = t.get_partial_multi(offsets)
-        count = 0
-        for f, val in zip(contents_f, values):
-            count += 1
-            self.assertEqual(val, f.read(len(val)))
-        # Make sure we saw all values, and no extra
-        self.assertEqual(len(values), count)
-        self.assertEqual(list(contents_f), [])
-
-        # Do the same thing with an iterator
-        offsets = iter([('f2', 34), ('f3', 18, 10), ('f1', 15, 15)])
-        values = ['ff\nappending to\none\n',
-                  'third file',
-                  'xt\nand a bit mo'
-                 ]
-        contents_f = t.get_partial_multi(offsets)
-        count = 0
-        for f, val in zip(contents_f, values):
-            count += 1
-            self.assertEqual(val, f.read(len(val)))
-        self.assertEqual(len(values), count)
-        self.assertEqual(list(contents_f), [])
-
-
     def test_delete(self):
         # TODO: Test Transport.delete
         pass
@@ -501,15 +442,110 @@ class TestTransportMixIn(object):
         # TODO: Test Transport.move
         pass
 
+
 class LocalTransportTest(TestCaseInTempDir, TestTransportMixIn):
     def get_transport(self):
         from bzrlib.transport.local import LocalTransport
         return LocalTransport('.')
 
+
 class HttpTransportTest(TestCaseWithWebserver, TestTransportMixIn):
+
     readonly = True
+
     def get_transport(self):
         from bzrlib.transport.http import HttpTransport
         url = self.get_remote_url('.')
         return HttpTransport(url)
 
+
+class TestMemoryTransport(TestCase):
+
+    def test_get_transport(self):
+        memory.MemoryTransport()
+
+    def test_clone(self):
+        transport = memory.MemoryTransport()
+        self.failUnless(transport.clone() is transport)
+
+    def test_abspath(self):
+        transport = memory.MemoryTransport()
+        self.assertEqual("in-memory:relpath", transport.abspath('relpath'))
+
+    def test_relpath(self):
+        transport = memory.MemoryTransport()
+
+    def test_append_and_get(self):
+        transport = memory.MemoryTransport()
+        transport.append('path', StringIO('content'))
+        self.assertEqual(transport.get('path').read(), 'content')
+        transport.append('path', StringIO('content'))
+        self.assertEqual(transport.get('path').read(), 'contentcontent')
+
+    def test_put_and_get(self):
+        transport = memory.MemoryTransport()
+        transport.put('path', StringIO('content'))
+        self.assertEqual(transport.get('path').read(), 'content')
+        transport.put('path', StringIO('content'))
+        self.assertEqual(transport.get('path').read(), 'content')
+
+    def test_append_without_dir_fails(self):
+        transport = memory.MemoryTransport()
+        self.assertRaises(NoSuchFile,
+                          transport.append, 'dir/path', StringIO('content'))
+
+    def test_put_without_dir_fails(self):
+        transport = memory.MemoryTransport()
+        self.assertRaises(NoSuchFile,
+                          transport.put, 'dir/path', StringIO('content'))
+
+    def test_get_missing(self):
+        transport = memory.MemoryTransport()
+        self.assertRaises(NoSuchFile, transport.get, 'foo')
+
+    def test_has_missing(self):
+        transport = memory.MemoryTransport()
+        self.assertEquals(False, transport.has('foo'))
+
+    def test_has_present(self):
+        transport = memory.MemoryTransport()
+        transport.append('foo', StringIO('content'))
+        self.assertEquals(True, transport.has('foo'))
+
+    def test_mkdir(self):
+        transport = memory.MemoryTransport()
+        transport.mkdir('dir')
+        transport.append('dir/path', StringIO('content'))
+        self.assertEqual(transport.get('dir/path').read(), 'content')
+
+    def test_mkdir_missing_parent(self):
+        transport = memory.MemoryTransport()
+        self.assertRaises(NoSuchFile,
+                          transport.mkdir, 'dir/dir')
+
+    def test_mkdir_twice(self):
+        transport = memory.MemoryTransport()
+        transport.mkdir('dir')
+        self.assertRaises(FileExists, transport.mkdir, 'dir')
+
+    def test_parameters(self):
+        transport = memory.MemoryTransport()
+        self.assertEqual(True, transport.listable())
+        self.assertEqual(False, transport.should_cache())
+
+    def test_iter_files_recursive(self):
+        transport = memory.MemoryTransport()
+        transport.mkdir('dir')
+        transport.put('dir/foo', StringIO('content'))
+        transport.put('dir/bar', StringIO('content'))
+        transport.put('bar', StringIO('content'))
+        paths = set(transport.iter_files_recursive())
+        self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
+
+    def test_stat(self):
+        transport = memory.MemoryTransport()
+        transport.put('foo', StringIO('content'))
+        transport.put('bar', StringIO('phowar'))
+        self.assertEqual(7, transport.stat('foo').st_size)
+        self.assertEqual(6, transport.stat('bar').st_size)
+        

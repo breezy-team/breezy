@@ -66,7 +66,7 @@ def smart_add(file_list, recurse=True, reporter=add_reporter_null):
     Returns the number of files added.
     """
     file_list = _prepare_file_list(file_list)
-    b = Branch.open_containing(file_list[0])
+    b = Branch.open_containing(file_list[0])[0]
     return smart_add_branch(b, file_list, recurse, reporter)
 
         

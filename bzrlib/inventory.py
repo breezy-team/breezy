@@ -14,6 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# FIXME: This refactoring of the workingtree code doesn't seem to keep 
+# the WorkingTree's copy of the inventory in sync with the branch.  The
+# branch modifies its working inventory when it does a commit to make
+# missing files permanently removed.
 
 # TODO: Maybe also keep the full path of the entry, and the children?
 # But those depend on its position within a particular inventory, and
@@ -31,12 +35,11 @@ import tarfile
 import types
 
 import bzrlib
-from bzrlib.errors import BzrError, BzrCheckError
-
 from bzrlib.osutils import (pumpfile, quotefn, splitpath, joinpath,
                             appendpath, sha_strings)
 from bzrlib.trace import mutter
-from bzrlib.errors import NotVersionedError
+from bzrlib.errors import (NotVersionedError, InvalidEntryName,
+                           BzrError, BzrCheckError)
 
 
 class InventoryEntry(object):
@@ -229,12 +232,11 @@ class InventoryEntry(object):
         '123'
         >>> e = InventoryFile('123', 'src/hello.c', ROOT_ID)
         Traceback (most recent call last):
-        BzrCheckError: InventoryEntry name 'src/hello.c' is invalid
+        InvalidEntryName: Invalid entry name: src/hello.c
         """
         assert isinstance(name, basestring), name
         if '/' in name or '\\' in name:
-            raise BzrCheckError('InventoryEntry name %r is invalid' % name)
-        
+            raise InvalidEntryName(name=name)
         self.executable = False
         self.revision = None
         self.text_sha1 = None
@@ -885,8 +887,7 @@ class Inventory(object):
         parent_path = parts[:-1]
         parent_id = self.path2id(parent_path)
         if parent_id == None:
-            raise NotVersionedError(parent_path)
-
+            raise NotVersionedError(path=parent_path)
         if kind == 'directory':
             ie = InventoryDirectory(file_id, parts[-1], parent_id)
         elif kind == 'file':

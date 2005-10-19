@@ -79,3 +79,17 @@ class TestWorkingTree(TestCaseInTempDir):
         tree = WorkingTree(branch.base)
         self.assertEqual('child',
                          tree.relpath(os.path.join(os.getcwd(), 'child')))
+
+    def test_lock_locks_branch(self):
+        branch = Branch.initialize('.')
+        tree = WorkingTree(branch.base)
+        tree.lock_read()
+        self.assertEqual(1, tree.branch._lock_count)
+        self.assertEqual('r', tree.branch._lock_mode)
+        tree.unlock()
+        self.assertEqual(None, tree.branch._lock_count)
+        tree.lock_write()
+        self.assertEqual(1, tree.branch._lock_count)
+        self.assertEqual('w', tree.branch._lock_mode)
+        tree.unlock()
+        self.assertEqual(None, tree.branch._lock_count)

@@ -56,6 +56,12 @@
 # merges from, then it should still be reported as newly added
 # relative to the basis revision.
 
+# TODO: Do checks that the tree can be committed *before* running the 
+# editor; this should include checks for a pointless commit and for 
+# unknown or missing files.
+
+# TODO: If commit fails, leave the message in a file somewhere.
+
 
 import os
 import re
@@ -78,7 +84,9 @@ from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
+import bzrlib.gpg as gpg
 from bzrlib.revision import Revision
+from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID
@@ -146,12 +154,16 @@ class Commit(object):
             working inventory.
     """
     def __init__(self,
-                 reporter=None):
+                 reporter=None,
+                 config=None):
         if reporter is not None:
             self.reporter = reporter
         else:
             self.reporter = NullCommitReporter()
-
+        if config is not None:
+            self.config = config
+        else:
+            self.config = None
         
     def commit(self,
                branch, message,
@@ -197,19 +209,24 @@ class Commit(object):
         if strict and branch.unknowns():
             raise StrictCommitFailed()
 
+        if strict and branch.unknowns():
+            raise StrictCommitFailed()
+
         if timestamp is None:
             self.timestamp = time.time()
         else:
             self.timestamp = long(timestamp)
             
-        config = bzrlib.config.BranchConfig(self.branch)
+        if self.config is None:
+            self.config = bzrlib.config.BranchConfig(self.branch)
+
         if rev_id is None:
-            self.rev_id = _gen_revision_id(config, self.timestamp)
+            self.rev_id = _gen_revision_id(self.config, self.timestamp)
         else:
             self.rev_id = rev_id
 
         if committer is None:
-            self.committer = config.username()
+            self.committer = self.config.username()
         else:
             assert isinstance(committer, basestring), type(committer)
             self.committer = committer
@@ -322,6 +339,10 @@ class Commit(object):
         rev_tmp = StringIO()
         serializer_v5.write_revision(self.rev, rev_tmp)
         rev_tmp.seek(0)
+        if self.config.signature_needed():
+            plaintext = Testament(self.rev, self.new_inv).as_short_text()
+            self.branch.store_revision_signature(gpg.GPGStrategy(self.config),
+                                                 plaintext, self.rev_id)
         self.branch.revision_store.add(rev_tmp, self.rev_id)
         mutter('new revision_id is {%s}', self.rev_id)
 

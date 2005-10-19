@@ -2,6 +2,10 @@ UNRELEASED CHANGES
 
   IMPROVEMENTS:
 
+    * New 'bzr commit --strict' option refuses to commit if there are 
+      any unknown files in the tree.  To commit, make sure all files are 
+      either ignored, added, or deleted.  (Michael Ellerman)
+
     * The config directory is now ~/.bazaar, and there is a single file 
       ~/.bazaar/bazaar.conf storing email, editor and other preferences.
       (Robert Collins)
@@ -16,26 +20,38 @@ UNRELEASED CHANGES
       Goffredo Baroncelli.
     
     * 'bzr check' now accepts -v for verbose reporting, and checks for
-      ghosts in the branch.
+      ghosts in the branch. (Robert Collins)
+
+    * New command 're-sign' which will regenerate the gpg signature for 
+      a revision. (Robert Collins)
+
+    * If you set check_signatures=require for a path in 
+      ~/.bazaar/branches.conf then bzr will invoke your
+      gpg_signing_command (defaults to gpg) and record a digital signature
+      of your commit. (Robert Collins)
 
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 
       test specifiers on the command line can be simple strings, or 
-      regexps, or both.
+      regexps, or both. (Robert Collins)
 
     * Passing -v to selftest will now show the time each test took to 
       complete, which will aid in analysing performance regressions and
-      related questions.
+      related questions. (Robert Collins)
 
     * 'bzr selftest' runs all tests, even if one feels, unless '--one'
-      is given.
+      is given. (Martin Pool)
 
   INTERNALS:
 
-    * New 'manifest' command and concept for making gpg-signatures 
+    * New 'testament' command and concept for making gpg-signatures 
       of revisions that are not tied to a particular internal
-      representation.
+      representation.  (Martin Pool).
+
+    * Per-revision properties ('revprops') as key-value associated 
+      strings on each revision created when the revision is committed.
+      Intended mainly for the use of external tools.  (Martin Pool).
 
     * Config options have moved from bzrlib.osutils to bzrlib.config.
       (Robert Collins)
@@ -60,6 +76,26 @@ UNRELEASED CHANGES
       no longer takes an inventory, rather it takes an option branch
       parameter, and if None is given will open the branch at basedir 
       implicitly. (Robert Collins)
+
+    * Cleaner exception structure and error reporting.  Suggested by 
+      Scott James Remnant.  (Martin Pool)
+
+    * Branch.remove has been moved to WorkingTree, which has also gained
+      lock_read, lock_write and unlock methods for convenience. (Robert
+      Collins)
+
+    * Two decorators, needs_read_lock and needs_write_lock have been added
+      to the branch module. Use these to cause a function to run in a
+      read or write lock respectively. (Robert Collins)
+
+    * Branch.open_containing now returns a tuple (Branch, relative-path),
+      which allows direct access to the common case of 'get me this file
+      from its branch'. (Robert Collins)
+
+  BUG FIXES:
+
+    * Better handling of branches in directories with non-ascii names. 
+      (Joel Rosdahl, Panagiotis Papadakos)
 
 bzr 0.1.1 2005-10-12
 

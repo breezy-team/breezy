@@ -28,9 +28,6 @@ from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 
-# velocitynet.com.au transparently proxies connections and thereby
-# breaks keep-alive -- sucks!
-
 
 def get_url(url):
     import urllib2
@@ -78,37 +75,37 @@ class HttpTransport(Transport):
         This can be supplied with a string or a list
         """
         if isinstance(relpath, basestring):
-            relpath = [relpath]
+            relpath_parts = relpath.split('/')
+        else:
+            # TODO: Don't call this with an array - no magic interfaces
+            relpath_parts = relpath[:]
+        if len(relpath_parts) > 1:
+            if relpath_parts[0] == '':
+                raise ValueError("path %r within branch %r seems to be absolute"
+                                 % (relpath, self._path))
+            if relpath_parts[-1] == '':
+                raise ValueError("path %r within branch %r seems to be a directory"
+                                 % (relpath, self._path))
         basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
-
-        for p in relpath:
+        for p in relpath_parts:
             if p == '..':
-                if len(basepath) < 0:
+                if len(basepath) == 0:
                     # In most filesystems, a request for the parent
                     # of root, just returns root.
                     continue
-                if len(basepath) > 0:
-                    basepath.pop()
-            elif p == '.':
+                basepath.pop()
+            elif p == '.' or p == '':
                 continue # No-op
             else:
                 basepath.append(p)
-
         # Possibly, we could use urlparse.urljoin() here, but
         # I'm concerned about when it chooses to strip the last
         # portion of the path, and when it doesn't.
         path = '/'.join(basepath)
         return urlparse.urlunparse((self._proto,
                 self._host, path, '', '', ''))
-
-    def relpath(self, abspath):
-        if not abspath.startswith(self.base):
-            raise NonRelativePath('path %r is not under base URL %r'
-                           % (abspath, self.base))
-        pl = len(self.base)
-        return abspath[pl:].lstrip('/')
 
     def has(self, relpath):
         """Does the target location exist?
@@ -148,28 +145,6 @@ class HttpTransport(Transport):
             raise NoSuchFile(msg = "Error retrieving %s: %s" 
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
-
-    def get_partial(self, relpath, start, length=None):
-        """Get just part of a file.
-
-        :param relpath: Path to the file, relative to base
-        :param start: The starting position to read from
-        :param length: The length to read. A length of None indicates
-                       read to the end of the file.
-        :return: A file-like object containing at least the specified bytes.
-                 Some implementations may return objects which can be read
-                 past this length, but this is not guaranteed.
-        """
-        # TODO: You can make specialized http requests for just
-        # a portion of the file. Figure out how to do that.
-        # For now, urllib2 returns files that cannot seek() so
-        # we just read bytes off the beginning, until we
-        # get to the point that we care about.
-        f = self.get(relpath)
-        # TODO: read in smaller chunks, in case things are
-        # buffered internally.
-        f.read(start)
-        return f
 
     def put(self, relpath, f):
         """Copy the file-like or string object into the location.

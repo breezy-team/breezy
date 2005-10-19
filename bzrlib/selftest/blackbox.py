@@ -509,6 +509,22 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m conflicts')
         self.assertEquals(result, "")
 
+    def test_resign(self):
+        """Test re signing of data."""
+        import bzrlib.gpg
+        oldstrategy = bzrlib.gpg.GPGStrategy
+        branch = Branch.initialize('.')
+        branch.commit("base", allow_pointless=True, rev_id='A')
+        try:
+            # monkey patch gpg signing mechanism
+            from bzrlib.testament import Testament
+            bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
+            self.runbzr('re-sign -r revid:A')
+            self.assertEqual(Testament.from_revision(branch,'A').as_short_text(),
+                             branch.revision_store.get('A', 'sig').read())
+        finally:
+            bzrlib.gpg.GPGStrategy = oldstrategy
+
 def listdir_sorted(dir):
     L = os.listdir(dir)
     L.sort()
@@ -804,5 +820,16 @@ class HttpTests(TestCaseWithWebserver):
         self.run_bzr('branch', url, 'to')
         branch = Branch.open('to')
         self.assertEqual(1, len(branch.revision_history()))
+
+    def test_log(self):
+        self.build_tree(['branch/', 'branch/file'])
+        branch = Branch.initialize('branch')
+        branch.add(['file'])
+        branch.commit('add file', rev_id='A')
+        url = self.get_remote_url('branch/file')
+        output = self.capture('log %s' % url)
+        self.assertEqual(7, len(output.split('\n')))
+        
+
 
 

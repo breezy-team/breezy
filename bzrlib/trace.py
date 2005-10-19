@@ -33,6 +33,10 @@ only a summary of exceptions, not the traceback.
 # TODO: When running the test suites, we should add an additional
 # logger that sends messages into the test log file.
 
+# FIXME: Unfortunately it turns out that python's logging module
+# is quite expensive, even when the message is not printed by any handlers.
+# We should perhaps change back to just simply doing it here.
+
 
 import sys
 import os
@@ -152,7 +156,7 @@ def log_startup(argv):
           sys.platform)
 
     debug('  arguments: %r', argv)
-    debug('  working dir: %s', os.getcwdu())
+    debug('  working dir: %r', os.getcwdu())
 
 
 def log_exception(msg=None):
@@ -161,15 +165,16 @@ def log_exception(msg=None):
     The exception string representation is used as the error
     summary, unless msg is given.
     """
-    command = ' '.join(repr(arg) for arg in sys.argv)
-    prefix = "command: %s\npwd: %s\n" % (command, os.getcwd())
+    cmd_repr = ' '.join(repr(arg) for arg in sys.argv)
+    cmd_info = '\n  command: %s\n  pwd: %s' \
+        % (cmd_repr, os.getcwd())
     if msg == None:
         ei = sys.exc_info()
         msg = str(ei[1])
     if msg and (msg[-1] == '\n'):
         msg = msg[:-1]
     ## msg = "(%s) %s" % (str(type(ei[1])), msg)
-    _bzr_logger.exception(prefix + msg)
+    _bzr_logger.exception(msg + cmd_info)
 
 
 
