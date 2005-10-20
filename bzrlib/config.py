@@ -76,6 +76,14 @@ class Config(object):
     def _get_signature_checking(self):
         """Template method to override signature checking policy."""
 
+    def _get_user_option(self, option_name):
+        """Template method to provide a user option."""
+        return None
+
+    def get_user_option(self, option_name):
+        """Get a generic option - no special process, no default."""
+        return self._get_user_option(option_name)
+
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
         result = self._gpg_signing_command()
@@ -179,6 +187,13 @@ class IniBasedConfig(Config):
             if self._get_parser().has_option(section, 'email'):
                 return self._get_parser().get(section, 'email')
 
+    def _get_user_option(self, option_name):
+        """See Config._get_user_option."""
+        section = self._get_section()
+        if section is not None:
+            if self._get_parser().has_option(section, option_name):
+                return self._get_parser().get(section, option_name)
+
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
         section = self._get_section()
@@ -279,6 +294,14 @@ class LocationConfig(IniBasedConfig):
             return user_id
         return self._get_global_config()._get_user_id()
 
+    def _get_user_option(self, option_name):
+        """See Config._get_user_option."""
+        option_value = super(LocationConfig, 
+                             self)._get_user_option(option_name)
+        if option_value is not None:
+            return option_value
+        return self._get_global_config()._get_user_option(option_name)
+
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
         check = super(LocationConfig, self)._get_signature_checking()
@@ -314,6 +337,10 @@ class BranchConfig(Config):
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
         return self._get_location_config()._get_signature_checking()
+
+    def _get_user_option(self, option_name):
+        """See Config._get_user_option."""
+        return self._get_location_config()._get_user_option(option_name)
 
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""

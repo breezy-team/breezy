@@ -400,7 +400,15 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m blah2 --unchanged')
         os.chdir('../b')
         self.runbzr('commit -m blah3 --unchanged')
+        # no clobber
         self.runbzr('pull ../a', retcode=1)
+        os.chdir('..')
+        self.runbzr('branch b clobberme')
+        os.chdir('clobberme')
+        self.runbzr('pull --clobber ../a')
+        clobbered = Branch.open('.')
+        self.assertEqual(clobbered.revision_history(),
+                         a.revision_history())
         os.chdir('../a')
         self.runbzr('merge ../b')
         self.runbzr('commit -m blah4 --unchanged')

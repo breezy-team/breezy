@@ -334,10 +334,10 @@ class cmd_pull(Command):
     If branches have diverged, you can use 'bzr merge' to pull the text changes
     from one into the other.
     """
-    takes_options = ['remember']
+    takes_options = ['remember', 'clobber']
     takes_args = ['location?']
 
-    def run(self, location=None, remember=False):
+    def run(self, location=None, remember=False, clobber=False):
         from bzrlib.merge import merge
         import tempfile
         from shutil import rmtree
@@ -351,28 +351,12 @@ class cmd_pull(Command):
             else:
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
-        cache_root = tempfile.mkdtemp()
         br_from = Branch.open(location)
-        br_from.lock_read()
         try:
-            br_from.setup_caching(cache_root)
-            location = br_from.base
-            old_revno = br_to.revno()
-            old_revision_history = br_to.revision_history()
-            try:
-                br_to.update_revisions(br_from)
-            except DivergedBranches:
-                raise BzrCommandError("These branches have diverged."
-                    "  Try merge.")
-            new_revision_history = br_to.revision_history()
-            if new_revision_history != old_revision_history:
-                merge(('.', -1), ('.', old_revno), check_clean=False)
-            if stored_loc is None or remember:
-                br_to.set_parent(location)
-        finally:
-            br_from.unlock()
-            rmtree(cache_root)
-
+            br_to.working_tree().pull(br_from, remember, clobber)
+        except DivergedBranches:
+            raise BzrCommandError("These branches have diverged."
+                                  "  Try merge.")
 
 
 class cmd_branch(Command):
@@ -439,7 +423,7 @@ class cmd_branch(Command):
                 copy_branch(br_from, to_location, revision_id, basis_branch)
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
-                msg = "The branch %s has no revision %d." % (from_location, revision[0])
+                msg = "The branch %s has no revision %s." % (from_location, revision[0])
                 raise BzrCommandError(msg)
             except bzrlib.errors.UnlistableBranch:
                 msg = "The branch %s cannot be used as a --basis"

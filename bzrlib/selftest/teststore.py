@@ -353,3 +353,7 @@ class TestTransportStore(TestCase):
         self.assertEqual('content', to_store.get('foo').read())
         self.assertEqual('signature', to_store.get('foo', 'sig').read())
         self.assertRaises(KeyError, to_store.get, 'missing', 'sig')
+
+    def test_relpath_escaped(self):
+        my_store = store.TransportStore(MemoryTransport())
+        self.assertEqual('%25', my_store._relpath('%'))

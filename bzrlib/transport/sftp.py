@@ -21,6 +21,7 @@ import os
 import re
 import stat
 import sys
+import urllib
 
 from bzrlib.errors import TransportNotPossible, NoSuchFile, NonRelativePath, TransportError
 from bzrlib.config import config_dir
@@ -125,8 +126,8 @@ class SFTPTransport (Transport):
     def _abspath(self, relpath):
         """Return the absolute path segment without the SFTP URL."""
         # FIXME: share the common code across transports
-        if isinstance(relpath, basestring):
-            relpath = [relpath]
+        assert isinstance(relpath, basestring)
+        relpath = [urllib.unquote(relpath)]
         basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]

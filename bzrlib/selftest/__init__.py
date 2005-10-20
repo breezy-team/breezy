@@ -212,7 +212,7 @@ class TestCase(unittest.TestCase):
         if not re.search(needle_re, haystack):
             raise AssertionError('pattern "%s" not found in "%s"'
                     % (needle_re, haystack))
-        
+
     def _enable_file_logging(self):
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
 
@@ -455,6 +455,11 @@ class TestCaseInTempDir(TestCase):
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
         self.failUnless(osutils.lexists(path))
+        
+    def assertFileEqual(self, content, path):
+        """Fail if path does not contain 'content'."""
+        self.failUnless(osutils.lexists(path))
+        self.assertEqualDiff(content, open(path, 'r').read())
         
 
 class MetaTestLog(TestCase):
