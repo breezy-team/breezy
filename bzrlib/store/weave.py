@@ -20,9 +20,10 @@
 # files whose id differs only in case.  That should probably be forbidden.
 
 
-from cStringIO import StringIO
-import os
 import errno
+import os
+from cStringIO import StringIO
+import urllib
 
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.weave import Weave
@@ -47,9 +48,9 @@ class WeaveStore(TransportStore):
     def filename(self, file_id):
         """Return the path relative to the transport root."""
         if self._prefixed:
-            return hash_prefix(file_id) + file_id + WeaveStore.FILE_SUFFIX
+            return hash_prefix(file_id) + urllib.quote(file_id) + WeaveStore.FILE_SUFFIX
         else:
-            return file_id + WeaveStore.FILE_SUFFIX
+            return urllib.quote(file_id) + WeaveStore.FILE_SUFFIX
 
     def __iter__(self):
         l = len(WeaveStore.FILE_SUFFIX)
