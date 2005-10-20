@@ -214,16 +214,17 @@ class ChangesetReader(object):
         # Now that we've checked all the sha1 sums, we can make sure that
         # at least for the small list we have, all of the references are
         # valid.
-        for rev in self.info.real_revisions:
-            for p_id in rev.parent_ids:
-                if p_id in rev_to_sha1:
-                    if parent.revision_sha1 != rev_to_sha1[parent.revision_id]:
-                        raise BzrError('Parent revision checksum mismatch.'
-                                ' A parent was referenced with an'
-                                ' incorrect checksum'
-                                ': {%r} %s != %s' % (parent.revision_id,
-                                            parent.revision_sha1,
-                                            rev_to_sha1[parent.revision_id]))
+        ## TODO: Bring this back
+        ## for rev in self.info.real_revisions:
+        ##     for p_id in rev.parent_ids:
+        ##         if p_id in rev_to_sha1:
+        ##             if parent.revision_sha1 != rev_to_sha1[p_id]:
+        ##                 raise BzrError('Parent revision checksum mismatch.'
+        ##                         ' A parent was referenced with an'
+        ##                         ' incorrect checksum'
+        ##                         ': {%r} %s != %s' % (parent.revision_id,
+        ##                                     parent.revision_sha1,
+        ##                                     rev_to_sha1[parent.revision_id]))
 
     def _validate_references_from_branch(self, branch):
         """Now that we have a branch which should have some of the
@@ -403,6 +404,7 @@ class ChangesetReader(object):
 
     def _handle_next(self, line):
         key, value = self._read_next_entry(line, indent=1)
+        mutter('_handle_next %r => %r' % (key, value))
         if key is None:
             return
 
@@ -493,7 +495,7 @@ class ChangesetReader(object):
                 # What do we do with a key we don't recognize
                 raise MalformedHeader('Unknown Key: %s' % key)
 
-            if self._next_line is None or self._next_line[:len(start)] != start:
+            if self._next_line is None or not self._next_line.startswith(start):
                 break
 
         self.info.revisions.append(rev_info)
@@ -506,7 +508,7 @@ class ChangesetReader(object):
         """
         for line in self._next():
             self._handle_next(line)
-            if self._next_line is None or self._next_line.startswith('#'):
+            if self._next_line is None or not self._next_line.startswith('#'):
                 break
 
     def _update_tree(self, cset_tree):
@@ -522,10 +524,10 @@ class ChangesetReader(object):
                     raise BzrError("Last changed revision should start with 'last-changed:'"
                         ': %r' % info)
                 revision_id = decode(info[13:])
-            elif cset_tree._last_changed_revision_ids.has_key(file_id):
-                return cset_tree._last_changed_revision_ids[file_id]
+            elif cset_tree._last_changed.has_key(file_id):
+                return cset_tree._last_changed[file_id]
             else:
-                revision_id = self.info.revisions[-1].revision_id
+                revision_id = self.info.target
             cset_tree.note_last_changed(file_id, revision_id)
             return revision_id
 
@@ -541,7 +543,6 @@ class ChangesetReader(object):
                 new_path = info[1]
 
             file_id = cset_tree.path2id(old_path)
-            # print '%r %r %r' % (old_path, new_path, file_id)
             if len(info) > 2:
                 revision = get_rev_id(info[2], file_id, kind)
             else:
@@ -644,7 +645,7 @@ class ChangesetTree(Tree):
         self._new_id = {} # new_path => new_id
         self._new_id_r = {} # new_id => new_path
         self._kinds = {} # new_id => kind
-        self._last_changed_revision_ids = {} # new_id => revision_id
+        self._last_changed = {} # new_id => revision_id
         self.patches = {}
         self.deleted = []
         self.contents_by_id = True
@@ -667,13 +668,13 @@ class ChangesetTree(Tree):
         self._kinds[new_id] = kind
 
     def note_last_changed(self, file_id, revision_id):
-        if (self._last_changed_revision_ids.has_key(file_id)
-                and self._last_changed_revision_ids[file_id] != revision_id):
+        if (self._last_changed.has_key(file_id)
+                and self._last_changed[file_id] != revision_id):
             raise BzrError('Mismatched last-changed revision for file_id {%s}'
                     ': %s != %s' % (file_id,
-                                    self._last_changed_revision_ids[file_id],
+                                    self._last_changed[file_id],
                                     revision_id))
-        self._last_changed_revision_ids[file_id] = revision_id
+        self._last_changed[file_id] = revision_id
 
     def note_patch(self, new_path, patch):
         """There is a patch for a given filename."""
@@ -805,8 +806,8 @@ class ChangesetTree(Tree):
         return self.base_tree.inventory[file_id].kind
 
     def get_last_changed(self, file_id):
-        if file_id in self._last_changed_revision_ids:
-            return self._last_changed_revision_ids[file_id]
+        if file_id in self._last_changed:
+            return self._last_changed[file_id]
         return self.base_tree.inventory[file_id].revision
 
     def get_size_and_sha1(self, file_id):

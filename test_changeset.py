@@ -431,9 +431,11 @@ class CSetTester(TestCaseInTempDir):
         ##cset = self.get_valid_cset(None, 'a@cset-0-2', auto_commit=True)
 
         # Now delete entries
-        self.b1.remove(['sub/sub/nonempty.txt'
+        self.b1.working_tree().remove(
+                ['sub/sub/nonempty.txt'
                 , 'sub/sub/emptyfile.txt'
-                , 'sub/sub'])
+                , 'sub/sub'
+                ])
         self.b1.commit('removed', rev_id='a@cset-0-3')
         
         cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-3')
