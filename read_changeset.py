@@ -143,9 +143,7 @@ class ChangesetInfo(object):
                 self.base_sha1 = None
             else:
                 self.base = rev.parent_ids[0]
-                # In general, if self.base is None, self.base_sha1 should
-                # also be None
-                raise NotImplementedError('Cannot determine self.base_sha1, need some sort of branch')
+                self.base_sha1 = self.revisions[0].parent_sha1s[self.base]
 
     def _get_target(self):
         """Return the target revision."""
@@ -303,14 +301,12 @@ class ChangesetReader(object):
         assert inv is not None
 
         # Now we should have a complete inventory entry.
-        sio = StringIO()
-        serializer_v5.write_inventory(inv, sio)
-        sio.seek(0)
-        sha1 = sha_file(sio)
+        s = serializer_v5.write_inventory_to_string(inv)
+        sha1 = sha_string(s)
         # Target revision is the last entry in the real_revisions list
         rev = self.info.real_revisions[-1]
         if sha1 != rev.inventory_sha1:
-            open(',,bogus-inv', 'wb').write(sio.getvalue())
+            open(',,bogus-inv', 'wb').write(s)
             raise BzrError('Inventory sha hash mismatch.')
 
         
@@ -522,7 +518,7 @@ class ChangesetReader(object):
 
         def get_rev_id(info, file_id, kind):
             if info is not None:
-                if not info.starts_with('last-changed:'):
+                if not info.startswith('last-changed:'):
                     raise BzrError("Last changed revision should start with 'last-changed:'"
                         ': %r' % info)
                 revision_id = decode(info[13:])
@@ -579,12 +575,12 @@ class ChangesetReader(object):
             file_id = info[1][8:]
 
             cset_tree.note_id(file_id, path, kind)
-            if kind == 'directory':
-                return
             if len(info) > 2:
                 revision = get_rev_id(info[2], file_id, kind)
             else:
                 revision = get_rev_id(None, file_id, kind)
+            if kind == 'directory':
+                return
             cset_tree.note_patch(path, ''.join(lines))
 
         def modified(kind, extra, lines):

@@ -5,76 +5,73 @@ This contains the apply changset function for bzr
 
 import bzrlib
 import os
+import sys
+from cStringIO import StringIO
+import tempfile
+import shutil
 
+from bzrlib.xml5 import serializer_v5
 from bzrlib.trace import mutter, warning
 from bzrlib.revision import common_ancestor
+from bzrlib.merge import merge_inner
+from bzrlib.errors import BzrCommandError
+from bzrlib.diff import compare_trees
+from bzrlib.osutils import sha_string, split_lines
+
 
 def _install_info(branch, cset_info, cset_tree):
     """Make sure that there is a text entry for each 
     file in the changeset.
+
+    TODO: This might be supplanted by some sort of Commit() object, though
+          some of the side-effects should not occur
+    TODO: The latest code assumes that if you have the Revision information
+          then you have to have everything else.
+          So there may be no point in adding older revision information to
+          the bottom of a changeset (though I would like to add them all
+          as ghost revisions)
     """
-    from bzrlib.xml import serializer_v4
-    from cStringIO import StringIO
 
-    inv = cset_tree.inventory
-    # First, install all required texts
-    for path, ie in inv.iter_entries():
-        if ie.text_id is not None and ie.text_id not in branch.text_store:
-            branch.text_store.add(cset_tree.get_file(ie.file_id), ie.text_id)
+    if not branch.has_revision(cset_info.target):
+        branch.lock_write()
+        try:
+            # install the inventory
+            # TODO: Figure out how to handle ghosted revisions
+            present_parents = []
+            parent_invs = []
+            rev = cset_info.real_revisions[-1]
+            for p_id in rev.parent_ids:
+                if branch.has_revision(p_id):
+                    present_parents.append(p_id)
+                    parent_invs.append(branch.get_inventory(revision))
 
-    # Now install the final inventory
-    if cset_info.target not in branch.inventory_store:
-        # bzrlib.commit uses a temporary file, but store.add
-        # reads in the entire file anyway
-        if cset_info.target in branch.inventory_store:
-            warning('Target inventory already exists in destination.')
-        else:
-            sio = StringIO()
-            serializer_v4.write_inventory(inv, sio)
-            branch.inventory_store.add(sio.getvalue(), cset_info.target)
-            del sio
+            inv = cset_tree.inventory
+            
+            # Add the texts that are not already present
+            for path, ie in inv.iter_entries():
+                w = branch.weave_store.get_weave_or_empty(ie.file_id,
+                        branch.get_transaction())
+                if ie.revision not in w._name_map:
+                    branch.weave_store.add_text(ie.file_id, rev.revision_id,
+                        cset_tree.get_file(ie.file_id).readlines(),
+                        present_parents, branch.get_transaction())
 
-    # Now that we have installed the inventory and texts
-    # install the revision entries.
-    for rev in cset_info.real_revisions:
-        if rev.revision_id not in branch.revision_store:
-            sio = StringIO()
-            serializer_v4.write_revision(rev, sio)
-            branch.revision_store.add(sio.getvalue(), rev.revision_id)
-            del sio
+            # Now add the inventory information
+            txt = serializer_v5.write_inventory_to_string(inv)
+            sha1 = sha_string(txt)
+            branch.control_weaves.add_text('inventory', 
+                rev.revision_id, 
+                split_lines(txt), 
+                present_parents,
+                branch.get_transaction())
 
-def merge_revs(branch, rev_base, rev_other,
-        ignore_zero=False, check_clean=True):
-    """This will merge the tree of rev_other into 
-    the working tree of branch using the base given by rev_base.
-    All the revision XML should be inside branch.
-    """
-    import tempfile, shutil
-    from bzrlib.merge import merge_inner, MergeTree
-    from bzrlib.errors import BzrCommandError
-
-    tempdir = tempfile.mkdtemp(prefix='bzr-')
-    try:
-        if check_clean:
-            from bzrlib.diff import compare_trees
-            changes = compare_trees(branch.working_tree(), 
-                                    branch.basis_tree(), False)
-
-            if changes.has_changed():
-                raise BzrCommandError("Working tree has uncommitted changes.")
-
-        other_dir = os.path.join(tempdir, 'other')
-        os.mkdir(other_dir)
-        other_tree = MergeTree(branch.revision_tree(rev_other), other_dir)
-
-        base_dir = os.path.join(tempdir, 'base')
-        os.mkdir(base_dir)
-        base_tree = MergeTree(branch.revision_tree(rev_base), base_dir)
-
-        merge_inner(branch, other_tree, base_tree, tempdir,
-            ignore_zero=ignore_zero)
-    finally:
-        shutil.rmtree(tempdir)
+            # And finally, insert the revision
+            rev_tmp = StringIO()
+            serializer_v5.write_revision(rev, rev_tmp)
+            rev_tmp.seek(0)
+            branch.revision_store.add(rev_tmp, rev.revision_id)
+        finally:
+            branch.unlock()
 
 def apply_changeset(branch, from_file, reverse=False, auto_commit=False):
     """Read in a changeset from the given file, and apply it to
@@ -83,7 +80,7 @@ def apply_changeset(branch, from_file, reverse=False, auto_commit=False):
     :return: True if the changeset was automatically committed to the
              ancestry, False otherwise.
     """
-    import sys, read_changeset
+    import read_changeset
 
     if reverse:
         raise Exception('reverse not implemented yet')
@@ -110,8 +107,12 @@ def _apply_cset(branch, cset, reverse=False, auto_commit=False):
     #   for the merge, the merge code should pick the best merge
     #   based on the ancestry of both trees.
     #
-    base = common_ancestor(branch.last_patch(), cset_info.target, branch)
-    merge_revs(branch, base, cset_info.target)
+    if branch.last_revision() is None:
+        base = None
+    else:
+        base = common_ancestor(branch.last_revision(), cset_info.target, branch)
+    merge_inner(branch, branch.revision_tree(cset_info.target),
+                branch.revision_tree(base))
 
     auto_committed = False
     
@@ -133,6 +134,7 @@ def _apply_cset(branch, cset, reverse=False, auto_commit=False):
     #    entries available, it is what 'bzr merge' would do.
     #    If we disable this, the target will just show up as a pending_merge
     if auto_commit:
+        raise NotImplementedError('automatic committing has not been implemented after the changes')
         # When merging, if the revision to be merged has a parent
         # of the current revision, then it can be installed
         # directly.

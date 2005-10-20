@@ -14,94 +14,6 @@ from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
                              get_intervening_revisions, NULL_REVISION)
 from bzrlib.diff import internal_diff, compare_trees
 
-def _create_ancestry_to_rev(branch, ancestor_rev_id, this_rev_id):
-    """Return a listing of revisions, tracing from this_rev_id to ancestor_rev_id.
-
-    This attempts to use branch.revision_history() as much as possible. 
-    Because for changesets, that is generally what you want to show.
-    """
-    # This is an optimization, when both target and base
-    # exist in the revision history, we should already have
-    # a valid listing of revision ancestry.
-    rh = branch.revision_history()
-    rh_set = set(rh)
-
-    ancestry = set(branch.get_ancestry(this_rev_id))
-    if ancestor_rev_id not in ancestry:
-        raise NotAncestor(this_rev_id, ancestor_rev_id)
-    # First, if ancestor_rev_id is None, then
-    # we just need to trace back to the revision history
-    # and then return the rest
-    if ancestor_rev_id is None:
-        if this_rev_id in rh_set:
-            rh = rh[:rh.index(this_rev_id)+1]
-            rh.reverse()
-            rh.append(None)
-            return rh
-
-    if ancestor_rev_id in rh_set and this_rev_id in rh_set:
-        ancestor_idx = rh.index(ancestor_rev_id)
-        this_rev_idx = rh.index(this_rev_id)
-        if ancestor_idx > this_rev_idx:
-            raise BzrCommandError('Revision {%s} is a child not an ancestor'
-                    ' of {%s}' % (ancestor_rev_id, this_rev_id))
-        rh_list = rh[ancestor_idx:this_rev_idx+1]
-        rh_list.reverse()
-        # return rh_list
-
-    # I considered using depth-first search, as it is a little
-    # bit less resource intensive, and it should favor generating
-    # paths that are the same as revision_history
-    # but since breadth-first-search is generally used
-    # we will use that
-    # 
-    # WARNING: In the presence of merges, there are cases where
-    # breadth first search will return a very different path
-    # than revision_history or depth first search. Imaging the following:
-    #
-    # rh: A -> B -> C -> D -> E -> F
-    #     |                        ^
-    #     |                        |
-    #     +--> Z ------------------+
-    #
-    # In this case, Starting with F, looking for A will return
-    # A-F for a revision_history search, but breadth-first will
-    # return A,Z,F since it is a much shorter path, and with
-    # F merging Z, it looks like a shortcut.
-    #
-    # But since A-F seems to be the more "correct" history
-    # for F, we might consider that revision_history should always
-    # be consulted first, and if not found there, to use breadth
-    # first search.
-    checked_rev_ids = set()
-
-    cur_trails = deque([[this_rev_id]])
-    
-    while len(cur_trails) > 0:
-        cur_trail = cur_trails.popleft()
-        cur_rev_id = cur_trail[-1]
-        if cur_rev_id in checked_rev_ids:
-            continue
-        checked_rev_ids.add(cur_rev_id)
-
-        if cur_rev_id == ancestor_rev_id:
-            return cur_trail
-
-        if cur_rev_id in branch.revision_store:
-            rev = branch.get_revision(cur_rev_id)
-        else:
-            # Should we just continue here?
-            warning('Could not find revision for rev: {%s}, unable to'
-                    ' trace ancestry.' % cur_rev_id)
-            continue
-
-        for p_id in rev.parent_ids:
-            if p_id not in checked_rev_ids:
-                cur_trails.append(cur_trail + [p_id])
-
-    raise BzrCommandError('Revision id {%s} not an ancestor of {%s}'
-            % (ancestor_rev_id, this_rev_id))
-
 class MetaInfoHeader(object):
     """Maintain all of the header information about this
     changeset.
@@ -279,11 +191,11 @@ class MetaInfoHeader(object):
                 write(txt='', key='parents', indent=4)
                 for p_id in rev.parent_ids:
                     p_sha1 = self.target_branch.get_revision_sha1(p_id)
-                    if p_sha1 is None:
-                        warning('Rev id {%s} parent {%s} missing sha hash.'
-                                % (rev_id, p_id))
+                    if p_sha1 is not None:
                         write(p_id + '\t' + p_sha1, indent=7)
                     else:
+                        warning('Rev id {%s} parent {%s} missing sha hash.'
+                                % (rev_id, p_id))
                         write(p_id, indent=7)
             if rev.message and rev.message != self.message:
                 write('', key='message', indent=4)
