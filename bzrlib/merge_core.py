@@ -227,42 +227,44 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
         return merge_factory(entry.id, base, other)
 
     if isinstance(contents, changeset.ReplaceContents):
-        if contents.old_contents is None and contents.new_contents is None:
+        base_contents = contents.old_contents
+        other_contents = contents.new_contents
+        if base_contents is None and other_contents is None:
             return None
-        if contents.new_contents is None:
+        if other_contents is None:
             this_contents = get_contents(this, entry.id)
             if this_path is not None and bzrlib.osutils.lexists(this_path):
-                if this_contents != contents.old_contents:
+                if this_contents != base_contents:
                     return conflict_handler.rem_contents_conflict(this_path, 
-                        this_contents, contents.old_contents)
+                        this_contents, base_contents)
                 return contents
             else:
                 return None
-        elif contents.old_contents is None:
+        elif base_contents is None:
             if this_path is None or not bzrlib.osutils.lexists(this_path):
                 return contents
             else:
                 this_contents = get_contents(this, entry.id)
-                if this_contents == contents.new_contents:
+                if this_contents == other_contents:
                     return None
                 else:
                     conflict_handler.new_contents_conflict(this_path, 
-                        contents.new_contents)
-        elif isinstance(contents.old_contents, changeset.TreeFileCreate) and \
-            isinstance(contents.new_contents, changeset.TreeFileCreate):
+                        other_contents)
+        elif isinstance(base_contents, changeset.TreeFileCreate) and \
+            isinstance(other_contents, changeset.TreeFileCreate):
             return make_merge()
         else:
             this_contents = get_contents(this, entry.id)
-            if this_contents == contents.old_contents:
+            if this_contents == base_contents:
                 return contents
-            elif this_contents == contents.new_contents:
+            elif this_contents == other_contents:
                 return None
-            elif contents.old_contents == contents.new_contents:
+            elif base_contents == other_contents:
                 return None
             else:
                 conflict_handler.threeway_contents_conflict(this_path, 
-                    this_contents, contents.old_contents,
-                    contents.new_contents)
+                    this_contents, base_contents,
+                    other_contents)
                 
 
 def make_merged_metadata(entry, base, other):
