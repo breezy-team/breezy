@@ -213,13 +213,13 @@ register_command(cmd_send_changeset)
 def test_suite():
     from doctest import DocTestSuite
     from unittest import TestSuite, TestLoader
-    import testchangeset
+    import test_changeset
     import common
     import patches
 
     suite = TestSuite()
 
-    suite.addTest(TestLoader().loadTestsFromModule(testchangeset))
+    suite.addTest(TestLoader().loadTestsFromModule(test_changeset))
     suite.addTest(TestLoader().loadTestsFromModule(patches))
     suite.addTest(DocTestSuite(common))
 

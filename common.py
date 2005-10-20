@@ -6,7 +6,7 @@ Common entries, like strings, etc, for the changeset reading + writing code.
 import bzrlib
 
 header_str = 'Bazaar-NG changeset v'
-version = (0, 0, 5)
+version = (0, 1, 0)
 
 def get_header():
     return [

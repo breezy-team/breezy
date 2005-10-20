@@ -275,7 +275,7 @@ class CSetTester(TestCaseInTempDir):
         show_changeset(self.b1, base_rev_id, self.b1, rev_id, to_file=cset_txt,
                 message=message)
         cset_txt.seek(0)
-        self.assertEqual(cset_txt.readline(), '# Bazaar-NG changeset v0.0.5\n')
+        self.assertEqual(cset_txt.readline(), '# Bazaar-NG changeset v0.1.0\n')
         self.assertEqual(cset_txt.readline(), '# \n')
 
         rev = self.b1.get_revision(rev_id)

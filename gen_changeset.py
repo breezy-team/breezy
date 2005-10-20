@@ -11,27 +11,8 @@ from bzrlib.errors import BzrCommandError, NotAncestor
 from bzrlib.trace import warning, mutter
 from collections import deque
 from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
-                             get_intervening_revisions)
-from bzrlib.diff import internal_diff
-
-def _fake_working_revision(branch):
-    """Fake a Revision object for the working tree.
-    
-    This is for the future, to support changesets against the working tree.
-    """
-    from bzrlib.revision import Revision
-    import time
-    from bzrlib.osutils import local_time_offset, \
-            username
-
-    precursor = branch.last_patch()
-    precursor_sha1 = branch.get_revision_sha1(precursor)
-
-    return Revision(timestamp=time.time(),
-            timezone=local_time_offset(),
-            committer=username(),
-            precursor=precursor,
-            precursor_sha1=precursor_sha1)
+                             get_intervening_revisions, NULL_REVISION)
+from bzrlib.diff import internal_diff, compare_trees
 
 def _create_ancestry_to_rev(branch, ancestor_rev_id, this_rev_id):
     """Return a listing of revisions, tracing from this_rev_id to ancestor_rev_id.
@@ -186,8 +167,11 @@ class MetaInfoHeader(object):
         try:
             source = MultipleRevisionSources(self.target_branch, self.base_branch)
             if self.starting_rev_id is None:
-                self.starting_rev_id = common_ancestor(self.target_rev_id, 
-                    self.base_rev_id, source)
+                if self.base_rev_id is None:
+                    self.starting_rev_id = NULL_REVISION
+                else:
+                    self.starting_rev_id = common_ancestor(self.target_rev_id, 
+                        self.base_rev_id, source)
 
             rev_id_list = get_intervening_revisions(self.starting_rev_id,
                 self.target_rev_id, source, self.target_branch.revision_history())
@@ -395,7 +379,6 @@ def show_changeset(base_branch, base_rev_id,
         starting_rev_id = None,
         to_file=None, include_full_diff=False,
         message=None):
-    from bzrlib.diff import compare_trees
 
     if to_file is None:
         import sys

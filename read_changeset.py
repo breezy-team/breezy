@@ -3,11 +3,19 @@
 Read in a changeset output, and process it into a Changeset object.
 """
 
-from bzrlib.tree import Tree
+import os
 import pprint
+from cStringIO import StringIO
 
-from bzrlib.trace import mutter
+from bzrlib.tree import Tree
+from bzrlib.trace import mutter, warning
 from bzrlib.errors import BzrError
+from bzrlib.xml5 import serializer_v5
+from bzrlib.osutils import sha_file, sha_string
+from bzrlib.revision import Revision
+from bzrlib.inventory import Inventory, InventoryEntry
+
+from common import decode, get_header, header_str
 
 class BadChangeset(Exception): pass
 class MalformedHeader(BadChangeset): pass
@@ -35,36 +43,35 @@ def _unescape(name):
 class RevisionInfo(object):
     """Gets filled out for each revision object that is read.
     """
-    def __init__(self, rev_id):
-        self.rev_id = rev_id
+    def __init__(self, revision_id):
+        self.revision_id = revision_id
         self.sha1 = None
         self.committer = None
         self.date = None
         self.timestamp = None
         self.timezone = None
-        self.inventory_id = None
         self.inventory_sha1 = None
 
         self.parents = None
+        self.parent_sha1s = {}
         self.message = None
 
     def __str__(self):
         return pprint.pformat(self.__dict__)
 
     def as_revision(self):
-        from bzrlib.revision import Revision, RevisionReference
-        rev = Revision(revision_id=self.rev_id,
+        rev = Revision(revision_id=self.revision_id,
             committer=self.committer,
             timestamp=float(self.timestamp),
             timezone=int(self.timezone),
-            inventory_id=self.inventory_id,
             inventory_sha1=self.inventory_sha1,
             message='\n'.join(self.message))
 
         if self.parents:
             for parent in self.parents:
-                rev_id, sha1 = parent.split()
-                rev.parents.append(RevisionReference(rev_id, sha1))
+                revision_id, sha1 = parent.split()
+                rev.parent_ids.append(revision_id)
+                self.parent_sha1s[revision_id] = sha1
 
         return rev
 
@@ -119,15 +126,13 @@ class ChangesetInfo(object):
                 rev.message = self.message
             if rev.committer is None and self.committer:
                 rev.committer = self.committer
-            if rev.inventory_id is None:
-                rev.inventory_id = rev.rev_id
             self.real_revisions.append(rev.as_revision())
 
         if self.base is None:
             # When we don't have a base, then the real base
             # is the first parent of the first revision listed
             rev = self.real_revisions[0]
-            if len(rev.parents) == 0:
+            if len(rev.parent_ids) == 0:
                 # There is no base listed, and
                 # the lowest revision doesn't have a parent
                 # so this is probably against the empty tree
@@ -135,19 +140,17 @@ class ChangesetInfo(object):
                 self.base = None
                 self.base_sha1 = None
             else:
-                self.base = rev.parents[0].revision_id
+                self.base = rev.parent_ids[0]
                 # In general, if self.base is None, self.base_sha1 should
                 # also be None
-                if self.base_sha1 is not None:
-                    assert self.base_sha1 == rev.parents[0].revision_sha1
-                self.base_sha1 = rev.parents[0].revision_sha1
+                raise NotImplementedError('Cannot determine self.base_sha1, need some sort of branch')
 
     def _get_target(self):
         """Return the target revision."""
         if len(self.real_revisions) > 0:
             return self.real_revisions[-1].revision_id
         elif len(self.revisions) > 0:
-            return self.revisions[-1].rev_id
+            return self.revisions[-1].revision_id
         return None
 
     target = property(_get_target, doc='The target revision id')
@@ -189,22 +192,19 @@ class ChangesetReader(object):
 
     def _validate_revisions(self):
         """Make sure all revision entries match their checksum."""
-        from bzrlib.xml import serializer_v4
-        from cStringIO import StringIO
-        from bzrlib.osutils import sha_file
 
         # This is a mapping from each revision id to it's sha hash
         rev_to_sha1 = {}
 
         for rev, rev_info in zip(self.info.real_revisions, self.info.revisions):
-            assert rev.revision_id == rev_info.rev_id
+            assert rev.revision_id == rev_info.revision_id
             sio = StringIO()
-            serializer_v4.write_revision(rev, sio)
+            serializer_v5.write_revision(rev, sio)
             sio.seek(0)
             sha1 = sha_file(sio)
             if sha1 != rev_info.sha1:
                 raise BzrError('Revision checksum mismatch.'
-                    ' For rev_id {%s} supplied sha1 (%s) != measured (%s)'
+                    ' For revision_id {%s} supplied sha1 (%s) != measured (%s)'
                     % (rev.revision_id, rev_info.sha1, sha1))
             if rev_to_sha1.has_key(rev.revision_id):
                 raise BzrError('Revision {%s} given twice in the list'
@@ -215,8 +215,8 @@ class ChangesetReader(object):
         # at least for the small list we have, all of the references are
         # valid.
         for rev in self.info.real_revisions:
-            for parent in rev.parents:
-                if parent.revision_id in rev_to_sha1:
+            for p_id in rev.parent_ids:
+                if p_id in rev_to_sha1:
                     if parent.revision_sha1 != rev_to_sha1[parent.revision_id]:
                         raise BzrError('Parent revision checksum mismatch.'
                                 ' A parent was referenced with an'
@@ -232,50 +232,54 @@ class ChangesetReader(object):
         """
         rev_to_sha = {}
         inv_to_sha = {}
-        def add_sha(d, rev_id, sha1):
-            if rev_id is None:
+        def add_sha(d, revision_id, sha1):
+            if revision_id is None:
                 if sha1 is not None:
                     raise BzrError('A Null revision should always'
                         'have a null sha1 hash')
                 return
-            if rev_id in d:
+            if revision_id in d:
                 # This really should have been validated as part
                 # of _validate_revisions but lets do it again
-                if sha1 != d[rev_id]:
+                if sha1 != d[revision_id]:
                     raise BzrError('** Revision %r referenced with 2 different'
-                            ' sha hashes %s != %s' % (rev_id,
-                                sha1, d[rev_id]))
+                            ' sha hashes %s != %s' % (revision_id,
+                                sha1, d[revision_id]))
             else:
-                d[rev_id] = sha1
+                d[revision_id] = sha1
 
         add_sha(rev_to_sha, self.info.base, self.info.base_sha1)
         # All of the contained revisions were checked
         # in _validate_revisions
         checked = {}
         for rev_info in self.info.revisions:
-            checked[rev_info.rev_id] = True
-            add_sha(rev_to_sha, rev_info.rev_id, rev_info.sha1)
+            checked[rev_info.revision_id] = True
+            add_sha(rev_to_sha, rev_info.revision_id, rev_info.sha1)
                 
-        for rev in self.info.real_revisions:
-            add_sha(inv_to_sha, rev_info.inventory_id, rev_info.inventory_sha1)
-            for parent in rev.parents:
-                add_sha(rev_to_sha, parent.revision_id, parent.revision_sha1)
+        for (rev, rev_info) in zip(self.info.real_revisions, self.info.revisions):
+            add_sha(inv_to_sha, rev_info.revision_id, rev_info.inventory_sha1)
+            for p_id, sha1 in rev_info.parent_sha1s.iteritems():
+                add_sha(rev_to_sha, p_id, sha1)
 
         count = 0
         missing = {}
-        for rev_id, sha1 in rev_to_sha.iteritems():
-            if rev_id in branch.revision_store:
-                local_sha1 = branch.get_revision_sha1(rev_id)
+        for revision_id, sha1 in rev_to_sha.iteritems():
+            if branch.has_revision(revision_id):
+                local_sha1 = branch.get_revision_sha1(revision_id)
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For revision id {%s}' 
-                            'local: %s, cset: %s' % (rev_id, local_sha1, sha1))
+                            'local: %s, cset: %s' % (revision_id, local_sha1, sha1))
                 else:
                     count += 1
-            elif rev_id not in checked:
-                missing[rev_id] = sha1
+            elif revision_id not in checked:
+                missing[revision_id] = sha1
 
         for inv_id, sha1 in inv_to_sha.iteritems():
-            if inv_id in branch.inventory_store:
+            if branch.has_revision(inv_id):
+                # TODO: Currently branch.get_inventory_sha1() just returns the value
+                # that is stored in the revision text. Which is *really* bogus, because
+                # that means we aren't validating the actual text, just that we wrote 
+                # and read the string. But for now, what the hell.
                 local_sha1 = branch.get_inventory_sha1(inv_id)
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For inventory id {%s}' 
@@ -285,7 +289,6 @@ class ChangesetReader(object):
 
         if len(missing) > 0:
             # I don't know if this is an error yet
-            from bzrlib.trace import warning
             warning('Not all revision hashes could be validated.'
                     ' Unable validate %d hashes' % len(missing))
         mutter('Verified %d sha hashes for the changeset.' % count)
@@ -294,15 +297,12 @@ class ChangesetReader(object):
         """At this point we should have generated the ChangesetTree,
         so build up an inventory, and make sure the hashes match.
         """
-        from bzrlib.xml import serializer_v4
-        from cStringIO import StringIO
-        from bzrlib.osutils import sha_file
 
         assert inv is not None
 
         # Now we should have a complete inventory entry.
         sio = StringIO()
-        serializer_v4.write_inventory(inv, sio)
+        serializer_v5.write_inventory(inv, sio)
         sio.seek(0)
         sha1 = sha_file(sio)
         # Target revision is the last entry in the real_revisions list
@@ -317,13 +317,13 @@ class ChangesetReader(object):
         be used to populate the local stores and working tree, respectively.
         """
         self._validate_references_from_branch(branch)
-        tree = ChangesetTree(branch.revision_tree(self.info.base))
-        self._update_tree(tree)
+        cset_tree = ChangesetTree(branch.revision_tree(self.info.base))
+        self._update_tree(cset_tree)
 
-        inv = tree.inventory
+        inv = cset_tree.inventory
         self._validate_inventory(inv)
 
-        return self.info, tree
+        return self.info, cset_tree
 
     def _next(self):
         """yield the next line, but secretly
@@ -342,7 +342,6 @@ class ChangesetReader(object):
 
     def _read_header(self):
         """Read the bzr header"""
-        from common import decode, get_header, header_str
         header = get_header()
         found = False
         for line in self._next():
@@ -350,14 +349,14 @@ class ChangesetReader(object):
                 # not all mailers will keep trailing whitespace
                 if line == '#\n':
                     line = '# \n'
-                if (line[:2] != '# ' or line[-1:] != '\n'
+                if (not line.startswith('# ') or not line.endswith('\n')
                         or decode(line[2:-1]) != header[0]):
                     raise MalformedHeader('Found a header, but it'
                         ' was improperly formatted')
                 header.pop(0) # We read this line.
                 if not header:
                     break # We found everything.
-            elif (line[:1] == '#' and line[-1:] == '\n'):
+            elif (line.startswith('#') and line.endswith('\n')):
                 line = decode(line[1:-1].strip())
                 if line[:len(header_str)] == header_str:
                     if line == header[0]:
@@ -379,8 +378,7 @@ class ChangesetReader(object):
     def _read_next_entry(self, line, indent=1):
         """Read in a key-value pair
         """
-        from common import decode
-        if line[:1] != '#':
+        if not line.startswith('#'):
             raise MalformedHeader('Bzr header did not start with #')
         line = decode(line[1:-1]) # Remove the '#' and '\n'
         if line[:indent] == ' '*indent:
@@ -428,7 +426,6 @@ class ChangesetReader(object):
         This detects the end of the list, because it will be a line that
         does not start properly indented.
         """
-        from common import decode
         values = []
         start = '#' + (' '*indent)
 
@@ -447,24 +444,23 @@ class ChangesetReader(object):
 
         :return: action, lines, do_continue
         """
-        from common import decode
         #mutter('_read_one_patch: %r' % self._next_line)
         # Peek and see if there are no patches
-        if self._next_line is None or self._next_line[:1] == '#':
+        if self._next_line is None or self._next_line.startswith('#'):
             return None, [], False
 
         first = True
         lines = []
         for line in self._next():
             if first:
-                if line[:3] != '===':
+                if not line.startswith('==='):
                     raise MalformedPatches('The first line of all patches'
                         ' should be a bzr meta line "==="'
                         ': %r' % line)
                 action = decode(line[4:-1])
-            if self._next_line is not None and self._next_line[:3] == '===':
+            if self._next_line is not None and self._next_line.startswith('==='):
                 return action, lines, True
-            elif self._next_line is None or self._next_line[:1] == '#':
+            elif self._next_line is None or self._next_line.startswith('#'):
                 return action, lines, False
 
             if first:
@@ -481,10 +477,10 @@ class ChangesetReader(object):
             if action is not None:
                 self.info.actions.append((action, lines))
 
-    def _read_revision(self, rev_id):
+    def _read_revision(self, revision_id):
         """Revision entries have extra information associated.
         """
-        rev_info = RevisionInfo(rev_id)
+        rev_info = RevisionInfo(revision_id)
         start = '#    '
         for line in self._next():
             key,value = self._read_next_entry(line, indent=4)
@@ -512,34 +508,28 @@ class ChangesetReader(object):
         """
         for line in self._next():
             self._handle_next(line)
-            if self._next_line is None or self._next_line[:1] != '#':
+            if self._next_line is None or self._next_line.startswith('#'):
                 break
 
-    def _update_tree(self, tree):
+    def _update_tree(self, cset_tree):
         """This fills out a ChangesetTree based on the information
         that was read in.
 
-        :param tree: A ChangesetTree to update with the new information.
+        :param cset_tree: A ChangesetTree to update with the new information.
         """
-        from common import decode, guess_text_id
 
-        def get_text_id(info, file_id, kind):
+        def get_rev_id(info, file_id, kind):
             if info is not None:
-                if info[:8] != 'text-id:':
-                    raise BzrError("Text ids should be prefixed with 'text-id:'"
+                if not info.starts_with('last-changed:'):
+                    raise BzrError("Last changed revision should start with 'last-changed:'"
                         ': %r' % info)
-                text_id = decode(info[8:])
-            elif tree._text_ids.has_key(file_id):
-                return tree._text_ids[file_id]
+                revision_id = decode(info[13:])
+            elif cset_tree._last_changed_revision_ids.has_key(file_id):
+                return cset_tree._last_changed_revision_ids[file_id]
             else:
-                # If text_id was not explicitly supplied
-                # then it should be whatever we would guess it to be
-                # based on the base revision, and what we know about
-                # the target revision
-                text_id = guess_text_id(tree.base_tree, 
-                        file_id, self.info.base, kind, modified=True)
-            tree.note_text_id(file_id, text_id)
-            return text_id
+                revision_id = self.info.revisions[-1].revision_id
+            cset_tree.note_last_changed(file_id, revision_id)
+            return revision_id
 
         def renamed(kind, extra, lines):
             info = extra.split(' // ')
@@ -547,21 +537,20 @@ class ChangesetReader(object):
                 raise BzrError('renamed action lines need both a from and to'
                         ': %r' % extra)
             old_path = info[0]
-            if info[1][:3] == '=> ':
+            if info[1].startswith('=> '):
                 new_path = info[1][3:]
             else:
                 new_path = info[1]
 
-            file_id = tree.path2id(old_path)
+            file_id = cset_tree.path2id(old_path)
             # print '%r %r %r' % (old_path, new_path, file_id)
             if len(info) > 2:
-                text_id = get_text_id(info[2], file_id, kind)
+                revision = get_rev_id(info[2], file_id, kind)
             else:
-                text_id = get_text_id(None, file_id, kind)
-            # print '%r %r %r %r %r' % (old_path, new_path, file_id, text_id, tree._text_ids[file_id])
-            tree.note_rename(old_path, new_path)
+                revision = get_rev_id(None, file_id, kind)
+            cset_tree.note_rename(old_path, new_path)
             if lines:
-                tree.note_patch(new_path, ''.join(lines))
+                cset_tree.note_patch(new_path, ''.join(lines))
 
         def removed(kind, extra, lines):
             info = extra.split(' // ')
@@ -571,7 +560,7 @@ class ChangesetReader(object):
                 raise BzrError('removed action lines should only have the path'
                         ': %r' % extra)
             path = info[0]
-            tree.note_deletion(path)
+            cset_tree.note_deletion(path)
 
         def added(kind, extra, lines):
             info = extra.split(' // ')
@@ -582,19 +571,19 @@ class ChangesetReader(object):
                 raise BzrError('add action lines have fewer than 3 entries.'
                         ': %r' % extra)
             path = info[0]
-            if info[1][:8] != 'file-id:':
+            if not info[1].startswith('file-id:'):
                 raise BzrError('The file-id should follow the path for an add'
                         ': %r' % extra)
             file_id = info[1][8:]
 
-            tree.note_id(file_id, path, kind)
+            cset_tree.note_id(file_id, path, kind)
             if kind == 'directory':
                 return
             if len(info) > 2:
-                text_id = get_text_id(info[2], file_id, kind)
+                revision = get_rev_id(info[2], file_id, kind)
             else:
-                text_id = get_text_id(None, file_id, kind)
-            tree.note_patch(path, ''.join(lines))
+                revision = get_rev_id(None, file_id, kind)
+            cset_tree.note_patch(path, ''.join(lines))
 
         def modified(kind, extra, lines):
             info = extra.split(' // ')
@@ -603,12 +592,12 @@ class ChangesetReader(object):
                         'the path in them: %r' % extra)
             path = info[0]
 
-            file_id = tree.path2id(path)
+            file_id = cset_tree.path2id(path)
             if len(info) > 1:
-                text_id = get_text_id(info[1], file_id, kind)
+                revision = get_rev_id(info[1], file_id, kind)
             else:
-                text_id = get_text_id(None, file_id, kind)
-            tree.note_patch(path, ''.join(lines))
+                revision = get_rev_id(None, file_id, kind)
+            cset_tree.note_patch(path, ''.join(lines))
             
 
         valid_actions = {
@@ -657,7 +646,7 @@ class ChangesetTree(Tree):
         self._new_id = {} # new_path => new_id
         self._new_id_r = {} # new_id => new_path
         self._kinds = {} # new_id => kind
-        self._text_ids = {} # new_id => text_id
+        self._last_changed_revision_ids = {} # new_id => revision_id
         self.patches = {}
         self.deleted = []
         self.contents_by_id = True
@@ -679,14 +668,14 @@ class ChangesetTree(Tree):
         self._new_id_r[new_id] = new_path
         self._kinds[new_id] = kind
 
-    def note_text_id(self, file_id, text_id):
-        if (self._text_ids.has_key(file_id)
-                and self._text_ids[file_id] != text_id):
-            raise BzrError('Mismatched text_ids for file_id {%s}'
+    def note_last_changed(self, file_id, revision_id):
+        if (self._last_changed_revision_ids.has_key(file_id)
+                and self._last_changed_revision_ids[file_id] != revision_id):
+            raise BzrError('Mismatched last-changed revision for file_id {%s}'
                     ': %s != %s' % (file_id,
-                                    self._text_ids[file_id],
-                                    text_id))
-        self._text_ids[file_id] = text_id
+                                    self._last_changed_revision_ids[file_id],
+                                    revision_id))
+        self._last_changed_revision_ids[file_id] = revision_id
 
     def note_patch(self, new_path, patch):
         """There is a patch for a given filename."""
@@ -698,7 +687,6 @@ class ChangesetTree(Tree):
 
     def old_path(self, new_path):
         """Get the old_path (path in the base_tree) for the file at new_path"""
-        import os.path
         assert new_path[:1] not in ('\\', '/')
         old_path = self._renamed.get(new_path)
         if old_path is not None:
@@ -725,7 +713,6 @@ class ChangesetTree(Tree):
         """Get the new_path (path in the target_tree) for the file at old_path
         in the base tree.
         """
-        import os.path
         assert old_path[:1] not in ('\\', '/')
         new_path = self._renamed_r.get(old_path)
         if new_path is not None:
@@ -819,20 +806,16 @@ class ChangesetTree(Tree):
             return self._kinds[file_id]
         return self.base_tree.inventory[file_id].kind
 
-    def get_text_id(self, file_id):
-        if self.get_kind(file_id) in ('root_directory', 'directory'):
-            return None
-        if file_id in self._text_ids:
-            return self._text_ids[file_id]
-        return self.base_tree.inventory[file_id].text_id
+    def get_last_changed(self, file_id):
+        if file_id in self._last_changed_revision_ids:
+            return self._last_changed_revision_ids[file_id]
+        return self.base_tree.inventory[file_id].revision
 
     def get_size_and_sha1(self, file_id):
         """Return the size and sha1 hash of the given file id.
         If the file was not locally modified, this is extracted
         from the base_tree. Rather than re-reading the file.
         """
-        from bzrlib.osutils import sha_string
-
         new_path = self.id2path(file_id)
         if new_path is None:
             return None, None
@@ -854,7 +837,6 @@ class ChangesetTree(Tree):
         This need to be called before ever accessing self.inventory
         """
         from os.path import dirname, basename
-        from bzrlib.inventory import Inventory, InventoryEntry
 
         assert self.base_tree is not None
         base_inv = self.base_tree.inventory
@@ -876,14 +858,12 @@ class ChangesetTree(Tree):
                 parent_id = self.path2id(parent_path)
 
             kind = self.get_kind(file_id)
-            if kind == 'directory':
-                text_id = None
-            else:
-                text_id = self.get_text_id(file_id)
+            revision_id = self.get_last_changed(file_id)
 
             name = basename(path)
-            # print '%r %r %r %r' % (path, name, file_id, text_id)
-            ie = InventoryEntry(file_id, name, kind, parent_id, text_id=text_id)
+            ie = InventoryEntry(file_id, name, kind, parent_id)
+            ie.revision = revision_id
+
             if kind == 'directory':
                 ie.text_size, ie.text_sha1 = None, None
             else:
