@@ -40,6 +40,8 @@ UNRELEASED CHANGES
     * 'bzr pull' now accepts '--clobber' which will discard local changes
       and make this branch identical to the source branch. (Robert Collins)
 
+    * New sftp transport, based on Paramiko.  (Robey Pointer)
+
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 
@@ -135,6 +137,9 @@ UNRELEASED CHANGES
     * bzrlib.transport.Transport now accepts *ONLY* url escaped relative paths
       to apis like 'put', 'get' and 'has'. This is to provide consistent
       behaviour - it operates on url's only. (Robert Collins)
+
+    * Transports can register using register_lazy_transport, and they 
+      will be loaded when first used.  (Martin Pool)
 
   BUG FIXES:
 

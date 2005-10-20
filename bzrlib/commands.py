@@ -451,9 +451,6 @@ def run_bzr(argv):
     --profile
         Run under the Python profiler.
     """
-    import bzrlib.transport
-    bzrlib.transport.register_builtin_transports()
-    
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
 
     opt_profile = opt_no_plugins = opt_builtin = False
