@@ -66,6 +66,7 @@ sample_branches_text = ("[http://www.example.com]\n"
                         "recurse=False\n"
                         "[/a/c]\n"
                         "check_signatures=ignore\n"
+                        "post_commit=bzrlib.selftest.testconfig.post_commit\n"
                         "#testing explicit beats globs\n")
 
 
@@ -153,6 +154,10 @@ class TestConfig(TestCase):
     def test_get_user_option_default(self):
         my_config = config.Config()
         self.assertEqual(None, my_config.get_user_option('no_option'))
+
+    def test_post_commit_default(self):
+        my_config = config.Config()
+        self.assertEqual(None, my_config.post_commit())
 
 
 class TestConfigPath(TestCase):
@@ -303,6 +308,11 @@ class TestGlobalConfigItems(TestCase):
         my_config = self._get_sample_config()
         self.assertEqual("something",
                          my_config.get_user_option('user_global_option'))
+        
+    def test_post_commit_default(self):
+        my_config = self._get_sample_config()
+        self.assertEqual(None, my_config.post_commit())
+
 
 
 class TestLocationConfig(TestCase):
@@ -441,6 +451,11 @@ class TestLocationConfig(TestCase):
         self.get_location_config('/a')
         self.assertEqual('local',
                          self.my_config.get_user_option('user_local_option'))
+        
+    def test_post_commit_default(self):
+        self.get_location_config('/a/c')
+        self.assertEqual('bzrlib.selftest.testconfig.post_commit',
+                         self.my_config.post_commit())
 
 
 class TestBranchConfigItems(TestCase):
@@ -496,3 +511,15 @@ class TestBranchConfigItems(TestCase):
             _get_global_config()._get_parser(config_file))
         self.assertEqual('something',
                          my_config.get_user_option('user_global_option'))
+
+    def test_post_commit_default(self):
+        branch = FakeBranch()
+        branch.base='/a/c'
+        my_config = config.BranchConfig(branch)
+        config_file = StringIO(sample_config_text)
+        (my_config._get_location_config().
+            _get_global_config()._get_parser(config_file))
+        branch_file = StringIO(sample_branches_text)
+        my_config._get_location_config()._get_parser(branch_file)
+        self.assertEqual('bzrlib.selftest.testconfig.post_commit',
+                         my_config.post_commit())

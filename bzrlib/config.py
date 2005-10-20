@@ -98,6 +98,17 @@ class Config(object):
     def __init__(self):
         super(Config, self).__init__()
 
+    def post_commit(self):
+        """An ordered list of python functions to call.
+
+        Each function takes branch, rev_id as parameters.
+        """
+        return self._post_commit()
+
+    def _post_commit(self):
+        """See Config.post_commit."""
+        return None
+
     def user_email(self):
         """Return just the email component of a username."""
         e = self.username()
@@ -196,15 +207,16 @@ class IniBasedConfig(Config):
 
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
-        section = self._get_section()
-        if section is not None:
-            if self._get_parser().has_option(section, 'gpg_signing_command'):
-                return self._get_parser().get(section, 'gpg_signing_command')
+        return self._get_user_option('gpg_signing_command')
 
     def __init__(self, get_filename):
         super(IniBasedConfig, self).__init__()
         self._get_filename = get_filename
         self._parser = None
+        
+    def _post_commit(self):
+        """See Config.post_commit."""
+        return self._get_user_option('post_commit')
 
     def _string_to_signature_policy(self, signature_string):
         """Convert a string to a signing policy."""
@@ -309,6 +321,13 @@ class LocationConfig(IniBasedConfig):
             return check
         return self._get_global_config()._get_signature_checking()
 
+    def _post_commit(self):
+        """See Config.post_commit."""
+        hook = self._get_user_option('post_commit')
+        if hook is not None:
+            return hook
+        return self._get_global_config()._post_commit()
+
 
 class BranchConfig(Config):
     """A configuration object giving the policy for a branch."""
@@ -350,6 +369,10 @@ class BranchConfig(Config):
         super(BranchConfig, self).__init__()
         self._location_config = None
         self.branch = branch
+
+    def _post_commit(self):
+        """See Config.post_commit."""
+        return self._get_location_config()._post_commit()
 
 
 def config_dir():
