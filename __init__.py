@@ -7,7 +7,7 @@ and for applying a changeset.
 """
 
 import sys
-from bzrlib.commands import Command, register_command, OPTIONS
+from bzrlib.commands import Command, register_command
 from bzrlib.branch import Branch
 from bzrlib.revisionspec import RevisionSpec
 
@@ -99,7 +99,7 @@ class cmd_changeset(Command):
             else:
                 raise BzrCommandError('--revision can take at most 2 arguments')
 
-            target_branch = Branch.open_containing('.')
+            target_branch, relpath = Branch.open_containing('.')
             target_revno, target_rev_id = target_info.in_history(target_branch)
             base_branch = target_branch
             if base_info is not None:
@@ -114,7 +114,7 @@ class cmd_changeset(Command):
             if target is None:
                 target = './@'
             b_target_path, target_revno = parse_spec(target)
-            target_branch = Branch.open_containing(b_target_path)
+            target_branch, relpath = Branch.open_containing(b_target_path)
             if target_revno is None or target_revno == -1:
                 if hasattr(target_branch, 'last_patch'):
                     target_rev_id = target_branch.last_patch()
@@ -132,7 +132,7 @@ class cmd_changeset(Command):
                     base_rev_id = target_rev.parents[0].revision_id
             else:
                 base_path, base_revno = parse_spec(base)
-                base_branch = Branch.open_containing(base_path)
+                base_branch, relpath = Branch.open_containing(base_path)
                 if base_revno is None or base_revno == -1:
                     if hasattr(target_branch, 'last_patch'):
                         base_rev_id = target_branch.last_patch()
@@ -164,7 +164,7 @@ class cmd_verify_changeset(Command):
         from read_changeset import read_changeset
         #from bzrlib.xml import serializer_v4
 
-        b = Branch.open_containing('.')
+        b, relpath = Branch.open_containing('.')
 
         if filename is None or filename == '-':
             f = sys.stdin
@@ -189,7 +189,7 @@ class cmd_apply_changeset(Command):
     def run(self, filename=None, reverse=False, auto_commit=False):
         import apply_changeset
 
-        b = Branch.open_containing('.') # Make sure we are in a branch
+        b, relpath = Branch.open_containing('.') # Make sure we are in a branch
         if filename is None or filename == '-':
             f = sys.stdin
         else:
@@ -207,8 +207,8 @@ register_command(cmd_verify_changeset)
 register_command(cmd_apply_changeset)
 register_command(cmd_send_changeset)
 
-OPTIONS['reverse'] = None
-OPTIONS['auto-commit'] = None
+#OPTIONS['reverse'] = None
+#OPTIONS['auto-commit'] = None
 
 def test_suite():
     from doctest import DocTestSuite
