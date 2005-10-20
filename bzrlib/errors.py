@@ -117,7 +117,7 @@ class InvalidRevisionNumber(BzrNewError):
 
 
 class InvalidRevisionId(BzrNewError):
-    """Invalid revision-id"""
+    """Invalid revision-id %(revision_id)s"""
 
 
 class BzrCommandError(BzrError):

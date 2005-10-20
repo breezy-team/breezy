@@ -697,7 +697,7 @@ class _Branch(Branch):
     def get_revision_xml_file(self, revision_id):
         """Return XML file object for revision object."""
         if not revision_id or not isinstance(revision_id, basestring):
-            raise InvalidRevisionId(revision_id)
+            raise InvalidRevisionId(revision_id=revision_id)
         try:
             return self.revision_store.get(revision_id)
         except (IndexError, KeyError):
