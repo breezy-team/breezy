@@ -1288,10 +1288,12 @@ class cmd_merge(Command):
     --force is given.
     """
     takes_args = ['branch?']
-    takes_options = ['revision', 'force', 'merge-type']
+    takes_options = ['revision', 'force', 'merge-type', 
+                     Option('show-base', help="Show base revision text in "
+                            "conflicts")]
 
-    def run(self, branch=None, revision=None, force=False, 
-            merge_type=None):
+    def run(self, branch=None, revision=None, force=False, merge_type=None,
+            show_base=False):
         from bzrlib.merge import merge
         from bzrlib.merge_core import ApplyMerge3
         if merge_type is None:
@@ -1322,7 +1324,8 @@ class cmd_merge(Command):
                 other = [branch, revision[1].in_history(b).revno]
 
         try:
-            merge(other, base, check_clean=(not force), merge_type=merge_type)
+            merge(other, base, check_clean=(not force), merge_type=merge_type,
+                  show_base=show_base)
         except bzrlib.errors.AmbiguousBase, e:
             m = ("sorry, bzr can't determine the right merge base yet\n"
                  "candidates are:\n  "

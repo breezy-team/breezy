@@ -1,8 +1,13 @@
 UNRELEASED CHANGES
 
   IMPROVEMENTS:
+    * merge now takes a --show-base option to include the base text in
+      conflicts.
+      (Aaron Bentley)
+
     * The config files are now read using ConfigObj, so '=' should be used as
       a separator, not ':'.
+      (Aaron Bentley)
 
     * New 'bzr commit --strict' option refuses to commit if there are 
       any unknown files in the tree.  To commit, make sure all files are 
