@@ -13,7 +13,9 @@ from bzrlib.errors import BzrError
 from bzrlib.xml5 import serializer_v5
 from bzrlib.osutils import sha_file, sha_string
 from bzrlib.revision import Revision
-from bzrlib.inventory import Inventory, InventoryEntry
+from bzrlib.inventory import (Inventory, InventoryEntry,
+                              InventoryDirectory, InventoryFile,
+                              InventoryLink)
 
 from common import decode, get_header, header_str
 
@@ -852,7 +854,7 @@ class ChangesetTree(Tree):
             if path is None:
                 return
             parent_path = dirname(path)
-            if parent_path == '':
+            if parent_path == u'':
                 parent_id = root_id
             else:
                 parent_id = self.path2id(parent_path)
@@ -861,7 +863,12 @@ class ChangesetTree(Tree):
             revision_id = self.get_last_changed(file_id)
 
             name = basename(path)
-            ie = InventoryEntry(file_id, name, kind, parent_id)
+            if kind == 'directory':
+                ie = InventoryDirectory(file_id, name, parent_id)
+            elif kind == 'file':
+                ie = InventoryFile(file_id, name, parent_id)
+            elif kind == 'symlink':
+                ie = InventoryLink(file_id, name, parent_id)
             ie.revision = revision_id
 
             if kind == 'directory':
