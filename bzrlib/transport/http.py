@@ -228,6 +228,3 @@ class HttpTransport(Transport):
         :return: A lock object, which should be passed to Transport.unlock()
         """
         raise TransportNotPossible('http does not support lock_write()')
-
-register_transport('http://', HttpTransport)
-register_transport('https://', HttpTransport)
