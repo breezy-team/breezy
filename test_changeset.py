@@ -4,6 +4,7 @@ import unittest
 from StringIO import StringIO
 
 from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.errors import BzrError
 
 from bzrlib.diff import internal_diff
 from read_changeset import ChangesetTree
@@ -48,12 +49,20 @@ class MockTree(object):
 
     def make_entry(self, file_id, path):
         from os.path import basename
-        from bzrlib.inventory import InventoryEntry
+        from bzrlib.inventory import (InventoryEntry, InventoryFile
+                                    , InventoryDirectory, InventoryLink)
         name = basename(path)
         kind = self.get_file_kind(file_id)
         parent_id = self.parent_id(file_id)
         text_sha_1, text_size = self.contents_stats(file_id)
-        ie = InventoryEntry(file_id, name, kind, parent_id)
+        if kind == 'directory':
+            ie = InventoryDirectory(file_id, name, parent_id)
+        elif kind == 'file':
+            ie = InventoryFile(file_id, name, parent_id)
+        elif kind == 'symlink':
+            ie = InventoryLink(file_id, name, parent_id)
+        else:
+            raise BzrError('unknown kind %r' % kind)
         ie.text_sha1 = text_sha_1
         ie.text_size = text_size
         return ie
