@@ -17,34 +17,23 @@
 
 """Tests for plugins"""
 
+# XXX: There are no plugin tests at the moment because the plugin module
+# affects the global state of the process.  See bzrlib/plugins.py for more
+# comments.
 
-
-# **************************************************
-# NOT RUN YET
-# **************************************************
-
-
-
-
-
-
-
+import os
 
 from bzrlib.selftest import TestCaseInTempDir
-
 
 class PluginTest(TestCaseInTempDir):
     """Create an external plugin and test loading."""
     def test_plugin_loading(self):
-        import os
-        
-        orig_help = self.backtick('bzr help commands') # No plugins yet
+        orig_help = self.run_bzr_captured('bzr help commands')[0]
         os.mkdir('plugin_test')
         f = open(os.path.join('plugin_test', 'myplug.py'), 'wt')
         f.write(PLUGIN_TEXT)
         f.close()
-
-        newhelp = backtick('bzr help commands')
+        newhelp = self.run_bzr_captured('bzr help commands')[0]
         assert newhelp.startswith('You have been overridden\n')
         # We added a line, but the rest should work
         assert newhelp[25:] == help
@@ -53,18 +42,6 @@ class PluginTest(TestCaseInTempDir):
 
         shutil.rmtree('plugin_test')
 
-
-
-
-#         PLUGIN_TEXT = \
-#         """import bzrlib, bzrlib.commands
-#         class cmd_myplug(bzrlib.commands.Command):
-#             '''Just a simple test plugin.'''
-#             aliases = ['mplg']
-#             def run(self):
-#                 print 'Hello from my plugin'
-#         """
-#         f.close()
 
 #         os.environ['BZRPLUGINPATH'] = os.path.abspath('plugin_test')
 #         help = backtick('bzr help commands')
@@ -89,3 +66,13 @@ class PluginTest(TestCaseInTempDir):
 #             bzrlib.commands.cmd_help.run(self, *args, **kwargs)
 
 #         """
+
+ PLUGIN_TEXT = """\
+ import bzrlib.commands
+ class cmd_myplug(bzrlib.commands.Command):
+     '''Just a simple test plugin.'''
+     aliases = ['mplg']
+     def run(self):
+         print 'Hello from my plugin'
+ """
+
