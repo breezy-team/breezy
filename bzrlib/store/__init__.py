@@ -234,7 +234,7 @@ class TransportStore(Store):
         else:
             path = [fileid]
         path.extend(suffixes)
-        return '.'.join(path)
+        return transport.urlescape('.'.join(path))
 
     def __repr__(self):
         if self._transport is None:

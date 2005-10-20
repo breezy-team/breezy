@@ -178,7 +178,10 @@ to run just the whitebox tests, run::
 Errors and exceptions
 =====================
 
-[write me]
+Errors are handled through Python exceptions.  They can represent user
+errors, environmental errors or program bugs.  Sometimes we can't be sure
+at the time it's raised which case applies.  See bzrlib/errors.py for 
+details on the error-handling practices.
 
 
 Jargon

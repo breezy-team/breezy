@@ -21,7 +21,7 @@ from cStringIO import StringIO
 from bzrlib.errors import NoSuchFile, FileExists, TransportNotPossible
 from bzrlib.selftest import TestCase, TestCaseInTempDir
 from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
-from bzrlib.transport import memory
+from bzrlib.transport import memory, urlescape
 
 
 def _append(fn, txt):
@@ -31,6 +31,13 @@ def _append(fn, txt):
     f.flush()
     f.close()
     del f
+
+class TestTransport(TestCase):
+    """Test the non transport-concrete class functionality."""
+
+    def test_urlescape(self):
+        self.assertEqual('%25', urlescape('%'))
+
 
 class TestTransportMixIn(object):
     """Subclass this, and it will provide a series of tests for a Transport.
@@ -51,10 +58,11 @@ class TestTransportMixIn(object):
     def test_has(self):
         t = self.get_transport()
 
-        files = ['a', 'b', 'e', 'g']
+        files = ['a', 'b', 'e', 'g', '%']
         self.build_tree(files)
         self.assertEqual(t.has('a'), True)
         self.assertEqual(t.has('c'), False)
+        self.assertEqual(t.has(urlescape('%')), True)
         self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
                 [True, True, False, False, True, False, True, False])
         self.assertEqual(list(t.has_multi(iter(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']))),

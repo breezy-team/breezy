@@ -181,7 +181,14 @@ class TestCase(unittest.TestCase):
         self._enable_file_logging()
 
     def _ndiff_strings(self, a, b):
-        """Return ndiff between two strings containing lines."""
+        """Return ndiff between two strings containing lines.
+        
+        A trailing newline is added if missing to make the strings
+        print properly."""
+        if b and b[-1] != '\n':
+            b += '\n'
+        if a and a[-1] != '\n':
+            a += '\n'
         difflines = difflib.ndiff(a.splitlines(True),
                                   b.splitlines(True),
                                   linejunk=lambda x: False,
@@ -519,6 +526,7 @@ def test_suite():
                    'bzrlib.selftest.testinv',
                    'bzrlib.selftest.test_ancestry',
                    'bzrlib.selftest.test_commit',
+                   'bzrlib.selftest.test_command',
                    'bzrlib.selftest.test_commit_merge',
                    'bzrlib.selftest.testconfig',
                    'bzrlib.selftest.versioning',
@@ -553,10 +561,14 @@ def test_suite():
                    'bzrlib.selftest.testannotate',
                    'bzrlib.selftest.testrevprops',
                    'bzrlib.selftest.testoptions',
+                   'bzrlib.selftest.testhttp',
+                   'bzrlib.selftest.testnonascii',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
-              bzrlib.osutils, bzrlib.commands, bzrlib.merge3):
+              bzrlib.osutils, bzrlib.commands, bzrlib.merge3,
+              bzrlib.errors,
+              ):
         if m not in MODULES_TO_DOCTEST:
             MODULES_TO_DOCTEST.append(m)
 

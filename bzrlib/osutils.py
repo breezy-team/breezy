@@ -119,7 +119,22 @@ def normalizepath(f):
         return F(f)
     else:
         return os.path.join(F(p), e)
-    
+
+if os.name == "posix":
+    # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
+    # choke on a Unicode string containing a relative path if
+    # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
+    # string.
+    _fs_enc = sys.getfilesystemencoding()
+    def abspath(path):
+        return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
+    def realpath(path):
+        return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
+else:
+    # We need to use the Unicode-aware os.path.abspath and
+    # os.path.realpath on Windows systems.
+    abspath = os.path.abspath
+    realpath = os.path.realpath
 
 def backup_file(fn):
     """Copy a file to a backup.
@@ -453,7 +468,7 @@ def relpath(base, path):
     os.path.commonprefix (python2.4) has a bad bug that it works just
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem."""
-    rp = os.path.abspath(path)
+    rp = abspath(path)
 
     s = []
     head = rp

@@ -31,6 +31,7 @@ import sys
 import os
 from warnings import warn
 from inspect import getdoc
+import errno
 
 import bzrlib
 import bzrlib.trace
@@ -303,7 +304,7 @@ def parse_args(command, argv):
                     optname = a[2:]
                 if optname not in cmd_options:
                     raise BzrCommandError('unknown long option %r for command %s' 
-                            % (a, command.name))
+                            % (a, command.name()))
             else:
                 shortopt = a[1:]
                 if shortopt in Option.SHORT_OPTIONS:
@@ -450,9 +451,6 @@ def run_bzr(argv):
     --profile
         Run under the Python profiler.
     """
-    # Load all of the transport methods
-    import bzrlib.transport.local, bzrlib.transport.http
-    
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
 
     opt_profile = opt_no_plugins = opt_builtin = False
@@ -499,6 +497,14 @@ def run_bzr(argv):
         ret = cmd_obj.run_argv(argv)
     return ret or 0
 
+def display_command(func):
+    def ignore_pipe(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except IOError, e:
+            if e.errno != errno.EPIPE:
+                raise
+    return ignore_pipe
 
 def main(argv):
     import bzrlib.ui

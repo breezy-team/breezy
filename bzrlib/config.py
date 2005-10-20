@@ -51,19 +51,41 @@ create_signatures - this option controls whether bzr will always create
                     NB: This option is planned, but not implemented yet.
 """
 
-from ConfigParser import ConfigParser
+
+import errno
 import os
 from fnmatch import fnmatch
-import errno
 import re
 
 import bzrlib
 import bzrlib.errors as errors
+import bzrlib.util.configobj.configobj as configobj
 
 
 CHECK_IF_POSSIBLE=0
 CHECK_ALWAYS=1
 CHECK_NEVER=2
+
+
+class ConfigObj(configobj.ConfigObj):
+
+    def get_bool(self, section, key):
+        val = self[section][key].lower()
+        if val in ('1', 'yes', 'true', 'on'):
+            return True
+        elif val in ('0', 'no', 'false', 'off'):
+            return False
+        else:
+            raise ValueError("Value %r is not boolean" % val)
+
+    def get_value(self, section, name):
+        # Try [] for the old DEFAULT section.
+        if section == "DEFAULT":
+            try:
+                return self[name]
+            except KeyError:
+                pass
+        return self[section][name]
 
 
 class Config(object):
@@ -97,6 +119,17 @@ class Config(object):
 
     def __init__(self):
         super(Config, self).__init__()
+
+    def post_commit(self):
+        """An ordered list of python functions to call.
+
+        Each function takes branch, rev_id as parameters.
+        """
+        return self._post_commit()
+
+    def _post_commit(self):
+        """See Config.post_commit."""
+        return None
 
     def user_email(self):
         """Return just the email component of a username."""
@@ -159,13 +192,15 @@ class IniBasedConfig(Config):
     def _get_parser(self, file=None):
         if self._parser is not None:
             return self._parser
-        parser = ConfigParser()
-        if file is not None:
-            parser.readfp(file)
+        if file is None:
+            input = self._get_filename()
         else:
-            parser.read([self._get_filename()])
-        self._parser = parser
-        return parser
+            input = file
+        try:
+            self._parser = ConfigObj(input)
+        except configobj.ConfigObjError, e:
+            raise errors.ParseConfigError(e.errors, e.config.filename)
+        return self._parser
 
     def _get_section(self):
         """Override this to define the section used by the config."""
@@ -173,38 +208,34 @@ class IniBasedConfig(Config):
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
-        section = self._get_section()
-        if section is None:
-            return None
-        if self._get_parser().has_option(section, 'check_signatures'):
-            return self._string_to_signature_policy(
-                self._get_parser().get(section, 'check_signatures'))
+        policy = self._get_user_option('check_signatures')
+        if policy:
+            return self._string_to_signature_policy(policy)
 
     def _get_user_id(self):
         """Get the user id from the 'email' key in the current section."""
-        section = self._get_section()
-        if section is not None:
-            if self._get_parser().has_option(section, 'email'):
-                return self._get_parser().get(section, 'email')
+        return self._get_user_option('email')
 
     def _get_user_option(self, option_name):
         """See Config._get_user_option."""
-        section = self._get_section()
-        if section is not None:
-            if self._get_parser().has_option(section, option_name):
-                return self._get_parser().get(section, option_name)
+        try:
+            return self._get_parser().get_value(self._get_section(),
+                                                option_name)
+        except KeyError:
+            pass
 
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
-        section = self._get_section()
-        if section is not None:
-            if self._get_parser().has_option(section, 'gpg_signing_command'):
-                return self._get_parser().get(section, 'gpg_signing_command')
+        return self._get_user_option('gpg_signing_command')
 
     def __init__(self, get_filename):
         super(IniBasedConfig, self).__init__()
         self._get_filename = get_filename
         self._parser = None
+        
+    def _post_commit(self):
+        """See Config.post_commit."""
+        return self._get_user_option('post_commit')
 
     def _string_to_signature_policy(self, signature_string):
         """Convert a string to a signing policy."""
@@ -222,8 +253,7 @@ class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
 
     def get_editor(self):
-        if self._get_parser().has_option(self._get_section(), 'editor'):
-            return self._get_parser().get(self._get_section(), 'editor')
+        return self._get_user_option('editor')
 
     def __init__(self):
         super(GlobalConfig, self).__init__(config_filename)
@@ -249,7 +279,7 @@ class LocationConfig(IniBasedConfig):
         TODO: perhaps return a NullSection that thunks through to the 
               global config.
         """
-        sections = self._get_parser().sections()
+        sections = self._get_parser()
         location_names = self.location.split('/')
         if self.location.endswith('/'):
             del location_names[-1]
@@ -272,9 +302,11 @@ class LocationConfig(IniBasedConfig):
                 continue
             # if path is longer, and recurse is not true, no match
             if len(section_names) < len(location_names):
-                if (self._get_parser().has_option(section, 'recurse')
-                    and not self._get_parser().getboolean(section, 'recurse')):
-                    continue
+                try:
+                    if not self._get_parser().get_bool(section, 'recurse'):
+                        continue
+                except KeyError:
+                    pass
             matches.append((len(section_names), section))
         if not len(matches):
             return None
@@ -308,6 +340,13 @@ class LocationConfig(IniBasedConfig):
         if check is not None:
             return check
         return self._get_global_config()._get_signature_checking()
+
+    def _post_commit(self):
+        """See Config.post_commit."""
+        hook = self._get_user_option('post_commit')
+        if hook is not None:
+            return hook
+        return self._get_global_config()._post_commit()
 
 
 class BranchConfig(Config):
@@ -350,6 +389,10 @@ class BranchConfig(Config):
         super(BranchConfig, self).__init__()
         self._location_config = None
         self.branch = branch
+
+    def _post_commit(self):
+        """See Config.post_commit."""
+        return self._get_location_config()._post_commit()
 
 
 def config_dir():
