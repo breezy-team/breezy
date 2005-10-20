@@ -247,7 +247,7 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
                     return None
                 else:
                     conflict_handler.new_contents_conflict(this_path, 
-                                                           other_contents)
+                        contents.new_contents)
         elif isinstance(contents.old_contents, changeset.TreeFileCreate) and \
             isinstance(contents.new_contents, changeset.TreeFileCreate):
             return make_merge()

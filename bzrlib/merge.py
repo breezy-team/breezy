@@ -124,7 +124,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def new_contents_conflict(self, filename, other_contents):
         """Conflicting contents for newly added file."""
-        other.contents.apply(filename + ".OTHER")
+        other_contents(filename + ".OTHER", self, False)
         self.conflict("Conflict in newly added file %s" % filename)
     
 
