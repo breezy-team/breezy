@@ -47,6 +47,8 @@ UNRELEASED CHANGES
       after the commit has completed, with the branch and revision_id as
       parameters. (Robert Collins)
 
+    * Merge now has a retcode of 1 when conflicts occur. (Robert Collins)
+
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 
@@ -145,6 +147,12 @@ UNRELEASED CHANGES
 
     * Transports can register using register_lazy_transport, and they 
       will be loaded when first used.  (Martin Pool)
+
+    * 'merge_flex' no longer calls conflict_handler.finalize(), instead that
+      is called by merge_inner. This is so that the conflict count can be 
+      retrieved (and potentially manipulated) before returning to the caller
+      of merge_inner. Likewise 'merge' now returns the conflict count to the
+      caller. (Robert Collins)
 
   BUG FIXES:
 

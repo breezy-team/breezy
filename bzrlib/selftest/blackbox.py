@@ -364,11 +364,11 @@ class TestCommands(ExternalBase):
         print >> file('b.txt', 'ab'), "something"
         print >> file('sub/c.txt', 'ab'), "something"
         self.runbzr(('commit', '-m', 'Modified a.txt'))
-        self.runbzr('merge ../a/')
+        self.runbzr('merge ../a/', retcode=1)
         assert os.path.exists('sub/a.txt.THIS')
         assert os.path.exists('sub/a.txt.BASE')
         os.chdir('../a')
-        self.runbzr('merge ../b/')
+        self.runbzr('merge ../b/', retcode=1)
         assert os.path.exists('sub/a.txt.OTHER')
         assert os.path.exists('sub/a.txt.BASE')
 
@@ -505,7 +505,7 @@ class TestCommands(ExternalBase):
         file('question', 'wb').write("What do you get when you multiply six"
                                    "times nine?")
         self.runbzr('commit -m this')
-        self.runbzr('merge ../other --show-base')
+        self.runbzr('merge ../other --show-base', retcode=1)
         conflict_text = file('hello').read()
         assert '<<<<<<<' in conflict_text
         assert '>>>>>>>' in conflict_text
@@ -514,7 +514,7 @@ class TestCommands(ExternalBase):
         assert 'hi world' in conflict_text
         self.runbzr('revert')
         self.runbzr('resolve --all')
-        self.runbzr('merge ../other')
+        self.runbzr('merge ../other', retcode=1)
         conflict_text = file('hello').read()
         assert '|||||||' not in conflict_text
         assert 'hi world' not in conflict_text
