@@ -14,7 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
+# DO NOT change this to cStringIO - it results in control files 
+# written as UCS4
+# FIXIT! (Only deal with byte streams OR unicode at any one layer.)
+# RBC 20051018
+from StringIO import StringIO
 import sys
 import os
 
@@ -336,7 +340,6 @@ class cmd_pull(Command):
 
     def run(self, location=None, remember=False, clobber=False):
         from bzrlib.merge import merge
-        import tempfile
         from shutil import rmtree
         import errno
         
@@ -375,10 +378,8 @@ class cmd_branch(Command):
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
         from bzrlib.clone import copy_branch
-        import tempfile
         import errno
         from shutil import rmtree
-        cache_root = tempfile.mkdtemp()
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -394,7 +395,6 @@ class cmd_branch(Command):
                 raise
         br_from.lock_read()
         try:
-            br_from.setup_caching(cache_root)
             if basis is not None:
                 basis_branch = Branch.open_containing(basis)[0]
             else:
@@ -405,6 +405,9 @@ class cmd_branch(Command):
                 revision_id = None
             if to_location is None:
                 to_location = os.path.basename(from_location.rstrip("/\\"))
+                name = None
+            else:
+                name = os.path.basename(to_location) + '\n'
             try:
                 os.mkdir(to_location)
             except OSError, e:
@@ -423,10 +426,15 @@ class cmd_branch(Command):
                 msg = "The branch %s has no revision %d." % (from_location, revision[0])
                 raise BzrCommandError(msg)
             except bzrlib.errors.UnlistableBranch:
+                rmtree(to_location)
                 msg = "The branch %s cannot be used as a --basis"
+                raise BzrCommandError(msg)
+            if name:
+                branch = Branch.open(to_location)
+                name = StringIO(name)
+                branch.put_controlfile('branch-name', name)
         finally:
             br_from.unlock()
-            rmtree(cache_root)
 
 
 class cmd_renames(Command):

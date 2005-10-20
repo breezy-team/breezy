@@ -29,6 +29,9 @@ UNRELEASED CHANGES
     * 'bzr pull' now accepts '--clobber' which will discard local changes
       and make this branch identical to the source branch. (Robert Collins)
 
+    * 'bzr branch' will now set the branch-name to the last component of the
+      output directory, if one was supplied.
+
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 

@@ -298,6 +298,7 @@ class TestCommands(ExternalBase):
         self.example_branch()
         os.chdir('..')
         self.runbzr('branch a b')
+        self.assertFileEqual('b\n', 'b/.bzr/branch-name')
         self.runbzr('branch a c -r 1')
         os.chdir('b')
         self.runbzr('commit -m foo --unchanged')
