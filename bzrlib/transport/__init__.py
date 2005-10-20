@@ -362,3 +362,13 @@ def urlescape(relpath):
     # TODO utf8 it first. utf8relpath = relpath.encode('utf8')
     import urllib
     return urllib.quote(relpath)
+
+
+def register_builtin_transports():
+    """Register all builtin transport modules.
+    
+    This happens as a sideeffect of importing the modules.
+    """
+    import bzrlib.transport.local, \
+           bzrlib.transport.http, \
+           bzrlib.transport.sftp

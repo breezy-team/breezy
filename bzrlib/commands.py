@@ -451,8 +451,8 @@ def run_bzr(argv):
     --profile
         Run under the Python profiler.
     """
-    # Load all of the transport methods
-    import bzrlib.transport.local, bzrlib.transport.http
+    import bzrlib.transport
+    bzrlib.transport.register_builtin_transports()
     
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
 
