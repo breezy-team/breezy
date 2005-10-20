@@ -23,6 +23,7 @@ import errno
 import shutil
 from stat import ST_MODE, S_ISDIR, ST_SIZE
 import tempfile
+import urllib
 
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, register_transport, \
@@ -59,12 +60,11 @@ class LocalTransport(Transport):
             return LocalTransport(self.abspath(offset))
 
     def abspath(self, relpath):
-        """Return the full url to the given relative path.
+        """Return the full url to the given relative URL.
         This can be supplied with a string or a list
         """
-        if isinstance(relpath, basestring):
-            relpath = [relpath]
-        return os.path.join(self.base, *relpath)
+        assert isinstance(relpath, basestring)
+        return os.path.join(self.base, urllib.unquote(relpath))
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.

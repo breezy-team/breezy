@@ -55,7 +55,7 @@ UNRELEASED CHANGES
 
     * There is a new method for TestCaseInTempDir, assertFileEqual, which
       will check that a given content is equal to the content of the named
-      file.
+      file. (Robert Collins)
 
   INTERNALS:
 
@@ -116,6 +116,25 @@ UNRELEASED CHANGES
       It is intended that this be used by plugins to support options - 
       options of built in programs should have specific methods on the config.
       (Robert Collins)
+
+    * merge.merge_inner now has tempdir as an optional parameter. (Robert
+      Collins)
+
+    * Tree.kind is not recorded at the top level of the hierarchy, as it was
+      missing on EmptyTree, leading to a bug with merge on EmptyTrees.
+      (Robert Collins)
+
+    * WorkingTree.__del__ has been removed, it was non deterministic and not 
+      doing what it was intended to. See WorkingTree.__init__ for a comment
+      about future directions. (Robert Collins/Martin Pool)
+
+    * bzrlib.transport.http has been modified so that only 404 urllib errors
+      are returned as NoSuchFile. Other exceptions will propogate as normal.
+      This allows debuging of actual errors. (Robert Collins)
+
+    * bzrlib.transport.Transport now accepts *ONLY* url escaped relative paths
+      to apis like 'put', 'get' and 'has'. This is to provide consistent
+      behaviour - it operates on url's only. (Robert Collins)
 
   BUG FIXES:
 
