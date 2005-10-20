@@ -23,9 +23,17 @@
 # plugin_cmds variable.
 
 
+import imp
 import os
+import sys
+
 import bzrlib
 from bzrlib.config import config_dir
+from bzrlib.trace import log_error, mutter, log_exception, warning, \
+        log_exception_quietly
+from bzrlib.errors import BzrError
+from bzrlib import plugins
+
 DEFAULT_PLUGIN_PATH = os.path.join(config_dir(), 'plugins')
 
 all_plugins = []
@@ -55,12 +63,6 @@ def load_plugins():
         return
         #raise BzrError("plugins already initialized")
     _loaded = True
-
-    import sys, os, imp
-    
-    from bzrlib.trace import log_error, mutter, log_exception
-    from bzrlib.errors import BzrError
-    from bzrlib import plugins
 
     dirs = os.environ.get('BZR_PLUGIN_PATH', DEFAULT_PLUGIN_PATH).split(":")
     dirs.insert(0, os.path.dirname(plugins.__file__))
@@ -121,6 +123,8 @@ def load_plugins():
 
                 mutter('loaded succesfully')
             except:
-                log_error('Unable to load plugin %r from %r' % (name, d))
-                log_exception()
+                ## import pdb
+                ## pdb.set_trace()
+                warning('Unable to load plugin %r from %r' % (name, d))
+                log_exception_quietly()
 

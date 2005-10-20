@@ -35,6 +35,9 @@ UNRELEASED CHANGES
     * 'bzr pull' now accepts '--clobber' which will discard local changes
       and make this branch identical to the source branch. (Robert Collins)
 
+    * Just give a quieter warning if a plugin can't be loaded, and 
+      put the details in .bzr.log.  (Martin Pool)
+
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 

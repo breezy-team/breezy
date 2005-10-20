@@ -160,7 +160,7 @@ def log_startup(argv):
 
 
 def log_exception(msg=None):
-    """Log the last exception into the trace file.
+    """Log the last exception to stderr and the trace file.
 
     The exception string representation is used as the error
     summary, unless msg is given.
@@ -176,6 +176,16 @@ def log_exception(msg=None):
     ## msg = "(%s) %s" % (str(type(ei[1])), msg)
     _bzr_logger.exception(msg + cmd_info)
 
+
+
+def log_exception_quietly():
+    """Log the last exception to the trace file only.
+
+    Used for exceptions that occur internally and that may be 
+    interesting to developers but not to users.  For example, 
+    errors loading plugins.
+    """
+    debug(traceback.format_exc())
 
 
 def enable_default_logging():
