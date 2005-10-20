@@ -42,6 +42,11 @@ UNRELEASED CHANGES
 
     * New sftp transport, based on Paramiko.  (Robey Pointer)
 
+    * If the option 'post_commit' is set to one (or more) python function
+      names (must be in the bzrlib namespace), then they will be invoked
+      after the commit has completed, with the branch and revision_id as
+      parameters. (Robert Collins)
+
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 
