@@ -65,5 +65,6 @@ setup(name='bzr',
                 'bzrlib.store',
                 'bzrlib.util.elementtree',
                 'bzrlib.util.effbot.org',
+                'bzrlib.util.configobj',
                 ],
       scripts=['bzr'])

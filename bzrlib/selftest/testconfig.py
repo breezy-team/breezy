@@ -17,7 +17,7 @@
 
 """Tests for finding and reading the bzr config file[s]."""
 # import system imports here
-from ConfigParser import ConfigParser
+from bzrlib.util.configobj.configobj import ConfigObj, ConfigObjError
 from cStringIO import StringIO
 import os
 import sys
@@ -70,14 +70,11 @@ sample_branches_text = ("[http://www.example.com]\n"
                         "#testing explicit beats globs\n")
 
 
-class InstrumentedConfigParser(object):
-    """A config parser look-enough-alike to record calls made to it."""
+class InstrumentedConfigObj(object):
+    """A config obj look-enough-alike to record calls made to it."""
 
-    def __init__(self):
-        self._calls = []
-
-    def read(self, filenames):
-        self._calls.append(('read', filenames))
+    def __init__(self, input):
+        self._calls = [('__init__', input)]
 
 
 class FakeBranch(object):
@@ -192,7 +189,7 @@ class TestIniConfig(TestCase):
         my_config = config.IniBasedConfig(None)
         self.failUnless(
             isinstance(my_config._get_parser(file=config_file),
-                        ConfigParser))
+                        ConfigObj))
 
     def test_cached(self):
         config_file = StringIO(sample_config_text)
@@ -208,15 +205,15 @@ class TestGetConfig(TestCase):
 
     def test_calls_read_filenames(self):
         # replace the class that is constructured, to check its parameters
-        oldparserclass = config.ConfigParser
-        config.ConfigParser = InstrumentedConfigParser
+        oldparserclass = config.ConfigObj
+        config.ConfigObj = InstrumentedConfigObj
         my_config = config.GlobalConfig()
         try:
             parser = my_config._get_parser()
         finally:
-            config.ConfigParser = oldparserclass
-        self.failUnless(isinstance(parser, InstrumentedConfigParser))
-        self.assertEqual(parser._calls, [('read', [config.config_filename()])])
+            config.ConfigObj = oldparserclass
+        self.failUnless(isinstance(parser, InstrumentedConfigObj))
+        self.assertEqual(parser._calls, [('__init__', config.config_filename())])
 
 
 class TestBranchConfig(TestCaseInTempDir):
@@ -322,16 +319,20 @@ class TestLocationConfig(TestCase):
         self.assertRaises(TypeError, config.LocationConfig)
 
     def test_branch_calls_read_filenames(self):
+        # This is testing the correct file names are provided.
+        # TODO: consolidate with the test for GlobalConfigs filename checks.
+        #
         # replace the class that is constructured, to check its parameters
-        oldparserclass = config.ConfigParser
-        config.ConfigParser = InstrumentedConfigParser
+        oldparserclass = config.ConfigObj
+        config.ConfigObj = InstrumentedConfigObj
         my_config = config.LocationConfig('http://www.example.com')
         try:
             parser = my_config._get_parser()
         finally:
-            config.ConfigParser = oldparserclass
-        self.failUnless(isinstance(parser, InstrumentedConfigParser))
-        self.assertEqual(parser._calls, [('read', [config.branches_config_filename()])])
+            config.ConfigObj = oldparserclass
+        self.failUnless(isinstance(parser, InstrumentedConfigObj))
+        self.assertEqual(parser._calls,
+                         [('__init__', config.branches_config_filename())])
 
     def test_get_global_config(self):
         my_config = config.LocationConfig('http://example.com')

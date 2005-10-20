@@ -326,7 +326,9 @@ class TestCommands(ExternalBase):
         # We can't merge when there are in-tree changes
         self.runbzr('merge ../b', retcode=1)
         self.runbzr(['commit', '-m', "Like an epidemic of u's"])
-        self.runbzr('merge ../b')
+        self.runbzr('merge ../b -r last:1..last:1')
+        self.runbzr('revert --no-backup')
+        self.runbzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
         a = Branch.open('.')
@@ -503,7 +505,19 @@ class TestCommands(ExternalBase):
         file('question', 'wb').write("What do you get when you multiply six"
                                    "times nine?")
         self.runbzr('commit -m this')
+        self.runbzr('merge ../other --show-base')
+        conflict_text = file('hello').read()
+        assert '<<<<<<<' in conflict_text
+        assert '>>>>>>>' in conflict_text
+        assert '=======' in conflict_text
+        assert '|||||||' in conflict_text
+        assert 'hi world' in conflict_text
+        self.runbzr('revert')
+        self.runbzr('resolve --all')
         self.runbzr('merge ../other')
+        conflict_text = file('hello').read()
+        assert '|||||||' not in conflict_text
+        assert 'hi world' not in conflict_text
         result = self.runbzr('conflicts', backtick=1)
         self.assertEquals(result, "hello\nquestion\n")
         result = self.runbzr('status', backtick=1)
