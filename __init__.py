@@ -5,6 +5,7 @@ Does not modify the working tree, use 'bzr revert' for that.
 """
 
 import bzrlib, bzrlib.commands
+from bzrlib.option import Option
 
 class cmd_uncommit(bzrlib.commands.Command):
     """Remove the last committed revision.
@@ -63,4 +64,4 @@ class cmd_uncommit(bzrlib.commands.Command):
                 revno=revno)
 
 bzrlib.commands.register_command(cmd_uncommit)
-bzrlib.commands.OPTIONS['dry-run'] = None
+Option.OPTIONS['dry-run'] = Option('dry-run')
