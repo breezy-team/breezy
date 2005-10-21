@@ -57,7 +57,7 @@ class EmailSender(object):
         return outf.getvalue()
 
     def _command_line(self):
-        return ['mail', '-s', self.subject(), '-a', self.from_address(),
+        return ['mail', '-s', self.subject(), '-a', "From: " + self.from_address(),
                 self.to()]
 
     def to(self):

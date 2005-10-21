@@ -54,7 +54,7 @@ class TestGetTo(TestCaseInTempDir):
     def test_command_line(self):
         sender = self.get_sender()
         self.assertEqual(['mail', '-s', sender.subject(), '-a', 
-                          sender.from_address(), sender.to()],
+                          'From: ' + sender.from_address(), sender.to()],
                          sender._command_line())
 
     def test_to(self):
