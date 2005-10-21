@@ -131,6 +131,27 @@ Functions that transform one thing to another should be named ``x_to_y``
 (not ``x2y`` as occurs in some old code.)
 
 
+Destructors
+-----------
+
+Python destructors (``__del__``) work rather differently from in other
+languages.  In particular, bear in mind that destructors may not be called
+immediately when the object apparently becomes unreferenced, and that
+there are tight restrictions on what can be done inside them.
+
+ 0. Never use a __del__ method without asking Martin/Robert first.
+
+ 1. Never rely on a ``__del__`` method running.  If there is code that
+    must run, do it from a ``finally`` block instead.
+
+ 2. Never ``import`` from inside a ``__del__`` method, or you may crash the
+    interpreter!!
+
+ 3. In some places we raise a warning from the destructor if the object
+    has not been cleaned up or closed.  This is considered OK: the warning
+    may not catch every case but it's still useful sometimes.
+
+
 Writing output
 ==============
 
@@ -203,3 +224,5 @@ revno
     Integer identifier for a revision on the main line of a branch.
     Revision 0 is always the null revision; others are 1-based
     indexes into the branch's revision history.
+
+:: vim: tw=74 ai

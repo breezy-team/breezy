@@ -355,13 +355,6 @@ def get_transport(base):
     return _protocol_handlers[None](base)
 
 
-def urlescape(relpath):
-    """Escape relpath to be a valid url."""
-    # TODO utf8 it first. utf8relpath = relpath.encode('utf8')
-    import urllib
-    return urllib.quote(relpath)
-
-
 def register_lazy_transport(scheme, module, classname):
     """Register lazy-loaded transport class.
 
@@ -373,9 +366,16 @@ def register_lazy_transport(scheme, module, classname):
         klass = getattr(mod, classname)
         return klass(base)
     register_transport(scheme, _loader)
- 
 
-# If nothing else matches, try the LocalTransport
+
+def urlescape(relpath):
+    """Escape relpath to be a valid url."""
+    # TODO utf8 it first. utf8relpath = relpath.encode('utf8')
+    import urllib
+    return urllib.quote(relpath)
+
+
+# None is the default transport, for things with no url scheme
 register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
