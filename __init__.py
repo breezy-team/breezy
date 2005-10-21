@@ -15,10 +15,36 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
+import bzrlib.config as config
+
+
+class EmailSender(object):
+    """An email message sender."""
+
+    def __init__(self, branch, revision_id, config):
+        self.config = config
+
+    def to(self):
+        """What is the address the mail should go to."""
+        return self.config.get_user_option('post_commit_to')
+
+    def from_address(self):
+        """What address should I send from."""
+        return self.config.get_user_option('post_commit_sender')
+
+    def should_send(self):
+        return self.to() is not None and self.from_address() is not None
+
+
+def post_commit(branch, revision_id):
+    EmailSender(branch, revision_id, config.BranchConfig(branch)).send()
+
+
 def test_suite():
     from unittest import TestSuite
-    import bzrlib.plugins.switch.tests 
+    import bzrlib.plugins.email.tests 
     result = TestSuite()
-    result.addTest(bzrlib.plugins.switch.tests.test_suite())
+    result.addTest(bzrlib.plugins.email.tests.test_suite())
     return result
 

@@ -19,7 +19,7 @@ from unittest import TestSuite
 
 def test_suite():
     result = TestSuite()
-    import bzrlib.plugins.switch.tests.testpublish as testpublish
-    result.addTest(testpublish.test_suite())
+    import bzrlib.plugins.email.tests.testemail as testemail
+    result.addTest(testemail.test_suite())
     return result
 
