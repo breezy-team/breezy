@@ -63,7 +63,7 @@ class LocalTransport(Transport):
         """Return the full url to the given relative URL.
         This can be supplied with a string or a list
         """
-        assert isinstance(relpath, basestring)
+        assert isinstance(relpath, basestring), (type(relpath), relpath)
         return os.path.join(self.base, urllib.unquote(relpath))
 
     def relpath(self, abspath):
