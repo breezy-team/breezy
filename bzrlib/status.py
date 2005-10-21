@@ -95,6 +95,7 @@ def show_status(branch, show_unchanged=False,
                 else:
                     ignore = set()
                 for merge in branch.pending_merges():
+                    ignore.add(merge)
                     try:
                         m_revision = branch.get_revision(merge)
                         print >> to_file, ' ', line_log(m_revision, 77)
