@@ -89,10 +89,22 @@ def show_status(branch, show_unchanged=False,
             list_paths('conflicts', conflicts, specific_files, to_file)
             if show_pending and len(branch.pending_merges()) > 0:
                 print >>to_file, 'pending merges:'
+                last_revision = branch.last_revision()
+                if last_revision is not None:
+                    ignore = set(branch.get_ancestry(last_revision))
+                else:
+                    ignore = set()
                 for merge in branch.pending_merges():
                     try:
                         m_revision = branch.get_revision(merge)
                         print >> to_file, ' ', line_log(m_revision, 77)
+                        inner_merges = set(branch.get_ancestry(merge))\
+                            - ignore
+                        for mmerge in inner_merges:
+                            mm_revision = branch.get_revision(mmerge)
+                            print >> to_file, '   ', line_log(mm_revision, 75)
+                        ignore.update(inner_merges)
+                            
                     except NoSuchRevision:
                         print >> to_file, ' ', merge 
                         
