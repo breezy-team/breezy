@@ -32,6 +32,8 @@ sample_config=("[DEFAULT]\n"
                "post_commit_to=demo@example.com\n"
                "post_commit_sender=Sample <foo@example.com>\n")
 
+unconfigured_config=("[DEFAULT]\n"
+                     "email=Robert <foo@example.com>\n")
 
 class TestGetTo(TestCaseInTempDir):
 
@@ -49,6 +51,12 @@ class TestGetTo(TestCaseInTempDir):
             '  fuzzy\n'
             '  wuzzy\n', sender.body())
 
+    def test_command_line(self):
+        sender = self.get_sender()
+        self.assertEqual(['mail', '-s', sender.subject(), '-a', 
+                          sender.from_address(), sender.to()],
+                         sender._command_line())
+
     def test_to(self):
         sender = self.get_sender()
         self.assertEqual('demo@example.com', sender.to())
@@ -57,12 +65,16 @@ class TestGetTo(TestCaseInTempDir):
         sender = self.get_sender()
         self.assertEqual('Sample <foo@example.com>', sender.from_address())
 
+    def test_from_default(self):
+        sender = self.get_sender(unconfigured_config)
+        self.assertEqual('Robert <foo@example.com>', sender.from_address())
+
     def test_should_send(self):
         sender = self.get_sender()
         self.assertEqual(True, sender.should_send())
 
     def test_should_not_send(self):
-        sender = self.get_sender("")
+        sender = self.get_sender(unconfigured_config)
         self.assertEqual(False, sender.should_send())
 
     def test_subject(self):

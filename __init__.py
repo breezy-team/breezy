@@ -16,8 +16,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from StringIO import StringIO
+import subprocess
 
 import bzrlib.config as config
+import bzrlib.errors as errors
 
 
 class EmailSender(object):
@@ -54,13 +56,47 @@ class EmailSender(object):
                  )
         return outf.getvalue()
 
+    def _command_line(self):
+        return ['mail', '-s', self.subject(), '-a', self.from_address(),
+                self.to()]
+
     def to(self):
         """What is the address the mail should go to."""
         return self.config.get_user_option('post_commit_to')
 
     def from_address(self):
         """What address should I send from."""
-        return self.config.get_user_option('post_commit_sender')
+        result = self.config.get_user_option('post_commit_sender')
+        if result is None:
+            result = self.config.username()
+        return result
+
+    def send(self):
+        # TODO think up a good test for this, but I think it needs
+        # a custom binary shipped with. RBC 20051021
+        try:
+            process = subprocess.Popen(self._command_line(),
+                                       stdin=subprocess.PIPE)
+            try:
+                result = process.communicate(self.body())[0]
+                if process.returncode is None:
+                    process.wait()
+                if process.returncode != 0:
+                    raise errors.BzrError("Failed to send email")
+                return result
+            except OSError, e:
+                if e.errno == errno.EPIPE:
+                    raise errors.BzrError("Failed to send email.")
+                else:
+                    raise
+        except ValueError:
+            # bad subprocess parameters, should never happen.
+            raise
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise errors.BzrError("mail is not installed !?")
+            else:
+                raise
 
     def should_send(self):
         return self.to() is not None and self.from_address() is not None
