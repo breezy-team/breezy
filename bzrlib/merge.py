@@ -364,9 +364,13 @@ class Merger(object):
         self.interesting_ids = interesting_ids
 
     def set_pending(self):
-        if self.base_is_ancestor and self.other_rev_id is not None\
-            and self.other_rev_id not in self.this_branch.revision_history():
-            self.this_branch.add_pending_merge(self.other_rev_id)
+        if not self.base_is_ancestor:
+            return
+        if self.other_rev_id is None:
+            return
+        if self.other_rev_id in self.this_branch.get_ancestry(self.this_basis):
+            return
+        self.this_branch.add_pending_merge(self.other_rev_id)
 
     def set_other(self, other_revision):
         other_branch, self.other_tree = get_tree(other_revision, 

@@ -335,8 +335,12 @@ class TestCommands(ExternalBase):
         b = Branch.open('../b')
         a.get_revision_xml(b.last_revision())
         self.log('pending merges: %s', a.pending_merges())
-        #        assert a.pending_merges() == [b.last_revision()], "Assertion %s %s" \
-        #        % (a.pending_merges(), b.last_patch())
+        assert a.pending_merges() == [b.last_revision()], "Assertion %s %s" \
+            % (a.pending_merges(), b.last_patch())
+        self.runbzr('commit -m merged')
+        self.runbzr('merge ../b -r last:1')
+        self.assertEqual(Branch.open('.').pending_merges(), [])
+
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""
