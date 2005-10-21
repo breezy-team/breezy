@@ -395,7 +395,6 @@ class _Branch(Branch):
         """Return location relative to branch."""
         return self._transport.abspath(self._rel_controlfilename(file_or_path))
 
-
     def controlfile(self, file_or_path, mode='r'):
         """Open a control file for this branch.
 
