@@ -102,9 +102,10 @@ class EmailSender(object):
         return self.to() is not None and self.from_address() is not None
 
     def subject(self):
-        return ("New revision %d in %s: %s" % 
-                (self.revno, self.branch.base,
-                 self.revision.message.split('\n')[0].split('\r')[0]))
+        return ("Rev %d: %s in %s" % 
+                (self.revno,
+                 self.revision.message.split('\n')[0].split('\r')[0],
+                 self.branch.base))
 
 
 def post_commit(branch, revision_id):

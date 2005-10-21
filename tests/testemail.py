@@ -79,7 +79,7 @@ class TestGetTo(TestCaseInTempDir):
 
     def test_subject(self):
         sender = self.get_sender()
-        self.assertEqual("New revision 1 in %s: foo bar baz" % 
+        self.assertEqual("Rev 1: foo bar baz in %s" % 
                             sender.branch.base,
                          sender.subject())
 
