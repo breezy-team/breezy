@@ -35,6 +35,20 @@ sample_config=("[DEFAULT]\n"
 
 class TestGetTo(TestCaseInTempDir):
 
+    def test_body(self):
+        sender = self.get_sender()
+        # FIXME: this should not use a literal log, rather grab one from bzrlib.log
+        self.assertEqual(
+            '------------------------------------------------------------\n'
+            'revno: 1\n'
+            'revision-id: A\n'
+            'committer: Sample <john@example.com>\n'
+            'timestamp: Thu 1970-01-01 00:00:01 +0000\n'
+            'message:\n'
+            '  foo bar baz\n'
+            '  fuzzy\n'
+            '  wuzzy\n', sender.body())
+
     def test_to(self):
         sender = self.get_sender()
         self.assertEqual('demo@example.com', sender.to())
@@ -51,9 +65,20 @@ class TestGetTo(TestCaseInTempDir):
         sender = self.get_sender("")
         self.assertEqual(False, sender.should_send())
 
+    def test_subject(self):
+        sender = self.get_sender()
+        self.assertEqual("New revision 1 in %s: foo bar baz" % 
+                            sender.branch.base,
+                         sender.subject())
+
     def get_sender(self, text=sample_config):
         self.branch = Branch.initialize('.')
-        self.branch.commit('foo bar baz', rev_id='A', allow_pointless=True)
+        self.branch.commit('foo bar baz\nfuzzy\rwuzzy', rev_id='A',
+                           allow_pointless=True,
+                           timestamp=1,
+                           timezone=0,
+                           committer="Sample <john@example.com>",
+                           )
         my_config = config.BranchConfig(self.branch)
         config_file = StringIO(text)
         (my_config._get_location_config().

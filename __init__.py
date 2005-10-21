@@ -15,6 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from StringIO import StringIO
 
 import bzrlib.config as config
 
@@ -24,6 +25,34 @@ class EmailSender(object):
 
     def __init__(self, branch, revision_id, config):
         self.config = config
+        self.branch = branch
+        self.revision = self.branch.get_revision(revision_id)
+        self.revno = self.branch.revision_id_to_revno(revision_id)
+
+    def body(self):
+        from bzrlib.log import log_formatter, show_log
+
+        rev1 = rev2 = self.revno
+        if rev1 == 0:
+            rev1 = None
+            rev2 = None
+
+        # use 'replace' so that we don't abort if trying to write out
+        # in e.g. the default C locale.
+
+        outf = StringIO()
+        lf = log_formatter('long',
+                           show_ids=True,
+                           to_file=outf
+                           )
+
+        show_log(self.branch,
+                 lf,
+                 start_revision=rev1,
+                 end_revision=rev2,
+                 verbose=True
+                 )
+        return outf.getvalue()
 
     def to(self):
         """What is the address the mail should go to."""
@@ -35,6 +64,11 @@ class EmailSender(object):
 
     def should_send(self):
         return self.to() is not None and self.from_address() is not None
+
+    def subject(self):
+        return ("New revision %d in %s: %s" % 
+                (self.revno, self.branch.base,
+                 self.revision.message.split('\n')[0].split('\r')[0]))
 
 
 def post_commit(branch, revision_id):
