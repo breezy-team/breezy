@@ -235,6 +235,7 @@ def build_working_dir(to_dir):
     lower-level code (e.g. constructing a changeset).
     """
     # RBC 20051019 is this not just 'export' ?
+    # Well, export doesn't take care of inventory...
     merge((to_dir, -1), (to_dir, 0), this_dir=to_dir,
           check_clean=False, ignore_zero=True)
 
@@ -321,9 +322,8 @@ def merge(other_revision, base_revision,
             if not found_id:
                 raise BzrCommandError("%s is not a source file in any"
                                       " tree." % fname)
-    conflicts = merge_inner(this_branch, other_tree, base_tree, tempdir=None,
-                            ignore_zero=ignore_zero,
-                            backup_files=backup_files, 
+    conflicts = merge_inner(this_branch, other_tree, base_tree,
+                            ignore_zero=ignore_zero, backup_files=backup_files,
                             merge_type=merge_type,
                             interesting_ids=interesting_ids,
                             show_base=show_base)
@@ -333,16 +333,8 @@ def merge(other_revision, base_revision,
     return conflicts
 
 
-def set_interesting(inventory_a, inventory_b, interesting_ids):
-    """Mark files whose ids are in interesting_ids as interesting
-    """
-    for inventory in (inventory_a, inventory_b):
-        for path, source_file in inventory.iteritems():
-             source_file.interesting = source_file.id in interesting_ids
-
-
-def merge_inner(this_branch, other_tree, base_tree, tempdir=None, 
-                ignore_zero=False, merge_type=ApplyMerge3, backup_files=False,
+def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
+                merge_type=ApplyMerge3, backup_files=False,
                 interesting_ids=None, show_base=False):
     """Primary interface for merging. 
 
@@ -350,23 +342,6 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir=None,
     'merge_inner(branch, branch.get_revision_tree(other_revision),
                  branch.get_revision_tree(base_revision))'
     """
-    if tempdir is None:
-        _tempdir = tempfile.mkdtemp(prefix="bzr-")
-    else:
-        _tempdir = tempdir
-    try:
-        return _merge_inner(this_branch, other_tree, base_tree, _tempdir,
-                            ignore_zero, merge_type, backup_files,
-                            interesting_ids,
-                            show_base=show_base)
-    finally:
-        if tempdir is None:
-            shutil.rmtree(_tempdir)
-
-
-def _merge_inner(this_branch, other_tree, base_tree, user_tempdir, 
-                ignore_zero=False, merge_type=ApplyMerge3, backup_files=False,
-                interesting_ids=None, show_base=False):
     def merge_factory(file_id, base, other):
         if show_base is True:
             contents_change = merge_type(file_id, base, other, show_base=True)
