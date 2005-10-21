@@ -263,6 +263,7 @@ class CTreeTester(unittest.TestCase):
         self.assertEqual(self.sorted_ids(ctree), ['a', 'b', 'c', 'd'])
         ctree.note_deletion("grandparent/parent/file")
         ctree.note_id("e", "grandparent/alt_parent/fool", kind="directory")
+        ctree.note_last_changed("e", "revisionidiguess")
         self.assertEqual(self.sorted_ids(ctree), ['a', 'b', 'd', 'e'])
 
 class CSetTester(TestCaseInTempDir):
