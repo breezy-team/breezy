@@ -267,56 +267,93 @@ def merge(other_revision, base_revision,
     if this_dir is None:
         this_dir = '.'
     this_branch = Branch.open_containing(this_dir)[0]
-    this_rev_id = this_branch.last_revision()
-    if this_rev_id is None:
-        raise BzrCommandError("This branch has no commits")
-    if check_clean:
-        changes = compare_trees(this_branch.working_tree(), 
-                                this_branch.basis_tree(), False)
-        if changes.has_changed():
-            raise BzrCommandError("Working tree has uncommitted changes.")
-    other_branch, other_tree = get_tree(other_revision, this_branch)
-    if other_revision[1] == -1:
-        other_rev_id = other_branch.last_revision()
-        if other_rev_id is None:
-            raise NoCommits(other_branch)
-        other_basis = other_rev_id
-    elif other_revision[1] is not None:
-        other_rev_id = other_branch.get_rev_id(other_revision[1])
-        other_basis = other_rev_id
-    else:
-        other_rev_id = None
-        other_basis = other_branch.last_revision()
-        if other_basis is None:
-            raise NoCommits(other_branch)
-    if base_revision == [None, None]:
-        try:
-            base_rev_id = common_ancestor(this_rev_id, other_basis, 
-                                          this_branch)
-        except NoCommonAncestor:
-            raise UnrelatedBranches()
-        base_tree = get_revid_tree(this_branch, base_rev_id, None)
-        base_is_ancestor = True
-    else:
-        base_branch, base_tree = get_tree(base_revision)
-        if base_revision[1] == -1:
-            base_rev_id = base_branch.last_revision()
-        elif base_revision[1] is None:
-            base_rev_id = None
+
+    merger = Merger(this_branch)
+    merger.check_basis(check_clean)
+    merger.set_other(other_revision)
+    merger.set_base(base_revision)
+    merger.backup_files = backup_files
+    merger.merge_type = ApplyMerge3
+    merger.set_interesting_files(file_list)
+    merger.show_base = show_base 
+    merger.conflict_handler = MergeConflictHandler(merger.this_tree, 
+                                                   merger.base_tree, 
+                                                   merger.other_tree,
+                                                   ignore_zero=ignore_zero)
+    conflicts = merger.do_merge()
+    merger.set_pending()
+    return conflicts
+
+def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
+                backup_files=False, merge_type=ApplyMerge3, 
+                interesting_ids=None, show_base=False):
+    """Primary interface for merging. 
+
+        typical use is probably 
+        'merge_inner(branch, branch.get_revision_tree(other_revision),
+                     branch.get_revision_tree(base_revision))'
+        """
+    merger = Merger(this_branch, other_tree, base_tree)
+    merger.backup_files = False
+    merger.merge_type = ApplyMerge3
+    merger.interesting_ids = interesting_ids
+    merger.show_base = show_base 
+    merger.conflict_handler = MergeConflictHandler(merger.this_tree, base_tree, 
+                                                   other_tree,
+                                                   ignore_zero=ignore_zero)
+    return merger.do_merge()
+
+
+class Merger(object):
+    def __init__(self, this_branch, other_tree=None, base_tree=None):
+        object.__init__(self)
+        self.this_branch = this_branch
+        self.this_basis = this_branch.last_revision()
+        self.this_rev_id = None
+        self.this_tree = this_branch.working_tree()
+        self.other_tree = other_tree
+        self.base_tree = base_tree
+        self.ignore_zero = False
+        self.backup_files = False
+        self.interesting_ids = None
+        self.show_base = False
+        self.conflict_handler = MergeConflictHandler(self.this_tree, base_tree, 
+                                                     other_tree)
+ 
+    def merge_factory(self, file_id, base, other):
+        if self.show_base is True:
+            contents_change = self.merge_type(file_id, base, other, 
+                                              show_base=True)
         else:
-            base_rev_id = base_branch.get_rev_id(base_revision[1])
-        fetch(from_branch=base_branch, to_branch=this_branch)
-        base_is_ancestor = is_ancestor(this_rev_id, base_rev_id,
-                                       this_branch)
-    if file_list is None:
-        interesting_ids = None
-    else:
+            contents_change = self.merge_type(file_id, base, other)
+        if self.backup_files:
+            contents_change = BackupBeforeChange(contents_change)
+        return contents_change
+
+    def check_basis(self, check_clean):
+        if self.this_basis is None:
+            raise BzrCommandError("This branch has no commits")
+        if check_clean:
+            self.compare_basis()
+            if self.this_basis != self.this_rev_id:
+                raise BzrCommandError("Working tree has uncommitted changes.")
+
+    def compare_basis(self):
+        changes = compare_trees(self.this_branch.working_tree(), 
+                                self.this_branch.basis_tree(), False)
+        if not changes.has_changed():
+            self.this_rev_id = self.this_basis
+
+    def set_interesting_files(self, file_list):
+        if file_list is None:
+            self.interesting_ids = None
+            return
+
         interesting_ids = set()
-        this_tree = this_branch.working_tree()
         for fname in file_list:
-            path = this_tree.relpath(fname)
+            path = self.this_tree.relpath(fname)
             found_id = False
-            for tree in (this_tree, base_tree, other_tree):
+            for tree in (self.this_tree, self.base_tree, self.other_tree):
                 file_id = tree.inventory.path2id(path)
                 if file_id is not None:
                     interesting_ids.add(file_id)
@@ -324,121 +361,139 @@ def merge(other_revision, base_revision,
             if not found_id:
                 raise BzrCommandError("%s is not a source file in any"
                                       " tree." % fname)
-    conflicts = merge_inner(this_branch, other_tree, base_tree,
-                            ignore_zero=ignore_zero, backup_files=backup_files,
-                            merge_type=merge_type,
-                            interesting_ids=interesting_ids,
-                            show_base=show_base)
-    if base_is_ancestor and other_rev_id is not None\
-        and other_rev_id not in this_branch.revision_history():
-        this_branch.add_pending_merge(other_rev_id)
-    return conflicts
+        self.interesting_ids = interesting_ids
 
+    def set_pending(self):
+        if self.base_is_ancestor and self.other_rev_id is not None\
+            and self.other_rev_id not in self.this_branch.revision_history():
+            self.this_branch.add_pending_merge(self.other_rev_id)
 
-def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
-                merge_type=ApplyMerge3, backup_files=False,
-                interesting_ids=None, show_base=False):
-    """Primary interface for merging. 
-
-    typical use is probably 
-    'merge_inner(branch, branch.get_revision_tree(other_revision),
-                 branch.get_revision_tree(base_revision))'
-    """
-    def merge_factory(file_id, base, other):
-        if show_base is True:
-            contents_change = merge_type(file_id, base, other, show_base=True)
+    def set_other(self, other_revision):
+        other_branch, self.other_tree = get_tree(other_revision, 
+                                                 self.this_branch)
+        if other_revision[1] == -1:
+            self.other_rev_id = other_branch.last_revision()
+            if self.other_rev_id is None:
+                raise NoCommits(other_branch)
+            self.other_basis = self.other_rev_id
+        elif other_revision[1] is not None:
+            self.other_rev_id = other_branch.get_rev_id(other_revision[1])
+            self.other_basis = self.other_rev_id
         else:
-            contents_change = merge_type(file_id, base, other)
-        if backup_files:
-            contents_change = BackupBeforeChange(contents_change)
-        return contents_change
+            self.other_rev_id = None
+            self.other_basis = other_branch.last_revision()
+            if self.other_basis is None:
+                raise NoCommits(other_branch)
 
-    this_tree = get_tree((this_branch.base, None))[1]
-
-    def get_inventory(tree):
-        return tree.inventory
-
-    conflict_handler = MergeConflictHandler(this_tree, base_tree, other_tree,
-                                            ignore_zero=ignore_zero)
-    inv_changes = merge_flex(this_tree, base_tree, other_tree,
-                             generate_changeset, get_inventory,
-                             conflict_handler,
-                             merge_factory=merge_factory, 
-                             interesting_ids=interesting_ids)
-
-    adjust_ids = []
-    for id, path in inv_changes.iteritems():
-        if path is not None:
-            if path == '.':
-                path = ''
+    def set_base(self, base_revision):
+        if base_revision == [None, None]:
+            try:
+                self.base_rev_id = common_ancestor(self.this_basis, 
+                                                   self.other_basis, 
+                                                   self.this_branch)
+            except NoCommonAncestor:
+                raise UnrelatedBranches()
+            self.base_tree = get_revid_tree(self.this_branch, self.base_rev_id,
+                                            None)
+            self.base_is_ancestor = True
+        else:
+            base_branch, self.base_tree = get_tree(base_revision)
+            if base_revision[1] == -1:
+                self.base_rev_id = base_branch.last_revision()
+            elif base_revision[1] is None:
+                self.base_rev_id = None
             else:
-                assert path.startswith('.' + os.sep), "path is %s" % path
-            path = path[2:]
-        adjust_ids.append((path, id))
-    if len(adjust_ids) > 0:
-        this_branch.set_inventory(regen_inventory(this_branch, 
-                                                  this_tree.basedir,
-                                                  adjust_ids))
-    conflicts = conflict_handler.conflicts
-    conflict_handler.finalize()
-    return conflicts
+                self.base_rev_id = base_branch.get_rev_id(base_revision[1])
+            fetch(from_branch=base_branch, to_branch=self.this_branch)
+            self.base_is_ancestor = is_ancestor(self.this_basis, 
+                                                self.base_rev_id,
+                                                self.this_branch)
 
+    def do_merge(self):
+        def get_inventory(tree):
+            return tree.inventory
 
-def regen_inventory(this_branch, root, new_entries):
-    old_entries = this_branch.read_working_inventory()
-    new_inventory = {}
-    by_path = {}
-    new_entries_map = {} 
-    for path, file_id in new_entries:
-        if path is None:
-            continue
-        new_entries_map[file_id] = path
+        inv_changes = merge_flex(self.this_tree, self.base_tree, 
+                                 self.other_tree,
+                                 generate_changeset, get_inventory,
+                                 self.conflict_handler,
+                                 merge_factory=self.merge_factory, 
+                                 interesting_ids=self.interesting_ids)
 
-    def id2path(file_id):
-        path = new_entries_map.get(file_id)
-        if path is not None:
-            return path
-        entry = old_entries[file_id]
-        if entry.parent_id is None:
-            return entry.name
-        return os.path.join(id2path(entry.parent_id), entry.name)
+        adjust_ids = []
+        for id, path in inv_changes.iteritems():
+            if path is not None:
+                if path == '.':
+                    path = ''
+                else:
+                    assert path.startswith('.' + os.sep), "path is %s" % path
+                path = path[2:]
+            adjust_ids.append((path, id))
+        if len(adjust_ids) > 0:
+            self.this_branch.set_inventory(self.regen_inventory(adjust_ids))
+        conflicts = self.conflict_handler.conflicts
+        self.conflict_handler.finalize()
+        return conflicts
+
+    def regen_inventory(self, new_entries):
+        old_entries = self.this_branch.read_working_inventory()
+        new_inventory = {}
+        by_path = {}
+        new_entries_map = {} 
+        for path, file_id in new_entries:
+            if path is None:
+                continue
+            new_entries_map[file_id] = path
+
+        def id2path(file_id):
+            path = new_entries_map.get(file_id)
+            if path is not None:
+                return path
+            entry = old_entries[file_id]
+            if entry.parent_id is None:
+                return entry.name
+            return os.path.join(id2path(entry.parent_id), entry.name)
+            
+        for file_id in old_entries:
+            entry = old_entries[file_id]
+            path = id2path(file_id)
+            new_inventory[file_id] = (path, file_id, entry.parent_id, 
+                                      entry.kind)
+            by_path[path] = file_id
         
-    for file_id in old_entries:
-        entry = old_entries[file_id]
-        path = id2path(file_id)
-        new_inventory[file_id] = (path, file_id, entry.parent_id, entry.kind)
-        by_path[path] = file_id
-    
-    deletions = 0
-    insertions = 0
-    new_path_list = []
-    for path, file_id in new_entries:
-        if path is None:
-            del new_inventory[file_id]
-            deletions += 1
-        else:
-            new_path_list.append((path, file_id))
-            if file_id not in old_entries:
-                insertions += 1
-    # Ensure no file is added before its parent
-    new_path_list.sort()
-    for path, file_id in new_path_list:
-        if path == '':
-            parent = None
-        else:
-            parent = by_path[os.path.dirname(path)]
-        kind = bzrlib.osutils.file_kind(os.path.join(root, path))
-        new_inventory[file_id] = (path, file_id, parent, kind)
-        by_path[path] = file_id 
+        deletions = 0
+        insertions = 0
+        new_path_list = []
+        for path, file_id in new_entries:
+            if path is None:
+                del new_inventory[file_id]
+                deletions += 1
+            else:
+                new_path_list.append((path, file_id))
+                if file_id not in old_entries:
+                    insertions += 1
+        # Ensure no file is added before its parent
+        new_path_list.sort()
+        for path, file_id in new_path_list:
+            if path == '':
+                parent = None
+            else:
+                parent = by_path[os.path.dirname(path)]
+            abspath = os.path.join(self.this_tree.basedir, path)
+            kind = bzrlib.osutils.file_kind(abspath)
+            new_inventory[file_id] = (path, file_id, parent, kind)
+            by_path[path] = file_id 
 
-    # Get a list in insertion order
-    new_inventory_list = new_inventory.values()
-    mutter ("""Inventory regeneration:
-old length: %i insertions: %i deletions: %i new_length: %i"""\
-        % (len(old_entries), insertions, deletions, len(new_inventory_list)))
-    assert len(new_inventory_list) == len(old_entries) + insertions - deletions
-    new_inventory_list.sort()
-    return new_inventory_list
+        # Get a list in insertion order
+        new_inventory_list = new_inventory.values()
+        mutter ("""Inventory regeneration:
+    old length: %i insertions: %i deletions: %i new_length: %i"""\
+            % (len(old_entries), insertions, deletions, 
+               len(new_inventory_list)))
+        assert len(new_inventory_list) == len(old_entries) + insertions\
+            - deletions
+        new_inventory_list.sort()
+        return new_inventory_list
 
 merge_types = {     "merge3": (ApplyMerge3, "Native diff3-style merge"), 
                      "diff3": (Diff3Merge,  "Merge using external diff3")
