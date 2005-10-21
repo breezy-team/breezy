@@ -236,9 +236,11 @@ def build_working_dir(to_dir):
     """
     # RBC 20051019 is this not just 'export' ?
     # Well, export doesn't take care of inventory...
-    merge((to_dir, -1), (to_dir, 0), this_dir=to_dir,
-          check_clean=False, ignore_zero=True)
+    this_branch = Branch.open_containing(to_dir)[0]
+    transform_tree(this_branch.working_tree(), this_branch.basis_tree())
 
+def transform_tree(from_tree, to_tree):
+    merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True)
 
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
