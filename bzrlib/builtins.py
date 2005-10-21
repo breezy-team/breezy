@@ -1324,8 +1324,13 @@ class cmd_merge(Command):
                 other = [branch, revision[1].in_history(b).revno]
 
         try:
-            merge(other, base, check_clean=(not force), merge_type=merge_type,
-                  show_base=show_base)
+            conflict_count = merge(other, base, check_clean=(not force),
+                                   merge_type=merge_type,
+                                   show_base=show_base)
+            if conflict_count != 0:
+                return 1
+            else:
+                return 0
         except bzrlib.errors.AmbiguousBase, e:
             m = ("sorry, bzr can't determine the right merge base yet\n"
                  "candidates are:\n  "

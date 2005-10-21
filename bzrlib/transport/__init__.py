@@ -373,7 +373,8 @@ def register_lazy_transport(scheme, module, classname):
         klass = getattr(mod, classname)
         return klass(base)
     register_transport(scheme, _loader)
-    
+ 
+
 # If nothing else matches, try the LocalTransport
 register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')

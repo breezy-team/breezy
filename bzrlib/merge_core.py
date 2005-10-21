@@ -115,9 +115,7 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
                                     conflict_handler, merge_factory)
     result = apply_changeset(new_cset, invert_invent(this.inventory),
                              this.basedir, conflict_handler, False)
-    conflict_handler.finalize()
     return result
-
     
 
 def make_merge_changeset(cset, this, base, other, 
