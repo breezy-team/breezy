@@ -273,7 +273,7 @@ def merge(other_revision, base_revision,
     merger.set_other(other_revision)
     merger.set_base(base_revision)
     merger.backup_files = backup_files
-    merger.merge_type = ApplyMerge3
+    merger.merge_type = merge_type 
     merger.set_interesting_files(file_list)
     merger.show_base = show_base 
     merger.conflict_handler = MergeConflictHandler(merger.this_tree, 
