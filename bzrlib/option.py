@@ -20,6 +20,7 @@ import re
 import bzrlib.commands
 from bzrlib.trace import warning, mutter
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.errors import BzrCommandError
 
 
 def _parse_revision_str(revstr):
