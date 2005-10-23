@@ -55,7 +55,7 @@ UNRELEASED CHANGES
 
     * 'bzr check' allows the first revision on revision-history to have
       parents - something that is expected for cheap checkouts, and occurs
-      when conversions from baz do not have all history.
+      when conversions from baz do not have all history.  (Robert Collins).
 
   TESTING:
 
@@ -161,6 +161,10 @@ UNRELEASED CHANGES
       retrieved (and potentially manipulated) before returning to the caller
       of merge_inner. Likewise 'merge' now returns the conflict count to the
       caller. (Robert Collins)
+
+    * 'revision.revision_graph can handle having only partial history for
+      a revision - that is no revisions in the graph with no parents.
+      (Robert Collins).
 
   BUG FIXES:
 
