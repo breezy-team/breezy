@@ -108,7 +108,11 @@ class WeaveMerge:
             if line == '<<<<\n':
                 conflicts = True
             out_file.write(line)
-        out_file.commit()
+        if conflicts:
+            conflict_handler.weave_merge_conflict(filename, self.weave,
+                                                  other_i, out_file)
+        else:
+            out_file.commit()
 
 class BackupBeforeChange:
     """Contents-change wrapper to back up file first"""

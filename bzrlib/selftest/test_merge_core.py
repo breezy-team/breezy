@@ -6,15 +6,18 @@ import stat
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
-from bzrlib.errors import NotBranchError, NotVersionedError
+from bzrlib.errors import (NotBranchError, NotVersionedError,
+                           WorkingTreeNotRevision)
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.osutils import file_kind, rename, sha_file
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
-                               BackupBeforeChange, ExecFlagMerge)
+                               BackupBeforeChange, ExecFlagMerge, WeaveMerge)
 from bzrlib.changeset import Inventory, apply_changeset, invert_dict
 from bzrlib.changeset import get_contents, ReplaceContents
+from bzrlib.clone import copy_branch
+from bzrlib.merge import merge
 
 
 class FalseTree(object):
@@ -556,3 +559,34 @@ class FunctionalMergeTest(TestCaseInTempDir):
         merge(other, base, check_clean=True, merge_type=merge_type, this_dir="original")
         self.assertEqual("John\n", open("original/file1", "rt").read())
         self.assertEqual("Mary\n", open("original/file2", "rt").read())
+ 
+    def test_conflicts(self):
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/file', 'wb').write('contents\n')
+        a.add('file')
+        a.commit('base revision', allow_pointless=False)
+        b = copy_branch(a, 'b')
+        file('a/file', 'wb').write('other contents\n')
+        a.commit('other revision', allow_pointless=False)
+        file('b/file', 'wb').write('this contents contents\n')
+        b.commit('this revision', allow_pointless=False)
+        self.assertEqual(merge(['a', -1], [None, None], this_dir='b'), 1)
+        assert os.path.lexists('b/file.THIS')
+        assert os.path.lexists('b/file.BASE')
+        assert os.path.lexists('b/file.OTHER')
+        self.assertRaises(WorkingTreeNotRevision, merge, ['a', -1], 
+                          [None, None], this_dir='b', check_clean=False,
+                          merge_type=WeaveMerge)
+        merge(['b', -1], ['b', None], this_dir='b', check_clean=False)
+        os.unlink('b/file.THIS')
+        os.unlink('b/file.OTHER')
+        os.unlink('b/file.BASE')
+        self.assertEqual(merge(['a', -1], [None, None], this_dir='b', 
+                               check_clean=False, merge_type=WeaveMerge), 1)
+        assert os.path.lexists('b/file')
+        assert os.path.lexists('b/file.THIS')
+        assert not os.path.lexists('b/file.BASE')
+        assert os.path.lexists('b/file.OTHER')
+
+
