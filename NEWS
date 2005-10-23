@@ -54,6 +54,9 @@ UNRELEASED CHANGES
 
     * Merge now has a retcode of 1 when conflicts occur. (Robert Collins)
 
+    * --merge-type weave is now supported for file contents.  Tree-shape
+      changes are still three-way based.  (Martin Pool, Aaron Bentley)
+
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 

@@ -7,7 +7,7 @@ import stat
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import (NotBranchError, NotVersionedError,
-                           WorkingTreeNotRevision)
+                           WorkingTreeNotRevision, BzrCommandError)
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.osutils import file_kind, rename, sha_file
@@ -556,7 +556,11 @@ class FunctionalMergeTest(TestCaseInTempDir):
         merge_type = ApplyMerge3
         base = [None, None]
         other = ("mary", -1)
-        merge(other, base, check_clean=True, merge_type=merge_type, this_dir="original")
+        self.assertRaises(BzrCommandError, merge, other, base, check_clean=True,
+                          merge_type=WeaveMerge, this_dir="original",
+                          show_base=True)
+        merge(other, base, check_clean=True, merge_type=merge_type,
+              this_dir="original")
         self.assertEqual("John\n", open("original/file1", "rt").read())
         self.assertEqual("Mary\n", open("original/file2", "rt").read())
  

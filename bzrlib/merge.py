@@ -278,7 +278,9 @@ def merge(other_revision, base_revision,
     if this_dir is None:
         this_dir = '.'
     this_branch = Branch.open_containing(this_dir)[0]
-
+    if show_base and not merge_type is ApplyMerge3:
+        raise BzrCommandError("Show-base is not supported for this merge"
+                              " type. %s" % merge_type)
     merger = Merger(this_branch)
     merger.check_basis(check_clean)
     merger.set_other(other_revision)
