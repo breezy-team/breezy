@@ -105,7 +105,7 @@ class WeaveMerge:
         conflicts = False
         out_file = AtomicFile(filename, mode='wb')
         for line in lines:
-            if line == '<<<<\n':
+            if line == '<<<<<<<\n':
                 conflicts = True
             out_file.write(line)
         if conflicts:
