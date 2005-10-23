@@ -1,6 +1,7 @@
 UNRELEASED CHANGES
 
   IMPROVEMENTS:
+  
     * merge now takes a --show-base option to include the base text in
       conflicts.
       (Aaron Bentley)
@@ -51,6 +52,10 @@ UNRELEASED CHANGES
       parameters. (Robert Collins)
 
     * Merge now has a retcode of 1 when conflicts occur. (Robert Collins)
+
+    * 'bzr check' allows the first revision on revision-history to have
+      parents - something that is expected for cheap checkouts, and occurs
+      when conversions from baz do not have all history.
 
   TESTING:
 
