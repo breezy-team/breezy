@@ -343,3 +343,9 @@ class SigningFailed(BzrError):
     def __init__(self, command_line):
         BzrError.__init__(self, "Failed to gpg sign data with command '%s'"
                                % command_line)
+
+class WorkingTreeNotRevision(BzrError):
+    def __init__(self, tree):
+        BzrError.__init__(self, "The working tree for %s has changed since"
+                          " last commit, but weave merge requires that it be"
+                          " unchanged." % tree.basedir)

@@ -411,6 +411,7 @@ class ApplySequence(object):
 
 
 class Diff3Merge(object):
+    history_based = False
     def __init__(self, file_id, base, other):
         self.file_id = file_id
         self.base = base

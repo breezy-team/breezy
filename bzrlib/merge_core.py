@@ -5,9 +5,11 @@ from changeset import Inventory, apply_changeset, invert_dict
 from bzrlib.osutils import backup_file, rename
 from bzrlib.merge3 import Merge3
 import bzrlib
+from bzrlib.atomicfile import AtomicFile
 from changeset import get_contents
 
 class ApplyMerge3:
+    history_based = False
     """Contents-change wrapper around merge3.Merge3"""
     def __init__(self, file_id, base, other, show_base=False):
         self.file_id = file_id
@@ -71,6 +73,42 @@ class ApplyMerge3:
             conflict_handler.merge_conflict(new_file, filename, base_lines,
                                             other_lines)
 
+class WeaveMerge:
+    """Contents-change wrapper around weave merge"""
+    history_based = True
+    def __init__(self, weave, this_revision_id, other_revision_id):
+        self.weave = weave
+        self.this_revision_id = this_revision_id
+        self.other_revision_id = other_revision_id
+
+    def is_creation(self):
+        return False
+
+    def is_deletion(self):
+        return False
+
+    def __eq__(self, other):
+        if not isinstance(other, WeaveMerge):
+            return False
+        return self.weave == other.weave and\
+            self.this_revision_id == other.this_revision_id and\
+            self.other_revision_id == other.other_revision_id
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def apply(self, filename, conflict_handler, reverse=False):
+        this_i = self.weave.lookup(self.this_revision_id)
+        other_i = self.weave.lookup(self.other_revision_id)
+        plan = self.weave.plan_merge(this_i, other_i)
+        lines = self.weave.weave_merge(plan)
+        conflicts = False
+        out_file = AtomicFile(filename, mode='wb')
+        for line in lines:
+            if line == '<<<<\n':
+                conflicts = True
+            out_file.write(line)
+        out_file.commit()
 
 class BackupBeforeChange:
     """Contents-change wrapper to back up file first"""
