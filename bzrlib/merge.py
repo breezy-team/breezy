@@ -297,6 +297,7 @@ def merge(other_revision, base_revision,
         other_basis = other_branch.last_revision()
         if other_basis is None:
             raise NoCommits(other_branch)
+    fetch(from_branch=other_branch, to_branch=this_branch)
     if base_revision == [None, None]:
         mutter("doing merge() with no base_revision specified")
         try:
@@ -304,6 +305,9 @@ def merge(other_revision, base_revision,
                                           this_branch)
         except NoCommonAncestor:
             raise UnrelatedBranches()
+        # fetch() is probably unnecessary in this case, because
+        # get_revid_tree() does it anyway if base_rev_id is not None and the
+        # local_branch is None -- but we do it above just to be sure -- mbp 20051024
         base_tree = get_revid_tree(this_branch, base_rev_id, None)
         base_is_ancestor = True
     else:
