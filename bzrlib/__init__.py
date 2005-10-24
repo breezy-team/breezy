@@ -30,9 +30,10 @@ DEFAULT_IGNORE = ['.bzr.log',
                   'BitKeeper',
                   '.git',
                   'TAGS', '.make.state', '.sconsign', '.tmp*',
-                  '.autom4te*', 'config.guess', 'config.h.in', 'config.status', 'config.h',
-                  'config.log', 'config.sub', 'configure.in', 'aclocal.m4', 'stamp-h.in',
-                  'stamp-h1', 'stamp-h'
+                  'autom4te*', 'config.guess', 'config.h.in', 'config.status', 
+                  'config.h', 'config.log', 'config.sub', 'configure.in',
+                  'aclocal.m4', 'stamp-h.in', 'Makefile.in', '.libs',
+                  'stamp-h1', 'stamp-h',
                   '.jamdeps'
                   '.del-*',
                   '.DS_Store',]
