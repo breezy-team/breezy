@@ -22,12 +22,18 @@ DEFAULT_IGNORE = ['.bzr.log',
                   '*~', '#*#', '*$', '.#*',
                   '.*.sw[nop]', '.*.tmp',
                   '*.tmp', '*.bak', '*.BAK', '*.orig',
-                  '*.o', '*.obj', '*.a', '*.py[oc]', '*.so', '*.exe', '*.elc', 
-                  '{arch}', 'CVS', 'CVS.adm', '.svn', '_darcs', 'SCCS', 'RCS',
+                  '*.o', '*.obj', '*.a', '*.py[oc]', '*.so', '*.o', '*.lo', '*.la', '*.exe',
+                  '*.elc', 
+                  '{arch}', '.arch-ids', '.arch-inventory', 'CVS', 'CVS.adm', '.svn', '_darcs', 
+                  'SCCS', 'RCS',
                   '*,v',
                   'BitKeeper',
                   '.git',
                   'TAGS', '.make.state', '.sconsign', '.tmp*',
+                  '.autom4te*', 'config.guess', 'config.h.in', 'config.status', 'config.h',
+                  'config.log', 'config.sub', 'configure.in', 'aclocal.m4', 'stamp-h.in',
+                  'stamp-h1', 'stamp-h'
+                  '.jamdeps'
                   '.del-*',
                   '.DS_Store',]
 
