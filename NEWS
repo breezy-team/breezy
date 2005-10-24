@@ -72,7 +72,7 @@ UNRELEASED CHANGES
       complete, which will aid in analysing performance regressions and
       related questions. (Robert Collins)
 
-    * 'bzr selftest' runs all tests, even if one feels, unless '--one'
+    * 'bzr selftest' runs all tests, even if one fails, unless '--one'
       is given. (Martin Pool)
 
     * There is a new method for TestCaseInTempDir, assertFileEqual, which

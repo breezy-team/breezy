@@ -208,8 +208,6 @@ class _Branch(Branch):
         """Create new branch object at a particular location.
 
         transport -- A Transport object, defining how to access files.
-                (If a string, transport.transport() will be used to
-                create a Transport object)
         
         init -- If True, create new control files in a previously
              unversioned directory.  If False, the branch must already
@@ -318,7 +316,7 @@ class _Branch(Branch):
         """Return the current active transaction.
 
         If no transaction is active, this returns a passthrough object
-        for which all data is immedaitely flushed and no caching happens.
+        for which all data is immediately flushed and no caching happens.
         """
         if self._transaction is None:
             return transactions.PassThroughTransaction()

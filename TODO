@@ -169,8 +169,6 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
   - and, of course, tests for all this
 
-* ``bzr add`` with no arguments should probably be the same as ``bzr add .``
-
 * Reproducible performance benchmark to measure whether performance is 
   getting better or worse.
 
