@@ -1429,10 +1429,17 @@ class cmd_fetch(Command):
     def run(self, from_branch, to_branch):
         from bzrlib.fetch import Fetcher
         from bzrlib.branch import Branch
-        from_b = Branch(from_branch)
-        to_b = Branch(to_branch)
-        Fetcher(to_b, from_b)
-        
+        from_b = Branch.open(from_branch)
+        to_b = Branch.open(to_branch)
+        from_b.lock_read()
+        try:
+            to_b.lock_write()
+            try:
+                Fetcher(to_b, from_b)
+            finally:
+                to_b.unlock()
+        finally:
+            from_b.unlock()
 
 
 class cmd_missing(Command):
