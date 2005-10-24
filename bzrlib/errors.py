@@ -117,8 +117,9 @@ class InvalidRevisionNumber(BzrNewError):
 
 
 class InvalidRevisionId(BzrNewError):
-    """Invalid revision-id"""
-
+    """Invalid revision-id %(revision_id)r"""
+    def __init__(self, revision_id):
+        self.revision_id = revision_id
 
 class BzrCommandError(BzrError):
     # Error from malformed user command
