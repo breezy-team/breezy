@@ -1569,11 +1569,23 @@ class cmd_re_sign(Command):
         if revision_id is not None:
             b.sign_revision(revision_id, gpg_strategy)
         elif revision is not None:
-            for rev in revision:
-                if rev is None:
-                    raise BzrCommandError('You cannot specify a NULL revision.')
-                revno, rev_id = rev.in_history(b)
+            if len(revision) == 1:
+                revno, rev_id = revision[0].in_history(b)
                 b.sign_revision(rev_id, gpg_strategy)
+            elif len(revision) == 2:
+                # are they both on rh- if so we can walk between them
+                # might be nice to have a range helper for arbitrary
+                # revision paths. hmm.
+                from_revno, from_revid = revision[0].in_history(b)
+                to_revno, to_revid = revision[1].in_history(b)
+                if to_revid is None:
+                    to_revno = b.revno()
+                if from_revno is None or to_revno is None:
+                    raise BzrCommandError('Cannot sign a range of non-revision-history revisions')
+                for revno in range(from_revno, to_revno + 1):
+                    b.sign_revision(b.get_rev_id(revno), gpg_strategy)
+            else:
+                raise BzrCommandError('Please supply either one revision, or a range.')
 
 
 # these get imported and then picked up by the scan for cmd_*
