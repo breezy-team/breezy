@@ -99,12 +99,14 @@ def show_status(branch, show_unchanged=False,
                     try:
                         m_revision = branch.get_revision(merge)
                         print >> to_file, ' ', line_log(m_revision, 77)
-                        inner_merges = set(branch.get_ancestry(merge))\
-                            - ignore
+                        inner_merges = branch.get_ancestry(merge)
+                        inner_merges.reverse()
                         for mmerge in inner_merges:
+                            if mmerge in ignore:
+                                continue
                             mm_revision = branch.get_revision(mmerge)
                             print >> to_file, '   ', line_log(mm_revision, 75)
-                        ignore.update(inner_merges)
+                            ignore.add(mmerge)
                             
                     except NoSuchRevision:
                         print >> to_file, ' ', merge 
