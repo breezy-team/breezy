@@ -124,7 +124,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def new_contents_conflict(self, filename, other_contents):
         """Conflicting contents for newly added file."""
-        other.contents.apply(filename + ".OTHER")
+        other_contents(filename + ".OTHER", self, False)
         self.conflict("Conflict in newly added file %s" % filename)
     
 
@@ -242,7 +242,7 @@ def build_working_dir(to_dir):
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
           this_dir=None, backup_files=False, merge_type=ApplyMerge3,
-          file_list=None):
+          file_list=None, show_base=False):
     """Merge changes into a tree.
 
     base_revision
@@ -321,12 +321,16 @@ def merge(other_revision, base_revision,
             if not found_id:
                 raise BzrCommandError("%s is not a source file in any"
                                       " tree." % fname)
-    merge_inner(this_branch, other_tree, base_tree, tempdir=None, 
-                ignore_zero=ignore_zero, backup_files=backup_files, 
-                merge_type=merge_type, interesting_ids=interesting_ids)
+    conflicts = merge_inner(this_branch, other_tree, base_tree, tempdir=None,
+                            ignore_zero=ignore_zero,
+                            backup_files=backup_files, 
+                            merge_type=merge_type,
+                            interesting_ids=interesting_ids,
+                            show_base=show_base)
     if base_is_ancestor and other_rev_id is not None\
         and other_rev_id not in this_branch.revision_history():
         this_branch.add_pending_merge(other_rev_id)
+    return conflicts
 
 
 def set_interesting(inventory_a, inventory_b, interesting_ids):
@@ -339,7 +343,7 @@ def set_interesting(inventory_a, inventory_b, interesting_ids):
 
 def merge_inner(this_branch, other_tree, base_tree, tempdir=None, 
                 ignore_zero=False, merge_type=ApplyMerge3, backup_files=False,
-                interesting_ids=None):
+                interesting_ids=None, show_base=False):
     """Primary interface for merging. 
 
     typical use is probably 
@@ -351,8 +355,10 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir=None,
     else:
         _tempdir = tempdir
     try:
-        _merge_inner(this_branch, other_tree, base_tree, _tempdir,
-                     ignore_zero, merge_type, backup_files, interesting_ids)
+        return _merge_inner(this_branch, other_tree, base_tree, _tempdir,
+                            ignore_zero, merge_type, backup_files,
+                            interesting_ids,
+                            show_base=show_base)
     finally:
         if tempdir is None:
             shutil.rmtree(_tempdir)
@@ -360,9 +366,12 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir=None,
 
 def _merge_inner(this_branch, other_tree, base_tree, user_tempdir, 
                 ignore_zero=False, merge_type=ApplyMerge3, backup_files=False,
-                interesting_ids=None):
+                interesting_ids=None, show_base=False):
     def merge_factory(file_id, base, other):
-        contents_change = merge_type(file_id, base, other)
+        if show_base is True:
+            contents_change = merge_type(file_id, base, other, show_base=True)
+        else:
+            contents_change = merge_type(file_id, base, other)
         if backup_files:
             contents_change = BackupBeforeChange(contents_change)
         return contents_change
@@ -372,10 +381,11 @@ def _merge_inner(this_branch, other_tree, base_tree, user_tempdir,
     def get_inventory(tree):
         return tree.inventory
 
+    conflict_handler = MergeConflictHandler(this_tree, base_tree, other_tree,
+                                            ignore_zero=ignore_zero)
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
                              generate_changeset, get_inventory,
-                             MergeConflictHandler(this_tree, base_tree,
-                             other_tree, ignore_zero=ignore_zero),
+                             conflict_handler,
                              merge_factory=merge_factory, 
                              interesting_ids=interesting_ids)
 
@@ -392,6 +402,9 @@ def _merge_inner(this_branch, other_tree, base_tree, user_tempdir,
         this_branch.set_inventory(regen_inventory(this_branch, 
                                                   this_tree.basedir,
                                                   adjust_ids))
+    conflicts = conflict_handler.conflicts
+    conflict_handler.finalize()
+    return conflicts
 
 
 def regen_inventory(this_branch, root, new_entries):

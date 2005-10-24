@@ -34,6 +34,18 @@ Overall
 * Module names should always be given fully-qualified,
   i.e. ``bzrlib.hashcache`` not just ``hashcache``.
 
+* Commands should return Non-Zero when they encounter circumstances that
+  the user should really pay attention to - which includes trivial shell
+  pipelines.
+
+  Recommanded values are 
+    0- OK, 
+    1- Conflicts in merge-like operations, or changes are present in
+       diff-like operations. 
+    2- Unrepresentable diff changes (i.e. binary files that we cannot show 
+       a diff of).
+    3- An error or exception has occured.
+
 Evolving interfaces
 -------------------
 

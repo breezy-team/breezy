@@ -264,9 +264,17 @@ class Commit(object):
 
             self._record_inventory()
             self._make_revision()
-            self.reporter.completed(self.branch.revno()+1, self.rev_id)
             self.branch.append_revision(self.rev_id)
             self.branch.set_pending_merges([])
+            self.reporter.completed(self.branch.revno()+1, self.rev_id)
+            if self.config.post_commit() is not None:
+                hooks = self.config.post_commit().split(' ')
+                # this would be nicer with twisted.python.reflect.namedAny
+                for hook in hooks:
+                    result = eval(hook + '(branch, rev_id)',
+                                  {'branch':self.branch,
+                                   'bzrlib':bzrlib,
+                                   'rev_id':self.rev_id})
         finally:
             self.branch.unlock()
 

@@ -331,6 +331,14 @@ class ConflictsInTree(BzrError):
     def __init__(self):
         BzrError.__init__(self, "Working tree has conflicts.")
 
+class ParseConfigError(BzrError):
+    def __init__(self, errors, filename):
+        if filename is None:
+            filename = ""
+        message = "Error(s) parsing config file %s:\n%s" % \
+            (filename, ('\n'.join(e.message for e in errors)))
+        BzrError.__init__(self, message)
+
 class SigningFailed(BzrError):
     def __init__(self, command_line):
         BzrError.__init__(self, "Failed to gpg sign data with command '%s'"
