@@ -30,7 +30,7 @@ class NonAsciiTest(TestCaseInTempDir):
         try:
             os.mkdir(br_dir)
             os.chdir(br_dir)
-        except EncodingError:
+        except UnicodeEncodeError:
             self.log("filesystem can't accomodate nonascii names")
             return
         br = Branch.initialize(u".")
