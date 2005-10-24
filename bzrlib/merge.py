@@ -287,6 +287,7 @@ def merge(other_revision, base_revision,
         if other_basis is None:
             raise NoCommits(other_branch)
     if base_revision == [None, None]:
+        mutter("doing merge() with no base_revision")
         try:
             base_rev_id = common_ancestor(this_rev_id, other_basis, 
                                           this_branch)
@@ -295,6 +296,7 @@ def merge(other_revision, base_revision,
         base_tree = get_revid_tree(this_branch, base_rev_id, None)
         base_is_ancestor = True
     else:
+        mutter("doing merge() with base %r" % base_revision)
         base_branch, base_tree = get_tree(base_revision)
         if base_revision[1] == -1:
             base_rev_id = base_branch.last_revision()
