@@ -608,3 +608,20 @@ class FunctionalMergeTest(TestCaseInTempDir):
         merge(['b', -1], ['b', 0], this_dir='a')
         assert os.path.lexists('a/b_file')
         self.assertEqual(a.pending_merges(), [b.last_revision()]) 
+
+    def test_merge_unrelated_conflicting(self):
+        """Sucessfully merges unrelated branches with common names"""
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/file', 'wb').write('contents\n')
+        a.add('file')
+        a.commit('a_revision', allow_pointless=False)
+        os.mkdir('b')
+        b = Branch.initialize('b')
+        file('b/file', 'wb').write('contents\n')
+        b.add('file')
+        b.commit('b_revision', allow_pointless=False)
+        merge(['b', -1], ['b', 0], this_dir='a')
+        assert os.path.lexists('a/file')
+        assert os.path.lexists('a/file.moved')
+        self.assertEqual(a.pending_merges(), [b.last_revision()]) 

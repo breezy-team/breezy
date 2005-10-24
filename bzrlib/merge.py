@@ -28,7 +28,7 @@ from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
 from bzrlib.changeset import Inventory, Diff3Merge, ReplaceContents
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError, UnrelatedBranches, NoCommonAncestor
-from bzrlib.errors import NoCommits, WorkingTreeNotRevision
+from bzrlib.errors import NoCommits, WorkingTreeNotRevision, NotBranchError
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter, warning, note
 from bzrlib.fetch import greedy_fetch, fetch
@@ -99,11 +99,24 @@ class MergeConflictHandler(ExceptionConflictHandler):
         new_name = last_new_name+suffix
         try:
             rename(name, new_name)
-            return new_name
+            try:
+                relpath = self.this_tree.relpath(name)
+            except NotBranchError:
+                relpath = None
+            if relpath is not None:
+                file_id = self.this_tree.path2id(relpath)
+                if file_id is not None:
+                    new_path = self.this_tree.relpath(new_name)
+                    rename(new_name, name)
+                    self.this_tree.branch.rename_one(relpath, new_path)
+                    assert self.this_tree.id2path(file_id) == relpath
+                    self.this_tree._inventory = self.this_tree.branch.inventory
+                    assert self.this_tree.id2path(file_id) == new_path
         except OSError, e:
             if e.errno != errno.EEXIST and e.errno != errno.ENOTEMPTY:
                 raise
             return self.add_suffix(name, suffix, last_new_name=new_name)
+        return new_name
 
     def conflict(self, text):
         warning(text)
