@@ -565,7 +565,7 @@ class cmd_init(Command):
     Recipe for importing a tree of files:
         cd ~/project
         bzr init
-        bzr add -v .
+        bzr add .
         bzr status
         bzr commit -m 'imported project'
     """
