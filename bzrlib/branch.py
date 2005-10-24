@@ -395,7 +395,6 @@ class _Branch(Branch):
         """Return location relative to branch."""
         return self._transport.abspath(self._rel_controlfilename(file_or_path))
 
-
     def controlfile(self, file_or_path, mode='r'):
         """Open a control file for this branch.
 
@@ -880,9 +879,6 @@ class _Branch(Branch):
 
     def update_revisions(self, other, stop_revision=None):
         """Pull in new perfect-fit revisions."""
-        # FIXME: If the branches have diverged, but the latest
-        # revision in this branch is completely merged into the other,
-        # then we should still be able to pull.
         from bzrlib.fetch import greedy_fetch
         if stop_revision is None:
             stop_revision = other.last_revision()

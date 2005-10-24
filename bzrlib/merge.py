@@ -37,6 +37,8 @@ from bzrlib.osutils import rename
 from bzrlib.revision import common_ancestor, MultipleRevisionSources
 from bzrlib.errors import NoSuchRevision
 
+# TODO: Report back as changes are merged in
+
 # TODO: build_working_dir can be built on something simpler than merge()
 
 # FIXME: merge() parameters seem oriented towards the command line
@@ -260,9 +262,10 @@ def merge(other_revision, base_revision,
     """Merge changes into a tree.
 
     base_revision
-        tuple(path, revision) Base for three-way merge.
+        tuple(path, revno) Base for three-way merge.  
+        If (None, None) then a base will be automatically determined.
     other_revision
-        tuple(path, revision) Other revision for three-way merge.
+        tuple(path, revno) Other revision for three-way merge.
     this_dir
         Directory to merge changes into; '.' by default.
     check_clean
@@ -271,10 +274,18 @@ def merge(other_revision, base_revision,
     ignore_zero - If true, suppress the "zero conflicts" message when 
         there are no conflicts; should be set when doing something we expect
         to complete perfectly.
+    file_list - If true, merge only changes to selected files.
 
     All available ancestors of other_revision and base_revision are
     automatically pulled into the branch.
+
+    The revno may be -1 to indicate the last revision on the branch, which is the 
+    typical case.
+
+    This function is intended for use from the command line; programmatic clients 
+    might prefer to call merge_inner(), which has less magic behavior.
     """
+    # TODO: please check this docstring is true and accurate - mbp 20051024
     if this_dir is None:
         this_dir = '.'
     this_branch = Branch.open_containing(this_dir)[0]
@@ -438,8 +449,11 @@ class Merger(object):
             self.other_basis = other_branch.last_revision()
             if self.other_basis is None:
                 raise NoCommits(other_branch)
+        fetch(from_branch=other_branch, to_branch=self.this_branch, 
+              last_revision=self.other_basis)
 
     def set_base(self, base_revision):
+        mutter("doing merge() with no base_revision specified")
         if base_revision == [None, None]:
             try:
                 self.base_rev_id = common_ancestor(self.this_basis, 

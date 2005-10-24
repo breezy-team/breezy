@@ -14,7 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
+# DO NOT change this to cStringIO - it results in control files 
+# written as UCS4
+# FIXIT! (Only deal with byte streams OR unicode at any one layer.)
+# RBC 20051018
+from StringIO import StringIO
 import sys
 import os
 
@@ -349,7 +353,6 @@ class cmd_pull(Command):
 
     def run(self, location=None, remember=False, overwrite=False):
         from bzrlib.merge import merge
-        import tempfile
         from shutil import rmtree
         import errno
         
@@ -388,10 +391,8 @@ class cmd_branch(Command):
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
         from bzrlib.clone import copy_branch
-        import tempfile
         import errno
         from shutil import rmtree
-        cache_root = tempfile.mkdtemp()
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -407,7 +408,6 @@ class cmd_branch(Command):
                 raise
         br_from.lock_read()
         try:
-            br_from.setup_caching(cache_root)
             if basis is not None:
                 basis_branch = Branch.open_containing(basis)[0]
             else:
@@ -418,6 +418,9 @@ class cmd_branch(Command):
                 revision_id = None
             if to_location is None:
                 to_location = os.path.basename(from_location.rstrip("/\\"))
+                name = None
+            else:
+                name = os.path.basename(to_location) + '\n'
             try:
                 os.mkdir(to_location)
             except OSError, e:
@@ -436,10 +439,15 @@ class cmd_branch(Command):
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
                 raise BzrCommandError(msg)
             except bzrlib.errors.UnlistableBranch:
+                rmtree(to_location)
                 msg = "The branch %s cannot be used as a --basis"
+                raise BzrCommandError(msg)
+            if name:
+                branch = Branch.open(to_location)
+                name = StringIO(name)
+                branch.put_controlfile('branch-name', name)
         finally:
             br_from.unlock()
-            rmtree(cache_root)
 
 
 class cmd_renames(Command):
@@ -1565,11 +1573,23 @@ class cmd_re_sign(Command):
         if revision_id is not None:
             b.sign_revision(revision_id, gpg_strategy)
         elif revision is not None:
-            for rev in revision:
-                if rev is None:
-                    raise BzrCommandError('You cannot specify a NULL revision.')
-                revno, rev_id = rev.in_history(b)
+            if len(revision) == 1:
+                revno, rev_id = revision[0].in_history(b)
                 b.sign_revision(rev_id, gpg_strategy)
+            elif len(revision) == 2:
+                # are they both on rh- if so we can walk between them
+                # might be nice to have a range helper for arbitrary
+                # revision paths. hmm.
+                from_revno, from_revid = revision[0].in_history(b)
+                to_revno, to_revid = revision[1].in_history(b)
+                if to_revid is None:
+                    to_revno = b.revno()
+                if from_revno is None or to_revno is None:
+                    raise BzrCommandError('Cannot sign a range of non-revision-history revisions')
+                for revno in range(from_revno, to_revno + 1):
+                    b.sign_revision(b.get_rev_id(revno), gpg_strategy)
+            else:
+                raise BzrCommandError('Please supply either one revision, or a range.')
 
 
 # these get imported and then picked up by the scan for cmd_*

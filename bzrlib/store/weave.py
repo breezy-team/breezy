@@ -54,7 +54,7 @@ class WeaveStore(TransportStore):
 
     def __iter__(self):
         l = len(WeaveStore.FILE_SUFFIX)
-        for relpath in self._transport.iter_files_recursive():
+        for relpath in self._iter_files_recursive():
             if relpath.endswith(WeaveStore.FILE_SUFFIX):
                 yield os.path.basename(relpath[:-l])
 

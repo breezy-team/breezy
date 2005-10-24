@@ -217,7 +217,7 @@ class SFTPTransport (Transport):
         """Walk the relative paths of all files in this transport."""
         queue = list(self.list_dir('.'))
         while queue:
-            relpath = queue.pop(0)
+            relpath = urllib.quote(queue.pop(0))
             st = self.stat(relpath)
             if stat.S_ISDIR(st.st_mode):
                 for i, basename in enumerate(self.list_dir(relpath)):

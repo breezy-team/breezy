@@ -176,6 +176,8 @@ def revision_graph(revision, revision_source):
     TODO: Produce graphs with the NULL revision as root, so that we can find
     a common even when trees are not branches don't represent a single line
     of descent.
+    RBC: 20051024: note that when we have two partial histories, this may not
+         be possible. But if we are willing to pretend :)... sure.
     """
     ancestors = {}
     descendants = {}
@@ -208,6 +210,29 @@ def revision_graph(revision, revision_source):
             if parents is not None:
                 ancestors[line] = set(parents)
         lines = new_lines
+    if root is None:
+        # The history for revision becomes inaccessible without
+        # actually hitting a no-parents revision. This then
+        # makes these asserts below trigger. So, if root is None
+        # determine the actual root by walking the accessible tree
+        # and then stash NULL_REVISION at the end.
+        root = NULL_REVISION
+        descendants[root] = {}
+        # for every revision, check we can access at least
+        # one parent, if we cant, add NULL_REVISION and
+        # a link
+        for rev in ancestors:
+            if len(ancestors[rev]) == 0:
+                raise RuntimeError('unreachable code ?!')
+            ok = False
+            for parent in ancestors[rev]:
+                if parent in ancestors:
+                    ok = True
+            if ok:
+                continue
+            descendants[root][rev] = 1
+            ancestors[rev].add(root)
+        ancestors[root] = set()
     assert root not in descendants[root]
     assert root not in ancestors[root]
     return root, ancestors, descendants

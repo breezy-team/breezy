@@ -1,6 +1,7 @@
 UNRELEASED CHANGES
 
   IMPROVEMENTS:
+  
     * merge now takes a --show-base option to include the base text in
       conflicts.
       (Aaron Bentley)
@@ -45,6 +46,9 @@ UNRELEASED CHANGES
     * Just give a quieter warning if a plugin can't be loaded, and 
       put the details in .bzr.log.  (Martin Pool)
 
+    * 'bzr branch' will now set the branch-name to the last component of the
+      output directory, if one was supplied.
+
     * New sftp transport, based on Paramiko.  (Robey Pointer)
 
     * If the option 'post_commit' is set to one (or more) python function
@@ -56,6 +60,10 @@ UNRELEASED CHANGES
 
     * --merge-type weave is now supported for file contents.  Tree-shape
       changes are still three-way based.  (Martin Pool, Aaron Bentley)
+
+    * 'bzr check' allows the first revision on revision-history to have
+      parents - something that is expected for cheap checkouts, and occurs
+      when conversions from baz do not have all history.  (Robert Collins).
 
   TESTING:
 
@@ -126,6 +134,9 @@ UNRELEASED CHANGES
     * Transports can register using register_lazy_transport, and they 
       will be loaded when first used.  (Martin Pool)
 
+    * Transports can register using register_lazy_transport, and they 
+      will be loaded when first used.  (Martin Pool)
+
     * 'pull' has been factored out of the command as WorkingTree.pull().
       A new option to WorkingTree.pull has been added, clobber, which will
       ignore diverged history and pull anyway.
@@ -164,6 +175,10 @@ UNRELEASED CHANGES
       retrieved (and potentially manipulated) before returning to the caller
       of merge_inner. Likewise 'merge' now returns the conflict count to the
       caller. (Robert Collins)
+
+    * 'revision.revision_graph can handle having only partial history for
+      a revision - that is no revisions in the graph with no parents.
+      (Robert Collins).
 
   BUG FIXES:
 
