@@ -262,10 +262,10 @@ def merge(other_revision, base_revision,
     """Merge changes into a tree.
 
     base_revision
-        tuple(path, revno) Base for three-way merge.  
-        If (None, None) then a base will be automatically determined.
+        list(path, revno) Base for three-way merge.  
+        If [None, None] then a base will be automatically determined.
     other_revision
-        tuple(path, revno) Other revision for three-way merge.
+        list(path, revno) Other revision for three-way merge.
     this_dir
         Directory to merge changes into; '.' by default.
     check_clean
@@ -274,18 +274,17 @@ def merge(other_revision, base_revision,
     ignore_zero - If true, suppress the "zero conflicts" message when 
         there are no conflicts; should be set when doing something we expect
         to complete perfectly.
-    file_list - If true, merge only changes to selected files.
+    file_list - If supplied, merge only changes to selected files.
 
     All available ancestors of other_revision and base_revision are
     automatically pulled into the branch.
 
-    The revno may be -1 to indicate the last revision on the branch, which is the 
-    typical case.
+    The revno may be -1 to indicate the last revision on the branch, which is
+    the typical case.
 
-    This function is intended for use from the command line; programmatic clients 
-    might prefer to call merge_inner(), which has less magic behavior.
+    This function is intended for use from the command line; programmatic
+    clients might prefer to call merge_inner(), which has less magic behavior.
     """
-    # TODO: please check this docstring is true and accurate - mbp 20051024
     if this_dir is None:
         this_dir = '.'
     this_branch = Branch.open_containing(this_dir)[0]
