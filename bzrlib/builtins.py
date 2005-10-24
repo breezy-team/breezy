@@ -329,21 +329,25 @@ class cmd_mv(Command):
 class cmd_pull(Command):
     """Pull any changes from another branch into the current one.
 
-    If the location is omitted, the last-used location will be used.
-    Both the revision history and the working directory will be
-    updated.
+    If there is no default location set, the first pull will set it.  After
+    that, you can omit the location to use the default.  To change the
+    default, use --remember.
 
     This command only works on branches that have not diverged.  Branches are
     considered diverged if both branches have had commits without first
     pulling from the other.
 
     If branches have diverged, you can use 'bzr merge' to pull the text changes
-    from one into the other.
+    from one into the other.  Once one branch has merged, the other should
+    be able to pull it again.
+
+    If you want to forget your local changes and just update your branch to
+    match the remote one, use --overwrite.
     """
-    takes_options = ['remember', 'clobber']
+    takes_options = ['remember', 'overwrite']
     takes_args = ['location?']
 
-    def run(self, location=None, remember=False, clobber=False):
+    def run(self, location=None, remember=False, overwrite=False):
         from bzrlib.merge import merge
         import tempfile
         from shutil import rmtree
@@ -359,7 +363,7 @@ class cmd_pull(Command):
                 location = stored_loc
         br_from = Branch.open(location)
         try:
-            br_to.working_tree().pull(br_from, remember, clobber)
+            br_to.working_tree().pull(br_from, remember, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try merge.")
