@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+# (C) 2005 Canonical
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -101,23 +101,30 @@ class BzrNewError(BzrError):
 class BzrCheckError(BzrNewError):
     """Internal check failed: %(message)s"""
     def __init__(self, message):
+        BzrNewError.__init__(self)
         self.message = message
 
 
 class InvalidEntryName(BzrNewError):
     """Invalid entry name: %(name)s"""
     def __init__(self, name):
+        BzrNewError.__init__(self)
         self.name = name
 
 
 class InvalidRevisionNumber(BzrNewError):
     """Invalid revision number %(revno)d"""
     def __init__(self, revno):
+        BzrNewError.__init__(self)
         self.revno = revno
 
 
 class InvalidRevisionId(BzrNewError):
-    """Invalid revision-id"""
+    """Invalid revision-id {%(revision_id)s} in %(branch)s"""
+    def __init__(self, revision_id, branch):
+        BzrNewError.__init__(self)
+        self.revision_id = revision_id
+        self.branch = branch
 
 
 class BzrCommandError(BzrError):

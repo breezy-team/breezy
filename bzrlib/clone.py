@@ -107,7 +107,7 @@ def _get_truncated_history(branch_from, revision):
     try:
         idx = history.index(revision)
     except ValueError:
-        raise InvalidRevisionId
+        raise InvalidRevisionId(revision_id=revision, branch=branch_from)
     return history[:idx+1]
 
 def _copy_text_weaves(branch_from, branch_to):
