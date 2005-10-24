@@ -32,7 +32,7 @@ from bzrlib.errors import NoCommits, WorkingTreeNotRevision
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter, warning, note
 from bzrlib.fetch import greedy_fetch, fetch
-from bzrlib.revision import is_ancestor
+from bzrlib.revision import is_ancestor, NULL_REVISION
 from bzrlib.osutils import rename
 from bzrlib.revision import common_ancestor, MultipleRevisionSources
 from bzrlib.errors import NoSuchRevision
@@ -219,6 +219,8 @@ def get_tree(treespec, local_branch=None):
         revision = branch.last_revision()
     else:
         revision = branch.get_rev_id(revno)
+        if revision is None:
+            revision = NULL_REVISION
     return branch, get_revid_tree(branch, revision, local_branch)
 
 def get_revid_tree(branch, revision, local_branch):
