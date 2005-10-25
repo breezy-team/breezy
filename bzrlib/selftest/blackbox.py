@@ -111,6 +111,27 @@ class TestCommands(ExternalBase):
         self.runbzr(['add', 'foo.c'])
         self.runbzr(["commit", "-m", ""] , retcode=1) 
 
+    def test_other_branch_commit(self):
+        # this branch is to ensure consistent behaviour, whether we're run
+        # inside a branch, or not.
+        os.mkdir('empty_branch')
+        os.chdir('empty_branch')
+        self.runbzr('init')
+        os.mkdir('branch')
+        os.chdir('branch')
+        self.runbzr('init')
+        file('foo.c', 'wt').write('int main() {}')
+        file('bar.c', 'wt').write('int main() {}')
+        os.chdir('..')
+        self.runbzr(['add', 'branch/foo.c'])
+        self.runbzr(['add', 'branch'])
+        # can't commit files in different trees; sane error
+        self.runbzr('commit -m newstuff branch/foo.c .', retcode=1)
+        self.runbzr('commit -m newstuff branch/foo.c')
+        self.runbzr('commit -m newstuff branch')
+        self.runbzr('commit -m newstuff branch', retcode=1)
+
+
     def test_ignore_patterns(self):
         from bzrlib.branch import Branch
         

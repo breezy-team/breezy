@@ -35,6 +35,26 @@ from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.workingtree import WorkingTree
 
 
+def branch_files(file_list, default_branch='.'):
+    """\
+    Return a branch and list of branch-relative paths.
+    If supplied file_list is empty or None, the branch default will be used,
+    and returned file_list will match the original.
+    """
+    if file_list is None or len(file_list) == 0:
+        return Branch.open_containing(default_branch)[0], file_list
+    b = Branch.open_containing(file_list[0])[0]
+    tree = WorkingTree(b.base, b)
+    new_list = []
+    for filename in file_list:
+        try:
+            new_list.append(tree.relpath(filename))
+        except NotBranchError:
+            raise BzrCommandError("%s is not in the same branch as %s" % 
+                                  (filename, file_list[0]))
+    return b, new_list
+
+
 class cmd_status(Command):
     """Display status summary.
 
@@ -1053,10 +1073,7 @@ class cmd_commit(Command):
         from bzrlib.status import show_status
         from cStringIO import StringIO
 
-        b = Branch.open_containing('.')[0]
-        tree = WorkingTree(b.base, b)
-        if selected_list:
-            selected_list = [tree.relpath(s) for s in selected_list]
+        b, selected_list = branch_files(selected_list)
         if message is None and not file:
             catcher = StringIO()
             show_status(b, specific_files=selected_list,
