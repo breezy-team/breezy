@@ -65,6 +65,9 @@ UNRELEASED CHANGES
       parents - something that is expected for cheap checkouts, and occurs
       when conversions from baz do not have all history.  (Robert Collins).
 
+   * 'bzr merge' can now graft unrelated trees together, if your specify
+     0 as a base. (Aaron Bentley)
+
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 
