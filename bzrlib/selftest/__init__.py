@@ -178,14 +178,7 @@ class TestCase(unittest.TestCase):
     def setUp(self):
         unittest.TestCase.setUp(self)
         self._cleanups = []
-        self.oldenv = os.environ.get('HOME', None)
-        os.environ['HOME'] = os.getcwd()
-        self.bzr_email = os.environ.get('BZREMAIL')
-        if self.bzr_email is not None:
-            del os.environ['BZREMAIL']
-        self.email = os.environ.get('EMAIL')
-        if self.email is not None:
-            del os.environ['EMAIL']
+        self._cleanEnvironment()
         bzrlib.trace.disable_default_logging()
         self._startLogFile()
 
@@ -260,7 +253,18 @@ class TestCase(unittest.TestCase):
                     % (callable, self))
         self._cleanups.append(callable)
 
-    def tearDown(self):
+    def _cleanEnvironment(self):
+        self.oldenv = os.environ.get('HOME', None)
+        os.environ['HOME'] = os.getcwd()
+        self.bzr_email = os.environ.get('BZREMAIL')
+        if self.bzr_email is not None:
+            del os.environ['BZREMAIL']
+        self.email = os.environ.get('EMAIL')
+        if self.email is not None:
+            del os.environ['EMAIL']
+        self.addCleanup(self._restoreEnvironment)
+
+    def _restoreEnvironment(self):
         os.environ['HOME'] = self.oldenv
         if os.environ.get('BZREMAIL') is not None:
             del os.environ['BZREMAIL']
@@ -270,6 +274,8 @@ class TestCase(unittest.TestCase):
             del os.environ['EMAIL']
         if self.email is not None:
             os.environ['EMAIL'] = self.email
+
+    def tearDown(self):
         logging.getLogger('').removeHandler(self._log_hdlr)
         bzrlib.trace.enable_default_logging()
         logging.debug('%s teardown', self.id())
@@ -458,19 +464,18 @@ class TestCaseInTempDir(TestCase):
         os.mkdir(os.path.join(TestCaseInTempDir.TEST_ROOT, '.bzr'))
 
     def setUp(self):
+        super(TestCaseInTempDir, self).setUp()
         self._make_test_root()
-        self._currentdir = os.getcwdu()
+        _currentdir = os.getcwdu()
         short_id = self.id().replace('bzrlib.selftest.', '') \
                    .replace('__main__.', '')
         self.test_dir = os.path.join(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
-        super(TestCaseInTempDir, self).setUp()
+        def _leaveDirectory():
+            os.chdir(_currentdir)
+        self.addCleanup(_leaveDirectory)
         
-    def tearDown(self):
-        os.chdir(self._currentdir)
-        super(TestCaseInTempDir, self).tearDown()
-
     def build_tree(self, shape):
         """Build a test tree according to a pattern.
 
