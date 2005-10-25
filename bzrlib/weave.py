@@ -237,7 +237,6 @@ class Weave(object):
     def idx_to_name(self, version):
         return self._names[version]
 
-
     def _check_repeated_add(self, name, parents, text, sha1):
         """Check that a duplicated add is OK.
 
@@ -251,8 +250,6 @@ class Weave(object):
             raise WeaveError("name \"%s\" already present in weave "
                              "with different text" % name)            
         return idx
-        
-
         
     def add(self, name, parents, text, sha1=None):
         """Add a single text on top of the weave.
@@ -459,7 +456,6 @@ class Weave(object):
         incls = [self.maybe_lookup(name_or_index)]
         for origin, lineno, text in self._extract(incls):
             yield origin, text
-
 
     def _walk(self):
         """Walk the weave.

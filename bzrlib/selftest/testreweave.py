@@ -42,17 +42,28 @@ from bzrlib.errors import WeaveParentMismatch
 class TestReweave(TestCaseInTempDir):
 
     def test_reweave_add_parents(self):
+        """Reweave inserting new parents
+        
+        The new version must have the right parent list and must identify
+        lines originating in another parent.
+        """
         w1 = Weave('w1')
         w2 = Weave('w2')
-        w1.add('v-1', [], ['line from 1\n'])
-        w2.add('v-2', [], ['line from 2\n'])
-        w1.add('v-3', ['v-1'], ['final line\n'])
-        w2.add('v-3', ['v-2'], ['final line\n'])
+        w1.add('v-1', [], ['line 1\n'])
+        w2.add('v-2', [], ['line 2\n'])
+        w1.add('v-3', ['v-1'], ['line 1\n'])
+        w2.add('v-3', ['v-2'], ['line 1\n'])
         w3 = reweave(w1, w2)
         self.assertEqual(sorted(w3.names()),
                          'v-1 v-2 v-3'.split())
         self.assertEqualDiff(w3.get_text('v-3'),
-                'final line\n')
+                'line 1\n')
+        self.assertEqual(sorted(w3.parent_names('v-3')),
+                ['v-1', 'v-2'])
+        ann = list(w3.annotate('v-3'))
+        self.assertEqual(len(ann), 1)
+        self.assertEqual(w3.idx_to_name(ann[0][0]), 'v-1')
+        self.assertEqual(ann[0][1], 'line 1\n')
         
     def build_weave1(self):
         weave1 = Weave()
@@ -64,6 +75,7 @@ class TestReweave(TestCaseInTempDir):
         return weave1
         
     def test_reweave_with_empty(self):
+        """Reweave adding empty weave"""
         wb = Weave()
         w1 = self.build_weave1()
         wr = reweave(w1, wb)
@@ -73,6 +85,7 @@ class TestReweave(TestCaseInTempDir):
         self.assertEquals(wr, w1)
 
     def test_join_with_ghosts_raises_parent_mismatch(self):
+        """Join weave traps parent mismatch"""
         wa = self.build_weave1()
         wb = Weave()
         wb.add('x1', [], ['line from x1\n'])
