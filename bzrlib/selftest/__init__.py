@@ -158,7 +158,9 @@ class TestCase(unittest.TestCase):
 
     Error and debug log messages are redirected from their usual
     location into a temporary file, the contents of which can be
-    retrieved by _get_log().
+    retrieved by _get_log().  We use a real OS file, not an in-memory object,
+    so that it can also capture file IO.  When the test completes this file
+    is read into memory and removed from disk.
        
     There are also convenience functions to invoke bzr's command-line
     routine, and to build and check bzr trees.
@@ -171,6 +173,7 @@ class TestCase(unittest.TestCase):
 
     BZRPATH = 'bzr'
     _log_file_name = None
+    _log_contents = ''
 
     def setUp(self):
         unittest.TestCase.setUp(self)
@@ -184,7 +187,7 @@ class TestCase(unittest.TestCase):
         if self.email is not None:
             del os.environ['EMAIL']
         bzrlib.trace.disable_default_logging()
-        self._enable_file_logging()
+        self._startLogFile()
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -219,11 +222,13 @@ class TestCase(unittest.TestCase):
             raise AssertionError('pattern "%s" not found in "%s"'
                     % (needle_re, haystack))
 
-    def _enable_file_logging(self):
+    def _startLogFile(self):
+        """Send bzr and test log messages to a temporary file.
+
+        The file is removed as the test is torn down.
+        """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
-
         self._log_file = os.fdopen(fileno, 'w+')
-
         hdlr = logging.StreamHandler(self._log_file)
         hdlr.setLevel(logging.DEBUG)
         hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
@@ -231,8 +236,18 @@ class TestCase(unittest.TestCase):
         logging.getLogger('').setLevel(logging.DEBUG)
         self._log_hdlr = hdlr
         debug('opened log file %s', name)
-        
         self._log_file_name = name
+        self.addCleanup(self._finishLogFile)
+
+    def _finishLogFile(self):
+        """Finished with the log file.
+
+        Read contents into memory, close, and delete.
+        """
+        self._log_file.seek(0)
+        self._log_contents = self._log_file.read()
+        os.remove(self._log_file_name)
+        self._log_file = self._log_file_name = None
 
     def addCleanup(self, callable):
         """Arrange to run a callable when this case is torn down.
@@ -240,6 +255,9 @@ class TestCase(unittest.TestCase):
         Callables are run in the reverse of the order they are registered, 
         ie last-in first-out.
         """
+        if callable in self._cleanups:
+            raise ValueError("cleanup function %r already registered on %s" 
+                    % (callable, self))
         self._cleanups.append(callable)
 
     def tearDown(self):
@@ -255,7 +273,6 @@ class TestCase(unittest.TestCase):
         logging.getLogger('').removeHandler(self._log_hdlr)
         bzrlib.trace.enable_default_logging()
         logging.debug('%s teardown', self.id())
-        self._log_file.close()
         self._runCleanups()
         unittest.TestCase.tearDown(self)
 
@@ -275,7 +292,7 @@ class TestCase(unittest.TestCase):
         if self._log_file_name:
             return open(self._log_file_name).read()
         else:
-            return ''
+            return self._log_contents
 
     def capture(self, cmd):
         """Shortcut that splits cmd into words, runs, and returns stdout"""

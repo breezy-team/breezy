@@ -79,6 +79,9 @@ UNRELEASED CHANGES
       will check that a given content is equal to the content of the named
       file. (Robert Collins)
 
+    * Fix test suite's habit of leaving many temporary log files in $TMPDIR.
+      (Martin Pool)
+
   INTERNALS:
 
     * New 'testament' command and concept for making gpg-signatures 
@@ -173,6 +176,8 @@ UNRELEASED CHANGES
     * 'revision.revision_graph can handle having only partial history for
       a revision - that is no revisions in the graph with no parents.
       (Robert Collins).
+
+    * New TestCase.addCleanup facility.
 
   BUG FIXES:
 
