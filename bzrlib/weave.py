@@ -227,6 +227,8 @@ class Weave(object):
             raise WeaveError("name %r not present in weave %r" %
                              (name, self._weave_name))
 
+    def names(self):
+        return self._names.keys()
 
     def iter_names(self):
         """Yield a list of all names in this weave."""
