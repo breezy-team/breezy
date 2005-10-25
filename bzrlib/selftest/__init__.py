@@ -41,7 +41,6 @@ MODULES_TO_DOCTEST = []
 from logging import debug, warning, error
 
 
-
 class EarlyStoppingTestResultAdapter(object):
     """An adapter for TestResult to stop at the first first failure or error"""
 
@@ -162,13 +161,20 @@ class TestCase(unittest.TestCase):
     retrieved by _get_log().
        
     There are also convenience functions to invoke bzr's command-line
-    routine, and to build and check bzr trees."""
+    routine, and to build and check bzr trees.
+   
+    In addition to the usual method of overriding tearDown(), this class also
+    allows subclasses to register functions into the _cleanups list, which is
+    run in order as the object is torn down.  It's less likely this will be
+    accidentally overlooked.
+    """
 
     BZRPATH = 'bzr'
     _log_file_name = None
 
     def setUp(self):
         unittest.TestCase.setUp(self)
+        self._cleanups = []
         self.oldenv = os.environ.get('HOME', None)
         os.environ['HOME'] = os.getcwd()
         self.bzr_email = os.environ.get('BZREMAIL')
@@ -228,6 +234,14 @@ class TestCase(unittest.TestCase):
         
         self._log_file_name = name
 
+    def addCleanup(self, callable):
+        """Arrange to run a callable when this case is torn down.
+
+        Callables are run in the reverse of the order they are registered, 
+        ie last-in first-out.
+        """
+        self._cleanups.append(callable)
+
     def tearDown(self):
         os.environ['HOME'] = self.oldenv
         if os.environ.get('BZREMAIL') is not None:
@@ -242,7 +256,16 @@ class TestCase(unittest.TestCase):
         bzrlib.trace.enable_default_logging()
         logging.debug('%s teardown', self.id())
         self._log_file.close()
+        self._runCleanups()
         unittest.TestCase.tearDown(self)
+
+    def _runCleanups(self):
+        """Run registered cleanup functions. 
+
+        This should only be called from TestCase.tearDown.
+        """
+        for callable in reversed(self._cleanups):
+            callable()
 
     def log(self, *args):
         logging.debug(*args)
