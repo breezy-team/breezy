@@ -228,7 +228,7 @@ class Weave(object):
                              (name, self._weave_name))
 
     def names(self):
-        return self._names.keys()
+        return self._names[:]
 
     def iter_names(self):
         """Yield a list of all names in this weave."""
