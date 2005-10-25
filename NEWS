@@ -60,7 +60,9 @@ UNRELEASED CHANGES
 
     * 'bzr check' allows the first revision on revision-history to have
       parents - something that is expected for cheap checkouts, and occurs
-      when conversions from baz do not have all history.  (Robert Collins).
+      when conversions from baz do not have all history.  (Robert Collins)
+
+    * Add '.sconsign*' to default ignore list.  (Alexander Belchenko)
 
   TESTING:
 
