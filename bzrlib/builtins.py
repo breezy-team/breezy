@@ -35,6 +35,12 @@ from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.workingtree import WorkingTree
 
 
+# TODO: Make sure no commands unconditionally use the working directory as a
+# branch.  If a filename argument is used, the first of them should be used to
+# specify the branch.  (Perhaps this can be factored out into some kind of
+# Argument class, representing a file in a branch, where the first occurrence
+# opens the branch?)
+
 class cmd_status(Command):
     """Display status summary.
 
