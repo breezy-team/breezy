@@ -73,6 +73,7 @@ from difflib import SequenceMatcher
 from bzrlib.trace import mutter
 from bzrlib.errors import WeaveError, WeaveFormatError, WeaveParentMismatch, \
         WeaveRevisionNotPresent, WeaveRevisionAlreadyPresent
+from bzrlib.tsort import topo_sort
 
 
 class Weave(object):
@@ -850,7 +851,7 @@ def reweave(wa, wb):
     # map from version name -> all parent names
     combined_parents = _reweave_parent_graphs(wa, wb)
     mutter("combined parents: %r", combined_parents)
-    order = _make_reweave_order(wa._names, wb._names, combined_parents)
+    order = topo_sort(combined_parents.iteritems())
     mutter("order to reweave: %r", order)
     for name in order:
         if name in wa._name_map:
@@ -873,40 +874,6 @@ def _reweave_parent_graphs(wa, wb):
             p = combined.setdefault(name, set())
             p.update(map(weave.idx_to_name, weave._parents[idx]))
     return combined
-
-
-def _make_reweave_order(wa_order, wb_order, combined_parents):
-    """Return an order to reweave versions respecting parents."""
-    done = set()
-    result = []
-    ia = ib = 0
-    next_a = next_b = None
-    len_a = len(wa_order)
-    len_b = len(wb_order)
-    while ia < len(wa_order) or ib < len(wb_order):
-        if ia < len_a:
-            next_a = wa_order[ia]
-            if next_a in done:
-                ia += 1
-                continue
-            if combined_parents[next_a].issubset(done):
-                ia += 1
-                result.append(next_a)
-                done.add(next_a)
-                continue
-        if ib < len_b:
-            next_b = wb_order[ib]
-            if next_b in done:
-                ib += 1
-                continue
-            elif combined_parents[next_b].issubset(done):
-                ib += 1
-                result.append(next_b)
-                done.add(next_b)
-                continue
-        raise WeaveError("don't know how to reweave at {%s} and {%s}"
-                         % (next_a, next_b))
-    return result
 
 
 def weave_toc(w):
