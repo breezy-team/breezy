@@ -15,17 +15,41 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-# This module implements plug-in support.
-# Any python module in $BZR_PLUGIN_PATH will be imported upon initialization
-# of bzrlib (and then forgotten about).  In the plugin's main body, it should
-# update any bzrlib registries it wants to extend; for example, to add new
-# commands, import bzrlib.commands and add your new command to the
-# plugin_cmds variable.
+"""bzr python plugin support
 
+Any python module in $BZR_PLUGIN_PATH will be imported upon initialization of
+bzrlib. The module will be imported as 'bzrlib.plugins.$BASENAME(PLUGIN)'.
+In the plugin's main body, it should update any bzrlib registries it wants to
+extend; for example, to add new commands, import bzrlib.commands and add your
+new command to the plugin_cmds variable.
+"""
 
+# TODO: Refactor this to make it more testable.  The main problem at the
+# moment is that loading plugins affects the global process state -- for bzr
+# in general use it's a reasonable assumption that all plugins are loaded at
+# startup and then stay loaded, but this is less good for testing.
+# 
+# Several specific issues:
+#  - plugins can't be unloaded and will continue to effect later tests
+#  - load_plugins does nothing if called a second time
+#  - plugin hooks can't be removed
+#
+# Our options are either to remove these restrictions, or work around them by
+# loading the plugins into a different space than the one running the tests.
+# That could be either a separate Python interpreter or perhaps a new
+# namespace inside this interpreter.
+
+import imp
 import os
+import sys
+
 import bzrlib
 from bzrlib.config import config_dir
+from bzrlib.trace import log_error, mutter, log_exception, warning, \
+        log_exception_quietly
+from bzrlib.errors import BzrError
+from bzrlib import plugins
+
 DEFAULT_PLUGIN_PATH = os.path.join(config_dir(), 'plugins')
 
 all_plugins = []
@@ -33,8 +57,7 @@ _loaded = False
 
 
 def load_plugins():
-    """
-    Find all python plugins and load them.
+    """Find all python plugins and load them.
 
     Loading a plugin means importing it into the python interpreter.
     The plugin is expected to make calls to register commands when
@@ -55,12 +78,6 @@ def load_plugins():
         return
         #raise BzrError("plugins already initialized")
     _loaded = True
-
-    import sys, os, imp
-    
-    from bzrlib.trace import log_error, mutter, log_exception
-    from bzrlib.errors import BzrError
-    from bzrlib import plugins
 
     dirs = os.environ.get('BZR_PLUGIN_PATH', DEFAULT_PLUGIN_PATH).split(":")
     dirs.insert(0, os.path.dirname(plugins.__file__))
@@ -121,6 +138,7 @@ def load_plugins():
 
                 mutter('loaded succesfully')
             except:
-                log_error('Unable to load plugin %r from %r' % (name, d))
-                log_exception()
-
+                ## import pdb
+                ## pdb.set_trace()
+                warning('Unable to load plugin %r from %r' % (name, d))
+                log_exception_quietly()

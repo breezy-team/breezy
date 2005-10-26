@@ -27,7 +27,9 @@ DEFAULT_IGNORE = ['.bzr.log',
                   '*,v',
                   'BitKeeper',
                   '.git',
-                  'TAGS', '.make.state', '.sconsign', '.tmp*',
+                  'TAGS', '.make.state', 
+                  '.sconsign*',
+                  '.tmp*',
                   '.del-*',
                   '.DS_Store',]
 

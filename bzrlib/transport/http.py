@@ -74,6 +74,7 @@ class HttpTransport(Transport):
         """Return the full url to the given relative path.
         This can be supplied with a string or a list
         """
+        assert isinstance(relpath, basestring)
         if isinstance(relpath, basestring):
             relpath_parts = relpath.split('/')
         else:
@@ -125,10 +126,10 @@ class HttpTransport(Transport):
             f.read()
             f.close()
             return True
-        except BzrError:
-            return False
-        except urllib2.URLError:
-            return False
+        except urllib2.URLError, e:
+            if e.code == 404:
+                return False
+            raise
         except IOError, e:
             if e.errno == errno.ENOENT:
                 return False
@@ -141,7 +142,13 @@ class HttpTransport(Transport):
         """
         try:
             return get_url(self.abspath(relpath))
-        except (BzrError, urllib2.URLError, IOError), e:
+        except urllib2.URLError, e:
+            if e.code == 404:
+                raise NoSuchFile(msg = "Error retrieving %s: %s" 
+                                 % (self.abspath(relpath), str(e)),
+                                 orig_error=e)
+            raise
+        except (BzrError, IOError), e:
             raise NoSuchFile(msg = "Error retrieving %s: %s" 
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
@@ -221,6 +228,3 @@ class HttpTransport(Transport):
         :return: A lock object, which should be passed to Transport.unlock()
         """
         raise TransportNotPossible('http does not support lock_write()')
-
-register_transport('http://', HttpTransport)
-register_transport('https://', HttpTransport)

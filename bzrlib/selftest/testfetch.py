@@ -22,6 +22,8 @@ from bzrlib.selftest.testrevision import make_branches
 from bzrlib.trace import mutter
 from bzrlib.branch import Branch
 from bzrlib.fetch import greedy_fetch
+from bzrlib.merge import merge
+from bzrlib.clone import copy_branch
 
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
@@ -104,6 +106,77 @@ class TestFetch(TestCaseInTempDir):
         #highest indices a: 5, b: 7
         br_a, br_b = make_branches()
         fetch_steps(self, br_a, br_b, br_a)
+
+
+class TestMergeFetch(TestCaseInTempDir):
+
+    def test_merge_fetches_unrelated(self):
+        """Merge brings across history from unrelated source"""
+        os.mkdir('br1')
+        br1 = Branch.initialize('br1')
+        br1.commit(message='rev 1-1', rev_id='1-1')
+        br1.commit(message='rev 1-2', rev_id='1-2')
+        os.mkdir('br2')
+        br2 = Branch.initialize('br2')
+        br2.commit(message='rev 2-1', rev_id='2-1')
+        merge(other_revision=['br1', -1], base_revision=['br1', 0],
+              this_dir='br2')
+        self._check_revs_present(br2)
+
+    def test_merge_fetches(self):
+        """Merge brings across history from source"""
+        os.mkdir('br1')
+        br1 = Branch.initialize('br1')
+        br1.commit(message='rev 1-1', rev_id='1-1')
+        copy_branch(br1, 'br2')
+        br2 = Branch.open('br2')
+        br1.commit(message='rev 1-2', rev_id='1-2')
+        br2.commit(message='rev 2-1', rev_id='2-1')
+        merge(other_revision=['br1', -1], base_revision=[None, None], 
+              this_dir='br2')
+        self._check_revs_present(br2)
+
+    def _check_revs_present(self, br2):
+        for rev_id in '1-1', '1-2', '2-1':
+            self.assertTrue(br2.has_revision(rev_id))
+            rev = br2.get_revision(rev_id)
+            self.assertEqual(rev.revision_id, rev_id)
+            self.assertTrue(br2.get_inventory(rev_id))
+
+
+
+class TestMergeFileHistory(TestCaseInTempDir):
+    def setUp(self):
+        TestCaseInTempDir.setUp(self)
+        os.mkdir('br1')
+        br1 = Branch.initialize('br1')
+        self.build_tree_contents([('br1/file', 'original contents\n')])
+        br1.add(['file'], ['this-file-id'])
+        br1.commit(message='rev 1-1', rev_id='1-1')
+        copy_branch(br1, 'br2')
+        br2 = Branch.open('br2')
+        self.build_tree_contents([('br1/file', 'original from 1\n')])
+        br1.commit(message='rev 1-2', rev_id='1-2')
+        self.build_tree_contents([('br1/file', 'agreement\n')])
+        br1.commit(message='rev 1-3', rev_id='1-3')
+        self.build_tree_contents([('br2/file', 'contents in 2\n')])
+        br2.commit(message='rev 2-1', rev_id='2-1')
+        self.build_tree_contents([('br2/file', 'agreement\n')])
+        br2.commit(message='rev 2-2', rev_id='2-2')
+
+    def test_merge_fetches_file_history(self):
+        """Merge brings across file histories"""
+        br2 = Branch.open('br2')
+        merge(other_revision=['br1', -1], base_revision=[None, None], 
+              this_dir='br2')
+        for rev_id, text in [('1-2', 'original from 1\n'),
+                             ('1-3', 'agreement\n'),
+                             ('2-1', 'contents in 2\n'),
+                             ('2-2', 'agreement\n')]:
+            self.assertEqualDiff(br2.revision_tree(rev_id).get_file_text('this-file-id'),
+                                 text)
+
+
 
 
 class TestHttpFetch(TestCaseWithWebserver):

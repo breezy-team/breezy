@@ -17,6 +17,7 @@
 
 import os
 
+import bzrlib
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.workingtree import WorkingTree
@@ -34,6 +35,12 @@ class MustSignConfig(BranchConfig):
 
     def gpg_signing_command(self):
         return ['cat', '-']
+
+
+class BranchWithHooks(BranchConfig):
+
+    def post_commit(self):
+        return "bzrlib.ahook bzrlib.ahook"
 
 
 class TestCommit(TestCaseInTempDir):
@@ -335,3 +342,20 @@ class TestCommit(TestCaseInTempDir):
             self.failIf(branch.revision_store.has_id('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
+
+    def test_commit_invokes_hooks(self):
+        import bzrlib.commit as commit
+        branch = Branch.initialize('.')
+        calls = []
+        def called(branch, rev_id):
+            calls.append('called')
+        bzrlib.ahook = called
+        try:
+            config = BranchWithHooks(branch)
+            commit.Commit(config=config).commit(
+                            branch, "base",
+                            allow_pointless=True,
+                            rev_id='A')
+            self.assertEqual(['called', 'called'], calls)
+        finally:
+            del bzrlib.ahook

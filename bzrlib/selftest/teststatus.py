@@ -114,7 +114,9 @@ class BranchStatus(TestCaseInTempDir):
         assert (message.startswith("pending merges:\n")), message
         assert (message.endswith("Empty commit 2\n")), message 
         b_2.commit("merged")
-        b.commit("Empty commit 3 blah blah blah blah blah blah blah blah blah")
+        # must be long to make sure we see elipsis at the end
+        b.commit("Empty commit 3 blah blah blah blah blah blah blah blah blah"
+                 "blah blah blah blah blah blah blah")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)
         assert (message.startswith("pending merges:\n")), message

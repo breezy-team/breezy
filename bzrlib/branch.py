@@ -208,8 +208,6 @@ class _Branch(Branch):
         """Create new branch object at a particular location.
 
         transport -- A Transport object, defining how to access files.
-                (If a string, transport.transport() will be used to
-                create a Transport object)
         
         init -- If True, create new control files in a previously
              unversioned directory.  If False, the branch must already
@@ -259,11 +257,11 @@ class _Branch(Branch):
             self.text_store = get_store('text-store')
             self.revision_store = get_store('revision-store')
         elif self._branch_format == 5:
-            self.control_weaves = get_weave([])
+            self.control_weaves = get_weave('')
             self.weave_store = get_weave('weaves')
             self.revision_store = get_store('revision-store', compressed=False)
         elif self._branch_format == 6:
-            self.control_weaves = get_weave([])
+            self.control_weaves = get_weave('')
             self.weave_store = get_weave('weaves', prefixed=True)
             self.revision_store = get_store('revision-store', compressed=False,
                                             prefixed=True)
@@ -318,7 +316,7 @@ class _Branch(Branch):
         """Return the current active transaction.
 
         If no transaction is active, this returns a passthrough object
-        for which all data is immedaitely flushed and no caching happens.
+        for which all data is immediately flushed and no caching happens.
         """
         if self._transaction is None:
             return transactions.PassThroughTransaction()
@@ -385,14 +383,15 @@ class _Branch(Branch):
         return self._transport.abspath(name)
 
     def _rel_controlfilename(self, file_or_path):
-        if isinstance(file_or_path, basestring):
-            file_or_path = [file_or_path]
-        return [bzrlib.BZRDIR] + file_or_path
+        if not isinstance(file_or_path, basestring):
+            file_or_path = '/'.join(file_or_path)
+        if file_or_path == '':
+            return bzrlib.BZRDIR
+        return bzrlib.transport.urlescape(bzrlib.BZRDIR + '/' + file_or_path)
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
         return self._transport.abspath(self._rel_controlfilename(file_or_path))
-
 
     def controlfile(self, file_or_path, mode='r'):
         """Open a control file for this branch.
@@ -677,6 +676,10 @@ class _Branch(Branch):
             mutter("add {%s} to revision-history" % revision_id)
         rev_history = self.revision_history()
         rev_history.extend(revision_ids)
+        self.set_revision_history(rev_history)
+
+    @needs_write_lock
+    def set_revision_history(self, rev_history):
         self.put_controlfile('revision-history', '\n'.join(rev_history))
 
     def has_revision(self, revision_id):
@@ -691,7 +694,7 @@ class _Branch(Branch):
     def get_revision_xml_file(self, revision_id):
         """Return XML file object for revision object."""
         if not revision_id or not isinstance(revision_id, basestring):
-            raise InvalidRevisionId(revision_id)
+            raise InvalidRevisionId(revision_id=revision_id, branch=self)
         try:
             return self.revision_store.get(revision_id)
         except (IndexError, KeyError):
@@ -874,9 +877,6 @@ class _Branch(Branch):
 
     def update_revisions(self, other, stop_revision=None):
         """Pull in new perfect-fit revisions."""
-        # FIXME: If the branches have diverged, but the latest
-        # revision in this branch is completely merged into the other,
-        # then we should still be able to pull.
         from bzrlib.fetch import greedy_fetch
         if stop_revision is None:
             stop_revision = other.last_revision()

@@ -14,13 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
+# DO NOT change this to cStringIO - it results in control files 
+# written as UCS4
+# FIXIT! (Only deal with byte streams OR unicode at any one layer.)
+# RBC 20051018
+from StringIO import StringIO
 import sys
 import os
 
 import bzrlib
 from bzrlib import BZRDIR
-from bzrlib.commands import Command
+from bzrlib.commands import Command, display_command
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
 from bzrlib.errors import DivergedBranches
@@ -30,6 +34,12 @@ import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.workingtree import WorkingTree
 
+
+# TODO: Make sure no commands unconditionally use the working directory as a
+# branch.  If a filename argument is used, the first of them should be used to
+# specify the branch.  (Perhaps this can be factored out into some kind of
+# Argument class, representing a file in a branch, where the first occurrence
+# opens the branch?)
 
 class cmd_status(Command):
     """Display status summary.
@@ -70,13 +80,17 @@ class cmd_status(Command):
     If a revision argument is given, the status is calculated against
     that revision, or between two revisions if two are provided.
     """
+    
     # XXX: FIXME: bzr status should accept a -r option to show changes
     # relative to a revision, or between revisions
 
+    # TODO: --no-recurse, --recurse options
+    
     takes_args = ['file*']
     takes_options = ['all', 'show-ids']
     aliases = ['st', 'stat']
     
+    @display_command
     def run(self, all=False, show_ids=False, file_list=None, revision=None):
         if file_list:
             b, relpath = Branch.open_containing(file_list[0])
@@ -107,6 +121,7 @@ class cmd_cat_revision(Command):
     takes_args = ['revision_id?']
     takes_options = ['revision']
     
+    @display_command
     def run(self, revision_id=None, revision=None):
 
         if revision_id is not None and revision is not None:
@@ -128,6 +143,7 @@ class cmd_revno(Command):
     """Show current revision number.
 
     This is equal to the number of revisions on this branch."""
+    @display_command
     def run(self):
         print Branch.open_containing('.')[0].revno()
 
@@ -138,6 +154,7 @@ class cmd_revision_info(Command):
     hidden = True
     takes_args = ['revision_info*']
     takes_options = ['revision']
+    @display_command
     def run(self, revision=None, revision_info_list=[]):
 
         revs = []
@@ -217,6 +234,7 @@ class cmd_relpath(Command):
     takes_args = ['filename']
     hidden = True
     
+    @display_command
     def run(self, filename):
         branch, relpath = Branch.open_containing(filename)
         print relpath
@@ -226,6 +244,7 @@ class cmd_inventory(Command):
     """Show inventory of the current working copy or a revision."""
     takes_options = ['revision', 'show-ids']
     
+    @display_command
     def run(self, revision=None, show_ids=False):
         b = Branch.open_containing('.')[0]
         if revision is None:
@@ -331,12 +350,11 @@ class cmd_pull(Command):
     If branches have diverged, you can use 'bzr merge' to pull the text changes
     from one into the other.
     """
-    takes_options = ['remember']
+    takes_options = ['remember', 'clobber']
     takes_args = ['location?']
 
-    def run(self, location=None, remember=False):
+    def run(self, location=None, remember=False, clobber=False):
         from bzrlib.merge import merge
-        import tempfile
         from shutil import rmtree
         import errno
         
@@ -348,28 +366,12 @@ class cmd_pull(Command):
             else:
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
-        cache_root = tempfile.mkdtemp()
         br_from = Branch.open(location)
-        br_from.lock_read()
         try:
-            br_from.setup_caching(cache_root)
-            location = br_from.base
-            old_revno = br_to.revno()
-            old_revision_history = br_to.revision_history()
-            try:
-                br_to.update_revisions(br_from)
-            except DivergedBranches:
-                raise BzrCommandError("These branches have diverged."
-                    "  Try merge.")
-            new_revision_history = br_to.revision_history()
-            if new_revision_history != old_revision_history:
-                merge(('.', -1), ('.', old_revno), check_clean=False)
-            if stored_loc is None or remember:
-                br_to.set_parent(location)
-        finally:
-            br_from.unlock()
-            rmtree(cache_root)
-
+            br_to.working_tree().pull(br_from, remember, clobber)
+        except DivergedBranches:
+            raise BzrCommandError("These branches have diverged."
+                                  "  Try merge.")
 
 
 class cmd_branch(Command):
@@ -391,10 +393,8 @@ class cmd_branch(Command):
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
         from bzrlib.clone import copy_branch
-        import tempfile
         import errno
         from shutil import rmtree
-        cache_root = tempfile.mkdtemp()
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -410,7 +410,6 @@ class cmd_branch(Command):
                 raise
         br_from.lock_read()
         try:
-            br_from.setup_caching(cache_root)
             if basis is not None:
                 basis_branch = Branch.open_containing(basis)[0]
             else:
@@ -421,6 +420,9 @@ class cmd_branch(Command):
                 revision_id = None
             if to_location is None:
                 to_location = os.path.basename(from_location.rstrip("/\\"))
+                name = None
+            else:
+                name = os.path.basename(to_location) + '\n'
             try:
                 os.mkdir(to_location)
             except OSError, e:
@@ -436,13 +438,18 @@ class cmd_branch(Command):
                 copy_branch(br_from, to_location, revision_id, basis_branch)
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
-                msg = "The branch %s has no revision %d." % (from_location, revision[0])
+                msg = "The branch %s has no revision %s." % (from_location, revision[0])
                 raise BzrCommandError(msg)
             except bzrlib.errors.UnlistableBranch:
+                rmtree(to_location)
                 msg = "The branch %s cannot be used as a --basis"
+                raise BzrCommandError(msg)
+            if name:
+                branch = Branch.open(to_location)
+                name = StringIO(name)
+                branch.put_controlfile('branch-name', name)
         finally:
             br_from.unlock()
-            rmtree(cache_root)
 
 
 class cmd_renames(Command):
@@ -453,6 +460,7 @@ class cmd_renames(Command):
     # TODO: Only show renames under dir, rather than in the whole branch.
     takes_args = ['dir?']
 
+    @display_command
     def run(self, dir='.'):
         b = Branch.open_containing(dir)[0]
         old_inv = b.basis_tree().inventory
@@ -468,6 +476,7 @@ class cmd_info(Command):
     """Show statistical information about a branch."""
     takes_args = ['branch?']
     
+    @display_command
     def run(self, branch=None):
         import info
         b = Branch.open_containing(branch)[0]
@@ -499,6 +508,7 @@ class cmd_file_id(Command):
     """
     hidden = True
     takes_args = ['filename']
+    @display_command
     def run(self, filename):
         b, relpath = Branch.open_containing(filename)
         i = b.inventory.path2id(relpath)
@@ -515,6 +525,7 @@ class cmd_file_path(Command):
     starting at the branch root."""
     hidden = True
     takes_args = ['filename']
+    @display_command
     def run(self, filename):
         b, relpath = Branch.open_containing(filename)
         inv = b.inventory
@@ -528,6 +539,7 @@ class cmd_file_path(Command):
 class cmd_revision_history(Command):
     """Display list of revision ids on this branch."""
     hidden = True
+    @display_command
     def run(self):
         for patchid in Branch.open_containing('.')[0].revision_history():
             print patchid
@@ -536,14 +548,16 @@ class cmd_revision_history(Command):
 class cmd_ancestry(Command):
     """List all revisions merged into this branch."""
     hidden = True
+    @display_command
     def run(self):
-        b = find_branch('.')
+        b = Branch.open_containing('.')[0]
         for revision_id in b.get_ancestry(b.last_revision()):
             print revision_id
 
 
 class cmd_directories(Command):
     """Display list of versioned directories in this branch."""
+    @display_command
     def run(self):
         for name, ie in Branch.open_containing('.')[0].read_working_inventory().directories():
             if name == '':
@@ -598,6 +612,7 @@ class cmd_diff(Command):
     takes_options = ['revision', 'diff-options']
     aliases = ['di', 'dif']
 
+    @display_command
     def run(self, revision=None, file_list=None, diff_options=None):
         from bzrlib.diff import show_diff
 
@@ -637,6 +652,7 @@ class cmd_deleted(Command):
     # directories with readdir, rather than stating each one.  Same
     # level of effort but possibly much less IO.  (Or possibly not,
     # if the directories are very large...)
+    @display_command
     def run(self, show_ids=False):
         b = Branch.open_containing('.')[0]
         old = b.basis_tree()
@@ -652,6 +668,7 @@ class cmd_deleted(Command):
 class cmd_modified(Command):
     """List files modified in working tree."""
     hidden = True
+    @display_command
     def run(self):
         from bzrlib.delta import compare_trees
 
@@ -666,6 +683,7 @@ class cmd_modified(Command):
 class cmd_added(Command):
     """List files added in working tree."""
     hidden = True
+    @display_command
     def run(self):
         b = Branch.open_containing('.')[0]
         wt = b.working_tree()
@@ -687,6 +705,7 @@ class cmd_root(Command):
     The root is the nearest enclosing directory with a .bzr control
     directory."""
     takes_args = ['filename?']
+    @display_command
     def run(self, filename=None):
         """Print the branch root."""
         b = Branch.open_containing(filename)[0]
@@ -715,7 +734,7 @@ class cmd_log(Command):
                             type=str),
                      Option('short', help='use moderately short format'),
                      ]
-    
+    @display_command
     def run(self, filename=None, timezone='original',
             verbose=False,
             show_ids=False,
@@ -790,6 +809,7 @@ class cmd_touching_revisions(Command):
     A more user-friendly interface is "bzr log FILE"."""
     hidden = True
     takes_args = ["filename"]
+    @display_command
     def run(self, filename):
         b, relpath = Branch.open_containing(filename)[0]
         inv = b.read_working_inventory()
@@ -803,6 +823,7 @@ class cmd_ls(Command):
     """
     # TODO: Take a revision or remote path and list that tree instead.
     hidden = True
+    @display_command
     def run(self, revision=None, verbose=False):
         b, relpath = Branch.open_containing('.')[0]
         if revision == None:
@@ -820,6 +841,7 @@ class cmd_ls(Command):
 
 class cmd_unknowns(Command):
     """List unknown files."""
+    @display_command
     def run(self):
         from bzrlib.osutils import quotefn
         for f in Branch.open_containing('.')[0].unknowns():
@@ -891,6 +913,7 @@ class cmd_ignored(Command):
     """List ignored files and the patterns that matched them.
 
     See also: bzr ignore"""
+    @display_command
     def run(self):
         tree = Branch.open_containing('.')[0].working_tree()
         for path, file_class, kind, file_id, entry in tree.list_files():
@@ -910,6 +933,7 @@ class cmd_lookup_revision(Command):
     hidden = True
     takes_args = ['revno']
     
+    @display_command
     def run(self, revno):
         try:
             revno = int(revno)
@@ -969,6 +993,7 @@ class cmd_cat(Command):
     takes_options = ['revision']
     takes_args = ['filename']
 
+    @display_command
     def run(self, filename, revision=None):
         if revision is None:
             raise BzrCommandError("bzr cat requires a revision number")
@@ -981,6 +1006,7 @@ class cmd_cat(Command):
 class cmd_local_time_offset(Command):
     """Show the offset in seconds from GMT to local time."""
     hidden = True    
+    @display_command
     def run(self):
         print bzrlib.osutils.local_time_offset()
 
@@ -1122,6 +1148,7 @@ class cmd_whoami(Command):
     """Show bzr user id."""
     takes_options = ['email']
     
+    @display_command
     def run(self, email=False):
         try:
             b = bzrlib.branch.Branch.open_containing('.')[0]
@@ -1195,12 +1222,14 @@ def show_version():
 
 class cmd_version(Command):
     """Show version of bzr."""
+    @display_command
     def run(self):
         show_version()
 
 class cmd_rocks(Command):
     """Statement of optimism."""
     hidden = True
+    @display_command
     def run(self):
         print "it sure does!"
 
@@ -1213,6 +1242,7 @@ class cmd_find_merge_base(Command):
     takes_args = ['branch', 'other']
     hidden = True
     
+    @display_command
     def run(self, branch, other):
         from bzrlib.revision import common_ancestor, MultipleRevisionSources
         
@@ -1272,10 +1302,12 @@ class cmd_merge(Command):
     --force is given.
     """
     takes_args = ['branch?']
-    takes_options = ['revision', 'force', 'merge-type']
+    takes_options = ['revision', 'force', 'merge-type', 
+                     Option('show-base', help="Show base revision text in "
+                            "conflicts")]
 
-    def run(self, branch=None, revision=None, force=False, 
-            merge_type=None):
+    def run(self, branch=None, revision=None, force=False, merge_type=None,
+            show_base=False):
         from bzrlib.merge import merge
         from bzrlib.merge_core import ApplyMerge3
         if merge_type is None:
@@ -1292,19 +1324,27 @@ class cmd_merge(Command):
         else:
             if len(revision) == 1:
                 base = [None, None]
-                other = [branch, revision[0].in_history(branch).revno]
+                other_branch = Branch.open_containing(branch)[0]
+                revno = revision[0].in_history(other_branch).revno
+                other = [branch, revno]
             else:
                 assert len(revision) == 2
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                b = Branch.open(branch)
+                b = Branch.open_containing(branch)[0]
 
                 base = [branch, revision[0].in_history(b).revno]
                 other = [branch, revision[1].in_history(b).revno]
 
         try:
-            merge(other, base, check_clean=(not force), merge_type=merge_type)
+            conflict_count = merge(other, base, check_clean=(not force),
+                                   merge_type=merge_type,
+                                   show_base=show_base)
+            if conflict_count != 0:
+                return 1
+            else:
+                return 0
         except bzrlib.errors.AmbiguousBase, e:
             m = ("sorry, bzr can't determine the right merge base yet\n"
                  "candidates are:\n  "
@@ -1364,6 +1404,7 @@ class cmd_help(Command):
     takes_args = ['topic?']
     aliases = ['?']
     
+    @display_command
     def run(self, topic=None, long=False):
         import help
         if topic is None and long:
@@ -1379,6 +1420,7 @@ class cmd_shell_complete(Command):
     aliases = ['s-c']
     hidden = True
     
+    @display_command
     def run(self, context=None):
         import shellcomplete
         shellcomplete.shellcomplete(context)
@@ -1393,10 +1435,17 @@ class cmd_fetch(Command):
     def run(self, from_branch, to_branch):
         from bzrlib.fetch import Fetcher
         from bzrlib.branch import Branch
-        from_b = Branch(from_branch)
-        to_b = Branch(to_branch)
-        Fetcher(to_b, from_b)
-        
+        from_b = Branch.open(from_branch)
+        to_b = Branch.open(to_branch)
+        from_b.lock_read()
+        try:
+            to_b.lock_write()
+            try:
+                Fetcher(to_b, from_b)
+            finally:
+                to_b.unlock()
+        finally:
+            from_b.unlock()
 
 
 class cmd_missing(Command):
@@ -1411,6 +1460,7 @@ class cmd_missing(Command):
     # unknown options are parsed as booleans
     takes_options = ['verbose', 'quiet']
 
+    @display_command
     def run(self, remote=None, verbose=False, quiet=False):
         from bzrlib.errors import BzrCommandError
         from bzrlib.missing import show_missing
@@ -1438,6 +1488,7 @@ class cmd_missing(Command):
 class cmd_plugins(Command):
     """List plugins"""
     hidden = True
+    @display_command
     def run(self):
         import bzrlib.plugin
         from inspect import getdoc
@@ -1458,6 +1509,7 @@ class cmd_testament(Command):
     """Show testament (signing-form) of a revision."""
     takes_options = ['revision', 'long']
     takes_args = ['branch?']
+    @display_command
     def run(self, branch='.', revision=None, long=False):
         from bzrlib.testament import Testament
         b = Branch.open_containing(branch)[0]
@@ -1495,6 +1547,7 @@ class cmd_annotate(Command):
                      Option('long', help='show date in annotations'),
                      ]
 
+    @display_command
     def run(self, filename, all=False, long=False):
         from bzrlib.annotate import annotate_file
         b, relpath = Branch.open_containing(filename)
@@ -1529,11 +1582,23 @@ class cmd_re_sign(Command):
         if revision_id is not None:
             b.sign_revision(revision_id, gpg_strategy)
         elif revision is not None:
-            for rev in revision:
-                if rev is None:
-                    raise BzrCommandError('You cannot specify a NULL revision.')
-                revno, rev_id = rev.in_history(b)
+            if len(revision) == 1:
+                revno, rev_id = revision[0].in_history(b)
                 b.sign_revision(rev_id, gpg_strategy)
+            elif len(revision) == 2:
+                # are they both on rh- if so we can walk between them
+                # might be nice to have a range helper for arbitrary
+                # revision paths. hmm.
+                from_revno, from_revid = revision[0].in_history(b)
+                to_revno, to_revid = revision[1].in_history(b)
+                if to_revid is None:
+                    to_revno = b.revno()
+                if from_revno is None or to_revno is None:
+                    raise BzrCommandError('Cannot sign a range of non-revision-history revisions')
+                for revno in range(from_revno, to_revno + 1):
+                    b.sign_revision(b.get_rev_id(revno), gpg_strategy)
+            else:
+                raise BzrCommandError('Please supply either one revision, or a range.')
 
 
 # these get imported and then picked up by the scan for cmd_*

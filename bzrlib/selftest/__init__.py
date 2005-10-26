@@ -41,7 +41,6 @@ MODULES_TO_DOCTEST = []
 from logging import debug, warning, error
 
 
-
 class EarlyStoppingTestResultAdapter(object):
     """An adapter for TestResult to stop at the first first failure or error"""
 
@@ -159,26 +158,29 @@ class TestCase(unittest.TestCase):
 
     Error and debug log messages are redirected from their usual
     location into a temporary file, the contents of which can be
-    retrieved by _get_log().
+    retrieved by _get_log().  We use a real OS file, not an in-memory object,
+    so that it can also capture file IO.  When the test completes this file
+    is read into memory and removed from disk.
        
     There are also convenience functions to invoke bzr's command-line
-    routine, and to build and check bzr trees."""
+    routine, and to build and check bzr trees.
+   
+    In addition to the usual method of overriding tearDown(), this class also
+    allows subclasses to register functions into the _cleanups list, which is
+    run in order as the object is torn down.  It's less likely this will be
+    accidentally overlooked.
+    """
 
     BZRPATH = 'bzr'
     _log_file_name = None
+    _log_contents = ''
 
     def setUp(self):
         unittest.TestCase.setUp(self)
-        self.oldenv = os.environ.get('HOME', None)
-        os.environ['HOME'] = os.getcwd()
-        self.bzr_email = os.environ.get('BZREMAIL')
-        if self.bzr_email is not None:
-            del os.environ['BZREMAIL']
-        self.email = os.environ.get('EMAIL')
-        if self.email is not None:
-            del os.environ['EMAIL']
+        self._cleanups = []
+        self._cleanEnvironment()
         bzrlib.trace.disable_default_logging()
-        self._enable_file_logging()
+        self._startLogFile()
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -212,12 +214,14 @@ class TestCase(unittest.TestCase):
         if not re.search(needle_re, haystack):
             raise AssertionError('pattern "%s" not found in "%s"'
                     % (needle_re, haystack))
-        
-    def _enable_file_logging(self):
+
+    def _startLogFile(self):
+        """Send bzr and test log messages to a temporary file.
+
+        The file is removed as the test is torn down.
+        """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
-
         self._log_file = os.fdopen(fileno, 'w+')
-
         hdlr = logging.StreamHandler(self._log_file)
         hdlr.setLevel(logging.DEBUG)
         hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
@@ -225,10 +229,42 @@ class TestCase(unittest.TestCase):
         logging.getLogger('').setLevel(logging.DEBUG)
         self._log_hdlr = hdlr
         debug('opened log file %s', name)
-        
         self._log_file_name = name
+        self.addCleanup(self._finishLogFile)
 
-    def tearDown(self):
+    def _finishLogFile(self):
+        """Finished with the log file.
+
+        Read contents into memory, close, and delete.
+        """
+        self._log_file.seek(0)
+        self._log_contents = self._log_file.read()
+        os.remove(self._log_file_name)
+        self._log_file = self._log_file_name = None
+
+    def addCleanup(self, callable):
+        """Arrange to run a callable when this case is torn down.
+
+        Callables are run in the reverse of the order they are registered, 
+        ie last-in first-out.
+        """
+        if callable in self._cleanups:
+            raise ValueError("cleanup function %r already registered on %s" 
+                    % (callable, self))
+        self._cleanups.append(callable)
+
+    def _cleanEnvironment(self):
+        self.oldenv = os.environ.get('HOME', None)
+        os.environ['HOME'] = os.getcwd()
+        self.bzr_email = os.environ.get('BZREMAIL')
+        if self.bzr_email is not None:
+            del os.environ['BZREMAIL']
+        self.email = os.environ.get('EMAIL')
+        if self.email is not None:
+            del os.environ['EMAIL']
+        self.addCleanup(self._restoreEnvironment)
+
+    def _restoreEnvironment(self):
         os.environ['HOME'] = self.oldenv
         if os.environ.get('BZREMAIL') is not None:
             del os.environ['BZREMAIL']
@@ -238,11 +274,21 @@ class TestCase(unittest.TestCase):
             del os.environ['EMAIL']
         if self.email is not None:
             os.environ['EMAIL'] = self.email
+
+    def tearDown(self):
         logging.getLogger('').removeHandler(self._log_hdlr)
         bzrlib.trace.enable_default_logging()
         logging.debug('%s teardown', self.id())
-        self._log_file.close()
+        self._runCleanups()
         unittest.TestCase.tearDown(self)
+
+    def _runCleanups(self):
+        """Run registered cleanup functions. 
+
+        This should only be called from TestCase.tearDown.
+        """
+        for callable in reversed(self._cleanups):
+            callable()
 
     def log(self, *args):
         logging.debug(*args)
@@ -252,7 +298,7 @@ class TestCase(unittest.TestCase):
         if self._log_file_name:
             return open(self._log_file_name).read()
         else:
-            return ''
+            return self._log_contents
 
     def capture(self, cmd):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
@@ -418,19 +464,18 @@ class TestCaseInTempDir(TestCase):
         os.mkdir(os.path.join(TestCaseInTempDir.TEST_ROOT, '.bzr'))
 
     def setUp(self):
+        super(TestCaseInTempDir, self).setUp()
         self._make_test_root()
-        self._currentdir = os.getcwdu()
+        _currentdir = os.getcwdu()
         short_id = self.id().replace('bzrlib.selftest.', '') \
                    .replace('__main__.', '')
         self.test_dir = os.path.join(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
-        super(TestCaseInTempDir, self).setUp()
+        def _leaveDirectory():
+            os.chdir(_currentdir)
+        self.addCleanup(_leaveDirectory)
         
-    def tearDown(self):
-        os.chdir(self._currentdir)
-        super(TestCaseInTempDir, self).tearDown()
-
     def build_tree(self, shape):
         """Build a test tree according to a pattern.
 
@@ -455,6 +500,11 @@ class TestCaseInTempDir(TestCase):
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
         self.failUnless(osutils.lexists(path))
+        
+    def assertFileEqual(self, content, path):
+        """Fail if path does not contain 'content'."""
+        self.failUnless(osutils.lexists(path))
+        self.assertEqualDiff(content, open(path, 'r').read())
         
 
 class MetaTestLog(TestCase):
@@ -521,6 +571,7 @@ def test_suite():
                    'bzrlib.selftest.testinv',
                    'bzrlib.selftest.test_ancestry',
                    'bzrlib.selftest.test_commit',
+                   'bzrlib.selftest.test_command',
                    'bzrlib.selftest.test_commit_merge',
                    'bzrlib.selftest.testconfig',
                    'bzrlib.selftest.versioning',
@@ -557,6 +608,8 @@ def test_suite():
                    'bzrlib.selftest.testoptions',
                    'bzrlib.selftest.testhttp',
                    'bzrlib.selftest.testnonascii',
+                   'bzrlib.selftest.testreweave',
+                   'bzrlib.selftest.testtsort',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,

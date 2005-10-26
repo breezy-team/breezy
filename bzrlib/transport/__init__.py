@@ -354,5 +354,30 @@ def get_transport(base):
     # which has a lookup of None
     return _protocol_handlers[None](base)
 
-# Local transport should always be initialized
-import bzrlib.transport.local
+
+def register_lazy_transport(scheme, module, classname):
+    """Register lazy-loaded transport class.
+
+    When opening a URL with the given scheme, load the module and then
+    instantiate the particular class.  
+    """
+    def _loader(base):
+        mod = __import__(module, globals(), locals(), [classname])
+        klass = getattr(mod, classname)
+        return klass(base)
+    register_transport(scheme, _loader)
+
+
+def urlescape(relpath):
+    """Escape relpath to be a valid url."""
+    # TODO utf8 it first. utf8relpath = relpath.encode('utf8')
+    import urllib
+    return urllib.quote(relpath)
+
+
+# None is the default transport, for things with no url scheme
+register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
+register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
+register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
+register_lazy_transport('http://', 'bzrlib.transport.http', 'HttpTransport')
+register_lazy_transport('https://', 'bzrlib.transport.http', 'HttpTransport')

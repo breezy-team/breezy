@@ -49,8 +49,9 @@ import fnmatch
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock, quotefn
 import bzrlib.tree
 from bzrlib.osutils import appendpath, file_kind, isdir, splitpath, relpath
-from bzrlib.errors import BzrCheckError, NotVersionedError
+from bzrlib.errors import BzrCheckError, DivergedBranches, NotVersionedError
 from bzrlib.trace import mutter
+
 
 class TreeEntry(object):
     """An entry that implements the minium interface used by commands.
@@ -140,6 +141,10 @@ class WorkingTree(bzrlib.tree.Tree):
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
+        # two possible ways offer themselves : in self._unlock, write the cache
+        # if needed, or, when the cache sees a change, append it to the hash
+        # cache file, and have the parser take the most recent entry for a
+        # given path only.
         hc = self._hashcache = HashCache(basedir)
         hc.read()
         hc.scan()
@@ -147,12 +152,6 @@ class WorkingTree(bzrlib.tree.Tree):
         if hc.needs_write:
             mutter("write hc")
             hc.write()
-            
-            
-    def __del__(self):
-        if self._hashcache.needs_write:
-            self._hashcache.write()
-
 
     def __iter__(self):
         """Iterate through file_ids for this tree.
@@ -329,6 +328,32 @@ class WorkingTree(bzrlib.tree.Tree):
             if stem not in conflicted:
                 conflicted.add(stem)
                 yield stem
+
+    @needs_write_lock
+    def pull(self, source, remember=False, clobber=False):
+        from bzrlib.merge import merge_inner
+        source.lock_read()
+        try:
+            old_revision_history = self.branch.revision_history()
+            try:
+                self.branch.update_revisions(source)
+            except DivergedBranches:
+                if not clobber:
+                    raise
+                self.branch.set_revision_history(source.revision_history())
+            new_revision_history = self.branch.revision_history()
+            if new_revision_history != old_revision_history:
+                if len(old_revision_history):
+                    other_revision = old_revision_history[-1]
+                else:
+                    other_revision = None
+                merge_inner(self.branch,
+                            self.branch.basis_tree(), 
+                            self.branch.revision_tree(other_revision))
+            if self.branch.get_parent() is None or remember:
+                self.branch.set_parent(source.base)
+        finally:
+            source.unlock()
 
     def extras(self):
         """Yield all unknown files in this WorkingTree.

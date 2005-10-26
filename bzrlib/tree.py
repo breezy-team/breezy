@@ -71,6 +71,9 @@ class Tree(object):
     def id2path(self, file_id):
         return self.inventory.id2path(file_id)
 
+    def kind(self, file_id):
+        raise NotImplementedError("subclasses must implement kind")
+
     def _get_inventory(self):
         return self._inventory
     
@@ -182,6 +185,7 @@ class RevisionTree(Tree):
     def kind(self, file_id):
         return self._inventory[file_id].kind
 
+
 class EmptyTree(Tree):
     def __init__(self):
         self._inventory = Inventory()
@@ -191,6 +195,10 @@ class EmptyTree(Tree):
 
     def has_filename(self, filename):
         return False
+
+    def kind(self, file_id):
+        assert self._inventory[file_id].kind == "root_directory"
+        return "root_directory"
 
     def list_files(self):
         return iter([])

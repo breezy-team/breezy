@@ -36,6 +36,8 @@ from bzrlib.osutils import rename
 from bzrlib.revision import common_ancestor, MultipleRevisionSources
 from bzrlib.errors import NoSuchRevision
 
+# TODO: Report back as changes are merged in
+
 # TODO: build_working_dir can be built on something simpler than merge()
 
 # FIXME: merge() parameters seem oriented towards the command line
@@ -124,7 +126,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def new_contents_conflict(self, filename, other_contents):
         """Conflicting contents for newly added file."""
-        other.contents.apply(filename + ".OTHER")
+        other_contents(filename + ".OTHER", self, False)
         self.conflict("Conflict in newly added file %s" % filename)
     
 
@@ -234,6 +236,7 @@ def build_working_dir(to_dir):
     eventually be done by just building the tree directly calling into 
     lower-level code (e.g. constructing a changeset).
     """
+    # RBC 20051019 is this not just 'export' ?
     merge((to_dir, -1), (to_dir, 0), this_dir=to_dir,
           check_clean=False, ignore_zero=True)
 
@@ -241,13 +244,14 @@ def build_working_dir(to_dir):
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
           this_dir=None, backup_files=False, merge_type=ApplyMerge3,
-          file_list=None):
+          file_list=None, show_base=False):
     """Merge changes into a tree.
 
     base_revision
-        tuple(path, revision) Base for three-way merge.
+        tuple(path, revno) Base for three-way merge.  
+        If (None, None) then a base will be automatically determined.
     other_revision
-        tuple(path, revision) Other revision for three-way merge.
+        tuple(path, revno) Other revision for three-way merge.
     this_dir
         Directory to merge changes into; '.' by default.
     check_clean
@@ -256,80 +260,94 @@ def merge(other_revision, base_revision,
     ignore_zero - If true, suppress the "zero conflicts" message when 
         there are no conflicts; should be set when doing something we expect
         to complete perfectly.
+    file_list - If true, merge only changes to selected files.
 
     All available ancestors of other_revision and base_revision are
     automatically pulled into the branch.
+
+    The revno may be -1 to indicate the last revision on the branch, which is the 
+    typical case.
+
+    This function is intended for use from the command line; programmatic clients 
+    might prefer to call merge_inner(), which has less magic behavior.
     """
-    tempdir = tempfile.mkdtemp(prefix="bzr-")
-    try:
-        if this_dir is None:
-            this_dir = '.'
-        this_branch = Branch.open_containing(this_dir)[0]
-        this_rev_id = this_branch.last_revision()
-        if this_rev_id is None:
-            raise BzrCommandError("This branch has no commits")
-        if check_clean:
-            changes = compare_trees(this_branch.working_tree(), 
-                                    this_branch.basis_tree(), False)
-            if changes.has_changed():
-                raise BzrCommandError("Working tree has uncommitted changes.")
-        other_branch, other_tree = get_tree(other_revision, this_branch)
-        if other_revision[1] == -1:
-            other_rev_id = other_branch.last_revision()
-            if other_rev_id is None:
-                raise NoCommits(other_branch)
-            other_basis = other_rev_id
-        elif other_revision[1] is not None:
-            other_rev_id = other_branch.get_rev_id(other_revision[1])
-            other_basis = other_rev_id
+    # TODO: please check this docstring is true and accurate - mbp 20051024
+    if this_dir is None:
+        this_dir = '.'
+    this_branch = Branch.open_containing(this_dir)[0]
+    this_rev_id = this_branch.last_revision()
+    if this_rev_id is None:
+        raise BzrCommandError("This branch has no commits")
+    if check_clean:
+        changes = compare_trees(this_branch.working_tree(), 
+                                this_branch.basis_tree(), False)
+        if changes.has_changed():
+            raise BzrCommandError("Working tree has uncommitted changes.")
+    other_branch, other_tree = get_tree(other_revision, this_branch)
+    if other_revision[1] == -1:
+        other_rev_id = other_branch.last_revision()
+        if other_rev_id is None:
+            raise NoCommits(other_branch)
+        other_basis = other_rev_id
+    elif other_revision[1] is not None:
+        other_rev_id = other_branch.get_rev_id(other_revision[1])
+        other_basis = other_rev_id
+    else:
+        other_rev_id = None
+        other_basis = other_branch.last_revision()
+        if other_basis is None:
+            raise NoCommits(other_branch)
+    fetch(from_branch=other_branch, to_branch=this_branch)
+    if base_revision == [None, None]:
+        mutter("doing merge() with no base_revision specified")
+        try:
+            base_rev_id = common_ancestor(this_rev_id, other_basis, 
+                                          this_branch)
+        except NoCommonAncestor:
+            raise UnrelatedBranches()
+        # fetch() is probably unnecessary in this case, because
+        # get_revid_tree() does it anyway if base_rev_id is not None and the
+        # local_branch is None -- but we do it above just to be sure -- mbp 20051024
+        base_tree = get_revid_tree(this_branch, base_rev_id, None)
+        base_is_ancestor = True
+    else:
+        mutter('doing merge() with base %r' % (base_revision,))
+        base_branch, base_tree = get_tree(base_revision)
+        if base_revision[1] == -1:
+            base_rev_id = base_branch.last_revision()
+        elif base_revision[1] is None:
+            base_rev_id = None
         else:
-            other_rev_id = None
-            other_basis = other_branch.last_revision()
-            if other_basis is None:
-                raise NoCommits(other_branch)
-        if base_revision == [None, None]:
-            try:
-                base_rev_id = common_ancestor(this_rev_id, other_basis, 
-                                              this_branch)
-            except NoCommonAncestor:
-                raise UnrelatedBranches()
-            base_tree = get_revid_tree(this_branch, base_rev_id, None)
-            base_is_ancestor = True
-        else:
-            base_branch, base_tree = get_tree(base_revision)
-            if base_revision[1] == -1:
-                base_rev_id = base_branch.last_revision()
-            elif base_revision[1] is None:
-                base_rev_id = None
-            else:
-                base_rev_id = base_branch.get_rev_id(base_revision[1])
-            fetch(from_branch=base_branch, to_branch=this_branch)
-            base_is_ancestor = is_ancestor(this_rev_id, base_rev_id,
-                                           this_branch)
-        if file_list is None:
-            interesting_ids = None
-        else:
-            interesting_ids = set()
-            this_tree = this_branch.working_tree()
-            for fname in file_list:
-                path = this_tree.relpath(fname)
-                found_id = False
-                for tree in (this_tree, base_tree, other_tree):
-                    file_id = tree.inventory.path2id(path)
-                    if file_id is not None:
-                        interesting_ids.add(file_id)
-                        found_id = True
-                if not found_id:
-                    raise BzrCommandError("%s is not a source file in any"
-                                          " tree." % fname)
-        merge_inner(this_branch, other_tree, base_tree, tempdir, 
-                    ignore_zero=ignore_zero, backup_files=backup_files, 
-                    merge_type=merge_type, interesting_ids=interesting_ids)
-        if base_is_ancestor and other_rev_id is not None\
-            and other_rev_id not in this_branch.revision_history():
-            this_branch.add_pending_merge(other_rev_id)
-    finally:
-        shutil.rmtree(tempdir)
+            base_rev_id = base_branch.get_rev_id(base_revision[1])
+        fetch(from_branch=base_branch, to_branch=this_branch)
+        base_is_ancestor = is_ancestor(this_rev_id, base_rev_id,
+                                       this_branch)
+    if file_list is None:
+        interesting_ids = None
+    else:
+        interesting_ids = set()
+        this_tree = this_branch.working_tree()
+        for fname in file_list:
+            path = this_tree.relpath(fname)
+            found_id = False
+            for tree in (this_tree, base_tree, other_tree):
+                file_id = tree.inventory.path2id(path)
+                if file_id is not None:
+                    interesting_ids.add(file_id)
+                    found_id = True
+            if not found_id:
+                raise BzrCommandError("%s is not a source file in any"
+                                      " tree." % fname)
+    conflicts = merge_inner(this_branch, other_tree, base_tree, tempdir=None,
+                            ignore_zero=ignore_zero,
+                            backup_files=backup_files, 
+                            merge_type=merge_type,
+                            interesting_ids=interesting_ids,
+                            show_base=show_base)
+    if base_is_ancestor and other_rev_id is not None\
+        and other_rev_id not in this_branch.revision_history():
+        this_branch.add_pending_merge(other_rev_id)
+    return conflicts
 
 
 def set_interesting(inventory_a, inventory_b, interesting_ids):
@@ -340,12 +358,37 @@ def set_interesting(inventory_a, inventory_b, interesting_ids):
              source_file.interesting = source_file.id in interesting_ids
 
 
-def merge_inner(this_branch, other_tree, base_tree, tempdir, 
+def merge_inner(this_branch, other_tree, base_tree, tempdir=None, 
                 ignore_zero=False, merge_type=ApplyMerge3, backup_files=False,
-                interesting_ids=None):
+                interesting_ids=None, show_base=False):
+    """Primary interface for merging. 
 
+    typical use is probably 
+    'merge_inner(branch, branch.get_revision_tree(other_revision),
+                 branch.get_revision_tree(base_revision))'
+    """
+    if tempdir is None:
+        _tempdir = tempfile.mkdtemp(prefix="bzr-")
+    else:
+        _tempdir = tempdir
+    try:
+        return _merge_inner(this_branch, other_tree, base_tree, _tempdir,
+                            ignore_zero, merge_type, backup_files,
+                            interesting_ids,
+                            show_base=show_base)
+    finally:
+        if tempdir is None:
+            shutil.rmtree(_tempdir)
+
+
+def _merge_inner(this_branch, other_tree, base_tree, user_tempdir, 
+                ignore_zero=False, merge_type=ApplyMerge3, backup_files=False,
+                interesting_ids=None, show_base=False):
     def merge_factory(file_id, base, other):
-        contents_change = merge_type(file_id, base, other)
+        if show_base is True:
+            contents_change = merge_type(file_id, base, other, show_base=True)
+        else:
+            contents_change = merge_type(file_id, base, other)
         if backup_files:
             contents_change = BackupBeforeChange(contents_change)
         return contents_change
@@ -355,10 +398,11 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
     def get_inventory(tree):
         return tree.inventory
 
+    conflict_handler = MergeConflictHandler(this_tree, base_tree, other_tree,
+                                            ignore_zero=ignore_zero)
     inv_changes = merge_flex(this_tree, base_tree, other_tree,
                              generate_changeset, get_inventory,
-                             MergeConflictHandler(this_tree, base_tree,
-                             other_tree, ignore_zero=ignore_zero),
+                             conflict_handler,
                              merge_factory=merge_factory, 
                              interesting_ids=interesting_ids)
 
@@ -375,6 +419,9 @@ def merge_inner(this_branch, other_tree, base_tree, tempdir,
         this_branch.set_inventory(regen_inventory(this_branch, 
                                                   this_tree.basedir,
                                                   adjust_ids))
+    conflicts = conflict_handler.conflicts
+    conflict_handler.finalize()
+    return conflicts
 
 
 def regen_inventory(this_branch, root, new_entries):

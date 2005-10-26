@@ -62,19 +62,31 @@ class TestBranch(TestCaseInTempDir):
         tree = b2.revision_tree('revision-1')
         eq(tree.get_file_text('foo-id'), 'hello')
 
-    def test_push_stores(self):
-        """Copy the stores from one branch to another"""
+    def get_unbalanced_branch_pair(self):
+        """Return two branches, a and b, with one file in a."""
         os.mkdir('a')
         br_a = Branch.initialize("a")
         file('a/b', 'wb').write('b')
         br_a.add('b')
-        commit(br_a, "silly commit")
-
+        commit(br_a, "silly commit", rev_id='A')
         os.mkdir('b')
         br_b = Branch.initialize("b")
+        return br_a, br_b
+
+    def get_balanced_branch_pair(self):
+        """Returns br_a, br_b as with one commit in a, and b has a's stores."""
+        br_a, br_b = self.get_unbalanced_branch_pair()
+        br_a.push_stores(br_b)
+        return br_a, br_b
+
+    def test_push_stores(self):
+        """Copy the stores from one branch to another"""
+        br_a, br_b = self.get_unbalanced_branch_pair()
+        # ensure the revision is missing.
         self.assertRaises(NoSuchRevision, br_b.get_revision, 
                           br_a.revision_history()[0])
         br_a.push_stores(br_b)
+        # check that b now has all the data from a's first commit.
         rev = br_b.get_revision(br_a.revision_history()[0])
         tree = br_b.revision_tree(br_a.revision_history()[0])
         for file_id in tree:
@@ -84,7 +96,7 @@ class TestBranch(TestCaseInTempDir):
 
     def test_copy_branch(self):
         """Copy the stores from one branch to another"""
-        br_a, br_b = self.test_push_stores()
+        br_a, br_b = self.get_balanced_branch_pair()
         commit(br_b, "silly commit")
         os.mkdir('c')
         br_c = copy_branch(br_a, 'c', basis_branch=br_b)
@@ -104,7 +116,6 @@ class TestBranch(TestCaseInTempDir):
         self.assertTrue(os.path.exists('b/one'))
         self.assertFalse(os.path.exists('b/two'))
         
-
     def test_record_initial_ghost_merge(self):
         """A pending merge with no revision present is still a merge."""
         branch = Branch.initialize('.')
@@ -157,6 +168,14 @@ class TestBranch(TestCaseInTempDir):
         branch.store_revision_signature(bzrlib.gpg.LoopbackGPGStrategy(None),
                                         'FOO', 'A')
         self.assertEqual('FOO', branch.revision_store.get('A', 'sig').read())
+
+    def test__relcontrolfilename(self):
+        branch = Branch.initialize('.')
+        self.assertEqual('.bzr/%25', branch._rel_controlfilename('%'))
+        
+    def test__relcontrolfilename_empty(self):
+        branch = Branch.initialize('.')
+        self.assertEqual('.bzr', branch._rel_controlfilename(''))
 
 
 class TestRemote(TestCaseWithWebserver):

@@ -298,6 +298,7 @@ class TestCommands(ExternalBase):
         self.example_branch()
         os.chdir('..')
         self.runbzr('branch a b')
+        self.assertFileEqual('b\n', 'b/.bzr/branch-name')
         self.runbzr('branch a c -r 1')
         os.chdir('b')
         self.runbzr('commit -m foo --unchanged')
@@ -326,7 +327,9 @@ class TestCommands(ExternalBase):
         # We can't merge when there are in-tree changes
         self.runbzr('merge ../b', retcode=1)
         self.runbzr(['commit', '-m', "Like an epidemic of u's"])
-        self.runbzr('merge ../b')
+        self.runbzr('merge ../b -r last:1..last:1')
+        self.runbzr('revert --no-backup')
+        self.runbzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
         a = Branch.open('.')
@@ -362,11 +365,11 @@ class TestCommands(ExternalBase):
         print >> file('b.txt', 'ab'), "something"
         print >> file('sub/c.txt', 'ab'), "something"
         self.runbzr(('commit', '-m', 'Modified a.txt'))
-        self.runbzr('merge ../a/')
+        self.runbzr('merge ../a/', retcode=1)
         assert os.path.exists('sub/a.txt.THIS')
         assert os.path.exists('sub/a.txt.BASE')
         os.chdir('../a')
-        self.runbzr('merge ../b/')
+        self.runbzr('merge ../b/', retcode=1)
         assert os.path.exists('sub/a.txt.OTHER')
         assert os.path.exists('sub/a.txt.BASE')
 
@@ -400,7 +403,15 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m blah2 --unchanged')
         os.chdir('../b')
         self.runbzr('commit -m blah3 --unchanged')
+        # no clobber
         self.runbzr('pull ../a', retcode=1)
+        os.chdir('..')
+        self.runbzr('branch b clobberme')
+        os.chdir('clobberme')
+        self.runbzr('pull --clobber ../a')
+        clobbered = Branch.open('.')
+        self.assertEqual(clobbered.revision_history(),
+                         a.revision_history())
         os.chdir('../a')
         self.runbzr('merge ../b')
         self.runbzr('commit -m blah4 --unchanged')
@@ -495,7 +506,19 @@ class TestCommands(ExternalBase):
         file('question', 'wb').write("What do you get when you multiply six"
                                    "times nine?")
         self.runbzr('commit -m this')
-        self.runbzr('merge ../other')
+        self.runbzr('merge ../other --show-base', retcode=1)
+        conflict_text = file('hello').read()
+        assert '<<<<<<<' in conflict_text
+        assert '>>>>>>>' in conflict_text
+        assert '=======' in conflict_text
+        assert '|||||||' in conflict_text
+        assert 'hi world' in conflict_text
+        self.runbzr('revert')
+        self.runbzr('resolve --all')
+        self.runbzr('merge ../other', retcode=1)
+        conflict_text = file('hello').read()
+        assert '|||||||' not in conflict_text
+        assert 'hi world' not in conflict_text
         result = self.runbzr('conflicts', backtick=1)
         self.assertEquals(result, "hello\nquestion\n")
         result = self.runbzr('status', backtick=1)
@@ -524,6 +547,28 @@ class TestCommands(ExternalBase):
                              branch.revision_store.get('A', 'sig').read())
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
+            
+    def test_resign_range(self):
+        import bzrlib.gpg
+        oldstrategy = bzrlib.gpg.GPGStrategy
+        branch = Branch.initialize('.')
+        branch.commit("base", allow_pointless=True, rev_id='A')
+        branch.commit("base", allow_pointless=True, rev_id='B')
+        branch.commit("base", allow_pointless=True, rev_id='C')
+        try:
+            # monkey patch gpg signing mechanism
+            from bzrlib.testament import Testament
+            bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
+            self.runbzr('re-sign -r 1..')
+            self.assertEqual(Testament.from_revision(branch,'A').as_short_text(),
+                             branch.revision_store.get('A', 'sig').read())
+            self.assertEqual(Testament.from_revision(branch,'B').as_short_text(),
+                             branch.revision_store.get('B', 'sig').read())
+            self.assertEqual(Testament.from_revision(branch,'C').as_short_text(),
+                             branch.revision_store.get('C', 'sig').read())
+        finally:
+            bzrlib.gpg.GPGStrategy = oldstrategy
+
 
 def listdir_sorted(dir):
     L = os.listdir(dir)

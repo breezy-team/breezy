@@ -34,13 +34,12 @@ class TestVersioning(TestCaseInTempDir):
     
     def test_mkdir(self): 
         """Basic 'bzr mkdir' operation"""
-        from bzrlib.commands import run_bzr
 
-        run_bzr(['init'])
-        run_bzr(['mkdir', 'foo'])
+        self.run_bzr('init')
+        self.run_bzr('mkdir', 'foo')
         self.assert_(os.path.isdir('foo'))
 
-        self.assertRaises(OSError, run_bzr, ['mkdir', 'foo'])
+        self.run_bzr('mkdir', 'foo', retcode=2)
 
         from bzrlib.diff import compare_trees
         from bzrlib.branch import Branch
@@ -80,26 +79,25 @@ class TestVersioning(TestCaseInTempDir):
         "bzr add" should add the parent(s) as necessary.
         """
         from bzrlib.branch import Branch
-        from bzrlib.commands import run_bzr
         eq = self.assertEqual
 
         b = Branch.initialize('.')
 
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         eq(list(b.unknowns()), ['inertiatic'])
-        run_bzr(['add', 'inertiatic/esp'])
+        self.run_bzr('add', 'inertiatic/esp')
         eq(list(b.unknowns()), [])
 
         # Multiple unversioned parents
         self.build_tree(['veil/', 'veil/cerpin/', 'veil/cerpin/taxt'])
         eq(list(b.unknowns()), ['veil'])
-        run_bzr(['add', 'veil/cerpin/taxt'])
+        self.run_bzr('add', 'veil/cerpin/taxt')
         eq(list(b.unknowns()), [])
 
         # Check whacky paths work
         self.build_tree(['cicatriz/', 'cicatriz/esp'])
         eq(list(b.unknowns()), ['cicatriz'])
-        run_bzr(['add', 'inertiatic/../cicatriz/esp'])
+        self.run_bzr('add', 'inertiatic/../cicatriz/esp')
         eq(list(b.unknowns()), [])
 
     def test_add_in_versioned(self):
@@ -108,23 +106,21 @@ class TestVersioning(TestCaseInTempDir):
         "bzr add" should do this happily.
         """
         from bzrlib.branch import Branch
-        from bzrlib.commands import run_bzr
         eq = self.assertEqual
 
         b = Branch.initialize('.')
 
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         eq(list(b.unknowns()), ['inertiatic'])
-        run_bzr(['add', '--no-recurse', 'inertiatic'])
+        self.run_bzr('add', '--no-recurse', 'inertiatic')
         eq(list(b.unknowns()), ['inertiatic'+os.sep+'esp'])
-        run_bzr(['add', 'inertiatic/esp'])
+        self.run_bzr('add', 'inertiatic/esp')
         eq(list(b.unknowns()), [])
 
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
         
         from bzrlib.branch import Branch
-        from bzrlib.commands import run_bzr
         
         eq = self.assertEqual
         ass = self.assert_
@@ -136,19 +132,19 @@ class TestVersioning(TestCaseInTempDir):
         eq(sorted(b.unknowns()),
            ['README', 'src'])
         
-        eq(run_bzr(['add', 'src']), 0)
+        self.run_bzr('add', 'src')
         
         self.build_tree(['src/foo.c'])
         
         chdir('src')
-        eq(run_bzr(['add']), 0)
+        self.run_bzr('add')
         
         eq(sorted(b.unknowns()), 
            ['README'])
         eq(len(b.inventory), 3)
                 
         chdir('..')
-        eq(run_bzr(['add']), 0)
+        self.run_bzr('add')
         eq(list(b.unknowns()), [])
 
         self.check_branch()
