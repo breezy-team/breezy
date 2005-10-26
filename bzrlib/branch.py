@@ -35,7 +35,8 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            DivergedBranches, LockError, UnlistableStore,
                            UnlistableBranch, NoSuchFile, NotVersionedError)
 from bzrlib.textui import show_status
-from bzrlib.revision import Revision, is_ancestor, get_intervening_revisions
+from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions,
+                             NULL_REVISION)
 
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
@@ -937,7 +938,7 @@ class _Branch(Branch):
         an `EmptyTree` is returned."""
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
-        if revision_id == None:
+        if revision_id == None or revision_id == NULL_REVISION:
             return EmptyTree()
         else:
             inv = self.get_revision_inventory(revision_id)

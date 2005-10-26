@@ -19,6 +19,7 @@
 # s: "i hate that."
 
 
+from difflib import SequenceMatcher
 
 def intersect(ra, rb):
     """Given two ranges return the range where they intersect or None.
@@ -67,9 +68,6 @@ class Merge3(object):
         self.base = base
         self.a = a
         self.b = b
-        from difflib import SequenceMatcher
-        self.a_ops = SequenceMatcher(None, base, a).get_opcodes()
-        self.b_ops = SequenceMatcher(None, base, b).get_opcodes()
 
 
 
@@ -279,7 +277,6 @@ class Merge3(object):
         Generates a list of (base1, base2, a1, a2, b1, b2).  There is
         always a zero-length sync region at the end of all the files.
         """
-        from difflib import SequenceMatcher
 
         ia = ib = 0
         amatches = SequenceMatcher(None, self.base, self.a).get_matching_blocks()
@@ -339,7 +336,6 @@ class Merge3(object):
 
     def find_unconflicted(self):
         """Return a list of ranges in base that are not conflicted."""
-        from difflib import SequenceMatcher
 
         import re
 

@@ -26,6 +26,7 @@ from bzrlib.selftest import TestCase, TestCaseInTempDir
 from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
+from bzrlib.revision import NULL_REVISION
 
 # TODO: Make a branch using basis branch, and check that it 
 # doesn't request any files that could have been avoided, by 
@@ -61,6 +62,15 @@ class TestBranch(TestCaseInTempDir):
         rev = b2.get_revision('revision-1')
         tree = b2.revision_tree('revision-1')
         eq(tree.get_file_text('foo-id'), 'hello')
+
+    def test_revision_tree(self):
+        b1 = Branch.initialize('.')
+        b1.commit('lala!', rev_id='revision-1', allow_pointless=True)
+        tree = b1.revision_tree('revision-1')
+        tree = b1.revision_tree(None)
+        self.assertEqual(len(tree.list_files()), 0)
+        tree = b1.revision_tree(NULL_REVISION)
+        self.assertEqual(len(tree.list_files()), 0)
 
     def get_unbalanced_branch_pair(self):
         """Return two branches, a and b, with one file in a."""
@@ -126,6 +136,10 @@ class TestBranch(TestCaseInTempDir):
         # parent_sha1s is not populated now, WTF. rbc 20051003
         self.assertEqual(len(rev.parent_sha1s), 0)
         self.assertEqual(rev.parent_ids[0], 'non:existent@rev--ision--0--2')
+
+    def test_bad_revision(self):
+        branch = Branch.initialize('.')
+        self.assertRaises(errors.InvalidRevisionId, branch.get_revision, None)
 
 # TODO 20051003 RBC:
 # compare the gpg-to-sign info for a commit with a ghost and 

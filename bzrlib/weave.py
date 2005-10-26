@@ -721,11 +721,11 @@ class Weave(object):
                 elif lines_a == lines_b:
                     for l in lines_a: yield l
                 else:
-                    yield '<<<<\n'
+                    yield '<<<<<<<\n'
                     for l in lines_a: yield l
-                    yield '====\n'
+                    yield '=======\n'
                     for l in lines_b: yield l
-                    yield '>>>>\n'
+                    yield '>>>>>>>\n'
 
                 del lines_a[:]
                 del lines_b[:]
