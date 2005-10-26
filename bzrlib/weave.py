@@ -71,19 +71,9 @@ import sha
 from difflib import SequenceMatcher
 
 from bzrlib.trace import mutter
+from bzrlib.errors import WeaveError, WeaveFormatError, WeaveParentMismatch, \
+        WeaveRevisionNotPresent, WeaveRevisionAlreadyPresent
 
-
-class WeaveError(Exception):
-    """Exception in processing weave"""
-
-
-class WeaveFormatError(WeaveError):
-    """Weave invariant violated"""
-
-
-class WeaveParentMismatch(WeaveError):
-    """Parents are mismatched between two revisions."""
-    
 
 class Weave(object):
     """weave - versioned text file storage.
@@ -224,9 +214,10 @@ class Weave(object):
         try:
             return self._name_map[name]
         except KeyError:
-            raise WeaveError("name %r not present in weave %r" %
-                             (name, self._weave_name))
+            raise WeaveRevisionNotPresent(name, self)
 
+    def names(self):
+        return self._names[:]
 
     def iter_names(self):
         """Yield a list of all names in this weave."""
@@ -235,22 +226,16 @@ class Weave(object):
     def idx_to_name(self, version):
         return self._names[version]
 
-
     def _check_repeated_add(self, name, parents, text, sha1):
         """Check that a duplicated add is OK.
 
         If it is, return the (old) index; otherwise raise an exception.
         """
         idx = self.lookup(name)
-        if sorted(self._parents[idx]) != sorted(parents):
-            raise WeaveError("name \"%s\" already present in weave "
-                             "with different parents" % name)
-        if sha1 != self._sha1s[idx]:
-            raise WeaveError("name \"%s\" already present in weave "
-                             "with different text" % name)            
+        if sorted(self._parents[idx]) != sorted(parents) \
+            or sha1 != self._sha1s[idx]:
+            raise WeaveRevisionAlreadyPresent(name, self)
         return idx
-        
-
         
     def add(self, name, parents, text, sha1=None):
         """Add a single text on top of the weave.
@@ -458,7 +443,6 @@ class Weave(object):
         for origin, lineno, text in self._extract(incls):
             yield origin, text
 
-
     def _walk(self):
         """Walk the weave.
 
@@ -486,8 +470,7 @@ class Weave(object):
                 elif c == ']':
                     dset.remove(v)
                 else:
-                    raise WeaveFormatError('unexpected instruction %r'
-                                           % v)
+                    raise WeaveFormatError('unexpected instruction %r' % v)
             else:
                 assert isinstance(l, basestring)
                 assert istack
@@ -547,16 +530,13 @@ class Weave(object):
                 if isactive:
                     result.append((istack[-1], lineno, l))
             lineno += 1
-
         if istack:
-            raise WFE("unclosed insertion blocks at end of weave",
-                                   istack)
+            raise WeaveFormatError("unclosed insertion blocks "
+                    "at end of weave: %s" % istack)
         if dset:
-            raise WFE("unclosed deletion blocks at end of weave",
-                                   dset)
-
+            raise WeaveFormatError("unclosed deletion blocks at end of weave: %s"
+                                   % dset)
         return result
-    
 
 
     def get_iter(self, name_or_index):

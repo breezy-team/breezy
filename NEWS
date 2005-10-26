@@ -71,6 +71,8 @@ UNRELEASED CHANGES
    * 'bzr commit branch' and 'bzr commit branch/file1 branch/file2' now work
      (Aaron Bentley)
 
+    * Add '.sconsign*' to default ignore list.  (Alexander Belchenko)
+
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 
@@ -81,12 +83,15 @@ UNRELEASED CHANGES
       complete, which will aid in analysing performance regressions and
       related questions. (Robert Collins)
 
-    * 'bzr selftest' runs all tests, even if one feels, unless '--one'
+    * 'bzr selftest' runs all tests, even if one fails, unless '--one'
       is given. (Martin Pool)
 
     * There is a new method for TestCaseInTempDir, assertFileEqual, which
       will check that a given content is equal to the content of the named
       file. (Robert Collins)
+
+    * Fix test suite's habit of leaving many temporary log files in $TMPDIR.
+      (Martin Pool)
 
   INTERNALS:
 
@@ -188,6 +193,8 @@ UNRELEASED CHANGES
 
     * New builtins.branch_files uses the standard file_list rules to produce
       a branch and a list of paths, relative to that branch (Aaron Bentley)
+
+    * New TestCase.addCleanup facility.
 
   BUG FIXES:
 

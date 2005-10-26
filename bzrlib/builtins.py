@@ -55,6 +55,12 @@ def branch_files(file_list, default_branch='.'):
     return b, new_list
 
 
+# TODO: Make sure no commands unconditionally use the working directory as a
+# branch.  If a filename argument is used, the first of them should be used to
+# specify the branch.  (Perhaps this can be factored out into some kind of
+# Argument class, representing a file in a branch, where the first occurrence
+# opens the branch?)
+
 class cmd_status(Command):
     """Display status summary.
 
@@ -1450,10 +1456,17 @@ class cmd_fetch(Command):
     def run(self, from_branch, to_branch):
         from bzrlib.fetch import Fetcher
         from bzrlib.branch import Branch
-        from_b = Branch(from_branch)
-        to_b = Branch(to_branch)
-        Fetcher(to_b, from_b)
-        
+        from_b = Branch.open(from_branch)
+        to_b = Branch.open(to_branch)
+        from_b.lock_read()
+        try:
+            to_b.lock_write()
+            try:
+                Fetcher(to_b, from_b)
+            finally:
+                to_b.unlock()
+        finally:
+            from_b.unlock()
 
 
 class cmd_missing(Command):
