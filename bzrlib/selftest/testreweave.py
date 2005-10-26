@@ -100,7 +100,8 @@ class TestReweave(TestCaseInTempDir):
         knows about revisions the destination does not.  In 
         this test the second weave knows of an additional parent of 
         v2.  Any revisions which are in common still have to have the 
-        same text."""
+        same text.
+        """
         w1 = self.build_weave1()
         wa = w1.copy()
         wb = Weave()
