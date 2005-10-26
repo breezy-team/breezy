@@ -16,30 +16,41 @@
 
 import pdb
 
-def topo_sort(nodes, pairs):
+from bzrlib.errors import GraphCycleError
+
+def topo_sort(graph):
     """Topological sort a graph.
 
-    nodes -- list of all nodes in the graph
-    pairs -- list of (a, b) pairs, meaning a is a predecessor of b. 
-        both a and b must occur in the node list.
+    graph -- sequence of pairs of node->parents_list.
+
+    The result is a list of node names, such that all parents come before
+    their children.
+
+    Nodes at the same depth are returned in sorted order.
 
     node identifiers can be any hashable object, and are typically strings.
     """
     parents = {}  # node -> list of parents
     children = {} # node -> list of children
-    for n in nodes:
-        parents[n] = set()
-        children[n] = set()
-    for p, c in pairs:
-        parents[c].add(p)
-        children[p].add(c)
+    for node, node_parents in graph:
+        assert node not in parents, \
+            ('node %r repeated in graph' % node)
+        parents[node] = set(node_parents)
+        if node not in children:
+            children[node] = set()
+        for parent in node_parents:
+            if parent in children:
+                children[parent].add(node)
+            else:
+                children[parent] = set([node])
     result = []
     while parents:
         # find nodes with no parents, and take them now
-        ready = [n for n in parents if len(parents[n]) == 0]
-        if not ready:
-            raise AssertionError('cycle in graph?')
-        for n in ready:
+        no_parents = [n for n in parents if len(parents[n]) == 0]
+        no_parents.sort()
+        if not no_parents:
+            raise GraphCycleError(parents)
+        for n in no_parents:
             result.append(n)
             for child in children[n]:
                 assert n in parents[child]

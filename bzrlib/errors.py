@@ -350,3 +350,9 @@ class SigningFailed(BzrError):
     def __init__(self, command_line):
         BzrError.__init__(self, "Failed to gpg sign data with command '%s'"
                                % command_line)
+
+class GraphCycleError(BzrNewError):
+    """Cycle in graph %(graph)r"""
+    def __init__(self, graph):
+        BzrNewError.__init__(self)
+        self.graph = graph

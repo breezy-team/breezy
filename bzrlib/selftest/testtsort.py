@@ -22,26 +22,39 @@ import sys
 
 from bzrlib.selftest import TestCase
 from bzrlib.tsort import topo_sort
+from bzrlib.errors import GraphCycleError
 
 class TopoSortTests(TestCase):
 
     def test_tsort_empty(self):
         """TopoSort empty list"""
-        self.assertEquals(topo_sort([], []), [])
+        self.assertEquals(topo_sort([]), [])
 
     def test_tsort_easy(self):
-        """TopoSort list with one vertex"""
-        self.assertEquals(topo_sort([0, 1], [(0, 1)]),
-                [0, 1])
+        """TopoSort list with one node"""
+        self.assertEquals(topo_sort({0: []}.items()),
+                          [0])
 
     def test_tsort_cycle(self):
-        """TopoSort traps graph with cycles."""
-        self.assertRaises(AssertionError, 
-                topo_sort,
-                [0, 1], [(0, 1), (1, 0)])
+        """TopoSort traps graph with cycles"""
+        self.assertRaises(GraphCycleError,
+                          topo_sort,
+                          {0: [1], 
+                           1: [0]}.iteritems())
 
+    def test_tsort_cycle_2(self):
+        """TopoSort traps graph with longer cycle"""
+        self.assertRaises(GraphCycleError,
+                          topo_sort,
+                          {0: [1], 
+                           1: [2], 
+                           2: [0]}.iteritems())
+                 
     def test_tsort_1(self):
         """TopoSort simple nontrivial graph"""
-        self.assertEquals(topo_sort([0, 1, 2, 3, 4], 
-                                    [(3, 0), (1, 2), (4, 1), (4, 2), (0, 1), (3, 4)]),
+        self.assertEquals(topo_sort({0: [3], 
+                                     1: [4],
+                                     2: [1, 4],
+                                     3: [], 
+                                     4: [0, 3]}.iteritems()),
                           [3, 0, 4, 1, 2])
