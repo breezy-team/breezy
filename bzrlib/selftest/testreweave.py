@@ -34,12 +34,11 @@ It is an error if either of these conditions occur:
 import os
 import sys
 
-from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.selftest import TestCase
 from bzrlib.weave import Weave, reweave
-from bzrlib.weavefile import read_weave
 from bzrlib.errors import WeaveParentMismatch
 
-class TestReweave(TestCaseInTempDir):
+class TestReweave(TestCase):
 
     def test_reweave_add_parents(self):
         """Reweave inserting new parents
@@ -116,3 +115,38 @@ class TestReweave(TestCaseInTempDir):
         eq(wc.parent_names('v2'), ['v1', 'x1'])
         w1.reweave(wb)
         self.assertEquals(wc, w1)
+
+    def build_empty_weave(self, *pattern):
+        w = Weave()
+        for version, parents in pattern:
+            w.add(version, parents, [])
+        return w
+
+    def test_reweave_reorder(self):
+        """Reweave requiring reordering of versions.
+
+        Weaves must be stored such that parents come before children.  When
+        reweaving, we may add new parents to some children, but it is required
+        that there must be *some* valid order that can be found, otherwise the
+        ancestries are contradictory.  (For the specific case of inserting
+        ghost revisions there will be no disagreement, only partial knowledge
+        of the history.)
+
+        Note that the weaves are only partially ordered: when there are two
+        versions where neither is an ancestor of the other the order in which
+        they occur is unconstrained.  When we reweave those versions into
+        another weave, they may become more constrained and it may be
+        necessary to change their order.
+
+        One simple case of this is 
+
+        w1: (c[], a[], b[a])
+        w2: (b[], c[b], a[])
+        
+        We need to recognize that the final weave must show the ordering
+        a[], b[a], c[b].  The version that must be first in the result is 
+        not first in either of the input weaves.
+        """
+        w1 = self.build_empty_weave(('c', []), ('a', []), ('b', ['a']))
+        w2 = self.build_empty_weave(('b', []), ('c', ['b']), ('a', []))
+        w3 = reweave(w1, w2)
