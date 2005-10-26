@@ -58,3 +58,20 @@ class TopoSortTests(TestCase):
                                      3: [], 
                                      4: [0, 3]}.iteritems()),
                           [3, 0, 4, 1, 2])
+
+    def test_tsort_partial(self):
+        """Topological sort with partial ordering.
+
+        If the graph does not give an order between two nodes, they are 
+        returned in lexicographical order.
+        """
+        self.assertEquals(topo_sort([(0, []),
+                                    (1, [0]),
+                                    (2, [0]),
+                                    (3, [0]),
+                                    (4, [1, 2, 3]),
+                                    (5, [1, 2]),
+                                    (6, [1, 2]),
+                                    (7, [2, 3]),
+                                    (8, [0, 1, 4, 5, 6])]),
+                          [0, 1, 2, 3, 4, 5, 6, 7, 8, ])
