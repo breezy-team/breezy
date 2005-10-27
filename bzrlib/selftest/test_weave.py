@@ -753,7 +753,8 @@ class MergeCases(TestBase):
         self.doMerge(['aaa', 'bbb'],
                      ['aaa', 'xxx', 'yyy', 'bbb'],
                      ['aaa', 'xxx', 'bbb'],
-                     ['aaa', '<<<<', 'xxx', 'yyy', '====', 'xxx', '>>>>', 'bbb'])
+                     ['aaa', '<<<<<<<', 'xxx', 'yyy', '=======', 'xxx', 
+                      '>>>>>>>', 'bbb'])
 
         # really it ought to reduce this to 
         # ['aaa', 'xxx', 'yyy', 'bbb']
@@ -763,13 +764,15 @@ class MergeCases(TestBase):
         self.doMerge(['aaa'],
                      ['xxx'],
                      ['yyy', 'zzz'],
-                     ['<<<<', 'xxx', '====', 'yyy', 'zzz', '>>>>'])
+                     ['<<<<<<<', 'xxx', '=======', 'yyy', 'zzz', 
+                      '>>>>>>>'])
 
     def testNonClashInsert(self):
         self.doMerge(['aaa'],
                      ['xxx', 'aaa'],
                      ['yyy', 'zzz'],
-                     ['<<<<', 'xxx', 'aaa', '====', 'yyy', 'zzz', '>>>>'])
+                     ['<<<<<<<', 'xxx', 'aaa', '=======', 'yyy', 'zzz', 
+                      '>>>>>>>'])
 
         self.doMerge(['aaa'],
                      ['aaa'],
@@ -791,7 +794,7 @@ class MergeCases(TestBase):
         self.doMerge(['aaa', 'bbb', 'ccc'],
                      ['aaa', 'ddd', 'ccc'],
                      ['aaa', 'ccc'],
-                     ['<<<<', 'aaa', '====', '>>>>', 'ccc'])
+                     ['<<<<<<<<', 'aaa', '=======', '>>>>>>>', 'ccc'])
 
 
 class JoinWeavesTests(TestBase):
@@ -873,49 +876,3 @@ class JoinWeavesTests(TestBase):
         eq = self.assertEquals
         eq(sorted(wa.iter_names()), ['v1', 'v2', 'v3', 'x1',])
         eq(wa.get_text('x1'), 'line from x1\n')
-
-    def test_reweave_with_empty(self):
-        wb = Weave()
-        wr = reweave(self.weave1, wb)
-        eq = self.assertEquals
-        eq(sorted(wr.iter_names()), ['v1', 'v2', 'v3'])
-        eq(wr.get_lines('v3'), ['hello\n', 'cruel\n', 'world\n'])
-        self.weave1.reweave(wb)
-        self.assertEquals(wr, self.weave1)
-
-    def test_join_with_ghosts_raises_parent_mismatch(self):
-        wa = self.weave1.copy()
-        wb = Weave()
-        wb.add('x1', [], ['line from x1\n'])
-        wb.add('v1', [], ['hello\n'])
-        wb.add('v2', ['v1', 'x1'], ['hello\n', 'world\n'])
-        self.assertRaises(errors.WeaveParentMismatch, wa.join, wb)
-
-    def test_reweave_with_ghosts(self):
-        """Join that inserts parents of an existing revision.
-
-        This can happen when merging from another branch who
-        knows about revisions the destination does not.  In 
-        this test the second weave knows of an additional parent of 
-        v2.  Any revisions which are in common still have to have the 
-        same text."""
-        wa = self.weave1.copy()
-        wb = Weave()
-        wb.add('x1', [], ['line from x1\n'])
-        wb.add('v1', [], ['hello\n'])
-        wb.add('v2', ['v1', 'x1'], ['hello\n', 'world\n'])
-        wc = reweave(wa, wb)
-        eq = self.assertEquals
-        eq(sorted(wc.iter_names()), ['v1', 'v2', 'v3', 'x1',])
-        eq(wc.get_text('x1'), 'line from x1\n')
-        eq(wc.get_lines('v2'), ['hello\n', 'world\n'])
-        eq(wc.parent_names('v2'), ['v1', 'x1'])
-        self.weave1.reweave(wb)
-        self.assertEquals(wc, self.weave1)
-
-
-if __name__ == '__main__':
-    import sys
-    import unittest
-    sys.exit(unittest.main())
-    

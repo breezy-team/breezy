@@ -35,7 +35,8 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            DivergedBranches, LockError, UnlistableStore,
                            UnlistableBranch, NoSuchFile, NotVersionedError)
 from bzrlib.textui import show_status
-from bzrlib.revision import Revision, is_ancestor, get_intervening_revisions
+from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions,
+                             NULL_REVISION)
 
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
@@ -208,8 +209,6 @@ class _Branch(Branch):
         """Create new branch object at a particular location.
 
         transport -- A Transport object, defining how to access files.
-                (If a string, transport.transport() will be used to
-                create a Transport object)
         
         init -- If True, create new control files in a previously
              unversioned directory.  If False, the branch must already
@@ -318,7 +317,7 @@ class _Branch(Branch):
         """Return the current active transaction.
 
         If no transaction is active, this returns a passthrough object
-        for which all data is immedaitely flushed and no caching happens.
+        for which all data is immediately flushed and no caching happens.
         """
         if self._transaction is None:
             return transactions.PassThroughTransaction()
@@ -696,7 +695,7 @@ class _Branch(Branch):
     def get_revision_xml_file(self, revision_id):
         """Return XML file object for revision object."""
         if not revision_id or not isinstance(revision_id, basestring):
-            raise InvalidRevisionId(revision_id)
+            raise InvalidRevisionId(revision_id=revision_id, branch=self)
         try:
             return self.revision_store.get(revision_id)
         except (IndexError, KeyError):
@@ -939,7 +938,7 @@ class _Branch(Branch):
         an `EmptyTree` is returned."""
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
-        if revision_id == None:
+        if revision_id == None or revision_id == NULL_REVISION:
             return EmptyTree()
         else:
             inv = self.get_revision_inventory(revision_id)

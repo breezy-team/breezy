@@ -165,17 +165,15 @@ def log_exception(msg=None):
     The exception string representation is used as the error
     summary, unless msg is given.
     """
-    cmd_repr = ' '.join(repr(arg) for arg in sys.argv)
-    cmd_info = '\n  command: %s\n  pwd: %s' \
-        % (cmd_repr, os.getcwd())
+    ei = sys.exc_info()
     if msg == None:
-        ei = sys.exc_info()
         msg = str(ei[1])
     if msg and (msg[-1] == '\n'):
         msg = msg[:-1]
-    ## msg = "(%s) %s" % (str(type(ei[1])), msg)
-    _bzr_logger.exception(msg + cmd_info)
-
+    msg += '\n  command: %s' % ' '.join(repr(arg) for arg in sys.argv)
+    msg += '\n      pwd: %r' % os.getcwdu()
+    msg += '\n    error: %s' % ei[0]        # exception type
+    _bzr_logger.exception(msg)
 
 
 def log_exception_quietly():

@@ -61,9 +61,20 @@ UNRELEASED CHANGES
 
     * Merge now has a retcode of 1 when conflicts occur. (Robert Collins)
 
+    * --merge-type weave is now supported for file contents.  Tree-shape
+      changes are still three-way based.  (Martin Pool, Aaron Bentley)
+
     * 'bzr check' allows the first revision on revision-history to have
       parents - something that is expected for cheap checkouts, and occurs
       when conversions from baz do not have all history.  (Robert Collins).
+
+   * 'bzr merge' can now graft unrelated trees together, if your specify
+     0 as a base. (Aaron Bentley)
+
+   * 'bzr commit branch' and 'bzr commit branch/file1 branch/file2' now work
+     (Aaron Bentley)
+
+    * Add '.sconsign*' to default ignore list.  (Alexander Belchenko)
 
   TESTING:
 
@@ -75,12 +86,15 @@ UNRELEASED CHANGES
       complete, which will aid in analysing performance regressions and
       related questions. (Robert Collins)
 
-    * 'bzr selftest' runs all tests, even if one feels, unless '--one'
+    * 'bzr selftest' runs all tests, even if one fails, unless '--one'
       is given. (Martin Pool)
 
     * There is a new method for TestCaseInTempDir, assertFileEqual, which
       will check that a given content is equal to the content of the named
       file. (Robert Collins)
+
+    * Fix test suite's habit of leaving many temporary log files in $TMPDIR.
+      (Martin Pool)
 
   INTERNALS:
 
@@ -176,6 +190,11 @@ UNRELEASED CHANGES
     * 'revision.revision_graph can handle having only partial history for
       a revision - that is no revisions in the graph with no parents.
       (Robert Collins).
+
+    * New builtins.branch_files uses the standard file_list rules to produce
+      a branch and a list of paths, relative to that branch (Aaron Bentley)
+
+    * New TestCase.addCleanup facility.
 
   BUG FIXES:
 

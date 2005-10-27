@@ -504,6 +504,8 @@ def display_command(func):
         except IOError, e:
             if e.errno != errno.EPIPE:
                 raise
+        except KeyboardInterrupt:
+	    pass
     return ignore_pipe
 
 def main(argv):
