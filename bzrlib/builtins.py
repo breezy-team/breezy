@@ -372,47 +372,8 @@ class cmd_pull(Command):
                 new_rh = br_to.revision_history()
                 if old_rh != new_rh:
                     # Something changed
-                    from bzrlib.log import log_formatter, show_log
-                    import codecs
-                    outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
-                    lf = log_formatter('long',
-                                       show_ids=False,
-                                       to_file=outf,
-                                       show_timezone='original')
-
-                    # This is the first index which is different between
-                    # old and new
-                    base_idx = None
-                    for i in xrange(max(len(new_rh),
-                                        len(old_rh))):
-                        if (len(new_rh) <= i
-                            or len(old_rh) <= i
-                            or new_rh[i] != old_rh[i]):
-                            base_idx = i
-                            break
-
-                    if base_idx is None:
-                        print 'Nothing seems to have changed'
-                    else:
-                        if base_idx < len(old_rh):
-                            print '*'*60
-                            print 'Removed Revisions:'
-                            for i in range(base_idx, len(old_rh)):
-                                rev = br_to.get_revision(old_rh[i])
-                                lf.show(i+1, rev, None)
-                            print '*'*60
-                        if base_idx < len(new_rh):
-                            print 'Added Revisions:'
-                            show_log(br_to,
-                                     lf,
-                                     None,
-                                     verbose=True,
-                                     direction='forward',
-                                     start_revision=base_idx+1,
-                                     end_revision=len(new_rh),
-                                     search=None)
-
-                    
+                    from bzrlib.log import show_changed_revisions
+                    show_changed_revisions(br_to, old_rh, new_rh)
 
 
 class cmd_branch(Command):

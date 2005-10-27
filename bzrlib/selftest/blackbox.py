@@ -429,6 +429,49 @@ class TestCommands(ExternalBase):
         self.runbzr('pull ../b')
         self.runbzr('pull ../b')
 
+    def test_pull_verbose(self):
+        """Pull changes from one branch to another and watch the output."""
+
+        os.mkdir('a')
+        os.chdir('a')
+
+        bzr = self.runbzr
+        self.example_branch()
+
+        os.chdir('..')
+        bzr('branch a b')
+        os.chdir('b')
+        open('b', 'wb').write('else\n')
+        bzr('add b')
+        bzr(['commit', '-m', 'added b'])
+
+        os.chdir('../a')
+        out = bzr('pull --verbose ../b', backtick=True)
+        self.failIfEqual(out.find('Added Revisions:'), -1)
+        self.failIfEqual(out.find('message:\n  added b'), -1)
+        self.failIfEqual(out.find('added:\n  b'), -1)
+
+        # Check that --clobber --verbose prints out the removed entries
+        bzr('commit -m foo --unchanged')
+        os.chdir('../b')
+        bzr('commit -m baz --unchanged')
+        bzr('pull ../a', retcode=1)
+        out = bzr('pull --clobber --verbose ../a', backtick=1)
+
+        remove_loc = out.find('Removed Revisions:')
+        self.failIfEqual(remove_loc, -1)
+        added_loc = out.find('Added Revisions:')
+        self.failIfEqual(added_loc, -1)
+
+        removed_message = out.find('message:\n  baz')
+        self.failIfEqual(removed_message, -1)
+        self.failUnless(remove_loc < removed_message < added_loc)
+
+        added_message = out.find('message:\n  foo')
+        self.failIfEqual(added_message, -1)
+        self.failUnless(added_loc < added_message)
+        
+
     def test_locations(self):
         """Using and remembering different locations"""
         os.mkdir('a')
