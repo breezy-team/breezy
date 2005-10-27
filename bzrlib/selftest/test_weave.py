@@ -59,11 +59,16 @@ class TestBase(TestCase):
             self.log('         %r' % k._parents)
             self.log('         %r' % k2._parents)
             self.log('')
-
-            
             self.fail('read/write check failed')
-        
-        
+
+
+class WeaveContains(TestBase):
+    """Weave __contains__ operator"""
+    def runTest(self):
+        k = Weave()
+        self.assertFalse('foo' in k)
+        k.add('foo', [], TEXT_1)
+        self.assertTrue('foo' in k)
 
 
 class Easy(TestBase):
