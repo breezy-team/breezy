@@ -193,6 +193,9 @@ UNRELEASED CHANGES
 
     * New TestCase.addCleanup facility.
 
+    * New bzrlib.version_info tuple (similar to sys.version_info), which can
+      be used by programs importing bzrlib.
+
   BUG FIXES:
 
     * Better handling of branches in directories with non-ascii names. 
