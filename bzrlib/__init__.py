@@ -84,7 +84,7 @@ user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
 __copyright__ = "Copyright 2005 Canonical Development Ltd."
-__version__ = version_string = '0.6pre'
+__version__ = version_string = '0.6rc1'
 # same format as sys.version_info
 version_info = (0, 6, 0, 'rc', 1)
 
