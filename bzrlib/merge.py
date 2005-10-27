@@ -86,7 +86,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
         for line in lines:
             d_file.write(line)
 
-    def add_suffix(self, name, suffix, last_new_name=None):
+    def add_suffix(self, name, suffix, last_new_name=None, fix_inventory=True):
         """Rename a file to append a suffix.  If the new name exists, the
         suffix is added repeatedly until a non-existant name is found
 
@@ -99,23 +99,25 @@ class MergeConflictHandler(ExceptionConflictHandler):
         new_name = last_new_name+suffix
         try:
             rename(name, new_name)
-            try:
-                relpath = self.this_tree.relpath(name)
-            except NotBranchError:
-                relpath = None
-            if relpath is not None:
-                file_id = self.this_tree.path2id(relpath)
-                if file_id is not None:
-                    new_path = self.this_tree.relpath(new_name)
-                    rename(new_name, name)
-                    self.this_tree.branch.rename_one(relpath, new_path)
-                    assert self.this_tree.id2path(file_id) == relpath
-                    self.this_tree._inventory = self.this_tree.branch.inventory
-                    assert self.this_tree.id2path(file_id) == new_path
+            if fix_inventory is True:
+                try:
+                    relpath = self.this_tree.relpath(name)
+                except NotBranchError:
+                    relpath = None
+                if relpath is not None:
+                    file_id = self.this_tree.path2id(relpath)
+                    if file_id is not None:
+                        new_path = self.this_tree.relpath(new_name)
+                        rename(new_name, name)
+                        self.this_tree.branch.rename_one(relpath, new_path)
+                        assert self.this_tree.id2path(file_id) == relpath
+                        self.this_tree._inventory = self.this_tree.branch.inventory
+                        assert self.this_tree.id2path(file_id) == new_path
         except OSError, e:
             if e.errno != errno.EEXIST and e.errno != errno.ENOTEMPTY:
                 raise
-            return self.add_suffix(name, suffix, last_new_name=new_name)
+            return self.add_suffix(name, suffix, last_new_name=new_name, 
+                                   fix_inventory=fix_inventory)
         return new_name
 
     def conflict(self, text):
@@ -132,7 +134,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
         :param base_path: Path to the file text for the BASE tree
         :param other_path: Path to the file text for the OTHER tree
         """
-        self.add_suffix(this_path, ".THIS")
+        self.add_suffix(this_path, ".THIS", fix_inventory=False)
         self.dump(base_lines, this_path+".BASE")
         self.dump(other_lines, this_path+".OTHER")
         rename(new_file, this_path)

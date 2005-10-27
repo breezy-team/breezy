@@ -25,6 +25,8 @@
 # TODO: Check revision, inventory and entry objects have all 
 # required fields.
 
+# TODO: Get every revision in the revision-store even if they're not
+# referenced by history and make sure they're all valid.
 
 import bzrlib.ui
 from bzrlib.trace import note, warning
