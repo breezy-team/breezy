@@ -6,11 +6,6 @@ Remove the last revision from the history of the current branch.
 import os
 import bzrlib
 
-try:
-    set
-except NameError:
-    from sets import Set as set
-
 def test_remove(filename):
     if os.path.exists(filename):
         os.remove(filename)
@@ -24,6 +19,7 @@ def uncommit(branch, remove_files=False,
 
     :param remove_files: If True, remove files from the stores
         as well.
+    :param force: Don't ask any questions
     """
     from bzrlib.atomicfile import AtomicFile
     rh = branch.revision_history()

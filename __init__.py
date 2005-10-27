@@ -21,20 +21,22 @@ class cmd_uncommit(bzrlib.commands.Command):
     In the future, uncommit will create a changeset, which can then
     be re-applied.
     """
-    takes_options = ['all', 'dry-run', 'verbose', 'revision']
+    takes_options = ['all', 'verbose', 'revision',
+                    Option('dry-run', help='Don\'t actually make changes'),
+                    Option('force', help='Say yes to all questions.')]
     takes_args = ['location?']
     aliases = []
 
     def run(self, location=None, all=False,
             dry_run=False, verbose=False,
-            revision=None):
+            revision=None, force=False):
         from bzrlib.branch import Branch
         from bzrlib.log import log_formatter
         import uncommit, sys
 
         if location is None:
             location = '.'
-        b = Branch.open_containing(location)
+        b, relpath = Branch.open_containing(location)
 
         if revision is None:
             revno = b.revno()
@@ -51,17 +53,29 @@ class cmd_uncommit(bzrlib.commands.Command):
 
         if dry_run:
             print 'Dry-run, pretending to remove the above revisions.'
-            val = raw_input('Press <enter> to continue')
+            if not force:
+                val = raw_input('Press <enter> to continue')
         else:
             print 'The above revision(s) will be removed.'
-            val = raw_input('Are you sure [y/N]? ')
-            if val.lower() not in ('y', 'yes'):
-                print 'Canceled'
-                return 0
+            if not force:
+                val = raw_input('Are you sure [y/N]? ')
+                if val.lower() not in ('y', 'yes'):
+                    print 'Canceled'
+                    return 0
 
         uncommit.uncommit(b, remove_files=all,
                 dry_run=dry_run, verbose=verbose,
                 revno=revno)
 
 bzrlib.commands.register_command(cmd_uncommit)
-Option.OPTIONS['dry-run'] = Option('dry-run')
+
+def test_suite():
+    from unittest import TestSuite, TestLoader
+    import test_uncommit
+
+    suite = TestSuite()
+
+    suite.addTest(TestLoader().loadTestsFromModule(test_uncommit))
+
+    return suite
+
