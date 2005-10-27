@@ -599,6 +599,7 @@ def test_suite():
                    'bzrlib.selftest.testsampler',
                    'bzrlib.selftest.testtransactions',
                    'bzrlib.selftest.testtransport',
+                   'bzrlib.selftest.testsftp',
                    'bzrlib.selftest.testgraph',
                    'bzrlib.selftest.testworkingtree',
                    'bzrlib.selftest.test_upgrade',
