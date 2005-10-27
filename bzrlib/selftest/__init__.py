@@ -239,6 +239,7 @@ class TestCase(unittest.TestCase):
         """
         self._log_file.seek(0)
         self._log_contents = self._log_file.read()
+        self._log_file.close()
         os.remove(self._log_file_name)
         self._log_file = self._log_file_name = None
 
