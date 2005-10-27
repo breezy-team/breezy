@@ -32,6 +32,6 @@ class APITests(TestCase):
     def test_library_version(self):
         """Library API version is exposed"""
         self.assert_(isinstance(bzrlib.__version__, str))
-        self.assert_(isinstance(bzrlib.bzr_version_string, str))
-        self.assert_(isinstance(bzrlib.bzr_version_info, tuple))
-        self.assertEqual(len(bzrlib.bzr_version_info), 5)
+        self.assert_(isinstance(bzrlib.version_string, str))
+        self.assert_(isinstance(bzrlib.version_info, tuple))
+        self.assertEqual(len(bzrlib.version_info), 5)
