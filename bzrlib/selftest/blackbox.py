@@ -354,6 +354,8 @@ class TestCommands(ExternalBase):
         self.runbzr('revert --no-backup')
         self.runbzr('merge ../b -r last:1..last:1 --merge-type weave')
         self.runbzr('revert --no-backup')
+        self.runbzr('merge ../b -r last:1..last:1 --reprocess')
+        self.runbzr('revert --no-backup')
         self.runbzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree

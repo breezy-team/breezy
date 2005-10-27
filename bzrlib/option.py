@@ -197,6 +197,7 @@ _global_option('pattern', type=str)
 _global_option('quiet')
 _global_option('remember', help='Remember the specified location as a'
                ' default.')
+_global_option('reprocess', help='Reprocess to reduce spurious conflicts')
 
 
 def _global_short(short_name, long_name):
