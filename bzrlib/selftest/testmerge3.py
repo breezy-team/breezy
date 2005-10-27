@@ -17,6 +17,7 @@
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.merge3 import Merge3
+from bzrlib.errors import CantReprocessAndShowBase
 
 def split_lines(t):
     from cStringIO import StringIO
@@ -300,3 +301,26 @@ bbb
         self.log('merge result:')
         self.log(''.join(ml))
         self.assertEquals(ml, MERGED_RESULT)
+
+    def test_minimal_conflicts(self):
+        """Reprocessing"""
+        base_text = ("a\n" * 20).splitlines(True)
+        this_text = ("a\n"*10+"b\n" * 10).splitlines(True)
+        other_text = ("a\n"*10+"c\n"+"b\n" * 8 + "c\n").splitlines(True)
+        m3 = Merge3(base_text, other_text, this_text)
+        m_lines = m3.merge_lines('OTHER', 'THIS', reprocess=True)
+        merged_text = "".join(list(m_lines))
+        optimal_text = "a\n" * 10 + "<<<<<<< OTHER\nc\n=======\n>>>>>>> THIS"\
+            + "\n" + 8* "b\n" + "<<<<<<< OTHER\nc\n=======\nb\nb\n>>>>>>>"\
+            + " THIS\n"
+        self.assertEqualDiff(merged_text, optimal_text)
+
+    def test_reprocess_and_base(self):
+        """Reprocessing and showing base breaks correctly"""
+        base_text = ("a\n" * 20).splitlines(True)
+        this_text = ("a\n"*10+"b\n" * 10).splitlines(True)
+        other_text = ("a\n"*10+"c\n"+"b\n" * 8 + "c\n").splitlines(True)
+        m3 = Merge3(base_text, other_text, this_text)
+        m_lines = m3.merge_lines('OTHER', 'THIS', reprocess=True, 
+                                 base_marker='|||||||')
+        self.assertRaises(CantReprocessAndShowBase, list, m_lines)

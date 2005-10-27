@@ -350,3 +350,7 @@ class WorkingTreeNotRevision(BzrError):
         BzrError.__init__(self, "The working tree for %s has changed since"
                           " last commit, but weave merge requires that it be"
                           " unchanged." % tree.basedir)
+
+class CantReprocessAndShowBase(BzrNewError):
+    """Can't reprocess and show base.
+Reprocessing obscures relationship of conflicting lines to base."""
