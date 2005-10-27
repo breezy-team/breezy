@@ -18,18 +18,63 @@
 
 BZRDIR = ".bzr"
 
-DEFAULT_IGNORE = ['.bzr.log',
-                  '*~', '#*#', '*$', '.#*',
-                  '.*.sw[nop]', '.*.tmp',
-                  '*.tmp', '*.bak', '*.BAK', '*.orig',
-                  '*.o', '*.obj', '*.a', '*.py[oc]', '*.so', '*.exe', '*.elc', 
-                  '{arch}', 'CVS', 'CVS.adm', '.svn', '_darcs', 'SCCS', 'RCS',
+# please keep these sorted (in C locale order) to aid merging
+DEFAULT_IGNORE = [
+                  '#*#',
+                  '*$',
                   '*,v',
-                  'BitKeeper',
-                  '.git',
-                  'TAGS', '.make.state', '.sconsign', '.tmp*',
+                  '*.BAK',
+                  '*.a',
+                  '*.bak',
+                  '*.elc',
+                  '*.exe',
+                  '*.la',
+                  '*.lo',
+                  '*.o',
+                  '*.o',
+                  '*.obj',
+                  '*.orig',
+                  '*.py[oc]',
+                  '*.so',
+                  '*.tmp',
+                  '*~',
+                  '.#*',
+                  '.*.sw[nop]',
+                  '.*.tmp',
+                  '.DS_Store',
+                  '.arch-ids',
+                  '.arch-inventory',
+                  '.bzr.log',
                   '.del-*',
-                  '.DS_Store',]
+                  '.git',
+                  '.jamdeps'
+                  '.libs',
+                  '.make.state',
+                  '.sconsign*',
+                  '.svn',
+                  '.tmp*',
+                  'BitKeeper',
+                  'CVS',
+                  'CVS.adm',
+                  'Makefile.in',
+                  'RCS',
+                  'SCCS',
+                  'TAGS',
+                  '_darcs',
+                  'aclocal.m4',
+                  'autom4te*',
+                  'config.guess',
+                  'config.h',
+                  'config.h.in',
+                  'config.log',
+                  'config.status',
+                  'config.sub',
+                  'configure.in',
+                  'stamp-h',
+                  'stamp-h.in',
+                  'stamp-h1',
+                  '{arch}',
+                  ]
 
 IGNORE_FILENAME = ".bzrignore"
 
@@ -39,7 +84,9 @@ user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
 __copyright__ = "Copyright 2005 Canonical Development Ltd."
-__version__ = '0.6pre'
+__version__ = version_string = '0.6pre'
+# same format as sys.version_info
+version_info = (0, 6, 0, 'rc', 1)
 
 
 def get_bzr_revision():

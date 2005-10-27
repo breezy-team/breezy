@@ -46,7 +46,7 @@ class Serializer(object):
         self._write_element(elt, f)
 
     def write_inventory_to_string(self, inv):
-        return tostring(self._pack_inventory(inv))
+        return tostring(self._pack_inventory(inv)) + '\n'
 
     def read_inventory_from_string(self, xml_string):
         return self._unpack_inventory(fromstring(xml_string))
@@ -58,7 +58,7 @@ class Serializer(object):
         self._write_element(self._pack_revision(rev), f)
 
     def write_revision_to_string(self, rev):
-        return tostring(self._pack_revision(rev), f)
+        return tostring(self._pack_revision(rev)) + '\n'
 
     def read_revision(self, f):
         return self._unpack_revision(self._read_element(f))

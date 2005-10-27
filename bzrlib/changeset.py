@@ -411,6 +411,7 @@ class ApplySequence(object):
 
 
 class Diff3Merge(object):
+    history_based = False
     def __init__(self, file_id, base, other):
         self.file_id = file_id
         self.base = base
@@ -1082,6 +1083,11 @@ class NewContentsConflict(Exception):
         msg = "Conflicting contents for new file %s" % (filename)
         Exception.__init__(self, msg)
 
+class WeaveMergeConflict(Exception):
+    def __init__(self, filename):
+        msg = "Conflicting contents for file %s" % (filename)
+        Exception.__init__(self, msg)
+
 class ThreewayContentsConflict(Exception):
     def __init__(self, filename):
         msg = "Conflicting contents for file %s" % (filename)
@@ -1158,6 +1164,9 @@ class ExceptionConflictHandler(object):
     def new_contents_conflict(self, filename, other_contents):
         raise NewContentsConflict(filename)
 
+    def weave_merge_conflict(self, filename, weave, other_i, out_file):
+        raise WeaveMergeConflict(filename)
+ 
     def threeway_contents_conflict(self, filename, this_contents,
                                    base_contents, other_contents):
         raise ThreewayContentsConflict(filename)

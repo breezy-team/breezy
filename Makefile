@@ -1,13 +1,9 @@
-all: executables
-
-executables:
-	chmod u+x ./bzr
-	chmod u+x ./setup.py
+all: 
 
 check:
 	./bzr selftest
 
-clean: executables
+clean: 
 	./setup.py clean
 	find . -name "*.pyc" | xargs rm
 	rm -rf test????.tmp

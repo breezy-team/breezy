@@ -14,25 +14,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Test that various operations work in a non-ASCII environment."""
+"""Tests for library API infrastructure
+
+This is specifically for things controlling the interface, such as versioning.  
+Tests for particular parts of the library interface should be in specific
+relevant test modules.
+"""
 
 import os
+import sys
 
-from bzrlib.selftest import TestCaseInTempDir
-from bzrlib.branch import Branch
+import bzrlib
+from bzrlib.selftest import TestCase
 
+class APITests(TestCase):
 
-class NonAsciiTest(TestCaseInTempDir):
-
-    def test_add_in_nonascii_branch(self):
-        """Test adding in a non-ASCII branch."""
-        br_dir = u"\u1234"
-        try:
-            os.mkdir(br_dir)
-            os.chdir(br_dir)
-        except UnicodeEncodeError:
-            self.log("filesystem can't accomodate nonascii names")
-            return
-        br = Branch.initialize(u".")
-        file("a", "w").write("hello")
-        br.add(["a"], ["a-id"])
+    def test_library_version(self):
+        """Library API version is exposed"""
+        self.assert_(isinstance(bzrlib.__version__, str))
+        self.assert_(isinstance(bzrlib.version_string, str))
+        self.assert_(isinstance(bzrlib.version_info, tuple))
+        self.assertEqual(len(bzrlib.version_info), 5)

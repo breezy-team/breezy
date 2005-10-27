@@ -35,6 +35,37 @@ from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.workingtree import WorkingTree
 
 
+def branch_files(file_list, default_branch='.'):
+    """\
+    Return a branch and list of branch-relative paths.
+    If supplied file_list is empty or None, the branch default will be used,
+    and returned file_list will match the original.
+    """
+    if file_list is None or len(file_list) == 0:
+        return Branch.open_containing(default_branch)[0], file_list
+    b = Branch.open_containing(file_list[0])[0]
+    
+    # note that if this is a remote branch, we would want
+    # relpath against the transport. RBC 20051018
+    # Most branch ops can't meaningfully operate on files in remote branches;
+    # the above comment was in cmd_status.  ADHB 20051026
+    tree = WorkingTree(b.base, b)
+    new_list = []
+    for filename in file_list:
+        try:
+            new_list.append(tree.relpath(filename))
+        except NotBranchError:
+            raise BzrCommandError("%s is not in the same branch as %s" % 
+                                  (filename, file_list[0]))
+    return b, new_list
+
+
+# TODO: Make sure no commands unconditionally use the working directory as a
+# branch.  If a filename argument is used, the first of them should be used to
+# specify the branch.  (Perhaps this can be factored out into some kind of
+# Argument class, representing a file in a branch, where the first occurrence
+# opens the branch?)
+
 class cmd_status(Command):
     """Display status summary.
 
@@ -86,18 +117,7 @@ class cmd_status(Command):
     
     @display_command
     def run(self, all=False, show_ids=False, file_list=None, revision=None):
-        if file_list:
-            b, relpath = Branch.open_containing(file_list[0])
-            if relpath == '' and len(file_list) == 1:
-                file_list = None
-            else:
-                # generate relative paths.
-                # note that if this is a remote branch, we would want
-                # relpath against the transport. RBC 20051018
-                tree = WorkingTree(b.base, b)
-                file_list = [tree.relpath(x) for x in file_list]
-        else:
-            b = Branch.open_containing('.')[0]
+        b, file_list = branch_files(file_list)
             
         from bzrlib.status import show_status
         show_status(b, show_unchanged=all, show_ids=show_ids,
@@ -266,11 +286,11 @@ class cmd_move(Command):
     """
     takes_args = ['source$', 'dest']
     def run(self, source_list, dest):
-        b = Branch.open_containing('.')[0]
+        b, source_list = branch_files(source_list)
 
         # TODO: glob expansion on windows?
         tree = WorkingTree(b.base, b)
-        b.move([tree.relpath(s) for s in source_list], tree.relpath(dest))
+        b.move(source_list, tree.relpath(dest))
 
 
 class cmd_rename(Command):
@@ -290,9 +310,8 @@ class cmd_rename(Command):
     takes_args = ['from_name', 'to_name']
     
     def run(self, from_name, to_name):
-        b = Branch.open_containing('.')[0]
-        tree = WorkingTree(b.base, b)
-        b.rename_one(tree.relpath(from_name), tree.relpath(to_name))
+        b, (from_name, to_name) = branch_files((from_name, to_name))
+        b.rename_one(from_name, to_name)
 
 
 class cmd_mv(Command):
@@ -312,9 +331,7 @@ class cmd_mv(Command):
     def run(self, names_list):
         if len(names_list) < 2:
             raise BzrCommandError("missing file argument")
-        b = Branch.open_containing(names_list[0])[0]
-        tree = WorkingTree(b.base, b)
-        rel_names = [tree.relpath(x) for x in names_list]
+        b, rel_names = branch_files(names_list)
         
         if os.path.isdir(names_list[-1]):
             # move into existing directory
@@ -333,21 +350,25 @@ class cmd_mv(Command):
 class cmd_pull(Command):
     """Pull any changes from another branch into the current one.
 
-    If the location is omitted, the last-used location will be used.
-    Both the revision history and the working directory will be
-    updated.
+    If there is no default location set, the first pull will set it.  After
+    that, you can omit the location to use the default.  To change the
+    default, use --remember.
 
     This command only works on branches that have not diverged.  Branches are
     considered diverged if both branches have had commits without first
     pulling from the other.
 
     If branches have diverged, you can use 'bzr merge' to pull the text changes
-    from one into the other.
+    from one into the other.  Once one branch has merged, the other should
+    be able to pull it again.
+
+    If you want to forget your local changes and just update your branch to
+    match the remote one, use --overwrite.
     """
-    takes_options = ['remember', 'clobber']
+    takes_options = ['remember', 'overwrite']
     takes_args = ['location?']
 
-    def run(self, location=None, remember=False, clobber=False):
+    def run(self, location=None, remember=False, overwrite=False):
         from bzrlib.merge import merge
         from shutil import rmtree
         import errno
@@ -362,7 +383,7 @@ class cmd_pull(Command):
                 location = stored_loc
         br_from = Branch.open(location)
         try:
-            br_to.working_tree().pull(br_from, remember, clobber)
+            br_to.working_tree().pull(br_from, remember, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try merge.")
@@ -488,9 +509,9 @@ class cmd_remove(Command):
     aliases = ['rm']
     
     def run(self, file_list, verbose=False):
-        b = Branch.open_containing(file_list[0])[0]
-        tree = WorkingTree(b.base, b)
-        tree.remove([tree.relpath(f) for f in file_list], verbose=verbose)
+        b, file_list = branch_files(file_list)
+        tree = b.working_tree()
+        tree.remove(file_list, verbose=verbose)
 
 
 class cmd_file_id(Command):
@@ -569,7 +590,7 @@ class cmd_init(Command):
     Recipe for importing a tree of files:
         cd ~/project
         bzr init
-        bzr add -v .
+        bzr add .
         bzr status
         bzr commit -m 'imported project'
     """
@@ -609,17 +630,8 @@ class cmd_diff(Command):
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None):
         from bzrlib.diff import show_diff
-
-        if file_list:
-            b = Branch.open_containing(file_list[0])[0]
-            tree = WorkingTree(b.base, b)
-            file_list = [tree.relpath(f) for f in file_list]
-            if file_list == ['']:
-                # just pointing to top-of-tree
-                file_list = None
-        else:
-            b = Branch.open_containing('.')[0]
-
+        
+        b, file_list = branch_files(file_list)
         if revision is not None:
             if len(revision) == 1:
                 show_diff(b, revision[0], specific_files=file_list,
@@ -1049,10 +1061,7 @@ class cmd_commit(Command):
         from bzrlib.status import show_status
         from cStringIO import StringIO
 
-        b = Branch.open_containing('.')[0]
-        tree = WorkingTree(b.base, b)
-        if selected_list:
-            selected_list = [tree.relpath(s) for s in selected_list]
+        b, selected_list = branch_files(selected_list)
         if message is None and not file:
             catcher = StringIO()
             show_status(b, specific_files=selected_list,
@@ -1372,7 +1381,7 @@ class cmd_revert(Command):
         elif len(revision) != 1:
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:
-            b = Branch.open_containing('.')[0]
+            b, file_list = branch_files(file_list)
             revno = revision[0].in_history(b).revno
         merge(('.', revno), parse_spec('.'),
               check_clean=False,
@@ -1429,10 +1438,17 @@ class cmd_fetch(Command):
     def run(self, from_branch, to_branch):
         from bzrlib.fetch import Fetcher
         from bzrlib.branch import Branch
-        from_b = Branch(from_branch)
-        to_b = Branch(to_branch)
-        Fetcher(to_b, from_b)
-        
+        from_b = Branch.open(from_branch)
+        to_b = Branch.open(to_branch)
+        from_b.lock_read()
+        try:
+            to_b.lock_write()
+            try:
+                Fetcher(to_b, from_b)
+            finally:
+                to_b.unlock()
+        finally:
+            from_b.unlock()
 
 
 class cmd_missing(Command):

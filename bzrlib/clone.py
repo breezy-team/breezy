@@ -52,6 +52,7 @@ from bzrlib.merge import build_working_dir
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter, note
 from bzrlib.store import copy_all
+from bzrlib.errors import InvalidRevisionId
 
 def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     """Copy branch_from into the existing directory to_location.
@@ -106,8 +107,7 @@ def _get_truncated_history(branch_from, revision):
     try:
         idx = history.index(revision)
     except ValueError:
-        raise InvalidRevisionId('revision {%s} is not on the mainline of %s' 
-                                % (revision, branch_from))
+        raise InvalidRevisionId(revision_id=revision, branch=branch_from)
     return history[:idx+1]
 
 def _copy_text_weaves(branch_from, branch_to):

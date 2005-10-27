@@ -111,6 +111,27 @@ class TestCommands(ExternalBase):
         self.runbzr(['add', 'foo.c'])
         self.runbzr(["commit", "-m", ""] , retcode=1) 
 
+    def test_other_branch_commit(self):
+        # this branch is to ensure consistent behaviour, whether we're run
+        # inside a branch, or not.
+        os.mkdir('empty_branch')
+        os.chdir('empty_branch')
+        self.runbzr('init')
+        os.mkdir('branch')
+        os.chdir('branch')
+        self.runbzr('init')
+        file('foo.c', 'wt').write('int main() {}')
+        file('bar.c', 'wt').write('int main() {}')
+        os.chdir('..')
+        self.runbzr(['add', 'branch/foo.c'])
+        self.runbzr(['add', 'branch'])
+        # can't commit files in different trees; sane error
+        self.runbzr('commit -m newstuff branch/foo.c .', retcode=1)
+        self.runbzr('commit -m newstuff branch/foo.c')
+        self.runbzr('commit -m newstuff branch')
+        self.runbzr('commit -m newstuff branch', retcode=1)
+
+
     def test_ignore_patterns(self):
         from bzrlib.branch import Branch
         
@@ -327,7 +348,11 @@ class TestCommands(ExternalBase):
         # We can't merge when there are in-tree changes
         self.runbzr('merge ../b', retcode=1)
         self.runbzr(['commit', '-m', "Like an epidemic of u's"])
-        self.runbzr('merge ../b -r last:1..last:1')
+        self.runbzr('merge ../b -r last:1..last:1 --merge-type blooof',
+                    retcode=1)
+        self.runbzr('merge ../b -r last:1..last:1 --merge-type merge3')
+        self.runbzr('revert --no-backup')
+        self.runbzr('merge ../b -r last:1..last:1 --merge-type weave')
         self.runbzr('revert --no-backup')
         self.runbzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
@@ -336,8 +361,12 @@ class TestCommands(ExternalBase):
         b = Branch.open('../b')
         a.get_revision_xml(b.last_revision())
         self.log('pending merges: %s', a.pending_merges())
-        #        assert a.pending_merges() == [b.last_revision()], "Assertion %s %s" \
-        #        % (a.pending_merges(), b.last_patch())
+        assert a.pending_merges() == [b.last_revision()], "Assertion %s %s" \
+            % (a.pending_merges(), b.last_patch())
+        self.runbzr('commit -m merged')
+        self.runbzr('merge ../b -r last:1')
+        self.assertEqual(Branch.open('.').pending_merges(), [])
+
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""
@@ -403,14 +432,14 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m blah2 --unchanged')
         os.chdir('../b')
         self.runbzr('commit -m blah3 --unchanged')
-        # no clobber
+        # no overwrite
         self.runbzr('pull ../a', retcode=1)
         os.chdir('..')
-        self.runbzr('branch b clobberme')
-        os.chdir('clobberme')
-        self.runbzr('pull --clobber ../a')
-        clobbered = Branch.open('.')
-        self.assertEqual(clobbered.revision_history(),
+        self.runbzr('branch b overwriteme')
+        os.chdir('overwriteme')
+        self.runbzr('pull --overwrite ../a')
+        overwritten = Branch.open('.')
+        self.assertEqual(overwritten.revision_history(),
                          a.revision_history())
         os.chdir('../a')
         self.runbzr('merge ../b')

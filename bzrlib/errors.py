@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+# (C) 2005 Canonical
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -101,23 +101,30 @@ class BzrNewError(BzrError):
 class BzrCheckError(BzrNewError):
     """Internal check failed: %(message)s"""
     def __init__(self, message):
+        BzrNewError.__init__(self)
         self.message = message
 
 
 class InvalidEntryName(BzrNewError):
     """Invalid entry name: %(name)s"""
     def __init__(self, name):
+        BzrNewError.__init__(self)
         self.name = name
 
 
 class InvalidRevisionNumber(BzrNewError):
     """Invalid revision number %(revno)d"""
     def __init__(self, revno):
+        BzrNewError.__init__(self)
         self.revno = revno
 
 
 class InvalidRevisionId(BzrNewError):
-    """Invalid revision-id"""
+    """Invalid revision-id {%(revision_id)s} in %(branch)s"""
+    def __init__(self, revision_id, branch):
+        BzrNewError.__init__(self)
+        self.revision_id = revision_id
+        self.branch = branch
 
 
 class BzrCommandError(BzrError):
@@ -180,6 +187,8 @@ class ReadOnlyError(LockError):
 class PointlessCommit(BzrNewError):
     """No changes to commit"""
 
+class StrictCommitFailed(Exception):
+    """Commit refused because there are unknowns in the tree."""
 
 class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):
@@ -268,7 +277,39 @@ class UnlistableBranch(BzrError):
         BzrError.__init__(self, "Stores for branch %s are not listable" % br)
 
 
-from bzrlib.weave import WeaveError, WeaveParentMismatch
+class WeaveError(BzrNewError):
+    """Error in processing weave: %(message)s"""
+    def __init__(self, message=None):
+        BzrNewError.__init__(self)
+        self.message = message
+
+
+class WeaveRevisionAlreadyPresent(WeaveError):
+    """Revision {%(revision_id)s} already present in %(weave)s"""
+    def __init__(self, revision_id, weave):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave = weave
+
+
+class WeaveRevisionNotPresent(WeaveError):
+    """Revision {%(revision_id)s} not present in %(weave)s"""
+    def __init__(self, revision_id, weave):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave = weave
+
+
+class WeaveFormatError(WeaveError):
+    """Weave invariant violated: %(what)s"""
+    def __init__(self, what):
+        WeaveError.__init__(self)
+        self.what = what
+
+
+class WeaveParentMismatch(WeaveError):
+    """Parents are mismatched between two revisions."""
+    
 
 class TransportError(BzrError):
     """All errors thrown by Transport implementations should derive
@@ -343,3 +384,15 @@ class SigningFailed(BzrError):
     def __init__(self, command_line):
         BzrError.__init__(self, "Failed to gpg sign data with command '%s'"
                                % command_line)
+
+class WorkingTreeNotRevision(BzrError):
+    def __init__(self, tree):
+        BzrError.__init__(self, "The working tree for %s has changed since"
+                          " last commit, but weave merge requires that it be"
+                          " unchanged." % tree.basedir)
+
+class GraphCycleError(BzrNewError):
+    """Cycle in graph %(graph)r"""
+    def __init__(self, graph):
+        BzrNewError.__init__(self)
+        self.graph = graph

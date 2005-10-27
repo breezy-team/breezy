@@ -20,6 +20,7 @@ import re
 import bzrlib.commands
 from bzrlib.trace import warning, mutter
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.errors import BzrCommandError
 
 
 def _parse_revision_str(revstr):
@@ -162,7 +163,8 @@ def _global_option(name, **kwargs):
     Option.OPTIONS[name] = Option(name, **kwargs)
 
 _global_option('all')
-_global_option('clobber')
+_global_option('overwrite', help='Ignore differences between branches and '
+               'overwrite unconditionally')
 _global_option('basis', type=str)
 _global_option('diff-options', type=str)
 _global_option('help',
@@ -193,7 +195,8 @@ _global_option('no-backup')
 _global_option('merge-type', type=_parse_merge_type)
 _global_option('pattern', type=str)
 _global_option('quiet')
-_global_option('remember')
+_global_option('remember', help='Remember the specified location as a'
+               ' default.')
 
 
 def _global_short(short_name, long_name):
