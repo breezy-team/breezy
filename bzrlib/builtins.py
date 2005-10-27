@@ -1305,12 +1305,12 @@ class cmd_merge(Command):
     --force is given.
     """
     takes_args = ['branch?']
-    takes_options = ['revision', 'force', 'merge-type', 
+    takes_options = ['revision', 'force', 'merge-type', 'reprocess',
                      Option('show-base', help="Show base revision text in "
                             "conflicts")]
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
-            show_base=False):
+            show_base=False, reprocess=False):
         from bzrlib.merge import merge
         from bzrlib.merge_core import ApplyMerge3
         if merge_type is None:
@@ -1342,7 +1342,7 @@ class cmd_merge(Command):
 
         try:
             conflict_count = merge(other, base, check_clean=(not force),
-                                   merge_type=merge_type,
+                                   merge_type=merge_type, reprocess=reprocess,
                                    show_base=show_base)
             if conflict_count != 0:
                 return 1

@@ -391,6 +391,10 @@ class WorkingTreeNotRevision(BzrError):
                           " last commit, but weave merge requires that it be"
                           " unchanged." % tree.basedir)
 
+class CantReprocessAndShowBase(BzrNewError):
+    """Can't reprocess and show base.
+Reprocessing obscures relationship of conflicting lines to base."""
+
 class GraphCycleError(BzrNewError):
     """Cycle in graph %(graph)r"""
     def __init__(self, graph):

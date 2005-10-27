@@ -275,7 +275,7 @@ def transform_tree(from_tree, to_tree):
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
           this_dir=None, backup_files=False, merge_type=ApplyMerge3,
-          file_list=None, show_base=False):
+          file_list=None, show_base=False, reprocess=False):
     """Merge changes into a tree.
 
     base_revision
@@ -308,6 +308,11 @@ def merge(other_revision, base_revision,
     if show_base and not merge_type is ApplyMerge3:
         raise BzrCommandError("Show-base is not supported for this merge"
                               " type. %s" % merge_type)
+    if reprocess and not merge_type is ApplyMerge3:
+        raise BzrCommandError("Reprocess is not supported for this merge"
+                              " type. %s" % merge_type)
+    if reprocess and show_base:
+        raise BzrCommandError("Cannot reprocess and show base.")
     merger = Merger(this_branch)
     merger.check_basis(check_clean)
     merger.set_other(other_revision)
@@ -316,6 +321,7 @@ def merge(other_revision, base_revision,
     merger.merge_type = merge_type 
     merger.set_interesting_files(file_list)
     merger.show_base = show_base 
+    merger.reprocess = reprocess
     merger.conflict_handler = MergeConflictHandler(merger.this_tree, 
                                                    merger.base_tree, 
                                                    merger.other_tree,
@@ -326,7 +332,7 @@ def merge(other_revision, base_revision,
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 backup_files=False, merge_type=ApplyMerge3, 
-                interesting_ids=None, show_base=False):
+                interesting_ids=None, show_base=False, reprocess=False):
     """Primary interface for merging. 
 
         typical use is probably 
@@ -338,6 +344,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     merger.merge_type = ApplyMerge3
     merger.interesting_ids = interesting_ids
     merger.show_base = show_base 
+    merger.reprocess = reprocess
     merger.conflict_handler = MergeConflictHandler(merger.this_tree, base_tree, 
                                                    other_tree,
                                                    ignore_zero=ignore_zero)
@@ -358,6 +365,7 @@ class Merger(object):
         self.backup_files = False
         self.interesting_ids = None
         self.show_base = False
+        self.reprocess = False
         self.conflict_handler = MergeConflictHandler(self.this_tree, base_tree, 
                                                      other_tree)
 
@@ -398,9 +406,10 @@ class Merger(object):
             weave = self.this_revision_tree.get_weave(file_id)
             contents_change = self.merge_type(weave, t_revid, o_revid)
         else:
-            if self.show_base is True:
+            if self.show_base is True or self.reprocess is True:
                 contents_change = self.merge_type(file_id, base, other, 
-                                                  show_base=True)
+                                                  show_base=self.show_base, 
+                                                  reprocess=self.reprocess)
             else:
                 contents_change = self.merge_type(file_id, base, other)
         if self.backup_files:
