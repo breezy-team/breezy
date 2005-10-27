@@ -535,6 +535,30 @@ class TestCommands(ExternalBase):
         os.chdir('subdir')
         ls_equals('', '--revision', '1')
 
+        # Now try to do ignored files.
+        os.chdir('..')
+        open('blah.py', 'wb').write('unknown\n')
+        open('blah.pyo', 'wb').write('ignored\n')
+        ls_equals('a\n'
+                  'blah.py\n'
+                  'blah.pyo\n'
+                  'subdir\n'
+                  'subdir/b\n')
+        ls_equals('V        a\n'
+                  '?        blah.py\n'
+                  'I        blah.pyo\n'
+                  'V        subdir/\n'
+                  'V        subdir/b\n'
+                  , '--verbose')
+        ls_equals('blah.pyo\n'
+                  , '--ignored')
+        ls_equals('blah.py\n'
+                  , '--unknown')
+        ls_equals('a\n'
+                  'subdir\n'
+                  'subdir/b\n'
+                  , '--versioned')
+
 
     def test_locations(self):
         """Using and remembering different locations"""
