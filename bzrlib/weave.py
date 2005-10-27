@@ -201,6 +201,8 @@ class Weave(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __contains__(self, name):
+        return self._name_map.has_key(name)
 
     def maybe_lookup(self, name_or_index):
         """Convert possible symbolic name to index, or pass through indexes."""
