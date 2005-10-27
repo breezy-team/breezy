@@ -567,6 +567,7 @@ def test_suite():
 
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
+                   'bzrlib.selftest.testapi',
                    'bzrlib.selftest.testgpg',
                    'bzrlib.selftest.testidentitymap',
                    'bzrlib.selftest.testinv',
