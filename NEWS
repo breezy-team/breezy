@@ -2,6 +2,9 @@ UNRELEASED CHANGES
 
   IMPROVEMENTS:
   
+    * pull now takes --verbose to show you what revisions are added or removed
+      (John A Meinel)
+
     * merge now takes a --show-base option to include the base text in
       conflicts.
       (Aaron Bentley)
