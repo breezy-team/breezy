@@ -829,19 +829,54 @@ class cmd_ls(Command):
     """
     # TODO: Take a revision or remote path and list that tree instead.
     hidden = True
+    takes_options = ['verbose', 'revision',
+                     Option('non-recursive',
+                            help='don\'t recurse into sub-directories'),
+                     Option('from-root',
+                            help='Print all paths from the root of the branch.'),
+                     Option('unknown', help='Print unknown files'),
+                     Option('versioned', help='Print versioned files'),
+                     Option('ignored', help='Print ignored files'),
+
+                     Option('null', help='Null separate the files'),
+                    ]
     @display_command
-    def run(self, revision=None, verbose=False):
-        b, relpath = Branch.open_containing('.')[0]
+    def run(self, revision=None, verbose=False, 
+            non_recursive=False, from_root=False,
+            unknown=False, versioned=False, ignored=False,
+            null=False):
+
+        if verbose and null:
+            raise BzrCommandError('Cannot set both --verbose and --null')
+        all = not (unknown or versioned or ignored)
+
+        selection = {'I':ignored, '?':unknown, 'V':versioned}
+
+        b, relpath = Branch.open_containing('.')
+        if from_root:
+            relpath = ''
+        elif relpath:
+            relpath += '/'
         if revision == None:
             tree = b.working_tree()
         else:
-            tree = b.revision_tree(revision.in_history(b).rev_id)
+            tree = b.revision_tree(revision[0].in_history(b).rev_id)
         for fp, fc, kind, fid, entry in tree.list_files():
-            if verbose:
-                kindch = entry.kind_character()
-                print '%-8s %s%s' % (fc, fp, kindch)
-            else:
-                print fp
+            if fp.startswith(relpath):
+                fp = fp[len(relpath):]
+                if non_recursive and '/' in fp:
+                    continue
+                if not all and not selection[fc]:
+                    continue
+                if verbose:
+                    kindch = entry.kind_character()
+                    print '%-8s %s%s' % (fc, fp, kindch)
+                elif null:
+                    sys.stdout.write(fp)
+                    sys.stdout.write('\0')
+                    sys.stdout.flush()
+                else:
+                    print fp
 
 
 
