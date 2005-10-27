@@ -306,7 +306,7 @@ class TestCase(unittest.TestCase):
         return self.run_bzr_captured(cmd.split())[0]
 
     def run_bzr_captured(self, argv, retcode=0):
-        """Invoke bzr and return (result, stdout, stderr).
+        """Invoke bzr and return (stdout, stderr).
 
         Useful for code that wants to check the contents of the
         output, the way error messages are presented, etc.
