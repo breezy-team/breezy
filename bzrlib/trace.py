@@ -166,8 +166,15 @@ def log_exception(msg=None):
     summary, unless msg is given.
     """
     ei = sys.exc_info()
-    if msg == None:
-        msg = str(ei[1])
+    try:
+        if msg == None:
+            msg = str(ei[1])
+    except Exception, e:
+        msg = "Error logging exception of type %s\n" % ei[1].__class__.__name__
+        try:
+            msg += str(e)
+        except:
+            pass
     if msg and (msg[-1] == '\n'):
         msg = msg[:-1]
     msg += '\n  command: %s' % ' '.join(repr(arg) for arg in sys.argv)
