@@ -261,7 +261,7 @@ class TestCase(unittest.TestCase):
             'BZREMAIL': None,
             'EMAIL': None,
         }
-        self.old_env = {}
+        self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
         for name, value in new_env.iteritems():
             self._captureVar(name, value)
@@ -269,7 +269,7 @@ class TestCase(unittest.TestCase):
 
     def _captureVar(self, name, newvalue):
         """Set an environment variable, preparing it to be reset when finished."""
-        self.old_env[name] = os.environ.get(name, None)
+        self.__old_env[name] = os.environ.get(name, None)
         if newvalue is None:
             if name in os.environ:
                 del os.environ[name]
@@ -285,7 +285,7 @@ class TestCase(unittest.TestCase):
             os.environ[name] = value
 
     def _restoreEnvironment(self):
-        for name, value in self.old_env.iteritems():
+        for name, value in self.__old_env.iteritems():
             self._restoreVar(name, value)
 
     def tearDown(self):
