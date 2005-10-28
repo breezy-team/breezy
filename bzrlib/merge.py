@@ -317,6 +317,9 @@ def merge(other_revision, base_revision,
     merger.check_basis(check_clean)
     merger.set_other(other_revision)
     merger.set_base(base_revision)
+    if merger.base_rev_id == merger.other_rev_id:
+        note('Nothing to do.')
+        return 0
     merger.backup_files = backup_files
     merger.merge_type = merge_type 
     merger.set_interesting_files(file_list)
