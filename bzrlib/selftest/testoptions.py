@@ -29,6 +29,7 @@ class OptionTests(TestCase):
         """Options have help strings."""
         out, err = self.run_bzr_captured(['commit', '--help'])
         self.assertContainsRe(out, r'--file.*file containing commit message')
+        self.assertContainsRe(out, r'--help.*-h')
 
     def test_option_help_global(self):
         """Global options have help strings."""

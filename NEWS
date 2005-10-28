@@ -73,6 +73,8 @@ bzr 0.6rc1 2005-10-27
 
     * Add '.sconsign*' to default ignore list.  (Alexander Belchenko)
 
+   * 'bzr merge --reprocess' minimizes conflicts
+
   TESTING:
 
     * The 'bzr selftest --pattern' option for has been removed, now 

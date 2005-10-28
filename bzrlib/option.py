@@ -155,7 +155,9 @@ class Option(object):
 
         Short options are globally registered.
         """
-        return Option.SHORT_OPTIONS.get(self.name)
+        for short, option in Option.SHORT_OPTIONS.iteritems():
+            if option is self:
+                return short
 
 
 def _global_option(name, **kwargs):
@@ -197,6 +199,7 @@ _global_option('pattern', type=str)
 _global_option('quiet')
 _global_option('remember', help='Remember the specified location as a'
                ' default.')
+_global_option('reprocess', help='Reprocess to reduce spurious conflicts')
 
 
 def _global_short(short_name, long_name):
