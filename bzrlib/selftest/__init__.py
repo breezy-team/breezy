@@ -255,33 +255,38 @@ class TestCase(unittest.TestCase):
         self._cleanups.append(callable)
 
     def _cleanEnvironment(self):
-        self.oldenv = os.environ.get('HOME', None)
-        os.environ['HOME'] = os.getcwd()
-        self.bzr_email = os.environ.get('BZREMAIL')
-        if self.bzr_email is not None:
-            del os.environ['BZREMAIL']
-        self.email = os.environ.get('EMAIL')
-        if self.email is not None:
-            del os.environ['EMAIL']
+        new_env = {
+            'HOME': os.getcwd(),
+            'APPDATA': os.getcwd(),
+            'BZREMAIL': None,
+            'EMAIL': None,
+        }
+        self.old_env = {}
         self.addCleanup(self._restoreEnvironment)
+        for name, value in new_env.iteritems():
+            self._captureVar(name, value)
+
+
+    def _captureVar(self, name, newvalue):
+        """Set an environment variable, preparing it to be reset when finished."""
+        self.old_env[name] = os.environ.get(name, None)
+        if newvalue is None:
+            if name in os.environ:
+                del os.environ[name]
+        else:
+            os.environ[name] = newvalue
 
     @staticmethod
     def _restoreVar(name, value):
         if value is None:
-            del os.environ[name]
+            if name in os.environ:
+                del os.environ[name]
         else:
             os.environ[name] = value
 
     def _restoreEnvironment(self):
-        self._restoreVar('HOME', self.oldenv)
-        if os.environ.get('BZREMAIL') is not None:
-            del os.environ['BZREMAIL']
-        if self.bzr_email is not None:
-            os.environ['BZREMAIL'] = self.bzr_email
-        if os.environ.get('EMAIL') is not None:
-            del os.environ['EMAIL']
-        if self.email is not None:
-            os.environ['EMAIL'] = self.email
+        for name, value in self.old_env.iteritems():
+            self._restoreVar(name, value)
 
     def tearDown(self):
         logging.getLogger('').removeHandler(self._log_hdlr)
