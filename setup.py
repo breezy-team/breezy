@@ -6,6 +6,7 @@
 
 from distutils.core import setup
 from distutils.command.install_scripts import install_scripts
+from distutils.command.build import build
 
 
 ###############################
@@ -36,6 +37,16 @@ class my_install_scripts(install_scripts):
                 print "ERROR: Unable to create %s: %s" % (batch_path, e)
 
 
+class bzr_build(build):
+    """Customized build distutils action.
+    Generate bzr.1.
+    """
+    def run(self):
+        build.run(self)
+
+        import bzr_man
+        bzr_man.main()
+
 ########################
 ## Setup
 ########################
@@ -58,5 +69,6 @@ setup(name='bzr',
                 'bzrlib.util.configobj',
                 ],
       scripts=['bzr'],
-      cmdclass={'install_scripts': my_install_scripts},
+      cmdclass={'install_scripts': my_install_scripts, 'build': bzr_build},
+      data_files=[('man/man1', ['bzr.1'])],
      )
