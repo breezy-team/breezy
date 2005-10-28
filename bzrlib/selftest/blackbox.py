@@ -653,9 +653,7 @@ class TestCommands(ExternalBase):
         assert 'hi world' not in conflict_text
         os.unlink('hello.OTHER')
         self.runbzr('remerge hello --merge-type weave', retcode=1)
-        # FIXME weave merge demands no changes to working tree, even for
-        # uninteresting files
-        # assert os.path.exists('hello.OTHER')
+        assert os.path.exists('hello.OTHER')
         self.runbzr('remerge --merge-type weave', retcode=1)
         assert os.path.exists('hello.OTHER')
         assert not os.path.exists('hello.BASE')
