@@ -265,8 +265,15 @@ class TestCase(unittest.TestCase):
             del os.environ['EMAIL']
         self.addCleanup(self._restoreEnvironment)
 
+    @staticmethod
+    def _restoreVar(name, value):
+        if value is None:
+            del os.environ[name]
+        else:
+            os.environ[name] = value
+
     def _restoreEnvironment(self):
-        os.environ['HOME'] = self.oldenv
+        self._restoreVar('HOME', self.oldenv)
         if os.environ.get('BZREMAIL') is not None:
             del os.environ['BZREMAIL']
         if self.bzr_email is not None:
