@@ -78,7 +78,7 @@ class EmailSender(object):
             process = subprocess.Popen(self._command_line(),
                                        stdin=subprocess.PIPE)
             try:
-                result = process.communicate(self.body())[0]
+                result = process.communicate(self.body().encode('utf8'))[0]
                 if process.returncode is None:
                     process.wait()
                 if process.returncode != 0:
