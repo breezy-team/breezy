@@ -618,8 +618,8 @@ class TestCommands(ExternalBase):
         self.assertEquals(out, '')
         err.index('unknown command')
 
-    def test_conflicts(self):
-        """Handling of merge conflicts"""
+    def create_conflicts(self):
+        """Create a conflicted tree"""
         os.mkdir('base')
         os.chdir('base')
         file('hello', 'wb').write("hi world")
@@ -639,6 +639,41 @@ class TestCommands(ExternalBase):
         file('question', 'wb').write("What do you get when you multiply six"
                                    "times nine?")
         self.runbzr('commit -m this')
+
+    def test_remerge(self):
+        """Remerge command works as expected"""
+        self.create_conflicts()
+        self.runbzr('merge ../other --show-base', retcode=1)
+        conflict_text = file('hello').read()
+        assert '|||||||' in conflict_text
+        assert 'hi world' in conflict_text
+        self.runbzr('remerge', retcode=1)
+        conflict_text = file('hello').read()
+        assert '|||||||' not in conflict_text
+        assert 'hi world' not in conflict_text
+        os.unlink('hello.OTHER')
+        self.runbzr('remerge hello --merge-type weave', retcode=1)
+        # FIXME weave merge demands no changes to working tree, even for
+        # uninteresting files
+        # assert os.path.exists('hello.OTHER')
+        self.runbzr('remerge --merge-type weave', retcode=1)
+        assert os.path.exists('hello.OTHER')
+        assert not os.path.exists('hello.BASE')
+        assert '|||||||' not in conflict_text
+        assert 'hi world' not in conflict_text
+        self.runbzr('remerge . --merge-type weave --show-base', retcode=2)
+        self.runbzr('remerge . --merge-type weave --reprocess', retcode=2)
+        self.runbzr('remerge . --show-base --reprocess', retcode=1)
+        self.runbzr('remerge hello --show-base', retcode=1)
+        self.runbzr('remerge hello --reprocess', retcode=1)
+        self.runbzr('resolve --all')
+        self.runbzr('commit -m done',)
+        self.runbzr('remerge', retcode=1)
+
+
+    def test_conflicts(self):
+        """Handling of merge conflicts"""
+        self.create_conflicts()
         self.runbzr('merge ../other --show-base', retcode=1)
         conflict_text = file('hello').read()
         assert '<<<<<<<' in conflict_text

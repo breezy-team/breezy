@@ -269,8 +269,9 @@ def build_working_dir(to_dir):
     this_branch = Branch.open_containing(to_dir)[0]
     transform_tree(this_branch.working_tree(), this_branch.basis_tree())
 
-def transform_tree(from_tree, to_tree):
-    merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True)
+def transform_tree(from_tree, to_tree, interesting_ids=None):
+    merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
+                interesting_ids=interesting_ids)
 
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
@@ -335,7 +336,8 @@ def merge(other_revision, base_revision,
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 backup_files=False, merge_type=ApplyMerge3, 
-                interesting_ids=None, show_base=False, reprocess=False):
+                interesting_ids=None, show_base=False, reprocess=False, 
+                other_rev_id=None):
     """Primary interface for merging. 
 
         typical use is probably 
@@ -344,13 +346,15 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
         """
     merger = Merger(this_branch, other_tree, base_tree)
     merger.backup_files = False
-    merger.merge_type = ApplyMerge3
+    merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids
     merger.show_base = show_base 
     merger.reprocess = reprocess
     merger.conflict_handler = MergeConflictHandler(merger.this_tree, base_tree, 
                                                    other_tree,
                                                    ignore_zero=ignore_zero)
+    merger.other_rev_id = other_rev_id
+    merger.other_basis = other_rev_id
     return merger.do_merge()
 
 
@@ -405,6 +409,11 @@ class Merger(object):
 
     def merge_factory(self, file_id, base, other):
         if self.merge_type.history_based:
+            if self.show_base is True:
+                raise BzrError("Cannot show base for hisory-based merges")
+            if self.reprocess is True:
+                raise BzrError("Cannot reprocess hisory-based merges")
+                
             t_revid, o_revid = self.file_revisions(file_id)
             weave = self.this_revision_tree.get_weave(file_id)
             contents_change = self.merge_type(weave, t_revid, o_revid)

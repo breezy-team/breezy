@@ -26,8 +26,9 @@ import bzrlib
 from bzrlib import BZRDIR
 from bzrlib.commands import Command, display_command
 from bzrlib.branch import Branch
-from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
-from bzrlib.errors import DivergedBranches
+from bzrlib.revision import common_ancestor
+from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
+                           NotBranchError, DivergedBranches, NotConflicted)
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
@@ -1393,6 +1394,66 @@ class cmd_merge(Command):
             log_error(m)
 
 
+class cmd_remerge(Command):
+    """Redo a merge.
+    """
+    takes_args = ['file*']
+    takes_options = ['merge-type', 'reprocess',
+                     Option('show-base', help="Show base revision text in "
+                            "conflicts")]
+
+    def run(self, file_list=None, merge_type=None, show_base=False,
+            reprocess=False):
+        from bzrlib.merge import merge_inner, transform_tree
+        from bzrlib.merge_core import ApplyMerge3
+        if merge_type is None:
+            merge_type = ApplyMerge3
+        b, file_list = branch_files(file_list)
+        b.lock_write()
+        try:
+            pending_merges = b.pending_merges() 
+            if len(pending_merges) != 1:
+                raise BzrCommandError("Sorry, remerge only works after normal"
+                                      + " merges.  Not cherrypicking or"
+                                      + "multi-merges.")
+            this_tree = b.working_tree()
+            base_revision = common_ancestor(b.last_revision(), 
+                                            pending_merges[0], b)
+            base_tree = b.revision_tree(base_revision)
+            other_tree = b.revision_tree(pending_merges[0])
+            interesting_ids = None
+            if file_list is not None:
+                interesting_ids = set()
+                for filename in file_list:
+                    file_id = this_tree.path2id(filename)
+                    interesting_ids.add(file_id)
+                    if this_tree.kind(file_id) != "directory":
+                        continue
+                    for name, ie in this_tree.inventory.iter_entries(file_id):
+                        interesting_ids.add(ie.file_id)
+            transform_tree(this_tree, b.basis_tree(), interesting_ids)
+            if file_list is None:
+                restore_files = list(this_tree.iter_conflicts())
+            else:
+                restore_files = file_list
+            for filename in restore_files:
+                try:
+                    restore(this_tree.abspath(filename))
+                except NotConflicted:
+                    pass
+            conflicts =  merge_inner(b, other_tree, base_tree, 
+                                     interesting_ids = interesting_ids, 
+                                     other_rev_id=pending_merges[0], 
+                                     merge_type=merge_type, 
+                                     show_base=show_base,
+                                     reprocess=reprocess)
+        finally:
+            b.unlock()
+        if conflicts > 0:
+            return 1
+        else:
+            return 0
+
 class cmd_revert(Command):
     """Reverse all changes since the last commit.
 
@@ -1643,4 +1704,4 @@ class cmd_re_sign(Command):
 # TODO: Some more consistent way to split command definitions across files;
 # we do need to load at least some information about them to know of 
 # aliases.
-from bzrlib.conflicts import cmd_resolve, cmd_conflicts
+from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
