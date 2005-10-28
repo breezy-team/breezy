@@ -9,12 +9,285 @@
 # how to get zsh to reload this file when it changes, other than by
 # starting a new zsh.
 
-local _bzr_subcommands expl curcontext="$curcontext"
+local _bzr_subcommands expl curcontext="$curcontext" state line
+local bzrRoot helpArgs parentFile
+typeset -A opt_args
 
-_bzr_subcommands=(${(f)"$(_call_program bzr bzr shell-complete)"})
+helpArgs=( '(--help)-h[show help message]' '(-h)--help[show help message]' )
+bzrRoot=$(bzr root)
+parentFile=$bzrRoot/.bzr/parent
 
-if (( CURRENT == 2 )); then
-  _describe -t subcommand 'subcommand' _bzr_subcommands
-else
-# this part missing
+if [[ $service == "bzr" ]]; then
+    _arguments -C -A "-*" \
+    '*::command:->subcmd' && return 0
+
+    if (( CURRENT == 1 )); then
+      _bzr_subcommands=(${(f)"$(_call_program bzr bzr shell-complete)"})
+      _describe -t subcommand 'subcommand' _bzr_subcommands
+      return
+    fi
+
+    service="$words[1]"
+    curcontext="${curcontext%:*}=$service:"
 fi
+
+_unknownFiles() {
+    local fileList;
+    fileList=(${(ps:\0:)"$(bzr ls --null --unknown)"})
+    compadd -af fileList
+    return 0
+}
+
+_unknownRoot() {
+    local fileList;
+    fileList=(${(ps:\0:)"$(bzr ls --null --from-root --unknown)"})
+    compadd -af fileList
+    return 0
+}
+
+_versionedFiles() {
+    local fileList;
+    fileList=(${(ps:\0:)"$(bzr ls --null --versioned)"})
+    compadd -af fileList
+    return 0
+}
+
+case $service in
+    (add)
+       _arguments $helpArgs \
+       '--no-recurse[do not recurse into subdirectories]' \
+       '(-q)--quiet' \
+       '(--quiet)-q' \
+       '*:unknown files:_unknownFiles'
+    ;;
+
+    (annotate|praise|blame)
+        _arguments $helpArgs '*:files:_versionedFiles'
+    ;;
+
+    (clone|branch|get)
+        if (( CURRENT == 2 )); then
+            _arguments $helpArgs \
+            '(-r)--revision:rev:' \
+            '(--revision)-r:rev:' \
+            '--basis[specify basis branch]:basis:' \
+            '*:FROM_LOCATION:_files -/'
+        elif (( CURRENT == 3 )); then
+            _arguments $helpArgs \
+            '(-r)--revision:rev:' \
+            '(--revision)-r:rev:' \
+            '--basis[specify basis branch]:basis:' \
+            '*:TO_LOCATION:_files -/'
+        fi
+    ;;
+
+    (rename|mv)
+        if (( CURRENT == 2 )); then
+            _arguments $helpArgs '*:old name:_versionedFiles'
+        else
+            _arguments $helpArgs '*:new name:'
+        fi
+    ;;
+
+    (cat)
+        _arguments $helpArgs \
+        '(-r)--revision:rev:' \
+        '(--revision)-r:rev:' \
+        '*:file:_versionedFiles'
+    ;;
+
+    (root)
+        _arguments $helpArgs '*:file:_files'
+    ;;
+
+    (log)
+        _arguments $helpArgs \
+        '(-r)--revision[revision or range]:rev or rev range:' \
+        '(--revision)-r[revision or range]:rev or rev range:' \
+        '(--verbose)-v[show revision manifest]' \
+        '(-v)--verbose[show revision manifest]' \
+        '(--short --long)-l[use long format (default)]' \
+        '(--short -l)--long[use long format (default)]' \
+        '(-l --long)--short[use short format]' \
+        '(--message)-m[specify regexp]:regexp:' \
+        '(-m)--message[specify regexp]:regexp:' \
+        '--show-ids[show file IDs]' \
+        '--forward[reverse direction of revisions]' \
+        '--timezoe[specify timezone for dates]:timezone:' \
+        '*:file:_versionedFiles'
+    ;;
+
+    (resolve)
+        _arguments $helpArgs '--all' '*:file:_versionedFiles'
+    ;;
+
+    (status|st|stat)
+        _arguments $helpArgs \
+        '--all[include unchanged versioned files]' \
+        '--show-ids[show file IDs]' \
+        '*:file:_versionedFiles'
+    ;;
+
+    (check)
+        _arguments $helpArgs \
+        '(--verbose)-v' \
+        '(-v)--verbose' \
+        '*:DIR:_files -/'
+    ;;
+
+    (mkdir|upgrade|renames)
+        _arguments $helpArgs '*:DIR:_files -/'
+    ;;
+
+    (visualize|visualise|viz|vis)
+        _arguments $helpArgs \
+            '(-r)--revision[starting revision]:rev:' \
+            '(--revision)-r[starting revision]:rev:'
+    ;;
+
+    (remove|rm)
+        _arguments $helpArgs \
+        '(--verbose)-v' \
+        '(-v)--verbose' \
+        '*:file:_versionedFiles'
+    ;;
+
+    (pull)
+        _arguments $helpArgs \
+        '--remember[Remember the specified location as a default]' \
+        '--overwrite[Ignore differences, overwrite unconditionally]' \
+        '*:local repository:_files -/'
+        [[ -r $parentFile ]] && compadd -X "Completing parents" $(cat $parentFile)
+    ;;
+
+    (missing|miss|mis)
+        _arguments $helpArgs \
+        '(--verbose -q --quiet)-v' \
+        '(-v -q --quiet)--verbose' \
+        '(--verbose -v --quiet)-q' \
+        '(-v -q --verbose)--quiet' \
+        '*:local repository:_files -/'
+        [[ -r $parentFile ]] && compadd -X "Completing parents" $(cat $parentFile)
+    ;;
+
+    (commit|checkin|ci)
+        _arguments $helpArgs \
+        '(--message)-m[commit message]:message text:' \
+        '(-m)--message[commit message]:message text:' \
+        '(--file)-F[commit message from file]:message file:' \
+        '(-F)--file[commit message from file]:message file:' \
+        '--unchanged[include unchanged files]' \
+        '(--verbose)-v' \
+        '(-v)--verbose' \
+        '*:modified files:_versionedFiles'
+    ;;
+
+    (conflicts|added|deleted|modified|unknowns|directories|ignored)
+        _arguments $helpArgs
+    ;;
+
+    (revno|init|version)
+        _arguments $helpArgs
+    ;;
+
+    (whoami)
+        _arguments $helpArgs '--email[only show e-mail address]' 
+    ;;
+
+    (inventory)
+        _arguments $helpArgs \
+        '(-r)--revision[show inventory of a revision]:revision:' \
+        '(--revision)-r[show inventory of a revision]:revision:' \
+        '--show-ids[show file IDs]'
+    ;;
+
+    (diff|dif|di)
+        _arguments $helpArgs \
+        '(-r)--revision:revision:' \
+        '(--revision)-r:revision:' \
+        '--diff-options[options to pass to gdiff]:diff options:' \
+        '*:files:_files'
+    ;;
+
+    (export)
+        _arguments $helpArgs \
+        '(-r)--revision:revision:' \
+        '(--revision)-r:revision:' \
+        '--format=[format of exported file]:format:(dir tar tgz tbz2)' \
+        '--root[root directory of patch]:_files -/' \
+        '*:destination:_files'
+    ;;
+
+    (ignore)
+        _arguments $helpArgs '*:NAME_PATTERN:_unknownRoot'
+    ;;
+
+    (info)
+        _arguments $helpArgs '*:branch:_files -/'
+    ;;
+
+    (testament)
+        _arguments $helpArgs \
+        '(-r)--revision:revision:' \
+        '(--revision)-r:revision:' \
+        '(--long)-l' \
+        '(-l)--long' \
+        '*:branch:_files -/'
+    ;;
+
+    (revert|merge-revert)
+        _arguments $helpArgs \
+        '(-r)--revision:revision:' \
+        '(--revision)-r:revision:' \
+        '--no-backup[skip generation of backup~ files]' \
+        '*:file:_versionedFiles'
+    ;;
+
+    (merge)
+        _arguments $helpArgs \
+        '(-r)--revision:revision:' \
+        '(--revision)-r:revision:' \
+        '--reprocess[Reprocess to reduce spurious conflicts]' \
+        '--show-base[Show base revision text in conflicts]' \
+        '--force[ignore uncommitted changes]' \
+        '--merge-type:merge type:(diff3 merge3 weave)' \
+        '*:local repository:_files -/'
+        [[ -r $parentFile ]] && compadd -X "Completing parents" $(cat $parentFile)
+    ;;
+
+    (ls)
+        _arguments $helpArgs \
+        '(--verbose)-v[display more information]' \
+        '(-v)--verbose[display more information]' \
+        '(-r)--revision:revision:' \
+        '(--revision)-r:revision:' \
+        '--from-root[Print all paths from the root of the branch]' \
+        '--non-recursive[Do not recurse into subdirectories]' \
+        '--null[Null separate the files]' \
+        '--ignored[Print ignored files]' \
+        '--unknown[Print unknown files]' \
+        '--versioned[Print versioned files]'
+    ;;
+
+    (move)
+        if (( CURRENT == 2 )); then
+            _arguments $helpArgs '*:files:_versionedFiles'
+        else
+            _arguments '*:destination dir:_files -/'
+        fi
+    ;;
+
+    (help)
+        _bzr_subcommands=(${(f)"$(_call_program bzr bzr shell-complete)"})
+        _arguments $helpArgs \
+        '(--long)-l' \
+        '(-l)--long' \
+        '*:subcmds:->cmds'
+        _describe -t subcommand 'subcommand' _bzr_subcommands
+    ;;
+
+
+    (*)
+        _message "unknown bzr command completion: $service"
+    ;;
+esac
