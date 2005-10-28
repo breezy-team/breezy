@@ -654,6 +654,8 @@ class TestCommands(ExternalBase):
         os.unlink('hello.OTHER')
         self.runbzr('remerge hello --merge-type weave', retcode=1)
         assert os.path.exists('hello.OTHER')
+        file_id = self.runbzr('file-id hello')
+        file_id = self.runbzr('file-id hello.THIS', retcode=1)
         self.runbzr('remerge --merge-type weave', retcode=1)
         assert os.path.exists('hello.OTHER')
         assert not os.path.exists('hello.BASE')

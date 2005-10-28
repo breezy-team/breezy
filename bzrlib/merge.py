@@ -145,7 +145,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
         Handle weave conflicts by producing a .THIS, and .OTHER.  The
         main file will be a version with diff3-style conflicts.
         """
-        self.add_suffix(filename, ".THIS")
+        self.add_suffix(filename, ".THIS", fix_inventory=False)
         out_file.commit()
         self.dump(weave.get_iter(other_i), filename+".OTHER")
         self.conflict("Text conflict encountered in %s" % filename)
