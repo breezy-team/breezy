@@ -161,15 +161,21 @@ class TestConfigPath(TestCase):
 
     def setUp(self):
         super(TestConfigPath, self).setUp()
-        self.oldenv = os.environ.get('HOME', None)
-        self.oldappdata = os.environ.get('APPDATA', None)
+        self.old_home = os.environ.get('HOME', None)
+        self.old_appdata = os.environ.get('APPDATA', None)
         os.environ['HOME'] = '/home/bogus'
         os.environ['APPDATA'] = \
             r'C:\Documents and Settings\bogus\Application Data'
 
     def tearDown(self):
-        os.environ['HOME'] = self.oldenv
-        os.environ['APPDATA'] = self.oldappdata
+        if self.old_home is None:
+            del os.environ['HOME']
+        else:
+            os.environ['HOME'] = self.old_home
+        if self.old_appdata is None:
+            del os.environ['APPDATA']
+        else:
+            os.environ['APPDATA'] = self.old_appdata
         super(TestConfigPath, self).tearDown()
     
     def test_config_dir(self):
