@@ -54,6 +54,7 @@ create_signatures - this option controls whether bzr will always create
 
 import errno
 import os
+import sys
 from fnmatch import fnmatch
 import re
 
@@ -402,7 +403,20 @@ def config_dir():
     
     TODO: Global option --config-dir to override this.
     """
-    return os.path.join(os.path.expanduser("~"), ".bazaar")
+    base = os.environ.get('BZR_HOME', None)
+    if sys.platform == 'win32':
+        if base is None:
+            base = os.environ.get('APPDATA', None)
+        if base is None:
+            base = os.environ.get('HOME', None)
+        if base is None:
+            raise BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
+        return os.path.join(base, 'bazaar', '2.0')
+    else:
+        # cygwin, linux, and darwin all have a $HOME directory
+        if base is None:
+            base = os.path.expanduser("~")
+        return os.path.join(base, ".bazaar")
 
 
 def config_filename():
