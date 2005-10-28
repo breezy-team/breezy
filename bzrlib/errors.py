@@ -400,3 +400,9 @@ class GraphCycleError(BzrNewError):
     def __init__(self, graph):
         BzrNewError.__init__(self)
         self.graph = graph
+
+class NotConflicted(BzrNewError):
+    """File %(filename) is not conflicted."""
+    def __init__(self, filename):
+        BzrNewError.__init__(self)
+        self.filename = filename

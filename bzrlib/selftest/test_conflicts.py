@@ -20,7 +20,8 @@ import os
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.commit import Commit
-
+from bzrlib.conflicts import restore
+from bzrlib.errors import NotConflicted
 
 # TODO: Test commit with some added, and added-but-missing files
 
@@ -29,16 +30,22 @@ class TestConflicts(TestCaseInTempDir):
     def test_conflicts(self):
         """Conflicts are detected properly"""
         b = Branch.initialize('.')
-        file('hello', 'w').write('hello world')
-        file('hello.BASE', 'w').write('hello world')
+        file('hello', 'w').write('hello world4')
+        file('hello.THIS', 'w').write('hello world2')
+        file('hello.BASE', 'w').write('hello world1')
+        file('hello.OTHER', 'w').write('hello world3')
         file('hello.sploo.BASE', 'w').write('yellow world')
+        file('hello.sploo.OTHER', 'w').write('yellow world2')
         tree = b.working_tree()
-        self.assertEqual(len(list(tree.list_files())), 3)
+        self.assertEqual(len(list(tree.list_files())), 6)
         conflicts = list(tree.iter_conflicts())
         self.assertEqual(len(conflicts), 2)
         assert 'hello' in conflicts
         assert 'hello.sploo' in conflicts
-        os.unlink('hello.BASE')
-        os.unlink('hello.sploo.BASE')
+        restore('hello')
+        restore('hello.sploo')
         self.assertEqual(len(list(tree.iter_conflicts())), 0)
-
+        self.assertFileEqual('hello world2', 'hello')
+        assert not os.path.lexists('hello.sploo')
+        self.assertRaises(NotConflicted, restore, 'hello')
+        self.assertRaises(NotConflicted, restore, 'hello.sploo')
