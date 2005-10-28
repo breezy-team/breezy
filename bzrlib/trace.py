@@ -85,7 +85,6 @@ class QuietFormatter(logging.Formatter):
 # configure convenient aliases for output routines
 
 _bzr_logger = logging.getLogger('bzr')
-_bzr_logger.setLevel(logging.DEBUG) 
 
 info = note = _bzr_logger.info
 warning =   _bzr_logger.warning
@@ -203,6 +202,7 @@ def enable_default_logging():
 
     _stderr_handler.setLevel(logging.INFO)
     _file_handler.setLevel(level)
+    _bzr_logger.setLevel(level) 
 
     logging.getLogger('').addHandler(_stderr_handler)
 
