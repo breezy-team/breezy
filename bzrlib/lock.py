@@ -112,9 +112,9 @@ except ImportError:
         import win32con, win32file, pywintypes
 
 
-        #LOCK_SH = 0 # the default
-        #LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
-        #LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
+        LOCK_SH = 0 # the default
+        LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
+        LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
 
         class _w32c_FileLock(_base_Lock):
             def _lock(self, filename, openmode, lockmode):
@@ -139,12 +139,13 @@ except ImportError:
 
         class _w32c_ReadLock(_w32c_FileLock):
             def __init__(self, filename):
-                _w32c_FileLock._lock(self, filename, 'rb', 0)
+                _w32c_FileLock._lock(self, filename, 'rb',
+                                     LOCK_NB)
 
         class _w32c_WriteLock(_w32c_FileLock):
             def __init__(self, filename):
                 _w32c_FileLock._lock(self, filename, 'wb',
-                                     win32con.LOCKFILE_EXCLUSIVE_LOCK)
+                                     LOCK_EX + LOCK_NB)
 
 
 
