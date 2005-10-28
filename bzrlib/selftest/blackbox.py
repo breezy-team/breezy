@@ -460,6 +460,108 @@ class TestCommands(ExternalBase):
         self.runbzr('pull ../b')
         self.runbzr('pull ../b')
 
+    def test_ls(self):
+        """Test the abilities of 'bzr ls'"""
+        bzr = self.runbzr
+        def bzrout(*args, **kwargs):
+            kwargs['backtick'] = True
+            return self.runbzr(*args, **kwargs)
+
+        def ls_equals(value, *args):
+            out = self.runbzr(['ls'] + list(args), backtick=True)
+            self.assertEquals(out, value)
+
+        bzr('init')
+        open('a', 'wb').write('hello\n')
+
+        # Can't supply both
+        bzr('ls --verbose --null', retcode=1)
+
+        ls_equals('a\n')
+        ls_equals('?        a\n', '--verbose')
+        ls_equals('a\n', '--unknown')
+        ls_equals('', '--ignored')
+        ls_equals('', '--versioned')
+        ls_equals('a\n', '--unknown', '--ignored', '--versioned')
+        ls_equals('', '--ignored', '--versioned')
+        ls_equals('a\0', '--null')
+
+        bzr('add a')
+        ls_equals('V        a\n', '--verbose')
+        bzr('commit -m add')
+        
+        os.mkdir('subdir')
+        ls_equals('V        a\n'
+                  '?        subdir/\n'
+                  , '--verbose')
+        open('subdir/b', 'wb').write('b\n')
+        bzr('add')
+        ls_equals('V        a\n'
+                  'V        subdir/\n'
+                  'V        subdir/b\n'
+                  , '--verbose')
+        bzr('commit -m subdir')
+
+        ls_equals('a\n'
+                  'subdir\n'
+                  , '--non-recursive')
+
+        ls_equals('V        a\n'
+                  'V        subdir/\n'
+                  , '--verbose', '--non-recursive')
+
+        # Check what happens in a sub-directory
+        os.chdir('subdir')
+        ls_equals('b\n')
+        ls_equals('b\0'
+                  , '--null')
+        ls_equals('a\n'
+                  'subdir\n'
+                  'subdir/b\n'
+                  , '--from-root')
+        ls_equals('a\0'
+                  'subdir\0'
+                  'subdir/b\0'
+                  , '--from-root', '--null')
+        ls_equals('a\n'
+                  'subdir\n'
+                  , '--from-root', '--non-recursive')
+
+        os.chdir('..')
+
+        # Check what happens when we supply a specific revision
+        ls_equals('a\n', '--revision', '1')
+        ls_equals('V        a\n'
+                  , '--verbose', '--revision', '1')
+
+        os.chdir('subdir')
+        ls_equals('', '--revision', '1')
+
+        # Now try to do ignored files.
+        os.chdir('..')
+        open('blah.py', 'wb').write('unknown\n')
+        open('blah.pyo', 'wb').write('ignored\n')
+        ls_equals('a\n'
+                  'blah.py\n'
+                  'blah.pyo\n'
+                  'subdir\n'
+                  'subdir/b\n')
+        ls_equals('V        a\n'
+                  '?        blah.py\n'
+                  'I        blah.pyo\n'
+                  'V        subdir/\n'
+                  'V        subdir/b\n'
+                  , '--verbose')
+        ls_equals('blah.pyo\n'
+                  , '--ignored')
+        ls_equals('blah.py\n'
+                  , '--unknown')
+        ls_equals('a\n'
+                  'subdir\n'
+                  'subdir/b\n'
+                  , '--versioned')
+
+
     def test_locations(self):
         """Using and remembering different locations"""
         os.mkdir('a')
