@@ -52,7 +52,7 @@ class bzr_build(build):
 ########################
 
 setup(name='bzr',
-      version='0.1',
+      version='0.6',
       author='Martin Pool',
       author_email='mbp@sourcefrog.net',
       url='http://www.bazaar-ng.org/',
