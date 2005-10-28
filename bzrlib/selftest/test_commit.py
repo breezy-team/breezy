@@ -148,7 +148,7 @@ class TestCommit(TestCaseInTempDir):
     def test_commit_rename(self):
         """Test commit of a revision where a file is renamed."""
         b = Branch.initialize('.')
-        self.build_tree(['hello'])
+        self.build_tree(['hello'], line_endings='binary')
         b.add(['hello'], ['hello-id'])
         b.commit(message='one', rev_id='test@rev-1', allow_pointless=False)
 

@@ -34,6 +34,7 @@ import bzrlib.osutils as osutils
 from bzrlib.selftest import TestUtil
 from bzrlib.selftest.TestUtil import TestLoader, TestSuite
 from bzrlib.selftest.treeshape import build_tree_contents
+from bzrlib.errors import BzrError
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
@@ -489,13 +490,17 @@ class TestCaseInTempDir(TestCase):
             os.chdir(_currentdir)
         self.addCleanup(_leaveDirectory)
         
-    def build_tree(self, shape):
+    def build_tree(self, shape, line_endings='native'):
         """Build a test tree according to a pattern.
 
         shape is a sequence of file specifications.  If the final
         character is '/', a directory is created.
 
         This doesn't add anything to a branch.
+        :param line_endings: Either 'binary' or 'native'
+                             in binary mode, exact contents are written
+                             in native mode, the line endings match the
+                             default platform endings.
         """
         # XXX: It's OK to just create them using forward slashes on windows?
         for name in shape:
@@ -503,7 +508,12 @@ class TestCaseInTempDir(TestCase):
             if name[-1] == '/':
                 os.mkdir(name[:-1])
             else:
-                f = file(name, 'wt')
+                if line_endings == 'binary':
+                    f = file(name, 'wb')
+                elif line_endings == 'native':
+                    f = file(name, 'wt')
+                else:
+                    raise BzrError('Invalid line ending request %r' % (line_endings,))
                 print >>f, "contents of", name
                 f.close()
 
