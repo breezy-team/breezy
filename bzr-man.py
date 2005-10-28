@@ -126,7 +126,7 @@ class CommandListParser(Parser):
         bzrcmd = self.params["bzrcmd"]
         outfile.write('.SH "COMMAND OVERVIEW"\n')
         for (command,usage,descr) in self.command_usage:
-            outfile.write('.TP\n.B "%s %s"\n%s\n\n' % (bzrcmd, usage, descr))
+            outfile.write('.TP\n.B "%s %s"\n%s\n' % (bzrcmd, usage, descr))
 
 
 class HelpReader:
@@ -196,7 +196,6 @@ man_foot = """\
 Path where
 .B "%(bzrcmd)s"
 is to look for external command.
-
 .TP
 .I "BZREMAIL"
 E-Mail address of the user. Overrides
@@ -204,14 +203,12 @@ E-Mail address of the user. Overrides
 .IR "EMAIL" .
 Example content:
 .I "John Doe <john@example.com>"
-
 .TP
 .I "EMAIL"
 E-Mail address of the user. Overridden by the content of the file
 .I "~/.bzr.conf/email"
 and of the environment variable
 .IR "BZREMAIL" .
-
 .SH "FILES"
 .TP
 .I "~/.bzr.conf/"
@@ -222,7 +219,6 @@ Stores name and email address of the user. Overrides content of
 .I "EMAIL"
 environment variable. Example content:
 .I "John Doe <john@example.com>"
-
 .SH "SEE ALSO"
 .UR http://www.bazaar-ng.org/
 .BR http://www.bazaar-ng.org/,
