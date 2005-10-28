@@ -366,6 +366,7 @@ class Merger(object):
         self.this_rev_id = None
         self.this_tree = this_branch.working_tree()
         self.this_revision_tree = None
+        self.this_basis_tree = None
         self.other_tree = other_tree
         self.base_tree = base_tree
         self.ignore_zero = False
@@ -381,12 +382,11 @@ class Merger(object):
 
     def ensure_revision_trees(self):
         if self.this_revision_tree is None:
-            if self.this_rev_id is None:
-                self.compare_basis()
-            if self.this_rev_id is None:
-                raise WorkingTreeNotRevision(self.this_tree)
-            self.this_revision_tree = self.this_branch.revision_tree(
-                self.this_rev_id)
+            self.this_basis_tree = self.this_branch.revision_tree(
+                self.this_basis)
+            if self.this_basis == self.this_rev_id:
+                self.this_revision_tree = self.this_basis_tree
+
 
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
@@ -403,7 +403,12 @@ class Merger(object):
             revision_id = tree.inventory[file_id].revision
             assert revision_id is not None
             return revision_id
-        trees = (self.this_revision_tree, self.other_tree)
+        if self.this_rev_id is None:
+            if self.this_basis_tree.get_file_sha1(file_id) != \
+                self.this_tree.get_file_sha1(file_id):
+                raise WorkingTreeNotRevision(self.this_tree)
+
+        trees = (self.this_basis_tree, self.other_tree)
         return [get_id(tree, file_id) for tree in trees]
             
 
@@ -412,10 +417,10 @@ class Merger(object):
             if self.show_base is True:
                 raise BzrError("Cannot show base for hisory-based merges")
             if self.reprocess is True:
-                raise BzrError("Cannot reprocess hisory-based merges")
+                raise BzrError("Cannot reprocess history-based merges")
                 
             t_revid, o_revid = self.file_revisions(file_id)
-            weave = self.this_revision_tree.get_weave(file_id)
+            weave = self.this_basis_tree.get_weave(file_id)
             contents_change = self.merge_type(weave, t_revid, o_revid)
         else:
             if self.show_base is True or self.reprocess is True:
@@ -517,7 +522,7 @@ class Merger(object):
     def do_merge(self):
         def get_inventory(tree):
             return tree.inventory
-
+        
         inv_changes = merge_flex(self.this_tree, self.base_tree, 
                                  self.other_tree,
                                  generate_changeset, get_inventory,
