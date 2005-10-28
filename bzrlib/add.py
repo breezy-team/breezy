@@ -24,6 +24,8 @@ from bzrlib.branch import Branch
 from bzrlib.osutils import quotefn
 
 def glob_expand_for_win32(file_list):
+    if not file_list:
+        return
     import glob
     expanded_file_list = []
     for possible_glob in file_list:
