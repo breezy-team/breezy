@@ -954,6 +954,18 @@ class _Branch(Branch):
         # for that.
         return WorkingTree(self.base, branch=self)
 
+    @needs_write_lock
+    def pull(self, source, overwrite=False):
+        source.lock_read()
+        try:
+            try:
+                self.update_revisions(source)
+            except DivergedBranches:
+                if not overwrite:
+                    raise
+                self.set_revision_history(source.revision_history())
+        finally:
+            source.unlock()
 
     def basis_tree(self):
         """Return `Tree` object for last revision.
@@ -1164,6 +1176,17 @@ class _Branch(Branch):
                 if e.errno != errno.ENOENT:
                     raise
         return None
+
+    def get_push_location(self):
+        """Return the None or the location to push this branch to."""
+        config = bzrlib.config.BranchConfig(self)
+        push_loc = config.get_user_option('push_location')
+        return push_loc
+
+    def set_push_location(self, location):
+        """Set a new push location for this branch."""
+        config = bzrlib.config.LocationConfig(self.base)
+        config.set_user_option('push_location', location)
 
     @needs_write_lock
     def set_parent(self, url):

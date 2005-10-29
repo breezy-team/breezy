@@ -345,8 +345,6 @@ class cmd_mv(Command):
             print "%s => %s" % (rel_names[0], rel_names[1])
             
     
-
-
 class cmd_pull(Command):
     """Pull any changes from another branch into the current one.
 
@@ -381,12 +379,69 @@ class cmd_pull(Command):
             else:
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
+        if br_to.get_parent() is None or remember:
+            br_to.set_parent(location)
         br_from = Branch.open(location)
         try:
-            br_to.working_tree().pull(br_from, remember, overwrite)
+            br_to.working_tree().pull(br_from, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try merge.")
+
+
+class cmd_push(Command):
+    """Push this branch into another branch.
+    
+    The remote branch will not have its working tree populated because this
+    is both expensive, and may not be supported on the remote file system.
+    
+    Some smart servers or protocols *may* put the working tree in place.
+
+    If there is no default push location set, the first push will set it.
+    After that, you can omit the location to use the default.  To change the
+    default, use --remember.
+
+    This command only works on branches that have not diverged.  Branches are
+    considered diverged if the branch being pushed to is not an older version
+    of this branch.
+
+    If branches have diverged, you can use 'bzr push --overwrite' to replace
+    the other branch completely.
+    
+    If you want to ensure you have the different changes in the other branch,
+    do a merge (see bzr help merge) from the other branch, and commit that
+    before doing a 'push --overwrite'.
+    """
+    takes_options = ['remember', 'overwrite']
+    takes_args = ['location?']
+
+    def run(self, location=None, remember=False, overwrite=False):
+        import errno
+        from shutil import rmtree
+        from bzrlib.transport import get_transport
+        
+        br_from = Branch.open_containing('.')[0]
+        stored_loc = br_from.get_push_location()
+        if location is None:
+            if stored_loc is None:
+                raise BzrCommandError("No push location known or specified.")
+            else:
+                print "Using saved location: %s" % stored_loc
+                location = stored_loc
+        if br_from.get_push_location() is None or remember:
+            br_from.set_push_location(location)
+        try:
+            br_to = Branch.open(location)
+        except NotBranchError:
+            # create a branch.
+            transport = get_transport(location).clone('..')
+            transport.mkdir(transport.relpath(location))
+            br_to = Branch.initialize(location)
+        try:
+            br_to.pull(br_from, overwrite)
+        except DivergedBranches:
+            raise BzrCommandError("These branches have diverged."
+                                  "  Try a merge then push with overwrite.")
 
 
 class cmd_branch(Command):
@@ -634,19 +689,17 @@ class cmd_diff(Command):
         b, file_list = branch_files(file_list)
         if revision is not None:
             if len(revision) == 1:
-                show_diff(b, revision[0], specific_files=file_list,
-                          external_diff_options=diff_options)
+                return show_diff(b, revision[0], specific_files=file_list,
+                                 external_diff_options=diff_options)
             elif len(revision) == 2:
-                show_diff(b, revision[0], specific_files=file_list,
-                          external_diff_options=diff_options,
-                          revision2=revision[1])
+                return show_diff(b, revision[0], specific_files=file_list,
+                                 external_diff_options=diff_options,
+                                 revision2=revision[1])
             else:
                 raise BzrCommandError('bzr diff --revision takes exactly one or two revision identifiers')
         else:
-            show_diff(b, None, specific_files=file_list,
-                      external_diff_options=diff_options)
-
-        
+            return show_diff(b, None, specific_files=file_list,
+                             external_diff_options=diff_options)
 
 
 class cmd_deleted(Command):

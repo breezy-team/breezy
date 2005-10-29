@@ -288,9 +288,9 @@ class TestCommands(ExternalBase):
         self.example_branch()
         file('hello', 'wt').write('hello world!')
         self.runbzr('commit -m fixing hello')
-        output = self.runbzr('diff -r 2..3', backtick=1)
+        output = self.runbzr('diff -r 2..3', backtick=1, retcode=1)
         self.assert_('\n+hello world!' in output)
-        output = self.runbzr('diff -r last:3..last:1', backtick=1)
+        output = self.runbzr('diff -r last:3..last:1', backtick=1, retcode=1)
         self.assert_('\n+baz' in output)
 
     def test_diff_branches(self):
@@ -303,7 +303,9 @@ class TestCommands(ExternalBase):
         branch2 = Branch.open('branch2')
         branch2.commit('update file')
         # should open branch1 and diff against branch2, 
-        output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 'branch1'])
+        output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 
+                                        'branch1'],
+                                       retcode=1)
         self.assertEquals(("=== modified file 'file'\n"
                            "--- file\n"
                            "+++ file\n"
@@ -598,6 +600,41 @@ class TestCommands(ExternalBase):
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
 
+    def test_push(self):
+        # create a source branch
+        os.mkdir('my-branch')
+        os.chdir('my-branch')
+        self.example_branch()
+
+        # with no push target, fail
+        self.runbzr('push', retcode=1)
+        # with an explicit target work
+        self.runbzr('push ../output-branch')
+        # with an implicit target work
+        self.runbzr('push')
+        # nothing missing
+        self.runbzr('missing ../output-branch')
+        # advance this branch
+        self.runbzr('commit --unchanged -m unchanged')
+
+        os.chdir('../output-branch')
+        # should be a diff as we have not pushed the tree
+        self.runbzr('diff', retcode=1)
+        self.runbzr('revert')
+        # but not now.
+        self.runbzr('diff')
+        # diverge the branches
+        self.runbzr('commit --unchanged -m unchanged')
+        os.chdir('../my-branch')
+        # cannot push now
+        self.runbzr('push', retcode=1)
+        # and there are difference
+        self.runbzr('missing ../output-branch', retcode=1)
+        # but we can force a push
+        self.runbzr('push --overwrite')
+        # nothing missing
+        self.runbzr('missing ../output-branch')
+
 
 def listdir_sorted(dir):
     L = os.listdir(dir)
@@ -772,7 +809,7 @@ class OldTests(ExternalBase):
         mkdir('sub directory')
         file('sub directory/file with spaces ', 'wt').write('see how this works\n')
         runbzr('add .')
-        runbzr('diff')
+        runbzr('diff', retcode=1)
         runbzr('commit -m add-spaces')
         runbzr('check')
 
@@ -809,14 +846,14 @@ class OldTests(ExternalBase):
             assert os.readlink("./link2") == "NOWHERE2"
             assert os.readlink("d2/link1") == "NOWHERE1"
             runbzr('add d2/link3')
-            runbzr('diff')
+            runbzr('diff', retcode=1)
             runbzr(['commit', '-m', '3: rename of dir, move symlinks, add link3'])
     
             os.unlink("link2")
             os.symlink("TARGET 2", "link2")
             os.unlink("d2/link1")
             os.symlink("TARGET 1", "d2/link1")
-            runbzr('diff')
+            runbzr('diff', retcode=1)
             assert self.capture("relpath d2/link1") == "d2/link1\n"
             runbzr(['commit', '-m', '4: retarget of two links'])
     

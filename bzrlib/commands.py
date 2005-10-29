@@ -213,7 +213,6 @@ class Command(object):
         all_cmd_args.update(cmdopts)
 
         return self.run(**all_cmd_args)
-
     
     def run(self):
         """Actually run the command.
@@ -500,12 +499,12 @@ def run_bzr(argv):
 def display_command(func):
     def ignore_pipe(*args, **kwargs):
         try:
-            func(*args, **kwargs)
+            return func(*args, **kwargs)
         except IOError, e:
             if e.errno != errno.EPIPE:
                 raise
         except KeyboardInterrupt:
-	    pass
+            pass
     return ignore_pipe
 
 def main(argv):
