@@ -139,12 +139,6 @@ case $service in
         _arguments $helpArgs '*:DIR:_files -/'
     ;;
 
-    (visualize|visualise|viz|vis)
-        _arguments $helpArgs \
-            '(-r)--revision[starting revision]:rev:' \
-            '(--revision)-r[starting revision]:rev:'
-    ;;
-
     (remove|rm)
         _arguments $helpArgs \
         '(--verbose)-v' \
@@ -284,6 +278,35 @@ case $service in
         '(-l)--long' \
         '*:subcmds:->cmds'
         _describe -t subcommand 'subcommand' _bzr_subcommands
+    ;;
+
+    # Plugins
+
+    (visualize|visualise|viz|vis)
+        _arguments $helpArgs \
+            '(-r)--revision[starting revision]:rev:' \
+            '(--revision)-r[starting revision]:rev:'
+    ;;
+
+    (gannotate|gblame|gpraise)
+        _arguments $helpArgs \
+            '--all[show annotations on all lines]' \
+            '--plain[do not hightlight annotation lines]' \
+            '*:files:_versionedFiles'
+    ;;
+
+    (push)
+        _arguments $helpArgs \
+        '--overwrite[Ignore differences, overwrite unconditionally]' \
+        '*:local repository:_files -/'
+        [[ -r $parentFile ]] && compadd -X "Completing parents" $(cat $parentFile)
+    ;;
+
+    (clean-tree)
+        _arguments $helpArgs \
+        '--dry-run[show files to delete instead of deleting them]' \
+        '--ignored[delete all ignored files]' \
+        '--detrius[delete conflict files, merge backups, failed self-tests, *~, *.tmp, etc]'
     ;;
 
 
