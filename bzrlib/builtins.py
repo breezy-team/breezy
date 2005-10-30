@@ -882,19 +882,54 @@ class cmd_ls(Command):
     """
     # TODO: Take a revision or remote path and list that tree instead.
     hidden = True
+    takes_options = ['verbose', 'revision',
+                     Option('non-recursive',
+                            help='don\'t recurse into sub-directories'),
+                     Option('from-root',
+                            help='Print all paths from the root of the branch.'),
+                     Option('unknown', help='Print unknown files'),
+                     Option('versioned', help='Print versioned files'),
+                     Option('ignored', help='Print ignored files'),
+
+                     Option('null', help='Null separate the files'),
+                    ]
     @display_command
-    def run(self, revision=None, verbose=False):
-        b, relpath = Branch.open_containing('.')[0]
+    def run(self, revision=None, verbose=False, 
+            non_recursive=False, from_root=False,
+            unknown=False, versioned=False, ignored=False,
+            null=False):
+
+        if verbose and null:
+            raise BzrCommandError('Cannot set both --verbose and --null')
+        all = not (unknown or versioned or ignored)
+
+        selection = {'I':ignored, '?':unknown, 'V':versioned}
+
+        b, relpath = Branch.open_containing('.')
+        if from_root:
+            relpath = ''
+        elif relpath:
+            relpath += '/'
         if revision == None:
             tree = b.working_tree()
         else:
-            tree = b.revision_tree(revision.in_history(b).rev_id)
+            tree = b.revision_tree(revision[0].in_history(b).rev_id)
         for fp, fc, kind, fid, entry in tree.list_files():
-            if verbose:
-                kindch = entry.kind_character()
-                print '%-8s %s%s' % (fc, fp, kindch)
-            else:
-                print fp
+            if fp.startswith(relpath):
+                fp = fp[len(relpath):]
+                if non_recursive and '/' in fp:
+                    continue
+                if not all and not selection[fc]:
+                    continue
+                if verbose:
+                    kindch = entry.kind_character()
+                    print '%-8s %s%s' % (fc, fp, kindch)
+                elif null:
+                    sys.stdout.write(fp)
+                    sys.stdout.write('\0')
+                    sys.stdout.flush()
+                else:
+                    print fp
 
 
 
@@ -1358,12 +1393,12 @@ class cmd_merge(Command):
     --force is given.
     """
     takes_args = ['branch?']
-    takes_options = ['revision', 'force', 'merge-type', 
+    takes_options = ['revision', 'force', 'merge-type', 'reprocess',
                      Option('show-base', help="Show base revision text in "
                             "conflicts")]
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
-            show_base=False):
+            show_base=False, reprocess=False):
         from bzrlib.merge import merge
         from bzrlib.merge_core import ApplyMerge3
         if merge_type is None:
@@ -1395,7 +1430,7 @@ class cmd_merge(Command):
 
         try:
             conflict_count = merge(other, base, check_clean=(not force),
-                                   merge_type=merge_type,
+                                   merge_type=merge_type, reprocess=reprocess,
                                    show_base=show_base)
             if conflict_count != 0:
                 return 1

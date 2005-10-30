@@ -1,4 +1,4 @@
-For 0.7 (temporary section)
+For 0.7
 
   IMPROVEMENTS:
 
@@ -25,7 +25,7 @@ For 0.7 (temporary section)
       to respectively, get and set the push location.
 
 
-UNRELEASED CHANGES
+bzr 0.6rc1 2005-10-27
 
   IMPROVEMENTS:
   
@@ -99,6 +99,8 @@ UNRELEASED CHANGES
      (Aaron Bentley)
 
     * Add '.sconsign*' to default ignore list.  (Alexander Belchenko)
+
+   * 'bzr merge --reprocess' minimizes conflicts
 
   TESTING:
 

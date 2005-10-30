@@ -5,45 +5,35 @@
 # './setup.py --help' for more options
 
 from distutils.core import setup
-
-# more sophisticated setup script, based on pychecker setup.py
-import sys, os
-from distutils.command.build_scripts import build_scripts
+from distutils.command.install_scripts import install_scripts
 
 
 ###############################
 # Overridden distutils actions
 ###############################
 
-class my_build_scripts(build_scripts):
-    """Customized build_scripts distutils action.
-
+class my_install_scripts(install_scripts):
+    """ Customized install_scripts distutils action.
     Create bzr.bat for win32.
     """
-
     def run(self):
-        if sys.platform == "win32":
-            bat_path = os.path.join(self.build_dir, "bzr.bat")
-            self.scripts.append(bat_path)
-            self.mkpath(self.build_dir)
-            scripts_dir = self.distribution.get_command_obj("install").\
-                                                            install_scripts
-            self.execute(func=self._create_bat,
-                         args=[bat_path, scripts_dir],
-                         msg="Create %s" % bat_path)
-        build_scripts.run(self) # invoke "standard" action
+        import os
+        import sys
 
-    def _create_bat(self, bat_path, scripts_dir):
-        """ Creates the batch file for bzr on win32.
-        """
-        try:
-            script_path = os.path.join(scripts_dir, "bzr")
-            bat_str = "@%s %s %%*\n" % (sys.executable, script_path)
-            file(bat_path, "w").write(bat_str)
-            print "file written"
-        except Exception, e:
-            print "ERROR: Unable to create %s: %s" % (bat_path, e)
-            raise e
+        install_scripts.run(self)   # standard action
+
+        if sys.platform == "win32":
+            try:
+                scripts_dir = self.install_dir
+                script_path = os.path.join(scripts_dir, "bzr")
+                batch_str = "@%s %s %%*\n" % (sys.executable, script_path)
+                batch_path = script_path + ".bat"
+                f = file(batch_path, "w")
+                f.write(batch_str)
+                f.close()
+                print "Created:", batch_path
+            except Exception, e:
+                print "ERROR: Unable to create %s: %s" % (batch_path, e)
 
 
 ########################
@@ -67,4 +57,6 @@ setup(name='bzr',
                 'bzrlib.util.effbot.org',
                 'bzrlib.util.configobj',
                 ],
-      scripts=['bzr'])
+      scripts=['bzr'],
+      cmdclass={'install_scripts': my_install_scripts},
+     )

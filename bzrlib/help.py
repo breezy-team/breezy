@@ -131,7 +131,7 @@ def help_on_command_options(cmd, outfile=None):
         short_name = option.short_name()
         if short_name:
             assert len(short_name) == 1
-            l += ', -' + shortname
+            l += ', -' + short_name
         l += (30 - len(l)) * ' ' + option.help
         # TODO: split help over multiple lines with correct indenting and 
         # wrapping
