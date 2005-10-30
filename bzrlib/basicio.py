@@ -98,6 +98,14 @@ class Stanza(object):
         """Return number of pairs in the stanza."""
         return len(self.items)
 
+    def __eq__(self, other):
+        if not isinstance(other, Stanza):
+            return False
+        return self.items == other.items
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def iter_pairs(self):
         """Return iterator of tag, value pairs."""
         return iter(self.items)

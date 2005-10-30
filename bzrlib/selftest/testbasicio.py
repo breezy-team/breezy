@@ -120,3 +120,4 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
                    y=1<<100)
         lines = s.to_lines()
         s2 = Stanza.from_lines(lines)
+        self.assertEquals(s, s2)
