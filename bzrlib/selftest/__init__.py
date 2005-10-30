@@ -613,6 +613,7 @@ def test_suite():
                    'bzrlib.selftest.testnonascii',
                    'bzrlib.selftest.testreweave',
                    'bzrlib.selftest.testtsort',
+                   'bzrlib.selftest.testbasicio',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,

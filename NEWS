@@ -1,3 +1,9 @@
+DEVELOPMENT HEAD
+
+  INTERNALS:
+
+    * New basic_io format.
+   
 bzr 0.6rc1 2005-10-27
 
   IMPROVEMENTS:
