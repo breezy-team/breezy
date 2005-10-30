@@ -124,7 +124,7 @@ class Stanza(object):
             if rest[0] == '"':
                 assert rest[-1]
                 value = rest[1:-2]
-            elif rest[0] in '0123456789':
+            elif rest[0] in '-0123456789':
                 value = int(rest)
             else:
                 raise ValueError("invalid basic_io line %r" % l)

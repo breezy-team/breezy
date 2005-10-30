@@ -113,3 +113,10 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
                  ('timezone', 36000),
                  ('committer', "Martin Pool <mbp@test.sourcefrog.net>")])
         self.assertEquals(len(s), 4)
+
+    def test_longint(self):
+        """basic_io packing long integers"""
+        s = Stanza(x=-12345678901234567890,
+                   y=1<<100)
+        lines = s.to_lines()
+        s2 = Stanza.from_lines(lines)
