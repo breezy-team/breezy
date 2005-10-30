@@ -36,6 +36,9 @@ For 0.7
     * Some option parsing errors will raise 'BzrOptionError', allowing 
       granular detection for decorating commands. (Robert Collins).
 
+  BUG FIXES:
+
+    * SFTP can walk up to the root path without index errors. (Robert Collins)
 
 bzr 0.6rc1 2005-10-27
 

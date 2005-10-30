@@ -148,7 +148,7 @@ class SFTPTransport (Transport):
                 basepath.append(p)
 
         path = '/'.join(basepath)
-        if path[0] != '/':
+        if len(path) and path[0] != '/':
             path = '/' + path
         return path
 
