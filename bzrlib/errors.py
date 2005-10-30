@@ -127,6 +127,14 @@ class InvalidRevisionId(BzrNewError):
         self.branch = branch
 
 
+class NoWorkingTree(BzrNewError):
+    """No WorkingTree exists for %s(base)."""
+    
+    def __init__(self, base):
+        BzrNewError.__init__(self)
+        self.base = base
+        
+
 class BzrCommandError(BzrError):
     # Error from malformed user command
     # This is being misused as a generic exception

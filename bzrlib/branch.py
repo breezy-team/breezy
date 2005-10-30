@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+import shutil
 import sys
 import os
 import errno
@@ -33,7 +34,8 @@ import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
                            DivergedBranches, LockError, UnlistableStore,
-                           UnlistableBranch, NoSuchFile, NotVersionedError)
+                           UnlistableBranch, NoSuchFile, NotVersionedError,
+                           NoWorkingTree)
 from bzrlib.textui import show_status
 from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions,
                              NULL_REVISION)
@@ -272,9 +274,7 @@ class _Branch(Branch):
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self._transport.base)
 
-
     __repr__ = __str__
-
 
     def __del__(self):
         if self._lock_mode or self._lock:
@@ -291,7 +291,6 @@ class _Branch(Branch):
         # should never expect their __del__ function to run.
         if hasattr(self, 'cache_root') and self.cache_root is not None:
             try:
-                import shutil
                 shutil.rmtree(self.cache_root)
             except:
                 pass
@@ -515,11 +514,12 @@ class _Branch(Branch):
 
     def get_root_id(self):
         """Return the id of this branches root"""
-        inv = self.read_working_inventory()
+        inv = self.get_inventory(self.last_revision())
         return inv.root.file_id
 
+    @needs_write_lock
     def set_root_id(self, file_id):
-        inv = self.read_working_inventory()
+        inv = self.working_tree().read_working_inventory()
         orig_root_id = inv.root.file_id
         del inv._byid[inv.root.file_id]
         inv.root.file_id = file_id
@@ -529,14 +529,6 @@ class _Branch(Branch):
             if entry.parent_id in (None, orig_root_id):
                 entry.parent_id = inv.root.file_id
         self._write_inventory(inv)
-
-    @needs_read_lock
-    def read_working_inventory(self):
-        """Read the working inventory."""
-        # ElementTree does its own conversion from UTF-8, so open in
-        # binary.
-        f = self.controlfile('inventory', 'rb')
-        return bzrlib.xml5.serializer_v5.read_inventory(f)
 
     @needs_write_lock
     def _write_inventory(self, inv):
@@ -554,9 +546,6 @@ class _Branch(Branch):
         
         mutter('wrote working inventory')
             
-    inventory = property(read_working_inventory, _write_inventory, None,
-                         """Inventory for the working copy.""")
-
     @needs_write_lock
     def add(self, files, ids=None):
         """Make files versioned.
@@ -593,7 +582,7 @@ class _Branch(Branch):
         else:
             assert(len(ids) == len(files))
 
-        inv = self.read_working_inventory()
+        inv = self.working_tree().read_working_inventory()
         for f,file_id in zip(files, ids):
             if is_control_file(f):
                 raise BzrError("cannot add control file %s" % quotefn(f))
@@ -632,25 +621,6 @@ class _Branch(Branch):
         if not file_id:
             raise BzrError("%r is not present in revision %s" % (file, revno))
         tree.print_file(file_id)
-
-    # FIXME: this doesn't need to be a branch method
-    def set_inventory(self, new_inventory_list):
-        from bzrlib.inventory import Inventory, InventoryEntry
-        inv = Inventory(self.get_root_id())
-        for path, file_id, parent, kind in new_inventory_list:
-            name = os.path.basename(path)
-            if name == "":
-                continue
-            # fixme, there should be a factory function inv,add_?? 
-            if kind == 'directory':
-                inv.add(inventory.InventoryDirectory(file_id, name, parent))
-            elif kind == 'file':
-                inv.add(inventory.InventoryFile(file_id, name, parent))
-            elif kind == 'symlink':
-                inv.add(inventory.InventoryLink(file_id, name, parent))
-            else:
-                raise BzrError("unknown kind %r" % kind)
-        self._write_inventory(inv)
 
     def unknowns(self):
         """Return all unknown files.
@@ -794,7 +764,12 @@ class _Branch(Branch):
         # bzr 0.0.6 and later imposes the constraint that the inventory_id
         # must be the same as its revision, so this is trivial.
         if revision_id == None:
-            return Inventory(self.get_root_id())
+            # This does not make sense: if there is no revision,
+            # then it is the current tree inventory surely ?!
+            # and thus get_root_id() is something that looks at the last
+            # commit on the branch, and the get_root_id is an inventory check.
+            raise NotImplementedError
+            # return Inventory(self.get_root_id())
         else:
             return self.get_inventory(revision_id)
 
@@ -952,6 +927,8 @@ class _Branch(Branch):
         # much more complex to keep consistent than our careful .bzr subset.
         # instead, we should say that working trees are local only, and optimise
         # for that.
+        if self._transport.base.find('://') != -1:
+            raise NoWorkingTree(self.base)
         return WorkingTree(self.base, branch=self)
 
     @needs_write_lock
@@ -1095,7 +1072,7 @@ class _Branch(Branch):
         from bzrlib.atomicfile import AtomicFile
         from bzrlib.osutils import backup_file
         
-        inv = self.read_working_inventory()
+        inv = self.working_tree().read_working_inventory()
         if old_tree is None:
             old_tree = self.basis_tree()
         old_inv = old_tree.inventory

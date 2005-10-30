@@ -27,7 +27,7 @@ from bzrlib import BZRDIR
 from bzrlib.commands import Command, display_command
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
-from bzrlib.errors import DivergedBranches, NoSuchFile
+from bzrlib.errors import DivergedBranches, NoSuchFile, NoWorkingTree
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
@@ -262,7 +262,7 @@ class cmd_inventory(Command):
     def run(self, revision=None, show_ids=False):
         b = Branch.open_containing('.')[0]
         if revision is None:
-            inv = b.read_working_inventory()
+            inv = b.working_tree().read_working_inventory()
         else:
             if len(revision) > 1:
                 raise BzrCommandError('bzr inventory --revision takes'
@@ -560,7 +560,7 @@ class cmd_renames(Command):
     def run(self, dir='.'):
         b = Branch.open_containing(dir)[0]
         old_inv = b.basis_tree().inventory
-        new_inv = b.read_working_inventory()
+        new_inv = b.working_tree().read_working_inventory()
 
         renames = list(bzrlib.tree.find_renames(old_inv, new_inv))
         renames.sort()
@@ -655,7 +655,8 @@ class cmd_directories(Command):
     """Display list of versioned directories in this branch."""
     @display_command
     def run(self):
-        for name, ie in Branch.open_containing('.')[0].read_working_inventory().directories():
+        for name, ie in (Branch.open_containing('.')[0].working_tree().
+                         read_working_inventory().directories()):
             if name == '':
                 print '.'
             else:
@@ -838,7 +839,11 @@ class cmd_log(Command):
         if filename:
             b, fp = Branch.open_containing(filename)
             if fp != '':
-                file_id = b.read_working_inventory().path2id(fp)
+                try:
+                    inv = b.working_tree().read_working_inventory()
+                except NoWorkingTree:
+                    inv = b.get_inventory(b.last_revision())
+                file_id = inv.path2id(fp)
             else:
                 file_id = None  # points to branch root
         else:
@@ -897,7 +902,7 @@ class cmd_touching_revisions(Command):
     @display_command
     def run(self, filename):
         b, relpath = Branch.open_containing(filename)[0]
-        inv = b.read_working_inventory()
+        inv = b.working_tree().read_working_inventory()
         file_id = inv.path2id(relpath)
         for revno, revision_id, what in bzrlib.log.find_touching_revisions(b, file_id):
             print "%6d %s" % (revno, what)

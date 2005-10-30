@@ -36,6 +36,13 @@ For 0.7
     * Some option parsing errors will raise 'BzrOptionError', allowing 
       granular detection for decorating commands. (Robert Collins).
 
+    * Branch.read_working_inventory has moved to
+      WorkingTree.read_working_inventory. This necessitated changes to
+      Branch.get_root_id, and a move of Branch.set_inventory to WorkingTree
+      as well. To make it clear that a WorkingTree cannot always be obtained
+      Branch.working_tree() will raise 'errors.NoWorkingTree' if one cannot
+      be obtained. (Robert Collins)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
