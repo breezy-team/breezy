@@ -24,12 +24,13 @@ but this depends on the transport.
 
 import os
 import sys
+from tempfile import TemporaryFile
 
-from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.basicio import BasicWriter, Stanza
 
 
-class TestBasicIO(TestCaseInTempDir):
+class TestBasicIO(TestCase):
 
     def test_stanza(self):
         """Construct basic_io stanza in memory"""
@@ -40,9 +41,28 @@ class TestBasicIO(TestCaseInTempDir):
         self.assertEquals(list(s),
                 [('name', 'fred'), ('number', 42)])
         # TODO: how to get back particular fields?  what if it's repeated?
-        
-    def test_write_1(self):
-        """Write simple stanza to string."""
 
-    def test_nothing(self):
-        self.assertEqual(1,1)
+    def test_value_checks(self):
+        """basic_io checks types on construction"""
+        self.assertRaises(ValueError,
+                Stanza, complex=42 + 3j)
+        self.assertRaises(ValueError, 
+                Stanza, several=range(10))
+
+    def test_to_lines(self):
+        """Write simple basic_io stanza to string"""
+        s = Stanza(number=42, name='fred')
+        self.assertEquals(list(s.to_lines()),
+                ['  name "fred"\n',
+                 'number 42\n'])
+
+    def test_to_file(self):
+        """Write basic_io to file"""
+        tmpf = TemporaryFile()
+        s = Stanza(number=42, name='fred')
+        s.write(tmpf)
+        tmpf.seek(0)
+        self.assertEqualDiff(tmpf.read(), '''\
+  name "fred"
+number 42
+''')

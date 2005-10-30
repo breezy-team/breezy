@@ -35,38 +35,27 @@ class BasicWriter(object):
 
 
 class _StanzaWriter(object):
-    def __init__(self, list):
-        self.indent = 0
-        self.items = list[:]
+    """Convert Stanza to external form."""
+    def __init__(self, items):
+        self.items = items
 
-    def write_pair(self, tag, value):
-        if not valid_tag(tag):
-            raise ValueError("invalid basicio tag %r" % tag)
-        if isinstance(value, basestring):
-            self.write_string(tag, value)
-        elif isinstance(value, (int, long)):
-            self.write_number(tag, value)
-        else:
-            raise ValueError("invalid basicio value %r" % (value))
-
-    def write_number(self, tag, value):
-        print "%*s %d" % (self.indent, tag, value)
-
-    def write_string(self, tag, value):
-        print "%*s %s" % (self.indent, tag, self.quote_string(value))
+    def to_lines(self):
+        indent = max(len(kv[0]) for kv in self.items)
+        for tag, value in self.items:
+            yield '%*s %s\n' % (indent, tag, self._quote_value(value))
 
     def quote_string(self, value):
-        qv = value.replace('\\', '\\\\') \
-                .replace('\n', '\\n') \
-                .replace('\r', '\\r') \
-                .replace('\t', '\\t') \
-                .replace('"', '\\"') 
+        qv = value.replace('\\', r'\\') \
+                  .replace('"', r'\"') 
         return '"' + qv + '"'
 
-    def write(self):
-        self.indent = max(len(kv[0]) for kv in self.items)
-        for tag, value in self.items:
-            self.write_pair(tag, value)
+    def _quote_value(self, value):
+        if isinstance(value, (int, long)):
+            return value
+        elif isinstance(value, (str, unicode)):
+            return self.quote_string(value)
+        else:
+            raise ValueError("invalid value %r" % value)
 
 
 class Stanza(object):
@@ -108,6 +97,16 @@ class Stanza(object):
     def __iter__(self):
         """Return iterator of tag, value pairs."""
         return iter(self.items)
+
+    def to_lines(self):
+        """Generate sequence of lines for external version of this file."""
+        return _StanzaWriter(self.items).to_lines()
+
+    def to_string(self):
+        return ''.join(self.to_lines())
+
+    def write(self, to_file):
+        to_file.writelines(self.to_lines())
 
          
 TAG_RE = re.compile(r'^[-a-zA-Z0-9_]+$')
