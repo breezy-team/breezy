@@ -109,14 +109,14 @@ class Branch(object):
         """Open a branch which may be of an old format.
         
         Only local branches are supported."""
-        return _Branch(get_transport(base), relax_version_check=True)
+        return NativeBranch(get_transport(base), relax_version_check=True)
         
     @staticmethod
     def open(base):
         """Open an existing branch, rooted at 'base' (url)"""
         t = get_transport(base)
         mutter("trying to open %r with transport %r", base, t)
-        return _Branch(t)
+        return NativeBranch(t)
 
     @staticmethod
     def open_containing(url):
@@ -131,7 +131,7 @@ class Branch(object):
         t = get_transport(url)
         while True:
             try:
-                return _Branch(t), t.relpath(url)
+                return NativeBranch(t), t.relpath(url)
             except NotBranchError:
                 pass
             new_t = t.clone('..')
@@ -144,7 +144,7 @@ class Branch(object):
     def initialize(base):
         """Create a new branch, rooted at 'base' (url)"""
         t = get_transport(base)
-        return _Branch(t, init=True)
+        return NativeBranch(t, init=True)
 
     def setup_caching(self, cache_root):
         """Subclasses that care about caching should override this, and set
@@ -153,7 +153,7 @@ class Branch(object):
         self.cache_root = cache_root
 
 
-class _Branch(Branch):
+class NativeBranch(Branch):
     """A branch stored in the actual filesystem.
 
     Note that it's "local" in the context of the filesystem; it doesn't
@@ -1225,7 +1225,7 @@ class _Branch(Branch):
                                 revision_id, "sig")
 
 
-class ScratchBranch(_Branch):
+class ScratchBranch(NativeBranch):
     """Special test class: a branch that cleans up after itself.
 
     >>> b = ScratchBranch()
