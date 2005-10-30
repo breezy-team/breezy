@@ -95,6 +95,9 @@ motto "war is peace
 freedom is slavery
 ignorance is strength"
 ''')
+        tmpf.seek(0)
+        s2 = Stanza.from_file(tmpf)
+        self.assertEquals(s, s2)
 
     def test_read_stanza(self):
         """Load stanza from string"""

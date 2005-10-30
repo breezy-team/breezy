@@ -106,6 +106,9 @@ class Stanza(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __repr__(self):
+        return "Stanza(%r)" % self.items
+
     def iter_pairs(self):
         """Return iterator of tag, value pairs."""
         return iter(self.items)
@@ -126,18 +129,45 @@ class Stanza(object):
     def from_lines(klass, from_lines):
         """Return new Stanza read from list of lines"""
         self = klass()
-        for l in from_lines:
+        line_iter = iter(from_lines)
+        for l in line_iter:
+            if l == None or l == '' or l == '\n':
+                # raise an error if there's nothing in it?
+                return self
             tag, rest = l.split(None, 1)
-            assert valid_tag(tag)
+            assert valid_tag(tag), \
+                    "invalid basic_io tag %r" % tag
             if rest[0] == '"':
-                assert rest[-1]
-                value = rest[1:-2]
+                # keep reading in lines, accumulating into value, until we're done
+                line = rest[1:]
+                value = ''
+                while True:
+                    if line.endswith('"\n') and not line.endswith('\\"\n'):
+                        value += self.unquote_string(line[:-2])
+                        break
+                    else:
+                        value += self.unquote_string(line)
+                    try:
+                        line = line_iter.next()
+                    except StopIteration:
+                        raise ValueError('unexpected end in quoted string %r' % value)
             elif rest[0] in '-0123456789':
                 value = int(rest)
             else:
                 raise ValueError("invalid basic_io line %r" % l)
             self.items.append((tag, value))
         return self
+
+    @classmethod
+    def from_file(klass, from_file):
+        """Return new Stanza read from a file.
+
+        This consumes the blank line following the stanza, if there is one.
+        """
+        return klass.from_lines(from_file.xreadlines())
+
+    def unquote_string(self, s):
+        return s.replace('\\"', '"').replace('\\\\', '\\')
 
     def get(self, tag):
         """Return the value for a field wih given tag.
