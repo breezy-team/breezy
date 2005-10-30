@@ -104,3 +104,5 @@ revision "mbp@sourcefrog.net-123-abc"
         s = Stanza.from_lines(lines)
         self.assertTrue('revision' in s)
         self.assertEqualDiff(s.get('revision'), 'mbp@sourcefrog.net-123-abc')
+        self.assertEquals(list(s.iter_pairs()),
+                [('revision', 'mbp@sourcefrog.net-123-abc')])
