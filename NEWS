@@ -33,6 +33,9 @@ For 0.7
       signalling when a wrapping command should switch to the original
       version. (Robert Collins)
 
+    * Some option parsing errors will raise 'BzrOptionError', allowing 
+      granular detection for decorating commands. (Robert Collins).
+
 
 bzr 0.6rc1 2005-10-27
 

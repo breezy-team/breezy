@@ -738,6 +738,13 @@ class TestCommands(ExternalBase):
         self.runbzr('push --overwrite')
         # nothing missing
         self.runbzr('missing ../output-branch')
+        
+        # pushing to a new dir with no parent should fail
+        self.runbzr('push ../missing/new-branch', retcode=1)
+        # unless we provide --create-prefix
+        self.runbzr('push --create-prefix ../missing/new-branch')
+        # nothing missing
+        self.runbzr('missing ../missing/new-branch')
 
 
 def listdir_sorted(dir):

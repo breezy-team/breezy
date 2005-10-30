@@ -36,7 +36,11 @@ import errno
 import bzrlib
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
-from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
+from bzrlib.errors import (BzrError, 
+                           BzrCheckError,
+                           BzrCommandError,
+                           BzrOptionError,
+                           NotBranchError)
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib import BZRDIR
 from bzrlib.option import Option
@@ -308,8 +312,8 @@ def parse_args(command, argv):
                 else:
                     optname = a[2:]
                 if optname not in cmd_options:
-                    raise BzrCommandError('unknown long option %r for command %s' 
-                            % (a, command.name()))
+                    raise BzrOptionError('unknown long option %r for command %s'
+                        % (a, command.name()))
             else:
                 shortopt = a[1:]
                 if shortopt in Option.SHORT_OPTIONS:

@@ -27,7 +27,7 @@ from bzrlib import BZRDIR
 from bzrlib.commands import Command, display_command
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
-from bzrlib.errors import DivergedBranches
+from bzrlib.errors import DivergedBranches, NoSuchFile
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
@@ -412,10 +412,14 @@ class cmd_push(Command):
     do a merge (see bzr help merge) from the other branch, and commit that
     before doing a 'push --overwrite'.
     """
-    takes_options = ['remember', 'overwrite']
+    takes_options = ['remember', 'overwrite', 
+                     Option('create-prefix', 
+                            help='Create the path leading up to the branch '
+                                 'if it does not already exist')]
     takes_args = ['location?']
 
-    def run(self, location=None, remember=False, overwrite=False):
+    def run(self, location=None, remember=False, overwrite=False,
+            create_prefix=False):
         import errno
         from shutil import rmtree
         from bzrlib.transport import get_transport
@@ -433,7 +437,29 @@ class cmd_push(Command):
         except NotBranchError:
             # create a branch.
             transport = get_transport(location).clone('..')
-            transport.mkdir(transport.relpath(location))
+            if not create_prefix:
+                try:
+                    transport.mkdir(transport.relpath(location))
+                except NoSuchFile:
+                    raise BzrCommandError("Parent directory of %s "
+                                          "does not exist." % location)
+            else:
+                current = transport.base
+                needed = [(transport, transport.relpath(location))]
+                while needed:
+                    try:
+                        transport, relpath = needed[-1]
+                        transport.mkdir(relpath)
+                        needed.pop()
+                    except NoSuchFile:
+                        new_transport = transport.clone('..')
+                        needed.append((new_transport,
+                                       new_transport.relpath(transport.base)))
+                        if new_transport.base == transport.base:
+                            raise BzrCommandError("Could not creeate "
+                                                  "path prefix.")
+                        
+            NoSuchFile
             br_to = Branch.initialize(location)
         try:
             br_to.pull(br_from, overwrite)

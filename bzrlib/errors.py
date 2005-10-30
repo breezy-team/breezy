@@ -129,9 +129,16 @@ class InvalidRevisionId(BzrNewError):
 
 class BzrCommandError(BzrError):
     # Error from malformed user command
+    # This is being misused as a generic exception
+    # pleae subclass. RBC 20051030
     def __str__(self):
         return self.args[0]
 
+
+class BzrOptionError(BzrCommandError):
+    """Some missing or otherwise incorrect option was supplied."""
+
+    
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
