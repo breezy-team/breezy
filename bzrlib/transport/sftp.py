@@ -87,7 +87,7 @@ class SFTPTransport (Transport):
     Transport implementation for SFTP access.
     """
 
-    _url_matcher = re.compile(r'^sftp://([^@]*@)?(.*?)(:\d+)?(/.*)?$')
+    _url_matcher = re.compile(r'^sftp://(.*@)?(.*?)(:\d+)?(/.*)?$')
     
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
