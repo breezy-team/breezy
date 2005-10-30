@@ -94,7 +94,7 @@ class Stanza(object):
                 return True
         return False
 
-    def __iter__(self):
+    def iter_pairs(self):
         """Return iterator of tag, value pairs."""
         return iter(self.items)
 
@@ -103,20 +103,48 @@ class Stanza(object):
         return _StanzaWriter(self.items).to_lines()
 
     def to_string(self):
+        """Return stanza as a single string"""
         return ''.join(self.to_lines())
 
     def write(self, to_file):
+        """Write stanza to a file"""
         to_file.writelines(self.to_lines())
 
+    @classmethod
+    def from_lines(klass, from_lines):
+        """Return new Stanza read from list of lines"""
+        self = klass()
+        for l in from_lines:
+            tag, rest = l.split(None, 1)
+            assert valid_tag(tag)
+            if rest[0] == '"':
+                assert rest[-1]
+                value = rest[1:-2]
+            elif rest[0] in '0123456789':
+                value = int(rest)
+            else:
+                raise ValueError("invalid basic_io line %r" % l)
+            self.items.append((tag, value))
+        return self
+
+    def get(self, tag):
+        """Return the value for a field wih given tag.
+
+        If there is more than one value, only the first is returned.  If the
+        tag is not present, KeyError is raised.
+        """
+        for t, v in self.items:
+            if t == tag:
+                return v
+        else:
+            raise KeyError(tag)
          
 TAG_RE = re.compile(r'^[-a-zA-Z0-9_]+$')
 def valid_tag(tag):
     return bool(TAG_RE.match(tag))
 
 
-
-
-
+############################################################
 
 # XXX: Move these to object serialization code. 
 

@@ -38,9 +38,10 @@ class TestBasicIO(TestCase):
         self.assertTrue('number' in s)
         self.assertFalse('color' in s)
         self.assertFalse(42 in s)
-        self.assertEquals(list(s),
+        self.assertEquals(list(s.iter_pairs()),
                 [('name', 'fred'), ('number', 42)])
-        # TODO: how to get back particular fields?  what if it's repeated?
+        self.assertEquals(s.get('number'), 42)
+        self.assertEquals(s.get('name'), 'fred')
 
     def test_value_checks(self):
         """basic_io checks types on construction"""
@@ -99,4 +100,7 @@ ignorance is strength"
         """Load stanza from string"""
         lines = """\
 revision "mbp@sourcefrog.net-123-abc"
-"""
+""".splitlines(True)
+        s = Stanza.from_lines(lines)
+        self.assertTrue('revision' in s)
+        self.assertEqualDiff(s.get('revision'), 'mbp@sourcefrog.net-123-abc')
