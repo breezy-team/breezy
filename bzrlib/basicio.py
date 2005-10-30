@@ -167,8 +167,7 @@ class Stanza(object):
         """
         # lines can only possibly end if they finish with a doublequote;
         # but they only end there if it's not quoted
-        # An easier and cleaner way to write this would be to iterate over 
-        # every character but that's probably slow in Python
+        # Is iterating every character too slow in Python?
         assert line[-1] == '\n'
         r = ''
         l = len(line)
@@ -221,6 +220,13 @@ class Stanza(object):
                 return v
         else:
             raise KeyError(tag)
+
+    def get_all(self, tag):
+        r = []
+        for t, v in self.items:
+            if t == tag:
+                r.append(v)
+        return r
          
 TAG_RE = re.compile(r'^[-a-zA-Z0-9_]+$')
 def valid_tag(tag):
@@ -241,7 +247,7 @@ def write_revision(writer, revision):
         s.add('parent', parent_id)
     for prop_name, prop_value in revision.properties.items():
         s.add(prop_name, prop_value)
-    writer.write_stanza(s)
+    s.write(writer)
 
 def write_inventory(writer, inventory):
     s = Stanza(inventory_version=7)

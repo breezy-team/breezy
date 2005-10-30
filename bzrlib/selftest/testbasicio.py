@@ -117,6 +117,17 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
                  ('committer', "Martin Pool <mbp@test.sourcefrog.net>")])
         self.assertEquals(len(s), 4)
 
+    def test_repeated_field(self):
+        """Repeated field in basic_io"""
+        s = Stanza()
+        for k, v in [('a', 10), ('b', 20), ('a', 100), ('b', 200), ('a', 1000), ('b', 2000)]:
+            s.add(k, v)
+        t = s.to_string()
+        s2 = Stanza.from_string(t)
+        self.assertEquals(s, s2)
+        self.assertEquals(s.get_all('a'), [10, 100, 1000])
+        self.assertEquals(s.get_all('b'), [20, 200, 2000])
+
     def test_longint(self):
         """basic_io packing long integers"""
         s = Stanza(x=-12345678901234567890,
