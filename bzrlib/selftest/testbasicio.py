@@ -67,3 +67,36 @@ a_thing "something with \"quotes like \\\"this\\\"\""
    name "fred"
  number 42
 '''[1:])
+
+    def test_multiline_string(self):
+        """Write basic_io with multiline string"""
+        tmpf = TemporaryFile()
+        s = Stanza(a=123, motto="war is peace\nfreedom is slavery\nignorance is strength\n",
+                   charlie_horse=456)
+        s.write(tmpf)
+        tmp.seek(0)
+        self.assertEqualDiff(tmpf.read(), '''\
+            a 123
+        motto "war is peace
+freedom is slavery
+ignorance is strength
+"
+charlie_horse 456
+''')
+
+    def test_multiline_string(self):
+        tmpf = TemporaryFile()
+        s = Stanza(motto="war is peace\nfreedom is slavery\nignorance is strength")
+        s.write(tmpf)
+        tmpf.seek(0)
+        self.assertEqualDiff(tmpf.read(), '''\
+motto "war is peace
+freedom is slavery
+ignorance is strength"
+''')
+
+    def test_read_stanza(self):
+        """Load stanza from string"""
+        lines = """\
+revision "mbp@sourcefrog.net-123-abc"
+"""
