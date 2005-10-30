@@ -99,10 +99,16 @@ ignorance is strength"
     def test_read_stanza(self):
         """Load stanza from string"""
         lines = """\
-revision "mbp@sourcefrog.net-123-abc"
+ revision "mbp@sourcefrog.net-123-abc"
+timestamp 1130653962
+ timezone 36000
+committer "Martin Pool <mbp@test.sourcefrog.net>"
 """.splitlines(True)
         s = Stanza.from_lines(lines)
         self.assertTrue('revision' in s)
         self.assertEqualDiff(s.get('revision'), 'mbp@sourcefrog.net-123-abc')
         self.assertEquals(list(s.iter_pairs()),
-                [('revision', 'mbp@sourcefrog.net-123-abc')])
+                [('revision', 'mbp@sourcefrog.net-123-abc'),
+                 ('timestamp', 1130653962),
+                 ('timezone', 36000),
+                 ('committer', "Martin Pool <mbp@test.sourcefrog.net>")])
