@@ -379,14 +379,14 @@ class cmd_pull(Command):
             else:
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
-        if br_to.get_parent() is None or remember:
-            br_to.set_parent(location)
         br_from = Branch.open(location)
         try:
             br_to.working_tree().pull(br_from, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try merge.")
+        if br_to.get_parent() is None or remember:
+            br_to.set_parent(location)
 
 
 class cmd_push(Command):
@@ -428,8 +428,6 @@ class cmd_push(Command):
             else:
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
-        if br_from.get_push_location() is None or remember:
-            br_from.set_push_location(location)
         try:
             br_to = Branch.open(location)
         except NotBranchError:
@@ -442,6 +440,8 @@ class cmd_push(Command):
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try a merge then push with overwrite.")
+        if br_from.get_push_location() is None or remember:
+            br_from.set_push_location(location)
 
 
 class cmd_branch(Command):
