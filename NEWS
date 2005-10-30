@@ -3,26 +3,35 @@ For 0.7
   IMPROVEMENTS:
 
     * 'bzr diff' now returns 1 when there are changes in the working 
-      tree.
+      tree. (Robert Collins)
 
     * 'bzr push' now exists and can push changes to a remote location. 
       This uses the transport infrastructure, and can store the remote
       location in the ~/.bazaar/branches.conf configuration file.
+      (Robert Collins)
 
   INTERNALS:
 
     * WorkingTree.pull has been split across Branch and WorkingTree,
-      to allow Branch only pulls.
+      to allow Branch only pulls. (Robert Collins)
 
     * commands.display_command now returns the result of the decorated 
-      function.
+      function. (Robert Collins)
 
     * LocationConfig now has a set_user_option(key, value) call to save
       a setting in its matching location section (a new one is created
-      if needed).
+      if needed). (Robert Collins)
 
     * Branch has two new methods, get_push_location and set_push_location
-      to respectively, get and set the push location.
+      to respectively, get and set the push location. (Robert Collins)
+
+    * commands.register_command now takes an optional flag to signal that
+      the registrant is planning to decorate an existing command. When 
+      given multiple plugins registering a command is not an error, and
+      the original command class (whether built in or a plugin based one) is
+      returned to the caller. There is a new error 'MustUseDecorated' for
+      signalling when a wrapping command should switch to the original
+      version. (Robert Collins)
 
 
 bzr 0.6rc1 2005-10-27

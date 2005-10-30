@@ -400,3 +400,10 @@ class GraphCycleError(BzrNewError):
     def __init__(self, graph):
         BzrNewError.__init__(self)
         self.graph = graph
+
+class MustUseDecorated(Exception):
+    """A decorating function has requested its original command be used.
+    
+    This should never escape bzr, so does not need to be printable.
+    """
+

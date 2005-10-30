@@ -44,7 +44,7 @@ from bzrlib.option import Option
 plugin_cmds = {}
 
 
-def register_command(cmd):
+def register_command(cmd, decorate=False):
     "Utility function to help register a command"
     global plugin_cmds
     k = cmd.__name__
@@ -55,6 +55,12 @@ def register_command(cmd):
     if not plugin_cmds.has_key(k_unsquished):
         plugin_cmds[k_unsquished] = cmd
         mutter('registered plugin command %s', k_unsquished)      
+        if decorate and k_unsquished in builtin_command_names():
+            return _builtin_commands()[k_unsquished]
+    elif decorate:
+        result = plugin_cmds[k_unsquished]
+        plugin_cmds[k_unsquished] = cmd
+        return result
     else:
         log_error('Two plugins defined the same command: %r' % k)
         log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
