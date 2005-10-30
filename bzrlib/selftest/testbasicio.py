@@ -112,3 +112,4 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
                  ('timestamp', 1130653962),
                  ('timezone', 36000),
                  ('committer', "Martin Pool <mbp@test.sourcefrog.net>")])
+        self.assertEquals(len(s), 4)

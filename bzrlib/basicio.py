@@ -94,6 +94,10 @@ class Stanza(object):
                 return True
         return False
 
+    def __len__(self):
+        """Return number of pairs in the stanza."""
+        return len(self.items)
+
     def iter_pairs(self):
         """Return iterator of tag, value pairs."""
         return iter(self.items)
