@@ -105,6 +105,10 @@ class Stanza(object):
                 return True
         return False
 
+    def __iter__(self):
+        """Return iterator of tag, value pairs."""
+        return iter(self.items)
+
          
 TAG_RE = re.compile(r'^[-a-zA-Z0-9_]+$')
 def valid_tag(tag):

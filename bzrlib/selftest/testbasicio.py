@@ -37,6 +37,9 @@ class TestBasicIO(TestCaseInTempDir):
         self.assertTrue('number' in s)
         self.assertFalse('color' in s)
         self.assertFalse(42 in s)
+        self.assertEquals(list(s),
+                [('name', 'fred'), ('number', 42)])
+        # TODO: how to get back particular fields?  what if it's repeated?
         
     def test_write_1(self):
         """Write simple stanza to string."""
