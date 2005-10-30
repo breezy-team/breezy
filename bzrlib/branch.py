@@ -309,7 +309,20 @@ class Branch(object):
         The delta is relative to its mainline predecessor, or the
         empty tree for revision 1.
         """
-        raise NotImplementedError('get_revision_delta is abstract')
+        assert isinstance(revno, int)
+        rh = self.revision_history()
+        if not (1 <= revno <= len(rh)):
+            raise InvalidRevisionNumber(revno)
+
+        # revno is 1-based; list is 0-based
+
+        new_tree = self.revision_tree(rh[revno-1])
+        if revno == 1:
+            old_tree = EmptyTree()
+        else:
+            old_tree = self.revision_tree(rh[revno-2])
+
+        return compare_trees(old_tree, new_tree)
 
     def get_revision_sha1(self, revision_id):
         """Hash the stored value of a revision, and return it."""
@@ -322,9 +335,6 @@ class Branch(object):
         treat it as a set.
         """
         raise NotImplementedError('get_ancestry is abstract')
-
-    def get_inventory_weave(self):
-        raise NotImplementedError('get_inventory_weave is abstract')
 
     def get_inventory(self, revision_id):
         """Get Inventory object by hash."""
@@ -1056,23 +1066,6 @@ class NativeBranch(Branch):
         assert r.revision_id == revision_id
         return r
 
-    def get_revision_delta(self, revno):
-        """See Branch.get_revision_delta."""
-        assert isinstance(revno, int)
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
-
-        # revno is 1-based; list is 0-based
-
-        new_tree = self.revision_tree(rh[revno-1])
-        if revno == 1:
-            old_tree = EmptyTree()
-        else:
-            old_tree = self.revision_tree(rh[revno-2])
-
-        return compare_trees(old_tree, new_tree)
-
     def get_revision_sha1(self, revision_id):
         """See Branch.get_revision_sha1."""
         # In the future, revision entries will be signed. At that
@@ -1087,12 +1080,11 @@ class NativeBranch(Branch):
         """See Branch.get_ancestry."""
         if revision_id is None:
             return [None]
-        w = self.get_inventory_weave()
+        w = self._get_inventory_weave()
         return [None] + map(w.idx_to_name,
                             w.inclusions([w.lookup(revision_id)]))
 
-    def get_inventory_weave(self):
-        """See Branch.get_inventory_weave."""
+    def _get_inventory_weave(self):
         return self.control_weaves.get_weave('inventory',
                                              self.get_transaction())
 
@@ -1105,7 +1097,7 @@ class NativeBranch(Branch):
         """See Branch.get_inventory_xml."""
         try:
             assert isinstance(revision_id, basestring), type(revision_id)
-            iw = self.get_inventory_weave()
+            iw = self._get_inventory_weave()
             return iw.get_text(iw.lookup(revision_id))
         except IndexError:
             raise bzrlib.errors.HistoryMissing(self, 'inventory', revision_id)
