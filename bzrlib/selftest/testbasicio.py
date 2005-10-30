@@ -138,15 +138,28 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
         s = Stanza(q=r'\"\"')
         self.assertEqualDiff(s.to_string(), r'q "\\\"\\\""' + '\n')
 
+    def test_quoted_4(self):
+        s = Stanza(q=r'""""')
+        t = s.to_string()
+        self.assertEqualDiff(t, r'q "\"\"\"\""' + '\n')
+        s2 = Stanza.from_string(t)
+        self.assertEquals(s, s2)
+
+    def test_quoted_5(self):
+        s = Stanza(q=r'\\\\\"')
+        t = s.to_string()
+        s2 = Stanza.from_string(t)
+        self.assertEquals(s, s2)
+
     def test_quoted(self):
         """basic_io quoted string cases"""
         s = Stanza(q1='"hello"', 
-                   ## ## q2=' "for', 
-                   ## q3='\n\n"for"\n',
-                   ## q4='for\n"\nfor',
-                   ## q5='\n',
-                   ## q6='"', 
-                   ## q7='""',
+                   q2=' "for', 
+                   q3='\n\n"for"\n',
+                   q4='for\n"\nfor',
+                   q5='\n',
+                   q6='"', 
+                   q7='""',
                    q8='\\',
                    q9='\\"\\"',
                    )
