@@ -124,3 +124,31 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
         lines = s.to_lines()
         s2 = Stanza.from_lines(lines)
         self.assertEquals(s, s2)
+
+    def test_quoted_0(self):
+        """Backslash quoted cases"""
+        s = Stanza(q='\\')
+        t = s.to_string()
+        self.assertEqualDiff(t, 'q "\\\\"\n')
+        s2 = Stanza.from_string(t)
+        self.assertEquals(s, s2)
+
+    def test_quoted_1(self):
+        """Backslash quoted cases"""
+        s = Stanza(q=r'\"\"')
+        self.assertEqualDiff(s.to_string(), r'q "\\\"\\\""' + '\n')
+
+    def test_quoted(self):
+        """basic_io quoted string cases"""
+        s = Stanza(q1='"hello"', 
+                   ## ## q2=' "for', 
+                   ## q3='\n\n"for"\n',
+                   ## q4='for\n"\nfor',
+                   ## q5='\n',
+                   ## q6='"', 
+                   ## q7='""',
+                   q8='\\',
+                   q9='\\"\\"',
+                   )
+        s2 = Stanza.from_lines(s.to_lines())
+        self.assertEquals(s, s2)

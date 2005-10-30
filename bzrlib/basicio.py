@@ -142,11 +142,10 @@ class Stanza(object):
                 line = rest[1:]
                 value = ''
                 while True:
-                    if line.endswith('"\n') and not line.endswith('\\"\n'):
-                        value += self.unquote_string(line[:-2])
+                    content, end = self._parse_line(line)
+                    value += content
+                    if end: 
                         break
-                    else:
-                        value += self.unquote_string(line)
                     try:
                         line = line_iter.next()
                     except StopIteration:
@@ -158,6 +157,47 @@ class Stanza(object):
             self.items.append((tag, value))
         return self
 
+    def _parse_line(self, line):
+        """Read one line of a quoted string.
+
+        line has the trailing newline still present.
+
+        Returns parsed unquoted content, and a flag saying whether we've got
+        to the end of the string.
+        """
+        # lines can only possibly end if they finish with a doublequote;
+        # but they only end there if it's not quoted
+        # An easier and cleaner way to write this would be to iterate over 
+        # every character but that's probably slow in Python
+        assert line[-1] == '\n'
+        r = ''
+        l = len(line)
+        quotech = False
+        for i in range(l-2):
+            c = line[i]
+            if quotech:
+                assert c in r'\"'
+                r += c
+                quotech = False
+            elif c == '\\':
+                quotech = True       
+            else:
+                quotech = False
+                r += c
+        # last non-newline character
+        i += 1
+        c = line[i]
+        if quotech:
+            assert c in r'\"'
+            r += c + '\n'
+        elif c == '"':
+            # omit quote and newline, finished string
+            return r, True
+        else:
+            assert c != '\\'
+            r += c + '\n'
+        return r, False
+
     @classmethod
     def from_file(klass, from_file):
         """Return new Stanza read from a file.
@@ -166,8 +206,9 @@ class Stanza(object):
         """
         return klass.from_lines(from_file.xreadlines())
 
-    def unquote_string(self, s):
-        return s.replace('\\"', '"').replace('\\\\', '\\')
+    @classmethod
+    def from_string(klass, s):
+        return klass.from_lines(s.splitlines(True))
 
     def get(self, tag):
         """Return the value for a field wih given tag.
