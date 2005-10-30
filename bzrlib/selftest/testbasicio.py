@@ -59,10 +59,11 @@ class TestBasicIO(TestCase):
     def test_to_file(self):
         """Write basic_io to file"""
         tmpf = TemporaryFile()
-        s = Stanza(number=42, name='fred')
+        s = Stanza(a_thing='something with "quotes like \\"this\\""', number=42, name='fred')
         s.write(tmpf)
         tmpf.seek(0)
-        self.assertEqualDiff(tmpf.read(), '''\
-  name "fred"
-number 42
-''')
+        self.assertEqualDiff(tmpf.read(), r'''
+a_thing "something with \"quotes like \\\"this\\\"\""
+   name "fred"
+ number 42
+'''[1:])
