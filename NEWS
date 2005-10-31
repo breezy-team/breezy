@@ -213,6 +213,10 @@ bzr 0.6 2005-10-28
     * Better handling of branches in directories with non-ascii names. 
       (Joel Rosdahl, Panagiotis Papadakos)
 
+    * Upgrades of trees with no commits will not fail due to accessing
+      [-1] in the revision-history. (Andres Salomon)
+
+
 bzr 0.1.1 2005-10-12
 
   BUG FIXES:
