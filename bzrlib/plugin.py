@@ -137,8 +137,9 @@ def load_plugins():
                         plugin_info[0].close()
 
                 mutter('loaded succesfully')
-            except:
-                ## import pdb
-                ## pdb.set_trace()
+            except KeyboardInterrupt:
+                raise
+            except Exception, e:
+                ## import pdb; pdb.set_trace()
                 warning('Unable to load plugin %r from %r' % (name, d))
                 log_exception_quietly()

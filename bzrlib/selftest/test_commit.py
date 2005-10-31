@@ -196,13 +196,13 @@ class TestCommit(TestCaseInTempDir):
         b.move(['hello'], 'a')
         r2 = 'test@rev-2'
         b.commit('two', rev_id=r2, allow_pointless=False)
-        self.check_inventory_shape(b.inventory,
+        self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['a', 'a/hello', 'b'])
 
         b.move(['b'], 'a')
         r3 = 'test@rev-3'
         b.commit('three', rev_id=r3, allow_pointless=False)
-        self.check_inventory_shape(b.inventory,
+        self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['a', 'a/hello', 'a/b'])
         self.check_inventory_shape(b.get_revision_inventory(r3),
                                    ['a', 'a/hello', 'a/b'])
@@ -211,7 +211,7 @@ class TestCommit(TestCaseInTempDir):
                os.sep.join(['a', 'b']))
         r4 = 'test@rev-4'
         b.commit('four', rev_id=r4, allow_pointless=False)
-        self.check_inventory_shape(b.inventory,
+        self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['a', 'a/b/hello', 'a/b'])
 
         inv = b.get_revision_inventory(r4)

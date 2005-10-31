@@ -334,3 +334,29 @@ class TestBranchTransaction(TestCaseInTempDir):
         self.failUnless(isinstance(self.branch._transaction,
                                    transactions.PassThroughTransaction))
         self.branch.unlock()
+
+
+class TestBranchPushLocations(TestCaseInTempDir):
+
+    def setUp(self):
+        super(TestBranchPushLocations, self).setUp()
+        self.branch = Branch.initialize('.')
+        
+    def test_get_push_location_unset(self):
+        self.assertEqual(None, self.branch.get_push_location())
+
+    def test_get_push_location_exact(self):
+        self.build_tree(['.bazaar/'])
+        print >> open('.bazaar/branches.conf', 'wt'), ("[%s]\n"
+                                                       "push_location=foo" %
+                                                       os.getcwdu())
+        self.assertEqual("foo", self.branch.get_push_location())
+
+    def test_set_push_location(self):
+        self.branch.set_push_location('foo')
+        self.assertFileEqual("[%s]\n"
+                             "push_location = foo" % os.getcwdu(),
+                             '.bazaar/branches.conf')
+
+    # TODO RBC 20051029 test getting a push location from a branch in a 
+    # recursive section - that is, it appends the branch name.
