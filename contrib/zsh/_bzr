@@ -14,7 +14,7 @@ local bzrRoot helpArgs parentFile
 typeset -A opt_args
 
 helpArgs=( '(--help)-h[show help message]' '(-h)--help[show help message]' )
-bzrRoot=$(bzr root)
+bzrRoot=$(bzr root 2> /dev/null)
 parentFile=$bzrRoot/.bzr/parent
 
 if [[ $service == "bzr" ]]; then
