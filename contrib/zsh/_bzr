@@ -306,7 +306,7 @@ case $service in
         _arguments $helpArgs \
         '--dry-run[show files to delete instead of deleting them]' \
         '--ignored[delete all ignored files]' \
-        '--detrius[delete conflict files, merge backups, failed self-tests, *~, *.tmp, etc]'
+        '--detritus[delete conflict files, merge backups, failed self-tests, *~, *.tmp, etc]'
     ;;
 
 
