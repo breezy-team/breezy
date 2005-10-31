@@ -5,6 +5,8 @@ UNRELEASED CHANGES
     * "bzr INIT dir" now initializes the specified directory, and creates 
       it if it does not exist.  (John Arbash Meinel)
 
+    * Better zsh completion script.  (Steve Borho)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
