@@ -64,7 +64,7 @@ def capture_tree_contents(top):
         filenames.sort()
         for fn in filenames:
             fullpath = os.path.join(dirpath, fn)
-            assert fullpath[-1] not in '@/'
+            self.assertFalse(fullpath[-1] in '@/')
             info = os.lstat(fullpath)
             if stat.S_ISLNK(info.st_mode):
                 yield (fullpath + '@', os.readlink(fullpath))
