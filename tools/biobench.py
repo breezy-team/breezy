@@ -5,7 +5,7 @@
 Tries serializing an inventory to basic_io repeatedly.
 """
 
-if False:
+if True:
     import psyco
     psyco.full()
 
@@ -16,17 +16,24 @@ from tempfile import TemporaryFile, NamedTemporaryFile
 
 from bzrlib.branch import Branch
 from bzrlib.xml5 import serializer_v5
-from bzrlib.basicio import write_inventory, BasicWriter, BasicReader, \
+from bzrlib.basicio import write_inventory, BasicWriter, \
         read_inventory
 from bzrlib.inventory import Inventory, InventoryEntry, InventoryFile, ROOT_ID
 
 ## b = Branch.open('.')
 ## inv = b.get_inventory(b.last_revision())
 
+nrepeats = 3
+ntimes = 5
+NFILES = 30000
+
 def make_inventory():
     inv = Inventory()
-    for i in range(30000):
-        inv.add(InventoryFile('%08d-id' % i, '%08d-file' % i, ROOT_ID))
+    for i in range(NFILES):
+        ie = InventoryFile('%08d-id' % i, '%08d-file' % i, ROOT_ID)
+        ie.text_sha1='1212121212121212121212121212121212121212'
+        ie.text_size=12312
+        inv.add(ie)
     return inv
 
 inv = make_inventory()
@@ -47,12 +54,10 @@ def xml_test():
     xml_tmp.seek(0)
     new_inv = serializer_v5.read_inventory(xml_tmp)
 
-ntimes = 10
-
 def run_benchmark(function_name, tmp_file):
     t = Timer(function_name + '()', 
               'from __main__ import ' + function_name)
-    times = t.repeat(1, ntimes)
+    times = t.repeat(nrepeats, ntimes)
     tmp_file.seek(0, 2)
     size = tmp_file.tell()
     print 'wrote inventory to %10s %5d times, each %6d bytes, total %6dkB' \

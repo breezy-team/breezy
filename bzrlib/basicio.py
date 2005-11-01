@@ -54,12 +54,19 @@ class BasicReader(object):
 
     def __iter__(self):
         while True:
-            s = Stanza.from_file(self._from_file)
+            s = read_stanza(self._from_file)
             if s is None:
                 break
             else:
                 yield s
 
+def read_stanzas(from_file):
+    while True:
+        s = read_stanza(from_file)
+        if s is None:
+            break
+        else:
+            yield s
 
 class Stanza(object):
     """One stanza for basic_io.
@@ -73,17 +80,17 @@ class Stanza(object):
     Each field value must be either an int or a string.
     """
 
-    def __init__(self, *items, **kwargs):
+    __slots__ = ['items']
+
+    def __init__(self, **kwargs):
         """Construct a new Stanza.
 
         The keyword arguments, if any, are added in sorted order to the stanza.
         """
-        if items:
-            self.items = items
-        else:
-            self.items = list()
         if kwargs:
-            self.items.extend(sorted(kwargs.items()))
+            self.items = sorted(kwargs.items())
+        else:
+            self.items = []
 
     def add(self, tag, value):
         """Append a name and value to the stanza."""
@@ -121,15 +128,16 @@ class Stanza(object):
 
     def to_lines(self):
         """Generate sequence of lines for external version of this file."""
-        indent = max(len(kv[0]) for kv in self.items)
         for tag, value in self.items:
             if isinstance(value, (int, long)):
                 # must use %d so bools are written as ints
-                yield '%*s %d\n' % (indent, tag, value)
-            elif isinstance(value, (str, unicode)):
-                yield '%*s %s\n' % (indent, tag, quote_string(value))
+                yield '%s %d\n' % (tag, value)
             else:
-                raise ValueError("invalid value %r" % value)
+                assert isinstance(value, (str, unicode)), ("invalid value %r" % value)
+                qv = value.replace('\\', r'\\') \
+                          .replace('"',  r'\"') \
+                          .replace('\n', r'\n')
+                yield '%s "%s"\n' % (tag, qv)
 
     def to_string(self):
         """Return stanza as a single string"""
@@ -138,95 +146,6 @@ class Stanza(object):
     def write(self, to_file):
         """Write stanza to a file"""
         to_file.writelines(self.to_lines())
-
-    @classmethod
-    def from_lines(klass, from_lines):
-        """Return new Stanza read from list of lines"""
-        line_iter = from_lines #  iter(from_lines)
-        items = []
-        for l in line_iter:
-            assert l[-1] == '\n'
-            if l == None or l == '' or l == '\n':
-                break
-            l = l.lstrip()
-            space = l.index(' ')
-            tag = l[:space]
-            assert valid_tag(tag), \
-                    "invalid basic_io tag %r" % tag
-            rest = l[space+1:]
-            if rest[0] == '"':
-                # keep reading in lines, accumulating into value, until we're done
-                assert rest[-2] == '"'
-                value = rest[1:-2]
-                # line_values = []
-##                 while True:
-##                     content, end = self._parse_string_line(line)
-##                     line_values.append(content)
-##                     if end: 
-##                         break
-##                     try:
-##                         line = line_iter.next()
-##                     except StopIteration:
-##                         raise ValueError('unexpected end in quoted string %r' % value)
-##                 value = ''.join(line_values)
-            else:
-                value = int(rest)
-            items.append((tag, value))
-        if not items:
-            return None         # didn't see any content
-        return klass(*items)
-
-    def _parse_string_line(self, line):
-        """Read one line of a quoted string.
-
-        The line always has the trailing newline still present.
-
-        Returns parsed unquoted content, and a flag saying whether we've got
-        to the end of the string.
-
-        Lines end if they have a doublequote at the end which is not escaped; 
-        """
-        raise NotImplementedError
-        # lines can only possibly end if they finish with a doublequote;
-        # but they only end there if it's not quoted
-        # Is iterating every character too slow in Python?
-        assert line[-1] == '\n'
-        # hack for testing - lines must be single lines
-        assert line[-2] == '"'
-        return line[:-2].replace(r'\"', '"').replace(r'\\', '\\'), True
-        r = ''
-        l = len(line)
-        quotech = False
-        for i in range(l-2):
-            c = line[i]
-            if quotech:
-                assert c in r'\"'
-                r += c
-                quotech = False
-            elif c == '\\':
-                quotech = True       
-            else:
-                quotech = False
-                r += c
-        # last non-newline character
-        i += 1
-        c = line[i]
-        if quotech:
-            assert c in r'\"'
-            r += c + '\n'
-        elif c == '"':
-            # omit quote and newline, finished string
-            return r, True
-        else:
-            assert c != '\\'
-            r += c + '\n'
-        return r, False
-
-    from_file = from_lines
-
-    @classmethod
-    def from_string(klass, s):
-        return klass.from_lines(s.splitlines(True))
 
     def get(self, tag):
         """Return the value for a field wih given tag.
@@ -254,10 +173,33 @@ def valid_tag(tag):
     return bool(TAG_RE.match(tag))
 
 
-def quote_string(value):
-    qv = value.replace('\\', r'\\') \
-              .replace('"', r'\"') 
-    return '"' + qv + '"'
+def read_stanza(from_lines):
+    """Return new Stanza read from list of lines or a file"""
+    items = []
+    for l in from_lines:
+        if l == None or l == '' or l == '\n':
+            break
+        assert l[-1] == '\n'
+        space = l.index(' ')
+        tag = l[:space]
+        assert valid_tag(tag), \
+                "invalid basic_io tag %r" % tag
+        rest = l[space+1:]
+        if l[space+1] == '"':
+            # keep reading in lines, accumulating into value, until we're done
+            assert l[-2] == '"'
+            value = l[space+2:-2]
+            value = value.replace(r'\n', '\n') \
+                  .replace(r'\"', '\"') \
+                  .replace(r'\\', '\\')
+        else:
+            value = int(l[space+1:])
+        items.append((tag, value))
+    if not items:
+        return None         # didn't see any content
+    s = Stanza()
+    s.items = items
+    return s
 
 
 ############################################################
@@ -299,16 +241,18 @@ def write_inventory(writer, inventory):
 def read_inventory(inv_file):
     """Read inventory object from basic_io formatted inventory file"""
     from bzrlib.inventory import Inventory, InventoryFile
-    s = Stanza.from_file(inv_file)
+    s = read_stanza(inv_file)
     assert s['inventory_version'] == 7
     inv = Inventory()
-    for s in BasicReader(inv_file):
+    for s in read_stanzas(inv_file):
         kind, file_id = s.items[0]
         parent_id = None
         if 'parent_id' in s:
             parent_id = s['parent_id']
         if kind == 'file':
             ie = InventoryFile(file_id, s['name'], parent_id)
+            ie.text_sha1 = s['text_sha1']
+            ie.text_size = s['text_size']
         else:
             raise NotImplementedError()
         inv.add(ie)
