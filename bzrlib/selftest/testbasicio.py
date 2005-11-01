@@ -27,7 +27,7 @@ import sys
 from tempfile import TemporaryFile
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
-from bzrlib.basicio import BasicWriter, Stanza
+from bzrlib.basicio import BasicReader, BasicWriter, Stanza
 
 
 class TestBasicIO(TestCase):
@@ -183,6 +183,27 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
         self.assertEqual(s, None)
         self.assertTrue(s is None)
         
+    def test_read_iter(self):
+        """Read several stanzas from file"""
+        tmpf = TemporaryFile()
+        tmpf.write("""\
+version_header 1
+
+name "foo"
+ val 123
+
+name "bar"
+ val 129319
+""")
+        tmpf.seek(0)
+        reader = BasicReader(tmpf)
+        read_iter = iter(reader)
+        stuff = list(reader)
+        self.assertEqual(stuff, 
+                [ Stanza(version_header=1),
+                  Stanza(name="foo", val=123),
+                  Stanza(name="bar", val=129319), ])
+
     def test_read_several(self):
         """Read several stanzas from file"""
         tmpf = TemporaryFile()

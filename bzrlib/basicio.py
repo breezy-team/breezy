@@ -23,6 +23,15 @@ either an integer (scored in decimal) or a Unicode string.
 
 import re
 
+# XXX: basic_io is kind of a dumb name; it seems to imply an io layer not a
+# format
+#
+# XXX: should these be BasicIOWriter, etc?
+#
+# XXX: some redundancy is allowing to write stanzas in isolation as well as
+# through a writer object.  also a bit confused to have a StanzaWriter but to 
+# have parsing done inside the Stanza.
+
 class BasicWriter(object):
     def __init__(self, to_file):
         self._soft_nl = False
@@ -33,6 +42,24 @@ class BasicWriter(object):
             print >>self._to_file
         stanza.write(self._to_file)
         self._soft_nl = True
+
+
+class BasicReader(object):
+    """Read stanzas from a file as a sequence
+    
+    to_file can be anything that can be enumerated as a sequence of 
+    lines (with newlines.)
+    """
+    def __init__(self, from_file):
+        self._from_file = from_file
+
+    def __iter__(self):
+        while True:
+            s = Stanza.from_file(self._from_file)
+            if s is None:
+                break
+            else:
+                yield s
 
 
 class _StanzaWriter(object):
@@ -210,7 +237,7 @@ class Stanza(object):
 
         This consumes the blank line following the stanza, if there is one.
         """
-        return klass.from_lines(from_file.xreadlines())
+        return klass.from_lines(from_file)
 
     @classmethod
     def from_string(klass, s):
