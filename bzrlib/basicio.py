@@ -70,20 +70,18 @@ class _StanzaWriter(object):
     def to_lines(self):
         indent = max(len(kv[0]) for kv in self.items)
         for tag, value in self.items:
-            yield '%*s %s\n' % (indent, tag, self._quote_value(value))
+            if isinstance(value, (int, long)):
+                # must use %d so bools are written as ints
+                yield '%*s %d\n' % (indent, tag, value)
+            elif isinstance(value, (str, unicode)):
+                yield '%*s %s\n' % (indent, tag, self.quote_string(value))
+            else:
+                raise ValueError("invalid value %r" % value)
 
     def quote_string(self, value):
         qv = value.replace('\\', r'\\') \
                   .replace('"', r'\"') 
         return '"' + qv + '"'
-
-    def _quote_value(self, value):
-        if isinstance(value, (int, long)):
-            return value
-        elif isinstance(value, (str, unicode)):
-            return self.quote_string(value)
-        else:
-            raise ValueError("invalid value %r" % value)
 
 
 class Stanza(object):

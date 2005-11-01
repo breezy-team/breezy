@@ -225,3 +225,8 @@ name "bar"
         self.assertEquals(s, Stanza(name="bar", val=129319))
         s = Stanza.from_file(tmpf)
         self.assertEquals(s, None)
+
+    def test_write_bool(self):
+        """Write bool to basic_io"""
+        l = list(Stanza(my_bool=True).to_lines())
+        self.assertEquals(l, ['my_bool 1\n'])
