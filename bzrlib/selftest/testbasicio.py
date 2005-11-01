@@ -176,3 +176,31 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
                    )
         s2 = Stanza.from_lines(s.to_lines())
         self.assertEquals(s, s2)
+
+    def test_read_empty(self):
+        """Detect end of basic_io file"""
+        s = Stanza.from_lines([])
+        self.assertEqual(s, None)
+        self.assertTrue(s is None)
+        
+    def test_read_several(self):
+        """Read several stanzas from file"""
+        tmpf = TemporaryFile()
+        tmpf.write("""\
+version_header 1
+
+name "foo"
+ val 123
+
+name "bar"
+ val 129319
+""")
+        tmpf.seek(0)
+        s = Stanza.from_file(tmpf)
+        self.assertEquals(s, Stanza(version_header=1))
+        s = Stanza.from_file(tmpf)
+        self.assertEquals(s, Stanza(name="foo", val=123))
+        s = Stanza.from_file(tmpf)
+        self.assertEquals(s, Stanza(name="bar", val=129319))
+        s = Stanza.from_file(tmpf)
+        self.assertEquals(s, None)

@@ -131,10 +131,11 @@ class Stanza(object):
         """Return new Stanza read from list of lines"""
         self = klass()
         line_iter = iter(from_lines)
+        first = True
         for l in line_iter:
             if l == None or l == '' or l == '\n':
-                # raise an error if there's nothing in it?
-                return self
+                break
+            first = False
             tag, rest = l.split(None, 1)
             assert valid_tag(tag), \
                     "invalid basic_io tag %r" % tag
@@ -156,7 +157,10 @@ class Stanza(object):
             else:
                 raise ValueError("invalid basic_io line %r" % l)
             self.items.append((tag, value))
-        return self
+        if first:
+            return None         # didn't see any content
+        else:
+            return self
 
     def _parse_string_line(self, line):
         """Read one line of a quoted string.
