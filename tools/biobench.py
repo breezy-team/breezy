@@ -5,7 +5,7 @@
 Tries serializing an inventory to basic_io repeatedly.
 """
 
-if True:
+if False:
     import psyco
     psyco.full()
 
@@ -25,7 +25,7 @@ from bzrlib.inventory import Inventory, InventoryEntry, InventoryFile, ROOT_ID
 
 def make_inventory():
     inv = Inventory()
-    for i in range(3000):
+    for i in range(30000):
         inv.add(InventoryFile('%08d-id' % i, '%08d-file' % i, ROOT_ID))
     return inv
 
@@ -47,7 +47,7 @@ def xml_test():
     xml_tmp.seek(0)
     new_inv = serializer_v5.read_inventory(xml_tmp)
 
-ntimes = 100
+ntimes = 10
 
 def run_benchmark(function_name, tmp_file):
     t = Timer(function_name + '()', 

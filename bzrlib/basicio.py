@@ -29,8 +29,7 @@ import re
 # XXX: should these be BasicIOWriter, etc?
 #
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
-# through a writer object.  also a bit confused to have a StanzaWriter but to 
-# have parsing done inside the Stanza.
+# through a writer object.  
 
 class BasicWriter(object):
     def __init__(self, to_file):
@@ -62,28 +61,6 @@ class BasicReader(object):
                 yield s
 
 
-class _StanzaWriter(object):
-    """Convert Stanza to external form."""
-    def __init__(self, items):
-        self.items = items
-
-    def to_lines(self):
-        indent = max(len(kv[0]) for kv in self.items)
-        for tag, value in self.items:
-            if isinstance(value, (int, long)):
-                # must use %d so bools are written as ints
-                yield '%*s %d\n' % (indent, tag, value)
-            elif isinstance(value, (str, unicode)):
-                yield '%*s %s\n' % (indent, tag, self.quote_string(value))
-            else:
-                raise ValueError("invalid value %r" % value)
-
-    def quote_string(self, value):
-        qv = value.replace('\\', r'\\') \
-                  .replace('"', r'\"') 
-        return '"' + qv + '"'
-
-
 class Stanza(object):
     """One stanza for basic_io.
 
@@ -96,22 +73,24 @@ class Stanza(object):
     Each field value must be either an int or a string.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, *items, **kwargs):
         """Construct a new Stanza.
 
         The keyword arguments, if any, are added in sorted order to the stanza.
         """
-        self.items = list()
+        if items:
+            self.items = items
+        else:
+            self.items = list()
         if kwargs:
-            for tag, value in sorted(kwargs.items()):
-                self.add(tag, value)
+            self.items.extend(sorted(kwargs.items()))
 
     def add(self, tag, value):
         """Append a name and value to the stanza."""
-        if not valid_tag(tag):
-            raise ValueError("invalid tag %r" % tag)
-        if not isinstance(value, (int, long, str, unicode)):
-            raise ValueError("invalid value %r" % value)
+##         if not valid_tag(tag):
+##             raise ValueError("invalid tag %r" % tag)
+##         if not isinstance(value, (int, long, str, unicode)):
+##             raise ValueError("invalid value %r" % value)
         self.items.append((tag, value))
         
     def __contains__(self, find_tag):
@@ -142,7 +121,15 @@ class Stanza(object):
 
     def to_lines(self):
         """Generate sequence of lines for external version of this file."""
-        return _StanzaWriter(self.items).to_lines()
+        indent = max(len(kv[0]) for kv in self.items)
+        for tag, value in self.items:
+            if isinstance(value, (int, long)):
+                # must use %d so bools are written as ints
+                yield '%*s %d\n' % (indent, tag, value)
+            elif isinstance(value, (str, unicode)):
+                yield '%*s %s\n' % (indent, tag, quote_string(value))
+            else:
+                raise ValueError("invalid value %r" % value)
 
     def to_string(self):
         """Return stanza as a single string"""
@@ -155,17 +142,18 @@ class Stanza(object):
     @classmethod
     def from_lines(klass, from_lines):
         """Return new Stanza read from list of lines"""
-        self = klass()
         line_iter = from_lines #  iter(from_lines)
-        first = True
+        items = []
         for l in line_iter:
             assert l[-1] == '\n'
             if l == None or l == '' or l == '\n':
                 break
-            first = False
-            tag, rest = l.split(None, 1)
+            l = l.lstrip()
+            space = l.index(' ')
+            tag = l[:space]
             assert valid_tag(tag), \
                     "invalid basic_io tag %r" % tag
+            rest = l[space+1:]
             if rest[0] == '"':
                 # keep reading in lines, accumulating into value, until we're done
                 assert rest[-2] == '"'
@@ -181,15 +169,12 @@ class Stanza(object):
 ##                     except StopIteration:
 ##                         raise ValueError('unexpected end in quoted string %r' % value)
 ##                 value = ''.join(line_values)
-            elif rest[0] in '-0123456789':
-                value = int(rest)
             else:
-                raise ValueError("invalid basic_io line %r" % l)
-            self.items.append((tag, value))
-        if first:
+                value = int(rest)
+            items.append((tag, value))
+        if not items:
             return None         # didn't see any content
-        else:
-            return self
+        return klass(*items)
 
     def _parse_string_line(self, line):
         """Read one line of a quoted string.
@@ -201,6 +186,7 @@ class Stanza(object):
 
         Lines end if they have a doublequote at the end which is not escaped; 
         """
+        raise NotImplementedError
         # lines can only possibly end if they finish with a doublequote;
         # but they only end there if it's not quoted
         # Is iterating every character too slow in Python?
@@ -236,13 +222,7 @@ class Stanza(object):
             r += c + '\n'
         return r, False
 
-    @classmethod
-    def from_file(klass, from_file):
-        """Return new Stanza read from a file.
-
-        This consumes the blank line following the stanza, if there is one.
-        """
-        return klass.from_lines(from_file)
+    from_file = from_lines
 
     @classmethod
     def from_string(klass, s):
@@ -272,6 +252,12 @@ class Stanza(object):
 TAG_RE = re.compile(r'^[-a-zA-Z0-9_]+$')
 def valid_tag(tag):
     return bool(TAG_RE.match(tag))
+
+
+def quote_string(value):
+    qv = value.replace('\\', r'\\') \
+              .replace('"', r'\"') 
+    return '"' + qv + '"'
 
 
 ############################################################
