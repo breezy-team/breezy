@@ -102,8 +102,9 @@ class Stanza(object):
         The keyword arguments, if any, are added in sorted order to the stanza.
         """
         self.items = list()
-        for tag, value in sorted(kwargs.items()):
-            self.add(tag, value)
+        if kwargs:
+            for tag, value in sorted(kwargs.items()):
+                self.add(tag, value)
 
     def add(self, tag, value):
         """Append a name and value to the stanza."""
@@ -155,9 +156,10 @@ class Stanza(object):
     def from_lines(klass, from_lines):
         """Return new Stanza read from list of lines"""
         self = klass()
-        line_iter = iter(from_lines)
+        line_iter = from_lines #  iter(from_lines)
         first = True
         for l in line_iter:
+            assert l[-1] == '\n'
             if l == None or l == '' or l == '\n':
                 break
             first = False
@@ -166,17 +168,19 @@ class Stanza(object):
                     "invalid basic_io tag %r" % tag
             if rest[0] == '"':
                 # keep reading in lines, accumulating into value, until we're done
-                line = rest[1:]
-                value = ''
-                while True:
-                    content, end = self._parse_string_line(line)
-                    value += content
-                    if end: 
-                        break
-                    try:
-                        line = line_iter.next()
-                    except StopIteration:
-                        raise ValueError('unexpected end in quoted string %r' % value)
+                assert rest[-2] == '"'
+                value = rest[1:-2]
+                # line_values = []
+##                 while True:
+##                     content, end = self._parse_string_line(line)
+##                     line_values.append(content)
+##                     if end: 
+##                         break
+##                     try:
+##                         line = line_iter.next()
+##                     except StopIteration:
+##                         raise ValueError('unexpected end in quoted string %r' % value)
+##                 value = ''.join(line_values)
             elif rest[0] in '-0123456789':
                 value = int(rest)
             else:
@@ -201,6 +205,9 @@ class Stanza(object):
         # but they only end there if it's not quoted
         # Is iterating every character too slow in Python?
         assert line[-1] == '\n'
+        # hack for testing - lines must be single lines
+        assert line[-2] == '"'
+        return line[:-2].replace(r'\"', '"').replace(r'\\', '\\'), True
         r = ''
         l = len(line)
         quotech = False
@@ -253,6 +260,8 @@ class Stanza(object):
         else:
             raise KeyError(tag)
 
+    __getitem__ = get
+
     def get_all(self, tag):
         r = []
         for t, v in self.items:
@@ -299,3 +308,22 @@ def write_inventory(writer, inventory):
             if attr_val is not None:
                 s.add(attr, attr_val)
         writer.write_stanza(s)
+
+
+def read_inventory(inv_file):
+    """Read inventory object from basic_io formatted inventory file"""
+    from bzrlib.inventory import Inventory, InventoryFile
+    s = Stanza.from_file(inv_file)
+    assert s['inventory_version'] == 7
+    inv = Inventory()
+    for s in BasicReader(inv_file):
+        kind, file_id = s.items[0]
+        parent_id = None
+        if 'parent_id' in s:
+            parent_id = s['parent_id']
+        if kind == 'file':
+            ie = InventoryFile(file_id, s['name'], parent_id)
+        else:
+            raise NotImplementedError()
+        inv.add(ie)
+    return inv
