@@ -348,6 +348,23 @@ class LocationConfig(IniBasedConfig):
             return hook
         return self._get_global_config()._post_commit()
 
+    def set_user_option(self, option, value):
+        """Save option and its value in the configuration."""
+        # FIXME: RBC 20051029 This should refresh the parser and also take a
+        # file lock on branches.conf.
+        if not os.path.isdir(os.path.dirname(self._get_filename())):
+            os.mkdir(os.path.dirname(self._get_filename()))
+        location = self.location
+        if location.endswith('/'):
+            location = location[:-1]
+        if (not location in self._get_parser() and
+            not location + '/' in self._get_parser()):
+            self._get_parser()[location]={}
+        elif location + '/' in self._get_parser():
+            location = location + '/'
+        self._get_parser()[location][option]=value
+        self._get_parser().write()
+
 
 class BranchConfig(Config):
     """A configuration object giving the policy for a branch."""

@@ -16,6 +16,7 @@
 
 """Implementation of Transport over SFTP, using paramiko."""
 
+import errno
 import getpass
 import os
 import re
@@ -23,7 +24,9 @@ import stat
 import sys
 import urllib
 
-from bzrlib.errors import TransportNotPossible, NoSuchFile, NonRelativePath, TransportError
+from bzrlib.errors import (FileExists, 
+                           TransportNotPossible, NoSuchFile, NonRelativePath,
+                           TransportError)
 from bzrlib.config import config_dir
 from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import Transport, register_transport
@@ -84,7 +87,7 @@ class SFTPTransport (Transport):
     Transport implementation for SFTP access.
     """
 
-    _url_matcher = re.compile(r'^sftp://([^@]*@)?(.*?)(:\d+)?(/.*)?$')
+    _url_matcher = re.compile(r'^sftp://([^:@]*(:[^@]*)?@)?(.*?)(:\d+)?(/.*)?$')
     
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
@@ -145,7 +148,7 @@ class SFTPTransport (Transport):
                 basepath.append(p)
 
         path = '/'.join(basepath)
-        if path[0] != '/':
+        if len(path) and path[0] != '/':
             path = '/' + path
         return path
 
@@ -206,6 +209,8 @@ class SFTPTransport (Transport):
         try:
             path = self._abspath(relpath)
             fout = self._sftp.file(path, 'wb')
+        except IOError, e:
+            self._translate_io_exception(e, relpath)
         except (IOError, paramiko.SSHException), x:
             raise SFTPTransportError('Unable to write file %r' % (path,), x)
         try:
@@ -230,8 +235,23 @@ class SFTPTransport (Transport):
         try:
             path = self._abspath(relpath)
             self._sftp.mkdir(path)
+        except IOError, e:
+            self._translate_io_exception(e, relpath)
         except (IOError, paramiko.SSHException), x:
             raise SFTPTransportError('Unable to mkdir %r' % (path,), x)
+
+    def _translate_io_exception(self, e, relpath):
+        # paramiko seems to generate detailless errors.
+        if (e.errno == errno.ENOENT or
+            e.args == ('No such file or directory',) or
+            e.args == ('No such file',)):
+            raise NoSuchFile(relpath)
+        if (e.args == ('mkdir failed',)):
+            raise FileExists(relpath)
+        # strange but true, for the paramiko server.
+        if (e.args == ('Failure',)):
+            raise FileExists(relpath)
+        raise
 
     def append(self, relpath, f):
         """
@@ -344,11 +364,14 @@ class SFTPTransport (Transport):
         m = self._url_matcher.match(url)
         if m is None:
             raise SFTPTransportError('Unable to parse SFTP URL %r' % (url,))
-        self._username, self._host, self._port, self._path = m.groups()
+        self._username, self._password, self._host, self._port, self._path = m.groups()
         if self._username is None:
             self._username = getpass.getuser()
         else:
             self._username = self._username[:-1]
+        if self._password:
+            self._password = self._password[1:]
+            self._username = self._username[len(self._password)+1:]
         if self._port is None:
             self._port = 22
         else:
@@ -414,6 +437,13 @@ class SFTPTransport (Transport):
             return
         if self._try_pkey_auth(transport, paramiko.DSSKey, 'id_dsa'):
             return
+
+        if self._password:
+            try:
+                transport.auth_password(self._username, self._password)
+                return
+            except paramiko.SSHException, e:
+                pass
 
         # give up and ask for a password
         password = getpass.getpass('SSH %s@%s password: ' % (self._username, self._host))

@@ -167,8 +167,8 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
     else:
         new_tree = b.revision_tree(revision2.in_history(b).rev_id)
 
-    show_diff_trees(old_tree, new_tree, output, specific_files,
-                    external_diff_options)
+    return show_diff_trees(old_tree, new_tree, output, specific_files,
+                           external_diff_options)
 
 
 
@@ -207,17 +207,21 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
     delta = compare_trees(old_tree, new_tree, want_unchanged=False,
                           specific_files=specific_files)
 
+    has_changes = 0
     for path, file_id, kind in delta.removed:
+        has_changes = 1
         print >>to_file, '=== removed %s %r' % (kind, path)
         old_tree.inventory[file_id].diff(diff_file, old_label + path, old_tree,
                                          DEVNULL, None, None, to_file)
     for path, file_id, kind in delta.added:
+        has_changes = 1
         print >>to_file, '=== added %s %r' % (kind, path)
         new_tree.inventory[file_id].diff(diff_file, new_label + path, new_tree,
                                          DEVNULL, None, None, to_file, 
                                          reverse=True)
     for (old_path, new_path, file_id, kind,
          text_modified, meta_modified) in delta.renamed:
+        has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== renamed %s %r => %r%s' % (
                           kind, old_path, new_path, prop_str)
@@ -225,12 +229,14 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                                     new_label, new_path, new_tree,
                                     text_modified, kind, to_file, diff_file)
     for path, file_id, kind, text_modified, meta_modified in delta.modified:
+        has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== modified %s %r%s' % (kind, path, prop_str)
         if text_modified:
             _maybe_diff_file_or_symlink(old_label, path, old_tree, file_id,
                                         new_label, path, new_tree,
                                         True, kind, to_file, diff_file)
+    return has_changes
     
 
 def get_prop_change(meta_modified):

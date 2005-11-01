@@ -90,8 +90,8 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
 
     file_list = _prepare_file_list(file_list)
     user_list = file_list[:]
-    inv = branch.read_working_inventory()
     tree = branch.working_tree()
+    inv = tree.read_working_inventory()
     count = 0
 
     for f in file_list:

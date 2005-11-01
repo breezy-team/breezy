@@ -32,6 +32,7 @@ from bzrlib.transport.memory import MemoryTransport
 
 
 class TestStores(object):
+    """Mixin template class that provides some common tests for stores"""
 
     def check_content(self, store, fileid, value):
         f = store.get(fileid)

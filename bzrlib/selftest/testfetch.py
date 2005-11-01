@@ -42,20 +42,20 @@ def fetch_steps(self, br_a, br_b, writable_a):
         os.mkdir(name)
         return Branch.initialize(name)
             
-    assert not has_revision(br_b, br_a.revision_history()[3])
-    assert has_revision(br_b, br_a.revision_history()[2])
-    assert len(br_b.revision_history()) == 7
-    assert greedy_fetch(br_b, br_a, br_a.revision_history()[2])[0] == 0
+    self.assertFalse(has_revision(br_b, br_a.revision_history()[3]))
+    self.assert_(has_revision(br_b, br_a.revision_history()[2]))
+    self.assertEquals(len(br_b.revision_history()), 7)
+    self.assertEquals(greedy_fetch(br_b, br_a, br_a.revision_history()[2])[0], 0)
 
     # greedy_fetch is not supposed to alter the revision history
-    assert len(br_b.revision_history()) == 7
-    assert not has_revision(br_b, br_a.revision_history()[3])
+    self.assertEquals(len(br_b.revision_history()), 7)
+    self.assertFalse(has_revision(br_b, br_a.revision_history()[3]))
 
-    assert len(br_b.revision_history()) == 7
-    assert greedy_fetch(br_b, br_a, br_a.revision_history()[3])[0] == 1
-    assert has_revision(br_b, br_a.revision_history()[3])
-    assert not has_revision(br_a, br_b.revision_history()[6])
-    assert has_revision(br_a, br_b.revision_history()[5])
+    self.assertEquals(len(br_b.revision_history()), 7)
+    self.assertEquals(greedy_fetch(br_b, br_a, br_a.revision_history()[3])[0], 1)
+    self.assert_(has_revision(br_b, br_a.revision_history()[3]))
+    self.assertFalse(has_revision(br_a, br_b.revision_history()[6]))
+    self.assert_(has_revision(br_a, br_b.revision_history()[5]))
 
     # When a non-branch ancestor is missing, it should be unlisted...
     # as its not reference from the inventory weave.
@@ -65,28 +65,28 @@ def fetch_steps(self, br_a, br_b, writable_a):
     self.assertEqual(failures, [])
 
     self.assertEqual(greedy_fetch(writable_a, br_b)[0], 1)
-    assert has_revision(br_a, br_b.revision_history()[3])
-    assert has_revision(br_a, br_b.revision_history()[4])
+    self.assert_(has_revision(br_a, br_b.revision_history()[3]))
+    self.assert_(has_revision(br_a, br_b.revision_history()[4]))
         
     br_b2 = new_branch('br_b2')
-    assert greedy_fetch(br_b2, br_b)[0] == 7
-    assert has_revision(br_b2, br_b.revision_history()[4])
-    assert has_revision(br_b2, br_a.revision_history()[2])
-    assert not has_revision(br_b2, br_a.revision_history()[3])
+    self.assertEquals(greedy_fetch(br_b2, br_b)[0], 7)
+    self.assert_(has_revision(br_b2, br_b.revision_history()[4]))
+    self.assert_(has_revision(br_b2, br_a.revision_history()[2]))
+    self.assertFalse(has_revision(br_b2, br_a.revision_history()[3]))
 
     br_a2 = new_branch('br_a2')
-    assert greedy_fetch(br_a2, br_a)[0] == 9
-    assert has_revision(br_a2, br_b.revision_history()[4])
-    assert has_revision(br_a2, br_a.revision_history()[3])
-    assert has_revision(br_a2, br_a.revision_history()[2])
+    self.assertEquals(greedy_fetch(br_a2, br_a)[0], 9)
+    self.assert_(has_revision(br_a2, br_b.revision_history()[4]))
+    self.assert_(has_revision(br_a2, br_a.revision_history()[3]))
+    self.assert_(has_revision(br_a2, br_a.revision_history()[2]))
 
     br_a3 = new_branch('br_a3')
-    assert greedy_fetch(br_a3, br_a2)[0] == 0
+    self.assertEquals(greedy_fetch(br_a3, br_a2)[0], 0)
     for revno in range(4):
-        assert not has_revision(br_a3, br_a.revision_history()[revno])
+        self.assertFalse(has_revision(br_a3, br_a.revision_history()[revno]))
     self.assertEqual(greedy_fetch(br_a3, br_a2, br_a.revision_history()[2])[0], 3)
     fetched = greedy_fetch(br_a3, br_a2, br_a.revision_history()[3])[0]
-    assert fetched == 3, "fetched %d instead of 3" % fetched
+    self.assertEquals(fetched, 3, "fetched %d instead of 3" % fetched)
     # InstallFailed should be raised if the branch is missing the revision
     # that was requested.
     self.assertRaises(bzrlib.errors.InstallFailed, greedy_fetch, br_a3,
@@ -104,7 +104,7 @@ class TestFetch(TestCaseInTempDir):
 
     def test_fetch(self):
         #highest indices a: 5, b: 7
-        br_a, br_b = make_branches()
+        br_a, br_b = make_branches(self)
         fetch_steps(self, br_a, br_b, br_a)
 
 
@@ -187,7 +187,7 @@ class TestHttpFetch(TestCaseWithWebserver):
 
     def test_fetch(self):
         #highest indices a: 5, b: 7
-        br_a, br_b = make_branches()
+        br_a, br_b = make_branches(self)
         br_rem_a = Branch.open(self.get_remote_url(br_a._transport.base))
         fetch_steps(self, br_rem_a, br_b, br_a)
 
