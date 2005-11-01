@@ -24,14 +24,15 @@ either an integer (scored in decimal) or a Unicode string.
 import re
 
 class BasicWriter(object):
-    def __init__(self):
-        self.soft_nl = False
+    def __init__(self, to_file):
+        self._soft_nl = False
+        self._to_file = to_file
 
     def write_stanza(self, stanza):
-        if self.soft_nl:
-            print
-        _StanzaWriter(stanza.items).write()
-        self.soft_nl = True
+        if self._soft_nl:
+            print >>self._to_file
+        stanza.write(self._to_file)
+        self._soft_nl = True
 
 
 class _StanzaWriter(object):
@@ -142,7 +143,7 @@ class Stanza(object):
                 line = rest[1:]
                 value = ''
                 while True:
-                    content, end = self._parse_line(line)
+                    content, end = self._parse_string_line(line)
                     value += content
                     if end: 
                         break
@@ -157,13 +158,15 @@ class Stanza(object):
             self.items.append((tag, value))
         return self
 
-    def _parse_line(self, line):
+    def _parse_string_line(self, line):
         """Read one line of a quoted string.
 
-        line has the trailing newline still present.
+        The line always has the trailing newline still present.
 
         Returns parsed unquoted content, and a flag saying whether we've got
         to the end of the string.
+
+        Lines end if they have a doublequote at the end which is not escaped; 
         """
         # lines can only possibly end if they finish with a doublequote;
         # but they only end there if it's not quoted
@@ -255,7 +258,8 @@ def write_inventory(writer, inventory):
 
     for path, ie in inventory.iter_entries():
         s = Stanza()
-        for attr in ['kind', 'name', 'file_id', 'parent_id', 'revision',
+        s.add(ie.kind, ie.file_id)
+        for attr in ['name', 'parent_id', 'revision',
                      'text_sha1', 'text_size', 'executable', 'symlink_target',
                      ]:
             attr_val = getattr(ie, attr, None)
