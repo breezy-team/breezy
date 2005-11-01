@@ -27,7 +27,7 @@ import sys
 from tempfile import TemporaryFile
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
-from bzrlib.basicio import BasicReader, BasicWriter, Stanza
+from bzrlib.basicio import BasicWriter, Stanza, read_stanza, read_stanzas
 
 
 class TestBasicIO(TestCase):
@@ -45,16 +45,17 @@ class TestBasicIO(TestCase):
 
     def test_value_checks(self):
         """basic_io checks types on construction"""
-        self.assertRaises(ValueError,
-                Stanza, complex=42 + 3j)
-        self.assertRaises(ValueError, 
-                Stanza, several=range(10))
+        # these aren't enforced at construction time
+        ## self.assertRaises(ValueError,
+        ##        Stanza, complex=42 + 3j)
+        ## self.assertRaises(ValueError, 
+        ##        Stanza, several=range(10))
 
     def test_to_lines(self):
         """Write simple basic_io stanza to string"""
         s = Stanza(number=42, name='fred')
         self.assertEquals(list(s.to_lines()),
-                ['  name "fred"\n',
+                ['name "fred"\n',
                  'number 42\n'])
 
     def test_to_file(self):
@@ -65,8 +66,8 @@ class TestBasicIO(TestCase):
         tmpf.seek(0)
         self.assertEqualDiff(tmpf.read(), r'''
 a_thing "something with \"quotes like \\\"this\\\"\""
-   name "fred"
- number 42
+name "fred"
+number 42
 '''[1:])
 
     def test_multiline_string(self):
@@ -76,12 +77,9 @@ a_thing "something with \"quotes like \\\"this\\\"\""
                    charlie_horse=456)
         s.write(tmpf)
         tmp.seek(0)
-        self.assertEqualDiff(tmpf.read(), '''\
-            a 123
-        motto "war is peace
-freedom is slavery
-ignorance is strength
-"
+        self.assertEqualDiff(tmpf.read(), r'''\
+a 123
+motto "war is peace\nfreedom is slavery\nignorance is strength\n"
 charlie_horse 456
 ''')
 
@@ -91,23 +89,21 @@ charlie_horse 456
         s.write(tmpf)
         tmpf.seek(0)
         self.assertEqualDiff(tmpf.read(), '''\
-motto "war is peace
-freedom is slavery
-ignorance is strength"
+motto "war is peace\\nfreedom is slavery\\nignorance is strength"
 ''')
         tmpf.seek(0)
-        s2 = Stanza.from_file(tmpf)
+        s2 = read_stanza(tmpf)
         self.assertEquals(s, s2)
 
     def test_read_stanza(self):
         """Load stanza from string"""
         lines = """\
- revision "mbp@sourcefrog.net-123-abc"
+revision "mbp@sourcefrog.net-123-abc"
 timestamp 1130653962
- timezone 36000
+timezone 36000
 committer "Martin Pool <mbp@test.sourcefrog.net>"
 """.splitlines(True)
-        s = Stanza.from_lines(lines)
+        s = read_stanza(lines)
         self.assertTrue('revision' in s)
         self.assertEqualDiff(s.get('revision'), 'mbp@sourcefrog.net-123-abc')
         self.assertEquals(list(s.iter_pairs()),
@@ -122,8 +118,7 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
         s = Stanza()
         for k, v in [('a', 10), ('b', 20), ('a', 100), ('b', 200), ('a', 1000), ('b', 2000)]:
             s.add(k, v)
-        t = s.to_string()
-        s2 = Stanza.from_string(t)
+        s2 = read_stanza(s.to_lines())
         self.assertEquals(s, s2)
         self.assertEquals(s.get_all('a'), [10, 100, 1000])
         self.assertEquals(s.get_all('b'), [20, 200, 2000])
@@ -133,7 +128,7 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
         s = Stanza(x=-12345678901234567890,
                    y=1<<100)
         lines = s.to_lines()
-        s2 = Stanza.from_lines(lines)
+        s2 = read_stanza(lines)
         self.assertEquals(s, s2)
 
     def test_quoted_0(self):
@@ -141,7 +136,7 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
         s = Stanza(q='\\')
         t = s.to_string()
         self.assertEqualDiff(t, 'q "\\\\"\n')
-        s2 = Stanza.from_string(t)
+        s2 = read_stanza(s.to_lines())
         self.assertEquals(s, s2)
 
     def test_quoted_1(self):
@@ -153,13 +148,13 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
         s = Stanza(q=r'""""')
         t = s.to_string()
         self.assertEqualDiff(t, r'q "\"\"\"\""' + '\n')
-        s2 = Stanza.from_string(t)
+        s2 = read_stanza(s.to_lines())
         self.assertEquals(s, s2)
 
     def test_quoted_5(self):
         s = Stanza(q=r'\\\\\"')
         t = s.to_string()
-        s2 = Stanza.from_string(t)
+        s2 = read_stanza(s.to_lines())
         self.assertEquals(s, s2)
 
     def test_quoted(self):
@@ -174,12 +169,12 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
                    q8='\\',
                    q9='\\"\\"',
                    )
-        s2 = Stanza.from_lines(s.to_lines())
+        s2 = read_stanza(s.to_lines())
         self.assertEquals(s, s2)
 
     def test_read_empty(self):
         """Detect end of basic_io file"""
-        s = Stanza.from_lines([])
+        s = read_stanza([])
         self.assertEqual(s, None)
         self.assertTrue(s is None)
         
@@ -190,13 +185,13 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
 version_header 1
 
 name "foo"
- val 123
+val 123
 
 name "bar"
- val 129319
+val 129319
 """)
         tmpf.seek(0)
-        reader = BasicReader(tmpf)
+        reader = read_stanzas(tmpf)
         read_iter = iter(reader)
         stuff = list(reader)
         self.assertEqual(stuff, 
@@ -211,19 +206,19 @@ name "bar"
 version_header 1
 
 name "foo"
- val 123
+val 123
 
 name "bar"
- val 129319
+val 129319
 """)
         tmpf.seek(0)
-        s = Stanza.from_file(tmpf)
+        s = read_stanza(tmpf)
         self.assertEquals(s, Stanza(version_header=1))
-        s = Stanza.from_file(tmpf)
+        s = read_stanza(tmpf)
         self.assertEquals(s, Stanza(name="foo", val=123))
-        s = Stanza.from_file(tmpf)
+        s = read_stanza(tmpf)
         self.assertEquals(s, Stanza(name="bar", val=129319))
-        s = Stanza.from_file(tmpf)
+        s = read_stanza(tmpf)
         self.assertEquals(s, None)
 
     def test_write_bool(self):

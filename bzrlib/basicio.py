@@ -26,8 +26,6 @@ import re
 # XXX: basic_io is kind of a dumb name; it seems to imply an io layer not a
 # format
 #
-# XXX: should these be BasicIOWriter, etc?
-#
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
 # through a writer object.  
 
