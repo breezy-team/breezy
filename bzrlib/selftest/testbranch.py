@@ -191,6 +191,21 @@ class TestBranch(TestCaseInTempDir):
         branch = Branch.initialize('.')
         self.assertEqual('.bzr', branch._rel_controlfilename(''))
 
+    def test_nicks(self):
+        """Branch nicknames"""
+        os.mkdir('bzr.dev')
+        branch = Branch.initialize('bzr.dev')
+        self.assertEqual(branch.nick, 'bzr.dev')
+        os.rename('bzr.dev', 'bzr.ab')
+        branch = Branch.open('bzr.ab')
+        self.assertEqual(branch.nick, 'bzr.ab')
+        branch.nick = "Aaron's branch"
+        self.failUnless(os.path.exists(branch.controlfilename("branch.conf")))
+        self.assertEqual(branch.nick, "Aaron's branch")
+        os.rename('bzr.ab', 'integration')
+        branch = Branch.open('integration')
+        self.assertEqual(branch.nick, "Aaron's branch")
+
 
 class TestRemote(TestCaseWithWebserver):
 

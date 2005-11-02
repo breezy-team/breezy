@@ -50,6 +50,7 @@ import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 import bzrlib.xml5
 import bzrlib.ui
+from config import TreeConfig
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -151,6 +152,18 @@ class Branch(object):
         up cached stores located under cache_root.
         """
         self.cache_root = cache_root
+
+    def _get_nick(self):
+        cfg = self.tree_config()
+        return cfg.get_option(u"nickname", default=self.base.split('/')[-1])
+
+    def _set_nick(self, nick):
+        cfg = self.tree_config()
+        cfg.set_option(nick, "nickname")
+        assert cfg.get_option("nickname") == nick
+
+    nick = property(_get_nick, _set_nick)
+        
 
 
 class _Branch(Branch):
@@ -1176,6 +1189,9 @@ class _Branch(Branch):
         finally:
             f.close()
 
+    def tree_config(self):
+        return TreeConfig(self)
+
     def check_revno(self, revno):
         """\
         Check whether a revno corresponds to any revision.
@@ -1200,6 +1216,7 @@ class _Branch(Branch):
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
                                 revision_id, "sig")
+
 
 
 class ScratchBranch(_Branch):

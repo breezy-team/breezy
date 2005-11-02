@@ -60,7 +60,7 @@ import re
 import bzrlib
 import bzrlib.errors as errors
 import bzrlib.util.configobj.configobj as configobj
-
+from StringIO import StringIO
 
 CHECK_IF_POSSIBLE=0
 CHECK_ALWAYS=1
@@ -466,3 +466,49 @@ def extract_email_address(e):
         raise BzrError("%r doesn't seem to contain "
                        "a reasonable email address" % e)
     return m.group(0)
+
+class TreeConfig(object):
+    """Branch configuration data associated with its contents, not location"""
+    def __init__(self, branch):
+        self.branch = branch
+
+    def _get_config(self):
+        try:
+            obj = ConfigObj(self.branch.controlfile('branch.conf', 'rb'))
+        except errors.NoSuchFile:
+            obj = ConfigObj()
+        return obj
+
+    def get_option(self, name, section=None, default=None):
+        self.branch.lock_read()
+        try:
+            obj = self._get_config()
+            try:
+                if section is not None:
+                    obj[section]
+                result = obj[name]
+            except KeyError:
+                result = default
+        finally:
+            self.branch.unlock()
+        return result
+
+    def set_option(self, value, name, section=None):
+        """Set a per-branch configuration option"""
+        self.branch.lock_write()
+        try:
+            cfg_obj = self._get_config()
+            if section is None:
+                obj = cfg_obj
+            else:
+                try:
+                    obj = cfg_obj[section]
+                except KeyError:
+                    cfg_obj[section] = {}
+                    obj = cfg_obj[section]
+            obj[name] = value
+            out_file = StringIO(''.join([l+'\n' for l in cfg_obj.write()]))
+            out_file.seek(0)
+            self.branch.put_controlfile('branch.conf', out_file, encode=True)
+        finally:
+            self.branch.unlock()
