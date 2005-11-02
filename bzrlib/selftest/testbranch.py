@@ -200,11 +200,14 @@ class TestBranch(TestCaseInTempDir):
         branch = Branch.open('bzr.ab')
         self.assertEqual(branch.nick, 'bzr.ab')
         branch.nick = "Aaron's branch"
+        branch.nick = "Aaron's branch"
         self.failUnless(os.path.exists(branch.controlfilename("branch.conf")))
         self.assertEqual(branch.nick, "Aaron's branch")
         os.rename('bzr.ab', 'integration')
         branch = Branch.open('integration')
         self.assertEqual(branch.nick, "Aaron's branch")
+        branch.nick = u"\u1234"
+        self.assertEqual(branch.nick, u"\u1234")
 
 
 class TestRemote(TestCaseWithWebserver):

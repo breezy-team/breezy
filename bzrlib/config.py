@@ -474,7 +474,8 @@ class TreeConfig(object):
 
     def _get_config(self):
         try:
-            obj = ConfigObj(self.branch.controlfile('branch.conf', 'rb'))
+            obj = ConfigObj(self.branch.controlfile('branch.conf',
+                                                    'rb').readlines())
         except errors.NoSuchFile:
             obj = ConfigObj()
         return obj
