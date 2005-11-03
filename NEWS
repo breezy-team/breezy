@@ -1,6 +1,11 @@
-For 0.7
+UNRELEASED CHANGES
 
   IMPROVEMENTS:
+
+    * "bzr INIT dir" now initializes the specified directory, and creates 
+      it if it does not exist.  (John Arbash Meinel)
+
+    * Better zsh completion script.  (Steve Borho)
 
     * 'bzr diff' now returns 1 when there are changes in the working 
       tree. (Robert Collins)
@@ -9,6 +14,19 @@ For 0.7
       This uses the transport infrastructure, and can store the remote
       location in the ~/.bazaar/branches.conf configuration file.
       (Robert Collins)
+
+  BUG FIXES:
+
+    * SFTP can walk up to the root path without index errors. (Robert Collins)
+
+    * Fix bugs in running bzr with 'python -O'.  (Martin Pool)
+
+  TESTING:
+
+    * Fix selftest asking for passwords when there are no SFTP keys.  
+      (Robey Pointer, Jelmer Vernooij) 
+
+    * Fix selftest run with 'python -O'.  (Martin Pool)
 
   INTERNALS:
 
@@ -43,11 +61,7 @@ For 0.7
       Branch.working_tree() will raise 'errors.NoWorkingTree' if one cannot
       be obtained. (Robert Collins)
 
-  BUG FIXES:
-
-    * SFTP can walk up to the root path without index errors. (Robert Collins)
-
-bzr 0.6rc1 2005-10-27
+bzr 0.6 2005-10-28
 
   IMPROVEMENTS:
   
@@ -97,8 +111,6 @@ bzr 0.6rc1 2005-10-27
 
     * 'bzr branch' will now set the branch-name to the last component of the
       output directory, if one was supplied.
-
-    * New sftp transport, based on Paramiko.  (Robey Pointer)
 
     * If the option 'post_commit' is set to one (or more) python function
       names (must be in the bzrlib namespace), then they will be invoked

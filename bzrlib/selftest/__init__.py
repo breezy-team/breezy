@@ -488,7 +488,7 @@ class TestCaseInTempDir(TestCase):
         """
         # XXX: It's OK to just create them using forward slashes on windows?
         for name in shape:
-            assert isinstance(name, basestring)
+            self.assert_(isinstance(name, basestring))
             if name[-1] == '/':
                 os.mkdir(name[:-1])
             else:
@@ -515,7 +515,6 @@ class MetaTestLog(TestCase):
         logging.info('an info message')
         warning('something looks dodgy...')
         logging.debug('hello, test is running')
-        ## assert 0
 
 
 def filter_suite_by_re(suite, pattern):

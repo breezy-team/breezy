@@ -676,8 +676,20 @@ class cmd_init(Command):
         bzr status
         bzr commit -m 'imported project'
     """
-    def run(self):
-        Branch.initialize('.')
+    takes_args = ['location?']
+    def run(self, location=None):
+        from bzrlib.branch import Branch
+        if location is None:
+            location = '.'
+        else:
+            # The path has to exist to initialize a
+            # branch inside of it.
+            # Just using os.mkdir, since I don't
+            # believe that we want to create a bunch of
+            # locations if the user supplies an extended path
+            if not os.path.exists(location):
+                os.mkdir(location)
+        Branch.initialize(location)
 
 
 class cmd_diff(Command):
