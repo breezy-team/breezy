@@ -176,6 +176,7 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
     def test_quoted_7(self):
         qval = r'''
                 "
+                \"
                 \\"
 trailing stuff'''
         s = Stanza(q=qval)
@@ -252,3 +253,6 @@ val 129319
         """Write bool to basic_io"""
         l = list(Stanza(my_bool=True).to_lines())
         self.assertEquals(l, ['my_bool 1\n'])
+
+
+# TODO: read and write empty stanzas
