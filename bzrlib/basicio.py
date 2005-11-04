@@ -126,6 +126,9 @@ class Stanza(object):
 
     def to_lines(self):
         """Generate sequence of lines for external version of this file."""
+        if not self.items:
+            # max() complains if sequence is empty
+            return 
         indent = max(len(kv[0]) for kv in self.items)
         for tag, value in self.items:
             if isinstance(value, (int, long)):
@@ -174,8 +177,12 @@ def valid_tag(tag):
 def read_stanza(line_iter):
     """Return new Stanza read from list of lines or a file"""
     items = []
+    got_lines = False
     for l in line_iter:
-        if l == None or l == '' or l == '\n':
+        if l == None or l == '':
+            break # eof
+        got_lines = True
+        if l == '\n':
             break
         assert l[-1] == '\n'
         l = l.lstrip()
@@ -205,7 +212,7 @@ def read_stanza(line_iter):
         else:
             value = int(l[space+1:])
         items.append((tag, value))
-    if not items:
+    if not got_lines:
         return None         # didn't see any content
     s = Stanza()
     s.items = items

@@ -254,5 +254,7 @@ val 129319
         l = list(Stanza(my_bool=True).to_lines())
         self.assertEquals(l, ['my_bool 1\n'])
 
-
-# TODO: read and write empty stanzas
+    def test_empty_stanza(self):
+        """Read and write empty stanzas"""
+        l = list(Stanza().to_lines())
+        self.assertEquals(l, [])
