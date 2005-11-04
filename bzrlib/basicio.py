@@ -222,16 +222,6 @@ def read_stanza(line_iter):
     return s
 
 
-def _read_quoted_string(start, from_lines):
-    r = []
-    while True:
-
-        assert l[-2] == '"'
-        value = l[space+2:-2]
-        value = value.replace(r'\"', '\"').replace(r'\\', '\\')
-
-
-
 ############################################################
 
 # XXX: Move these to object serialization code. 
