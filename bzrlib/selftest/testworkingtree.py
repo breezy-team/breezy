@@ -17,6 +17,7 @@
 
 import os
 from bzrlib.branch import Branch
+from bzrlib.errors import NotVersionedError
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
@@ -114,3 +115,32 @@ class TestWorkingTree(TestCaseInTempDir):
         self.failUnless(br_b.has_revision('A'))
         self.failUnless(br_b.has_revision('B'))
         self.assertEqual(['A'], br_b.revision_history())
+
+    def test_revert(self):
+        """Test selected-file revert"""
+        b = Branch.initialize('.')
+
+        self.build_tree(['hello.txt'])
+        file('hello.txt', 'w').write('initial hello')
+
+        self.assertRaises(NotVersionedError,
+                          b.working_tree().revert, ['hello.txt'])
+        
+        b.add(['hello.txt'])
+        b.commit('create initial hello.txt')
+
+        self.check_file_contents('hello.txt', 'initial hello')
+        file('hello.txt', 'w').write('new hello')
+        self.check_file_contents('hello.txt', 'new hello')
+
+        wt = b.working_tree()
+
+        # revert file modified since last revision
+        wt.revert(['hello.txt'])
+        self.check_file_contents('hello.txt', 'initial hello')
+        self.check_file_contents('hello.txt~', 'new hello')
+
+        # reverting again clobbers the backup
+        wt.revert(['hello.txt'])
+        self.check_file_contents('hello.txt', 'initial hello')
+        self.check_file_contents('hello.txt~', 'initial hello')
