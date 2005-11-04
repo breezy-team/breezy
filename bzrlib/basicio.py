@@ -126,16 +126,16 @@ class Stanza(object):
 
     def to_lines(self):
         """Generate sequence of lines for external version of this file."""
+        indent = max(len(kv[0]) for kv in self.items)
         for tag, value in self.items:
             if isinstance(value, (int, long)):
                 # must use %d so bools are written as ints
-                yield '%s %d\n' % (tag, value)
+                yield '%*s %d\n' % (indent, tag, value)
             else:
                 assert isinstance(value, (str, unicode)), ("invalid value %r" % value)
                 qv = value.replace('\\', r'\\') \
-                          .replace('"',  r'\"') \
-                          .replace('\n', r'\n')
-                yield '%s "%s"\n' % (tag, qv)
+                          .replace('"',  r'\"')
+                yield '%*s "%s"\n' % (indent, tag, qv)
 
     def to_string(self):
         """Return stanza as a single string"""
@@ -171,25 +171,37 @@ def valid_tag(tag):
     return bool(TAG_RE.match(tag))
 
 
-def read_stanza(from_lines):
+def read_stanza(line_iter):
     """Return new Stanza read from list of lines or a file"""
     items = []
-    for l in from_lines:
+    for l in line_iter:
         if l == None or l == '' or l == '\n':
             break
         assert l[-1] == '\n'
+        l = l.lstrip()
         space = l.index(' ')
         tag = l[:space]
         assert valid_tag(tag), \
                 "invalid basic_io tag %r" % tag
         rest = l[space+1:]
         if l[space+1] == '"':
-            # keep reading in lines, accumulating into value, until we're done
-            assert l[-2] == '"'
-            value = l[space+2:-2]
-            value = value.replace(r'\n', '\n') \
-                  .replace(r'\"', '\"') \
-                  .replace(r'\\', '\\')
+            value = ''
+            valpart = l[space+2:]
+            while True:
+                assert valpart[-1] == '\n'
+                if len(valpart) > 2 and valpart[-2] == '"':
+                    # is this really the end, or just an escaped doublequote
+                    # at end-of-line?  it's quoted if there are an odd number
+                    # of doublequotes before it?
+                    value += valpart[:-2]
+                    break
+                else:
+                    value += valpart
+                try:
+                    valpart = line_iter.next()
+                except StopIteration:
+                    raise ValueError('end of file in quoted string after %r' % value)
+            value = value.replace('\\"', '"').replace('\\\\', '\\')
         else:
             value = int(l[space+1:])
         items.append((tag, value))
@@ -198,6 +210,16 @@ def read_stanza(from_lines):
     s = Stanza()
     s.items = items
     return s
+
+
+def _read_quoted_string(start, from_lines):
+    r = []
+    while True:
+
+        assert l[-2] == '"'
+        value = l[space+2:-2]
+        value = value.replace(r'\"', '\"').replace(r'\\', '\\')
+
 
 
 ############################################################

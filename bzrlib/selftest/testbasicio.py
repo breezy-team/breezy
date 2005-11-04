@@ -55,7 +55,7 @@ class TestBasicIO(TestCase):
         """Write simple basic_io stanza to string"""
         s = Stanza(number=42, name='fred')
         self.assertEquals(list(s.to_lines()),
-                ['name "fred"\n',
+                ['  name "fred"\n',
                  'number 42\n'])
 
     def test_to_file(self):
@@ -66,8 +66,8 @@ class TestBasicIO(TestCase):
         tmpf.seek(0)
         self.assertEqualDiff(tmpf.read(), r'''
 a_thing "something with \"quotes like \\\"this\\\"\""
-name "fred"
-number 42
+   name "fred"
+ number 42
 '''[1:])
 
     def test_multiline_string(self):
@@ -78,8 +78,11 @@ number 42
         s.write(tmpf)
         tmp.seek(0)
         self.assertEqualDiff(tmpf.read(), r'''\
-a 123
-motto "war is peace\nfreedom is slavery\nignorance is strength\n"
+            a 123
+        motto "war is peace
+freedom is slavery
+ignorance is strength
+"
 charlie_horse 456
 ''')
 
@@ -89,7 +92,9 @@ charlie_horse 456
         s.write(tmpf)
         tmpf.seek(0)
         self.assertEqualDiff(tmpf.read(), '''\
-motto "war is peace\\nfreedom is slavery\\nignorance is strength"
+motto "war is peace
+freedom is slavery
+ignorance is strength"
 ''')
         tmpf.seek(0)
         s2 = read_stanza(tmpf)
@@ -98,9 +103,9 @@ motto "war is peace\\nfreedom is slavery\\nignorance is strength"
     def test_read_stanza(self):
         """Load stanza from string"""
         lines = """\
-revision "mbp@sourcefrog.net-123-abc"
+ revision "mbp@sourcefrog.net-123-abc"
 timestamp 1130653962
-timezone 36000
+ timezone 36000
 committer "Martin Pool <mbp@test.sourcefrog.net>"
 """.splitlines(True)
         s = read_stanza(lines)
@@ -157,6 +162,28 @@ committer "Martin Pool <mbp@test.sourcefrog.net>"
         s2 = read_stanza(s.to_lines())
         self.assertEquals(s, s2)
 
+    def test_quoted_6(self):
+        qval = r'''
+                "
+                \"
+'''
+        s = Stanza(q=qval)
+        t = s.to_string()
+        self.log(t)
+        s2 = read_stanza(s.to_lines())
+        self.assertEquals(s2['q'], qval)
+        
+    def test_quoted_7(self):
+        qval = r'''
+                "
+                \\"
+trailing stuff'''
+        s = Stanza(q=qval)
+        t = s.to_string()
+        self.log(t)
+        s2 = read_stanza(s.to_lines())
+        self.assertEquals(s2['q'], qval)
+        
     def test_quoted(self):
         """basic_io quoted string cases"""
         s = Stanza(q1='"hello"', 
