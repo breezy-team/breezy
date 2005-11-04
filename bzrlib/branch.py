@@ -111,14 +111,14 @@ class Branch(object):
         """Open a branch which may be of an old format.
         
         Only local branches are supported."""
-        return NativeBranch(get_transport(base), relax_version_check=True)
+        return BzrBranch(get_transport(base), relax_version_check=True)
         
     @staticmethod
     def open(base):
         """Open an existing branch, rooted at 'base' (url)"""
         t = get_transport(base)
         mutter("trying to open %r with transport %r", base, t)
-        return NativeBranch(t)
+        return BzrBranch(t)
 
     @staticmethod
     def open_containing(url):
@@ -133,7 +133,7 @@ class Branch(object):
         t = get_transport(url)
         while True:
             try:
-                return NativeBranch(t), t.relpath(url)
+                return BzrBranch(t), t.relpath(url)
             except NotBranchError:
                 pass
             new_t = t.clone('..')
@@ -146,7 +146,7 @@ class Branch(object):
     def initialize(base):
         """Create a new branch, rooted at 'base' (url)"""
         t = get_transport(base)
-        return NativeBranch(t, init=True)
+        return BzrBranch(t, init=True)
 
     def setup_caching(self, cache_root):
         """Subclasses that care about caching should override this, and set
@@ -552,7 +552,7 @@ class Branch(object):
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError('store_revision_signature is abstract')
 
-class NativeBranch(Branch):
+class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
 
     Note that it's "local" in the context of the filesystem; it doesn't
@@ -1382,7 +1382,7 @@ class NativeBranch(Branch):
                                 revision_id, "sig")
 
 
-class ScratchBranch(NativeBranch):
+class ScratchBranch(BzrBranch):
     """Special test class: a branch that cleans up after itself.
 
     >>> b = ScratchBranch()
