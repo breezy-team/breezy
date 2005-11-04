@@ -160,7 +160,7 @@ class Convert(object):
         # to_read is a stack holding the revisions we still need to process;
         # appending to it adds new highest-priority revisions
         self.known_revisions = set(rev_history)
-        self.to_read = [rev_history[-1]]
+        self.to_read = rev_history[-1:]
         while self.to_read:
             rev_id = self.to_read.pop()
             if (rev_id not in self.revisions

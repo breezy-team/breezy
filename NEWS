@@ -7,6 +7,62 @@ UNRELEASED CHANGES
 
     * New remerge command (Aaron Bentley)
 
+    * Better zsh completion script.  (Steve Borho)
+
+    * 'bzr diff' now returns 1 when there are changes in the working 
+      tree. (Robert Collins)
+
+    * 'bzr push' now exists and can push changes to a remote location. 
+      This uses the transport infrastructure, and can store the remote
+      location in the ~/.bazaar/branches.conf configuration file.
+      (Robert Collins)
+
+  BUG FIXES:
+
+    * SFTP can walk up to the root path without index errors. (Robert Collins)
+
+    * Fix bugs in running bzr with 'python -O'.  (Martin Pool)
+
+  TESTING:
+
+    * Fix selftest asking for passwords when there are no SFTP keys.  
+      (Robey Pointer, Jelmer Vernooij) 
+
+    * Fix selftest run with 'python -O'.  (Martin Pool)
+
+  INTERNALS:
+
+    * WorkingTree.pull has been split across Branch and WorkingTree,
+      to allow Branch only pulls. (Robert Collins)
+
+    * commands.display_command now returns the result of the decorated 
+      function. (Robert Collins)
+
+    * LocationConfig now has a set_user_option(key, value) call to save
+      a setting in its matching location section (a new one is created
+      if needed). (Robert Collins)
+
+    * Branch has two new methods, get_push_location and set_push_location
+      to respectively, get and set the push location. (Robert Collins)
+
+    * commands.register_command now takes an optional flag to signal that
+      the registrant is planning to decorate an existing command. When 
+      given multiple plugins registering a command is not an error, and
+      the original command class (whether built in or a plugin based one) is
+      returned to the caller. There is a new error 'MustUseDecorated' for
+      signalling when a wrapping command should switch to the original
+      version. (Robert Collins)
+
+    * Some option parsing errors will raise 'BzrOptionError', allowing 
+      granular detection for decorating commands. (Robert Collins).
+
+    * Branch.read_working_inventory has moved to
+      WorkingTree.read_working_inventory. This necessitated changes to
+      Branch.get_root_id, and a move of Branch.set_inventory to WorkingTree
+      as well. To make it clear that a WorkingTree cannot always be obtained
+      Branch.working_tree() will raise 'errors.NoWorkingTree' if one cannot
+      be obtained. (Robert Collins)
+
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:
@@ -209,6 +265,10 @@ bzr 0.6 2005-10-28
 
     * Better handling of branches in directories with non-ascii names. 
       (Joel Rosdahl, Panagiotis Papadakos)
+
+    * Upgrades of trees with no commits will not fail due to accessing
+      [-1] in the revision-history. (Andres Salomon)
+
 
 bzr 0.1.1 2005-10-12
 

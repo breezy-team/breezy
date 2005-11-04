@@ -63,14 +63,12 @@ class TestWorkingTree(TestCaseInTempDir):
         branch = Branch.initialize('.')
         tree = WorkingTree(branch.base, branch)
         self.assertEqual(branch, tree.branch)
-        self.assertEqual(branch.inventory, tree._inventory)
         self.assertEqual(branch.base, tree.basedir)
     
     def test_construct_without_branch(self):
         branch = Branch.initialize('.')
         tree = WorkingTree(branch.base)
         self.assertEqual(branch.base, tree.branch.base)
-        self.assertEqual(branch.inventory, tree._inventory)
         self.assertEqual(branch.base, tree.basedir)
 
     def test_basic_relpath(self):

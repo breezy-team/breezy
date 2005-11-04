@@ -21,30 +21,6 @@
 
 import os, sys
 
-try:
-    version_info = sys.version_info
-except AttributeError:
-    version_info = 1, 5 # 1.5 or older
-
-
-REINVOKE = "__BZR_REINVOKE"    
-NEED_VERS = (2, 3)
-
-if version_info < NEED_VERS:
-    if not os.environ.has_key(REINVOKE):
-        # mutating os.environ doesn't work in old Pythons
-        os.putenv(REINVOKE, "1")
-        for python in 'python2.4', 'python2.3':
-            try:
-                os.execvp(python, [python] + sys.argv)
-            except OSError:
-                pass
-    print >>sys.stderr, "bzr-man.py: error: cannot find a suitable python interpreter"
-    print >>sys.stderr, "  (need %d.%d or later)" % NEED_VERS
-    sys.exit(1)
-if hasattr(os, "unsetenv"):
-    os.unsetenv(REINVOKE)
-
 import bzrlib, bzrlib.help
 
 #>>> code taken from bzr (C) Canonical
@@ -126,7 +102,7 @@ class CommandListParser(Parser):
         bzrcmd = self.params["bzrcmd"]
         outfile.write('.SH "COMMAND OVERVIEW"\n')
         for (command,usage,descr) in self.command_usage:
-            outfile.write('.TP\n.B "%s %s"\n%s\n\n' % (bzrcmd, usage, descr))
+            outfile.write('.TP\n.B "%s %s"\n%s\n' % (bzrcmd, usage, descr))
 
 
 class HelpReader:
@@ -196,7 +172,6 @@ man_foot = """\
 Path where
 .B "%(bzrcmd)s"
 is to look for external command.
-
 .TP
 .I "BZREMAIL"
 E-Mail address of the user. Overrides
@@ -204,14 +179,12 @@ E-Mail address of the user. Overrides
 .IR "EMAIL" .
 Example content:
 .I "John Doe <john@example.com>"
-
 .TP
 .I "EMAIL"
 E-Mail address of the user. Overridden by the content of the file
 .I "~/.bzr.conf/email"
 and of the environment variable
 .IR "BZREMAIL" .
-
 .SH "FILES"
 .TP
 .I "~/.bzr.conf/"
@@ -222,7 +195,6 @@ Stores name and email address of the user. Overrides content of
 .I "EMAIL"
 environment variable. Example content:
 .I "John Doe <john@example.com>"
-
 .SH "SEE ALSO"
 .UR http://www.bazaar-ng.org/
 .BR http://www.bazaar-ng.org/,

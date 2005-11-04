@@ -40,8 +40,8 @@ class TestConflicts(TestCaseInTempDir):
         self.assertEqual(len(list(tree.list_files())), 6)
         conflicts = list(tree.iter_conflicts())
         self.assertEqual(len(conflicts), 2)
-        assert 'hello' in conflicts
-        assert 'hello.sploo' in conflicts
+        self.assert_('hello' in conflicts)
+        self.assert_('hello.sploo' in conflicts)
         restore('hello')
         restore('hello.sploo')
         self.assertEqual(len(list(tree.iter_conflicts())), 0)

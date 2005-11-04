@@ -127,11 +127,26 @@ class InvalidRevisionId(BzrNewError):
         self.branch = branch
 
 
+class NoWorkingTree(BzrNewError):
+    """No WorkingTree exists for %s(base)."""
+    
+    def __init__(self, base):
+        BzrNewError.__init__(self)
+        self.base = base
+        
+
 class BzrCommandError(BzrError):
     # Error from malformed user command
+    # This is being misused as a generic exception
+    # pleae subclass. RBC 20051030
     def __str__(self):
         return self.args[0]
 
+
+class BzrOptionError(BzrCommandError):
+    """Some missing or otherwise incorrect option was supplied."""
+
+    
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
@@ -406,3 +421,10 @@ class NotConflicted(BzrNewError):
     def __init__(self, filename):
         BzrNewError.__init__(self)
         self.filename = filename
+
+class MustUseDecorated(Exception):
+    """A decorating function has requested its original command be used.
+    
+    This should never escape bzr, so does not need to be printable.
+    """
+

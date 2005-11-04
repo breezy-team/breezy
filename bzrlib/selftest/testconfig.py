@@ -73,8 +73,22 @@ sample_branches_text = ("[http://www.example.com]\n"
 class InstrumentedConfigObj(object):
     """A config obj look-enough-alike to record calls made to it."""
 
+    def __contains__(self, thing):
+        self._calls.append(('__contains__', thing))
+        return False
+
+    def __getitem__(self, key):
+        self._calls.append(('__getitem__', key))
+        return self
+
     def __init__(self, input):
         self._calls = [('__init__', input)]
+
+    def __setitem__(self, key, value):
+        self._calls.append(('__setitem__', key, value))
+
+    def write(self):
+        self._calls.append(('write',))
 
 
 class FakeBranch(object):
@@ -457,6 +471,20 @@ class TestLocationConfig(TestCase):
         self.get_location_config('/a/c')
         self.assertEqual('bzrlib.selftest.testconfig.post_commit',
                          self.my_config.post_commit())
+
+    def test_set_user_setting_sets_and_saves(self):
+        # TODO RBC 20051029 test hat mkdir ~/.bazaar is called ..
+        self.get_location_config('/a/c')
+        record = InstrumentedConfigObj("foo")
+        self.my_config._parser = record
+        self.my_config.set_user_option('foo', 'bar')
+        self.assertEqual([('__contains__', '/a/c'),
+                          ('__contains__', '/a/c/'),
+                          ('__setitem__', '/a/c', {}),
+                          ('__getitem__', '/a/c'),
+                          ('__setitem__', 'foo', 'bar'),
+                          ('write',)],
+                         record._calls[1:])
 
 
 class TestBranchConfigItems(TestCase):

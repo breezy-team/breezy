@@ -36,7 +36,11 @@ import errno
 import bzrlib
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning
-from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
+from bzrlib.errors import (BzrError, 
+                           BzrCheckError,
+                           BzrCommandError,
+                           BzrOptionError,
+                           NotBranchError)
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib import BZRDIR
 from bzrlib.option import Option
@@ -44,7 +48,7 @@ from bzrlib.option import Option
 plugin_cmds = {}
 
 
-def register_command(cmd):
+def register_command(cmd, decorate=False):
     "Utility function to help register a command"
     global plugin_cmds
     k = cmd.__name__
@@ -55,6 +59,12 @@ def register_command(cmd):
     if not plugin_cmds.has_key(k_unsquished):
         plugin_cmds[k_unsquished] = cmd
         mutter('registered plugin command %s', k_unsquished)      
+        if decorate and k_unsquished in builtin_command_names():
+            return _builtin_commands()[k_unsquished]
+    elif decorate:
+        result = plugin_cmds[k_unsquished]
+        plugin_cmds[k_unsquished] = cmd
+        return result
     else:
         log_error('Two plugins defined the same command: %r' % k)
         log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
@@ -213,7 +223,6 @@ class Command(object):
         all_cmd_args.update(cmdopts)
 
         return self.run(**all_cmd_args)
-
     
     def run(self):
         """Actually run the command.
@@ -303,8 +312,8 @@ def parse_args(command, argv):
                 else:
                     optname = a[2:]
                 if optname not in cmd_options:
-                    raise BzrCommandError('unknown long option %r for command %s' 
-                            % (a, command.name()))
+                    raise BzrOptionError('unknown long option %r for command %s'
+                        % (a, command.name()))
             else:
                 shortopt = a[1:]
                 if shortopt in Option.SHORT_OPTIONS:
@@ -500,12 +509,12 @@ def run_bzr(argv):
 def display_command(func):
     def ignore_pipe(*args, **kwargs):
         try:
-            func(*args, **kwargs)
+            return func(*args, **kwargs)
         except IOError, e:
             if e.errno != errno.EPIPE:
                 raise
         except KeyboardInterrupt:
-	    pass
+            pass
     return ignore_pipe
 
 def main(argv):

@@ -111,7 +111,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
                         rename(new_name, name)
                         self.this_tree.branch.rename_one(relpath, new_path)
                         assert self.this_tree.id2path(file_id) == relpath
-                        self.this_tree._inventory = self.this_tree.branch.inventory
+                        self.this_tree._inventory = self.this_tree.read_working_inventory()
                         assert self.this_tree.id2path(file_id) == new_path
         except OSError, e:
             if e.errno != errno.EEXIST and e.errno != errno.ENOTEMPTY:
@@ -540,13 +540,13 @@ class Merger(object):
                 path = path[2:]
             adjust_ids.append((path, id))
         if len(adjust_ids) > 0:
-            self.this_branch.set_inventory(self.regen_inventory(adjust_ids))
+            self.this_branch.working_tree().set_inventory(self.regen_inventory(adjust_ids))
         conflicts = self.conflict_handler.conflicts
         self.conflict_handler.finalize()
         return conflicts
 
     def regen_inventory(self, new_entries):
-        old_entries = self.this_branch.read_working_inventory()
+        old_entries = self.this_branch.working_tree().read_working_inventory()
         new_inventory = {}
         by_path = {}
         new_entries_map = {} 

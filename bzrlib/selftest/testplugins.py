@@ -75,3 +75,5 @@ class cmd_myplug(bzrlib.commands.Command):
     def run(self):
         print 'Hello from my plugin'
 """
+
+# TODO: Write a test for plugin decoration of commands.

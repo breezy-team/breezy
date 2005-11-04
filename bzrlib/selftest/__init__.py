@@ -301,9 +301,9 @@ class TestCase(unittest.TestCase):
         else:
             return self._log_contents
 
-    def capture(self, cmd):
+    def capture(self, cmd, retcode=0):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
-        return self.run_bzr_captured(cmd.split())[0]
+        return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
 
     def run_bzr_captured(self, argv, retcode=0):
         """Invoke bzr and return (stdout, stderr).
@@ -473,6 +473,7 @@ class TestCaseInTempDir(TestCase):
         self.test_dir = os.path.join(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
+        os.environ['HOME'] = self.test_dir
         def _leaveDirectory():
             os.chdir(_currentdir)
         self.addCleanup(_leaveDirectory)
@@ -487,7 +488,7 @@ class TestCaseInTempDir(TestCase):
         """
         # XXX: It's OK to just create them using forward slashes on windows?
         for name in shape:
-            assert isinstance(name, basestring)
+            self.assert_(isinstance(name, basestring))
             if name[-1] == '/':
                 os.mkdir(name[:-1])
             else:
@@ -514,7 +515,6 @@ class MetaTestLog(TestCase):
         logging.info('an info message')
         warning('something looks dodgy...')
         logging.debug('hello, test is running')
-        ## assert 0
 
 
 def filter_suite_by_re(suite, pattern):
