@@ -51,6 +51,7 @@ import bzrlib.tree
 from bzrlib.osutils import appendpath, file_kind, isdir, splitpath, relpath
 from bzrlib.errors import BzrCheckError, DivergedBranches, NotVersionedError
 from bzrlib.trace import mutter
+import bzrlib.xml5
 
 
 class TreeEntry(object):
@@ -134,10 +135,10 @@ class WorkingTree(bzrlib.tree.Tree):
             branch = Branch.open(basedir)
         assert isinstance(branch, Branch), \
             "branch %r is not a Branch" % branch
-        self._inventory = branch.inventory
-        self.path2id = self._inventory.path2id
         self.branch = branch
         self.basedir = basedir
+        self._inventory = self.read_working_inventory()
+        self.path2id = self._inventory.path2id
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -187,6 +188,11 @@ class WorkingTree(bzrlib.tree.Tree):
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
+    def get_root_id(self):
+        """Return the id of this trees root"""
+        inv = self.read_working_inventory()
+        return inv.root.file_id
+        
     def _get_store_filename(self, file_id):
         ## XXX: badly named; this isn't in the store at all
         return self.abspath(self.id2path(file_id))
@@ -450,6 +456,14 @@ class WorkingTree(bzrlib.tree.Tree):
         """See Branch.lock_write, and WorkingTree.unlock."""
         return self.branch.lock_write()
 
+    @needs_read_lock
+    def read_working_inventory(self):
+        """Read the working inventory."""
+        # ElementTree does its own conversion from UTF-8, so open in
+        # binary.
+        f = self.branch.controlfile('inventory', 'rb')
+        return bzrlib.xml5.serializer_v5.read_inventory(f)
+
     @needs_write_lock
     def remove(self, files, verbose=False):
         """Remove nominated files from the working inventory..
@@ -489,6 +503,29 @@ class WorkingTree(bzrlib.tree.Tree):
                 show_status(new_status, inv[fid].kind, quotefn(f))
             del inv[fid]
 
+        self.branch._write_inventory(inv)
+
+    @needs_write_lock
+    def set_inventory(self, new_inventory_list):
+        from bzrlib.inventory import (Inventory,
+                                      InventoryDirectory,
+                                      InventoryEntry,
+                                      InventoryFile,
+                                      InventoryLink)
+        inv = Inventory(self.get_root_id())
+        for path, file_id, parent, kind in new_inventory_list:
+            name = os.path.basename(path)
+            if name == "":
+                continue
+            # fixme, there should be a factory function inv,add_?? 
+            if kind == 'directory':
+                inv.add(InventoryDirectory(file_id, name, parent))
+            elif kind == 'file':
+                inv.add(InventoryFile(file_id, name, parent))
+            elif kind == 'symlink':
+                inv.add(InventoryLink(file_id, name, parent))
+            else:
+                raise BzrError("unknown kind %r" % kind)
         self.branch._write_inventory(inv)
 
     def unlock(self):

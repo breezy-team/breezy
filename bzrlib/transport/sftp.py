@@ -87,7 +87,7 @@ class SFTPTransport (Transport):
     Transport implementation for SFTP access.
     """
 
-    _url_matcher = re.compile(r'^sftp://(.*@)?(.*?)(:\d+)?(/.*)?$')
+    _url_matcher = re.compile(r'^sftp://([^:@]*(:[^@]*)?@)?(.*?)(:\d+)?(/.*)?$')
     
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
@@ -148,7 +148,7 @@ class SFTPTransport (Transport):
                 basepath.append(p)
 
         path = '/'.join(basepath)
-        if path[0] != '/':
+        if len(path) and path[0] != '/':
             path = '/' + path
         return path
 
@@ -364,11 +364,14 @@ class SFTPTransport (Transport):
         m = self._url_matcher.match(url)
         if m is None:
             raise SFTPTransportError('Unable to parse SFTP URL %r' % (url,))
-        self._username, self._host, self._port, self._path = m.groups()
+        self._username, self._password, self._host, self._port, self._path = m.groups()
         if self._username is None:
             self._username = getpass.getuser()
         else:
             self._username = self._username[:-1]
+        if self._password:
+            self._password = self._password[1:]
+            self._username = self._username[len(self._password)+1:]
         if self._port is None:
             self._port = 22
         else:
@@ -434,6 +437,13 @@ class SFTPTransport (Transport):
             return
         if self._try_pkey_auth(transport, paramiko.DSSKey, 'id_dsa'):
             return
+
+        if self._password:
+            try:
+                transport.auth_password(self._username, self._password)
+                return
+            except paramiko.SSHException, e:
+                pass
 
         # give up and ask for a password
         password = getpass.getpass('SSH %s@%s password: ' % (self._username, self._host))

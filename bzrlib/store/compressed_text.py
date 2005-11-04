@@ -81,13 +81,13 @@ class CompressedTextStore(bzrlib.store.TransportStore):
     def _copy_one(self, fileid, suffix, other, pb):
         if not (isinstance(other, CompressedTextStore)
             and other._prefixed == self._prefixed):
-            return super(CompressedTextStore, self)._copy_one(fileid, suffix,
-                                                              other, pb)
+            return super(CompressedTextStore, self)._copy_one(fileid, suffix, other, pb)
         if suffix is None or suffix == 'gz':
             path = self._relpath(fileid)
         else:
             path = self._relpath(fileid, [suffix])
-        assert other._transport.copy_to([path], self._transport, pb=pb) == 1
+        result = other._transport.copy_to([path], self._transport, pb=pb)
+        assert result == 1      # or what???
 
     def __init__(self, transport, prefixed=False):
         super(CompressedTextStore, self).__init__(transport, prefixed)

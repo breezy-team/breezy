@@ -127,6 +127,7 @@ class TestVersioning(TestCaseInTempDir):
         chdir = os.chdir
         
         b = Branch.initialize('.')
+        t = b.working_tree()
         self.build_tree(['src/', 'README'])
         
         eq(sorted(b.unknowns()),
@@ -141,7 +142,7 @@ class TestVersioning(TestCaseInTempDir):
         
         eq(sorted(b.unknowns()), 
            ['README'])
-        eq(len(b.inventory), 3)
+        eq(len(t.read_working_inventory()), 3)
                 
         chdir('..')
         self.run_bzr('add')

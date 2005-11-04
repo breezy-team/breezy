@@ -111,17 +111,17 @@ class BranchStatus(TestCaseInTempDir):
         b.commit("Empty commit 2")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)
-        assert (message.startswith("pending merges:\n")), message
-        assert (message.endswith("Empty commit 2\n")), message 
+        self.assert_(message.startswith("pending merges:\n"))
+        self.assert_(message.endswith("Empty commit 2\n")) 
         b_2.commit("merged")
         # must be long to make sure we see elipsis at the end
         b.commit("Empty commit 3 blah blah blah blah blah blah blah blah blah"
                  " blah blah blah blah blah blah bleh")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)
-        assert (message.startswith("pending merges:\n")), message
-        assert ("Empty commit 3" in message), message
-        assert (message.endswith("...\n")), message 
+        self.assert_(message.startswith("pending merges:\n"))
+        self.assert_("Empty commit 3" in message)
+        self.assert_(message.endswith("...\n")) 
 
     def test_branch_status_specific_files(self): 
         """Tests branch status with given specific files"""
