@@ -185,6 +185,15 @@ trailing stuff'''
         s2 = read_stanza(s.to_lines())
         self.assertEquals(s2['q'], qval)
         
+    def test_quoted_8(self):
+        qval = r'''trailing
+        quote"'''
+        s = Stanza(q=qval)
+        t = s.to_string()
+        self.log(t)
+        s2 = read_stanza(s.to_lines())
+        self.assertEquals(s2['q'], qval)
+        
     def test_quoted(self):
         """basic_io quoted string cases"""
         s = Stanza(q1='"hello"', 
@@ -254,7 +263,7 @@ val 129319
         l = list(Stanza(my_bool=True).to_lines())
         self.assertEquals(l, ['my_bool 1\n'])
 
-    def test_empty_stanza(self):
-        """Read and write empty stanzas"""
+    def test_write_empty_stanza(self):
+        """Write empty stanza"""
         l = list(Stanza().to_lines())
         self.assertEquals(l, [])
