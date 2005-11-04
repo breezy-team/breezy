@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 # (C) 2005 Canonical Ltd
 
 """Benchmark for basicio
