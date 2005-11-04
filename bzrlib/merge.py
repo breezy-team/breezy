@@ -332,7 +332,8 @@ def merge(other_revision, base_revision,
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 backup_files=False, merge_type=ApplyMerge3, 
-                interesting_ids=None, show_base=False, reprocess=False):
+                interesting_ids=None, show_base=False, reprocess=False,
+                interesting_files=None):
     """Primary interface for merging. 
 
         typical use is probably 
@@ -340,9 +341,13 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                      branch.get_revision_tree(base_revision))'
         """
     merger = Merger(this_branch, other_tree, base_tree)
-    merger.backup_files = False
-    merger.merge_type = ApplyMerge3
+    merger.backup_files = backup_files
+    merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids
+    if interesting_files:
+        assert not interesting_ids, ('Only supply interesting_ids'
+                                     ' or interesting_files')
+        merger.set_interesting_files(interesting_files)
     merger.show_base = show_base 
     merger.reprocess = reprocess
     merger.conflict_handler = MergeConflictHandler(merger.this_tree, base_tree, 
