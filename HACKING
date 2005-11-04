@@ -34,6 +34,18 @@ Overall
 * Module names should always be given fully-qualified,
   i.e. ``bzrlib.hashcache`` not just ``hashcache``.
 
+* Commands should return Non-Zero when they encounter circumstances that
+  the user should really pay attention to - which includes trivial shell
+  pipelines.
+
+  Recommanded values are 
+    0- OK, 
+    1- Conflicts in merge-like operations, or changes are present in
+       diff-like operations. 
+    2- Unrepresentable diff changes (i.e. binary files that we cannot show 
+       a diff of).
+    3- An error or exception has occured.
+
 Evolving interfaces
 -------------------
 
@@ -119,6 +131,27 @@ Functions that transform one thing to another should be named ``x_to_y``
 (not ``x2y`` as occurs in some old code.)
 
 
+Destructors
+-----------
+
+Python destructors (``__del__``) work rather differently from in other
+languages.  In particular, bear in mind that destructors may not be called
+immediately when the object apparently becomes unreferenced, and that
+there are tight restrictions on what can be done inside them.
+
+ 0. Never use a __del__ method without asking Martin/Robert first.
+
+ 1. Never rely on a ``__del__`` method running.  If there is code that
+    must run, do it from a ``finally`` block instead.
+
+ 2. Never ``import`` from inside a ``__del__`` method, or you may crash the
+    interpreter!!
+
+ 3. In some places we raise a warning from the destructor if the object
+    has not been cleaned up or closed.  This is considered OK: the warning
+    may not catch every case but it's still useful sometimes.
+
+
 Writing output
 ==============
 
@@ -178,7 +211,10 @@ to run just the whitebox tests, run::
 Errors and exceptions
 =====================
 
-[write me]
+Errors are handled through Python exceptions.  They can represent user
+errors, environmental errors or program bugs.  Sometimes we can't be sure
+at the time it's raised which case applies.  See bzrlib/errors.py for 
+details on the error-handling practices.
 
 
 Jargon
@@ -188,3 +224,5 @@ revno
     Integer identifier for a revision on the main line of a branch.
     Revision 0 is always the null revision; others are 1-based
     indexes into the branch's revision history.
+
+:: vim: tw=74 ai

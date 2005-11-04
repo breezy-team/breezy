@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from copy import copy
 import os
 from cStringIO import StringIO
 
@@ -111,11 +112,7 @@ class Fetcher(object):
             self.pb.clear()
 
     def _fetch_revisions(self, last_revision):
-        try:
-            self.last_revision = self._find_last_revision(last_revision)
-        except NoSuchRevision, e:
-            mutter('failed getting last revision: %s', e)
-            raise InstallFailed([last_revision])
+        self.last_revision = self._find_last_revision(last_revision)
         mutter('fetch up to rev {%s}', self.last_revision)
         if (self.last_revision is not None and 
             self.to_branch.has_revision(self.last_revision)):
@@ -134,13 +131,12 @@ class Fetcher(object):
 
         Returns the revision_id, or returns None if there's no history
         in the source branch."""
+        if last_revision:
+            return last_revision
         self.pb.update('get source history')
         from_history = self.from_branch.revision_history()
         self.pb.update('get destination history')
-        if last_revision:
-            self.from_branch.get_revision(last_revision)
-            return last_revision
-        elif from_history:
+        if from_history:
             return from_history[-1]
         else:
             return None                 # no history in the source branch
@@ -197,13 +193,13 @@ class Fetcher(object):
                len(rev.parent_ids))
         self._copy_new_texts(rev_id, inv)
         parents = rev.parent_ids
+        new_parents = copy(parents)
         for parent in parents:
             if not self.to_branch.has_revision(parent):
-                parents.pop(parents.index(parent))
-        self._copy_inventory(rev_id, inv_xml, parents)
+                new_parents.pop(new_parents.index(parent))
+        self._copy_inventory(rev_id, inv_xml, new_parents)
         self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
         mutter('copied revision %s', rev_id)
-
 
     def _copy_inventory(self, rev_id, inv_xml, parent_ids):
         self.to_control.add_text('inventory', rev_id,
@@ -221,7 +217,6 @@ class Fetcher(object):
             mutter('%s {%s} is changed in this revision',
                    path, ie.file_id)
             self._copy_one_weave(rev_id, ie.file_id)
-
 
     def _copy_one_weave(self, rev_id, file_id):
         """Copy one file weave."""

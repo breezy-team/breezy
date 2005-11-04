@@ -17,7 +17,7 @@
 
 """Tests for finding and reading the bzr config file[s]."""
 # import system imports here
-from ConfigParser import ConfigParser
+from bzrlib.util.configobj.configobj import ConfigObj, ConfigObjError
 from cStringIO import StringIO
 import os
 import sys
@@ -31,7 +31,8 @@ from bzrlib.selftest import TestCase, TestCaseInTempDir
 sample_config_text = ("[DEFAULT]\n"
                       "email=Robert Collins <robertc@example.com>\n"
                       "editor=vim\n"
-                      "gpg_signing_command=gnome-gpg\n")
+                      "gpg_signing_command=gnome-gpg\n"
+                      "user_global_option=something\n")
 
 
 sample_always_signatures = ("[DEFAULT]\n"
@@ -57,23 +58,37 @@ sample_branches_text = ("[http://www.example.com]\n"
                         "# test trailing / matching with no children\n"
                         "[/a/]\n"
                         "check_signatures=check-available\n"
+                        "gpg_signing_command=false\n"
+                        "user_local_option=local\n"
                         "# test trailing / matching\n"
                         "[/a/*]\n"
                         "#subdirs will match but not the parent\n"
                         "recurse=False\n"
                         "[/a/c]\n"
                         "check_signatures=ignore\n"
+                        "post_commit=bzrlib.selftest.testconfig.post_commit\n"
                         "#testing explicit beats globs\n")
 
 
-class InstrumentedConfigParser(object):
-    """A config parser look-enough-alike to record calls made to it."""
+class InstrumentedConfigObj(object):
+    """A config obj look-enough-alike to record calls made to it."""
 
-    def __init__(self):
-        self._calls = []
+    def __contains__(self, thing):
+        self._calls.append(('__contains__', thing))
+        return False
 
-    def read(self, filenames):
-        self._calls.append(('read', filenames))
+    def __getitem__(self, key):
+        self._calls.append(('__getitem__', key))
+        return self
+
+    def __init__(self, input):
+        self._calls = [('__init__', input)]
+
+    def __setitem__(self, key, value):
+        self._calls.append(('__setitem__', key, value))
+
+    def write(self):
+        self._calls.append(('write',))
 
 
 class FakeBranch(object):
@@ -143,6 +158,18 @@ class TestConfig(TestCase):
                          my_config.signature_checking())
         self.assertEqual(['_get_signature_checking'], my_config._calls)
 
+    def test_gpg_signing_command_default(self):
+        my_config = config.Config()
+        self.assertEqual('gpg', my_config.gpg_signing_command())
+
+    def test_get_user_option_default(self):
+        my_config = config.Config()
+        self.assertEqual(None, my_config.get_user_option('no_option'))
+
+    def test_post_commit_default(self):
+        my_config = config.Config()
+        self.assertEqual(None, my_config.post_commit())
+
 
 class TestConfigPath(TestCase):
 
@@ -153,6 +180,7 @@ class TestConfigPath(TestCase):
 
     def tearDown(self):
         os.environ['HOME'] = self.oldenv
+        super(TestConfigPath, self).tearDown()
     
     def test_config_dir(self):
         self.assertEqual(config.config_dir(), '/home/bogus/.bazaar')
@@ -175,14 +203,13 @@ class TestIniConfig(TestCase):
         my_config = config.IniBasedConfig(None)
         self.failUnless(
             isinstance(my_config._get_parser(file=config_file),
-                        ConfigParser))
+                        ConfigObj))
 
     def test_cached(self):
         config_file = StringIO(sample_config_text)
         my_config = config.IniBasedConfig(None)
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
-
 
 
 class TestGetConfig(TestCase):
@@ -192,15 +219,15 @@ class TestGetConfig(TestCase):
 
     def test_calls_read_filenames(self):
         # replace the class that is constructured, to check its parameters
-        oldparserclass = config.ConfigParser
-        config.ConfigParser = InstrumentedConfigParser
+        oldparserclass = config.ConfigObj
+        config.ConfigObj = InstrumentedConfigObj
         my_config = config.GlobalConfig()
         try:
             parser = my_config._get_parser()
         finally:
-            config.ConfigParser = oldparserclass
-        self.failUnless(isinstance(parser, InstrumentedConfigParser))
-        self.assertEqual(parser._calls, [('read', [config.config_filename()])])
+            config.ConfigObj = oldparserclass
+        self.failUnless(isinstance(parser, InstrumentedConfigObj))
+        self.assertEqual(parser._calls, [('__init__', config.config_filename())])
 
 
 class TestBranchConfig(TestCaseInTempDir):
@@ -218,31 +245,7 @@ class TestBranchConfig(TestCaseInTempDir):
         self.failUnless(location_config is my_config._get_location_config())
 
 
-class TestConfigItems(TestCase):
-
-    def setUp(self):
-        super(TestConfigItems, self).setUp()
-        self.bzr_email = os.environ.get('BZREMAIL')
-        if self.bzr_email is not None:
-            del os.environ['BZREMAIL']
-        self.email = os.environ.get('EMAIL')
-        if self.email is not None:
-            del os.environ['EMAIL']
-        self.oldenv = os.environ.get('HOME', None)
-        os.environ['HOME'] = os.getcwd()
-
-    def tearDown(self):
-        os.environ['HOME'] = self.oldenv
-        if os.environ.get('BZREMAIL') is not None:
-            del os.environ['BZREMAIL']
-        if self.bzr_email is not None:
-            os.environ['BZREMAIL'] = self.bzr_email
-        if self.email is not None:
-            os.environ['EMAIL'] = self.email
-        super(TestConfigItems, self).tearDown()
-
-
-class TestGlobalConfigItems(TestConfigItems):
+class TestGlobalConfigItems(TestCase):
 
     def test_user_id(self):
         config_file = StringIO(sample_config_text)
@@ -287,24 +290,63 @@ class TestGlobalConfigItems(TestConfigItems):
                          my_config.signature_checking())
         self.assertEqual(False, my_config.signature_needed())
 
+    def _get_sample_config(self):
+        config_file = StringIO(sample_config_text)
+        my_config = config.GlobalConfig()
+        my_config._parser = my_config._get_parser(file=config_file)
+        return my_config
 
-class TestLocationConfig(TestConfigItems):
+    def test_gpg_signing_command(self):
+        my_config = self._get_sample_config()
+        self.assertEqual("gnome-gpg", my_config.gpg_signing_command())
+        self.assertEqual(False, my_config.signature_needed())
+
+    def _get_empty_config(self):
+        config_file = StringIO("")
+        my_config = config.GlobalConfig()
+        my_config._parser = my_config._get_parser(file=config_file)
+        return my_config
+
+    def test_gpg_signing_command_unset(self):
+        my_config = self._get_empty_config()
+        self.assertEqual("gpg", my_config.gpg_signing_command())
+
+    def test_get_user_option_default(self):
+        my_config = self._get_empty_config()
+        self.assertEqual(None, my_config.get_user_option('no_option'))
+
+    def test_get_user_option_global(self):
+        my_config = self._get_sample_config()
+        self.assertEqual("something",
+                         my_config.get_user_option('user_global_option'))
+        
+    def test_post_commit_default(self):
+        my_config = self._get_sample_config()
+        self.assertEqual(None, my_config.post_commit())
+
+
+
+class TestLocationConfig(TestCase):
 
     def test_constructs(self):
         my_config = config.LocationConfig('http://example.com')
         self.assertRaises(TypeError, config.LocationConfig)
 
     def test_branch_calls_read_filenames(self):
+        # This is testing the correct file names are provided.
+        # TODO: consolidate with the test for GlobalConfigs filename checks.
+        #
         # replace the class that is constructured, to check its parameters
-        oldparserclass = config.ConfigParser
-        config.ConfigParser = InstrumentedConfigParser
+        oldparserclass = config.ConfigObj
+        config.ConfigObj = InstrumentedConfigObj
         my_config = config.LocationConfig('http://www.example.com')
         try:
             parser = my_config._get_parser()
         finally:
-            config.ConfigParser = oldparserclass
-        self.failUnless(isinstance(parser, InstrumentedConfigParser))
-        self.assertEqual(parser._calls, [('read', [config.branches_config_filename()])])
+            config.ConfigObj = oldparserclass
+        self.failUnless(isinstance(parser, InstrumentedConfigObj))
+        self.assertEqual(parser._calls,
+                         [('__init__', config.branches_config_filename())])
 
     def test_get_global_config(self):
         my_config = config.LocationConfig('http://example.com')
@@ -407,8 +449,45 @@ class TestLocationConfig(TestConfigItems):
         self.assertEqual(config.CHECK_ALWAYS,
                          self.my_config.signature_checking())
         
+    def test_gpg_signing_command(self):
+        self.get_location_config('/b')
+        self.assertEqual("gnome-gpg", self.my_config.gpg_signing_command())
 
-class TestBranchConfigItems(TestConfigItems):
+    def test_gpg_signing_command_missing(self):
+        self.get_location_config('/a')
+        self.assertEqual("false", self.my_config.gpg_signing_command())
+
+    def test_get_user_option_global(self):
+        self.get_location_config('/a')
+        self.assertEqual('something',
+                         self.my_config.get_user_option('user_global_option'))
+
+    def test_get_user_option_local(self):
+        self.get_location_config('/a')
+        self.assertEqual('local',
+                         self.my_config.get_user_option('user_local_option'))
+        
+    def test_post_commit_default(self):
+        self.get_location_config('/a/c')
+        self.assertEqual('bzrlib.selftest.testconfig.post_commit',
+                         self.my_config.post_commit())
+
+    def test_set_user_setting_sets_and_saves(self):
+        # TODO RBC 20051029 test hat mkdir ~/.bazaar is called ..
+        self.get_location_config('/a/c')
+        record = InstrumentedConfigObj("foo")
+        self.my_config._parser = record
+        self.my_config.set_user_option('foo', 'bar')
+        self.assertEqual([('__contains__', '/a/c'),
+                          ('__contains__', '/a/c/'),
+                          ('__setitem__', '/a/c', {}),
+                          ('__getitem__', '/a/c'),
+                          ('__setitem__', 'foo', 'bar'),
+                          ('write',)],
+                         record._calls[1:])
+
+
+class TestBranchConfigItems(TestCase):
 
     def test_user_id(self):
         branch = FakeBranch()
@@ -444,3 +523,32 @@ class TestBranchConfigItems(TestConfigItems):
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
         self.assertEqual(config.CHECK_ALWAYS, my_config.signature_checking())
+
+    def test_gpg_signing_command(self):
+        branch = FakeBranch()
+        my_config = config.BranchConfig(branch)
+        config_file = StringIO(sample_config_text)
+        (my_config._get_location_config().
+            _get_global_config()._get_parser(config_file))
+        self.assertEqual('gnome-gpg', my_config.gpg_signing_command())
+
+    def test_get_user_option_global(self):
+        branch = FakeBranch()
+        my_config = config.BranchConfig(branch)
+        config_file = StringIO(sample_config_text)
+        (my_config._get_location_config().
+            _get_global_config()._get_parser(config_file))
+        self.assertEqual('something',
+                         my_config.get_user_option('user_global_option'))
+
+    def test_post_commit_default(self):
+        branch = FakeBranch()
+        branch.base='/a/c'
+        my_config = config.BranchConfig(branch)
+        config_file = StringIO(sample_config_text)
+        (my_config._get_location_config().
+            _get_global_config()._get_parser(config_file))
+        branch_file = StringIO(sample_branches_text)
+        my_config._get_location_config()._get_parser(branch_file)
+        self.assertEqual('bzrlib.selftest.testconfig.post_commit',
+                         my_config.post_commit())

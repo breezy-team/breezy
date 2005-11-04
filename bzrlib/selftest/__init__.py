@@ -33,13 +33,12 @@ import bzrlib.fetch
 import bzrlib.osutils as osutils
 from bzrlib.selftest import TestUtil
 from bzrlib.selftest.TestUtil import TestLoader, TestSuite
-
+from bzrlib.selftest.treeshape import build_tree_contents
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
 
 from logging import debug, warning, error
-
 
 
 class EarlyStoppingTestResultAdapter(object):
@@ -121,10 +120,13 @@ class _MyResult(unittest._TextTestResult):
 
 
 class TextTestRunner(unittest.TextTestRunner):
+    stop_on_failure = False
 
     def _makeResult(self):
         result = _MyResult(self.stream, self.descriptions, self.verbosity)
-        return EarlyStoppingTestResultAdapter(result)
+        if self.stop_on_failure:
+            result = EarlyStoppingTestResultAdapter(result)
+        return result
 
 
 def iter_suite_tests(suite):
@@ -156,21 +158,39 @@ class TestCase(unittest.TestCase):
 
     Error and debug log messages are redirected from their usual
     location into a temporary file, the contents of which can be
-    retrieved by _get_log().
+    retrieved by _get_log().  We use a real OS file, not an in-memory object,
+    so that it can also capture file IO.  When the test completes this file
+    is read into memory and removed from disk.
        
     There are also convenience functions to invoke bzr's command-line
-    routine, and to build and check bzr trees."""
+    routine, and to build and check bzr trees.
+   
+    In addition to the usual method of overriding tearDown(), this class also
+    allows subclasses to register functions into the _cleanups list, which is
+    run in order as the object is torn down.  It's less likely this will be
+    accidentally overlooked.
+    """
 
     BZRPATH = 'bzr'
     _log_file_name = None
+    _log_contents = ''
 
     def setUp(self):
         unittest.TestCase.setUp(self)
+        self._cleanups = []
+        self._cleanEnvironment()
         bzrlib.trace.disable_default_logging()
-        self._enable_file_logging()
+        self._startLogFile()
 
     def _ndiff_strings(self, a, b):
-        """Return ndiff between two strings containing lines."""
+        """Return ndiff between two strings containing lines.
+        
+        A trailing newline is added if missing to make the strings
+        print properly."""
+        if b and b[-1] != '\n':
+            b += '\n'
+        if a and a[-1] != '\n':
+            a += '\n'
         difflines = difflib.ndiff(a.splitlines(True),
                                   b.splitlines(True),
                                   linejunk=lambda x: False,
@@ -188,12 +208,20 @@ class TestCase(unittest.TestCase):
             return
         raise AssertionError("texts not equal:\n" + 
                              self._ndiff_strings(a, b))      
-        
-    def _enable_file_logging(self):
+
+    def assertContainsRe(self, haystack, needle_re):
+        """Assert that a contains something matching a regular expression."""
+        if not re.search(needle_re, haystack):
+            raise AssertionError('pattern "%s" not found in "%s"'
+                    % (needle_re, haystack))
+
+    def _startLogFile(self):
+        """Send bzr and test log messages to a temporary file.
+
+        The file is removed as the test is torn down.
+        """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
-
         self._log_file = os.fdopen(fileno, 'w+')
-
         hdlr = logging.StreamHandler(self._log_file)
         hdlr.setLevel(logging.DEBUG)
         hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
@@ -201,15 +229,67 @@ class TestCase(unittest.TestCase):
         logging.getLogger('').setLevel(logging.DEBUG)
         self._log_hdlr = hdlr
         debug('opened log file %s', name)
-        
         self._log_file_name = name
+        self.addCleanup(self._finishLogFile)
+
+    def _finishLogFile(self):
+        """Finished with the log file.
+
+        Read contents into memory, close, and delete.
+        """
+        self._log_file.seek(0)
+        self._log_contents = self._log_file.read()
+        self._log_file.close()
+        os.remove(self._log_file_name)
+        self._log_file = self._log_file_name = None
+
+    def addCleanup(self, callable):
+        """Arrange to run a callable when this case is torn down.
+
+        Callables are run in the reverse of the order they are registered, 
+        ie last-in first-out.
+        """
+        if callable in self._cleanups:
+            raise ValueError("cleanup function %r already registered on %s" 
+                    % (callable, self))
+        self._cleanups.append(callable)
+
+    def _cleanEnvironment(self):
+        self.oldenv = os.environ.get('HOME', None)
+        os.environ['HOME'] = os.getcwd()
+        self.bzr_email = os.environ.get('BZREMAIL')
+        if self.bzr_email is not None:
+            del os.environ['BZREMAIL']
+        self.email = os.environ.get('EMAIL')
+        if self.email is not None:
+            del os.environ['EMAIL']
+        self.addCleanup(self._restoreEnvironment)
+
+    def _restoreEnvironment(self):
+        os.environ['HOME'] = self.oldenv
+        if os.environ.get('BZREMAIL') is not None:
+            del os.environ['BZREMAIL']
+        if self.bzr_email is not None:
+            os.environ['BZREMAIL'] = self.bzr_email
+        if os.environ.get('EMAIL') is not None:
+            del os.environ['EMAIL']
+        if self.email is not None:
+            os.environ['EMAIL'] = self.email
 
     def tearDown(self):
         logging.getLogger('').removeHandler(self._log_hdlr)
         bzrlib.trace.enable_default_logging()
         logging.debug('%s teardown', self.id())
-        self._log_file.close()
+        self._runCleanups()
         unittest.TestCase.tearDown(self)
+
+    def _runCleanups(self):
+        """Run registered cleanup functions. 
+
+        This should only be called from TestCase.tearDown.
+        """
+        for callable in reversed(self._cleanups):
+            callable()
 
     def log(self, *args):
         logging.debug(*args)
@@ -219,14 +299,14 @@ class TestCase(unittest.TestCase):
         if self._log_file_name:
             return open(self._log_file_name).read()
         else:
-            return ''
+            return self._log_contents
 
-    def capture(self, cmd):
+    def capture(self, cmd, retcode=0):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
-        return self.run_bzr_captured(cmd.split())[0]
+        return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
 
     def run_bzr_captured(self, argv, retcode=0):
-        """Invoke bzr and return (result, stdout, stderr).
+        """Invoke bzr and return (stdout, stderr).
 
         Useful for code that wants to check the contents of the
         output, the way error messages are presented, etc.
@@ -387,17 +467,17 @@ class TestCaseInTempDir(TestCase):
     def setUp(self):
         super(TestCaseInTempDir, self).setUp()
         self._make_test_root()
-        self._currentdir = os.getcwdu()
+        _currentdir = os.getcwdu()
         short_id = self.id().replace('bzrlib.selftest.', '') \
                    .replace('__main__.', '')
         self.test_dir = os.path.join(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
+        os.environ['HOME'] = self.test_dir
+        def _leaveDirectory():
+            os.chdir(_currentdir)
+        self.addCleanup(_leaveDirectory)
         
-    def tearDown(self):
-        os.chdir(self._currentdir)
-        super(TestCaseInTempDir, self).tearDown()
-
     def build_tree(self, shape):
         """Build a test tree according to a pattern.
 
@@ -408,7 +488,7 @@ class TestCaseInTempDir(TestCase):
         """
         # XXX: It's OK to just create them using forward slashes on windows?
         for name in shape:
-            assert isinstance(name, basestring)
+            self.assert_(isinstance(name, basestring))
             if name[-1] == '/':
                 os.mkdir(name[:-1])
             else:
@@ -416,9 +496,17 @@ class TestCaseInTempDir(TestCase):
                 print >>f, "contents of", name
                 f.close()
 
+    def build_tree_contents(self, shape):
+        bzrlib.selftest.build_tree_contents(shape)
+
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
         self.failUnless(osutils.lexists(path))
+        
+    def assertFileEqual(self, content, path):
+        """Fail if path does not contain 'content'."""
+        self.failUnless(osutils.lexists(path))
+        self.assertEqualDiff(content, open(path, 'r').read())
         
 
 class MetaTestLog(TestCase):
@@ -427,7 +515,6 @@ class MetaTestLog(TestCase):
         logging.info('an info message')
         warning('something looks dodgy...')
         logging.debug('hello, test is running')
-        ##assert 0
 
 
 def filter_suite_by_re(suite, pattern):
@@ -439,7 +526,8 @@ def filter_suite_by_re(suite, pattern):
     return result
 
 
-def run_suite(suite, name='test', verbose=False, pattern=".*"):
+def run_suite(suite, name='test', verbose=False, pattern=".*",
+              stop_on_failure=False):
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
@@ -448,6 +536,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*"):
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity)
+    runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
         suite = filter_suite_by_re(suite, pattern)
     result = runner.run(suite)
@@ -462,9 +551,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*"):
     return result.wasSuccessful()
 
 
-def selftest(verbose=False, pattern=".*"):
+def selftest(verbose=False, pattern=".*", stop_on_failure=True):
     """Run the whole test suite under the enhanced runner"""
-    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern)
+    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern,
+                     stop_on_failure=stop_on_failure)
 
 
 def test_suite():
@@ -477,10 +567,13 @@ def test_suite():
 
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
+                   'bzrlib.selftest.testapi',
+                   'bzrlib.selftest.testgpg',
                    'bzrlib.selftest.testidentitymap',
                    'bzrlib.selftest.testinv',
                    'bzrlib.selftest.test_ancestry',
                    'bzrlib.selftest.test_commit',
+                   'bzrlib.selftest.test_command',
                    'bzrlib.selftest.test_commit_merge',
                    'bzrlib.selftest.testconfig',
                    'bzrlib.selftest.versioning',
@@ -507,6 +600,7 @@ def test_suite():
                    'bzrlib.selftest.testsampler',
                    'bzrlib.selftest.testtransactions',
                    'bzrlib.selftest.testtransport',
+                   'bzrlib.selftest.testsftp',
                    'bzrlib.selftest.testgraph',
                    'bzrlib.selftest.testworkingtree',
                    'bzrlib.selftest.test_upgrade',
@@ -514,10 +608,17 @@ def test_suite():
                    'bzrlib.selftest.testtestament',
                    'bzrlib.selftest.testannotate',
                    'bzrlib.selftest.testrevprops',
+                   'bzrlib.selftest.testoptions',
+                   'bzrlib.selftest.testhttp',
+                   'bzrlib.selftest.testnonascii',
+                   'bzrlib.selftest.testreweave',
+                   'bzrlib.selftest.testtsort',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
-              bzrlib.osutils, bzrlib.commands, bzrlib.merge3):
+              bzrlib.osutils, bzrlib.commands, bzrlib.merge3,
+              bzrlib.errors,
+              ):
         if m not in MODULES_TO_DOCTEST:
             MODULES_TO_DOCTEST.append(m)
 

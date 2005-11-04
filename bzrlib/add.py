@@ -24,6 +24,8 @@ from bzrlib.branch import Branch
 from bzrlib.osutils import quotefn
 
 def glob_expand_for_win32(file_list):
+    if not file_list:
+        return
     import glob
     expanded_file_list = []
     for possible_glob in file_list:
@@ -66,7 +68,7 @@ def smart_add(file_list, recurse=True, reporter=add_reporter_null):
     Returns the number of files added.
     """
     file_list = _prepare_file_list(file_list)
-    b = Branch.open_containing(file_list[0])
+    b = Branch.open_containing(file_list[0])[0]
     return smart_add_branch(b, file_list, recurse, reporter)
 
         
@@ -88,8 +90,8 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
 
     file_list = _prepare_file_list(file_list)
     user_list = file_list[:]
-    inv = branch.read_working_inventory()
     tree = branch.working_tree()
+    inv = tree.read_working_inventory()
     count = 0
 
     for f in file_list:

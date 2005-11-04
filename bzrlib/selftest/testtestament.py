@@ -29,7 +29,9 @@ from bzrlib.testament import Testament
 from bzrlib.trace import mutter
 from bzrlib.osutils import has_symlinks
 
+
 class TestamentTests(TestCaseInTempDir):
+
     def setUp(self):
         super(TestamentTests, self).setUp()
         b = self.b = Branch.initialize('.')
@@ -102,6 +104,27 @@ class TestamentTests(TestCaseInTempDir):
         t = Testament.from_revision(self.b, 'test@user-3')
         self.assertEqualDiff(t.as_text(), REV_3_TESTAMENT)
 
+    def test_testament_revprops(self):
+        """Testament to revision with extra properties"""
+        props = dict(flavor='sour cherry\ncream cheese',
+                     size='medium')
+        self.b.commit(message='revision with properties',
+                      timestamp=1129025493,
+                      timezone=36000,
+                      rev_id='test@user-3',
+                      committer='test@user',
+                      revprops=props)
+        t = Testament.from_revision(self.b, 'test@user-3')
+        self.assertEqualDiff(t.as_text(), REV_PROPS_TESTAMENT)
+
+    def test___init__(self):
+        revision = self.b.get_revision('test@user-2')
+        inventory = self.b.get_inventory('test@user-2')
+        testament_1 = Testament(revision, inventory).as_short_text()
+        testament_2 = Testament.from_revision(self.b, 
+                                              'test@user-2').as_short_text()
+        self.assertEqual(testament_1, testament_2)
+                    
 
 REV_1_TESTAMENT = """\
 bazaar-ng testament version 1
@@ -144,6 +167,29 @@ bazaar-ng testament short form 1
 revision-id: test@user-2
 sha1: %s
 """ % sha(REV_2_TESTAMENT).hexdigest()
+
+
+REV_PROPS_TESTAMENT = """\
+bazaar-ng testament version 1
+revision-id: test@user-3
+committer: test@user
+timestamp: 1129025493
+timezone: 36000
+parents:
+  test@user-2
+message:
+  revision with properties
+inventory:
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73
+  directory src src-id
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
+properties:
+  flavor:
+    sour cherry
+    cream cheese
+  size:
+    medium
+"""
 
 
 REV_3_TESTAMENT = """\

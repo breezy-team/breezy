@@ -3,7 +3,7 @@ import unittest
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import Branch
-from bzrlib.errors import NotBranchError, NotVersionedError
+from bzrlib.errors import NotBranchError
 from bzrlib.inventory import InventoryFile
 
 class TestSmartAdd(TestCaseInTempDir):
@@ -16,7 +16,7 @@ class TestSmartAdd(TestCaseInTempDir):
         branch = Branch.initialize(".")
         smart_add((".",), recurse=True)
         for path in paths:
-            self.assertNotEqual(branch.inventory.path2id(path), None)
+            self.assertNotEqual(branch.working_tree().path2id(path), None)
 
     def test_add_dot_from_subdir(self):
         """Test adding . from a subdir of the tree.""" 
@@ -27,7 +27,7 @@ class TestSmartAdd(TestCaseInTempDir):
         os.chdir("original")
         smart_add((".",), recurse=True)
         for path in paths:
-            self.assertNotEqual(branch.inventory.path2id(path), None)
+            self.assertNotEqual(branch.working_tree().path2id(path), None)
 
     def test_add_tree_from_above_tree(self):
         """Test adding a tree from above the tree.""" 
@@ -39,7 +39,7 @@ class TestSmartAdd(TestCaseInTempDir):
         branch = Branch.initialize("branch")
         smart_add(("branch",))
         for path in paths:
-            self.assertNotEqual(branch.inventory.path2id(path), None)
+            self.assertNotEqual(branch.working_tree().path2id(path), None)
 
     def test_add_above_tree_preserves_tree(self):
         """Test nested trees are not affect by an add above them."""
@@ -56,13 +56,13 @@ class TestSmartAdd(TestCaseInTempDir):
         child_branch = Branch.initialize("original/child")
         smart_add((".",), True, add_reporter_null)
         for path in paths:
-            self.assertNotEqual((path, branch.inventory.path2id(path)),
+            self.assertNotEqual((path, branch.working_tree().path2id(path)),
                                 (path, None))
         for path in full_child_paths:
-            self.assertEqual((path, branch.inventory.path2id(path)),
+            self.assertEqual((path, branch.working_tree().path2id(path)),
                              (path, None))
         for path in child_paths:
-            self.assertEqual(child_branch.inventory.path2id(path), None)
+            self.assertEqual(child_branch.working_tree().path2id(path), None)
 
     def test_add_paths(self):
         """Test smart-adding a list of paths."""
@@ -72,7 +72,7 @@ class TestSmartAdd(TestCaseInTempDir):
         branch = Branch.initialize(".")
         smart_add(paths)
         for path in paths:
-            self.assertNotEqual(branch.inventory.path2id(path), None)
+            self.assertNotEqual(branch.working_tree().path2id(path), None)
             
 class TestSmartAddBranch(TestCaseInTempDir):
     """Test smart adds with a specified branch."""
@@ -85,7 +85,7 @@ class TestSmartAddBranch(TestCaseInTempDir):
         branch = Branch.initialize(".")
         smart_add_branch(branch, (".",))
         for path in paths:
-            self.assertNotEqual(branch.inventory.path2id(path), None)
+            self.assertNotEqual(branch.working_tree().path2id(path), None)
 
     def test_add_dot_from_subdir(self):
         """Test adding . from a subdir of the tree.""" 
@@ -96,7 +96,7 @@ class TestSmartAddBranch(TestCaseInTempDir):
         os.chdir("original")
         smart_add_branch(branch, (".",))
         for path in paths:
-            self.assertNotEqual(branch.inventory.path2id(path), None)
+            self.assertNotEqual(branch.working_tree().path2id(path), None)
 
     def test_add_tree_from_above_tree(self):
         """Test adding a tree from above the tree.""" 
@@ -108,7 +108,7 @@ class TestSmartAddBranch(TestCaseInTempDir):
         branch = Branch.initialize("branch")
         smart_add_branch(branch, ("branch",))
         for path in paths:
-            self.assertNotEqual(branch.inventory.path2id(path), None)
+            self.assertNotEqual(branch.working_tree().path2id(path), None)
 
     def test_add_above_tree_preserves_tree(self):
         """Test nested trees are not affect by an add above them."""
@@ -123,13 +123,13 @@ class TestSmartAddBranch(TestCaseInTempDir):
         child_branch = Branch.initialize("original/child")
         smart_add_branch(branch, (".",))
         for path in paths:
-            self.assertNotEqual((path, branch.inventory.path2id(path)),
+            self.assertNotEqual((path, branch.working_tree().path2id(path)),
                                 (path, None))
         for path in full_child_paths:
-            self.assertEqual((path, branch.inventory.path2id(path)),
+            self.assertEqual((path, branch.working_tree().path2id(path)),
                              (path, None))
         for path in child_paths:
-            self.assertEqual(child_branch.inventory.path2id(path), None)
+            self.assertEqual(child_branch.working_tree().path2id(path), None)
 
     def test_add_paths(self):
         """Test smart-adding a list of paths."""
@@ -139,7 +139,7 @@ class TestSmartAddBranch(TestCaseInTempDir):
         branch = Branch.initialize(".")
         smart_add_branch(branch, paths)
         for path in paths:
-            self.assertNotEqual(branch.inventory.path2id(path), None)
+            self.assertNotEqual(branch.working_tree().path2id(path), None)
 
 class TestAddCallbacks(TestCaseInTempDir):
 

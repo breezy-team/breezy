@@ -15,15 +15,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-from bzrlib.branch import Branch
+
+from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.clone import copy_branch
 from bzrlib.commit import commit
 import bzrlib.errors as errors
 from bzrlib.errors import NoSuchRevision, UnlistableBranch, NotBranchError
-from bzrlib.selftest import TestCaseInTempDir
+import bzrlib.gpg
+from bzrlib.selftest import TestCase, TestCaseInTempDir
+from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
-from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.revision import NULL_REVISION
+
+# TODO: Make a branch using basis branch, and check that it 
+# doesn't request any files that could have been avoided, by 
+# hooking into the Transport.
 
 class TestBranch(TestCaseInTempDir):
 
@@ -56,19 +63,40 @@ class TestBranch(TestCaseInTempDir):
         tree = b2.revision_tree('revision-1')
         eq(tree.get_file_text('foo-id'), 'hello')
 
-    def test_push_stores(self):
-        """Copy the stores from one branch to another"""
+    def test_revision_tree(self):
+        b1 = Branch.initialize('.')
+        b1.commit('lala!', rev_id='revision-1', allow_pointless=True)
+        tree = b1.revision_tree('revision-1')
+        tree = b1.revision_tree(None)
+        self.assertEqual(len(tree.list_files()), 0)
+        tree = b1.revision_tree(NULL_REVISION)
+        self.assertEqual(len(tree.list_files()), 0)
+
+    def get_unbalanced_branch_pair(self):
+        """Return two branches, a and b, with one file in a."""
         os.mkdir('a')
         br_a = Branch.initialize("a")
         file('a/b', 'wb').write('b')
         br_a.add('b')
-        commit(br_a, "silly commit")
-
+        commit(br_a, "silly commit", rev_id='A')
         os.mkdir('b')
         br_b = Branch.initialize("b")
+        return br_a, br_b
+
+    def get_balanced_branch_pair(self):
+        """Returns br_a, br_b as with one commit in a, and b has a's stores."""
+        br_a, br_b = self.get_unbalanced_branch_pair()
+        br_a.push_stores(br_b)
+        return br_a, br_b
+
+    def test_push_stores(self):
+        """Copy the stores from one branch to another"""
+        br_a, br_b = self.get_unbalanced_branch_pair()
+        # ensure the revision is missing.
         self.assertRaises(NoSuchRevision, br_b.get_revision, 
                           br_a.revision_history()[0])
         br_a.push_stores(br_b)
+        # check that b now has all the data from a's first commit.
         rev = br_b.get_revision(br_a.revision_history()[0])
         tree = br_b.revision_tree(br_a.revision_history()[0])
         for file_id in tree:
@@ -78,14 +106,11 @@ class TestBranch(TestCaseInTempDir):
 
     def test_copy_branch(self):
         """Copy the stores from one branch to another"""
-        br_a, br_b = self.test_push_stores()
+        br_a, br_b = self.get_balanced_branch_pair()
         commit(br_b, "silly commit")
         os.mkdir('c')
         br_c = copy_branch(br_a, 'c', basis_branch=br_b)
         self.assertEqual(br_a.revision_history(), br_c.revision_history())
-        ## # basis branches currently disabled for weave format
-        ## self.assertFalse(br_b.last_revision() in br_c.revision_history())
-        ## br_c.get_revision(br_b.last_revision())
 
     def test_copy_partial(self):
         """Copy only part of the history of a branch."""
@@ -101,7 +126,6 @@ class TestBranch(TestCaseInTempDir):
         self.assertTrue(os.path.exists('b/one'))
         self.assertFalse(os.path.exists('b/two'))
         
-
     def test_record_initial_ghost_merge(self):
         """A pending merge with no revision present is still a merge."""
         branch = Branch.initialize('.')
@@ -112,6 +136,10 @@ class TestBranch(TestCaseInTempDir):
         # parent_sha1s is not populated now, WTF. rbc 20051003
         self.assertEqual(len(rev.parent_sha1s), 0)
         self.assertEqual(rev.parent_ids[0], 'non:existent@rev--ision--0--2')
+
+    def test_bad_revision(self):
+        branch = Branch.initialize('.')
+        self.assertRaises(errors.InvalidRevisionId, branch.get_revision, None)
 
 # TODO 20051003 RBC:
 # compare the gpg-to-sign info for a commit with a ghost and 
@@ -141,6 +169,28 @@ class TestBranch(TestCaseInTempDir):
         # list should be cleared when we do a commit
         self.assertEquals(b.pending_merges(), [])
 
+    def test_sign_existing_revision(self):
+        branch = Branch.initialize('.')
+        branch.commit("base", allow_pointless=True, rev_id='A')
+        from bzrlib.testament import Testament
+        branch.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        self.assertEqual(Testament.from_revision(branch, 'A').as_short_text(),
+                         branch.revision_store.get('A', 'sig').read())
+
+    def test_store_signature(self):
+        branch = Branch.initialize('.')
+        branch.store_revision_signature(bzrlib.gpg.LoopbackGPGStrategy(None),
+                                        'FOO', 'A')
+        self.assertEqual('FOO', branch.revision_store.get('A', 'sig').read())
+
+    def test__relcontrolfilename(self):
+        branch = Branch.initialize('.')
+        self.assertEqual('.bzr/%25', branch._rel_controlfilename('%'))
+        
+    def test__relcontrolfilename_empty(self):
+        branch = Branch.initialize('.')
+        self.assertEqual('.bzr', branch._rel_controlfilename(''))
+
 
 class TestRemote(TestCaseWithWebserver):
 
@@ -150,8 +200,10 @@ class TestRemote(TestCaseWithWebserver):
         self.assertRaises(NotBranchError, Branch.open_containing,
                           self.get_remote_url('g/p/q'))
         b = Branch.initialize('.')
-        Branch.open_containing(self.get_remote_url(''))
-        Branch.open_containing(self.get_remote_url('g/p/q'))
+        branch, relpath = Branch.open_containing(self.get_remote_url(''))
+        self.assertEqual('', relpath)
+        branch, relpath = Branch.open_containing(self.get_remote_url('g/p/q'))
+        self.assertEqual('g/p/q', relpath)
         
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        
 #         >>> from bzrlib.commit import commit
@@ -179,6 +231,60 @@ class InstrumentedTransaction(object):
 
     def __init__(self):
         self.calls = []
+
+
+class TestDecorator(object):
+
+    def __init__(self):
+        self._calls = []
+
+    def lock_read(self):
+        self._calls.append('lr')
+
+    def lock_write(self):
+        self._calls.append('lw')
+
+    def unlock(self):
+        self._calls.append('ul')
+
+    @needs_read_lock
+    def do_with_read(self):
+        return 1
+
+    @needs_read_lock
+    def except_with_read(self):
+        raise RuntimeError
+
+    @needs_write_lock
+    def do_with_write(self):
+        return 2
+
+    @needs_write_lock
+    def except_with_write(self):
+        raise RuntimeError
+
+
+class TestDecorators(TestCase):
+
+    def test_needs_read_lock(self):
+        branch = TestDecorator()
+        self.assertEqual(1, branch.do_with_read())
+        self.assertEqual(['lr', 'ul'], branch._calls)
+
+    def test_excepts_in_read_lock(self):
+        branch = TestDecorator()
+        self.assertRaises(RuntimeError, branch.except_with_read)
+        self.assertEqual(['lr', 'ul'], branch._calls)
+
+    def test_needs_write_lock(self):
+        branch = TestDecorator()
+        self.assertEqual(2, branch.do_with_write())
+        self.assertEqual(['lw', 'ul'], branch._calls)
+
+    def test_excepts_in_write_lock(self):
+        branch = TestDecorator()
+        self.assertRaises(RuntimeError, branch.except_with_write)
+        self.assertEqual(['lw', 'ul'], branch._calls)
 
 
 class TestBranchTransaction(TestCaseInTempDir):
@@ -228,3 +334,29 @@ class TestBranchTransaction(TestCaseInTempDir):
         self.failUnless(isinstance(self.branch._transaction,
                                    transactions.PassThroughTransaction))
         self.branch.unlock()
+
+
+class TestBranchPushLocations(TestCaseInTempDir):
+
+    def setUp(self):
+        super(TestBranchPushLocations, self).setUp()
+        self.branch = Branch.initialize('.')
+        
+    def test_get_push_location_unset(self):
+        self.assertEqual(None, self.branch.get_push_location())
+
+    def test_get_push_location_exact(self):
+        self.build_tree(['.bazaar/'])
+        print >> open('.bazaar/branches.conf', 'wt'), ("[%s]\n"
+                                                       "push_location=foo" %
+                                                       os.getcwdu())
+        self.assertEqual("foo", self.branch.get_push_location())
+
+    def test_set_push_location(self):
+        self.branch.set_push_location('foo')
+        self.assertFileEqual("[%s]\n"
+                             "push_location = foo" % os.getcwdu(),
+                             '.bazaar/branches.conf')
+
+    # TODO RBC 20051029 test getting a push location from a branch in a 
+    # recursive section - that is, it appends the branch name.

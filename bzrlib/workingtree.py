@@ -14,21 +14,45 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# TODO: Don't allow WorkingTrees to be constructed for remote branches.
+"""WorkingTree object and friends.
+
+A WorkingTree represents the editable working copy of a branch.
+Operations which represent the WorkingTree are also done here, 
+such as renaming or adding files.  The WorkingTree has an inventory 
+which is updated by these operations.  A commit produces a 
+new revision based on the workingtree and its inventory.
+
+At the moment every WorkingTree has its own branch.  Remote
+WorkingTrees aren't supported.
+
+To get a WorkingTree, call Branch.working_tree():
+"""
+
+
+# TODO: Don't allow WorkingTrees to be constructed for remote branches if 
+# they don't work.
 
 # FIXME: I don't know if writing out the cache from the destructor is really a
-# good idea, because destructors are considered poor taste in Python, and
-# it's not predictable when it will be written out.
+# good idea, because destructors are considered poor taste in Python, and it's
+# not predictable when it will be written out.
+
+# TODO: Give the workingtree sole responsibility for the working inventory;
+# remove the variable and references to it from the branch.  This may require
+# updating the commit code so as to update the inventory within the working
+# copy, and making sure there's only one WorkingTree for any directory on disk.
+# At the momenthey may alias the inventory and have old copies of it in memory.
 
 import os
 import stat
 import fnmatch
  
-from bzrlib.branch import Branch
+from bzrlib.branch import Branch, needs_read_lock, needs_write_lock, quotefn
 import bzrlib.tree
 from bzrlib.osutils import appendpath, file_kind, isdir, splitpath, relpath
-from bzrlib.errors import BzrCheckError
+from bzrlib.errors import BzrCheckError, DivergedBranches, NotVersionedError
 from bzrlib.trace import mutter
+import bzrlib.xml5
+
 
 class TreeEntry(object):
     """An entry that implements the minium interface used by commands.
@@ -94,6 +118,7 @@ class WorkingTree(bzrlib.tree.Tree):
     It is possible for a `WorkingTree` to have a filename which is
     not listed in the Inventory and vice versa.
     """
+
     def __init__(self, basedir, branch=None):
         """Construct a WorkingTree for basedir.
 
@@ -104,16 +129,23 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         from bzrlib.hashcache import HashCache
         from bzrlib.trace import note, mutter
-
+        assert isinstance(basedir, basestring), \
+            "base directory %r is not a string" % basedir
         if branch is None:
             branch = Branch.open(basedir)
-        self._inventory = branch.inventory
-        self.path2id = self._inventory.path2id
+        assert isinstance(branch, Branch), \
+            "branch %r is not a Branch" % branch
         self.branch = branch
         self.basedir = basedir
+        self._inventory = self.read_working_inventory()
+        self.path2id = self._inventory.path2id
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
+        # two possible ways offer themselves : in self._unlock, write the cache
+        # if needed, or, when the cache sees a change, append it to the hash
+        # cache file, and have the parser take the most recent entry for a
+        # given path only.
         hc = self._hashcache = HashCache(basedir)
         hc.read()
         hc.scan()
@@ -121,12 +153,6 @@ class WorkingTree(bzrlib.tree.Tree):
         if hc.needs_write:
             mutter("write hc")
             hc.write()
-            
-            
-    def __del__(self):
-        if self._hashcache.needs_write:
-            self._hashcache.write()
-
 
     def __iter__(self):
         """Iterate through file_ids for this tree.
@@ -162,6 +188,11 @@ class WorkingTree(bzrlib.tree.Tree):
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
+    def get_root_id(self):
+        """Return the id of this trees root"""
+        inv = self.read_working_inventory()
+        return inv.root.file_id
+        
     def _get_store_filename(self, file_id):
         ## XXX: badly named; this isn't in the store at all
         return self.abspath(self.id2path(file_id))
@@ -179,6 +210,10 @@ class WorkingTree(bzrlib.tree.Tree):
         path = inv.id2path(file_id)
         return bzrlib.osutils.lexists(self.abspath(path))
 
+    def has_or_had_id(self, file_id):
+        if file_id == self.inventory.root.file_id:
+            return True
+        return self.inventory.has_id(file_id)
 
     __contains__ = has_id
     
@@ -300,6 +335,25 @@ class WorkingTree(bzrlib.tree.Tree):
                 conflicted.add(stem)
                 yield stem
 
+    @needs_write_lock
+    def pull(self, source, overwrite=False):
+        from bzrlib.merge import merge_inner
+        source.lock_read()
+        try:
+            old_revision_history = self.branch.revision_history()
+            self.branch.pull(source, overwrite)
+            new_revision_history = self.branch.revision_history()
+            if new_revision_history != old_revision_history:
+                if len(old_revision_history):
+                    other_revision = old_revision_history[-1]
+                else:
+                    other_revision = None
+                merge_inner(self.branch,
+                            self.branch.basis_tree(), 
+                            self.branch.revision_tree(other_revision))
+        finally:
+            source.unlock()
+
     def extras(self):
         """Yield all unknown files in this WorkingTree.
 
@@ -390,6 +444,144 @@ class WorkingTree(bzrlib.tree.Tree):
                     return pat
         else:
             return None
+
+    def kind(self, file_id):
+        return file_kind(self.id2abspath(file_id))
+
+    def lock_read(self):
+        """See Branch.lock_read, and WorkingTree.unlock."""
+        return self.branch.lock_read()
+
+    def lock_write(self):
+        """See Branch.lock_write, and WorkingTree.unlock."""
+        return self.branch.lock_write()
+
+    @needs_read_lock
+    def read_working_inventory(self):
+        """Read the working inventory."""
+        # ElementTree does its own conversion from UTF-8, so open in
+        # binary.
+        f = self.branch.controlfile('inventory', 'rb')
+        return bzrlib.xml5.serializer_v5.read_inventory(f)
+
+    @needs_write_lock
+    def remove(self, files, verbose=False):
+        """Remove nominated files from the working inventory..
+
+        This does not remove their text.  This does not run on XXX on what? RBC
+
+        TODO: Refuse to remove modified files unless --force is given?
+
+        TODO: Do something useful with directories.
+
+        TODO: Should this remove the text or not?  Tough call; not
+        removing may be useful and the user can just use use rm, and
+        is the opposite of add.  Removing it is consistent with most
+        other tools.  Maybe an option.
+        """
+        ## TODO: Normalize names
+        ## TODO: Remove nested loops; better scalability
+        if isinstance(files, basestring):
+            files = [files]
+
+        inv = self.inventory
+
+        # do this before any modifications
+        for f in files:
+            fid = inv.path2id(f)
+            if not fid:
+                # TODO: Perhaps make this just a warning, and continue?
+                # This tends to happen when 
+                raise NotVersionedError(path=f)
+            mutter("remove inventory entry %s {%s}" % (quotefn(f), fid))
+            if verbose:
+                # having remove it, it must be either ignored or unknown
+                if self.is_ignored(f):
+                    new_status = 'I'
+                else:
+                    new_status = '?'
+                show_status(new_status, inv[fid].kind, quotefn(f))
+            del inv[fid]
+
+        self.branch._write_inventory(inv)
+
+    @needs_write_lock
+    def revert(self, filenames, old_tree=None, backups=True):
+        """Restore selected files to the versions from a previous tree.
+
+        backups
+            If true (default) backups are made of files before
+            they're renamed.
+        """
+        from bzrlib.atomicfile import AtomicFile
+        from bzrlib.osutils import backup_file
+        
+        inv = self.read_working_inventory()
+        if old_tree is None:
+            old_tree = self.branch.basis_tree()
+        old_inv = old_tree.inventory
+
+        nids = []
+        for fn in filenames:
+            file_id = inv.path2id(fn)
+            if not file_id:
+                raise NotVersionedError(path=fn)
+            if not old_inv.has_id(file_id):
+                raise BzrError("file not present in old tree", fn, file_id)
+            nids.append((fn, file_id))
+            
+        # TODO: Rename back if it was previously at a different location
+
+        # TODO: If given a directory, restore the entire contents from
+        # the previous version.
+
+        # TODO: Make a backup to a temporary file.
+
+        # TODO: If the file previously didn't exist, delete it?
+        for fn, file_id in nids:
+            backup_file(fn)
+            
+            f = AtomicFile(fn, 'wb')
+            try:
+                f.write(old_tree.get_file(file_id).read())
+                f.commit()
+            finally:
+                f.close()
+
+    @needs_write_lock
+    def set_inventory(self, new_inventory_list):
+        from bzrlib.inventory import (Inventory,
+                                      InventoryDirectory,
+                                      InventoryEntry,
+                                      InventoryFile,
+                                      InventoryLink)
+        inv = Inventory(self.get_root_id())
+        for path, file_id, parent, kind in new_inventory_list:
+            name = os.path.basename(path)
+            if name == "":
+                continue
+            # fixme, there should be a factory function inv,add_?? 
+            if kind == 'directory':
+                inv.add(InventoryDirectory(file_id, name, parent))
+            elif kind == 'file':
+                inv.add(InventoryFile(file_id, name, parent))
+            elif kind == 'symlink':
+                inv.add(InventoryLink(file_id, name, parent))
+            else:
+                raise BzrError("unknown kind %r" % kind)
+        self.branch._write_inventory(inv)
+
+    def unlock(self):
+        """See Branch.unlock.
+        
+        WorkingTree locking just uses the Branch locking facilities.
+        This is current because all working trees have an embedded branch
+        within them. IF in the future, we were to make branch data shareable
+        between multiple working trees, i.e. via shared storage, then we 
+        would probably want to lock both the local tree, and the branch.
+        """
+        return self.branch.unlock()
+
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 def get_conflicted_stem(path):

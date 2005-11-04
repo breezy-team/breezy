@@ -33,10 +33,10 @@ class TestBase(TestCase):
         distances = node_distances(self.graph, descendants, 'A')
         nodes = nodes_by_distance(distances)
         self.assertEqual(nodes[0], 'D')
-        assert nodes[1] in ('N', 'C')
-        assert nodes[2] in ('N', 'C')
-        assert nodes[3] in ('B', 'M')
-        assert nodes[4] in ('B', 'M')
+        self.assert_(nodes[1] in ('N', 'C'))
+        self.assert_(nodes[2] in ('N', 'C'))
+        self.assert_(nodes[3] in ('B', 'M'))
+        self.assert_(nodes[4] in ('B', 'M'))
 
         #Ensure we don't shortcut through B when there's only a difference of
         # 1 in distance

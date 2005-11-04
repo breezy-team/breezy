@@ -39,6 +39,21 @@ from bzrlib.annotate import annotate_file
 
 
 class TestAnnotate(TestCaseInTempDir):
+    def setUp(self):
+        super(TestAnnotate, self).setUp()
+        b = Branch.initialize('.')
+        self.build_tree_contents([('hello.txt', 'my helicopter\n')])
+        b.add(['hello.txt'])
+        b.commit('add hello', 
+                 committer='test@user')
+
     def test_help_annotate(self):
         """Annotate command exists"""
         out, err = self.run_bzr_captured(['--no-plugins', 'annotate', '--help'])
+
+    def test_annotate_cmd(self):
+        out, err = self.run_bzr_captured(['annotate', 'hello.txt'])
+        self.assertEquals(err, '')
+        self.assertEqualDiff(out, '''\
+    1 test@us | my helicopter
+''')

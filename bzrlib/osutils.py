@@ -119,7 +119,22 @@ def normalizepath(f):
         return F(f)
     else:
         return os.path.join(F(p), e)
-    
+
+if os.name == "posix":
+    # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
+    # choke on a Unicode string containing a relative path if
+    # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
+    # string.
+    _fs_enc = sys.getfilesystemencoding()
+    def abspath(path):
+        return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
+    def realpath(path):
+        return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
+else:
+    # We need to use the Unicode-aware os.path.abspath and
+    # os.path.realpath on Windows systems.
+    abspath = os.path.abspath
+    realpath = os.path.realpath
 
 def backup_file(fn):
     """Copy a file to a backup.
@@ -288,7 +303,8 @@ def local_time_offset(t=None):
         return -time.timezone
 
     
-def format_date(t, offset=0, timezone='original'):
+def format_date(t, offset=0, timezone='original', date_fmt=None, 
+                show_offset=True):
     ## TODO: Perhaps a global option to use either universal or local time?
     ## Or perhaps just let people set $TZ?
     assert isinstance(t, float)
@@ -306,9 +322,13 @@ def format_date(t, offset=0, timezone='original'):
     else:
         raise BzrError("unsupported timezone format %r" % timezone,
                        ['options are "utc", "original", "local"'])
-
-    return (time.strftime("%a %Y-%m-%d %H:%M:%S", tt)
-            + ' %+03d%02d' % (offset / 3600, (offset / 60) % 60))
+    if date_fmt is None:
+        date_fmt = "%a %Y-%m-%d %H:%M:%S"
+    if show_offset:
+        offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
+    else:
+        offset_str = ''
+    return (time.strftime(date_fmt, tt) +  offset_str)
 
 
 def compact_date(when):
@@ -448,7 +468,7 @@ def relpath(base, path):
     os.path.commonprefix (python2.4) has a bad bug that it works just
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem."""
-    rp = os.path.abspath(path)
+    rp = abspath(path)
 
     s = []
     head = rp

@@ -20,6 +20,7 @@
 # executable files with reasonable names.
 
 # TODO: `help commands --all` should show hidden commands
+import textwrap
 
 global_help = \
 """Bazaar-NG -- a free distributed version-control tool
@@ -112,27 +113,30 @@ def help_on_command(cmdname, outfile=None):
     outfile.write(doc)
     if doc[-1] != '\n':
         outfile.write('\n')
-    
-    help_on_options(cmd_object.takes_options, outfile=None)
+    help_on_command_options(cmd_object, outfile=None)
 
 
-def help_on_options(options, outfile=None):
-    from bzrlib.commands import SHORT_OPTIONS
-    
+def help_on_command_options(cmd, outfile=None):
+    from bzrlib.option import Option
+    options = cmd.options()
     if not options:
         return
-    
     if outfile == None:
         outfile = sys.stdout
-
     outfile.write('\noptions:\n')
-    for on in options:
-        l = '    --' + on
-        for shortname, longname in SHORT_OPTIONS.items():
-            if longname == on:
-                l += ', -' + shortname
-                break
-        outfile.write(l + '\n')
+    for option_name, option in sorted(options.items()):
+        l = '    --' + option_name
+        if option.type is not None:
+            l += ' ' + option.argname.upper()
+        short_name = option.short_name()
+        if short_name:
+            assert len(short_name) == 1
+            l += ', -' + short_name
+        l += (30 - len(l)) * ' ' + option.help
+        # TODO: split help over multiple lines with correct indenting and 
+        # wrapping
+        wrapped = textwrap.fill(l, initial_indent='', subsequent_indent=30*' ')
+        outfile.write(wrapped + '\n')
 
 
 def help_commands(outfile=None):

@@ -58,6 +58,11 @@ class Tree(object):
     def has_id(self, file_id):
         return self.inventory.has_id(file_id)
 
+    def has_or_had_id(self, file_id):
+        if file_id == self.inventory.root.file_id:
+            return True
+        return self.inventory.has_id(file_id)
+
     __contains__ = has_id
 
     def __iter__(self):
@@ -65,6 +70,9 @@ class Tree(object):
 
     def id2path(self, file_id):
         return self.inventory.id2path(file_id)
+
+    def kind(self, file_id):
+        raise NotImplementedError("subclasses must implement kind")
 
     def _get_inventory(self):
         return self._inventory
@@ -157,6 +165,9 @@ class RevisionTree(Tree):
             return ie.text_sha1
 
     def is_executable(self, file_id):
+        ie = self._inventory[file_id]
+        if ie.kind != "file":
+            return None 
         return self._inventory[file_id].executable
 
     def has_filename(self, filename):
@@ -171,6 +182,9 @@ class RevisionTree(Tree):
         ie = self._inventory[file_id]
         return ie.symlink_target;
 
+    def kind(self, file_id):
+        return self._inventory[file_id].kind
+
 
 class EmptyTree(Tree):
     def __init__(self):
@@ -181,6 +195,10 @@ class EmptyTree(Tree):
 
     def has_filename(self, filename):
         return False
+
+    def kind(self, file_id):
+        assert self._inventory[file_id].kind == "root_directory"
+        return "root_directory"
 
     def list_files(self):
         return iter([])

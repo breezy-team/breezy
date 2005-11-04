@@ -71,19 +71,10 @@ import sha
 from difflib import SequenceMatcher
 
 from bzrlib.trace import mutter
+from bzrlib.errors import WeaveError, WeaveFormatError, WeaveParentMismatch, \
+        WeaveRevisionNotPresent, WeaveRevisionAlreadyPresent
+from bzrlib.tsort import topo_sort
 
-
-class WeaveError(Exception):
-    """Exception in processing weave"""
-
-
-class WeaveFormatError(WeaveError):
-    """Weave invariant violated"""
-
-
-class WeaveParentMismatch(WeaveError):
-    """Parents are mismatched between two revisions."""
-    
 
 class Weave(object):
     """weave - versioned text file storage.
@@ -210,6 +201,8 @@ class Weave(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __contains__(self, name):
+        return self._name_map.has_key(name)
 
     def maybe_lookup(self, name_or_index):
         """Convert possible symbolic name to index, or pass through indexes."""
@@ -224,9 +217,10 @@ class Weave(object):
         try:
             return self._name_map[name]
         except KeyError:
-            raise WeaveError("name %r not present in weave %r" %
-                             (name, self._weave_name))
+            raise WeaveRevisionNotPresent(name, self)
 
+    def names(self):
+        return self._names[:]
 
     def iter_names(self):
         """Yield a list of all names in this weave."""
@@ -235,22 +229,16 @@ class Weave(object):
     def idx_to_name(self, version):
         return self._names[version]
 
-
     def _check_repeated_add(self, name, parents, text, sha1):
         """Check that a duplicated add is OK.
 
         If it is, return the (old) index; otherwise raise an exception.
         """
         idx = self.lookup(name)
-        if sorted(self._parents[idx]) != sorted(parents):
-            raise WeaveError("name \"%s\" already present in weave "
-                             "with different parents" % name)
-        if sha1 != self._sha1s[idx]:
-            raise WeaveError("name \"%s\" already present in weave "
-                             "with different text" % name)            
+        if sorted(self._parents[idx]) != sorted(parents) \
+            or sha1 != self._sha1s[idx]:
+            raise WeaveRevisionAlreadyPresent(name, self)
         return idx
-        
-
         
     def add(self, name, parents, text, sha1=None):
         """Add a single text on top of the weave.
@@ -458,7 +446,6 @@ class Weave(object):
         for origin, lineno, text in self._extract(incls):
             yield origin, text
 
-
     def _walk(self):
         """Walk the weave.
 
@@ -486,8 +473,7 @@ class Weave(object):
                 elif c == ']':
                     dset.remove(v)
                 else:
-                    raise WeaveFormatError('unexpected instruction %r'
-                                           % v)
+                    raise WeaveFormatError('unexpected instruction %r' % v)
             else:
                 assert isinstance(l, basestring)
                 assert istack
@@ -547,16 +533,13 @@ class Weave(object):
                 if isactive:
                     result.append((istack[-1], lineno, l))
             lineno += 1
-
         if istack:
-            raise WFE("unclosed insertion blocks at end of weave",
-                                   istack)
+            raise WeaveFormatError("unclosed insertion blocks "
+                    "at end of weave: %s" % istack)
         if dset:
-            raise WFE("unclosed deletion blocks at end of weave",
-                                   dset)
-
+            raise WeaveFormatError("unclosed deletion blocks at end of weave: %s"
+                                   % dset)
         return result
-    
 
 
     def get_iter(self, name_or_index):
@@ -740,11 +723,11 @@ class Weave(object):
                 elif lines_a == lines_b:
                     for l in lines_a: yield l
                 else:
-                    yield '<<<<\n'
+                    yield '<<<<<<<\n'
                     for l in lines_a: yield l
-                    yield '====\n'
+                    yield '=======\n'
                     for l in lines_b: yield l
-                    yield '>>>>\n'
+                    yield '>>>>>>>\n'
 
                 del lines_a[:]
                 del lines_b[:]
@@ -870,7 +853,7 @@ def reweave(wa, wb):
     # map from version name -> all parent names
     combined_parents = _reweave_parent_graphs(wa, wb)
     mutter("combined parents: %r", combined_parents)
-    order = _make_reweave_order(wa._names, wb._names, combined_parents)
+    order = topo_sort(combined_parents.iteritems())
     mutter("order to reweave: %r", order)
     for name in order:
         if name in wa._name_map:
@@ -893,40 +876,6 @@ def _reweave_parent_graphs(wa, wb):
             p = combined.setdefault(name, set())
             p.update(map(weave.idx_to_name, weave._parents[idx]))
     return combined
-
-
-def _make_reweave_order(wa_order, wb_order, combined_parents):
-    """Return an order to reweave versions respecting parents."""
-    done = set()
-    result = []
-    ia = ib = 0
-    next_a = next_b = None
-    len_a = len(wa_order)
-    len_b = len(wb_order)
-    while ia < len(wa_order) or ib < len(wb_order):
-        if ia < len_a:
-            next_a = wa_order[ia]
-            if next_a in done:
-                ia += 1
-                continue
-            if combined_parents[next_a].issubset(done):
-                ia += 1
-                result.append(next_a)
-                done.add(next_a)
-                continue
-        if ib < len_b:
-            next_b = wb_order[ib]
-            if next_b in done:
-                ib += 1
-                continue
-            elif combined_parents[next_b].issubset(done):
-                ib += 1
-                result.append(next_b)
-                done.add(next_b)
-                continue
-        raise WeaveError("don't know how to reweave at {%s} and {%s}"
-                         % (next_a, next_b))
-    return result
 
 
 def weave_toc(w):

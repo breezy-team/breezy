@@ -23,6 +23,12 @@ Most of these depend on the particular formatting used.
 
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.merge import merge
+from cStringIO import StringIO
+from bzrlib.status import show_status
+from bzrlib.branch import Branch
+from os import mkdir
+from bzrlib.clone import copy_branch
 
 class BranchStatus(TestCaseInTempDir):
     
@@ -54,9 +60,6 @@ class BranchStatus(TestCaseInTempDir):
 
     def test_branch_status_revisions(self):
         """Tests branch status with revisions"""
-        from cStringIO import StringIO
-        from bzrlib.status import show_status
-        from bzrlib.branch import Branch
         
         b = Branch.initialize('.')
 
@@ -92,6 +95,33 @@ class BranchStatus(TestCaseInTempDir):
                           ['added:\n',
                            '  bye.c\n',
                            '  hello.c\n'])
+
+    def status_string(self, branch):
+        tof = StringIO()
+        show_status(branch, to_file=tof)
+        tof.seek(0)
+        return tof.getvalue()
+
+    def test_pending(self):
+        """Pending merges display works"""
+        mkdir("./branch")
+        b = Branch.initialize('./branch')
+        b.commit("Empty commit 1")
+        b_2 = copy_branch(b, './copy')
+        b.commit("Empty commit 2")
+        merge(["./branch", -1], [None, None], this_dir = './copy')
+        message = self.status_string(b_2)
+        self.assert_(message.startswith("pending merges:\n"))
+        self.assert_(message.endswith("Empty commit 2\n")) 
+        b_2.commit("merged")
+        # must be long to make sure we see elipsis at the end
+        b.commit("Empty commit 3 blah blah blah blah blah blah blah blah blah"
+                 " blah blah blah blah blah blah bleh")
+        merge(["./branch", -1], [None, None], this_dir = './copy')
+        message = self.status_string(b_2)
+        self.assert_(message.startswith("pending merges:\n"))
+        self.assert_("Empty commit 3" in message)
+        self.assert_(message.endswith("...\n")) 
 
     def test_branch_status_specific_files(self): 
         """Tests branch status with given specific files"""

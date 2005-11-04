@@ -18,6 +18,7 @@
 
 from warnings import warn
 from osutils import rename
+import errno
 
 class AtomicFile(object):
     """A file that does an atomic-rename to move into place.
@@ -65,6 +66,12 @@ class AtomicFile(object):
         self.f.close()
         self.f = None
         
+        try:
+            stat = os.lstat(self.realfilename)
+            os.chmod(self.tmpfilename, stat.st_mode)
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
         rename(self.tmpfilename, self.realfilename)
 
 

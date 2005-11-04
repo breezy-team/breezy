@@ -57,7 +57,7 @@ class RevisionInfo(object):
         # TODO: otherwise, it should depend on how I was built -
         # if it's in_history(branch), then check revision_history(),
         # if it's in_store(branch), do the check below
-        return self.rev_id in self.branch.revision_store
+        return self.branch.revision_store.has_id(self.rev_id)
 
     def __len__(self):
         return 2
@@ -313,7 +313,7 @@ class RevisionSpec_ancestor(RevisionSpec):
     def _match_on(self, branch, revs):
         from branch import Branch
         from revision import common_ancestor, MultipleRevisionSources
-        other_branch = Branch.open_containing(self.spec)
+        other_branch = Branch.open_containing(self.spec)[0]
         revision_a = branch.last_revision()
         revision_b = other_branch.last_revision()
         for r, b in ((revision_a, branch), (revision_b, other_branch)):
@@ -339,7 +339,7 @@ class RevisionSpec_branch(RevisionSpec):
     def _match_on(self, branch, revs):
         from branch import Branch
         from fetch import greedy_fetch
-        other_branch = Branch.open_containing(self.spec)
+        other_branch = Branch.open_containing(self.spec)[0]
         revision_b = other_branch.last_revision()
         if revision_b is None:
             raise NoCommits(other_branch)

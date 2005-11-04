@@ -33,6 +33,10 @@ only a summary of exceptions, not the traceback.
 # TODO: When running the test suites, we should add an additional
 # logger that sends messages into the test log file.
 
+# FIXME: Unfortunately it turns out that python's logging module
+# is quite expensive, even when the message is not printed by any handlers.
+# We should perhaps change back to just simply doing it here.
+
 
 import sys
 import os
@@ -81,7 +85,6 @@ class QuietFormatter(logging.Formatter):
 # configure convenient aliases for output routines
 
 _bzr_logger = logging.getLogger('bzr')
-_bzr_logger.setLevel(logging.DEBUG) 
 
 info = note = _bzr_logger.info
 warning =   _bzr_logger.warning
@@ -152,25 +155,34 @@ def log_startup(argv):
           sys.platform)
 
     debug('  arguments: %r', argv)
-    debug('  working dir: %s', os.getcwdu())
+    debug('  working dir: %r', os.getcwdu())
 
 
 def log_exception(msg=None):
-    """Log the last exception into the trace file.
+    """Log the last exception to stderr and the trace file.
 
     The exception string representation is used as the error
     summary, unless msg is given.
     """
-    command = ' '.join(repr(arg) for arg in sys.argv)
-    prefix = "command: %s\npwd: %s\n" % (command, os.getcwd())
+    ei = sys.exc_info()
     if msg == None:
-        ei = sys.exc_info()
         msg = str(ei[1])
     if msg and (msg[-1] == '\n'):
         msg = msg[:-1]
-    ## msg = "(%s) %s" % (str(type(ei[1])), msg)
-    _bzr_logger.exception(prefix + msg)
+    msg += '\n  command: %s' % ' '.join(repr(arg) for arg in sys.argv)
+    msg += '\n      pwd: %r' % os.getcwdu()
+    msg += '\n    error: %s' % ei[0]        # exception type
+    _bzr_logger.exception(msg)
 
+
+def log_exception_quietly():
+    """Log the last exception to the trace file only.
+
+    Used for exceptions that occur internally and that may be 
+    interesting to developers but not to users.  For example, 
+    errors loading plugins.
+    """
+    debug(traceback.format_exc())
 
 
 def enable_default_logging():
@@ -190,6 +202,7 @@ def enable_default_logging():
 
     _stderr_handler.setLevel(logging.INFO)
     _file_handler.setLevel(level)
+    _bzr_logger.setLevel(level) 
 
     logging.getLogger('').addHandler(_stderr_handler)
 

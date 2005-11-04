@@ -26,7 +26,8 @@ from bzrlib.revision import (find_present_ancestors, combined_graph,
 from bzrlib.trace import mutter
 from bzrlib.errors import NoSuchRevision
 
-def make_branches():
+# XXX: Make this a method of a merge base case
+def make_branches(self):
     """Create two branches
 
     branch 1 has 6 commits, branch 2 has 3 commits
@@ -63,7 +64,7 @@ def make_branches():
     
     fetch(from_branch=br2, to_branch=br1)
     br1.add_pending_merge(revisions_2[4])
-    assert revisions_2[4] == 'b@u-0-4'
+    self.assertEquals(revisions_2[4], 'b@u-0-4')
     commit(br1, "Commit six", rev_id="a@u-0-3")
     commit(br1, "Commit seven", rev_id="a@u-0-4")
     commit(br2, "Commit eight", rev_id="b@u-0-5")
@@ -82,7 +83,7 @@ def make_branches():
 class TestIsAncestor(TestCaseInTempDir):
     def test_recorded_ancestry(self):
         """Test that commit records all ancestors"""
-        br1, br2 = make_branches()
+        br1, br2 = make_branches(self)
         d = [('a@u-0-0', ['a@u-0-0']),
              ('a@u-0-1', ['a@u-0-0', 'a@u-0-1']),
              ('a@u-0-2', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2']),
@@ -118,22 +119,22 @@ class TestIsAncestor(TestCaseInTempDir):
     
     def test_is_ancestor(self):
         """Test checking whether a revision is an ancestor of another revision"""
-        br1, br2 = make_branches()
+        br1, br2 = make_branches(self)
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
         sources = br1
 
-        assert is_ancestor(revisions[0], revisions[0], br1)
-        assert is_ancestor(revisions[1], revisions[0], sources)
-        assert not is_ancestor(revisions[0], revisions[1], sources)
-        assert is_ancestor(revisions_2[3], revisions[0], sources)
+        self.assert_(is_ancestor(revisions[0], revisions[0], br1))
+        self.assert_(is_ancestor(revisions[1], revisions[0], sources))
+        self.assert_(not is_ancestor(revisions[0], revisions[1], sources))
+        self.assert_(is_ancestor(revisions_2[3], revisions[0], sources))
         # disabled mbp 20050914, doesn't seem to happen anymore
         ## self.assertRaises(NoSuchRevision, is_ancestor, revisions_2[3],
         ##                  revisions[0], br1)        
-        assert is_ancestor(revisions[3], revisions_2[4], sources)
-        assert is_ancestor(revisions[3], revisions_2[4], br1)
-        assert is_ancestor(revisions[3], revisions_2[3], sources)
-        ## assert not is_ancestor(revisions[3], revisions_2[3], br1)
+        self.assert_(is_ancestor(revisions[3], revisions_2[4], sources))
+        self.assert_(is_ancestor(revisions[3], revisions_2[4], br1))
+        self.assert_(is_ancestor(revisions[3], revisions_2[3], sources))
+        ## self.assert_(not is_ancestor(revisions[3], revisions_2[3], br1))
 
 
 class TestIntermediateRevisions(TestCaseInTempDir):
@@ -141,7 +142,7 @@ class TestIntermediateRevisions(TestCaseInTempDir):
     def setUp(self):
         from bzrlib.commit import commit
         TestCaseInTempDir.setUp(self)
-        self.br1, self.br2 = make_branches()
+        self.br1, self.br2 = make_branches(self)
 
         self.br2.commit("Commit eleven", rev_id="b@u-0-7")
         self.br2.commit("Commit twelve", rev_id="b@u-0-8")
@@ -166,7 +167,7 @@ class TestIntermediateRevisions(TestCaseInTempDir):
     def test_intervene(self):
         """Find intermediate revisions, without requiring history"""
         from bzrlib.errors import NotAncestor, NoSuchRevision
-        assert len(self.intervene('a@u-0-0', 'a@u-0-0')) == 0
+        self.assertEquals(len(self.intervene('a@u-0-0', 'a@u-0-0')), 0)
         self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-1'), ['a@u-0-1'])
         self.assertEqual(self.intervene('a@u-0-0', 'a@u-0-2'), 
                          ['a@u-0-1', 'a@u-0-2'])
@@ -181,15 +182,13 @@ class TestIntermediateRevisions(TestCaseInTempDir):
                                         self.br1.revision_history()), 
                          ['a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4', 
                           'a@u-0-5'])
-        print ("testrevision.py 191 - intervene appears to return b..6 even"
-               "though it is not reachable!")
-#        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-6', 
-#                         self.br1.revision_history()), 
-#                         ['a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4', 
-#                          'b@u-0-6'])
-#        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-5'), 
-#                         ['a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4', 
-#                          'b@u-0-5'])
+        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-6', 
+                         self.br1.revision_history()), 
+                         ['a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4', 
+                          'b@u-0-6'])
+        self.assertEqual(self.intervene('a@u-0-0', 'b@u-0-5'), 
+                         ['a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4', 
+                          'b@u-0-5'])
         self.assertEqual(self.intervene('b@u-0-3', 'b@u-0-6', 
                          self.br2.revision_history()), 
                          ['b@u-0-4', 'b@u-0-5', 'b@u-0-6'])
@@ -212,7 +211,7 @@ class TestCommonAncestor(TestCaseInTempDir):
     def test_old_common_ancestor(self):
         """Pick a resonable merge base using the old functionality"""
         from bzrlib.revision import old_common_ancestor as common_ancestor
-        br1, br2 = make_branches()
+        br1, br2 = make_branches(self)
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
         sources = br1
@@ -224,7 +223,7 @@ class TestCommonAncestor(TestCaseInTempDir):
                                    revisions_2[3]:(4, 2),
                                    revisions[0]:(5, 3) }
         ancestors_list = find_present_ancestors(revisions[3], sources)
-        assert len(expected_ancestors_list) == len(ancestors_list)
+        self.assertEquals(len(expected_ancestors_list), len(ancestors_list))
         for key, value in expected_ancestors_list.iteritems():
             self.assertEqual(ancestors_list[key], value, 
                               "key %r, %r != %r" % (key, ancestors_list[key],
@@ -251,7 +250,7 @@ class TestCommonAncestor(TestCaseInTempDir):
     def test_common_ancestor(self):
         """Pick a reasonable merge base"""
         from bzrlib.revision import common_ancestor
-        br1, br2 = make_branches()
+        br1, br2 = make_branches(self)
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
         sources = MultipleRevisionSources(br1, br2)
@@ -262,7 +261,7 @@ class TestCommonAncestor(TestCaseInTempDir):
                                    revisions_2[3]:(4, 2),
                                    revisions[0]:(5, 3) }
         ancestors_list = find_present_ancestors(revisions[3], sources)
-        assert len(expected_ancestors_list) == len(ancestors_list)
+        self.assertEquals(len(expected_ancestors_list), len(ancestors_list))
         for key, value in expected_ancestors_list.iteritems():
             self.assertEqual(ancestors_list[key], value, 
                               "key %r, %r != %r" % (key, ancestors_list[key],
@@ -288,13 +287,13 @@ class TestCommonAncestor(TestCaseInTempDir):
         """combined_graph
         Ensure it's not order-sensitive
         """
-        br1, br2 = make_branches()
+        br1, br2 = make_branches(self)
         source = MultipleRevisionSources(br1, br2)
         combined_1 = combined_graph(br1.last_revision(), 
                                     br2.last_revision(), source)
         combined_2 = combined_graph(br2.last_revision(),
                                     br1.last_revision(), source)
-        assert combined_1[1] == combined_2[1]
-        assert combined_1[2] == combined_2[2]
-        assert combined_1[3] == combined_2[3]
-        assert combined_1 == combined_2
+        self.assertEquals(combined_1[1], combined_2[1])
+        self.assertEquals(combined_1[2], combined_2[2])
+        self.assertEquals(combined_1[3], combined_2[3])
+        self.assertEquals(combined_1, combined_2)

@@ -187,8 +187,8 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
             # get them
             old_path = old_inv.id2path(file_id)
             new_path = new_inv.id2path(file_id)
-            old_ie._read_tree_state(old_tree)
-            new_ie._read_tree_state(new_tree)
+            old_ie._read_tree_state(old_path, old_tree)
+            new_ie._read_tree_state(new_path, new_tree)
             text_modified, meta_modified = new_ie.detect_changes(old_ie)
 
             # TODO: Can possibly avoid calculating path strings if the

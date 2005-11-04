@@ -56,6 +56,12 @@
 # merges from, then it should still be reported as newly added
 # relative to the basis revision.
 
+# TODO: Do checks that the tree can be committed *before* running the 
+# editor; this should include checks for a pointless commit and for 
+# unknown or missing files.
+
+# TODO: If commit fails, leave the message in a file somewhere.
+
 
 import os
 import re
@@ -75,9 +81,12 @@ from bzrlib.branch import gen_file_id
 import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
-                           ConflictsInTree
+                           ConflictsInTree,
+                           StrictCommitFailed
                            )
+import bzrlib.gpg as gpg
 from bzrlib.revision import Revision
+from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID
@@ -145,12 +154,16 @@ class Commit(object):
             working inventory.
     """
     def __init__(self,
-                 reporter=None):
+                 reporter=None,
+                 config=None):
         if reporter is not None:
             self.reporter = reporter
         else:
             self.reporter = NullCommitReporter()
-
+        if config is not None:
+            self.config = config
+        else:
+            self.config = None
         
     def commit(self,
                branch, message,
@@ -160,6 +173,7 @@ class Commit(object):
                specific_files=None,
                rev_id=None,
                allow_pointless=True,
+               strict=False,
                verbose=False,
                revprops=None):
         """Commit working copy as a new revision.
@@ -178,6 +192,9 @@ class Commit(object):
         allow_pointless -- If true (default), commit even if nothing
             has changed and no merges are recorded.
 
+        strict -- If true, don't allow a commit if the working tree
+            contains unknown files.
+
         revprops -- Properties for new revision
         """
         mutter('preparing to commit')
@@ -189,19 +206,26 @@ class Commit(object):
         self.allow_pointless = allow_pointless
         self.revprops = revprops
 
+        if strict:
+            # raise an exception as soon as we find a single unknown.
+            for unknown in branch.unknowns():
+                raise StrictCommitFailed()
+
         if timestamp is None:
             self.timestamp = time.time()
         else:
             self.timestamp = long(timestamp)
             
-        config = bzrlib.config.BranchConfig(self.branch)
+        if self.config is None:
+            self.config = bzrlib.config.BranchConfig(self.branch)
+
         if rev_id is None:
-            self.rev_id = _gen_revision_id(config, self.timestamp)
+            self.rev_id = _gen_revision_id(self.config, self.timestamp)
         else:
             self.rev_id = rev_id
 
         if committer is None:
-            self.committer = config.username()
+            self.committer = self.config.username()
         else:
             assert isinstance(committer, basestring), type(committer)
             self.committer = committer
@@ -242,9 +266,17 @@ class Commit(object):
 
             self._record_inventory()
             self._make_revision()
-            self.reporter.completed(self.branch.revno()+1, self.rev_id)
             self.branch.append_revision(self.rev_id)
             self.branch.set_pending_merges([])
+            self.reporter.completed(self.branch.revno()+1, self.rev_id)
+            if self.config.post_commit() is not None:
+                hooks = self.config.post_commit().split(' ')
+                # this would be nicer with twisted.python.reflect.namedAny
+                for hook in hooks:
+                    result = eval(hook + '(branch, rev_id)',
+                                  {'branch':self.branch,
+                                   'bzrlib':bzrlib,
+                                   'rev_id':self.rev_id})
         finally:
             self.branch.unlock()
 
@@ -314,6 +346,10 @@ class Commit(object):
         rev_tmp = StringIO()
         serializer_v5.write_revision(self.rev, rev_tmp)
         rev_tmp.seek(0)
+        if self.config.signature_needed():
+            plaintext = Testament(self.rev, self.new_inv).as_short_text()
+            self.branch.store_revision_signature(gpg.GPGStrategy(self.config),
+                                                 plaintext, self.rev_id)
         self.branch.revision_store.add(rev_tmp, self.rev_id)
         mutter('new revision_id is {%s}', self.rev_id)
 

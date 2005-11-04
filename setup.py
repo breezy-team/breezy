@@ -4,54 +4,84 @@
 # './setup.py install', or
 # './setup.py --help' for more options
 
+# Reinvocation stolen from bzr, we need python2.4 by virtue of bzr_man
+# including bzrlib.help
+
+import os, sys
+
+try:
+    version_info = sys.version_info
+except AttributeError:
+    version_info = 1, 5 # 1.5 or older
+
+REINVOKE = "__BZR_REINVOKE"
+NEED_VERS = (2, 4)
+KNOWN_PYTHONS = ('python2.4',)
+
+if version_info < NEED_VERS:
+    if not os.environ.has_key(REINVOKE):
+        # mutating os.environ doesn't work in old Pythons
+        os.putenv(REINVOKE, "1")
+        for python in KNOWN_PYTHONS:
+            try:
+                os.execvp(python, [python] + sys.argv)
+            except OSError:
+                pass
+    print >>sys.stderr, "bzr: error: cannot find a suitable python interpreter"
+    print >>sys.stderr, "  (need %d.%d or later)" % NEED_VERS
+    sys.exit(1)
+if hasattr(os, "unsetenv"):
+    os.unsetenv(REINVOKE)
+
+
 from distutils.core import setup
-
-# more sophisticated setup script, based on pychecker setup.py
-import sys, os
-from distutils.command.build_scripts import build_scripts
-
+from distutils.command.install_scripts import install_scripts
+from distutils.command.build import build
 
 ###############################
 # Overridden distutils actions
 ###############################
 
-class my_build_scripts(build_scripts):
-    """Customized build_scripts distutils action.
-
+class my_install_scripts(install_scripts):
+    """ Customized install_scripts distutils action.
     Create bzr.bat for win32.
     """
-
     def run(self):
+        import os
+        import sys
+
+        install_scripts.run(self)   # standard action
+
         if sys.platform == "win32":
-            bat_path = os.path.join(self.build_dir, "bzr.bat")
-            self.scripts.append(bat_path)
-            self.mkpath(self.build_dir)
-            scripts_dir = self.distribution.get_command_obj("install").\
-                                                            install_scripts
-            self.execute(func=self._create_bat,
-                         args=[bat_path, scripts_dir],
-                         msg="Create %s" % bat_path)
-        build_scripts.run(self) # invoke "standard" action
+            try:
+                scripts_dir = self.install_dir
+                script_path = os.path.join(scripts_dir, "bzr")
+                batch_str = "@%s %s %%*\n" % (sys.executable, script_path)
+                batch_path = script_path + ".bat"
+                f = file(batch_path, "w")
+                f.write(batch_str)
+                f.close()
+                print "Created:", batch_path
+            except Exception, e:
+                print "ERROR: Unable to create %s: %s" % (batch_path, e)
 
-    def _create_bat(self, bat_path, scripts_dir):
-        """ Creates the batch file for bzr on win32.
-        """
-        try:
-            script_path = os.path.join(scripts_dir, "bzr")
-            bat_str = "@%s %s %%*\n" % (sys.executable, script_path)
-            file(bat_path, "w").write(bat_str)
-            print "file written"
-        except Exception, e:
-            print "ERROR: Unable to create %s: %s" % (bat_path, e)
-            raise e
 
+class bzr_build(build):
+    """Customized build distutils action.
+    Generate bzr.1.
+    """
+    def run(self):
+        build.run(self)
+
+        import bzr_man
+        bzr_man.main()
 
 ########################
 ## Setup
 ########################
 
 setup(name='bzr',
-      version='0.1',
+      version='0.7pre',
       author='Martin Pool',
       author_email='mbp@sourcefrog.net',
       url='http://www.bazaar-ng.org/',
@@ -65,5 +95,9 @@ setup(name='bzr',
                 'bzrlib.store',
                 'bzrlib.util.elementtree',
                 'bzrlib.util.effbot.org',
+                'bzrlib.util.configobj',
                 ],
-      scripts=['bzr'])
+      scripts=['bzr'],
+      cmdclass={'install_scripts': my_install_scripts, 'build': bzr_build},
+      data_files=[('man/man1', ['bzr.1'])],
+     )

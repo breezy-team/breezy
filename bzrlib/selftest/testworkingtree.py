@@ -17,6 +17,7 @@
 
 import os
 from bzrlib.branch import Branch
+from bzrlib.errors import NotVersionedError
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
@@ -63,14 +64,12 @@ class TestWorkingTree(TestCaseInTempDir):
         branch = Branch.initialize('.')
         tree = WorkingTree(branch.base, branch)
         self.assertEqual(branch, tree.branch)
-        self.assertEqual(branch.inventory, tree._inventory)
         self.assertEqual(branch.base, tree.basedir)
     
     def test_construct_without_branch(self):
         branch = Branch.initialize('.')
         tree = WorkingTree(branch.base)
         self.assertEqual(branch.base, tree.branch.base)
-        self.assertEqual(branch.inventory, tree._inventory)
         self.assertEqual(branch.base, tree.basedir)
 
     def test_basic_relpath(self):
@@ -79,3 +78,69 @@ class TestWorkingTree(TestCaseInTempDir):
         tree = WorkingTree(branch.base)
         self.assertEqual('child',
                          tree.relpath(os.path.join(os.getcwd(), 'child')))
+
+    def test_lock_locks_branch(self):
+        branch = Branch.initialize('.')
+        tree = WorkingTree(branch.base)
+        tree.lock_read()
+        self.assertEqual(1, tree.branch._lock_count)
+        self.assertEqual('r', tree.branch._lock_mode)
+        tree.unlock()
+        self.assertEqual(None, tree.branch._lock_count)
+        tree.lock_write()
+        self.assertEqual(1, tree.branch._lock_count)
+        self.assertEqual('w', tree.branch._lock_mode)
+        tree.unlock()
+        self.assertEqual(None, tree.branch._lock_count)
+ 
+    def get_pullable_branches(self):
+        self.build_tree(['from/', 'from/file', 'to/'])
+        br_a = Branch.initialize('from')
+        br_a.add('file')
+        br_a.commit('foo', rev_id='A')
+        br_b = Branch.initialize('to')
+        return br_a, br_b
+ 
+    def test_pull(self):
+        br_a, br_b = self.get_pullable_branches()
+        br_b.working_tree().pull(br_a)
+        self.failUnless(br_b.has_revision('A'))
+        self.assertEqual(['A'], br_b.revision_history())
+
+    def test_pull_overwrites(self):
+        br_a, br_b = self.get_pullable_branches()
+        br_b.commit('foo', rev_id='B')
+        self.assertEqual(['B'], br_b.revision_history())
+        br_b.working_tree().pull(br_a, overwrite=True)
+        self.failUnless(br_b.has_revision('A'))
+        self.failUnless(br_b.has_revision('B'))
+        self.assertEqual(['A'], br_b.revision_history())
+
+    def test_revert(self):
+        """Test selected-file revert"""
+        b = Branch.initialize('.')
+
+        self.build_tree(['hello.txt'])
+        file('hello.txt', 'w').write('initial hello')
+
+        self.assertRaises(NotVersionedError,
+                          b.working_tree().revert, ['hello.txt'])
+        
+        b.add(['hello.txt'])
+        b.commit('create initial hello.txt')
+
+        self.check_file_contents('hello.txt', 'initial hello')
+        file('hello.txt', 'w').write('new hello')
+        self.check_file_contents('hello.txt', 'new hello')
+
+        wt = b.working_tree()
+
+        # revert file modified since last revision
+        wt.revert(['hello.txt'])
+        self.check_file_contents('hello.txt', 'initial hello')
+        self.check_file_contents('hello.txt~', 'new hello')
+
+        # reverting again clobbers the backup
+        wt.revert(['hello.txt'])
+        self.check_file_contents('hello.txt', 'initial hello')
+        self.check_file_contents('hello.txt~', 'initial hello')

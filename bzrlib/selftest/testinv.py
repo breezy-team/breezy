@@ -152,7 +152,7 @@ class TestEntryDiffing(TestCaseInTempDir):
         self.inv_1 = self.branch.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
         self.tree_2 = self.branch.working_tree()
-        self.inv_2 = self.branch.inventory
+        self.inv_2 = self.tree_2.read_working_inventory()
         self.file_2 = self.inv_2['fileid']
         if has_symlinks():
             self.link_1 = self.inv_1['linkid']

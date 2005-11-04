@@ -17,9 +17,12 @@ import os.path
 import errno
 import patch
 import stat
+from tempfile import mkdtemp
+from shutil import rmtree
 from bzrlib.trace import mutter
-from bzrlib.osutils import rename
+from bzrlib.osutils import rename, sha_file
 import bzrlib
+from itertools import izip
 
 # XXX: mbp: I'm not totally convinced that we should handle conflicts
 # as part of changeset application, rather than only in the merge
@@ -143,6 +146,9 @@ class SymlinkCreate(object):
         """
         self.target = contents
 
+    def __repr__(self):
+        return "SymlinkCreate(%s)" % self.target
+
     def __call__(self, filename, conflict_handler, reverse):
         """Creates or destroys the symlink.
 
@@ -230,6 +236,72 @@ class FileCreate(object):
 
                     
 
+class TreeFileCreate(object):
+    """Create or delete a file (for use with ReplaceContents)"""
+    def __init__(self, tree, file_id):
+        """Constructor
+
+        :param contents: The contents of the file to write
+        :type contents: str
+        """
+        self.tree = tree
+        self.file_id = file_id
+
+    def __repr__(self):
+        return "TreeFileCreate(%s)" % self.file_id
+
+    def __eq__(self, other):
+        if not isinstance(other, TreeFileCreate):
+            return False
+        return self.tree.get_file_sha1(self.file_id) == \
+            other.tree.get_file_sha1(other.file_id)
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def write_file(self, filename):
+        outfile = file(filename, "wb")
+        for line in self.tree.get_file(self.file_id):
+            outfile.write(line)
+
+    def same_text(self, filename):
+        in_file = file(filename, "rb")
+        return sha_file(in_file) == self.tree.get_file_sha1(self.file_id)
+
+    def __call__(self, filename, conflict_handler, reverse):
+        """Create or delete a file
+
+        :param filename: The name of the file to create
+        :type filename: str
+        :param reverse: Delete the file instead of creating it
+        :type reverse: bool
+        """
+        if not reverse:
+            try:
+                self.write_file(filename)
+            except IOError, e:
+                if e.errno == errno.ENOENT:
+                    if conflict_handler.missing_parent(filename)=="continue":
+                        self.write_file(filename)
+                else:
+                    raise
+
+        else:
+            try:
+                if not self.same_text(filename):
+                    direction = conflict_handler.wrong_old_contents(filename,
+                        self.tree.get_file(self.file_id).read())
+                    if  direction != "continue":
+                        return
+                os.unlink(filename)
+            except IOError, e:
+                if e.errno != errno.ENOENT:
+                    raise
+                if conflict_handler.missing_for_rm(filename, undo) == "skip":
+                    return
+
+                    
+
 def reversed(sequence):
     max = len(sequence) - 1
     for i in range(len(sequence)):
@@ -302,6 +374,12 @@ class ReplaceContents(object):
             if mode is not None:
                 os.chmod(filename, mode)
 
+    def is_creation(self):
+        return self.new_contents is not None and self.old_contents is None
+
+    def is_deletion(self):
+        return self.old_contents is not None and self.new_contents is None
+
 class ApplySequence(object):
     def __init__(self, changes=None):
         self.changes = []
@@ -333,10 +411,17 @@ class ApplySequence(object):
 
 
 class Diff3Merge(object):
+    history_based = False
     def __init__(self, file_id, base, other):
         self.file_id = file_id
         self.base = base
         self.other = other
+
+    def is_creation(self):
+        return False
+
+    def is_deletion(self):
+        return False
 
     def __eq__(self, other):
         if not isinstance(other, Diff3Merge):
@@ -347,32 +432,44 @@ class Diff3Merge(object):
     def __ne__(self, other):
         return not (self == other)
 
+    def dump_file(self, temp_dir, name, tree):
+        out_path = os.path.join(temp_dir, name)
+        out_file = file(out_path, "wb")
+        in_file = tree.get_file(self.file_id)
+        for line in in_file:
+            out_file.write(line)
+        return out_path
+
     def apply(self, filename, conflict_handler, reverse=False):
-        new_file = filename+".new"
-        base_file = self.base.readonly_path(self.file_id)
-        other_file = self.other.readonly_path(self.file_id)
-        if not reverse:
-            base = base_file
-            other = other_file
-        else:
-            base = other_file
-            other = base_file
-        status = patch.diff3(new_file, filename, base, other)
-        if status == 0:
-            os.chmod(new_file, os.stat(filename).st_mode)
-            rename(new_file, filename)
-            return
-        else:
-            assert(status == 1)
-            def get_lines(filename):
-                my_file = file(filename, "rb")
-                lines = my_file.readlines()
-                my_file.close()
-                return lines
-            base_lines = get_lines(base)
-            other_lines = get_lines(other)
-            conflict_handler.merge_conflict(new_file, filename, base_lines, 
-                                            other_lines)
+        temp_dir = mkdtemp(prefix="bzr-")
+        try:
+            new_file = filename+".new"
+            base_file = self.dump_file(temp_dir, "base", self.base)
+            other_file = self.dump_file(temp_dir, "other", self.other)
+            if not reverse:
+                base = base_file
+                other = other_file
+            else:
+                base = other_file
+                other = base_file
+            status = patch.diff3(new_file, filename, base, other)
+            if status == 0:
+                os.chmod(new_file, os.stat(filename).st_mode)
+                rename(new_file, filename)
+                return
+            else:
+                assert(status == 1)
+                def get_lines(filename):
+                    my_file = file(filename, "rb")
+                    lines = my_file.readlines()
+                    my_file.close()
+                    return lines
+                base_lines = get_lines(base)
+                other_lines = get_lines(other)
+                conflict_handler.merge_conflict(new_file, filename, base_lines, 
+                                                other_lines)
+        finally:
+            rmtree(temp_dir)
 
 
 def CreateDir():
@@ -411,7 +508,7 @@ def DeleteFile(contents):
     """
     return ReplaceContents(FileCreate(contents), None)
 
-def ReplaceFileContents(old_contents, new_contents):
+def ReplaceFileContents(old_tree, new_tree, file_id):
     """Convenience fucntion to replace the contents of a file.
     
     :param old_contents: The contents of the file to replace 
@@ -421,7 +518,8 @@ def ReplaceFileContents(old_contents, new_contents):
     :return: A ReplaceContents that will replace the contents of a file a file 
     :rtype: `ReplaceContents`
     """
-    return ReplaceContents(FileCreate(old_contents), FileCreate(new_contents))
+    return ReplaceContents(TreeFileCreate(old_tree, file_id), 
+                           TreeFileCreate(new_tree, file_id))
 
 def CreateSymlink(target):
     """Convenience fucntion to create a symlink.
@@ -590,8 +688,7 @@ class ChangesetEntry(object):
         :param reverse: if true, the changeset is being applied in reverse
         :rtype: bool
         """
-        return ((self.new_parent is None and not reverse) or 
-                (self.parent is None and reverse))
+        return self.is_creation(not reverse)
 
     def is_creation(self, reverse):
         """Return true if applying the entry would create a file/directory.
@@ -599,8 +696,12 @@ class ChangesetEntry(object):
         :param reverse: if true, the changeset is being applied in reverse
         :rtype: bool
         """
-        return ((self.parent is None and not reverse) or 
-                (self.new_parent is None and reverse))
+        if self.contents_change is None:
+            return False
+        if reverse:
+            return self.contents_change.is_deletion()
+        else:
+            return self.contents_change.is_creation()
 
     def is_creation_or_deletion(self):
         """Return true if applying the entry would create or delete a 
@@ -608,7 +709,7 @@ class ChangesetEntry(object):
 
         :rtype: bool
         """
-        return self.parent is None or self.new_parent is None
+        return self.is_creation(False) or self.is_deletion(False)
 
     def get_cset_path(self, mod=False):
         """Determine the path of the entry according to the changeset.
@@ -786,7 +887,7 @@ def get_rename_entries(changeset, inventory, reverse):
     :rtype: (List, List)
     """
     source_entries = [x for x in changeset.entries.itervalues() 
-                      if x.needs_rename()]
+                      if x.needs_rename() or x.is_creation_or_deletion()]
     # these are done from longest path to shortest, to avoid deleting a
     # parent before its children are deleted/renamed 
     def longest_to_shortest(entry):
@@ -833,7 +934,7 @@ def rename_to_temp_delete(source_entries, inventory, dir, temp_dir,
             entry.apply(path, conflict_handler, reverse)
             temp_name[entry.id] = None
 
-        else:
+        elif entry.needs_rename():
             to_name = os.path.join(temp_dir, str(i))
             src_path = inventory.get(entry.id)
             if src_path is not None:
@@ -844,7 +945,8 @@ def rename_to_temp_delete(source_entries, inventory, dir, temp_dir,
                 except OSError, e:
                     if e.errno != errno.ENOENT:
                         raise
-                    if conflict_handler.missing_for_rename(src_path) == "skip":
+                    if conflict_handler.missing_for_rename(src_path, to_name) \
+                        == "skip":
                         continue
 
     return temp_name
@@ -878,7 +980,7 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
         if entry.is_creation(reverse):
             entry.apply(new_path, conflict_handler, reverse)
             changed_inventory[entry.id] = new_tree_path
-        else:
+        elif entry.needs_rename():
             if old_path is None:
                 continue
             try:
@@ -971,14 +1073,24 @@ class MissingForRm(Exception):
 
 
 class MissingForRename(Exception):
-    def __init__(self, filename):
-        msg = "Attempt to move missing path %s" % (filename)
+    def __init__(self, filename, to_path):
+        msg = "Attempt to move missing path %s to %s" % (filename, to_path)
         Exception.__init__(self, msg)
         self.filename = filename
 
 class NewContentsConflict(Exception):
     def __init__(self, filename):
         msg = "Conflicting contents for new file %s" % (filename)
+        Exception.__init__(self, msg)
+
+class WeaveMergeConflict(Exception):
+    def __init__(self, filename):
+        msg = "Conflicting contents for file %s" % (filename)
+        Exception.__init__(self, msg)
+
+class ThreewayContentsConflict(Exception):
+    def __init__(self, filename):
+        msg = "Conflicting contents for file %s" % (filename)
         Exception.__init__(self, msg)
 
 
@@ -1043,14 +1155,21 @@ class ExceptionConflictHandler(object):
     def missing_for_rm(self, filename, change):
         raise MissingForRm(filename)
 
-    def missing_for_rename(self, filename):
-        raise MissingForRename(filename)
+    def missing_for_rename(self, filename, to_path):
+        raise MissingForRename(filename, to_path)
 
     def missing_for_merge(self, file_id, other_path):
         raise MissingForMerge(other_path)
 
     def new_contents_conflict(self, filename, other_contents):
         raise NewContentsConflict(filename)
+
+    def weave_merge_conflict(self, filename, weave, other_i, out_file):
+        raise WeaveMergeConflict(filename)
+ 
+    def threeway_contents_conflict(self, filename, this_contents,
+                                   base_contents, other_contents):
+        raise ThreewayContentsConflict(filename)
 
     def finalize(self):
         pass
@@ -1088,7 +1207,7 @@ def apply_changeset(changeset, inventory, dir, conflict_handler=None,
     
     #apply changes that don't affect filenames
     for entry in changeset.entries.itervalues():
-        if not entry.is_creation_or_deletion():
+        if not entry.is_creation_or_deletion() and not entry.is_boring():
             path = os.path.join(dir, inventory[entry.id])
             entry.apply(path, conflict_handler, reverse)
 
@@ -1113,7 +1232,7 @@ def apply_changeset_tree(cset, tree, reverse=False):
     r_inventory = {}
     for entry in tree.source_inventory().itervalues():
         inventory[entry.id] = entry.path
-    new_inventory = apply_changeset(cset, r_inventory, tree.root,
+    new_inventory = apply_changeset(cset, r_inventory, tree.basedir,
                                     reverse=reverse)
     new_entries, remove_entries = \
         get_inventory_change(inventory, new_inventory, cset, reverse)
@@ -1267,12 +1386,13 @@ def changeset_is_null(changeset):
             return False
     return True
 
-class UnsuppportedFiletype(Exception):
-    def __init__(self, full_path, stat_result):
-        msg = "The file \"%s\" is not a supported filetype." % full_path
+class UnsupportedFiletype(Exception):
+    def __init__(self, kind, full_path):
+        msg = "The file \"%s\" is a %s, which is not a supported filetype." \
+            % (full_path, kind)
         Exception.__init__(self, msg)
         self.full_path = full_path
-        self.stat_result = stat_result
+        self.kind = kind
 
 def generate_changeset(tree_a, tree_b, interesting_ids=None):
     return ChangesetGenerator(tree_a, tree_b, interesting_ids)()
@@ -1319,7 +1439,7 @@ class ChangesetGenerator(object):
     def get_entry(self, file_id, tree):
         if not tree.has_or_had_id(file_id):
             return None
-        return tree.tree.inventory[file_id]
+        return tree.inventory[file_id]
 
     def get_entry_parent(self, entry):
         if entry is None:
@@ -1376,12 +1496,7 @@ class ChangesetGenerator(object):
         if cs_entry is None:
             return None
 
-        full_path_a = self.tree_a.readonly_path(id)
-        full_path_b = self.tree_b.readonly_path(id)
-        stat_a = self.lstat(full_path_a)
-        stat_b = self.lstat(full_path_b)
-
-        cs_entry.metadata_change = self.make_exec_flag_change(stat_a, stat_b)
+        cs_entry.metadata_change = self.make_exec_flag_change(id)
 
         if id in self.tree_a and id in self.tree_b:
             a_sha1 = self.tree_a.get_file_sha1(id)
@@ -1389,65 +1504,46 @@ class ChangesetGenerator(object):
             if None not in (a_sha1, b_sha1) and a_sha1 == b_sha1:
                 return cs_entry
 
-        cs_entry.contents_change = self.make_contents_change(full_path_a,
-                                                             stat_a, 
-                                                             full_path_b, 
-                                                             stat_b)
+        cs_entry.contents_change = self.make_contents_change(id)
         return cs_entry
 
-    def make_exec_flag_change(self, stat_a, stat_b):
+    def make_exec_flag_change(self, file_id):
         exec_flag_a = exec_flag_b = None
-        if stat_a is not None and not stat.S_ISLNK(stat_a.st_mode):
-            exec_flag_a = bool(stat_a.st_mode & 0111)
-        if stat_b is not None and not stat.S_ISLNK(stat_b.st_mode):
-            exec_flag_b = bool(stat_b.st_mode & 0111)
+        if file_id in self.tree_a and self.tree_a.kind(file_id) == "file":
+            exec_flag_a = self.tree_a.is_executable(file_id)
+
+        if file_id in self.tree_b and self.tree_b.kind(file_id) == "file":
+            exec_flag_b = self.tree_b.is_executable(file_id)
+
         if exec_flag_a == exec_flag_b:
             return None
         return ChangeExecFlag(exec_flag_a, exec_flag_b)
 
-    def make_contents_change(self, full_path_a, stat_a, full_path_b, stat_b):
-        if stat_a is None and stat_b is None:
-            return None
-        if None not in (stat_a, stat_b) and stat.S_ISDIR(stat_a.st_mode) and\
-            stat.S_ISDIR(stat_b.st_mode):
-            return None
-        if None not in (stat_a, stat_b) and stat.S_ISREG(stat_a.st_mode) and\
-            stat.S_ISREG(stat_b.st_mode):
-            if stat_a.st_ino == stat_b.st_ino and \
-                stat_a.st_dev == stat_b.st_dev:
-                return None
-
-        a_contents = self.get_contents(stat_a, full_path_a)
-        b_contents = self.get_contents(stat_b, full_path_b)
+    def make_contents_change(self, file_id):
+        a_contents = get_contents(self.tree_a, file_id)
+        b_contents = get_contents(self.tree_b, file_id)
         if a_contents == b_contents:
             return None
         return ReplaceContents(a_contents, b_contents)
 
-    def get_contents(self, stat_result, full_path):
-        if stat_result is None:
-            return None
-        elif stat.S_ISREG(stat_result.st_mode):
-            return FileCreate(file(full_path, "rb").read())
-        elif stat.S_ISDIR(stat_result.st_mode):
-            return dir_create
-        elif stat.S_ISLNK(stat_result.st_mode):
-            return SymlinkCreate(os.readlink(full_path))
-        else:
-            raise UnsupportedFiletype(full_path, stat_result)
 
-    def lstat(self, full_path):
-        stat_result = None
-        if full_path is not None:
-            try:
-                stat_result = os.lstat(full_path)
-            except OSError, e:
-                if e.errno != errno.ENOENT:
-                    raise
-        return stat_result
+def get_contents(tree, file_id):
+    """Return the appropriate contents to create a copy of file_id from tree"""
+    if file_id not in tree:
+        return None
+    kind = tree.kind(file_id)
+    if kind == "file":
+        return TreeFileCreate(tree, file_id)
+    elif kind in ("directory", "root_directory"):
+        return dir_create
+    elif kind == "symlink":
+        return SymlinkCreate(tree.get_symlink_target(file_id))
+    else:
+        raise UnsupportedFiletype(kind, tree.id2path(file_id))
 
 
 def full_path(entry, tree):
-    return os.path.join(tree.root, entry.path)
+    return os.path.join(tree.basedir, entry.path)
 
 def new_delete_entry(entry, tree, inventory, delete):
     if entry.path == "":

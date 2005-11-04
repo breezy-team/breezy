@@ -5,14 +5,25 @@ from changeset import Inventory, apply_changeset, invert_dict
 from bzrlib.osutils import backup_file, rename
 from bzrlib.merge3 import Merge3
 import bzrlib
+from bzrlib.atomicfile import AtomicFile
+from changeset import get_contents
 
 class ApplyMerge3:
+    history_based = False
     """Contents-change wrapper around merge3.Merge3"""
-    def __init__(self, file_id, base, other):
+    def __init__(self, file_id, base, other, show_base=False, reprocess=False):
         self.file_id = file_id
         self.base = base
         self.other = other
- 
+        self.show_base = show_base
+        self.reprocess = reprocess
+
+    def is_creation(self):
+        return False
+
+    def is_deletion(self):
+        return False
+
     def __eq__(self, other):
         if not isinstance(other, ApplyMerge3):
             return False
@@ -35,11 +46,6 @@ class ApplyMerge3:
                 raise Exception("%s not in tree" % self.file_id)
                 return ()
             return tree.get_file(self.file_id).readlines()
-        ### garh. 
-        other_entry = other.tree.inventory[self.file_id]
-        if other_entry.kind == 'symlink':
-            self.apply_symlink(other_entry, base, other, filename)
-            return
         base_lines = get_lines(base)
         other_lines = get_lines(other)
         m3 = Merge3(base_lines, file(filename, "rb").readlines(), other_lines)
@@ -47,8 +53,14 @@ class ApplyMerge3:
         new_conflicts = False
         output_file = file(new_file, "wb")
         start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
+        if self.show_base is True:
+            base_marker = '|' * 7
+        else:
+            base_marker = None
         for line in m3.merge_lines(name_a = "TREE", name_b = "MERGE-SOURCE", 
-                       start_marker=start_marker):
+                       name_base = "BASE-REVISION",
+                       start_marker=start_marker, base_marker=base_marker,
+                       reprocess = self.reprocess):
             if line.startswith(start_marker):
                 new_conflicts = True
                 output_file.write(line.replace(start_marker, '<' * 7))
@@ -63,42 +75,58 @@ class ApplyMerge3:
             conflict_handler.merge_conflict(new_file, filename, base_lines,
                                             other_lines)
 
-    def apply_symlink(self, other_entry, base, other, filename):
-        if self.file_id in base:
-            base_entry = base.tree.inventory[self.file_id]
-            base_entry._read_tree_state(base.tree)
-        else:
-            base_entry = None
-        other_entry._read_tree_state(other.tree)
-        if not base_entry or other_entry.detect_changes(base_entry):
-            other_change = True
-        else:
-            other_change = False
-        this_link = os.readlink(filename)
-        if not base_entry or base_entry.symlink_target != this_link:
-            this_change = True
-        else:
-            this_change = False
-        if this_change and not other_change:
-            pass
-        elif not this_change and other_change:
-            os.unlink(filename)
-            os.symlink(other_entry.symlink_target, filename)
-        elif this_change and other_change:
-            # conflict
-            os.unlink(filename)
-            os.symlink(other_entry.symlink_target, filename + '.OTHER')
-            os.symlink(this_link, filename + '.THIS')
-            if base_entry is not None:
-                os.symlink(other_entry.symlink_target, filename + '.BASE')
-            note("merge3 conflict in '%s'.\n", filename)
+class WeaveMerge:
+    """Contents-change wrapper around weave merge"""
+    history_based = True
+    def __init__(self, weave, this_revision_id, other_revision_id):
+        self.weave = weave
+        self.this_revision_id = this_revision_id
+        self.other_revision_id = other_revision_id
 
+    def is_creation(self):
+        return False
+
+    def is_deletion(self):
+        return False
+
+    def __eq__(self, other):
+        if not isinstance(other, WeaveMerge):
+            return False
+        return self.weave == other.weave and\
+            self.this_revision_id == other.this_revision_id and\
+            self.other_revision_id == other.other_revision_id
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def apply(self, filename, conflict_handler, reverse=False):
+        this_i = self.weave.lookup(self.this_revision_id)
+        other_i = self.weave.lookup(self.other_revision_id)
+        plan = self.weave.plan_merge(this_i, other_i)
+        lines = self.weave.weave_merge(plan)
+        conflicts = False
+        out_file = AtomicFile(filename, mode='wb')
+        for line in lines:
+            if line == '<<<<<<<\n':
+                conflicts = True
+            out_file.write(line)
+        if conflicts:
+            conflict_handler.weave_merge_conflict(filename, self.weave,
+                                                  other_i, out_file)
+        else:
+            out_file.commit()
 
 class BackupBeforeChange:
     """Contents-change wrapper to back up file first"""
     def __init__(self, contents_change):
         self.contents_change = contents_change
- 
+
+    def is_creation(self):
+        return self.contents_change.is_creation()
+
+    def is_deletion(self):
+        return self.contents_change.is_deletion()
+
     def __eq__(self, other):
         if not isinstance(other, BackupBeforeChange):
             return False
@@ -129,22 +157,14 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
     cset = changeset_function(base, other, interesting_ids)
     new_cset = make_merge_changeset(cset, this, base, other, 
                                     conflict_handler, merge_factory)
-    result = apply_changeset(new_cset, invert_invent(this.tree.inventory),
-                             this.root, conflict_handler, False)
-    conflict_handler.finalize()
+    result = apply_changeset(new_cset, invert_invent(this.inventory),
+                             this.basedir, conflict_handler, False)
     return result
-
     
 
 def make_merge_changeset(cset, this, base, other, 
                          conflict_handler, merge_factory):
     new_cset = changeset.Changeset()
-    def get_this_contents(id):
-        path = this.readonly_path(id)
-        if os.path.isdir(path):
-            return changeset.dir_create
-        else:
-            return changeset.FileCreate(file(path, "rb").read())
 
     for entry in cset.entries.itervalues():
         if entry.is_boring():
@@ -188,7 +208,7 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
         assert hasattr(tree, "__contains__"), "%s" % tree
         if not tree.has_or_had_id(file_id):
             return (None, None, "")
-        entry = tree.tree.inventory[file_id]
+        entry = tree.inventory[file_id]
         my_dir = tree.id2path(entry.parent_id)
         if my_dir is None:
             my_dir = ""
@@ -233,27 +253,15 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
     return new_entry
 
 
-def get_contents(entry, tree):
-    return get_id_contents(entry.id, tree)
-
-def get_id_contents(file_id, tree):
-    """Get a contents change element suitable for use with ReplaceContents
-    """
-    tree_entry = tree.tree.inventory[file_id]
-    if tree_entry.kind == "file":
-        return changeset.FileCreate(tree.get_file(file_id).read())
-    elif tree_entry.kind == "symlink":
-        return changeset.SymlinkCreate(tree.get_symlink_target(file_id))
-    else:
-        assert tree_entry.kind in ("root_directory", "directory")
-        return changeset.dir_create
-
 def make_merged_contents(entry, this, base, other, conflict_handler,
                          merge_factory):
     contents = entry.contents_change
     if contents is None:
         return None
-    this_path = this.readonly_path(entry.id)
+    if entry.id in this:
+        this_path = this.id2abspath(entry.id)
+    else:
+        this_path = None
     def make_merge():
         if this_path is None:
             return conflict_handler.missing_for_merge(entry.id, 
@@ -261,68 +269,75 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
         return merge_factory(entry.id, base, other)
 
     if isinstance(contents, changeset.ReplaceContents):
-        if contents.old_contents is None and contents.new_contents is None:
+        base_contents = contents.old_contents
+        other_contents = contents.new_contents
+        if base_contents is None and other_contents is None:
             return None
-        if contents.new_contents is None:
-            this_contents = get_contents(entry, this)
+        if other_contents is None:
+            this_contents = get_contents(this, entry.id)
             if this_path is not None and bzrlib.osutils.lexists(this_path):
-                if this_contents != contents.old_contents:
+                if this_contents != base_contents:
                     return conflict_handler.rem_contents_conflict(this_path, 
-                        this_contents, contents.old_contents)
+                        this_contents, base_contents)
                 return contents
             else:
                 return None
-        elif contents.old_contents is None:
+        elif base_contents is None:
             if this_path is None or not bzrlib.osutils.lexists(this_path):
                 return contents
             else:
-                this_contents = get_contents(entry, this)
-                if this_contents == contents.new_contents:
+                this_contents = get_contents(this, entry.id)
+                if this_contents == other_contents:
                     return None
                 else:
-                    other_path = other.readonly_path(entry.id)    
                     conflict_handler.new_contents_conflict(this_path, 
-                                                           other_path)
-        elif (isinstance(contents.old_contents, changeset.FileCreate)
-              and isinstance(contents.new_contents, changeset.FileCreate)):
-            return make_merge()
-        elif (isinstance(contents.old_contents, changeset.SymlinkCreate)
-              and isinstance(contents.new_contents, changeset.SymlinkCreate)):
+                        other_contents)
+        elif isinstance(base_contents, changeset.TreeFileCreate) and \
+            isinstance(other_contents, changeset.TreeFileCreate):
             return make_merge()
         else:
-            raise Exception("Unhandled merge scenario")
+            this_contents = get_contents(this, entry.id)
+            if this_contents == base_contents:
+                return contents
+            elif this_contents == other_contents:
+                return None
+            elif base_contents == other_contents:
+                return None
+            else:
+                conflict_handler.threeway_contents_conflict(this_path,
+                                                            this_contents,
+                                                            base_contents,
+                                                            other_contents)
+                
 
 def make_merged_metadata(entry, base, other):
     metadata = entry.metadata_change
     if metadata is None:
         return None
-    if isinstance(metadata, changeset.ChangeExecFlag):
-        if metadata.new_exec_flag is None:
-            return None
-        elif metadata.old_exec_flag is None:
-            return metadata
-        else:
-            base_path = base.readonly_path(entry.id)
-            other_path = other.readonly_path(entry.id)    
-            return ExecFlagMerge(base_path, other_path)
+    assert isinstance(metadata, changeset.ChangeExecFlag)
+    if metadata.new_exec_flag is None:
+        return None
+    elif metadata.old_exec_flag is None:
+        return metadata
+    else:
+        return ExecFlagMerge(base, other, entry.id)
     
 
 class ExecFlagMerge(object):
-    def __init__(self, base_path, other_path):
-        self.base_path = base_path
-        self.other_path = other_path
+    def __init__(self, base_tree, other_tree, file_id):
+        self.base_tree = base_tree
+        self.other_tree = other_tree
+        self.file_id = file_id
 
     def apply(self, filename, conflict_handler, reverse=False):
         if not reverse:
-            base = self.base_path
-            other = self.other_path
+            base = self.base_tree
+            other = self.other_tree
         else:
-            base = self.other_path
-            other = self.base_path
-        base_mode = os.stat(base).st_mode
-        base_exec_flag = bool(base_mode & 0111)
-        other_mode = os.stat(other).st_mode
-        other_exec_flag = bool(other_mode & 0111)
+            base = self.other_tree
+            other = self.base_tree
+        base_exec_flag = base.is_executable(self.file_id)
+        other_exec_flag = other.is_executable(self.file_id)
         this_mode = os.stat(filename).st_mode
         this_exec_flag = bool(this_mode & 0111)
         if (base_exec_flag != other_exec_flag and

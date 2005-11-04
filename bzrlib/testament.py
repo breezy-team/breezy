@@ -69,6 +69,7 @@ Testament format 1
 # TODO: Perhaps these should just be different formats in which inventories/
 # revisions can be serialized.
 
+from copy import copy
 from cStringIO import StringIO
 import string
 from sha import sha
@@ -81,7 +82,7 @@ class Testament(object):
     Testaments can be 
 
       - produced from a revision
-      - writen to a stream
+      - written to a stream
       - loaded from a stream
       - compared to a revision
     """
@@ -89,18 +90,22 @@ class Testament(object):
     @classmethod
     def from_revision(cls, branch, revision_id):
         """Produce a new testament from a historical revision"""
-        t = cls()
         rev = branch.get_revision(revision_id)
-        t.revision_id = str(revision_id)
-        t.committer = rev.committer
-        t.timezone = rev.timezone or 0
-        t.timestamp = rev.timestamp
-        t.message = rev.message
-        t.parent_ids = rev.parent_ids[:]
-        t.inventory = branch.get_inventory(revision_id)
-        assert not contains_whitespace(t.revision_id)
-        assert not contains_linebreaks(t.committer)
-        return t
+        inventory = branch.get_inventory(revision_id)
+        return cls(rev, inventory)
+
+    def __init__(self, rev, inventory):
+        """Create a new testament for rev using inventory."""
+        self.revision_id = str(rev.revision_id)
+        self.committer = rev.committer
+        self.timezone = rev.timezone or 0
+        self.timestamp = rev.timestamp
+        self.message = rev.message
+        self.parent_ids = rev.parent_ids[:]
+        self.inventory = inventory
+        self.revprops = copy(rev.properties)
+        assert not contains_whitespace(self.revision_id)
+        assert not contains_linebreaks(self.committer)
 
     def as_text_lines(self):
         """Yield text form as a sequence of lines.
@@ -127,9 +132,10 @@ class Testament(object):
         a('inventory:\n')
         for path, ie in self.inventory.iter_entries():
             a(self._entry_to_line(path, ie))
+        r.extend(self._revprops_to_lines())
         if __debug__:
             for l in r:
-                assert isinstance(l, str), \
+                assert isinstance(l, basestring), \
                     '%r of type %s is not a plain string' % (l, type(l))
         return r
 
@@ -165,3 +171,17 @@ class Testament(object):
                 'sha1: %s\n'
                 % (self.revision_id, s.hexdigest()))
 
+    def _revprops_to_lines(self):
+        """Pack up revision properties."""
+        if not self.revprops:
+            return []
+        r = ['properties:\n']
+        for name, value in sorted(self.revprops.items()):
+            assert isinstance(name, str)
+            assert not contains_whitespace(name)
+            r.append('  %s:\n' % name)
+            for line in value.splitlines():
+                if not isinstance(line, str):
+                    line = line.encode('utf-8')
+                r.append('    %s\n' % line)
+        return r
