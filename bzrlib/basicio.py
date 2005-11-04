@@ -197,6 +197,9 @@ def read_stanza(line_iter):
             while True:
                 assert valpart[-1] == '\n'
                 if len(valpart) > 2 and valpart[-2] == '"':
+                    # XXX: This seems wrong -- we ought to need special
+                    # handling for constructs like '\\"' at end of line, and
+                    # yet it seems to work.
                     # is this really the end, or just an escaped doublequote
                     # at end-of-line?  it's quoted if there are an odd number
                     # of doublequotes before it?
@@ -238,12 +241,13 @@ def write_revision(writer, revision):
                committer=revision.committer, 
                timezone=long(revision.timezone),
                timestamp=long(revision.timestamp),
-               inventory_sha1=revision.inventory_sha1)
+               inventory_sha1=revision.inventory_sha1,
+               message=revision.message)
     for parent_id in revision.parent_ids:
         s.add('parent', parent_id)
     for prop_name, prop_value in revision.properties.items():
         s.add(prop_name, prop_value)
-    s.write(writer)
+    writer.write_stanza(s)
 
 def write_inventory(writer, inventory):
     s = Stanza(inventory_version=7)
