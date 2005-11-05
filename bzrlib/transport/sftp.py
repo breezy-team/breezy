@@ -38,6 +38,12 @@ try:
 except ImportError:
     error('The SFTP transport requires paramiko.')
     raise
+else:
+    from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,
+                               SFTP_FLAG_EXCL, SFTP_FLAG_TRUNC,
+                               CMD_HANDLE, CMD_OPEN)
+    from paramiko.sftp_attr import SFTPAttributes
+    from paramiko.sftp_file import SFTPFile
 
 
 SYSTEM_HOSTKEYS = {}
@@ -196,6 +202,7 @@ class SFTPTransport (Transport):
                  Some implementations may return objects which can be read
                  past this length, but this is not guaranteed.
         """
+        # TODO: implement get_partial_multi to help with knit support
         f = self.get(relpath)
         f.seek(start)
         return f
@@ -207,19 +214,10 @@ class SFTPTransport (Transport):
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
         """
-        try:
-            finalpath = self._abspath(relpath)
-            tmp_path = '%s.tmp.%.9f.%d.%d' % (finalpath, time.time(),
-                       os.getpid(), random.randint(0,0x7FFFFFFF))
-            # I would *really* like to pass in the SFTP_FLAG_EXCL,
-            # but there doesn't seem to be a way to do it in the
-            # self._sftp.file() interface.
-            fout = self._sftp.file(tmp_path, 'wb')
-        except IOError, e:
-            # Maybe this should actually be using the relative form of tmp_path
-            self._translate_io_exception(e, relpath)
-        except (IOError, paramiko.SSHException), x:
-            raise SFTPTransportError('Unable to open file %r' % (tmp_path,), x)
+        finalpath = self._abspath(relpath)
+        tmp_path = '%s.tmp.%.9f.%d.%d' % (finalpath, time.time(),
+                   os.getpid(), random.randint(0,0x7FFFFFFF))
+        fout = self._sftp_open_exclusive(tmp_path, relpath)
 
         try:
             try:
@@ -239,7 +237,6 @@ class SFTPTransport (Transport):
                 pass
             raise e
         else:
-            fout.close()
             try:
                 self._sftp.rename(tmp_path, finalpath)
             except IOError, e:
@@ -373,7 +370,10 @@ class SFTPTransport (Transport):
 
         :return: A lock object, which should be passed to Transport.unlock()
         """
-        # FIXME: there should be something clever i can do here...
+        # This is a little bit bogus, but basically, we create a file
+        # which should not already exist, and if it does, we assume
+        # that there is a lock, and if it doesn't, the we assume
+        # that we have taken the lock.
         class BogusLock(object):
             def __init__(self, path):
                 self.path = path
@@ -502,3 +502,34 @@ class SFTPTransport (Transport):
         except IOError:
             pass
         return False
+
+    def _sftp_open_exclusive(self, path, relpath=None):
+        """Open a remote path exclusively.
+
+        SFTP supports O_EXCL (SFTP_FLAG_EXCL), which fails if
+        the file already exists. However it does not expose this
+        at the higher level of SFTPClient.open(), so we have to
+        sneak away with it.
+
+        WARNING: This breaks the SFTPClient abstraction, so it
+        could easily break against an updated version of paramiko.
+
+        :param path: This should be an absolute remote path.
+        :param relpath: Just a parameter so we can throw better exceptions.
+        """
+        if relpath is None:
+            relpath = path
+        attr = SFTPAttributes()
+        mode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE 
+                | SFTP_FLAG_TRUNC | SFTP_FLAG_EXCL)
+        try:
+            t, msg = self._sftp._request(CMD_OPEN, path, mode, attr)
+            if t != CMD_HANDLE:
+                raise SFTPTransportError('Expected an SFTP handle')
+            handle = msg.get_string()
+            return SFTPFile(self._sftp, handle, 'w', -1)
+        except IOError, e:
+            self._translate_io_exception(e, relpath)
+        except paramiko.SSHException, x:
+            raise SFTPTransportError('Unable to open file %r' % (path,), x)
+
