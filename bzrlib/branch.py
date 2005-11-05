@@ -518,22 +518,6 @@ class _Branch(Branch):
         return inv.root.file_id
 
     @needs_write_lock
-    def _write_inventory(self, inv):
-        """Update the working inventory.
-
-        That is to say, the inventory describing changes underway, that
-        will be committed to the next revision.
-        """
-        from cStringIO import StringIO
-        sio = StringIO()
-        bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
-        sio.seek(0)
-        # Transport handles atomicity
-        self.put_controlfile('inventory', sio)
-        
-        mutter('wrote working inventory')
-            
-    @needs_write_lock
     def add(self, files, ids=None):
         """Make files versioned.
 
@@ -597,7 +581,7 @@ class _Branch(Branch):
 
             mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
 
-        self._write_inventory(inv)
+        self.working_tree()._write_inventory(inv)
 
     @needs_read_lock
     def print_file(self, file, revno):
@@ -981,7 +965,7 @@ class _Branch(Branch):
                     % (from_abs, to_abs, e[1]),
                     ["rename rolled back"])
 
-        self._write_inventory(inv)
+        self.working_tree()._write_inventory(inv)
 
     @needs_write_lock
     def move(self, from_paths, to_name):
@@ -1045,7 +1029,7 @@ class _Branch(Branch):
                 raise BzrError("failed to rename %r to %r: %s" % (f, dest_path, e[1]),
                         ["rename rolled back"])
 
-        self._write_inventory(inv)
+        self.working_tree()._write_inventory(inv)
         return result
 
     def pending_merges(self):

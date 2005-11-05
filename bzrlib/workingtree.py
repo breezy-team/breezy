@@ -48,7 +48,12 @@ import fnmatch
  
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock, quotefn
 import bzrlib.tree
-from bzrlib.osutils import appendpath, file_kind, isdir, splitpath, relpath
+from bzrlib.osutils import (appendpath,
+                            file_kind,
+                            isdir,
+                            pumpfile,
+                            splitpath,
+                            relpath)
 from bzrlib.errors import BzrCheckError, DivergedBranches, NotVersionedError
 from bzrlib.trace import mutter
 import bzrlib.xml5
@@ -503,7 +508,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 show_status(new_status, inv[fid].kind, quotefn(f))
             del inv[fid]
 
-        self.branch._write_inventory(inv)
+        self._write_inventory(inv)
 
     @needs_write_lock
     def revert(self, filenames, old_tree=None, backups=True):
@@ -538,7 +543,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 inv.add(InventoryLink(file_id, name, parent))
             else:
                 raise BzrError("unknown kind %r" % kind)
-        self.branch._write_inventory(inv)
+        self._write_inventory(inv)
 
     @needs_write_lock
     def set_root_id(self, file_id):
@@ -552,7 +557,7 @@ class WorkingTree(bzrlib.tree.Tree):
             entry = inv[fid]
             if entry.parent_id in (None, orig_root_id):
                 entry.parent_id = inv.root.file_id
-        self.branch._write_inventory(inv)
+        self._write_inventory(inv)
 
     def unlock(self):
         """See Branch.unlock.
@@ -565,6 +570,22 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         return self.branch.unlock()
 
+    @needs_write_lock
+    def _write_inventory(self, inv):
+        """Write inventory as the current inventory."""
+        from cStringIO import StringIO
+        from bzrlib.atomicfile import AtomicFile
+        sio = StringIO()
+        bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
+        sio.seek(0)
+        f = AtomicFile(self.branch.controlfilename('inventory'))
+        try:
+            pumpfile(sio, f)
+            f.commit()
+        finally:
+            f.close()
+        mutter('wrote working inventory')
+            
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 def get_conflicted_stem(path):

@@ -376,7 +376,7 @@ class Commit(object):
             deleted_ids.sort(reverse=True)
             for path, file_id in deleted_ids:
                 del self.work_inv[file_id]
-            self.branch._write_inventory(self.work_inv)
+            self.work_tree._write_inventory(self.work_inv)
 
     def _store_snapshot(self):
         """Pass over inventory and record a snapshot.
