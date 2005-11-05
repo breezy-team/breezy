@@ -518,19 +518,6 @@ class _Branch(Branch):
         return inv.root.file_id
 
     @needs_write_lock
-    def set_root_id(self, file_id):
-        inv = self.working_tree().read_working_inventory()
-        orig_root_id = inv.root.file_id
-        del inv._byid[inv.root.file_id]
-        inv.root.file_id = file_id
-        inv._byid[inv.root.file_id] = inv.root
-        for fid in inv:
-            entry = inv[fid]
-            if entry.parent_id in (None, orig_root_id):
-                entry.parent_id = inv.root.file_id
-        self._write_inventory(inv)
-
-    @needs_write_lock
     def _write_inventory(self, inv):
         """Update the working inventory.
 

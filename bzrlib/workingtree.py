@@ -540,6 +540,20 @@ class WorkingTree(bzrlib.tree.Tree):
                 raise BzrError("unknown kind %r" % kind)
         self.branch._write_inventory(inv)
 
+    @needs_write_lock
+    def set_root_id(self, file_id):
+        """Set the root id for this tree."""
+        inv = self.read_working_inventory()
+        orig_root_id = inv.root.file_id
+        del inv._byid[inv.root.file_id]
+        inv.root.file_id = file_id
+        inv._byid[inv.root.file_id] = inv.root
+        for fid in inv:
+            entry = inv[fid]
+            if entry.parent_id in (None, orig_root_id):
+                entry.parent_id = inv.root.file_id
+        self.branch._write_inventory(inv)
+
     def unlock(self):
         """See Branch.unlock.
         
