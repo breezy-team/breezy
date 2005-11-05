@@ -1297,6 +1297,23 @@ class cmd_whoami(Command):
         else:
             print config.username()
 
+class cmd_nick(Command):
+    """\
+    Print or set the branch nickname.  
+    If unset, the tree root directory name is used as the nickname
+    To print the current nickname, execute with no argument.  
+    """
+    takes_args = ['nickname?']
+    def run(self, nickname=None):
+        branch = Branch.open_containing('.')[0]
+        if nickname is None:
+            self.printme(branch)
+        else:
+            branch.nick = nickname
+
+    @display_command
+    def printme(self, branch):
+        print branch.nick 
 
 class cmd_selftest(Command):
     """Run internal test suite.

@@ -107,6 +107,18 @@ class TestCommands(ExternalBase):
         if bzr_email is not None:
             os.environ['BZREMAIL'] = bzr_email
 
+    def test_nick_command(self):
+        """bzr nick for viewing, setting nicknames"""
+        os.mkdir('me.dev')
+        os.chdir('me.dev')
+        self.runbzr('init')
+        nick = self.runbzr("nick",backtick=True)
+        self.assertEqual(nick, 'me.dev\n')
+        nick = self.runbzr("nick moo")
+        nick = self.runbzr("nick",backtick=True)
+        self.assertEqual(nick, 'moo\n')
+
+
     def test_invalid_commands(self):
         self.runbzr("pants", retcode=1)
         self.runbzr("--pants off", retcode=1)
