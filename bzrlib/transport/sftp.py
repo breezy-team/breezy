@@ -23,6 +23,8 @@ import re
 import stat
 import sys
 import urllib
+import time
+import random
 
 from bzrlib.errors import (FileExists, 
                            TransportNotPossible, NoSuchFile, NonRelativePath,
@@ -205,18 +207,46 @@ class SFTPTransport (Transport):
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
         """
-        # FIXME: should do something atomic or locking here, this is unsafe
         try:
-            path = self._abspath(relpath)
-            fout = self._sftp.file(path, 'wb')
+            finalpath = self._abspath(relpath)
+            tmp_path = '%s.tmp.%.9f.%d.%d' % (finalpath, time.time(),
+                       os.getpid(), random.randint(0,0x7FFFFFFF))
+            # I would *really* like to pass in the SFTP_FLAG_EXCL,
+            # but there doesn't seem to be a way to do it in the
+            # self._sftp.file() interface.
+            fout = self._sftp.file(tmp_path, 'wb')
         except IOError, e:
+            # Maybe this should actually be using the relative form of tmp_path
             self._translate_io_exception(e, relpath)
         except (IOError, paramiko.SSHException), x:
-            raise SFTPTransportError('Unable to write file %r' % (path,), x)
+            raise SFTPTransportError('Unable to open file %r' % (tmp_path,), x)
+
         try:
-            self._pump(f, fout)
-        finally:
+            try:
+                self._pump(f, fout)
+            except IOError, e:
+                self._translate_io_exception(e, relpath)
+            except paramiko.SSHException, x:
+                raise SFTPTransportError('Unable to write file %r' % (path,), x)
+        except Exception, e:
+            # If we fail, try to clean up the temporary file
+            # before we throw the exception
+            # but don't let another exception mess things up
+            try:
+                fout.close()
+                self._sftp.remove(tmp_path)
+            except:
+                pass
+            raise e
+        else:
             fout.close()
+            try:
+                self._sftp.rename(tmp_path, finalpath)
+            except IOError, e:
+                self._translate_io_exception(e, relpath)
+            except paramiko.SSHException, x:
+                raise SFTPTransportError('Unable to rename into file %r' 
+                                          % (path,), x)
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
