@@ -27,8 +27,13 @@ from bzrlib.merge_core import WeaveMerge
 from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
 from bzrlib.changeset import Inventory, Diff3Merge, ReplaceContents
 from bzrlib.branch import Branch
-from bzrlib.errors import BzrCommandError, UnrelatedBranches, NoCommonAncestor
-from bzrlib.errors import NoCommits, WorkingTreeNotRevision, NotBranchError
+from bzrlib.errors import (BzrCommandError,
+                           UnrelatedBranches,
+                           NoCommonAncestor,
+                           NoCommits,
+                           WorkingTreeNotRevision,
+                           NotBranchError,
+                           NotVersionedError)
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter, warning, note
 from bzrlib.fetch import greedy_fetch, fetch
@@ -347,7 +352,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     if interesting_files:
         assert not interesting_ids, ('Only supply interesting_ids'
                                      ' or interesting_files')
-        merger.set_interesting_files(interesting_files)
+        merger._set_interesting_files(interesting_files)
     merger.show_base = show_base 
     merger.reprocess = reprocess
     merger.conflict_handler = MergeConflictHandler(merger.this_tree, base_tree, 
@@ -436,6 +441,14 @@ class Merger(object):
             self.this_rev_id = self.this_basis
 
     def set_interesting_files(self, file_list):
+        try:
+            self._set_interesting_files(file_list)
+        except NotVersionedError, e:
+            raise BzrCommandError("%s is not a source file in any"
+                                      " tree." % e.path)
+
+    def _set_interesting_files(self, file_list):
+        """Set the list of interesting ids from a list of files."""
         if file_list is None:
             self.interesting_ids = None
             return
@@ -450,8 +463,7 @@ class Merger(object):
                     interesting_ids.add(file_id)
                     found_id = True
             if not found_id:
-                raise BzrCommandError("%s is not a source file in any"
-                                      " tree." % fname)
+                raise NotVersionedError(path=fname)
         self.interesting_ids = interesting_ids
 
     def set_pending(self):

@@ -140,7 +140,7 @@ class TestWorkingTree(TestCaseInTempDir):
         self.check_file_contents('hello.txt', 'initial hello')
         self.check_file_contents('hello.txt~', 'new hello')
 
-        # reverting again clobbers the backup
+        # reverting again does not clobber the backup
         wt.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt~', 'initial hello')
+        self.check_file_contents('hello.txt~', 'new hello')
