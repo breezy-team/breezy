@@ -239,6 +239,20 @@ class WorkingTree(bzrlib.tree.Tree):
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
 
+    def pending_merges(self):
+        """Return a list of pending merges.
+
+        These are revisions that have been merged into the working
+        directory but not yet committed.
+        """
+        cfn = self.branch._rel_controlfilename('pending-merges')
+        if not self.branch._transport.has(cfn):
+            return []
+        p = []
+        for l in self.branch.controlfile('pending-merges', 'r').readlines():
+            p.append(l.rstrip('\n'))
+        return p
+
     def get_symlink_target(self, file_id):
         return os.readlink(self.id2abspath(file_id))
 

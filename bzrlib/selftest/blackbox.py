@@ -378,12 +378,12 @@ class TestCommands(ExternalBase):
         a = Branch.open('.')
         b = Branch.open('../b')
         a.get_revision_xml(b.last_revision())
-        self.log('pending merges: %s', a.pending_merges())
-        self.assertEquals(a.pending_merges(), [b.last_revision()])
+        self.log('pending merges: %s', a.working_tree().pending_merges())
+        self.assertEquals(a.working_tree().pending_merges(),
+                          [b.last_revision()])
         self.runbzr('commit -m merged')
         self.runbzr('merge ../b -r last:1')
-        self.assertEqual(Branch.open('.').pending_merges(), [])
-
+        self.assertEqual(Branch.open('.').working_tree().pending_merges(), [])
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""
@@ -575,7 +575,6 @@ class TestCommands(ExternalBase):
                   'subdir\n'
                   'subdir/b\n'
                   , '--versioned')
-
 
     def test_locations(self):
         """Using and remembering different locations"""

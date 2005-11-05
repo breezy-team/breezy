@@ -310,7 +310,7 @@ class Commit(object):
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""
-        pending_merges = self.branch.pending_merges()
+        pending_merges = self.work_tree.pending_merges()
         self.parents = []
         self.parent_invs = []
         self.present_parents = []

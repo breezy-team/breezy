@@ -149,14 +149,14 @@ class TestBranch(TestCaseInTempDir):
     def test_pending_merges(self):
         """Tracking pending-merged revisions."""
         b = Branch.initialize('.')
-
-        self.assertEquals(b.pending_merges(), [])
+        wt = b.working_tree()
+        self.assertEquals(wt.pending_merges(), [])
         b.add_pending_merge('foo@azkhazan-123123-abcabc')
-        self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
+        self.assertEquals(wt.pending_merges(), ['foo@azkhazan-123123-abcabc'])
         b.add_pending_merge('foo@azkhazan-123123-abcabc')
-        self.assertEquals(b.pending_merges(), ['foo@azkhazan-123123-abcabc'])
+        self.assertEquals(wt.pending_merges(), ['foo@azkhazan-123123-abcabc'])
         b.add_pending_merge('wibble@fofof--20050401--1928390812')
-        self.assertEquals(b.pending_merges(),
+        self.assertEquals(wt.pending_merges(),
                           ['foo@azkhazan-123123-abcabc',
                            'wibble@fofof--20050401--1928390812'])
         b.commit("commit from base with two merges")
@@ -167,7 +167,7 @@ class TestBranch(TestCaseInTempDir):
         self.assertEquals(rev.parent_ids[1],
                            'wibble@fofof--20050401--1928390812')
         # list should be cleared when we do a commit
-        self.assertEquals(b.pending_merges(), [])
+        self.assertEquals(wt.pending_merges(), [])
 
     def test_sign_existing_revision(self):
         branch = Branch.initialize('.')

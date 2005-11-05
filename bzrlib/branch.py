@@ -1032,25 +1032,10 @@ class _Branch(Branch):
         self.working_tree()._write_inventory(inv)
         return result
 
-    def pending_merges(self):
-        """Return a list of pending merges.
-
-        These are revisions that have been merged into the working
-        directory but not yet committed.
-        """
-        cfn = self._rel_controlfilename('pending-merges')
-        if not self._transport.has(cfn):
-            return []
-        p = []
-        for l in self.controlfile('pending-merges', 'r').readlines():
-            p.append(l.rstrip('\n'))
-        return p
-
-
     def add_pending_merge(self, *revision_ids):
         # TODO: Perhaps should check at this point that the
         # history of the revision is actually present?
-        p = self.pending_merges()
+        p = self.working_tree().pending_merges()
         updated = False
         for rev_id in revision_ids:
             if rev_id in p:
