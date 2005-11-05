@@ -1506,6 +1506,8 @@ class cmd_revert(Command):
         if file_list is not None:
             if len(file_list) == 0:
                 raise BzrCommandError("No files specified")
+        else:
+            file_list = []
         if revision is None:
             revno = -1
             b = Branch.open_containing('.')[0]
@@ -1515,12 +1517,8 @@ class cmd_revert(Command):
         else:
             b, file_list = branch_files(file_list)
             rev_id = revision[0].in_history(b).rev_id
-        merge_inner(b, b.revision_tree(rev_id),
-                    b.working_tree(), ignore_zero=True,
-                    backup_files=not no_backup, 
-                    interesting_files=file_list)
-        if not file_list:
-            Branch.open_containing('.')[0].set_pending_merges([])
+        b.working_tree().revert(file_list, b.revision_tree(rev_id),
+                                not no_backup)
 
 
 class cmd_assert_fail(Command):
