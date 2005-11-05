@@ -1032,10 +1032,6 @@ class _Branch(Branch):
         self.working_tree()._write_inventory(inv)
         return result
 
-    @needs_write_lock
-    def set_pending_merges(self, rev_list):
-        self.put_controlfile('pending-merges', '\n'.join(rev_list))
-
     def get_parent(self):
         """Return the parent location of the branch.
 

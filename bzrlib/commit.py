@@ -267,7 +267,7 @@ class Commit(object):
             self._record_inventory()
             self._make_revision()
             self.branch.append_revision(self.rev_id)
-            self.branch.set_pending_merges([])
+            self.work_tree.set_pending_merges([])
             self.reporter.completed(self.branch.revno()+1, self.rev_id)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')

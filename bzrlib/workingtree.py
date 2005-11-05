@@ -239,6 +239,7 @@ class WorkingTree(bzrlib.tree.Tree):
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
 
+    @needs_write_lock
     def add_pending_merge(self, *revision_ids):
         # TODO: Perhaps should check at this point that the
         # history of the revision is actually present?
@@ -250,7 +251,7 @@ class WorkingTree(bzrlib.tree.Tree):
             p.append(rev_id)
             updated = True
         if updated:
-            self.branch.set_pending_merges(p)
+            self.set_pending_merges(p)
 
     def pending_merges(self):
         """Return a list of pending merges.
@@ -265,6 +266,10 @@ class WorkingTree(bzrlib.tree.Tree):
         for l in self.branch.controlfile('pending-merges', 'r').readlines():
             p.append(l.rstrip('\n'))
         return p
+
+    @needs_write_lock
+    def set_pending_merges(self, rev_list):
+        self.branch.put_controlfile('pending-merges', '\n'.join(rev_list))
 
     def get_symlink_target(self, file_id):
         return os.readlink(self.id2abspath(file_id))
@@ -547,7 +552,7 @@ class WorkingTree(bzrlib.tree.Tree):
                     backup_files=backups, 
                     interesting_files=filenames)
         if not len(filenames):
-            self.branch.set_pending_merges([])
+            self.set_pending_merges([])
 
     @needs_write_lock
     def set_inventory(self, new_inventory_list):
