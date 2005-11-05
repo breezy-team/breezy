@@ -210,8 +210,6 @@ class HashCache(object):
         finally:
             if not outf.closed:
                 outf.abort()
-        
-
 
     def read(self):
         """Reinstate cache from file.
