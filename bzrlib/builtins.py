@@ -813,8 +813,8 @@ class cmd_root(Command):
 class cmd_log(Command):
     """Show log of this branch.
 
-    To request a range of logs, you can use the command -r begin:end
-    -r revision requests a specific revision, -r :end or -r begin: are
+    To request a range of logs, you can use the command -r begin..end
+    -r revision requests a specific revision, -r ..end or -r begin.. are
     also valid.
     """
 
