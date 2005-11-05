@@ -209,6 +209,16 @@ class TestBranch(TestCaseInTempDir):
         branch.nick = u"\u1234"
         self.assertEqual(branch.nick, u"\u1234")
 
+    def test_commit_nicks(self):
+        """Nicknames are committed to the revision"""
+        os.mkdir('bzr.dev')
+        branch = Branch.initialize('bzr.dev')
+        branch.nick = "My happy branch"
+        branch.commit('My commit respect da nick.')
+        committed = branch.get_revision(branch.last_revision())
+        self.assertEqual(committed.properties["branch-nick"], 
+                         "My happy branch")
+
 
 class TestRemote(TestCaseWithWebserver):
 
