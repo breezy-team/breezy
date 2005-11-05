@@ -475,7 +475,7 @@ class Merger(object):
             return
         if self.other_rev_id in self.this_branch.get_ancestry(self.this_basis):
             return
-        self.this_branch.add_pending_merge(self.other_rev_id)
+        self.this_branch.working_tree().add_pending_merge(self.other_rev_id)
 
     def set_other(self, other_revision):
         other_branch, self.other_tree = get_tree(other_revision, 

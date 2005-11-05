@@ -129,7 +129,7 @@ class TestBranch(TestCaseInTempDir):
     def test_record_initial_ghost_merge(self):
         """A pending merge with no revision present is still a merge."""
         branch = Branch.initialize('.')
-        branch.add_pending_merge('non:existent@rev--ision--0--2')
+        branch.working_tree().add_pending_merge('non:existent@rev--ision--0--2')
         branch.commit('pretend to merge nonexistent-revision', rev_id='first')
         rev = branch.get_revision(branch.last_revision())
         self.assertEqual(len(rev.parent_ids), 1)
@@ -151,11 +151,11 @@ class TestBranch(TestCaseInTempDir):
         b = Branch.initialize('.')
         wt = b.working_tree()
         self.assertEquals(wt.pending_merges(), [])
-        b.add_pending_merge('foo@azkhazan-123123-abcabc')
+        wt.add_pending_merge('foo@azkhazan-123123-abcabc')
         self.assertEquals(wt.pending_merges(), ['foo@azkhazan-123123-abcabc'])
-        b.add_pending_merge('foo@azkhazan-123123-abcabc')
+        wt.add_pending_merge('foo@azkhazan-123123-abcabc')
         self.assertEquals(wt.pending_merges(), ['foo@azkhazan-123123-abcabc'])
-        b.add_pending_merge('wibble@fofof--20050401--1928390812')
+        wt.add_pending_merge('wibble@fofof--20050401--1928390812')
         self.assertEquals(wt.pending_merges(),
                           ['foo@azkhazan-123123-abcabc',
                            'wibble@fofof--20050401--1928390812'])

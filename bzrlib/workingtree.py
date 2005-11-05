@@ -239,6 +239,19 @@ class WorkingTree(bzrlib.tree.Tree):
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
 
+    def add_pending_merge(self, *revision_ids):
+        # TODO: Perhaps should check at this point that the
+        # history of the revision is actually present?
+        p = self.pending_merges()
+        updated = False
+        for rev_id in revision_ids:
+            if rev_id in p:
+                continue
+            p.append(rev_id)
+            updated = True
+        if updated:
+            self.branch.set_pending_merges(p)
+
     def pending_merges(self):
         """Return a list of pending merges.
 

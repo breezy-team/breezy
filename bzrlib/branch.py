@@ -1032,19 +1032,6 @@ class _Branch(Branch):
         self.working_tree()._write_inventory(inv)
         return result
 
-    def add_pending_merge(self, *revision_ids):
-        # TODO: Perhaps should check at this point that the
-        # history of the revision is actually present?
-        p = self.working_tree().pending_merges()
-        updated = False
-        for rev_id in revision_ids:
-            if rev_id in p:
-                continue
-            p.append(rev_id)
-            updated = True
-        if updated:
-            self.set_pending_merges(p)
-
     @needs_write_lock
     def set_pending_merges(self, rev_list):
         self.put_controlfile('pending-merges', '\n'.join(rev_list))

@@ -52,7 +52,7 @@ class TestCommitMerge(TestCaseInTempDir):
                           commit,
                           by, 'no changes yet', rev_id='y@u-0-2',
                           allow_pointless=False)
-        by.add_pending_merge('x@u-0-1')
+        by.working_tree().add_pending_merge('x@u-0-1')
         commit(by, 'merge from x', rev_id='y@u-0-2', allow_pointless=False)
 
         self.assertEquals(by.revno(), 2)
@@ -80,7 +80,7 @@ class TestCommitMerge(TestCaseInTempDir):
         # we haven't merged the texts, but let's fake it
         shutil.copyfile('x/ecks', 'y/ecks')
         by.add(['ecks'], ['ecks-id'])
-        by.add_pending_merge('x@u-0-1')
+        by.working_tree().add_pending_merge('x@u-0-1')
 
         # partial commit of merges is currently not allowed, because
         # it would give different merge graphs for each file which
