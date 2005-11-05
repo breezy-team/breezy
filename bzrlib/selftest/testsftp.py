@@ -109,5 +109,51 @@ class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
         url = self._sftp_url
         return SFTPTransport(url)
 
+    def test_sftp_locks(self):
+        from bzrlib.errors import LockError
+        t = self.get_transport()
+
+        l = t.lock_write('bogus')
+        self.failUnlessExists('bogus.write-lock')
+
+        # Don't wait for the lock, locking an already locked
+        # file should raise an assert
+        self.assertRaises(LockError, t.lock_write, 'bogus')
+
+        l.unlock()
+        self.failIf(os.path.lexists('bogus.write-lock'))
+
+        open('something.write-lock', 'wb').write('fake lock\n')
+        self.assertRaises(LockError, t.lock_write, 'something')
+        os.remove('something.write-lock')
+
+        l = t.lock_write('something')
+
+        l2 = t.lock_write('bogus')
+
+        l.unlock()
+        l2.unlock()
+
+class SFTPBranchTest(TestCaseWithSFTPServer):
+    """Test some stuff when accessing a bzr Branch over sftp"""
+
+    def test_lock_file(self):
+        """Make sure that a Branch accessed over sftp tries to lock itself."""
+        from bzrlib.branch import Branch
+
+        b = Branch.initialize(self._sftp_url)
+        self.failUnlessExists('.bzr/')
+        self.failUnlessExists('.bzr/branch-format')
+        self.failUnlessExists('.bzr/branch-lock')
+
+        self.failIf(os.path.lexists('.bzr/branch-lock.write-lock'))
+        b.lock_write()
+        self.failUnlessExists('.bzr/branch-lock.write-lock')
+        b.unlock()
+        self.failIf(os.path.lexists('.bzr/branch-lock.write-lock'))
+
+
 if not paramiko_loaded:
+    # TODO: Skip these
     del SFTPTransportTest
+    del SFTPBranchTest
