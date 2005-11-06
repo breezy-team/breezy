@@ -47,3 +47,26 @@ class TestDiff(TestCase):
         self.assert_('@@' in lines[2][2:])
             ## "Unterminated hunk header for patch:\n%s" % "".join(lines)
 
+class TestCDVDiffLib(TestCase):
+
+    def test_matching_blocks(self):
+        from bzrlib.cdvdifflib import SequenceMatcher
+
+        def chk_blocks(a, b, matching):
+            # difflib always adds a signature of the total
+            # length, with no matching entries at the end
+            matching = matching + [(len(a), len(b), 0)]
+            s = SequenceMatcher(None, a, b)
+            self.assertEquals(s.get_matching_blocks(), matching)
+
+        chk_blocks('', '', [])
+        chk_blocks([], [], [])
+        chk_blocks('abcd', 'abcd', [(0, 0, 4)])
+        chk_blocks('abcd', 'abce', [(0, 0, 3)])
+        chk_blocks('eabc', 'abce', [(1, 0, 3)])
+        chk_blocks('eabce', 'abce', [(1, 0, 4)])
+        chk_blocks('abcde', 'abXde', [(0, 0, 2), (3, 3, 2)])
+        chk_blocks('abcde', 'abXde', [(0, 0, 2), (3, 3, 2)])
+
+
+
