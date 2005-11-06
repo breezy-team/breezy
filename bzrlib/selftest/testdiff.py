@@ -67,8 +67,14 @@ class TestCDVDiffLib(TestCase):
         chk_blocks('eabc', 'abce', [(1, 0, 3)])
         chk_blocks('eabce', 'abce', [(1, 0, 4)])
         chk_blocks('abcde', 'abXde', [(0, 0, 2), (3, 3, 2)])
-        chk_blocks('abcde', 'abXde', [(0, 0, 2), (3, 3, 2)])
-        chk_blocks('abcdef', 'abcdefxydef', [(0, 0, 6)])
+        chk_blocks('abcde', 'abXYZde', [(0, 0, 2), (3, 5, 2)])
+        chk_blocks('abde', 'abXYZde', [(0, 0, 2), (2, 5, 2)])
+        # This may check too much, but it checks to see that 
+        # a copied block stays attached to the previous section,
+        # not the later one.
+        # difflib would tend to grab the trailing longest match
+        # which would make the diff not look right
+        chk_blocks('abcdefghijklmnop', 'abcdefxydefghijklmnop', [(0, 0, 6), (6, 11, 10)])
 
         # make sure it supports passing in lists
         chk_blocks(
@@ -80,3 +86,51 @@ class TestCDVDiffLib(TestCase):
                 [(0, 0, 1), (2, 1, 1)])
 
 
+    def test_opcodes(self):
+        from bzrlib.cdvdifflib import SequenceMatcher
+
+        def chk_ops(a, b, codes):
+            s = SequenceMatcher(None, a, b)
+            self.assertEquals(codes, s.get_opcodes())
+
+        chk_ops('', '', [])
+        chk_ops([], [], [])
+        chk_ops('abcd', 'abcd', [('equal', 0, 4, 0, 4)])
+        chk_ops('abcd', 'abce', [ ('equal', 0, 3, 0, 3)
+                                , ('replace', 3, 4, 3, 4)
+                                ])
+        chk_ops('eabc', 'abce', [ ('delete', 0, 1, 0, 0)
+                                , ('equal', 1, 4, 0, 3)
+                                , ('insert', 4, 4, 3, 4)
+                                ])
+        chk_ops('eabce', 'abce', [ ('delete', 0, 1, 0, 0)
+                                 , ('equal', 1, 5, 0, 4)
+                                 ])
+        chk_ops('abcde', 'abXde', [ ('equal', 0, 2, 0, 2)
+                                  , ('replace', 2, 3, 2, 3)
+                                  , ('equal', 3, 5, 3, 5)
+                                  ])
+        chk_ops('abcde', 'abXYZde', [ ('equal', 0, 2, 0, 2)
+                                    , ('replace', 2, 3, 2, 5)
+                                    , ('equal', 3, 5, 5, 7)
+                                    ])
+        chk_ops('abde', 'abXYZde', [ ('equal', 0, 2, 0, 2)
+                                   , ('insert', 2, 2, 2, 5)
+                                   , ('equal', 2, 4, 5, 7)
+                                   ])
+        chk_ops('abcdefghijklmnop', 'abcdefxydefghijklmnop',
+                [ ('equal', 0, 6, 0, 6)
+                , ('insert', 6, 6, 6, 11)
+                , ('equal', 6, 16, 11, 21)
+                ])
+
+        chk_ops(
+                [ 'hello there\n'
+                , 'world\n'
+                , 'how are you today?\n'],
+                [ 'hello there\n'
+                , 'how are you today?\n'],
+                [ ('equal', 0, 1, 0, 1)
+                , ('delete', 1, 2, 1, 1)
+                , ('equal', 2, 3, 1, 2)
+                ])
