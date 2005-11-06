@@ -358,6 +358,11 @@ class LongLogFormatter(LogFormatter):
                 print >>to_file, 'parent:', parent_id
             
         print >>to_file,  'committer:', rev.committer
+        try:
+            print >>to_file, "branch nick: %s" % \
+                rev.properties['branch-nick']
+        except KeyError:
+            pass
 
         date_str = format_date(rev.timestamp,
                                rev.timezone or 0,
@@ -388,6 +393,11 @@ class LongLogFormatter(LogFormatter):
                 print >>to_file, indent+'parent:', parent_id
             
         print >>to_file,  indent+'committer:', rev.committer
+        try:
+            print >>to_file, indent+'branch nick: %s' % \
+                rev.properties['branch-nick']
+        except KeyError:
+            pass
 
         date_str = format_date(rev.timestamp,
                                rev.timezone or 0,

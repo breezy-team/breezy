@@ -1105,7 +1105,7 @@ class HttpTests(TestCaseWithWebserver):
         branch.commit('add file', rev_id='A')
         url = self.get_remote_url('branch/file')
         output = self.capture('log %s' % url)
-        self.assertEqual(7, len(output.split('\n')))
+        self.assertEqual(8, len(output.split('\n')))
         
 
 
