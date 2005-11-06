@@ -1501,26 +1501,24 @@ class cmd_revert(Command):
     aliases = ['merge-revert']
 
     def run(self, revision=None, no_backup=False, file_list=None):
-        from bzrlib.merge import merge
+        from bzrlib.merge import merge_inner
         from bzrlib.commands import parse_spec
-
         if file_list is not None:
             if len(file_list) == 0:
                 raise BzrCommandError("No files specified")
+        else:
+            file_list = []
         if revision is None:
             revno = -1
+            b = Branch.open_containing('.')[0]
+            rev_id = b.last_revision()
         elif len(revision) != 1:
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:
             b, file_list = branch_files(file_list)
-            revno = revision[0].in_history(b).revno
-        merge(('.', revno), parse_spec('.'),
-              check_clean=False,
-              ignore_zero=True,
-              backup_files=not no_backup,
-              file_list=file_list)
-        if not file_list:
-            Branch.open_containing('.')[0].set_pending_merges([])
+            rev_id = revision[0].in_history(b).rev_id
+        b.working_tree().revert(file_list, b.revision_tree(rev_id),
+                                not no_backup)
 
 
 class cmd_assert_fail(Command):

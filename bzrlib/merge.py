@@ -27,8 +27,13 @@ from bzrlib.merge_core import WeaveMerge
 from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
 from bzrlib.changeset import Inventory, Diff3Merge, ReplaceContents
 from bzrlib.branch import Branch
-from bzrlib.errors import BzrCommandError, UnrelatedBranches, NoCommonAncestor
-from bzrlib.errors import NoCommits, WorkingTreeNotRevision, NotBranchError
+from bzrlib.errors import (BzrCommandError,
+                           UnrelatedBranches,
+                           NoCommonAncestor,
+                           NoCommits,
+                           WorkingTreeNotRevision,
+                           NotBranchError,
+                           NotVersionedError)
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter, warning, note
 from bzrlib.fetch import greedy_fetch, fetch
@@ -265,12 +270,14 @@ def build_working_dir(to_dir):
     lower-level code (e.g. constructing a changeset).
     """
     # RBC 20051019 is this not just 'export' ?
-    # Well, export doesn't take care of inventory...
+    # AB Well, export doesn't take care of inventory...
     this_branch = Branch.open_containing(to_dir)[0]
     transform_tree(this_branch.working_tree(), this_branch.basis_tree())
 
+
 def transform_tree(from_tree, to_tree):
     merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True)
+
 
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
@@ -332,7 +339,8 @@ def merge(other_revision, base_revision,
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 backup_files=False, merge_type=ApplyMerge3, 
-                interesting_ids=None, show_base=False, reprocess=False):
+                interesting_ids=None, show_base=False, reprocess=False,
+                interesting_files=None):
     """Primary interface for merging. 
 
         typical use is probably 
@@ -340,9 +348,13 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                      branch.get_revision_tree(base_revision))'
         """
     merger = Merger(this_branch, other_tree, base_tree)
-    merger.backup_files = False
-    merger.merge_type = ApplyMerge3
+    merger.backup_files = backup_files
+    merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids
+    if interesting_files:
+        assert not interesting_ids, ('Only supply interesting_ids'
+                                     ' or interesting_files')
+        merger._set_interesting_files(interesting_files)
     merger.show_base = show_base 
     merger.reprocess = reprocess
     merger.conflict_handler = MergeConflictHandler(merger.this_tree, base_tree, 
@@ -431,6 +443,14 @@ class Merger(object):
             self.this_rev_id = self.this_basis
 
     def set_interesting_files(self, file_list):
+        try:
+            self._set_interesting_files(file_list)
+        except NotVersionedError, e:
+            raise BzrCommandError("%s is not a source file in any"
+                                      " tree." % e.path)
+
+    def _set_interesting_files(self, file_list):
+        """Set the list of interesting ids from a list of files."""
         if file_list is None:
             self.interesting_ids = None
             return
@@ -445,8 +465,7 @@ class Merger(object):
                     interesting_ids.add(file_id)
                     found_id = True
             if not found_id:
-                raise BzrCommandError("%s is not a source file in any"
-                                      " tree." % fname)
+                raise NotVersionedError(path=fname)
         self.interesting_ids = interesting_ids
 
     def set_pending(self):
@@ -456,7 +475,7 @@ class Merger(object):
             return
         if self.other_rev_id in self.this_branch.get_ancestry(self.this_basis):
             return
-        self.this_branch.add_pending_merge(self.other_rev_id)
+        self.this_branch.working_tree().add_pending_merge(self.other_rev_id)
 
     def set_other(self, other_revision):
         other_branch, self.other_tree = get_tree(other_revision, 

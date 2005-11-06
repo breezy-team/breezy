@@ -61,6 +61,9 @@ UNRELEASED CHANGES
       Branch.working_tree() will raise 'errors.NoWorkingTree' if one cannot
       be obtained. (Robert Collins)
 
+    * All pending merges operations from Branch are now on WorkingTree.
+      (Robert Collins)
+
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:

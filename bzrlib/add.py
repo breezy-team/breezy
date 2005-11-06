@@ -150,7 +150,7 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
     mutter('added %d entries', count)
     
     if count > 0:
-        branch._write_inventory(inv)
+        branch.working_tree()._write_inventory(inv)
 
     return count
 

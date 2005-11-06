@@ -334,7 +334,7 @@ class TestPreviousHeads(TestCaseInTempDir):
         self.assertEqual(self.branch.revision_history(), ['A'])
         self.branch.commit('another add of file', rev_id='C')
         self.inv_C = self.branch.get_inventory('C')
-        self.branch.add_pending_merge('B')
+        self.branch.working_tree().add_pending_merge('B')
         self.branch.commit('merge in B', rev_id='D')
         self.inv_D = self.branch.get_inventory('D')
         self.file_active = self.branch.working_tree().inventory['fileid']

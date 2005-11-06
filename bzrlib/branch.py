@@ -518,35 +518,6 @@ class _Branch(Branch):
         return inv.root.file_id
 
     @needs_write_lock
-    def set_root_id(self, file_id):
-        inv = self.working_tree().read_working_inventory()
-        orig_root_id = inv.root.file_id
-        del inv._byid[inv.root.file_id]
-        inv.root.file_id = file_id
-        inv._byid[inv.root.file_id] = inv.root
-        for fid in inv:
-            entry = inv[fid]
-            if entry.parent_id in (None, orig_root_id):
-                entry.parent_id = inv.root.file_id
-        self._write_inventory(inv)
-
-    @needs_write_lock
-    def _write_inventory(self, inv):
-        """Update the working inventory.
-
-        That is to say, the inventory describing changes underway, that
-        will be committed to the next revision.
-        """
-        from cStringIO import StringIO
-        sio = StringIO()
-        bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
-        sio.seek(0)
-        # Transport handles atomicity
-        self.put_controlfile('inventory', sio)
-        
-        mutter('wrote working inventory')
-            
-    @needs_write_lock
     def add(self, files, ids=None):
         """Make files versioned.
 
@@ -610,7 +581,7 @@ class _Branch(Branch):
 
             mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
 
-        self._write_inventory(inv)
+        self.working_tree()._write_inventory(inv)
 
     @needs_read_lock
     def print_file(self, file, revno):
@@ -994,7 +965,7 @@ class _Branch(Branch):
                     % (from_abs, to_abs, e[1]),
                     ["rename rolled back"])
 
-        self._write_inventory(inv)
+        self.working_tree()._write_inventory(inv)
 
     @needs_write_lock
     def move(self, from_paths, to_name):
@@ -1058,40 +1029,8 @@ class _Branch(Branch):
                 raise BzrError("failed to rename %r to %r: %s" % (f, dest_path, e[1]),
                         ["rename rolled back"])
 
-        self._write_inventory(inv)
+        self.working_tree()._write_inventory(inv)
         return result
-
-    def pending_merges(self):
-        """Return a list of pending merges.
-
-        These are revisions that have been merged into the working
-        directory but not yet committed.
-        """
-        cfn = self._rel_controlfilename('pending-merges')
-        if not self._transport.has(cfn):
-            return []
-        p = []
-        for l in self.controlfile('pending-merges', 'r').readlines():
-            p.append(l.rstrip('\n'))
-        return p
-
-
-    def add_pending_merge(self, *revision_ids):
-        # TODO: Perhaps should check at this point that the
-        # history of the revision is actually present?
-        p = self.pending_merges()
-        updated = False
-        for rev_id in revision_ids:
-            if rev_id in p:
-                continue
-            p.append(rev_id)
-            updated = True
-        if updated:
-            self.set_pending_merges(p)
-
-    @needs_write_lock
-    def set_pending_merges(self, rev_list):
-        self.put_controlfile('pending-merges', '\n'.join(rev_list))
 
     def get_parent(self):
         """Return the parent location of the branch.
