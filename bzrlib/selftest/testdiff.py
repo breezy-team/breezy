@@ -57,8 +57,9 @@ class TestCDVDiffLib(TestCase):
             # length, with no matching entries at the end
             matching = matching + [(len(a), len(b), 0)]
             s = SequenceMatcher(None, a, b)
-            self.assertEquals(s.get_matching_blocks(), matching)
+            self.assertEquals(matching, s.get_matching_blocks())
 
+        # Some basic matching tests
         chk_blocks('', '', [])
         chk_blocks([], [], [])
         chk_blocks('abcd', 'abcd', [(0, 0, 4)])
@@ -67,6 +68,15 @@ class TestCDVDiffLib(TestCase):
         chk_blocks('eabce', 'abce', [(1, 0, 4)])
         chk_blocks('abcde', 'abXde', [(0, 0, 2), (3, 3, 2)])
         chk_blocks('abcde', 'abXde', [(0, 0, 2), (3, 3, 2)])
+        chk_blocks('abcdef', 'abcdefxydef', [(0, 0, 6)])
 
+        # make sure it supports passing in lists
+        chk_blocks(
+                [ 'hello there\n'
+                , 'world\n'
+                , 'how are you today?\n'],
+                [ 'hello there\n'
+                , 'how are you today?\n'],
+                [(0, 0, 1), (2, 1, 1)])
 
 
