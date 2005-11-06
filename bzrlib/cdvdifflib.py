@@ -27,28 +27,14 @@ class SequenceMatcher(difflib.SequenceMatcher):
     def find_longest_match(self, alo, ahi, blo, bhi):
         raise NotImplementedError
 
-    def get_matching_blocks(self):
-        """Return list of triples describing matching subsequences.
-
-        Each triple is of the form (i, j, n), and means that
-        a[i:i+n] == b[j:j+n].  The triples are monotonically increasing in
-        i and in j.
-
-        The last triple is a dummy, (len(a), len(b), 0), and is the only
-        triple with n==0.
-
-        >>> s = SequenceMatcher(None, "abxcd", "abcd")
-        >>> s.get_matching_blocks()
-        [(0, 0, 2), (3, 2, 2), (5, 4, 0)]
-        """
-
+    def __helper(self, alo, ahi, blo, bhi, answer):
         matches = []
-        a, b = self.a, self.b
+        a = self.a[alo:ahi]
+        b = self.b[blo:bhi]
         recurse_matches(a, b, len(a), len(b), matches, 10)
         # Matches now has individual line pairs of
         # line A matches line B, at the given offsets
 
-        match_blocks = []
         start_a = start_b = None
         length = 0
         for i_a, i_b in matches:
@@ -59,14 +45,11 @@ class SequenceMatcher(difflib.SequenceMatcher):
             else:
                 # New block
                 if start_a is not None:
-                    match_blocks.append((start_a, start_b, length))
+                    answer.append((start_a+alo, start_b+blo, length))
                 start_a = i_a
                 start_b = i_b
                 length = 1
 
         if length != 0:
-            match_blocks.append((start_a, start_b, length))
-
-        match_blocks.append((len(a), len(b), 0))
-        return match_blocks
+            answer.append((start_a+blo, start_b+blo, length))
 

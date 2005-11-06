@@ -3,6 +3,20 @@ from copy import copy
 from bisect import bisect
 
 def unique_lcs(a, b):
+    """Find the longest common subset for unique lines.
+
+    :param a: An indexable object (such as string or list of strings)
+    :param b: Another indexable object (such as string or list of strings)
+    :return: A list of tuples, one for each line which is matched.
+            [(line_in_a, line_in_b), ...]
+
+    This only matches lines which are unique on both sides.
+    This helps prevent common lines from over influencing match
+    results.
+    The longest common subset uses the Patience Sorting algorithm:
+    http://en.wikipedia.org/wiki/Patience_sorting
+    
+    """
     # set index[line in a] = position of line in a unless
     # unless a is a duplicate, in which case it's set to None
     index = {}
