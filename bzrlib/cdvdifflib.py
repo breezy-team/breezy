@@ -22,10 +22,13 @@ from bzrlib.errors import BzrError
 import difflib
 
 class SequenceMatcher(difflib.SequenceMatcher):
-    """This is a class which attempts to look something like difflib's SequenceMatcher"""
+    """Compare a pair of sequences using longest common subset."""
 
-    def find_longest_match(self, alo, ahi, blo, bhi):
-        raise NotImplementedError
+    def __init__(self, isjunk=None, a='', b=''):
+        if isjunk is not None:
+            raise NotImplementedError('Currently we do not support'
+                                      ' isjunk for sequence matching')
+        difflib.SequenceMatcher.__init__(self, isjunk, a, b)
 
     def __helper(self, alo, ahi, blo, bhi, answer):
         matches = []

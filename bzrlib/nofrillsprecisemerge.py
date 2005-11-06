@@ -15,7 +15,6 @@ def unique_lcs(a, b):
     results.
     The longest common subset uses the Patience Sorting algorithm:
     http://en.wikipedia.org/wiki/Patience_sorting
-    
     """
     # set index[line in a] = position of line in a unless
     # unless a is a duplicate, in which case it's set to None
@@ -89,6 +88,19 @@ assert unique_lcs('abXde', 'abYde') == [(0, 0), (1, 1), (3, 3), (4, 4)]
 assert unique_lcs('acbac', 'abc') == [(2, 1)]
 
 def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
+    """Find all of the matching text in the lines of a and b.
+
+    :param a: A sequence
+    :param b: Another sequence
+    :param ahi: The maximum length of a to check, typically len(a)
+    :param bhi: The maximum length of b to check, typically len(b)
+    :param answer: The return array. Will be filled with tuples
+                   indicating [(line_in_a), (line_in_b)]
+    :param maxrecursion: The maximum depth to recurse.
+                         Must be a positive integer.
+    :return: None, the return value is in the parameter answer, which
+             should be a list
+    """
     oldlen = len(answer)
     if maxrecursion < 0:
         # this will never happen normally, this check is to prevent DOS attacks
