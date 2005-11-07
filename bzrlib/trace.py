@@ -46,6 +46,7 @@ import traceback
 
 _file_handler = None
 _stderr_handler = None
+_stderr_quiet = False
 
 
 class QuietFormatter(logging.Formatter):
@@ -205,6 +206,21 @@ def enable_default_logging():
     _bzr_logger.setLevel(level) 
 
     logging.getLogger('').addHandler(_stderr_handler)
+
+
+def be_quiet(quiet=True):
+    global _stderr_handler, _stderr_quiet
+    
+    _stderr_quiet = quiet
+    if quiet:
+        _stderr_handler.setLevel(logging.WARNING)
+    else:
+        _stderr_handler.setLevel(logging.INFO)
+
+
+def is_quiet():
+    global _stderr_quiet
+    return _stderr_quiet
 
 
 def disable_default_logging():
