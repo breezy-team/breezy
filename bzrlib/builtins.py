@@ -1321,7 +1321,7 @@ class cmd_selftest(Command):
     This creates temporary test directories in the working directory,
     but not existing data is affected.  These directories are deleted
     if the tests pass, or left behind to help in debugging if they
-    fail.
+    fail and --keep-output is specified.
     
     If arguments are given, they are regular expressions that say
     which tests should run.
@@ -1331,9 +1331,12 @@ class cmd_selftest(Command):
     takes_args = ['testspecs*']
     takes_options = ['verbose', 
                      Option('one', help='stop when one test fails'),
+                     Option('keep-output', 
+                            help='keep output directories when tests fail')
                     ]
 
-    def run(self, testspecs_list=None, verbose=False, one=False):
+    def run(self, testspecs_list=None, verbose=False, one=False,
+            keep_output=False):
         import bzrlib.ui
         from bzrlib.selftest import selftest
         # we don't want progress meters from the tests to go to the
@@ -1349,7 +1352,8 @@ class cmd_selftest(Command):
                 pattern = ".*"
             result = selftest(verbose=verbose, 
                               pattern=pattern,
-                              stop_on_failure=one)
+                              stop_on_failure=one, 
+                              keep_output=keep_output)
             if result:
                 bzrlib.trace.info('tests passed')
             else:

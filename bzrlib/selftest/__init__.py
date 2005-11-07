@@ -527,7 +527,7 @@ def filter_suite_by_re(suite, pattern):
 
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
-              stop_on_failure=False):
+              stop_on_failure=False, keep_output=False):
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
@@ -543,7 +543,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     # This is still a little bogus, 
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
-    if result.wasSuccessful():
+    if result.wasSuccessful() or not keep_output:
         if TestCaseInTempDir.TEST_ROOT is not None:
             shutil.rmtree(TestCaseInTempDir.TEST_ROOT) 
     else:
@@ -551,10 +551,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     return result.wasSuccessful()
 
 
-def selftest(verbose=False, pattern=".*", stop_on_failure=True):
+def selftest(verbose=False, pattern=".*", stop_on_failure=True,
+             keep_output=False):
     """Run the whole test suite under the enhanced runner"""
     return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern,
-                     stop_on_failure=stop_on_failure)
+                     stop_on_failure=stop_on_failure, keep_output=keep_output)
 
 
 def test_suite():
