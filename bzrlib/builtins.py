@@ -1213,7 +1213,7 @@ class cmd_commit(Command):
                 raise BzrCommandError("empty commit message specified")
             
         try:
-            b.commit(message, specific_files=selected_list,
+            b.working_tree().commit(message, specific_files=selected_list,
                      allow_pointless=unchanged, strict=strict)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;

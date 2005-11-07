@@ -25,24 +25,24 @@ class TestBranch(TestCaseInTempDir):
         self.build_tree(['hello.txt'])
 
         self.assertRaises(PointlessCommit,
-                          b.commit,
+                          b.working_tree().commit,
                           'commit without adding',
                           allow_pointless=False)
 
-        b.commit('commit pointless tree',
+        b.working_tree().commit('commit pointless tree',
                  allow_pointless=True)
 
         b.add('hello.txt')
         
-        b.commit('commit first added file',
+        b.working_tree().commit('commit first added file',
                  allow_pointless=False)
         
         self.assertRaises(PointlessCommit,
-                          b.commit,
+                          b.working_tree().commit,
                           'commit after adding file',
                           allow_pointless=False)
         
-        b.commit('commit pointless revision with one file',
+        b.working_tree().commit('commit pointless revision with one file',
                  allow_pointless=True)
 
 
@@ -54,7 +54,7 @@ class MoreTests(TestCaseInTempDir):
         self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
         b.add(['dir', 'dir/sub', 'dir/sub/file'])
 
-        b.commit('create initial state')
+        b.working_tree().commit('create initial state')
 
         # TODO: lift out to a test helper that checks the shape of
         # an inventory

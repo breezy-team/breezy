@@ -44,9 +44,9 @@ class TestRevisionInfo(TestCaseInTempDir):
 
         b = Branch.initialize('.')
 
-        b.commit('Commit one', rev_id='a@r-0-1')
-        b.commit('Commit two', rev_id='a@r-0-2')
-        b.commit('Commit three', rev_id='a@r-0-3')
+        b.working_tree().commit('Commit one', rev_id='a@r-0-1')
+        b.working_tree().commit('Commit two', rev_id='a@r-0-2')
+        b.working_tree().commit('Commit three', rev_id='a@r-0-3')
 
         # Make sure revision-info without any arguments throws an exception
         self.check_error('bzr: ERROR: You must supply a revision identifier\n',
@@ -86,9 +86,9 @@ class TestRevisionInfo(TestCaseInTempDir):
         """
         b = Branch.initialize('.')
 
-        b.commit('Commit one', rev_id='a@r-0-1')
-        b.commit('Commit two', rev_id='a@r-0-2')
-        b.commit('Commit three', rev_id='a@r-0-3')
+        b.working_tree().commit('Commit one', rev_id='a@r-0-1')
+        b.working_tree().commit('Commit two', rev_id='a@r-0-2')
+        b.working_tree().commit('Commit three', rev_id='a@r-0-3')
 
         revs = {
             1:b.get_revision_xml_file('a@r-0-1').read(),

@@ -97,7 +97,7 @@ class TestWorkingTree(TestCaseInTempDir):
         self.build_tree(['from/', 'from/file', 'to/'])
         br_a = Branch.initialize('from')
         br_a.add('file')
-        br_a.commit('foo', rev_id='A')
+        br_a.working_tree().commit('foo', rev_id='A')
         br_b = Branch.initialize('to')
         return br_a, br_b
  
@@ -109,7 +109,7 @@ class TestWorkingTree(TestCaseInTempDir):
 
     def test_pull_overwrites(self):
         br_a, br_b = self.get_pullable_branches()
-        br_b.commit('foo', rev_id='B')
+        br_b.working_tree().commit('foo', rev_id='B')
         self.assertEqual(['B'], br_b.revision_history())
         br_b.working_tree().pull(br_a, overwrite=True)
         self.failUnless(br_b.has_revision('A'))
@@ -127,7 +127,7 @@ class TestWorkingTree(TestCaseInTempDir):
                           b.working_tree().revert, ['hello.txt'])
         
         b.add(['hello.txt'])
-        b.commit('create initial hello.txt')
+        b.working_tree().commit('create initial hello.txt')
 
         self.check_file_contents('hello.txt', 'initial hello')
         file('hello.txt', 'w').write('new hello')

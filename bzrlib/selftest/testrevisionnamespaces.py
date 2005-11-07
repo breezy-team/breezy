@@ -34,9 +34,9 @@ class TestRevisionNamespaces(TestCaseInTempDir):
 
         b = Branch.initialize('.')
 
-        b.commit('Commit one', rev_id='a@r-0-1', timestamp=time.time() - 60*60*24)
-        b.commit('Commit two', rev_id='a@r-0-2')
-        b.commit('Commit three', rev_id='a@r-0-3')
+        b.working_tree().commit('Commit one', rev_id='a@r-0-1', timestamp=time.time() - 60*60*24)
+        b.working_tree().commit('Commit two', rev_id='a@r-0-2')
+        b.working_tree().commit('Commit three', rev_id='a@r-0-3')
 
         self.assertEquals(RevisionSpec(None).in_history(b), (0, None))
         self.assertEquals(RevisionSpec(1).in_history(b), (1, 'a@r-0-1'))
@@ -70,11 +70,11 @@ class TestRevisionNamespaces(TestCaseInTempDir):
 
         os.mkdir('copy')
         b3 = copy_branch(b, 'copy')
-        b3.commit('Commit four', rev_id='b@r-0-4')
+        b3.working_tree().commit('Commit four', rev_id='b@r-0-4')
         self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
                           'a@r-0-3')
         merge(['copy', -1], [None, None])
-        b.commit('Commit five', rev_id='a@r-0-4')
+        b.working_tree().commit('Commit five', rev_id='a@r-0-4')
         self.assertEquals(RevisionSpec('ancestor:copy').in_history(b).rev_id,
                           'b@r-0-4')
         self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
@@ -85,11 +85,11 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
         branch = Branch.initialize('branch1')
         branch.add(['file'])
-        branch.commit('add file')
+        branch.working_tree().commit('add file')
         copy_branch(branch, 'branch2')
         print >> open('branch2/file', 'w'), 'new content'
         branch2 = Branch.open('branch2')
-        branch2.commit('update file', rev_id='A')
+        branch2.working_tree().commit('update file', rev_id='A')
         spec = RevisionSpec('branch:./branch2/.bzr/../')
         rev_info = spec.in_history(branch)
         self.assertEqual(rev_info, (None, 'A'))

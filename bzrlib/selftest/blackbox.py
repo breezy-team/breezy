@@ -311,11 +311,11 @@ class TestCommands(ExternalBase):
         self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
         branch = Branch.initialize('branch1')
         branch.add(['file'])
-        branch.commit('add file')
+        branch.working_tree().commit('add file')
         copy_branch(branch, 'branch2')
         print >> open('branch2/file', 'w'), 'new content'
         branch2 = Branch.open('branch2')
-        branch2.commit('update file')
+        branch2.working_tree().commit('update file')
         # should open branch1 and diff against branch2, 
         output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 
                                         'branch1'],
@@ -684,7 +684,7 @@ class TestCommands(ExternalBase):
         import bzrlib.gpg
         oldstrategy = bzrlib.gpg.GPGStrategy
         branch = Branch.initialize('.')
-        branch.commit("base", allow_pointless=True, rev_id='A')
+        branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
         try:
             # monkey patch gpg signing mechanism
             from bzrlib.testament import Testament
@@ -699,9 +699,9 @@ class TestCommands(ExternalBase):
         import bzrlib.gpg
         oldstrategy = bzrlib.gpg.GPGStrategy
         branch = Branch.initialize('.')
-        branch.commit("base", allow_pointless=True, rev_id='A')
-        branch.commit("base", allow_pointless=True, rev_id='B')
-        branch.commit("base", allow_pointless=True, rev_id='C')
+        branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
+        branch.working_tree().commit("base", allow_pointless=True, rev_id='B')
+        branch.working_tree().commit("base", allow_pointless=True, rev_id='C')
         try:
             # monkey patch gpg signing mechanism
             from bzrlib.testament import Testament
@@ -1044,7 +1044,7 @@ class HttpTests(TestCaseWithWebserver):
     def test_branch(self):
         os.mkdir('from')
         branch = Branch.initialize('from')
-        branch.commit('empty commit for nonsense', allow_pointless=True)
+        branch.working_tree().commit('empty commit for nonsense', allow_pointless=True)
         url = self.get_remote_url('from')
         self.run_bzr('branch', url, 'to')
         branch = Branch.open('to')
@@ -1054,7 +1054,7 @@ class HttpTests(TestCaseWithWebserver):
         self.build_tree(['branch/', 'branch/file'])
         branch = Branch.initialize('branch')
         branch.add(['file'])
-        branch.commit('add file', rev_id='A')
+        branch.working_tree().commit('add file', rev_id='A')
         url = self.get_remote_url('branch/file')
         output = self.capture('log %s' % url)
         self.assertEqual(7, len(output.split('\n')))

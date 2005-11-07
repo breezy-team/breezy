@@ -202,6 +202,11 @@ class WorkingTree(bzrlib.tree.Tree):
         ## XXX: badly named; this isn't in the store at all
         return self.abspath(self.id2path(file_id))
 
+    @needs_write_lock
+    def commit(self, *args, **kw):
+        from bzrlib.commit import Commit
+        Commit().commit(self.branch, *args, **kw)
+        self._inventory = self.read_working_inventory()
 
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
