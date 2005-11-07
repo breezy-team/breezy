@@ -541,10 +541,11 @@ class cmd_branch(Command):
                 rmtree(to_location)
                 msg = "The branch %s cannot be used as a --basis"
                 raise BzrCommandError(msg)
+            branch = Branch.open(to_location)
             if name:
-                branch = Branch.open(to_location)
                 name = StringIO(name)
                 branch.put_controlfile('branch-name', name)
+            note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
 
