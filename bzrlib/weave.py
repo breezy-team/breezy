@@ -68,7 +68,8 @@
 
 
 import sha
-from difflib import SequenceMatcher
+import difflib
+import cdvdifflib
 
 from bzrlib.trace import mutter
 from bzrlib.errors import WeaveError, WeaveFormatError, WeaveParentMismatch, \
@@ -166,15 +167,19 @@ class Weave(object):
     """
 
     __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
-                 '_weave_name']
+                 '_weave_name', '_matcher']
     
-    def __init__(self, weave_name=None):
+    def __init__(self, weave_name=None, matcher=None):
         self._weave = []
         self._parents = []
         self._sha1s = []
         self._names = []
         self._name_map = {}
         self._weave_name = weave_name
+        if matcher is None:
+            self._matcher = difflib.SequenceMatcher
+        else:
+            self._matcher = matcher
 
 
     def copy(self):
@@ -325,7 +330,7 @@ class Weave(object):
         #print 'basis_lines:', basis_lines
         #print 'new_lines:  ', lines
 
-        s = SequenceMatcher(None, basis_lines, text)
+        s = self._matcher(None, basis_lines, text)
 
         # offset gives the number of lines that have been inserted
         # into the weave up to the current point; if the original edit instruction
