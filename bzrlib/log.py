@@ -342,6 +342,9 @@ class LogFormatter(object):
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
 
+    def short_committer(self, rev):
+        return re.sub('<.*@.*>', '', rev.committer).strip(' ')
+    
     
 class LongLogFormatter(LogFormatter):
     def show(self, revno, rev, delta):
@@ -394,9 +397,10 @@ class ShortLogFormatter(LogFormatter):
         to_file = self.to_file
         date_str = format_date(rev.timestamp, rev.timezone or 0,
                             self.show_timezone)
-        print >>to_file, "%5d %s\t%s" % (revno, rev.committer,
+        print >>to_file, "%5d %s\t%s" % (revno, self.short_committer(rev),
                 format_date(rev.timestamp, rev.timezone or 0,
-                            self.show_timezone))
+                            self.show_timezone, date_fmt="%Y-%m-%d",
+                           show_offset=False))
         if self.show_ids:
             print >>to_file,  '      revision-id:', rev.revision_id
         if not rev.message:
@@ -429,9 +433,6 @@ class LineLogFormatter(LogFormatter):
         else:
             return rev.message
 
-    def short_committer(self, rev):
-        return re.sub('<.*@.*>', '', rev.committer).strip(' ')
-    
     def show(self, revno, rev, delta):
         print >> self.to_file, self.log_string(rev, 79) 
 
