@@ -535,28 +535,28 @@ def run_bzr_catch_errors(argv):
     except BzrCommandError, e:
         # command line syntax error, etc
         log_error(str(e))
-        return 1
+        return 3
     except BzrError, e:
         bzrlib.trace.log_exception()
-        return 1
+        return 3
     except AssertionError, e:
         bzrlib.trace.log_exception('assertion failed: ' + str(e))
         return 3
     except KeyboardInterrupt, e:
         bzrlib.trace.log_exception('interrupted')
-        return 2
+        return 3
     except Exception, e:
         import errno
         if (isinstance(e, IOError) 
             and hasattr(e, 'errno')
             and e.errno == errno.EPIPE):
             bzrlib.trace.note('broken pipe')
-            return 2
+            return 3
         else:
             ## import pdb
             ## pdb.pm()
             bzrlib.trace.log_exception()
-            return 2
+            return 3
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
