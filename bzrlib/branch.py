@@ -853,10 +853,6 @@ class _Branch(Branch):
                 else:
                     raise e
         
-    def commit(self, *args, **kw):
-        from bzrlib.commit import Commit
-        Commit().commit(self, *args, **kw)
-    
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         if revision_id is None:

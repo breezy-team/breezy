@@ -144,17 +144,17 @@ class TestIntermediateRevisions(TestCaseInTempDir):
         TestCaseInTempDir.setUp(self)
         self.br1, self.br2 = make_branches(self)
 
-        self.br2.commit("Commit eleven", rev_id="b@u-0-7")
-        self.br2.commit("Commit twelve", rev_id="b@u-0-8")
-        self.br2.commit("Commit thirtteen", rev_id="b@u-0-9")
+        self.br2.working_tree().commit("Commit eleven", rev_id="b@u-0-7")
+        self.br2.working_tree().commit("Commit twelve", rev_id="b@u-0-8")
+        self.br2.working_tree().commit("Commit thirtteen", rev_id="b@u-0-9")
 
         fetch(from_branch=self.br2, to_branch=self.br1)
         self.br1.working_tree().add_pending_merge(self.br2.revision_history()[6])
-        self.br1.commit("Commit fourtten", rev_id="a@u-0-6")
+        self.br1.working_tree().commit("Commit fourtten", rev_id="a@u-0-6")
 
         fetch(from_branch=self.br1, to_branch=self.br2)
         self.br2.working_tree().add_pending_merge(self.br1.revision_history()[6])
-        self.br2.commit("Commit fifteen", rev_id="b@u-0-10")
+        self.br2.working_tree().commit("Commit fifteen", rev_id="b@u-0-10")
 
         from bzrlib.revision import MultipleRevisionSources
         self.sources = MultipleRevisionSources(self.br1, self.br2)

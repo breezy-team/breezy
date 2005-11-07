@@ -51,7 +51,7 @@ class TestBranch(TestCaseInTempDir):
         b2 = Branch.initialize('b2')
         file(os.sep.join(['b1', 'foo']), 'w').write('hello')
         b1.add(['foo'], ['foo-id'])
-        b1.commit('lala!', rev_id='revision-1', allow_pointless=False)
+        b1.working_tree().commit('lala!', rev_id='revision-1', allow_pointless=False)
 
         mutter('start fetch')
         f = Fetcher(from_branch=b1, to_branch=b2)
@@ -65,7 +65,7 @@ class TestBranch(TestCaseInTempDir):
 
     def test_revision_tree(self):
         b1 = Branch.initialize('.')
-        b1.commit('lala!', rev_id='revision-1', allow_pointless=True)
+        b1.working_tree().commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = b1.revision_tree('revision-1')
         tree = b1.revision_tree(None)
         self.assertEqual(len(tree.list_files()), 0)
@@ -117,10 +117,10 @@ class TestBranch(TestCaseInTempDir):
         self.build_tree(['a/', 'a/one'])
         br_a = Branch.initialize('a')
         br_a.add(['one'])
-        br_a.commit('commit one', rev_id='u@d-1')
+        br_a.working_tree().commit('commit one', rev_id='u@d-1')
         self.build_tree(['a/two'])
         br_a.add(['two'])
-        br_a.commit('commit two', rev_id='u@d-2')
+        br_a.working_tree().commit('commit two', rev_id='u@d-2')
         br_b = copy_branch(br_a, 'b', revision='u@d-1')
         self.assertEqual(br_b.last_revision(), 'u@d-1')
         self.assertTrue(os.path.exists('b/one'))
@@ -130,7 +130,7 @@ class TestBranch(TestCaseInTempDir):
         """A pending merge with no revision present is still a merge."""
         branch = Branch.initialize('.')
         branch.working_tree().add_pending_merge('non:existent@rev--ision--0--2')
-        branch.commit('pretend to merge nonexistent-revision', rev_id='first')
+        branch.working_tree().commit('pretend to merge nonexistent-revision', rev_id='first')
         rev = branch.get_revision(branch.last_revision())
         self.assertEqual(len(rev.parent_ids), 1)
         # parent_sha1s is not populated now, WTF. rbc 20051003
@@ -159,7 +159,7 @@ class TestBranch(TestCaseInTempDir):
         self.assertEquals(wt.pending_merges(),
                           ['foo@azkhazan-123123-abcabc',
                            'wibble@fofof--20050401--1928390812'])
-        b.commit("commit from base with two merges")
+        b.working_tree().commit("commit from base with two merges")
         rev = b.get_revision(b.revision_history()[0])
         self.assertEquals(len(rev.parent_ids), 2)
         self.assertEquals(rev.parent_ids[0],
@@ -171,7 +171,7 @@ class TestBranch(TestCaseInTempDir):
 
     def test_sign_existing_revision(self):
         branch = Branch.initialize('.')
-        branch.commit("base", allow_pointless=True, rev_id='A')
+        branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
         branch.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
         self.assertEqual(Testament.from_revision(branch, 'A').as_short_text(),

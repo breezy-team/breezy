@@ -64,6 +64,8 @@ UNRELEASED CHANGES
     * All pending merges operations from Branch are now on WorkingTree.
       (Robert Collins)
 
+    * Branch.commit() has moved to WorkingTree.commit(). (Robert Collins)
+
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:
