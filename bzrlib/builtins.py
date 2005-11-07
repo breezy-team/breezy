@@ -381,12 +381,13 @@ class cmd_pull(Command):
                 location = stored_loc
         br_from = Branch.open(location)
         try:
-            br_to.working_tree().pull(br_from, overwrite)
+            count = br_to.working_tree().pull(br_from, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try merge.")
         if br_to.get_parent() is None or remember:
             br_to.set_parent(location)
+        note('%d revision(s) pulled.' % (count,))
 
 
 class cmd_push(Command):
@@ -1226,7 +1227,8 @@ class cmd_commit(Command):
         except StrictCommitFailed:
             raise BzrCommandError("Commit refused because there are unknown "
                                   "files in the working tree.")
-
+        note('Committed revision %d.' % (b.revno(),))
+        
 
 class cmd_check(Command):
     """Validate consistency of branch history.
