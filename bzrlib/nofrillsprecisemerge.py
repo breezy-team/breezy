@@ -183,7 +183,8 @@ class Weave:
                     newvals.append((lineid, state + 1))
         else:
             for lineid, line in self.weave:
-                newvals.append((lineid, 1))
+                if lineid in s:
+                    newvals.append((lineid, 1))
         # build a new weave
         newweave = []
         revpos = -1
