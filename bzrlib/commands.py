@@ -509,7 +509,9 @@ def run_bzr(argv):
 def display_command(func):
     def ignore_pipe(*args, **kwargs):
         try:
-            return func(*args, **kwargs)
+            result = func(*args, **kwargs)
+            sys.stdout.flush()
+            return result
         except IOError, e:
             if e.errno != errno.EPIPE:
                 raise
