@@ -117,7 +117,7 @@ class TestCommands(ExternalBase):
         self.build_tree(['hello.txt'])
         self.runbzr("commit -m empty", retcode=1)
         self.runbzr("add hello.txt")
-        self.runbzr("commit -m added")
+        self.runbzr("commit -m added")       
 
     def test_empty_commit_message(self):
         self.runbzr("init")
@@ -225,6 +225,21 @@ class TestCommands(ExternalBase):
         self.runbzr('revert')
         os.chdir('..')
 
+    def test_status(self):
+        self.runbzr("init")
+        self.build_tree(['hello.txt'])
+        result = self.runbzr("status")
+        self.assert_("unknown:\n  hello.txt\n" in result, result)
+        self.runbzr("add hello.txt")
+        result = self.runbzr("status")
+        self.assert_("added:\n  hello.txt\n" in result, result)
+        self.runbzr("commit -m added")
+        result = self.runbzr("status -r 0..1")
+        self.assert_("added:\n  hello.txt\n" in result, result)
+        self.build_tree(['world.txt'])
+        result = self.runbzr("status -r 0")
+        self.assert_("added:\n  hello.txt\n" \
+                     "unknown:\n  world.txt\n" in result, result)
 
     def test_mv_modes(self):
         """Test two modes of operation for mv"""
