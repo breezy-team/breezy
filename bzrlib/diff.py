@@ -22,8 +22,10 @@ from bzrlib.delta import compare_trees
 # invoke callbacks on an object.  That object can either accumulate a
 # list, write them out directly, etc etc.
 
-def internal_diff(old_label, oldlines, new_label, newlines, to_file):
-    import difflib
+def internal_diff(old_label, oldlines, new_label, newlines, to_file,
+        sequence_matcher=None):
+    from bzrlib.cdvdifflib import unified_diff
+    from bzrlib.cdvdifflib import SequenceMatcher
     
     # FIXME: difflib is wrong if there is no trailing newline.
     # The syntax used by patch seems to be "\ No newline at
@@ -41,8 +43,11 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file):
     if not oldlines and not newlines:
         return
 
-    ud = difflib.unified_diff(oldlines, newlines,
-                              fromfile=old_label, tofile=new_label)
+    if sequence_matcher is None:
+        sequence_matcher = SequenceMatcher
+    ud = unified_diff(oldlines, newlines,
+                      fromfile=old_label, tofile=new_label,
+                      sequencematcher=sequence_matcher)
 
     ud = list(ud)
     # work-around for difflib being too smart for its own good

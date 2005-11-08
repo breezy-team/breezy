@@ -27,7 +27,7 @@
 
 # FIXME: doesn't work properly on files without trailing newlines
 
-import difflib
+from difflib import SequenceMatcher
 import struct
 import sys
 import unittest
@@ -77,7 +77,7 @@ def diff(a, b):
     (al, ap) = linesplit(a)
     (bl, bp) = linesplit(b)
 
-    d = difflib.SequenceMatcher(None, al, bl)
+    d = SequenceMatcher(None, al, bl)
     
     ## sys.stderr.write('  ~ real_quick_ratio: %.4f\n' % d.real_quick_ratio())
     
