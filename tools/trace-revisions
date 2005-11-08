@@ -1,0 +1,19 @@
+#! /usr/bin/env python2.4
+
+import sys
+
+from bzrlib.branch import Branch
+
+b = Branch.open('.')
+rev_id = sys.argv[1]
+rh = []
+while True:
+    rh.append(rev_id)
+    rev = b.get_revision(rev_id)
+    if rev.parent_ids:
+        rev_id = rev.parent_ids[0]
+    else:
+        break
+rh.reverse()
+for rev_id in rh:
+    print rev_id

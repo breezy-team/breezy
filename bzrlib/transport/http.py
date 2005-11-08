@@ -143,7 +143,7 @@ class HttpTransport(Transport):
         try:
             return get_url(self.abspath(relpath))
         except urllib2.URLError, e:
-            if e.code == 404:
+            if getattr(e, 'code', None) == 404:
                 raise NoSuchFile(msg = "Error retrieving %s: %s" 
                                  % (self.abspath(relpath), str(e)),
                                  orig_error=e)

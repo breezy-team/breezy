@@ -79,11 +79,12 @@ class InventoryEntry(object):
     InventoryDirectory('123', 'src', parent_id='TREE_ROOT')
     >>> i.add(InventoryFile('2323', 'hello.c', parent_id='123'))
     InventoryFile('2323', 'hello.c', parent_id='123')
-    >>> for j in i.iter_entries():
-    ...   print j
+    >>> shouldbe = {0: 'src', 1: os.path.join('src','hello.c')}
+    >>> for ix, j in enumerate(i.iter_entries()):
+    ...   print (j[0] == shouldbe[ix], j[1])
     ... 
-    ('src', InventoryDirectory('123', 'src', parent_id='TREE_ROOT'))
-    ('src/hello.c', InventoryFile('2323', 'hello.c', parent_id='123'))
+    (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT'))
+    (True, InventoryFile('2323', 'hello.c', parent_id='123'))
     >>> i.add(InventoryFile('2323', 'bye.c', '123'))
     Traceback (most recent call last):
     ...
