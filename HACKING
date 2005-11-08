@@ -65,6 +65,9 @@ Documentation
 If you change the behaviour of a command, please update its docstring
 in bzrlib/commands.py.  This is displayed by the 'bzr help' command.
 
+NEWS file
+---------
+
 If you make a user-visible change, please add a note to the NEWS file.
 The description should be written to make sense to someone who's just
 a user of bzr, not a developer: new functions or classes shouldn't be
@@ -72,6 +75,20 @@ mentioned, but new commands, changes in behaviour or fixed nontrivial
 bugs should be listed.  See the existing entries for an idea of what
 should be done.
 
+Within each release, entries in the news file should have the most
+user-visible changes first.  So the order should be approximately:
+
+ * changes to existing behaviour - the highest priority because the 
+   user's existing knowledge is incorrect
+ * new features - should be brought to their attention
+ * bug fixes - may be of interest if the bug was affecting them, and
+   should include the bug number if any
+ * major documentation changes
+ * changes to internal interfaces
+
+People who made significant contributions to each change are listed in
+parenthesis.  This can include reporting bugs (particularly with good
+details or reproduction recipes), submitting patches, etc.
 
 API documentation
 -----------------
