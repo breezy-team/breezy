@@ -17,13 +17,6 @@ less, and several days or more.
 Small things
 ------------
 
-* ``bzr status`` should show some description of patches that are merged but 
-  not yet committed.  Preferably in a very compact format so that they
-  just fit on a single line; this could also be used for say ``log
-  --tiny``::
-
-  2005-11-05      mbp  Flowers for stephane
-
 * Fix tests so that import errors caused by modules don't produce false reports
   that the tests themselves don't exist.
 
@@ -58,8 +51,6 @@ Small things
   file-id (and perhaps eventually parentage.)
 
 * -r option should take a revision-id as well as a revno.
-
-* allow ``bzr st -r 300`` to show a summary of changes since then.
 
 * ``bzr info`` should count only people with distinct email addresses as
   different committers.  (Or perhaps only distinct userids?)
@@ -145,10 +136,6 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
   methods return object, but what we really want is the raw XML, which
   can be popped into our own store.  That needs to be refactored.
 
-* ``bzr status FOO`` where foo is ignored should say so.
-
-* ``bzr mkdir A...`` should just create and add A.
-
 * Guard against repeatedly merging any particular patch.
 
 * More options for diff:
@@ -212,8 +199,6 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 Medium things
 -------------
 
-* ~/.bzr.log is not written anymore for some reason.
-
 * merge should add all revision and inventory XML to the local store.
 
 * check should give a warning for revisions that are named in the
@@ -225,9 +210,6 @@ Medium things
 * More efficient diff of only selected files.  We should be able to
   just get the id for the selected files, look up their location and
   diff just those files.  No need to traverse the entire inventories.
-
-* ``bzr status DIR`` or ``bzr diff DIR`` should report on all changes
-  under that directory.
 
 * Fix up Inventory objects to represent root object as an entry.
 
