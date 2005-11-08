@@ -38,13 +38,13 @@ Overall
   the user should really pay attention to - which includes trivial shell
   pipelines.
 
-  Recommanded values are 
+  Recommended values are 
     0- OK, 
     1- Conflicts in merge-like operations, or changes are present in
        diff-like operations. 
     2- Unrepresentable diff changes (i.e. binary files that we cannot show 
        a diff of).
-    3- An error or exception has occured.
+    3- An error or exception has occurred.
 
 Evolving interfaces
 -------------------
@@ -53,10 +53,10 @@ If you change the behaviour of an API in an incompatible way, please
 be sure to change its name as well. For instance, if I add a keyword
 parameter to branch.commit - that's fine. On the other hand, if I add
 a keyword parameter to branch.commit which is a *required* transaction
-object, I should rename the api - i.e. to 'branch.commit_transaction'.
+object, I should rename the API - i.e. to 'branch.commit_transaction'.
 
-This will prevent users of the old api getting surprising results. 
-Instead, they will get an Attribute error as the api is missing, and
+This will prevent users of the old API getting surprising results. 
+Instead, they will get an Attribute error as the API is missing, and
 will know to update their code. If in doubt, just ask on #bzr.
 
 Documentation

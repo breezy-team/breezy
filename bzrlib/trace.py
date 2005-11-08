@@ -191,9 +191,7 @@ def enable_default_logging():
 
     _stderr_handler = logging.StreamHandler()
     _stderr_handler.setFormatter(QuietFormatter())
-
-    if not _file_handler:
-        open_tracefile()
+    logging.getLogger('').addHandler(_stderr_handler)
 
     if os.environ.get('BZR_DEBUG'):
         level = logging.DEBUG
@@ -201,11 +199,14 @@ def enable_default_logging():
         level = logging.INFO
 
     _stderr_handler.setLevel(logging.INFO)
-    _file_handler.setLevel(level)
+
+    if not _file_handler:
+        open_tracefile()
+
+    if _file_handler:
+        _file_handler.setLevel(level)
+
     _bzr_logger.setLevel(level) 
-
-    logging.getLogger('').addHandler(_stderr_handler)
-
 
 def disable_default_logging():
     """Turn off default log handlers.
