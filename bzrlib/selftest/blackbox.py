@@ -318,6 +318,10 @@ class TestCommands(ExternalBase):
         self.assert_('\n+hello world!' in output)
         output = self.runbzr('diff -r last:3..last:1', backtick=1, retcode=1)
         self.assert_('\n+baz' in output)
+        file('moo', 'wb').write('moo')
+        self.runbzr('add moo')
+        os.unlink('moo')
+        self.runbzr('diff')
 
     def test_diff_branches(self):
         self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
