@@ -65,8 +65,12 @@ class TestTransportMixIn(object):
         self.assertEqual(t.has(urlescape('%')), True)
         self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
                 [True, True, False, False, True, False, True, False])
+        self.assertEqual(t.has_any(['a', 'b', 'c']), True)
+        self.assertEqual(t.has_any(['c', 'd', 'f', urlescape('%%')]), False)
         self.assertEqual(list(t.has_multi(iter(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']))),
                 [True, True, False, False, True, False, True, False])
+        self.assertEqual(t.has_any(['c', 'c', 'c']), False)
+        self.assertEqual(t.has_any(['b', 'b', 'b']), True)
 
     def test_get(self):
         t = self.get_transport()

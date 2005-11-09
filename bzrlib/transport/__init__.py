@@ -161,6 +161,13 @@ class Transport(object):
             yield self.has(relpath)
             count += 1
 
+    def has_any(self, relpaths):
+        """Return True if any of the paths exist."""
+        for relpath in relpaths:
+            if self.has(relpath):
+                return True
+        return False
+
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree.
         
