@@ -346,6 +346,9 @@ def parse_args(command, argv):
                             # into the array
                             optarg = a[2:]
             
+                if optname not in cmd_options:
+                    raise BzrOptionError('unknown short option %r for command'
+                        ' %s' % (shortopt, command.name()))
             if optname in opts:
                 # XXX: Do we ever want to support this, e.g. for -r?
                 raise BzrError('repeated option %r' % a)
