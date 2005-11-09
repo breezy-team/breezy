@@ -758,6 +758,59 @@ class TestCommands(ExternalBase):
         # nothing missing
         self.runbzr('missing ../missing/new-branch')
 
+    def test_external_command(self):
+        """test that external commands can be run by setting the path"""
+        cmd_name = 'test-command'
+        output = 'Hello from test-command'
+        if sys.platform == 'win32':
+            cmd_name += '.bat'
+            output += '\r\n'
+        else:
+            output += '\n'
+
+        oldpath = os.environ.get('BZRPATH', None)
+
+        bzr = self.capture
+
+        try:
+            if os.environ.has_key('BZRPATH'):
+                del os.environ['BZRPATH']
+
+            f = file(cmd_name, 'wb')
+            if sys.platform == 'win32':
+                f.write('@echo off\n')
+            else:
+                f.write('#!/bin/sh\n')
+            f.write('echo Hello from test-command')
+            f.close()
+            os.chmod(cmd_name, 0755)
+
+            # It should not find the command in the local 
+            # directory by default, since it is not in my path
+            bzr(cmd_name, retcode=1)
+
+            # Now put it into my path
+            os.environ['BZRPATH'] = '.'
+
+            bzr(cmd_name)
+            # The test suite does not capture stdout for external commands
+            # this is because you have to have a real file object
+            # to pass to Popen(stdout=FOO), and StringIO is not one of those.
+            # (just replacing sys.stdout does not change a spawned objects stdout)
+            #self.assertEquals(bzr(cmd_name), output)
+
+            # Make sure empty path elements are ignored
+            os.environ['BZRPATH'] = os.pathsep
+
+            bzr(cmd_name, retcode=1)
+
+        finally:
+            if oldpath:
+                os.environ['BZRPATH'] = oldpath
+
+
+
+
 
 def listdir_sorted(dir):
     L = os.listdir(dir)
