@@ -427,6 +427,10 @@ class _Branch(Branch):
         elif mode == 'wb':
             raise BzrError("Branch.controlfile(mode='wb') is not supported, use put_controlfiles")
         elif mode == 'r':
+            # XXX: Do we really want errors='replace'?   Perhaps it should be
+            # an error, or at least reported, if there's incorrectly-encoded
+            # data inside a file.
+            # <https://launchpad.net/products/bzr/+bug/3823>
             return codecs.getreader('utf-8')(self._transport.get(relpath), errors='replace')
         elif mode == 'w':
             raise BzrError("Branch.controlfile(mode='w') is not supported, use put_controlfiles")
