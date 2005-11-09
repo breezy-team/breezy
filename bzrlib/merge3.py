@@ -19,6 +19,8 @@
 # s: "i hate that."
 
 
+from difflib import SequenceMatcher
+from bzrlib.errors import CantReprocessAndShowBase
 
 def intersect(ra, rb):
     """Given two ranges return the range where they intersect or None.
@@ -67,27 +69,32 @@ class Merge3(object):
         self.base = base
         self.a = a
         self.b = b
-        from difflib import SequenceMatcher
-        self.a_ops = SequenceMatcher(None, base, a).get_opcodes()
-        self.b_ops = SequenceMatcher(None, base, b).get_opcodes()
 
 
 
     def merge_lines(self,
                     name_a=None,
                     name_b=None,
+                    name_base=None,
                     start_marker='<<<<<<<',
                     mid_marker='=======',
                     end_marker='>>>>>>>',
-                    show_base=False):
+                    base_marker=None,
+                    reprocess=False):
         """Return merge in cvs-like form.
         """
+        if base_marker and reprocess:
+            raise CantReprocessAndShowBase()
         if name_a:
             start_marker = start_marker + ' ' + name_a
         if name_b:
             end_marker = end_marker + ' ' + name_b
-            
-        for t in self.merge_regions():
+        if name_base and base_marker:
+            base_marker = base_marker + ' ' + name_base
+        merge_regions = self.merge_regions()
+        if reprocess is True:
+            merge_regions = self.reprocess_merge_regions(merge_regions)
+        for t in merge_regions:
             what = t[0]
             if what == 'unchanged':
                 for i in range(t[1], t[2]):
@@ -102,6 +109,10 @@ class Merge3(object):
                 yield start_marker + '\n'
                 for i in range(t[3], t[4]):
                     yield self.a[i]
+                if base_marker is not None:
+                    yield base_marker + '\n'
+                    for i in range(t[1], t[2]):
+                        yield self.base[i]
                 yield mid_marker + '\n'
                 for i in range(t[5], t[6]):
                     yield self.b[i]
@@ -263,16 +274,47 @@ class Merge3(object):
                 iz = zend
                 ia = aend
                 ib = bend
-        
+    
 
-        
+    def reprocess_merge_regions(self, merge_regions):
+        for region in merge_regions:
+            if region[0] != "conflict":
+                yield region
+                continue
+            type, iz, zmatch, ia, amatch, ib, bmatch = region
+            a_region = self.a[ia:amatch]
+            b_region = self.b[ib:bmatch]
+            matches = SequenceMatcher(None, a_region, 
+                                      b_region).get_matching_blocks()
+            next_a = ia
+            next_b = ib
+            for region_ia, region_ib, region_len in matches[:-1]:
+                region_ia += ia
+                region_ib += ib
+                reg = self.mismatch_region(next_a, region_ia, next_b,
+                                           region_ib)
+                if reg is not None:
+                    yield reg
+                yield 'same', region_ia, region_len+region_ia
+                next_a = region_ia + region_len
+                next_b = region_ib + region_len
+            reg = self.mismatch_region(next_a, amatch, next_b, bmatch)
+            if reg is not None:
+                yield reg
+
+
+    @staticmethod
+    def mismatch_region(next_a, region_ia,  next_b, region_ib):
+        if next_a < region_ia or next_b < region_ib:
+            return 'conflict', None, None, next_a, region_ia, next_b, region_ib
+            
+
     def find_sync_regions(self):
         """Return a list of sync regions, where both descendents match the base.
 
         Generates a list of (base1, base2, a1, a2, b1, b2).  There is
         always a zero-length sync region at the end of all the files.
         """
-        from difflib import SequenceMatcher
 
         ia = ib = 0
         amatches = SequenceMatcher(None, self.base, self.a).get_matching_blocks()
@@ -332,7 +374,6 @@ class Merge3(object):
 
     def find_unconflicted(self):
         """Return a list of ranges in base that are not conflicted."""
-        from difflib import SequenceMatcher
 
         import re
 

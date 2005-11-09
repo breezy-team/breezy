@@ -138,12 +138,13 @@ class TestEntryDiffing(TestCaseInTempDir):
     def setUp(self):
         super(TestEntryDiffing, self).setUp()
         self.branch = Branch.initialize('.')
+        self.wt = self.branch.working_tree()
         print >> open('file', 'wb'), 'foo'
         self.branch.add(['file'], ['fileid'])
         if has_symlinks():
             os.symlink('target1', 'symlink')
             self.branch.add(['symlink'], ['linkid'])
-        self.branch.commit('message_1', rev_id = '1')
+        self.wt.commit('message_1', rev_id = '1')
         print >> open('file', 'wb'), 'bar'
         if has_symlinks():
             os.unlink('symlink')
@@ -152,7 +153,7 @@ class TestEntryDiffing(TestCaseInTempDir):
         self.inv_1 = self.branch.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
         self.tree_2 = self.branch.working_tree()
-        self.inv_2 = self.branch.inventory
+        self.inv_2 = self.tree_2.read_working_inventory()
         self.file_2 = self.inv_2['fileid']
         if has_symlinks():
             self.link_1 = self.inv_1['linkid']
@@ -244,7 +245,8 @@ class TestSnapshot(TestCaseInTempDir):
         self.branch.add(['subdir', 'subdir/file'], ['dirid', 'fileid'])
         if has_symlinks():
             pass
-        self.branch.commit('message_1', rev_id = '1')
+        self.wt = self.branch.working_tree()
+        self.wt.commit('message_1', rev_id = '1')
         self.tree_1 = self.branch.revision_tree('1')
         self.inv_1 = self.branch.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
@@ -325,19 +327,20 @@ class TestPreviousHeads(TestCaseInTempDir):
         super(TestPreviousHeads, self).setUp()
         self.build_tree(['file'])
         self.branch = Branch.initialize('.')
-        self.branch.commit('new branch', allow_pointless=True, rev_id='A')
+        self.wt = self.branch.working_tree()
+        self.wt.commit('new branch', allow_pointless=True, rev_id='A')
         self.inv_A = self.branch.get_inventory('A')
         self.branch.add(['file'], ['fileid'])
-        self.branch.commit('add file', rev_id='B')
+        self.wt.commit('add file', rev_id='B')
         self.inv_B = self.branch.get_inventory('B')
         self.branch.put_controlfile('revision-history', 'A\n')
         self.assertEqual(self.branch.revision_history(), ['A'])
-        self.branch.commit('another add of file', rev_id='C')
+        self.wt.commit('another add of file', rev_id='C')
         self.inv_C = self.branch.get_inventory('C')
-        self.branch.add_pending_merge('B')
-        self.branch.commit('merge in B', rev_id='D')
+        self.wt.add_pending_merge('B')
+        self.wt.commit('merge in B', rev_id='D')
         self.inv_D = self.branch.get_inventory('D')
-        self.file_active = self.branch.working_tree().inventory['fileid']
+        self.file_active = self.wt.inventory['fileid']
         self.weave = self.branch.weave_store.get_weave('fileid',
             self.branch.get_transaction())
         

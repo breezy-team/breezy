@@ -48,9 +48,15 @@ import fnmatch
  
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock, quotefn
 import bzrlib.tree
-from bzrlib.osutils import appendpath, file_kind, isdir, splitpath, relpath
+from bzrlib.osutils import (appendpath,
+                            file_kind,
+                            isdir,
+                            pumpfile,
+                            splitpath,
+                            relpath)
 from bzrlib.errors import BzrCheckError, DivergedBranches, NotVersionedError
 from bzrlib.trace import mutter
+import bzrlib.xml5
 
 
 class TreeEntry(object):
@@ -134,10 +140,10 @@ class WorkingTree(bzrlib.tree.Tree):
             branch = Branch.open(basedir)
         assert isinstance(branch, Branch), \
             "branch %r is not a Branch" % branch
-        self._inventory = branch.inventory
-        self.path2id = self._inventory.path2id
         self.branch = branch
         self.basedir = basedir
+        self._inventory = self.read_working_inventory()
+        self.path2id = self._inventory.path2id
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -187,10 +193,20 @@ class WorkingTree(bzrlib.tree.Tree):
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
+    def get_root_id(self):
+        """Return the id of this trees root"""
+        inv = self.read_working_inventory()
+        return inv.root.file_id
+        
     def _get_store_filename(self, file_id):
         ## XXX: badly named; this isn't in the store at all
         return self.abspath(self.id2path(file_id))
 
+    @needs_write_lock
+    def commit(self, *args, **kw):
+        from bzrlib.commit import Commit
+        Commit().commit(self.branch, *args, **kw)
+        self._inventory = self.read_working_inventory()
 
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
@@ -227,6 +243,38 @@ class WorkingTree(bzrlib.tree.Tree):
             path = self._inventory.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
+
+    @needs_write_lock
+    def add_pending_merge(self, *revision_ids):
+        # TODO: Perhaps should check at this point that the
+        # history of the revision is actually present?
+        p = self.pending_merges()
+        updated = False
+        for rev_id in revision_ids:
+            if rev_id in p:
+                continue
+            p.append(rev_id)
+            updated = True
+        if updated:
+            self.set_pending_merges(p)
+
+    def pending_merges(self):
+        """Return a list of pending merges.
+
+        These are revisions that have been merged into the working
+        directory but not yet committed.
+        """
+        cfn = self.branch._rel_controlfilename('pending-merges')
+        if not self.branch._transport.has(cfn):
+            return []
+        p = []
+        for l in self.branch.controlfile('pending-merges', 'r').readlines():
+            p.append(l.rstrip('\n'))
+        return p
+
+    @needs_write_lock
+    def set_pending_merges(self, rev_list):
+        self.branch.put_controlfile('pending-merges', '\n'.join(rev_list))
 
     def get_symlink_target(self, file_id):
         return os.readlink(self.id2abspath(file_id))
@@ -330,17 +378,12 @@ class WorkingTree(bzrlib.tree.Tree):
                 yield stem
 
     @needs_write_lock
-    def pull(self, source, remember=False, clobber=False):
+    def pull(self, source, overwrite=False):
         from bzrlib.merge import merge_inner
         source.lock_read()
         try:
             old_revision_history = self.branch.revision_history()
-            try:
-                self.branch.update_revisions(source)
-            except DivergedBranches:
-                if not clobber:
-                    raise
-                self.branch.set_revision_history(source.revision_history())
+            self.branch.pull(source, overwrite)
             new_revision_history = self.branch.revision_history()
             if new_revision_history != old_revision_history:
                 if len(old_revision_history):
@@ -350,8 +393,6 @@ class WorkingTree(bzrlib.tree.Tree):
                 merge_inner(self.branch,
                             self.branch.basis_tree(), 
                             self.branch.revision_tree(other_revision))
-            if self.branch.get_parent() is None or remember:
-                self.branch.set_parent(source.base)
         finally:
             source.unlock()
 
@@ -457,6 +498,14 @@ class WorkingTree(bzrlib.tree.Tree):
         """See Branch.lock_write, and WorkingTree.unlock."""
         return self.branch.lock_write()
 
+    @needs_read_lock
+    def read_working_inventory(self):
+        """Read the working inventory."""
+        # ElementTree does its own conversion from UTF-8, so open in
+        # binary.
+        f = self.branch.controlfile('inventory', 'rb')
+        return bzrlib.xml5.serializer_v5.read_inventory(f)
+
     @needs_write_lock
     def remove(self, files, verbose=False):
         """Remove nominated files from the working inventory..
@@ -496,7 +545,56 @@ class WorkingTree(bzrlib.tree.Tree):
                 show_status(new_status, inv[fid].kind, quotefn(f))
             del inv[fid]
 
-        self.branch._write_inventory(inv)
+        self._write_inventory(inv)
+
+    @needs_write_lock
+    def revert(self, filenames, old_tree=None, backups=True):
+        from bzrlib.merge import merge_inner
+        if old_tree is None:
+            old_tree = self.branch.basis_tree()
+        merge_inner(self.branch, old_tree,
+                    self, ignore_zero=True,
+                    backup_files=backups, 
+                    interesting_files=filenames)
+        if not len(filenames):
+            self.set_pending_merges([])
+
+    @needs_write_lock
+    def set_inventory(self, new_inventory_list):
+        from bzrlib.inventory import (Inventory,
+                                      InventoryDirectory,
+                                      InventoryEntry,
+                                      InventoryFile,
+                                      InventoryLink)
+        inv = Inventory(self.get_root_id())
+        for path, file_id, parent, kind in new_inventory_list:
+            name = os.path.basename(path)
+            if name == "":
+                continue
+            # fixme, there should be a factory function inv,add_?? 
+            if kind == 'directory':
+                inv.add(InventoryDirectory(file_id, name, parent))
+            elif kind == 'file':
+                inv.add(InventoryFile(file_id, name, parent))
+            elif kind == 'symlink':
+                inv.add(InventoryLink(file_id, name, parent))
+            else:
+                raise BzrError("unknown kind %r" % kind)
+        self._write_inventory(inv)
+
+    @needs_write_lock
+    def set_root_id(self, file_id):
+        """Set the root id for this tree."""
+        inv = self.read_working_inventory()
+        orig_root_id = inv.root.file_id
+        del inv._byid[inv.root.file_id]
+        inv.root.file_id = file_id
+        inv._byid[inv.root.file_id] = inv.root
+        for fid in inv:
+            entry = inv[fid]
+            if entry.parent_id in (None, orig_root_id):
+                entry.parent_id = inv.root.file_id
+        self._write_inventory(inv)
 
     def unlock(self):
         """See Branch.unlock.
@@ -509,6 +607,22 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         return self.branch.unlock()
 
+    @needs_write_lock
+    def _write_inventory(self, inv):
+        """Write inventory as the current inventory."""
+        from cStringIO import StringIO
+        from bzrlib.atomicfile import AtomicFile
+        sio = StringIO()
+        bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
+        sio.seek(0)
+        f = AtomicFile(self.branch.controlfilename('inventory'))
+        try:
+            pumpfile(sio, f)
+            f.commit()
+        finally:
+            f.close()
+        mutter('wrote working inventory')
+            
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 def get_conflicted_stem(path):

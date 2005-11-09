@@ -20,6 +20,7 @@ import re
 import bzrlib.commands
 from bzrlib.trace import warning, mutter
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.errors import BzrCommandError
 
 
 def _parse_revision_str(revstr):
@@ -102,8 +103,20 @@ def _parse_revision_str(revstr):
 
 
 def _parse_merge_type(typestring):
-    return bzrlib.commands.get_merge_type(typestring)
+    return get_merge_type(typestring)
 
+def get_merge_type(typestring):
+    """Attempt to find the merge class/factory associated with a string."""
+    from merge import merge_types
+    try:
+        return merge_types[typestring][0]
+    except KeyError:
+        templ = '%s%%7s: %%s' % (' '*12)
+        lines = [templ % (f[0], f[1][1]) for f in merge_types.iteritems()]
+        type_list = '\n'.join(lines)
+        msg = "No known merge type %s. Supported types are:\n%s" %\
+            (typestring, type_list)
+        raise BzrCommandError(msg)
 
 class Option(object):
     """Description of a command line option"""
@@ -142,7 +155,9 @@ class Option(object):
 
         Short options are globally registered.
         """
-        return Option.SHORT_OPTIONS.get(self.name)
+        for short, option in Option.SHORT_OPTIONS.iteritems():
+            if option is self:
+                return short
 
 
 def _global_option(name, **kwargs):
@@ -150,7 +165,8 @@ def _global_option(name, **kwargs):
     Option.OPTIONS[name] = Option(name, **kwargs)
 
 _global_option('all')
-_global_option('clobber')
+_global_option('overwrite', help='Ignore differences between branches and '
+               'overwrite unconditionally')
 _global_option('basis', type=str)
 _global_option('diff-options', type=str)
 _global_option('help',
@@ -181,7 +197,9 @@ _global_option('no-backup')
 _global_option('merge-type', type=_parse_merge_type)
 _global_option('pattern', type=str)
 _global_option('quiet')
-_global_option('remember')
+_global_option('remember', help='Remember the specified location as a'
+               ' default.')
+_global_option('reprocess', help='Reprocess to reduce spurious conflicts')
 
 
 def _global_short(short_name, long_name):

@@ -126,10 +126,21 @@ class TestSerializer(TestCase):
         self.assertEqual(inv, inv2)
 
     def test_repack_revision_5(self):
+        """Round-trip revision to XML v5"""
         inp = StringIO(_revision_v5)
         rev = serializer_v5.read_revision(inp)
         outp = StringIO()
         serializer_v5.write_revision(rev, outp)
-        rev2 = serializer_v5.read_revision(StringIO(outp.getvalue()))
+        outfile_contents = outp.getvalue()
+        rev2 = serializer_v5.read_revision(StringIO(outfile_contents))
         self.assertEqual(rev, rev2)
 
+    def test_pack_revision_5(self):
+        """Pack revision to XML v5"""
+        # fixed 20051025, revisions should have final newline
+        rev = serializer_v5.read_revision_from_string(_revision_v5)
+        outp = StringIO()
+        serializer_v5.write_revision(rev, outp)
+        outfile_contents = outp.getvalue()
+        self.assertEqual(outfile_contents[-1], '\n')
+        self.assertEqualDiff(outfile_contents, serializer_v5.write_revision_to_string(rev))

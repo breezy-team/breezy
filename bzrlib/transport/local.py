@@ -63,7 +63,7 @@ class LocalTransport(Transport):
         """Return the full url to the given relative URL.
         This can be supplied with a string or a list
         """
-        assert isinstance(relpath, basestring)
+        assert isinstance(relpath, basestring), (type(relpath), relpath)
         return os.path.join(self.base, urllib.unquote(relpath))
 
     def relpath(self, abspath):
@@ -115,7 +115,7 @@ class LocalTransport(Transport):
         """Iter the relative paths of files in the transports sub-tree."""
         queue = list(self.list_dir('.'))
         while queue:
-            relpath = queue.pop(0)
+            relpath = urllib.quote(queue.pop(0))
             st = self.stat(relpath)
             if S_ISDIR(st[ST_MODE]):
                 for i, basename in enumerate(self.list_dir(relpath)):

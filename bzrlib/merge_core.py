@@ -5,14 +5,18 @@ from changeset import Inventory, apply_changeset, invert_dict
 from bzrlib.osutils import backup_file, rename
 from bzrlib.merge3 import Merge3
 import bzrlib
+from bzrlib.atomicfile import AtomicFile
 from changeset import get_contents
 
 class ApplyMerge3:
+    history_based = False
     """Contents-change wrapper around merge3.Merge3"""
-    def __init__(self, file_id, base, other):
+    def __init__(self, file_id, base, other, show_base=False, reprocess=False):
         self.file_id = file_id
         self.base = base
         self.other = other
+        self.show_base = show_base
+        self.reprocess = reprocess
 
     def is_creation(self):
         return False
@@ -49,8 +53,14 @@ class ApplyMerge3:
         new_conflicts = False
         output_file = file(new_file, "wb")
         start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
+        if self.show_base is True:
+            base_marker = '|' * 7
+        else:
+            base_marker = None
         for line in m3.merge_lines(name_a = "TREE", name_b = "MERGE-SOURCE", 
-                       start_marker=start_marker):
+                       name_base = "BASE-REVISION",
+                       start_marker=start_marker, base_marker=base_marker,
+                       reprocess = self.reprocess):
             if line.startswith(start_marker):
                 new_conflicts = True
                 output_file.write(line.replace(start_marker, '<' * 7))
@@ -65,6 +75,46 @@ class ApplyMerge3:
             conflict_handler.merge_conflict(new_file, filename, base_lines,
                                             other_lines)
 
+class WeaveMerge:
+    """Contents-change wrapper around weave merge"""
+    history_based = True
+    def __init__(self, weave, this_revision_id, other_revision_id):
+        self.weave = weave
+        self.this_revision_id = this_revision_id
+        self.other_revision_id = other_revision_id
+
+    def is_creation(self):
+        return False
+
+    def is_deletion(self):
+        return False
+
+    def __eq__(self, other):
+        if not isinstance(other, WeaveMerge):
+            return False
+        return self.weave == other.weave and\
+            self.this_revision_id == other.this_revision_id and\
+            self.other_revision_id == other.other_revision_id
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def apply(self, filename, conflict_handler, reverse=False):
+        this_i = self.weave.lookup(self.this_revision_id)
+        other_i = self.weave.lookup(self.other_revision_id)
+        plan = self.weave.plan_merge(this_i, other_i)
+        lines = self.weave.weave_merge(plan)
+        conflicts = False
+        out_file = AtomicFile(filename, mode='wb')
+        for line in lines:
+            if line == '<<<<<<<\n':
+                conflicts = True
+            out_file.write(line)
+        if conflicts:
+            conflict_handler.weave_merge_conflict(filename, self.weave,
+                                                  other_i, out_file)
+        else:
+            out_file.commit()
 
 class BackupBeforeChange:
     """Contents-change wrapper to back up file first"""
@@ -109,9 +159,7 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
                                     conflict_handler, merge_factory)
     result = apply_changeset(new_cset, invert_invent(this.inventory),
                              this.basedir, conflict_handler, False)
-    conflict_handler.finalize()
     return result
-
     
 
 def make_merge_changeset(cset, this, base, other, 
@@ -221,42 +269,45 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
         return merge_factory(entry.id, base, other)
 
     if isinstance(contents, changeset.ReplaceContents):
-        if contents.old_contents is None and contents.new_contents is None:
+        base_contents = contents.old_contents
+        other_contents = contents.new_contents
+        if base_contents is None and other_contents is None:
             return None
-        if contents.new_contents is None:
+        if other_contents is None:
             this_contents = get_contents(this, entry.id)
             if this_path is not None and bzrlib.osutils.lexists(this_path):
-                if this_contents != contents.old_contents:
+                if this_contents != base_contents:
                     return conflict_handler.rem_contents_conflict(this_path, 
-                        this_contents, contents.old_contents)
+                        this_contents, base_contents)
                 return contents
             else:
                 return None
-        elif contents.old_contents is None:
+        elif base_contents is None:
             if this_path is None or not bzrlib.osutils.lexists(this_path):
                 return contents
             else:
                 this_contents = get_contents(this, entry.id)
-                if this_contents == contents.new_contents:
+                if this_contents == other_contents:
                     return None
                 else:
                     conflict_handler.new_contents_conflict(this_path, 
-                                                           other_contents)
-        elif isinstance(contents.old_contents, changeset.TreeFileCreate) and \
-            isinstance(contents.new_contents, changeset.TreeFileCreate):
+                        other_contents)
+        elif isinstance(base_contents, changeset.TreeFileCreate) and \
+            isinstance(other_contents, changeset.TreeFileCreate):
             return make_merge()
         else:
             this_contents = get_contents(this, entry.id)
-            if this_contents == contents.old_contents:
+            if this_contents == base_contents:
                 return contents
-            elif this_contents == contents.new_contents:
+            elif this_contents == other_contents:
                 return None
-            elif contents.old_contents == contents.new_contents:
+            elif base_contents == other_contents:
                 return None
             else:
-                conflict_handler.threeway_contents_conflict(this_path, 
-                    this_contents, contents.old_contents,
-                    contents.new_contents)
+                conflict_handler.threeway_contents_conflict(this_path,
+                                                            this_contents,
+                                                            base_contents,
+                                                            other_contents)
                 
 
 def make_merged_metadata(entry, base, other):

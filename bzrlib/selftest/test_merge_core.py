@@ -6,15 +6,18 @@ import stat
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
-from bzrlib.errors import NotBranchError, NotVersionedError
+from bzrlib.errors import (NotBranchError, NotVersionedError,
+                           WorkingTreeNotRevision, BzrCommandError)
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.osutils import file_kind, rename, sha_file
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
-                               BackupBeforeChange, ExecFlagMerge)
+                               BackupBeforeChange, ExecFlagMerge, WeaveMerge)
 from bzrlib.changeset import Inventory, apply_changeset, invert_dict
 from bzrlib.changeset import get_contents, ReplaceContents
+from bzrlib.clone import copy_branch
+from bzrlib.merge import merge
 
 
 class FalseTree(object):
@@ -361,18 +364,18 @@ class MergeTest(unittest.TestCase):
         builder.add_file("3", "0", "name5", "hello3", 0755)
         builder.change_name("3", this="name6")
         cset = builder.merge_changeset(ApplyMerge3)
-        assert(cset.entries["2"].is_boring())
-        assert(cset.entries["1"].name == "name1")
-        assert(cset.entries["1"].new_name == "name2")
-        assert(cset.entries["3"].is_boring())
+        self.assert_(cset.entries["2"].is_boring())
+        self.assert_(cset.entries["1"].name == "name1")
+        self.assert_(cset.entries["1"].new_name == "name2")
+        self.assert_(cset.entries["3"].is_boring())
         for tree in (builder.this, builder.other, builder.base):
-            assert(tree.dir != builder.dir and 
+            self.assert_(tree.dir != builder.dir and 
                    tree.dir.startswith(builder.dir))
             for path in tree.inventory_dict.itervalues():
                 fullpath = tree.abs_path(path)
-                assert(fullpath.startswith(tree.dir))
-                assert(not path.startswith(tree.dir))
-                assert os.path.exists(fullpath)
+                self.assert_(fullpath.startswith(tree.dir))
+                self.assert_(not path.startswith(tree.dir))
+                self.assert_(os.path.exists(fullpath))
         builder.apply_changeset(cset)
         builder.cleanup()
         builder = MergeBuilder()
@@ -391,16 +394,16 @@ class MergeTest(unittest.TestCase):
         builder.add_file("4", "1", "file2", "hello2", 0644)
         builder.add_file("5", "1", "file3", "hello3", 0644)
         builder.change_parent("3", other="2")
-        assert(Inventory(builder.other.inventory_dict).get_parent("3") == "2")
+        self.assert_(Inventory(builder.other.inventory_dict).get_parent("3") == "2")
         builder.change_parent("4", this="2")
-        assert(Inventory(builder.this.inventory_dict).get_parent("4") == "2")
+        self.assert_(Inventory(builder.this.inventory_dict).get_parent("4") == "2")
         builder.change_parent("5", base="2")
-        assert(Inventory(builder.base.inventory_dict).get_parent("5") == "2")
+        self.assert_(Inventory(builder.base.inventory_dict).get_parent("5") == "2")
         cset = builder.merge_changeset(ApplyMerge3)
         for id in ("1", "2", "4", "5"):
-            assert(cset.entries[id].is_boring())
-        assert(cset.entries["3"].parent == "1")
-        assert(cset.entries["3"].new_parent == "2")
+            self.assert_(cset.entries[id].is_boring())
+        self.assert_(cset.entries["3"].parent == "1")
+        self.assert_(cset.entries["3"].new_parent == "2")
         builder.apply_changeset(cset)
         builder.cleanup()
 
@@ -429,9 +432,9 @@ class MergeTest(unittest.TestCase):
         builder = self.contents_test_success(backup_merge)
         def backup_exists(file_id):
             return os.path.exists(builder.this.full_path(file_id)+"~")
-        assert backup_exists("1")
-        assert backup_exists("2")
-        assert not backup_exists("3")
+        self.assert_(backup_exists("1"))
+        self.assert_(backup_exists("2"))
+        self.assert_(not backup_exists("3"))
         builder.cleanup()
 
     def do_contents_test(self, merge_factory):
@@ -450,23 +453,23 @@ class MergeTest(unittest.TestCase):
         builder.add_file("3", "0", "name5", "text3", 0744)
         builder.add_file("4", "0", "name6", "text4", 0744)
         builder.remove_file("4", base=True)
-        assert not builder.cset.entries["4"].is_boring()
+        self.assert_(not builder.cset.entries["4"].is_boring())
         builder.change_contents("3", this="text6")
         cset = builder.merge_changeset(merge_factory)
-        assert(cset.entries["1"].contents_change is not None)
+        self.assert_(cset.entries["1"].contents_change is not None)
         if isclass(merge_factory):
-            assert(isinstance(cset.entries["1"].contents_change,
+            self.assert_(isinstance(cset.entries["1"].contents_change,
                           merge_factory))
-            assert(isinstance(cset.entries["2"].contents_change,
+            self.assert_(isinstance(cset.entries["2"].contents_change,
                           merge_factory))
-        assert(cset.entries["3"].is_boring())
-        assert(cset.entries["4"].is_boring())
+        self.assert_(cset.entries["3"].is_boring())
+        self.assert_(cset.entries["4"].is_boring())
         builder.apply_changeset(cset)
-        assert(file(builder.this.full_path("1"), "rb").read() == "text4" )
-        assert(file(builder.this.full_path("2"), "rb").read() == "text2" )
-        assert(os.stat(builder.this.full_path("1")).st_mode &0777 == 0755)
-        assert(os.stat(builder.this.full_path("2")).st_mode &0777 == 0655)
-        assert(os.stat(builder.this.full_path("3")).st_mode &0777 == 0744)
+        self.assert_(file(builder.this.full_path("1"), "rb").read() == "text4" )
+        self.assert_(file(builder.this.full_path("2"), "rb").read() == "text2" )
+        self.assert_(os.stat(builder.this.full_path("1")).st_mode &0777 == 0755)
+        self.assert_(os.stat(builder.this.full_path("2")).st_mode &0777 == 0655)
+        self.assert_(os.stat(builder.this.full_path("3")).st_mode &0777 == 0744)
         return builder
 
     def contents_test_conflicts(self, merge_factory):
@@ -494,8 +497,8 @@ class MergeTest(unittest.TestCase):
         builder.change_target("1", this="target2")
         builder.change_target("2", base="target2")
         builder.change_target("3", other="target2")
-        assert builder.cset.entries['2'].contents_change !=\
-            builder.cset.entries['3'].contents_change
+        self.assertNotEqual(builder.cset.entries['2'].contents_change,
+                            builder.cset.entries['3'].contents_change)
         cset = builder.merge_changeset(ApplyMerge3)
         builder.apply_changeset(cset)
         self.assertEqual(builder.this.get_symlink_target("1"), "target2")
@@ -512,14 +515,14 @@ class MergeTest(unittest.TestCase):
         builder.add_file("3", "0", "name3", "text3", 0755)
         builder.change_perms("3", this=0644)
         cset = builder.merge_changeset(ApplyMerge3)
-        assert(cset.entries["1"].metadata_change is not None)
-        assert(isinstance(cset.entries["1"].metadata_change, ExecFlagMerge))
-        assert(isinstance(cset.entries["2"].metadata_change, ExecFlagMerge))
-        assert(cset.entries["3"].is_boring())
+        self.assert_(cset.entries["1"].metadata_change is not None)
+        self.assert_(isinstance(cset.entries["1"].metadata_change, ExecFlagMerge))
+        self.assert_(isinstance(cset.entries["2"].metadata_change, ExecFlagMerge))
+        self.assert_(cset.entries["3"].is_boring())
         builder.apply_changeset(cset)
-        assert(os.lstat(builder.this.full_path("1")).st_mode &0100 == 0000)
-        assert(os.lstat(builder.this.full_path("2")).st_mode &0100 == 0100)
-        assert(os.lstat(builder.this.full_path("3")).st_mode &0100 == 0000)
+        self.assert_(os.lstat(builder.this.full_path("1")).st_mode &0100 == 0000)
+        self.assert_(os.lstat(builder.this.full_path("2")).st_mode &0100 == 0100)
+        self.assert_(os.lstat(builder.this.full_path("3")).st_mode &0100 == 0000)
         builder.cleanup();
 
 
@@ -534,7 +537,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         self.build_tree(("original/", "original/file1", "original/file2"))
         branch = Branch.initialize("original")
         smart_add_branch(branch, ["original"], True, add_reporter_null)
-        branch.commit("start branch.", verbose=False)
+        branch.working_tree().commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
         copy_branch(branch, "mary")
@@ -542,17 +545,84 @@ class FunctionalMergeTest(TestCaseInTempDir):
         file = open("original/file1", "wt")
         file.write("John\n")
         file.close()
-        branch.commit("change file1")
+        branch.working_tree().commit("change file1")
         # Mary does too
         mary_branch = Branch.open("mary")
         file = open("mary/file2", "wt")
         file.write("Mary\n")
         file.close()
-        mary_branch.commit("change file2")
+        mary_branch.working_tree().commit("change file2")
         # john should be able to merge with no conflicts.
         merge_type = ApplyMerge3
         base = [None, None]
         other = ("mary", -1)
-        merge(other, base, check_clean=True, merge_type=merge_type, this_dir="original")
+        self.assertRaises(BzrCommandError, merge, other, base, check_clean=True,
+                          merge_type=WeaveMerge, this_dir="original",
+                          show_base=True)
+        merge(other, base, check_clean=True, merge_type=merge_type,
+              this_dir="original")
         self.assertEqual("John\n", open("original/file1", "rt").read())
         self.assertEqual("Mary\n", open("original/file2", "rt").read())
+ 
+    def test_conflicts(self):
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/file', 'wb').write('contents\n')
+        a.add('file')
+        a.working_tree().commit('base revision', allow_pointless=False)
+        b = copy_branch(a, 'b')
+        file('a/file', 'wb').write('other contents\n')
+        a.working_tree().commit('other revision', allow_pointless=False)
+        file('b/file', 'wb').write('this contents contents\n')
+        b.working_tree().commit('this revision', allow_pointless=False)
+        self.assertEqual(merge(['a', -1], [None, None], this_dir='b'), 1)
+        self.assert_(os.path.lexists('b/file.THIS'))
+        self.assert_(os.path.lexists('b/file.BASE'))
+        self.assert_(os.path.lexists('b/file.OTHER'))
+        self.assertRaises(WorkingTreeNotRevision, merge, ['a', -1], 
+                          [None, None], this_dir='b', check_clean=False,
+                          merge_type=WeaveMerge)
+        merge(['b', -1], ['b', None], this_dir='b', check_clean=False)
+        os.unlink('b/file.THIS')
+        os.unlink('b/file.OTHER')
+        os.unlink('b/file.BASE')
+        self.assertEqual(merge(['a', -1], [None, None], this_dir='b', 
+                               check_clean=False, merge_type=WeaveMerge), 1)
+        self.assert_(os.path.lexists('b/file'))
+        self.assert_(os.path.lexists('b/file.THIS'))
+        self.assert_(not os.path.lexists('b/file.BASE'))
+        self.assert_(os.path.lexists('b/file.OTHER'))
+
+    def test_merge_unrelated(self):
+        """Sucessfully merges unrelated branches with no common names"""
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/a_file', 'wb').write('contents\n')
+        a.add('a_file')
+        a.working_tree().commit('a_revision', allow_pointless=False)
+        os.mkdir('b')
+        b = Branch.initialize('b')
+        file('b/b_file', 'wb').write('contents\n')
+        b.add('b_file')
+        b.working_tree().commit('b_revision', allow_pointless=False)
+        merge(['b', -1], ['b', 0], this_dir='a')
+        self.assert_(os.path.lexists('a/b_file'))
+        self.assertEqual(a.working_tree().pending_merges(),
+                         [b.last_revision()]) 
+
+    def test_merge_unrelated_conflicting(self):
+        """Sucessfully merges unrelated branches with common names"""
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/file', 'wb').write('contents\n')
+        a.add('file')
+        a.working_tree().commit('a_revision', allow_pointless=False)
+        os.mkdir('b')
+        b = Branch.initialize('b')
+        file('b/file', 'wb').write('contents\n')
+        b.add('file')
+        b.working_tree().commit('b_revision', allow_pointless=False)
+        merge(['b', -1], ['b', 0], this_dir='a')
+        self.assert_(os.path.lexists('a/file'))
+        self.assert_(os.path.lexists('a/file.moved'))
+        self.assertEqual(a.working_tree().pending_merges(), [b.last_revision()])

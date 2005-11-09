@@ -3,7 +3,7 @@ import unittest
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
-from bzrlib.errors import NotBranchError, NotVersionedError
+from bzrlib.errors import NotBranchError
 
 
 class TestBranch(TestCaseInTempDir):
@@ -25,55 +25,28 @@ class TestBranch(TestCaseInTempDir):
         self.build_tree(['hello.txt'])
 
         self.assertRaises(PointlessCommit,
-                          b.commit,
+                          b.working_tree().commit,
                           'commit without adding',
                           allow_pointless=False)
 
-        b.commit('commit pointless tree',
+        b.working_tree().commit('commit pointless tree',
                  allow_pointless=True)
 
         b.add('hello.txt')
         
-        b.commit('commit first added file',
+        b.working_tree().commit('commit first added file',
                  allow_pointless=False)
         
         self.assertRaises(PointlessCommit,
-                          b.commit,
+                          b.working_tree().commit,
                           'commit after adding file',
                           allow_pointless=False)
         
-        b.commit('commit pointless revision with one file',
+        b.working_tree().commit('commit pointless revision with one file',
                  allow_pointless=True)
 
 
 class MoreTests(TestCaseInTempDir):
-
-    def test_revert(self):
-        """Test selected-file revert"""
-        b = Branch.initialize('.')
-
-        self.build_tree(['hello.txt'])
-        file('hello.txt', 'w').write('initial hello')
-
-        self.assertRaises(NotVersionedError,
-                          b.revert, ['hello.txt'])
-        
-        b.add(['hello.txt'])
-        b.commit('create initial hello.txt')
-
-        self.check_file_contents('hello.txt', 'initial hello')
-        file('hello.txt', 'w').write('new hello')
-        self.check_file_contents('hello.txt', 'new hello')
-
-        # revert file modified since last revision
-        b.revert(['hello.txt'])
-        self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt~', 'new hello')
-
-        # reverting again clobbers the backup
-        b.revert(['hello.txt'])
-        self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt~', 'initial hello')
 
     def test_rename_dirs(self):
         """Test renaming directories and the files within them."""
@@ -81,7 +54,7 @@ class MoreTests(TestCaseInTempDir):
         self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
         b.add(['dir', 'dir/sub', 'dir/sub/file'])
 
-        b.commit('create initial state')
+        b.working_tree().commit('create initial state')
 
         # TODO: lift out to a test helper that checks the shape of
         # an inventory
@@ -97,11 +70,11 @@ class MoreTests(TestCaseInTempDir):
 
         b.rename_one('dir', 'newdir')
 
-        self.check_inventory_shape(b.inventory,
+        self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['newdir', 'newdir/sub', 'newdir/sub/file'])
 
         b.rename_one('newdir/sub', 'newdir/newsub')
-        self.check_inventory_shape(b.inventory,
+        self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['newdir', 'newdir/newsub',
                                     'newdir/newsub/file'])
 

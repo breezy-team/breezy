@@ -18,10 +18,10 @@
 """bzr python plugin support
 
 Any python module in $BZR_PLUGIN_PATH will be imported upon initialization of
-bzrlib (and then forgotten about).  In the plugin's main body, it should
-update any bzrlib registries it wants to extend; for example, to add new
-commands, import bzrlib.commands and add your new command to the plugin_cmds
-variable.
+bzrlib. The module will be imported as 'bzrlib.plugins.$BASENAME(PLUGIN)'.
+In the plugin's main body, it should update any bzrlib registries it wants to
+extend; for example, to add new commands, import bzrlib.commands and add your
+new command to the plugin_cmds variable.
 """
 
 # TODO: Refactor this to make it more testable.  The main problem at the
@@ -137,8 +137,9 @@ def load_plugins():
                         plugin_info[0].close()
 
                 mutter('loaded succesfully')
-            except:
-                ## import pdb
-                ## pdb.set_trace()
+            except KeyboardInterrupt:
+                raise
+            except Exception, e:
+                ## import pdb; pdb.set_trace()
                 warning('Unable to load plugin %r from %r' % (name, d))
                 log_exception_quietly()

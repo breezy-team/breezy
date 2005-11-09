@@ -26,6 +26,7 @@ unique ID.
 
 import os
 from cStringIO import StringIO
+import urllib
 from zlib import adler32
 
 import bzrlib
@@ -206,8 +207,13 @@ class TransportStore(Store):
         # RBC 20051017 - TODO SOON, separate them again.
         self._suffixes = set()
 
+    def _iter_files_recursive(self):
+        """Iterate through the files in the transport."""
+        for quoted_relpath in self._transport.iter_files_recursive():
+            yield urllib.unquote(quoted_relpath)
+
     def __iter__(self):
-        for relpath in self._transport.iter_files_recursive():
+        for relpath in self._iter_files_recursive():
             # worst case is one of each suffix.
             name = os.path.basename(relpath)
             if name.endswith('.gz'):

@@ -206,8 +206,10 @@ class Commit(object):
         self.allow_pointless = allow_pointless
         self.revprops = revprops
 
-        if strict and branch.unknowns():
-            raise StrictCommitFailed()
+        if strict:
+            # raise an exception as soon as we find a single unknown.
+            for unknown in branch.unknowns():
+                raise StrictCommitFailed()
 
         if timestamp is None:
             self.timestamp = time.time()
@@ -264,9 +266,17 @@ class Commit(object):
 
             self._record_inventory()
             self._make_revision()
-            self.reporter.completed(self.branch.revno()+1, self.rev_id)
             self.branch.append_revision(self.rev_id)
-            self.branch.set_pending_merges([])
+            self.work_tree.set_pending_merges([])
+            self.reporter.completed(self.branch.revno()+1, self.rev_id)
+            if self.config.post_commit() is not None:
+                hooks = self.config.post_commit().split(' ')
+                # this would be nicer with twisted.python.reflect.namedAny
+                for hook in hooks:
+                    result = eval(hook + '(branch, rev_id)',
+                                  {'branch':self.branch,
+                                   'bzrlib':bzrlib,
+                                   'rev_id':self.rev_id})
         finally:
             self.branch.unlock()
 
@@ -300,7 +310,7 @@ class Commit(object):
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""
-        pending_merges = self.branch.pending_merges()
+        pending_merges = self.work_tree.pending_merges()
         self.parents = []
         self.parent_invs = []
         self.present_parents = []
@@ -366,7 +376,7 @@ class Commit(object):
             deleted_ids.sort(reverse=True)
             for path, file_id in deleted_ids:
                 del self.work_inv[file_id]
-            self.branch._write_inventory(self.work_inv)
+            self.work_tree._write_inventory(self.work_inv)
 
     def _store_snapshot(self):
         """Pass over inventory and record a snapshot.

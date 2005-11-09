@@ -52,6 +52,7 @@ from bzrlib.merge import build_working_dir
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter, note
 from bzrlib.store import copy_all
+from bzrlib.errors import InvalidRevisionId
 
 def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     """Copy branch_from into the existing directory to_location.
@@ -86,7 +87,7 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
             os.mkdir(to_location)
         branch_to = Branch.initialize(to_location)
         mutter("copy branch from %s to %s", branch_from, branch_to)
-        branch_to.set_root_id(branch_from.get_root_id())
+        branch_to.working_tree().set_root_id(branch_from.get_root_id())
         branch_to.append_revision(*history)
         _copy_control_weaves(branch_from, branch_to)
         _copy_text_weaves(branch_from, branch_to)
@@ -106,7 +107,7 @@ def _get_truncated_history(branch_from, revision_id):
     try:
         idx = history.index(revision_id)
     except ValueError:
-        raise InvalidRevisionId(revision_id=revision_id)
+        raise InvalidRevisionId(revision_id=revision, branch=branch_from)
     return history[:idx+1]
 
 def _copy_text_weaves(branch_from, branch_to):
@@ -150,7 +151,7 @@ def copy_branch_slower(branch_from, to_location, revision=None, basis_branch=Non
     mutter("copy branch from %s to %s", branch_from, br_to)
     if basis_branch is not None:
         basis_branch.push_stores(br_to)
-    br_to.set_root_id(branch_from.get_root_id())
+    br_to.working_tree().set_root_id(branch_from.get_root_id())
     if revision is None:
         revision = branch_from.last_revision()
     br_to.update_revisions(branch_from, stop_revision=revision)
