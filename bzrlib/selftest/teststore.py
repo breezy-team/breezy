@@ -18,12 +18,12 @@
 
 from cStringIO import StringIO
 import os
+import gzip
 
 from bzrlib.errors import BzrError, UnlistableStore
 from bzrlib.store import copy_all
 from bzrlib.transport.local import LocalTransport
 from bzrlib.transport import NoSuchFile
-from bzrlib.store.compressed_text import CompressedTextStore
 from bzrlib.store.text import TextStore
 from bzrlib.selftest import TestCase, TestCaseInTempDir
 import bzrlib.store as store
@@ -82,7 +82,7 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
 
     def get_store(self, path='.'):
         t = LocalTransport(path)
-        return CompressedTextStore(t)
+        return TextStore(t, compressed=True)
 
     def test_total_size(self):
         store = self.get_store('.')
@@ -93,9 +93,9 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
         self.assertEqual(store.total_size(), (2, 55))
         
     def test__relpath_suffixed(self):
-        my_store = CompressedTextStore(MockTransport(), True)
+        my_store = TextStore(MockTransport(), True, compressed=True)
         my_store.register_suffix('dsc')
-        self.assertEqual('45/foo.dsc.gz', my_store._relpath('foo', ['dsc']))
+        self.assertEqual('45/foo.dsc', my_store._relpath('foo', ['dsc']))
 
 
 class TestMemoryStore(TestCase):
@@ -141,7 +141,7 @@ class TestTextStore(TestCaseInTempDir, TestStores):
 
     def get_store(self, path='.'):
         t = LocalTransport(path)
-        return TextStore(t)
+        return TextStore(t, compressed=False)
 
     def test_total_size(self):
         store = self.get_store()
@@ -154,6 +154,41 @@ class TestTextStore(TestCaseInTempDir, TestStores):
         # store_c = RemoteStore('http://example.com/')
         # self.assertRaises(UnlistableStore, copy_all, store_c, store_b)
 
+
+class TestMixedTextStore(TestCaseInTempDir, TestStores):
+
+    def get_store(self, path='.', compressed=True):
+        t = LocalTransport(path)
+        return TextStore(t, compressed=compressed)
+
+    def test_get_mixed(self):
+        cs = self.get_store('.', compressed=True)
+        s = self.get_store('.', compressed=False)
+        cs.add(StringIO('hello there'), 'a')
+
+        self.failUnlessExists('a.gz')
+        self.failIf(os.path.lexists('a'))
+
+        self.assertEquals(gzip.GzipFile('a.gz').read(), 'hello there')
+
+        self.assertEquals(cs.has_id('a'), True)
+        self.assertEquals(s.has_id('a'), True)
+        self.assertEquals(cs.get('a').read(), 'hello there')
+        self.assertEquals(s.get('a').read(), 'hello there')
+        
+        self.assertRaises(BzrError, s.add, StringIO('goodbye'), 'a')
+
+        s.add(StringIO('goodbye'), 'b')
+        self.failUnlessExists('b')
+        self.failIf(os.path.lexists('b.gz'))
+        self.assertEquals(open('b').read(), 'goodbye')
+
+        self.assertEquals(cs.has_id('b'), True)
+        self.assertEquals(s.has_id('b'), True)
+        self.assertEquals(cs.get('b').read(), 'goodbye')
+        self.assertEquals(s.get('b').read(), 'goodbye')
+        
+        self.assertRaises(BzrError, cs.add, StringIO('again'), 'b')
 
 class MockTransport(transport.Transport):
     """A fake transport for testing with."""
@@ -232,18 +267,18 @@ class TestTransportStore(TestCase):
 
     def test__relpath_simple_suffixed(self):
         my_store = store.TransportStore(MockTransport())
-        my_store.register_suffix('gz')
         my_store.register_suffix('bar')
-        self.assertEqual('foo.gz', my_store._relpath('foo', ['gz']))
-        self.assertEqual('foo.gz.bar', my_store._relpath('foo', ['gz', 'bar']))
+        my_store.register_suffix('baz')
+        self.assertEqual('foo.baz', my_store._relpath('foo', ['baz']))
+        self.assertEqual('foo.bar.baz', my_store._relpath('foo', ['bar', 'baz']))
 
     def test__relpath_prefixed_suffixed(self):
         my_store = store.TransportStore(MockTransport(), True)
-        my_store.register_suffix('gz')
         my_store.register_suffix('bar')
-        self.assertEqual('45/foo.gz', my_store._relpath('foo', ['gz']))
-        self.assertEqual('45/foo.gz.bar',
-                         my_store._relpath('foo', ['gz', 'bar']))
+        my_store.register_suffix('baz')
+        self.assertEqual('45/foo.baz', my_store._relpath('foo', ['baz']))
+        self.assertEqual('45/foo.bar.baz',
+                         my_store._relpath('foo', ['bar', 'baz']))
 
     def test_add_simple(self):
         stream = StringIO("content")
@@ -271,8 +306,10 @@ class TestTransportStore(TestCase):
         my_store.add(stream, "foo", 'dsc')
         self.assertEqual([("_add", "45/foo.dsc", stream)], my_store._calls)
 
-    def get_populated_store(self, prefixed=False, store_class=TextStore):
-        my_store = store_class(MemoryTransport(), prefixed)
+    def get_populated_store(self, prefixed=False,
+            store_class=TextStore, compressed=True):
+        my_store = store_class(MemoryTransport(), prefixed,
+                               compressed=compressed)
         my_store.register_suffix('sig')
         stream = StringIO("signature")
         my_store.add(stream, "foo", 'sig')
@@ -321,7 +358,7 @@ class TestTransportStore(TestCase):
                          my_store.get('missing', 'sig').read())
 
     def test___iter__no_suffix(self):
-        my_store = TextStore(MemoryTransport(), False)
+        my_store = TextStore(MemoryTransport(), False, compressed=False)
         stream = StringIO("content")
         my_store.add(stream, "foo")
         self.assertEqual(set(['foo']),
@@ -336,17 +373,17 @@ class TestTransportStore(TestCase):
     def test___iter__compressed(self):
         self.assertEqual(set(['foo']),
                          set(self.get_populated_store(
-                             store_class=CompressedTextStore).__iter__()))
+                             compressed=True).__iter__()))
         self.assertEqual(set(['foo']),
                          set(self.get_populated_store(
-                             True, CompressedTextStore).__iter__()))
+                             True, compressed=True).__iter__()))
 
     def test___len__(self):
         self.assertEqual(1, len(self.get_populated_store()))
 
     def test_copy_suffixes(self):
         from_store = self.get_populated_store()
-        to_store = CompressedTextStore(MemoryTransport(), True)
+        to_store = TextStore(MemoryTransport(), True, compressed=True)
         to_store.register_suffix('sig')
         copy_all(from_store, to_store)
         self.assertEqual(1, len(to_store))

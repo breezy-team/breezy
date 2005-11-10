@@ -54,15 +54,15 @@ class Store(object):
     def __len__(self):
         raise NotImplementedError('Children should define their length')
 
-    def get(self, file_id, suffix=None):
+    def get(self, fileid, suffix=None):
         """Returns a file reading from a particular entry.
         
-        If suffix is present, retrieve the named suffix for file_id.
+        If suffix is present, retrieve the named suffix for fileid.
         """
         raise NotImplementedError
 
     def __getitem__(self, fileid):
-        """DEPRECATED. Please use .get(file_id) instead."""
+        """DEPRECATED. Please use .get(fileid) instead."""
         raise NotImplementedError
 
     #def __contains__(self, fileid):
@@ -76,8 +76,8 @@ class Store(object):
         """Add a file object f to the store accessible from the given fileid"""
         raise NotImplementedError('Children of Store must define their method of adding entries.')
 
-    def has_id(self, file_id, suffix=None):
-        """Return True or false for the presence of file_id in the store.
+    def has_id(self, fileid, suffix=None):
+        """Return True or false for the presence of fileid in the store.
         
         suffix, if present, is a per file suffix, i.e. for digital signature 
         data."""
@@ -150,12 +150,10 @@ class TransportStore(Store):
         """
         mutter("add store entry %r" % (fileid))
         
-        if suffix is not None:
-            fn = self._relpath(fileid, [suffix])
-        else:
-            fn = self._relpath(fileid)
-        if self._transport.has(fn):
-            raise BzrError("store %r already contains id %r" % (self._transport.base, fileid))
+        names = self._id_to_names(fileid, suffix)
+        if self._transport.has_any(names):
+            raise BzrError("store %r already contains id %r" 
+                           % (self._transport.base, fileid))
 
         if self._prefixed:
             try:
@@ -163,7 +161,13 @@ class TransportStore(Store):
             except errors.FileExists:
                 pass
 
-        self._add(fn, f)
+        self._add(names[0], f)
+
+    def _add(self, relpath, f):
+        """Actually add the file to the given location.
+        This should be overridden by children.
+        """
+        raise NotImplementedError('children need to implement this function.')
 
     def _check_fileid(self, fileid):
         if not isinstance(fileid, basestring):
@@ -171,13 +175,33 @@ class TransportStore(Store):
         if '\\' in fileid or '/' in fileid:
             raise ValueError("invalid store id %r" % fileid)
 
-    def has_id(self, fileid, suffix=None):
-        """See Store.has_id."""
+    def _id_to_names(self, fileid, suffix):
+        """Return the names in the expected order"""
         if suffix is not None:
             fn = self._relpath(fileid, [suffix])
         else:
             fn = self._relpath(fileid)
-        return self._transport.has(fn)
+
+        fn_gz = fn + '.gz'
+        if self._compressed:
+            return fn_gz, fn
+        else:
+            return fn, fn_gz
+
+    def has_id(self, fileid, suffix=None):
+        """See Store.has_id."""
+        return self._transport.has_any(self._id_to_names(fileid, suffix))
+
+    def _get_name(self, fileid, suffix=None):
+        """A special check, which returns the name of an existing file.
+        
+        This is similar in spirit to 'has_id', but it is designed
+        to return information about which file the store has.
+        """
+        for name in self._id_to_names(fileid, suffix=suffix):
+            if self._transport.has(name):
+                return name
+        return None
 
     def _get(self, filename):
         """Return an vanilla file stream for clients to read from.
@@ -189,22 +213,20 @@ class TransportStore(Store):
 
     def get(self, fileid, suffix=None):
         """See Store.get()."""
-        if suffix is None or suffix == 'gz':
-            fn = self._relpath(fileid)
-        else:
-            fn = self._relpath(fileid, [suffix])
-        try:
-            return self._get(fn)
-        except errors.NoSuchFile:
-            raise KeyError(fileid)
+        names = self._id_to_names(fileid, suffix)
+        for name in names:
+            try:
+                return self._get(name)
+            except errors.NoSuchFile:
+                pass
+        raise KeyError(fileid)
 
-    def __init__(self, a_transport, prefixed=False):
+    def __init__(self, a_transport, prefixed=False, compressed=False):
         assert isinstance(a_transport, transport.Transport)
         super(TransportStore, self).__init__()
         self._transport = a_transport
         self._prefixed = prefixed
-        # conflating the .gz extension and user suffixes was a mistake.
-        # RBC 20051017 - TODO SOON, separate them again.
+        self._compressed = compressed
         self._suffixes = set()
 
     def _iter_files_recursive(self):
@@ -229,12 +251,15 @@ class TransportStore(Store):
     def __len__(self):
         return len(list(self.__iter__()))
 
-    def _relpath(self, fileid, suffixes=[]):
+    def _relpath(self, fileid, suffixes=None):
         self._check_fileid(fileid)
-        for suffix in suffixes:
-            if not suffix in self._suffixes:
-                raise ValueError("Unregistered suffix %r" % suffix)
-            self._check_fileid(suffix)
+        if suffixes:
+            for suffix in suffixes:
+                if not suffix in self._suffixes:
+                    raise ValueError("Unregistered suffix %r" % suffix)
+                self._check_fileid(suffix)
+        else:
+            suffixes = []
         if self._prefixed:
             path = [hash_prefix(fileid) + fileid]
         else:
@@ -257,6 +282,8 @@ class TransportStore(Store):
     def register_suffix(self, suffix):
         """Register a suffix as being expected in this store."""
         self._check_fileid(suffix)
+        if suffix == 'gz':
+            raise ValueError('You cannot register the "gz" suffix.')
         self._suffixes.add(suffix)
 
     def total_size(self):
@@ -303,7 +330,7 @@ class CachedStore(Store):
         if self.cache_store.has_id(fileid, suffix):
             return True
         if self.source_store.has_id(fileid, suffix):
-            # We could copy at this time
+            # We could asynchronously copy at this time
             return True
         return False
 
@@ -316,6 +343,6 @@ def copy_all(store_from, store_to):
     ids = [f for f in store_from]
     store_to.copy_multi(store_from, ids)
 
-def hash_prefix(file_id):
-    return "%02x/" % (adler32(file_id) & 0xff)
+def hash_prefix(fileid):
+    return "%02x/" % (adler32(fileid) & 0xff)
 
