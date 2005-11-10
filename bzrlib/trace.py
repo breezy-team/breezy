@@ -60,6 +60,8 @@ import os
 import logging
 import traceback
 
+from bzrlib.errors import BzrNewError
+
 
 _file_handler = None
 _stderr_handler = None
@@ -243,14 +245,20 @@ def format_exception_short():
 
     This is used for display to stderr.  It specially handles exception
     classes without useful string methods.
+
+    The result has no trailing newline.
     """
     exc_type, exc_info, exc_tb = sys.exc_info()
-    msg = None
-    if msg == None:
-        msg = str(exc_info)
-    if msg and (msg[-1] == '\n'):
-        msg = msg[:-1]
-    ## msg += '\n  command: %s' % ' '.join(repr(arg) for arg in sys.argv)
-    ## msg += '\n      pwd: %r' % os.getcwdu()
-    ## msg += '\n    error: %s' % exc_type
-    return msg
+    if exc_type is None:
+        return '(no exception)'
+    if isinstance(exc_info, BzrNewError):
+        return str(exc_info)
+    else:
+        import traceback
+        tb = traceback.extract_tb(exc_tb)
+        msg = '%s: %s' % (exc_type, exc_info)
+        if msg[-1] == '\n':
+            msg = msg[:-1]
+        if tb:
+            msg += '\n  at %s line %d\n  in %s' % (tb[-1][:3])
+        return msg
