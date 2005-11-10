@@ -66,7 +66,6 @@ from bzrlib.errors import BzrNewError
 _file_handler = None
 _stderr_handler = None
 
-
 class QuietFormatter(logging.Formatter):
     """Formatter that supresses the details of errors.
 
@@ -209,6 +208,23 @@ def disable_default_logging():
     l.removeHandler(_stderr_handler)
     if _file_handler:
         l.removeHandler(_file_handler)
+
+
+def enable_test_log(to_file):
+    """Redirect logging to a temporary file for a test"""
+    disable_default_logging()
+    global _test_log_hdlr
+    hdlr = logging.StreamHandler(to_file)
+    hdlr.setLevel(logging.DEBUG)
+    hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
+    logging.getLogger('').addHandler(hdlr)
+    logging.getLogger('').setLevel(logging.DEBUG)
+    _test_log_hdlr = hdlr
+
+
+def disable_test_log():
+    logging.getLogger('').removeHandler(_test_log_hdlr)
+    enable_default_logging()
 
 
 def format_exception_short(exc_info):

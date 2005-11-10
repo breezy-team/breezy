@@ -27,9 +27,10 @@ import tempfile
 import unittest
 import time
 
+from logging import debug, warning, error
+
 import bzrlib.commands
 import bzrlib.trace
-import bzrlib.fetch
 import bzrlib.osutils as osutils
 from bzrlib.selftest import TestUtil
 from bzrlib.selftest.TestUtil import TestLoader, TestSuite
@@ -38,7 +39,6 @@ from bzrlib.selftest.treeshape import build_tree_contents
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
 
-from logging import debug, warning, error
 
 
 class EarlyStoppingTestResultAdapter(object):
@@ -222,12 +222,7 @@ class TestCase(unittest.TestCase):
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
         self._log_file = os.fdopen(fileno, 'w+')
-        hdlr = logging.StreamHandler(self._log_file)
-        hdlr.setLevel(logging.DEBUG)
-        hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
-        logging.getLogger('').addHandler(hdlr)
-        logging.getLogger('').setLevel(logging.DEBUG)
-        self._log_hdlr = hdlr
+        bzrlib.trace.enable_test_log(self._log_file)
         debug('opened log file %s', name)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
@@ -237,6 +232,7 @@ class TestCase(unittest.TestCase):
 
         Read contents into memory, close, and delete.
         """
+        bzrlib.trace.disable_test_log()
         self._log_file.seek(0)
         self._log_contents = self._log_file.read()
         self._log_file.close()
@@ -277,9 +273,6 @@ class TestCase(unittest.TestCase):
             os.environ['EMAIL'] = self.email
 
     def tearDown(self):
-        logging.getLogger('').removeHandler(self._log_hdlr)
-        bzrlib.trace.enable_default_logging()
-        logging.debug('%s teardown', self.id())
         self._runCleanups()
         unittest.TestCase.tearDown(self)
 
