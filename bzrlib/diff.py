@@ -24,8 +24,8 @@ from bzrlib.delta import compare_trees
 
 def internal_diff(old_label, oldlines, new_label, newlines, to_file,
         sequence_matcher=None):
-    from bzrlib.cdv.difflib import unified_diff
-    from bzrlib.cdv.difflib import SequenceMatcher
+    from bzrlib.cdv.cdvdifflib import unified_diff
+    from bzrlib.cdv.cdvdifflib import SequenceMatcher
     
     # FIXME: difflib is wrong if there is no trailing newline.
     # The syntax used by patch seems to be "\ No newline at

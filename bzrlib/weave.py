@@ -68,8 +68,9 @@
 
 
 import sha
-from bzrlib.cdv.difflib import unified_diff
-from bzrlib.cdv.difflib import SequenceMatcher
+# from difflib import unified_diff
+from bzrlib.cdv.cdvdifflib import unified_diff
+from bzrlib.cdv.cdvdifflib import SequenceMatcher
 
 from bzrlib.trace import mutter
 from bzrlib.errors import WeaveError, WeaveFormatError, WeaveParentMismatch, \

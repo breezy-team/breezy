@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# Author: Martin Pool <mbp@canonical.com>
-
 
 from nofrillsprecisemerge import recurse_matches
 from bzrlib.errors import BzrError
@@ -51,6 +49,30 @@ class SequenceMatcher(difflib.SequenceMatcher):
                 # New block
                 if start_a is not None:
                     answer.append((start_a+alo, start_b+blo, length))
+                    # WORKAROUND
+                    # recurse_matches has an implementation design
+                    # which does not match non-unique lines in the
+                    # if they do not touch matching unique lines
+                    # so we rerun the regular diff algorithm
+                    # if find a large enough chunk.
+
+                    last_match_a = start_a + length
+                    last_match_b = start_b + length
+                    # recurse_matches already looked at the direct
+                    # neighbors, so we only need to run if there is
+                    # enough space to do so
+                    if (i_a - last_match_a > 2
+                        and i_b - last_match_b > 2):
+                        m = SequenceMatcher(None,
+                                            a[last_match_a+1:i_a-1],
+                                            b[last_match_b+1:i_b-1])
+                        new_blocks = m.get_matching_blocks()
+                        # difflib always adds a final match
+                        new_blocks.pop()
+                        for blk in new_blocks:
+                            answer.append((blk[0]+last_match_a+1,
+                                           blk[1]+last_match_b+1,
+                                           blk[2]))
                 start_a = i_a
                 start_b = i_b
                 length = 1

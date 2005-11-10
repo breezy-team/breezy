@@ -51,7 +51,7 @@ class TestDiff(TestCase):
 class TestCDVDiffLib(TestCase):
 
     def test_unique_lcs(self):
-        from bzrlib.nofrillsprecisemerge import unique_lcs
+        from bzrlib.cdv.nofrillsprecisemerge import unique_lcs
 
         self.assertEquals(unique_lcs('', ''), [])
         self.assertEquals(unique_lcs('a', 'a'), [(0,0)])
@@ -64,7 +64,7 @@ class TestCDVDiffLib(TestCase):
         self.assertEquals(unique_lcs('acbac', 'abc'), [(2,1)])
 
     def test_recurse_matches(self):
-        from bzrlib.nofrillsprecisemerge import recurse_matches
+        from bzrlib.cdv.nofrillsprecisemerge import recurse_matches
 
         def test_one(a, b, matches):
             test_matches = []
@@ -84,7 +84,7 @@ class TestCDVDiffLib(TestCase):
         test_one('aBccDe', 'abccde', [(0,0), (5,5)])
 
     def test_matching_blocks(self):
-        from bzrlib.cdv.difflib import SequenceMatcher
+        from bzrlib.cdv.cdvdifflib import SequenceMatcher
 
         def chk_blocks(a, b, matching):
             # difflib always adds a signature of the total
@@ -122,8 +122,11 @@ class TestCDVDiffLib(TestCase):
 
         chk_blocks('aBccDe', 'abccde', [(0,0,1), (2,2,2), (5,5,1)])
 
+        chk_blocks('aBcdEcdFg', 'abcdecdfg', [(0,0,1), (2,2,2),
+                                              (5,5,2), (8,8,1)])
+
     def test_opcodes(self):
-        from bzrlib.cdv.difflib import SequenceMatcher
+        from bzrlib.cdv.cdvdifflib import SequenceMatcher
 
         def chk_ops(a, b, codes):
             s = SequenceMatcher(None, a, b)
@@ -178,3 +181,14 @@ class TestCDVDiffLib(TestCase):
                 , ('replace', 4,5, 4,5)
                 , ('equal',   5,6, 5,6)
                 ])
+
+        chk_ops('aBcdEcdFg', 'abcdecdfg', 
+                [ ('equal',   0,1, 0,1)
+                , ('replace', 1,2, 1,2)
+                , ('equal',   2,4, 2,4)
+                , ('replace', 4,5, 4,5)
+                , ('equal',   5,7, 5,7)
+                , ('replace', 7,8, 7,8)
+                , ('equal',   8,9, 8,9)
+                ])
+

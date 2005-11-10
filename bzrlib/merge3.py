@@ -19,8 +19,8 @@
 # s: "i hate that."
 
 
-#from bzrlib.cdv.difflib import SequenceMatcher
-from difflib import SequenceMatcher
+from bzrlib.cdv.cdvdifflib import SequenceMatcher
+#from difflib import SequenceMatcher
 from bzrlib.errors import CantReprocessAndShowBase
 
 def intersect(ra, rb):
