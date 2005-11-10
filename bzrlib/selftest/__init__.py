@@ -448,7 +448,7 @@ class TestCaseInTempDir(TestCase):
             return
         i = 0
         while True:
-            root = 'test%04d.tmp' % i
+            root = u'test%04d.tmp' % i
             try:
                 os.mkdir(root)
             except OSError, e:
