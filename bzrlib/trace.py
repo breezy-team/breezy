@@ -13,17 +13,34 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Messages and logging for bazaar-ng
+"""Messages and logging for bazaar-ng.
 
-Messages are sent out through the Python logging library.
+Messages are supplied by callers as a string-formatting template, plus values
+to be inserted into it.  The actual %-formatting is deferred to the log
+library so that it doesn't need to be done for messages that won't be emitted.
 
-They can be sent to two places: to stderr, and to ~/.bzr.log.
+Messages are classified by severity levels: critical, error, warning, info,
+and debug.
 
-~/.bzr.log gets all messages, and tracebacks of all uncaught
-exceptions.
+They can be sent to two places: to stderr, and to ~/.bzr.log.  For purposes
+such as running the test suite, they can also be redirected away from both of
+those two places to another location.
 
-Normally stderr only gets messages of level INFO and higher, and gets
-only a summary of exceptions, not the traceback.
+~/.bzr.log gets all messages, and full tracebacks for uncaught exceptions.
+
+Output to stderr depends on the mode chosen by the user.  By default, messages
+of info and above are sent out, which results in progress messages such as the
+list of files processed by add and commit.  In quiet mode, only warnings and
+above are shown.  In debug mode, stderr gets debug messages too.
+
+Errors that terminate an operation are generally passed back as exceptions;
+others may be just emitted as messages.
+
+Exceptions are reported in a brief form to stderr so as not to look scary.
+BzrErrors are required to be able to format themselves into a properly
+explanatory message.  This is not true for builtin excexceptions such as
+KeyError, which typically just str to "0".  They're printed in a different
+form.
 """
 
 
@@ -219,3 +236,21 @@ def disable_default_logging():
     l.removeHandler(_stderr_handler)
     if _file_handler:
         l.removeHandler(_file_handler)
+
+
+def format_exception_short():
+    """Make a short string form of an exception.
+
+    This is used for display to stderr.  It specially handles exception
+    classes without useful string methods.
+    """
+    exc_type, exc_info, exc_tb = sys.exc_info()
+    msg = None
+    if msg == None:
+        msg = str(exc_info)
+    if msg and (msg[-1] == '\n'):
+        msg = msg[:-1]
+    ## msg += '\n  command: %s' % ' '.join(repr(arg) for arg in sys.argv)
+    ## msg += '\n      pwd: %r' % os.getcwdu()
+    ## msg += '\n    error: %s' % exc_type
+    return msg

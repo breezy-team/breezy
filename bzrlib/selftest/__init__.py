@@ -565,6 +565,9 @@ def test_suite():
 
     global MODULES_TO_TEST, MODULES_TO_DOCTEST
 
+    # FIXME: If these fail to load, e.g. because of a syntax error, the
+    # exception is hidden by unittest.  Sucks.  Should either fix that or
+    # perhaps import them and pass them to unittest as modules.
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
                    'bzrlib.selftest.testapi',
@@ -613,6 +616,7 @@ def test_suite():
                    'bzrlib.selftest.testnonascii',
                    'bzrlib.selftest.testreweave',
                    'bzrlib.selftest.testtsort',
+                   'bzrlib.selftest.testtrace',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
