@@ -64,21 +64,24 @@ class EarlyStoppingTestResultAdapter(object):
 
 
 class _MyResult(unittest._TextTestResult):
-    """
-    Custom TestResult.
+    """Custom TestResult.
 
     No special behaviour for now.
     """
 
+    # assumes 80-column window, less 'ERROR 99999ms' = 13ch
     def _elapsedTime(self):
-        return "(Took %.3fs)" % (time.time() - self._start_time)
+        return "%5dms" % (1000 * (time.time() - self._start_time))
 
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
         # TODO: Maybe show test.shortDescription somewhere?
         what = test.shortDescription() or test.id()        
+        pref = 'bzrlib.selftest.'
+        if what.startswith(pref):
+            what = what[len(pref):]
         if self.showAll:
-            self.stream.write('%-70.70s' % what)
+            self.stream.write('%-65.65s' % what)
         self.stream.flush()
         self._start_time = time.time()
 
@@ -93,14 +96,14 @@ class _MyResult(unittest._TextTestResult):
     def addFailure(self, test, err):
         unittest.TestResult.addFailure(self, test, err)
         if self.showAll:
-            self.stream.writeln("FAIL %s" % self._elapsedTime())
+            self.stream.writeln(" FAIL %s" % self._elapsedTime())
         elif self.dots:
             self.stream.write('F')
         self.stream.flush()
 
     def addSuccess(self, test):
         if self.showAll:
-            self.stream.writeln('OK %s' % self._elapsedTime())
+            self.stream.writeln('   OK %s' % self._elapsedTime())
         elif self.dots:
             self.stream.write('~')
         self.stream.flush()
