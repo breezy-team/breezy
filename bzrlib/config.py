@@ -493,6 +493,7 @@ class TreeConfig(object):
         try:
             obj = ConfigObj(self.branch.controlfile('branch.conf',
                                                     'rb').readlines())
+            obj.decode('UTF-8')
         except errors.NoSuchFile:
             obj = ConfigObj()
         return obj
@@ -525,8 +526,9 @@ class TreeConfig(object):
                     cfg_obj[section] = {}
                     obj = cfg_obj[section]
             obj[name] = value
+            cfg_obj.encode('UTF-8')
             out_file = StringIO(''.join([l+'\n' for l in cfg_obj.write()]))
             out_file.seek(0)
-            self.branch.put_controlfile('branch.conf', out_file, encode=True)
+            self.branch.put_controlfile('branch.conf', out_file, encode=False)
         finally:
             self.branch.unlock()
