@@ -217,13 +217,13 @@ def enable_test_log(to_file):
     hdlr = logging.StreamHandler(to_file)
     hdlr.setLevel(logging.DEBUG)
     hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
-    logging.getLogger('').addHandler(hdlr)
-    logging.getLogger('').setLevel(logging.DEBUG)
+    _bzr_logger.addHandler(hdlr)
+    _bzr_logger.setLevel(logging.DEBUG)
     _test_log_hdlr = hdlr
 
 
 def disable_test_log():
-    logging.getLogger('').removeHandler(_test_log_hdlr)
+    _bzr_logger.removeHandler(_test_log_hdlr)
     enable_default_logging()
 
 

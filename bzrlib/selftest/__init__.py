@@ -27,11 +27,10 @@ import tempfile
 import unittest
 import time
 
-from logging import debug, warning, error
-
 import bzrlib.commands
 import bzrlib.trace
 import bzrlib.osutils as osutils
+from bzrlib.trace import mutter
 from bzrlib.selftest import TestUtil
 from bzrlib.selftest.TestUtil import TestLoader, TestSuite
 from bzrlib.selftest.treeshape import build_tree_contents
@@ -223,7 +222,6 @@ class TestCase(unittest.TestCase):
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
         self._log_file = os.fdopen(fileno, 'w+')
         bzrlib.trace.enable_test_log(self._log_file)
-        debug('opened log file %s', name)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
 
@@ -285,7 +283,7 @@ class TestCase(unittest.TestCase):
             callable()
 
     def log(self, *args):
-        logging.debug(*args)
+        mutter(*args)
 
     def _get_log(self):
         """Return as a string the log for this test"""
@@ -293,6 +291,7 @@ class TestCase(unittest.TestCase):
             return open(self._log_file_name).read()
         else:
             return self._log_contents
+        # TODO: Delete the log after it's been read in
 
     def capture(self, cmd, retcode=0):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
@@ -506,6 +505,7 @@ class MetaTestLog(TestCase):
     def test_logging(self):
         """Test logs are captured when a test fails."""
         self.log('a test message')
+        self._log_file.flush()
         self.assertContainsRe(self._get_log(), 'a test message\n')
 
 
