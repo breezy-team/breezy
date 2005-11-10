@@ -512,9 +512,8 @@ class TestCaseInTempDir(TestCase):
 class MetaTestLog(TestCase):
     def test_logging(self):
         """Test logs are captured when a test fails."""
-        logging.info('an info message')
-        warning('something looks dodgy...')
-        logging.debug('hello, test is running')
+        self.log('a test message')
+        self.assertContainsRe(self._get_log(), 'a test message\n')
 
 
 def filter_suite_by_re(suite, pattern):
