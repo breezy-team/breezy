@@ -30,6 +30,41 @@ class SequenceMatcher(difflib.SequenceMatcher):
                                       ' isjunk for sequence matching')
         difflib.SequenceMatcher.__init__(self, isjunk, a, b)
 
+    def _check_with_diff(self, alo, ahi, blo, bhi, answer):
+        """Use the original diff algorithm on an unmatched section.
+
+        This will check to make sure the range is worth checking,
+        before doing any work.
+
+        :param alo: The last line that actually matched
+        :param ahi: The next line that actually matches
+        :param blo: Same as alo, only for the 'b' set
+        :param bhi: Same as ahi
+        :param answer: An array which will have the new ranges appended to it
+        :return: None
+        """
+        # WORKAROUND
+        # recurse_matches has an implementation design
+        # which does not match non-unique lines in the
+        # if they do not touch matching unique lines
+        # so we rerun the regular diff algorithm
+        # if find a large enough chunk.
+
+        # recurse_matches already looked at the direct
+        # neighbors, so we only need to run if there is
+        # enough space to do so
+        if ahi - alo > 2 and bhi - blo > 2:
+            a = self.a[alo+1:bhi-1]
+            b = self.b[blo+1:bhi-1]
+            m = difflib.SequenceMatcher(None, a, b)
+            new_blocks = m.get_matching_blocks()
+            # difflib always adds a final match
+            new_blocks.pop()
+            for blk in new_blocks:
+                answer.append((blk[0]+alo+1,
+                               blk[1]+blo+1,
+                               blk[2]))
+
     def __helper(self, alo, ahi, blo, bhi, answer):
         matches = []
         a = self.a[alo:ahi]
@@ -47,38 +82,27 @@ class SequenceMatcher(difflib.SequenceMatcher):
                 length += 1
             else:
                 # New block
-                if start_a is not None:
+                if start_a is None:
+                    # We need to check from 0,0 until the current match
+                    self._check_with_diff(alo-1, i_a+alo, blo-1, i_b+blo, answer)
+                else:
                     answer.append((start_a+alo, start_b+blo, length))
-                    # WORKAROUND
-                    # recurse_matches has an implementation design
-                    # which does not match non-unique lines in the
-                    # if they do not touch matching unique lines
-                    # so we rerun the regular diff algorithm
-                    # if find a large enough chunk.
+                    self._check_with_diff(start_a+alo+length, i_a+alo,
+                                          start_b+blo+length, i_b+blo,
+                                          answer)
 
-                    last_match_a = start_a + length
-                    last_match_b = start_b + length
-                    # recurse_matches already looked at the direct
-                    # neighbors, so we only need to run if there is
-                    # enough space to do so
-                    if (i_a - last_match_a > 2
-                        and i_b - last_match_b > 2):
-                        m = SequenceMatcher(None,
-                                            a[last_match_a+1:i_a-1],
-                                            b[last_match_b+1:i_b-1])
-                        new_blocks = m.get_matching_blocks()
-                        # difflib always adds a final match
-                        new_blocks.pop()
-                        for blk in new_blocks:
-                            answer.append((blk[0]+last_match_a+1,
-                                           blk[1]+last_match_b+1,
-                                           blk[2]))
                 start_a = i_a
                 start_b = i_b
                 length = 1
 
         if length != 0:
-            answer.append((start_a+blo, start_b+blo, length))
+            answer.append((start_a+alo, start_b+blo, length))
+            self._check_with_diff(start_a+alo+length, ahi+1,
+                                  start_b+blo+length, bhi+1,
+                                  answer)
+        if not matches:
+            # Nothing matched, so we need to send the complete text
+            self._check_with_diff(alo-1, ahi+1, blo-1, bhi+1, answer)
 
 # This is a version of unified_diff which only adds a factory parameter
 # so that you can override the default SequenceMatcher

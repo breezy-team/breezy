@@ -313,18 +313,7 @@ bbb
         optimal_text = "a\n" * 10 + "<<<<<<< OTHER\nc\n=======\n>>>>>>> THIS"\
             + "\n" + 8* "b\n" + "<<<<<<< OTHER\nc\n=======\nb\nb\n>>>>>>>"\
             + " THIS\n"
-        if merged_text != optimal_text:
-            print 'Base: ' + ('*' * 24)
-            print ''.join(base_text)
-            print 'This: ' + ('*' * 24)
-            print ''.join(this_text)
-            print 'Other: ' + ('*' * 23)
-            print ''.join(other_text)
-            print 'Expected: ' + ('*' * 20)
-            print optimal_text
-            print 'Received: ' + ('*' * 20)
-            print merged_text
-        self.assertEquals(merged_text, optimal_text)
+        self.assertEqualDiff(merged_text, optimal_text)
 
     def test_reprocess_and_base(self):
         """Reprocessing and showing base breaks correctly"""

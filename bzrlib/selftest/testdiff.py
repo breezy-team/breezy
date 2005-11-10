@@ -89,9 +89,11 @@ class TestCDVDiffLib(TestCase):
         def chk_blocks(a, b, matching):
             # difflib always adds a signature of the total
             # length, with no matching entries at the end
-            matching = matching + [(len(a), len(b), 0)]
             s = SequenceMatcher(None, a, b)
-            self.assertEquals(matching, s.get_matching_blocks())
+            blocks = s.get_matching_blocks()
+            x = blocks.pop()
+            self.assertEquals(x, (len(a), len(b), 0))
+            self.assertEquals(matching, blocks)
 
         # Some basic matching tests
         chk_blocks('', '', [])
@@ -124,6 +126,10 @@ class TestCDVDiffLib(TestCase):
 
         chk_blocks('aBcdEcdFg', 'abcdecdfg', [(0,0,1), (2,2,2),
                                               (5,5,2), (8,8,1)])
+
+        chk_blocks('abbabbXd', 'cabbabxd', [(0,1,5), (7,7,1)])
+        chk_blocks('abbabbbb', 'cabbabbc', [(0,1,6)])
+        chk_blocks('bbbbbbbb', 'cbbbbbbc', [(0,1,6)])
 
     def test_opcodes(self):
         from bzrlib.cdv.cdvdifflib import SequenceMatcher
