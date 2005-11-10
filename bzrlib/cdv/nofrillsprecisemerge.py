@@ -100,6 +100,7 @@ def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
                          Must be a positive integer.
     :return: None, the return value is in the parameter answer, which
              should be a list
+
     """
     oldlen = len(answer)
     if maxrecursion < 0:
@@ -147,6 +148,14 @@ assert a1 == [(0, 0), (2, 2), (4, 4)]
 a2 = []
 recurse_matches(['a', 'c', 'b', 'a', 'c'], ['a', 'b', 'c'], 5, 3, a2, 10)
 assert  a2 == [(0, 0), (2, 1), (4, 2)]
+
+a3 = []
+recurse_matches(['a', 'B', 'c', 'c', 'D', 'e'], ['a', 'b', 'c', 'c', 'd', 'e'], 6, 6, a3, 10)
+# FIXME: recurse_matches won't match non-unique lines, surrounded by bogus text
+# This is what it should be
+#assert a2 == [(0,0), (2,2), (3,3), (5,5)]
+# This is what it currently gives:
+assert a3 == [(0,0), (5,5)]
 
 class Weave:
     def __init__(self):

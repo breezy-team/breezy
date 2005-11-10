@@ -68,8 +68,8 @@
 
 
 import sha
-import difflib
-import cdvdifflib
+from bzrlib.cdv.difflib import unified_diff
+from bzrlib.cdv.difflib import SequenceMatcher
 
 from bzrlib.trace import mutter
 from bzrlib.errors import WeaveError, WeaveFormatError, WeaveParentMismatch, \
@@ -177,7 +177,7 @@ class Weave(object):
         self._name_map = {}
         self._weave_name = weave_name
         if matcher is None:
-            self._matcher = difflib.SequenceMatcher
+            self._matcher = SequenceMatcher
         else:
             self._matcher = matcher
 
@@ -1028,7 +1028,6 @@ def main(argv):
         sys.stdout.writelines(w.mash_iter(map(int, argv[3:])))
 
     elif cmd == 'diff':
-        from difflib import unified_diff
         w = readit()
         fn = argv[2]
         v1, v2 = map(int, argv[3:5])

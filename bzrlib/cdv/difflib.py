@@ -21,6 +21,8 @@ from nofrillsprecisemerge import recurse_matches
 from bzrlib.errors import BzrError
 import difflib
 
+__all__ = ['SequenceMatcher', 'unified_diff']
+
 class SequenceMatcher(difflib.SequenceMatcher):
     """Compare a pair of sequences using longest common subset."""
 
