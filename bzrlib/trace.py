@@ -60,6 +60,7 @@ import os
 import logging
 import traceback
 
+import bzrlib
 from bzrlib.errors import BzrNewError
 
 
@@ -81,20 +82,9 @@ class QuietFormatter(logging.Formatter):
             s = 'bzr: ' + record.levelname + ': '
         else:
             s = ''
-            
         s += record.getMessage()
-
-        ##import textwrap
-        ##s = textwrap.fill(s)
-            
         if record.exc_info:
-            # give just a summary of the exception, not the whole thing
-            exinfo = traceback.extract_tb(record.exc_info[2])
-            # the format of this string matches one of the REs
-            s += '\n'
-            s += ('  at %s line %d, in %s()\n' % exinfo[-1][:3])
-            s += '  see ~/.bzr.log for debug information'
-
+            s += '\n' + format_exception_short(record.exc_info)
         return s
         
 
@@ -166,13 +156,10 @@ def open_tracefile(tracefilename='~/.bzr.log'):
 
 
 def log_startup(argv):
-    import bzrlib
-
     debug('bzr %s invoked on python %s (%s)',
           bzrlib.__version__,
           '.'.join(map(str, sys.version_info)),
           sys.platform)
-
     debug('  arguments: %r', argv)
     debug('  working dir: %r', os.getcwdu())
 
@@ -183,15 +170,10 @@ def log_exception(msg=None):
     The exception string representation is used as the error
     summary, unless msg is given.
     """
-    ei = sys.exc_info()
-    if msg == None:
-        msg = str(ei[1])
-    if msg and (msg[-1] == '\n'):
-        msg = msg[:-1]
-    msg += '\n  command: %s' % ' '.join(repr(arg) for arg in sys.argv)
-    msg += '\n      pwd: %r' % os.getcwdu()
-    msg += '\n    error: %s' % ei[0]        # exception type
-    _bzr_logger.exception(msg)
+    exc_str = format_exception_short(sys.exc_info())
+    if msg:
+        _bzr_logger.exception(msg)
+    _bzr_logger.error(exc_str)
 
 
 def log_exception_quietly():
@@ -240,23 +222,25 @@ def disable_default_logging():
         l.removeHandler(_file_handler)
 
 
-def format_exception_short():
+def format_exception_short(exc_info):
     """Make a short string form of an exception.
 
     This is used for display to stderr.  It specially handles exception
     classes without useful string methods.
 
     The result has no trailing newline.
+
+    exc_info - typically an exception from sys.exc_info()
     """
-    exc_type, exc_info, exc_tb = sys.exc_info()
+    exc_type, exc_object, exc_tb = exc_info
     if exc_type is None:
         return '(no exception)'
-    if isinstance(exc_info, BzrNewError):
-        return str(exc_info)
+    if isinstance(exc_object, BzrNewError):
+        return str(exc_object)
     else:
         import traceback
         tb = traceback.extract_tb(exc_tb)
-        msg = '%s: %s' % (exc_type, exc_info)
+        msg = '%s: %s' % (exc_type, exc_object)
         if msg[-1] == '\n':
             msg = msg[:-1]
         if tb:
