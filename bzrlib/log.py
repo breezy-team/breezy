@@ -178,7 +178,7 @@ def _show_log(branch,
         warn("not a LogFormatter instance: %r" % lf)
 
     if specific_fileid:
-        mutter('get log for file_id %r' % specific_fileid)
+        mutter('get log for file_id %r', specific_fileid)
 
     if search is not None:
         import re

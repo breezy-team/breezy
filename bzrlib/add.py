@@ -107,7 +107,7 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
                 warning("skipping %s (can't add file of kind '%s')", f, kind)
                 continue
 
-        mutter("smart add of %r, abs=%r" % (f, af))
+        mutter("smart add of %r, abs=%r", f, af)
         
         if bzrlib.branch.is_control_file(af):
             raise ForbiddenFileError('cannot add control file %s' % f)
@@ -129,9 +129,9 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
             mutter("branch root doesn't need to be added")
             sub_tree = False
         elif versioned:
-            mutter("%r is already versioned" % f)
+            mutter("%r is already versioned", f)
         elif sub_tree:
-            mutter("%r is a bzr tree" %f)
+            mutter("%r is a bzr tree", f)
         else:
             count += __add_one(branch, inv, rf, kind, reporter)
 
@@ -139,11 +139,11 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
             for subf in os.listdir(af):
                 subp = os.path.join(rf, subf)
                 if subf == bzrlib.BZRDIR:
-                    mutter("skip control directory %r" % subp)
+                    mutter("skip control directory %r", subp)
                 elif tree.is_ignored(subp):
-                    mutter("skip ignored sub-file %r" % subp)
+                    mutter("skip ignored sub-file %r", subp)
                 else:
-                    mutter("queue to add sub-file %r" % subp)
+                    mutter("queue to add sub-file %r", subp)
                     file_list.append(branch.abspath(subp))
 
 
@@ -167,7 +167,7 @@ def __add_one(branch, inv, path, kind, reporter):
     count = __add_one(branch, inv, dirname(path), 'directory', reporter)
 
     entry = inv.add_path(path, kind=kind)
-    mutter("added %r kind %r file_id={%s}" % (path, kind, entry.file_id))
+    mutter("added %r kind %r file_id={%s}", path, kind, entry.file_id)
     reporter(path, kind, entry)
 
     return count + 1

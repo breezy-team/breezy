@@ -878,7 +878,7 @@ class cmd_log(Command):
         if rev2 == 0:
             rev2 = None
 
-        mutter('encoding log as %r' % bzrlib.user_encoding)
+        mutter('encoding log as %r', bzrlib.user_encoding)
 
         # use 'replace' so that we don't abort if trying to write out
         # in e.g. the default C locale.

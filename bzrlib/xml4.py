@@ -114,7 +114,7 @@ class _Serializer_v4(Serializer):
         else:
             raise BzrError("unknown kind %r" % kind)
 
-        ## mutter("read inventoryentry: %r" % (elt.attrib))
+        ## mutter("read inventoryentry: %r", elt.attrib)
 
         return ie
 
