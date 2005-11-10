@@ -307,7 +307,7 @@ class TestTransportStore(TestCase):
         self.assertEqual([("_add", "45/foo.dsc", stream)], my_store._calls)
 
     def get_populated_store(self, prefixed=False,
-            store_class=TextStore, compressed=True):
+            store_class=TextStore, compressed=False):
         my_store = store_class(MemoryTransport(), prefixed,
                                compressed=compressed)
         my_store.register_suffix('sig')

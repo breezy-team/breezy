@@ -136,6 +136,7 @@ class Store(object):
         should call this if they have no optimised facility for a 
         specific 'other'.
         """
+        mutter('Store._copy_one: %r', fileid)
         f = other.get(fileid, suffix)
         self.add(f, fileid, suffix)
 
@@ -148,20 +149,18 @@ class TransportStore(Store):
 
         f -- A file-like object, or string
         """
-        mutter("add store entry %r" % (fileid))
+        mutter("add store entry %r", fileid)
         
         names = self._id_to_names(fileid, suffix)
         if self._transport.has_any(names):
             raise BzrError("store %r already contains id %r" 
                            % (self._transport.base, fileid))
 
-        if self._prefixed:
-            try:
-                self._transport.mkdir(hash_prefix(fileid)[:-1])
-            except errors.FileExists:
-                pass
-
+        # Most of the time, just adding the file will work
+        # if we find a time where it fails, (because the dir
+        # doesn't exist), then create the dir, and try again
         self._add(names[0], f)
+
 
     def _add(self, relpath, f):
         """Actually add the file to the given location.
@@ -320,7 +319,7 @@ class CachedStore(Store):
         self.cache_store = store.__class__(LocalTransport(cache_dir))
 
     def get(self, id):
-        mutter("Cache add %s" % id)
+        mutter("Cache add %s", id)
         if id not in self.cache_store:
             self.cache_store.add(self.source_store.get(id), id)
         return self.cache_store.get(id)
@@ -341,6 +340,7 @@ def copy_all(store_from, store_to):
     if not store_from.listable():
         raise UnlistableStore(store_from)
     ids = [f for f in store_from]
+    mutter('copy_all ids: %r', ids)
     store_to.copy_multi(store_from, ids)
 
 def hash_prefix(fileid):

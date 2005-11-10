@@ -21,9 +21,11 @@ This store keeps uncompressed versions of the full text. It does not
 do any sort of delta compression.
 """
 
+import os
 import bzrlib.store
+from bzrlib.store import hash_prefix
 from bzrlib.trace import mutter
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, NoSuchFile, FileExists
 
 import gzip
 from cStringIO import StringIO
@@ -53,12 +55,24 @@ class TextStore(bzrlib.store.TransportStore):
         pumpfile(f, gf)
         gf.close()
         sio.seek(0)
-        self._transport.put(fn, sio)
+        self._try_put(fn, sio)
 
     def _add(self, fn, f):
         if self._compressed:
             self._add_compressed(fn, f)
         else:
+            self._try_put(fn, f)
+
+    def _try_put(self, fn, f):
+        try:
+            self._transport.put(fn, f)
+        except NoSuchFile:
+            if not self._prefixed:
+                raise
+            try:
+                self._transport.mkdir(os.path.dirname(fn))
+            except FileExists:
+                pass
             self._transport.put(fn, f)
 
     def _get(self, fn):
@@ -74,11 +88,25 @@ class TextStore(bzrlib.store.TransportStore):
         if not (isinstance(other, TextStore)
             and other._prefixed == self._prefixed):
             return super(TextStore, self)._copy_one(fileid, suffix, other, pb)
+
+        mutter('_copy_one: %r, %r', fileid, suffix)
         path = other._get_name(fileid, suffix)
-        result = other._transport.copy_to([path], self._transport, pb=pb)
+        if path is None:
+            raise KeyError(fileid + '-' + str(suffix))
+
+        try:
+            result = other._transport.copy_to([path], self._transport, pb=pb)
+        except NoSuchFile:
+            if not self._prefixed:
+                raise
+            try:
+                self._transport.mkdir(hash_prefix(fileid)[:-1])
+            except FileExists:
+                pass
+            result = other._transport.copy_to([path], self._transport, pb=pb)
+
         if result != 1:
             raise BzrError('Unable to copy file: %r' % (path,))
-        assert result == 1      # or what???
 
     def _get_compressed(self, filename):
         """Returns a file reading from a particular entry."""
