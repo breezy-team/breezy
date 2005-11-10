@@ -257,6 +257,8 @@ class Transport(object):
         """Copy a set of entries from self into another Transport.
 
         :param relpaths: A list/generator of entries to be copied.
+        TODO: This interface needs to be updated so that the target location
+              can be different from the source location.
         """
         # The dummy implementation just does a simple get + put
         def copy_entry(path):
