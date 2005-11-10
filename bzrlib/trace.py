@@ -58,7 +58,6 @@ form.
 import sys
 import os
 import logging
-import traceback
 
 import bzrlib
 from bzrlib.errors import BzrNewError
@@ -103,12 +102,6 @@ mutter =    _bzr_logger.debug
 debug =     _bzr_logger.debug
 
 
-
-
-# we do the rollover using this code, rather than the default from python
-# logging, because we only want to rollover at program startup, not on each
-# message.  maybe that's not a good enough reason.
-
 def _rollover_trace_maybe(trace_fname):
     import stat
     try:
@@ -116,13 +109,10 @@ def _rollover_trace_maybe(trace_fname):
         if size <= 4 << 20:
             return
         old_fname = trace_fname + '.old'
-
         from osutils import rename
         rename(trace_fname, old_fname)
-
     except OSError:
         return
-
 
 
 def open_tracefile(tracefilename='~/.bzr.log'):
@@ -134,10 +124,9 @@ def open_tracefile(tracefilename='~/.bzr.log'):
 
     trace_fname = os.path.join(os.path.expanduser(tracefilename))
     _rollover_trace_maybe(trace_fname)
-
-    # buffering=1 means line buffered
     try:
-        tf = codecs.open(trace_fname, 'at', 'utf8', buffering=1)
+        LINE_BUFFERED = 1
+        tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
 
         if os.fstat(tf.fileno())[stat.ST_SIZE] == 0:
             tf.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
@@ -150,7 +139,6 @@ def open_tracefile(tracefilename='~/.bzr.log'):
         _file_handler.setFormatter(logging.Formatter(fmt, datefmt))
         _file_handler.setLevel(logging.DEBUG)
         logging.getLogger('').addHandler(_file_handler)
-
     except IOError, e:
         warning("failed to open trace file: %s" % (e))
 
@@ -183,6 +171,7 @@ def log_exception_quietly():
     interesting to developers but not to users.  For example, 
     errors loading plugins.
     """
+    import traceback
     debug(traceback.format_exc())
 
 
