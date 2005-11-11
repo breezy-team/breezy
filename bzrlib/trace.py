@@ -66,6 +66,11 @@ from bzrlib.errors import BzrNewError
 _file_handler = None
 _stderr_handler = None
 
+# destination files for debug messages
+_trace_file = None
+
+_bzr_log_file = None
+
 class QuietFormatter(logging.Formatter):
     """Formatter that supresses the details of errors.
 
@@ -97,9 +102,20 @@ info = note = _bzr_logger.info
 warning =   _bzr_logger.warning
 log_error = _bzr_logger.error
 error =     _bzr_logger.error
-mutter =    _bzr_logger.debug
-debug =     _bzr_logger.debug
 
+
+def mutter(fmt, *args):
+    if (_trace_file is not None) and (not _trace_file.closed):
+        try:
+            if len(args) > 0:
+                print >>_trace_file, fmt % args
+            else:
+                print >>_trace_file, fmt
+        except TypeError:
+            print fmt
+            print args
+            raise
+debug = mutter
 
 def _rollover_trace_maybe(trace_fname):
     import stat
@@ -118,7 +134,7 @@ def open_tracefile(tracefilename='~/.bzr.log'):
     # Messages are always written to here, so that we have some
     # information if something goes wrong.  In a future version this
     # file will be removed on successful completion.
-    global _file_handler
+    global _file_handler, _bzr_log_file
     import stat, codecs
 
     trace_fname = os.path.join(os.path.expanduser(tracefilename))
@@ -126,12 +142,11 @@ def open_tracefile(tracefilename='~/.bzr.log'):
     try:
         LINE_BUFFERED = 1
         tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
-
+        _bzr_log_file = tf
         if os.fstat(tf.fileno())[stat.ST_SIZE] == 0:
             tf.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
             tf.write("you can delete or truncate this file, or include sections in\n")
             tf.write("bug reports to bazaar-ng@lists.canonical.com\n\n")
-        
         _file_handler = logging.StreamHandler(tf)
         fmt = r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
         datefmt = r'%a %H:%M:%S'
@@ -143,7 +158,7 @@ def open_tracefile(tracefilename='~/.bzr.log'):
 
 
 def log_startup(argv):
-    debug('bzr %s invoked on python %s (%s)',
+    debug('\n\nbzr %s invoked on python %s (%s)',
           bzrlib.__version__,
           '.'.join(map(str, sys.version_info)),
           sys.platform)
@@ -176,25 +191,20 @@ def log_exception_quietly():
 
 def enable_default_logging():
     """Configure default logging to stderr and .bzr.log"""
-    global _stderr_handler, _file_handler
-
+    global _stderr_handler, _file_handler, _trace_file, _bzr_log_file
     _stderr_handler = logging.StreamHandler()
     _stderr_handler.setFormatter(QuietFormatter())
     logging.getLogger('').addHandler(_stderr_handler)
-
     if os.environ.get('BZR_DEBUG'):
         level = logging.DEBUG
     else:
         level = logging.INFO
-
     _stderr_handler.setLevel(logging.INFO)
-
     if not _file_handler:
         open_tracefile()
-
+    _trace_file = _bzr_log_file
     if _file_handler:
         _file_handler.setLevel(level)
-
     _bzr_logger.setLevel(level) 
 
 def disable_default_logging():
@@ -208,22 +218,25 @@ def disable_default_logging():
     l.removeHandler(_stderr_handler)
     if _file_handler:
         l.removeHandler(_file_handler)
+    _trace_file = None
 
 
 def enable_test_log(to_file):
     """Redirect logging to a temporary file for a test"""
     disable_default_logging()
-    global _test_log_hdlr
+    global _test_log_hdlr, _trace_file
     hdlr = logging.StreamHandler(to_file)
     hdlr.setLevel(logging.DEBUG)
     hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
     _bzr_logger.addHandler(hdlr)
     _bzr_logger.setLevel(logging.DEBUG)
     _test_log_hdlr = hdlr
+    _trace_file = to_file
 
 
 def disable_test_log():
     _bzr_logger.removeHandler(_test_log_hdlr)
+    _trace_file = None
     enable_default_logging()
 
 
