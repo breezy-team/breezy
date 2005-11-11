@@ -520,7 +520,7 @@ def display_command(func):
 
 def main(argv):
     import bzrlib.ui
-    bzrlib.trace.enable_default_logging()
+    ## bzrlib.trace.enable_default_logging()
     bzrlib.trace.log_startup(argv)
     bzrlib.ui.ui_factory = bzrlib.ui.TextUIFactory()
     ret = run_bzr_catch_errors(argv[1:])
