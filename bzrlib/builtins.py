@@ -38,6 +38,13 @@ from bzrlib.workingtree import WorkingTree
 
 
 def branch_files(file_list, default_branch='.'):
+    try:
+        return inner_branch_files(file_list, default_branch)
+    except NotBranchError:
+        raise BzrCommandError("%s is not in the same branch as %s" %
+                             (filename, file_list[0]))
+
+def inner_branch_files(file_list, default_branch='.'):
     """\
     Return a branch and list of branch-relative paths.
     If supplied file_list is empty or None, the branch default will be used,
@@ -54,11 +61,7 @@ def branch_files(file_list, default_branch='.'):
     tree = WorkingTree(b.base, b)
     new_list = []
     for filename in file_list:
-        try:
-            new_list.append(tree.relpath(filename))
-        except NotBranchError:
-            raise BzrCommandError("%s is not in the same branch as %s" % 
-                                  (filename, file_list[0]))
+        new_list.append(tree.relpath(filename))
     return b, new_list
 
 
@@ -729,9 +732,21 @@ class cmd_diff(Command):
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None):
         from bzrlib.diff import show_diff
-        
-        b, file_list = branch_files(file_list)
+        try:
+            b, file_list = inner_branch_files(file_list)
+            b2 = None
+        except NotBranchError:
+            if len(file_list) != 2:
+                raise BzrCommandError("Files are in different branches")
+
+            b, file1 = Branch.open_containing(file_list[0])
+            b2, file2 = Branch.open_containing(file_list[1])
+            if file1 != "" or file2 != "":
+                raise BzrCommandError("Files are in different branches")
+            file_list = None
         if revision is not None:
+            if b2 is not None:
+                raise BzrCommandError("Can't specify -r with two branches")
             if len(revision) == 1:
                 return show_diff(b, revision[0], specific_files=file_list,
                                  external_diff_options=diff_options)
@@ -743,7 +758,7 @@ class cmd_diff(Command):
                 raise BzrCommandError('bzr diff --revision takes exactly one or two revision identifiers')
         else:
             return show_diff(b, None, specific_files=file_list,
-                             external_diff_options=diff_options)
+                             external_diff_options=diff_options, b2=b2)
 
 
 class cmd_deleted(Command):
