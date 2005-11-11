@@ -337,8 +337,8 @@ class TestCommands(ExternalBase):
                                         'branch1'],
                                        retcode=1)
         self.assertEquals(("=== modified file 'file'\n"
-                           "--- file\n"
-                           "+++ file\n"
+                           "--- file\t\n"
+                           "+++ file\t\n"
                            "@@ -1,1 +1,1 @@\n"
                            "-new content\n"
                            "+contents of branch1/file\n"
@@ -346,8 +346,8 @@ class TestCommands(ExternalBase):
         output = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
                                        retcode=1)
         self.assertEqualDiff(("=== modified file 'file'\n"
-                              "--- file\n"
-                              "+++ file\n"
+                              "--- file\t\n"
+                              "+++ file\t\n"
                               "@@ -1,1 +1,1 @@\n"
                               "-new content\n"
                               "+contents of branch1/file\n"
