@@ -602,6 +602,13 @@ class TestCommands(ExternalBase):
                   'subdir/b\n'
                   , '--versioned')
 
+    def test_cat(self):
+        self.runbzr('init')
+        file("myfile", "wb").write("My contents\n")
+        self.runbzr('add')
+        self.runbzr('commit -m myfile')
+        self.run_bzr_captured('cat -r 1 myfile'.split(' '))
+
 
     def test_locations(self):
         """Using and remembering different locations"""

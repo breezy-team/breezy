@@ -205,6 +205,17 @@ class RevisionStorage(object):
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self.weave_store, inv, revision_id)
 
+    @needs_read_lock
+    def print_file(self, file, revision_id):
+        """Print `file` to stdout."""
+        tree = self.revision_tree(revision_id)
+        # use inventory as it was in that revision
+        file_id = tree.inventory.path2id(file)
+        if not file_id:
+            raise BzrError("%r is not present in revision %s" % (file, revno))
+        tree.print_file(file_id)
+
+
     def get_transaction(self):
         return self.control_files.get_transaction()
 

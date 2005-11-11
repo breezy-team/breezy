@@ -441,12 +441,7 @@ class _Branch(Branch, ControlFiles):
     @needs_read_lock
     def print_file(self, file, revno):
         """Print `file` to stdout."""
-        tree = self.revision_tree(self.get_rev_id(revno))
-        # use inventory as it was in that revision
-        file_id = tree.inventory.path2id(file)
-        if not file_id:
-            raise BzrError("%r is not present in revision %s" % (file, revno))
-        tree.print_file(file_id)
+        return self.storage.print_file(file, self.get_rev_id(revno))
 
     def unknowns(self):
         """Return all unknown files.
