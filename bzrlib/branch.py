@@ -331,19 +331,16 @@ class _Branch(Branch, ControlFiles):
         inv = self.storage.get_inventory(self.last_revision())
         return inv.root.file_id
 
-    def write_lock(self):
-        ControlFiles.write_lock(self)
-        self.storage.write_lock()
+    def lock_write(self):
+        ControlFiles.lock_write(self)
+        self.storage.lock_write()
 
-    def read_lock(self):
-        ControlFiles.read_lock(self)
-        self.storage.read_lock()
+    def lock_read(self):
+        ControlFiles.lock_read(self)
+        self.storage.lock_read()
 
     def unlock(self):
-        try:
-            self.storage.unlock()
-        except:
-            pass
+        self.storage.unlock()
         ControlFiles.unlock(self)
 
     @needs_write_lock
