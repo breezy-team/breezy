@@ -1133,7 +1133,9 @@ class HttpTests(TestCaseWithWebserver):
         url = self.get_remote_url('branch/file')
         output = self.capture('log %s' % url)
         self.assertEqual(8, len(output.split('\n')))
-        
-
-
-
+        copy = copy_branch(branch, 'branch2')
+        branch.commit(message='empty commit')
+        os.chdir('branch2')
+        self.run_bzr('merge', '../branch')
+        copy.commit(message='merge')
+        output = self.capture('log')

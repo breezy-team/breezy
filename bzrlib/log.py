@@ -72,7 +72,7 @@ def find_touching_revisions(branch, file_id):
     last_path = None
     revno = 1
     for revision_id in branch.revision_history():
-        this_inv = branch.get_revision_inventory(revision_id)
+        this_inv = branch.storage.get_revision_inventory(revision_id)
         if file_id in this_inv:
             this_ie = this_inv[file_id]
             this_path = this_inv.id2path(file_id)
@@ -242,7 +242,7 @@ def _show_log(branch,
                 # prevent showing merged revs twice if they multi-path.
                 excludes.add(rev_id)
                 try:
-                    rev = branch.get_revision(rev_id)
+                    rev = branch.storage.get_revision(rev_id)
                 except errors.NoSuchRevision:
                     continue
                 pending.extend(rev.parent_ids)
