@@ -343,6 +343,16 @@ class TestCommands(ExternalBase):
                            "-new content\n"
                            "+contents of branch1/file\n"
                            "\n", ''), output)
+        output = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
+                                       retcode=1)
+        self.assertEqualDiff(("=== modified file 'file'\n"
+                              "--- file\n"
+                              "+++ file\n"
+                              "@@ -1,1 +1,1 @@\n"
+                              "-new content\n"
+                              "+contents of branch1/file\n"
+                              "\n", ''), output)
+
 
     def test_branch(self):
         """Branch from one branch to another."""
