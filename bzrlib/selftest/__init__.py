@@ -323,6 +323,7 @@ class TestCase(unittest.TestCase):
         stdout = StringIO()
         stderr = StringIO()
         self.log('run bzr: %s', ' '.join(argv))
+        # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
         handler.setFormatter(bzrlib.trace.QuietFormatter())
         handler.setLevel(logging.INFO)

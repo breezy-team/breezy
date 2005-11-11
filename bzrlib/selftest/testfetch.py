@@ -194,8 +194,9 @@ class TestHttpFetch(TestCaseWithWebserver):
     def log(self, *args):
         """Capture web server log messages for introspection."""
         super(TestHttpFetch, self).log(*args)
+        # if this call indicates a url being fetched, save it specially
         if args[0].startswith("webserver"):
-            self.weblogs.append(args[0])
+            self.weblogs.append(args[3])
 
     def test_weaves_are_retrieved_once(self):
         self.build_tree(("source/", "source/file", "target/"))
