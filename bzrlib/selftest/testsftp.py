@@ -54,6 +54,7 @@ class SingleListener (threading.Thread):
         threading.Thread.__init__(self)
         self._callback = callback
         self._socket = socket.socket()
+        self._socket.bind(('localhost', 0))
         self._socket.listen(1)
         self.port = self._socket.getsockname()[1]
         self.stop_event = threading.Event()
@@ -66,6 +67,10 @@ class SingleListener (threading.Thread):
     
     def stop(self):
         self.stop_event.set()
+        try:
+            self._socket.close()
+        except:
+            pass
         
         
 class TestCaseWithSFTPServer (TestCaseInTempDir):
