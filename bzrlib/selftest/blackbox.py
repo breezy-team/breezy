@@ -393,7 +393,7 @@ class TestCommands(ExternalBase):
         # Merging a branch pulls its revision into the tree
         a = Branch.open('.')
         b = Branch.open('../b')
-        a.get_revision_xml(b.last_revision())
+        a.storage.get_revision_xml(b.last_revision())
         self.log('pending merges: %s', a.pending_merges())
         self.assertEquals(a.pending_merges(), [b.last_revision()])
         self.runbzr('commit -m merged')
@@ -742,8 +742,10 @@ class TestCommands(ExternalBase):
             from bzrlib.testament import Testament
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
             self.runbzr('re-sign -r revid:A')
-            self.assertEqual(Testament.from_revision(branch,'A').as_short_text(),
-                             branch.revision_store.get('A', 'sig').read())
+            self.assertEqual(Testament.from_revision(branch.storage,
+                             'A').as_short_text(),
+                             branch.storage.revision_store.get('A', 
+                             'sig').read())
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
             
@@ -759,12 +761,16 @@ class TestCommands(ExternalBase):
             from bzrlib.testament import Testament
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
             self.runbzr('re-sign -r 1..')
-            self.assertEqual(Testament.from_revision(branch,'A').as_short_text(),
-                             branch.revision_store.get('A', 'sig').read())
-            self.assertEqual(Testament.from_revision(branch,'B').as_short_text(),
-                             branch.revision_store.get('B', 'sig').read())
-            self.assertEqual(Testament.from_revision(branch,'C').as_short_text(),
-                             branch.revision_store.get('C', 'sig').read())
+            self.assertEqual(
+                Testament.from_revision(branch.storage,'A').as_short_text(),
+                branch.storage.revision_store.get('A', 'sig').read())
+            self.assertEqual(
+                Testament.from_revision(branch.storage,'B').as_short_text(),
+                branch.storage.revision_store.get('B', 'sig').read())
+            self.assertEqual(Testament.from_revision(branch.storage,
+                             'C').as_short_text(),
+                             branch.storage.revision_store.get('C', 
+                             'sig').read())
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
 

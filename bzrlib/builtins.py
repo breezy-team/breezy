@@ -146,13 +146,15 @@ class cmd_cat_revision(Command):
             raise BzrCommandError('You must supply either --revision or a revision_id')
         b = Branch.open_containing('.')[0]
         if revision_id is not None:
-            sys.stdout.write(b.get_revision_xml_file(revision_id).read())
+            sys.stdout.write(
+                b.storage.get_revision_xml_file(revision_id).read())
         elif revision is not None:
             for rev in revision:
                 if rev is None:
                     raise BzrCommandError('You cannot specify a NULL revision.')
                 revno, rev_id = rev.in_history(b)
-                sys.stdout.write(b.get_revision_xml_file(rev_id).read())
+                sys.stdout.write(
+                    b.storage.get_revision_xml_file(rev_id).read())
     
 
 class cmd_revno(Command):
@@ -269,7 +271,8 @@ class cmd_inventory(Command):
             if len(revision) > 1:
                 raise BzrCommandError('bzr inventory --revision takes'
                     ' exactly one revision identifier')
-            inv = b.get_revision_inventory(revision[0].in_history(b).rev_id)
+            inv = b.storage.get_revision_inventory(
+                revision[0].in_history(b).rev_id)
 
         for path, entry in inv.entries():
             if show_ids:
@@ -856,7 +859,7 @@ class cmd_log(Command):
                 try:
                     inv = b.working_tree().read_working_inventory()
                 except NoWorkingTree:
-                    inv = b.get_inventory(b.last_revision())
+                    inv = b.storage.get_inventory(b.last_revision())
                 file_id = inv.path2id(fp)
             else:
                 file_id = None  # points to branch root
@@ -958,7 +961,7 @@ class cmd_ls(Command):
         if revision == None:
             tree = b.working_tree()
         else:
-            tree = b.revision_tree(revision[0].in_history(b).rev_id)
+            tree = b.storage.revision_tree(revision[0].in_history(b).rev_id)
         for fp, fc, kind, fid, entry in tree.list_files():
             if fp.startswith(relpath):
                 fp = fp[len(relpath):]
@@ -1105,7 +1108,7 @@ class cmd_export(Command):
             if len(revision) != 1:
                 raise BzrError('bzr export --revision takes exactly 1 argument')
             rev_id = revision[0].in_history(b).rev_id
-        t = b.revision_tree(rev_id)
+        t = b.storage.revision_tree(rev_id)
         arg_root, ext = os.path.splitext(os.path.basename(dest))
         if ext in ('.gz', '.bz2'):
             new_root, new_ext = os.path.splitext(arg_root)
@@ -1536,9 +1539,9 @@ class cmd_remerge(Command):
                                       + "multi-merges.")
             this_tree = b.working_tree()
             base_revision = common_ancestor(b.last_revision(), 
-                                            pending_merges[0], b)
-            base_tree = b.revision_tree(base_revision)
-            other_tree = b.revision_tree(pending_merges[0])
+                                            pending_merges[0], b.storage)
+            base_tree = b.storage.revision_tree(base_revision)
+            other_tree = b.storage.revision_tree(pending_merges[0])
             interesting_ids = None
             if file_list is not None:
                 interesting_ids = set()
@@ -1737,7 +1740,7 @@ class cmd_testament(Command):
                 rev_id = b.last_revision()
             else:
                 rev_id = revision[0].in_history(b).rev_id
-            t = Testament.from_revision(b, rev_id)
+            t = Testament.from_revision(b.storage, rev_id)
             if long:
                 sys.stdout.writelines(t.as_text_lines())
             else:
@@ -1772,7 +1775,7 @@ class cmd_annotate(Command):
         b.lock_read()
         try:
             tree = WorkingTree(b.base, b)
-            tree = b.revision_tree(b.last_revision())
+            tree = b.storage.revision_tree(b.last_revision())
             file_id = tree.inventory.path2id(relpath)
             file_version = tree.inventory[file_id].revision
             annotate_file(b, file_version, file_id, long, all, sys.stdout)
@@ -1798,11 +1801,11 @@ class cmd_re_sign(Command):
         b = Branch.open_containing('.')[0]
         gpg_strategy = gpg.GPGStrategy(config.BranchConfig(b))
         if revision_id is not None:
-            b.sign_revision(revision_id, gpg_strategy)
+            b.storage.sign_revision(revision_id, gpg_strategy)
         elif revision is not None:
             if len(revision) == 1:
                 revno, rev_id = revision[0].in_history(b)
-                b.sign_revision(rev_id, gpg_strategy)
+                b.storage.sign_revision(rev_id, gpg_strategy)
             elif len(revision) == 2:
                 # are they both on rh- if so we can walk between them
                 # might be nice to have a range helper for arbitrary
@@ -1814,7 +1817,7 @@ class cmd_re_sign(Command):
                 if from_revno is None or to_revno is None:
                     raise BzrCommandError('Cannot sign a range of non-revision-history revisions')
                 for revno in range(from_revno, to_revno + 1):
-                    b.sign_revision(b.get_rev_id(revno), gpg_strategy)
+                    b.storage.sign_revision(b.get_rev_id(revno), gpg_strategy)
             else:
                 raise BzrCommandError('Please supply either one revision, or a range.')
 

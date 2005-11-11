@@ -57,7 +57,7 @@ class RevisionInfo(object):
         # TODO: otherwise, it should depend on how I was built -
         # if it's in_history(branch), then check revision_history(),
         # if it's in_store(branch), do the check below
-        return self.branch.revision_store.has_id(self.rev_id)
+        return self.branch.storage.has_revision(self.rev_id)
 
     def __len__(self):
         return 2
@@ -68,7 +68,7 @@ class RevisionInfo(object):
         raise IndexError(index)
 
     def get(self):
-        return self.branch.get_revision(self.rev_id)
+        return self.branch.storage.get_revision(self.rev_id)
 
     def __eq__(self, other):
         if type(other) not in (tuple, list, type(self)):
@@ -297,7 +297,7 @@ class RevisionSpec_date(RevisionSpec):
                     hour=hour, minute=minute, second=second)
         first = dt
         for i in range(len(revs)):
-            r = branch.get_revision(revs[i])
+            r = branch.storage.get_revision(revs[i])
             # TODO: Handle timezone.
             dt = datetime.datetime.fromtimestamp(r.timestamp)
             if first <= dt:
@@ -319,7 +319,8 @@ class RevisionSpec_ancestor(RevisionSpec):
         for r, b in ((revision_a, branch), (revision_b, other_branch)):
             if r is None:
                 raise NoCommits(b)
-        revision_source = MultipleRevisionSources(branch, other_branch)
+        revision_source = MultipleRevisionSources(branch.storage,
+                                                  other_branch.storage)
         rev_id = common_ancestor(revision_a, revision_b, revision_source)
         try:
             revno = branch.revision_id_to_revno(rev_id)

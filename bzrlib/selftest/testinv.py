@@ -148,8 +148,8 @@ class TestEntryDiffing(TestCaseInTempDir):
         if has_symlinks():
             os.unlink('symlink')
             os.symlink('target2', 'symlink')
-        self.tree_1 = self.branch.revision_tree('1')
-        self.inv_1 = self.branch.get_inventory('1')
+        self.tree_1 = self.branch.storage.revision_tree('1')
+        self.inv_1 = self.branch.storage.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
         self.tree_2 = self.branch.working_tree()
         self.inv_2 = self.tree_2.read_working_inventory()
@@ -245,8 +245,8 @@ class TestSnapshot(TestCaseInTempDir):
         if has_symlinks():
             pass
         self.branch.commit('message_1', rev_id = '1')
-        self.tree_1 = self.branch.revision_tree('1')
-        self.inv_1 = self.branch.get_inventory('1')
+        self.tree_1 = self.branch.storage.revision_tree('1')
+        self.inv_1 = self.branch.storage.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
         self.work_tree = self.branch.working_tree()
         self.file_active = self.work_tree.inventory['fileid']
@@ -255,14 +255,14 @@ class TestSnapshot(TestCaseInTempDir):
         # This tests that a simple commit with no parents makes a new
         # revision value in the inventory entry
         self.file_active.snapshot('2', 'subdir/file', {}, self.work_tree, 
-                                  self.branch.weave_store,
+                                  self.branch.storage.weave_store,
                                   self.branch.get_transaction())
         # expected outcome - file_1 has a revision id of '2', and we can get
         # its text of 'file contents' out of the weave.
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '2')
         # this should be a separate test probably, but lets check it once..
-        lines = self.branch.weave_store.get_lines('fileid','2',
+        lines = self.branch.storage.weave_store.get_lines('fileid','2',
             self.branch.get_transaction())
         self.assertEqual(lines, ['contents of subdir/file\n'])
 
@@ -270,13 +270,14 @@ class TestSnapshot(TestCaseInTempDir):
         #This tests that a simple commit does not make a new entry for
         # an unchanged inventory entry
         self.file_active.snapshot('2', 'subdir/file', {'1':self.file_1},
-                                  self.work_tree, self.branch.weave_store,
+                                  self.work_tree, 
+                                  self.branch.storage.weave_store,
                                   self.branch.get_transaction())
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '1')
         self.assertRaises(errors.WeaveError,
-                          self.branch.weave_store.get_lines, 'fileid', '2',
-                          self.branch.get_transaction())
+                          self.branch.storage.weave_store.get_lines, 'fileid', 
+                          '2', self.branch.get_transaction())
 
     def test_snapshot_merge_identical_different_revid(self):
         # This tests that a commit with two identical parents, one of which has
@@ -290,11 +291,12 @@ class TestSnapshot(TestCaseInTempDir):
         self.assertEqual(self.file_1, other_ie)
         other_ie.revision = 'other'
         self.assertNotEqual(self.file_1, other_ie)
-        self.branch.weave_store.add_identical_text('fileid', '1', 'other', ['1'],
-            self.branch.get_transaction())
+        self.branch.storage.weave_store.add_identical_text('fileid', '1', 
+            'other', ['1'], self.branch.get_transaction())
         self.file_active.snapshot('2', 'subdir/file', 
                                   {'1':self.file_1, 'other':other_ie},
-                                  self.work_tree, self.branch.weave_store,
+                                  self.work_tree, 
+                                  self.branch.storage.weave_store,
                                   self.branch.get_transaction())
         self.assertEqual(self.file_active.revision, '2')
 
@@ -305,7 +307,7 @@ class TestSnapshot(TestCaseInTempDir):
         rename('subdir/file', 'subdir/newname')
         self.file_active.snapshot('2', 'subdir/newname', {'1':self.file_1}, 
                                   self.work_tree, 
-                                  self.branch.weave_store,
+                                  self.branch.storage.weave_store,
                                   self.branch.get_transaction())
         # expected outcome - file_1 has a revision id of '2'
         self.assertEqual(self.file_active.revision, '2')
@@ -326,19 +328,19 @@ class TestPreviousHeads(TestCaseInTempDir):
         self.build_tree(['file'])
         self.branch = Branch.initialize('.')
         self.branch.commit('new branch', allow_pointless=True, rev_id='A')
-        self.inv_A = self.branch.get_inventory('A')
+        self.inv_A = self.branch.storage.get_inventory('A')
         self.branch.add(['file'], ['fileid'])
         self.branch.commit('add file', rev_id='B')
-        self.inv_B = self.branch.get_inventory('B')
+        self.inv_B = self.branch.storage.get_inventory('B')
         self.branch.put_controlfile('revision-history', 'A\n')
         self.assertEqual(self.branch.revision_history(), ['A'])
         self.branch.commit('another add of file', rev_id='C')
-        self.inv_C = self.branch.get_inventory('C')
+        self.inv_C = self.branch.storage.get_inventory('C')
         self.branch.add_pending_merge('B')
         self.branch.commit('merge in B', rev_id='D')
-        self.inv_D = self.branch.get_inventory('D')
+        self.inv_D = self.branch.storage.get_inventory('D')
         self.file_active = self.branch.working_tree().inventory['fileid']
-        self.weave = self.branch.weave_store.get_weave('fileid',
+        self.weave = self.branch.storage.weave_store.get_weave('fileid',
             self.branch.get_transaction())
         
     def get_previous_heads(self, inventories):

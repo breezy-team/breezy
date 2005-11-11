@@ -200,7 +200,7 @@ class Commit(object):
         mutter('preparing to commit')
 
         self.branch = branch
-        self.weave_store = branch.weave_store
+        self.weave_store = branch.storage.weave_store
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
@@ -286,7 +286,7 @@ class Commit(object):
         """Store the inventory for the new revision."""
         inv_text = serializer_v5.write_inventory_to_string(self.new_inv)
         self.inv_sha1 = sha_string(inv_text)
-        s = self.branch.control_weaves
+        s = self.branch.storage.control_weaves
         s.add_text('inventory', self.rev_id,
                    split_lines(inv_text), self.present_parents,
                    self.branch.get_transaction())
@@ -321,14 +321,15 @@ class Commit(object):
             self.parents.append(precursor_id)
         self.parents += pending_merges
         for revision in self.parents:
-            if self.branch.has_revision(revision):
-                self.parent_invs.append(self.branch.get_inventory(revision))
+            if self.branch.storage.has_revision(revision):
+                inventory = self.branch.storage.get_inventory(revision)
+                self.parent_invs.append(inventory)
                 self.present_parents.append(revision)
 
     def _check_parents_present(self):
         for parent_id in self.parents:
             mutter('commit parent revision {%s}', parent_id)
-            if not self.branch.has_revision(parent_id):
+            if not self.branch.storage.has_revision(parent_id):
                 if parent_id == self.branch.last_revision():
                     warning("parent is missing %r", parent_id)
                     raise HistoryMissing(self.branch, 'revision', parent_id)
@@ -350,9 +351,9 @@ class Commit(object):
         rev_tmp.seek(0)
         if self.config.signature_needed():
             plaintext = Testament(self.rev, self.new_inv).as_short_text()
-            self.branch.store_revision_signature(gpg.GPGStrategy(self.config),
-                                                 plaintext, self.rev_id)
-        self.branch.revision_store.add(rev_tmp, self.rev_id)
+            self.branch.storage.store_revision_signature(
+                gpg.GPGStrategy(self.config), plaintext, self.rev_id)
+        self.branch.storage.revision_store.add(rev_tmp, self.rev_id)
         mutter('new revision_id is {%s}', self.rev_id)
 
     def _remove_deleted(self):

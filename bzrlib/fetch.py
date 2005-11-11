@@ -90,11 +90,13 @@ class Fetcher(object):
         if to_branch == from_branch:
             raise Exception("can't fetch from a branch to itself")
         self.to_branch = to_branch
-        self.to_weaves = to_branch.weave_store
-        self.to_control = to_branch.control_weaves
+        self.to_storage = to_branch.storage
+        self.to_weaves = self.to_storage.weave_store
+        self.to_control = self.to_storage.control_weaves
         self.from_branch = from_branch
-        self.from_weaves = from_branch.weave_store
-        self.from_control = from_branch.control_weaves
+        self.from_storage = from_branch.storage
+        self.from_weaves = self.from_storage.weave_store
+        self.from_control = self.from_storage.control_weaves
         self.failed_revisions = []
         self.count_copied = 0
         self.count_total = 0
@@ -115,7 +117,7 @@ class Fetcher(object):
         self.last_revision = self._find_last_revision(last_revision)
         mutter('fetch up to rev {%s}', self.last_revision)
         if (self.last_revision is not None and 
-            self.to_branch.has_revision(self.last_revision)):
+            self.to_storage.has_revision(self.last_revision)):
             return
         try:
             revs_to_fetch = self._compare_ancestries()
@@ -172,7 +174,7 @@ class Fetcher(object):
             i += 1
             if rev_id is None:
                 continue
-            if self.to_branch.has_revision(rev_id):
+            if self.to_storage.has_revision(rev_id):
                 continue
             self.pb.update('fetch revision', i, self.count_total)
             self._copy_one_revision(rev_id)
@@ -182,8 +184,8 @@ class Fetcher(object):
     def _copy_one_revision(self, rev_id):
         """Copy revision and everything referenced by it."""
         mutter('copying revision {%s}', rev_id)
-        rev_xml = self.from_branch.get_revision_xml(rev_id)
-        inv_xml = self.from_branch.get_inventory_xml(rev_id)
+        rev_xml = self.from_storage.get_revision_xml(rev_id)
+        inv_xml = self.from_storage.get_inventory_xml(rev_id)
         rev = serializer_v5.read_revision_from_string(rev_xml)
         inv = serializer_v5.read_inventory_from_string(inv_xml)
         assert rev.revision_id == rev_id
@@ -195,16 +197,16 @@ class Fetcher(object):
         parents = rev.parent_ids
         new_parents = copy(parents)
         for parent in parents:
-            if not self.to_branch.has_revision(parent):
+            if not self.to_storage.has_revision(parent):
                 new_parents.pop(new_parents.index(parent))
         self._copy_inventory(rev_id, inv_xml, new_parents)
-        self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
+        self.to_storage.revision_store.add(StringIO(rev_xml), rev_id)
         mutter('copied revision %s', rev_id)
 
     def _copy_inventory(self, rev_id, inv_xml, parent_ids):
         self.to_control.add_text('inventory', rev_id,
                                 split_lines(inv_xml), parent_ids,
-                                self.to_branch.get_transaction())
+                                self.to_storage.get_transaction())
 
     def _copy_new_texts(self, rev_id, inv):
         """Copy any new texts occuring in this revision."""
@@ -227,13 +229,13 @@ class Fetcher(object):
         from_weave = self.from_weaves.get_weave(file_id,
             self.from_branch.get_transaction())
         to_weave = self.to_weaves.get_weave_or_empty(file_id,
-            self.to_branch.get_transaction())
+            self.to_storage.get_transaction())
         try:
             to_weave.join(from_weave)
         except errors.WeaveParentMismatch:
             to_weave.reweave(from_weave)
         self.to_weaves.put_weave(file_id, to_weave,
-            self.to_branch.get_transaction())
+            self.to_storage.get_transaction())
         self.count_weaves += 1
         self.copied_file_ids.add(file_id)
         mutter('copied file {%s}', file_id)

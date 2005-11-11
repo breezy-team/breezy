@@ -78,8 +78,8 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
         note("basis_branch is not supported for fast weave copy yet.")
     branch_from.lock_read()
     try:
-        if not (branch_from.weave_store.listable()
-                and branch_from.revision_store.listable()):
+        if not (branch_from.storage.weave_store.listable()
+                and branch_from.storage.revision_store.listable()):
             return copy_branch_slower(branch_from, to_location, revision,
                                       basis_branch)
         history = _get_truncated_history(branch_from, revision)
@@ -111,16 +111,17 @@ def _get_truncated_history(branch_from, revision):
     return history[:idx+1]
 
 def _copy_text_weaves(branch_from, branch_to):
-    copy_all(branch_from.weave_store, branch_to.weave_store)
+    copy_all(branch_from.storage.weave_store, branch_to.storage.weave_store)
 
 
 def _copy_revision_store(branch_from, branch_to):
-    copy_all(branch_from.revision_store, branch_to.revision_store)
+    copy_all(branch_from.storage.revision_store, 
+             branch_to.storage.revision_store)
 
 
 def _copy_control_weaves(branch_from, branch_to):
-    to_control = branch_to.control_weaves
-    from_control = branch_from.control_weaves
+    to_control = branch_to.storage.control_weaves
+    from_control = branch_from.storage.control_weaves
     to_control.copy_multi(from_control, ['inventory'])
 
     

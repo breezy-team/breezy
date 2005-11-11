@@ -221,7 +221,7 @@ def _show_log(branch,
             # although we calculated it, throw it away without display
             delta = None
 
-        rev = branch.get_revision(rev_id)
+        rev = branch.storage.get_revision(rev_id)
 
         if searchRE:
             if not searchRE.search(rev.message):

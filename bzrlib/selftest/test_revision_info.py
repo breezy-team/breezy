@@ -91,9 +91,9 @@ class TestRevisionInfo(TestCaseInTempDir):
         b.commit('Commit three', rev_id='a@r-0-3')
 
         revs = {
-            1:b.get_revision_xml_file('a@r-0-1').read(),
-            2:b.get_revision_xml_file('a@r-0-2').read(),
-            3:b.get_revision_xml_file('a@r-0-3').read()
+            1:b.storage.get_revision_xml_file('a@r-0-1').read(),
+            2:b.storage.get_revision_xml_file('a@r-0-2').read(),
+            3:b.storage.get_revision_xml_file('a@r-0-3').read()
         }
 
         self.check_output(revs[1], 'cat-revision', 'a@r-0-1')

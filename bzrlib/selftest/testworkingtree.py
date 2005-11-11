@@ -103,7 +103,7 @@ class TestWorkingTree(TestCaseInTempDir):
     def test_pull(self):
         br_a, br_b = self.get_pullable_branches()
         br_b.working_tree().pull(br_a)
-        self.failUnless(br_b.has_revision('A'))
+        self.failUnless(br_b.storage.has_revision('A'))
         self.assertEqual(['A'], br_b.revision_history())
 
     def test_pull_overwrites(self):
@@ -111,6 +111,6 @@ class TestWorkingTree(TestCaseInTempDir):
         br_b.commit('foo', rev_id='B')
         self.assertEqual(['B'], br_b.revision_history())
         br_b.working_tree().pull(br_a, overwrite=True)
-        self.failUnless(br_b.has_revision('A'))
-        self.failUnless(br_b.has_revision('B'))
+        self.failUnless(br_b.storage.has_revision('A'))
+        self.failUnless(br_b.storage.has_revision('B'))
         self.assertEqual(['A'], br_b.revision_history())

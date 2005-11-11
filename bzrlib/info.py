@@ -83,16 +83,16 @@ def show_info(b):
     print '  %8d revision%s' % (revno, plural(revno))
     committers = {}
     for rev in history:
-        committers[b.get_revision(rev).committer] = True
+        committers[b.storage.get_revision(rev).committer] = True
     print '  %8d committer%s' % (len(committers), plural(len(committers)))
     if revno > 0:
-        firstrev = b.get_revision(history[0])
+        firstrev = b.storage.get_revision(history[0])
         age = int((time.time() - firstrev.timestamp) / 3600 / 24)
         print '  %8d day%s old' % (age, plural(age))
         print '   first revision: %s' % format_date(firstrev.timestamp,
                                                     firstrev.timezone)
 
-        lastrev = b.get_revision(history[-1])
+        lastrev = b.storage.get_revision(history[-1])
         print '  latest revision: %s' % format_date(lastrev.timestamp,
                                                     lastrev.timezone)
 
@@ -104,7 +104,7 @@ def show_info(b):
 
     print
     print 'revision store:'
-    c, t = b.revision_store.total_size()
+    c, t = b.storage.revision_store.total_size()
     print '  %8d revisions' % c
     print '  %8d kB' % (t/1024)
 

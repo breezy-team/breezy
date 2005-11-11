@@ -88,10 +88,10 @@ class Testament(object):
     """
 
     @classmethod
-    def from_revision(cls, branch, revision_id):
+    def from_revision(cls, storage, revision_id):
         """Produce a new testament from a historical revision"""
-        rev = branch.get_revision(revision_id)
-        inventory = branch.get_inventory(revision_id)
+        rev = storage.get_revision(revision_id)
+        inventory = storage.get_inventory(revision_id)
         return cls(rev, inventory)
 
     def __init__(self, rev, inventory):

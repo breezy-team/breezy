@@ -118,11 +118,11 @@ class Check(object):
             rev_history_position = None
         last_rev_id = None
         if rev_history_position:
-            rev = branch.get_revision(rev_id)
+            rev = branch.storage.get_revision(rev_id)
             if rev_history_position > 0:
                 last_rev_id = self.history[rev_history_position - 1]
         else:
-            rev = branch.get_revision(rev_id)
+            rev = branch.storage.get_revision(rev_id)
                 
         if rev.revision_id != rev_id:
             raise BzrCheckError('wrong internal revision id in revision {%s}'
@@ -158,7 +158,7 @@ class Check(object):
                                 % (rev_id, last_rev_id))
 
         if rev.inventory_sha1:
-            inv_sha1 = branch.get_inventory_sha1(rev_id)
+            inv_sha1 = branch.storage.get_inventory_sha1(rev_id)
             if inv_sha1 != rev.inventory_sha1:
                 raise BzrCheckError('Inventory sha1 hash doesn\'t match'
                     ' value in revision {%s}' % rev_id)
@@ -169,7 +169,7 @@ class Check(object):
         self.checked_rev_cnt += 1
 
     def _check_revision_tree(self, rev_id):
-        tree = self.branch.revision_tree(rev_id)
+        tree = self.branch.storage.revision_tree(rev_id)
         inv = tree.inventory
         seen_ids = {}
         for file_id in inv:

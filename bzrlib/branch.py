@@ -37,22 +37,19 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            UnlistableBranch, NoSuchFile, NotVersionedError,
                            NoWorkingTree)
 from bzrlib.textui import show_status
-from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions,
-                             NULL_REVISION)
+from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions)
 
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
 from bzrlib.store import copy_all
-from bzrlib.store.compressed_text import CompressedTextStore
-from bzrlib.store.text import TextStore
-from bzrlib.store.weave import WeaveStore
-from bzrlib.testament import Testament
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 import bzrlib.xml5
 import bzrlib.ui
 from config import TreeConfig
+from control_files import ControlFiles
+from rev_storage import RevisionStorage
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -167,31 +164,18 @@ class Branch(object):
     nick = property(_get_nick, _set_nick)
         
 
-
-class _Branch(Branch):
+class _Branch(Branch, ControlFiles):
     """A branch stored in the actual filesystem.
 
     Note that it's "local" in the context of the filesystem; it doesn't
     really matter if it's on an nfs/smb/afs/coda/... share, as long as
     it's writable, and can be accessed via the normal filesystem API.
 
-    _lock_mode
-        None, or 'r' or 'w'
-
-    _lock_count
-        If _lock_mode is true, a positive count of the number of times the
-        lock has been taken.
-
-    _lock
-        Lock object from bzrlib.lock.
     """
     # We actually expect this class to be somewhat short-lived; part of its
     # purpose is to try to isolate what bits of the branch logic are tied to
     # filesystem access, so that in a later step, we can extricate them to
     # a separarte ("storage") class.
-    _lock_mode = None
-    _lock_count = None
-    _lock = None
     _inventory_weave = None
     
     # Map some sort of prefix into a namespace
@@ -239,50 +223,11 @@ class _Branch(Branch):
         """
         assert isinstance(transport, Transport), \
             "%r is not a Transport" % transport
-        self._transport = transport
+        ControlFiles.__init__(self, transport, 'branch-lock')
         if init:
             self._make_control()
         self._check_format(relax_version_check)
-
-        def get_store(name, compressed=True, prefixed=False):
-            # FIXME: This approach of assuming stores are all entirely compressed
-            # or entirely uncompressed is tidy, but breaks upgrade from 
-            # some existing branches where there's a mixture; we probably 
-            # still want the option to look for both.
-            relpath = self._rel_controlfilename(name)
-            if compressed:
-                store = CompressedTextStore(self._transport.clone(relpath),
-                                            prefixed=prefixed)
-            else:
-                store = TextStore(self._transport.clone(relpath),
-                                  prefixed=prefixed)
-            #if self._transport.should_cache():
-            #    cache_path = os.path.join(self.cache_root, name)
-            #    os.mkdir(cache_path)
-            #    store = bzrlib.store.CachedStore(store, cache_path)
-            return store
-        def get_weave(name, prefixed=False):
-            relpath = self._rel_controlfilename(name)
-            ws = WeaveStore(self._transport.clone(relpath), prefixed=prefixed)
-            if self._transport.should_cache():
-                ws.enable_cache = True
-            return ws
-
-        if self._branch_format == 4:
-            self.inventory_store = get_store('inventory-store')
-            self.text_store = get_store('text-store')
-            self.revision_store = get_store('revision-store')
-        elif self._branch_format == 5:
-            self.control_weaves = get_weave('')
-            self.weave_store = get_weave('weaves')
-            self.revision_store = get_store('revision-store', compressed=False)
-        elif self._branch_format == 6:
-            self.control_weaves = get_weave('')
-            self.weave_store = get_weave('weaves', prefixed=True)
-            self.revision_store = get_store('revision-store', compressed=False,
-                                            prefixed=True)
-        self.revision_store.register_suffix('sig')
-        self._transaction = None
+        self.storage = RevisionStorage(transport, self._branch_format)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self._transport.base)
@@ -290,12 +235,6 @@ class _Branch(Branch):
     __repr__ = __str__
 
     def __del__(self):
-        if self._lock_mode or self._lock:
-            # XXX: This should show something every time, and be suitable for
-            # headless operation and embedding
-            warn("branch %r was not explicitly unlocked" % self)
-            self._lock.unlock()
-
         # TODO: It might be best to do this somewhere else,
         # but it is nice for a Branch object to automatically
         # cache it's information.
@@ -316,77 +255,6 @@ class _Branch(Branch):
 
     base = property(_get_base, doc="The URL for the root of this branch.")
 
-    def _finish_transaction(self):
-        """Exit the current transaction."""
-        if self._transaction is None:
-            raise errors.LockError('Branch %s is not in a transaction' %
-                                   self)
-        transaction = self._transaction
-        self._transaction = None
-        transaction.finish()
-
-    def get_transaction(self):
-        """Return the current active transaction.
-
-        If no transaction is active, this returns a passthrough object
-        for which all data is immediately flushed and no caching happens.
-        """
-        if self._transaction is None:
-            return transactions.PassThroughTransaction()
-        else:
-            return self._transaction
-
-    def _set_transaction(self, new_transaction):
-        """Set a new active transaction."""
-        if self._transaction is not None:
-            raise errors.LockError('Branch %s is in a transaction already.' %
-                                   self)
-        self._transaction = new_transaction
-
-    def lock_write(self):
-        mutter("lock write: %s (%s)", self, self._lock_count)
-        # TODO: Upgrade locking to support using a Transport,
-        # and potentially a remote locking protocol
-        if self._lock_mode:
-            if self._lock_mode != 'w':
-                raise LockError("can't upgrade to a write lock from %r" %
-                                self._lock_mode)
-            self._lock_count += 1
-        else:
-            self._lock = self._transport.lock_write(
-                    self._rel_controlfilename('branch-lock'))
-            self._lock_mode = 'w'
-            self._lock_count = 1
-            self._set_transaction(transactions.PassThroughTransaction())
-
-    def lock_read(self):
-        mutter("lock read: %s (%s)", self, self._lock_count)
-        if self._lock_mode:
-            assert self._lock_mode in ('r', 'w'), \
-                   "invalid lock mode %r" % self._lock_mode
-            self._lock_count += 1
-        else:
-            self._lock = self._transport.lock_read(
-                    self._rel_controlfilename('branch-lock'))
-            self._lock_mode = 'r'
-            self._lock_count = 1
-            self._set_transaction(transactions.ReadOnlyTransaction())
-            # 5K may be excessive, but hey, its a knob.
-            self.get_transaction().set_cache_size(5000)
-                        
-    def unlock(self):
-        mutter("unlock: %s (%s)", self, self._lock_count)
-        if not self._lock_mode:
-            raise LockError('branch %r is not locked' % (self))
-
-        if self._lock_count > 1:
-            self._lock_count -= 1
-        else:
-            self._finish_transaction()
-            self._lock.unlock()
-            self._lock = None
-            self._lock_mode = self._lock_count = None
-
     def abspath(self, name):
         """Return absolute filename for something in the branch
         
@@ -394,77 +262,6 @@ class _Branch(Branch):
         method and not a tree method.
         """
         return self._transport.abspath(name)
-
-    def _rel_controlfilename(self, file_or_path):
-        if not isinstance(file_or_path, basestring):
-            file_or_path = '/'.join(file_or_path)
-        if file_or_path == '':
-            return bzrlib.BZRDIR
-        return bzrlib.transport.urlescape(bzrlib.BZRDIR + '/' + file_or_path)
-
-    def controlfilename(self, file_or_path):
-        """Return location relative to branch."""
-        return self._transport.abspath(self._rel_controlfilename(file_or_path))
-
-    def controlfile(self, file_or_path, mode='r'):
-        """Open a control file for this branch.
-
-        There are two classes of file in the control directory: text
-        and binary.  binary files are untranslated byte streams.  Text
-        control files are stored with Unix newlines and in UTF-8, even
-        if the platform or locale defaults are different.
-
-        Controlfiles should almost never be opened in write mode but
-        rather should be atomically copied and replaced using atomicfile.
-        """
-        import codecs
-
-        relpath = self._rel_controlfilename(file_or_path)
-        #TODO: codecs.open() buffers linewise, so it was overloaded with
-        # a much larger buffer, do we need to do the same for getreader/getwriter?
-        if mode == 'rb': 
-            return self._transport.get(relpath)
-        elif mode == 'wb':
-            raise BzrError("Branch.controlfile(mode='wb') is not supported, use put_controlfiles")
-        elif mode == 'r':
-            # XXX: Do we really want errors='replace'?   Perhaps it should be
-            # an error, or at least reported, if there's incorrectly-encoded
-            # data inside a file.
-            # <https://launchpad.net/products/bzr/+bug/3823>
-            return codecs.getreader('utf-8')(self._transport.get(relpath), errors='replace')
-        elif mode == 'w':
-            raise BzrError("Branch.controlfile(mode='w') is not supported, use put_controlfiles")
-        else:
-            raise BzrError("invalid controlfile mode %r" % mode)
-
-    def put_controlfile(self, path, f, encode=True):
-        """Write an entry as a controlfile.
-
-        :param path: The path to put the file, relative to the .bzr control
-                     directory
-        :param f: A file-like or string object whose contents should be copied.
-        :param encode:  If true, encode the contents as utf-8
-        """
-        self.put_controlfiles([(path, f)], encode=encode)
-
-    def put_controlfiles(self, files, encode=True):
-        """Write several entries as controlfiles.
-
-        :param files: A list of [(path, file)] pairs, where the path is the directory
-                      underneath the bzr control directory
-        :param encode:  If true, encode the contents as utf-8
-        """
-        import codecs
-        ctrl_files = []
-        for path, f in files:
-            if encode:
-                if isinstance(f, basestring):
-                    f = f.encode('utf-8', 'replace')
-                else:
-                    f = codecs.getwriter('utf-8')(f, errors='replace')
-            path = self._rel_controlfilename(path)
-            ctrl_files.append((path, f))
-        self._transport.put_multi(ctrl_files)
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
@@ -531,8 +328,23 @@ class _Branch(Branch):
 
     def get_root_id(self):
         """Return the id of this branches root"""
-        inv = self.get_inventory(self.last_revision())
+        inv = self.storage.get_inventory(self.last_revision())
         return inv.root.file_id
+
+    def write_lock(self):
+        ControlFiles.write_lock(self)
+        self.storage.write_lock()
+
+    def read_lock(self):
+        ControlFiles.read_lock(self)
+        self.storage.read_lock()
+
+    def unlock(self):
+        try:
+            self.storage.unlock()
+        except:
+            pass
+        ControlFiles.unlock(self)
 
     @needs_write_lock
     def set_root_id(self, file_id):
@@ -670,45 +482,6 @@ class _Branch(Branch):
     def set_revision_history(self, rev_history):
         self.put_controlfile('revision-history', '\n'.join(rev_history))
 
-    def has_revision(self, revision_id):
-        """True if this branch has a copy of the revision.
-
-        This does not necessarily imply the revision is merge
-        or on the mainline."""
-        return (revision_id is None
-                or self.revision_store.has_id(revision_id))
-
-    @needs_read_lock
-    def get_revision_xml_file(self, revision_id):
-        """Return XML file object for revision object."""
-        if not revision_id or not isinstance(revision_id, basestring):
-            raise InvalidRevisionId(revision_id=revision_id, branch=self)
-        try:
-            return self.revision_store.get(revision_id)
-        except (IndexError, KeyError):
-            raise bzrlib.errors.NoSuchRevision(self, revision_id)
-
-    #deprecated
-    get_revision_xml = get_revision_xml_file
-
-    def get_revision_xml(self, revision_id):
-        return self.get_revision_xml_file(revision_id).read()
-
-
-    def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
-        xml_file = self.get_revision_xml_file(revision_id)
-
-        try:
-            r = bzrlib.xml5.serializer_v5.read_revision(xml_file)
-        except SyntaxError, e:
-            raise bzrlib.errors.BzrError('failed to unpack revision_xml',
-                                         [revision_id,
-                                          str(e)])
-            
-        assert r.revision_id == revision_id
-        return r
-
     def get_revision_delta(self, revno):
         """Return the delta for one revision.
 
@@ -722,23 +495,13 @@ class _Branch(Branch):
 
         # revno is 1-based; list is 0-based
 
-        new_tree = self.revision_tree(rh[revno-1])
+        new_tree = self.storage.revision_tree(rh[revno-1])
         if revno == 1:
             old_tree = EmptyTree()
         else:
-            old_tree = self.revision_tree(rh[revno-2])
+            old_tree = self.storage.revision_tree(rh[revno-2])
 
         return compare_trees(old_tree, new_tree)
-
-    def get_revision_sha1(self, revision_id):
-        """Hash the stored value of a revision, and return it."""
-        # In the future, revision entries will be signed. At that
-        # point, it is probably best *not* to include the signature
-        # in the revision hash. Because that lets you re-sign
-        # the revision, (add signatures/remove signatures) and still
-        # have all hash pointers stay consistent.
-        # But for now, just hash the contents.
-        return bzrlib.osutils.sha_file(self.get_revision_xml_file(revision_id))
 
     def get_ancestry(self, revision_id):
         """Return a list of revision-ids integrated by a revision.
@@ -748,47 +511,9 @@ class _Branch(Branch):
         """
         if revision_id is None:
             return [None]
-        w = self.get_inventory_weave()
+        w = self.storage.get_inventory_weave()
         return [None] + map(w.idx_to_name,
                             w.inclusions([w.lookup(revision_id)]))
-
-    def get_inventory_weave(self):
-        return self.control_weaves.get_weave('inventory',
-                                             self.get_transaction())
-
-    def get_inventory(self, revision_id):
-        """Get Inventory object by hash."""
-        xml = self.get_inventory_xml(revision_id)
-        return bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
-
-    def get_inventory_xml(self, revision_id):
-        """Get inventory XML as a file object."""
-        try:
-            assert isinstance(revision_id, basestring), type(revision_id)
-            iw = self.get_inventory_weave()
-            return iw.get_text(iw.lookup(revision_id))
-        except IndexError:
-            raise bzrlib.errors.HistoryMissing(self, 'inventory', revision_id)
-
-    def get_inventory_sha1(self, revision_id):
-        """Return the sha1 hash of the inventory entry
-        """
-        return self.get_revision(revision_id).inventory_sha1
-
-    def get_revision_inventory(self, revision_id):
-        """Return inventory of a past revision."""
-        # TODO: Unify this with get_inventory()
-        # bzr 0.0.6 and later imposes the constraint that the inventory_id
-        # must be the same as its revision, so this is trivial.
-        if revision_id == None:
-            # This does not make sense: if there is no revision,
-            # then it is the current tree inventory surely ?!
-            # and thus get_root_id() is something that looks at the last
-            # commit on the branch, and the get_root_id is an inventory check.
-            raise NotImplementedError
-            # return Inventory(self.get_root_id())
-        else:
-            return self.get_inventory(revision_id)
 
     @needs_read_lock
     def revision_history(self):
@@ -890,7 +615,8 @@ class _Branch(Branch):
         except DivergedBranches, e:
             try:
                 pullable_revs = get_intervening_revisions(self.last_revision(),
-                                                          stop_revision, self)
+                                                          stop_revision, 
+                                                          self.storage)
                 assert self.last_revision() not in pullable_revs
                 return pullable_revs
             except bzrlib.errors.NotAncestor:
@@ -923,19 +649,6 @@ class _Branch(Branch):
             raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
-    def revision_tree(self, revision_id):
-        """Return Tree for a revision on this branch.
-
-        `revision_id` may be None for the null revision, in which case
-        an `EmptyTree` is returned."""
-        # TODO: refactor this to use an existing revision object
-        # so we don't need to read it in twice.
-        if revision_id == None or revision_id == NULL_REVISION:
-            return EmptyTree()
-        else:
-            inv = self.get_revision_inventory(revision_id)
-            return RevisionTree(self.weave_store, inv, revision_id)
-
     def working_tree(self):
         """Return a `Tree` for the working copy."""
         from bzrlib.workingtree import WorkingTree
@@ -966,7 +679,7 @@ class _Branch(Branch):
 
         If there are no revisions yet, return an `EmptyTree`.
         """
-        return self.revision_tree(self.last_revision())
+        return self.storage.revision_tree(self.last_revision())
 
     @needs_write_lock
     def rename_one(self, from_rel, to_rel):
@@ -1212,15 +925,6 @@ class _Branch(Branch):
         if revno < 1 or revno > self.revno():
             raise InvalidRevisionNumber(revno)
         
-    def sign_revision(self, revision_id, gpg_strategy):
-        plaintext = Testament.from_revision(self, revision_id).as_short_text()
-        self.store_revision_signature(gpg_strategy, plaintext, revision_id)
-
-    @needs_write_lock
-    def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
-                                revision_id, "sig")
-
 
 
 class ScratchBranch(_Branch):

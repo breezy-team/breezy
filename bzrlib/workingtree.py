@@ -350,7 +350,7 @@ class WorkingTree(bzrlib.tree.Tree):
                     other_revision = None
                 merge_inner(self.branch,
                             self.branch.basis_tree(), 
-                            self.branch.revision_tree(other_revision))
+                            self.branch.storage.revision_tree(other_revision))
         finally:
             source.unlock()
 

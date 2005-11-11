@@ -157,7 +157,8 @@ class TestIntermediateRevisions(TestCaseInTempDir):
         self.br2.commit("Commit fifteen", rev_id="b@u-0-10")
 
         from bzrlib.revision import MultipleRevisionSources
-        self.sources = MultipleRevisionSources(self.br1, self.br2)
+        self.sources = MultipleRevisionSources(self.br1.storage,
+                                               self.br2.storage)
 
     def intervene(self, ancestor, revision, revision_history=None):
         from bzrlib.revision import get_intervening_revisions
@@ -214,7 +215,7 @@ class TestCommonAncestor(TestCaseInTempDir):
         br1, br2 = make_branches(self)
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
-        sources = br1
+        sources = br1.storage
 
         expected_ancestors_list = {revisions[3]:(0, 0), 
                                    revisions[2]:(1, 1),
@@ -253,7 +254,7 @@ class TestCommonAncestor(TestCaseInTempDir):
         br1, br2 = make_branches(self)
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
-        sources = MultipleRevisionSources(br1, br2)
+        sources = MultipleRevisionSources(br1.storage, br2.storage)
         expected_ancestors_list = {revisions[3]:(0, 0), 
                                    revisions[2]:(1, 1),
                                    revisions_2[4]:(2, 1), 
@@ -288,7 +289,7 @@ class TestCommonAncestor(TestCaseInTempDir):
         Ensure it's not order-sensitive
         """
         br1, br2 = make_branches(self)
-        source = MultipleRevisionSources(br1, br2)
+        source = MultipleRevisionSources(br1.storage, br2.storage)
         combined_1 = combined_graph(br1.last_revision(), 
                                     br2.last_revision(), source)
         combined_2 = combined_graph(br2.last_revision(),

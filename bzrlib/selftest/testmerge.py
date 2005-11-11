@@ -51,4 +51,4 @@ class TestMerge(TestCaseInTempDir):
         br1, br2 = self.test_pending_with_null()
         commit(br1, "blah")
         last = br1.last_revision()
-        self.assertEquals(common_ancestor(last, last, br1), last)
+        self.assertEquals(common_ancestor(last, last, br1.storage), last)

@@ -61,13 +61,13 @@ def show_status(branch, show_unchanged=False,
         elif len(revision) > 0:
             try:
                 rev_id = revision[0].in_history(branch).rev_id
-                old = branch.revision_tree(rev_id)
+                old = branch.storage.revision_tree(rev_id)
             except NoSuchRevision, e:
                 raise BzrCommandError(str(e))
             if len(revision) > 1:
                 try:
                     rev_id = revision[1].in_history(branch).rev_id
-                    new = branch.revision_tree(rev_id)
+                    new = branch.storage.revision_tree(rev_id)
                     new_is_working_tree = False
                 except NoSuchRevision, e:
                     raise BzrCommandError(str(e))
@@ -97,7 +97,7 @@ def show_status(branch, show_unchanged=False,
                 for merge in branch.pending_merges():
                     ignore.add(merge)
                     try:
-                        m_revision = branch.get_revision(merge)
+                        m_revision = branch.storage.get_revision(merge)
                         print >> to_file, ' ', line_log(m_revision, 77)
                         inner_merges = branch.get_ancestry(merge)
                         inner_merges.reverse()
