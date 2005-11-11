@@ -153,7 +153,9 @@ class SFTPTransport (Transport):
 
     def relpath(self, abspath):
         # FIXME: this is identical to HttpTransport -- share it
-        if not abspath.startswith(self.base):
+        m = self._url_matcher.match(abspath)
+        path = m.group(5)
+        if not path.startswith(self._path):
             raise NonRelativePath('path %r is not under base URL %r'
                            % (abspath, self.base))
         pl = len(self.base)
