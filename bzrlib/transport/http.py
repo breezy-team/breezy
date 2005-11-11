@@ -31,7 +31,7 @@ from bzrlib.trace import mutter
 
 def get_url(url):
     import urllib2
-    mutter("get_url %s" % url)
+    mutter("get_url %s", url)
     url_f = urllib2.urlopen(url)
     return url_f
 
@@ -144,7 +144,7 @@ class HttpTransport(Transport):
             return get_url(self.abspath(relpath))
         except urllib2.URLError, e:
             if getattr(e, 'code', None) == 404:
-                raise NoSuchFile(msg = "Error retrieving %s: %s" 
+                raise NoSuchFile(msg = "Error retrieving %s:  %s" 
                                  % (self.abspath(relpath), str(e)),
                                  orig_error=e)
             raise
