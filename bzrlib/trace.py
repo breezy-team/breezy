@@ -172,10 +172,12 @@ def log_exception(msg=None):
     The exception string representation is used as the error
     summary, unless msg is given.
     """
-    exc_str = format_exception_short(sys.exc_info())
     if msg:
-        _bzr_logger.exception(msg)
-    _bzr_logger.error(exc_str)
+        error(msg)
+    else:
+        exc_str = format_exception_short(sys.exc_info())
+        error(exc_str)
+    log_exception_quietly()
 
 
 def log_exception_quietly():
@@ -191,6 +193,7 @@ def log_exception_quietly():
 
 def enable_default_logging():
     """Configure default logging to stderr and .bzr.log"""
+    # FIXME: if this is run twice, things get confused
     global _stderr_handler, _file_handler, _trace_file, _bzr_log_file
     _stderr_handler = logging.StreamHandler()
     _stderr_handler.setFormatter(QuietFormatter())
