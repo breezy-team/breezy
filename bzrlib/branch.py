@@ -1096,6 +1096,21 @@ class _Branch(Branch):
         self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
                                 revision_id, "sig")
 
+    # Do we want a read lock?
+    def is_bound(self):
+        bound_path = self._rel_controlfilename('bound')
+        return self._transport.has(bound_path)
+
+    @needs_write_lock
+    def bind(self, branch):
+        """Bind the local branch the othre branch"""
+        other = Branch.open(location)
+        if other.is_bound():
+            raise errors.CannotBind(msg='branch %s is bound' % (branch.base))
+        rh = self.revision_history()
+        other_rh = branch.revision_history()
+        self.put_controlfile('bound', StringIO(branch.base+'\n'))
+
 
 class ScratchBranch(_Branch):
     """Special test class: a branch that cleans up after itself.

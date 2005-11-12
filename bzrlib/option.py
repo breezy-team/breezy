@@ -168,6 +168,7 @@ _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally')
 _global_option('basis', type=str)
+_global_option('bound')
 _global_option('diff-options', type=str)
 _global_option('help',
                help='show help message')
@@ -186,6 +187,7 @@ _global_option('show-ids',
 _global_option('timezone', 
                type=str,
                help='display timezone as local, original, or utc')
+_global_option('unbound')
 _global_option('verbose',
                help='display more information')
 _global_option('version')

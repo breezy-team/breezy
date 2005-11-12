@@ -484,10 +484,11 @@ class cmd_branch(Command):
     branch before copying anything from the remote branch.
     """
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision', 'basis']
+    takes_options = ['revision', 'basis', 'bound', 'unbound']
     aliases = ['get', 'clone']
 
-    def run(self, from_location, to_location=None, revision=None, basis=None):
+    def run(self, from_location, to_location=None, revision=None, basis=None,
+            bound=False, unbound=False):
         from bzrlib.clone import copy_branch
         import errno
         from shutil import rmtree
@@ -496,6 +497,8 @@ class cmd_branch(Command):
         elif len(revision) > 1:
             raise BzrCommandError(
                 'bzr branch --revision takes exactly 1 revision value')
+        if bound and unbound:
+            raise BzrCommandError('Cannot supply both bound and unbound at the same time')
         try:
             br_from = Branch.open(from_location)
         except OSError, e:
@@ -538,12 +541,14 @@ class cmd_branch(Command):
                 raise BzrCommandError(msg)
             except bzrlib.errors.UnlistableBranch:
                 rmtree(to_location)
-                msg = "The branch %s cannot be used as a --basis"
+                msg = "The branch %s cannot be used as a --basis" % (basis,)
                 raise BzrCommandError(msg)
+            branch = Branch.open(to_location)
             if name:
-                branch = Branch.open(to_location)
                 name = StringIO(name)
                 branch.put_controlfile('branch-name', name)
+            if bound:
+                branch.bind(br_from.base)
         finally:
             br_from.unlock()
 
@@ -1732,6 +1737,38 @@ class cmd_re_sign(Command):
             else:
                 raise BzrCommandError('Please supply either one revision, or a range.')
 
+class cmd_bind(Command):
+    """Bind the current branch to its parent.
+
+    After binding, commits must succeed on the parent branch
+    before they can be done on the local one.
+    """
+
+    takes_args = ['location?']
+    takes_options = []
+
+    def run(self, location=None):
+        b = Branch.open_containing('.')
+        if location is None:
+            location = b.get_parent()
+        if location is None:
+            raise BzrCommandError('Branch has no parent,'
+                                  ' you must supply a bind location.')
+        b_other = Branch.open(location)
+        b.bind(b_other)
+
+class cmd_unbind(Command):
+    """Bind the current branch to its parent.
+
+    After unbinding, the local branch is considered independent.
+    """
+
+    takes_args = []
+    takes_options = []
+
+    def run(self):
+        b = Branch.open_containing('.')
+        b.unbind()
 
 # these get imported and then picked up by the scan for cmd_*
 # TODO: Some more consistent way to split command definitions across files;

@@ -84,6 +84,18 @@ class TestBoundBranches(TestCaseInTempDir):
         os.chdir('../base')
         self.check_revno('3')
 
+    def test_double_binding(self):
+        bzr = self.run_bzr
+        self.create_branches()
+
+        bzr('branch', 'child', 'child2')
+        os.chdir('child2')
+
+        bzr('bind', '../child', retcode=1)
+
+        # The binding should fail, because child2 is bound
+        self.failIf(os.path.lexists('.bzr/bound'))
+
     def test_unbinding(self):
         bzr = self.run_bzr
         self.create_branches()

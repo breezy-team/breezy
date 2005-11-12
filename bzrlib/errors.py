@@ -205,6 +205,9 @@ class PointlessCommit(BzrNewError):
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
+class CannotBind(BzrNewError):
+    """Cannot bind: %(msg)s"""
+
 class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):
         self.branch = branch
