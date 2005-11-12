@@ -626,6 +626,9 @@ class _Branch(Branch):
 
     @needs_write_lock
     def set_revision_history(self, rev_history):
+        bound_loc = self.get_bound_location()
+        if bound_loc is not None:
+            raise NotImplementedError('Adding revisions to a bound branch not implemented yet')
         self.put_controlfile('revision-history', '\n'.join(rev_history))
 
     def has_revision(self, revision_id):
@@ -1097,19 +1100,56 @@ class _Branch(Branch):
                                 revision_id, "sig")
 
     # Do we want a read lock?
-    def is_bound(self):
+    def get_bound_location(self):
         bound_path = self._rel_controlfilename('bound')
-        return self._transport.has(bound_path)
+        try:
+            f = self._transport.get(bound_path)
+        except NoSuchFile:
+            return None
+        else:
+            return f.read().strip()
 
     @needs_write_lock
-    def bind(self, branch):
-        """Bind the local branch the othre branch"""
-        other = Branch.open(location)
+    def set_bound_location(self, location):
+        self.put_controlfile('bound', StringIO(location+'\n'))
+
+    @needs_write_lock
+    def bind(self, other):
+        """Bind the local branch the other branch.
+
+        :param other: The branch to bind to
+        :type other: Branch
+        """
+        # It is debatable whether you should be able to bind to
+        # a branch which is itself bound.
+        # Committing is obviously forbidden, but binding itself may not be.
         if other.is_bound():
-            raise errors.CannotBind(msg='branch %s is bound' % (branch.base))
-        rh = self.revision_history()
-        other_rh = branch.revision_history()
-        self.put_controlfile('bound', StringIO(branch.base+'\n'))
+            raise errors.CannotBind(msg='branch %s is bound' % (other.base))
+        try:
+            self.working_tree().pull(other)
+        except NoWorkingTree:
+            self.pull(other)
+
+        # Since we have 'pulled' from the remote location,
+        # now we should try to pull in the opposite direction
+        # in case the local tree has more revisions than the
+        # remote one.
+        # There may be a different check you could do here
+        # rather than actually trying to install revisions remotely.
+        # TODO: capture an exception which indicates the remote branch
+        #       is not writeable. 
+        #       If it is up-to-date, this probably should not be a failure
+        try:
+            other.working_tree().pull(self)
+        except NoWorkingTree:
+            other.pull(self)
+
+        # Make sure the revision histories are now identical
+        other_rh = other.revision_history()
+        self.set_revision_history(other_rh)
+
+        # Both branches should now be at the same revision
+        self.set_bound_location(other.base)
 
 
 class ScratchBranch(_Branch):

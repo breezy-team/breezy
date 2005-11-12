@@ -1750,12 +1750,19 @@ class cmd_bind(Command):
     def run(self, location=None):
         b = Branch.open_containing('.')
         if location is None:
+            location = b.get_bound_location()
+        if location is None:
             location = b.get_parent()
         if location is None:
             raise BzrCommandError('Branch has no parent,'
                                   ' you must supply a bind location.')
         b_other = Branch.open(location)
-        b.bind(b_other)
+        try:
+            b.bind(b_other)
+        except DivergedBranches:
+            raise BzrCommandError('These branches have diverged.'
+                                  ' Try merging, and then push the change'
+                                  ' to the remote branch.')
 
 class cmd_unbind(Command):
     """Bind the current branch to its parent.
