@@ -808,6 +808,7 @@ class TestCommands(ExternalBase):
         self.runbzr('push', retcode=3)
         # and there are difference
         self.runbzr('missing ../output-branch', retcode=1)
+        self.runbzr('missing --verbose ../output-branch', retcode=1)
         # but we can force a push
         self.runbzr('push --overwrite')
         # nothing missing
