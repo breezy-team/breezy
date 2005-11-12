@@ -71,6 +71,12 @@ class TestBoundBranches(TestCaseInTempDir):
 
         self.failUnlessExists('.bzr/bound')
 
+        bzr('unbind')
+        self.failIf(os.path.lexists('.bzr/bound'))
+
+        # TODO: Should unbinding a non-bound branch fail?
+        #bzr('unbind')
+
     def test_bound_commit(self):
         bzr = self.run_bzr
         self.create_branches()

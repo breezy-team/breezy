@@ -1774,7 +1774,7 @@ class cmd_unbind(Command):
     takes_options = []
 
     def run(self):
-        b = Branch.open_containing('.')
+        b, relpath = Branch.open_containing('.')
         b.unbind()
 
 # these get imported and then picked up by the scan for cmd_*

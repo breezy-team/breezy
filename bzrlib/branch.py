@@ -1151,6 +1151,15 @@ class _Branch(Branch):
         # Both branches should now be at the same revision
         self.set_bound_location(other.base)
 
+    @needs_write_lock
+    def unbind(self):
+        """If bound, unbind"""
+        bound_path = self._rel_controlfilename('bound')
+        try:
+            self._transport.delete(bound_path)
+        except NoSuchFile:
+            pass
+
 
 class ScratchBranch(_Branch):
     """Special test class: a branch that cleans up after itself.
