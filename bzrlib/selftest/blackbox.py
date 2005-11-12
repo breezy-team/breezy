@@ -718,6 +718,21 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m done',)
         self.runbzr('remerge', retcode=3)
 
+    def test_status(self):
+        os.mkdir('branch1')
+        os.chdir('branch1')
+        self.runbzr('init')
+        self.runbzr('commit --unchanged --message f')
+        self.runbzr('branch . ../branch2')
+        self.runbzr('branch . ../branch3')
+        self.runbzr('commit --unchanged --message peter')
+        os.chdir('../branch2')
+        self.runbzr('merge ../branch1')
+        self.runbzr('commit --unchanged --message pumpkin')
+        os.chdir('../branch3')
+        self.runbzr('merge ../branch2')
+        message = self.capture('status')
+
 
     def test_conflicts(self):
         """Handling of merge conflicts"""

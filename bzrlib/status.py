@@ -104,7 +104,7 @@ def show_status(branch, show_unchanged=False,
                         for mmerge in inner_merges:
                             if mmerge in ignore:
                                 continue
-                            mm_revision = branch.get_revision(mmerge)
+                            mm_revision = branch.storage.get_revision(mmerge)
                             print >> to_file, '   ', line_log(mm_revision, 75)
                             ignore.add(mmerge)
                             
