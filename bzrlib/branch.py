@@ -1123,8 +1123,8 @@ class _Branch(Branch):
         # It is debatable whether you should be able to bind to
         # a branch which is itself bound.
         # Committing is obviously forbidden, but binding itself may not be.
-        if other.is_bound():
-            raise errors.CannotBind(msg='branch %s is bound' % (other.base))
+        #if other.is_bound():
+        #    raise errors.CannotBind(msg='branch %s is bound' % (other.base))
         try:
             self.working_tree().pull(other)
         except NoWorkingTree:

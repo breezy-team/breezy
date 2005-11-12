@@ -1748,7 +1748,7 @@ class cmd_bind(Command):
     takes_options = []
 
     def run(self, location=None):
-        b = Branch.open_containing('.')
+        b, relpath = Branch.open_containing('.')
         if location is None:
             location = b.get_bound_location()
         if location is None:

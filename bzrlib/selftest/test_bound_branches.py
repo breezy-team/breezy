@@ -54,6 +54,23 @@ class TestBoundBranches(TestCaseInTempDir):
         if loc is not None:
             os.chdir(cwd)
 
+    def test_simple_binding(self):
+        bzr = self.run_bzr
+        self.build_tree(['base/', 'base/a', 'base/b'])
+
+        os.chdir('base')
+        bzr('init')
+        bzr('add')
+        bzr('commit', '-m', 'init')
+
+        os.chdir('..')
+        bzr('branch', 'base', 'child')
+
+        os.chdir('child')
+        bzr('bind', '../base')
+
+        self.failUnlessExists('.bzr/bound')
+
     def test_bound_commit(self):
         bzr = self.run_bzr
         self.create_branches()
@@ -68,7 +85,7 @@ class TestBoundBranches(TestCaseInTempDir):
         os.chdir('../base')
         self.check_revno(2)
 
-    def test_bound_fail(self)
+    def test_bound_fail(self):
         """Make sure commit fails if out of date."""
         bzr = self.run_bzr
         self.create_branches()
