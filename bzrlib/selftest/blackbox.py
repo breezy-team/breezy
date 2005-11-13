@@ -125,6 +125,14 @@ class TestCommands(ExternalBase):
         self.runbzr(['add', 'foo.c'])
         self.runbzr(["commit", "-m", ""] , retcode=1) 
 
+    def test_remove_deleted(self):
+        self.runbzr("init")
+        self.build_tree(['a'])
+        self.runbzr(['add', 'a'])
+        self.runbzr(['commit', '-m', 'added a'])
+        os.unlink('a')
+        self.runbzr(['remove', 'a'])
+
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
         # inside a branch, or not.
