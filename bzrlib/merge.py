@@ -228,7 +228,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def finalize(self):
         if not self.ignore_zero:
-            note("%d conflicts encountered.\n" % self.conflicts)
+            note("%d conflicts encountered.\n", self.conflicts)
             
 def get_tree(treespec, local_branch=None):
     location, revno = treespec

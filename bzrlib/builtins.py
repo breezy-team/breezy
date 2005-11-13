@@ -237,9 +237,8 @@ class cmd_mkdir(Command):
         
         for d in dir_list:
             os.mkdir(d)
-            if not b:
-                b = Branch.open_containing(d)[0]
-            b.add([d])
+            b, dd = Branch.open_containing(d)
+            b.add([dd])
             print 'added', d
 
 
@@ -363,10 +362,10 @@ class cmd_pull(Command):
     If you want to forget your local changes and just update your branch to
     match the remote one, use --overwrite.
     """
-    takes_options = ['remember', 'overwrite']
+    takes_options = ['remember', 'overwrite', 'verbose']
     takes_args = ['location?']
 
-    def run(self, location=None, remember=False, overwrite=False):
+    def run(self, location=None, remember=False, overwrite=False, verbose=False):
         from bzrlib.merge import merge
         from shutil import rmtree
         import errno
@@ -381,12 +380,20 @@ class cmd_pull(Command):
                 location = stored_loc
         br_from = Branch.open(location)
         try:
+            old_rh = br_to.revision_history()
             br_to.working_tree().pull(br_from, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try merge.")
         if br_to.get_parent() is None or remember:
             br_to.set_parent(location)
+
+        if verbose:
+            new_rh = br_to.revision_history()
+            if old_rh != new_rh:
+                # Something changed
+                from bzrlib.log import show_changed_revisions
+                show_changed_revisions(br_to, old_rh, new_rh)
 
 
 class cmd_push(Command):
@@ -419,7 +426,7 @@ class cmd_push(Command):
     takes_args = ['location?']
 
     def run(self, location=None, remember=False, overwrite=False,
-            create_prefix=False):
+            create_prefix=False, verbose=False):
         import errno
         from shutil import rmtree
         from bzrlib.transport import get_transport
@@ -462,6 +469,7 @@ class cmd_push(Command):
             NoSuchFile
             br_to = Branch.initialize(location)
         try:
+            old_rh = br_to.revision_history()
             br_to.pull(br_from, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
@@ -469,6 +477,12 @@ class cmd_push(Command):
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(location)
 
+        if verbose:
+            new_rh = br_to.revision_history()
+            if old_rh != new_rh:
+                # Something changed
+                from bzrlib.log import show_changed_revisions
+                show_changed_revisions(br_to, old_rh, new_rh)
 
 class cmd_branch(Command):
     """Create a new copy of a branch.
@@ -878,7 +892,7 @@ class cmd_log(Command):
         if rev2 == 0:
             rev2 = None
 
-        mutter('encoding log as %r' % bzrlib.user_encoding)
+        mutter('encoding log as %r', bzrlib.user_encoding)
 
         # use 'replace' so that we don't abort if trying to write out
         # in e.g. the default C locale.

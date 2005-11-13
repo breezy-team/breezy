@@ -407,7 +407,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         ## TODO: Work from given directory downwards
         for path, dir_entry in self.inventory.directories():
-            mutter("search for unknowns in %r" % path)
+            mutter("search for unknowns in %r", path)
             dirabs = self.abspath(path)
             if not isdir(dirabs):
                 # e.g. directory deleted
@@ -535,7 +535,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 # TODO: Perhaps make this just a warning, and continue?
                 # This tends to happen when 
                 raise NotVersionedError(path=f)
-            mutter("remove inventory entry %s {%s}" % (quotefn(f), fid))
+            mutter("remove inventory entry %s {%s}", quotefn(f), fid)
             if verbose:
                 # having remove it, it must be either ignored or unknown
                 if self.is_ignored(f):

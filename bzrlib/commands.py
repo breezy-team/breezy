@@ -306,7 +306,7 @@ def parse_args(command, argv):
             a = str(a)
             optarg = None
             if a[1] == '-':
-                mutter("  got option %r" % a)
+                mutter("  got option %r", a)
                 if '=' in a:
                     optname, optarg = a[2:].split('=', 1)
                 else:

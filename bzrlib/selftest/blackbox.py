@@ -576,6 +576,48 @@ class TestCommands(ExternalBase):
                   'subdir/b\n'
                   , '--versioned')
 
+    def test_pull_verbose(self):
+        """Pull changes from one branch to another and watch the output."""
+
+        os.mkdir('a')
+        os.chdir('a')
+
+        bzr = self.runbzr
+        self.example_branch()
+
+        os.chdir('..')
+        bzr('branch a b')
+        os.chdir('b')
+        open('b', 'wb').write('else\n')
+        bzr('add b')
+        bzr(['commit', '-m', 'added b'])
+
+        os.chdir('../a')
+        out = bzr('pull --verbose ../b', backtick=True)
+        self.failIfEqual(out.find('Added Revisions:'), -1)
+        self.failIfEqual(out.find('message:\n  added b'), -1)
+        self.failIfEqual(out.find('added:\n  b'), -1)
+
+        # Check that --overwrite --verbose prints out the removed entries
+        bzr('commit -m foo --unchanged')
+        os.chdir('../b')
+        bzr('commit -m baz --unchanged')
+        bzr('pull ../a', retcode=1)
+        out = bzr('pull --overwrite --verbose ../a', backtick=1)
+
+        remove_loc = out.find('Removed Revisions:')
+        self.failIfEqual(remove_loc, -1)
+        added_loc = out.find('Added Revisions:')
+        self.failIfEqual(added_loc, -1)
+
+        removed_message = out.find('message:\n  baz')
+        self.failIfEqual(removed_message, -1)
+        self.failUnless(remove_loc < removed_message < added_loc)
+
+        added_message = out.find('message:\n  foo')
+        self.failIfEqual(added_message, -1)
+        self.failUnless(added_loc < added_message)
+        
     def test_locations(self):
         """Using and remembering different locations"""
         os.mkdir('a')
@@ -757,6 +799,56 @@ class TestCommands(ExternalBase):
         self.runbzr('push --create-prefix ../missing/new-branch')
         # nothing missing
         self.runbzr('missing ../missing/new-branch')
+
+    def test_external_command(self):
+        """test that external commands can be run by setting the path"""
+        cmd_name = 'test-command'
+        output = 'Hello from test-command'
+        if sys.platform == 'win32':
+            cmd_name += '.bat'
+            output += '\r\n'
+        else:
+            output += '\n'
+
+        oldpath = os.environ.get('BZRPATH', None)
+
+        bzr = self.capture
+
+        try:
+            if os.environ.has_key('BZRPATH'):
+                del os.environ['BZRPATH']
+
+            f = file(cmd_name, 'wb')
+            if sys.platform == 'win32':
+                f.write('@echo off\n')
+            else:
+                f.write('#!/bin/sh\n')
+            f.write('echo Hello from test-command')
+            f.close()
+            os.chmod(cmd_name, 0755)
+
+            # It should not find the command in the local 
+            # directory by default, since it is not in my path
+            bzr(cmd_name, retcode=1)
+
+            # Now put it into my path
+            os.environ['BZRPATH'] = '.'
+
+            bzr(cmd_name)
+            # The test suite does not capture stdout for external commands
+            # this is because you have to have a real file object
+            # to pass to Popen(stdout=FOO), and StringIO is not one of those.
+            # (just replacing sys.stdout does not change a spawned objects stdout)
+            #self.assertEquals(bzr(cmd_name), output)
+
+            # Make sure empty path elements are ignored
+            os.environ['BZRPATH'] = os.pathsep
+
+            bzr(cmd_name, retcode=1)
+
+        finally:
+            if oldpath:
+                os.environ['BZRPATH'] = oldpath
 
 
 def listdir_sorted(dir):

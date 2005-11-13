@@ -100,12 +100,12 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
         branch_from.unlock()
 
 
-def _get_truncated_history(branch_from, revision):
+def _get_truncated_history(branch_from, revision_id):
     history = branch_from.revision_history()
-    if revision is None:
+    if revision_id is None:
         return history
     try:
-        idx = history.index(revision)
+        idx = history.index(revision_id)
     except ValueError:
         raise InvalidRevisionId(revision_id=revision, branch=branch_from)
     return history[:idx+1]

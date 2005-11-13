@@ -133,7 +133,7 @@ class NoWorkingTree(BzrNewError):
     def __init__(self, base):
         BzrNewError.__init__(self)
         self.base = base
-        
+
 
 class BzrCommandError(BzrError):
     # Error from malformed user command
