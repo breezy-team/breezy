@@ -626,3 +626,21 @@ class FunctionalMergeTest(TestCaseInTempDir):
         self.assert_(os.path.lexists('a/file'))
         self.assert_(os.path.lexists('a/file.moved'))
         self.assertEqual(a.working_tree().pending_merges(), [b.last_revision()])
+
+    def test_merge_deleted_conflicts(self):
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/file', 'wb').write('contents\n')
+        a.add('file')
+        a.working_tree().commit('a_revision', allow_pointless=False)
+        del a
+        self.run_bzr('branch', 'a', 'b')
+        a = Branch.open('a')
+        os.remove('a/file')
+        a.working_tree().commit('removed file', allow_pointless=False)
+        file('b/file', 'wb').write('changed contents\n')
+        b = Branch.open('b')
+        b.working_tree().commit('changed file', allow_pointless=False)
+        merge(['a', -1], ['a', 1], this_dir='b')
+        self.failIf(os.path.lexists('b/file'))
+
