@@ -28,12 +28,13 @@ from bzrlib.branch import Branch
 class TestBoundBranches(TestCaseInTempDir):
     
     def create_branches(self):
+        bzr = self.run_bzr
         self.build_tree(['base/', 'base/a', 'base/b'])
 
         os.chdir('base')
-        self.run_bzr('init')
-        self.run_bzr('add')
-        self.run_bzr('commit', '-m', 'init')
+        bzr('init')
+        bzr('add')
+        bzr('commit', '-m', 'init')
 
         os.chdir('..')
 
@@ -50,7 +51,7 @@ class TestBoundBranches(TestCaseInTempDir):
         if loc is not None:
             cwd = os.getcwd()
             os.chdir(loc)
-        self.assertEquals(self.capture('bzr revno').strip(), str(val))
+        self.assertEquals(self.capture('revno').strip(), str(val))
         if loc is not None:
             os.chdir(cwd)
 
@@ -113,17 +114,16 @@ class TestBoundBranches(TestCaseInTempDir):
         self.check_revno(3)
 
     def test_double_binding(self):
-        # The behavior of this test is under debate
         bzr = self.run_bzr
         self.create_branches()
 
         bzr('branch', 'child', 'child2')
         os.chdir('child2')
 
-        bzr('bind', '../child', retcode=1)
+        # Double binding succeeds, but committing to child2 should fail
+        bzr('bind', '../child')
 
-        # The binding should fail, because child is bound
-        self.failIf(os.path.lexists('.bzr/bound'))
+        bzr('commit', '-m', 'child2', '--unchanged', retcode=1)
 
     def test_unbinding(self):
         bzr = self.run_bzr
@@ -149,6 +149,7 @@ class TestBoundBranches(TestCaseInTempDir):
         # It is not possible to commit to a branch
         # which is bound to a branch which is bound
         bzr = self.run_bzr
+        self.create_branches()
         bzr('branch', 'base', 'newbase')
         os.chdir('base')
         
@@ -214,9 +215,9 @@ class TestBoundBranches(TestCaseInTempDir):
         bzr('bind', '../base')
 
         # After binding, the revision history should be identical
-        child_rh = self.capture('bzr revision-history')
+        child_rh = self.capture('revision-history')
         os.chdir('../base')
-        base_rh = self.capture('bzr revision-history')
+        base_rh = self.capture('revision-history')
         self.assertEquals(child_rh, base_rh)
 
     def test_bind_parent_ahead(self):

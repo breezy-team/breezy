@@ -207,6 +207,15 @@ class StrictCommitFailed(Exception):
 
 class CannotBind(BzrNewError):
     """Cannot bind: %(msg)s"""
+    def __init__(self, msg):
+        BzrNewError.__init__(self)
+        self.msg = msg
+
+class CannotInstallRevisions(BzrNewError):
+    """Cannot install revisions: %(msg)s"""
+    def __init__(self, msg):
+        BzrNewError.__init__(self)
+        self.msg = msg
 
 class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):

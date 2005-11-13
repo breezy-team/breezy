@@ -628,7 +628,12 @@ class _Branch(Branch):
     def set_revision_history(self, rev_history):
         bound_loc = self.get_bound_location()
         if bound_loc is not None:
-            raise NotImplementedError('Adding revisions to a bound branch not implemented yet')
+            # TODO: At this point, we could get a NotBranchError
+            # because we can't connect to the remote location.
+            # How do we distinguish this from a remote branch
+            # which has been deleted?
+            rev_history = self._update_remote_location(bound_loc,
+                    rev_history[-1])
         self.put_controlfile('revision-history', '\n'.join(rev_history))
 
     def has_revision(self, revision_id):
@@ -845,10 +850,10 @@ class _Branch(Branch):
             self.append_revision(*pullable_revs)
 
     def pullable_revisions(self, other, stop_revision):
-        other_revno = other.revision_id_to_revno(stop_revision)
         try:
+            other_revno = other.revision_id_to_revno(stop_revision)
             return self.missing_revisions(other, other_revno)
-        except DivergedBranches, e:
+        except (DivergedBranches, errors.NoSuchRevision), e:
             try:
                 pullable_revs = get_intervening_revisions(self.last_revision(),
                                                           stop_revision, self)
@@ -1111,7 +1116,7 @@ class _Branch(Branch):
 
     @needs_write_lock
     def set_bound_location(self, location):
-        self.put_controlfile('bound', StringIO(location+'\n'))
+        self.put_controlfile('bound', location+'\n')
 
     @needs_write_lock
     def bind(self, other):
@@ -1159,6 +1164,23 @@ class _Branch(Branch):
             self._transport.delete(bound_path)
         except NoSuchFile:
             pass
+
+    @needs_read_lock
+    def _update_remote_location(self, other_loc, revision):
+        """Make sure the remote location has the local changes."""
+        from bzrlib.fetch import greedy_fetch
+        mutter('_update_remote_location: %r, %r', other_loc, revision)
+        other = Branch.open(other_loc)
+        bound_loc = other.get_bound_location()
+        if bound_loc is not None:
+            raise errors.CannotInstallRevisions('Remote tree is bound')
+        other.lock_write()
+        try:
+            # update_revisions should also append to the revision history.
+            other.update_revisions(self, stop_revision=revision)
+            return other.revision_history()
+        finally:
+            other.unlock()
 
 
 class ScratchBranch(_Branch):

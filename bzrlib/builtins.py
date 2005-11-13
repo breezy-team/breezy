@@ -547,10 +547,10 @@ class cmd_branch(Command):
             if name:
                 name = StringIO(name)
                 branch.put_controlfile('branch-name', name)
-            if bound:
-                branch.bind(br_from.base)
         finally:
             br_from.unlock()
+        if bound:
+            branch.bind(br_from)
 
 
 class cmd_renames(Command):
