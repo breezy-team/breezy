@@ -239,7 +239,7 @@ class cmd_mkdir(Command):
             os.mkdir(d)
             b, dd = Branch.open_containing(d)
             b.add([dd])
-            print 'added', dd
+            print 'added', d
 
 
 class cmd_relpath(Command):
