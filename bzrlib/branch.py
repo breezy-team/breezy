@@ -1167,7 +1167,17 @@ class _Branch(Branch):
 
     @needs_read_lock
     def _update_remote_location(self, other_loc, revision):
-        """Make sure the remote location has the local changes."""
+        """Make sure the remote location has the local changes.
+
+        :param other_loc: Path to the other location
+        :param revision: Revision which needs to inserted
+                         into the remote tree. (plus ancestry)
+        :return: The remote revision_history
+
+        TODO: update_revisions is too expensive when we know 
+              what the real history should be most of the time,
+              as it has to trace ancestry.
+        """
         from bzrlib.fetch import greedy_fetch
         mutter('_update_remote_location: %r, %r', other_loc, revision)
         other = Branch.open(other_loc)
