@@ -239,8 +239,10 @@ class cmd_mkdir(Command):
             os.mkdir(d)
             if not b:
                 b = Branch.open_containing(d)[0]
-            b.add([d])
-            print 'added', d
+                tree = b.working_tree()
+            dd = tree.relpath(d)
+            b.add([dd])
+            print 'added', dd
 
 
 class cmd_relpath(Command):

@@ -53,6 +53,33 @@ class TestVersioning(TestCaseInTempDir):
         self.assertEquals(delta.added[0][0], 'foo')
         self.failIf(delta.modified)
 
+    def test_mkdir_in_subdir(self):
+        """'bzr mkdir' operation in subdirectory"""
+
+        self.run_bzr('init')
+        self.run_bzr('mkdir', 'dir')
+        self.assert_(os.path.isdir('dir'))
+
+        os.chdir('dir')
+        self.log('Run mkdir in subdir')
+        self.run_bzr('mkdir', 'subdir')
+        self.assert_(os.path.isdir('subdir'))
+        os.chdir('..')
+
+        from bzrlib.diff import compare_trees
+        from bzrlib.branch import Branch
+        b = Branch.open('.')
+        
+        delta = compare_trees(b.basis_tree(), b.working_tree())
+
+        self.log('delta.added = %r' % delta.added)
+
+        self.assertEquals(len(delta.added), 2)
+        self.assertEquals(delta.added[0][0], 'dir')
+        self.assertEquals(delta.added[1][0], os.path.join('dir','subdir'))
+        self.failIf(delta.modified)
+
+
     def test_branch_add_in_unversioned(self):
         """Try to add a file in an unversioned directory.
 
