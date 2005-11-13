@@ -28,6 +28,7 @@ from bzrlib.commands import Command, display_command
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
 from bzrlib.errors import DivergedBranches, NoSuchFile, NoWorkingTree
+import bzrlib.errors as errors
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
@@ -1231,6 +1232,8 @@ class cmd_commit(Command):
         except StrictCommitFailed:
             raise BzrCommandError("Commit refused because there are unknown "
                                   "files in the working tree.")
+        except errors.CannotInstallRevisions, e:
+            raise BzrCommandError(e.msg)
 
 
 class cmd_check(Command):
