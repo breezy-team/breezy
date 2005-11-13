@@ -235,6 +235,19 @@ class TestBoundBranches(TestCaseInTempDir):
         bzr('bind', '../base')
 
         self.check_revno(2)
+        bzr('unbind')
+
+        # Check and make sure it also works if parent is ahead multiple
+        os.chdir('../base')
+        bzr('commit', '-m', 'base 3', '--unchanged')
+        bzr('commit', '-m', 'base 4', '--unchanged')
+        bzr('commit', '-m', 'base 5', '--unchanged')
+        self.check_revno(5)
+
+        os.chdir('../child')
+        self.check_revno(2)
+        bzr('bind')
+        self.check_revno(5)
 
     def test_bind_child_ahead(self):
         bzr = self.run_bzr
@@ -248,4 +261,15 @@ class TestBoundBranches(TestCaseInTempDir):
 
         bzr('bind', '../base')
         self.check_revno(2, '../base')
+
+        # Check and make sure it also works if child is ahead multiple
+        bzr('unbind')
+        bzr('commit', '-m', 'child 3', '--unchanged')
+        bzr('commit', '-m', 'child 4', '--unchanged')
+        bzr('commit', '-m', 'child 5', '--unchanged')
+        self.check_revno(5)
+
+        self.check_revno(2, '../base')
+        bzr('bind')
+        self.check_revno(5, '../base')
 
