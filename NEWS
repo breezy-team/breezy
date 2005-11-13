@@ -24,6 +24,9 @@ UNRELEASED CHANGES
     * Fix bug in reporting http errors that don't have an http error code.
       (Martin Pool)
 
+    * Stores with some compressed texts and some uncompressed texts are now
+      able to be used. (John A Meinel)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  

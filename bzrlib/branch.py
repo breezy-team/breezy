@@ -44,7 +44,6 @@ from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
 from bzrlib.store import copy_all
-from bzrlib.store.compressed_text import CompressedTextStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.weave import WeaveStore
 from bzrlib.testament import Testament
@@ -237,12 +236,9 @@ class _Branch(Branch):
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
             relpath = self._rel_controlfilename(name)
-            if compressed:
-                store = CompressedTextStore(self._transport.clone(relpath),
-                                            prefixed=prefixed)
-            else:
-                store = TextStore(self._transport.clone(relpath),
-                                  prefixed=prefixed)
+            store = TextStore(self._transport.clone(relpath),
+                              prefixed=prefixed,
+                              compressed=compressed)
             #if self._transport.should_cache():
             #    cache_path = os.path.join(self.cache_root, name)
             #    os.mkdir(cache_path)
