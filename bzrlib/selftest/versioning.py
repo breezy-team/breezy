@@ -80,6 +80,44 @@ class TestVersioning(TestCaseInTempDir):
         self.failIf(delta.modified)
 
 
+    def test_mkdir_w_nested_trees(self):
+        """'bzr mkdir' with nested trees"""
+
+        self.run_bzr('init')
+        os.mkdir('a')
+        os.chdir('a')
+        self.run_bzr('init')
+        os.mkdir('b')
+        os.chdir('b')
+        self.run_bzr('init')
+        os.chdir('../..')
+
+        self.run_bzr('mkdir', 'dir', 'a/dir', 'a/b/dir')
+        self.failUnless(os.path.isdir('dir'))
+        self.failUnless(os.path.isdir('a/dir'))
+        self.failUnless(os.path.isdir('a/b/dir'))
+
+        from bzrlib.diff import compare_trees
+        b = Branch.open('.')
+        b_a = Branch.open('a')
+        b_b = Branch.open('a/b')
+        
+        delta = compare_trees(b.basis_tree(), b.working_tree())
+        self.assertEquals(len(delta.added), 1)
+        self.assertEquals(delta.added[0][0], 'dir')
+        self.failIf(delta.modified)
+
+        delta = compare_trees(b_a.basis_tree(), b_a.working_tree())
+        self.assertEquals(len(delta.added), 1)
+        self.assertEquals(delta.added[0][0], 'dir')
+        self.failIf(delta.modified)
+
+        delta = compare_trees(b_b.basis_tree(), b_b.working_tree())
+        self.assertEquals(len(delta.added), 1)
+        self.assertEquals(delta.added[0][0], 'dir')
+        self.failIf(delta.modified)
+
+
     def test_branch_add_in_unversioned(self):
         """Try to add a file in an unversioned directory.
 

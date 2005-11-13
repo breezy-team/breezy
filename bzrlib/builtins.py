@@ -237,10 +237,7 @@ class cmd_mkdir(Command):
         
         for d in dir_list:
             os.mkdir(d)
-            if not b:
-                b = Branch.open_containing(d)[0]
-                tree = b.working_tree()
-            dd = tree.relpath(d)
+            b, dd = Branch.open_containing(d)
             b.add([dd])
             print 'added', dd
 
