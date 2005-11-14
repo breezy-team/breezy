@@ -637,7 +637,7 @@ class _Branch(Branch):
                                                            rev_history)
             except DivergedBranches:
                 raise errors.CannotInstallRevisions('Remote tree has commits.'
-                            ' Use bzr pull to come up to date')
+                            ' Use bzr update to come up to date')
         self.put_controlfile('revision-history', '\n'.join(rev_history))
 
     def has_revision(self, revision_id):
