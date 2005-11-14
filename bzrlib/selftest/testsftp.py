@@ -54,6 +54,7 @@ class SingleListener (threading.Thread):
         threading.Thread.__init__(self)
         self._callback = callback
         self._socket = socket.socket()
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._socket.bind(('localhost', 0))
         self._socket.listen(1)
         self.port = self._socket.getsockname()[1]
@@ -67,10 +68,6 @@ class SingleListener (threading.Thread):
     
     def stop(self):
         self.stop_event.set()
-        try:
-            self._socket.close()
-        except:
-            pass
         
         
 class TestCaseWithSFTPServer (TestCaseInTempDir):
@@ -96,20 +93,31 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
         TestCaseInTempDir.setUp(self)
         self._root = self.test_dir
 
+    def delayed_setup(self):
+        # some tests are just stubs that call setUp and then immediately call
+        # tearDwon.  so don't create the port listener until get_transport is
+        # called and we know we're in an actual test.
         self._listener = SingleListener(self._run_server)
         self._listener.setDaemon(True)
         self._listener.start()        
         self._sftp_url = 'sftp://foo:bar@localhost:%d/' % (self._listener.port,)
         
     def tearDown(self):
-        self._listener.stop()
+        try:
+            self._listener.stop()
+        except AttributeError:
+            pass
         TestCaseInTempDir.tearDown(self)
 
         
 class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
     readonly = False
+    setup = True
 
     def get_transport(self):
+        if self.setup:
+            self.delayed_setup()
+            self.setup = False
         from bzrlib.transport.sftp import SFTPTransport
         url = self._sftp_url
         return SFTPTransport(url)
