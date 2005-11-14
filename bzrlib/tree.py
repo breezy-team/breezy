@@ -297,7 +297,8 @@ def dir_exporter(tree, dest, root):
     mutter('export version %r' % tree)
     inv = tree.inventory
     for dp, ie in inv.iter_entries():
-        ie.put_on_disk(dest, dp, tree)
+        if dp != ".bzrignore":
+            ie.put_on_disk(dest, dp, tree)
 
 exporters['dir'] = dir_exporter
 
@@ -346,9 +347,10 @@ else:
         mutter('export version %r' % tree)
         inv = tree.inventory
         for dp, ie in inv.iter_entries():
-            mutter("  export {%s} kind %s to %s" % (ie.file_id, ie.kind, dest))
-            item, fileobj = ie.get_tar_item(root, dp, now, tree)
-            ball.addfile(item, fileobj)
+            if dp != ".bzrignore":
+                mutter("  export {%s} kind %s to %s" % (ie.file_id, ie.kind, dest))
+                item, fileobj = ie.get_tar_item(root, dp, now, tree)
+                ball.addfile(item, fileobj)
         ball.close()
 
     exporters['tar'] = tar_exporter
