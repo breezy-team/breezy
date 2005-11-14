@@ -1764,8 +1764,7 @@ class cmd_bind(Command):
             b.bind(b_other)
         except DivergedBranches:
             raise BzrCommandError('These branches have diverged.'
-                                  ' Try merging, and then push the change'
-                                  ' to the remote branch.')
+                                  ' Try merging, and then bind again.')
 
 class cmd_unbind(Command):
     """Bind the current branch to its parent.
