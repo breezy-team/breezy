@@ -360,3 +360,57 @@ else:
     def tbz_exporter(tree, dest, root):
         tar_exporter(tree, dest, root, compression='bz2')
     exporters['tbz2'] = tbz_exporter
+
+
+def zip_exporter(tree, dest, root):
+    """ Export this tree to a new zip file.
+
+    `dest` will be created holding the contents of this tree; if it
+    already exists, it will be overwritten".
+    """
+    import time
+    import zipfile
+
+    now = time.localtime()[:6]
+    mutter('export version %r', tree)
+
+    compression = zipfile.ZIP_DEFLATED
+    zipf = zipfile.ZipFile(dest, "w", compression)
+
+    inv = tree.inventory
+
+    try:
+        for dp, ie in inv.iter_entries():
+
+            file_id = ie.file_id
+            mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
+
+            if ie.kind == "file": 
+                zinfo = zipfile.ZipInfo(
+                            filename=str(os.path.join(root, dp)),
+                            date_time=now)
+                zinfo.compress_type = compression
+                zipf.writestr(zinfo, tree.get_file_text(file_id))
+            elif ie.kind == "directory":
+                zinfo = zipfile.ZipInfo(
+                            filename=str(os.path.join(root, dp)+os.sep),
+                            date_time=now)
+                zinfo.compress_type = compression
+                zipf.writestr(zinfo,'')
+            elif ie.kind == "symlink":
+                zinfo = zipfile.ZipInfo(
+                            filename=str(os.path.join(root, dp+".lnk")),
+                            date_time=now)
+                zinfo.compress_type = compression
+                zipf.writestr(zinfo, ie.symlink_target)
+
+        zipf.close()
+
+    except UnicodeEncodeError:
+        zipf.close()
+        os.remove(dest)
+        from bzrlib.errors import BzrError
+        raise BzrError("Can't export non-ascii filenames to zip")
+#/def zip_exporter(tree, dest, root):
+
+exporters["zip"] = zip_exporter

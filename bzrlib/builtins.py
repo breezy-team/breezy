@@ -1104,8 +1104,18 @@ class cmd_export(Command):
     is found exports to a directory (equivalent to --format=dir).
 
     Root may be the top directory for tar, tgz and tbz2 formats. If none
-    is given, the top directory will be the root name of the file."""
-    # TODO: list known exporters
+    is given, the top directory will be the root name of the file.
+
+    Note: export of tree with non-ascii filenames to zip is not supported.
+
+    Supported formats       Autodetected by extension
+    -----------------       -------------------------
+         dir                            -
+         tar                          .tar
+         tbz2                    .tar.bz2, .tbz2
+         tgz                      .tar.gz, .tgz
+         zip                          .zip
+    """
     takes_args = ['dest']
     takes_options = ['revision', 'format', 'root']
     def run(self, dest, revision=None, format=None, root=None):
@@ -1133,6 +1143,8 @@ class cmd_export(Command):
                 format = "tgz"
             elif ext in (".tar.bz2", ".tbz2"):
                 format = "tbz2"
+            elif ext in (".zip"):
+                format = "zip"
             else:
                 format = "dir"
         t.export(dest, format, root)
