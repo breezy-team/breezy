@@ -1779,6 +1779,25 @@ class cmd_unbind(Command):
         b, relpath = Branch.open_containing('.')
         b.unbind()
 
+class cmd_update(Command):
+    """Update the local tree for checkouts and bound branches.
+    """
+    def run(self):
+        br_local, relpath = Branch.open_containing('.')
+        # TODO: Check here to see if this is a checkout
+        bound_loc = br_local.get_bound_location()
+        if not bound_loc:
+            raise BzrCommandError('Branch %s is not a checkout or a bound branch,'
+                                  ' you probably want pull' % br_local.base)
+
+        br_bound = Branch.open(bound_loc)
+        try:
+            br_local.working_tree().pull(br_bound, overwrite=False)
+        except DivergedBranches:
+            raise BzrCommandError("These branches have diverged."
+                                  "  Try merge.")
+
+
 # these get imported and then picked up by the scan for cmd_*
 # TODO: Some more consistent way to split command definitions across files;
 # we do need to load at least some information about them to know of 

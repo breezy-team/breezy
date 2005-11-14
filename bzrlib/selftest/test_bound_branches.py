@@ -105,7 +105,7 @@ class TestBoundBranches(TestCaseInTempDir):
         open('b', 'wb').write('new b child contents\n')
         bzr('commit', '-m', 'child', retcode=1)
 
-        bzr('pull')
+        bzr('update')
         self.check_revno(2)
 
         bzr('commit', '-m', 'child')
@@ -205,14 +205,11 @@ class TestBoundBranches(TestCaseInTempDir):
         bzr('commit', '-m', 'merged')
         self.check_revno(3)
 
-        # This should also be possible by doing a 'bzr push' to the
-        # base, rather than doing 'bzr pull' from it
-        os.chdir('../base')
-        bzr('pull', '../child')
-        self.check_revno(3)
-
-        os.chdir('../child')
+        # After a merge, trying to bind again should succeed
+        # by pushing the new change to base
         bzr('bind', '../base')
+        self.check_revno(3)
+        self.check_revno(3, '../base')
 
         # After binding, the revision history should be identical
         child_rh = self.capture('revision-history')
