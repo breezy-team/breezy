@@ -325,6 +325,13 @@ class WeaveParentMismatch(WeaveError):
     """Parents are mismatched between two revisions."""
     
 
+class NoSuchExportFormat(BzrNewError):
+    """Export format %(format)r not supported"""
+    def __init__(self, format):
+        BzrNewError.__init__(self)
+        self.format = format
+
+
 class TransportError(BzrError):
     """All errors thrown by Transport implementations should derive
     from this class.

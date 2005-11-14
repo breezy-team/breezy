@@ -26,6 +26,7 @@ import bzrlib
 from bzrlib import BZRDIR
 from bzrlib.commands import Command, display_command
 from bzrlib.branch import Branch
+import bzrlib.errors as errors
 from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
 from bzrlib.errors import DivergedBranches, NoSuchFile, NoWorkingTree
 from bzrlib.option import Option
@@ -1120,6 +1121,7 @@ class cmd_export(Command):
     takes_options = ['revision', 'format', 'root']
     def run(self, dest, revision=None, format=None, root=None):
         import os.path
+        from bzrlib.export import export
         b = Branch.open_containing('.')[0]
         if revision is None:
             rev_id = b.last_revision()
@@ -1128,26 +1130,10 @@ class cmd_export(Command):
                 raise BzrError('bzr export --revision takes exactly 1 argument')
             rev_id = revision[0].in_history(b).rev_id
         t = b.revision_tree(rev_id)
-        arg_root, ext = os.path.splitext(os.path.basename(dest))
-        if ext in ('.gz', '.bz2'):
-            new_root, new_ext = os.path.splitext(arg_root)
-            if new_ext == '.tar':
-                arg_root = new_root
-                ext = new_ext + ext
-        if root is None:
-            root = arg_root
-        if not format:
-            if ext in (".tar",):
-                format = "tar"
-            elif ext in (".tar.gz", ".tgz"):
-                format = "tgz"
-            elif ext in (".tar.bz2", ".tbz2"):
-                format = "tbz2"
-            elif ext in (".zip"):
-                format = "zip"
-            else:
-                format = "dir"
-        t.export(dest, format, root)
+        try:
+            export(t, dest, format, root)
+        except errors.NoSuchExportFormat, e:
+            raise BzrCommandError('Unsupported export format: %s' % e.format)
 
 
 class cmd_cat(Command):
