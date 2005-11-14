@@ -373,7 +373,13 @@ class cmd_pull(Command):
         import errno
         
         br_to = Branch.open_containing('.')[0]
-        stored_loc = br_to.get_parent()
+        bound_loc = br_to.get_bound_location()
+        if bound_loc:
+            br = Branch.open(bound_loc)
+            stored_loc = br.get_parent()
+            del br
+        else:
+            stored_loc = br_to.get_parent()
         if location is None:
             if stored_loc is None:
                 raise BzrCommandError("No pull location known or specified.")
