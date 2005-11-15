@@ -363,6 +363,24 @@ class NoSuchFile(TransportError, IOError):
         TransportError.__init__(self, msg=msg, orig_error=orig_error)
         IOError.__init__(self, errno.ENOENT, self.msg)
 
+class ConnectionError(TransportError, IOError):
+    """
+    A connection problem prevents file retrieval.
+    This does not indicate whether the file exists or not; it indicates that a
+    precondition for requesting the file was not met.
+    """
+
+    # XXX: Is multiple inheritance for exceptions really needed?
+
+    def __str__(self):
+        return 'connection error: ' + self.msg
+
+    def __init__(self, msg=None, orig_error=None):
+        import errno
+        TransportError.__init__(self, msg=msg, orig_error=orig_error)
+        IOError.__init__(self, errno.ENOENT, self.msg)
+
+
 class FileExists(TransportError, OSError):
     """An operation was attempted, which would overwrite an entry,
     but overwritting is not supported.
