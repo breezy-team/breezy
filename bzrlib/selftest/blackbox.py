@@ -24,6 +24,11 @@ rather starts again from the run_bzr function.
 """
 
 
+# XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+# Note: Please don't add new tests here, it's too big and bulky.  Instead add
+# them into small suites for the particular function that's tested.
+
+
 from cStringIO import StringIO
 import os
 import re
