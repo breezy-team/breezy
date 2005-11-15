@@ -120,12 +120,13 @@ def get_root_name(dest):
     for ext in _exporter_extensions:
         if dest.endswith(ext):
             return dest[:-len(ext)]
+    return dest
 
 
 register_lazy_exporter(None, [], 'bzrlib.export.dir_exporter', 'dir_exporter')
 register_lazy_exporter('dir', [], 'bzrlib.export.dir_exporter', 'dir_exporter')
 register_lazy_exporter('tar', ['.tar'], 'bzrlib.export.tar_exporter', 'tar_exporter')
 register_lazy_exporter('tgz', ['.tar.gz', '.tgz'], 'bzrlib.export.tar_exporter', 'tgz_exporter')
-register_lazy_exporter('tbz2', ['.tar.bz2', '.tbz2'], 'bzrlib.export.tar_exporter', 'tbz2_exporter')
+register_lazy_exporter('tbz2', ['.tar.bz2', '.tbz2'], 'bzrlib.export.tar_exporter', 'tbz_exporter')
 register_lazy_exporter('zip', ['.zip'], 'bzrlib.export.zip_exporter', 'zip_exporter')
 

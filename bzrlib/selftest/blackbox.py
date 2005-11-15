@@ -275,9 +275,10 @@ class TestCommands(ExternalBase):
         self.assertEqual(file('../first.gz/hello', 'rt').read(), 'foo')
         self.runbzr('export ../first.bz2 -r 1')
         self.assertEqual(file('../first.bz2/hello', 'rt').read(), 'foo')
+
+        from tarfile import TarFile
         self.runbzr('export ../first.tar -r 1')
         self.assert_(os.path.isfile('../first.tar'))
-        from tarfile import TarFile
         tf = TarFile('../first.tar')
         self.assert_('first/hello' in tf.getnames(), tf.getnames())
         self.assertEqual(tf.extractfile('first/hello').read(), 'foo')
@@ -289,6 +290,7 @@ class TestCommands(ExternalBase):
         self.assert_(os.path.isfile('../first.tar.bz2'))
         self.runbzr('export ../first.tar.tbz2 -r 1')
         self.assert_(os.path.isfile('../first.tar.tbz2'))
+
         from bz2 import BZ2File
         tf = TarFile('../first.tar.tbz2', 
                      fileobj=BZ2File('../first.tar.tbz2', 'r'))
@@ -297,6 +299,21 @@ class TestCommands(ExternalBase):
         self.runbzr('export ../first2.tar -r 1 --root pizza')
         tf = TarFile('../first2.tar')
         self.assert_('pizza/hello' in tf.getnames(), tf.getnames())
+
+        from zipfile import ZipFile
+        self.runbzr('export ../first.zip -r 1')
+        self.failUnlessExists('../first.zip')
+        zf = ZipFile('../first.zip')
+        self.assert_('first/hello' in zf.namelist(), zf.namelist())
+        self.assertEqual(zf.read('first/hello'), 'foo')
+
+        self.runbzr('export ../first2.zip -r 1 --root pizza')
+        zf = ZipFile('../first2.zip')
+        self.assert_('pizza/hello' in zf.namelist(), zf.namelist())
+        
+        self.runbzr('export ../first-zip --format=zip -r 1')
+        zf = ZipFile('../first-zip')
+        self.assert_('first-zip/hello' in zf.namelist(), zf.namelist())
 
     def test_diff(self):
         self.example_branch()
