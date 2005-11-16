@@ -28,7 +28,7 @@ class TestRevisionInfo(TestCaseInTempDir):
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
         """
-        self.assertEquals(self.run_bzr_captured(args, retcode=1)[1], output)
+        self.assertEquals(self.run_bzr_captured(args, retcode=3)[1], output)
 
     def check_output(self, output, *args):
         """Verify that the expected output matches what bzr says.

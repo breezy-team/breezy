@@ -27,7 +27,7 @@ import errno
 
 import bzrlib.status
 from bzrlib.branch import Branch
-from bzrlib.errors import BzrCommandError
+from bzrlib.errors import BzrCommandError, NotConflicted
 from bzrlib.commands import register_command
 from bzrlib.workingtree import CONFLICT_SUFFIXES
 
@@ -71,3 +71,30 @@ class cmd_resolve(bzrlib.commands.Command):
                     print "%s does not exist" % filename
                 else:
                     print "%s is not conflicted" % filename
+
+def restore(filename):
+    """\
+    Restore a conflicted file to the state it was in before merging.
+    Only text restoration supported at present.
+    """
+    conflicted = False
+    try:
+        os.rename(filename + ".THIS", filename)
+        conflicted = True
+    except OSError, e:
+        if e.errno != errno.ENOENT:
+            raise
+    try:
+        os.unlink(filename + ".BASE")
+        conflicted = True
+    except OSError, e:
+        if e.errno != errno.ENOENT:
+            raise
+    try:
+        os.unlink(filename + ".OTHER")
+        conflicted = True
+    except OSError, e:
+        if e.errno != errno.ENOENT:
+            raise
+    if not conflicted:
+        raise NotConflicted(filename)

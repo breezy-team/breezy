@@ -36,7 +36,7 @@ class TestVersioning(TestCaseInTempDir):
         self.run_bzr('mkdir', 'foo')
         self.assert_(os.path.isdir('foo'))
 
-        self.run_bzr('mkdir', 'foo', retcode=2)
+        self.run_bzr('mkdir', 'foo', retcode=3)
 
         from bzrlib.diff import compare_trees
         from bzrlib.branch import Branch

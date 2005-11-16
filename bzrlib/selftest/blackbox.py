@@ -72,11 +72,11 @@ class TestCommands(ExternalBase):
         self.assert_(os.path.exists('subdir1'))
         self.assert_(os.path.exists('subdir1/.bzr'))
 
-        self.runbzr('init subdir2/nothere', retcode=2)
+        self.runbzr('init subdir2/nothere', retcode=3)
         
         os.mkdir('subdir2')
         self.runbzr('init subdir2')
-        self.runbzr('init subdir2', retcode=1)
+        self.runbzr('init subdir2', retcode=3)
 
         self.runbzr('init subdir2/subsubdir1')
         self.assert_(os.path.exists('subdir2/subsubdir1/.bzr'))
@@ -112,15 +112,27 @@ class TestCommands(ExternalBase):
         if bzr_email is not None:
             os.environ['BZREMAIL'] = bzr_email
 
+    def test_nick_command(self):
+        """bzr nick for viewing, setting nicknames"""
+        os.mkdir('me.dev')
+        os.chdir('me.dev')
+        self.runbzr('init')
+        nick = self.runbzr("nick",backtick=True)
+        self.assertEqual(nick, 'me.dev\n')
+        nick = self.runbzr("nick moo")
+        nick = self.runbzr("nick",backtick=True)
+        self.assertEqual(nick, 'moo\n')
+
+
     def test_invalid_commands(self):
-        self.runbzr("pants", retcode=1)
-        self.runbzr("--pants off", retcode=1)
-        self.runbzr("diff --message foo", retcode=1)
+        self.runbzr("pants", retcode=3)
+        self.runbzr("--pants off", retcode=3)
+        self.runbzr("diff --message foo", retcode=3)
 
     def test_empty_commit(self):
         self.runbzr("init")
         self.build_tree(['hello.txt'])
-        self.runbzr("commit -m empty", retcode=1)
+        self.runbzr("commit -m empty", retcode=3)
         self.runbzr("add hello.txt")
         self.runbzr("commit -m added")       
 
@@ -128,7 +140,7 @@ class TestCommands(ExternalBase):
         self.runbzr("init")
         file('foo.c', 'wt').write('int main() {}')
         self.runbzr(['add', 'foo.c'])
-        self.runbzr(["commit", "-m", ""] , retcode=1) 
+        self.runbzr(["commit", "-m", ""] , retcode=3) 
 
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
@@ -145,10 +157,10 @@ class TestCommands(ExternalBase):
         self.runbzr(['add', 'branch/foo.c'])
         self.runbzr(['add', 'branch'])
         # can't commit files in different trees; sane error
-        self.runbzr('commit -m newstuff branch/foo.c .', retcode=1)
+        self.runbzr('commit -m newstuff branch/foo.c .', retcode=3)
         self.runbzr('commit -m newstuff branch/foo.c')
         self.runbzr('commit -m newstuff branch')
-        self.runbzr('commit -m newstuff branch', retcode=1)
+        self.runbzr('commit -m newstuff branch', retcode=3)
 
 
     def test_ignore_patterns(self):
@@ -326,6 +338,10 @@ class TestCommands(ExternalBase):
         self.assert_('\n+hello world!' in output)
         output = self.runbzr('diff -r last:3..last:1', backtick=1, retcode=1)
         self.assert_('\n+baz' in output)
+        file('moo', 'wb').write('moo')
+        self.runbzr('add moo')
+        os.unlink('moo')
+        self.runbzr('diff')
 
     def test_diff_branches(self):
         self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
@@ -341,12 +357,22 @@ class TestCommands(ExternalBase):
                                         'branch1'],
                                        retcode=1)
         self.assertEquals(("=== modified file 'file'\n"
-                           "--- file\n"
-                           "+++ file\n"
+                           "--- file\t\n"
+                           "+++ file\t\n"
                            "@@ -1,1 +1,1 @@\n"
                            "-new content\n"
                            "+contents of branch1/file\n"
                            "\n", ''), output)
+        output = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
+                                       retcode=1)
+        self.assertEqualDiff(("=== modified file 'file'\n"
+                              "--- file\t\n"
+                              "+++ file\t\n"
+                              "@@ -1,1 +1,1 @@\n"
+                              "-new content\n"
+                              "+contents of branch1/file\n"
+                              "\n", ''), output)
+
 
     def test_branch(self):
         """Branch from one branch to another."""
@@ -382,10 +408,10 @@ class TestCommands(ExternalBase):
         os.chdir('../a')
         file('hello', 'wt').write('quuux')
         # We can't merge when there are in-tree changes
-        self.runbzr('merge ../b', retcode=1)
+        self.runbzr('merge ../b', retcode=3)
         self.runbzr(['commit', '-m', "Like an epidemic of u's"])
         self.runbzr('merge ../b -r last:1..last:1 --merge-type blooof',
-                    retcode=1)
+                    retcode=3)
         self.runbzr('merge ../b -r last:1..last:1 --merge-type merge3')
         self.runbzr('revert --no-backup')
         self.runbzr('merge ../b -r last:1..last:1 --merge-type weave')
@@ -445,12 +471,12 @@ class TestCommands(ExternalBase):
         os.chdir('a')
 
         self.example_branch()
-        self.runbzr('pull', retcode=1)
-        self.runbzr('missing', retcode=1)
+        self.runbzr('pull', retcode=3)
+        self.runbzr('missing', retcode=3)
         self.runbzr('missing .')
         self.runbzr('missing')
         self.runbzr('pull')
-        self.runbzr('pull /', retcode=1)
+        self.runbzr('pull /', retcode=3)
         self.runbzr('pull')
 
         os.chdir('..')
@@ -470,7 +496,7 @@ class TestCommands(ExternalBase):
         os.chdir('../b')
         self.runbzr('commit -m blah3 --unchanged')
         # no overwrite
-        self.runbzr('pull ../a', retcode=1)
+        self.runbzr('pull ../a', retcode=3)
         os.chdir('..')
         self.runbzr('branch b overwriteme')
         os.chdir('overwriteme')
@@ -510,7 +536,7 @@ class TestCommands(ExternalBase):
         open('a', 'wb').write('hello\n')
 
         # Can't supply both
-        bzr('ls --verbose --null', retcode=1)
+        bzr('ls --verbose --null', retcode=3)
 
         ls_equals('a\n')
         ls_equals('?        a\n', '--verbose')
@@ -603,8 +629,8 @@ class TestCommands(ExternalBase):
         os.chdir('a')
         self.runbzr('init')
         self.runbzr('commit -m unchanged --unchanged')
-        self.runbzr('pull', retcode=1)
-        self.runbzr('merge', retcode=1)
+        self.runbzr('pull', retcode=3)
+        self.runbzr('merge', retcode=3)
         self.runbzr('branch . ../b')
         os.chdir('../b')
         self.runbzr('pull')
@@ -621,7 +647,7 @@ class TestCommands(ExternalBase):
         os.chdir('../b')
         self.runbzr('pull')
         os.chdir('../d')
-        self.runbzr('pull', retcode=1)
+        self.runbzr('pull', retcode=3)
         self.runbzr('pull ../a --remember')
         self.runbzr('pull')
         
@@ -649,12 +675,12 @@ class TestCommands(ExternalBase):
     def test_unknown_command(self):
         """Handling of unknown command."""
         out, err = self.run_bzr_captured(['fluffy-badger'],
-                                         retcode=1)
+                                         retcode=3)
         self.assertEquals(out, '')
         err.index('unknown command')
 
-    def test_conflicts(self):
-        """Handling of merge conflicts"""
+    def create_conflicts(self):
+        """Create a conflicted tree"""
         os.mkdir('base')
         os.chdir('base')
         file('hello', 'wb').write("hi world")
@@ -674,6 +700,41 @@ class TestCommands(ExternalBase):
         file('question', 'wb').write("What do you get when you multiply six"
                                    "times nine?")
         self.runbzr('commit -m this')
+
+    def test_remerge(self):
+        """Remerge command works as expected"""
+        self.create_conflicts()
+        self.runbzr('merge ../other --show-base', retcode=1)
+        conflict_text = file('hello').read()
+        assert '|||||||' in conflict_text
+        assert 'hi world' in conflict_text
+        self.runbzr('remerge', retcode=1)
+        conflict_text = file('hello').read()
+        assert '|||||||' not in conflict_text
+        assert 'hi world' not in conflict_text
+        os.unlink('hello.OTHER')
+        self.runbzr('remerge hello --merge-type weave', retcode=1)
+        assert os.path.exists('hello.OTHER')
+        file_id = self.runbzr('file-id hello')
+        file_id = self.runbzr('file-id hello.THIS', retcode=3)
+        self.runbzr('remerge --merge-type weave', retcode=1)
+        assert os.path.exists('hello.OTHER')
+        assert not os.path.exists('hello.BASE')
+        assert '|||||||' not in conflict_text
+        assert 'hi world' not in conflict_text
+        self.runbzr('remerge . --merge-type weave --show-base', retcode=3)
+        self.runbzr('remerge . --merge-type weave --reprocess', retcode=3)
+        self.runbzr('remerge . --show-base --reprocess', retcode=3)
+        self.runbzr('remerge hello --show-base', retcode=1)
+        self.runbzr('remerge hello --reprocess', retcode=1)
+        self.runbzr('resolve --all')
+        self.runbzr('commit -m done',)
+        self.runbzr('remerge', retcode=3)
+
+
+    def test_conflicts(self):
+        """Handling of merge conflicts"""
+        self.create_conflicts()
         self.runbzr('merge ../other --show-base', retcode=1)
         conflict_text = file('hello').read()
         self.assert_('<<<<<<<' in conflict_text)
@@ -694,7 +755,7 @@ class TestCommands(ExternalBase):
         self.runbzr('resolve hello')
         result = self.runbzr('conflicts', backtick=1)
         self.assertEquals(result, "question\n")
-        self.runbzr('commit -m conflicts', retcode=1)
+        self.runbzr('commit -m conflicts', retcode=3)
         self.runbzr('resolve --all')
         result = self.runbzr('conflicts', backtick=1)
         self.runbzr('commit -m conflicts')
@@ -744,7 +805,7 @@ class TestCommands(ExternalBase):
         self.example_branch()
 
         # with no push target, fail
-        self.runbzr('push', retcode=1)
+        self.runbzr('push', retcode=3)
         # with an explicit target work
         self.runbzr('push ../output-branch')
         # with an implicit target work
@@ -764,16 +825,17 @@ class TestCommands(ExternalBase):
         self.runbzr('commit --unchanged -m unchanged')
         os.chdir('../my-branch')
         # cannot push now
-        self.runbzr('push', retcode=1)
+        self.runbzr('push', retcode=3)
         # and there are difference
         self.runbzr('missing ../output-branch', retcode=1)
+        self.runbzr('missing --verbose ../output-branch', retcode=1)
         # but we can force a push
         self.runbzr('push --overwrite')
         # nothing missing
         self.runbzr('missing ../output-branch')
         
         # pushing to a new dir with no parent should fail
-        self.runbzr('push ../missing/new-branch', retcode=1)
+        self.runbzr('push ../missing/new-branch', retcode=3)
         # unless we provide --create-prefix
         self.runbzr('push --create-prefix ../missing/new-branch')
         # nothing missing
@@ -845,13 +907,13 @@ class OldTests(ExternalBase):
         runbzr("help st")
         runbzr("help")
         runbzr("help commands")
-        runbzr("help slartibartfast", 1)
+        runbzr("help slartibartfast", 3)
 
         out = capture("help ci")
         out.index('aliases: ')
 
         progress("can't rename unversioned file")
-        runbzr("rename test.txt new-test.txt", 1)
+        runbzr("rename test.txt new-test.txt", 3)
 
         progress("adding a file")
 
@@ -871,9 +933,9 @@ class OldTests(ExternalBase):
 
         progress("more complex renames")
         os.mkdir("sub1")
-        runbzr("rename hello.txt sub1", 1)
-        runbzr("rename hello.txt sub1/hello.txt", 1)
-        runbzr("move hello.txt sub1", 1)
+        runbzr("rename hello.txt sub1", 3)
+        runbzr("rename hello.txt sub1/hello.txt", 3)
+        runbzr("move hello.txt sub1", 3)
 
         runbzr("add sub1")
         runbzr("rename sub1 sub2")
@@ -931,7 +993,7 @@ class OldTests(ExternalBase):
         runbzr('log')
         runbzr('log -v')
         runbzr('log -v --forward')
-        runbzr('log -m', retcode=1)
+        runbzr('log -m', retcode=3)
         log_out = capture('log -m commit')
         self.assert_("this is my new commit\n  and" in log_out)
         self.assert_("rename nested" not in log_out)
@@ -1078,7 +1140,7 @@ class HttpTests(TestCaseWithWebserver):
         branch.commit('add file', rev_id='A')
         url = self.get_remote_url('branch/file')
         output = self.capture('log %s' % url)
-        self.assertEqual(7, len(output.split('\n')))
+        self.assertEqual(8, len(output.split('\n')))
         
 
 

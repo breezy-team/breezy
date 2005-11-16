@@ -238,16 +238,19 @@ def format_exception_short(exc_info):
     exc_info - typically an exception from sys.exc_info()
     """
     exc_type, exc_object, exc_tb = exc_info
-    if exc_type is None:
-        return '(no exception)'
-    if isinstance(exc_object, BzrNewError):
-        return str(exc_object)
-    else:
-        import traceback
-        tb = traceback.extract_tb(exc_tb)
-        msg = '%s: %s' % (exc_type, exc_object)
-        if msg[-1] == '\n':
-            msg = msg[:-1]
-        if tb:
-            msg += '\n  at %s line %d\n  in %s' % (tb[-1][:3])
-        return msg
+    try:
+        if exc_type is None:
+            return '(no exception)'
+        if isinstance(exc_object, BzrNewError):
+            return str(exc_object)
+        else:
+            import traceback
+            tb = traceback.extract_tb(exc_tb)
+            msg = '%s: %s' % (exc_type, exc_object)
+            if msg[-1] == '\n':
+                msg = msg[:-1]
+            if tb:
+                msg += '\n  at %s line %d\n  in %s' % (tb[-1][:3])
+            return msg
+    except:
+        return '(error formatting exception of type %s)' % exc_type

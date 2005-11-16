@@ -191,6 +191,34 @@ class TestBranch(TestCaseInTempDir):
         branch = Branch.initialize('.')
         self.assertEqual('.bzr', branch._rel_controlfilename(''))
 
+    def test_nicks(self):
+        """Branch nicknames"""
+        os.mkdir('bzr.dev')
+        branch = Branch.initialize('bzr.dev')
+        self.assertEqual(branch.nick, 'bzr.dev')
+        os.rename('bzr.dev', 'bzr.ab')
+        branch = Branch.open('bzr.ab')
+        self.assertEqual(branch.nick, 'bzr.ab')
+        branch.nick = "Aaron's branch"
+        branch.nick = "Aaron's branch"
+        self.failUnless(os.path.exists(branch.controlfilename("branch.conf")))
+        self.assertEqual(branch.nick, "Aaron's branch")
+        os.rename('bzr.ab', 'integration')
+        branch = Branch.open('integration')
+        self.assertEqual(branch.nick, "Aaron's branch")
+        branch.nick = u"\u1234"
+        self.assertEqual(branch.nick, u"\u1234")
+
+    def test_commit_nicks(self):
+        """Nicknames are committed to the revision"""
+        os.mkdir('bzr.dev')
+        branch = Branch.initialize('bzr.dev')
+        branch.nick = "My happy branch"
+        branch.commit('My commit respect da nick.')
+        committed = branch.get_revision(branch.last_revision())
+        self.assertEqual(committed.properties["branch-nick"], 
+                         "My happy branch")
+
 
 class TestRemote(TestCaseWithWebserver):
 

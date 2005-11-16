@@ -52,6 +52,7 @@ import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 import bzrlib.xml5
 import bzrlib.ui
+from config import TreeConfig
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -154,6 +155,17 @@ class Branch(object):
         """
         self.cache_root = cache_root
 
+    def _get_nick(self):
+        cfg = self.tree_config()
+        return cfg.get_option(u"nickname", default=self.base.split('/')[-1])
+
+    def _set_nick(self, nick):
+        cfg = self.tree_config()
+        cfg.set_option(nick, "nickname")
+        assert cfg.get_option("nickname") == nick
+
+    nick = property(_get_nick, _set_nick)
+        
     def push_stores(self, branch_to):
         """Copy the content of this branches store to branch_to."""
         raise NotImplementedError('push_stores is abstract')
@@ -1374,6 +1386,25 @@ class BzrBranch(Branch):
         finally:
             f.close()
 
+    def tree_config(self):
+        return TreeConfig(self)
+
+    def check_revno(self, revno):
+        """\
+        Check whether a revno corresponds to any revision.
+        Zero (the NULL revision) is considered valid.
+        """
+        if revno != 0:
+            self.check_real_revno(revno)
+            
+    def check_real_revno(self, revno):
+        """\
+        Check whether a revno corresponds to a real revision.
+        Zero (the NULL revision) is considered invalid
+        """
+        if revno < 1 or revno > self.revno():
+            raise InvalidRevisionNumber(revno)
+        
     def sign_revision(self, revision_id, gpg_strategy):
         """See Branch.sign_revision."""
         plaintext = Testament.from_revision(self, revision_id).as_short_text()
