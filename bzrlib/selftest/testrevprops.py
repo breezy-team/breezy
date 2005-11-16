@@ -9,6 +9,7 @@ class TestRevProps(TestCaseInTempDir):
     def test_simple_revprops(self):
         """Simple revision properties"""
         b = Branch.initialize('.')
+        b.nick = 'Nicholas'
         props = dict(flavor='choc-mint', 
                      condiment='orange\n  mint\n\tcandy')
         b.commit(message='initial null commit', 
@@ -19,7 +20,8 @@ class TestRevProps(TestCaseInTempDir):
         self.assertTrue('flavor' in rev.properties)
         self.assertEquals(rev.properties['flavor'], 'choc-mint')
         self.assertEquals(sorted(rev.properties.items()),
-                          [('condiment', 'orange\n  mint\n\tcandy'),
+                          [('branch-nick', 'Nicholas'), 
+                           ('condiment', 'orange\n  mint\n\tcandy'),
                            ('flavor', 'choc-mint')])
 
     def test_invalid_revprops(self):

@@ -225,7 +225,7 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
 
     mutter('start looking for new files')
     for file_id in new_inv:
-        if file_id in old_inv:
+        if file_id in old_inv or file_id not in new_tree:
             continue
         kind = new_inv.get_file_kind(file_id)
         if kind == 'root_directory':

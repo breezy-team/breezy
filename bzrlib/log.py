@@ -342,52 +342,40 @@ class LogFormatter(object):
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
 
+    def short_committer(self, rev):
+        return re.sub('<.*@.*>', '', rev.committer).strip(' ')
+    
     
 class LongLogFormatter(LogFormatter):
     def show(self, revno, rev, delta):
-        from osutils import format_date
-
-        to_file = self.to_file
-
-        print >>to_file,  '-' * 60
-        print >>to_file,  'revno:', revno
-        if self.show_ids:
-            print >>to_file,  'revision-id:', rev.revision_id
-
-            for parent_id in rev.parent_ids:
-                print >>to_file, 'parent:', parent_id
-            
-        print >>to_file,  'committer:', rev.committer
-
-        date_str = format_date(rev.timestamp,
-                               rev.timezone or 0,
-                               self.show_timezone)
-        print >>to_file,  'timestamp: %s' % date_str
-
-        print >>to_file,  'message:'
-        if not rev.message:
-            print >>to_file,  '  (no message)'
-        else:
-            for l in rev.message.split('\n'):
-                print >>to_file,  '  ' + l
-
-        if delta != None:
-            delta.show(to_file, self.show_ids)
+        return self._show_helper(revno=revno, rev=rev)
 
     def show_merge(self, rev):
+        return self._show_helper(rev=rev, indent='    ', merged=True)
+
+    def _show_helper(self, rev=None, revno=None, indent='', merged=False):
         from osutils import format_date
 
         to_file = self.to_file
 
-        indent = '    '
 
         print >>to_file,  indent+'-' * 60
-        print >>to_file,  indent+'merged:', rev.revision_id
+        if revno is not None:
+            print >>to_file,  'revno:', revno
+        if merged:
+            print >>to_file,  indent+'merged:', rev.revision_id
+        elif self.show_ids:
+            print >>to_file,  indent+'revision-id:', rev.revision_id
         if self.show_ids:
             for parent_id in rev.parent_ids:
                 print >>to_file, indent+'parent:', parent_id
             
         print >>to_file,  indent+'committer:', rev.committer
+        try:
+            print >>to_file, indent+'branch nick: %s' % \
+                rev.properties['branch-nick']
+        except KeyError:
+            pass
 
         date_str = format_date(rev.timestamp,
                                rev.timezone or 0,
@@ -409,9 +397,10 @@ class ShortLogFormatter(LogFormatter):
         to_file = self.to_file
         date_str = format_date(rev.timestamp, rev.timezone or 0,
                             self.show_timezone)
-        print >>to_file, "%5d %s\t%s" % (revno, rev.committer,
+        print >>to_file, "%5d %s\t%s" % (revno, self.short_committer(rev),
                 format_date(rev.timestamp, rev.timezone or 0,
-                            self.show_timezone))
+                            self.show_timezone, date_fmt="%Y-%m-%d",
+                           show_offset=False))
         if self.show_ids:
             print >>to_file,  '      revision-id:', rev.revision_id
         if not rev.message:
@@ -444,9 +433,6 @@ class LineLogFormatter(LogFormatter):
         else:
             return rev.message
 
-    def short_committer(self, rev):
-        return re.sub('<.*@.*>', '', rev.committer).strip(' ')
-    
     def show(self, revno, rev, delta):
         print >> self.to_file, self.log_string(rev, 79) 
 

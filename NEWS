@@ -5,6 +5,8 @@ UNRELEASED CHANGES
     * "bzr INIT dir" now initializes the specified directory, and creates 
       it if it does not exist.  (John Arbash Meinel)
 
+    * New remerge command (Aaron Bentley)
+
     * Better zsh completion script.  (Steve Borho)
 
     * 'bzr diff' now returns 1 when there are changes in the working 
@@ -15,14 +17,30 @@ UNRELEASED CHANGES
       location in the ~/.bazaar/branches.conf configuration file.
       (Robert Collins)
 
+    * Test directories are only kept if the test fails and the user requests
+      that they be kept.
+
+    * Tweaks to short log printing
+
+    * Added branch nicks, new nick command, printing them in log output
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
 
     * Fix bugs in running bzr with 'python -O'.  (Martin Pool)
 
+    * Error when run with -OO
+
     * Fix bug in reporting http errors that don't have an http error code.
       (Martin Pool)
+
+    * Handle more cases of pipe errors in display commands
+
+    * Change status to 3 for all errors
+
+    * Files that are added and unlinked before committing are completely
+      ignored by diff and status
 
   TESTING:
 

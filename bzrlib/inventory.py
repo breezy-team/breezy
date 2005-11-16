@@ -647,7 +647,7 @@ class InventoryLink(InventoryEntry):
 
     def _put_in_tar(self, item, tree):
         """See InventoryEntry._put_in_tar."""
-        iterm.type = tarfile.SYMTYPE
+        item.type = tarfile.SYMTYPE
         fileobj = None
         item.size = 0
         item.mode = 0755
