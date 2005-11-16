@@ -157,6 +157,15 @@ class NotBranchError(BzrNewError):
         self.path = path
 
 
+class FileInWrongBranch(BzrNewError):
+    """File %(path)s in not in branch %(branch_base)s."""
+    def __init__(self, branch, path):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.branch_base = branch.base
+        self.path = path
+
+
 class UnsupportedFormatError(BzrError):
     """Specified path is a bzr branch that we cannot read."""
     def __str__(self):
