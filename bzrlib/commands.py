@@ -510,14 +510,18 @@ def run_bzr(argv):
     return ret or 0
 
 def display_command(func):
+    """Decorator that suppresses pipe/interrupt errors."""
     def ignore_pipe(*args, **kwargs):
         try:
             result = func(*args, **kwargs)
             sys.stdout.flush()
             return result
         except IOError, e:
+            if not hasattr(e, 'errno'):
+                raise
             if e.errno != errno.EPIPE:
                 raise
+            pass
         except KeyboardInterrupt:
             pass
     return ignore_pipe
