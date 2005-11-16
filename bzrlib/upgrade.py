@@ -68,21 +68,9 @@
 # versions.
 
 
-# TODO: Don't create a progress bar here, have it passed by the caller.  
-# At least do it from the UI factory.
-
-if False:
-    try:
-        import psyco
-        psyco.full()
-    except ImportError:
-        pass
-
-
 import os
 import tempfile
 import sys
-import logging
 import shutil
 
 from bzrlib.branch import Branch, find_branch
@@ -95,7 +83,7 @@ from bzrlib.ui import ui_factory
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
-from bzrlib.trace import mutter, note, warning, enable_default_logging
+from bzrlib.trace import mutter, note, warning
 from bzrlib.osutils import sha_strings, sha_string
 
 

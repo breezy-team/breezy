@@ -476,7 +476,7 @@ class HttpTransportTest(TestCaseWithWebserver, TestTransportMixIn):
 
     def get_bogus_transport(self):
         from bzrlib.transport.http import HttpTransport
-        return HttpTransport('http://www.example.com')
+        return HttpTransport('http://jasldkjsalkdjalksjdkljasd')
 
 
 class TestMemoryTransport(TestCase):
