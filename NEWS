@@ -22,7 +22,11 @@ UNRELEASED CHANGES
 
     * Tweaks to short log printing
 
-    * Added branch nicks, new nick command, printing them in log output
+    * Added branch nicks, new nick command, printing them in log output. 
+      (Aaron Bentley)
+
+    * If $BZR_PDB is set, pop into the debugger when an uncaught exception 
+      occurs.  (Martin Pool)
 
   BUG FIXES:
 
