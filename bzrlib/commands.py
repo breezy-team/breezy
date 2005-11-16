@@ -551,10 +551,11 @@ def run_bzr_catch_errors(argv):
             bzrlib.trace.note('broken pipe')
             return 3
         else:
-            if os.environ.get('BZR_PDB'):
-                import pdb
-                pdb.pm()
             bzrlib.trace.log_exception()
+            if os.environ.get('BZR_PDB'):
+                print '**** entering debugger'
+                import pdb
+                pdb.post_mortem(sys.exc_traceback)
             return 3
 
 if __name__ == '__main__':
