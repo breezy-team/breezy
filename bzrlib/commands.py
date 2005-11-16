@@ -541,20 +541,9 @@ def run_bzr_catch_errors(argv):
         finally:
             # do this here inside the exception wrappers to catch EPIPE
             sys.stdout.flush()
-    except BzrCommandError, e:
-        # command line syntax error, etc
-        log_error(str(e))
-        return 3
-    except BzrError, e:
-        bzrlib.trace.log_exception()
-        return 3
-    except AssertionError, e:
-        bzrlib.trace.log_exception('assertion failed: ' + str(e))
-        return 3
-    except KeyboardInterrupt, e:
-        bzrlib.trace.log_exception('interrupted')
-        return 3
     except Exception, e:
+        # used to handle AssertionError and KeyboardInterrupt
+        # specially here, but hopefully they're handled ok by the logger now
         import errno
         if (isinstance(e, IOError) 
             and hasattr(e, 'errno')
@@ -562,8 +551,9 @@ def run_bzr_catch_errors(argv):
             bzrlib.trace.note('broken pipe')
             return 3
         else:
-            ## import pdb
-            ## pdb.pm()
+            if os.environ.get('BZR_PDB'):
+                import pdb
+                pdb.pm()
             bzrlib.trace.log_exception()
             return 3
 
