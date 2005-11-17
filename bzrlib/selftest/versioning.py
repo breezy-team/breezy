@@ -24,10 +24,7 @@ import os
 
 from bzrlib.selftest import BzrTestBase, TestCaseInTempDir
 from bzrlib.branch import Branch
-
-import logging
-logger = logging.getLogger('bzr.test.versioning')
-debug = logger.debug
+from bzrlib.trace import mutter
 
 
 class TestVersioning(TestCaseInTempDir):
@@ -155,9 +152,9 @@ class TestVersioning(TestCaseInTempDir):
 
         The upgrade should be a no-op."""
         b = Branch.open('.')
-        debug('branch has %d revisions', b.revno())
+        mutter('branch has %d revisions', b.revno())
         
-        debug('check branch...')
+        mutter('check branch...')
         from bzrlib.check import check
         check(b, False)
         
@@ -184,7 +181,7 @@ class SubdirCommit(TestCaseInTempDir):
         for fn in ('a/one', 'b/two', 'top'):
             file(fn, 'w').write('new contents')
             
-        debug('start selective subdir commit')
+        mutter('start selective subdir commit')
         run_bzr('commit', 'a', '-m', 'commit a only')
         
         old = b.storage.revision_tree(b.get_rev_id(1))

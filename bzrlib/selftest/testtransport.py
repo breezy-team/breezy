@@ -18,7 +18,8 @@
 import os
 from cStringIO import StringIO
 
-from bzrlib.errors import NoSuchFile, FileExists, TransportNotPossible
+from bzrlib.errors import (NoSuchFile, FileExists, TransportNotPossible,
+                           ConnectionError)
 from bzrlib.selftest import TestCase, TestCaseInTempDir
 from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.transport import memory, urlescape
@@ -450,7 +451,14 @@ class TestTransportMixIn(object):
         # TODO: Test Transport.move
         pass
 
+    def test_connection_error(self):
+        """ConnectionError is raised when connection is impossible"""
+        if not hasattr(self, "get_bogus_transport"):
+            return
+        t = self.get_bogus_transport()
+        self.assertRaises(ConnectionError, t.get, '.bzr/branch')
 
+        
 class LocalTransportTest(TestCaseInTempDir, TestTransportMixIn):
     def get_transport(self):
         from bzrlib.transport.local import LocalTransport
@@ -465,6 +473,10 @@ class HttpTransportTest(TestCaseWithWebserver, TestTransportMixIn):
         from bzrlib.transport.http import HttpTransport
         url = self.get_remote_url('.')
         return HttpTransport(url)
+
+    def get_bogus_transport(self):
+        from bzrlib.transport.http import HttpTransport
+        return HttpTransport('http://jasldkjsalkdjalksjdkljasd')
 
 
 class TestMemoryTransport(TestCase):
@@ -556,4 +568,4 @@ class TestMemoryTransport(TestCase):
         transport.put('bar', StringIO('phowar'))
         self.assertEqual(7, transport.stat('foo').st_size)
         self.assertEqual(6, transport.stat('bar').st_size)
-        
+
