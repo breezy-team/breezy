@@ -53,7 +53,6 @@ from bzrlib.osutils import (appendpath,
                             isdir,
                             pumpfile,
                             splitpath,
-                            realpath,
                             relpath)
 from bzrlib.errors import (BzrCheckError,
                            DivergedBranches,
@@ -176,7 +175,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         if path is None:
             path = os.getcwdu()
-        path = realpath(path)
+        path = os.path.abspath(path)
         tail = ''
         while True:
             try:
