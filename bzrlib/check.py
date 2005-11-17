@@ -64,7 +64,6 @@ class Check(object):
             if not self.branch.revision_store.listable():
                 raise BzrCheckError("Branch must be local")
             self.planned_revisions = set(self.branch.revision_store)
-            revno = 0
             inventoried = set(self.inventory_weave.names())
             awol = self.planned_revisions - inventoried
             if len(awol) > 0:
