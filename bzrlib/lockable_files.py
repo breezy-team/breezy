@@ -4,7 +4,7 @@ import bzrlib.transactions as transactions
 import errors
 from errors import LockError
 
-class ControlFiles(object):
+class LockableFiles(object):
     """
     Object representing a set of control files
     _lock_mode

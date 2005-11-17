@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-from bzrlib.control_files import ControlFiles
+from bzrlib.lockable_files import LockableFiles
 from tree import EmptyTree
 from bzrlib.revision import NULL_REVISION
 from bzrlib.store.weave import WeaveStore
@@ -49,7 +49,7 @@ def needs_write_lock(unbound):
 class RevisionStorage(object):
     def __init__(self, transport, branch_format):
         object.__init__(self)
-        self.control_files = ControlFiles(transport, 'storage-lock')
+        self.control_files = LockableFiles(transport, 'storage-lock')
         def get_weave(name, prefixed=False):
             relpath = self.control_files._rel_controlfilename(name)
             weave_transport = self.control_files.make_transport(relpath)
