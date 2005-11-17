@@ -42,6 +42,7 @@ class Check(object):
 
     def __init__(self, branch):
         self.branch = branch
+        self.inventory_weave = branch._get_inventory_weave()
         self.checked_text_cnt = 0
         self.checked_rev_cnt = 0
         self.ghosts = []
@@ -54,24 +55,23 @@ class Check(object):
 
     def check(self):
         self.branch.lock_read()
+        self.progress = bzrlib.ui.ui_factory.progress_bar()
         try:
             self.history = self.branch.revision_history()
             if not len(self.history):
                 # nothing to see here
                 return
-            self.planned_revisions = self.branch.get_ancestry(self.history[-1])
-            self.planned_revisions.remove(None)
+            if not self.branch.revision_store.listable():
+                raise BzrCheckError("Branch must be local")
+            self.planned_revisions = set(self.branch.revision_store)
             revno = 0
     
-            self.progress = bzrlib.ui.ui_factory.progress_bar()
-            while revno < len(self.planned_revisions):
-                rev_id = self.planned_revisions[revno]
-                self.progress.update('checking revision', revno,
+            for revno, rev_id in enumerate(self.planned_revisions):
+                self.progress.update('checking revision', revno+1,
                                      len(self.planned_revisions))
-                revno += 1
                 self.check_one_rev(rev_id)
-            self.progress.clear()
         finally:
+            self.progress.clear()
             self.branch.unlock()
 
     def report_results(self, verbose):
@@ -111,6 +111,9 @@ class Check(object):
         """
 
         # mutter('    revision {%s}' % rev_id)
+        if rev_id not in self.inventory_weave:
+            raise BzrCheckError('Stored revision missing from inventory {%s}'
+                                % rev_id)
         branch = self.branch
         try:
             rev_history_position = self.history.index(rev_id)
