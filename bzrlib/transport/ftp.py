@@ -41,6 +41,17 @@ from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 
 
+_FTP_cache = {}
+def _find_FTP(hostname, username, password, is_active):
+    """Find an ftplib.FTP instance attached to this triplet."""
+    key = "%s|%s|%s|%s" % (hostname, username, password, is_active)
+    if key not in _FTP_cache:
+        mutter("Constructing FTP instance against %r" % key)
+        _FTP_cache[key] = ftplib.FTP(hostname, username, password)
+        _FTP_cache[key].set_pasv(not is_active)
+    return _FTP_cache[key]    
+
+
 class FtpTransportError(TransportError):
     pass
 
@@ -74,7 +85,6 @@ class FtpTransport(Transport):
             self._query, self._fragment) = urlparse.urlparse(self.base)
         self._FTP_instance = _provided_instance
 
-
     def _get_FTP(self):
         """Return the ftplib.FTP instance for this object."""
         if self._FTP_instance is not None:
@@ -89,9 +99,8 @@ class FtpTransport(Transport):
             if ':' in username:
                 username, password = username.split(":", 1)
 
-            mutter("Constructing FTP instance")
-            self._FTP_instance = ftplib.FTP(hostname, username, password)
-            self._FTP_instance.set_pasv(not self.is_active)
+            self._FTP_instance = _find_FTP(hostname, username, password,
+                                           self.is_active)
             return self._FTP_instance
         except ftplib.error_perm, e:
             raise FtpTransportError(msg="Error setting up connection: %s"
@@ -199,7 +208,12 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             f.storbinary('STOR '+self._abspath(relpath), fp, 8192)
         except ftplib.error_perm, e:
-            raise FtpTransportError(orig_error=e)
+            if "no such file" in str(e).lower():
+                raise NoSuchFile(msg="Error storing %s: %s"
+                                 % (self.abspath(relpath), str(e)),
+                                 orig_error=e)
+            else:
+                raise FtpTransportError(orig_error=e)
 
     def mkdir(self, relpath):
         """Create a directory at the given path."""
