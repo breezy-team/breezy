@@ -13,6 +13,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+"""Represent and apply a changeset.
+
+Conflicts in applying a changeset are represented as exceptions.
+
+This only handles the in-memory objects representing changesets, which are
+primarily used by the merge code. 
+"""
+
 import os.path
 import errno
 import patch
@@ -23,15 +32,6 @@ from bzrlib.trace import mutter
 from bzrlib.osutils import rename, sha_file
 import bzrlib
 from itertools import izip
-
-# XXX: mbp: I'm not totally convinced that we should handle conflicts
-# as part of changeset application, rather than only in the merge
-# operation.
-
-"""Represent and apply a changeset
-
-Conflicts in applying a changeset are represented as exceptions.
-"""
 
 __docformat__ = "restructuredtext"
 
