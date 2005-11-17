@@ -53,8 +53,12 @@ from bzrlib.osutils import (appendpath,
                             isdir,
                             pumpfile,
                             splitpath,
+                            realpath,
                             relpath)
-from bzrlib.errors import BzrCheckError, DivergedBranches, NotVersionedError
+from bzrlib.errors import (BzrCheckError,
+                           DivergedBranches,
+                           NotBranchError,
+                           NotVersionedError)
 from bzrlib.trace import mutter
 import bzrlib.xml5
 
@@ -159,6 +163,36 @@ class WorkingTree(bzrlib.tree.Tree):
             mutter("write hc")
             hc.write()
 
+    @staticmethod
+    def open_containing(path=None):
+        """Open an existing working tree which has its root about path.
+        
+        This probes for a working tree at path and searches upwards from there.
+
+        Basically we keep looking up until we find the control directory or
+        run into /.  If there isn't one, raises NotBranchError.
+        TODO: give this a new exception.
+        If there is one, it is returned, along with the unused portion of path.
+        """
+        if path is None:
+            path = os.getcwdu()
+        path = realpath(path)
+        tail = ''
+        while True:
+            try:
+                return WorkingTree(path), tail
+            except NotBranchError:
+                pass
+            if tail:
+                tail = os.path.join(os.path.basename(path), tail)
+            else:
+                tail = os.path.basename(path)
+            path = os.path.dirname(path)
+            # FIXME: top in windows is indicated how ???
+            if path == os.path.sep:
+                # reached the root, whatever that may be
+                raise NotBranchError(path=path)
+
     def __iter__(self):
         """Iterate through file_ids for this tree.
 
@@ -170,12 +204,9 @@ class WorkingTree(bzrlib.tree.Tree):
             if bzrlib.osutils.lexists(self.abspath(path)):
                 yield ie.file_id
 
-
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,
                                getattr(self, 'basedir', None))
-
-
 
     def abspath(self, filename):
         return os.path.join(self.basedir, filename)
@@ -199,7 +230,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return inv.root.file_id
         
     def _get_store_filename(self, file_id):
-        ## XXX: badly named; this isn't in the store at all
+        ## XXX: badly named; this is not in the store at all
         return self.abspath(self.id2path(file_id))
 
     @needs_write_lock
@@ -211,7 +242,6 @@ class WorkingTree(bzrlib.tree.Tree):
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
 
-                
     def has_id(self, file_id):
         # files that have been deleted are excluded
         inv = self._inventory
@@ -226,7 +256,6 @@ class WorkingTree(bzrlib.tree.Tree):
         return self.inventory.has_id(file_id)
 
     __contains__ = has_id
-    
 
     def get_file_size(self, file_id):
         return os.path.getsize(self.id2abspath(file_id))
@@ -234,7 +263,6 @@ class WorkingTree(bzrlib.tree.Tree):
     def get_file_sha1(self, file_id):
         path = self._inventory.id2path(file_id)
         return self._hashcache.get_sha1(path)
-
 
     def is_executable(self, file_id):
         if os.name == "nt":

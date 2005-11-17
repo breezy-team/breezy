@@ -60,6 +60,18 @@ class TestWorkingTree(TestCaseInTempDir):
         self.assertEqual(files[1], ('file', '?', 'file', None, TreeFile()))
         self.assertEqual(files[2], ('symlink', '?', 'symlink', None, TreeLink()))
 
+    def test_open_containing(self):
+        branch = Branch.initialize('.')
+        wt, relpath = WorkingTree.open_containing()
+        self.assertEqual('', relpath)
+        self.assertEqual(wt.basedir, branch.base)
+        wt, relpath = WorkingTree.open_containing('.')
+        self.assertEqual('', relpath)
+        self.assertEqual(wt.basedir, branch.base)
+        wt, relpath = WorkingTree.open_containing('./foo')
+        self.assertEqual('foo', relpath)
+        self.assertEqual(wt.basedir, branch.base)
+
     def test_construct_with_branch(self):
         branch = Branch.initialize('.')
         tree = WorkingTree(branch.base, branch)
