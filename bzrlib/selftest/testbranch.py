@@ -50,7 +50,7 @@ class TestBranch(TestCaseInTempDir):
         b1 = Branch.initialize('b1')
         b2 = Branch.initialize('b2')
         file(os.sep.join(['b1', 'foo']), 'w').write('hello')
-        b1.add(['foo'], ['foo-id'])
+        b1.working_tree().add(['foo'], ['foo-id'])
         b1.working_tree().commit('lala!', rev_id='revision-1', allow_pointless=False)
 
         mutter('start fetch')
@@ -77,7 +77,7 @@ class TestBranch(TestCaseInTempDir):
         os.mkdir('a')
         br_a = Branch.initialize("a")
         file('a/b', 'wb').write('b')
-        br_a.add('b')
+        br_a.working_tree().add('b')
         commit(br_a, "silly commit", rev_id='A')
         os.mkdir('b')
         br_b = Branch.initialize("b")
@@ -116,10 +116,10 @@ class TestBranch(TestCaseInTempDir):
         """Copy only part of the history of a branch."""
         self.build_tree(['a/', 'a/one'])
         br_a = Branch.initialize('a')
-        br_a.add(['one'])
+        br_a.working_tree().add(['one'])
         br_a.working_tree().commit('commit one', rev_id='u@d-1')
         self.build_tree(['a/two'])
-        br_a.add(['two'])
+        br_a.working_tree().add(['two'])
         br_a.working_tree().commit('commit two', rev_id='u@d-2')
         br_b = copy_branch(br_a, 'b', revision='u@d-1')
         self.assertEqual(br_b.last_revision(), 'u@d-1')
@@ -209,8 +209,8 @@ class TestRemote(TestCaseWithWebserver):
 #         >>> from bzrlib.commit import commit
 #         >>> bzrlib.trace.silent = True
 #         >>> br1 = ScratchBranch(files=['foo', 'bar'])
-#         >>> br1.add('foo')
-#         >>> br1.add('bar')
+#         >>> br1.working_tree().add('foo')
+#         >>> br1.working_tree().add('bar')
 #         >>> commit(br1, "lala!", rev_id="REVISION-ID-1", verbose=False)
 #         >>> br2 = ScratchBranch()
 #         >>> br2.update_revisions(br1)

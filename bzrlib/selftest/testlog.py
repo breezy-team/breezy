@@ -125,7 +125,7 @@ class SimpleLogTest(TestCaseInTempDir):
 
 
         self.build_tree(['hello'])
-        b.add('hello')
+        b.working_tree().add('hello')
         b.working_tree().commit('add one file')
 
         lf = StringIO()

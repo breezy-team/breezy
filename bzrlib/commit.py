@@ -77,7 +77,6 @@ from bzrlib.osutils import (local_time_offset,
                             kind_marker, is_inside_any, quotefn,
                             sha_string, sha_strings, sha_file, isdir, isfile,
                             split_lines)
-from bzrlib.branch import gen_file_id
 import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,

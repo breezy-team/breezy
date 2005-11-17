@@ -112,8 +112,9 @@ class TestWorkingTree(TestCaseInTempDir):
     def get_pullable_branches(self):
         self.build_tree(['from/', 'from/file', 'to/'])
         br_a = Branch.initialize('from')
-        br_a.add('file')
-        br_a.working_tree().commit('foo', rev_id='A')
+        tree = br_a.working_tree()
+        tree.add('file')
+        tree.commit('foo', rev_id='A')
         br_b = Branch.initialize('to')
         return br_a, br_b
  
@@ -141,22 +142,20 @@ class TestWorkingTree(TestCaseInTempDir):
 
         self.assertRaises(NotVersionedError,
                           b.working_tree().revert, ['hello.txt'])
-        
-        b.add(['hello.txt'])
-        b.working_tree().commit('create initial hello.txt')
+        tree = WorkingTree(b.base, b)
+        tree.add(['hello.txt'])
+        tree.commit('create initial hello.txt')
 
         self.check_file_contents('hello.txt', 'initial hello')
         file('hello.txt', 'w').write('new hello')
         self.check_file_contents('hello.txt', 'new hello')
 
-        wt = b.working_tree()
-
         # revert file modified since last revision
-        wt.revert(['hello.txt'])
+        tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
         self.check_file_contents('hello.txt~', 'new hello')
 
         # reverting again does not clobber the backup
-        wt.revert(['hello.txt'])
+        tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
         self.check_file_contents('hello.txt~', 'new hello')

@@ -65,8 +65,8 @@ class BranchStatus(TestCaseInTempDir):
 
         tof = StringIO()
         self.build_tree(['hello.c', 'bye.c'])
-        b.add('hello.c')
-        b.add('bye.c')
+        b.working_tree().add('hello.c')
+        b.working_tree().add('bye.c')
         b.working_tree().commit('Test message')
 
         tof = StringIO()
@@ -82,7 +82,7 @@ class BranchStatus(TestCaseInTempDir):
                            '  hello.c\n'])
 
         self.build_tree(['more.c'])
-        b.add('more.c')
+        b.working_tree().add('more.c')
         b.working_tree().commit('Another test message')
         
         tof = StringIO()
@@ -132,8 +132,8 @@ class BranchStatus(TestCaseInTempDir):
         b = Branch.initialize('.')
 
         self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
-        b.add('directory')
-        b.add('test.c')
+        b.working_tree().add('directory')
+        b.working_tree().add('test.c')
         b.working_tree().commit('testing')
         
         tof = StringIO()

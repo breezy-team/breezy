@@ -318,7 +318,7 @@ class TestCommands(ExternalBase):
     def test_diff_branches(self):
         self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
         branch = Branch.initialize('branch1')
-        branch.add(['file'])
+        branch.working_tree().add(['file'])
         branch.working_tree().commit('add file')
         copy_branch(branch, 'branch2')
         print >> open('branch2/file', 'w'), 'new content'
@@ -1153,7 +1153,7 @@ class HttpTests(TestCaseWithWebserver):
     def test_log(self):
         self.build_tree(['branch/', 'branch/file'])
         branch = Branch.initialize('branch')
-        branch.add(['file'])
+        branch.working_tree().add(['file'])
         branch.working_tree().commit('add file', rev_id='A')
         url = self.get_remote_url('branch/file')
         output = self.capture('log %s' % url)

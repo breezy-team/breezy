@@ -227,13 +227,10 @@ class cmd_mkdir(Command):
     takes_args = ['dir+']
 
     def run(self, dir_list):
-        b = None
-        
         for d in dir_list:
             os.mkdir(d)
             wt, dd = WorkingTree.open_containing(d)
-            b = wt.branch
-            b.add([dd])
+            wt.add([dd])
             print 'added', d
 
 
@@ -1059,7 +1056,7 @@ class cmd_ignore(Command):
             mutter('.bzrignore is already versioned')
         else:
             mutter('need to make new .bzrignore file versioned')
-            tree.branch.add(['.bzrignore'])
+            tree.add(['.bzrignore'])
 
 
 class cmd_ignored(Command):

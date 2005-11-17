@@ -49,7 +49,7 @@ class TestCommit(TestCaseInTempDir):
         """Commit and check two versions of a single file."""
         b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
-        b.add('hello')
+        b.working_tree().add('hello')
         b.working_tree().commit(message='add hello')
         file_id = b.working_tree().path2id('hello')
 
@@ -73,7 +73,7 @@ class TestCommit(TestCaseInTempDir):
         """Test a commit with a deleted file"""
         b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
-        b.add(['hello'], ['hello-id'])
+        b.working_tree().add(['hello'], ['hello-id'])
         b.working_tree().commit(message='add hello')
 
         os.remove('hello')
@@ -86,7 +86,7 @@ class TestCommit(TestCaseInTempDir):
         """Commit refuses unless there are changes or it's forced."""
         b = Branch.initialize('.')
         file('hello', 'w').write('hello')
-        b.add(['hello'])
+        b.working_tree().add(['hello'])
         b.working_tree().commit(message='add hello')
         self.assertEquals(b.revno(), 1)
         self.assertRaises(PointlessCommit,
@@ -112,7 +112,7 @@ class TestCommit(TestCaseInTempDir):
         b = Branch.initialize('.')
         file('hello', 'w').write('hello')
         file('buongia', 'w').write('buongia')
-        b.add(['hello', 'buongia'],
+        b.working_tree().add(['hello', 'buongia'],
               ['hello-id', 'buongia-id'])
         b.working_tree().commit(message='add files',
                  rev_id='test@rev-1')
@@ -146,7 +146,7 @@ class TestCommit(TestCaseInTempDir):
         """Test commit of a revision where a file is renamed."""
         b = Branch.initialize('.')
         self.build_tree(['hello'])
-        b.add(['hello'], ['hello-id'])
+        b.working_tree().add(['hello'], ['hello-id'])
         b.working_tree().commit(message='one', rev_id='test@rev-1', allow_pointless=False)
 
         b.rename_one('hello', 'fruity')
@@ -187,7 +187,7 @@ class TestCommit(TestCaseInTempDir):
         b = Branch.initialize('.')
         r1 = 'test@rev-1'
         self.build_tree(['hello', 'a/', 'b/'])
-        b.add(['hello', 'a', 'b'], ['hello-id', 'a-id', 'b-id'])
+        b.working_tree().add(['hello', 'a', 'b'], ['hello-id', 'a-id', 'b-id'])
         b.working_tree().commit('initial', rev_id=r1, allow_pointless=False)
 
         b.move(['hello'], 'a')
@@ -222,7 +222,7 @@ class TestCommit(TestCaseInTempDir):
         b = Branch.initialize('.')
         wt = b.working_tree()
         file('hello', 'w').write('hello world')
-        b.add(['hello'], ['hello-id'])
+        b.working_tree().add(['hello'], ['hello-id'])
         b.working_tree().commit(message='add hello')
 
         wt = b.working_tree()  # FIXME: kludge for aliasing of working inventory
@@ -240,7 +240,7 @@ class TestCommit(TestCaseInTempDir):
         for i in range(4):
             file('hello', 'w').write((str(i) * 4) + '\n')
             if i == 0:
-                b.add(['hello'], ['hello-id'])
+                b.working_tree().add(['hello'], ['hello-id'])
             rev_id = 'test@rev-%d' % (i+1)
             rev_ids.append(rev_id)
             b.working_tree().commit(message='rev %d' % (i+1),
@@ -254,7 +254,7 @@ class TestCommit(TestCaseInTempDir):
     def test_commit_new_subdir_child_selective(self):
         b = Branch.initialize('.')
         self.build_tree(['dir/', 'dir/file1', 'dir/file2'])
-        b.add(['dir', 'dir/file1', 'dir/file2'],
+        b.working_tree().add(['dir', 'dir/file1', 'dir/file2'],
               ['dirid', 'file1id', 'file2id'])
         b.working_tree().commit('dir/file1', specific_files=['dir/file1'], rev_id='1')
         inv = b.get_inventory('1')
@@ -268,7 +268,7 @@ class TestCommit(TestCaseInTempDir):
         from bzrlib.errors import StrictCommitFailed
         b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
-        b.add('hello')
+        b.working_tree().add('hello')
         file('goodbye', 'w').write('goodbye cruel world!')
         self.assertRaises(StrictCommitFailed, b.working_tree().commit,
             message='add hello but not goodbye', strict=True)
@@ -279,14 +279,14 @@ class TestCommit(TestCaseInTempDir):
         from bzrlib.errors import StrictCommitFailed
         b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
-        b.add('hello')
+        b.working_tree().add('hello')
         b.working_tree().commit(message='add hello', strict=True)
 
     def test_nonstrict_commit(self):
         """Try and commit with unknown files and strict = False, should work."""
         b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
-        b.add('hello')
+        b.working_tree().add('hello')
         file('goodbye', 'w').write('goodbye cruel world!')
         b.working_tree().commit(message='add hello but not goodbye', strict=False)
 
@@ -295,7 +295,7 @@ class TestCommit(TestCaseInTempDir):
         should work."""
         b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
-        b.add('hello')
+        b.working_tree().add('hello')
         b.working_tree().commit(message='add hello', strict=False)
 
     def test_signed_commit(self):

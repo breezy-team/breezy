@@ -32,7 +32,7 @@ class TestBranch(TestCaseInTempDir):
         b.working_tree().commit('commit pointless tree',
                  allow_pointless=True)
 
-        b.add('hello.txt')
+        b.working_tree().add('hello.txt')
         
         b.working_tree().commit('commit first added file',
                  allow_pointless=False)
@@ -52,7 +52,7 @@ class MoreTests(TestCaseInTempDir):
         """Test renaming directories and the files within them."""
         b = Branch.initialize('.')
         self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
-        b.add(['dir', 'dir/sub', 'dir/sub/file'])
+        b.working_tree().add(['dir', 'dir/sub', 'dir/sub/file'])
 
         b.working_tree().commit('create initial state')
 
