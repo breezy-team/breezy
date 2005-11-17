@@ -801,13 +801,8 @@ class _Branch(Branch):
             return RevisionTree(self.weave_store, inv, revision_id)
 
     def working_tree(self):
-        """Return a `Tree` for the working copy."""
+        """Return a `Tree` for the working copy if this is a local branch."""
         from bzrlib.workingtree import WorkingTree
-        # TODO: In the future, perhaps WorkingTree should utilize Transport
-        # RobertCollins 20051003 - I don't think it should - working trees are
-        # much more complex to keep consistent than our careful .bzr subset.
-        # instead, we should say that working trees are local only, and optimise
-        # for that.
         if self._transport.base.find('://') != -1:
             raise NoWorkingTree(self.base)
         return WorkingTree(self.base, branch=self)
