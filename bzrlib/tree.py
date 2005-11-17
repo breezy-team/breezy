@@ -294,7 +294,7 @@ def dir_exporter(tree, dest, root):
     """
     import os
     os.mkdir(dest)
-    mutter('export version %r' % tree)
+    mutter('export version %r', tree)
     inv = tree.inventory
     for dp, ie in inv.iter_entries():
         ie.put_on_disk(dest, dp, tree)
@@ -343,10 +343,10 @@ else:
             ball = tarfile.open(dest, 'w:' + compression)
         except tarfile.CompressionError, e:
             raise BzrError(str(e))
-        mutter('export version %r' % tree)
+        mutter('export version %r', tree)
         inv = tree.inventory
         for dp, ie in inv.iter_entries():
-            mutter("  export {%s} kind %s to %s" % (ie.file_id, ie.kind, dest))
+            mutter("  export {%s} kind %s to %s", ie.file_id, ie.kind, dest)
             item, fileobj = ie.get_tar_item(root, dp, now, tree)
             ball.addfile(item, fileobj)
         ball.close()

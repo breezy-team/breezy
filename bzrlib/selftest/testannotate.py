@@ -44,8 +44,8 @@ class TestAnnotate(TestCaseInTempDir):
         b = Branch.initialize('.')
         self.build_tree_contents([('hello.txt', 'my helicopter\n')])
         b.add(['hello.txt'])
-        b.commit('add hello', 
-                 committer='test@user')
+        b.working_tree().commit('add hello', 
+                                committer='test@user')
 
     def test_help_annotate(self):
         """Annotate command exists"""
