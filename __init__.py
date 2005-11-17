@@ -47,7 +47,7 @@ class cmd_uncommit(bzrlib.commands.Command):
             print 'No revisions to uncommit.'
 
         for r in range(revno, b.revno()+1):
-            rev_id = b.get_rev_id(revno)
+            rev_id = b.get_rev_id(r)
             lf = log_formatter('short', to_file=sys.stdout,show_timezone='original')
             lf.show(r, b.get_revision(rev_id), None)
 
