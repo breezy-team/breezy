@@ -65,6 +65,13 @@ class Check(object):
                 raise BzrCheckError("Branch must be local")
             self.planned_revisions = set(self.branch.revision_store)
             revno = 0
+            inventoried = set(self.inventory_weave.names())
+            print len(self.planned_revisions)
+            print len(inventoried)
+            awol = self.planned_revisions - inventoried
+            if len(awol) > 0:
+                raise BzrCheckError('Stored revisions missing from inventory'
+                    '{%s}' % ','.join([f for f in awol]))
     
             for revno, rev_id in enumerate(self.planned_revisions):
                 self.progress.update('checking revision', revno+1,
@@ -111,9 +118,6 @@ class Check(object):
         """
 
         # mutter('    revision {%s}' % rev_id)
-        if rev_id not in self.inventory_weave:
-            raise BzrCheckError('Stored revision missing from inventory {%s}'
-                                % rev_id)
         branch = self.branch
         try:
             rev_history_position = self.history.index(rev_id)
