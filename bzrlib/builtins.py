@@ -29,7 +29,7 @@ from bzrlib.branch import Branch
 from bzrlib.revision import common_ancestor
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
-			   NoSuchFile, NoWorkingTree)
+			   NoSuchFile, NoWorkingTree, FileInWrongBranch)
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
@@ -40,9 +40,10 @@ from bzrlib.workingtree import WorkingTree
 def branch_files(file_list, default_branch='.'):
     try:
         return inner_branch_files(file_list, default_branch)
-    except NotBranchError:
+    except FileInWrongBranch, e:
+        print file_list
         raise BzrCommandError("%s is not in the same branch as %s" %
-                             (filename, file_list[0]))
+                             (e.path, file_list[0]))
 
 def inner_branch_files(file_list, default_branch='.'):
     """\
@@ -61,7 +62,10 @@ def inner_branch_files(file_list, default_branch='.'):
     tree = WorkingTree(b.base, b)
     new_list = []
     for filename in file_list:
-        new_list.append(tree.relpath(filename))
+        try:
+            new_list.append(tree.relpath(filename))
+        except NotBranchError:
+            raise FileInWrongBranch(b, filename)
     return b, new_list
 
 
@@ -743,7 +747,7 @@ class cmd_diff(Command):
         try:
             b, file_list = inner_branch_files(file_list)
             b2 = None
-        except NotBranchError:
+        except FileInWrongBranch:
             if len(file_list) != 2:
                 raise BzrCommandError("Files are in different branches")
 
