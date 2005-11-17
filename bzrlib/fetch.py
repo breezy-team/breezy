@@ -150,12 +150,14 @@ class Fetcher(object):
         That is, every revision that's in the ancestry of the source
         branch and not in the destination branch."""
         self.pb.update('get source ancestry')
-        self.from_ancestry = self.from_branch.get_ancestry(self.last_revision)
+        from_storage = self.from_branch.storage
+        self.from_ancestry = from_storage.get_ancestry(self.last_revision)
 
         dest_last_rev = self.to_branch.last_revision()
         self.pb.update('get destination ancestry')
         if dest_last_rev:
-            dest_ancestry = self.to_branch.get_ancestry(dest_last_rev)
+            to_storage = self.to_branch.storage
+            dest_ancestry = to_storage.get_ancestry(dest_last_rev)
         else:
             dest_ancestry = []
         ss = set(dest_ancestry)

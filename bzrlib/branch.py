@@ -265,14 +265,6 @@ class Branch(object):
 
         return compare_trees(old_tree, new_tree)
 
-    def get_ancestry(self, revision_id):
-        """Return a list of revision-ids integrated by a revision.
-        
-        This currently returns a list, but the ordering is not guaranteed:
-        treat it as a set.
-        """
-        raise NotImplementedError('get_ancestry is abstract')
-
     def revision_history(self):
         """Return sequence of revision hashes on to this branch."""
         raise NotImplementedError('revision_history is abstract')
@@ -769,13 +761,6 @@ class BzrBranch(Branch, ControlFiles):
 
         return compare_trees(old_tree, new_tree)
 
-    def get_ancestry(self, revision_id):
-        """See Branch.get_ancestry."""
-        if revision_id is None:
-            return [None]
-        w = self.storage.get_inventory_weave()
-        return [None] + map(w.idx_to_name,
-                            w.inclusions([w.lookup(revision_id)]))
 
     @needs_read_lock
     def revision_history(self):

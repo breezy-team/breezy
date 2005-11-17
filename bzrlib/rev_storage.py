@@ -205,6 +205,17 @@ class RevisionStorage(object):
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self.weave_store, inv, revision_id)
 
+    def get_ancestry(self, revision_id):
+        """Return a list of revision-ids integrated by a revision.
+        
+        This is topologically sorted.
+        """
+        if revision_id is None:
+            return [None]
+        w = self.get_inventory_weave()
+        return [None] + map(w.idx_to_name,
+                            w.inclusions([w.lookup(revision_id)]))
+
     @needs_read_lock
     def print_file(self, file, revision_id):
         """Print `file` to stdout."""

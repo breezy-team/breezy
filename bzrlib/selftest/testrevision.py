@@ -112,8 +112,8 @@ class TestIsAncestor(TestCaseInTempDir):
                 if rev_id in br2_only and not branch is br2:
                     continue
                 mutter('ancestry of {%s}: %r',
-                       rev_id, branch.get_ancestry(rev_id))
-                self.assertEquals(sorted(branch.get_ancestry(rev_id)),
+                       rev_id, branch.storage.get_ancestry(rev_id))
+                self.assertEquals(sorted(branch.storage.get_ancestry(rev_id)),
                                   [None] + sorted(anc))
     
     
