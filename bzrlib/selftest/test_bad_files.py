@@ -89,5 +89,5 @@ class TestBadFiles(TestCaseInTempDir):
 
         # We should raise an error if we are adding a bogus file
         # Is there a way to test the actual error that should be raised?
-        self.run_bzr('add', 'a-fifo', retcode=1)
+        self.run_bzr('add', 'a-fifo', retcode=3)
 

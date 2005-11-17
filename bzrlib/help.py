@@ -113,7 +113,7 @@ def help_on_command(cmdname, outfile=None):
     outfile.write(doc)
     if doc[-1] != '\n':
         outfile.write('\n')
-    help_on_command_options(cmd_object, outfile=None)
+    help_on_command_options(cmd_object, outfile)
 
 
 def help_on_command_options(cmd, outfile=None):
