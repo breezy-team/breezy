@@ -10,6 +10,7 @@ import sys
 from bzrlib.commands import Command, register_command
 from bzrlib.branch import Branch
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.option import Option
 
 class cmd_send_changeset(Command):
     """Send a bundled up changset via mail.
@@ -184,7 +185,7 @@ class cmd_apply_changeset(Command):
 
     """
     takes_args = ['filename?']
-    takes_options = ['reverse', 'auto-commit']
+    takes_options = [Option('reverse'), Option('auto-commit')]
 
     def run(self, filename=None, reverse=False, auto_commit=False):
         import apply_changeset
