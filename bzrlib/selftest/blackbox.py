@@ -1158,7 +1158,3 @@ class HttpTests(TestCaseWithWebserver):
         url = self.get_remote_url('branch/file')
         output = self.capture('log %s' % url)
         self.assertEqual(7, len(output.split('\n')))
-        
-
-
-
