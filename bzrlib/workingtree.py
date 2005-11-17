@@ -42,6 +42,7 @@ To get a WorkingTree, call Branch.working_tree():
 # copy, and making sure there's only one WorkingTree for any directory on disk.
 # At the momenthey may alias the inventory and have old copies of it in memory.
 
+from copy import deepcopy
 import os
 import stat
 import fnmatch
@@ -498,6 +499,75 @@ class WorkingTree(bzrlib.tree.Tree):
 
         for f in descend('', inv.root.file_id, self.basedir):
             yield f
+
+    @needs_write_lock
+    def move(self, from_paths, to_name):
+        """Rename files.
+
+        to_name must exist in the inventory.
+
+        If to_name exists and is a directory, the files are moved into
+        it, keeping their old names.  
+
+        Note that to_name is only the last component of the new name;
+        this doesn't change the directory.
+
+        This returns a list of (from_path, to_path) pairs for each
+        entry that is moved.
+        """
+        result = []
+        ## TODO: Option to move IDs only
+        assert not isinstance(from_paths, basestring)
+        inv = self.inventory
+        to_abs = self.abspath(to_name)
+        if not isdir(to_abs):
+            raise BzrError("destination %r is not a directory" % to_abs)
+        if not self.has_filename(to_name):
+            raise BzrError("destination %r not in working directory" % to_abs)
+        to_dir_id = inv.path2id(to_name)
+        if to_dir_id == None and to_name != '':
+            raise BzrError("destination %r is not a versioned directory" % to_name)
+        to_dir_ie = inv[to_dir_id]
+        if to_dir_ie.kind not in ('directory', 'root_directory'):
+            raise BzrError("destination %r is not a directory" % to_abs)
+
+        to_idpath = inv.get_idpath(to_dir_id)
+
+        for f in from_paths:
+            if not self.has_filename(f):
+                raise BzrError("%r does not exist in working tree" % f)
+            f_id = inv.path2id(f)
+            if f_id == None:
+                raise BzrError("%r is not versioned" % f)
+            name_tail = splitpath(f)[-1]
+            dest_path = appendpath(to_name, name_tail)
+            if self.has_filename(dest_path):
+                raise BzrError("destination %r already exists" % dest_path)
+            if f_id in to_idpath:
+                raise BzrError("can't move %r to a subdirectory of itself" % f)
+
+        # OK, so there's a race here, it's possible that someone will
+        # create a file in this interval and then the rename might be
+        # left half-done.  But we should have caught most problems.
+        orig_inv = deepcopy(self.inventory)
+        try:
+            for f in from_paths:
+                name_tail = splitpath(f)[-1]
+                dest_path = appendpath(to_name, name_tail)
+                result.append((f, dest_path))
+                inv.rename(inv.path2id(f), to_dir_id, name_tail)
+                try:
+                    rename(self.abspath(f), self.abspath(dest_path))
+                except OSError, e:
+                    raise BzrError("failed to rename %r to %r: %s" %
+                                   (f, dest_path, e[1]),
+                            ["rename rolled back"])
+        except:
+            # restore the inventory on error
+            self._inventory = orig_inv
+            raise
+        self._write_inventory(inv)
+        return result
 
     @needs_write_lock
     def rename_one(self, from_rel, to_rel):

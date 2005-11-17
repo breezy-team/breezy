@@ -279,9 +279,8 @@ class cmd_move(Command):
     takes_args = ['source$', 'dest']
     def run(self, source_list, dest):
         tree, source_list = tree_files(source_list)
-
         # TODO: glob expansion on windows?
-        tree.branch.move(source_list, tree.relpath(dest))
+        tree.move(source_list, tree.relpath(dest))
 
 
 class cmd_rename(Command):
@@ -326,7 +325,7 @@ class cmd_mv(Command):
         
         if os.path.isdir(names_list[-1]):
             # move into existing directory
-            for pair in tree.branch.move(rel_names[:-1], rel_names[-1]):
+            for pair in tree.move(rel_names[:-1], rel_names[-1]):
                 print "%s => %s" % pair
         else:
             if len(names_list) != 2:

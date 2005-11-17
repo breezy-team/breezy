@@ -190,14 +190,13 @@ class TestCommit(TestCaseInTempDir):
         self.build_tree(['hello', 'a/', 'b/'])
         b.working_tree().add(['hello', 'a', 'b'], ['hello-id', 'a-id', 'b-id'])
         b.working_tree().commit('initial', rev_id=r1, allow_pointless=False)
-
-        b.move(['hello'], 'a')
+        b.working_tree().move(['hello'], 'a')
         r2 = 'test@rev-2'
         b.working_tree().commit('two', rev_id=r2, allow_pointless=False)
         self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['a', 'a/hello', 'b'])
 
-        b.move(['b'], 'a')
+        b.working_tree().move(['b'], 'a')
         r3 = 'test@rev-3'
         b.working_tree().commit('three', rev_id=r3, allow_pointless=False)
         self.check_inventory_shape(b.working_tree().read_working_inventory(),
@@ -205,7 +204,7 @@ class TestCommit(TestCaseInTempDir):
         self.check_inventory_shape(b.get_revision_inventory(r3),
                                    ['a', 'a/hello', 'a/b'])
 
-        b.move([os.sep.join(['a', 'hello'])],
+        b.working_tree().move([os.sep.join(['a', 'hello'])],
                os.sep.join(['a', 'b']))
         r4 = 'test@rev-4'
         b.working_tree().commit('four', rev_id=r4, allow_pointless=False)
@@ -216,7 +215,6 @@ class TestCommit(TestCaseInTempDir):
         eq(inv['hello-id'].revision, r4)
         eq(inv['a-id'].revision, r1)
         eq(inv['b-id'].revision, r3)
-
         
     def test_removed_commit(self):
         """Commit with a removed file"""
