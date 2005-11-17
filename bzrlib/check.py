@@ -66,8 +66,6 @@ class Check(object):
             self.planned_revisions = set(self.branch.revision_store)
             revno = 0
             inventoried = set(self.inventory_weave.names())
-            print len(self.planned_revisions)
-            print len(inventoried)
             awol = self.planned_revisions - inventoried
             if len(awol) > 0:
                 raise BzrCheckError('Stored revisions missing from inventory'
