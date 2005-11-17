@@ -17,7 +17,7 @@
 
 import os
 from bzrlib.branch import Branch
-from bzrlib.errors import NotVersionedError
+from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
@@ -71,6 +71,10 @@ class TestWorkingTree(TestCaseInTempDir):
         wt, relpath = WorkingTree.open_containing('./foo')
         self.assertEqual('foo', relpath)
         self.assertEqual(wt.basedir, branch.base)
+        # paths that are urls are just plain wrong for working trees.
+        self.assertRaises(NotBranchError,
+                          WorkingTree.open_containing, 
+                          'file:///' + os.getcwdu())
 
     def test_construct_with_branch(self):
         branch = Branch.initialize('.')

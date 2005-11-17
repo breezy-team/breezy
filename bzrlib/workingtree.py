@@ -175,6 +175,10 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         if path is None:
             path = os.getcwdu()
+        else:
+            # sanity check.
+            if path.find('://') != -1:
+                raise NotBranchError(path=path)
         path = os.path.abspath(path)
         tail = ''
         while True:
