@@ -306,7 +306,7 @@ def parse_args(command, argv):
             a = str(a)
             optarg = None
             if a[1] == '-':
-                mutter("  got option %r" % a)
+                mutter("  got option %r", a)
                 if '=' in a:
                     optname, optarg = a[2:].split('=', 1)
                 else:
@@ -510,14 +510,18 @@ def run_bzr(argv):
     return ret or 0
 
 def display_command(func):
+    """Decorator that suppresses pipe/interrupt errors."""
     def ignore_pipe(*args, **kwargs):
         try:
             result = func(*args, **kwargs)
             sys.stdout.flush()
             return result
         except IOError, e:
+            if not hasattr(e, 'errno'):
+                raise
             if e.errno != errno.EPIPE:
                 raise
+            pass
         except KeyboardInterrupt:
             pass
     return ignore_pipe
@@ -537,20 +541,9 @@ def run_bzr_catch_errors(argv):
         finally:
             # do this here inside the exception wrappers to catch EPIPE
             sys.stdout.flush()
-    except BzrCommandError, e:
-        # command line syntax error, etc
-        log_error(str(e))
-        return 3
-    except BzrError, e:
-        bzrlib.trace.log_exception()
-        return 3
-    except AssertionError, e:
-        bzrlib.trace.log_exception('assertion failed: ' + str(e))
-        return 3
-    except KeyboardInterrupt, e:
-        bzrlib.trace.log_exception('interrupted')
-        return 3
     except Exception, e:
+        # used to handle AssertionError and KeyboardInterrupt
+        # specially here, but hopefully they're handled ok by the logger now
         import errno
         if (isinstance(e, IOError) 
             and hasattr(e, 'errno')
@@ -558,9 +551,11 @@ def run_bzr_catch_errors(argv):
             bzrlib.trace.note('broken pipe')
             return 3
         else:
-            ## import pdb
-            ## pdb.pm()
             bzrlib.trace.log_exception()
+            if os.environ.get('BZR_PDB'):
+                print '**** entering debugger'
+                import pdb
+                pdb.post_mortem(sys.exc_traceback)
             return 3
 
 if __name__ == '__main__':

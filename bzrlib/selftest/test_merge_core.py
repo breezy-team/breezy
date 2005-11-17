@@ -14,8 +14,8 @@ from bzrlib.osutils import file_kind, rename, sha_file
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
                                BackupBeforeChange, ExecFlagMerge, WeaveMerge)
-from bzrlib.changeset import Inventory, apply_changeset, invert_dict
-from bzrlib.changeset import get_contents, ReplaceContents
+from bzrlib.changeset import Inventory, apply_changeset, invert_dict, \
+    get_contents, ReplaceContents, ChangeExecFlag
 from bzrlib.clone import copy_branch
 from bzrlib.merge import merge
 
@@ -537,7 +537,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         self.build_tree(("original/", "original/file1", "original/file2"))
         branch = Branch.initialize("original")
         smart_add_branch(branch, ["original"], True, add_reporter_null)
-        branch.commit("start branch.", verbose=False)
+        branch.working_tree().commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
         copy_branch(branch, "mary")
@@ -545,13 +545,13 @@ class FunctionalMergeTest(TestCaseInTempDir):
         file = open("original/file1", "wt")
         file.write("John\n")
         file.close()
-        branch.commit("change file1")
+        branch.working_tree().commit("change file1")
         # Mary does too
         mary_branch = Branch.open("mary")
         file = open("mary/file2", "wt")
         file.write("Mary\n")
         file.close()
-        mary_branch.commit("change file2")
+        mary_branch.working_tree().commit("change file2")
         # john should be able to merge with no conflicts.
         merge_type = ApplyMerge3
         base = [None, None]
@@ -569,12 +569,12 @@ class FunctionalMergeTest(TestCaseInTempDir):
         a = Branch.initialize('a')
         file('a/file', 'wb').write('contents\n')
         a.add('file')
-        a.commit('base revision', allow_pointless=False)
+        a.working_tree().commit('base revision', allow_pointless=False)
         b = copy_branch(a, 'b')
         file('a/file', 'wb').write('other contents\n')
-        a.commit('other revision', allow_pointless=False)
+        a.working_tree().commit('other revision', allow_pointless=False)
         file('b/file', 'wb').write('this contents contents\n')
-        b.commit('this revision', allow_pointless=False)
+        b.working_tree().commit('this revision', allow_pointless=False)
         self.assertEqual(merge(['a', -1], [None, None], this_dir='b'), 1)
         self.assert_(os.path.lexists('b/file.THIS'))
         self.assert_(os.path.lexists('b/file.BASE'))
@@ -599,15 +599,16 @@ class FunctionalMergeTest(TestCaseInTempDir):
         a = Branch.initialize('a')
         file('a/a_file', 'wb').write('contents\n')
         a.add('a_file')
-        a.commit('a_revision', allow_pointless=False)
+        a.working_tree().commit('a_revision', allow_pointless=False)
         os.mkdir('b')
         b = Branch.initialize('b')
         file('b/b_file', 'wb').write('contents\n')
         b.add('b_file')
-        b.commit('b_revision', allow_pointless=False)
+        b.working_tree().commit('b_revision', allow_pointless=False)
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.lexists('a/b_file'))
-        self.assertEqual(a.pending_merges(), [b.last_revision()]) 
+        self.assertEqual(a.working_tree().pending_merges(),
+                         [b.last_revision()]) 
 
     def test_merge_unrelated_conflicting(self):
         """Sucessfully merges unrelated branches with common names"""
@@ -615,13 +616,33 @@ class FunctionalMergeTest(TestCaseInTempDir):
         a = Branch.initialize('a')
         file('a/file', 'wb').write('contents\n')
         a.add('file')
-        a.commit('a_revision', allow_pointless=False)
+        a.working_tree().commit('a_revision', allow_pointless=False)
         os.mkdir('b')
         b = Branch.initialize('b')
         file('b/file', 'wb').write('contents\n')
         b.add('file')
-        b.commit('b_revision', allow_pointless=False)
+        b.working_tree().commit('b_revision', allow_pointless=False)
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.lexists('a/file'))
         self.assert_(os.path.lexists('a/file.moved'))
-        self.assertEqual(a.pending_merges(), [b.last_revision()]) 
+        self.assertEqual(a.working_tree().pending_merges(), [b.last_revision()])
+
+    def test_merge_metadata_vs_deletion(self):
+        """Conflict deletion vs metadata change"""
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/file', 'wb').write('contents\n')
+        a.add('file')
+        a_wt = a.working_tree()
+        a_wt.commit('r0')
+        copy_branch(a, 'b')
+        b = Branch.open('b')
+        b_wt = b.working_tree()
+        os.chmod('b/file', 0755)
+        os.remove('a/file')
+        a_wt.commit('removed a')
+        self.assertEqual(a.revno(), 2)
+        self.assertFalse(os.path.exists('a/file'))
+        b_wt.commit('exec a')
+        merge(['b', -1], ['b', 0], this_dir='a')
+        self.assert_(os.path.exists('a/file'))

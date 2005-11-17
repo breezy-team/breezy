@@ -269,7 +269,7 @@ class Commit(object):
             self._record_inventory()
             self._make_revision()
             self.branch.append_revision(self.rev_id)
-            self.branch.set_pending_merges([])
+            self.work_tree.set_pending_merges([])
             self.reporter.completed(self.branch.revno()+1, self.rev_id)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
@@ -312,7 +312,7 @@ class Commit(object):
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""
-        pending_merges = self.branch.pending_merges()
+        pending_merges = self.work_tree.pending_merges()
         self.parents = []
         self.parent_invs = []
         self.present_parents = []
@@ -378,7 +378,7 @@ class Commit(object):
             deleted_ids.sort(reverse=True)
             for path, file_id in deleted_ids:
                 del self.work_inv[file_id]
-            self.branch._write_inventory(self.work_inv)
+            self.work_tree._write_inventory(self.work_inv)
 
     def _store_snapshot(self):
         """Pass over inventory and record a snapshot.

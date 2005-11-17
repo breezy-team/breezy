@@ -216,8 +216,8 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
     this_name, this_parent, this_dir = entry_data(entry.id, this)
     base_name, base_parent, base_dir = entry_data(entry.id, base)
     other_name, other_parent, other_dir = entry_data(entry.id, other)
-    mutter("Dirs: this, base, other %r %r %r" % (this_dir, base_dir, other_dir))
-    mutter("Names: this, base, other %r %r %r" % (this_name, base_name, other_name))
+    mutter("Dirs: this, base, other %r %r %r", this_dir, base_dir, other_dir)
+    mutter("Names: this, base, other %r %r %r", this_name, base_name, other_name)
     old_name = this_name
     try:
         new_name = threeway_select(this_name, base_name, other_name)

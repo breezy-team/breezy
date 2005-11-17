@@ -178,7 +178,7 @@ def _show_log(branch,
         warn("not a LogFormatter instance: %r" % lf)
 
     if specific_fileid:
-        mutter('get log for file_id %r' % specific_fileid)
+        mutter('get log for file_id %r', specific_fileid)
 
     if search is not None:
         import re
@@ -468,3 +468,58 @@ def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
     # deprecated; for compatability
     lf = LongLogFormatter(to_file=to_file, show_timezone=show_timezone)
     lf.show(revno, rev, delta)
+
+def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='long'):
+    """Show the change in revision history comparing the old revision history to the new one.
+
+    :param branch: The branch where the revisions exist
+    :param old_rh: The old revision history
+    :param new_rh: The new revision history
+    :param to_file: A file to write the results to. If None, stdout will be used
+    """
+    if to_file is None:
+        import sys
+        import codecs
+        import bzrlib
+        to_file = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
+    lf = log_formatter(log_format,
+                       show_ids=False,
+                       to_file=to_file,
+                       show_timezone='original')
+
+    # This is the first index which is different between
+    # old and new
+    base_idx = None
+    for i in xrange(max(len(new_rh),
+                        len(old_rh))):
+        if (len(new_rh) <= i
+            or len(old_rh) <= i
+            or new_rh[i] != old_rh[i]):
+            base_idx = i
+            break
+
+    if base_idx is None:
+        to_file.write('Nothing seems to have changed\n')
+        return
+    ## TODO: It might be nice to do something like show_log
+    ##       and show the merged entries. But since this is the
+    ##       removed revisions, it shouldn't be as important
+    if base_idx < len(old_rh):
+        to_file.write('*'*60)
+        to_file.write('\nRemoved Revisions:\n')
+        for i in range(base_idx, len(old_rh)):
+            rev = branch.get_revision(old_rh[i])
+            lf.show(i+1, rev, None)
+        to_file.write('*'*60)
+        to_file.write('\n\n')
+    if base_idx < len(new_rh):
+        to_file.write('Added Revisions:\n')
+        show_log(branch,
+                 lf,
+                 None,
+                 verbose=True,
+                 direction='forward',
+                 start_revision=base_idx+1,
+                 end_revision=len(new_rh),
+                 search=None)
+
