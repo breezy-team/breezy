@@ -28,6 +28,9 @@ UNRELEASED CHANGES
     * If $BZR_PDB is set, pop into the debugger when an uncaught exception 
       occurs.  (Martin Pool)
 
+    * Accept 'bzr resolved' (an alias for 'bzr resolve'), as this is
+      the same as Subversion.  (Martin Pool)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
