@@ -832,50 +832,6 @@ class _Branch(Branch):
         """
         return self.revision_tree(self.last_revision())
 
-    @needs_write_lock
-    def rename_one(self, from_rel, to_rel):
-        """Rename one file.
-
-        This can change the directory or the filename or both.
-        """
-        tree = self.working_tree()
-        inv = tree.inventory
-        if not tree.has_filename(from_rel):
-            raise BzrError("can't rename: old working file %r does not exist" % from_rel)
-        if tree.has_filename(to_rel):
-            raise BzrError("can't rename: new working file %r already exists" % to_rel)
-
-        file_id = inv.path2id(from_rel)
-        if file_id == None:
-            raise BzrError("can't rename: old name %r is not versioned" % from_rel)
-
-        if inv.path2id(to_rel):
-            raise BzrError("can't rename: new name %r is already versioned" % to_rel)
-
-        to_dir, to_tail = os.path.split(to_rel)
-        to_dir_id = inv.path2id(to_dir)
-        if to_dir_id == None and to_dir != '':
-            raise BzrError("can't determine destination directory id for %r" % to_dir)
-
-        mutter("rename_one:")
-        mutter("  file_id    {%s}" % file_id)
-        mutter("  from_rel   %r" % from_rel)
-        mutter("  to_rel     %r" % to_rel)
-        mutter("  to_dir     %r" % to_dir)
-        mutter("  to_dir_id  {%s}" % to_dir_id)
-
-        inv.rename(file_id, to_dir_id, to_tail)
-
-        from_abs = self.abspath(from_rel)
-        to_abs = self.abspath(to_rel)
-        try:
-            rename(from_abs, to_abs)
-        except OSError, e:
-            raise BzrError("failed to rename %r to %r: %s"
-                    % (from_abs, to_abs, e[1]),
-                    ["rename rolled back"])
-
-        self.working_tree()._write_inventory(inv)
 
     @needs_write_lock
     def move(self, from_paths, to_name):

@@ -114,9 +114,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
                     if file_id is not None:
                         new_path = self.this_tree.relpath(new_name)
                         rename(new_name, name)
-                        self.this_tree.branch.rename_one(relpath, new_path)
-                        assert self.this_tree.id2path(file_id) == relpath
-                        self.this_tree._inventory = self.this_tree.read_working_inventory()
+                        self.this_tree.rename_one(relpath, new_path)
                         assert self.this_tree.id2path(file_id) == new_path
         except OSError, e:
             if e.errno != errno.EEXIST and e.errno != errno.ENOTEMPTY:

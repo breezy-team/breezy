@@ -73,6 +73,7 @@ UNRELEASED CHANGES
     * The follow operations from Branch have moved to WorkingTree:
       add()
       commit()
+      rename_one()
       unknowns()
       (Robert Collins)
 

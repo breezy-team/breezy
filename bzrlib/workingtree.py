@@ -52,6 +52,7 @@ from bzrlib.branch import (Branch,
                            needs_write_lock,
                            quotefn)
 from bzrlib.errors import (BzrCheckError,
+                           BzrError,
                            DivergedBranches,
                            NotBranchError,
                            NotVersionedError)
@@ -63,7 +64,8 @@ from bzrlib.osutils import (appendpath,
                             pumpfile,
                             splitpath,
                             rand_bytes,
-                            relpath)
+                            relpath,
+                            rename)
 import bzrlib.tree
 from bzrlib.trace import mutter
 import bzrlib.xml5
@@ -496,7 +498,56 @@ class WorkingTree(bzrlib.tree.Tree):
 
         for f in descend('', inv.root.file_id, self.basedir):
             yield f
-            
+
+    @needs_write_lock
+    def rename_one(self, from_rel, to_rel):
+        """Rename one file.
+
+        This can change the directory or the filename or both.
+        """
+        inv = self.inventory
+        if not self.has_filename(from_rel):
+            raise BzrError("can't rename: old working file %r does not exist" % from_rel)
+        if self.has_filename(to_rel):
+            raise BzrError("can't rename: new working file %r already exists" % to_rel)
+
+        file_id = inv.path2id(from_rel)
+        if file_id == None:
+            raise BzrError("can't rename: old name %r is not versioned" % from_rel)
+
+        entry = inv[file_id]
+        from_parent = entry.parent_id
+        from_name = entry.name
+        
+        if inv.path2id(to_rel):
+            raise BzrError("can't rename: new name %r is already versioned" % to_rel)
+
+        to_dir, to_tail = os.path.split(to_rel)
+        to_dir_id = inv.path2id(to_dir)
+        if to_dir_id == None and to_dir != '':
+            raise BzrError("can't determine destination directory id for %r" % to_dir)
+
+        mutter("rename_one:")
+        mutter("  file_id    {%s}" % file_id)
+        mutter("  from_rel   %r" % from_rel)
+        mutter("  to_rel     %r" % to_rel)
+        mutter("  to_dir     %r" % to_dir)
+        mutter("  to_dir_id  {%s}" % to_dir_id)
+
+        inv.rename(file_id, to_dir_id, to_tail)
+
+        from_abs = self.abspath(from_rel)
+        to_abs = self.abspath(to_rel)
+        try:
+            rename(from_abs, to_abs)
+        except OSError, e:
+            inv.rename(file_id, from_parent, from_name)
+            raise BzrError("failed to rename %r to %r: %s"
+                    % (from_abs, to_abs, e[1]),
+                    ["rename rolled back"])
+        self._write_inventory(inv)
+
+    @needs_read_lock
     def unknowns(self):
         """Return all unknown files.
 

@@ -145,12 +145,13 @@ class TestCommit(TestCaseInTempDir):
     def test_commit_rename(self):
         """Test commit of a revision where a file is renamed."""
         b = Branch.initialize('.')
+        tree = WorkingTree('.', b)
         self.build_tree(['hello'])
-        b.working_tree().add(['hello'], ['hello-id'])
-        b.working_tree().commit(message='one', rev_id='test@rev-1', allow_pointless=False)
+        tree.add(['hello'], ['hello-id'])
+        tree.commit(message='one', rev_id='test@rev-1', allow_pointless=False)
 
-        b.rename_one('hello', 'fruity')
-        b.working_tree().commit(message='renamed', rev_id='test@rev-2', allow_pointless=False)
+        tree.rename_one('hello', 'fruity')
+        tree.commit(message='renamed', rev_id='test@rev-2', allow_pointless=False)
 
         eq = self.assertEquals
         tree1 = b.revision_tree('test@rev-1')

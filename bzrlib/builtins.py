@@ -302,7 +302,7 @@ class cmd_rename(Command):
     
     def run(self, from_name, to_name):
         tree, (from_name, to_name) = tree_files((from_name, to_name))
-        tree.branch.rename_one(from_name, to_name)
+        tree.rename_one(from_name, to_name)
 
 
 class cmd_mv(Command):
@@ -332,7 +332,7 @@ class cmd_mv(Command):
             if len(names_list) != 2:
                 raise BzrCommandError('to mv multiple files the destination '
                                       'must be a versioned directory')
-            tree.branch.rename_one(rel_names[0], rel_names[1])
+            tree.rename_one(rel_names[0], rel_names[1])
             print "%s => %s" % (rel_names[0], rel_names[1])
             
     

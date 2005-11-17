@@ -59,12 +59,12 @@ class MoreTests(TestCaseInTempDir):
         self.check_inventory_shape(inv,
                                    ['dir', 'dir/sub', 'dir/sub/file'])
 
-        b.rename_one('dir', 'newdir')
+        b.working_tree().rename_one('dir', 'newdir')
 
         self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['newdir', 'newdir/sub', 'newdir/sub/file'])
 
-        b.rename_one('newdir/sub', 'newdir/newsub')
+        b.working_tree().rename_one('newdir/sub', 'newdir/newsub')
         self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['newdir', 'newdir/newsub',
                                     'newdir/newsub/file'])
