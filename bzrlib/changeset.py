@@ -24,14 +24,14 @@ primarily used by the merge code.
 
 import os.path
 import errno
-import patch
 import stat
 from tempfile import mkdtemp
 from shutil import rmtree
-from bzrlib.trace import mutter
+from itertools import izip
+
+from bzrlib.trace import mutter, warning
 from bzrlib.osutils import rename, sha_file
 import bzrlib
-from itertools import izip
 
 __docformat__ = "restructuredtext"
 
@@ -441,6 +441,7 @@ class Diff3Merge(object):
         return out_path
 
     def apply(self, filename, conflict_handler, reverse=False):
+        import bzrlib.patch
         temp_dir = mkdtemp(prefix="bzr-")
         try:
             new_file = filename+".new"
@@ -452,7 +453,7 @@ class Diff3Merge(object):
             else:
                 base = other_file
                 other = base_file
-            status = patch.diff3(new_file, filename, base, other)
+            status = bzrlib.patch.diff3(new_file, filename, base, other)
             if status == 0:
                 os.chmod(new_file, os.stat(filename).st_mode)
                 rename(new_file, filename)
@@ -1208,6 +1209,10 @@ def apply_changeset(changeset, inventory, dir, conflict_handler=None,
     #apply changes that don't affect filenames
     for entry in changeset.entries.itervalues():
         if not entry.is_creation_or_deletion() and not entry.is_boring():
+            if entry.id not in inventory:
+                warning("entry {%s} no longer present, can't be updated",
+                        entry.id)
+                continue
             path = os.path.join(dir, inventory[entry.id])
             entry.apply(path, conflict_handler, reverse)
 
