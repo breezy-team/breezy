@@ -12,7 +12,7 @@ class TestRevProps(TestCaseInTempDir):
         b.nick = 'Nicholas'
         props = dict(flavor='choc-mint', 
                      condiment='orange\n  mint\n\tcandy')
-        b.commit(message='initial null commit', 
+        b.working_tree().commit(message='initial null commit', 
                  revprops=props,
                  allow_pointless=True,
                  rev_id='test@user-1')
@@ -28,10 +28,10 @@ class TestRevProps(TestCaseInTempDir):
         """Invalid revision properties"""
         b = Branch.initialize('.')
         self.assertRaises(ValueError,
-                          b.commit, 
+                          b.working_tree().commit, 
                           message='invalid',
                           revprops={'what a silly property': 'fine'})
         self.assertRaises(ValueError,
-                          b.commit, 
+                          b.working_tree().commit, 
                           message='invalid',
                           revprops=dict(number=13))

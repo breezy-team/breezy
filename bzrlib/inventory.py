@@ -269,7 +269,8 @@ class InventoryEntry(object):
         """
         fullpath = appendpath(dest, dp)
         self._put_on_disk(fullpath, tree)
-        mutter("  export {%s} kind %s to %s" % (self.file_id, self.kind, fullpath))
+        mutter("  export {%s} kind %s to %s", self.file_id,
+                self.kind, fullpath)
 
     def _put_on_disk(self, fullpath, tree):
         """Put this entry onto disk at fullpath, from tree tree."""

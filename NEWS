@@ -49,6 +49,9 @@ UNRELEASED CHANGES
     * Files that are added and unlinked before committing are completely
       ignored by diff and status
 
+    * Stores with some compressed texts and some uncompressed texts are now
+      able to be used. (John A Meinel)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
@@ -89,10 +92,18 @@ UNRELEASED CHANGES
       Branch.working_tree() will raise 'errors.NoWorkingTree' if one cannot
       be obtained. (Robert Collins)
 
+    * All pending merges operations from Branch are now on WorkingTree.
+      (Robert Collins)
+
+    * Branch.commit() has moved to WorkingTree.commit(). (Robert Collins)
+
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:
   
+    * pull now takes --verbose to show you what revisions are added or removed
+      (John A Meinel)
+
     * merge now takes a --show-base option to include the base text in
       conflicts.
       (Aaron Bentley)

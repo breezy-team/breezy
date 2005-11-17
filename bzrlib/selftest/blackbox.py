@@ -142,6 +142,14 @@ class TestCommands(ExternalBase):
         self.runbzr(['add', 'foo.c'])
         self.runbzr(["commit", "-m", ""] , retcode=3) 
 
+    def test_remove_deleted(self):
+        self.runbzr("init")
+        self.build_tree(['a'])
+        self.runbzr(['add', 'a'])
+        self.runbzr(['commit', '-m', 'added a'])
+        os.unlink('a')
+        self.runbzr(['remove', 'a'])
+
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
         # inside a branch, or not.
@@ -347,11 +355,11 @@ class TestCommands(ExternalBase):
         self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
         branch = Branch.initialize('branch1')
         branch.add(['file'])
-        branch.commit('add file')
+        branch.working_tree().commit('add file')
         copy_branch(branch, 'branch2')
         print >> open('branch2/file', 'w'), 'new content'
         branch2 = Branch.open('branch2')
-        branch2.commit('update file')
+        branch2.working_tree().commit('update file')
         # should open branch1 and diff against branch2, 
         output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 
                                         'branch1'],
@@ -424,12 +432,12 @@ class TestCommands(ExternalBase):
         a = Branch.open('.')
         b = Branch.open('../b')
         a.get_revision_xml(b.last_revision())
-        self.log('pending merges: %s', a.pending_merges())
-        self.assertEquals(a.pending_merges(), [b.last_revision()])
+        self.log('pending merges: %s', a.working_tree().pending_merges())
+        self.assertEquals(a.working_tree().pending_merges(),
+                          [b.last_revision()])
         self.runbzr('commit -m merged')
         self.runbzr('merge ../b -r last:1')
-        self.assertEqual(Branch.open('.').pending_merges(), [])
-
+        self.assertEqual(Branch.open('.').working_tree().pending_merges(), [])
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""
@@ -622,7 +630,48 @@ class TestCommands(ExternalBase):
                   'subdir/b\n'
                   , '--versioned')
 
+    def test_pull_verbose(self):
+        """Pull changes from one branch to another and watch the output."""
 
+        os.mkdir('a')
+        os.chdir('a')
+
+        bzr = self.runbzr
+        self.example_branch()
+
+        os.chdir('..')
+        bzr('branch a b')
+        os.chdir('b')
+        open('b', 'wb').write('else\n')
+        bzr('add b')
+        bzr(['commit', '-m', 'added b'])
+
+        os.chdir('../a')
+        out = bzr('pull --verbose ../b', backtick=True)
+        self.failIfEqual(out.find('Added Revisions:'), -1)
+        self.failIfEqual(out.find('message:\n  added b'), -1)
+        self.failIfEqual(out.find('added b'), -1)
+
+        # Check that --overwrite --verbose prints out the removed entries
+        bzr('commit -m foo --unchanged')
+        os.chdir('../b')
+        bzr('commit -m baz --unchanged')
+        bzr('pull ../a', retcode=3)
+        out = bzr('pull --overwrite --verbose ../a', backtick=1)
+
+        remove_loc = out.find('Removed Revisions:')
+        self.failIfEqual(remove_loc, -1)
+        added_loc = out.find('Added Revisions:')
+        self.failIfEqual(added_loc, -1)
+
+        removed_message = out.find('message:\n  baz')
+        self.failIfEqual(removed_message, -1)
+        self.failUnless(remove_loc < removed_message < added_loc)
+
+        added_message = out.find('message:\n  foo')
+        self.failIfEqual(added_message, -1)
+        self.failUnless(added_loc < added_message)
+        
     def test_locations(self):
         """Using and remembering different locations"""
         os.mkdir('a')
@@ -655,7 +704,7 @@ class TestCommands(ExternalBase):
         """add command prints the names of added files."""
         b = Branch.initialize('.')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
-        out = self.run_bzr_captured(['add'], retcode = 0)[0]
+        out = self.run_bzr_captured(['add'], retcode=0)[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['added dir',
@@ -667,7 +716,7 @@ class TestCommands(ExternalBase):
         """add -q does not print the names of added files."""
         b = Branch.initialize('.')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
-        out = self.run_bzr_captured(['add', '-q'], retcode = 0)[0]
+        out = self.run_bzr_captured(['add', '-q'], retcode=0)[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals([''], results)
@@ -766,7 +815,7 @@ class TestCommands(ExternalBase):
         import bzrlib.gpg
         oldstrategy = bzrlib.gpg.GPGStrategy
         branch = Branch.initialize('.')
-        branch.commit("base", allow_pointless=True, rev_id='A')
+        branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
         try:
             # monkey patch gpg signing mechanism
             from bzrlib.testament import Testament
@@ -781,9 +830,9 @@ class TestCommands(ExternalBase):
         import bzrlib.gpg
         oldstrategy = bzrlib.gpg.GPGStrategy
         branch = Branch.initialize('.')
-        branch.commit("base", allow_pointless=True, rev_id='A')
-        branch.commit("base", allow_pointless=True, rev_id='B')
-        branch.commit("base", allow_pointless=True, rev_id='C')
+        branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
+        branch.working_tree().commit("base", allow_pointless=True, rev_id='B')
+        branch.working_tree().commit("base", allow_pointless=True, rev_id='C')
         try:
             # monkey patch gpg signing mechanism
             from bzrlib.testament import Testament
@@ -840,6 +889,56 @@ class TestCommands(ExternalBase):
         self.runbzr('push --create-prefix ../missing/new-branch')
         # nothing missing
         self.runbzr('missing ../missing/new-branch')
+
+    def test_external_command(self):
+        """test that external commands can be run by setting the path"""
+        cmd_name = 'test-command'
+        output = 'Hello from test-command'
+        if sys.platform == 'win32':
+            cmd_name += '.bat'
+            output += '\r\n'
+        else:
+            output += '\n'
+
+        oldpath = os.environ.get('BZRPATH', None)
+
+        bzr = self.capture
+
+        try:
+            if os.environ.has_key('BZRPATH'):
+                del os.environ['BZRPATH']
+
+            f = file(cmd_name, 'wb')
+            if sys.platform == 'win32':
+                f.write('@echo off\n')
+            else:
+                f.write('#!/bin/sh\n')
+            f.write('echo Hello from test-command')
+            f.close()
+            os.chmod(cmd_name, 0755)
+
+            # It should not find the command in the local 
+            # directory by default, since it is not in my path
+            bzr(cmd_name, retcode=3)
+
+            # Now put it into my path
+            os.environ['BZRPATH'] = '.'
+
+            bzr(cmd_name)
+            # The test suite does not capture stdout for external commands
+            # this is because you have to have a real file object
+            # to pass to Popen(stdout=FOO), and StringIO is not one of those.
+            # (just replacing sys.stdout does not change a spawned objects stdout)
+            #self.assertEquals(bzr(cmd_name), output)
+
+            # Make sure empty path elements are ignored
+            os.environ['BZRPATH'] = os.pathsep
+
+            bzr(cmd_name, retcode=3)
+
+        finally:
+            if oldpath:
+                os.environ['BZRPATH'] = oldpath
 
 
 def listdir_sorted(dir):
@@ -1127,7 +1226,7 @@ class HttpTests(TestCaseWithWebserver):
     def test_branch(self):
         os.mkdir('from')
         branch = Branch.initialize('from')
-        branch.commit('empty commit for nonsense', allow_pointless=True)
+        branch.working_tree().commit('empty commit for nonsense', allow_pointless=True)
         url = self.get_remote_url('from')
         self.run_bzr('branch', url, 'to')
         branch = Branch.open('to')
@@ -1137,7 +1236,7 @@ class HttpTests(TestCaseWithWebserver):
         self.build_tree(['branch/', 'branch/file'])
         branch = Branch.initialize('branch')
         branch.add(['file'])
-        branch.commit('add file', rev_id='A')
+        branch.working_tree().commit('add file', rev_id='A')
         url = self.get_remote_url('branch/file')
         output = self.capture('log %s' % url)
         self.assertEqual(8, len(output.split('\n')))

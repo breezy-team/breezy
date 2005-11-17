@@ -36,7 +36,7 @@ class TestamentTests(TestCaseInTempDir):
         super(TestamentTests, self).setUp()
         b = self.b = Branch.initialize('.')
         b.nick = "test branch"
-        b.commit(message='initial null commit',
+        b.working_tree().commit(message='initial null commit',
                  committer='test@user',
                  timestamp=1129025423, # 'Tue Oct 11 20:10:23 2005'
                  timezone=0,
@@ -46,7 +46,7 @@ class TestamentTests(TestCaseInTempDir):
                              ('src/foo.c', 'int main()\n{\n}\n')])
         b.add(['hello', 'src', 'src/foo.c'],
               ['hello-id', 'src-id', 'foo.c-id'])
-        b.commit(message='add files and directories',
+        b.working_tree().commit(message='add files and directories',
                  timestamp=1129025483,
                  timezone=36000,
                  rev_id='test@user-2',
@@ -97,7 +97,7 @@ class TestamentTests(TestCaseInTempDir):
             return
         os.symlink('wibble/linktarget', 'link')
         self.b.add(['link'], ['link-id'])
-        self.b.commit(message='add symlink',
+        self.b.working_tree().commit(message='add symlink',
                  timestamp=1129025493,
                  timezone=36000,
                  rev_id='test@user-3',
@@ -109,7 +109,7 @@ class TestamentTests(TestCaseInTempDir):
         """Testament to revision with extra properties"""
         props = dict(flavor='sour cherry\ncream cheese',
                      size='medium')
-        self.b.commit(message='revision with properties',
+        self.b.working_tree().commit(message='revision with properties',
                       timestamp=1129025493,
                       timezone=36000,
                       rev_id='test@user-3',
