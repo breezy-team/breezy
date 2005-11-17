@@ -31,6 +31,9 @@ UNRELEASED CHANGES
     * Accept 'bzr resolved' (an alias for 'bzr resolve'), as this is
       the same as Subversion.  (Martin Pool)
 
+    * New ftp transport support (on ftplib), for ftp:// and aftp:// 
+      URLs.  (Daniel Silverstone)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
@@ -51,6 +54,9 @@ UNRELEASED CHANGES
 
     * Stores with some compressed texts and some uncompressed texts are now
       able to be used. (John A Meinel)
+
+    * Show files which are both renamed and modified as such in 'bzr 
+      status' output.  (#4503, Daniel Silverstone)
 
   TESTING:
 

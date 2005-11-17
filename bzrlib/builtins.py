@@ -905,10 +905,11 @@ class cmd_log(Command):
         else:
             raise BzrCommandError('bzr log --revision takes one or two values.')
 
-        if rev1 == 0:
-            rev1 = None
-        if rev2 == 0:
-            rev2 = None
+        # By this point, the revision numbers are converted to the +ve
+        # form if they were supplied in the -ve form, so we can do
+        # this comparison in relative safety
+        if rev1 > rev2:
+            (rev2, rev1) = (rev1, rev2)
 
         mutter('encoding log as %r', bzrlib.user_encoding)
 
