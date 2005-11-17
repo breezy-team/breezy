@@ -159,3 +159,12 @@ class TestWorkingTree(TestCaseInTempDir):
         tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
         self.check_file_contents('hello.txt~', 'new hello')
+
+    def test_unknowns(self):
+        b = Branch.initialize('.')
+        tree = WorkingTree('.', b)
+        self.build_tree(['hello.txt',
+                         'hello.txt~'])
+        self.assertEquals(list(tree.unknowns()),
+                          ['hello.txt'])
+

@@ -526,25 +526,6 @@ class _Branch(Branch):
             raise BzrError("%r is not present in revision %s" % (file, revno))
         tree.print_file(file_id)
 
-    def unknowns(self):
-        """Return all unknown files.
-
-        These are files in the working directory that are not versioned or
-        control files or ignored.
-        
-        >>> from bzrlib.workingtree import WorkingTree
-        >>> b = ScratchBranch(files=['foo', 'foo~'])
-        >>> map(str, b.unknowns())
-        ['foo']
-        >>> WorkingTree(b.base, b).add('foo')
-        >>> list(b.unknowns())
-        []
-        >>> WorkingTree(b.base, b).remove('foo')
-        >>> list(b.unknowns())
-        [u'foo']
-        """
-        return self.working_tree().unknowns()
-
     @needs_write_lock
     def append_revision(self, *revision_ids):
         for revision_id in revision_ids:

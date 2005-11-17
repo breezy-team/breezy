@@ -73,6 +73,7 @@ UNRELEASED CHANGES
     * The follow operations from Branch have moved to WorkingTree:
       add()
       commit()
+      unknowns()
       (Robert Collins)
 
 bzr 0.6 2005-10-28

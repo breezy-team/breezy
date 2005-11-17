@@ -996,7 +996,7 @@ class cmd_unknowns(Command):
     @display_command
     def run(self):
         from bzrlib.osutils import quotefn
-        for f in WorkingTree.open_containing('.')[0].branch.unknowns():
+        for f in WorkingTree.open_containing('.')[0].unknowns():
             print quotefn(f)
 
 

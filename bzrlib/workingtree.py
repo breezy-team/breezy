@@ -497,9 +497,24 @@ class WorkingTree(bzrlib.tree.Tree):
         for f in descend('', inv.root.file_id, self.basedir):
             yield f
             
-
-
     def unknowns(self):
+        """Return all unknown files.
+
+        These are files in the working directory that are not versioned or
+        control files or ignored.
+        
+        >>> from bzrlib.branch import ScratchBranch
+        >>> b = ScratchBranch(files=['foo', 'foo~'])
+        >>> tree = WorkingTree(b.base, b)
+        >>> map(str, tree.unknowns())
+        ['foo']
+        >>> tree.add('foo')
+        >>> list(b.unknowns())
+        []
+        >>> tree.remove('foo')
+        >>> list(b.unknowns())
+        [u'foo']
+        """
         for subp in self.extras():
             if not self.is_ignored(subp):
                 yield subp

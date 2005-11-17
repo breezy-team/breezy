@@ -72,6 +72,7 @@ import pdb
 from binascii import hexlify
 from cStringIO import StringIO
 
+from bzrlib.atomicfile import AtomicFile
 from bzrlib.osutils import (local_time_offset,
                             rand_bytes, compact_date,
                             kind_marker, is_inside_any, quotefn,
@@ -91,7 +92,7 @@ from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave_v5
-from bzrlib.atomicfile import AtomicFile
+from bzrlib.workingtree import WorkingTree
 
 
 def commit(*args, **kwargs):
@@ -123,6 +124,7 @@ class NullCommitReporter(object):
     def missing(self, path):
         pass
 
+
 class ReportCommitToLog(NullCommitReporter):
 
     def snapshot_change(self, change, path):
@@ -139,6 +141,7 @@ class ReportCommitToLog(NullCommitReporter):
 
     def missing(self, path):
         note('missing %s', path)
+
 
 class Commit(object):
     """Task of committing a new revision.
@@ -204,10 +207,11 @@ class Commit(object):
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
         self.revprops = revprops
+        self.work_tree = WorkingTree(branch.base, branch)
 
         if strict:
             # raise an exception as soon as we find a single unknown.
-            for unknown in branch.unknowns():
+            for unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
 
         if timestamp is None:
@@ -240,7 +244,6 @@ class Commit(object):
 
         self.branch.lock_write()
         try:
-            self.work_tree = self.branch.working_tree()
             self.work_inv = self.work_tree.inventory
             self.basis_tree = self.branch.basis_tree()
             self.basis_inv = self.basis_tree.inventory

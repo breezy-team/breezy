@@ -8,15 +8,6 @@ from bzrlib.errors import NotBranchError
 
 class TestBranch(TestCaseInTempDir):
 
-    def test_unknowns(self):
-        b = Branch.initialize('.')
-
-        self.build_tree(['hello.txt',
-                         'hello.txt~'])
-
-        self.assertEquals(list(b.unknowns()),
-                          ['hello.txt'])
-
     def test_no_changes(self):
         from bzrlib.errors import PointlessCommit
         
