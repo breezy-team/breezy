@@ -33,7 +33,8 @@ from bzrlib.errors import (BzrCommandError,
                            NoCommits,
                            WorkingTreeNotRevision,
                            NotBranchError,
-                           NotVersionedError)
+                           NotVersionedError,
+                           BzrError)
 from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter, warning, note
 from bzrlib.fetch import greedy_fetch, fetch
@@ -150,7 +151,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
         Handle weave conflicts by producing a .THIS, and .OTHER.  The
         main file will be a version with diff3-style conflicts.
         """
-        self.add_suffix(filename, ".THIS")
+        self.add_suffix(filename, ".THIS", fix_inventory=False)
         out_file.commit()
         self.dump(weave.get_iter(other_i), filename+".OTHER")
         self.conflict("Text conflict encountered in %s" % filename)
@@ -228,7 +229,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def finalize(self):
         if not self.ignore_zero:
-            note("%d conflicts encountered.\n" % self.conflicts)
+            note("%d conflicts encountered.\n", self.conflicts)
             
 def get_tree(treespec, local_branch=None):
     location, revno = treespec
@@ -275,8 +276,9 @@ def build_working_dir(to_dir):
     transform_tree(this_branch.working_tree(), this_branch.basis_tree())
 
 
-def transform_tree(from_tree, to_tree):
-    merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True)
+def transform_tree(from_tree, to_tree, interesting_ids=None):
+    merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
+                interesting_ids=interesting_ids)
 
 
 def merge(other_revision, base_revision,
@@ -324,6 +326,9 @@ def merge(other_revision, base_revision,
     merger.check_basis(check_clean)
     merger.set_other(other_revision)
     merger.set_base(base_revision)
+    if merger.base_rev_id == merger.other_rev_id:
+        note('Nothing to do.')
+        return 0
     merger.backup_files = backup_files
     merger.merge_type = merge_type 
     merger.set_interesting_files(file_list)
@@ -338,8 +343,12 @@ def merge(other_revision, base_revision,
     return conflicts
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
-                backup_files=False, merge_type=ApplyMerge3, 
-                interesting_ids=None, show_base=False, reprocess=False,
+                backup_files=False, 
+                merge_type=ApplyMerge3, 
+                interesting_ids=None, 
+                show_base=False, 
+                reprocess=False, 
+                other_rev_id=None,
                 interesting_files=None):
     """Primary interface for merging. 
 
@@ -360,6 +369,8 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     merger.conflict_handler = MergeConflictHandler(merger.this_tree, base_tree, 
                                                    other_tree,
                                                    ignore_zero=ignore_zero)
+    merger.other_rev_id = other_rev_id
+    merger.other_basis = other_rev_id
     return merger.do_merge()
 
 
@@ -371,6 +382,7 @@ class Merger(object):
         self.this_rev_id = None
         self.this_tree = this_branch.working_tree()
         self.this_revision_tree = None
+        self.this_basis_tree = None
         self.other_tree = other_tree
         self.base_tree = base_tree
         self.ignore_zero = False
@@ -386,12 +398,11 @@ class Merger(object):
 
     def ensure_revision_trees(self):
         if self.this_revision_tree is None:
-            if self.this_rev_id is None:
-                self.compare_basis()
-            if self.this_rev_id is None:
-                raise WorkingTreeNotRevision(self.this_tree)
-            self.this_revision_tree = self.this_branch.revision_tree(
-                self.this_rev_id)
+            self.this_basis_tree = self.this_branch.revision_tree(
+                self.this_basis)
+            if self.this_basis == self.this_rev_id:
+                self.this_revision_tree = self.this_basis_tree
+
 
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
@@ -408,14 +419,24 @@ class Merger(object):
             revision_id = tree.inventory[file_id].revision
             assert revision_id is not None
             return revision_id
-        trees = (self.this_revision_tree, self.other_tree)
+        if self.this_rev_id is None:
+            if self.this_basis_tree.get_file_sha1(file_id) != \
+                self.this_tree.get_file_sha1(file_id):
+                raise WorkingTreeNotRevision(self.this_tree)
+
+        trees = (self.this_basis_tree, self.other_tree)
         return [get_id(tree, file_id) for tree in trees]
             
 
     def merge_factory(self, file_id, base, other):
         if self.merge_type.history_based:
+            if self.show_base is True:
+                raise BzrError("Cannot show base for hisory-based merges")
+            if self.reprocess is True:
+                raise BzrError("Cannot reprocess history-based merges")
+                
             t_revid, o_revid = self.file_revisions(file_id)
-            weave = self.this_revision_tree.get_weave(file_id)
+            weave = self.this_basis_tree.get_weave(file_id)
             contents_change = self.merge_type(weave, t_revid, o_revid)
         else:
             if self.show_base is True or self.reprocess is True:
@@ -524,7 +545,7 @@ class Merger(object):
     def do_merge(self):
         def get_inventory(tree):
             return tree.inventory
-
+        
         inv_changes = merge_flex(self.this_tree, self.base_tree, 
                                  self.other_tree,
                                  generate_changeset, get_inventory,

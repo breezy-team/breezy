@@ -165,8 +165,8 @@ class TestEntryDiffing(TestCaseInTempDir):
                           "old_label", self.tree_1,
                           "/dev/null", None, None,
                           output)
-        self.assertEqual(output.getvalue(), "--- old_label\n"
-                                            "+++ /dev/null\n"
+        self.assertEqual(output.getvalue(), "--- old_label\t\n"
+                                            "+++ /dev/null\t\n"
                                             "@@ -1,1 +0,0 @@\n"
                                             "-foo\n"
                                             "\n")
@@ -177,8 +177,8 @@ class TestEntryDiffing(TestCaseInTempDir):
                           "new_label", self.tree_1,
                           "/dev/null", None, None,
                           output, reverse=True)
-        self.assertEqual(output.getvalue(), "--- /dev/null\n"
-                                            "+++ new_label\n"
+        self.assertEqual(output.getvalue(), "--- /dev/null\t\n"
+                                            "+++ new_label\t\n"
                                             "@@ -0,0 +1,1 @@\n"
                                             "+foo\n"
                                             "\n")
@@ -189,8 +189,8 @@ class TestEntryDiffing(TestCaseInTempDir):
                           "/dev/null", self.tree_1, 
                           "new_label", self.file_2, self.tree_2,
                           output)
-        self.assertEqual(output.getvalue(), "--- /dev/null\n"
-                                            "+++ new_label\n"
+        self.assertEqual(output.getvalue(), "--- /dev/null\t\n"
+                                            "+++ new_label\t\n"
                                             "@@ -1,1 +1,1 @@\n"
                                             "-foo\n"
                                             "+bar\n"

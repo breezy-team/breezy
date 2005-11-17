@@ -14,8 +14,8 @@ from bzrlib.osutils import file_kind, rename, sha_file
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
                                BackupBeforeChange, ExecFlagMerge, WeaveMerge)
-from bzrlib.changeset import Inventory, apply_changeset, invert_dict
-from bzrlib.changeset import get_contents, ReplaceContents
+from bzrlib.changeset import Inventory, apply_changeset, invert_dict, \
+    get_contents, ReplaceContents, ChangeExecFlag
 from bzrlib.clone import copy_branch
 from bzrlib.merge import merge
 
@@ -626,3 +626,41 @@ class FunctionalMergeTest(TestCaseInTempDir):
         self.assert_(os.path.lexists('a/file'))
         self.assert_(os.path.lexists('a/file.moved'))
         self.assertEqual(a.working_tree().pending_merges(), [b.last_revision()])
+
+    def test_merge_deleted_conflicts(self):
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/file', 'wb').write('contents\n')
+        a.add('file')
+        a.working_tree().commit('a_revision', allow_pointless=False)
+        del a
+        self.run_bzr('branch', 'a', 'b')
+        a = Branch.open('a')
+        os.remove('a/file')
+        a.working_tree().commit('removed file', allow_pointless=False)
+        file('b/file', 'wb').write('changed contents\n')
+        b = Branch.open('b')
+        b.working_tree().commit('changed file', allow_pointless=False)
+        merge(['a', -1], ['a', 1], this_dir='b')
+        self.failIf(os.path.lexists('b/file'))
+
+    def test_merge_metadata_vs_deletion(self):
+        """Conflict deletion vs metadata change"""
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/file', 'wb').write('contents\n')
+        a.add('file')
+        a_wt = a.working_tree()
+        a_wt.commit('r0')
+        copy_branch(a, 'b')
+        b = Branch.open('b')
+        b_wt = b.working_tree()
+        os.chmod('b/file', 0755)
+        os.remove('a/file')
+        a_wt.commit('removed a')
+        self.assertEqual(a.revno(), 2)
+        self.assertFalse(os.path.exists('a/file'))
+        b_wt.commit('exec a')
+        merge(['b', -1], ['b', 0], this_dir='a')
+        self.assert_(os.path.exists('a/file'))
+

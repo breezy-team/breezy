@@ -204,7 +204,9 @@ class Commit(object):
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
-        self.revprops = revprops
+        self.revprops = {'branch-nick': branch.nick}
+        if revprops:
+            self.revprops.update(revprops)
 
         if strict:
             # raise an exception as soon as we find a single unknown.

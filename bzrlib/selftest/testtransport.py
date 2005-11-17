@@ -18,7 +18,8 @@
 import os
 from cStringIO import StringIO
 
-from bzrlib.errors import NoSuchFile, FileExists, TransportNotPossible
+from bzrlib.errors import (NoSuchFile, FileExists, TransportNotPossible,
+                           ConnectionError)
 from bzrlib.selftest import TestCase, TestCaseInTempDir
 from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.transport import memory, urlescape
@@ -65,8 +66,12 @@ class TestTransportMixIn(object):
         self.assertEqual(t.has(urlescape('%')), True)
         self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
                 [True, True, False, False, True, False, True, False])
+        self.assertEqual(t.has_any(['a', 'b', 'c']), True)
+        self.assertEqual(t.has_any(['c', 'd', 'f', urlescape('%%')]), False)
         self.assertEqual(list(t.has_multi(iter(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']))),
                 [True, True, False, False, True, False, True, False])
+        self.assertEqual(t.has_any(['c', 'c', 'c']), False)
+        self.assertEqual(t.has_any(['b', 'b', 'b']), True)
 
     def test_get(self):
         t = self.get_transport()
@@ -291,6 +296,15 @@ class TestTransportMixIn(object):
             self.assertEquals(open(f).read(),
                     open(os.path.join(dtmp_base, f)).read())
 
+        # Test that copying into a missing directory raises
+        # NoSuchFile
+        os.mkdir('e')
+        open('e/f', 'wb').write('contents of e')
+        self.assertRaises(NoSuchFile, t.copy_to, ['e/f'], local_t)
+
+        os.mkdir(os.path.join(dtmp_base, 'e'))
+        t.copy_to(['e/f'], local_t)
+
         del dtmp, dtmp_base, local_t
 
         dtmp = tempfile.mkdtemp(dir='.', prefix='test-transport-')
@@ -450,7 +464,14 @@ class TestTransportMixIn(object):
         # TODO: Test Transport.move
         pass
 
+    def test_connection_error(self):
+        """ConnectionError is raised when connection is impossible"""
+        if not hasattr(self, "get_bogus_transport"):
+            return
+        t = self.get_bogus_transport()
+        self.assertRaises(ConnectionError, t.get, '.bzr/branch')
 
+        
 class LocalTransportTest(TestCaseInTempDir, TestTransportMixIn):
     def get_transport(self):
         from bzrlib.transport.local import LocalTransport
@@ -465,6 +486,10 @@ class HttpTransportTest(TestCaseWithWebserver, TestTransportMixIn):
         from bzrlib.transport.http import HttpTransport
         url = self.get_remote_url('.')
         return HttpTransport(url)
+
+    def get_bogus_transport(self):
+        from bzrlib.transport.http import HttpTransport
+        return HttpTransport('http://jasldkjsalkdjalksjdkljasd')
 
 
 class TestMemoryTransport(TestCase):
@@ -556,4 +581,4 @@ class TestMemoryTransport(TestCase):
         transport.put('bar', StringIO('phowar'))
         self.assertEqual(7, transport.stat('foo').st_size)
         self.assertEqual(6, transport.stat('bar').st_size)
-        
+

@@ -1,6 +1,3 @@
-#! /usr/bin/python
-# -*- coding: utf-8 -*-
-
 # Copyright (C) 2005 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
@@ -17,7 +14,28 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-print 'please use "bzr selftest" instead'
-import sys
-sys.exit(1)
+"""Export a Tree to a non-versioned directory.
+"""
+
+import os
+from bzrlib.trace import mutter
+
+def dir_exporter(tree, dest, root):
+    """Export this tree to a new directory.
+
+    `dest` should not exist, and will be created holding the
+    contents of this tree.
+
+    TODO: To handle subdirectories we need to create the
+           directories first.
+
+    :note: If the export fails, the destination directory will be
+           left in a half-assed state.
+    """
+    import os
+    os.mkdir(dest)
+    mutter('export version %r', tree)
+    inv = tree.inventory
+    for dp, ie in inv.iter_entries():
+        ie.put_on_disk(dest, dp, tree)
 

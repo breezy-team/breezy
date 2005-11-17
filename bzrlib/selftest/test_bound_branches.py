@@ -103,7 +103,7 @@ class TestBoundBranches(TestCaseInTempDir):
 
         os.chdir('../child')
         open('b', 'wb').write('new b child contents\n')
-        bzr('commit', '-m', 'child', retcode=1)
+        bzr('commit', '-m', 'child', retcode=3)
 
         bzr('update')
         self.check_revno(2)
@@ -123,7 +123,7 @@ class TestBoundBranches(TestCaseInTempDir):
         # Double binding succeeds, but committing to child2 should fail
         bzr('bind', '../child')
 
-        bzr('commit', '-m', 'child2', '--unchanged', retcode=1)
+        bzr('commit', '-m', 'child2', '--unchanged', retcode=3)
 
     def test_unbinding(self):
         bzr = self.run_bzr
@@ -137,13 +137,13 @@ class TestBoundBranches(TestCaseInTempDir):
         os.chdir('../child')
         open('b', 'wb').write('new b child contents\n')
         self.check_revno(1)
-        bzr('commit', '-m', 'child', retcode=1)
+        bzr('commit', '-m', 'child', retcode=3)
         self.check_revno(1)
         bzr('unbind')
         bzr('commit', '-m', 'child')
         self.check_revno(2)
 
-        bzr('bind', retcode=1)
+        bzr('bind', retcode=3)
 
     def test_commit_remote_bound(self):
         # It is not possible to commit to a branch
@@ -159,7 +159,7 @@ class TestBoundBranches(TestCaseInTempDir):
         bzr('bind', '../newbase')
 
         os.chdir('../child')
-        bzr('commit', '-m', 'failure', '--unchanged', retcode=1)
+        bzr('commit', '-m', 'failure', '--unchanged', retcode=3)
         
 
     def test_pull_updates_both(self):
@@ -197,7 +197,7 @@ class TestBoundBranches(TestCaseInTempDir):
 
         os.chdir('../child')
         # These branches have diverged
-        bzr('bind', '../base', retcode=1)
+        bzr('bind', '../base', retcode=3)
 
         # TODO: In the future, this might require actual changes
         # to have occurred, rather than just a new revision entry
