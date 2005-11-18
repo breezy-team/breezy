@@ -66,6 +66,9 @@ UNRELEASED CHANGES
     * Make annotate cope better with revisions committed without a valid 
       email address.  (Marien Zwart)
 
+    * Fix representation of tab characters in commit messages.  (Harald 
+      Meland)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
