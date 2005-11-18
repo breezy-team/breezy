@@ -473,12 +473,13 @@ class cmd_push(Command):
             br_to = Branch.initialize(location)
         try:
             old_rh = br_to.revision_history()
-            br_to.pull(br_from, overwrite)
+            count = br_to.pull(br_from, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try a merge then push with overwrite.")
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(location)
+        note('%d revision(s) pushed.' % (count,))
 
         if verbose:
             new_rh = br_to.revision_history()
