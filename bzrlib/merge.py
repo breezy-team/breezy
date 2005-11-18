@@ -559,7 +559,7 @@ class Merger(object):
                 if path == '.':
                     path = ''
                 else:
-                    assert path.startswith('.' + os.sep), "path is %s" % path
+                    assert path.startswith('.' + '/') or path.startswith('.' + '\\'), "path is %s" % path
                 path = path[2:]
             adjust_ids.append((path, id))
         if len(adjust_ids) > 0:

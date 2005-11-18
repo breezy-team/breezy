@@ -446,7 +446,8 @@ class SFTPTransport (Transport):
                 pass
 
         # give up and ask for a password
-        password = getpass.getpass('SSH %s@%s password: ' % (self._username, self._host))
+        enc = sys.stdout.encoding
+        password = getpass.getpass('SSH %s@%s password: ' % (self._username.encode(enc,'replace'), self._host.encode(enc)))
         try:
             transport.auth_password(self._username, password)
         except paramiko.SSHException:

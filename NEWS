@@ -52,6 +52,10 @@ UNRELEASED CHANGES
     * Stores with some compressed texts and some uncompressed texts are now
       able to be used. (John A Meinel)
 
+    * Fix for bzr pull failing sometimes under windows
+
+    * Fix for sftp transport under windows when using interactive auth
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
