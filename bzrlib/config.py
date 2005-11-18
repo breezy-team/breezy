@@ -147,8 +147,8 @@ class Config(object):
         
         $BZREMAIL can be set to override this, then
         the concrete policy type is checked, and finally
-        $EMAIL is examinged.
-        but if none is found, a reasonable default is (hopefully)
+        $EMAIL is examined.
+        If none is found, a reasonable default is (hopefully)
         created.
     
         TODO: Check it's reasonably well-formed.

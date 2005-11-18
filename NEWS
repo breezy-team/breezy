@@ -1,5 +1,10 @@
 UNRELEASED CHANGES
 
+  CHANGES:
+
+    * .bzrignore is excluded from exports, on the grounds that it's a bzr 
+      internal-use file and may not be wanted.  (Jamie Wilkinson)
+
   IMPROVEMENTS:
 
     * "bzr INIT dir" now initializes the specified directory, and creates 
