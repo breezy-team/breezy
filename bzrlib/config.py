@@ -133,12 +133,7 @@ class Config(object):
 
     def user_email(self):
         """Return just the email component of a username."""
-        e = self.username()
-        m = re.search(r'[\w+.-]+@[\w+.-]+', e)
-        if not m:
-            raise BzrError("%r doesn't seem to contain "
-                           "a reasonable email address" % e)
-        return m.group(0)
+        return extract_email_address(self.username())
 
     def username(self):
         """Return email-style username.
@@ -480,8 +475,8 @@ def extract_email_address(e):
     """
     m = re.search(r'[\w+.-]+@[\w+.-]+', e)
     if not m:
-        raise BzrError("%r doesn't seem to contain "
-                       "a reasonable email address" % e)
+        raise errors.BzrError("%r doesn't seem to contain "
+                              "a reasonable email address" % e)
     return m.group(0)
 
 class TreeConfig(object):

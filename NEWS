@@ -63,6 +63,9 @@ UNRELEASED CHANGES
     * Show files which are both renamed and modified as such in 'bzr 
       status' output.  (#4503, Daniel Silverstone)
 
+    * Make annotate cope better with revisions committed without a valid 
+      email address.  (Marien Zwart)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  

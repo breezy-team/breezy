@@ -33,6 +33,7 @@ import time
 
 import bzrlib.weave
 from bzrlib.config import extract_email_address
+from bzrlib.errors import BzrError
 
 
 def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
