@@ -10,10 +10,10 @@ from bzrlib.branch import Branch
 class cmd_buildpackage(Command):
 	"""Build the package
 	"""
-	takes_args = ['package', 'version']
+	takes_args = ['package', 'version?']
 	takes_options = ['verbose']
 
-	def run(self, package, version, verbose=False):
+	def run(self, package, version=None, verbose=False):
 		retcode = 0
 
 		return retcode
