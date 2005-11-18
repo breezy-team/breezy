@@ -45,10 +45,12 @@ def add_reporter_null(path, kind, entry):
     """Absorb add reports and do nothing."""
     pass
 
+
 def add_reporter_print(path, kind, entry):
     """Print a line to stdout for each file that's added."""
     print "added", bzrlib.osutils.quotefn(path)
-    
+
+
 def _prepare_file_list(file_list):
     """Prepare a file list for use by smart_add_*."""
     import sys
@@ -79,7 +81,7 @@ def smart_add_tree(tree, file_list, recurse=True, reporter=add_reporter_null):
     This is designed more towards DWIM for humans than API simplicity.
     For the specific behaviour see the help for cmd_add().
 
-    This yields a sequence of (path, kind, file_id) for added files.
+    This calls reporter with each (path, kind, file_id) of added files.
 
     Returns the number of files added.
     """
