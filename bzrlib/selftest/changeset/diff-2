@@ -1,0 +1,12 @@
+--- patches.py
++++ patches.py
+@@ -391,6 +391,8 @@
+                 else:
+                     assert isinstance(hunk_line, RemoveLine)
+                 line_no += 1
++    for line in orig_lines:
++        yield line
+                     
+ import unittest
+ import os.path
+
