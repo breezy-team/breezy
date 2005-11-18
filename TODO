@@ -1,0 +1,21 @@
+- construct working area:
+   packages/
+    configs/  - for each package
+
+
+    $package ...
+
+    $package/$debian
+
+  ye olde arch-buildpackage layout
+
+- create new package
+  import from old source debs
+
+- record a version
+
+- build package
+
+- new upstream
+
+- migrate from arch-buildpackage?  use baz-import?
