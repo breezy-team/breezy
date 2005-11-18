@@ -282,6 +282,14 @@ class SFTPTransport (Transport):
                 pass
             raise e
         else:
+            # sftp rename doesn't allow overwriting, so play tricks:
+            tmp_safety = 'bzr.tmp.%.9f.%d.%d' % (time.time(), os.getpid(), random.randint(0, 0x7FFFFFFF))
+            tmp_safety = self._abspath(tmp_safety)
+            try:
+                self._sftp.rename(final_path, tmp_safety)
+                file_existed = True
+            except:
+                file_existed = False
             try:
                 self._sftp.rename(tmp_abspath, final_path)
             except IOError, e:
@@ -289,6 +297,8 @@ class SFTPTransport (Transport):
             except paramiko.SSHException, x:
                 raise SFTPTransportError('Unable to rename into file %r' 
                                           % (path,), x)
+            if file_existed:
+                self._sftp.unlink(tmp_safety)
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
