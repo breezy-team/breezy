@@ -68,7 +68,7 @@ class SimpleLogTest(TestCaseInTempDir):
         b = Branch('.', init=True)
 
         lf = LogCatcher()
-        b.commit('empty commit')
+        b.working_tree().commit('empty commit')
         show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
         self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
                           start_revision=2, end_revision=1) 
@@ -87,7 +87,7 @@ class SimpleLogTest(TestCaseInTempDir):
         b = Branch.initialize('.')
 
         lf = LogCatcher()
-        b.commit('empty commit')
+        b.working_tree().commit('empty commit')
         show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
         self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
                           start_revision=2, end_revision=1) 
@@ -113,7 +113,7 @@ class SimpleLogTest(TestCaseInTempDir):
         eq(lf.logs, [])
 
 
-        b.commit('empty commit')
+        b.working_tree().commit('empty commit')
         lf = LogCatcher()
         show_log(b, lf, verbose=True)
         eq(len(lf.logs), 1)
@@ -126,7 +126,7 @@ class SimpleLogTest(TestCaseInTempDir):
 
         self.build_tree(['hello'])
         b.add('hello')
-        b.commit('add one file')
+        b.working_tree().commit('add one file')
 
         lf = StringIO()
         # log using regular thing
@@ -153,7 +153,7 @@ class SimpleLogTest(TestCaseInTempDir):
         
         # commit a log message with control characters
         msg = "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)])
-        b.commit(msg)
+        b.working_tree().commit(msg)
         lf = LogCatcher()
         show_log(b, lf, verbose=True)
         committed_msg = lf.logs[0].rev.message

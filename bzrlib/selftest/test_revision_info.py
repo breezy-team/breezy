@@ -28,7 +28,7 @@ class TestRevisionInfo(TestCaseInTempDir):
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
         """
-        self.assertEquals(self.run_bzr_captured(args, retcode=1)[1], output)
+        self.assertContainsRe(self.run_bzr_captured(args, retcode=3)[1], output)
 
     def check_output(self, output, *args):
         """Verify that the expected output matches what bzr says.
@@ -44,12 +44,13 @@ class TestRevisionInfo(TestCaseInTempDir):
 
         b = Branch.initialize('.')
 
-        b.commit('Commit one', rev_id='a@r-0-1')
-        b.commit('Commit two', rev_id='a@r-0-2')
-        b.commit('Commit three', rev_id='a@r-0-3')
+        b.working_tree().commit('Commit one', rev_id='a@r-0-1')
+        b.working_tree().commit('Commit two', rev_id='a@r-0-2')
+        b.working_tree().commit('Commit three', rev_id='a@r-0-3')
 
         # Make sure revision-info without any arguments throws an exception
-        self.check_error('bzr: ERROR: You must supply a revision identifier\n',
+        self.check_error('bzr: ERROR: bzrlib.errors.BzrCommandError: '
+                         'You must supply a revision identifier\n',
                          'revision-info')
 
         values = {
@@ -86,9 +87,9 @@ class TestRevisionInfo(TestCaseInTempDir):
         """
         b = Branch.initialize('.')
 
-        b.commit('Commit one', rev_id='a@r-0-1')
-        b.commit('Commit two', rev_id='a@r-0-2')
-        b.commit('Commit three', rev_id='a@r-0-3')
+        b.working_tree().commit('Commit one', rev_id='a@r-0-1')
+        b.working_tree().commit('Commit two', rev_id='a@r-0-2')
+        b.working_tree().commit('Commit three', rev_id='a@r-0-3')
 
         revs = {
             1:b.get_revision_xml_file('a@r-0-1').read(),

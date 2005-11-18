@@ -13,17 +13,34 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Messages and logging for bazaar-ng
+"""Messages and logging for bazaar-ng.
 
-Messages are sent out through the Python logging library.
+Messages are supplied by callers as a string-formatting template, plus values
+to be inserted into it.  The actual %-formatting is deferred to the log
+library so that it doesn't need to be done for messages that won't be emitted.
 
-They can be sent to two places: to stderr, and to ~/.bzr.log.
+Messages are classified by severity levels: critical, error, warning, info,
+and debug.
 
-~/.bzr.log gets all messages, and tracebacks of all uncaught
-exceptions.
+They can be sent to two places: to stderr, and to ~/.bzr.log.  For purposes
+such as running the test suite, they can also be redirected away from both of
+those two places to another location.
 
-Normally stderr only gets messages of level INFO and higher, and gets
-only a summary of exceptions, not the traceback.
+~/.bzr.log gets all messages, and full tracebacks for uncaught exceptions.
+
+Output to stderr depends on the mode chosen by the user.  By default, messages
+of info and above are sent out, which results in progress messages such as the
+list of files processed by add and commit.  In quiet mode, only warnings and
+above are shown.  In debug mode, stderr gets debug messages too.
+
+Errors that terminate an operation are generally passed back as exceptions;
+others may be just emitted as messages.
+
+Exceptions are reported in a brief form to stderr so as not to look scary.
+BzrErrors are required to be able to format themselves into a properly
+explanatory message.  This is not true for builtin excexceptions such as
+KeyError, which typically just str to "0".  They're printed in a different
+form.
 """
 
 
@@ -41,7 +58,9 @@ only a summary of exceptions, not the traceback.
 import sys
 import os
 import logging
-import traceback
+
+import bzrlib
+from bzrlib.errors import BzrNewError
 
 
 _file_handler = None
@@ -63,20 +82,9 @@ class QuietFormatter(logging.Formatter):
             s = 'bzr: ' + record.levelname + ': '
         else:
             s = ''
-            
         s += record.getMessage()
-
-        ##import textwrap
-        ##s = textwrap.fill(s)
-            
         if record.exc_info:
-            # give just a summary of the exception, not the whole thing
-            exinfo = traceback.extract_tb(record.exc_info[2])
-            # the format of this string matches one of the REs
-            s += '\n'
-            s += ('  at %s line %d, in %s()\n' % exinfo[-1][:3])
-            s += '  see ~/.bzr.log for debug information'
-
+            s += '\n' + format_exception_short(record.exc_info)
         return s
         
 
@@ -95,12 +103,6 @@ mutter =    _bzr_logger.debug
 debug =     _bzr_logger.debug
 
 
-
-
-# we do the rollover using this code, rather than the default from python
-# logging, because we only want to rollover at program startup, not on each
-# message.  maybe that's not a good enough reason.
-
 def _rollover_trace_maybe(trace_fname):
     import stat
     try:
@@ -108,13 +110,10 @@ def _rollover_trace_maybe(trace_fname):
         if size <= 4 << 20:
             return
         old_fname = trace_fname + '.old'
-
         from osutils import rename
         rename(trace_fname, old_fname)
-
     except OSError:
         return
-
 
 
 def open_tracefile(tracefilename='~/.bzr.log'):
@@ -126,10 +125,9 @@ def open_tracefile(tracefilename='~/.bzr.log'):
 
     trace_fname = os.path.join(os.path.expanduser(tracefilename))
     _rollover_trace_maybe(trace_fname)
-
-    # buffering=1 means line buffered
     try:
-        tf = codecs.open(trace_fname, 'at', 'utf8', buffering=1)
+        LINE_BUFFERED = 1
+        tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
 
         if os.fstat(tf.fileno())[stat.ST_SIZE] == 0:
             tf.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
@@ -142,19 +140,15 @@ def open_tracefile(tracefilename='~/.bzr.log'):
         _file_handler.setFormatter(logging.Formatter(fmt, datefmt))
         _file_handler.setLevel(logging.DEBUG)
         logging.getLogger('').addHandler(_file_handler)
-
     except IOError, e:
         warning("failed to open trace file: %s" % (e))
 
 
 def log_startup(argv):
-    import bzrlib
-
     debug('bzr %s invoked on python %s (%s)',
           bzrlib.__version__,
           '.'.join(map(str, sys.version_info)),
           sys.platform)
-
     debug('  arguments: %r', argv)
     debug('  working dir: %r', os.getcwdu())
 
@@ -165,15 +159,10 @@ def log_exception(msg=None):
     The exception string representation is used as the error
     summary, unless msg is given.
     """
-    ei = sys.exc_info()
-    if msg == None:
-        msg = str(ei[1])
-    if msg and (msg[-1] == '\n'):
-        msg = msg[:-1]
-    msg += '\n  command: %s' % ' '.join(repr(arg) for arg in sys.argv)
-    msg += '\n      pwd: %r' % os.getcwdu()
-    msg += '\n    error: %s' % ei[0]        # exception type
-    _bzr_logger.exception(msg)
+    exc_str = format_exception_short(sys.exc_info())
+    if msg:
+        _bzr_logger.exception(msg)
+    _bzr_logger.error(exc_str)
 
 
 def log_exception_quietly():
@@ -183,6 +172,7 @@ def log_exception_quietly():
     interesting to developers but not to users.  For example, 
     errors loading plugins.
     """
+    import traceback
     debug(traceback.format_exc())
 
 
@@ -192,9 +182,7 @@ def enable_default_logging():
 
     _stderr_handler = logging.StreamHandler()
     _stderr_handler.setFormatter(QuietFormatter())
-
-    if not _file_handler:
-        open_tracefile()
+    logging.getLogger('').addHandler(_stderr_handler)
 
     if os.environ.get('BZR_DEBUG'):
         level = logging.DEBUG
@@ -202,11 +190,14 @@ def enable_default_logging():
         level = logging.INFO
 
     _stderr_handler.setLevel(logging.INFO)
-    _file_handler.setLevel(level)
+
+    if not _file_handler:
+        open_tracefile()
+
+    if _file_handler:
+        _file_handler.setLevel(level)
+
     _bzr_logger.setLevel(level) 
-
-    logging.getLogger('').addHandler(_stderr_handler)
-
 
 def be_quiet(quiet=True):
     global _stderr_handler, _stderr_quiet
@@ -234,3 +225,49 @@ def disable_default_logging():
     l.removeHandler(_stderr_handler)
     if _file_handler:
         l.removeHandler(_file_handler)
+
+
+def enable_test_log(to_file):
+    """Redirect logging to a temporary file for a test"""
+    disable_default_logging()
+    global _test_log_hdlr
+    hdlr = logging.StreamHandler(to_file)
+    hdlr.setLevel(logging.DEBUG)
+    hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
+    logging.getLogger('').addHandler(hdlr)
+    logging.getLogger('').setLevel(logging.DEBUG)
+    _test_log_hdlr = hdlr
+
+
+def disable_test_log():
+    logging.getLogger('').removeHandler(_test_log_hdlr)
+    enable_default_logging()
+
+
+def format_exception_short(exc_info):
+    """Make a short string form of an exception.
+
+    This is used for display to stderr.  It specially handles exception
+    classes without useful string methods.
+
+    The result has no trailing newline.
+
+    exc_info - typically an exception from sys.exc_info()
+    """
+    exc_type, exc_object, exc_tb = exc_info
+    try:
+        if exc_type is None:
+            return '(no exception)'
+        if isinstance(exc_object, BzrNewError):
+            return str(exc_object)
+        else:
+            import traceback
+            tb = traceback.extract_tb(exc_tb)
+            msg = '%s: %s' % (exc_type, exc_object)
+            if msg[-1] == '\n':
+                msg = msg[:-1]
+            if tb:
+                msg += '\n  at %s line %d\n  in %s' % (tb[-1][:3])
+            return msg
+    except:
+        return '(error formatting exception of type %s)' % exc_type
