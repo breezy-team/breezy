@@ -76,8 +76,20 @@ class _MyResult(unittest._TextTestResult):
 
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
-        # TODO: Maybe show test.shortDescription somewhere?
-        what = test.shortDescription() or test.id()        
+        # In a short description, the important words are in
+        # the beginning, but in an id, the important words are
+        # at the end
+        what = test.shortDescription()
+        if what:
+            if len(what) > 70:
+                what = what[:67] + '...'
+        else:
+            what = test.id()
+            if what.startswith('bzrlib.selftest.'):
+                what = what[16:]
+            if len(what) > 70:
+                what = '...' + what[-67:]
+            
         if self.showAll:
             self.stream.write('%-70.70s' % what)
         self.stream.flush()
