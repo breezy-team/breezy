@@ -65,6 +65,7 @@ from bzrlib.osutils import (appendpath,
                             pumpfile,
                             splitpath,
                             rand_bytes,
+                            realpath,
                             relpath,
                             rename)
 import bzrlib.tree
@@ -171,7 +172,7 @@ class WorkingTree(bzrlib.tree.Tree):
     not listed in the Inventory and vice versa.
     """
 
-    def __init__(self, basedir, branch=None):
+    def __init__(self, basedir='.', branch=None):
         """Construct a WorkingTree for basedir.
 
         If the branch is not supplied, it is opened automatically.
@@ -188,9 +189,9 @@ class WorkingTree(bzrlib.tree.Tree):
         assert isinstance(branch, Branch), \
             "branch %r is not a Branch" % branch
         self.branch = branch
-        self.basedir = basedir
-        self._inventory = self.read_working_inventory()
-        self.path2id = self._inventory.path2id
+        self.basedir = realpath(basedir)
+
+        self._set_inventory(self.read_working_inventory())
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -205,6 +206,10 @@ class WorkingTree(bzrlib.tree.Tree):
         if hc.needs_write:
             mutter("write hc")
             hc.write()
+
+    def _set_inventory(self, inv):
+        self._inventory = inv
+        self.path2id = self._inventory.path2id
 
     @staticmethod
     def open_containing(path=None):
@@ -284,7 +289,7 @@ class WorkingTree(bzrlib.tree.Tree):
     def commit(self, *args, **kw):
         from bzrlib.commit import Commit
         Commit().commit(self.branch, *args, **kw)
-        self._inventory = self.read_working_inventory()
+        self._set_inventory(self.read_working_inventory())
 
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
@@ -564,7 +569,7 @@ class WorkingTree(bzrlib.tree.Tree):
                             ["rename rolled back"])
         except:
             # restore the inventory on error
-            self._inventory = orig_inv
+            self._set_inventory(orig_inv)
             raise
         self._write_inventory(inv)
         return result
@@ -894,6 +899,7 @@ class WorkingTree(bzrlib.tree.Tree):
             f.commit()
         finally:
             f.close()
+        self._set_inventory(inv)
         mutter('wrote working inventory')
             
 

@@ -18,6 +18,7 @@ from bzrlib.changeset import Inventory, apply_changeset, invert_dict
 from bzrlib.changeset import get_contents, ReplaceContents
 from bzrlib.clone import copy_branch
 from bzrlib.merge import merge
+from bzrlib.workingtree import WorkingTree
 
 
 class FalseTree(object):
@@ -530,14 +531,15 @@ class FunctionalMergeTest(TestCaseInTempDir):
 
     def test_trivial_star_merge(self):
         """Test that merges in a star shape Just Work.""" 
-        from bzrlib.add import smart_add_branch, add_reporter_null
+        from bzrlib.add import smart_add_tree, add_reporter_null
         from bzrlib.clone import copy_branch
         from bzrlib.merge import merge
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
         branch = Branch.initialize("original")
-        smart_add_branch(branch, ["original"], True, add_reporter_null)
-        branch.working_tree().commit("start branch.", verbose=False)
+        tree = WorkingTree('original', branch)
+        smart_add_tree(tree, ["original"], True, add_reporter_null)
+        tree.commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
         copy_branch(branch, "mary")

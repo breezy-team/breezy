@@ -20,8 +20,9 @@ import bzrlib.errors as errors
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter, note, warning
 from bzrlib.errors import NotBranchError
-from bzrlib.branch import Branch
-from bzrlib.osutils import quotefn
+from bzrlib.branch import Branch, is_control_file
+import bzrlib.osutils
+from bzrlib.workingtree import WorkingTree
 
 def glob_expand_for_win32(file_list):
     if not file_list:
@@ -46,7 +47,7 @@ def add_reporter_null(path, kind, entry):
 
 def add_reporter_print(path, kind, entry):
     """Print a line to stdout for each file that's added."""
-    print "added", quotefn(path)
+    print "added", bzrlib.osutils.quotefn(path)
     
 def _prepare_file_list(file_list):
     """Prepare a file list for use by smart_add_*."""
@@ -68,11 +69,11 @@ def smart_add(file_list, recurse=True, reporter=add_reporter_null):
     Returns the number of files added.
     """
     file_list = _prepare_file_list(file_list)
-    b = Branch.open_containing(file_list[0])[0]
-    return smart_add_branch(b, file_list, recurse, reporter)
+    tree = WorkingTree.open_containing(file_list[0])[0]
+    return smart_add_tree(tree, file_list, recurse, reporter)
 
         
-def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null):
+def smart_add_tree(tree, file_list, recurse=True, reporter=add_reporter_null):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
@@ -84,19 +85,16 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
     """
     import os
     from bzrlib.errors import BadFileKindError, ForbiddenFileError
-    import bzrlib.branch
-
     assert isinstance(recurse, bool)
 
     file_list = _prepare_file_list(file_list)
     user_list = file_list[:]
-    tree = branch.working_tree()
     inv = tree.read_working_inventory()
     count = 0
 
     for f in file_list:
         rf = tree.relpath(f)
-        af = branch.abspath(rf)
+        af = tree.abspath(rf)
 
         kind = bzrlib.osutils.file_kind(af)
 
@@ -109,7 +107,7 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
 
         mutter("smart add of %r, abs=%r", f, af)
         
-        if bzrlib.branch.is_control_file(af):
+        if is_control_file(af):
             raise ForbiddenFileError('cannot add control file %s' % f)
             
         versioned = (inv.path2id(rf) != None)
@@ -126,14 +124,14 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
             sub_tree = False
 
         if rf == '':
-            mutter("branch root doesn't need to be added")
+            mutter("tree root doesn't need to be added")
             sub_tree = False
         elif versioned:
             mutter("%r is already versioned", f)
         elif sub_tree:
             mutter("%r is a bzr tree", f)
         else:
-            count += __add_one(branch, inv, rf, kind, reporter)
+            count += __add_one(tree, inv, rf, kind, reporter)
 
         if kind == 'directory' and recurse and not sub_tree:
             for subf in os.listdir(af):
@@ -144,27 +142,27 @@ def smart_add_branch(branch, file_list, recurse=True, reporter=add_reporter_null
                     mutter("skip ignored sub-file %r", subp)
                 else:
                     mutter("queue to add sub-file %r", subp)
-                    file_list.append(branch.abspath(subp))
+                    file_list.append(tree.abspath(subp))
 
 
     mutter('added %d entries', count)
     
     if count > 0:
-        branch.working_tree()._write_inventory(inv)
+        tree._write_inventory(inv)
 
     return count
 
-def __add_one(branch, inv, path, kind, reporter):
+def __add_one(tree, inv, path, kind, reporter):
     """Add a file or directory, automatically add unversioned parents."""
 
     # Nothing to do if path is already versioned.
-    # This is safe from infinite recursion because the branch root is
+    # This is safe from infinite recursion because the tree root is
     # always versioned.
     if inv.path2id(path) != None:
         return 0
 
     # add parent
-    count = __add_one(branch, inv, dirname(path), 'directory', reporter)
+    count = __add_one(tree, inv, dirname(path), 'directory', reporter)
 
     entry = inv.add_path(path, kind=kind)
     mutter("added %r kind %r file_id={%s}", path, kind, entry.file_id)

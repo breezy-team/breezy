@@ -78,6 +78,8 @@ UNRELEASED CHANGES
       unknowns()
       (Robert Collins)
 
+    * bzrlib.add.smart_add_branch is now smart_add_tree. (Robert Collins)
+
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:
