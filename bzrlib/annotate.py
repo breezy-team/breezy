@@ -84,16 +84,3 @@ def _annotate_file(branch, rev_id, file_id ):
             except BzrError:
                 pass        # use the whole name
         yield (revno_str, author, date_str, line_rev_id, text)
-
-
-if __name__ == '__main__':
-    from bzrlib.trace import enable_default_logging
-    from bzrlib.workingtree import WorkingTree
-
-    enable_default_logging()
-    tree, rp = WorkingTree.open_containing(sys.argv[1])
-    b = tree.branch
-    tree = b.revision_tree(b.last_revision())
-    file_id = tree.inventory.path2id(rp)
-    file_version = tree.inventory[file_id].revision
-    annotate_file(b, file_version, file_id, to_file = sys.stdout)
