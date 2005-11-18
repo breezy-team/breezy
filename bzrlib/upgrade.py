@@ -1,5 +1,3 @@
-#! /usr/bin/python
-#
 # Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -76,7 +74,6 @@ import shutil
 from bzrlib.branch import Branch, find_branch
 from bzrlib.branch import BZR_BRANCH_FORMAT_5, BZR_BRANCH_FORMAT_6
 import bzrlib.hashcache as hashcache
-from bzrlib.revfile import Revfile
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave
 from bzrlib.ui import ui_factory

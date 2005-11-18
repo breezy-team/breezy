@@ -50,11 +50,11 @@ class TestCommit(TestCaseInTempDir):
         b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
         b.add('hello')
-        b.commit(message='add hello')
+        b.working_tree().commit(message='add hello')
         file_id = b.working_tree().path2id('hello')
 
         file('hello', 'w').write('version 2')
-        b.commit(message='commit 2')
+        b.working_tree().commit(message='commit 2')
 
         eq = self.assertEquals
         eq(b.revno(), 2)
@@ -74,39 +74,36 @@ class TestCommit(TestCaseInTempDir):
         b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
         b.add(['hello'], ['hello-id'])
-        b.commit(message='add hello')
+        b.working_tree().commit(message='add hello')
 
         os.remove('hello')
-        b.commit('removed hello', rev_id='rev2')
+        b.working_tree().commit('removed hello', rev_id='rev2')
 
         tree = b.storage.revision_tree('rev2')
         self.assertFalse(tree.has_id('hello-id'))
-
 
     def test_pointless_commit(self):
         """Commit refuses unless there are changes or it's forced."""
         b = Branch.initialize('.')
         file('hello', 'w').write('hello')
         b.add(['hello'])
-        b.commit(message='add hello')
+        b.working_tree().commit(message='add hello')
         self.assertEquals(b.revno(), 1)
         self.assertRaises(PointlessCommit,
-                          b.commit,
+                          b.working_tree().commit,
                           message='fails',
                           allow_pointless=False)
         self.assertEquals(b.revno(), 1)
         
-
-
     def test_commit_empty(self):
         """Commiting an empty tree works."""
         b = Branch.initialize('.')
-        b.commit(message='empty tree', allow_pointless=True)
+        b.working_tree().commit(message='empty tree', allow_pointless=True)
         self.assertRaises(PointlessCommit,
-                          b.commit,
+                          b.working_tree().commit,
                           message='empty tree',
                           allow_pointless=False)
-        b.commit(message='empty tree', allow_pointless=True)
+        b.working_tree().commit(message='empty tree', allow_pointless=True)
         self.assertEquals(b.revno(), 2)
 
 
@@ -117,17 +114,17 @@ class TestCommit(TestCaseInTempDir):
         file('buongia', 'w').write('buongia')
         b.add(['hello', 'buongia'],
               ['hello-id', 'buongia-id'])
-        b.commit(message='add files',
+        b.working_tree().commit(message='add files',
                  rev_id='test@rev-1')
         
         os.remove('hello')
         file('buongia', 'w').write('new text')
-        b.commit(message='update text',
+        b.working_tree().commit(message='update text',
                  specific_files=['buongia'],
                  allow_pointless=False,
                  rev_id='test@rev-2')
 
-        b.commit(message='remove hello',
+        b.working_tree().commit(message='remove hello',
                  specific_files=['hello'],
                  allow_pointless=False,
                  rev_id='test@rev-3')
@@ -150,10 +147,10 @@ class TestCommit(TestCaseInTempDir):
         b = Branch.initialize('.')
         self.build_tree(['hello'])
         b.add(['hello'], ['hello-id'])
-        b.commit(message='one', rev_id='test@rev-1', allow_pointless=False)
+        b.working_tree().commit(message='one', rev_id='test@rev-1', allow_pointless=False)
 
         b.rename_one('hello', 'fruity')
-        b.commit(message='renamed', rev_id='test@rev-2', allow_pointless=False)
+        b.working_tree().commit(message='renamed', rev_id='test@rev-2', allow_pointless=False)
 
         eq = self.assertEquals
         tree1 = b.storage.revision_tree('test@rev-1')
@@ -175,9 +172,9 @@ class TestCommit(TestCaseInTempDir):
     def test_reused_rev_id(self):
         """Test that a revision id cannot be reused in a branch"""
         b = Branch.initialize('.')
-        b.commit('initial', rev_id='test@rev-1', allow_pointless=True)
+        b.working_tree().commit('initial', rev_id='test@rev-1', allow_pointless=True)
         self.assertRaises(Exception,
-                          b.commit,
+                          b.working_tree().commit,
                           message='reused id',
                           rev_id='test@rev-1',
                           allow_pointless=True)
@@ -191,17 +188,17 @@ class TestCommit(TestCaseInTempDir):
         r1 = 'test@rev-1'
         self.build_tree(['hello', 'a/', 'b/'])
         b.add(['hello', 'a', 'b'], ['hello-id', 'a-id', 'b-id'])
-        b.commit('initial', rev_id=r1, allow_pointless=False)
+        b.working_tree().commit('initial', rev_id=r1, allow_pointless=False)
 
         b.move(['hello'], 'a')
         r2 = 'test@rev-2'
-        b.commit('two', rev_id=r2, allow_pointless=False)
+        b.working_tree().commit('two', rev_id=r2, allow_pointless=False)
         self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['a', 'a/hello', 'b'])
 
         b.move(['b'], 'a')
         r3 = 'test@rev-3'
-        b.commit('three', rev_id=r3, allow_pointless=False)
+        b.working_tree().commit('three', rev_id=r3, allow_pointless=False)
         self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['a', 'a/hello', 'a/b'])
         self.check_inventory_shape(b.storage.get_revision_inventory(r3),
@@ -210,7 +207,7 @@ class TestCommit(TestCaseInTempDir):
         b.move([os.sep.join(['a', 'hello'])],
                os.sep.join(['a', 'b']))
         r4 = 'test@rev-4'
-        b.commit('four', rev_id=r4, allow_pointless=False)
+        b.working_tree().commit('four', rev_id=r4, allow_pointless=False)
         self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['a', 'a/b/hello', 'a/b'])
 
@@ -226,11 +223,11 @@ class TestCommit(TestCaseInTempDir):
         wt = b.working_tree()
         file('hello', 'w').write('hello world')
         b.add(['hello'], ['hello-id'])
-        b.commit(message='add hello')
+        b.working_tree().commit(message='add hello')
 
         wt = b.working_tree()  # FIXME: kludge for aliasing of working inventory
         wt.remove('hello')
-        b.commit('removed hello', rev_id='rev2')
+        b.working_tree().commit('removed hello', rev_id='rev2')
 
         tree = b.storage.revision_tree('rev2')
         self.assertFalse(tree.has_id('hello-id'))
@@ -246,7 +243,7 @@ class TestCommit(TestCaseInTempDir):
                 b.add(['hello'], ['hello-id'])
             rev_id = 'test@rev-%d' % (i+1)
             rev_ids.append(rev_id)
-            b.commit(message='rev %d' % (i+1),
+            b.working_tree().commit(message='rev %d' % (i+1),
                      rev_id=rev_id)
         eq = self.assertEquals
         eq(b.revision_history(), rev_ids)
@@ -259,7 +256,7 @@ class TestCommit(TestCaseInTempDir):
         self.build_tree(['dir/', 'dir/file1', 'dir/file2'])
         b.add(['dir', 'dir/file1', 'dir/file2'],
               ['dirid', 'file1id', 'file2id'])
-        b.commit('dir/file1', specific_files=['dir/file1'], rev_id='1')
+        b.working_tree().commit('dir/file1', specific_files=['dir/file1'], rev_id='1')
         inv = b.storage.get_inventory('1')
         self.assertEqual('1', inv['dirid'].revision)
         self.assertEqual('1', inv['file1id'].revision)
@@ -273,7 +270,7 @@ class TestCommit(TestCaseInTempDir):
         file('hello', 'w').write('hello world')
         b.add('hello')
         file('goodbye', 'w').write('goodbye cruel world!')
-        self.assertRaises(StrictCommitFailed, b.commit,
+        self.assertRaises(StrictCommitFailed, b.working_tree().commit,
             message='add hello but not goodbye', strict=True)
 
     def test_strict_commit_without_unknowns(self):
@@ -283,7 +280,7 @@ class TestCommit(TestCaseInTempDir):
         b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
         b.add('hello')
-        b.commit(message='add hello', strict=True)
+        b.working_tree().commit(message='add hello', strict=True)
 
     def test_nonstrict_commit(self):
         """Try and commit with unknown files and strict = False, should work."""
@@ -291,7 +288,7 @@ class TestCommit(TestCaseInTempDir):
         file('hello', 'w').write('hello world')
         b.add('hello')
         file('goodbye', 'w').write('goodbye cruel world!')
-        b.commit(message='add hello but not goodbye', strict=False)
+        b.working_tree().commit(message='add hello but not goodbye', strict=False)
 
     def test_nonstrict_commit_without_unknowns(self):
         """Try and commit with no unknown files and strict = False,
@@ -299,14 +296,14 @@ class TestCommit(TestCaseInTempDir):
         b = Branch.initialize('.')
         file('hello', 'w').write('hello world')
         b.add('hello')
-        b.commit(message='add hello', strict=False)
+        b.working_tree().commit(message='add hello', strict=False)
 
     def test_signed_commit(self):
         import bzrlib.gpg
         import bzrlib.commit as commit
         oldstrategy = bzrlib.gpg.GPGStrategy
         branch = Branch.initialize('.')
-        branch.commit("base", allow_pointless=True, rev_id='A')
+        branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
         self.failIf(branch.storage.revision_store.has_id('A', 'sig'))
         try:
             from bzrlib.testament import Testament
@@ -327,7 +324,7 @@ class TestCommit(TestCaseInTempDir):
         import bzrlib.commit as commit
         oldstrategy = bzrlib.gpg.GPGStrategy
         branch = Branch.initialize('.')
-        branch.commit("base", allow_pointless=True, rev_id='A')
+        branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
         self.failIf(branch.storage.revision_store.has_id('A', 'sig'))
         try:
             from bzrlib.testament import Testament

@@ -29,14 +29,15 @@ class TestAncestry(TestCaseInTempDir):
     def test_straightline_ancestry(self):
         """Test ancestry file when just committing."""
         b = Branch.initialize('.')
+        wt = b.working_tree()
 
-        b.commit(message='one',
-                 allow_pointless=True,
-                 rev_id='tester@foo--1')
+        wt.commit(message='one',
+                  allow_pointless=True,
+                  rev_id='tester@foo--1')
 
-        b.commit(message='two',
-                 allow_pointless=True,
-                 rev_id='tester@foo--2')
+        wt.commit(message='two',
+                  allow_pointless=True,
+                  rev_id='tester@foo--2')
 
         ancs = b.storage.get_ancestry('tester@foo--2')
         self.assertEqual([None, 'tester@foo--1', 'tester@foo--2'], ancs)
@@ -47,9 +48,10 @@ class TestAncestry(TestCaseInTempDir):
         b = Branch.initialize('.')
         # note this is tested before any commits are done.
         self.assertEqual(True, is_ancestor(None, None, b))
-        b.commit(message='one',
-                 allow_pointless=True,
-                 rev_id='tester@foo--1')
+        wt = b.working_tree()
+        wt.commit(message='one',
+                  allow_pointless=True,
+                  rev_id='tester@foo--1')
         self.assertEqual(True, is_ancestor(None, None, b))
         self.assertEqual(True, is_ancestor('tester@foo--1', None, b))
         self.assertEqual(False, is_ancestor(None, 'tester@foo--1', b))

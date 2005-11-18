@@ -20,6 +20,7 @@ import errno
 
 class TestCommands(TestCase):
     def test_display_command(self):
+        """EPIPE message is selectively suppressed"""
         def pipe_thrower():
             raise IOError(errno.EPIPE, "Bogus pipe error")
         self.assertRaises(IOError, pipe_thrower)

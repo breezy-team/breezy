@@ -325,7 +325,6 @@ class TestGlobalConfigItems(TestCase):
         self.assertEqual(None, my_config.post_commit())
 
 
-
 class TestLocationConfig(TestCase):
 
     def test_constructs(self):
@@ -471,6 +470,19 @@ class TestLocationConfig(TestCase):
         self.get_location_config('/a/c')
         self.assertEqual('bzrlib.selftest.testconfig.post_commit',
                          self.my_config.post_commit())
+
+
+class TestLocationConfig(TestCaseInTempDir):
+
+    def get_location_config(self, location, global_config=None):
+        if global_config is None:
+            global_file = StringIO(sample_config_text)
+        else:
+            global_file = StringIO(global_config)
+        branches_file = StringIO(sample_branches_text)
+        self.my_config = config.LocationConfig(location)
+        self.my_config._get_parser(branches_file)
+        self.my_config._get_global_config()._get_parser(global_file)
 
     def test_set_user_setting_sets_and_saves(self):
         # TODO RBC 20051029 test hat mkdir ~/.bazaar is called ..

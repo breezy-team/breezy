@@ -43,6 +43,7 @@ class cmd_conflicts(bzrlib.commands.Command):
 class cmd_resolve(bzrlib.commands.Command):
     """Mark a conflict as resolved.
     """
+    aliases = ['resolved']
     takes_args = ['file*']
     takes_options = ['all']
     def run(self, file_list=None, all=False):

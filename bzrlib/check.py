@@ -112,7 +112,7 @@ class Check(object):
         last_rev_id - the previous one on the mainline, if any.
         """
 
-        # mutter('    revision {%s}' % rev_id)
+        # mutter('    revision {%s}', rev_id)
         branch = self.branch
         try:
             rev_history_position = self.history.index(rev_id)
@@ -166,7 +166,7 @@ class Check(object):
                     ' value in revision {%s}' % rev_id)
         else:
             missing_inventory_sha_cnt += 1
-            mutter("no inventory_sha1 on revision {%s}" % rev_id)
+            mutter("no inventory_sha1 on revision {%s}", rev_id)
         self._check_revision_tree(rev_id)
         self.checked_rev_cnt += 1
 

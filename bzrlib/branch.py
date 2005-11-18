@@ -338,9 +338,6 @@ class Branch(object):
     def pullable_revisions(self, other, stop_revision):
         raise NotImplementedError('pullable_revisions is abstract')
         
-    def commit(self, *args, **kw):
-        raise NotImplementedError('commit is abstract')
-    
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         if revision_id is None:
@@ -656,22 +653,6 @@ class BzrBranch(Branch, LockableFiles):
         self._write_inventory(inv)
 
     @needs_write_lock
-    def _write_inventory(self, inv):
-        """Update the working inventory.
-
-        That is to say, the inventory describing changes underway, that
-        will be committed to the next revision.
-        """
-        from cStringIO import StringIO
-        sio = StringIO()
-        bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
-        sio.seek(0)
-        # Transport handles atomicity
-        self.put_controlfile('inventory', sio)
-        
-        mutter('wrote working inventory')
-            
-    @needs_write_lock
     def add(self, files, ids=None):
         """See Branch.add."""
         # TODO: Re-adding a file that is removed in the working copy
@@ -715,7 +696,7 @@ class BzrBranch(Branch, LockableFiles):
 
             mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
 
-        self._write_inventory(inv)
+        self.working_tree()._write_inventory(inv)
 
     @needs_read_lock
     def print_file(self, file, revno):
@@ -811,11 +792,6 @@ class BzrBranch(Branch, LockableFiles):
                 else:
                     raise e
         
-    def commit(self, *args, **kw):
-        """See Branch.commit."""
-        from bzrlib.commit import Commit
-        Commit().commit(self, *args, **kw)
-    
     def working_tree(self):
         """See Branch.working_tree."""
         from bzrlib.workingtree import WorkingTree
@@ -882,7 +858,7 @@ class BzrBranch(Branch, LockableFiles):
                     % (from_abs, to_abs, e[1]),
                     ["rename rolled back"])
 
-        self._write_inventory(inv)
+        self.working_tree()._write_inventory(inv)
 
     @needs_write_lock
     def move(self, from_paths, to_name):
@@ -934,77 +910,8 @@ class BzrBranch(Branch, LockableFiles):
                 raise BzrError("failed to rename %r to %r: %s" % (f, dest_path, e[1]),
                         ["rename rolled back"])
 
-        self._write_inventory(inv)
+        self.working_tree()._write_inventory(inv)
         return result
-
-
-    def revert(self, filenames, old_tree=None, backups=True):
-        """See Branch.revert."""
-        from bzrlib.atomicfile import AtomicFile
-        from bzrlib.osutils import backup_file
-        
-        inv = self.working_tree().read_working_inventory()
-        if old_tree is None:
-            old_tree = self.basis_tree()
-        old_inv = old_tree.inventory
-
-        nids = []
-        for fn in filenames:
-            file_id = inv.path2id(fn)
-            if not file_id:
-                raise NotVersionedError(path=fn)
-            if not old_inv.has_id(file_id):
-                raise BzrError("file not present in old tree", fn, file_id)
-            nids.append((fn, file_id))
-            
-        # TODO: Rename back if it was previously at a different location
-
-        # TODO: If given a directory, restore the entire contents from
-        # the previous version.
-
-        # TODO: Make a backup to a temporary file.
-
-        # TODO: If the file previously didn't exist, delete it?
-        for fn, file_id in nids:
-            backup_file(fn)
-            
-            f = AtomicFile(fn, 'wb')
-            try:
-                f.write(old_tree.get_file(file_id).read())
-                f.commit()
-            finally:
-                f.close()
-
-
-    def pending_merges(self):
-        """See Branch.pending_merges."""
-        cfn = self._rel_controlfilename('pending-merges')
-        if not self._transport.has(cfn):
-            return []
-        p = []
-        for l in self.controlfile('pending-merges', 'r').readlines():
-            p.append(l.rstrip('\n'))
-        return p
-
-
-    def add_pending_merge(self, *revision_ids):
-        """See Branch.add_pending_merge."""
-        # TODO: Perhaps should check at this point that the
-        # history of the revision is actually present?
-        p = self.pending_merges()
-        updated = False
-        for rev_id in revision_ids:
-            if rev_id in p:
-                continue
-            p.append(rev_id)
-            updated = True
-        if updated:
-            self.set_pending_merges(p)
-
-    @needs_write_lock
-    def set_pending_merges(self, rev_list):
-        """See Branch.set_pending_merges."""
-        self.put_controlfile('pending-merges', '\n'.join(rev_list))
 
     def get_parent(self):
         """See Branch.get_parent."""

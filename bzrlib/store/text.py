@@ -21,11 +21,13 @@ This store keeps uncompressed versions of the full text. It does not
 do any sort of delta compression.
 """
 
+import os
 import bzrlib.store
 from bzrlib.store import hash_prefix
 from bzrlib.trace import mutter
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, NoSuchFile, FileExists
 
+import gzip
 from cStringIO import StringIO
 
 
@@ -39,11 +41,85 @@ class TextStore(bzrlib.store.TransportStore):
     Files are stored uncompressed, with no delta compression.
     """
 
+    def _add_compressed(self, fn, f):
+        from cStringIO import StringIO
+        from bzrlib.osutils import pumpfile
+        
+        if isinstance(f, basestring):
+            f = StringIO(f)
+            
+        sio = StringIO()
+        gf = gzip.GzipFile(mode='wb', fileobj=sio)
+        # if pumpfile handles files that don't fit in ram,
+        # so will this function
+        pumpfile(f, gf)
+        gf.close()
+        sio.seek(0)
+        self._try_put(fn, sio)
+
     def _add(self, fn, f):
-        self._transport.put(fn, f)
+        if self._compressed:
+            self._add_compressed(fn, f)
+        else:
+            self._try_put(fn, f)
+
+    def _try_put(self, fn, f):
+        try:
+            self._transport.put(fn, f)
+        except NoSuchFile:
+            if not self._prefixed:
+                raise
+            try:
+                self._transport.mkdir(os.path.dirname(fn))
+            except FileExists:
+                pass
+            self._transport.put(fn, f)
 
     def _get(self, fn):
-        return self._transport.get(fn)
+        if fn.endswith('.gz'):
+            return self._get_compressed(fn)
+        else:
+            return self._transport.get(fn)
+
+    def _copy_one(self, fileid, suffix, other, pb):
+        # TODO: Once the copy_to interface is improved to allow a source
+        #       and destination targets, then we can always do the copy
+        #       as long as other is a TextStore
+        if not (isinstance(other, TextStore)
+            and other._prefixed == self._prefixed):
+            return super(TextStore, self)._copy_one(fileid, suffix, other, pb)
+
+        mutter('_copy_one: %r, %r', fileid, suffix)
+        path = other._get_name(fileid, suffix)
+        if path is None:
+            raise KeyError(fileid + '-' + str(suffix))
+
+        try:
+            result = other._transport.copy_to([path], self._transport, pb=pb)
+        except NoSuchFile:
+            if not self._prefixed:
+                raise
+            try:
+                self._transport.mkdir(hash_prefix(fileid)[:-1])
+            except FileExists:
+                pass
+            result = other._transport.copy_to([path], self._transport, pb=pb)
+
+        if result != 1:
+            raise BzrError('Unable to copy file: %r' % (path,))
+
+    def _get_compressed(self, filename):
+        """Returns a file reading from a particular entry."""
+        f = self._transport.get(filename)
+        # gzip.GzipFile.read() requires a tell() function
+        # but some transports return objects that cannot seek
+        # so buffer them in a StringIO instead
+        if hasattr(f, 'tell'):
+            return gzip.GzipFile(mode='rb', fileobj=f)
+        else:
+            from cStringIO import StringIO
+            sio = StringIO(f.read())
+            return gzip.GzipFile(mode='rb', fileobj=sio)
 
 
 def ScratchTextStore():

@@ -151,16 +151,16 @@ def old_common_ancestor(revision_a, revision_b, revision_source):
         if b_ancestors.has_key(revision):
             a_intersection.append((a_distance, a_order, revision))
             b_intersection.append((b_ancestors[revision][1], a_order, revision))
-    mutter("a intersection: %r" % a_intersection)
-    mutter("b intersection: %r" % b_intersection)
+    mutter("a intersection: %r", a_intersection)
+    mutter("b intersection: %r", b_intersection)
 
     a_closest = __get_closest(a_intersection)
     if len(a_closest) == 0:
         return None
     b_closest = __get_closest(b_intersection)
     assert len(b_closest) != 0
-    mutter ("a_closest %r" % a_closest)
-    mutter ("b_closest %r" % b_closest)
+    mutter ("a_closest %r", a_closest)
+    mutter ("b_closest %r", b_closest)
     if a_closest[0] in b_closest:
         return a_closest[0]
     elif b_closest[0] in a_closest:

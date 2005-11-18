@@ -17,7 +17,6 @@ from bzrlib.lockable_files import LockableFiles
 from tree import EmptyTree
 from bzrlib.revision import NULL_REVISION
 from bzrlib.store.weave import WeaveStore
-from bzrlib.store.compressed_text import CompressedTextStore
 from bzrlib.store.text import TextStore
 from cStringIO import StringIO
 import bzrlib.xml5
@@ -64,13 +63,8 @@ class RevisionStorage(object):
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
             relpath = self.control_files._rel_controlfilename(name)
-            if compressed:
-                store = CompressedTextStore(
-                    self.control_files.make_transport(relpath),
-                    prefixed=prefixed)
-            else:
-                store = TextStore(self.control_files.make_transport(relpath),
-                                  prefixed=prefixed)
+            store = TextStore(self.control_files.make_transport(relpath),
+                              prefixed=prefixed, compressed=compressed)
             #if self._transport.should_cache():
             #    cache_path = os.path.join(self.cache_root, name)
             #    os.mkdir(cache_path)
