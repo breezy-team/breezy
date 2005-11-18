@@ -469,7 +469,14 @@ class TestTransportMixIn(object):
         if not hasattr(self, "get_bogus_transport"):
             return
         t = self.get_bogus_transport()
-        self.assertRaises(ConnectionError, t.get, '.bzr/branch')
+        try:
+            t.get('.bzr/branch')
+        except (ConnectionError, NoSuchFile), e:
+            pass
+        except (Exception), e:
+            self.failIf(True, 'Wrong exception thrown: %s' % e)
+        else:
+            self.failIf(True, 'Did not get the expected exception.')
 
         
 class LocalTransportTest(TestCaseInTempDir, TestTransportMixIn):
