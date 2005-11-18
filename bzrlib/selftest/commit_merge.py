@@ -22,7 +22,7 @@ from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.commit import commit
 from bzrlib.errors import PointlessCommit, BzrError, PointlessCommit
-from bzrlib.selftest.testrevision import make_branches
+from bzrlib.selftest.revision import make_branches
 from bzrlib.fetch import fetch
 from bzrlib.check import check
 

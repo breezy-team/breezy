@@ -37,7 +37,7 @@ class TestTrace(TestCase):
         self.assertEqualDiff(error_lines[0], 
                 'exceptions.NotImplementedError: time travel')
         self.assertContainsRe(error_lines[1], 
-                r'^  at .*testtrace\.py line \d+$')  
+                r'^  at .*trace\.py line \d+$')  
         self.assertContainsRe(error_lines[2], 
                 r'^  in test_format_sys_exception$')
 

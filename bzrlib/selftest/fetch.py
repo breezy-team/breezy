@@ -18,7 +18,7 @@ import os
 import sys
 
 import bzrlib.errors
-from bzrlib.selftest.testrevision import make_branches
+from bzrlib.selftest.revision import make_branches
 from bzrlib.trace import mutter
 from bzrlib.branch import Branch
 from bzrlib.fetch import greedy_fetch

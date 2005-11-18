@@ -20,7 +20,7 @@ import threading
 import unittest
 
 from bzrlib.selftest import TestCaseInTempDir
-from bzrlib.selftest.testtransport import TestTransportMixIn
+from bzrlib.selftest.transport import TestTransportMixIn
 
 try:
     import paramiko
