@@ -294,7 +294,7 @@ def dir_exporter(tree, dest, root):
     """
     import os
     os.mkdir(dest)
-    mutter('export version %r' % tree)
+    mutter('export version %r', tree)
     inv = tree.inventory
     for dp, ie in inv.iter_entries():
         if dp != ".bzrignore":
@@ -344,7 +344,7 @@ else:
             ball = tarfile.open(dest, 'w:' + compression)
         except tarfile.CompressionError, e:
             raise BzrError(str(e))
-        mutter('export version %r' % tree)
+        mutter('export version %r', tree)
         inv = tree.inventory
         for dp, ie in inv.iter_entries():
             if dp != ".bzrignore":

@@ -14,7 +14,7 @@ Lord.)
 
 * It is possibly nice that tla by default forbids you from committing
   if emacs autosave or lock files exist -- I find it confusing to
-  commit somethin other than what is shown in the editor window
+  commit something other than what is shown in the editor window
   because there are unsaved changes. 
 
   However, grumbling about unknown files is annoying, and requiring

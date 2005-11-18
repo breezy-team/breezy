@@ -183,7 +183,12 @@ class LocalTransport(Transport):
             count = 0
             for path in relpaths:
                 self._update_pb(pb, 'copy-to', count, total)
-                shutil.copy(self.abspath(path), other.abspath(path))
+                try:
+                    shutil.copy(self.abspath(path), other.abspath(path))
+                except IOError, e:
+                    if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                        raise NoSuchFile('File or directory %r does not exist' % path, orig_error=e)
+                    raise LocalTransportError(orig_error=e)
                 count += 1
             return count
         else:

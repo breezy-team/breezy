@@ -52,7 +52,7 @@ class _base_Lock(object):
                 raise
 
             # maybe this is an old branch (before may 2005)
-            mutter("trying to create missing branch lock %r" % filename)
+            mutter("trying to create missing branch lock %r", filename)
             
             self.f = open(filename, 'wb')
             return self.f

@@ -47,7 +47,7 @@ class BranchStatus(TestCaseInTempDir):
 
         tof = StringIO()
         self.build_tree(['hello.c', 'bye.c'])
-        b.add_pending_merge('pending@pending-0-0')
+        b.working_tree().add_pending_merge('pending@pending-0-0')
         show_status(b, to_file=tof)
         tof.seek(0)
         self.assertEquals(tof.readlines(),
@@ -67,7 +67,7 @@ class BranchStatus(TestCaseInTempDir):
         self.build_tree(['hello.c', 'bye.c'])
         b.add('hello.c')
         b.add('bye.c')
-        b.commit('Test message')
+        b.working_tree().commit('Test message')
 
         tof = StringIO()
         revs =[]
@@ -83,7 +83,7 @@ class BranchStatus(TestCaseInTempDir):
 
         self.build_tree(['more.c'])
         b.add('more.c')
-        b.commit('Another test message')
+        b.working_tree().commit('Another test message')
         
         tof = StringIO()
         revs.append(RevisionSpec(1))
@@ -106,16 +106,16 @@ class BranchStatus(TestCaseInTempDir):
         """Pending merges display works"""
         mkdir("./branch")
         b = Branch.initialize('./branch')
-        b.commit("Empty commit 1")
+        b.working_tree().commit("Empty commit 1")
         b_2 = copy_branch(b, './copy')
-        b.commit("Empty commit 2")
+        b.working_tree().commit("Empty commit 2")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)
         self.assert_(message.startswith("pending merges:\n"))
         self.assert_(message.endswith("Empty commit 2\n")) 
-        b_2.commit("merged")
+        b_2.working_tree().commit("merged")
         # must be long to make sure we see elipsis at the end
-        b.commit("Empty commit 3 blah blah blah blah blah blah blah blah blah"
+        b.working_tree().commit("Empty commit 3 blah blah blah blah blah blah blah blah blah"
                  " blah blah blah blah blah blah bleh")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)
@@ -134,7 +134,7 @@ class BranchStatus(TestCaseInTempDir):
         self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
         b.add('directory')
         b.add('test.c')
-        b.commit('testing')
+        b.working_tree().commit('testing')
         
         tof = StringIO()
         show_status(b, to_file=tof)
