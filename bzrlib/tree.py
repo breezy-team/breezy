@@ -135,6 +135,10 @@ class RevisionTree(Tree):
         self._inventory = inv
         self._revision_id = revision_id
 
+    def get_revision_id(self):
+        """Return the revision id associated with this tree."""
+        return self._revision_id
+
     def get_weave(self, file_id):
         # FIXME: RevisionTree should be given a branch
         # not a store, or the store should know the branch.

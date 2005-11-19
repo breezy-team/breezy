@@ -449,3 +449,19 @@ class MustUseDecorated(Exception):
     This should never escape bzr, so does not need to be printable.
     """
 
+
+class NoChangesetFound(BzrNewError):
+    """No changeset was found in %(filename)s"""
+    def __init__(self, filename):
+        BzrNewError.__init__(self)
+        self.filename = filename
+
+
+class ChangesetNotSupported(BzrNewError):
+    """Unable to handle changeset version %(version)s: %(msg)s"""
+    def __init__(self, version, msg):
+        BzrNewError.__init__(self)
+        self.version = version
+        self.msg = msg
+
+
