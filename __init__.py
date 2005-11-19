@@ -22,6 +22,20 @@ class cmd_buildpackage(Command):
 
 		return retcode
 
+class cmd_recordpackage(Command):
+	"""Record the package
+	"""
+	dry_run_opt = Option('dry-run', help="don't do anything")
+	Option.SHORT_OPTIONS['n'] = dry_run_opt
+	takes_args = ['package', 'version?']
+	takes_options = ['verbose',
+					 dry_run_opt]
+
+	def run(self, package, version=None, verbose=False):
+		retcode = 0
+
+		return retcode
+
 def test_suite():
 	from unittest import TestSuite, TestLoader
 	import test_buildpackage
@@ -30,3 +44,4 @@ def test_suite():
 	return suite
 
 register_command(cmd_buildpackage)
+register_command(cmd_recordpackage)
