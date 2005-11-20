@@ -493,31 +493,6 @@ class Branch(object):
         """
         raise NotImplementedError('move is abstract')
 
-    def revert(self, filenames, old_tree=None, backups=True):
-        """Restore selected files to the versions from a previous tree.
-
-        backups
-            If true (default) backups are made of files before
-            they're renamed.
-        """
-        raise NotImplementedError('revert is abstract')
-
-    def pending_merges(self):
-        """Return a list of pending merges.
-
-        These are revisions that have been merged into the working
-        directory but not yet committed.
-        """
-        raise NotImplementedError('pending_merges is abstract')
-
-    def add_pending_merge(self, *revision_ids):
-        # TODO: Perhaps should check at this point that the
-        # history of the revision is actually present?
-        raise NotImplementedError('add_pending_merge is abstract')
-
-    def set_pending_merges(self, rev_list):
-        raise NotImplementedError('set_pending_merges is abstract')
-
     def get_parent(self):
         """Return the parent location of the branch.
 
