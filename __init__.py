@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # Simple SVN pull / push functionality for bzr
 # Copyright (C) 2005 Jelmer Vernooij <jelmer@samba.org>
+# Published under the GNU GPL
 
 """
 Push to and pull from SVN repositories

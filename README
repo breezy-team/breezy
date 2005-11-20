@@ -1,0 +1,11 @@
+This directory contains a simple plugin that adds 
+Subversion branch support to Bazaar-ng (http://www.bazaar-ng.org/)
+
+In order for this to work, you need to have the object oriented python 
+bindings for Subversion installed (see http://pysvn.tigris.org/).
+
+You will need a modified version of bzr that has support for 
+foreign branches (branch at http://samba.org/~jelmer/bzr/foreignbranch)
+
+Simply place this directory in ~/.bazaar/plugins and you should be able 
+to check out branches from Subversion using bzr.
