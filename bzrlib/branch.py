@@ -1170,12 +1170,14 @@ class BzrBranch(Branch):
         """See Branch.pull."""
         source.lock_read()
         try:
+            old_history = self.revision_history()
             try:
                 self.update_revisions(source)
             except DivergedBranches:
                 if not overwrite:
                     raise
                 self.set_revision_history(source.revision_history())
+            new_history = self.revision_history()
         finally:
             source.unlock()
 

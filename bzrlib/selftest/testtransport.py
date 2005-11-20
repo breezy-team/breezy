@@ -458,11 +458,15 @@ class TestTransportMixIn(object):
 
     def test_delete(self):
         # TODO: Test Transport.delete
-        pass
+        t = self.get_transport()
 
     def test_move(self):
         # TODO: Test Transport.move
-        pass
+        t = self.get_transport()
+
+    def test_copy(self):
+        # TODO: Test Transport.move
+        t = self.get_transport()
 
     def test_connection_error(self):
         """ConnectionError is raised when connection is impossible"""

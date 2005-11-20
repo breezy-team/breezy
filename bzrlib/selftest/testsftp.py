@@ -98,10 +98,6 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
         TestCaseInTempDir.setUp(self)
         self._root = self.test_dir
 
-    def delayed_setup(self):
-        # some tests are just stubs that call setUp and then immediately call
-        # tearDwon.  so don't create the port listener until get_transport is
-        # called and we know we're in an actual test.
         self._listener = SingleListener(self._run_server)
         self._listener.setDaemon(True)
         self._listener.start()        
@@ -117,7 +113,6 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
         
 class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
     readonly = False
-    setup = True
 
     def setUp(self):
         TestCaseWithSFTPServer.setUp(self)
@@ -130,9 +125,6 @@ class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
             self.sftplogs.append(args[0])
 
     def get_transport(self):
-        if self.setup:
-            self.delayed_setup()
-            self.setup = False
         from bzrlib.transport.sftp import SFTPTransport
         url = self._sftp_url
         return SFTPTransport(url)

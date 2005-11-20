@@ -393,7 +393,10 @@ class cmd_pull(Command):
                                   "  Try merge.")
         if br_to.get_parent() is None or remember:
             br_to.set_parent(location)
-        note('%d revision(s) pulled.' % (count,))
+        if count:
+            note('%d revision(s) pushed.' % (count,))
+        else:
+            note('No revisions pushed.')
 
         if verbose:
             new_rh = br_to.revision_history()
@@ -483,7 +486,10 @@ class cmd_push(Command):
                                   "  Try a merge then push with overwrite.")
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(location)
-        note('%d revision(s) pushed.' % (count,))
+        if count:
+            note('%d revision(s) pushed.' % (count,))
+        else:
+            note('No revisions pushed.')
 
         if verbose:
             new_rh = br_to.revision_history()

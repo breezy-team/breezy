@@ -245,7 +245,7 @@ def pumpfile(fromfile, tofile):
         b = fromfile.read(BUFSIZE)
         if not b:
             break
-        tofile.write(BUFSIZE)
+        tofile.write(b)
 
 
 def sha_file(f):

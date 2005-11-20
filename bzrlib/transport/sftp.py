@@ -407,7 +407,7 @@ class SFTPTransport (Transport):
                 count += 1
             return count
         else:
-            return super(LocalTransport, self).copy_to(relpaths, other, pb=pb)
+            return super(SFTPTransport, self).copy_to(relpaths, other, pb=pb)
 
         # The dummy implementation just does a simple get + put
         def copy_entry(path):
