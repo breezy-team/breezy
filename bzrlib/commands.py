@@ -35,7 +35,7 @@ import errno
 
 import bzrlib
 import bzrlib.trace
-from bzrlib.trace import mutter, note, log_error, warning, be_quiet
+from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.errors import (BzrError, 
                            BzrCheckError,
                            BzrCommandError,
@@ -486,10 +486,8 @@ def run_bzr(argv):
             opt_no_plugins = True
         elif a == '--builtin':
             opt_builtin = True
-        elif a in ('--quiet', '-q'):
-            be_quiet()
         else:
-            continue
+            break
         argv.remove(a)
 
     if (not argv) or (argv[0] == '--help'):
@@ -513,15 +511,11 @@ def run_bzr(argv):
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
 
-    try:
-        if opt_profile:
-            ret = apply_profiled(cmd_obj.run_argv, argv)
-        else:
-            ret = cmd_obj.run_argv(argv)
-        return ret or 0
-    finally:
-        # reset, in case we may do other commands later within the same process
-        be_quiet(False)
+    if opt_profile:
+        ret = apply_profiled(cmd_obj.run_argv, argv)
+    else:
+        ret = cmd_obj.run_argv(argv)
+    return ret or 0
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""

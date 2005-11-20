@@ -33,7 +33,7 @@ from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError,
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
-from bzrlib.trace import mutter, note, log_error, warning, is_quiet
+from bzrlib.trace import mutter, note, log_error, warning
 from bzrlib.workingtree import WorkingTree
 
 
@@ -220,11 +220,11 @@ class cmd_add(Command):
     get added when you add a file in the directory.
     """
     takes_args = ['file*']
-    takes_options = ['no-recurse']
+    takes_options = ['no-recurse', 'quiet']
     
-    def run(self, file_list, no_recurse=False):
+    def run(self, file_list, no_recurse=False, quiet=False):
         from bzrlib.add import smart_add, add_reporter_print, add_reporter_null
-        if is_quiet():
+        if quiet:
             reporter = add_reporter_null
         else:
             reporter = add_reporter_print
@@ -1707,14 +1707,16 @@ class cmd_missing(Command):
     
     takes_args = ['remote?']
     aliases = ['mis', 'miss']
-    takes_options = ['verbose']
+    # We don't have to add quiet to the list, because 
+    # unknown options are parsed as booleans
+    takes_options = ['verbose', 'quiet']
 
     @display_command
-    def run(self, remote=None, verbose=False):
+    def run(self, remote=None, verbose=False, quiet=False):
         from bzrlib.errors import BzrCommandError
         from bzrlib.missing import show_missing
 
-        if verbose and is_quiet():
+        if verbose and quiet:
             raise BzrCommandError('Cannot pass both quiet and verbose')
 
         b = Branch.open_containing('.')[0]
@@ -1723,7 +1725,7 @@ class cmd_missing(Command):
             if parent is None:
                 raise BzrCommandError("No missing location known or specified.")
             else:
-                if not is_quiet():
+                if not quiet:
                     print "Using last location: %s" % parent
                 remote = parent
         elif parent is None:
@@ -1731,7 +1733,7 @@ class cmd_missing(Command):
             # should not change the parent
             b.set_parent(remote)
         br_remote = Branch.open_containing(remote)[0]
-        return show_missing(b, br_remote, verbose=verbose, quiet=is_quiet())
+        return show_missing(b, br_remote, verbose=verbose, quiet=quiet)
 
 
 class cmd_plugins(Command):
