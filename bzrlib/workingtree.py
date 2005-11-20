@@ -461,7 +461,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """Read the working inventory."""
         # ElementTree does its own conversion from UTF-8, so open in
         # binary.
-        f = self.branch.controlfile('inventory', 'rb')
+        f = self.branch.control_files.controlfile('inventory', 'rb')
         return bzrlib.xml5.serializer_v5.read_inventory(f)
 
     @needs_write_lock

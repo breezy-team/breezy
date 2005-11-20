@@ -29,7 +29,7 @@ from bzrlib.branch import Branch
 from bzrlib.revision import common_ancestor
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
-			   NoSuchFile, NoWorkingTree)
+                           NoSuchFile, NoWorkingTree)
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
@@ -551,7 +551,7 @@ class cmd_branch(Command):
             if name:
                 branch = Branch.open(to_location)
                 name = StringIO(name)
-                branch.put_controlfile('branch-name', name)
+                branch.control_files.put_controlfile('branch-name', name)
         finally:
             br_from.unlock()
 

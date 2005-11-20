@@ -332,7 +332,7 @@ class TestPreviousHeads(TestCaseInTempDir):
         self.branch.add(['file'], ['fileid'])
         self.branch.commit('add file', rev_id='B')
         self.inv_B = self.branch.storage.get_inventory('B')
-        self.branch.put_controlfile('revision-history', 'A\n')
+        self.branch.control_files.put_controlfile('revision-history', 'A\n')
         self.assertEqual(self.branch.revision_history(), ['A'])
         self.branch.commit('another add of file', rev_id='C')
         self.inv_C = self.branch.storage.get_inventory('C')

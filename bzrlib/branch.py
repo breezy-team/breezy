@@ -44,12 +44,12 @@ from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
 from bzrlib.lockablefiles import LockableFiles
+from bzrlib.revstorage import RevisionStorage
 from bzrlib.store import copy_all
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
-import bzrlib.xml5
 import bzrlib.ui
-from bzrlib.rev_storage import RevisionStorage
+import bzrlib.xml5
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -164,7 +164,7 @@ class Branch(object):
     nick = property(_get_nick, _set_nick)
         
 
-class _Branch(Branch, LockableFiles):
+class _Branch(Branch):
     """A branch stored in the actual filesystem.
 
     Note that it's "local" in the context of the filesystem; it doesn't
@@ -223,14 +223,14 @@ class _Branch(Branch, LockableFiles):
         """
         assert isinstance(transport, Transport), \
             "%r is not a Transport" % transport
-        LockableFiles.__init__(self, transport, 'branch-lock')
+        self.control_files = LockableFiles(transport, 'branch-lock')
         if init:
             self._make_control()
         self._check_format(relax_version_check)
         self.storage = RevisionStorage(transport, self._branch_format)
 
     def __str__(self):
-        return '%s(%r)' % (self.__class__.__name__, self._transport.base)
+        return '%s(%r)' % (self.__class__.__name__, self.base)
 
     __repr__ = __str__
 
@@ -249,8 +249,8 @@ class _Branch(Branch, LockableFiles):
             self.cache_root = None
 
     def _get_base(self):
-        if self._transport:
-            return self._transport.base
+        if self.control_files._transport:
+            return self.control_files._transport.base
         return None
 
     base = property(_get_base, doc="The URL for the root of this branch.")
@@ -259,9 +259,9 @@ class _Branch(Branch, LockableFiles):
         """Return absolute filename for something in the branch
         
         XXX: Robert Collins 20051017 what is this used for? why is it a branch
-        method and not a tree method.
+        method and not a tree method?
         """
-        return self._transport.abspath(name)
+        return self.control_files._transport.abspath(name)
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
@@ -292,10 +292,10 @@ class _Branch(Branch, LockableFiles):
             ('inventory.weave', empty_weave),
             ('ancestry.weave', empty_weave)
         ]
-        cfn = self._rel_controlfilename
-        self._transport.mkdir_multi([cfn(d) for d in dirs])
-        self.put_controlfiles(files)
-        mutter('created control directory in ' + self._transport.base)
+        cfn = self.control_files._rel_controlfilename
+        self.control_files._transport.mkdir_multi([cfn(d) for d in dirs])
+        self.control_files.put_controlfiles(files)
+        mutter('created control directory in ' + self.base)
 
     def _check_format(self, relax_version_check):
         """Check this branch format is supported.
@@ -307,7 +307,7 @@ class _Branch(Branch, LockableFiles):
         classes to support downlevel branches.  But not yet.
         """
         try:
-            fmt = self.controlfile('branch-format', 'r').read()
+            fmt = self.control_files.controlfile('branch-format', 'r').read()
         except NoSuchFile:
             raise NotBranchError(path=self.base)
         mutter("got branch format %r", fmt)
@@ -332,16 +332,19 @@ class _Branch(Branch, LockableFiles):
         return inv.root.file_id
 
     def lock_write(self):
-        LockableFiles.lock_write(self)
+        # TODO: test for failed two phase locks. This is known broken.
+        self.control_files.lock_write()
         self.storage.lock_write()
 
     def lock_read(self):
-        LockableFiles.lock_read(self)
+        # TODO: test for failed two phase locks. This is known broken.
+        self.control_files.lock_read()
         self.storage.lock_read()
 
     def unlock(self):
+        # TODO: test for failed two phase locks. This is known broken.
         self.storage.unlock()
-        LockableFiles.unlock(self)
+        self.control_files.unlock()
 
     @needs_write_lock
     def set_root_id(self, file_id):
@@ -368,7 +371,7 @@ class _Branch(Branch, LockableFiles):
         bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
         sio.seek(0)
         # Transport handles atomicity
-        self.put_controlfile('inventory', sio)
+        self.control_files.put_controlfile('inventory', sio)
         
         mutter('wrote working inventory')
             
@@ -472,7 +475,8 @@ class _Branch(Branch, LockableFiles):
 
     @needs_write_lock
     def set_revision_history(self, rev_history):
-        self.put_controlfile('revision-history', '\n'.join(rev_history))
+        self.control_files.put_controlfile(
+            'revision-history', '\n'.join(rev_history))
 
     def get_revision_delta(self, revno):
         """Return the delta for one revision.
@@ -510,13 +514,14 @@ class _Branch(Branch, LockableFiles):
     @needs_read_lock
     def revision_history(self):
         """Return sequence of revision hashes on to this branch."""
+        # FIXME are transactions bound to control files ? RBC 20051121
         transaction = self.get_transaction()
         history = transaction.map.find_revision_history()
         if history is not None:
             mutter("cache hit for revision-history in %s", self)
             return list(history)
         history = [l.rstrip('\r\n') for l in
-                self.controlfile('revision-history', 'r').readlines()]
+                self.control_files.controlfile('revision-history', 'r').readlines()]
         transaction.map.add_revision_history(history)
         # this call is disabled because revision_history is 
         # not really an object yet, and the transaction is for objects.
@@ -649,7 +654,7 @@ class _Branch(Branch, LockableFiles):
         # much more complex to keep consistent than our careful .bzr subset.
         # instead, we should say that working trees are local only, and optimise
         # for that.
-        if self._transport.base.find('://') != -1:
+        if self.base.find('://') != -1:
             raise NoWorkingTree(self.base)
         return WorkingTree(self.base, branch=self)
 
@@ -833,11 +838,12 @@ class _Branch(Branch, LockableFiles):
         These are revisions that have been merged into the working
         directory but not yet committed.
         """
-        cfn = self._rel_controlfilename('pending-merges')
-        if not self._transport.has(cfn):
+        cfn = self.control_files._rel_controlfilename('pending-merges')
+        if not self.control_files._transport.has(cfn):
             return []
         p = []
-        for l in self.controlfile('pending-merges', 'r').readlines():
+        for l in self.control_files.controlfile(
+                'pending-merges', 'r').readlines():
             p.append(l.rstrip('\n'))
         return p
 
@@ -857,7 +863,8 @@ class _Branch(Branch, LockableFiles):
 
     @needs_write_lock
     def set_pending_merges(self, rev_list):
-        self.put_controlfile('pending-merges', '\n'.join(rev_list))
+        self.control_files.put_controlfile(
+            'pending-merges', '\n'.join(rev_list))
 
     def get_parent(self):
         """Return the parent location of the branch.
@@ -870,7 +877,7 @@ class _Branch(Branch, LockableFiles):
         _locs = ['parent', 'pull', 'x-pull']
         for l in _locs:
             try:
-                return self.controlfile(l, 'r').read().strip('\n')
+                return self.control_files.controlfile(l, 'r').read().strip('\n')
             except IOError, e:
                 if e.errno != errno.ENOENT:
                     raise
@@ -891,7 +898,7 @@ class _Branch(Branch, LockableFiles):
     def set_parent(self, url):
         # TODO: Maybe delete old location files?
         from bzrlib.atomicfile import AtomicFile
-        f = AtomicFile(self.controlfilename('parent'))
+        f = AtomicFile(self.control_files.controlfilename('parent'))
         try:
             f.write(url + '\n')
             f.commit()
@@ -917,7 +924,28 @@ class _Branch(Branch, LockableFiles):
         if revno < 1 or revno > self.revno():
             raise InvalidRevisionNumber(revno)
         
+    def _finish_transaction(self):
+        """Exit the current transaction."""
+        return self.control_files._finish_transaction()
 
+    def get_transaction(self):
+        """Return the current active transaction.
+
+        If no transaction is active, this returns a passthrough object
+        for which all data is immediately flushed and no caching happens.
+        """
+        # this is an explicit function so that we can do tricky stuff
+        # when the storage in rev_storage is elsewhere.
+        # we probably need to hook the two 'lock a location' and 
+        # 'have a transaction' together more delicately, so that
+        # we can have two locks (branch and storage) and one transaction
+        # ... and finishing the transaction unlocks both, but unlocking
+        # does not. - RBC 20051121
+        return self.control_files.get_transaction()
+
+    def _set_transaction(self, transaction):
+        """Set a new active transaction."""
+        return self.control_files._set_transaction(transaction)
 
 class ScratchBranch(_Branch):
     """Special test class: a branch that cleans up after itself.
@@ -926,7 +954,7 @@ class ScratchBranch(_Branch):
     >>> isdir(b.base)
     True
     >>> bd = b.base
-    >>> b._transport.__del__()
+    >>> b.control_files._transport.__del__()
     >>> isdir(bd)
     False
     """
@@ -945,11 +973,10 @@ class ScratchBranch(_Branch):
             super(ScratchBranch, self).__init__(transport)
 
         for d in dirs:
-            self._transport.mkdir(d)
+            self.control_files._transport.mkdir(d)
             
         for f in files:
-            self._transport.put(f, 'content of %s' % f)
-
+            self.control_files._transport.put(f, 'content of %s' % f)
 
     def clone(self):
         """
@@ -989,7 +1016,6 @@ def is_control_file(filename):
             break
         filename = head
     return False
-
 
 
 def gen_file_id(name):

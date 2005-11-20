@@ -33,7 +33,8 @@ def _countiter(it):
 def show_info(b):
     import diff
     
-    print 'branch format:', b.controlfile('branch-format', 'r').readline().rstrip('\n')
+    print 'branch format:', b.control_files.controlfile(
+        'branch-format', 'r').readline().rstrip('\n')
 
     def plural(n, base='', pl=None):
         if n == 1:

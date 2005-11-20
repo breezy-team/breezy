@@ -95,6 +95,12 @@ class FakeBranch(object):
 
     def __init__(self):
         self.base = "http://example.com/branches/demo"
+        self.control_files = FakeControlFiles()
+
+
+class FakeControlFiles(object):
+
+    def __init__(self):
         self.email = 'Robert Collins <robertc@example.net>\n'
 
     def controlfile(self, filename, mode):
@@ -494,19 +500,19 @@ class TestBranchConfigItems(TestCase):
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.net>",
                          my_config._get_user_id())
-        branch.email = "John"
+        branch.control_files.email = "John"
         self.assertEqual("John", my_config._get_user_id())
 
     def test_not_set_in_branch(self):
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
-        branch.email = None
+        branch.control_files.email = None
         config_file = StringIO(sample_config_text)
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
         self.assertEqual("Robert Collins <robertc@example.com>",
                          my_config._get_user_id())
-        branch.email = "John"
+        branch.control_files.email = "John"
         self.assertEqual("John", my_config._get_user_id())
 
     def test_BZREMAIL_OVERRIDES(self):

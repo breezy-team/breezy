@@ -188,11 +188,11 @@ class TestBranch(TestCaseInTempDir):
 
     def test__relcontrolfilename(self):
         branch = Branch.initialize('.')
-        self.assertEqual('.bzr/%25', branch._rel_controlfilename('%'))
+        self.assertEqual('.bzr/%25', branch.control_files._rel_controlfilename('%'))
         
     def test__relcontrolfilename_empty(self):
         branch = Branch.initialize('.')
-        self.assertEqual('.bzr', branch._rel_controlfilename(''))
+        self.assertEqual('.bzr', branch.control_files._rel_controlfilename(''))
 
     def test_nicks(self):
         """Branch nicknames"""
@@ -204,7 +204,7 @@ class TestBranch(TestCaseInTempDir):
         self.assertEqual(branch.nick, 'bzr.ab')
         branch.nick = "Aaron's branch"
         branch.nick = "Aaron's branch"
-        self.failUnless(os.path.exists(branch.controlfilename("branch.conf")))
+        self.failUnlessExists(branch.control_files.controlfilename("branch.conf"))
         self.assertEqual(branch.nick, "Aaron's branch")
         os.rename('bzr.ab', 'integration')
         branch = Branch.open('integration')
@@ -344,12 +344,12 @@ class TestBranchTransaction(TestCaseInTempDir):
     def test_finish_readonly_transaction_works(self):
         self.branch._set_transaction(transactions.ReadOnlyTransaction())
         self.branch._finish_transaction()
-        self.assertEqual(None, self.branch._transaction)
+        self.assertEqual(None, self.branch.control_files._transaction)
 
     def test_unlock_calls_finish(self):
         self.branch.lock_read()
         transaction = InstrumentedTransaction()
-        self.branch._transaction = transaction
+        self.branch.control_files._transaction = transaction
         self.branch.unlock()
         self.assertEqual(['finish'], transaction.calls)
 
@@ -362,7 +362,7 @@ class TestBranchTransaction(TestCaseInTempDir):
     def test_lock_write_acquires_passthrough_transaction(self):
         self.branch.lock_write()
         # cannot use get_transaction as its magic
-        self.failUnless(isinstance(self.branch._transaction,
+        self.failUnless(isinstance(self.branch.control_files._transaction,
                                    transactions.PassThroughTransaction))
         self.branch.unlock()
 

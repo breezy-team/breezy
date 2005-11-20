@@ -154,7 +154,7 @@ class Convert(object):
         self.inv_weave = Weave('inventory')
         # holds in-memory weaves for all files
         self.text_weaves = {}
-        os.remove(self.branch.controlfilename('branch-format'))
+        os.remove(self.branch.control_files.controlfilename('branch-format'))
         self._convert_working_inv()
         rev_history = self.branch.revision_history()
         # to_read is a stack holding the revisions we still need to process;
@@ -193,21 +193,18 @@ class Convert(object):
                            self.branch._branch_format)
         return True
 
-
     def _set_new_format(self, format):
-        self.branch.put_controlfile('branch-format', format)
-
+        self.branch.control_files.put_controlfile('branch-format', format)
 
     def _cleanup_spare_files(self):
         for n in 'merged-patches', 'pending-merged-patches':
-            p = self.branch.controlfilename(n)
+            p = self.branch.control_files.controlfilename(n)
             if not os.path.exists(p):
                 continue
             ## assert os.path.getsize(p) == 0
             os.remove(p)
         shutil.rmtree(self.base + '/.bzr/inventory-store')
         shutil.rmtree(self.base + '/.bzr/text-store')
-
 
     def _backup_control_dir(self):
         orig = self.base + '/.bzr'
@@ -221,9 +218,9 @@ class Convert(object):
 
     def _convert_working_inv(self):
         branch = self.branch
-        inv = serializer_v4.read_inventory(branch.controlfile('inventory', 'rb'))
+        inv = serializer_v4.read_inventory(branch.control_files.controlfile('inventory', 'rb'))
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
-        branch.put_controlfile('inventory', new_inv_xml)
+        branch.control_files.put_controlfile('inventory', new_inv_xml)
 
 
 

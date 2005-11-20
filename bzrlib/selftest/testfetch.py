@@ -189,7 +189,7 @@ class TestHttpFetch(TestCaseWithWebserver):
     def test_fetch(self):
         #highest indices a: 5, b: 7
         br_a, br_b = make_branches(self)
-        br_rem_a = Branch.open(self.get_remote_url(br_a._transport.base))
+        br_rem_a = Branch.open(self.get_remote_url(br_a.base))
         fetch_steps(self, br_rem_a, br_b, br_a)
 
     def log(self, *args):
