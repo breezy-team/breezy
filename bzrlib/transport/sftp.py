@@ -360,6 +360,20 @@ class SFTPTransport (Transport):
         """Copy the item at rel_from to the location at rel_to"""
         path_from = self._abspath(rel_from)
         path_to = self._abspath(rel_to)
+        self._copy_abspaths(path_from, path_to)
+
+    def _copy_abspaths(self, path_from, path_to):
+        """Copy files given an absolute path
+
+        :param path_from: Path on remote server to read
+        :param path_to: Path on remote server to write
+        :return: None
+
+        TODO: Should the destination location be atomically created?
+              This has not been specified
+        TODO: This should use some sort of remote copy, rather than
+              pulling the data locally, and then writing it remotely
+        """
         try:
             fin = self._sftp.file(path_from, 'rb')
             try:
@@ -373,6 +387,33 @@ class SFTPTransport (Transport):
                 fin.close()
         except (IOError, paramiko.SSHException), x:
             raise SFTPTransportError('Unable to copy %r to %r' % (path_from, path_to), x)
+
+    def copy_to(self, relpaths, other, pb=None):
+        """Copy a set of entries from self into another Transport.
+
+        :param relpaths: A list/generator of entries to be copied.
+        """
+        if isinstance(other, SFTPTransport) and other._sftp is self._sftp:
+            # Both from & to are on the same remote filesystem
+            # We can use a remote copy, instead of pulling locally, and pushing
+
+            total = self._get_total(relpaths)
+            count = 0
+            for path in relpaths:
+                path_from = self._abspath(relpath)
+                path_to = other._abspath(relpath)
+                self._update_pb(pb, 'copy-to', count, total)
+                self._copy_abspaths(path_from, path_to)
+                count += 1
+            return count
+        else:
+            return super(LocalTransport, self).copy_to(relpaths, other, pb=pb)
+
+        # The dummy implementation just does a simple get + put
+        def copy_entry(path):
+            other.put(path, self.get(path))
+
+        return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
