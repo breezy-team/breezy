@@ -13,17 +13,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-from bzrlib.control_files import ControlFiles
-from tree import EmptyTree
+
+from cStringIO import StringIO
+
+from bzrlib.lockablefiles import LockableFiles
+from bzrlib.tree import EmptyTree
 from bzrlib.revision import NULL_REVISION
 from bzrlib.store.weave import WeaveStore
 from bzrlib.store.compressed_text import CompressedTextStore
 from bzrlib.store.text import TextStore
-from cStringIO import StringIO
 import bzrlib.xml5
 from bzrlib.tree import RevisionTree
-from errors import InvalidRevisionId
+from bzrlib.errors import InvalidRevisionId
 from bzrlib.testament import Testament
+
 
 def needs_read_lock(unbound):
     """Decorate unbound to take out and release a read lock."""
@@ -49,7 +52,7 @@ def needs_write_lock(unbound):
 class RevisionStorage(object):
     def __init__(self, transport, branch_format):
         object.__init__(self)
-        self.control_files = ControlFiles(transport, 'storage-lock')
+        self.control_files = LockableFiles(transport, 'storage-lock')
         def get_weave(name, prefixed=False):
             relpath = self.control_files._rel_controlfilename(name)
             weave_transport = self.control_files.make_transport(relpath)
@@ -214,7 +217,6 @@ class RevisionStorage(object):
         if not file_id:
             raise BzrError("%r is not present in revision %s" % (file, revno))
         tree.print_file(file_id)
-
 
     def get_transaction(self):
         return self.control_files.get_transaction()

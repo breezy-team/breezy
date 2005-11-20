@@ -1,12 +1,12 @@
 import bzrlib
+import bzrlib.errors as errors
+from bzrlib.errors import LockError
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
-import errors
-from errors import LockError
 
-class ControlFiles(object):
-    """
-    Object representing a set of control files
+class LockableFiles(object):
+    """Object representing a set of lockable files
+
     _lock_mode
         None, or 'r' or 'w'
 
@@ -17,9 +17,11 @@ class ControlFiles(object):
     _lock
         Lock object from bzrlib.lock.
     """
+
     _lock_mode = None
     _lock_count = None
     _lock = None
+
     def __init__(self, transport, lock_name):
         object.__init__(self)
         self._transport = transport
@@ -30,7 +32,7 @@ class ControlFiles(object):
         if self._lock_mode or self._lock:
             # XXX: This should show something every time, and be suitable for
             # headless operation and embedding
-            warn("branch %r was not explicitly unlocked" % self)
+            warn("file group %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
     def _rel_controlfilename(self, file_or_path):

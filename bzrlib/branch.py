@@ -39,17 +39,17 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
 from bzrlib.textui import show_status
 from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions)
 
+from bzrlib.config import TreeConfig
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
+from bzrlib.lockablefiles import LockableFiles
 from bzrlib.store import copy_all
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 import bzrlib.xml5
 import bzrlib.ui
-from config import TreeConfig
-from control_files import ControlFiles
-from rev_storage import RevisionStorage
+from bzrlib.rev_storage import RevisionStorage
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -164,7 +164,7 @@ class Branch(object):
     nick = property(_get_nick, _set_nick)
         
 
-class _Branch(Branch, ControlFiles):
+class _Branch(Branch, LockableFiles):
     """A branch stored in the actual filesystem.
 
     Note that it's "local" in the context of the filesystem; it doesn't
@@ -223,7 +223,7 @@ class _Branch(Branch, ControlFiles):
         """
         assert isinstance(transport, Transport), \
             "%r is not a Transport" % transport
-        ControlFiles.__init__(self, transport, 'branch-lock')
+        LockableFiles.__init__(self, transport, 'branch-lock')
         if init:
             self._make_control()
         self._check_format(relax_version_check)
@@ -332,16 +332,16 @@ class _Branch(Branch, ControlFiles):
         return inv.root.file_id
 
     def lock_write(self):
-        ControlFiles.lock_write(self)
+        LockableFiles.lock_write(self)
         self.storage.lock_write()
 
     def lock_read(self):
-        ControlFiles.lock_read(self)
+        LockableFiles.lock_read(self)
         self.storage.lock_read()
 
     def unlock(self):
         self.storage.unlock()
-        ControlFiles.unlock(self)
+        LockableFiles.unlock(self)
 
     @needs_write_lock
     def set_root_id(self, file_id):
