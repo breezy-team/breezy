@@ -973,13 +973,9 @@ class BzrBranch(Branch):
         except (IndexError, KeyError):
             raise bzrlib.errors.NoSuchRevision(self, revision_id)
 
-    #deprecated
-    get_revision_xml = get_revision_xml_file
-
     def get_revision_xml(self, revision_id):
         """See Branch.get_revision_xml."""
         return self.get_revision_xml_file(revision_id).read()
-
 
     def get_revision(self, revision_id):
         """See Branch.get_revision."""
@@ -1098,26 +1094,6 @@ class BzrBranch(Branch):
                 else:
                     raise e
         
-    def revision_id_to_revno(self, revision_id):
-        """Given a revision id, return its revno"""
-        if revision_id is None:
-            return 0
-        history = self.revision_history()
-        try:
-            return history.index(revision_id) + 1
-        except ValueError:
-            raise bzrlib.errors.NoSuchRevision(self, revision_id)
-
-    def get_rev_id(self, revno, history=None):
-        """Find the revision id of the specified revno."""
-        if revno == 0:
-            return None
-        if history is None:
-            history = self.revision_history()
-        elif revno <= 0 or revno > len(history):
-            raise bzrlib.errors.NoSuchRevision(self, revno)
-        return history[revno - 1]
-
     def revision_tree(self, revision_id):
         """See Branch.revision_tree."""
         # TODO: refactor this to use an existing revision object
@@ -1287,22 +1263,6 @@ class BzrBranch(Branch):
     def tree_config(self):
         return TreeConfig(self)
 
-    def check_revno(self, revno):
-        """\
-        Check whether a revno corresponds to any revision.
-        Zero (the NULL revision) is considered valid.
-        """
-        if revno != 0:
-            self.check_real_revno(revno)
-            
-    def check_real_revno(self, revno):
-        """\
-        Check whether a revno corresponds to a real revision.
-        Zero (the NULL revision) is considered invalid
-        """
-        if revno < 1 or revno > self.revno():
-            raise InvalidRevisionNumber(revno)
-        
     def sign_revision(self, revision_id, gpg_strategy):
         """See Branch.sign_revision."""
         plaintext = Testament.from_revision(self, revision_id).as_short_text()
