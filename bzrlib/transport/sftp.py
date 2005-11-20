@@ -25,6 +25,7 @@ import sys
 import urllib
 import time
 import random
+import weakref
 
 from bzrlib.errors import (FileExists, 
                            TransportNotPossible, NoSuchFile, NonRelativePath,
@@ -49,6 +50,12 @@ else:
 
 SYSTEM_HOSTKEYS = {}
 BZR_HOSTKEYS = {}
+
+# This is a weakref dictionary, so that we can reuse connections
+# that are still active. Long term, it might be nice to have some
+# sort of expiration policy, such as disconnect if inactive for
+# X seconds. But that requires a lot more fanciness.
+_connected_hosts = weakref.WeakValueDictionary()
 
 def load_host_keys():
     """
@@ -292,7 +299,7 @@ class SFTPTransport (Transport):
                 except IOError, e:
                     self._translate_io_exception(e, relpath)
                 except paramiko.SSHException, x:
-                    raise SFTPTransportError('Unable to rename into file %r' 
+                    raise SFTPTransportError('Unable to rename into file %r' % (path,), x) 
                 else:
                     success = True
             finally:
@@ -473,6 +480,13 @@ class SFTPTransport (Transport):
         global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
         
         load_host_keys()
+
+        idx = (self._host, self._port, self._username)
+        try:
+            self._sftp = _connected_hosts[idx]
+            return
+        except KeyError:
+            pass
         
         try:
             t = paramiko.Transport((self._host, self._port))
@@ -511,6 +525,8 @@ class SFTPTransport (Transport):
         except paramiko.SSHException:
             raise BzrError('Unable to find path %s on SFTP server %s' % \
                 (self._path, self._host))
+        else:
+            _connected_hosts[idx] = self._sftp
 
     def _sftp_auth(self, transport, username, host):
         agent = paramiko.Agent()

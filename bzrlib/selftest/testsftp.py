@@ -68,6 +68,11 @@ class SingleListener (threading.Thread):
     
     def stop(self):
         self.stop_event.set()
+        # We should consider waiting for the other thread
+        # to stop, because otherwise we get spurious
+        #   bzr: ERROR: Socket exception: Connection reset by peer (54)
+        # because the test suite finishes before the thread has a chance
+        # to close. (Especially when only running a few tests)
         
         
 class TestCaseWithSFTPServer (TestCaseInTempDir):
@@ -82,7 +87,7 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
         file(key_file, 'w').write(STUB_SERVER_KEY)
         host_key = paramiko.RSAKey.from_private_key_file(key_file)
         ssh_server.add_server_key(host_key)
-        server = StubServer()
+        server = StubServer(self)
         ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer, StubSFTPServer, root=self._root)
         event = threading.Event()
         ssh_server.start_server(event, server)
@@ -113,6 +118,16 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
 class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
     readonly = False
     setup = True
+
+    def setUp(self):
+        TestCaseWithSFTPServer.setUp(self)
+        self.sftplogs = []
+
+    def log(self, *args):
+        """Override the default log to grab sftp server messages"""
+        TestCaseWithSFTPServer.log(self, *args)
+        if args and args[0].startswith('sftpserver'):
+            self.sftplogs.append(args[0])
 
     def get_transport(self):
         if self.setup:
@@ -146,6 +161,18 @@ class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
 
         l.unlock()
         l2.unlock()
+
+    def test_multiple_connections(self):
+        t = self.get_transport()
+        self.assertEquals(self.sftplogs, 
+                ['sftpserver - authorizing: foo'
+               , 'sftpserver - channel request: session, 1'])
+        self.sftplogs = []
+        # The second request should reuse the first connection
+        # SingleListener only allows for a single connection,
+        # So the next line fails unless the connection is reused
+        t2 = self.get_transport()
+        self.assertEquals(self.sftplogs, [])
 
 
 class FakeSFTPTransport (object):
