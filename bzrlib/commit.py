@@ -204,7 +204,9 @@ class Commit(object):
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
-        self.revprops = revprops
+        self.revprops = {'branch-nick': branch.nick}
+        if revprops:
+            self.revprops.update(revprops)
 
         if strict:
             # raise an exception as soon as we find a single unknown.
@@ -235,7 +237,9 @@ class Commit(object):
         else:
             self.timezone = int(timezone)
 
-        assert isinstance(message, basestring), type(message)
+        if isinstance(message, str):
+            message = message.decode(bzrlib.user_encoding)
+        assert isinstance(message, unicode), type(message)
         self.message = message
         self._escape_commit_message()
 
@@ -267,7 +271,7 @@ class Commit(object):
             self._record_inventory()
             self._make_revision()
             self.branch.append_revision(self.rev_id)
-            self.branch.set_pending_merges([])
+            self.work_tree.set_pending_merges([])
             self.reporter.completed(self.branch.revno()+1, self.rev_id)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
@@ -295,14 +299,8 @@ class Commit(object):
         # represented in well-formed XML; escape characters that
         # aren't listed in the XML specification
         # (http://www.w3.org/TR/REC-xml/#NT-Char).
-        if isinstance(self.message, unicode):
-            char_pattern = u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]'
-        else:
-            # Use a regular 'str' as pattern to avoid having re.subn
-            # return 'unicode' results.
-            char_pattern = '[^x09\x0A\x0D\x20-\xFF]'
         self.message, escape_count = re.subn(
-            char_pattern,
+            u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
             lambda match: match.group(0).encode('unicode_escape'),
             self.message)
         if escape_count:
@@ -310,7 +308,7 @@ class Commit(object):
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""
-        pending_merges = self.branch.pending_merges()
+        pending_merges = self.work_tree.pending_merges()
         self.parents = []
         self.parent_invs = []
         self.present_parents = []
@@ -376,7 +374,7 @@ class Commit(object):
             deleted_ids.sort(reverse=True)
             for path, file_id in deleted_ids:
                 del self.work_inv[file_id]
-            self.branch._write_inventory(self.work_inv)
+            self.work_tree._write_inventory(self.work_inv)
 
     def _store_snapshot(self):
         """Pass over inventory and record a snapshot.

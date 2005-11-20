@@ -42,10 +42,13 @@ class TestAnnotate(TestCaseInTempDir):
     def setUp(self):
         super(TestAnnotate, self).setUp()
         b = Branch.initialize('.')
-        self.build_tree_contents([('hello.txt', 'my helicopter\n')])
+        self.build_tree_contents([('hello.txt', 'my helicopter\n'),
+                                  ('nomail.txt', 'nomail\n')])
         b.add(['hello.txt'])
-        b.commit('add hello', 
-                 committer='test@user')
+        b.working_tree().commit('add hello', 
+                                committer='test@user')
+        b.add(['nomail.txt'])
+        b.working_tree().commit('add nomail', committer='no mail')
 
     def test_help_annotate(self):
         """Annotate command exists"""
@@ -56,4 +59,11 @@ class TestAnnotate(TestCaseInTempDir):
         self.assertEquals(err, '')
         self.assertEqualDiff(out, '''\
     1 test@us | my helicopter
+''')
+
+    def test_no_mail(self):
+        out, err = self.run_bzr_captured(['annotate', 'nomail.txt'])
+        self.assertEquals(err, '')
+        self.assertEqualDiff(out, '''\
+    2 no mail | nomail
 ''')

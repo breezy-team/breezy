@@ -27,9 +27,10 @@ import tempfile
 import unittest
 import time
 
+from logging import debug, warning, error
+
 import bzrlib.commands
 import bzrlib.trace
-import bzrlib.fetch
 import bzrlib.osutils as osutils
 from bzrlib.selftest import TestUtil
 from bzrlib.selftest.TestUtil import TestLoader, TestSuite
@@ -38,7 +39,6 @@ from bzrlib.selftest.treeshape import build_tree_contents
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
 
-from logging import debug, warning, error
 
 
 class EarlyStoppingTestResultAdapter(object):
@@ -222,12 +222,7 @@ class TestCase(unittest.TestCase):
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
         self._log_file = os.fdopen(fileno, 'w+')
-        hdlr = logging.StreamHandler(self._log_file)
-        hdlr.setLevel(logging.DEBUG)
-        hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
-        logging.getLogger('').addHandler(hdlr)
-        logging.getLogger('').setLevel(logging.DEBUG)
-        self._log_hdlr = hdlr
+        bzrlib.trace.enable_test_log(self._log_file)
         debug('opened log file %s', name)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
@@ -237,6 +232,7 @@ class TestCase(unittest.TestCase):
 
         Read contents into memory, close, and delete.
         """
+        bzrlib.trace.disable_test_log()
         self._log_file.seek(0)
         self._log_contents = self._log_file.read()
         self._log_file.close()
@@ -277,9 +273,6 @@ class TestCase(unittest.TestCase):
             os.environ['EMAIL'] = self.email
 
     def tearDown(self):
-        logging.getLogger('').removeHandler(self._log_hdlr)
-        bzrlib.trace.enable_default_logging()
-        logging.debug('%s teardown', self.id())
         self._runCleanups()
         unittest.TestCase.tearDown(self)
 
@@ -448,7 +441,7 @@ class TestCaseInTempDir(TestCase):
             return
         i = 0
         while True:
-            root = 'test%04d.tmp' % i
+            root = u'test%04d.tmp' % i
             try:
                 os.mkdir(root)
             except OSError, e:
@@ -512,9 +505,8 @@ class TestCaseInTempDir(TestCase):
 class MetaTestLog(TestCase):
     def test_logging(self):
         """Test logs are captured when a test fails."""
-        logging.info('an info message')
-        warning('something looks dodgy...')
-        logging.debug('hello, test is running')
+        self.log('a test message')
+        self.assertContainsRe(self._get_log(), 'a test message\n')
 
 
 def filter_suite_by_re(suite, pattern):
@@ -527,7 +519,7 @@ def filter_suite_by_re(suite, pattern):
 
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
-              stop_on_failure=False):
+              stop_on_failure=False, keep_output=False):
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
@@ -543,7 +535,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     # This is still a little bogus, 
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
-    if result.wasSuccessful():
+    if result.wasSuccessful() or not keep_output:
         if TestCaseInTempDir.TEST_ROOT is not None:
             shutil.rmtree(TestCaseInTempDir.TEST_ROOT) 
     else:
@@ -551,10 +543,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     return result.wasSuccessful()
 
 
-def selftest(verbose=False, pattern=".*", stop_on_failure=True):
+def selftest(verbose=False, pattern=".*", stop_on_failure=True,
+             keep_output=False):
     """Run the whole test suite under the enhanced runner"""
     return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern,
-                     stop_on_failure=stop_on_failure)
+                     stop_on_failure=stop_on_failure, keep_output=keep_output)
 
 
 def test_suite():
@@ -565,6 +558,9 @@ def test_suite():
 
     global MODULES_TO_TEST, MODULES_TO_DOCTEST
 
+    # FIXME: If these fail to load, e.g. because of a syntax error, the
+    # exception is hidden by unittest.  Sucks.  Should either fix that or
+    # perhaps import them and pass them to unittest as modules.
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
                    'bzrlib.selftest.testapi',
@@ -613,6 +609,7 @@ def test_suite():
                    'bzrlib.selftest.testnonascii',
                    'bzrlib.selftest.testreweave',
                    'bzrlib.selftest.testtsort',
+                   'bzrlib.selftest.testtrace',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,

@@ -68,7 +68,7 @@ class SimpleLogTest(TestCaseInTempDir):
         b = Branch('.', init=True)
 
         lf = LogCatcher()
-        b.commit('empty commit')
+        b.working_tree().commit('empty commit')
         show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
         self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
                           start_revision=2, end_revision=1) 
@@ -87,7 +87,7 @@ class SimpleLogTest(TestCaseInTempDir):
         b = Branch.initialize('.')
 
         lf = LogCatcher()
-        b.commit('empty commit')
+        b.working_tree().commit('empty commit')
         show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
         self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
                           start_revision=2, end_revision=1) 
@@ -112,8 +112,7 @@ class SimpleLogTest(TestCaseInTempDir):
         # no entries yet
         eq(lf.logs, [])
 
-
-        b.commit('empty commit')
+        b.working_tree().commit('empty commit')
         lf = LogCatcher()
         show_log(b, lf, verbose=True)
         eq(len(lf.logs), 1)
@@ -123,10 +122,9 @@ class SimpleLogTest(TestCaseInTempDir):
         self.log('log delta: %r' % d)
         self.checkDelta(d)
 
-
         self.build_tree(['hello'])
         b.add('hello')
-        b.commit('add one file')
+        b.working_tree().commit('add one file')
 
         lf = StringIO()
         # log using regular thing
@@ -153,10 +151,25 @@ class SimpleLogTest(TestCaseInTempDir):
         
         # commit a log message with control characters
         msg = "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)])
-        b.commit(msg)
+        self.log("original commit message: %r", msg)
+        b.working_tree().commit(msg)
         lf = LogCatcher()
         show_log(b, lf, verbose=True)
         committed_msg = lf.logs[0].rev.message
         self.log("escaped commit message: %r", committed_msg)
         self.assert_(msg != committed_msg)
         self.assert_(len(committed_msg) > len(msg))
+
+        # Check that log message with only XML-valid characters isn't
+        # escaped.  As ElementTree apparently does some kind of
+        # newline conversion, neither LF (\x0A) nor CR (\x0D) are
+        # included in the test commit message, even though they are
+        # valid XML 1.0 characters.
+        msg = "\x09" + ''.join([unichr(x) for x in range(0x20, 256)])
+        self.log("original commit message: %r", msg)
+        b.working_tree().commit(msg)
+        lf = LogCatcher()
+        show_log(b, lf, verbose=True)
+        committed_msg = lf.logs[0].rev.message
+        self.log("escaped commit message: %r", committed_msg)
+        self.assert_(msg == committed_msg)

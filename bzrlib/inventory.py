@@ -79,11 +79,12 @@ class InventoryEntry(object):
     InventoryDirectory('123', 'src', parent_id='TREE_ROOT')
     >>> i.add(InventoryFile('2323', 'hello.c', parent_id='123'))
     InventoryFile('2323', 'hello.c', parent_id='123')
-    >>> for j in i.iter_entries():
-    ...   print j
+    >>> shouldbe = {0: 'src', 1: os.path.join('src','hello.c')}
+    >>> for ix, j in enumerate(i.iter_entries()):
+    ...   print (j[0] == shouldbe[ix], j[1])
     ... 
-    ('src', InventoryDirectory('123', 'src', parent_id='TREE_ROOT'))
-    ('src/hello.c', InventoryFile('2323', 'hello.c', parent_id='123'))
+    (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT'))
+    (True, InventoryFile('2323', 'hello.c', parent_id='123'))
     >>> i.add(InventoryFile('2323', 'bye.c', '123'))
     Traceback (most recent call last):
     ...
@@ -268,7 +269,8 @@ class InventoryEntry(object):
         """
         fullpath = appendpath(dest, dp)
         self._put_on_disk(fullpath, tree)
-        mutter("  export {%s} kind %s to %s" % (self.file_id, self.kind, fullpath))
+        mutter("  export {%s} kind %s to %s", self.file_id,
+                self.kind, fullpath)
 
     def _put_on_disk(self, fullpath, tree):
         """Put this entry onto disk at fullpath, from tree tree."""
@@ -646,7 +648,7 @@ class InventoryLink(InventoryEntry):
 
     def _put_in_tar(self, item, tree):
         """See InventoryEntry._put_in_tar."""
-        iterm.type = tarfile.SYMTYPE
+        item.type = tarfile.SYMTYPE
         fileobj = None
         item.size = 0
         item.mode = 0755

@@ -161,6 +161,13 @@ class Transport(object):
             yield self.has(relpath)
             count += 1
 
+    def has_any(self, relpaths):
+        """Return True if any of the paths exist."""
+        for relpath in relpaths:
+            if self.has(relpath):
+                return True
+        return False
+
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree.
         
@@ -250,6 +257,8 @@ class Transport(object):
         """Copy a set of entries from self into another Transport.
 
         :param relpaths: A list/generator of entries to be copied.
+        TODO: This interface needs to be updated so that the target location
+              can be different from the source location.
         """
         # The dummy implementation just does a simple get + put
         def copy_entry(path):
@@ -381,3 +390,5 @@ register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
 register_lazy_transport('http://', 'bzrlib.transport.http', 'HttpTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http', 'HttpTransport')
+register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
+register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')

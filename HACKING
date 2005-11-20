@@ -38,13 +38,13 @@ Overall
   the user should really pay attention to - which includes trivial shell
   pipelines.
 
-  Recommanded values are 
+  Recommended values are 
     0- OK, 
     1- Conflicts in merge-like operations, or changes are present in
        diff-like operations. 
     2- Unrepresentable diff changes (i.e. binary files that we cannot show 
        a diff of).
-    3- An error or exception has occured.
+    3- An error or exception has occurred.
 
 Evolving interfaces
 -------------------
@@ -53,10 +53,10 @@ If you change the behaviour of an API in an incompatible way, please
 be sure to change its name as well. For instance, if I add a keyword
 parameter to branch.commit - that's fine. On the other hand, if I add
 a keyword parameter to branch.commit which is a *required* transaction
-object, I should rename the api - i.e. to 'branch.commit_transaction'.
+object, I should rename the API - i.e. to 'branch.commit_transaction'.
 
-This will prevent users of the old api getting surprising results. 
-Instead, they will get an Attribute error as the api is missing, and
+This will prevent users of the old API getting surprising results. 
+Instead, they will get an Attribute error as the API is missing, and
 will know to update their code. If in doubt, just ask on #bzr.
 
 Documentation
@@ -65,6 +65,9 @@ Documentation
 If you change the behaviour of a command, please update its docstring
 in bzrlib/commands.py.  This is displayed by the 'bzr help' command.
 
+NEWS file
+---------
+
 If you make a user-visible change, please add a note to the NEWS file.
 The description should be written to make sense to someone who's just
 a user of bzr, not a developer: new functions or classes shouldn't be
@@ -72,6 +75,20 @@ mentioned, but new commands, changes in behaviour or fixed nontrivial
 bugs should be listed.  See the existing entries for an idea of what
 should be done.
 
+Within each release, entries in the news file should have the most
+user-visible changes first.  So the order should be approximately:
+
+ * changes to existing behaviour - the highest priority because the 
+   user's existing knowledge is incorrect
+ * new features - should be brought to their attention
+ * bug fixes - may be of interest if the bug was affecting them, and
+   should include the bug number if any
+ * major documentation changes
+ * changes to internal interfaces
+
+People who made significant contributions to each change are listed in
+parenthesis.  This can include reporting bugs (particularly with good
+details or reproduction recipes), submitting patches, etc.
 
 API documentation
 -----------------
@@ -134,10 +151,11 @@ Functions that transform one thing to another should be named ``x_to_y``
 Destructors
 -----------
 
-Python destructors (``__del__``) work rather differently from in other
-languages.  In particular, bear in mind that destructors may not be called
-immediately when the object apparently becomes unreferenced, and that
-there are tight restrictions on what can be done inside them.
+Python destructors (``__del__``) work differently to those of other
+languages.  In particular, bear in mind that destructors may be called
+immediately when the object apparently becomes unreferenced, or at some
+later time, or possibly never at all.  Therefore we have restrictions on
+what can be done inside them.
 
  0. Never use a __del__ method without asking Martin/Robert first.
 
