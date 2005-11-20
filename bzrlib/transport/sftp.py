@@ -439,8 +439,6 @@ class SFTPTransport (Transport):
             path = self._path
         host = self._host
         username = urllib.quote(self._username)
-        #if self._password:
-        #    username += ':' + urllib.quote(self._password)
         if self._port != 22:
             host += ':%d' % self._port
         return 'sftp://%s@%s/%s' % (username, host, urllib.quote(path))
