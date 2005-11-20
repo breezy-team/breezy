@@ -49,7 +49,7 @@ import bzrlib.xml5
 import bzrlib.ui
 from config import TreeConfig
 from bzrlib.lockable_files import LockableFiles
-from rev_storage import RevisionStorage
+from repository import Repository
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -526,7 +526,7 @@ class BzrBranch(Branch, LockableFiles):
         if init:
             self._make_control()
         self._check_format(relax_version_check)
-        self.storage = RevisionStorage(transport, self._branch_format)
+        self.storage = Repository(transport, self._branch_format)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self._transport.base)

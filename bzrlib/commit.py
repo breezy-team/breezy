@@ -237,7 +237,9 @@ class Commit(object):
         else:
             self.timezone = int(timezone)
 
-        assert isinstance(message, basestring), type(message)
+        if isinstance(message, str):
+            message = message.decode(bzrlib.user_encoding)
+        assert isinstance(message, unicode), type(message)
         self.message = message
         self._escape_commit_message()
 
@@ -297,14 +299,8 @@ class Commit(object):
         # represented in well-formed XML; escape characters that
         # aren't listed in the XML specification
         # (http://www.w3.org/TR/REC-xml/#NT-Char).
-        if isinstance(self.message, unicode):
-            char_pattern = u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]'
-        else:
-            # Use a regular 'str' as pattern to avoid having re.subn
-            # return 'unicode' results.
-            char_pattern = '[^x09\x0A\x0D\x20-\xFF]'
         self.message, escape_count = re.subn(
-            char_pattern,
+            u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
             lambda match: match.group(0).encode('unicode_escape'),
             self.message)
         if escape_count:

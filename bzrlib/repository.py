@@ -45,7 +45,7 @@ def needs_write_lock(unbound):
             self.control_files.unlock()
     return decorated
 
-class RevisionStorage(object):
+class Repository(object):
     def __init__(self, transport, branch_format):
         object.__init__(self)
         self.control_files = LockableFiles(transport, 'storage-lock')
