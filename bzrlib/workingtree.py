@@ -393,6 +393,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 merge_inner(self.branch,
                             self.branch.basis_tree(), 
                             self.branch.revision_tree(other_revision))
+            return len(new_revision_history) - len(old_revision_history)
         finally:
             source.unlock()
 

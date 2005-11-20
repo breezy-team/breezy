@@ -127,7 +127,7 @@ class SFTPTransport (Transport):
     Transport implementation for SFTP access.
     """
 
-    _url_matcher = re.compile(r'^sftp://([^:@]*(:[^@]*)?@)?(.*?)(:\d+)?(/.*)?$')
+    _url_matcher = re.compile(r'^sftp://([^:@]*(:[^@]*)?@)?(.*?)(:[^/]+)?(/.*)?$')
     
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
@@ -188,13 +188,14 @@ class SFTPTransport (Transport):
                 basepath.append(p)
 
         path = '/'.join(basepath)
-        if len(path) and path[0] != '/':
-            path = '/' + path
+        # could still be a "relative" path here, but relative on the sftp server
         return path
 
     def relpath(self, abspath):
         # FIXME: this is identical to HttpTransport -- share it
-        if not abspath.startswith(self.base):
+        m = self._url_matcher.match(abspath)
+        path = m.group(5)
+        if not path.startswith(self._path):
             raise NonRelativePath('path %r is not under base URL %r'
                            % (abspath, self.base))
         pl = len(self.base)
@@ -218,7 +219,13 @@ class SFTPTransport (Transport):
         """
         try:
             path = self._abspath(relpath)
-            return self._sftp.file(path)
+            f = self._sftp.file(path)
+            try:
+                f.prefetch()
+            except AttributeError:
+                # only works on paramiko 1.5.1 or greater
+                pass
+            return f
         except (IOError, paramiko.SSHException), x:
             raise NoSuchFile('Error retrieving %s: %s' % (path, str(x)), x)
 
@@ -237,6 +244,11 @@ class SFTPTransport (Transport):
         # TODO: implement get_partial_multi to help with knit support
         f = self.get(relpath)
         f.seek(start)
+        try:
+            f.prefetch()
+        except AttributeError:
+            # only works on paramiko 1.5.1 or greater
+            pass
         return f
 
     def put(self, relpath, f):
@@ -270,6 +282,14 @@ class SFTPTransport (Transport):
                 pass
             raise e
         else:
+            # sftp rename doesn't allow overwriting, so play tricks:
+            tmp_safety = 'bzr.tmp.%.9f.%d.%d' % (time.time(), os.getpid(), random.randint(0, 0x7FFFFFFF))
+            tmp_safety = self._abspath(tmp_safety)
+            try:
+                self._sftp.rename(final_path, tmp_safety)
+                file_existed = True
+            except:
+                file_existed = False
             try:
                 self._sftp.rename(tmp_abspath, final_path)
             except IOError, e:
@@ -277,6 +297,8 @@ class SFTPTransport (Transport):
             except paramiko.SSHException, x:
                 raise SFTPTransportError('Unable to rename into file %r' 
                                           % (path,), x)
+            if file_existed:
+                self._sftp.unlink(tmp_safety)
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
@@ -413,9 +435,13 @@ class SFTPTransport (Transport):
     def _unparse_url(self, path=None):
         if path is None:
             path = self._path
-        if self._port == 22:
-            return 'sftp://%s@%s%s' % (self._username, self._host, path)
-        return 'sftp://%s@%s:%d%s' % (self._username, self._host, self._port, path)
+        host = self._host
+        username = urllib.quote(self._username)
+        if self._password:
+            username += ':' + urllib.quote(self._password)
+        if self._port != 22:
+            host += ':%d' % self._port
+        return 'sftp://%s@%s/%s' % (username, host, urllib.quote(path))
 
     def _parse_url(self, url):
         assert url[:7] == 'sftp://'
@@ -426,16 +452,22 @@ class SFTPTransport (Transport):
         if self._username is None:
             self._username = getpass.getuser()
         else:
-            self._username = self._username[:-1]
-        if self._password:
-            self._password = self._password[1:]
-            self._username = self._username[len(self._password)+1:]
+            if self._password:
+                # username field is 'user:pass@' in this case, and password is ':pass'
+                username_len = len(self._username) - len(self._password) - 1
+                self._username = urllib.unquote(self._username[:username_len])
+                self._password = urllib.unquote(self._password[1:])
+            else:
+                self._username = urllib.unquote(self._username[:-1])
         if self._port is None:
             self._port = 22
         else:
             self._port = int(self._port[1:])
         if (self._path is None) or (self._path == ''):
-            self._path = '/'
+            self._path = ''
+        else:
+            # remove leading '/'
+            self._path = urllib.unquote(self._path[1:])
 
     def _sftp_connect(self):
         global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
@@ -504,7 +536,10 @@ class SFTPTransport (Transport):
                 pass
 
         # give up and ask for a password
-        password = getpass.getpass('SSH %s@%s password: ' % (self._username, self._host))
+        # FIXME: shouldn't be implementing UI this deep into bzrlib
+        enc = sys.stdout.encoding
+        password = getpass.getpass('SSH %s@%s password: ' %
+            (self._username.encode(enc, 'replace'), self._host.encode(enc, 'replace')))
         try:
             transport.auth_password(self._username, password)
         except paramiko.SSHException:
@@ -518,7 +553,10 @@ class SFTPTransport (Transport):
             transport.auth_publickey(self._username, key)
             return True
         except paramiko.PasswordRequiredException:
-            password = getpass.getpass('SSH %s password: ' % (os.path.basename(filename),))
+            # FIXME: shouldn't be implementing UI this deep into bzrlib
+            enc = sys.stdout.encoding
+            password = getpass.getpass('SSH %s password: ' % 
+                (os.path.basename(filename).encode(enc, 'replace'),))
             try:
                 key = pkey_class.from_private_key_file(filename, password)
                 transport.auth_publickey(self._username, key)

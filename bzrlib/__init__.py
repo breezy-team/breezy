@@ -79,7 +79,14 @@ DEFAULT_IGNORE = [
 IGNORE_FILENAME = ".bzrignore"
 
 import os
-import locale
+import sys
+if sys.platform == 'darwin':
+    # work around egregious python 2.4 bug
+    sys.platform = 'posix'
+    import locale
+    sys.platform = 'darwin'
+else:
+    import locale
 user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 

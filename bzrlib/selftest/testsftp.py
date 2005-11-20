@@ -54,6 +54,8 @@ class SingleListener (threading.Thread):
         threading.Thread.__init__(self)
         self._callback = callback
         self._socket = socket.socket()
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._socket.bind(('localhost', 0))
         self._socket.listen(1)
         self.port = self._socket.getsockname()[1]
         self.stop_event = threading.Event()
@@ -91,20 +93,31 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
         TestCaseInTempDir.setUp(self)
         self._root = self.test_dir
 
+    def delayed_setup(self):
+        # some tests are just stubs that call setUp and then immediately call
+        # tearDwon.  so don't create the port listener until get_transport is
+        # called and we know we're in an actual test.
         self._listener = SingleListener(self._run_server)
         self._listener.setDaemon(True)
         self._listener.start()        
         self._sftp_url = 'sftp://foo:bar@localhost:%d/' % (self._listener.port,)
         
     def tearDown(self):
-        self._listener.stop()
+        try:
+            self._listener.stop()
+        except AttributeError:
+            pass
         TestCaseInTempDir.tearDown(self)
 
         
 class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
     readonly = False
+    setup = True
 
     def get_transport(self):
+        if self.setup:
+            self.delayed_setup()
+            self.setup = False
         from bzrlib.transport.sftp import SFTPTransport
         url = self._sftp_url
         return SFTPTransport(url)
@@ -134,6 +147,29 @@ class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
         l.unlock()
         l2.unlock()
 
+
+class FakeSFTPTransport (object):
+    _sftp = object()
+fake = FakeSFTPTransport()
+
+
+class SFTPNonServerTest (unittest.TestCase):
+    def test_parse_url(self):
+        from bzrlib.transport.sftp import SFTPTransport
+        s = SFTPTransport('sftp://simple.example.com/%2fhome/source', clone_from=fake)
+        self.assertEquals(s._host, 'simple.example.com')
+        self.assertEquals(s._port, 22)
+        self.assertEquals(s._path, '/home/source')
+        self.assert_(s._password is None)
+        
+        s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/relative', clone_from=fake)
+        self.assertEquals(s._host, 'example.com')
+        self.assertEquals(s._port, 2222)
+        self.assertEquals(s._username, 'robey')
+        self.assertEquals(s._password, 'h@t')
+        self.assertEquals(s._path, 'relative')
+        
+
 class SFTPBranchTest(TestCaseWithSFTPServer):
     """Test some stuff when accessing a bzr Branch over sftp"""
 
@@ -156,4 +192,5 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
 if not paramiko_loaded:
     # TODO: Skip these
     del SFTPTransportTest
+    del SFTPNonServerTest
     del SFTPBranchTest
