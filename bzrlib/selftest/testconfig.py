@@ -568,3 +568,12 @@ class TestBranchConfigItems(TestCase):
         my_config._get_location_config()._get_parser(branch_file)
         self.assertEqual('bzrlib.selftest.testconfig.post_commit',
                          my_config.post_commit())
+
+
+class TestMailAddressExtraction(TestCase):
+
+    def test_extract_email_address(self):
+        self.assertEqual('jane@test.com',
+                         config.extract_email_address('Jane <jane@test.com>'))
+        self.assertRaises(errors.BzrError,
+                          config.extract_email_address, 'Jane Tester')
