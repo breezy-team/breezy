@@ -131,8 +131,9 @@ class SFTPTransport (Transport):
     
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
-        super(SFTPTransport, self).__init__(base)
         self._parse_url(base)
+        base = self._unparse_url()
+        super(SFTPTransport, self).__init__(base)
         if clone_from is None:
             self._sftp_connect()
         else:
@@ -290,15 +291,22 @@ class SFTPTransport (Transport):
                 file_existed = True
             except:
                 file_existed = False
+            success = False
             try:
-                self._sftp.rename(tmp_abspath, final_path)
-            except IOError, e:
-                self._translate_io_exception(e, relpath)
-            except paramiko.SSHException, x:
-                raise SFTPTransportError('Unable to rename into file %r' 
-                                          % (path,), x)
-            if file_existed:
-                self._sftp.unlink(tmp_safety)
+                try:
+                    self._sftp.rename(tmp_abspath, final_path)
+                except IOError, e:
+                    self._translate_io_exception(e, relpath)
+                except paramiko.SSHException, x:
+                    raise SFTPTransportError('Unable to rename into file %r' 
+                else:
+                    success = True
+            finally:
+                if file_existed:
+                    if success:
+                        self._sftp.unlink(tmp_safety)
+                    else:
+                        self._sftp.rename(tmp_safety, final_path)
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
@@ -437,8 +445,8 @@ class SFTPTransport (Transport):
             path = self._path
         host = self._host
         username = urllib.quote(self._username)
-        if self._password:
-            username += ':' + urllib.quote(self._password)
+        #if self._password:
+        #    username += ':' + urllib.quote(self._password)
         if self._port != 22:
             host += ':%d' % self._port
         return 'sftp://%s@%s/%s' % (username, host, urllib.quote(path))
