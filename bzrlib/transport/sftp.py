@@ -221,11 +221,8 @@ class SFTPTransport (Transport):
         try:
             path = self._abspath(relpath)
             f = self._sftp.file(path)
-            try:
+            if hasattr(f, 'prefetch'):
                 f.prefetch()
-            except AttributeError:
-                # only works on paramiko 1.5.1 or greater
-                pass
             return f
         except (IOError, paramiko.SSHException), x:
             raise NoSuchFile('Error retrieving %s: %s' % (path, str(x)), x)
@@ -245,11 +242,8 @@ class SFTPTransport (Transport):
         # TODO: implement get_partial_multi to help with knit support
         f = self.get(relpath)
         f.seek(start)
-        try:
+        if hasattr(f, 'prefetch'):
             f.prefetch()
-        except AttributeError:
-            # only works on paramiko 1.5.1 or greater
-            pass
         return f
 
     def put(self, relpath, f):
