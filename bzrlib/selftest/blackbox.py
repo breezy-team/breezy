@@ -352,12 +352,12 @@ class TestCommands(ExternalBase):
         self.runbzr('diff')
 
     def test_diff_branches(self):
-        self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
+        self.build_tree(['branch1/', 'branch1/file', 'branch2/'], line_endings='binary')
         branch = Branch.initialize('branch1')
         branch.add(['file'])
         branch.working_tree().commit('add file')
         copy_branch(branch, 'branch2')
-        print >> open('branch2/file', 'w'), 'new content'
+        print >> open('branch2/file', 'wb'), 'new content'
         branch2 = Branch.open('branch2')
         branch2.working_tree().commit('update file')
         # should open branch1 and diff against branch2, 
