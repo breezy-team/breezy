@@ -177,6 +177,7 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         """Make sure that a Branch accessed over sftp tries to lock itself."""
         from bzrlib.branch import Branch
 
+        self.delayed_setup()
         b = Branch.initialize(self._sftp_url)
         self.failUnlessExists('.bzr/')
         self.failUnlessExists('.bzr/branch-format')
