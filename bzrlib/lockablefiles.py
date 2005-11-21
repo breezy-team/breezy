@@ -65,7 +65,7 @@ class LockableFiles(object):
         if mode == 'rb': 
             return self._transport.get(relpath)
         elif mode == 'wb':
-            raise BzrError("Branch.controlfile(mode='wb') is not supported, use put_controlfiles")
+            raise BzrError("Branch.controlfile(mode='wb') is not supported, use put[_utf8]")
         elif mode == 'r':
             # XXX: Do we really want errors='replace'?   Perhaps it should be
             # an error, or at least reported, if there's incorrectly-encoded
@@ -73,38 +73,33 @@ class LockableFiles(object):
             # <https://launchpad.net/products/bzr/+bug/3823>
             return codecs.getreader('utf-8')(self._transport.get(relpath), errors='replace')
         elif mode == 'w':
-            raise BzrError("Branch.controlfile(mode='w') is not supported, use put_controlfiles")
+            raise BzrError("Branch.controlfile(mode='w') is not supported, use put[_utf8]")
         else:
             raise BzrError("invalid controlfile mode %r" % mode)
 
-    def put_controlfile(self, path, f, encode=True):
-        """Write an entry as a controlfile.
+    def put(self, path, file):
+        """Write a file.
+        
+        :param path: The path to put the file, relative to the .bzr control
+                     directory
+        :param f: A file-like or string object whose contents should be copied.
+        """
+        self._transport.put(self._rel_controlfilename(path), file)
+
+    def put_utf8(self, path, file):
+        """Write a file, encoding as utf-8.
 
         :param path: The path to put the file, relative to the .bzr control
                      directory
         :param f: A file-like or string object whose contents should be copied.
-        :param encode:  If true, encode the contents as utf-8
-        """
-        self.put_controlfiles([(path, f)], encode=encode)
-
-    def put_controlfiles(self, files, encode=True):
-        """Write several entries as controlfiles.
-
-        :param files: A list of [(path, file)] pairs, where the path is the directory
-                      underneath the bzr control directory
-        :param encode:  If true, encode the contents as utf-8
         """
         import codecs
         ctrl_files = []
-        for path, f in files:
-            if encode:
-                if isinstance(f, basestring):
-                    f = f.encode('utf-8', 'replace')
-                else:
-                    f = codecs.getwriter('utf-8')(f, errors='replace')
-            path = self._rel_controlfilename(path)
-            ctrl_files.append((path, f))
-        self._transport.put_multi(ctrl_files)
+        if isinstance(file, basestring):
+            file = file.encode('utf-8', 'replace')
+        else:
+            file = codecs.getwriter('utf-8')(file, errors='replace')
+        self.put(path, file)
 
     def lock_write(self):
         mutter("lock write: %s (%s)", self, self._lock_count)

@@ -551,7 +551,7 @@ class cmd_branch(Command):
             if name:
                 branch = Branch.open(to_location)
                 name = StringIO(name)
-                branch.control_files.put_controlfile('branch-name', name)
+                branch.control_files.put_utf8('branch-name', name)
         finally:
             br_from.unlock()
 

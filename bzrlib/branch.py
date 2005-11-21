@@ -294,7 +294,8 @@ class _Branch(Branch):
         ]
         cfn = self.control_files._rel_controlfilename
         self.control_files._transport.mkdir_multi([cfn(d) for d in dirs])
-        self.control_files.put_controlfiles(files)
+        for file, content in files:
+            self.control_files.put_utf8(file, content)
         mutter('created control directory in ' + self.base)
 
     def _check_format(self, relax_version_check):
@@ -371,7 +372,7 @@ class _Branch(Branch):
         bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
         sio.seek(0)
         # Transport handles atomicity
-        self.control_files.put_controlfile('inventory', sio)
+        self.control_files.put_utf8('inventory', sio)
         
         mutter('wrote working inventory')
             
@@ -475,7 +476,7 @@ class _Branch(Branch):
 
     @needs_write_lock
     def set_revision_history(self, rev_history):
-        self.control_files.put_controlfile(
+        self.control_files.put_utf8(
             'revision-history', '\n'.join(rev_history))
 
     def get_revision_delta(self, revno):
@@ -863,7 +864,7 @@ class _Branch(Branch):
 
     @needs_write_lock
     def set_pending_merges(self, rev_list):
-        self.control_files.put_controlfile(
+        self.control_files.put_utf8(
             'pending-merges', '\n'.join(rev_list))
 
     def get_parent(self):

@@ -194,7 +194,7 @@ class Convert(object):
         return True
 
     def _set_new_format(self, format):
-        self.branch.control_files.put_controlfile('branch-format', format)
+        self.branch.control_files.put_utf8('branch-format', format)
 
     def _cleanup_spare_files(self):
         for n in 'merged-patches', 'pending-merged-patches':
@@ -215,14 +215,11 @@ class Convert(object):
         note('if conversion fails, you can move this directory back to .bzr')
         note('if it succeeds, you can remove this directory if you wish')
 
-
     def _convert_working_inv(self):
         branch = self.branch
         inv = serializer_v4.read_inventory(branch.control_files.controlfile('inventory', 'rb'))
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
-        branch.control_files.put_controlfile('inventory', new_inv_xml)
-
-
+        branch.control_files.put_utf8('inventory', new_inv_xml)
 
     def _write_all_weaves(self):
         write_a_weave(self.inv_weave, self.base + '/.bzr/inventory.weave')

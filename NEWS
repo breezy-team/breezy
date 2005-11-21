@@ -82,6 +82,11 @@ UNRELEASED CHANGES
       Branch.working_tree() will raise 'errors.NoWorkingTree' if one cannot
       be obtained. (Robert Collins)
 
+    * Branch.controlfile* logic has moved to lockablefiles.LockableFiles, which
+      is exposed as Branch().control_files. Also this has been altered with the
+      controlfile pre/suffix replaced by simple method names like 'get' and
+      'put'. (Aaron Bentley, Robert Collins).
+
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:

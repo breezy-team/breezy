@@ -529,6 +529,6 @@ class TreeConfig(object):
             cfg_obj.encode('UTF-8')
             out_file = StringIO(''.join([l+'\n' for l in cfg_obj.write()]))
             out_file.seek(0)
-            self.branch.control_files.put_controlfile('branch.conf', out_file, encode=False)
+            self.branch.control_files.put('branch.conf', out_file)
         finally:
             self.branch.unlock()
