@@ -5,27 +5,65 @@
 #
 # Support for SVN branches has been splitted up into two kinds: 
 # - RA (remote access) Subversion URLs such as svn+ssh://..., http:// (webdav) or file:/// 
-# - local checkouts (directories that contain a .svn/ subdirectory)
+# - wc (working copy) local checkouts (directories that contain a .svn/ subdirectory)
 # 
-# For the latter, a working_tree is available. RA repositories can only be 
+# For the latter, a working_tree is available. This WorkingTree will be 
+# special (can't use the default bzr one), and is not implemented yet. 
+# RA repositories can only be 
 # changed by doing a commit and are thus always considered 'remote' in the 
 # bzr meaning of the word.
 
 from bzrlib.branch import Branch
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import (NotBranchError,NoWorkingTree)
 
-import pysvn
+import svn.core, svn.client
+
+# Initialize APR (required for all SVN calls)
+svn.core.apr_initialize()
+
+global_pool = svn.core.svn_pool_create(None)
+
+def _create_auth_baton(pool):
+    # Give the client context baton a suite of authentication
+    # providers.
+    providers = [
+        svn.client.svn_client_get_simple_provider(pool),
+        svn.client.svn_client_get_ssl_client_cert_file_provider(pool),
+        svn.client.svn_client_get_ssl_client_cert_pw_file_provider(pool),
+        svn.client.svn_client_get_ssl_server_trust_file_provider(pool),
+        svn.client.svn_client_get_username_provider(pool),
+        ]
+    return svn.core.svn_auth_open(providers, pool)
+
+auth_baton = _create_auth_baton(global_pool)
 
 class SvnBranch(Branch):
+    def __init__(self):
+        self.pool = svn.core.svn_pool_create(global_pool)
+        self.client_ctx = svn.client.svn_client_create_context(self.pool)
+        self.client_ctx.auth_baton = auth_baton
+
+    def __del__(self):
+        svn.core.svn_pool_destroy(self.pool)
+    
     @staticmethod
     def open_containing(base):
         # Every directory in a Subversion branch is a directory on itself, 
         # so no need to go down a few levels
-        return open(base), '.'
+        return SvnBranch.open(base), '.'
         
     @staticmethod
+    def is_url(url):
+        url_prefixes = ["svn://","svn+ssh://","http://"]
+        for f in url_prefixes:
+            if url.startswith(f):
+                return True
+        return False
+    
+    @staticmethod
     def open(url):
-        #FIXME
+        if SvnBranch.is_url(url):
+            return RemoteSvnBranch(url)
         raise NotBranchError(path=url)
 
     def push_stores(self, branch_to):
@@ -44,8 +82,11 @@ class RemoteSvnBranch(SvnBranch):
     """Branch representing a remote Subversion repository.
 
     """
-    def __init__(self):
-        pass
+    def __init__(self, url):
+        SvnBranch.__init__(self)
+        self.url = url
+        self.uuid = svn.client.uuid_from_url(self.url.encode('utf8'), self.client_ctx, self.pool)
+        assert self.uuid
 
     def lock_write(self):
         raise NoWorkingTree(self.base)
@@ -279,3 +320,27 @@ class LocalSvnBranch(SvnBranch):
     def set_parent(self, url):
         # svn switch --relocate
         raise NotImplementedError('set_parent is abstract') #FIXME
+
+
+#!/usr/bin/env python2.4
+
+import svn.core, svn.client
+
+def my_svn(pool):
+
+    print svn.client.svn_client_version().minor
+
+    url = 'http://ctrlproxy.vernstok.nl/svn'
+
+    revision = svn.core.svn_opt_revision_t()
+    revision.kind = svn.core.svn_opt_revision_head
+
+    remote_ls = svn.client.svn_client_ls(url,
+                                         revision,
+                                         0,
+                                         client_ctx, pool)
+
+    print remote_ls
+
+    print svn.client.uuid_from_url(url, client_ctx, pool)
+    #svn.client.checkout('http://ctrlproxy.vernstok.nl/svn/', 'bloe', None, 1, ctx, pool)
