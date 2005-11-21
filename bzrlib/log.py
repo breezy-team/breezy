@@ -386,7 +386,8 @@ class LongLogFormatter(LogFormatter):
         if not rev.message:
             print >>to_file,  indent+'  (no message)'
         else:
-            for l in rev.message.split('\n'):
+            message = rev.message.rstrip('\r\n')
+            for l in message.split('\n'):
                 print >>to_file,  indent+'  ' + l
 
 
@@ -406,7 +407,8 @@ class ShortLogFormatter(LogFormatter):
         if not rev.message:
             print >>to_file,  '      (no message)'
         else:
-            for l in rev.message.split('\n'):
+            message = rev.message.rstrip('\r\n')
+            for l in message.split('\n'):
                 print >>to_file,  '      ' + l
 
         # TODO: Why not show the modified files in a shorter form as
