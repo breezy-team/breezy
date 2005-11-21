@@ -5,6 +5,11 @@ UNRELEASED CHANGES
     * .bzrignore is excluded from exports, on the grounds that it's a bzr 
       internal-use file and may not be wanted.  (Jamie Wilkinson)
 
+    * The "bzr directories" command were removed in favor of the new
+      --kind option to the "bzr inventory" command.  To list all 
+      versioned directories, now use "bzr inventory --kind directory".  
+      (Johan Rydberg)
+
   IMPROVEMENTS:
 
     * "bzr INIT dir" now initializes the specified directory, and creates 

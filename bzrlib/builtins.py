@@ -260,11 +260,17 @@ class cmd_relpath(Command):
 
 
 class cmd_inventory(Command):
-    """Show inventory of the current working copy or a revision."""
-    takes_options = ['revision', 'show-ids']
+    """Show inventory of the current working copy or a revision.
+
+    It is possible to limit the output to a particular entry
+    type using the --kind option.  For example; --kind file.
+    """
+    takes_options = ['revision', 'show-ids', 'kind']
     
     @display_command
-    def run(self, revision=None, show_ids=False):
+    def run(self, revision=None, show_ids=False, kind=None):
+        if kind and kind not in ['file', 'directory', 'symlink']:
+            raise BzrCommandError('invalid kind specified')
         b = Branch.open_containing('.')[0]
         if revision is None:
             inv = b.working_tree().read_working_inventory()
@@ -275,6 +281,8 @@ class cmd_inventory(Command):
             inv = b.get_revision_inventory(revision[0].in_history(b).rev_id)
 
         for path, entry in inv.entries():
+            if kind and kind != entry.kind:
+                continue
             if show_ids:
                 print '%-50s %s' % (path, entry.file_id)
             else:
@@ -669,18 +677,6 @@ class cmd_ancestry(Command):
         b = Branch.open_containing('.')[0]
         for revision_id in b.get_ancestry(b.last_revision()):
             print revision_id
-
-
-class cmd_directories(Command):
-    """Display list of versioned directories in this branch."""
-    @display_command
-    def run(self):
-        for name, ie in (Branch.open_containing('.')[0].working_tree().
-                         read_working_inventory().directories()):
-            if name == '':
-                print '.'
-            else:
-                print name
 
 
 class cmd_init(Command):
