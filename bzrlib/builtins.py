@@ -146,13 +146,13 @@ class cmd_cat_revision(Command):
             raise BzrCommandError('You must supply either --revision or a revision_id')
         b = Branch.open_containing('.')[0]
         if revision_id is not None:
-            sys.stdout.write(b.get_revision_xml_file(revision_id).read())
+            sys.stdout.write(b.get_revision_xml(revision_id))
         elif revision is not None:
             for rev in revision:
                 if rev is None:
                     raise BzrCommandError('You cannot specify a NULL revision.')
                 revno, rev_id = rev.in_history(b)
-                sys.stdout.write(b.get_revision_xml_file(rev_id).read())
+                sys.stdout.write(b.get_revision_xml(rev_id))
     
 
 class cmd_revno(Command):

@@ -297,10 +297,6 @@ class Branch(object):
         or on the mainline."""
         raise NotImplementedError('has_revision is abstract')
 
-    def get_revision_xml_file(self, revision_id):
-        """Return XML file object for revision object."""
-        raise NotImplementedError('get_revision_xml_file is abstract')
-
     def get_revision_xml(self, revision_id):
         raise NotImplementedError('get_revision_xml is abstract')
 
@@ -964,8 +960,7 @@ class BzrBranch(Branch):
                 or self.revision_store.has_id(revision_id))
 
     @needs_read_lock
-    def get_revision_xml_file(self, revision_id):
-        """See Branch.get_revision_xml_file."""
+    def _get_revision_xml_file(self, revision_id):
         if not revision_id or not isinstance(revision_id, basestring):
             raise InvalidRevisionId(revision_id=revision_id, branch=self)
         try:
@@ -975,11 +970,11 @@ class BzrBranch(Branch):
 
     def get_revision_xml(self, revision_id):
         """See Branch.get_revision_xml."""
-        return self.get_revision_xml_file(revision_id).read()
+        return self._get_revision_xml_file(revision_id).read()
 
     def get_revision(self, revision_id):
         """See Branch.get_revision."""
-        xml_file = self.get_revision_xml_file(revision_id)
+        xml_file = self._get_revision_xml_file(revision_id)
 
         try:
             r = bzrlib.xml5.serializer_v5.read_revision(xml_file)

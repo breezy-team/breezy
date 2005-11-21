@@ -31,7 +31,7 @@ from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 
 def has_revision(branch, revision_id):
     try:
-        branch.get_revision_xml_file(revision_id)
+        branch.get_revision_xml(revision_id)
         return True
     except bzrlib.errors.NoSuchRevision:
         return False
