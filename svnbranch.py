@@ -24,8 +24,9 @@ from bzrlib.errors import NotBranchError,NoWorkingTree,NoSuchRevision
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
             ROOT_ID
 from bzrlib.revision import Revision, NULL_REVISION
-from bzrlib.tree import Tree
+from bzrlib.tree import Tree, EmptyTree
 from bzrlib.workingtree import WorkingTree
+import bzrlib
 
 import svn.core, svn.client
 import os
@@ -56,7 +57,7 @@ class SvnRevisionTree(Tree):
         self._inventory = branch.get_inventory(revision_id)
 
     def get_file_sha1(self,file_id):
-        return bzrlib.osutils.sha_string(self.get_file_id(file_id))
+        return bzrlib.osutils.sha_string(self.get_file(file_id))
 
     def is_executable(self,file_id):
         return False # FIXME: Look up in properties
@@ -66,11 +67,11 @@ class SvnRevisionTree(Tree):
         
 
 class SvnBranch(Branch):
-    def __init__(self,path_or_url):
+    def __init__(self,base):
         self.pool = svn.core.svn_pool_create(global_pool)
         self.client = svn.client.svn_client_create_context(self.pool)
         self.client.auth_baton = auth_baton
-        self.path_or_url = path_or_url
+        self.base = base 
 
     def __del__(self):
         svn.core.svn_pool_destroy(self.pool)
@@ -86,17 +87,25 @@ class SvnBranch(Branch):
         #FIXME: Revids should be globally unique, perhaps include hash 
         # of branch path? If we don't do this there might be revisions that 
         # have the same id because they were created in the same commit.
-        self.revnum_map = {None: 0}
-        for revnum in range(1,self.last_revnum+1):
+        self.revid_map = {}
+        self.revnum_map = {}
+        self._revision_history = []
+        for revnum in range(0,self.last_revnum+1):
             revt = svn.core.svn_opt_revision_t()
             revt.kind = svn.core.svn_opt_revision_number
             revt.value.number = revnum
-            self.revnum_map["%d@%s" % (revnum,self.uuid)] = revt
+            if revnum == 0:
+                revid = None
+            else:
+                revid = "%d@%s" % (revnum,self.uuid)
+                self._revision_history.append(revid)
+            self.revid_map[revid] = revt
+            self.revnum_map[revnum] = revid
 
     def get_revnum(self,revid):
         """Map bzr revision id to a SVN revision number."""
         try:
-            return self.revnum_map[revid]
+            return self.revid_map[revid]
         except KeyError:
             raise NoSuchRevision(revid,self)
             
@@ -108,7 +117,7 @@ class SvnBranch(Branch):
         return SvnBranch.open(base), ''
 
     def abspath(self, name):
-        return self.path_or_url+self.sep+self.sep.join("/".split(name))
+        return self.base+self.sep+self.sep.join("/".split(name))
 
     def push_stores(self, branch_to):
         raise NotImplementedError('push_stores is abstract') #FIXME
@@ -129,10 +138,10 @@ class SvnBranch(Branch):
         raise NotImplementedError('get_push_location not supported on Subversion')
 
     def revision_history(self):
-        return self.revnum_map.keys()
+        return self._revision_history
 
     def has_revision(self, revision_id):
-        return self.revnum_map.has_key(revision_id)
+        return self.revid_map.has_key(revision_id)
 
     def print_file(self, file, revno):
         """See Branch.print_file."""
@@ -140,47 +149,64 @@ class SvnBranch(Branch):
         # then a revid
         revnum = self.get_revnum(self.get_rev_id(revno))
         stream = svn.core.svn_stream_for_stdout(self.pool)
-        file_url = self.path_or_url+self.sep+file
+        file_url = self.base+self.sep+file
         svn.client.cat(stream,file_url.encode('utf8'),revnum,self.client,self.pool)
 
     def get_revision(self, revision_id):
         revnum = self.get_revnum(revision_id)
         
-        (svn_props, actual_rev) = svn.client.revprop_list(self.path_or_url.encode('utf8'), revnum, self.client, self.pool)
+        (svn_props, actual_rev) = svn.client.revprop_list(self.base.encode('utf8'), revnum, self.client, self.pool)
         assert actual_rev == revnum.value.number
+
+        parent_ids = self.get_parents(revision_id)
     
         # Commit SVN revision properties to a Revision object
         bzr_props = {}
-        rev = Revision(revision_id)
+        rev = Revision(revision_id=revision_id,
+                       parent_ids=parent_ids)
+
         for name in svn_props:
-            val = svn_props[name]
-            if name == "svn:date":
-                rev.timestamp = svn.core.secs_from_timestr(str(val), self.pool) * 1.0
-                rev.timezone = None
-            elif name == "svn:author":
-                rev.committer = str(val)
-            elif name == "svn:log":
-                rev.message = str(val)
-            else:
-                bzr_props[name] = str(val)
+            bzr_props[name] = str(svn_props[name])
+
+        rev.timestamp = svn.core.secs_from_timestr(bzr_props['svn:date'], self.pool) * 1.0
+        rev.timezone = None
+
+        rev.committer = bzr_props['svn:author']
+        rev.message = bzr_props['svn:log']
 
         rev.properties = bzr_props
+        rev.inventory_sha1 = self.get_inventory_sha1(revision_id)
         
         #FIXME: anything else to set?
 
         return rev
 
-    def get_ancestry(self, revision_id):
+    def get_parents(self, revision_id):
         revnum = self.get_revnum(revision_id)
+        parents = []
+        if not revision_id is None:
+            parent_id = self.revnum_map[revnum.value.number-1]
+            if not parent_id is None:
+                parents.append(parent_id)
         # FIXME: Figure out if there are any merges here and where they come 
         # from
-        return []
+        return parents
+
+    def get_ancestry(self, revision_id):
+        try:
+            i = self.revision_history().index(revision_id)
+        except ValueError:
+            raise NoSuchRevision(revision_id,self)
+
+        # FIXME: Figure out if there are any merges here and where they come 
+        # from
+        return self.revision_history()[0:i+1]
 
     def get_inventory(self, revision_id):
         inv = Inventory()
         revnum = self.get_revnum(revision_id)
 
-        remote_ls = svn.client.svn_client_ls(self.path_or_url.encode('utf8'),
+        remote_ls = svn.client.ls(self.base.encode('utf8'),
                                          revnum,
                                          1, # recurse
                                          self.client, self.pool)
@@ -224,16 +250,16 @@ class SvnBranch(Branch):
     # FIXME: perhaps move these two to a 'ForeignBranch' class in 
     # bzr core?
     def get_revision_xml(self, revision_id):
-        return bzrlib.xml5.serializer_v5.write_revision_to_string(revision_id)
+        return bzrlib.xml5.serializer_v5.write_revision_to_string(self.get_revision(revision_id))
 
     def get_inventory_xml(self, revision_id):
-        return bzrlib.xml5.serializer_v5.write_inventory_to_string(revision_id)
+        return bzrlib.xml5.serializer_v5.write_inventory_to_string(self.get_inventory(revision_id))
 
     def get_revision_sha1(self, revision_id):
-        return bzrlib.osutils.sha_string(self.get_revision_xml())
+        return bzrlib.osutils.sha_string(self.get_revision_xml(revision_id))
 
     def get_inventory_sha1(self, revision_id):
-        return bzrlib.osutils.sha_string(self.get_inventory_xml())
+        return bzrlib.osutils.sha_string(self.get_inventory_xml(revision_id))
 
 class RemoteSvnBranch(SvnBranch):
     """Branch representing a remote Subversion repository.
@@ -261,7 +287,7 @@ class RemoteSvnBranch(SvnBranch):
     def __init__(self, url):
         SvnBranch.__init__(self,url)
         self.url = url
-        self.last_revnum = 1000 #FIXME
+        self.last_revnum = 10 #FIXME
         # FIXME: Filter out revnums that don't touch this branch?
         self.uuid = svn.client.uuid_from_url(self.url.encode('utf8'), self.client, self.pool)
         assert self.uuid
