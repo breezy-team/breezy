@@ -415,7 +415,7 @@ class ShortLogFormatter(LogFormatter):
         # well? rewrap them single lines of appropriate length
         if delta != None:
             delta.show(to_file, self.show_ids)
-        print
+        print >>to_file, ''
 
 class LineLogFormatter(LogFormatter):
     def truncate(self, str, max_len):

@@ -18,7 +18,7 @@ import os
 from cStringIO import StringIO
 
 from bzrlib.selftest import BzrTestBase, TestCaseInTempDir
-from bzrlib.log import LogFormatter, show_log, LongLogFormatter
+from bzrlib.log import LogFormatter, show_log, LongLogFormatter, ShortLogFormatter
 from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionNumber
 
@@ -160,3 +160,71 @@ class SimpleLogTest(TestCaseInTempDir):
         self.log("escaped commit message: %r", committed_msg)
         self.assert_(msg != committed_msg)
         self.assert_(len(committed_msg) > len(msg))
+
+    def test_trailing_newlines(self):
+        b = Branch.initialize('.')
+        b.nick='test'
+        wt = b.working_tree()
+        open('a', 'wb').write('hello moto\n')
+        b.add('a')
+        wt.commit('simple log message', rev_id='a1'
+                , timestamp=1132586655.459960938, timezone=-6*3600
+                , committer='Joe Foo <joe@foo.com>')
+        open('b', 'wb').write('goodbye\n')
+        b.add('b')
+        wt.commit('multiline\nlog\nmessage\n', rev_id='a2'
+                , timestamp=1132586842.411175966, timezone=-6*3600
+                , committer='Joe Foo <joe@foo.com>')
+
+        open('c', 'wb').write('just another manic monday\n')
+        b.add('c')
+        wt.commit('single line with trailing newline\n', rev_id='a3'
+                , timestamp=1132587176.835228920, timezone=-6*3600
+                , committer = 'Joe Foo <joe@foo.com>')
+
+        sio = StringIO()
+        lf = ShortLogFormatter(to_file=sio)
+        show_log(b, lf)
+        self.assertEquals(sio.getvalue(), """\
+    3 Joe Foo\t2005-11-21
+      single line with trailing newline
+
+    2 Joe Foo\t2005-11-21
+      multiline
+      log
+      message
+
+    1 Joe Foo\t2005-11-21
+      simple log message
+
+""")
+
+        sio = StringIO()
+        lf = LongLogFormatter(to_file=sio)
+        show_log(b, lf)
+        self.assertEquals(sio.getvalue(), """\
+------------------------------------------------------------
+revno: 3
+committer: Joe Foo <joe@foo.com>
+branch nick: test
+timestamp: Mon 2005-11-21 09:32:56 -0600
+message:
+  single line with trailing newline
+------------------------------------------------------------
+revno: 2
+committer: Joe Foo <joe@foo.com>
+branch nick: test
+timestamp: Mon 2005-11-21 09:27:22 -0600
+message:
+  multiline
+  log
+  message
+------------------------------------------------------------
+revno: 1
+committer: Joe Foo <joe@foo.com>
+branch nick: test
+timestamp: Mon 2005-11-21 09:24:15 -0600
+message:
+  simple log message
+""")
+        
