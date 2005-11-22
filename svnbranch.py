@@ -25,10 +25,11 @@ from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
             ROOT_ID
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.tree import Tree, EmptyTree
+from bzrlib.trace import mutter, note
 from bzrlib.workingtree import WorkingTree
 import bzrlib
 
-import svn.core, svn.client
+import svn.core, svn.client, svn.wc
 import os
 
 # Initialize APR (required for all SVN calls)
@@ -67,11 +68,12 @@ class SvnRevisionTree(Tree):
         
 
 class SvnBranch(Branch):
-    def __init__(self,base):
+    def __init__(self,base,kind):
         self.pool = svn.core.svn_pool_create(global_pool)
         self.client = svn.client.svn_client_create_context(self.pool)
         self.client.auth_baton = auth_baton
         self.base = base 
+        self._get_last_revnum(kind)
 
     def __del__(self):
         svn.core.svn_pool_destroy(self.pool)
@@ -82,6 +84,18 @@ class SvnBranch(Branch):
 
     def filename_to_file_id(self,revision_id,filename):
         return filename.replace('/','_')
+
+    def _get_last_revnum(self,kind):
+        # The python bindings for the svn_client_info() function
+        # are broken, so this is the only way to (cheaply) find out what the 
+        # youngest revision number is
+        revt_head = svn.core.svn_opt_revision_t()
+        revt_head.kind = kind
+        def rcvr(paths,rev,author,date,message,pool):
+            self.last_revnum = rev
+        svn.client.log2([self.base.encode('utf8')], revt_head, revt_head, \
+                1, 0, 0, rcvr, self.client, self.pool)
+        assert not self.last_revnum is None
 
     def _generate_revnum_map(self):
         #FIXME: Revids should be globally unique, perhaps include hash 
@@ -115,6 +129,10 @@ class SvnBranch(Branch):
         # so no need to go down a few levels
         # FIXME: Correction: this is true for directories, not for files...
         return SvnBranch.open(base), ''
+
+    def get_root_id(self):
+        inv = self.get_inventory(self.last_revision())
+        return inv.root.file_id
 
     def abspath(self, name):
         return self.base+self.sep+self.sep.join("/".split(name))
@@ -154,8 +172,9 @@ class SvnBranch(Branch):
 
     def get_revision(self, revision_id):
         revnum = self.get_revnum(revision_id)
+        mutter('getting revision %r for branch %r' % (revnum.value.number, self.base))
         
-        (svn_props, actual_rev) = svn.client.revprop_list(self.base.encode('utf8'), revnum, self.client, self.pool)
+        (svn_props, actual_rev) = svn.client.revprop_list(self.url.encode('utf8'), revnum, self.client, self.pool)
         assert actual_rev == revnum.value.number
 
         parent_ids = self.get_parents(revision_id)
@@ -203,17 +222,20 @@ class SvnBranch(Branch):
         return self.revision_history()[0:i+1]
 
     def get_inventory(self, revision_id):
-        inv = Inventory()
         revnum = self.get_revnum(revision_id)
+        mutter('getting inventory %r for branch %r' % (revnum.value.number, self.base))
 
         remote_ls = svn.client.ls(self.base.encode('utf8'),
                                          revnum,
-                                         1, # recurse
+                                         True, # recurse
                                          self.client, self.pool)
+        mutter('done')
 
         # Make sure a directory is always added before its contents
         names = remote_ls.keys()
         names.sort(lambda a,b: len(a) - len(b))
+
+        inv = Inventory()
         for entry in names:
             ri = entry.rfind('/')
             if ri == -1:
@@ -237,6 +259,16 @@ class SvnBranch(Branch):
 
         return inv
 
+    def pull(self, source, overwrite=False):
+        print "Pull from %s to %s" % (source,self)
+        raise NotImplementedError('pull is abstract') #FIXME
+
+    def update_revisions(self, other, stop_revision=None):
+        raise NotImplementedError('update_revisions is abstract') #FIXME
+
+    def pullable_revisions(self, other, stop_revision):
+        raise NotImplementedError('pullable_revisions is abstract') #FIXME
+        
     def revision_tree(self, revision_id):
         if revision_id is None or revision_id == NULL_REVISION:
             return EmptyTree()
@@ -285,9 +317,8 @@ class RemoteSvnBranch(SvnBranch):
     sep = "/"
     
     def __init__(self, url):
-        SvnBranch.__init__(self,url)
+        SvnBranch.__init__(self,url,svn.core.svn_opt_revision_head)
         self.url = url
-        self.last_revnum = 10 #FIXME
         # FIXME: Filter out revnums that don't touch this branch?
         self.uuid = svn.client.uuid_from_url(self.url.encode('utf8'), self.client, self.pool)
         assert self.uuid
@@ -335,9 +366,6 @@ class RemoteSvnBranch(SvnBranch):
     def get_transaction(self):
         raise NotImplementedError('get_transaction is abstract') #FIXME
 
-    def get_root_id(self):
-        raise NotImplementedError('get_root_id is abstract') #FIXME
-
     def set_root_id(self, file_id):
         raise NotImplementedError('set_root_id is abstract') #FIXME
 
@@ -346,15 +374,6 @@ class RemoteSvnBranch(SvnBranch):
 
     def get_revision_inventory(self, revision_id):
         raise NotImplementedError('get_revision_inventory is abstract') #FIXME
-
-    def update_revisions(self, other, stop_revision=None):
-        raise NotImplementedError('update_revisions is abstract') #FIXME
-
-    def pullable_revisions(self, other, stop_revision):
-        raise NotImplementedError('pullable_revisions is abstract') #FIXME
-        
-    def pull(self, source, overwrite=False):
-        raise NotImplementedError('pull is abstract') #FIXME
 
 class SvnWorkingTree(WorkingTree):
     def __init__(self,path,branch):
@@ -392,12 +411,12 @@ class LocalSvnBranch(SvnBranch):
         return SvnWorkingTree(self.path,branch=self)
 
     def __init__(self, path):
-        SvnBranch.__init__(self,path)
+        SvnBranch.__init__(self,path,svn.core.svn_opt_revision_working)
         self.path = path
+        self.adm_baton = svn.wc.adm_open(None, self.path.encode('utf8'), False, True, self.pool)
         self.url = svn.client.url_from_path(self.path.encode('utf8'),self.pool)
-        self.uuid = svn.client.uuid_from_path(self.path.encode('utf8'), None, self.client, self.pool)
+        self.uuid = svn.client.uuid_from_path(self.path.encode('utf8'), self.adm_baton, self.client, self.pool)
         assert self.uuid
-        self.last_revnum = 1000 #FIXME
         self._generate_revnum_map()
 
     def unknowns(self):
@@ -406,14 +425,15 @@ class LocalSvnBranch(SvnBranch):
     def get_transaction(self):
         raise NotImplementedError('get_transaction is abstract') #FIXME
 
+    #FIXME: Do some kind of locking?
     def lock_write(self):
-        raise NotImplementedError('lock_write is abstract') #FIXME
+        pass
         
     def lock_read(self):
-        raise NotImplementedError('lock_read is abstract') #FIXME
+        pass
 
     def unlock(self):
-        raise NotImplementedError('unlock is abstract') #FIXME
+        pass
 
     def controlfilename(self, file_or_path):
         raise NotImplementedError('controlfilename is abstract') #FIXME
@@ -426,9 +446,6 @@ class LocalSvnBranch(SvnBranch):
 
     def put_controlfiles(self, files, encode=True):
         raise NotImplementedError('put_controlfiles is abstract') #FIXME
-
-    def get_root_id(self):
-        raise NotImplementedError('get_root_id is abstract') #FIXME
 
     def set_root_id(self, file_id):
         raise NotImplementedError('set_root_id is abstract') #FIXME
@@ -446,15 +463,6 @@ class LocalSvnBranch(SvnBranch):
 
     def get_revision_inventory(self, revision_id):
         raise NotImplementedError('get_revision_inventory is abstract') #FIXME
-
-    def update_revisions(self, other, stop_revision=None):
-        raise NotImplementedError('update_revisions is abstract') #FIXME
-
-    def pullable_revisions(self, other, stop_revision):
-        raise NotImplementedError('pullable_revisions is abstract') #FIXME
-        
-    def pull(self, source, overwrite=False):
-        raise NotImplementedError('pull is abstract') #FIXME
 
     def move(self, from_paths, to_name):
         revt = svn.core.svn_opt_revision_t()
