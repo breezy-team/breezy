@@ -35,6 +35,7 @@ class TestamentTests(TestCaseInTempDir):
     def setUp(self):
         super(TestamentTests, self).setUp()
         b = self.b = Branch.initialize('.')
+        b.nick = "test branch"
         b.working_tree().commit(message='initial null commit',
                  committer='test@user',
                  timestamp=1129025423, # 'Tue Oct 11 20:10:23 2005'
@@ -136,6 +137,9 @@ parents:
 message:
   initial null commit
 inventory:
+properties:
+  branch-nick:
+    test branch
 """
 
 REV_1_SHORT = """\
@@ -159,6 +163,9 @@ inventory:
   file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73
   directory src src-id
   file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
+properties:
+  branch-nick:
+    test branch
 """
 
 
@@ -184,6 +191,8 @@ inventory:
   directory src src-id
   file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
 properties:
+  branch-nick:
+    test branch
   flavor:
     sour cherry
     cream cheese
@@ -207,4 +216,7 @@ inventory:
   symlink link link-id wibble/linktarget
   directory src src-id
   file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
+properties:
+  branch-nick:
+    test branch
 """

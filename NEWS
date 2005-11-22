@@ -1,9 +1,16 @@
 UNRELEASED CHANGES
 
+  CHANGES:
+
+    * .bzrignore is excluded from exports, on the grounds that it's a bzr 
+      internal-use file and may not be wanted.  (Jamie Wilkinson)
+
   IMPROVEMENTS:
 
     * "bzr INIT dir" now initializes the specified directory, and creates 
       it if it does not exist.  (John Arbash Meinel)
+
+    * New remerge command (Aaron Bentley)
 
     * Better zsh completion script.  (Steve Borho)
 
@@ -15,17 +22,52 @@ UNRELEASED CHANGES
       location in the ~/.bazaar/branches.conf configuration file.
       (Robert Collins)
 
+    * Test directories are only kept if the test fails and the user requests
+      that they be kept.
+
+    * Tweaks to short log printing
+
+    * Added branch nicks, new nick command, printing them in log output. 
+      (Aaron Bentley)
+
+    * If $BZR_PDB is set, pop into the debugger when an uncaught exception 
+      occurs.  (Martin Pool)
+
+    * Accept 'bzr resolved' (an alias for 'bzr resolve'), as this is
+      the same as Subversion.  (Martin Pool)
+
+    * New ftp transport support (on ftplib), for ftp:// and aftp:// 
+      URLs.  (Daniel Silverstone)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
 
     * Fix bugs in running bzr with 'python -O'.  (Martin Pool)
 
+    * Error when run with -OO
+
     * Fix bug in reporting http errors that don't have an http error code.
       (Martin Pool)
 
+    * Handle more cases of pipe errors in display commands
+
+    * Change status to 3 for all errors
+
+    * Files that are added and unlinked before committing are completely
+      ignored by diff and status
+
     * Stores with some compressed texts and some uncompressed texts are now
       able to be used. (John A Meinel)
+
+    * Show files which are both renamed and modified as such in 'bzr 
+      status' output.  (#4503, Daniel Silverstone)
+
+    * Make annotate cope better with revisions committed without a valid 
+      email address.  (Marien Zwart)
+
+    * Fix representation of tab characters in commit messages.  (Harald 
+      Meland)
 
   TESTING:
 

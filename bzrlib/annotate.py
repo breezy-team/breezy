@@ -33,6 +33,7 @@ import time
 
 import bzrlib.weave
 from bzrlib.config import extract_email_address
+from bzrlib.errors import BzrError
 
 
 def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
@@ -84,18 +85,3 @@ def _annotate_file(branch, rev_id, file_id ):
             except BzrError:
                 pass        # use the whole name
         yield (revno_str, author, date_str, line_rev_id, text)
-
-
-if __name__ == '__main__':
-    from bzrlib.branch import Branch
-    from bzrlib.trace import enable_default_logging
-    from bzrlib.workingtree import WorkingTree
-
-    enable_default_logging()
-    b = Branch.open_containing(sys.argv[1])[0]
-    tree = WorkingTree(b.base, b)
-    rp = tree.relpath(sys.argv[1])
-    tree = b.revision_tree(b.last_revision())
-    file_id = tree.inventory.path2id(rp)
-    file_version = tree.inventory[file_id].revision
-    annotate_file(b, file_version, file_id, to_file = sys.stdout)

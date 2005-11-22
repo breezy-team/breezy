@@ -489,6 +489,10 @@ class TestLocationConfig(TestCaseInTempDir):
         self.get_location_config('/a/c')
         record = InstrumentedConfigObj("foo")
         self.my_config._parser = record
+        return
+        # XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        # broken: creates .bazaar in the top-level directory, not 
+        # inside the test directory
         self.my_config.set_user_option('foo', 'bar')
         self.assertEqual([('__contains__', '/a/c'),
                           ('__contains__', '/a/c/'),
@@ -564,3 +568,12 @@ class TestBranchConfigItems(TestCase):
         my_config._get_location_config()._get_parser(branch_file)
         self.assertEqual('bzrlib.selftest.testconfig.post_commit',
                          my_config.post_commit())
+
+
+class TestMailAddressExtraction(TestCase):
+
+    def test_extract_email_address(self):
+        self.assertEqual('jane@test.com',
+                         config.extract_email_address('Jane <jane@test.com>'))
+        self.assertRaises(errors.BzrError,
+                          config.extract_email_address, 'Jane Tester')
