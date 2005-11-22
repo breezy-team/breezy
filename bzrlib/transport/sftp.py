@@ -466,7 +466,10 @@ class SFTPTransport (Transport):
                 pass
 
         # give up and ask for a password
-        password = getpass.getpass('SSH %s@%s password: ' % (self._username, self._host))
+        # FIXME: shouldn't be implementing UI this deep into bzrlib
+        enc = sys.stdout.encoding
+        password = getpass.getpass('SSH %s@%s password: ' %
+            (self._username.encode(enc, 'replace'), self._host.encode(enc, 'replace')))
         try:
             transport.auth_password(self._username, password)
         except paramiko.SSHException:
@@ -480,7 +483,10 @@ class SFTPTransport (Transport):
             transport.auth_publickey(self._username, key)
             return True
         except paramiko.PasswordRequiredException:
-            password = getpass.getpass('SSH %s password: ' % (os.path.basename(filename),))
+            # FIXME: shouldn't be implementing UI this deep into bzrlib
+            enc = sys.stdout.encoding
+            password = getpass.getpass('SSH %s password: ' % 
+                (os.path.basename(filename).encode(enc, 'replace'),))
             try:
                 key = pkey_class.from_private_key_file(filename, password)
                 transport.auth_publickey(self._username, key)
