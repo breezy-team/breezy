@@ -83,7 +83,7 @@ UNRELEASED CHANGES
     * Fix representation of tab characters in commit messages.  (Harald 
       Meland)
 
-    * List of plugin directories in BZR_PLUGIN_PASS environment variable is
+    * List of plugin directories in BZR_PLUGIN_PATH environment variable is
       now parsed properly under Windows. (Alexander Belchenko)
 
   TESTING:
