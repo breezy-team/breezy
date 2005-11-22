@@ -23,10 +23,13 @@ import re
 import stat
 import sys
 import urllib
+import time
+import random
 
 from bzrlib.errors import (FileExists, 
                            TransportNotPossible, NoSuchFile, NonRelativePath,
-                           TransportError)
+                           TransportError,
+                           LockError)
 from bzrlib.config import config_dir
 from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import Transport, register_transport
@@ -36,6 +39,12 @@ try:
 except ImportError:
     error('The SFTP transport requires paramiko.')
     raise
+else:
+    from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,
+                               SFTP_FLAG_EXCL, SFTP_FLAG_TRUNC,
+                               CMD_HANDLE, CMD_OPEN)
+    from paramiko.sftp_attr import SFTPAttributes
+    from paramiko.sftp_file import SFTPFile
 
 
 SYSTEM_HOSTKEYS = {}
@@ -81,6 +90,37 @@ def save_host_keys():
 class SFTPTransportError (TransportError):
     pass
 
+class SFTPLock(object):
+    """This fakes a lock in a remote location."""
+    __slots__ = ['path', 'lock_path', 'lock_file', 'transport']
+    def __init__(self, path, transport):
+        assert isinstance(transport, SFTPTransport)
+
+        self.lock_file = None
+        self.path = path
+        self.lock_path = path + '.write-lock'
+        self.transport = transport
+        try:
+            self.lock_file = transport._sftp_open_exclusive(self.lock_path)
+        except FileExists:
+            raise LockError('File %r already locked' % (self.path,))
+
+    def __del__(self):
+        """Should this warn, or actually try to cleanup?"""
+        if self.lock_file:
+            warn("SFTPLock %r not explicitly unlocked" % (self.path,))
+            self.unlock()
+
+    def unlock(self):
+        if not self.lock_file:
+            return
+        self.lock_file.close()
+        self.lock_file = None
+        try:
+            self.transport.delete(self.lock_path)
+        except (NoSuchFile,):
+            # What specific errors should we catch here?
+            pass
 
 class SFTPTransport (Transport):
     """
@@ -201,6 +241,7 @@ class SFTPTransport (Transport):
                  Some implementations may return objects which can be read
                  past this length, but this is not guaranteed.
         """
+        # TODO: implement get_partial_multi to help with knit support
         f = self.get(relpath)
         f.seek(start)
         try:
@@ -217,18 +258,47 @@ class SFTPTransport (Transport):
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
         """
-        # FIXME: should do something atomic or locking here, this is unsafe
+        final_path = self._abspath(relpath)
+        tmp_relpath = '%s.tmp.%.9f.%d.%d' % (relpath, time.time(),
+                        os.getpid(), random.randint(0,0x7FFFFFFF))
+        tmp_abspath = self._abspath(tmp_relpath)
+        fout = self._sftp_open_exclusive(tmp_relpath)
+
         try:
-            path = self._abspath(relpath)
-            fout = self._sftp.file(path, 'wb')
-        except IOError, e:
-            self._translate_io_exception(e, relpath)
-        except (IOError, paramiko.SSHException), x:
-            raise SFTPTransportError('Unable to write file %r' % (path,), x)
-        try:
-            self._pump(f, fout)
-        finally:
-            fout.close()
+            try:
+                self._pump(f, fout)
+            except IOError, e:
+                self._translate_io_exception(e, relpath)
+            except paramiko.SSHException, x:
+                raise SFTPTransportError('Unable to write file %r' % (path,), x)
+        except Exception, e:
+            # If we fail, try to clean up the temporary file
+            # before we throw the exception
+            # but don't let another exception mess things up
+            try:
+                fout.close()
+                self._sftp.remove(tmp_abspath)
+            except:
+                pass
+            raise e
+        else:
+            # sftp rename doesn't allow overwriting, so play tricks:
+            tmp_safety = 'bzr.tmp.%.9f.%d.%d' % (time.time(), os.getpid(), random.randint(0, 0x7FFFFFFF))
+            tmp_safety = self._abspath(tmp_safety)
+            try:
+                self._sftp.rename(final_path, tmp_safety)
+                file_existed = True
+            except:
+                file_existed = False
+            try:
+                self._sftp.rename(tmp_abspath, final_path)
+            except IOError, e:
+                self._translate_io_exception(e, relpath)
+            except paramiko.SSHException, x:
+                raise SFTPTransportError('Unable to rename into file %r' 
+                                          % (path,), x)
+            if file_existed:
+                self._sftp.unlink(tmp_safety)
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
@@ -338,7 +408,7 @@ class SFTPTransport (Transport):
     def lock_read(self, relpath):
         """
         Lock the given file for shared (read) access.
-        :return: A lock object, which should be passed to Transport.unlock()
+        :return: A lock object, which has an unlock() member function
         """
         # FIXME: there should be something clever i can do here...
         class BogusLock(object):
@@ -353,15 +423,13 @@ class SFTPTransport (Transport):
         Lock the given file for exclusive (write) access.
         WARNING: many transports do not support this, so trying avoid using it
 
-        :return: A lock object, which should be passed to Transport.unlock()
+        :return: A lock object, which has an unlock() member function
         """
-        # FIXME: there should be something clever i can do here...
-        class BogusLock(object):
-            def __init__(self, path):
-                self.path = path
-            def unlock(self):
-                pass
-        return BogusLock(relpath)
+        # This is a little bit bogus, but basically, we create a file
+        # which should not already exist, and if it does, we assume
+        # that there is a lock, and if it doesn't, the we assume
+        # that we have taken the lock.
+        return SFTPLock(relpath, self)
 
 
     def _unparse_url(self, path=None):
@@ -500,3 +568,32 @@ class SFTPTransport (Transport):
         except IOError:
             pass
         return False
+
+    def _sftp_open_exclusive(self, relpath):
+        """Open a remote path exclusively.
+
+        SFTP supports O_EXCL (SFTP_FLAG_EXCL), which fails if
+        the file already exists. However it does not expose this
+        at the higher level of SFTPClient.open(), so we have to
+        sneak away with it.
+
+        WARNING: This breaks the SFTPClient abstraction, so it
+        could easily break against an updated version of paramiko.
+
+        :param relpath: The relative path, where the file should be opened
+        """
+        path = self._abspath(relpath)
+        attr = SFTPAttributes()
+        mode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE 
+                | SFTP_FLAG_TRUNC | SFTP_FLAG_EXCL)
+        try:
+            t, msg = self._sftp._request(CMD_OPEN, path, mode, attr)
+            if t != CMD_HANDLE:
+                raise SFTPTransportError('Expected an SFTP handle')
+            handle = msg.get_string()
+            return SFTPFile(self._sftp, handle, 'w', -1)
+        except IOError, e:
+            self._translate_io_exception(e, relpath)
+        except paramiko.SSHException, x:
+            raise SFTPTransportError('Unable to open file %r' % (path,), x)
+
