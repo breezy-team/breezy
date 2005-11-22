@@ -458,3 +458,10 @@ class MustUseDecorated(Exception):
     This should never escape bzr, so does not need to be printable.
     """
 
+class MissingText(BzrNewError):
+    """Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"""
+    def __init__(self, branch, text_revision, file_id):
+        self.branch = branch
+        self.base = branch.base
+        self.text_revision = text_revision
+        self.file_id = file_id

@@ -41,7 +41,6 @@ def branch_files(file_list, default_branch='.'):
     try:
         return inner_branch_files(file_list, default_branch)
     except FileInWrongBranch, e:
-        print file_list
         raise BzrCommandError("%s is not in the same branch as %s" %
                              (e.path, file_list[0]))
 
