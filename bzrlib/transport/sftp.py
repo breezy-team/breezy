@@ -87,7 +87,7 @@ class SFTPTransport (Transport):
     Transport implementation for SFTP access.
     """
 
-    _url_matcher = re.compile(r'^sftp://([^:@]*(:[^@]*)?@)?(.*?)(:\d+)?(/.*)?$')
+    _url_matcher = re.compile(r'^sftp://([^:@]*(:[^@]*)?@)?(.*?)(:[^/]+)?(/.*)?$')
     
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
@@ -148,8 +148,7 @@ class SFTPTransport (Transport):
                 basepath.append(p)
 
         path = '/'.join(basepath)
-        if len(path) and path[0] != '/':
-            path = '/' + path
+        # could still be a "relative" path here, but relative on the sftp server
         return path
 
     def relpath(self, abspath):
@@ -366,9 +365,13 @@ class SFTPTransport (Transport):
     def _unparse_url(self, path=None):
         if path is None:
             path = self._path
-        if self._port == 22:
-            return 'sftp://%s@%s%s' % (self._username, self._host, path)
-        return 'sftp://%s@%s:%d%s' % (self._username, self._host, self._port, path)
+        host = self._host
+        username = urllib.quote(self._username)
+        if self._password:
+            username += ':' + urllib.quote(self._password)
+        if self._port != 22:
+            host += ':%d' % self._port
+        return 'sftp://%s@%s/%s' % (username, host, urllib.quote(path))
 
     def _parse_url(self, url):
         assert url[:7] == 'sftp://'
@@ -379,16 +382,22 @@ class SFTPTransport (Transport):
         if self._username is None:
             self._username = getpass.getuser()
         else:
-            self._username = self._username[:-1]
-        if self._password:
-            self._password = self._password[1:]
-            self._username = self._username[len(self._password)+1:]
+            if self._password:
+                # username field is 'user:pass@' in this case, and password is ':pass'
+                username_len = len(self._username) - len(self._password) - 1
+                self._username = urllib.unquote(self._username[:username_len])
+                self._password = urllib.unquote(self._password[1:])
+            else:
+                self._username = urllib.unquote(self._username[:-1])
         if self._port is None:
             self._port = 22
         else:
             self._port = int(self._port[1:])
         if (self._path is None) or (self._path == ''):
-            self._path = '/'
+            self._path = ''
+        else:
+            # remove leading '/'
+            self._path = urllib.unquote(self._path[1:])
 
     def _sftp_connect(self):
         global SYSTEM_HOSTKEYS, BZR_HOSTKEYS

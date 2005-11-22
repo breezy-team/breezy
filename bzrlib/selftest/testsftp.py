@@ -109,5 +109,29 @@ class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
         url = self._sftp_url
         return SFTPTransport(url)
 
+
+class FakeSFTPTransport (object):
+    _sftp = object()
+fake = FakeSFTPTransport()
+
+
+class SFTPNonServerTest (unittest.TestCase):
+    def test_parse_url(self):
+        from bzrlib.transport.sftp import SFTPTransport
+        s = SFTPTransport('sftp://simple.example.com/%2fhome/source', clone_from=fake)
+        self.assertEquals(s._host, 'simple.example.com')
+        self.assertEquals(s._port, 22)
+        self.assertEquals(s._path, '/home/source')
+        self.assert_(s._password is None)
+        
+        s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/relative', clone_from=fake)
+        self.assertEquals(s._host, 'example.com')
+        self.assertEquals(s._port, 2222)
+        self.assertEquals(s._username, 'robey')
+        self.assertEquals(s._password, 'h@t')
+        self.assertEquals(s._path, 'relative')
+        
+
 if not paramiko_loaded:
     del SFTPTransportTest
+    del SFTPNonServerTest
