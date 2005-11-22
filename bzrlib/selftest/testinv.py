@@ -241,7 +241,7 @@ class TestSnapshot(TestCaseInTempDir):
         # with fake parent entries.
         super(TestSnapshot, self).setUp()
         self.branch = Branch.initialize('.')
-        self.build_tree(['subdir/', 'subdir/file'])
+        self.build_tree(['subdir/', 'subdir/file'], line_endings='binary')
         self.branch.add(['subdir', 'subdir/file'], ['dirid', 'fileid'])
         if has_symlinks():
             pass

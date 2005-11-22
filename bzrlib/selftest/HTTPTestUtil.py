@@ -44,7 +44,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             try:
                 self.raw_requestline = self.rfile.readline()
             except socket.error, e:
-                if e.args[0] == errno.EAGAIN:
+                if e.args[0] in (errno.EAGAIN, errno.EWOULDBLOCK):
                     # omitted for now because some tests look at the log of
                     # the server and expect to see no errors.  see recent
                     # email thread. -- mbp 20051021. 

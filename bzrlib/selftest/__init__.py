@@ -35,6 +35,7 @@ import bzrlib.osutils as osutils
 from bzrlib.selftest import TestUtil
 from bzrlib.selftest.TestUtil import TestLoader, TestSuite
 from bzrlib.selftest.treeshape import build_tree_contents
+from bzrlib.errors import BzrError
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
@@ -251,26 +252,38 @@ class TestCase(unittest.TestCase):
         self._cleanups.append(callable)
 
     def _cleanEnvironment(self):
-        self.oldenv = os.environ.get('HOME', None)
-        os.environ['HOME'] = os.getcwd()
-        self.bzr_email = os.environ.get('BZREMAIL')
-        if self.bzr_email is not None:
-            del os.environ['BZREMAIL']
-        self.email = os.environ.get('EMAIL')
-        if self.email is not None:
-            del os.environ['EMAIL']
+        new_env = {
+            'HOME': os.getcwd(),
+            'APPDATA': os.getcwd(),
+            'BZREMAIL': None,
+            'EMAIL': None,
+        }
+        self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
+        for name, value in new_env.iteritems():
+            self._captureVar(name, value)
+
+
+    def _captureVar(self, name, newvalue):
+        """Set an environment variable, preparing it to be reset when finished."""
+        self.__old_env[name] = os.environ.get(name, None)
+        if newvalue is None:
+            if name in os.environ:
+                del os.environ[name]
+        else:
+            os.environ[name] = newvalue
+
+    @staticmethod
+    def _restoreVar(name, value):
+        if value is None:
+            if name in os.environ:
+                del os.environ[name]
+        else:
+            os.environ[name] = value
 
     def _restoreEnvironment(self):
-        os.environ['HOME'] = self.oldenv
-        if os.environ.get('BZREMAIL') is not None:
-            del os.environ['BZREMAIL']
-        if self.bzr_email is not None:
-            os.environ['BZREMAIL'] = self.bzr_email
-        if os.environ.get('EMAIL') is not None:
-            del os.environ['EMAIL']
-        if self.email is not None:
-            os.environ['EMAIL'] = self.email
+        for name, value in self.__old_env.iteritems():
+            self._restoreVar(name, value)
 
     def tearDown(self):
         self._runCleanups()
@@ -471,13 +484,17 @@ class TestCaseInTempDir(TestCase):
             os.chdir(_currentdir)
         self.addCleanup(_leaveDirectory)
         
-    def build_tree(self, shape):
+    def build_tree(self, shape, line_endings='native'):
         """Build a test tree according to a pattern.
 
         shape is a sequence of file specifications.  If the final
         character is '/', a directory is created.
 
         This doesn't add anything to a branch.
+        :param line_endings: Either 'binary' or 'native'
+                             in binary mode, exact contents are written
+                             in native mode, the line endings match the
+                             default platform endings.
         """
         # XXX: It's OK to just create them using forward slashes on windows?
         for name in shape:
@@ -485,7 +502,12 @@ class TestCaseInTempDir(TestCase):
             if name[-1] == '/':
                 os.mkdir(name[:-1])
             else:
-                f = file(name, 'wt')
+                if line_endings == 'binary':
+                    f = file(name, 'wb')
+                elif line_endings == 'native':
+                    f = file(name, 'wt')
+                else:
+                    raise BzrError('Invalid line ending request %r' % (line_endings,))
                 print >>f, "contents of", name
                 f.close()
 
