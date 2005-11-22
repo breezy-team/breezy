@@ -2,22 +2,28 @@
 # Copyright (C) 2005 Jelmer Vernooij <jelmer@samba.org>
 #
 # Published under the GNU GPL
-#
-# Support for SVN branches has been splitted up into two kinds: 
-# - RA (remote access) Subversion URLs such as svn+ssh://..., http:// (webdav) or file:/// 
-# - wc (working copy) local checkouts (directories that contain a .svn/ subdirectory)
-# 
-# For the latter, a working_tree is available. This WorkingTree will be 
-# special (can't use the default bzr one), and is not implemented yet. 
-# RA repositories can only be 
-# changed by doing a commit and are thus always considered 'remote' in the 
-# bzr meaning of the word.
 
-# Three diferrent identifiers are used in this file to refer to 
-# revisions:
-# - revid: bzr revision ids (text data, usually containing email address + sha)
-# - revno: bzr revision number
-# - revnum: svn revision number
+"""Branch support for Subversion repositories
+
+Support for SVN branches has been splitted up into two kinds: 
+- RA (remote access) Subversion URLs such as svn+ssh://..., 
+    http:// (webdav) or file:/// 
+- wc (working copy) local checkouts. These are directories that contain a 
+    .svn/ subdirectory)
+
+For the latter, a working_tree is available. This WorkingTree will be 
+special (can't use the default bzr one), and is not implemented yet. 
+RA repositories can only be 
+changed by doing a commit and are thus always considered 'remote' in the 
+bzr meaning of the word.
+
+Three diferrent identifiers are used in this file to refer to 
+revisions:
+- revid: bzr revision ids (text data, usually containing email 
+    address + sha)
+- revno: bzr revision number
+- revnum: svn revision number
+"""
 
 from bzrlib.branch import Branch
 from bzrlib.errors import NotBranchError,NoWorkingTree,NoSuchRevision
@@ -31,6 +37,7 @@ import bzrlib
 
 import svn.core, svn.client, svn.wc
 import os
+from libsvn._core import SubversionException
 
 # Initialize APR (required for all SVN calls)
 svn.core.apr_initialize()
@@ -55,35 +62,68 @@ class SvnRevisionTree(Tree):
     def __init__(self,branch,revision_id):
         self.branch = branch
         self.revision_id = revision_id
+        self.revnum = self.branch.get_revnum(revision_id)
         self._inventory = branch.get_inventory(revision_id)
 
     def get_file_sha1(self,file_id):
         return bzrlib.osutils.sha_string(self.get_file(file_id))
 
     def is_executable(self,file_id):
-        return False # FIXME: Look up in properties
+        filename = self.branch.filename_from_file_id(self.revision_id,file_id)
+        values = svn.client.propget(svn.core.SVN_PROP_EXECUTABLE, filename, self.revnum, False, self.client, self.pool)
+        if len(values) == 1 and values.pop() == svn.core.SVN_PROP_EXECUTABLE_VALUE:
+            return True
+        return False 
     
     def get_file(self,file_id):
-        return "" # FIXME
-        
+        stream = svn.core.svn_stream_t(self.pool)
+        url = self.branch.url_from_file_id(self.revision_id,file_id)
+        svn.client.cat(stream,_url.encode('utf8'),self.revnum,self.client,self.pool)
+        str = Stream(stream)
+        return str.read()
 
 class SvnBranch(Branch):
+    @staticmethod
+    def open(url):
+        if os.path.exists(url):
+            try:
+                return LocalSvnBranch(url)
+            except SubversionException, (msg, num):
+                if num == svn.core.SVN_ERR_UNVERSIONED_RESOURCE:
+                    raise NotBranchError(path=url)
+                raise
+        else:
+            try:
+                return RemoteSvnBranch(url)
+            except SubversionException, (msg, num):
+                if num == svn.core.SVN_ERR_RA_ILLEGAL_URL or \
+                   num == svn.core.SVN_ERR_RA_NO_REPOS_UUID or \
+                   num == svn.core.SVN_ERR_RA_DAV_REQUEST_FAILED:
+                    raise NotBranchError(path=url)
+                raise
+ 
     def __init__(self,base,kind):
         self.pool = svn.core.svn_pool_create(global_pool)
         self.client = svn.client.svn_client_create_context(self.pool)
         self.client.auth_baton = auth_baton
         self.base = base 
         self._get_last_revnum(kind)
-
+        
     def __del__(self):
         svn.core.svn_pool_destroy(self.pool)
 
     #FIXME
     def filename_from_file_id(self,revision_id,file_id):
+        """Generate a Subversion filename from a bzr file id."""
         return file_id.replace('_','/')
 
     def filename_to_file_id(self,revision_id,filename):
+        """Generate a bzr file id from a Subversion file name."""
         return filename.replace('/','_')
+
+    def url_from_file_id(self,revision_id,file_id):
+        """Generate a full Subversion URL from a bzr file id."""
+        return self.base+self.sep+self.filename_from_file_id(revision_id,file_id)
 
     def _get_last_revnum(self,kind):
         # The python bindings for the svn_client_info() function
@@ -98,9 +138,12 @@ class SvnBranch(Branch):
         assert not self.last_revnum is None
 
     def _generate_revnum_map(self):
-        #FIXME: Revids should be globally unique, perhaps include hash 
-        # of branch path? If we don't do this there might be revisions that 
-        # have the same id because they were created in the same commit.
+        #FIXME: Revids should be globally unique, so we should include the 
+        # branch path somehow. If we don't do this there might be revisions 
+        # that have the same id because they were created in the same commit.
+        # This requires finding out the URL of the root of the repository, 
+        # but this is not possible at the moment since svn.client.info() does
+        # not work.
         self.revid_map = {}
         self.revnum_map = {}
         self._revision_history = []
@@ -166,9 +209,10 @@ class SvnBranch(Branch):
         # For some odd reason this method still takes a revno rather 
         # then a revid
         revnum = self.get_revnum(self.get_rev_id(revno))
-        stream = svn.core.svn_stream_for_stdout(self.pool)
+        stream = svn.core.svn_stream_t(self.pool)
         file_url = self.base+self.sep+file
         svn.client.cat(stream,file_url.encode('utf8'),revnum,self.client,self.pool)
+        print Stream(stream).read()
 
     def get_revision(self, revision_id):
         revnum = self.get_revnum(revision_id)
@@ -187,17 +231,15 @@ class SvnBranch(Branch):
         for name in svn_props:
             bzr_props[name] = str(svn_props[name])
 
-        rev.timestamp = svn.core.secs_from_timestr(bzr_props['svn:date'], self.pool) * 1.0
+        rev.timestamp = svn.core.secs_from_timestr(bzr_props[svn.core.SVN_PROP_REVISION_DATE], self.pool) * 1.0
         rev.timezone = None
 
-        rev.committer = bzr_props['svn:author']
-        rev.message = bzr_props['svn:log']
+        rev.committer = bzr_props[svn.core.SVN_PROP_REVISION_AUTHOR]
+        rev.message = bzr_props[svn.core.SVN_PROP_REVISION_LOG]
 
         rev.properties = bzr_props
         rev.inventory_sha1 = self.get_inventory_sha1(revision_id)
         
-        #FIXME: anything else to set?
-
         return rev
 
     def get_parents(self, revision_id):
@@ -297,29 +339,11 @@ class RemoteSvnBranch(SvnBranch):
     """Branch representing a remote Subversion repository.
 
     """
-    @staticmethod
-    def is_ra(url):
-        # FIXME: This needs a more accurate check, and should consider 
-        # the methods actually supported by the current SVN library
-        url_prefixes = ["svn://","svn+ssh://","http://", "file://"]
-        for f in url_prefixes:
-            if url.startswith(f):
-                return True
-        return False
-    
-    @staticmethod
-    def open(url):
-        if RemoteSvnBranch.is_ra(url):
-            return RemoteSvnBranch(url)
-
-        raise NotBranchError(path=url)
-
     sep = "/"
     
     def __init__(self, url):
         SvnBranch.__init__(self,url,svn.core.svn_opt_revision_head)
         self.url = url
-        # FIXME: Filter out revnums that don't touch this branch?
         self.uuid = svn.client.uuid_from_url(self.url.encode('utf8'), self.client, self.pool)
         assert self.uuid
         self._generate_revnum_map()
@@ -392,18 +416,7 @@ class LocalSvnBranch(SvnBranch):
     bzr.dev.
     """
     sep = os.path.sep
-    
-    @staticmethod
-    def is_wc(path):
-        return os.path.isdir(os.path.join(path, '.svn'))
-
-    @staticmethod
-    def open(url):
-        if LocalSvnBranch.is_wc(url):
-            return LocalSvnBranch(url)
-
-        raise NotBranchError(path=url)
-    
+   
     def get_parent(self):
         return self.path
 

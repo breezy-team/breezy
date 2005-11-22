@@ -12,7 +12,6 @@ import os.path
 
 sys.path.append(os.path.dirname(__file__))
 
-from svnbranch import LocalSvnBranch, RemoteSvnBranch
+from svnbranch import SvnBranch, SvnBranch
 
-register_branch_type(RemoteSvnBranch)
-register_branch_type(LocalSvnBranch)
+register_branch_type(SvnBranch)
