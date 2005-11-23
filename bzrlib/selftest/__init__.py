@@ -27,11 +27,10 @@ import tempfile
 import unittest
 import time
 
-from logging import debug, warning, error
-
 import bzrlib.commands
 import bzrlib.trace
 import bzrlib.osutils as osutils
+from bzrlib.trace import mutter
 from bzrlib.selftest import TestUtil
 from bzrlib.selftest.TestUtil import TestLoader, TestSuite
 from bzrlib.selftest.treeshape import build_tree_contents
@@ -66,21 +65,24 @@ class EarlyStoppingTestResultAdapter(object):
 
 
 class _MyResult(unittest._TextTestResult):
-    """
-    Custom TestResult.
+    """Custom TestResult.
 
     No special behaviour for now.
     """
 
+    # assumes 80-column window, less 'ERROR 99999ms' = 13ch
     def _elapsedTime(self):
-        return "(Took %.3fs)" % (time.time() - self._start_time)
+        return "%5dms" % (1000 * (time.time() - self._start_time))
 
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
         # TODO: Maybe show test.shortDescription somewhere?
         what = test.shortDescription() or test.id()        
+        pref = 'bzrlib.selftest.'
+        if what.startswith(pref):
+            what = what[len(pref):]
         if self.showAll:
-            self.stream.write('%-70.70s' % what)
+            self.stream.write('%-65.65s' % what)
         self.stream.flush()
         self._start_time = time.time()
 
@@ -95,14 +97,14 @@ class _MyResult(unittest._TextTestResult):
     def addFailure(self, test, err):
         unittest.TestResult.addFailure(self, test, err)
         if self.showAll:
-            self.stream.writeln("FAIL %s" % self._elapsedTime())
+            self.stream.writeln(" FAIL %s" % self._elapsedTime())
         elif self.dots:
             self.stream.write('F')
         self.stream.flush()
 
     def addSuccess(self, test):
         if self.showAll:
-            self.stream.writeln('OK %s' % self._elapsedTime())
+            self.stream.writeln('   OK %s' % self._elapsedTime())
         elif self.dots:
             self.stream.write('~')
         self.stream.flush()
@@ -224,7 +226,6 @@ class TestCase(unittest.TestCase):
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
         self._log_file = os.fdopen(fileno, 'w+')
         bzrlib.trace.enable_test_log(self._log_file)
-        debug('opened log file %s', name)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
 
@@ -298,7 +299,7 @@ class TestCase(unittest.TestCase):
             callable()
 
     def log(self, *args):
-        logging.debug(*args)
+        mutter(*args)
 
     def _get_log(self):
         """Return as a string the log for this test"""
@@ -306,6 +307,7 @@ class TestCase(unittest.TestCase):
             return open(self._log_file_name).read()
         else:
             return self._log_contents
+        # TODO: Delete the log after it's been read in
 
     def capture(self, cmd, retcode=0):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
@@ -334,6 +336,7 @@ class TestCase(unittest.TestCase):
         stdout = StringIO()
         stderr = StringIO()
         self.log('run bzr: %s', ' '.join(argv))
+        # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
         handler.setFormatter(bzrlib.trace.QuietFormatter())
         handler.setLevel(logging.INFO)
@@ -528,6 +531,7 @@ class MetaTestLog(TestCase):
     def test_logging(self):
         """Test logs are captured when a test fails."""
         self.log('a test message')
+        self._log_file.flush()
         self.assertContainsRe(self._get_log(), 'a test message\n')
 
 
