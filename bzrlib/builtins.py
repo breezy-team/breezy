@@ -1362,7 +1362,7 @@ class cmd_selftest(Command):
     def run(self, testspecs_list=None, verbose=False, one=False,
             keep_output=False):
         import bzrlib.ui
-        from bzrlib.selftest import selftest
+        from bzrlib.tests import selftest
         # we don't want progress meters from the tests to go to the
         # real output; and we don't want log messages cluttering up
         # the real logs.
