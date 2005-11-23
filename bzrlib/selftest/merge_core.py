@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import unittest
 import stat
+import sys
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
@@ -467,9 +468,10 @@ class MergeTest(unittest.TestCase):
         builder.apply_changeset(cset)
         self.assert_(file(builder.this.full_path("1"), "rb").read() == "text4" )
         self.assert_(file(builder.this.full_path("2"), "rb").read() == "text2" )
-        self.assert_(os.stat(builder.this.full_path("1")).st_mode &0777 == 0755)
-        self.assert_(os.stat(builder.this.full_path("2")).st_mode &0777 == 0655)
-        self.assert_(os.stat(builder.this.full_path("3")).st_mode &0777 == 0744)
+        if sys.platform != "win32":
+            self.assert_(os.stat(builder.this.full_path("1")).st_mode &0777 == 0755)
+            self.assert_(os.stat(builder.this.full_path("2")).st_mode &0777 == 0655)
+            self.assert_(os.stat(builder.this.full_path("3")).st_mode &0777 == 0744)
         return builder
 
     def contents_test_conflicts(self, merge_factory):
@@ -482,29 +484,31 @@ class MergeTest(unittest.TestCase):
         builder.cleanup()
 
     def test_symlink_conflicts(self):
-        builder = MergeBuilder()
-        builder.add_symlink("2", "0", "name2", "target1")
-        builder.change_target("2", other="target4", base="text3")
-        self.assertRaises(changeset.ThreewayContentsConflict,
-                          builder.merge_changeset, ApplyMerge3)
-        builder.cleanup()
+        if sys.platform != "win32":
+            builder = MergeBuilder()
+            builder.add_symlink("2", "0", "name2", "target1")
+            builder.change_target("2", other="target4", base="text3")
+            self.assertRaises(changeset.ThreewayContentsConflict,
+                              builder.merge_changeset, ApplyMerge3)
+            builder.cleanup()
 
     def test_symlink_merge(self):
-        builder = MergeBuilder()
-        builder.add_symlink("1", "0", "name1", "target1")
-        builder.add_symlink("2", "0", "name2", "target1")
-        builder.add_symlink("3", "0", "name3", "target1")
-        builder.change_target("1", this="target2")
-        builder.change_target("2", base="target2")
-        builder.change_target("3", other="target2")
-        self.assertNotEqual(builder.cset.entries['2'].contents_change,
-                            builder.cset.entries['3'].contents_change)
-        cset = builder.merge_changeset(ApplyMerge3)
-        builder.apply_changeset(cset)
-        self.assertEqual(builder.this.get_symlink_target("1"), "target2")
-        self.assertEqual(builder.this.get_symlink_target("2"), "target1")
-        self.assertEqual(builder.this.get_symlink_target("3"), "target2")
-        builder.cleanup()
+        if sys.platform != "win32":
+            builder = MergeBuilder()
+            builder.add_symlink("1", "0", "name1", "target1")
+            builder.add_symlink("2", "0", "name2", "target1")
+            builder.add_symlink("3", "0", "name3", "target1")
+            builder.change_target("1", this="target2")
+            builder.change_target("2", base="target2")
+            builder.change_target("3", other="target2")
+            self.assertNotEqual(builder.cset.entries['2'].contents_change,
+                                builder.cset.entries['3'].contents_change)
+            cset = builder.merge_changeset(ApplyMerge3)
+            builder.apply_changeset(cset)
+            self.assertEqual(builder.this.get_symlink_target("1"), "target2")
+            self.assertEqual(builder.this.get_symlink_target("2"), "target1")
+            self.assertEqual(builder.this.get_symlink_target("3"), "target2")
+            builder.cleanup()
 
     def test_perms_merge(self):
         builder = MergeBuilder()
@@ -520,9 +524,10 @@ class MergeTest(unittest.TestCase):
         self.assert_(isinstance(cset.entries["2"].metadata_change, ExecFlagMerge))
         self.assert_(cset.entries["3"].is_boring())
         builder.apply_changeset(cset)
-        self.assert_(os.lstat(builder.this.full_path("1")).st_mode &0100 == 0000)
-        self.assert_(os.lstat(builder.this.full_path("2")).st_mode &0100 == 0100)
-        self.assert_(os.lstat(builder.this.full_path("3")).st_mode &0100 == 0000)
+        if sys.platform != "win32":
+            self.assert_(os.lstat(builder.this.full_path("1")).st_mode &0100 == 0000)
+            self.assert_(os.lstat(builder.this.full_path("2")).st_mode &0100 == 0100)
+            self.assert_(os.lstat(builder.this.full_path("3")).st_mode &0100 == 0000)
         builder.cleanup();
 
 

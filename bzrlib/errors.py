@@ -160,6 +160,15 @@ class NotBranchError(BzrNewError):
         self.path = path
 
 
+class FileInWrongBranch(BzrNewError):
+    """File %(path)s in not in branch %(branch_base)s."""
+    def __init__(self, branch, path):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.branch_base = branch.base
+        self.path = path
+
+
 class UnsupportedFormatError(BzrError):
     """Specified path is a bzr branch that we cannot read."""
     def __str__(self):
@@ -456,3 +465,10 @@ class MustUseDecorated(Exception):
     This should never escape bzr, so does not need to be printable.
     """
 
+class MissingText(BzrNewError):
+    """Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"""
+    def __init__(self, branch, text_revision, file_id):
+        self.branch = branch
+        self.base = branch.base
+        self.text_revision = text_revision
+        self.file_id = file_id

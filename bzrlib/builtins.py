@@ -30,7 +30,7 @@ from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
-			   NoSuchFile, NoWorkingTree)
+			   NoSuchFile, NoWorkingTree, FileInWrongBranch)
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
@@ -41,9 +41,9 @@ from bzrlib.workingtree import WorkingTree
 def branch_files(file_list, default_branch='.'):
     try:
         return inner_branch_files(file_list, default_branch)
-    except NotBranchError:
+    except FileInWrongBranch, e:
         raise BzrCommandError("%s is not in the same branch as %s" %
-                             (filename, file_list[0]))
+                             (e.path, file_list[0]))
 
 def inner_branch_files(file_list, default_branch='.'):
     """\
@@ -62,7 +62,10 @@ def inner_branch_files(file_list, default_branch='.'):
     tree = WorkingTree(b.base, b)
     new_list = []
     for filename in file_list:
-        new_list.append(tree.relpath(filename))
+        try:
+            new_list.append(tree.relpath(filename))
+        except NotBranchError:
+            raise FileInWrongBranch(b, filename)
     return b, new_list
 
 
@@ -257,11 +260,17 @@ class cmd_relpath(Command):
 
 
 class cmd_inventory(Command):
-    """Show inventory of the current working copy or a revision."""
-    takes_options = ['revision', 'show-ids']
+    """Show inventory of the current working copy or a revision.
+
+    It is possible to limit the output to a particular entry
+    type using the --kind option.  For example; --kind file.
+    """
+    takes_options = ['revision', 'show-ids', 'kind']
     
     @display_command
-    def run(self, revision=None, show_ids=False):
+    def run(self, revision=None, show_ids=False, kind=None):
+        if kind and kind not in ['file', 'directory', 'symlink']:
+            raise BzrCommandError('invalid kind specified')
         b = Branch.open_containing('.')[0]
         if revision is None:
             inv = b.working_tree().read_working_inventory()
@@ -272,6 +281,8 @@ class cmd_inventory(Command):
             inv = b.get_revision_inventory(revision[0].in_history(b).rev_id)
 
         for path, entry in inv.entries():
+            if kind and kind != entry.kind:
+                continue
             if show_ids:
                 print '%-50s %s' % (path, entry.file_id)
             else:
@@ -668,18 +679,6 @@ class cmd_ancestry(Command):
             print revision_id
 
 
-class cmd_directories(Command):
-    """Display list of versioned directories in this branch."""
-    @display_command
-    def run(self):
-        for name, ie in (Branch.open_containing('.')[0].working_tree().
-                         read_working_inventory().directories()):
-            if name == '':
-                print '.'
-            else:
-                print name
-
-
 class cmd_init(Command):
     """Make a directory into a versioned branch.
 
@@ -744,7 +743,7 @@ class cmd_diff(Command):
         try:
             b, file_list = inner_branch_files(file_list)
             b2 = None
-        except NotBranchError:
+        except FileInWrongBranch:
             if len(file_list) != 2:
                 raise BzrCommandError("Files are in different branches")
 
@@ -902,10 +901,11 @@ class cmd_log(Command):
         else:
             raise BzrCommandError('bzr log --revision takes one or two values.')
 
-        if rev1 == 0:
-            rev1 = None
-        if rev2 == 0:
-            rev2 = None
+        # By this point, the revision numbers are converted to the +ve
+        # form if they were supplied in the -ve form, so we can do
+        # this comparison in relative safety
+        if rev1 > rev2:
+            (rev2, rev1) = (rev1, rev2)
 
         mutter('encoding log as %r', bzrlib.user_encoding)
 

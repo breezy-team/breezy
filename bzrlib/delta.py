@@ -114,10 +114,15 @@ class TreeDelta(object):
             print >>to_file, 'added:'
             show_list(self.added)
 
+        extra_modified = []
+
         if self.renamed:
             print >>to_file, 'renamed:'
             for (oldpath, newpath, fid, kind,
                  text_modified, meta_modified) in self.renamed:
+                if text_modified or meta_modified:
+                    extra_modified.append((newpath, fid, kind,
+                                           text_modified, meta_modified))
                 if meta_modified:
                     newpath += '*'
                 if show_ids:
@@ -125,9 +130,10 @@ class TreeDelta(object):
                 else:
                     print >>to_file, '  %s => %s' % (oldpath, newpath)
                     
-        if self.modified:
+        if self.modified or extra_modified:
             print >>to_file, 'modified:'
             show_list(self.modified)
+            show_list(extra_modified)
             
         if show_unchanged and self.unchanged:
             print >>to_file, 'unchanged:'
