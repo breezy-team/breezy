@@ -259,6 +259,7 @@ class Branch(object):
 
         TODO: Perhaps yield the ids and paths as they're added.
         """
+        # XXX This should be a WorkingTree method, not a Branch method.
         raise NotImplementedError('add is abstract')
 
     def print_file(self, file, revno):
