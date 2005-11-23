@@ -55,10 +55,11 @@ if 'sftp' not in urlparse.uses_netloc: urlparse.uses_netloc.append('sftp')
 _ssh_vendor = None
 def _get_ssh_vendor():
     """Find out what version of SSH is on the system."""
-    if _ssh_version is not None:
-        return _ssh_version
+    global _ssh_vendor
+    if _ssh_vendor is not None:
+        return _ssh_vendor
 
-    _ssh_version = 'none'
+    _ssh_vendor = 'none'
 
     try:
         p = subprocess.Popen(['ssh', '-V'],
@@ -72,17 +73,20 @@ def _get_ssh_vendor():
         returncode = -1
         stdout = stderr = ''
     if 'OpenSSH' in stderr:
-        _ssh_version = 'openssh'
+        mutter('ssh implementation is OpenSSH')
+        _ssh_vendor = 'openssh'
     elif 'SSH Secure Shell' in stderr:
-        _ssh_version = 'ssh'
+        mutter('ssh implementation is SSH Corp.')
+        _ssh_vendor = 'ssh'
 
-    if _ssh_version != 'none':
-        return _ssh_version
+    if _ssh_vendor != 'none':
+        return _ssh_vendor
 
     # XXX: 20051123 jamesh
     # A check for putty's plink or lsh would go here.
 
-    return _ssh_version
+    mutter('falling back to paramiko implementation')
+    return _ssh_vendor
 
 
 class SFTPSubprocess:
@@ -108,7 +112,6 @@ class SFTPSubprocess:
                 args.extend(['-l', user])
             args.extend(['-s', 'sftp', hostname])
 
-        print 'creating subprocess for %s' % vendor
         self.proc = subprocess.Popen(args, close_fds=True,
                                      stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE)
