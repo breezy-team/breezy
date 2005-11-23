@@ -352,7 +352,7 @@ class SFTPTransport (Transport):
             except IOError, e:
                 self._translate_io_exception(e, relpath)
             except paramiko.SSHException, x:
-                raise SFTPTransportError('Unable to write file %r' % (path,), x)
+                raise SFTPTransportError('Unable to write file %r' % (relpath,), x)
         except Exception, e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception
@@ -378,7 +378,7 @@ class SFTPTransport (Transport):
                 self._translate_io_exception(e, relpath)
             except paramiko.SSHException, x:
                 raise SFTPTransportError('Unable to rename into file %r' 
-                                          % (path,), x)
+                                          % (relpath,), x)
             if file_existed:
                 self._sftp.unlink(tmp_safety)
 
@@ -526,6 +526,8 @@ class SFTPTransport (Transport):
         return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
 
     def _parse_url(self, url):
+        if isinstance(url, unicode):
+            url = url.encode('utf-8')
         (scheme, netloc, path, params,
          query, fragment) = urlparse.urlparse(url, allow_fragments=False)
         assert scheme == 'sftp'
