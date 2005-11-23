@@ -23,8 +23,10 @@ import re
 import stat
 import sys
 import urllib
+import urlparse
 import time
 import random
+import subprocess
 
 from bzrlib.errors import (FileExists, 
                            TransportNotPossible, NoSuchFile, NonRelativePath,
@@ -45,6 +47,83 @@ else:
                                CMD_HANDLE, CMD_OPEN)
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
+    from paramiko.sftp_client import SFTPClient
+
+if 'sftp' not in urlparse.uses_netloc: urlparse.uses_netloc.append('sftp')
+
+
+_ssh_vendor = None
+def _get_ssh_vendor():
+    """Find out what version of SSH is on the system."""
+    if _ssh_version is not None:
+        return _ssh_version
+
+    _ssh_version = 'none'
+
+    try:
+        p = subprocess.Popen(['ssh', '-V'],
+                             close_fds=True,
+                             stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        returncode = p.returncode
+        stdout, stderr = p.communicate()
+    except OSError:
+        returncode = -1
+        stdout = stderr = ''
+    if 'OpenSSH' in stderr:
+        _ssh_version = 'openssh'
+    elif 'SSH Secure Shell' in stderr:
+        _ssh_version = 'ssh'
+
+    if _ssh_version != 'none':
+        return _ssh_version
+
+    # XXX: 20051123 jamesh
+    # A check for putty's plink or lsh would go here.
+
+    return _ssh_version
+
+
+class SFTPSubprocess:
+    """A socket-like object that talks to an ssh subprocess via pipes."""
+    def __init__(self, hostname, port=None, user=None):
+        vendor = _get_ssh_vendor()
+        assert vendor in ['openssh', 'ssh']
+        if vendor == 'openssh':
+            args = ['ssh',
+                    '-oForwardX11=no', '-oForwardAgent=no',
+                    '-oClearAllForwardings=yes', '-oProtocol=2',
+                    '-oNoHostAuthenticationForLocalhost=yes']
+            if port is not None:
+                args.extend(['-p', str(port)])
+            if user is not None:
+                args.extend(['-l', user])
+            args.extend(['-s', hostname, 'sftp'])
+        elif vendor == 'ssh':
+            args = ['ssh', '-x']
+            if port is not None:
+                args.extend(['-p', str(port)])
+            if user is not None:
+                args.extend(['-l', user])
+            args.extend(['-s', 'sftp', hostname])
+
+        print 'creating subprocess for %s' % vendor
+        self.proc = subprocess.Popen(args, close_fds=True,
+                                     stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE)
+
+    def send(self, data):
+        return os.write(self.proc.stdin.fileno(), data)
+
+    def recv(self, count):
+        return os.read(self.proc.stdout.fileno(), count)
+
+    def close(self):
+        self.proc.stdin.close()
+        self.proc.stdout.close()
+        self.proc.wait()
+
 
 
 SYSTEM_HOSTKEYS = {}
@@ -434,48 +513,53 @@ class SFTPTransport (Transport):
 
     def _unparse_url(self, path=None):
         if path is None:
-            path = self._path
-        host = self._host
-        username = urllib.quote(self._username)
-        if self._password:
-            username += ':' + urllib.quote(self._password)
-        if self._port != 22:
-            host += ':%d' % self._port
-        return 'sftp://%s@%s/%s' % (username, host, urllib.quote(path))
+            path = urllib.quote(self._path)
+        netloc = urllib.quote(self._host)
+        if self._username is not None:
+            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
+        if self._port is not None:
+            netloc = '%s:%d' % (netloc, self._port)
+
+        return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
 
     def _parse_url(self, url):
-        assert url[:7] == 'sftp://'
-        m = self._url_matcher.match(url)
-        if m is None:
-            raise SFTPTransportError('Unable to parse SFTP URL %r' % (url,))
-        self._username, self._password, self._host, self._port, self._path = m.groups()
-        if self._username is None:
-            self._username = getpass.getuser()
+        (scheme, netloc, path, params,
+         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+        assert scheme == 'sftp'
+        self._username = self._password = self._host = self._port = None
+        if '@' in netloc:
+            self._username, self._host = netloc.split('@', 1)
+            if ':' in self._username:
+                self._username, self._password = self._username.split(':', 1)
+                self._password = urllib.unquote(self._password)
+            self._username = urllib.unquote(self._username)
         else:
-            if self._password:
-                # username field is 'user:pass@' in this case, and password is ':pass'
-                username_len = len(self._username) - len(self._password) - 1
-                self._username = urllib.unquote(self._username[:username_len])
-                self._password = urllib.unquote(self._password[1:])
-            else:
-                self._username = urllib.unquote(self._username[:-1])
-        if self._port is None:
-            self._port = 22
-        else:
-            self._port = int(self._port[1:])
-        if (self._path is None) or (self._path == ''):
-            self._path = ''
-        else:
-            # remove leading '/'
-            self._path = urllib.unquote(self._path[1:])
+            self._host = netloc
+
+        if ':' in self._host:
+            self._host, self._port = self._host.rsplit(':', 1)
+            self._port = int(self._port)
+        self._host = urllib.unquote(self._host)
+
+        self._path = urllib.unquote(path)
+        if self._path == '':
+            self._path = '/'
 
     def _sftp_connect(self):
+        vendor = _get_ssh_vendor()
+        if vendor != 'none':
+            sock = SFTPSubprocess(self._host, self._port, self._username)
+            self._sftp = SFTPClient(sock)
+        else:
+            self._paramiko_connect()
+
+    def _paramiko_connect(self):
         global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
         
         load_host_keys()
-        
+
         try:
-            t = paramiko.Transport((self._host, self._port))
+            t = paramiko.Transport((self._host, self._port or 22))
             t.start_client()
         except paramiko.SSHException:
             raise SFTPTransportError('Unable to reach SSH host %s:%d' % (self._host, self._port))
@@ -504,7 +588,7 @@ class SFTPTransport (Transport):
                 (self._host, our_server_key_hex, server_key_hex),
                 ['Try editing %s or %s' % (filename1, filename2)])
 
-        self._sftp_auth(t, self._username, self._host)
+        self._sftp_auth(t, self._username or getpass.getuser(), self._host)
         
         try:
             self._sftp = t.open_sftp_client()
