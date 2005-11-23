@@ -87,7 +87,7 @@ class _MyResult(unittest._TextTestResult):
         else:
             what = test.id()
             if what.startswith('bzrlib.tests.'):
-                what = what[16:]
+                what = what[13:]
             if len(what) > 70:
                 what = '...' + what[-67:]
             
