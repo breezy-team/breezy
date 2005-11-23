@@ -27,18 +27,19 @@ import tempfile
 import unittest
 import time
 
+from logging import debug, warning, error
+
 import bzrlib.commands
 import bzrlib.trace
-import bzrlib.fetch
 import bzrlib.osutils as osutils
 from bzrlib.selftest import TestUtil
 from bzrlib.selftest.TestUtil import TestLoader, TestSuite
 from bzrlib.selftest.treeshape import build_tree_contents
+from bzrlib.errors import BzrError
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = []
 
-from logging import debug, warning, error
 
 
 class EarlyStoppingTestResultAdapter(object):
@@ -222,12 +223,7 @@ class TestCase(unittest.TestCase):
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
         self._log_file = os.fdopen(fileno, 'w+')
-        hdlr = logging.StreamHandler(self._log_file)
-        hdlr.setLevel(logging.DEBUG)
-        hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
-        logging.getLogger('').addHandler(hdlr)
-        logging.getLogger('').setLevel(logging.DEBUG)
-        self._log_hdlr = hdlr
+        bzrlib.trace.enable_test_log(self._log_file)
         debug('opened log file %s', name)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
@@ -237,6 +233,7 @@ class TestCase(unittest.TestCase):
 
         Read contents into memory, close, and delete.
         """
+        bzrlib.trace.disable_test_log()
         self._log_file.seek(0)
         self._log_contents = self._log_file.read()
         self._log_file.close()
@@ -255,31 +252,40 @@ class TestCase(unittest.TestCase):
         self._cleanups.append(callable)
 
     def _cleanEnvironment(self):
-        self.oldenv = os.environ.get('HOME', None)
-        os.environ['HOME'] = os.getcwd()
-        self.bzr_email = os.environ.get('BZREMAIL')
-        if self.bzr_email is not None:
-            del os.environ['BZREMAIL']
-        self.email = os.environ.get('EMAIL')
-        if self.email is not None:
-            del os.environ['EMAIL']
+        new_env = {
+            'HOME': os.getcwd(),
+            'APPDATA': os.getcwd(),
+            'BZREMAIL': None,
+            'EMAIL': None,
+        }
+        self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
+        for name, value in new_env.iteritems():
+            self._captureVar(name, value)
+
+
+    def _captureVar(self, name, newvalue):
+        """Set an environment variable, preparing it to be reset when finished."""
+        self.__old_env[name] = os.environ.get(name, None)
+        if newvalue is None:
+            if name in os.environ:
+                del os.environ[name]
+        else:
+            os.environ[name] = newvalue
+
+    @staticmethod
+    def _restoreVar(name, value):
+        if value is None:
+            if name in os.environ:
+                del os.environ[name]
+        else:
+            os.environ[name] = value
 
     def _restoreEnvironment(self):
-        os.environ['HOME'] = self.oldenv
-        if os.environ.get('BZREMAIL') is not None:
-            del os.environ['BZREMAIL']
-        if self.bzr_email is not None:
-            os.environ['BZREMAIL'] = self.bzr_email
-        if os.environ.get('EMAIL') is not None:
-            del os.environ['EMAIL']
-        if self.email is not None:
-            os.environ['EMAIL'] = self.email
+        for name, value in self.__old_env.iteritems():
+            self._restoreVar(name, value)
 
     def tearDown(self):
-        logging.getLogger('').removeHandler(self._log_hdlr)
-        bzrlib.trace.enable_default_logging()
-        logging.debug('%s teardown', self.id())
         self._runCleanups()
         unittest.TestCase.tearDown(self)
 
@@ -478,13 +484,17 @@ class TestCaseInTempDir(TestCase):
             os.chdir(_currentdir)
         self.addCleanup(_leaveDirectory)
         
-    def build_tree(self, shape):
+    def build_tree(self, shape, line_endings='native'):
         """Build a test tree according to a pattern.
 
         shape is a sequence of file specifications.  If the final
         character is '/', a directory is created.
 
         This doesn't add anything to a branch.
+        :param line_endings: Either 'binary' or 'native'
+                             in binary mode, exact contents are written
+                             in native mode, the line endings match the
+                             default platform endings.
         """
         # XXX: It's OK to just create them using forward slashes on windows?
         for name in shape:
@@ -492,7 +502,12 @@ class TestCaseInTempDir(TestCase):
             if name[-1] == '/':
                 os.mkdir(name[:-1])
             else:
-                f = file(name, 'wt')
+                if line_endings == 'binary':
+                    f = file(name, 'wb')
+                elif line_endings == 'native':
+                    f = file(name, 'wt')
+                else:
+                    raise BzrError('Invalid line ending request %r' % (line_endings,))
                 print >>f, "contents of", name
                 f.close()
 
@@ -512,9 +527,8 @@ class TestCaseInTempDir(TestCase):
 class MetaTestLog(TestCase):
     def test_logging(self):
         """Test logs are captured when a test fails."""
-        logging.info('an info message')
-        warning('something looks dodgy...')
-        logging.debug('hello, test is running')
+        self.log('a test message')
+        self.assertContainsRe(self._get_log(), 'a test message\n')
 
 
 def filter_suite_by_re(suite, pattern):
@@ -527,7 +541,7 @@ def filter_suite_by_re(suite, pattern):
 
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
-              stop_on_failure=False):
+              stop_on_failure=False, keep_output=False):
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
@@ -543,7 +557,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     # This is still a little bogus, 
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
-    if result.wasSuccessful():
+    if result.wasSuccessful() or not keep_output:
         if TestCaseInTempDir.TEST_ROOT is not None:
             shutil.rmtree(TestCaseInTempDir.TEST_ROOT) 
     else:
@@ -551,10 +565,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     return result.wasSuccessful()
 
 
-def selftest(verbose=False, pattern=".*", stop_on_failure=True):
+def selftest(verbose=False, pattern=".*", stop_on_failure=True,
+             keep_output=False):
     """Run the whole test suite under the enhanced runner"""
     return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern,
-                     stop_on_failure=stop_on_failure)
+                     stop_on_failure=stop_on_failure, keep_output=keep_output)
 
 
 def test_suite():
@@ -565,6 +580,9 @@ def test_suite():
 
     global MODULES_TO_TEST, MODULES_TO_DOCTEST
 
+    # FIXME: If these fail to load, e.g. because of a syntax error, the
+    # exception is hidden by unittest.  Sucks.  Should either fix that or
+    # perhaps import them and pass them to unittest as modules.
     testmod_names = \
                   ['bzrlib.selftest.MetaTestLog',
                    'bzrlib.selftest.testapi',
@@ -613,6 +631,7 @@ def test_suite():
                    'bzrlib.selftest.testnonascii',
                    'bzrlib.selftest.testreweave',
                    'bzrlib.selftest.testtsort',
+                   'bzrlib.selftest.testtrace',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,

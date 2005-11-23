@@ -146,7 +146,7 @@ class TestCommit(TestCaseInTempDir):
         """Test commit of a revision where a file is renamed."""
         b = Branch.initialize('.')
         tree = WorkingTree('.', b)
-        self.build_tree(['hello'])
+        self.build_tree(['hello'], line_endings='binary')
         tree.add(['hello'], ['hello-id'])
         tree.commit(message='one', rev_id='test@rev-1', allow_pointless=False)
 
@@ -169,7 +169,6 @@ class TestCommit(TestCaseInTempDir):
         ie = tree2.inventory['hello-id']
         eq(ie.revision, 'test@rev-2')
 
-
     def test_reused_rev_id(self):
         """Test that a revision id cannot be reused in a branch"""
         b = Branch.initialize('.')
@@ -179,8 +178,6 @@ class TestCommit(TestCaseInTempDir):
                           message='reused id',
                           rev_id='test@rev-1',
                           allow_pointless=True)
-                          
-
 
     def test_commit_move(self):
         """Test commit of revisions with moved files and directories"""

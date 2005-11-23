@@ -176,6 +176,9 @@ class Weave(object):
         self._name_map = {}
         self._weave_name = weave_name
 
+    def __repr__(self):
+        return "Weave(%r)" % self._weave_name
+
 
     def copy(self):
         """Return a deep copy of self.

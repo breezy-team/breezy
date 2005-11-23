@@ -26,8 +26,10 @@ import bzrlib
 from bzrlib import BZRDIR
 from bzrlib.commands import Command, display_command
 from bzrlib.branch import Branch
-from bzrlib.errors import BzrError, BzrCheckError, BzrCommandError, NotBranchError
-from bzrlib.errors import DivergedBranches, NoSuchFile, NoWorkingTree
+from bzrlib.revision import common_ancestor
+from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
+                           NotBranchError, DivergedBranches, NotConflicted,
+                           NoSuchFile, NoWorkingTree, FileInWrongBranch)
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
@@ -36,6 +38,13 @@ from bzrlib.workingtree import WorkingTree
 
 
 def tree_files(file_list, default_branch='.'):
+    try:
+        return internal_tree_files(file_list, default_branch)
+    except FileInWrongBranch, e:
+        raise BzrCommandError("%s is not in the same branch as %s" %
+                             (e.path, file_list[0]))
+
+def internal_tree_files(file_list, default_branch='.'):
     """\
     Return a branch and list of branch-relative paths.
     If supplied file_list is empty or None, the branch default will be used,
@@ -49,8 +58,7 @@ def tree_files(file_list, default_branch='.'):
         try:
             new_list.append(tree.relpath(filename))
         except NotBranchError:
-            raise BzrCommandError("%s is not in the same tree as %s" % 
-                                  (filename, file_list[0]))
+            raise FileInWrongBranch(tree.branch, filename)
     return tree, new_list
 
 
@@ -100,13 +108,10 @@ class cmd_status(Command):
     that revision, or between two revisions if two are provided.
     """
     
-    # XXX: FIXME: bzr status should accept a -r option to show changes
-    # relative to a revision, or between revisions
-
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['all', 'show-ids']
+    takes_options = ['all', 'show-ids', 'revision']
     aliases = ['st', 'stat']
     
     @display_command
@@ -246,11 +251,17 @@ class cmd_relpath(Command):
 
 
 class cmd_inventory(Command):
-    """Show inventory of the current working copy or a revision."""
-    takes_options = ['revision', 'show-ids']
+    """Show inventory of the current working copy or a revision.
+
+    It is possible to limit the output to a particular entry
+    type using the --kind option.  For example; --kind file.
+    """
+    takes_options = ['revision', 'show-ids', 'kind']
     
     @display_command
-    def run(self, revision=None, show_ids=False):
+    def run(self, revision=None, show_ids=False, kind=None):
+        if kind and kind not in ['file', 'directory', 'symlink']:
+            raise BzrCommandError('invalid kind specified')
         tree = WorkingTree.open_containing('.')[0]
         if revision is None:
             inv = tree.read_working_inventory()
@@ -262,6 +273,8 @@ class cmd_inventory(Command):
                 revision[0].in_history(tree.branch).rev_id)
 
         for path, entry in inv.entries():
+            if kind and kind != entry.kind:
+                continue
             if show_ids:
                 print '%-50s %s' % (path, entry.file_id)
             else:
@@ -659,18 +672,6 @@ class cmd_ancestry(Command):
             print revision_id
 
 
-class cmd_directories(Command):
-    """Display list of versioned directories in this tree."""
-    @display_command
-    def run(self):
-        for name, ie in (WorkingTree.open_containing('.')[0].
-                         read_working_inventory().directories()):
-            if name == '':
-                print '.'
-            else:
-                print name
-
-
 class cmd_init(Command):
     """Make a directory into a versioned branch.
 
@@ -732,9 +733,23 @@ class cmd_diff(Command):
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None):
         from bzrlib.diff import show_diff
-        
-        tree, file_list = tree_files(file_list)
+        try:
+            tree, file_list = internal_tree_files(file_list)
+            b = None
+            b2 = None
+        except FileInWrongBranch:
+            if len(file_list) != 2:
+                raise BzrCommandError("Files are in different branches")
+
+            b, file1 = Branch.open_containing(file_list[0])
+            b2, file2 = Branch.open_containing(file_list[1])
+            if file1 != "" or file2 != "":
+                # FIXME diff those two files. rbc 20051123
+                raise BzrCommandError("Files are in different branches")
+            file_list = None
         if revision is not None:
+            if b2 is not None:
+                raise BzrCommandError("Can't specify -r with two branches")
             if len(revision) == 1:
                 return show_diff(tree.branch, revision[0], specific_files=file_list,
                                  external_diff_options=diff_options)
@@ -745,8 +760,12 @@ class cmd_diff(Command):
             else:
                 raise BzrCommandError('bzr diff --revision takes exactly one or two revision identifiers')
         else:
-            return show_diff(tree.branch, None, specific_files=file_list,
-                             external_diff_options=diff_options)
+            if b is not None:
+                return show_diff(b, None, specific_files=file_list,
+                                 external_diff_options=diff_options, b2=b2)
+            else:
+                return show_diff(tree.branch, None, specific_files=file_list,
+                                 external_diff_options=diff_options)
 
 
 class cmd_deleted(Command):
@@ -888,10 +907,11 @@ class cmd_log(Command):
         else:
             raise BzrCommandError('bzr log --revision takes one or two values.')
 
-        if rev1 == 0:
-            rev1 = None
-        if rev2 == 0:
-            rev2 = None
+        # By this point, the revision numbers are converted to the +ve
+        # form if they were supplied in the -ve form, so we can do
+        # this comparison in relative safety
+        if rev1 > rev2:
+            (rev2, rev1) = (rev1, rev2)
 
         mutter('encoding log as %r', bzrlib.user_encoding)
 
@@ -1316,6 +1336,23 @@ class cmd_whoami(Command):
         else:
             print config.username()
 
+class cmd_nick(Command):
+    """\
+    Print or set the branch nickname.  
+    If unset, the tree root directory name is used as the nickname
+    To print the current nickname, execute with no argument.  
+    """
+    takes_args = ['nickname?']
+    def run(self, nickname=None):
+        branch = Branch.open_containing('.')[0]
+        if nickname is None:
+            self.printme(branch)
+        else:
+            branch.nick = nickname
+
+    @display_command
+    def printme(self, branch):
+        print branch.nick 
 
 class cmd_selftest(Command):
     """Run internal test suite.
@@ -1323,7 +1360,7 @@ class cmd_selftest(Command):
     This creates temporary test directories in the working directory,
     but not existing data is affected.  These directories are deleted
     if the tests pass, or left behind to help in debugging if they
-    fail.
+    fail and --keep-output is specified.
     
     If arguments are given, they are regular expressions that say
     which tests should run.
@@ -1333,9 +1370,12 @@ class cmd_selftest(Command):
     takes_args = ['testspecs*']
     takes_options = ['verbose', 
                      Option('one', help='stop when one test fails'),
+                     Option('keep-output', 
+                            help='keep output directories when tests fail')
                     ]
 
-    def run(self, testspecs_list=None, verbose=False, one=False):
+    def run(self, testspecs_list=None, verbose=False, one=False,
+            keep_output=False):
         import bzrlib.ui
         from bzrlib.selftest import selftest
         # we don't want progress meters from the tests to go to the
@@ -1351,7 +1391,8 @@ class cmd_selftest(Command):
                 pattern = ".*"
             result = selftest(verbose=verbose, 
                               pattern=pattern,
-                              stop_on_failure=one)
+                              stop_on_failure=one, 
+                              keep_output=keep_output)
             if result:
                 bzrlib.trace.info('tests passed')
             else:
@@ -1509,6 +1550,66 @@ class cmd_merge(Command):
                  "and (if you want) report this to the bzr developers\n")
             log_error(m)
 
+
+class cmd_remerge(Command):
+    """Redo a merge.
+    """
+    takes_args = ['file*']
+    takes_options = ['merge-type', 'reprocess',
+                     Option('show-base', help="Show base revision text in "
+                            "conflicts")]
+
+    def run(self, file_list=None, merge_type=None, show_base=False,
+            reprocess=False):
+        from bzrlib.merge import merge_inner, transform_tree
+        from bzrlib.merge_core import ApplyMerge3
+        if merge_type is None:
+            merge_type = ApplyMerge3
+        tree, file_list = tree_files(file_list)
+        tree.lock_write()
+        try:
+            pending_merges = tree.pending_merges() 
+            if len(pending_merges) != 1:
+                raise BzrCommandError("Sorry, remerge only works after normal"
+                                      + " merges.  Not cherrypicking or"
+                                      + "multi-merges.")
+            base_revision = common_ancestor(tree.branch.last_revision(), 
+                                            pending_merges[0], tree.branch)
+            base_tree = tree.branch.revision_tree(base_revision)
+            other_tree = tree.branch.revision_tree(pending_merges[0])
+            interesting_ids = None
+            if file_list is not None:
+                interesting_ids = set()
+                for filename in file_list:
+                    file_id = tree.path2id(filename)
+                    interesting_ids.add(file_id)
+                    if tree.kind(file_id) != "directory":
+                        continue
+                    
+                    for name, ie in tree.inventory.iter_entries(file_id):
+                        interesting_ids.add(ie.file_id)
+            transform_tree(tree, tree.branch.basis_tree(), interesting_ids)
+            if file_list is None:
+                restore_files = list(tree.iter_conflicts())
+            else:
+                restore_files = file_list
+            for filename in restore_files:
+                try:
+                    restore(tree.abspath(filename))
+                except NotConflicted:
+                    pass
+            conflicts =  merge_inner(tree.branch, other_tree, base_tree, 
+                                     interesting_ids = interesting_ids, 
+                                     other_rev_id=pending_merges[0], 
+                                     merge_type=merge_type, 
+                                     show_base=show_base,
+                                     reprocess=reprocess)
+        finally:
+            tree.unlock()
+        if conflicts > 0:
+            return 1
+        else:
+            return 0
 
 class cmd_revert(Command):
     """Reverse all changes since the last commit.
@@ -1759,4 +1860,4 @@ class cmd_re_sign(Command):
 # TODO: Some more consistent way to split command definitions across files;
 # we do need to load at least some information about them to know of 
 # aliases.
-from bzrlib.conflicts import cmd_resolve, cmd_conflicts
+from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore

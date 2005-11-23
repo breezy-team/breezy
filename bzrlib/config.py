@@ -54,13 +54,14 @@ create_signatures - this option controls whether bzr will always create
 
 import errno
 import os
+import sys
 from fnmatch import fnmatch
 import re
 
 import bzrlib
 import bzrlib.errors as errors
 import bzrlib.util.configobj.configobj as configobj
-
+from StringIO import StringIO
 
 CHECK_IF_POSSIBLE=0
 CHECK_ALWAYS=1
@@ -133,12 +134,7 @@ class Config(object):
 
     def user_email(self):
         """Return just the email component of a username."""
-        e = self.username()
-        m = re.search(r'[\w+.-]+@[\w+.-]+', e)
-        if not m:
-            raise BzrError("%r doesn't seem to contain "
-                           "a reasonable email address" % e)
-        return m.group(0)
+        return extract_email_address(self.username())
 
     def username(self):
         """Return email-style username.
@@ -147,8 +143,8 @@ class Config(object):
         
         $BZREMAIL can be set to override this, then
         the concrete policy type is checked, and finally
-        $EMAIL is examinged.
-        but if none is found, a reasonable default is (hopefully)
+        $EMAIL is examined.
+        If none is found, a reasonable default is (hopefully)
         created.
     
         TODO: Check it's reasonably well-formed.
@@ -419,7 +415,20 @@ def config_dir():
     
     TODO: Global option --config-dir to override this.
     """
-    return os.path.join(os.path.expanduser("~"), ".bazaar")
+    base = os.environ.get('BZR_HOME', None)
+    if sys.platform == 'win32':
+        if base is None:
+            base = os.environ.get('APPDATA', None)
+        if base is None:
+            base = os.environ.get('HOME', None)
+        if base is None:
+            raise BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
+        return os.path.join(base, 'bazaar', '2.0')
+    else:
+        # cygwin, linux, and darwin all have a $HOME directory
+        if base is None:
+            base = os.path.expanduser("~")
+        return os.path.join(base, ".bazaar")
 
 
 def config_filename():
@@ -480,6 +489,55 @@ def extract_email_address(e):
     """
     m = re.search(r'[\w+.-]+@[\w+.-]+', e)
     if not m:
-        raise BzrError("%r doesn't seem to contain "
-                       "a reasonable email address" % e)
+        raise errors.BzrError("%r doesn't seem to contain "
+                              "a reasonable email address" % e)
     return m.group(0)
+
+class TreeConfig(object):
+    """Branch configuration data associated with its contents, not location"""
+    def __init__(self, branch):
+        self.branch = branch
+
+    def _get_config(self):
+        try:
+            obj = ConfigObj(self.branch.controlfile('branch.conf',
+                                                    'rb').readlines())
+            obj.decode('UTF-8')
+        except errors.NoSuchFile:
+            obj = ConfigObj()
+        return obj
+
+    def get_option(self, name, section=None, default=None):
+        self.branch.lock_read()
+        try:
+            obj = self._get_config()
+            try:
+                if section is not None:
+                    obj[section]
+                result = obj[name]
+            except KeyError:
+                result = default
+        finally:
+            self.branch.unlock()
+        return result
+
+    def set_option(self, value, name, section=None):
+        """Set a per-branch configuration option"""
+        self.branch.lock_write()
+        try:
+            cfg_obj = self._get_config()
+            if section is None:
+                obj = cfg_obj
+            else:
+                try:
+                    obj = cfg_obj[section]
+                except KeyError:
+                    cfg_obj[section] = {}
+                    obj = cfg_obj[section]
+            obj[name] = value
+            cfg_obj.encode('UTF-8')
+            out_file = StringIO(''.join([l+'\n' for l in cfg_obj.write()]))
+            out_file.seek(0)
+            self.branch.put_controlfile('branch.conf', out_file, encode=False)
+        finally:
+            self.branch.unlock()

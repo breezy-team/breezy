@@ -42,6 +42,10 @@ class OptionTests(TestCase):
         self.assertEquals(err, '')
         self.assertContainsRe(out, r'--file[ =]MSGFILE')
 
+    def test_unknown_short_opt(self):
+        out, err = self.run_bzr_captured(['help', '-r'], retcode=3)
+        self.assertContainsRe(err, r'unknown short option')
+
 
 #     >>> parse_args('log -r 500'.split())
 #     (['log'], {'revision': [<RevisionSpec_int 500>]})
