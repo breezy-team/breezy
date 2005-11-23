@@ -394,12 +394,13 @@ class cmd_pull(Command):
         br_from = Branch.open(location)
         try:
             old_rh = br_to.revision_history()
-            br_to.working_tree().pull(br_from, overwrite)
+            count = br_to.working_tree().pull(br_from, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try merge.")
         if br_to.get_parent() is None or remember:
             br_to.set_parent(location)
+        note('%d revision(s) pulled.' % (count,))
 
         if verbose:
             new_rh = br_to.revision_history()
@@ -483,12 +484,13 @@ class cmd_push(Command):
             br_to = Branch.initialize(location)
         try:
             old_rh = br_to.revision_history()
-            br_to.pull(br_from, overwrite)
+            count = br_to.pull(br_from, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try a merge then push with overwrite.")
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(location)
+        note('%d revision(s) pushed.' % (count,))
 
         if verbose:
             new_rh = br_to.revision_history()
@@ -567,10 +569,11 @@ class cmd_branch(Command):
                 rmtree(to_location)
                 msg = "The branch %s cannot be used as a --basis"
                 raise BzrCommandError(msg)
+            branch = Branch.open(to_location)
             if name:
-                branch = Branch.open(to_location)
                 name = StringIO(name)
                 branch.put_controlfile('branch-name', name)
+            note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
 
@@ -1254,7 +1257,8 @@ class cmd_commit(Command):
         except StrictCommitFailed:
             raise BzrCommandError("Commit refused because there are unknown "
                                   "files in the working tree.")
-
+        note('Committed revision %d.' % (b.revno(),))
+        
 
 class cmd_check(Command):
     """Validate consistency of branch history.
