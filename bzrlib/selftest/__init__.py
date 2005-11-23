@@ -634,6 +634,7 @@ def test_suite():
                    'bzrlib.selftest.graph',
                    'bzrlib.selftest.workingtree',
                    'bzrlib.selftest.upgrade',
+                   'bzrlib.selftest.uncommit',
                    'bzrlib.selftest.conflicts',
                    'bzrlib.selftest.testament',
                    'bzrlib.selftest.annotate',
