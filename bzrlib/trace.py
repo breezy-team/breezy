@@ -1,17 +1,4 @@
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
+# Copyright (C) 2005, Canonical Ltd
 
 """Messages and logging for bazaar-ng.
 
@@ -43,12 +30,8 @@ KeyError, which typically just str to "0".  They're printed in a different
 form.
 """
 
-
 # TODO: in debug mode, stderr should get full tracebacks and also
 # debug messages.  (Is this really needed?)
-
-# TODO: When running the test suites, we should add an additional
-# logger that sends messages into the test log file.
 
 # FIXME: Unfortunately it turns out that python's logging module
 # is quite expensive, even when the message is not printed by any handlers.
@@ -90,10 +73,6 @@ class QuietFormatter(logging.Formatter):
             s += '\n' + format_exception_short(record.exc_info)
         return s
         
-
-
-
-################
 # configure convenient aliases for output routines
 
 _bzr_logger = logging.getLogger('bzr')
@@ -105,17 +84,16 @@ error =     _bzr_logger.error
 
 
 def mutter(fmt, *args):
-    if (_trace_file is not None) and (not _trace_file.closed):
-        try:
-            if len(args) > 0:
-                print >>_trace_file, fmt % args
-            else:
-                print >>_trace_file, fmt
-        except TypeError:
-            print fmt
-            print args
-            raise
+    if _trace_file is None:
+        return
+    if hasattr(_trace_file, 'closed') and _trace_file.closed:
+        return
+    if len(args) > 0:
+        print >>_trace_file, fmt % args
+    else:
+        print >>_trace_file, fmt
 debug = mutter
+
 
 def _rollover_trace_maybe(trace_fname):
     import stat
@@ -143,7 +121,7 @@ def open_tracefile(tracefilename='~/.bzr.log'):
         LINE_BUFFERED = 1
         tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
         _bzr_log_file = tf
-        if os.fstat(tf.fileno())[stat.ST_SIZE] == 0:
+        if tf.tell() == 0:
             tf.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
             tf.write("you can delete or truncate this file, or include sections in\n")
             tf.write("bug reports to bazaar-ng@lists.canonical.com\n\n")
@@ -198,17 +176,14 @@ def enable_default_logging():
     _stderr_handler = logging.StreamHandler()
     _stderr_handler.setFormatter(QuietFormatter())
     logging.getLogger('').addHandler(_stderr_handler)
-    if os.environ.get('BZR_DEBUG'):
-        level = logging.DEBUG
-    else:
-        level = logging.INFO
     _stderr_handler.setLevel(logging.INFO)
     if not _file_handler:
         open_tracefile()
     _trace_file = _bzr_log_file
     if _file_handler:
-        _file_handler.setLevel(level)
-    _bzr_logger.setLevel(level) 
+        _file_handler.setLevel(logging.DEBUG)
+    _bzr_logger.setLevel(logging.DEBUG) 
+
 
 def disable_default_logging():
     """Turn off default log handlers.
