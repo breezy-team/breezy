@@ -201,7 +201,7 @@ def read_stanza(line_iter):
             while True:
                 assert valpart[-1] == '\n'
                 len_valpart = len(valpart)
-                if len_valpart and valpart[-2] == '"':
+                if len_valpart >= 2 and valpart[-2] == '"':
                     # is this a real terminating doublequote, or is it escaped
                     # by a preceding backslash that is not itself escaped?
                     i = 3

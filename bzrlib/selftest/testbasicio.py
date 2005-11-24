@@ -266,6 +266,25 @@ val 129319
         s = read_stanza(tmpf)
         self.assertEquals(s, None)
 
+    def test_tricky_quoted(self):
+        tmpf = TemporaryFile()
+        tmpf.write(r"""
+s "\"one\""
+
+s "
+\"one\"
+"
+
+"""[1:]) # remove initial newline
+        tmpf.seek(0)
+        expected_vals = ['"one"',
+            '\n"one"\n',
+            ]
+        for expected in expected_vals:
+            stanza = read_stanza(tmpf)
+            self.assertEquals(len(stanza), 1)
+            self.assertEqualDiff(stanza.get('s'), expected)
+
     def test_write_bool(self):
         """Write bool to basic_io"""
         l = list(Stanza(my_bool=True).to_lines())
