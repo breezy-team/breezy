@@ -123,7 +123,7 @@ class SimpleLogTest(TestCaseInTempDir):
         self.checkDelta(d)
 
         self.build_tree(['hello'])
-        b.add('hello')
+        b.working_tree().add('hello')
         b.working_tree().commit('add one file')
 
         lf = StringIO()
@@ -173,3 +173,36 @@ class SimpleLogTest(TestCaseInTempDir):
         committed_msg = lf.logs[0].rev.message
         self.log("escaped commit message: %r", committed_msg)
         self.assert_(msg == committed_msg)
+
+    def test_verbose_log(self):
+        """Verbose log includes changed files
+        
+        bug #4676
+        """
+        b = Branch.initialize('.')
+        self.build_tree(['a'])
+        wt = b.working_tree()
+        wt.add('a')
+        # XXX: why does a longer nick show up?
+        b.nick = 'test_verbose_log'
+        wt.commit(message='add a', 
+                  timestamp=1132711707, 
+                  timezone=36000,
+                  committer='Lorem Ipsum <test@example.com>')
+        logfile = file('out.tmp', 'w+')
+        formatter = LongLogFormatter(to_file=logfile)
+        show_log(b, formatter, verbose=True)
+        logfile.flush()
+        logfile.seek(0)
+        log_contents = logfile.read()
+        self.assertEqualDiff(log_contents, '''\
+------------------------------------------------------------
+revno: 1
+committer: Lorem Ipsum <test@example.com>
+branch nick: test_verbose_log
+timestamp: Wed 2005-11-23 12:08:27 +1000
+message:
+  add a
+added:
+  a
+''')

@@ -1,7 +1,7 @@
 all: 
 
 check:
-	./bzr selftest
+	./bzr selftest $(tests)
 
 clean: 
 	./setup.py clean

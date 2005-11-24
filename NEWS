@@ -86,6 +86,8 @@ UNRELEASED CHANGES
     * List of plugin directories in BZR_PLUGIN_PATH environment variable is
       now parsed properly under Windows. (Alexander Belchenko)
 
+    * Show number of revisions pushed/pulled/merged. (Robey Pointer)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
@@ -142,9 +144,18 @@ UNRELEASED CHANGES
     * All pending merges operations from Branch are now on WorkingTree.
       (Robert Collins)
 
-    * Branch.commit() has moved to WorkingTree.commit(). (Robert Collins)
+    * The follow operations from Branch have moved to WorkingTree:
+      add()
+      commit()
+      move()
+      rename_one()
+      unknowns()
+      (Robert Collins)
 
+    * bzrlib.add.smart_add_branch is now smart_add_tree. (Robert Collins)
 
+    * New basic_io serialization format. (Martin Pool)
+   
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:

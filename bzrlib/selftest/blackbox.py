@@ -170,19 +170,15 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m newstuff branch')
         self.runbzr('commit -m newstuff branch', retcode=3)
 
-
     def test_ignore_patterns(self):
         from bzrlib.branch import Branch
-        
-        b = Branch.initialize('.')
-        self.assertEquals(list(b.unknowns()), [])
+        Branch.initialize('.')
+        self.assertEquals(self.capture('unknowns'), '')
 
         file('foo.tmp', 'wt').write('tmp files are ignored')
-        self.assertEquals(list(b.unknowns()), [])
         self.assertEquals(self.capture('unknowns'), '')
 
         file('foo.c', 'wt').write('int main() {}')
-        self.assertEquals(list(b.unknowns()), ['foo.c'])
         self.assertEquals(self.capture('unknowns'), 'foo.c\n')
 
         self.runbzr(['add', 'foo.c'])
@@ -190,17 +186,16 @@ class TestCommands(ExternalBase):
 
         # 'ignore' works when creating the .bzignore file
         file('foo.blah', 'wt').write('blah')
-        self.assertEquals(list(b.unknowns()), ['foo.blah'])
+        self.assertEquals(self.capture('unknowns'), 'foo.blah\n')
         self.runbzr('ignore *.blah')
-        self.assertEquals(list(b.unknowns()), [])
+        self.assertEquals(self.capture('unknowns'), '')
         self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\n')
 
         # 'ignore' works when then .bzrignore file already exists
         file('garh', 'wt').write('garh')
-        self.assertEquals(list(b.unknowns()), ['garh'])
         self.assertEquals(self.capture('unknowns'), 'garh\n')
         self.runbzr('ignore garh')
-        self.assertEquals(list(b.unknowns()), [])
+        self.assertEquals(self.capture('unknowns'), '')
         self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\ngarh\n')
 
     def test_revert(self):
@@ -354,7 +349,7 @@ class TestCommands(ExternalBase):
     def test_diff_branches(self):
         self.build_tree(['branch1/', 'branch1/file', 'branch2/'], line_endings='binary')
         branch = Branch.initialize('branch1')
-        branch.add(['file'])
+        branch.working_tree().add(['file'])
         branch.working_tree().commit('add file')
         copy_branch(branch, 'branch2')
         print >> open('branch2/file', 'wb'), 'new content'
@@ -736,6 +731,74 @@ class TestCommands(ExternalBase):
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals([''], results)
+
+    def test_add_in_unversioned(self):
+        """Try to add a file in an unversioned directory.
+
+        "bzr add" should add the parent(s) as necessary.
+        """
+        from bzrlib.branch import Branch
+        Branch.initialize('.')
+        self.build_tree(['inertiatic/', 'inertiatic/esp'])
+        self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
+        self.run_bzr('add', 'inertiatic/esp')
+        self.assertEquals(self.capture('unknowns'), '')
+
+        # Multiple unversioned parents
+        self.build_tree(['veil/', 'veil/cerpin/', 'veil/cerpin/taxt'])
+        self.assertEquals(self.capture('unknowns'), 'veil\n')
+        self.run_bzr('add', 'veil/cerpin/taxt')
+        self.assertEquals(self.capture('unknowns'), '')
+
+        # Check whacky paths work
+        self.build_tree(['cicatriz/', 'cicatriz/esp'])
+        self.assertEquals(self.capture('unknowns'), 'cicatriz\n')
+        self.run_bzr('add', 'inertiatic/../cicatriz/esp')
+        self.assertEquals(self.capture('unknowns'), '')
+
+    def test_add_in_versioned(self):
+        """Try to add a file in a versioned directory.
+
+        "bzr add" should do this happily.
+        """
+        from bzrlib.branch import Branch
+        Branch.initialize('.')
+        self.build_tree(['inertiatic/', 'inertiatic/esp'])
+        self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
+        self.run_bzr('add', '--no-recurse', 'inertiatic')
+        self.assertEquals(self.capture('unknowns'), 'inertiatic'+os.sep+'esp\n')
+        self.run_bzr('add', 'inertiatic/esp')
+        self.assertEquals(self.capture('unknowns'), '')
+
+    def test_subdir_add(self):
+        """Add in subdirectory should add only things from there down"""
+        from bzrlib.branch import Branch
+        
+        eq = self.assertEqual
+        ass = self.assert_
+        chdir = os.chdir
+        
+        b = Branch.initialize('.')
+        t = b.working_tree()
+        self.build_tree(['src/', 'README'])
+        
+        eq(sorted(t.unknowns()),
+           ['README', 'src'])
+        
+        self.run_bzr('add', 'src')
+        
+        self.build_tree(['src/foo.c'])
+        
+        chdir('src')
+        self.run_bzr('add')
+        
+        self.assertEquals(self.capture('unknowns'), 'README\n')
+        eq(len(t.read_working_inventory()), 3)
+                
+        chdir('..')
+        self.run_bzr('add')
+        self.assertEquals(self.capture('unknowns'), '')
+        self.run_bzr('check')
 
     def test_unknown_command(self):
         """Handling of unknown command."""
@@ -1251,12 +1314,8 @@ class HttpTests(TestCaseWithWebserver):
     def test_log(self):
         self.build_tree(['branch/', 'branch/file'])
         branch = Branch.initialize('branch')
-        branch.add(['file'])
+        branch.working_tree().add(['file'])
         branch.working_tree().commit('add file', rev_id='A')
         url = self.get_remote_url('branch/file')
         output = self.capture('log %s' % url)
         self.assertEqual(8, len(output.split('\n')))
-        
-
-
-

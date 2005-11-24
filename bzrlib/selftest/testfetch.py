@@ -31,7 +31,7 @@ from bzrlib.selftest.HTTPTestUtil import TestCaseWithWebserver
 
 def has_revision(branch, revision_id):
     try:
-        branch.get_revision_xml_file(revision_id)
+        branch.get_revision_xml(revision_id)
         return True
     except bzrlib.errors.NoSuchRevision:
         return False
@@ -151,7 +151,7 @@ class TestMergeFileHistory(TestCaseInTempDir):
         os.mkdir('br1')
         br1 = Branch.initialize('br1')
         self.build_tree_contents([('br1/file', 'original contents\n')])
-        br1.add(['file'], ['this-file-id'])
+        br1.working_tree().add(['file'], ['this-file-id'])
         br1.working_tree().commit(message='rev 1-1', rev_id='1-1')
         copy_branch(br1, 'br2')
         br2 = Branch.open('br2')
@@ -194,13 +194,14 @@ class TestHttpFetch(TestCaseWithWebserver):
     def log(self, *args):
         """Capture web server log messages for introspection."""
         super(TestHttpFetch, self).log(*args)
+        # if this call indicates a url being fetched, save it specially
         if args[0].startswith("webserver"):
-            self.weblogs.append(args[0])
+            self.weblogs.append(args[3])
 
     def test_weaves_are_retrieved_once(self):
         self.build_tree(("source/", "source/file", "target/"))
         branch = Branch.initialize("source")
-        branch.add(["file"], ["id"])
+        branch.working_tree().add(["file"], ["id"])
         branch.working_tree().commit("added file")
         print >>open("source/file", 'w'), "blah"
         branch.working_tree().commit("changed file")

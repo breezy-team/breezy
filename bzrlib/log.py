@@ -50,6 +50,8 @@ all the changes since the previous revision that touched hello.c.
 """
 
 
+# TODO: option to show delta summaries for merged-in revisions
+
 import bzrlib.errors as errors
 from bzrlib.tree import EmptyTree
 from bzrlib.delta import compare_trees
@@ -348,17 +350,15 @@ class LogFormatter(object):
     
 class LongLogFormatter(LogFormatter):
     def show(self, revno, rev, delta):
-        return self._show_helper(revno=revno, rev=rev)
+        return self._show_helper(revno=revno, rev=rev, delta=delta)
 
     def show_merge(self, rev):
-        return self._show_helper(rev=rev, indent='    ', merged=True)
+        return self._show_helper(rev=rev, indent='    ', merged=True, delta=None)
 
-    def _show_helper(self, rev=None, revno=None, indent='', merged=False):
-        from osutils import format_date
-
+    def _show_helper(self, rev=None, revno=None, indent='', merged=False, delta=None):
+	"""Show a revision, either merged or not."""
+        from bzrlib.osutils import format_date
         to_file = self.to_file
-
-
         print >>to_file,  indent+'-' * 60
         if revno is not None:
             print >>to_file,  'revno:', revno
@@ -369,14 +369,12 @@ class LongLogFormatter(LogFormatter):
         if self.show_ids:
             for parent_id in rev.parent_ids:
                 print >>to_file, indent+'parent:', parent_id
-            
         print >>to_file,  indent+'committer:', rev.committer
         try:
             print >>to_file, indent+'branch nick: %s' % \
                 rev.properties['branch-nick']
         except KeyError:
             pass
-
         date_str = format_date(rev.timestamp,
                                rev.timezone or 0,
                                self.show_timezone)
@@ -388,6 +386,8 @@ class LongLogFormatter(LogFormatter):
         else:
             for l in rev.message.split('\n'):
                 print >>to_file,  indent+'  ' + l
+        if delta != None:
+            delta.show(to_file, self.show_ids)
 
 
 class ShortLogFormatter(LogFormatter):

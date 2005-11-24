@@ -44,10 +44,10 @@ class TestAnnotate(TestCaseInTempDir):
         b = Branch.initialize('.')
         self.build_tree_contents([('hello.txt', 'my helicopter\n'),
                                   ('nomail.txt', 'nomail\n')])
-        b.add(['hello.txt'])
+        b.working_tree().add(['hello.txt'])
         b.working_tree().commit('add hello', 
                                 committer='test@user')
-        b.add(['nomail.txt'])
+        b.working_tree().add(['nomail.txt'])
         b.working_tree().commit('add nomail', committer='no mail')
 
     def test_help_annotate(self):
