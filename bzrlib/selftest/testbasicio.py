@@ -245,6 +245,11 @@ version_header 1
 name "foo"
 val 123
 
+name "quoted"
+address "  \\"Willowglen\\"
+  42 Wallaby Way
+  Sydney"
+
 name "bar"
 val 129319
 """)
@@ -253,6 +258,9 @@ val 129319
         self.assertEquals(s, Stanza(version_header=1))
         s = read_stanza(tmpf)
         self.assertEquals(s, Stanza(name="foo", val=123))
+        s = read_stanza(tmpf)
+        self.assertEqualDiff(s.get('name'), 'quoted')
+        self.assertEqualDiff(s.get('address'), '  "Willowglen"\n  42 Wallaby Way\n  Sydney')
         s = read_stanza(tmpf)
         self.assertEquals(s, Stanza(name="bar", val=129319))
         s = read_stanza(tmpf)

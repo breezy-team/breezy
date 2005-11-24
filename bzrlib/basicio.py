@@ -185,8 +185,12 @@ def read_stanza(line_iter):
         if l == '\n':
             break
         assert l[-1] == '\n'
+        real_l = l
         l = l.lstrip()
-        space = l.index(' ')
+        try:
+            space = l.index(' ')
+        except ValueError:
+            raise ValueError('tag/value separator not found in line %r' % real_l)
         tag = l[:space]
         assert valid_tag(tag), \
                 "invalid basic_io tag %r" % tag
@@ -196,15 +200,21 @@ def read_stanza(line_iter):
             valpart = l[space+2:]
             while True:
                 assert valpart[-1] == '\n'
-                if len(valpart) > 2 and valpart[-2] == '"':
-                    # XXX: This seems wrong -- we ought to need special
-                    # handling for constructs like '\\"' at end of line, and
-                    # yet it seems to work.
-                    # is this really the end, or just an escaped doublequote
-                    # at end-of-line?  it's quoted if there are an odd number
-                    # of doublequotes before it?
-                    value += valpart[:-2]
-                    break
+                len_valpart = len(valpart)
+                if len_valpart and valpart[-2] == '"':
+                    # is this a real terminating doublequote, or is it escaped
+                    # by a preceding backslash that is not itself escaped?
+                    i = 3
+                    while i <= len_valpart and valpart[-i] == '\\':
+                        i += 1
+                    num_slashes = i - 3
+                    if num_slashes & 1:
+                        # it's escaped, so the escaped backslash and newline 
+                        # are passed through
+                        value += valpart
+                    else:
+                        value += valpart[:-2]
+                        break
                 else:
                     value += valpart
                 try:
@@ -213,7 +223,12 @@ def read_stanza(line_iter):
                     raise ValueError('end of file in quoted string after %r' % value)
             value = value.replace('\\"', '"').replace('\\\\', '\\')
         else:
-            value = int(l[space+1:])
+            value_str = l[space+1:]
+            try:
+                value = int(value_str)
+            except ValueError:
+                raise ValueError('invalid integer %r for tag %r in line %r' 
+                        % (value_str, tag, real_l))
         items.append((tag, value))
     if not got_lines:
         return None         # didn't see any content
