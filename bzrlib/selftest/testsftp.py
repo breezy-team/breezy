@@ -29,6 +29,12 @@ try:
 except ImportError:
     paramiko_loaded = False
 
+# XXX: 20051124 jamesh
+# The tests currently pop up a password prompt when an external ssh
+# is used.  This forces the use of the paramiko implementation.
+import bzrlib.transport.sftp
+bzrlib.transport.sftp._ssh_vendor = 'none'
+
 
 STUB_SERVER_KEY = """
 -----BEGIN RSA PRIVATE KEY-----
@@ -158,8 +164,8 @@ class SFTPNonServerTest (unittest.TestCase):
         from bzrlib.transport.sftp import SFTPTransport
         s = SFTPTransport('sftp://simple.example.com/%2fhome/source', clone_from=fake)
         self.assertEquals(s._host, 'simple.example.com')
-        self.assertEquals(s._port, 22)
-        self.assertEquals(s._path, '/home/source')
+        self.assertEquals(s._port, None)
+        self.assertEquals(s._path, '//home/source')
         self.assert_(s._password is None)
         
         s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/relative', clone_from=fake)
@@ -167,7 +173,7 @@ class SFTPNonServerTest (unittest.TestCase):
         self.assertEquals(s._port, 2222)
         self.assertEquals(s._username, 'robey')
         self.assertEquals(s._password, 'h@t')
-        self.assertEquals(s._path, 'relative')
+        self.assertEquals(s._path, '/relative')
         
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
