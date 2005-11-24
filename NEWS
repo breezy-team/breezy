@@ -154,7 +154,8 @@ UNRELEASED CHANGES
 
     * bzrlib.add.smart_add_branch is now smart_add_tree. (Robert Collins)
 
-
+    * New basic_io serialization format. (Martin Pool)
+   
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:
