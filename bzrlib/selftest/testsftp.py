@@ -165,7 +165,7 @@ class SFTPNonServerTest (unittest.TestCase):
         s = SFTPTransport('sftp://simple.example.com/%2fhome/source', clone_from=fake)
         self.assertEquals(s._host, 'simple.example.com')
         self.assertEquals(s._port, None)
-        self.assertEquals(s._path, '//home/source')
+        self.assertEquals(s._path, '/home/source')
         self.assert_(s._password is None)
         
         s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/relative', clone_from=fake)
@@ -173,7 +173,7 @@ class SFTPNonServerTest (unittest.TestCase):
         self.assertEquals(s._port, 2222)
         self.assertEquals(s._username, 'robey')
         self.assertEquals(s._password, 'h@t')
-        self.assertEquals(s._path, '/relative')
+        self.assertEquals(s._path, 'relative')
         
 
 class SFTPBranchTest(TestCaseWithSFTPServer):

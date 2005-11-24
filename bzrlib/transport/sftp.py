@@ -516,7 +516,12 @@ class SFTPTransport (Transport):
 
     def _unparse_url(self, path=None):
         if path is None:
-            path = urllib.quote(self._path)
+            path = self._path
+        path = urllib.quote(path)
+        if path.startswith('/'):
+            path = '/%2F' + path[1:]
+        else:
+            path = '/' + path
         netloc = urllib.quote(self._host)
         if self._username is not None:
             netloc = '%s@%s' % (urllib.quote(self._username), netloc)
@@ -547,8 +552,13 @@ class SFTPTransport (Transport):
         self._host = urllib.unquote(self._host)
 
         self._path = urllib.unquote(path)
-        if self._path == '':
-            self._path = '/'
+
+        # the initial slash should be removed from the path, and treated
+        # as a homedir relative path (the path begins with a double slash
+        # if it is absolute).
+        # see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
+        if self._path.startswith('/'):
+            self._path = self._path[1:]
 
     def _sftp_connect(self):
         vendor = _get_ssh_vendor()
