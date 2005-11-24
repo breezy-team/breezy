@@ -633,8 +633,10 @@ class ChangesetEntry(object):
         if self.id  == self.parent:
             raise ParentIDIsSelf(self)
 
-    def __str__(self):
+    def __repr__(self):
         return "ChangesetEntry(%s)" % self.id
+
+    __str__ = __repr__
 
     def __get_dir(self):
         if self.path is None:
@@ -750,9 +752,9 @@ class ChangesetEntry(object):
         """
         orig_path = self.get_cset_path(False)
         mod_path = self.get_cset_path(True)
-        if orig_path is not None:
+        if orig_path and orig_path.startswith('./'):
             orig_path = orig_path[2:]
-        if mod_path is not None:
+        if mod_path and mod_path.startswith('./'):
             mod_path = mod_path[2:]
         if orig_path == mod_path:
             return orig_path
@@ -986,6 +988,7 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
             if old_path is None:
                 continue
             try:
+                mutter('rename %s to final name %s', old_path, new_path)
                 rename(old_path, new_path)
                 changed_inventory[entry.id] = new_tree_path
             except OSError, e:
