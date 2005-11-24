@@ -110,7 +110,11 @@ class BranchCreator(object):
         if action == "add":
             branch.add(paths)
         elif action == "remove":
-            branch.remove(paths)
+            # For some reason I've found cases where the inventory
+            # is empty when doing that. (!?)
+            #branch.__wt.remove(paths)
+            branch = Branch.open(branch.base)
+            branch.working_tree().remove(paths)
         else:
             raise RuntimeError, "Unknown action: %r" % action
 
@@ -319,8 +323,8 @@ class BranchCreator(object):
             for branch in self._changed:
                 if branch in self._do_cache:
                     self._do_now(branch, *self._do_cache[branch])
-                branch.commit(message, committer=committer,
-                              timestamp=timestamp, verbose=False)
+                branch.__wt.commit(message, committer=committer,
+                                   timestamp=timestamp, verbose=False)
             self._do_cache.clear()
         else:
             self._log.info("Nothing changed in revision %d" % revno)
@@ -600,21 +604,30 @@ class Dump(object):
             cached_revno = int(cached_revno_s)
             if tree_revno < cached_revno < revno:
                 tree_revno = cached_revno
+        for cached_revno in self._tree_cache_mem:
+            if tree_revno <= cached_revno < revno:
+                tree_revno = cached_revno
         if tree_revno != -1:
             self._log.debug("Building revision %d based on %d" %
                             (revno, tree_revno))
-            tree = self._load_tree(tree_revno)
+            if tree_revno in self._tree_cache_mem:
+                tree = self._tree_cache_mem[tree_revno]
+            else:
+                tree = self._load_tree(tree_revno)
         else:
             self._log.debug("Building revision %d from scratch" % revno)
             tree = {}
         for current_revno in self._revision_order:
-            if tree_revno < current_revno:
+            if current_revno > revno:
+                break
+            elif tree_revno < current_revno:
                 slice = self._revision_slice[current_revno]
                 for entry_index in range(slice.start, slice.stop):
                     self._change_tree(tree, self._dump[entry_index],
                                       entry_index)
                 if current_revno == revno:
                     break
+        self._log.debug("Revision %d is ready" % revno)
         if len(self._tree_cache_mem) > 3:
             del self._tree_cache_mem[self._tree_cache_mem_order[0]]
             del self._tree_cache_mem_order[0]
