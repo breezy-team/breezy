@@ -275,10 +275,44 @@ s "
 \"one\"
 "
 
+s "\""
+
+s "\"\""
+
+s "\"\"\""
+
+s "
+"
+
+s "\\"
+
+s "
+\\
+\\\\
+"
+
+s "word\\"
+
+s "quote\""
+
+s "backslashes\\\\\\"
+
+s "both\\\""
+
 """[1:]) # remove initial newline
         tmpf.seek(0)
         expected_vals = ['"one"',
             '\n"one"\n',
+            '"',
+            '""',
+            '"""',
+            '\n',
+            '\\',
+            '\n\\\n\\\\\n',
+            'word\\',
+            'quote\"',
+            'backslashes\\\\\\',
+            'both\\\"',
             ]
         for expected in expected_vals:
             stanza = read_stanza(tmpf)
