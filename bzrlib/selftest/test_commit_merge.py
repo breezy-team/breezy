@@ -62,16 +62,14 @@ class TestCommitMerge(TestCaseInTempDir):
         self.assertEquals(rev.parent_ids,
                           ['y@u-0-1', 'x@u-0-1'])
 
-
-
     def test_merge_new_file(self):
         """Commit merge of two trees with no overlapping files."""
         self.build_tree(['x/', 'x/ecks', 'y/', 'y/why'])
 
         bx = Branch.initialize('x')
         by = Branch.initialize('y')
-        bx.add(['ecks'], ['ecks-id'])
-        by.add(['why'], ['why-id'])
+        bx.working_tree().add(['ecks'], ['ecks-id'])
+        by.working_tree().add(['why'], ['why-id'])
 
         commit(bx, 'commit one', rev_id='x@u-0-1', allow_pointless=True)
         commit(by, 'commit two', rev_id='y@u-0-1', allow_pointless=True)
@@ -79,7 +77,7 @@ class TestCommitMerge(TestCaseInTempDir):
         fetch(from_branch=bx, to_branch=by)
         # we haven't merged the texts, but let's fake it
         shutil.copyfile('x/ecks', 'y/ecks')
-        by.add(['ecks'], ['ecks-id'])
+        by.working_tree().add(['ecks'], ['ecks-id'])
         by.working_tree().add_pending_merge('x@u-0-1')
 
         # partial commit of merges is currently not allowed, because

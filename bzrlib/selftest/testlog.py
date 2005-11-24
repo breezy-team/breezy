@@ -123,7 +123,7 @@ class SimpleLogTest(TestCaseInTempDir):
         self.checkDelta(d)
 
         self.build_tree(['hello'])
-        b.add('hello')
+        b.working_tree().add('hello')
         b.working_tree().commit('add one file')
 
         lf = StringIO()
@@ -182,7 +182,7 @@ class SimpleLogTest(TestCaseInTempDir):
         b = Branch.initialize('.')
         self.build_tree(['a'])
         wt = b.working_tree()
-        b.add('a')
+        wt.add('a')
         # XXX: why does a longer nick show up?
         b.nick = 'test_verbose_log'
         wt.commit(message='add a', 

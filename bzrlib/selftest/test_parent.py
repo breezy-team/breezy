@@ -45,7 +45,7 @@ class TestParent(TestCaseInTempDir):
         os.mkdir('from')
         branch_from = Branch.initialize('from')
         file('from/foo', 'wt').write('contents of foo')
-        branch_from.add('foo')
+        branch_from.working_tree().add('foo')
         branch_from.working_tree().commit('initial commit')
         
         os.mkdir('to')
