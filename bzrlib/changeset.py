@@ -32,6 +32,7 @@ from itertools import izip
 from bzrlib.trace import mutter, warning
 from bzrlib.osutils import rename, sha_file
 import bzrlib
+from bzrlib.errors import BzrCheckError
 
 __docformat__ = "restructuredtext"
 
@@ -988,7 +989,8 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
                 rename(old_path, new_path)
                 changed_inventory[entry.id] = new_tree_path
             except OSError, e:
-                raise Exception ("%s is missing" % new_path)
+                raise BzrCheckError('failed to rename %s to %s for changeset entry %s: %s'
+                        % (old_path, new_path, entry, e))
 
 class TargetExists(Exception):
     def __init__(self, entry, target):
