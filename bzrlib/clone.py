@@ -88,7 +88,7 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
         branch_to = Branch.initialize(to_location)
         mutter("copy branch from %s to %s", branch_from, branch_to)
         branch_to.working_tree().set_root_id(branch_from.get_root_id())
-        branch_to.append_revision(*history)
+        branch_to.set_revision_history(history)
         _copy_control_weaves(branch_from, branch_to)
         _copy_text_weaves(branch_from, branch_to)
         _copy_revision_store(branch_from, branch_to)
