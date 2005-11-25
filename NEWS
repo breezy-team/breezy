@@ -53,6 +53,10 @@ UNRELEASED CHANGES
     * New ftp transport support (on ftplib), for ftp:// and aftp:// 
       URLs.  (Daniel Silverstone)
 
+    * Commit editor temporary files now start with 'bzr_log.', to allow 
+      text editors to match the file name and set up appropriate modes or 
+      settings.  (Magnus Therning)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
