@@ -888,7 +888,7 @@ class cmd_log(Command):
             if tree is None:
                 b, fp = Branch.open_containing(filename)
                 if fp != '':
-                    inv = b.get_inventory(b.last_revision())
+                    inv = b.storage.get_inventory(b.last_revision())
             if fp != '':
                 file_id = inv.path2id(fp)
             else:

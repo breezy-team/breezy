@@ -42,7 +42,7 @@ class Check(object):
     def __init__(self, branch):
         self.branch = branch
         self.storage = branch.storage
-        self.inventory_weave = branch._get_inventory_weave()
+        self.inventory_weave = branch.storage.get_inventory_weave()
         self.checked_text_cnt = 0
         self.checked_rev_cnt = 0
         self.ghosts = []
