@@ -798,11 +798,11 @@ class ChangesetEntry(object):
                 raise SourceRootHasName(self, to_name)
             else:
                 return '.'
-        if from_dir == to_dir:
+        parent_entry = changeset.entries.get(parent)
+        if parent_entry is None:
             dir = os.path.dirname(id_map[self.id])
         else:
             mutter("path, new_path: %r %r", self.path, self.new_path)
-            parent_entry = changeset.entries[parent]
             dir = parent_entry.get_new_path(id_map, changeset, reverse)
         if from_name == to_name:
             name = os.path.basename(id_map[self.id])
@@ -939,6 +939,8 @@ def rename_to_temp_delete(source_entries, inventory, dir, temp_dir,
             temp_name[entry.id] = None
 
         elif entry.needs_rename():
+            if entry.is_creation(reverse):
+                continue
             to_name = os.path.join(temp_dir, str(i))
             src_path = inventory.get(entry.id)
             if src_path is not None:
@@ -985,6 +987,8 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
             entry.apply(new_path, conflict_handler, reverse)
             changed_inventory[entry.id] = new_tree_path
         elif entry.needs_rename():
+            if entry.is_deletion(reverse):
+                continue
             if old_path is None:
                 continue
             try:
