@@ -17,7 +17,6 @@ from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
                                BackupBeforeChange, ExecFlagMerge, WeaveMerge)
 from bzrlib.changeset import Inventory, apply_changeset, invert_dict, \
     get_contents, ReplaceContents, ChangeExecFlag
-from bzrlib.clone import copy_branch
 from bzrlib.merge import merge
 from bzrlib.workingtree import WorkingTree
 
@@ -537,7 +536,6 @@ class FunctionalMergeTest(TestCaseInTempDir):
     def test_trivial_star_merge(self):
         """Test that merges in a star shape Just Work.""" 
         from bzrlib.add import smart_add_tree, add_reporter_null
-        from bzrlib.clone import copy_branch
         from bzrlib.merge import merge
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
@@ -547,7 +545,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         tree.commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
-        copy_branch(branch, "mary")
+        branch.clone("mary")
         # Now John commits a change
         file = open("original/file1", "wt")
         file.write("John\n")
@@ -577,7 +575,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         file('a/file', 'wb').write('contents\n')
         a.working_tree().add('file')
         a.working_tree().commit('base revision', allow_pointless=False)
-        b = copy_branch(a, 'b')
+        b = a.clone('b')
         file('a/file', 'wb').write('other contents\n')
         a.working_tree().commit('other revision', allow_pointless=False)
         file('b/file', 'wb').write('this contents contents\n')
@@ -642,7 +640,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         a_wt = a.working_tree()
         a_wt.add('file')
         a_wt.commit('r0')
-        copy_branch(a, 'b')
+        a.clone('b')
         b = Branch.open('b')
         b_wt = b.working_tree()
         os.chmod('b/file', 0755)

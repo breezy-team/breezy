@@ -18,6 +18,7 @@ from tree import EmptyTree
 from bzrlib.revision import NULL_REVISION
 from bzrlib.store.weave import WeaveStore
 from bzrlib.store.text import TextStore
+from bzrlib.store import copy_all
 from cStringIO import StringIO
 import bzrlib.xml5
 from bzrlib.tree import RevisionTree
@@ -94,6 +95,12 @@ class Repository(object):
 
     def unlock(self):
         self.control_files.unlock()
+
+    def copy(self, destination):
+        destination.control_weaves.copy_multi(self.control_weaves, 
+                ['inventory'])
+        copy_all(self.weave_store, destination.weave_store)
+        copy_all(self.revision_store, destination.revision_store)
 
     def has_revision(self, revision_id):
         """True if this branch has a copy of the revision.

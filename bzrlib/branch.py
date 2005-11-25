@@ -415,6 +415,45 @@ class Branch(object):
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError('store_revision_signature is abstract')
 
+    def clone(self, to_location, revision=None, basis_branch=None, to_branch_type=None):
+        """Copy this branch into the existing directory to_location.
+
+        Returns the newly created branch object.
+
+        revision
+            If not None, only revisions up to this point will be copied.
+            The head of the new branch will be that revision.  Must be a
+            revid or None.
+    
+        to_location -- The destination directory; must either exist and be 
+            empty, or not exist, in which case it is created.
+    
+        basis_branch
+            A local branch to copy revisions from, related to this branch. 
+            This is used when branching from a remote (slow) branch, and we have
+            a local branch that might contain some relevant revisions.
+    
+        to_branch_type
+            Branch type of destination branch
+        """
+        assert isinstance(to_location, basestring)
+        if not bzrlib.osutils.lexists(to_location):
+            os.mkdir(to_location)
+        if to_branch_type is None:
+            to_branch_type = BzrBranch
+        br_to = to_branch_type.initialize(to_location)
+        mutter("copy branch from %s to %s", self, br_to)
+        if basis_branch is not None:
+            basis_branch.push_stores(br_to)
+        br_to.working_tree().set_root_id(self.get_root_id())
+        if revision is None:
+            revision = self.last_revision()
+        br_to.update_revisions(self, stop_revision=revision)
+        from bzrlib.merge import build_working_dir
+        build_working_dir(to_location)
+        br_to.set_parent(self.base)
+        mutter("copied")
+        return br_to
 
 class BzrBranch(Branch, LockableFiles):
     """A branch stored in the actual filesystem.
@@ -756,8 +795,49 @@ class BzrBranch(Branch, LockableFiles):
         """
         if revno < 1 or revno > self.revno():
             raise InvalidRevisionNumber(revno)
-        
 
+    def _get_truncated_history(self, revision_id):
+        history = self.revision_history()
+        if revision_id is None:
+            return history
+        try:
+            idx = history.index(revision_id)
+        except ValueError:
+            raise InvalidRevisionId(revision_id=revision, branch=self)
+        return history[:idx+1]
+
+    @needs_read_lock
+    def _clone_weave(self, to_location, revision=None, basis_branch=None):
+        assert isinstance(to_location, basestring)
+        if basis_branch is not None:
+            note("basis_branch is not supported for fast weave copy yet.")
+
+        history = self._get_truncated_history(revision)
+        if not bzrlib.osutils.lexists(to_location):
+            os.mkdir(to_location)
+        branch_to = Branch.initialize(to_location)
+        mutter("copy branch from %s to %s", self, branch_to)
+        branch_to.working_tree().set_root_id(self.get_root_id())
+        branch_to.append_revision(*history)
+
+        self.storage.copy(branch_to.storage)
+        
+        from bzrlib.merge import build_working_dir
+        build_working_dir(to_location)
+        branch_to.set_parent(self.base)
+        mutter("copied")
+        return branch_to
+
+    def clone(self, to_location, revision=None, basis_branch=None, to_branch_type=None):
+        if to_branch_type is None:
+            to_branch_type = BzrBranch
+
+        if to_branch_type == BzrBranch \
+            and self.storage.weave_store.listable() \
+            and self.storage.revision_store.listable():
+            return self._clone_weave(to_location, revision, basis_branch)
+
+        return Branch.clone(self, to_location, revision, basis_branch, to_branch_type)
 
 class ScratchBranch(BzrBranch):
     """Special test class: a branch that cleans up after itself.

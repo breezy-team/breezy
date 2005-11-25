@@ -18,7 +18,6 @@
 import os
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 
 
 """Tests for Branch parent URL"""
@@ -49,7 +48,7 @@ class TestParent(TestCaseInTempDir):
         branch_from.working_tree().commit('initial commit')
         
         os.mkdir('to')
-        copy_branch(branch_from, 'to', None)
+        branch_from.clone('to', None)
 
         branch_to = Branch.open('to')
         abspath = os.path.abspath('from')

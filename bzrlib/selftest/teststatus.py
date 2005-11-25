@@ -28,7 +28,6 @@ from cStringIO import StringIO
 from bzrlib.status import show_status
 from bzrlib.branch import Branch
 from os import mkdir
-from bzrlib.clone import copy_branch
 
 class BranchStatus(TestCaseInTempDir):
     
@@ -107,7 +106,7 @@ class BranchStatus(TestCaseInTempDir):
         mkdir("./branch")
         b = Branch.initialize('./branch')
         b.working_tree().commit("Empty commit 1")
-        b_2 = copy_branch(b, './copy')
+        b_2 = b.clone('./copy')
         b.working_tree().commit("Empty commit 2")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)

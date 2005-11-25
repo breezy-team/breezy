@@ -36,7 +36,6 @@ import shutil
 import sys
 
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import has_symlinks
 from bzrlib.selftest import TestCaseInTempDir, BzrTestBase
@@ -351,7 +350,7 @@ class TestCommands(ExternalBase):
         branch = Branch.initialize('branch1')
         branch.working_tree().add(['file'])
         branch.working_tree().commit('add file')
-        copy_branch(branch, 'branch2')
+        branch.clone('branch2')
         print >> open('branch2/file', 'wb'), 'new content'
         branch2 = Branch.open('branch2')
         branch2.working_tree().commit('update file')
@@ -1349,7 +1348,7 @@ class HttpTests(TestCaseWithWebserver):
         url = self.get_remote_url('branch/file')
         output = self.capture('log %s' % url)
         self.assertEqual(8, len(output.split('\n')))
-        copy = copy_branch(branch, 'branch2')
+        copy = branch.clone('branch2')
         branch.working_tree().commit(message='empty commit')
         os.chdir('branch2')
         self.run_bzr('merge', '../branch')

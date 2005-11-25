@@ -18,7 +18,6 @@ from cStringIO import StringIO
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
 from bzrlib.inventory import Inventory, ROOT_ID
