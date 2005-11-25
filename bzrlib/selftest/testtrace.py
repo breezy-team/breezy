@@ -23,7 +23,7 @@ import os
 import sys
 
 from bzrlib.selftest import TestCaseInTempDir, TestCase
-from bzrlib.trace import format_exception_short
+from bzrlib.trace import format_exception_short, mutter
 from bzrlib.errors import NotBranchError
 
 class TestTrace(TestCase):
@@ -49,3 +49,9 @@ class TestTrace(TestCase):
             pass
         msg = format_exception_short(sys.exc_info())
         self.assertEqualDiff(msg, 'Not a branch: wibble')
+
+    def test_trace_unicode(self):
+        """Write Unicode to trace log"""
+        self.log(u'the unicode character for benzene is \N{BENZENE RING}')
+        self.assertContainsRe('the unicode character',
+                self._get_log())
