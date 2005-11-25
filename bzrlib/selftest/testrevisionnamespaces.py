@@ -84,7 +84,7 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         """Ensure that the branch namespace pulls in the requisite content."""
         self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
         branch = Branch.initialize('branch1')
-        branch.add(['file'])
+        branch.working_tree().add(['file'])
         branch.working_tree().commit('add file')
         copy_branch(branch, 'branch2')
         print >> open('branch2/file', 'w'), 'new content'

@@ -140,10 +140,10 @@ class TestEntryDiffing(TestCaseInTempDir):
         self.branch = Branch.initialize('.')
         self.wt = self.branch.working_tree()
         print >> open('file', 'wb'), 'foo'
-        self.branch.add(['file'], ['fileid'])
+        self.branch.working_tree().add(['file'], ['fileid'])
         if has_symlinks():
             os.symlink('target1', 'symlink')
-            self.branch.add(['symlink'], ['linkid'])
+            self.branch.working_tree().add(['symlink'], ['linkid'])
         self.wt.commit('message_1', rev_id = '1')
         print >> open('file', 'wb'), 'bar'
         if has_symlinks():
@@ -241,8 +241,9 @@ class TestSnapshot(TestCaseInTempDir):
         # with fake parent entries.
         super(TestSnapshot, self).setUp()
         self.branch = Branch.initialize('.')
-        self.build_tree(['subdir/', 'subdir/file'])
-        self.branch.add(['subdir', 'subdir/file'], ['dirid', 'fileid'])
+        self.build_tree(['subdir/', 'subdir/file'], line_endings='binary')
+        self.branch.working_tree().add(['subdir', 'subdir/file'],
+                                       ['dirid', 'fileid'])
         if has_symlinks():
             pass
         self.wt = self.branch.working_tree()
@@ -332,7 +333,7 @@ class TestPreviousHeads(TestCaseInTempDir):
         self.wt = self.branch.working_tree()
         self.wt.commit('new branch', allow_pointless=True, rev_id='A')
         self.inv_A = self.branch.storage.get_inventory('A')
-        self.branch.add(['file'], ['fileid'])
+        self.branch.working_tree().add(['file'], ['fileid'])
         self.wt.commit('add file', rev_id='B')
         self.inv_B = self.branch.storage.get_inventory('B')
         self.branch.put_controlfile('revision-history', 'A\n')

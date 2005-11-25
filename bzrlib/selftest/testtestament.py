@@ -44,8 +44,8 @@ class TestamentTests(TestCaseInTempDir):
         build_tree_contents([('hello', 'contents of hello file'),
                              ('src/', ),
                              ('src/foo.c', 'int main()\n{\n}\n')])
-        b.add(['hello', 'src', 'src/foo.c'],
-              ['hello-id', 'src-id', 'foo.c-id'])
+        b.working_tree().add(['hello', 'src', 'src/foo.c'],
+                             ['hello-id', 'src-id', 'foo.c-id'])
         b.working_tree().commit(message='add files and directories',
                  timestamp=1129025483,
                  timezone=36000,
@@ -96,7 +96,7 @@ class TestamentTests(TestCaseInTempDir):
         if not has_symlinks():
             return
         os.symlink('wibble/linktarget', 'link')
-        self.b.add(['link'], ['link-id'])
+        self.b.working_tree().add(['link'], ['link-id'])
         self.b.working_tree().commit(message='add symlink',
                  timestamp=1129025493,
                  timezone=36000,

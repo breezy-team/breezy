@@ -17,7 +17,7 @@
 
 import os
 from bzrlib.branch import Branch
-from bzrlib.errors import NotVersionedError
+from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.selftest import TestCaseInTempDir
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
@@ -60,6 +60,22 @@ class TestWorkingTree(TestCaseInTempDir):
         self.assertEqual(files[1], ('file', '?', 'file', None, TreeFile()))
         self.assertEqual(files[2], ('symlink', '?', 'symlink', None, TreeLink()))
 
+    def test_open_containing(self):
+        branch = Branch.initialize('.')
+        wt, relpath = WorkingTree.open_containing()
+        self.assertEqual('', relpath)
+        self.assertEqual(wt.basedir, branch.base)
+        wt, relpath = WorkingTree.open_containing('.')
+        self.assertEqual('', relpath)
+        self.assertEqual(wt.basedir, branch.base)
+        wt, relpath = WorkingTree.open_containing('./foo')
+        self.assertEqual('foo', relpath)
+        self.assertEqual(wt.basedir, branch.base)
+        # paths that are urls are just plain wrong for working trees.
+        self.assertRaises(NotBranchError,
+                          WorkingTree.open_containing, 
+                          'file:///' + os.getcwdu())
+
     def test_construct_with_branch(self):
         branch = Branch.initialize('.')
         tree = WorkingTree(branch.base, branch)
@@ -96,8 +112,9 @@ class TestWorkingTree(TestCaseInTempDir):
     def get_pullable_branches(self):
         self.build_tree(['from/', 'from/file', 'to/'])
         br_a = Branch.initialize('from')
-        br_a.add('file')
-        br_a.working_tree().commit('foo', rev_id='A')
+        tree = br_a.working_tree()
+        tree.add('file')
+        tree.commit('foo', rev_id='A')
         br_b = Branch.initialize('to')
         return br_a, br_b
  
@@ -125,22 +142,29 @@ class TestWorkingTree(TestCaseInTempDir):
 
         self.assertRaises(NotVersionedError,
                           b.working_tree().revert, ['hello.txt'])
-        
-        b.add(['hello.txt'])
-        b.working_tree().commit('create initial hello.txt')
+        tree = WorkingTree(b.base, b)
+        tree.add(['hello.txt'])
+        tree.commit('create initial hello.txt')
 
         self.check_file_contents('hello.txt', 'initial hello')
         file('hello.txt', 'w').write('new hello')
         self.check_file_contents('hello.txt', 'new hello')
 
-        wt = b.working_tree()
-
         # revert file modified since last revision
-        wt.revert(['hello.txt'])
+        tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
         self.check_file_contents('hello.txt~', 'new hello')
 
         # reverting again does not clobber the backup
-        wt.revert(['hello.txt'])
+        tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
         self.check_file_contents('hello.txt~', 'new hello')
+
+    def test_unknowns(self):
+        b = Branch.initialize('.')
+        tree = WorkingTree('.', b)
+        self.build_tree(['hello.txt',
+                         'hello.txt~'])
+        self.assertEquals(list(tree.unknowns()),
+                          ['hello.txt'])
+

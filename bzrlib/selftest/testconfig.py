@@ -175,23 +175,45 @@ class TestConfigPath(TestCase):
 
     def setUp(self):
         super(TestConfigPath, self).setUp()
-        self.oldenv = os.environ.get('HOME', None)
+        self.old_home = os.environ.get('HOME', None)
+        self.old_appdata = os.environ.get('APPDATA', None)
         os.environ['HOME'] = '/home/bogus'
+        os.environ['APPDATA'] = \
+            r'C:\Documents and Settings\bogus\Application Data'
 
     def tearDown(self):
-        os.environ['HOME'] = self.oldenv
+        if self.old_home is None:
+            del os.environ['HOME']
+        else:
+            os.environ['HOME'] = self.old_home
+        if self.old_appdata is None:
+            del os.environ['APPDATA']
+        else:
+            os.environ['APPDATA'] = self.old_appdata
         super(TestConfigPath, self).tearDown()
     
     def test_config_dir(self):
-        self.assertEqual(config.config_dir(), '/home/bogus/.bazaar')
+        if sys.platform == 'win32':
+            self.assertEqual(config.config_dir(), 
+                r'C:\Documents and Settings\bogus\Application Data\bazaar\2.0')
+        else:
+            self.assertEqual(config.config_dir(), '/home/bogus/.bazaar')
 
     def test_config_filename(self):
-        self.assertEqual(config.config_filename(),
-                         '/home/bogus/.bazaar/bazaar.conf')
+        if sys.platform == 'win32':
+            self.assertEqual(config.config_filename(), 
+                r'C:\Documents and Settings\bogus\Application Data\bazaar\2.0\bazaar.conf')
+        else:
+            self.assertEqual(config.config_filename(),
+                             '/home/bogus/.bazaar/bazaar.conf')
 
     def test_branches_config_filename(self):
-        self.assertEqual(config.branches_config_filename(),
-                         '/home/bogus/.bazaar/branches.conf')
+        if sys.platform == 'win32':
+            self.assertEqual(config.branches_config_filename(), 
+                r'C:\Documents and Settings\bogus\Application Data\bazaar\2.0\branches.conf')
+        else:
+            self.assertEqual(config.branches_config_filename(),
+                             '/home/bogus/.bazaar/branches.conf')
 
 class TestIniConfig(TestCase):
 

@@ -35,4 +35,4 @@ class NonAsciiTest(TestCaseInTempDir):
             return
         br = Branch.initialize(u".")
         file("a", "w").write("hello")
-        br.add(["a"], ["a-id"])
+        br.working_tree().add(["a"], ["a-id"])
