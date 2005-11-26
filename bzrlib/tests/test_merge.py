@@ -63,3 +63,18 @@ class TestMerge(TestCaseInTempDir):
         tree.rename_one('name1', 'name2')
         os.unlink('name2')
         transform_tree(tree, b.basis_tree())
+
+    def test_layered_rename(self):
+        """Rename both child and parent at same time"""
+        b = Branch.initialize('.')
+        tree = b.working_tree()
+        os.mkdir('dirname1')
+        tree.add('dirname1')
+        filename = os.path.join('dirname1', 'name1')
+        file(filename, 'wb').write('Hello')
+        tree.add(filename)
+        tree.commit(message="hello")
+        filename2 = os.path.join('dirname1', 'name2')
+        tree.rename_one(filename, filename2)
+        tree.rename_one('dirname1', 'dirname2')
+        transform_tree(tree, b.basis_tree())
