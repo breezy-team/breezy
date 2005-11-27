@@ -20,7 +20,8 @@ from cStringIO import StringIO
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.errors import InstallFailed, NoSuchRevision, WeaveError
+from bzrlib.errors import (InstallFailed, NoSuchRevision, WeaveError,
+                           MissingText)
 from bzrlib.trace import mutter, note, warning
 from bzrlib.branch import Branch
 from bzrlib.progress import ProgressBar
@@ -212,22 +213,19 @@ class Fetcher(object):
         # in memory until everything's done?  But this way is nicer
         # if it's interrupted.
         for path, ie in inv.iter_entries():
-            if ie.revision != rev_id:
-                continue
-            mutter('%s {%s} is changed in this revision',
-                   path, ie.file_id)
-            self._copy_one_weave(rev_id, ie.file_id)
+            self._copy_one_weave(rev_id, ie.file_id, ie.revision)
 
-    def _copy_one_weave(self, rev_id, file_id):
-        """Copy one file weave."""
-        mutter('copy file {%s} modified in {%s}', file_id, rev_id)
-        if file_id in self.copied_file_ids:
-            mutter('file {%s} already copied', file_id)
+    def _copy_one_weave(self, rev_id, file_id, text_revision):
+        """Copy one file weave, esuring the result contains text_revision."""
+        to_weave = self.to_weaves.get_weave_or_empty(file_id,
+            self.to_branch.get_transaction())
+        if text_revision in to_weave:
             return
         from_weave = self.from_weaves.get_weave(file_id,
             self.from_branch.get_transaction())
-        to_weave = self.to_weaves.get_weave_or_empty(file_id,
-            self.to_branch.get_transaction())
+        if text_revision not in from_weave:
+            raise MissingText(self.from_branch, text_revision, file_id)
+        mutter('copy file {%s} modified in {%s}', file_id, rev_id)
         try:
             to_weave.join(from_weave)
         except errors.WeaveParentMismatch:
