@@ -79,7 +79,7 @@ def load_plugins():
         #raise BzrError("plugins already initialized")
     _loaded = True
 
-    dirs = os.environ.get('BZR_PLUGIN_PATH', DEFAULT_PLUGIN_PATH).split(":")
+    dirs = os.environ.get('BZR_PLUGIN_PATH', DEFAULT_PLUGIN_PATH).split(os.pathsep)
     dirs.insert(0, os.path.dirname(plugins.__file__))
 
     # The problem with imp.get_suffixes() is that it doesn't include

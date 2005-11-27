@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import sys
 import time
 from bzrlib.selftest import TestCaseInTempDir
 
@@ -28,7 +29,7 @@ def sha1(t):
 def pause():
     if False:
         return
-    if os.name == 'nt':
+    if sys.platform in ('win32', 'cygwin'):
         time.sleep(3)
         return
     # allow it to stabilize

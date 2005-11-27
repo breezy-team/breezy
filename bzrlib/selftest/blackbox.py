@@ -352,12 +352,12 @@ class TestCommands(ExternalBase):
         self.runbzr('diff')
 
     def test_diff_branches(self):
-        self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
+        self.build_tree(['branch1/', 'branch1/file', 'branch2/'], line_endings='binary')
         branch = Branch.initialize('branch1')
         branch.add(['file'])
         branch.working_tree().commit('add file')
         copy_branch(branch, 'branch2')
-        print >> open('branch2/file', 'w'), 'new content'
+        print >> open('branch2/file', 'wb'), 'new content'
         branch2 = Branch.open('branch2')
         branch2.working_tree().commit('update file')
         # should open branch1 and diff against branch2, 
@@ -528,6 +528,22 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m blah8 --unchanged')
         self.runbzr('pull ../b')
         self.runbzr('pull ../b')
+
+    def test_inventory(self):
+        bzr = self.runbzr
+        def output_equals(value, *args):
+            out = self.runbzr(['inventory'] + list(args), backtick=True)
+            self.assertEquals(out, value)
+
+        bzr('init')
+        open('a', 'wb').write('hello\n')
+        os.mkdir('b')
+
+        bzr('add a b')
+        bzr('commit -m add')
+
+        output_equals('a\n', '--kind', 'file')
+        output_equals('b\n', '--kind', 'directory')        
 
     def test_ls(self):
         """Test the abilities of 'bzr ls'"""
@@ -1241,6 +1257,10 @@ class HttpTests(TestCaseWithWebserver):
         output = self.capture('log %s' % url)
         self.assertEqual(8, len(output.split('\n')))
         
-
-
-
+    def test_check(self):
+        self.build_tree(['branch/', 'branch/file'])
+        branch = Branch.initialize('branch')
+        branch.add(['file'])
+        branch.working_tree().commit('add file', rev_id='A')
+        url = self.get_remote_url('branch/file')
+        self.run_bzr('check', url)
