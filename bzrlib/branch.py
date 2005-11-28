@@ -24,10 +24,9 @@ from cStringIO import StringIO
 
 
 import bzrlib
-from bzrlib.inventory import InventoryEntry
 import bzrlib.inventory as inventory
 from bzrlib.trace import mutter, note
-from bzrlib.osutils import (isdir, quotefn, compact_date, rand_bytes, 
+from bzrlib.osutils import (isdir, quotefn,
                             rename, splitpath, sha_file, appendpath, 
                             file_kind, abspath)
 import bzrlib.errors as errors
@@ -46,6 +45,9 @@ from bzrlib.inventory import Inventory
 from bzrlib.lockablefiles import LockableFiles
 from bzrlib.revstorage import RevisionStorage
 from bzrlib.store import copy_all
+from bzrlib.store.text import TextStore
+from bzrlib.store.weave import WeaveStore
+from bzrlib.testament import Testament
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 import bzrlib.ui
@@ -109,14 +111,14 @@ class Branch(object):
         """Open a branch which may be of an old format.
         
         Only local branches are supported."""
-        return _Branch(get_transport(base), relax_version_check=True)
+        return BzrBranch(get_transport(base), relax_version_check=True)
         
     @staticmethod
     def open(base):
         """Open an existing branch, rooted at 'base' (url)"""
         t = get_transport(base)
         mutter("trying to open %r with transport %r", base, t)
-        return _Branch(t)
+        return BzrBranch(t)
 
     @staticmethod
     def open_containing(url):
@@ -131,7 +133,7 @@ class Branch(object):
         t = get_transport(url)
         while True:
             try:
-                return _Branch(t), t.relpath(url)
+                return BzrBranch(t), t.relpath(url)
             except NotBranchError:
                 pass
             new_t = t.clone('..')
@@ -144,7 +146,7 @@ class Branch(object):
     def initialize(base):
         """Create a new branch, rooted at 'base' (url)"""
         t = get_transport(base)
-        return _Branch(t, init=True)
+        return BzrBranch(t, init=True)
 
     def setup_caching(self, cache_root):
         """Subclasses that care about caching should override this, and set
@@ -163,19 +165,289 @@ class Branch(object):
 
     nick = property(_get_nick, _set_nick)
         
+    def push_stores(self, branch_to):
+        """Copy the content of this branches store to branch_to."""
+        raise NotImplementedError('push_stores is abstract')
 
-class _Branch(Branch):
+    def get_transaction(self):
+        """Return the current active transaction.
+
+        If no transaction is active, this returns a passthrough object
+        for which all data is immediately flushed and no caching happens.
+        """
+        raise NotImplementedError('get_transaction is abstract')
+
+    def lock_write(self):
+        raise NotImplementedError('lock_write is abstract')
+        
+    def lock_read(self):
+        raise NotImplementedError('lock_read is abstract')
+
+    def unlock(self):
+        raise NotImplementedError('unlock is abstract')
+
+    def abspath(self, name):
+        """Return absolute filename for something in the branch
+        
+        XXX: Robert Collins 20051017 what is this used for? why is it a branch
+        method and not a tree method.
+        """
+        raise NotImplementedError('abspath is abstract')
+
+    def get_root_id(self):
+        """Return the id of this branches root"""
+        raise NotImplementedError('get_root_id is abstract')
+
+    def print_file(self, file, revno):
+        """Print `file` to stdout."""
+        raise NotImplementedError('print_file is abstract')
+
+    def append_revision(self, *revision_ids):
+        raise NotImplementedError('append_revision is abstract')
+
+    def set_revision_history(self, rev_history):
+        raise NotImplementedError('set_revision_history is abstract')
+
+    def get_revision_delta(self, revno):
+        """Return the delta for one revision.
+
+        The delta is relative to its mainline predecessor, or the
+        empty tree for revision 1.
+        """
+        assert isinstance(revno, int)
+        rh = self.revision_history()
+        if not (1 <= revno <= len(rh)):
+            raise InvalidRevisionNumber(revno)
+
+        # revno is 1-based; list is 0-based
+
+        new_tree = self.storage.revision_tree(rh[revno-1])
+        if revno == 1:
+            old_tree = EmptyTree()
+        else:
+            old_tree = self.storage.revision_tree(rh[revno-2])
+
+        return compare_trees(old_tree, new_tree)
+
+    def get_ancestry(self, revision_id):
+        """Return a list of revision-ids integrated by a revision.
+        
+        This currently returns a list, but the ordering is not guaranteed:
+        treat it as a set.
+        """
+        raise NotImplementedError('get_ancestry is abstract')
+
+    def get_inventory(self, revision_id):
+        """Get Inventory object by hash."""
+        raise NotImplementedError('get_inventory is abstract')
+
+    def get_inventory_xml(self, revision_id):
+        """Get inventory XML as a file object."""
+        raise NotImplementedError('get_inventory_xml is abstract')
+
+    def get_inventory_sha1(self, revision_id):
+        """Return the sha1 hash of the inventory entry."""
+        raise NotImplementedError('get_inventory_sha1 is abstract')
+
+    def get_revision_inventory(self, revision_id):
+        """Return inventory of a past revision."""
+        raise NotImplementedError('get_revision_inventory is abstract')
+
+    def revision_history(self):
+        """Return sequence of revision hashes on to this branch."""
+        raise NotImplementedError('revision_history is abstract')
+
+    def revno(self):
+        """Return current revision number for this branch.
+
+        That is equivalent to the number of revisions committed to
+        this branch.
+        """
+        return len(self.revision_history())
+
+    def last_revision(self):
+        """Return last patch hash, or None if no history."""
+        ph = self.revision_history()
+        if ph:
+            return ph[-1]
+        else:
+            return None
+
+    def missing_revisions(self, other, stop_revision=None, diverged_ok=False):
+        """Return a list of new revisions that would perfectly fit.
+        
+        If self and other have not diverged, return a list of the revisions
+        present in other, but missing from self.
+
+        >>> from bzrlib.commit import commit
+        >>> bzrlib.trace.silent = True
+        >>> br1 = ScratchBranch()
+        >>> br2 = ScratchBranch()
+        >>> br1.missing_revisions(br2)
+        []
+        >>> commit(br2, "lala!", rev_id="REVISION-ID-1")
+        >>> br1.missing_revisions(br2)
+        [u'REVISION-ID-1']
+        >>> br2.missing_revisions(br1)
+        []
+        >>> commit(br1, "lala!", rev_id="REVISION-ID-1")
+        >>> br1.missing_revisions(br2)
+        []
+        >>> commit(br2, "lala!", rev_id="REVISION-ID-2A")
+        >>> br1.missing_revisions(br2)
+        [u'REVISION-ID-2A']
+        >>> commit(br1, "lala!", rev_id="REVISION-ID-2B")
+        >>> br1.missing_revisions(br2)
+        Traceback (most recent call last):
+        DivergedBranches: These branches have diverged.
+        """
+        self_history = self.revision_history()
+        self_len = len(self_history)
+        other_history = other.revision_history()
+        other_len = len(other_history)
+        common_index = min(self_len, other_len) -1
+        if common_index >= 0 and \
+            self_history[common_index] != other_history[common_index]:
+            raise DivergedBranches(self, other)
+
+        if stop_revision is None:
+            stop_revision = other_len
+        else:
+            assert isinstance(stop_revision, int)
+            if stop_revision > other_len:
+                raise bzrlib.errors.NoSuchRevision(self, stop_revision)
+        return other_history[self_len:stop_revision]
+    
+    def update_revisions(self, other, stop_revision=None):
+        """Pull in new perfect-fit revisions."""
+        raise NotImplementedError('update_revisions is abstract')
+
+    def pullable_revisions(self, other, stop_revision):
+        raise NotImplementedError('pullable_revisions is abstract')
+        
+    def revision_id_to_revno(self, revision_id):
+        """Given a revision id, return its revno"""
+        if revision_id is None:
+            return 0
+        history = self.revision_history()
+        try:
+            return history.index(revision_id) + 1
+        except ValueError:
+            raise bzrlib.errors.NoSuchRevision(self, revision_id)
+
+    def get_rev_id(self, revno, history=None):
+        """Find the revision id of the specified revno."""
+        if revno == 0:
+            return None
+        if history is None:
+            history = self.revision_history()
+        elif revno <= 0 or revno > len(history):
+            raise bzrlib.errors.NoSuchRevision(self, revno)
+        return history[revno - 1]
+
+    def working_tree(self):
+        """Return a `Tree` for the working copy if this is a local branch."""
+        raise NotImplementedError('working_tree is abstract')
+
+    def pull(self, source, overwrite=False):
+        raise NotImplementedError('pull is abstract')
+
+    def basis_tree(self):
+        """Return `Tree` object for last revision.
+
+        If there are no revisions yet, return an `EmptyTree`.
+        """
+        return self.storage.revision_tree(self.last_revision())
+
+    def rename_one(self, from_rel, to_rel):
+        """Rename one file.
+
+        This can change the directory or the filename or both.
+        """
+        raise NotImplementedError('rename_one is abstract')
+
+    def move(self, from_paths, to_name):
+        """Rename files.
+
+        to_name must exist as a versioned directory.
+
+        If to_name exists and is a directory, the files are moved into
+        it, keeping their old names.  If it is a directory, 
+
+        Note that to_name is only the last component of the new name;
+        this doesn't change the directory.
+
+        This returns a list of (from_path, to_path) pairs for each
+        entry that is moved.
+        """
+        raise NotImplementedError('move is abstract')
+
+    def get_parent(self):
+        """Return the parent location of the branch.
+
+        This is the default location for push/pull/missing.  The usual
+        pattern is that the user can override it by specifying a
+        location.
+        """
+        raise NotImplementedError('get_parent is abstract')
+
+    def get_push_location(self):
+        """Return the None or the location to push this branch to."""
+        raise NotImplementedError('get_push_location is abstract')
+
+    def set_push_location(self, location):
+        """Set a new push location for this branch."""
+        raise NotImplementedError('set_push_location is abstract')
+
+    def set_parent(self, url):
+        raise NotImplementedError('set_parent is abstract')
+
+    def check_revno(self, revno):
+        """\
+        Check whether a revno corresponds to any revision.
+        Zero (the NULL revision) is considered valid.
+        """
+        if revno != 0:
+            self.check_real_revno(revno)
+            
+    def check_real_revno(self, revno):
+        """\
+        Check whether a revno corresponds to a real revision.
+        Zero (the NULL revision) is considered invalid
+        """
+        if revno < 1 or revno > self.revno():
+            raise InvalidRevisionNumber(revno)
+        
+    def sign_revision(self, revision_id, gpg_strategy):
+        raise NotImplementedError('sign_revision is abstract')
+
+    def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
+        raise NotImplementedError('store_revision_signature is abstract')
+
+class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
 
     Note that it's "local" in the context of the filesystem; it doesn't
     really matter if it's on an nfs/smb/afs/coda/... share, as long as
     it's writable, and can be accessed via the normal filesystem API.
 
+    _lock_mode
+        None, or 'r' or 'w'
+
+    _lock_count
+        If _lock_mode is true, a positive count of the number of times the
+        lock has been taken.
+
+    _lock
+        Lock object from bzrlib.lock.
     """
     # We actually expect this class to be somewhat short-lived; part of its
     # purpose is to try to isolate what bits of the branch logic are tied to
     # filesystem access, so that in a later step, we can extricate them to
     # a separarte ("storage") class.
+    _lock_mode = None
+    _lock_count = None
+    _lock = None
     _inventory_weave = None
     
     # Map some sort of prefix into a namespace
@@ -184,7 +456,7 @@ class _Branch(Branch):
     REVISION_NAMESPACES = {}
 
     def push_stores(self, branch_to):
-        """Copy the content of this branches store to branch_to."""
+        """See Branch.push_stores."""
         if (self._branch_format != branch_to._branch_format
             or self._branch_format != 4):
             from bzrlib.fetch import greedy_fetch
@@ -255,12 +527,31 @@ class _Branch(Branch):
 
     base = property(_get_base, doc="The URL for the root of this branch.")
 
-    def abspath(self, name):
-        """Return absolute filename for something in the branch
-        
-        XXX: Robert Collins 20051017 what is this used for? why is it a branch
-        method and not a tree method?
+    def _finish_transaction(self):
+        """Exit the current transaction."""
+        return self.control_files._finish_transaction()
+
+    def get_transaction(self):
+        """Return the current active transaction.
+
+        If no transaction is active, this returns a passthrough object
+        for which all data is immediately flushed and no caching happens.
         """
+        # this is an explicit function so that we can do tricky stuff
+        # when the storage in rev_storage is elsewhere.
+        # we probably need to hook the two 'lock a location' and 
+        # 'have a transaction' together more delicately, so that
+        # we can have two locks (branch and storage) and one transaction
+        # ... and finishing the transaction unlocks both, but unlocking
+        # does not. - RBC 20051121
+        return self.control_files.get_transaction()
+
+    def _set_transaction(self, transaction):
+        """Set a new active transaction."""
+        return self.control_files._set_transaction(transaction)
+
+    def abspath(self, name):
+        """See Branch.abspath."""
         return self.control_files._transport.abspath(name)
 
     def _make_control(self):
@@ -327,8 +618,9 @@ class _Branch(Branch):
                             'or remove the .bzr directory'
                             ' and "bzr init" again'])
 
+    @needs_read_lock
     def get_root_id(self):
-        """Return the id of this branches root"""
+        """See Branch.get_root_id."""
         inv = self.storage.get_inventory(self.last_revision())
         return inv.root.file_id
 
@@ -347,127 +639,14 @@ class _Branch(Branch):
         self.storage.unlock()
         self.control_files.unlock()
 
-    @needs_write_lock
-    def set_root_id(self, file_id):
-        inv = self.working_tree().read_working_inventory()
-        orig_root_id = inv.root.file_id
-        del inv._byid[inv.root.file_id]
-        inv.root.file_id = file_id
-        inv._byid[inv.root.file_id] = inv.root
-        for fid in inv:
-            entry = inv[fid]
-            if entry.parent_id in (None, orig_root_id):
-                entry.parent_id = inv.root.file_id
-        self._write_inventory(inv)
-
-    @needs_write_lock
-    def _write_inventory(self, inv):
-        """Update the working inventory.
-
-        That is to say, the inventory describing changes underway, that
-        will be committed to the next revision.
-        """
-        from cStringIO import StringIO
-        sio = StringIO()
-        bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
-        sio.seek(0)
-        # Transport handles atomicity
-        self.control_files.put_utf8('inventory', sio)
-        
-        mutter('wrote working inventory')
-            
-    @needs_write_lock
-    def add(self, files, ids=None):
-        """Make files versioned.
-
-        Note that the command line normally calls smart_add instead,
-        which can automatically recurse.
-
-        This puts the files in the Added state, so that they will be
-        recorded by the next commit.
-
-        files
-            List of paths to add, relative to the base of the tree.
-
-        ids
-            If set, use these instead of automatically generated ids.
-            Must be the same length as the list of files, but may
-            contain None for ids that are to be autogenerated.
-
-        TODO: Perhaps have an option to add the ids even if the files do
-              not (yet) exist.
-
-        TODO: Perhaps yield the ids and paths as they're added.
-        """
-        # TODO: Re-adding a file that is removed in the working copy
-        # should probably put it back with the previous ID.
-        if isinstance(files, basestring):
-            assert(ids is None or isinstance(ids, basestring))
-            files = [files]
-            if ids is not None:
-                ids = [ids]
-
-        if ids is None:
-            ids = [None] * len(files)
-        else:
-            assert(len(ids) == len(files))
-
-        inv = self.working_tree().read_working_inventory()
-        for f,file_id in zip(files, ids):
-            if is_control_file(f):
-                raise BzrError("cannot add control file %s" % quotefn(f))
-
-            fp = splitpath(f)
-
-            if len(fp) == 0:
-                raise BzrError("cannot add top-level %r" % f)
-
-            fullpath = os.path.normpath(self.abspath(f))
-
-            try:
-                kind = file_kind(fullpath)
-            except OSError:
-                # maybe something better?
-                raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
-
-            if not InventoryEntry.versionable_kind(kind):
-                raise BzrError('cannot add: not a versionable file ('
-                               'i.e. regular file, symlink or directory): %s' % quotefn(f))
-
-            if file_id is None:
-                file_id = gen_file_id(f)
-            inv.add_path(f, kind=kind, file_id=file_id)
-
-            mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
-
-        self._write_inventory(inv)
-
     @needs_read_lock
     def print_file(self, file, revno):
-        """Print `file` to stdout."""
+        """See Branch.print_file."""
         return self.storage.print_file(file, self.get_rev_id(revno))
-
-    def unknowns(self):
-        """Return all unknown files.
-
-        These are files in the working directory that are not versioned or
-        control files or ignored.
-        
-        >>> from bzrlib.workingtree import WorkingTree
-        >>> b = ScratchBranch(files=['foo', 'foo~'])
-        >>> map(str, b.unknowns())
-        ['foo']
-        >>> b.add('foo')
-        >>> list(b.unknowns())
-        []
-        >>> WorkingTree(b.base, b).remove('foo')
-        >>> list(b.unknowns())
-        [u'foo']
-        """
-        return self.working_tree().unknowns()
 
     @needs_write_lock
     def append_revision(self, *revision_ids):
+        """See Branch.append_revision."""
         for revision_id in revision_ids:
             mutter("add {%s} to revision-history" % revision_id)
         rev_history = self.revision_history()
@@ -476,45 +655,58 @@ class _Branch(Branch):
 
     @needs_write_lock
     def set_revision_history(self, rev_history):
+        """See Branch.set_revision_history."""
         self.control_files.put_utf8(
             'revision-history', '\n'.join(rev_history))
 
-    def get_revision_delta(self, revno):
-        """Return the delta for one revision.
-
-        The delta is relative to its mainline predecessor, or the
-        empty tree for revision 1.
-        """
-        assert isinstance(revno, int)
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
-
-        # revno is 1-based; list is 0-based
-
-        new_tree = self.storage.revision_tree(rh[revno-1])
-        if revno == 1:
-            old_tree = EmptyTree()
-        else:
-            old_tree = self.storage.revision_tree(rh[revno-2])
-
-        return compare_trees(old_tree, new_tree)
-
     def get_ancestry(self, revision_id):
-        """Return a list of revision-ids integrated by a revision.
-        
-        This currently returns a list, but the ordering is not guaranteed:
-        treat it as a set.
-        """
+        """See Branch.get_ancestry."""
         if revision_id is None:
             return [None]
         w = self.storage.get_inventory_weave()
         return [None] + map(w.idx_to_name,
                             w.inclusions([w.lookup(revision_id)]))
 
+    def _get_inventory_weave(self):
+        return self.storage.control_weaves.get_weave('inventory',
+                                             self.get_transaction())
+
+    def get_inventory(self, revision_id):
+        """See Branch.get_inventory."""
+        xml = self.get_inventory_xml(revision_id)
+        return bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+
+    def get_inventory_xml(self, revision_id):
+        """See Branch.get_inventory_xml."""
+        try:
+            assert isinstance(revision_id, basestring), type(revision_id)
+            iw = self._get_inventory_weave()
+            return iw.get_text(iw.lookup(revision_id))
+        except IndexError:
+            raise bzrlib.errors.HistoryMissing(self, 'inventory', revision_id)
+
+    def get_inventory_sha1(self, revision_id):
+        """See Branch.get_inventory_sha1."""
+        return self.get_revision(revision_id).inventory_sha1
+
+    def get_revision_inventory(self, revision_id):
+        """See Branch.get_revision_inventory."""
+        # TODO: Unify this with get_inventory()
+        # bzr 0.0.6 and later imposes the constraint that the inventory_id
+        # must be the same as its revision, so this is trivial.
+        if revision_id == None:
+            # This does not make sense: if there is no revision,
+            # then it is the current tree inventory surely ?!
+            # and thus get_root_id() is something that looks at the last
+            # commit on the branch, and the get_root_id is an inventory check.
+            raise NotImplementedError
+            # return Inventory(self.get_root_id())
+        else:
+            return self.get_inventory(revision_id)
+
     @needs_read_lock
     def revision_history(self):
-        """Return sequence of revision hashes on to this branch."""
+        """See Branch.revision_history."""
         # FIXME are transactions bound to control files ? RBC 20051121
         transaction = self.get_transaction()
         history = transaction.map.find_revision_history()
@@ -529,70 +721,8 @@ class _Branch(Branch):
         # transaction.register_clean(history, precious=True)
         return list(history)
 
-    def revno(self):
-        """Return current revision number for this branch.
-
-        That is equivalent to the number of revisions committed to
-        this branch.
-        """
-        return len(self.revision_history())
-
-    def last_revision(self):
-        """Return last patch hash, or None if no history.
-        """
-        ph = self.revision_history()
-        if ph:
-            return ph[-1]
-        else:
-            return None
-
-    def missing_revisions(self, other, stop_revision=None, diverged_ok=False):
-        """Return a list of new revisions that would perfectly fit.
-        
-        If self and other have not diverged, return a list of the revisions
-        present in other, but missing from self.
-
-        >>> from bzrlib.commit import commit
-        >>> bzrlib.trace.silent = True
-        >>> br1 = ScratchBranch()
-        >>> br2 = ScratchBranch()
-        >>> br1.missing_revisions(br2)
-        []
-        >>> commit(br2, "lala!", rev_id="REVISION-ID-1")
-        >>> br1.missing_revisions(br2)
-        [u'REVISION-ID-1']
-        >>> br2.missing_revisions(br1)
-        []
-        >>> commit(br1, "lala!", rev_id="REVISION-ID-1")
-        >>> br1.missing_revisions(br2)
-        []
-        >>> commit(br2, "lala!", rev_id="REVISION-ID-2A")
-        >>> br1.missing_revisions(br2)
-        [u'REVISION-ID-2A']
-        >>> commit(br1, "lala!", rev_id="REVISION-ID-2B")
-        >>> br1.missing_revisions(br2)
-        Traceback (most recent call last):
-        DivergedBranches: These branches have diverged.
-        """
-        self_history = self.revision_history()
-        self_len = len(self_history)
-        other_history = other.revision_history()
-        other_len = len(other_history)
-        common_index = min(self_len, other_len) -1
-        if common_index >= 0 and \
-            self_history[common_index] != other_history[common_index]:
-            raise DivergedBranches(self, other)
-
-        if stop_revision is None:
-            stop_revision = other_len
-        else:
-            assert isinstance(stop_revision, int)
-            if stop_revision > other_len:
-                raise bzrlib.errors.NoSuchRevision(self, stop_revision)
-        return other_history[self_len:stop_revision]
-
     def update_revisions(self, other, stop_revision=None):
-        """Pull in new perfect-fit revisions."""
+        """See Branch.update_revisions."""
         from bzrlib.fetch import greedy_fetch
         if stop_revision is None:
             stop_revision = other.last_revision()
@@ -607,6 +737,7 @@ class _Branch(Branch):
             self.append_revision(*pullable_revs)
 
     def pullable_revisions(self, other, stop_revision):
+        """See Branch.pullable_revisions."""
         other_revno = other.revision_id_to_revno(stop_revision)
         try:
             return self.missing_revisions(other, other_revno)
@@ -623,257 +754,32 @@ class _Branch(Branch):
                 else:
                     raise e
         
-    def commit(self, *args, **kw):
-        from bzrlib.commit import Commit
-        Commit().commit(self, *args, **kw)
-    
-    def revision_id_to_revno(self, revision_id):
-        """Given a revision id, return its revno"""
-        if revision_id is None:
-            return 0
-        history = self.revision_history()
-        try:
-            return history.index(revision_id) + 1
-        except ValueError:
-            raise bzrlib.errors.NoSuchRevision(self, revision_id)
-
-    def get_rev_id(self, revno, history=None):
-        """Find the revision id of the specified revno."""
-        if revno == 0:
-            return None
-        if history is None:
-            history = self.revision_history()
-        elif revno <= 0 or revno > len(history):
-            raise bzrlib.errors.NoSuchRevision(self, revno)
-        return history[revno - 1]
-
     def working_tree(self):
-        """Return a `Tree` for the working copy."""
+        """See Branch.working_tree."""
         from bzrlib.workingtree import WorkingTree
-        # TODO: In the future, perhaps WorkingTree should utilize Transport
-        # RobertCollins 20051003 - I don't think it should - working trees are
-        # much more complex to keep consistent than our careful .bzr subset.
-        # instead, we should say that working trees are local only, and optimise
-        # for that.
         if self.base.find('://') != -1:
             raise NoWorkingTree(self.base)
         return WorkingTree(self.base, branch=self)
 
     @needs_write_lock
     def pull(self, source, overwrite=False):
+        """See Branch.pull."""
         source.lock_read()
         try:
+            old_count = len(self.revision_history())
             try:
                 self.update_revisions(source)
             except DivergedBranches:
                 if not overwrite:
                     raise
                 self.set_revision_history(source.revision_history())
+            new_count = len(self.revision_history())
+            return new_count - old_count
         finally:
             source.unlock()
 
-    def basis_tree(self):
-        """Return `Tree` object for last revision.
-
-        If there are no revisions yet, return an `EmptyTree`.
-        """
-        return self.storage.revision_tree(self.last_revision())
-
-    @needs_write_lock
-    def rename_one(self, from_rel, to_rel):
-        """Rename one file.
-
-        This can change the directory or the filename or both.
-        """
-        tree = self.working_tree()
-        inv = tree.inventory
-        if not tree.has_filename(from_rel):
-            raise BzrError("can't rename: old working file %r does not exist" % from_rel)
-        if tree.has_filename(to_rel):
-            raise BzrError("can't rename: new working file %r already exists" % to_rel)
-
-        file_id = inv.path2id(from_rel)
-        if file_id == None:
-            raise BzrError("can't rename: old name %r is not versioned" % from_rel)
-
-        if inv.path2id(to_rel):
-            raise BzrError("can't rename: new name %r is already versioned" % to_rel)
-
-        to_dir, to_tail = os.path.split(to_rel)
-        to_dir_id = inv.path2id(to_dir)
-        if to_dir_id == None and to_dir != '':
-            raise BzrError("can't determine destination directory id for %r" % to_dir)
-
-        mutter("rename_one:")
-        mutter("  file_id    {%s}" % file_id)
-        mutter("  from_rel   %r" % from_rel)
-        mutter("  to_rel     %r" % to_rel)
-        mutter("  to_dir     %r" % to_dir)
-        mutter("  to_dir_id  {%s}" % to_dir_id)
-
-        inv.rename(file_id, to_dir_id, to_tail)
-
-        from_abs = self.abspath(from_rel)
-        to_abs = self.abspath(to_rel)
-        try:
-            rename(from_abs, to_abs)
-        except OSError, e:
-            raise BzrError("failed to rename %r to %r: %s"
-                    % (from_abs, to_abs, e[1]),
-                    ["rename rolled back"])
-
-        self._write_inventory(inv)
-
-    @needs_write_lock
-    def move(self, from_paths, to_name):
-        """Rename files.
-
-        to_name must exist as a versioned directory.
-
-        If to_name exists and is a directory, the files are moved into
-        it, keeping their old names.  If it is a directory, 
-
-        Note that to_name is only the last component of the new name;
-        this doesn't change the directory.
-
-        This returns a list of (from_path, to_path) pairs for each
-        entry that is moved.
-        """
-        result = []
-        ## TODO: Option to move IDs only
-        assert not isinstance(from_paths, basestring)
-        tree = self.working_tree()
-        inv = tree.inventory
-        to_abs = self.abspath(to_name)
-        if not isdir(to_abs):
-            raise BzrError("destination %r is not a directory" % to_abs)
-        if not tree.has_filename(to_name):
-            raise BzrError("destination %r not in working directory" % to_abs)
-        to_dir_id = inv.path2id(to_name)
-        if to_dir_id == None and to_name != '':
-            raise BzrError("destination %r is not a versioned directory" % to_name)
-        to_dir_ie = inv[to_dir_id]
-        if to_dir_ie.kind not in ('directory', 'root_directory'):
-            raise BzrError("destination %r is not a directory" % to_abs)
-
-        to_idpath = inv.get_idpath(to_dir_id)
-
-        for f in from_paths:
-            if not tree.has_filename(f):
-                raise BzrError("%r does not exist in working tree" % f)
-            f_id = inv.path2id(f)
-            if f_id == None:
-                raise BzrError("%r is not versioned" % f)
-            name_tail = splitpath(f)[-1]
-            dest_path = appendpath(to_name, name_tail)
-            if tree.has_filename(dest_path):
-                raise BzrError("destination %r already exists" % dest_path)
-            if f_id in to_idpath:
-                raise BzrError("can't move %r to a subdirectory of itself" % f)
-
-        # OK, so there's a race here, it's possible that someone will
-        # create a file in this interval and then the rename might be
-        # left half-done.  But we should have caught most problems.
-
-        for f in from_paths:
-            name_tail = splitpath(f)[-1]
-            dest_path = appendpath(to_name, name_tail)
-            result.append((f, dest_path))
-            inv.rename(inv.path2id(f), to_dir_id, name_tail)
-            try:
-                rename(self.abspath(f), self.abspath(dest_path))
-            except OSError, e:
-                raise BzrError("failed to rename %r to %r: %s" % (f, dest_path, e[1]),
-                        ["rename rolled back"])
-
-        self._write_inventory(inv)
-        return result
-
-
-    def revert(self, filenames, old_tree=None, backups=True):
-        """Restore selected files to the versions from a previous tree.
-
-        backups
-            If true (default) backups are made of files before
-            they're renamed.
-        """
-        from bzrlib.atomicfile import AtomicFile
-        from bzrlib.osutils import backup_file
-        
-        inv = self.working_tree().read_working_inventory()
-        if old_tree is None:
-            old_tree = self.basis_tree()
-        old_inv = old_tree.inventory
-
-        nids = []
-        for fn in filenames:
-            file_id = inv.path2id(fn)
-            if not file_id:
-                raise NotVersionedError(path=fn)
-            if not old_inv.has_id(file_id):
-                raise BzrError("file not present in old tree", fn, file_id)
-            nids.append((fn, file_id))
-            
-        # TODO: Rename back if it was previously at a different location
-
-        # TODO: If given a directory, restore the entire contents from
-        # the previous version.
-
-        # TODO: Make a backup to a temporary file.
-
-        # TODO: If the file previously didn't exist, delete it?
-        for fn, file_id in nids:
-            backup_file(fn)
-            
-            f = AtomicFile(fn, 'wb')
-            try:
-                f.write(old_tree.get_file(file_id).read())
-                f.commit()
-            finally:
-                f.close()
-
-
-    def pending_merges(self):
-        """Return a list of pending merges.
-
-        These are revisions that have been merged into the working
-        directory but not yet committed.
-        """
-        cfn = self.control_files._rel_controlfilename('pending-merges')
-        if not self.control_files._transport.has(cfn):
-            return []
-        p = []
-        for l in self.control_files.controlfile(
-                'pending-merges', 'r').readlines():
-            p.append(l.rstrip('\n'))
-        return p
-
-
-    def add_pending_merge(self, *revision_ids):
-        # TODO: Perhaps should check at this point that the
-        # history of the revision is actually present?
-        p = self.pending_merges()
-        updated = False
-        for rev_id in revision_ids:
-            if rev_id in p:
-                continue
-            p.append(rev_id)
-            updated = True
-        if updated:
-            self.set_pending_merges(p)
-
-    @needs_write_lock
-    def set_pending_merges(self, rev_list):
-        self.control_files.put_utf8(
-            'pending-merges', '\n'.join(rev_list))
-
     def get_parent(self):
-        """Return the parent location of the branch.
-
-        This is the default location for push/pull/missing.  The usual
-        pattern is that the user can override it by specifying a
-        location.
-        """
+        """See Branch.get_parent."""
         import errno
         _locs = ['parent', 'pull', 'x-pull']
         for l in _locs:
@@ -885,18 +791,19 @@ class _Branch(Branch):
         return None
 
     def get_push_location(self):
-        """Return the None or the location to push this branch to."""
+        """See Branch.get_push_location."""
         config = bzrlib.config.BranchConfig(self)
         push_loc = config.get_user_option('push_location')
         return push_loc
 
     def set_push_location(self, location):
-        """Set a new push location for this branch."""
+        """See Branch.set_push_location."""
         config = bzrlib.config.LocationConfig(self.base)
         config.set_user_option('push_location', location)
 
     @needs_write_lock
     def set_parent(self, url):
+        """See Branch.set_parent."""
         # TODO: Maybe delete old location files?
         from bzrlib.atomicfile import AtomicFile
         f = AtomicFile(self.control_files.controlfilename('parent'))
@@ -909,46 +816,19 @@ class _Branch(Branch):
     def tree_config(self):
         return TreeConfig(self)
 
-    def check_revno(self, revno):
-        """\
-        Check whether a revno corresponds to any revision.
-        Zero (the NULL revision) is considered valid.
-        """
-        if revno != 0:
-            self.check_real_revno(revno)
-            
-    def check_real_revno(self, revno):
-        """\
-        Check whether a revno corresponds to a real revision.
-        Zero (the NULL revision) is considered invalid
-        """
-        if revno < 1 or revno > self.revno():
-            raise InvalidRevisionNumber(revno)
-        
-    def _finish_transaction(self):
-        """Exit the current transaction."""
-        return self.control_files._finish_transaction()
+    def sign_revision(self, revision_id, gpg_strategy):
+        """See Branch.sign_revision."""
+        plaintext = Testament.from_revision(self, revision_id).as_short_text()
+        self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
-    def get_transaction(self):
-        """Return the current active transaction.
+    @needs_write_lock
+    def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
+        """See Branch.store_revision_signature."""
+        self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
+                                revision_id, "sig")
 
-        If no transaction is active, this returns a passthrough object
-        for which all data is immediately flushed and no caching happens.
-        """
-        # this is an explicit function so that we can do tricky stuff
-        # when the storage in rev_storage is elsewhere.
-        # we probably need to hook the two 'lock a location' and 
-        # 'have a transaction' together more delicately, so that
-        # we can have two locks (branch and storage) and one transaction
-        # ... and finishing the transaction unlocks both, but unlocking
-        # does not. - RBC 20051121
-        return self.control_files.get_transaction()
 
-    def _set_transaction(self, transaction):
-        """Set a new active transaction."""
-        return self.control_files._set_transaction(transaction)
-
-class ScratchBranch(_Branch):
+class ScratchBranch(BzrBranch):
     """Special test class: a branch that cleans up after itself.
 
     >>> b = ScratchBranch()
@@ -1017,39 +897,3 @@ def is_control_file(filename):
             break
         filename = head
     return False
-
-
-def gen_file_id(name):
-    """Return new file id.
-
-    This should probably generate proper UUIDs, but for the moment we
-    cope with just randomness because running uuidgen every time is
-    slow."""
-    import re
-    from binascii import hexlify
-    from time import time
-
-    # get last component
-    idx = name.rfind('/')
-    if idx != -1:
-        name = name[idx+1 : ]
-    idx = name.rfind('\\')
-    if idx != -1:
-        name = name[idx+1 : ]
-
-    # make it not a hidden file
-    name = name.lstrip('.')
-
-    # remove any wierd characters; we don't escape them but rather
-    # just pull them out
-    name = re.sub(r'[^\w.]', '', name)
-
-    s = hexlify(rand_bytes(8))
-    return '-'.join((name, compact_date(time()), s))
-
-
-def gen_root_id():
-    """Return a new tree-root file id."""
-    return gen_file_id('TREE_ROOT')
-
-

@@ -269,7 +269,8 @@ class InventoryEntry(object):
         """
         fullpath = appendpath(dest, dp)
         self._put_on_disk(fullpath, tree)
-        mutter("  export {%s} kind %s to %s" % (self.file_id, self.kind, fullpath))
+        mutter("  export {%s} kind %s to %s", self.file_id,
+                self.kind, fullpath)
 
     def _put_on_disk(self, fullpath, tree):
         """Put this entry onto disk at fullpath, from tree tree."""
@@ -647,7 +648,7 @@ class InventoryLink(InventoryEntry):
 
     def _put_in_tar(self, item, tree):
         """See InventoryEntry._put_in_tar."""
-        iterm.type = tarfile.SYMTYPE
+        item.type = tarfile.SYMTYPE
         fileobj = None
         item.size = 0
         item.mode = 0755
@@ -876,7 +877,7 @@ class Inventory(object):
         The immediate parent must already be versioned.
 
         Returns the new entry object."""
-        from bzrlib.branch import gen_file_id
+        from bzrlib.workingtree import gen_file_id
         
         parts = bzrlib.osutils.splitpath(relpath)
         if len(parts) == 0:

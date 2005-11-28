@@ -18,7 +18,7 @@
 
 from bzrlib.transport import Transport, register_transport
 from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
-                           NonRelativePath, TransportError)
+                           NonRelativePath, TransportError, ConnectionError)
 import os, errno
 from cStringIO import StringIO
 import urllib2
@@ -31,7 +31,7 @@ from bzrlib.trace import mutter
 
 def get_url(url):
     import urllib2
-    mutter("get_url %s" % url)
+    mutter("get_url %s", url)
     url_f = urllib2.urlopen(url)
     return url_f
 
@@ -149,7 +149,7 @@ class HttpTransport(Transport):
                                  orig_error=e)
             raise
         except (BzrError, IOError), e:
-            raise NoSuchFile(msg = "Error retrieving %s: %s" 
+            raise ConnectionError(msg = "Error retrieving %s: %s" 
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
 

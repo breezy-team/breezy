@@ -50,6 +50,8 @@ all the changes since the previous revision that touched hello.c.
 """
 
 
+# TODO: option to show delta summaries for merged-in revisions
+
 import bzrlib.errors as errors
 from bzrlib.tree import EmptyTree
 from bzrlib.delta import compare_trees
@@ -178,7 +180,7 @@ def _show_log(branch,
         warn("not a LogFormatter instance: %r" % lf)
 
     if specific_fileid:
-        mutter('get log for file_id %r' % specific_fileid)
+        mutter('get log for file_id %r', specific_fileid)
 
     if search is not None:
         import re
@@ -348,17 +350,15 @@ class LogFormatter(object):
     
 class LongLogFormatter(LogFormatter):
     def show(self, revno, rev, delta):
-        return self._show_helper(revno=revno, rev=rev)
+        return self._show_helper(revno=revno, rev=rev, delta=delta)
 
     def show_merge(self, rev):
-        return self._show_helper(rev=rev, indent='    ', merged=True)
+        return self._show_helper(rev=rev, indent='    ', merged=True, delta=None)
 
-    def _show_helper(self, rev=None, revno=None, indent='', merged=False):
-        from osutils import format_date
-
+    def _show_helper(self, rev=None, revno=None, indent='', merged=False, delta=None):
+	"""Show a revision, either merged or not."""
+        from bzrlib.osutils import format_date
         to_file = self.to_file
-
-
         print >>to_file,  indent+'-' * 60
         if revno is not None:
             print >>to_file,  'revno:', revno
@@ -369,14 +369,12 @@ class LongLogFormatter(LogFormatter):
         if self.show_ids:
             for parent_id in rev.parent_ids:
                 print >>to_file, indent+'parent:', parent_id
-            
         print >>to_file,  indent+'committer:', rev.committer
         try:
             print >>to_file, indent+'branch nick: %s' % \
                 rev.properties['branch-nick']
         except KeyError:
             pass
-
         date_str = format_date(rev.timestamp,
                                rev.timezone or 0,
                                self.show_timezone)
@@ -386,8 +384,11 @@ class LongLogFormatter(LogFormatter):
         if not rev.message:
             print >>to_file,  indent+'  (no message)'
         else:
-            for l in rev.message.split('\n'):
+            message = rev.message.rstrip('\r\n')
+            for l in message.split('\n'):
                 print >>to_file,  indent+'  ' + l
+        if delta != None:
+            delta.show(to_file, self.show_ids)
 
 
 class ShortLogFormatter(LogFormatter):
@@ -406,14 +407,15 @@ class ShortLogFormatter(LogFormatter):
         if not rev.message:
             print >>to_file,  '      (no message)'
         else:
-            for l in rev.message.split('\n'):
+            message = rev.message.rstrip('\r\n')
+            for l in message.split('\n'):
                 print >>to_file,  '      ' + l
 
         # TODO: Why not show the modified files in a shorter form as
         # well? rewrap them single lines of appropriate length
         if delta != None:
             delta.show(to_file, self.show_ids)
-        print
+        print >>to_file, ''
 
 class LineLogFormatter(LogFormatter):
     def truncate(self, str, max_len):
@@ -468,3 +470,58 @@ def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
     # deprecated; for compatability
     lf = LongLogFormatter(to_file=to_file, show_timezone=show_timezone)
     lf.show(revno, rev, delta)
+
+def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='long'):
+    """Show the change in revision history comparing the old revision history to the new one.
+
+    :param branch: The branch where the revisions exist
+    :param old_rh: The old revision history
+    :param new_rh: The new revision history
+    :param to_file: A file to write the results to. If None, stdout will be used
+    """
+    if to_file is None:
+        import sys
+        import codecs
+        import bzrlib
+        to_file = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
+    lf = log_formatter(log_format,
+                       show_ids=False,
+                       to_file=to_file,
+                       show_timezone='original')
+
+    # This is the first index which is different between
+    # old and new
+    base_idx = None
+    for i in xrange(max(len(new_rh),
+                        len(old_rh))):
+        if (len(new_rh) <= i
+            or len(old_rh) <= i
+            or new_rh[i] != old_rh[i]):
+            base_idx = i
+            break
+
+    if base_idx is None:
+        to_file.write('Nothing seems to have changed\n')
+        return
+    ## TODO: It might be nice to do something like show_log
+    ##       and show the merged entries. But since this is the
+    ##       removed revisions, it shouldn't be as important
+    if base_idx < len(old_rh):
+        to_file.write('*'*60)
+        to_file.write('\nRemoved Revisions:\n')
+        for i in range(base_idx, len(old_rh)):
+            rev = branch.storage.get_revision(old_rh[i])
+            lf.show(i+1, rev, None)
+        to_file.write('*'*60)
+        to_file.write('\n\n')
+    if base_idx < len(new_rh):
+        to_file.write('Added Revisions:\n')
+        show_log(branch,
+                 lf,
+                 None,
+                 verbose=True,
+                 direction='forward',
+                 start_revision=base_idx+1,
+                 end_revision=len(new_rh),
+                 search=None)
+

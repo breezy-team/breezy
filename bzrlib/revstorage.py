@@ -20,7 +20,6 @@ from bzrlib.lockablefiles import LockableFiles
 from bzrlib.tree import EmptyTree
 from bzrlib.revision import NULL_REVISION
 from bzrlib.store.weave import WeaveStore
-from bzrlib.store.compressed_text import CompressedTextStore
 from bzrlib.store.text import TextStore
 import bzrlib.xml5
 from bzrlib.tree import RevisionTree
@@ -68,7 +67,7 @@ class RevisionStorage(object):
             # still want the option to look for both.
             relpath = self.control_files._rel_controlfilename(name)
             if compressed:
-                store = CompressedTextStore(
+                store = TextStore(
                     self.control_files.make_transport(relpath),
                     prefixed=prefixed)
             else:
@@ -121,9 +120,6 @@ class RevisionStorage(object):
             return self.revision_store.get(revision_id)
         except (IndexError, KeyError):
             raise bzrlib.errors.NoSuchRevision(self, revision_id)
-
-    #deprecated
-    get_revision_xml = get_revision_xml_file
 
     def get_revision_xml(self, revision_id):
         return self.get_revision_xml_file(revision_id).read()

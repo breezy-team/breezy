@@ -72,12 +72,12 @@ import pdb
 from binascii import hexlify
 from cStringIO import StringIO
 
+from bzrlib.atomicfile import AtomicFile
 from bzrlib.osutils import (local_time_offset,
                             rand_bytes, compact_date,
                             kind_marker, is_inside_any, quotefn,
                             sha_string, sha_strings, sha_file, isdir, isfile,
                             split_lines)
-from bzrlib.branch import gen_file_id
 import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
@@ -92,7 +92,7 @@ from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave_v5
-from bzrlib.atomicfile import AtomicFile
+from bzrlib.workingtree import WorkingTree
 
 
 def commit(*args, **kwargs):
@@ -124,6 +124,7 @@ class NullCommitReporter(object):
     def missing(self, path):
         pass
 
+
 class ReportCommitToLog(NullCommitReporter):
 
     def snapshot_change(self, change, path):
@@ -140,6 +141,7 @@ class ReportCommitToLog(NullCommitReporter):
 
     def missing(self, path):
         note('missing %s', path)
+
 
 class Commit(object):
     """Task of committing a new revision.
@@ -207,10 +209,11 @@ class Commit(object):
         self.revprops = {'branch-nick': branch.nick}
         if revprops:
             self.revprops.update(revprops)
+        self.work_tree = WorkingTree(branch.base, branch)
 
         if strict:
             # raise an exception as soon as we find a single unknown.
-            for unknown in branch.unknowns():
+            for unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
 
         if timestamp is None:
@@ -237,13 +240,14 @@ class Commit(object):
         else:
             self.timezone = int(timezone)
 
-        assert isinstance(message, basestring), type(message)
+        if isinstance(message, str):
+            message = message.decode(bzrlib.user_encoding)
+        assert isinstance(message, unicode), type(message)
         self.message = message
         self._escape_commit_message()
 
         self.branch.lock_write()
         try:
-            self.work_tree = self.branch.working_tree()
             self.work_inv = self.work_tree.inventory
             self.basis_tree = self.branch.basis_tree()
             self.basis_inv = self.basis_tree.inventory
@@ -269,7 +273,7 @@ class Commit(object):
             self._record_inventory()
             self._make_revision()
             self.branch.append_revision(self.rev_id)
-            self.branch.set_pending_merges([])
+            self.work_tree.set_pending_merges([])
             self.reporter.completed(self.branch.revno()+1, self.rev_id)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
@@ -297,14 +301,8 @@ class Commit(object):
         # represented in well-formed XML; escape characters that
         # aren't listed in the XML specification
         # (http://www.w3.org/TR/REC-xml/#NT-Char).
-        if isinstance(self.message, unicode):
-            char_pattern = u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]'
-        else:
-            # Use a regular 'str' as pattern to avoid having re.subn
-            # return 'unicode' results.
-            char_pattern = '[^x09\x0A\x0D\x20-\xFF]'
         self.message, escape_count = re.subn(
-            char_pattern,
+            u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
             lambda match: match.group(0).encode('unicode_escape'),
             self.message)
         if escape_count:
@@ -312,7 +310,7 @@ class Commit(object):
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""
-        pending_merges = self.branch.pending_merges()
+        pending_merges = self.work_tree.pending_merges()
         self.parents = []
         self.parent_invs = []
         self.present_parents = []
@@ -379,7 +377,7 @@ class Commit(object):
             deleted_ids.sort(reverse=True)
             for path, file_id in deleted_ids:
                 del self.work_inv[file_id]
-            self.branch._write_inventory(self.work_inv)
+            self.work_tree._write_inventory(self.work_inv)
 
     def _store_snapshot(self):
         """Pass over inventory and record a snapshot.

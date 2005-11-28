@@ -105,5 +105,5 @@ def get_bzr_revision():
         return None
     
 def test_suite():
-    import selftest
-    return selftest.test_suite()
+    import tests
+    return tests.test_suite()
