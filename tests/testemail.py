@@ -20,7 +20,7 @@ from unittest import TestLoader
 
 from bzrlib.branch import Branch
 import bzrlib.config as config
-from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir
 from bzrlib.plugins.email import post_commit, EmailSender
 
 
@@ -45,6 +45,7 @@ class TestGetTo(TestCaseInTempDir):
             'revno: 1\n'
             'revision-id: A\n'
             'committer: Sample <john@example.com>\n'
+            'branch nick: bzrlib.plugins.email.tests.testemail.TestGetTo.test_body\n'
             'timestamp: Thu 1970-01-01 00:00:01 +0000\n'
             'message:\n'
             '  foo bar baz\n'
@@ -85,7 +86,7 @@ class TestGetTo(TestCaseInTempDir):
 
     def get_sender(self, text=sample_config):
         self.branch = Branch.initialize('.')
-        self.branch.commit('foo bar baz\nfuzzy\rwuzzy', rev_id='A',
+        self.branch.working_tree().commit('foo bar baz\nfuzzy\rwuzzy', rev_id='A',
                            allow_pointless=True,
                            timestamp=1,
                            timezone=0,
