@@ -646,6 +646,7 @@ def test_suite():
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_basicio',
+                   'bzrlib.tests.test_rio',
                    ]
 
     for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
