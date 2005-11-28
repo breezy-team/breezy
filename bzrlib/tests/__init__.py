@@ -27,17 +27,34 @@ import tempfile
 import unittest
 import time
 
+import bzrlib.branch
 import bzrlib.commands
-import bzrlib.trace
+import bzrlib.inventory
+import bzrlib.merge3
+import bzrlib.osutils
 import bzrlib.osutils as osutils
+import bzrlib.plugin
+import bzrlib.store
+import bzrlib.trace
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
-from bzrlib.tests.treeshape import build_tree_contents
 from bzrlib.errors import BzrError
 
 MODULES_TO_TEST = []
-MODULES_TO_DOCTEST = []
-
+MODULES_TO_DOCTEST = [
+                      bzrlib.branch,
+                      bzrlib.commands,
+                      bzrlib.errors,
+                      bzrlib.inventory,
+                      bzrlib.merge3,
+                      bzrlib.osutils,
+                      bzrlib.store,
+                      ]
+def packages_to_test():
+    import bzrlib.tests.blackbox
+    return [
+            bzrlib.tests.blackbox
+            ]
 
 
 class EarlyStoppingTestResultAdapter(object):
@@ -586,11 +603,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
 
 def test_suite():
     """Build and return TestSuite for the whole program."""
-    import bzrlib.store, bzrlib.inventory, bzrlib.branch
-    import bzrlib.osutils, bzrlib.merge3, bzrlib.plugin
     from doctest import DocTestSuite
 
-    global MODULES_TO_TEST, MODULES_TO_DOCTEST
+    global MODULES_TO_DOCTEST
 
     # FIXME: If these fail to load, e.g. because of a syntax error, the
     # exception is hidden by unittest.  Sucks.  Should either fix that or
@@ -625,8 +640,6 @@ def test_suite():
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_store',
-                   'bzrlib.tests.blackbox',
-                   'bzrlib.tests.blackbox.versioning',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transport',
@@ -648,20 +661,15 @@ def test_suite():
                    'bzrlib.tests.test_basicio',
                    ]
 
-    for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
-              bzrlib.osutils, bzrlib.commands, bzrlib.merge3,
-              bzrlib.errors,
-              ):
-        if m not in MODULES_TO_DOCTEST:
-            MODULES_TO_DOCTEST.append(m)
-
     TestCase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
     print '%-30s %s' % ('bzr binary', TestCase.BZRPATH)
     print
     suite = TestSuite()
     suite.addTest(TestLoader().loadTestsFromNames(testmod_names))
+    for package in packages_to_test():
+        suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
-         suite.addTest(TestLoader().loadTestsFromModule(m))
+        suite.addTest(TestLoader().loadTestsFromModule(m))
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
     for p in bzrlib.plugin.all_plugins:

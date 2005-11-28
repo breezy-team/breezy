@@ -116,6 +116,10 @@ UNRELEASED CHANGES
     * Delay in selftest/testhashcash is now issued under win32 and Cygwin.
       (John Arbash Meinel)
 
+    * Blackbox tests are maintained within the bzrlib.tests.blackbox directory.
+      If adding a new test script please add that to
+      bzrlib.tests.blackbox.__init__. (Robert Collins)
+
   INTERNALS:
 
     * WorkingTree.pull has been split across Branch and WorkingTree,
