@@ -45,9 +45,9 @@ class Revision(object):
         self.revision_id = revision_id
         self.properties = properties or {}
         self._check_properties()
-        self.__dict__.update(args)
         self.parent_ids = []
         self.parent_sha1s = []
+        self.__dict__.update(args)
 
     def __repr__(self):
         return "<Revision id %s>" % self.revision_id

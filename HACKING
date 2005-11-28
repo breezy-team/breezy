@@ -21,7 +21,11 @@ Overall
   core improvements should be tested closer to the code that is doing the
   work. Command line level tests should be placed in 'blackbox.py'.
 
-* Before fixing a bug, write a test case so that it does not regress.
+* Try to practice Test-Driven Development.  before fixing a bug, write a
+  test case so that it does not regress.  Similarly for adding a new
+  feature: write a test case for a small version of the new feature before
+  starting on the code itself.  Check the test fails on the old code, then
+  add the feature or fix and check it passes.
 
 * Exceptions should be defined inside bzrlib.errors, so that we can
   see the whole tree at a glance.
@@ -34,7 +38,7 @@ Overall
 * Module names should always be given fully-qualified,
   i.e. ``bzrlib.hashcache`` not just ``hashcache``.
 
-* Commands should return Non-Zero when they encounter circumstances that
+* Commands should return non-zero when they encounter circumstances that
   the user should really pay attention to - which includes trivial shell
   pipelines.
 

@@ -661,7 +661,7 @@ class WorkingTree(bzrlib.tree.Tree):
         source.lock_read()
         try:
             old_revision_history = self.branch.revision_history()
-            self.branch.pull(source, overwrite)
+            count = self.branch.pull(source, overwrite)
             new_revision_history = self.branch.revision_history()
             if new_revision_history != old_revision_history:
                 if len(old_revision_history):
@@ -671,6 +671,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 merge_inner(self.branch,
                             self.branch.basis_tree(), 
                             self.branch.storage.revision_tree(other_revision))
+            return count
         finally:
             source.unlock()
 

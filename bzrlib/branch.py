@@ -187,6 +187,9 @@ class Branch(object):
         """Return the id of this branches root"""
         raise NotImplementedError('get_root_id is abstract')
 
+    def set_root_id(self, file_id):
+        raise NotImplementedError('set_root_id is abstract')
+
     def print_file(self, file, revno):
         """Print `file` to stdout."""
         raise NotImplementedError('print_file is abstract')
@@ -196,27 +199,6 @@ class Branch(object):
 
     def set_revision_history(self, rev_history):
         raise NotImplementedError('set_revision_history is abstract')
-
-    def get_revision_delta(self, revno):
-        """Return the delta for one revision.
-
-        The delta is relative to its mainline predecessor, or the
-        empty tree for revision 1.
-        """
-        assert isinstance(revno, int)
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
-
-        # revno is 1-based; list is 0-based
-
-        new_tree = self.revision_tree(rh[revno-1])
-        if revno == 1:
-            old_tree = EmptyTree()
-        else:
-            old_tree = self.revision_tree(rh[revno-2])
-
-        return compare_trees(old_tree, new_tree)
 
     def revision_history(self):
         """Return sequence of revision hashes on to this branch."""
@@ -347,31 +329,6 @@ class Branch(object):
         entry that is moved.
         """
         raise NotImplementedError('move is abstract')
-
-    def revert(self, filenames, old_tree=None, backups=True):
-        """Restore selected files to the versions from a previous tree.
-
-        backups
-            If true (default) backups are made of files before
-            they're renamed.
-        """
-        raise NotImplementedError('revert is abstract')
-
-    def pending_merges(self):
-        """Return a list of pending merges.
-
-        These are revisions that have been merged into the working
-        directory but not yet committed.
-        """
-        raise NotImplementedError('pending_merges is abstract')
-
-    def add_pending_merge(self, *revision_ids):
-        # TODO: Perhaps should check at this point that the
-        # history of the revision is actually present?
-        raise NotImplementedError('add_pending_merge is abstract')
-
-    def set_pending_merges(self, rev_list):
-        raise NotImplementedError('set_pending_merges is abstract')
 
     def get_parent(self):
         """Return the parent location of the branch.
@@ -733,12 +690,15 @@ class BzrBranch(Branch, LockableFiles):
         """See Branch.pull."""
         source.lock_read()
         try:
+            old_count = len(self.revision_history())
             try:
                 self.update_revisions(source)
             except DivergedBranches:
                 if not overwrite:
                     raise
                 self.set_revision_history(source.revision_history())
+            new_count = len(self.revision_history())
+            return new_count - old_count
         finally:
             source.unlock()
 
@@ -780,22 +740,6 @@ class BzrBranch(Branch, LockableFiles):
     def tree_config(self):
         return TreeConfig(self)
 
-    def check_revno(self, revno):
-        """\
-        Check whether a revno corresponds to any revision.
-        Zero (the NULL revision) is considered valid.
-        """
-        if revno != 0:
-            self.check_real_revno(revno)
-            
-    def check_real_revno(self, revno):
-        """\
-        Check whether a revno corresponds to a real revision.
-        Zero (the NULL revision) is considered invalid
-        """
-        if revno < 1 or revno > self.revno():
-            raise InvalidRevisionNumber(revno)
-
     def _get_truncated_history(self, revision_id):
         history = self.revision_history()
         if revision_id is None:
@@ -818,7 +762,7 @@ class BzrBranch(Branch, LockableFiles):
         branch_to = Branch.initialize(to_location)
         mutter("copy branch from %s to %s", self, branch_to)
         branch_to.working_tree().set_root_id(self.get_root_id())
-        branch_to.append_revision(*history)
+        branch_to.set_revision_history(history)
 
         self.storage.copy(branch_to.storage)
         

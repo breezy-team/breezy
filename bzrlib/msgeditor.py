@@ -79,7 +79,7 @@ def edit_commit_message(infotext, ignoreline=None):
         ignoreline = "-- This line and the following will be ignored --"
         
     try:
-        tmp_fileno, msgfilename = tempfile.mkstemp()
+        tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir='.')
         msgfile = os.close(tmp_fileno)
         if infotext is not None and infotext != "":
             hasinfo = True

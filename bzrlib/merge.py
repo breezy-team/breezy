@@ -227,7 +227,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def finalize(self):
         if not self.ignore_zero:
-            note("%d conflicts encountered.\n", self.conflicts)
+            note("%d conflicts encountered." % self.conflicts)
             
 def get_tree(treespec, local_branch=None):
     location, revno = treespec
@@ -558,7 +558,7 @@ class Merger(object):
                 if path == '.':
                     path = ''
                 else:
-                    assert path.startswith('.' + os.sep), "path is %s" % path
+                    assert path.startswith('.' + '/') or path.startswith('.' + '\\'), "path is %s" % path
                 path = path[2:]
             adjust_ids.append((path, id))
         if len(adjust_ids) > 0:

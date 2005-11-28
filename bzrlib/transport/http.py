@@ -31,7 +31,7 @@ from bzrlib.trace import mutter
 
 def get_url(url):
     import urllib2
-    mutter("get_url %s" % url)
+    mutter("get_url %s", url)
     url_f = urllib2.urlopen(url)
     return url_f
 
