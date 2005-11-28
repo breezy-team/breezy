@@ -29,6 +29,7 @@ import time
 
 import bzrlib.branch
 import bzrlib.commands
+from bzrlib.errors import BzrError
 import bzrlib.inventory
 import bzrlib.merge3
 import bzrlib.osutils
@@ -38,7 +39,7 @@ import bzrlib.store
 import bzrlib.trace
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
-from bzrlib.errors import BzrError
+from bzrlib.tests.treeshape import build_tree_contents
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
@@ -540,7 +541,7 @@ class TestCaseInTempDir(TestCase):
                 f.close()
 
     def build_tree_contents(self, shape):
-        bzrlib.tests.build_tree_contents(shape)
+        build_tree_contents(shape)
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""

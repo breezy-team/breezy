@@ -27,21 +27,20 @@ from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.revision import is_ancestor
 from bzrlib.upgrade import upgrade
-from bzrlib.tests.treeshape import build_tree_contents
 
 
 class TestUpgrade(TestCaseInTempDir):
     
     def test_build_tree(self):
         """Test tree-building test helper"""
-        build_tree_contents(_upgrade1_template)
+        self.build_tree_contents(_upgrade1_template)
         self.failUnlessExists('foo')
         self.failUnlessExists('.bzr/README')
 
     def test_upgrade_simple(self):
         """Upgrade simple v0.0.4 format to v6"""
         eq = self.assertEquals
-        build_tree_contents(_upgrade1_template)
+        self.build_tree_contents(_upgrade1_template)
         upgrade('.')
         b = Branch.open('.')
         eq(b._branch_format, 6)
@@ -66,7 +65,7 @@ class TestUpgrade(TestCaseInTempDir):
         systems, where the importer knows about a revision but not 
         its contents."""
         eq = self.assertEquals
-        build_tree_contents(_ghost_template)
+        self.build_tree_contents(_ghost_template)
         upgrade('.')
         b = Branch.open('.')
         revision_id = b.revision_history()[1]
@@ -75,7 +74,7 @@ class TestUpgrade(TestCaseInTempDir):
         eq(rev.parent_ids[1], 'wibble@wobble-2')
 
     def test_upgrade_makes_dir_weaves(self):
-        build_tree_contents(_upgrade_dir_template)
+        self.build_tree_contents(_upgrade_dir_template)
         upgrade('.')
         # this is the path to the literal file. As format changes 
         # occur it needs to be updated. FIXME: ask the store for the
