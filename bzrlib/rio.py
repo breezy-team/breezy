@@ -137,7 +137,8 @@ class Stanza(object):
             if value == '':
                 result.append(tag + ': \n')
             elif '\n' in value:
-                val_lines = value.splitlines()
+                # don't want splitlines behaviour on empty lines
+                val_lines = value.split('\n')
                 result.append(tag + ': ' + val_lines[0] + '\n')
                 for line in val_lines[1:]:
                     result.append('\t' + line + '\n')
@@ -186,30 +187,38 @@ def read_stanza(line_iter):
     blank line follows the stanza, it is consumed.  It's not an error for
     there to be no blank at end of file.  If there is a blank file at the
     start of the input this is really an empty stanza and that is returned. 
+
+    Only the stanza lines and the trailing blank (if any) are consumed
+    from the line_iter.
     """
     items = []
-    got_lines = False
     stanza = Stanza()
+    tag = None
+    accum_value = None
     for line in line_iter:
         if line == None or line == '':
             break       # end of file
-        got_lines = True
         if line == '\n':
             break       # end of stanza
         assert line[-1] == '\n'
         real_l = line
-        # extract tag
-        try:
-            colon_index = line.index(': ')
-        except ValueError:
-            raise ValueError('tag/value separator not found in line %r' % real_l)
-        tag = line[:colon_index]
-        assert valid_tag(tag), \
-                "invalid rio tag %r" % tag
-        value_start = line[colon_index+2:-1]
-        # TODO: Handle multiline values
-        value = value_start
-        stanza.add(tag, value)
-    if not got_lines:
-        return None         # didn't see any content
-    return stanza
+        if line[0] == '\t': # continues previous value
+            if tag is None:
+                raise ValueError('invalid continuation line %r' % real_l)
+            accum_value += '\n' + line[1:-1]
+        else: # new tag:value line
+            if tag is not None:
+                stanza.add(tag, accum_value)
+            try:
+                colon_index = line.index(': ')
+            except ValueError:
+                raise ValueError('tag/value separator not found in line %r' % real_l)
+            tag = line[:colon_index]
+            assert valid_tag(tag), \
+                    "invalid rio tag %r" % tag
+            accum_value = line[colon_index+2:-1]
+    if tag is not None: # add last tag-value
+        stanza.add(tag, accum_value)
+        return stanza
+    else:     # didn't see any content
+        return None    
