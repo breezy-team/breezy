@@ -3,7 +3,7 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.commit import commit
 from bzrlib.tests import TestCaseInTempDir
-from bzrlib.merge import merge
+from bzrlib.merge import merge, transform_tree
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
 from bzrlib.revision import common_ancestor
 from bzrlib.fetch import fetch
@@ -52,3 +52,29 @@ class TestMerge(TestCaseInTempDir):
         commit(br1, "blah")
         last = br1.last_revision()
         self.assertEquals(common_ancestor(last, last, br1), last)
+
+    def test_create_rename(self):
+        """Rename an inventory entry while creating the file"""
+        b = Branch.initialize('.')
+        file('name1', 'wb').write('Hello')
+        tree = b.working_tree()
+        tree.add('name1')
+        tree.commit(message="hello")
+        tree.rename_one('name1', 'name2')
+        os.unlink('name2')
+        transform_tree(tree, b.basis_tree())
+
+    def test_layered_rename(self):
+        """Rename both child and parent at same time"""
+        b = Branch.initialize('.')
+        tree = b.working_tree()
+        os.mkdir('dirname1')
+        tree.add('dirname1')
+        filename = os.path.join('dirname1', 'name1')
+        file(filename, 'wb').write('Hello')
+        tree.add(filename)
+        tree.commit(message="hello")
+        filename2 = os.path.join('dirname1', 'name2')
+        tree.rename_one(filename, filename2)
+        tree.rename_one('dirname1', 'dirname2')
+        transform_tree(tree, b.basis_tree())
