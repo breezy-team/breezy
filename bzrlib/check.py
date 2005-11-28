@@ -41,6 +41,7 @@ class Check(object):
 
     def __init__(self, branch):
         self.branch = branch
+        self.storage = branch.storage
         self.checked_text_cnt = 0
         self.checked_rev_cnt = 0
         self.ghosts = []
@@ -58,7 +59,7 @@ class Check(object):
             self.progress.update('retrieving inventory', 0, 0)
             # do not put in init, as it should be done with progess,
             # and inside the lock.
-            self.inventory_weave = self.branch._get_inventory_weave()
+            self.inventory_weave = self.branch.storage.get_inventory_weave()
             self.history = self.branch.revision_history()
             if not len(self.history):
                 # nothing to see here
@@ -77,7 +78,7 @@ class Check(object):
 
     def plan_revisions(self):
         if not self.branch.storage.revision_store.listable():
-            self.planned_revisions = self.branch.get_ancestry(self.history[-1])
+            self.planned_revisions = self.branch.storage.get_ancestry(self.history[-1])
             self.planned_revisions.remove(None)
             # FIXME progress bars should support this more nicely.
             self.progress.clear()
@@ -165,7 +166,7 @@ class Check(object):
                     # list based so somewhat slow,
                     # TODO have a planned_revisions list and set.
                     if self.branch.has_revision(parent):
-                        missing_ancestry = self.branch.get_ancestry(parent)
+                        missing_ancestry = self.storage.get_ancestry(parent)
                         for missing in missing_ancestry:
                             if (missing is not None 
                                 and missing not in self.planned_revisions):

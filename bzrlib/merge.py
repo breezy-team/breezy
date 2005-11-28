@@ -492,7 +492,8 @@ class Merger(object):
             return
         if self.other_rev_id is None:
             return
-        if self.other_rev_id in self.this_branch.get_ancestry(self.this_basis):
+        ancestry = self.this_branch.storage.get_ancestry(self.this_basis)
+        if self.other_rev_id in ancestry:
             return
         self.this_branch.working_tree().add_pending_merge(self.other_rev_id)
 

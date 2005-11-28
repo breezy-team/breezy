@@ -17,7 +17,6 @@
 import os
 
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.clone import copy_branch
 from bzrlib.commit import commit
 import bzrlib.errors as errors
 from bzrlib.errors import NoSuchRevision, UnlistableBranch, NotBranchError
@@ -104,15 +103,15 @@ class TestBranch(TestCaseInTempDir):
                 tree.get_file(file_id).read()
         return br_a, br_b
 
-    def test_copy_branch(self):
+    def test_clone_branch(self):
         """Copy the stores from one branch to another"""
         br_a, br_b = self.get_balanced_branch_pair()
         commit(br_b, "silly commit")
         os.mkdir('c')
-        br_c = copy_branch(br_a, 'c', basis_branch=br_b)
+        br_c = br_a.clone('c', basis_branch=br_b)
         self.assertEqual(br_a.revision_history(), br_c.revision_history())
 
-    def test_copy_partial(self):
+    def test_clone_partial(self):
         """Copy only part of the history of a branch."""
         self.build_tree(['a/', 'a/one'])
         br_a = Branch.initialize('a')
@@ -121,7 +120,7 @@ class TestBranch(TestCaseInTempDir):
         self.build_tree(['a/two'])
         br_a.working_tree().add(['two'])
         br_a.working_tree().commit('commit two', rev_id='u@d-2')
-        br_b = copy_branch(br_a, 'b', revision='u@d-1')
+        br_b = br_a.clone('b', revision='u@d-1')
         self.assertEqual(br_b.last_revision(), 'u@d-1')
         self.assertTrue(os.path.exists('b/one'))
         self.assertFalse(os.path.exists('b/two'))

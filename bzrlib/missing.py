@@ -60,6 +60,7 @@ def show_missing(br_local, br_remote, verbose=False, quiet=False):
     for revno, rev_id in missing_remote:
         rev = br_remote.storage.get_revision(rev_id)
         if verbose:
+            remote_tree = br_remote.storage.revision_tree
             parent_rev_id = rev.parent_ids[0]
             if last_rev_id == parent_rev_id:
                 parent_tree = last_tree

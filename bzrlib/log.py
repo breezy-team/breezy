@@ -235,7 +235,9 @@ def _show_log(branch,
                 excludes = set()
             else:
                 # revno is 1 based, so -2 to get back 1 less.
-                excludes = set(branch.get_ancestry(revision_history[revno - 2]))
+                storage = branch.storage
+                excludes = storage.get_ancestry(revision_history[revno - 2])
+                excludes = set(excludes)
             pending = list(rev.parent_ids)
             while pending:
                 rev_id = pending.pop()

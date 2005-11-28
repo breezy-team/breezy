@@ -23,7 +23,6 @@ from bzrlib.trace import mutter
 from bzrlib.branch import Branch
 from bzrlib.fetch import greedy_fetch
 from bzrlib.merge import merge
-from bzrlib.clone import copy_branch
 
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
@@ -128,7 +127,7 @@ class TestMergeFetch(TestCaseInTempDir):
         os.mkdir('br1')
         br1 = Branch.initialize('br1')
         br1.working_tree().commit(message='rev 1-1', rev_id='1-1')
-        copy_branch(br1, 'br2')
+        br1.clone('br2')
         br2 = Branch.open('br2')
         br1.working_tree().commit(message='rev 1-2', rev_id='1-2')
         br2.working_tree().commit(message='rev 2-1', rev_id='2-1')
@@ -153,7 +152,7 @@ class TestMergeFileHistory(TestCaseInTempDir):
         self.build_tree_contents([('br1/file', 'original contents\n')])
         br1.working_tree().add(['file'], ['this-file-id'])
         br1.working_tree().commit(message='rev 1-1', rev_id='1-1')
-        copy_branch(br1, 'br2')
+        br1.clone('br2')
         br2 = Branch.open('br2')
         self.build_tree_contents([('br1/file', 'original from 1\n')])
         br1.working_tree().commit(message='rev 1-2', rev_id='1-2')

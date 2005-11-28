@@ -16,9 +16,10 @@
 
 from cStringIO import StringIO
 
-from bzrlib.lockablefiles import LockableFiles
+from bzrlib.lockable_files import LockableFiles
 from bzrlib.tree import EmptyTree
 from bzrlib.revision import NULL_REVISION
+from bzrlib.store import copy_all
 from bzrlib.store.weave import WeaveStore
 from bzrlib.store.text import TextStore
 import bzrlib.xml5
@@ -48,7 +49,8 @@ def needs_write_lock(unbound):
             self.control_files.unlock()
     return decorated
 
-class RevisionStorage(object):
+
+class Repository(object):
     def __init__(self, transport, branch_format):
         object.__init__(self)
         self.control_files = LockableFiles(transport, 'storage-lock')
@@ -66,13 +68,8 @@ class RevisionStorage(object):
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
             relpath = self.control_files._rel_controlfilename(name)
-            if compressed:
-                store = TextStore(
-                    self.control_files.make_transport(relpath),
-                    prefixed=prefixed)
-            else:
-                store = TextStore(self.control_files.make_transport(relpath),
-                                  prefixed=prefixed)
+            store = TextStore(self.control_files.make_transport(relpath),
+                              prefixed=prefixed, compressed=compressed)
             #if self._transport.should_cache():
             #    cache_path = os.path.join(self.cache_root, name)
             #    os.mkdir(cache_path)
@@ -102,6 +99,12 @@ class RevisionStorage(object):
 
     def unlock(self):
         self.control_files.unlock()
+
+    def copy(self, destination):
+        destination.control_weaves.copy_multi(self.control_weaves, 
+                ['inventory'])
+        copy_all(self.weave_store, destination.weave_store)
+        copy_all(self.revision_store, destination.revision_store)
 
     def has_revision(self, revision_id):
         """True if this branch has a copy of the revision.
@@ -203,6 +206,17 @@ class RevisionStorage(object):
         else:
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self.weave_store, inv, revision_id)
+
+    def get_ancestry(self, revision_id):
+        """Return a list of revision-ids integrated by a revision.
+        
+        This is topologically sorted.
+        """
+        if revision_id is None:
+            return [None]
+        w = self.get_inventory_weave()
+        return [None] + map(w.idx_to_name,
+                            w.inclusions([w.lookup(revision_id)]))
 
     @needs_read_lock
     def print_file(self, file, revision_id):

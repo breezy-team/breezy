@@ -244,7 +244,7 @@ class TestCommit(TestCaseInTempDir):
         eq = self.assertEquals
         eq(b.revision_history(), rev_ids)
         for i in range(4):
-            anc = b.get_ancestry(rev_ids[i])
+            anc = b.storage.get_ancestry(rev_ids[i])
             eq(anc, [None] + rev_ids[:i+1])
 
     def test_commit_new_subdir_child_selective(self):

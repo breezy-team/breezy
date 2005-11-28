@@ -21,7 +21,6 @@ from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.errors import NoCommonAncestor, NoCommits
 from bzrlib.errors import NoSuchRevision
-from bzrlib.clone import copy_branch
 from bzrlib.merge import merge
 from bzrlib.revisionspec import RevisionSpec
 
@@ -69,7 +68,7 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         self.assertRaises(NoCommits, RevisionSpec('ancestor:.').in_history, b2)
 
         os.mkdir('copy')
-        b3 = copy_branch(b, 'copy')
+        b3 = b.clone('copy')
         b3.working_tree().commit('Commit four', rev_id='b@r-0-4')
         self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
                           'a@r-0-3')
@@ -86,7 +85,7 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         branch = Branch.initialize('branch1')
         branch.working_tree().add(['file'])
         branch.working_tree().commit('add file')
-        copy_branch(branch, 'branch2')
+        branch.clone('branch2')
         print >> open('branch2/file', 'w'), 'new content'
         branch2 = Branch.open('branch2')
         branch2.working_tree().commit('update file', rev_id='A')

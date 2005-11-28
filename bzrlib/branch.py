@@ -36,18 +36,14 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            UnlistableBranch, NoSuchFile, NotVersionedError,
                            NoWorkingTree)
 from bzrlib.textui import show_status
-from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions)
-
 from bzrlib.config import TreeConfig
 from bzrlib.delta import compare_trees
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.inventory import Inventory
-from bzrlib.lockablefiles import LockableFiles
-from bzrlib.revstorage import RevisionStorage
+from bzrlib.lockable_files import LockableFiles
+from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions)
+from bzrlib.repository import Repository
 from bzrlib.store import copy_all
-from bzrlib.store.text import TextStore
-from bzrlib.store.weave import WeaveStore
-from bzrlib.testament import Testament
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 import bzrlib.ui
@@ -169,14 +165,6 @@ class Branch(object):
         """Copy the content of this branches store to branch_to."""
         raise NotImplementedError('push_stores is abstract')
 
-    def get_transaction(self):
-        """Return the current active transaction.
-
-        If no transaction is active, this returns a passthrough object
-        for which all data is immediately flushed and no caching happens.
-        """
-        raise NotImplementedError('get_transaction is abstract')
-
     def lock_write(self):
         raise NotImplementedError('lock_write is abstract')
         
@@ -207,51 +195,6 @@ class Branch(object):
 
     def set_revision_history(self, rev_history):
         raise NotImplementedError('set_revision_history is abstract')
-
-    def get_revision_delta(self, revno):
-        """Return the delta for one revision.
-
-        The delta is relative to its mainline predecessor, or the
-        empty tree for revision 1.
-        """
-        assert isinstance(revno, int)
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
-
-        # revno is 1-based; list is 0-based
-
-        new_tree = self.storage.revision_tree(rh[revno-1])
-        if revno == 1:
-            old_tree = EmptyTree()
-        else:
-            old_tree = self.storage.revision_tree(rh[revno-2])
-
-        return compare_trees(old_tree, new_tree)
-
-    def get_ancestry(self, revision_id):
-        """Return a list of revision-ids integrated by a revision.
-        
-        This currently returns a list, but the ordering is not guaranteed:
-        treat it as a set.
-        """
-        raise NotImplementedError('get_ancestry is abstract')
-
-    def get_inventory(self, revision_id):
-        """Get Inventory object by hash."""
-        raise NotImplementedError('get_inventory is abstract')
-
-    def get_inventory_xml(self, revision_id):
-        """Get inventory XML as a file object."""
-        raise NotImplementedError('get_inventory_xml is abstract')
-
-    def get_inventory_sha1(self, revision_id):
-        """Return the sha1 hash of the inventory entry."""
-        raise NotImplementedError('get_inventory_sha1 is abstract')
-
-    def get_revision_inventory(self, revision_id):
-        """Return inventory of a past revision."""
-        raise NotImplementedError('get_revision_inventory is abstract')
 
     def revision_history(self):
         """Return sequence of revision hashes on to this branch."""
@@ -317,6 +260,7 @@ class Branch(object):
             if stop_revision > other_len:
                 raise bzrlib.errors.NoSuchRevision(self, stop_revision)
         return other_history[self_len:stop_revision]
+
     
     def update_revisions(self, other, stop_revision=None):
         """Pull in new perfect-fit revisions."""
@@ -424,30 +368,58 @@ class Branch(object):
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError('store_revision_signature is abstract')
 
-class BzrBranch(Branch):
+    def clone(self, to_location, revision=None, basis_branch=None, to_branch_type=None):
+        """Copy this branch into the existing directory to_location.
+
+        Returns the newly created branch object.
+
+        revision
+            If not None, only revisions up to this point will be copied.
+            The head of the new branch will be that revision.  Must be a
+            revid or None.
+    
+        to_location -- The destination directory; must either exist and be 
+            empty, or not exist, in which case it is created.
+    
+        basis_branch
+            A local branch to copy revisions from, related to this branch. 
+            This is used when branching from a remote (slow) branch, and we have
+            a local branch that might contain some relevant revisions.
+    
+        to_branch_type
+            Branch type of destination branch
+        """
+        assert isinstance(to_location, basestring)
+        if not bzrlib.osutils.lexists(to_location):
+            os.mkdir(to_location)
+        if to_branch_type is None:
+            to_branch_type = BzrBranch
+        br_to = to_branch_type.initialize(to_location)
+        mutter("copy branch from %s to %s", self, br_to)
+        if basis_branch is not None:
+            basis_branch.push_stores(br_to)
+        br_to.working_tree().set_root_id(self.get_root_id())
+        if revision is None:
+            revision = self.last_revision()
+        br_to.update_revisions(self, stop_revision=revision)
+        from bzrlib.merge import build_working_dir
+        build_working_dir(to_location)
+        br_to.set_parent(self.base)
+        mutter("copied")
+        return br_to
+
+class BzrBranch(Branch, LockableFiles):
     """A branch stored in the actual filesystem.
 
     Note that it's "local" in the context of the filesystem; it doesn't
     really matter if it's on an nfs/smb/afs/coda/... share, as long as
     it's writable, and can be accessed via the normal filesystem API.
 
-    _lock_mode
-        None, or 'r' or 'w'
-
-    _lock_count
-        If _lock_mode is true, a positive count of the number of times the
-        lock has been taken.
-
-    _lock
-        Lock object from bzrlib.lock.
     """
     # We actually expect this class to be somewhat short-lived; part of its
     # purpose is to try to isolate what bits of the branch logic are tied to
     # filesystem access, so that in a later step, we can extricate them to
     # a separarte ("storage") class.
-    _lock_mode = None
-    _lock_count = None
-    _lock = None
     _inventory_weave = None
     
     # Map some sort of prefix into a namespace
@@ -499,7 +471,7 @@ class BzrBranch(Branch):
         if init:
             self._make_control()
         self._check_format(relax_version_check)
-        self.storage = RevisionStorage(transport, self._branch_format)
+        self.storage = Repository(transport, self._branch_format)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)
@@ -659,50 +631,25 @@ class BzrBranch(Branch):
         self.control_files.put_utf8(
             'revision-history', '\n'.join(rev_history))
 
-    def get_ancestry(self, revision_id):
-        """See Branch.get_ancestry."""
-        if revision_id is None:
-            return [None]
-        w = self.storage.get_inventory_weave()
-        return [None] + map(w.idx_to_name,
-                            w.inclusions([w.lookup(revision_id)]))
+    def get_revision_delta(self, revno):
+        """Return the delta for one revision.
 
-    def _get_inventory_weave(self):
-        return self.storage.control_weaves.get_weave('inventory',
-                                             self.get_transaction())
+        The delta is relative to its mainline predecessor, or the
+        empty tree for revision 1.
+        """
+        assert isinstance(revno, int)
+        rh = self.revision_history()
+        if not (1 <= revno <= len(rh)):
+            raise InvalidRevisionNumber(revno)
 
-    def get_inventory(self, revision_id):
-        """See Branch.get_inventory."""
-        xml = self.get_inventory_xml(revision_id)
-        return bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+        # revno is 1-based; list is 0-based
 
-    def get_inventory_xml(self, revision_id):
-        """See Branch.get_inventory_xml."""
-        try:
-            assert isinstance(revision_id, basestring), type(revision_id)
-            iw = self._get_inventory_weave()
-            return iw.get_text(iw.lookup(revision_id))
-        except IndexError:
-            raise bzrlib.errors.HistoryMissing(self, 'inventory', revision_id)
-
-    def get_inventory_sha1(self, revision_id):
-        """See Branch.get_inventory_sha1."""
-        return self.get_revision(revision_id).inventory_sha1
-
-    def get_revision_inventory(self, revision_id):
-        """See Branch.get_revision_inventory."""
-        # TODO: Unify this with get_inventory()
-        # bzr 0.0.6 and later imposes the constraint that the inventory_id
-        # must be the same as its revision, so this is trivial.
-        if revision_id == None:
-            # This does not make sense: if there is no revision,
-            # then it is the current tree inventory surely ?!
-            # and thus get_root_id() is something that looks at the last
-            # commit on the branch, and the get_root_id is an inventory check.
-            raise NotImplementedError
-            # return Inventory(self.get_root_id())
+        new_tree = self.storage.revision_tree(rh[revno-1])
+        if revno == 1:
+            old_tree = EmptyTree()
         else:
-            return self.get_inventory(revision_id)
+            old_tree = self.storage.revision_tree(rh[revno-2])
+        return compare_trees(old_tree, new_tree)
 
     @needs_read_lock
     def revision_history(self):
@@ -816,17 +763,48 @@ class BzrBranch(Branch):
     def tree_config(self):
         return TreeConfig(self)
 
-    def sign_revision(self, revision_id, gpg_strategy):
-        """See Branch.sign_revision."""
-        plaintext = Testament.from_revision(self, revision_id).as_short_text()
-        self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+    def _get_truncated_history(self, revision_id):
+        history = self.revision_history()
+        if revision_id is None:
+            return history
+        try:
+            idx = history.index(revision_id)
+        except ValueError:
+            raise InvalidRevisionId(revision_id=revision, branch=self)
+        return history[:idx+1]
 
-    @needs_write_lock
-    def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        """See Branch.store_revision_signature."""
-        self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
-                                revision_id, "sig")
+    @needs_read_lock
+    def _clone_weave(self, to_location, revision=None, basis_branch=None):
+        assert isinstance(to_location, basestring)
+        if basis_branch is not None:
+            note("basis_branch is not supported for fast weave copy yet.")
 
+        history = self._get_truncated_history(revision)
+        if not bzrlib.osutils.lexists(to_location):
+            os.mkdir(to_location)
+        branch_to = Branch.initialize(to_location)
+        mutter("copy branch from %s to %s", self, branch_to)
+        branch_to.working_tree().set_root_id(self.get_root_id())
+        branch_to.set_revision_history(history)
+
+        self.storage.copy(branch_to.storage)
+        
+        from bzrlib.merge import build_working_dir
+        build_working_dir(to_location)
+        branch_to.set_parent(self.base)
+        mutter("copied")
+        return branch_to
+
+    def clone(self, to_location, revision=None, basis_branch=None, to_branch_type=None):
+        if to_branch_type is None:
+            to_branch_type = BzrBranch
+
+        if to_branch_type == BzrBranch \
+            and self.storage.weave_store.listable() \
+            and self.storage.revision_store.listable():
+            return self._clone_weave(to_location, revision, basis_branch)
+
+        return Branch.clone(self, to_location, revision, basis_branch, to_branch_type)
 
 class ScratchBranch(BzrBranch):
     """Special test class: a branch that cleans up after itself.

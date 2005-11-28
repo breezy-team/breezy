@@ -91,7 +91,7 @@ def show_status(branch, show_unchanged=False,
                 print >>to_file, 'pending merges:'
                 last_revision = branch.last_revision()
                 if last_revision is not None:
-                    ignore = set(branch.get_ancestry(last_revision))
+                    ignore = set(branch.storage.get_ancestry(last_revision))
                 else:
                     ignore = set()
                 for merge in new.pending_merges():
@@ -99,7 +99,7 @@ def show_status(branch, show_unchanged=False,
                     try:
                         m_revision = branch.storage.get_revision(merge)
                         print >> to_file, ' ', line_log(m_revision, 77)
-                        inner_merges = branch.get_ancestry(merge)
+                        inner_merges = branch.storage.get_ancestry(merge)
                         inner_merges.reverse()
                         for mmerge in inner_merges:
                             if mmerge in ignore:

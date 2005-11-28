@@ -512,7 +512,6 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
-        from bzrlib.clone import copy_branch
         import errno
         from shutil import rmtree
         if revision is None:
@@ -555,7 +554,7 @@ class cmd_branch(Command):
                 else:
                     raise
             try:
-                copy_branch(br_from, to_location, revision_id, basis_branch)
+                br_from.clone(to_location, revision_id, basis_branch)
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
