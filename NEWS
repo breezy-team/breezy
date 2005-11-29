@@ -99,6 +99,9 @@ UNRELEASED CHANGES
 
     * Show number of revisions pushed/pulled/merged. (Robey Pointer)
 
+    * Keep a cached copy of the basis inventory to speed up operations 
+      that need to refer to it.  (Johan Rydberg, Martin Pool)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  

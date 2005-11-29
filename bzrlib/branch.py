@@ -845,7 +845,10 @@ class BzrBranch(Branch):
     @needs_write_lock
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
+        old_revision = self.last_revision()
+        new_revision = rev_history[-1]
         self.put_controlfile('revision-history', '\n'.join(rev_history))
+        self.working_tree().set_last_revision(new_revision, old_revision)
 
     def has_revision(self, revision_id):
         """See Branch.has_revision."""
@@ -991,6 +994,16 @@ class BzrBranch(Branch):
         else:
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self.weave_store, inv, revision_id)
+
+    def basis_tree(self):
+        """See Branch.basis_tree."""
+        try:
+            revision_id = self.revision_history()[-1]
+            xml = self.working_tree().read_basis_inventory(revision_id)
+            inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+            return RevisionTree(self.weave_store, inv, revision_id)
+        except (IndexError, NoSuchFile), e:
+            return self.revision_tree(self.last_revision())
 
     def working_tree(self):
         """See Branch.working_tree."""
