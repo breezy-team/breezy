@@ -1725,16 +1725,15 @@ class cmd_missing(Command):
             print "Using last location: " + local_branch.get_parent()
             other_branch = local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
-        (local_extra, local_rev_history_map, remote_extra, 
-         remote_rev_history_map) = find_unmerged(local_branch, remote_branch)
+        local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
         if reverse is True:
             local_extra.reverse()
             remote_extra.reverse()
         if local_extra and not theirs_only:
             print "You have the following extra revisions:"
-            for elem in local_extra:
-                show_one_log(local_rev_history_map[elem],
-                             local_branch.get_revision(elem),
+            for revno, revision_id in local_extra:
+                show_one_log(revno,
+                             local_branch.get_revision(revision_id),
                              None, False, sys.stdout, 'original')
             printed_local = True
         else:
@@ -1743,9 +1742,9 @@ class cmd_missing(Command):
             if printed_local is True:
                 print "\n\n"
             print "You are missing the following revisions:"
-            for elem in remote_extra:
-                show_one_log(remote_rev_history_map[elem],
-                             remote_branch.get_revision(elem),
+            for revno, revision_id in remote_extra:
+                show_one_log(revno,
+                             remote_branch.get_revision(revision_id),
                              None, False, sys.stdout, 'original')
 
 

@@ -110,14 +110,17 @@ def find_unmerged(local_branch, remote_branch):
                     if elem in remote_rev_history:
                         remote_extra.add(elem)
             progress.clear()
-            local_extra = list(local_extra)
-            local_extra.sort(key=local_rev_history_map.get)
-            remote_extra = list(remote_extra)
-            remote_extra.sort(key=remote_rev_history_map.get)
+            local_extra = sorted_revisions(local_extra, local_rev_history_map)
+            remote_extra = sorted_revisions(remote_extra, 
+                                            remote_rev_history_map)
                     
         finally:
             remote_branch.unlock()
     finally:
         local_branch.unlock()
-    return (local_extra, local_rev_history_map, remote_extra, 
-            remote_rev_history_map)
+    return (local_extra, remote_extra)
+
+def sorted_revisions(revisions, history_map):
+    revisions = [(history_map[r],r) for r in revisions]
+    revisions.sort()
+    return revisions
