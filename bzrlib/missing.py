@@ -98,17 +98,9 @@ def find_unmerged(local_branch, remote_branch):
             remote_ancestry = set(remote_branch.get_ancestry(
                 remote_rev_history[-1]))
             progress.update('pondering', 4, 5)
-            local_extra = set()
-            remote_extra = set()
-            for elem in local_ancestry.union(remote_ancestry):
-                if ((elem in local_ancestry) and
-                    (elem not in remote_ancestry)):
-                    if elem in local_rev_history:
-                        local_extra.add(elem)
-                elif ((elem not in local_ancestry) and
-                      (elem in remote_ancestry)):
-                    if elem in remote_rev_history:
-                        remote_extra.add(elem)
+            extras = local_ancestry.symmetric_difference(remote_ancestry) 
+            local_extra = extras.intersection(set(local_rev_history))
+            remote_extra = extras.intersection(set(remote_rev_history))
             progress.clear()
             local_extra = sorted_revisions(local_extra, local_rev_history_map)
             remote_extra = sorted_revisions(remote_extra, 
