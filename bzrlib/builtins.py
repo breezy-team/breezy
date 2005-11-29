@@ -1726,7 +1726,7 @@ class cmd_missing(Command):
             other_branch = local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
         local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
-        if reverse is True:
+        if reverse is False:
             local_extra.reverse()
             remote_extra.reverse()
         if local_extra and not theirs_only:
