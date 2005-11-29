@@ -1709,9 +1709,9 @@ class cmd_fetch(Command):
 
 
 class cmd_missing(Command):
-    """Look for missed revisions from another branch.
+    """Show unmerged/unpulled revisions between two branches.
 
-    The 'from_branch' may be available over any supported url schema."""
+    OTHER_BRANCH may be local or remote."""
     takes_args = ['other_branch?']
     takes_options = [Option('reverse', 'Reverse the order of revisions'),
                      Option('mine-only', 'Display changes in the local branch only'),
@@ -1719,71 +1719,34 @@ class cmd_missing(Command):
 
     def run(self, other_branch=None, reverse=False, mine_only=False,
             theirs_only=False):
+        from missing import find_unmerged
         local_branch = bzrlib.branch.Branch.open_containing(".")[0]
         if other_branch is None:
             print "Using last location: " + local_branch.get_parent()
             other_branch = local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
-        local_branch.lock_read()
-        try:
-            remote_branch.lock_read()
-            try:
-                progress = bzrlib.progress.ProgressBar()
-                progress.update('local history', 0, 5)
-                local_rev_history = local_branch.revision_history()
-                local_rev_history_map = dict(
-                    [(rev, local_rev_history.index(rev))
-                     for rev in local_rev_history])
-                progress.update('local ancestry', 1, 5)
-                local_ancestry = set(local_branch.get_ancestry(
-                    local_rev_history[-1]))
-                progress.update('remote history', 2, 5)
-                remote_rev_history = remote_branch.revision_history()
-                remote_rev_history_map = dict(
-                    [(rev, remote_rev_history.index(rev))
-                     for rev in remote_rev_history])
-                progress.update('remote ancestry', 3, 5)
-                remote_ancestry = set(remote_branch.get_ancestry(
-                    remote_rev_history[-1]))
-                progress.update('pondering', 4, 5)
-                local_extra = set()
-                remote_extra = set()
-                for elem in local_ancestry.union(remote_ancestry):
-                    if ((elem in local_ancestry) and
-                        (elem not in remote_ancestry)):
-                        if elem in local_rev_history:
-                            local_extra.add(elem)
-                    elif ((elem not in local_ancestry) and
-                          (elem in remote_ancestry)):
-                        if elem in remote_rev_history:
-                            remote_extra.add(elem)
-                progress.clear()
-                if local_extra and not theirs_only:
-                    print "You have the following extra revisions:"
-                    local_extra = list(local_extra)
-                    local_extra.sort(key=local_rev_history_map.get,
-                                     reverse=reverse)
-                    for elem in local_extra:
-                        show_one_log(local_rev_history_map[elem],
-                                     local_branch.get_revision(elem),
-                                     None, False, sys.stdout, 'original')
-                if remote_extra and not mine_only:
-                    if local_extra and not theirs_only:
-                        print "\n\n"
-                    print "You are missing the following revisions:"
-                    remote_extra = list(remote_extra)
-                    remote_extra.sort(key=remote_rev_history_map.get,
-                                      reverse=reverse)
-                    for elem in remote_extra:
-                        show_one_log(remote_rev_history_map[elem],
-                                     remote_branch.get_revision(elem),
-                                     None, False, sys.stdout, 'original')
-                        
-            finally:
-                remote_branch.unlock()
-        finally:
-            local_branch.unlock()
-
+        (local_extra, local_rev_history_map, remote_extra, 
+         remote_rev_history_map) = find_unmerged(local_branch, remote_branch)
+        if reverse is True:
+            local_extra.reverse()
+            remote_extra.reverse()
+        if local_extra and not theirs_only:
+            print "You have the following extra revisions:"
+            for elem in local_extra:
+                show_one_log(local_rev_history_map[elem],
+                             local_branch.get_revision(elem),
+                             None, False, sys.stdout, 'original')
+            printed_local = True
+        else:
+            printed_local = False
+        if remote_extra and not mine_only:
+            if printed_local is True:
+                print "\n\n"
+            print "You are missing the following revisions:"
+            for elem in remote_extra:
+                show_one_log(remote_rev_history_map[elem],
+                             remote_branch.get_revision(elem),
+                             None, False, sys.stdout, 'original')
 
 
 class cmd_plugins(Command):

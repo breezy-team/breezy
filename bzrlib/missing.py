@@ -1,7 +1,7 @@
 """\
 A plugin for displaying what revisions are in 'other' but not in local.
 """
-
+from bzrlib.ui import ui_factory
 def show_missing(br_local, br_remote, verbose=False, quiet=False):
     """Show the revisions which exist in br_remote, that 
     do not exist in br_local.
@@ -75,3 +75,49 @@ def show_missing(br_local, br_remote, verbose=False, quiet=False):
         show_one_log(revno, rev, delta, verbose, sys.stdout, 'original')
     return 1
 
+def find_unmerged(local_branch, remote_branch):
+    local_branch.lock_read()
+    try:
+        remote_branch.lock_read()
+        try:
+            progress = ui_factory.progress_bar()
+            progress.update('local history', 0, 5)
+            local_rev_history = local_branch.revision_history()
+            local_rev_history_map = dict(
+                [(rev, local_rev_history.index(rev))
+                 for rev in local_rev_history])
+            progress.update('local ancestry', 1, 5)
+            local_ancestry = set(local_branch.get_ancestry(
+                local_rev_history[-1]))
+            progress.update('remote history', 2, 5)
+            remote_rev_history = remote_branch.revision_history()
+            remote_rev_history_map = dict(
+                [(rev, remote_rev_history.index(rev))
+                 for rev in remote_rev_history])
+            progress.update('remote ancestry', 3, 5)
+            remote_ancestry = set(remote_branch.get_ancestry(
+                remote_rev_history[-1]))
+            progress.update('pondering', 4, 5)
+            local_extra = set()
+            remote_extra = set()
+            for elem in local_ancestry.union(remote_ancestry):
+                if ((elem in local_ancestry) and
+                    (elem not in remote_ancestry)):
+                    if elem in local_rev_history:
+                        local_extra.add(elem)
+                elif ((elem not in local_ancestry) and
+                      (elem in remote_ancestry)):
+                    if elem in remote_rev_history:
+                        remote_extra.add(elem)
+            progress.clear()
+            local_extra = list(local_extra)
+            local_extra.sort(key=local_rev_history_map.get)
+            remote_extra = list(remote_extra)
+            remote_extra.sort(key=remote_rev_history_map.get)
+                    
+        finally:
+            remote_branch.unlock()
+    finally:
+        local_branch.unlock()
+    return (local_extra, local_rev_history_map, remote_extra, 
+            remote_rev_history_map)
