@@ -1279,12 +1279,17 @@ class cmd_check(Command):
     This command checks various invariants about the branch storage to
     detect data corruption or bzr bugs.
     """
-    takes_args = ['dir?']
+    takes_args = ['branch?']
     takes_options = ['verbose']
 
-    def run(self, dir='.', verbose=False):
+    def run(self, branch=None, verbose=False):
         from bzrlib.check import check
-        check(WorkingTree.open_containing(dir)[0].branch, verbose)
+        if branch is None:
+            tree = WorkingTree.open_containing()[0]
+            branch = tree.branch
+        else:
+            branch = Branch.open(branch)
+        check(branch, verbose)
 
 
 class cmd_scan_cache(Command):

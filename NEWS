@@ -124,6 +124,10 @@ UNRELEASED CHANGES
 
     * Use terminal width to align verbose test output.  (Martin Pool)
 
+    * Blackbox tests are maintained within the bzrlib.tests.blackbox directory.
+      If adding a new test script please add that to
+      bzrlib.tests.blackbox.__init__. (Robert Collins)
+
   INTERNALS:
 
     * WorkingTree.pull has been split across Branch and WorkingTree,
