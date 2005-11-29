@@ -1709,40 +1709,6 @@ class cmd_fetch(Command):
 
 
 class cmd_missing(Command):
-    """What is missing in this branch relative to other branch.
-    """
-    # TODO: rewrite this in terms of ancestry so that it shows only
-    # unmerged things
-    
-    takes_args = ['remote?']
-    aliases = ['mis', 'miss']
-    takes_options = ['verbose']
-
-    @display_command
-    def run(self, remote=None, verbose=False):
-        from bzrlib.errors import BzrCommandError
-        from bzrlib.missing import show_missing
-
-        if verbose and is_quiet():
-            raise BzrCommandError('Cannot pass both quiet and verbose')
-
-        tree = WorkingTree.open_containing('.')[0]
-        parent = tree.branch.get_parent()
-        if remote is None:
-            if parent is None:
-                raise BzrCommandError("No missing location known or specified.")
-            else:
-                if not is_quiet():
-                    print "Using last location: %s" % parent
-                remote = parent
-        elif parent is None:
-            # We only update parent if it did not exist, missing
-            # should not change the parent
-            tree.branch.set_parent(remote)
-        br_remote = Branch.open_containing(remote)[0]
-        return show_missing(tree.branch, br_remote, verbose=verbose, 
-                            quiet=is_quiet())
-class cmd_missed(Command):
     """Look for missed revisions from another branch.
 
     The 'from_branch' may be available over any supported url schema."""
