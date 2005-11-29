@@ -115,3 +115,24 @@ class TestOneNamedPluginOnly(TestCaseInTempDir):
             if getattr(bzrlib.plugins, 'plugin', None):
                 del bzrlib.plugins.plugin
         self.failIf(getattr(bzrlib.plugins, 'plugin', None))
+
+
+class TestAllPlugins(TestCaseInTempDir):
+
+    def test_plugin_appears_in_all_plugins(self):
+        # This test tests a new plugin appears in bzrlib.plugin.all_plugins().
+        # check the plugin is not loaded already
+        self.failIf(getattr(bzrlib.plugins, 'plugin', None))
+        # write a plugin that _cannot_ fail to load.
+        print >> file('plugin.py', 'w'), ""
+        try:
+            bzrlib.plugin.load_from_dirs(['.'])
+            self.failUnless('plugin' in bzrlib.plugin.all_plugins())
+            self.failUnless(getattr(bzrlib.plugins, 'plugin', None))
+            self.assertEqual(bzrlib.plugin.all_plugins()['plugin'],
+                             bzrlib.plugins.plugin)
+        finally:
+            # remove the plugin 'plugin'
+            if getattr(bzrlib.plugins, 'plugin', None):
+                del bzrlib.plugins.plugin
+        self.failIf(getattr(bzrlib.plugins, 'plugin', None))

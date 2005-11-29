@@ -175,8 +175,8 @@ UNRELEASED CHANGES
     * Rename selftests to `bzrlib.tests.test_foo`.  (John A Meinel, Martin 
       Pool)
 
-    * bzrlib.plugin.all_plugins has been removed, instead look in
-      bzrlib.plugins. (Robert Collins)
+    * bzrlib.plugin.all_plugins has been changed from an attribute to a 
+      query method. (Robert Collins)
    
 bzr 0.6 2005-10-28
 

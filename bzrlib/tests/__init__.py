@@ -674,8 +674,8 @@ def test_suite():
         suite.addTest(TestLoader().loadTestsFromModule(m))
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
-    for p in bzrlib.plugins.__dict__:
-        if hasattr(p, 'test_suite'):
-            suite.addTest(p.test_suite())
+    for name, plugin in bzrlib.plugin.all_plugins().items():
+        if hasattr(plugin, 'test_suite'):
+            suite.addTest(plugin.test_suite())
     return suite
 

@@ -42,6 +42,7 @@ new command to the plugin_cmds variable.
 import imp
 import os
 import sys
+import types
 
 import bzrlib
 from bzrlib.config import config_dir
@@ -53,6 +54,15 @@ from bzrlib import plugins
 DEFAULT_PLUGIN_PATH = os.path.join(config_dir(), 'plugins')
 
 _loaded = False
+
+
+def all_plugins():
+    """Return a dictionary of the plugins."""
+    result = {}
+    for name, plugin in bzrlib.plugins.__dict__.items():
+        if isinstance(plugin, types.ModuleType):
+            result[name] = plugin
+    return result
 
 
 def load_plugins():
@@ -77,6 +87,7 @@ def load_plugins():
     dirs.insert(0, os.path.dirname(plugins.__file__))
 
     load_from_dirs(dirs)
+
 
 def load_from_dirs(dirs):
     """Load bzrlib plugins found in each dir in dirs.
