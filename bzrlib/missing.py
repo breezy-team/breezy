@@ -122,12 +122,14 @@ def _shortcut(local_rev_history, remote_rev_history):
     elif len(remote_rev_history) == 0:
         return local_history, set()
     elif local_rev_history[-1] in remote_history:
-        return set(), set(remote_rev_history[remote_rev_history.index(local_rev_history[-1])+1:])
+        return set(), _after(remote_rev_history, local_rev_history)
     elif remote_rev_history[-1] in local_history:
-        return set(local_rev_history[local_rev_history.index(remote_rev_history[-1])+1:]), set()
+        return _after(local_rev_history, remote_rev_history), set()
     else:
         return None
 
+def _after(larger_history, smaller_history):
+    return set(larger_history[larger_history.index(smaller_history[-1])+1:])
 
 def _get_history(branch, progress, label, step):
     progress.update('%s history' % label, step, 5)
