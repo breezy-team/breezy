@@ -27,6 +27,7 @@ from bzrlib import BZRDIR
 from bzrlib.commands import Command, display_command
 from bzrlib.branch import Branch
 from bzrlib.revision import common_ancestor
+import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch)
@@ -1127,40 +1128,37 @@ class cmd_export(Command):
     is found exports to a directory (equivalent to --format=dir).
 
     Root may be the top directory for tar, tgz and tbz2 formats. If none
-    is given, the top directory will be the root name of the file."""
-    # TODO: list known exporters
+    is given, the top directory will be the root name of the file.
+
+    Note: export of tree with non-ascii filenames to zip is not supported.
+
+    Supported formats       Autodetected by extension
+    -----------------       -------------------------
+         dir                            -
+         tar                          .tar
+         tbz2                    .tar.bz2, .tbz2
+         tgz                      .tar.gz, .tgz
+         zip                          .zip
+    """
     takes_args = ['dest']
     takes_options = ['revision', 'format', 'root']
     def run(self, dest, revision=None, format=None, root=None):
         import os.path
+        from bzrlib.export import export
         tree = WorkingTree.open_containing('.')[0]
         b = tree.branch
         if revision is None:
             # should be tree.last_revision  FIXME
-            rev_id = tree.branch.last_revision()
+            rev_id = b.last_revision()
         else:
             if len(revision) != 1:
                 raise BzrError('bzr export --revision takes exactly 1 argument')
             rev_id = revision[0].in_history(b).rev_id
         t = b.revision_tree(rev_id)
-        arg_root, ext = os.path.splitext(os.path.basename(dest))
-        if ext in ('.gz', '.bz2'):
-            new_root, new_ext = os.path.splitext(arg_root)
-            if new_ext == '.tar':
-                arg_root = new_root
-                ext = new_ext + ext
-        if root is None:
-            root = arg_root
-        if not format:
-            if ext in (".tar",):
-                format = "tar"
-            elif ext in (".tar.gz", ".tgz"):
-                format = "tgz"
-            elif ext in (".tar.bz2", ".tbz2"):
-                format = "tbz2"
-            else:
-                format = "dir"
-        t.export(dest, format, root)
+        try:
+            export(t, dest, format, root)
+        except errors.NoSuchExportFormat, e:
+            raise BzrCommandError('Unsupported export format: %s' % e.format)
 
 
 class cmd_cat(Command):
@@ -1383,7 +1381,7 @@ class cmd_selftest(Command):
     def run(self, testspecs_list=None, verbose=False, one=False,
             keep_output=False):
         import bzrlib.ui
-        from bzrlib.selftest import selftest
+        from bzrlib.tests import selftest
         # we don't want progress meters from the tests to go to the
         # real output; and we don't want log messages cluttering up
         # the real logs.
@@ -1859,6 +1857,68 @@ class cmd_re_sign(Command):
                     b.sign_revision(b.get_rev_id(revno), gpg_strategy)
             else:
                 raise BzrCommandError('Please supply either one revision, or a range.')
+
+
+class cmd_uncommit(bzrlib.commands.Command):
+    """Remove the last committed revision.
+
+    By supplying the --all flag, it will not only remove the entry 
+    from revision_history, but also remove all of the entries in the
+    stores.
+
+    --verbose will print out what is being removed.
+    --dry-run will go through all the motions, but not actually
+    remove anything.
+    
+    In the future, uncommit will create a changeset, which can then
+    be re-applied.
+    """
+    takes_options = ['all', 'verbose', 'revision',
+                    Option('dry-run', help='Don\'t actually make changes'),
+                    Option('force', help='Say yes to all questions.')]
+    takes_args = ['location?']
+    aliases = []
+
+    def run(self, location=None, all=False,
+            dry_run=False, verbose=False,
+            revision=None, force=False):
+        from bzrlib.branch import Branch
+        from bzrlib.log import log_formatter
+        import sys
+        from bzrlib.uncommit import uncommit
+
+        if location is None:
+            location = '.'
+        b, relpath = Branch.open_containing(location)
+
+        if revision is None:
+            revno = b.revno()
+            rev_id = b.last_revision()
+        else:
+            revno, rev_id = revision[0].in_history(b)
+        if rev_id is None:
+            print 'No revisions to uncommit.'
+
+        for r in range(revno, b.revno()+1):
+            rev_id = b.get_rev_id(r)
+            lf = log_formatter('short', to_file=sys.stdout,show_timezone='original')
+            lf.show(r, b.get_revision(rev_id), None)
+
+        if dry_run:
+            print 'Dry-run, pretending to remove the above revisions.'
+            if not force:
+                val = raw_input('Press <enter> to continue')
+        else:
+            print 'The above revision(s) will be removed.'
+            if not force:
+                val = raw_input('Are you sure [y/N]? ')
+                if val.lower() not in ('y', 'yes'):
+                    print 'Canceled'
+                    return 0
+
+        uncommit(b, remove_files=all,
+                dry_run=dry_run, verbose=verbose,
+                revno=revno)
 
 
 # these get imported and then picked up by the scan for cmd_*

@@ -14,6 +14,8 @@ such as running the test suite, they can also be redirected away from both of
 those two places to another location.
 
 ~/.bzr.log gets all messages, and full tracebacks for uncaught exceptions.
+This trace file is always in UTF-8, regardless of the user's default encoding,
+so that we can always rely on writing any message.
 
 Output to stderr depends on the mode chosen by the user.  By default, messages
 of info and above are sent out, which results in progress messages such as the
@@ -87,9 +89,13 @@ def mutter(fmt, *args):
     if hasattr(_trace_file, 'closed') and _trace_file.closed:
         return
     if len(args) > 0:
-        print >>_trace_file, fmt % args
+        out = fmt % args
     else:
-        print >>_trace_file, fmt
+        out = fmt
+    out += '\n'
+    if isinstance(out, unicode):
+        out = out.encode('utf-8')
+    _trace_file.write(out)
 debug = mutter
 
 

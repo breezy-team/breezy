@@ -26,9 +26,6 @@ from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import appendpath, fingerprint_file
 
-
-exporters = {}
-
 class Tree(object):
     """Abstract file tree.
 
@@ -109,17 +106,6 @@ class Tree(object):
         sys.stdout.write(self.get_file_text(file_id))
         
         
-    def export(self, dest, format='dir', root=None):
-        """Export this tree."""
-        try:
-            exporter = exporters[format]
-        except KeyError:
-            from bzrlib.errors import BzrCommandError
-            raise BzrCommandError("export format %r not supported" % format)
-        exporter(self, dest, root)
-
-
-
 class RevisionTree(Tree):
     """Tree viewing a previous revision.
 
@@ -277,88 +263,3 @@ def find_renames(old_inv, new_inv):
             
 
 
-######################################################################
-# export
-
-def dir_exporter(tree, dest, root):
-    """Export this tree to a new directory.
-
-    `dest` should not exist, and will be created holding the
-    contents of this tree.
-
-    TODO: To handle subdirectories we need to create the
-           directories first.
-
-    :note: If the export fails, the destination directory will be
-           left in a half-assed state.
-    """
-    import os
-    os.mkdir(dest)
-    mutter('export version %r', tree)
-    inv = tree.inventory
-    for dp, ie in inv.iter_entries():
-        if dp != ".bzrignore":
-            ie.put_on_disk(dest, dp, tree)
-
-exporters['dir'] = dir_exporter
-
-try:
-    import tarfile
-except ImportError:
-    pass
-else:
-    def get_root_name(dest):
-        """Get just the root name for a tarball.
-
-        >>> get_root_name('mytar.tar')
-        'mytar'
-        >>> get_root_name('mytar.tar.bz2')
-        'mytar'
-        >>> get_root_name('tar.tar.tar.tgz')
-        'tar.tar.tar'
-        >>> get_root_name('bzr-0.0.5.tar.gz')
-        'bzr-0.0.5'
-        >>> get_root_name('a/long/path/mytar.tgz')
-        'mytar'
-        >>> get_root_name('../parent/../dir/other.tbz2')
-        'other'
-        """
-        endings = ['.tar', '.tar.gz', '.tgz', '.tar.bz2', '.tbz2']
-        dest = os.path.basename(dest)
-        for end in endings:
-            if dest.endswith(end):
-                return dest[:-len(end)]
-
-    def tar_exporter(tree, dest, root, compression=None):
-        """Export this tree to a new tar file.
-
-        `dest` will be created holding the contents of this tree; if it
-        already exists, it will be clobbered, like with "tar -c".
-        """
-        from time import time
-        now = time()
-        compression = str(compression or '')
-        if root is None:
-            root = get_root_name(dest)
-        try:
-            ball = tarfile.open(dest, 'w:' + compression)
-        except tarfile.CompressionError, e:
-            raise BzrError(str(e))
-        mutter('export version %r', tree)
-        inv = tree.inventory
-        for dp, ie in inv.iter_entries():
-            if dp != ".bzrignore":
-                mutter("  export {%s} kind %s to %s" % (ie.file_id, ie.kind, dest))
-                item, fileobj = ie.get_tar_item(root, dp, now, tree)
-                ball.addfile(item, fileobj)
-        ball.close()
-
-    exporters['tar'] = tar_exporter
-
-    def tgz_exporter(tree, dest, root):
-        tar_exporter(tree, dest, root, compression='gz')
-    exporters['tgz'] = tgz_exporter
-
-    def tbz_exporter(tree, dest, root):
-        tar_exporter(tree, dest, root, compression='bz2')
-    exporters['tbz2'] = tbz_exporter

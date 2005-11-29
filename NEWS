@@ -53,6 +53,13 @@ UNRELEASED CHANGES
     * New ftp transport support (on ftplib), for ftp:// and aftp:// 
       URLs.  (Daniel Silverstone)
 
+    * Commit editor temporary files now start with 'bzr_log.', to allow 
+      text editors to match the file name and set up appropriate modes or 
+      settings.  (Magnus Therning)
+
+    * Improved performance when integrating changes from a remote weave.  
+      (Goffredo Baroncelli)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
@@ -73,6 +80,10 @@ UNRELEASED CHANGES
 
     * Stores with some compressed texts and some uncompressed texts are now
       able to be used. (John A Meinel)
+
+    * Fix for bzr pull failing sometimes under windows
+
+    * Fix for sftp transport under windows when using interactive auth
 
     * Show files which are both renamed and modified as such in 'bzr 
       status' output.  (#4503, Daniel Silverstone)
@@ -155,6 +166,9 @@ UNRELEASED CHANGES
     * bzrlib.add.smart_add_branch is now smart_add_tree. (Robert Collins)
 
     * New basic_io serialization format. (Martin Pool)
+
+    * Rename selftests to `bzrlib.tests.test_foo`.  (John A Meinel, Martin 
+      Pool)
    
 bzr 0.6 2005-10-28
 
