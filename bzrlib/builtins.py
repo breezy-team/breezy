@@ -1746,6 +1746,8 @@ class cmd_missing(Command):
                 show_one_log(revno,
                              remote_branch.get_revision(revision_id),
                              None, False, sys.stdout, 'original')
+        if not remote_extra and not local_extra:
+            print "Branches are up to date."
 
 
 class cmd_plugins(Command):
