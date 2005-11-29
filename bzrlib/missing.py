@@ -75,28 +75,17 @@ def show_missing(br_local, br_remote, verbose=False, quiet=False):
         show_one_log(revno, rev, delta, verbose, sys.stdout, 'original')
     return 1
 
+
 def find_unmerged(local_branch, remote_branch):
     local_branch.lock_read()
     try:
         remote_branch.lock_read()
         try:
             progress = ui_factory.progress_bar()
-            progress.update('local history', 0, 5)
-            local_rev_history = local_branch.revision_history()
-            local_rev_history_map = dict(
-                [(rev, local_rev_history.index(rev))
-                 for rev in local_rev_history])
-            progress.update('local ancestry', 1, 5)
-            local_ancestry = set(local_branch.get_ancestry(
-                local_rev_history[-1]))
-            progress.update('remote history', 2, 5)
-            remote_rev_history = remote_branch.revision_history()
-            remote_rev_history_map = dict(
-                [(rev, remote_rev_history.index(rev))
-                 for rev in remote_rev_history])
-            progress.update('remote ancestry', 3, 5)
-            remote_ancestry = set(remote_branch.get_ancestry(
-                remote_rev_history[-1]))
+            local_rev_history, local_rev_history_map, local_ancestry = \
+                _get_data(local_branch, progress, "local", 0)
+            remote_rev_history, remote_rev_history_map, remote_ancestry = \
+                _get_data(remote_branch, progress, "remote", 2)
             progress.update('pondering', 4, 5)
             extras = local_ancestry.symmetric_difference(remote_ancestry) 
             local_extra = extras.intersection(set(local_rev_history))
@@ -111,6 +100,21 @@ def find_unmerged(local_branch, remote_branch):
     finally:
         local_branch.unlock()
     return (local_extra, remote_extra)
+
+
+def _get_data(branch, progress, label, offset):
+    progress.update('%s history' % label, 0+offset, 5)
+    rev_history = branch.revision_history()
+    rev_history_map = dict(
+        [(rev, rev_history.index(rev))
+         for rev in rev_history])
+    progress.update('%s ancestry' % label, 1+offset, 5)
+    if len(rev_history) > 0:
+        ancestry = set(branch.get_ancestry(rev_history[-1]))
+    else:
+        ancestry = set()
+    return rev_history, rev_history_map, ancestry
+    
 
 def sorted_revisions(revisions, history_map):
     revisions = [(history_map[r],r) for r in revisions]
