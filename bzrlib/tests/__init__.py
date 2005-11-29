@@ -645,7 +645,6 @@ def test_suite():
                    'bzrlib.tests.test_reweave',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_trace',
-                   'bzrlib.tests.test_basicio',
                    'bzrlib.tests.test_rio',
                    ]
 
