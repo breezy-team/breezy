@@ -19,6 +19,10 @@ UNRELEASED CHANGES
       points to C:\Documents and Settings\User Name\Application Data), HOME.
       (John Arbash Meinel)
 
+    * Plugins with the same name in different directories in the bzr plugin
+      path are no longer loaded: only the first successfully loaded one is
+      used. (Robert Collins)
+
   IMPROVEMENTS:
 
     * "bzr INIT dir" now initializes the specified directory, and creates 
@@ -170,6 +174,9 @@ UNRELEASED CHANGES
 
     * Rename selftests to `bzrlib.tests.test_foo`.  (John A Meinel, Martin 
       Pool)
+
+    * bzrlib.plugin.all_plugins has been removed, instead look in
+      bzrlib.plugins. (Robert Collins)
    
 bzr 0.6 2005-10-28
 

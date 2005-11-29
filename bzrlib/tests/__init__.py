@@ -614,6 +614,7 @@ def test_suite():
     testmod_names = \
                   ['bzrlib.tests.MetaTestLog',
                    'bzrlib.tests.test_api',
+                   'bzrlib.tests.test_basicio',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_inv',
@@ -656,10 +657,10 @@ def test_suite():
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_nonascii',
+                   'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_reweave',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_trace',
-                   'bzrlib.tests.test_basicio',
                    ]
 
     TestCase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
@@ -673,7 +674,7 @@ def test_suite():
         suite.addTest(TestLoader().loadTestsFromModule(m))
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
-    for p in bzrlib.plugin.all_plugins:
+    for p in bzrlib.plugins.__dict__:
         if hasattr(p, 'test_suite'):
             suite.addTest(p.test_suite())
     return suite
