@@ -77,11 +77,11 @@ def show_missing(br_local, br_remote, verbose=False, quiet=False):
 
 
 def find_unmerged(local_branch, remote_branch):
+    progress = ui_factory.progress_bar()
     local_branch.lock_read()
     try:
         remote_branch.lock_read()
         try:
-            progress = ui_factory.progress_bar()
             local_rev_history, local_rev_history_map, local_ancestry = \
                 _get_data(local_branch, progress, "local", 0)
             remote_rev_history, remote_rev_history_map, remote_ancestry = \
@@ -90,7 +90,6 @@ def find_unmerged(local_branch, remote_branch):
             extras = local_ancestry.symmetric_difference(remote_ancestry) 
             local_extra = extras.intersection(set(local_rev_history))
             remote_extra = extras.intersection(set(remote_rev_history))
-            progress.clear()
             local_extra = sorted_revisions(local_extra, local_rev_history_map)
             remote_extra = sorted_revisions(remote_extra, 
                                             remote_rev_history_map)
@@ -99,6 +98,7 @@ def find_unmerged(local_branch, remote_branch):
             remote_branch.unlock()
     finally:
         local_branch.unlock()
+        progress.clear()
     return (local_extra, remote_extra)
 
 
