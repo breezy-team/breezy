@@ -209,8 +209,6 @@ class SFTPTransport (Transport):
     Transport implementation for SFTP access.
     """
 
-    _url_matcher = re.compile(r'^sftp://([^:@]*(:[^@]*)?@)?(.*?)(:[^/]+)?(/.*)?$')
-    
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
         super(SFTPTransport, self).__init__(base)
@@ -274,14 +272,13 @@ class SFTPTransport (Transport):
         return path
 
     def relpath(self, abspath):
-        # FIXME: this is identical to HttpTransport -- share it
-        m = self._url_matcher.match(abspath)
-        path = m.group(5)
-        if not path.startswith(self._path):
+        username, password, host, port, path = self._split_url(abspath)
+        if (username != self._username or host != self._host or
+            port != self._port or not path.startswith(self._path)):
             raise NonRelativePath('path %r is not under base URL %r'
                            % (abspath, self.base))
-        pl = len(self.base)
-        return abspath[pl:].lstrip('/')
+        pl = len(self._path)
+        return path[pl:].lstrip('/')
 
     def has(self, relpath):
         """
@@ -530,35 +527,41 @@ class SFTPTransport (Transport):
 
         return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
 
-    def _parse_url(self, url):
+    def _split_url(self, url):
         if isinstance(url, unicode):
             url = url.encode('utf-8')
         (scheme, netloc, path, params,
          query, fragment) = urlparse.urlparse(url, allow_fragments=False)
         assert scheme == 'sftp'
-        self._username = self._password = self._host = self._port = None
+        username = password = host = port = None
         if '@' in netloc:
-            self._username, self._host = netloc.split('@', 1)
-            if ':' in self._username:
-                self._username, self._password = self._username.split(':', 1)
-                self._password = urllib.unquote(self._password)
-            self._username = urllib.unquote(self._username)
+            username, host = netloc.split('@', 1)
+            if ':' in username:
+                username, password = username.split(':', 1)
+                password = urllib.unquote(password)
+            username = urllib.unquote(username)
         else:
-            self._host = netloc
+            host = netloc
 
-        if ':' in self._host:
-            self._host, self._port = self._host.rsplit(':', 1)
-            self._port = int(self._port)
-        self._host = urllib.unquote(self._host)
+        if ':' in host:
+            host, port = host.rsplit(':', 1)
+            port = int(port)
+        host = urllib.unquote(host)
 
-        self._path = urllib.unquote(path)
+        path = urllib.unquote(path)
 
         # the initial slash should be removed from the path, and treated
         # as a homedir relative path (the path begins with a double slash
         # if it is absolute).
         # see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
-        if self._path.startswith('/'):
-            self._path = self._path[1:]
+        if path.startswith('/'):
+            path = path[1:]
+
+        return (username, password, host, port, path)
+
+    def _parse_url(self, url):
+        (self._username, self._password,
+         self._host, self._port, self._path) = self._split_url(url)
 
     def _sftp_connect(self):
         vendor = _get_ssh_vendor()
