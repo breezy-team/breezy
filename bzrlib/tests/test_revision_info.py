@@ -49,7 +49,7 @@ class TestRevisionInfo(TestCaseInTempDir):
         b.working_tree().commit('Commit three', rev_id='a@r-0-3')
 
         # Make sure revision-info without any arguments throws an exception
-        self.check_error('bzr: ERROR: bzrlib.errors.BzrCommandError: '
+        self.check_error('bzr: ERROR: '
                          'You must supply a revision identifier\n',
                          'revision-info')
 

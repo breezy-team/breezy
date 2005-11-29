@@ -45,7 +45,7 @@ import os
 import logging
 
 import bzrlib
-from bzrlib.errors import BzrNewError
+from bzrlib.errors import BzrError, BzrNewError
 
 
 _file_handler = None
@@ -252,7 +252,7 @@ def format_exception_short(exc_info):
     try:
         if exc_type is None:
             return '(no exception)'
-        if isinstance(exc_object, BzrNewError):
+        if isinstance(exc_object, (BzrError, BzrNewError)):
             return str(exc_object)
         else:
             import traceback
@@ -263,5 +263,7 @@ def format_exception_short(exc_info):
             if tb:
                 msg += '\n  at %s line %d\n  in %s' % (tb[-1][:3])
             return msg
-    except:
-        return '(error formatting exception of type %s)' % exc_type
+    except Exception, formatting_exc:
+        # XXX: is this really better than just letting it run up?
+        return '(error formatting exception of type %s: %s)' \
+                % (exc_type, formatting_exc)
