@@ -462,7 +462,10 @@ class SFTPTransport (Transport):
         if self._port is None:
             self._port = 22
         else:
-            self._port = int(self._port[1:])
+            try:
+                self._port = int(self._port[1:])
+            except ValueError:
+                raise SFTPTransportError('%s: invalid port number' % self._port[1:])
         if (self._path is None) or (self._path == ''):
             self._path = ''
         else:

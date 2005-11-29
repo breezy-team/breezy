@@ -153,7 +153,7 @@ class FakeSFTPTransport (object):
 fake = FakeSFTPTransport()
 
 
-class SFTPNonServerTest (unittest.TestCase):
+class SFTPNonServerTest(unittest.TestCase):
     def test_parse_url(self):
         from bzrlib.transport.sftp import SFTPTransport
         s = SFTPTransport('sftp://simple.example.com/%2fhome/source', clone_from=fake)
@@ -168,6 +168,17 @@ class SFTPNonServerTest (unittest.TestCase):
         self.assertEquals(s._username, 'robey')
         self.assertEquals(s._password, 'h@t')
         self.assertEquals(s._path, 'relative')
+
+    def test_parse_invalid_url(self):
+        from bzrlib.transport.sftp import SFTPTransport, SFTPTransportError
+        try:
+            s = SFTPTransport('sftp://lilypond.org:~janneke/public_html/bzr/gub',
+                              clone_from=fake)
+            self.fail('expected exception not raised')
+        except SFTPTransportError, e:
+            self.assertEquals(str(e), 
+                    '~janneke: invalid port number')
+
         
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
