@@ -122,6 +122,8 @@ UNRELEASED CHANGES
     * Delay in selftest/testhashcash is now issued under win32 and Cygwin.
       (John Arbash Meinel)
 
+    * Use terminal width to align verbose test output.  (Martin Pool)
+
   INTERNALS:
 
     * WorkingTree.pull has been split across Branch and WorkingTree,

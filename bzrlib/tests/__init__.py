@@ -69,7 +69,6 @@ class _MyResult(unittest._TextTestResult):
     Shows output in a different format, including displaying runtime for tests.
     """
 
-    # assumes 80-column window, less 'ERROR 99999ms' = 13ch
     def _elapsedTime(self):
         return "%5dms" % (1000 * (time.time() - self._start_time))
 
@@ -79,18 +78,23 @@ class _MyResult(unittest._TextTestResult):
         # the beginning, but in an id, the important words are
         # at the end
         SHOW_DESCRIPTIONS = False
-        what = SHOW_DESCRIPTIONS and test.shortDescription()
-        if what:
-            if len(what) > 65:
-                what = what[:62] + '...'
-        else:
-            what = test.id()
-            if what.startswith('bzrlib.tests.'):
-                what = what[13:]
-            if len(what) > 65:
-                what = '...' + what[-62:]
         if self.showAll:
-            self.stream.write('%-65.65s' % what)
+            width = osutils.terminal_width()
+            name_width = width - 15
+            what = None
+            if SHOW_DESCRIPTIONS:
+                what = test.shortDescription()
+                if what:
+                    if len(what) > name_width:
+                        what = what[:name_width-3] + '...'
+            if what is None:
+                what = test.id()
+                if what.startswith('bzrlib.tests.'):
+                    what = what[13:]
+                if len(what) > name_width:
+                    what = '...' + what[3-name_width:]
+            what = what.ljust(name_width)
+            self.stream.write(what)
         self.stream.flush()
         self._start_time = time.time()
 
