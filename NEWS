@@ -170,7 +170,7 @@ UNRELEASED CHANGES
 
     * bzrlib.add.smart_add_branch is now smart_add_tree. (Robert Collins)
 
-    * New basic_io serialization format. (Martin Pool)
+    * New "rio" serialization format, similar to rfc-822. (Martin Pool)
 
     * Rename selftests to `bzrlib.tests.test_foo`.  (John A Meinel, Martin 
       Pool)
