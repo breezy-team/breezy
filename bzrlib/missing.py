@@ -82,10 +82,23 @@ def find_unmerged(local_branch, remote_branch):
     try:
         remote_branch.lock_read()
         try:
-            local_rev_history, local_rev_history_map, local_ancestry = \
-                _get_data(local_branch, progress, "local", 0)
-            remote_rev_history, remote_rev_history_map, remote_ancestry = \
-                _get_data(remote_branch, progress, "remote", 2)
+            local_rev_history, local_rev_history_map = \
+                _get_history(local_branch, progress, "local", 0)
+            remote_rev_history, remote_rev_history_map = \
+                _get_history(remote_branch, progress, "remote", 1)
+            result = _shortcut(local_rev_history, remote_rev_history)
+            if result is not None:
+                local_extra, remote_extra = result
+                local_extra = sorted_revisions(local_extra, 
+                                               local_rev_history_map)
+                remote_extra = sorted_revisions(remote_extra, 
+                                                remote_rev_history_map)
+                return local_extra, remote_extra
+
+            local_ancestry = _get_ancestry(local_branch, progress, "local",
+                                           2, local_rev_history)
+            remote_ancestry = _get_ancestry(remote_branch, progress, "remote",
+                                            3, remote_rev_history)
             progress.update('pondering', 4, 5)
             extras = local_ancestry.symmetric_difference(remote_ancestry) 
             local_extra = extras.intersection(set(local_rev_history))
@@ -101,19 +114,36 @@ def find_unmerged(local_branch, remote_branch):
         progress.clear()
     return (local_extra, remote_extra)
 
+def _shortcut(local_rev_history, remote_rev_history):
+    local_history = set(local_rev_history)
+    remote_history = set(remote_rev_history)
+    if len(local_rev_history) == 0:
+        return set(), remote_history
+    elif len(remote_rev_history) == 0:
+        return local_history, set()
+    elif local_rev_history[-1] in remote_history:
+        return set(), set(remote_rev_history[remote_rev_history.index(local_rev_history[-1])+1:])
+    elif remote_rev_history[-1] in local_history:
+        return set(local_rev_history[local_rev_history.index(remote_rev_history[-1])+1:]), set()
+    else:
+        return None
 
-def _get_data(branch, progress, label, offset):
-    progress.update('%s history' % label, 0+offset, 5)
+
+def _get_history(branch, progress, label, step):
+    progress.update('%s history' % label, step, 5)
     rev_history = branch.revision_history()
     rev_history_map = dict(
-        [(rev, rev_history.index(rev))
+        [(rev, rev_history.index(rev) + 1)
          for rev in rev_history])
-    progress.update('%s ancestry' % label, 1+offset, 5)
+    return rev_history, rev_history_map
+
+def _get_ancestry(branch, progress, label, step, rev_history):
+    progress.update('%s ancestry' % label, step, 5)
     if len(rev_history) > 0:
         ancestry = set(branch.get_ancestry(rev_history[-1]))
     else:
         ancestry = set()
-    return rev_history, rev_history_map, ancestry
+    return ancestry
     
 
 def sorted_revisions(revisions, history_map):
