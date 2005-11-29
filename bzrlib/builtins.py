@@ -857,12 +857,11 @@ class cmd_log(Command):
                             help='show from oldest to newest'),
                      'timezone', 'verbose', 
                      'show-ids', 'revision',
-                     Option('line', help='format with one line per revision'),
-                     'long', 
+                     'line', 'long', 
                      Option('message',
                             help='show revisions whose message matches this regexp',
                             type=str),
-                     Option('short', help='use moderately short format'),
+                     'short',
                      ]
     @display_command
     def run(self, filename=None, timezone='original',
@@ -926,11 +925,7 @@ class cmd_log(Command):
         # in e.g. the default C locale.
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
-        log_format = 'long'
-        if short:
-            log_format = 'short'
-        if line:
-            log_format = 'line'
+        log_format = get_log_format(long=long, short=short, line=line)
         lf = log_formatter(log_format,
                            show_ids=show_ids,
                            to_file=outf,
@@ -945,6 +940,15 @@ class cmd_log(Command):
                  end_revision=rev2,
                  search=message)
 
+def get_log_format(long=False, short=False, line=False, default='long'):
+    log_format = default
+    if long:
+        log_format = 'long'
+    if short:
+        log_format = 'short'
+    if line:
+        log_format = 'line'
+    return log_format
 
 
 class cmd_touching_revisions(Command):
@@ -1714,27 +1718,38 @@ class cmd_missing(Command):
     OTHER_BRANCH may be local or remote."""
     takes_args = ['other_branch?']
     takes_options = [Option('reverse', 'Reverse the order of revisions'),
-                     Option('mine-only', 'Display changes in the local branch only'),
-                     Option('theirs-only', 'Display changes in the remote branch only')]
+                     Option('mine-only', 
+                            'Display changes in the local branch only'),
+                     Option('theirs-only', 
+                            'Display changes in the remote branch only'), 
+                     'line',
+                     'long', 
+                     'short',
+                     'show-ids',
+                     ]
 
     def run(self, other_branch=None, reverse=False, mine_only=False,
-            theirs_only=False):
-        from missing import find_unmerged
+            theirs_only=False, long=True, short=False, line=False, 
+            show_ids=False):
+        from bzrlib.missing import find_unmerged
+        from bzrlib.log import log_formatter
         local_branch = bzrlib.branch.Branch.open_containing(".")[0]
         if other_branch is None:
             print "Using last location: " + local_branch.get_parent()
             other_branch = local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
         local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
+        log_format = get_log_format(long=long, short=short, line=line)
+        lf = log_formatter(log_format, sys.stdout,
+                           show_ids=show_ids,
+                           show_timezone='original')
         if reverse is False:
             local_extra.reverse()
             remote_extra.reverse()
         if local_extra and not theirs_only:
             print "You have the following extra revisions:"
             for revno, revision_id in local_extra:
-                show_one_log(revno,
-                             local_branch.get_revision(revision_id),
-                             None, False, sys.stdout, 'original')
+                lf.show(revno, local_branch.get_revision(revision_id), None)
             printed_local = True
         else:
             printed_local = False
@@ -1743,9 +1758,7 @@ class cmd_missing(Command):
                 print "\n\n"
             print "You are missing the following revisions:"
             for revno, revision_id in remote_extra:
-                show_one_log(revno,
-                             remote_branch.get_revision(revision_id),
-                             None, False, sys.stdout, 'original')
+                lf.show(revno, remote_branch.get_revision(revision_id), None)
         if not remote_extra and not local_extra:
             print "Branches are up to date."
 
