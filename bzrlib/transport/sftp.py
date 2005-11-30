@@ -54,6 +54,11 @@ else:
 if 'sftp' not in urlparse.uses_netloc: urlparse.uses_netloc.append('sftp')
 
 
+_close_fds = True
+if sys.platform == 'win32':
+    # close_fds not supported on win32
+    _close_fds = False
+
 _ssh_vendor = None
 def _get_ssh_vendor():
     """Find out what version of SSH is on the system."""
@@ -65,7 +70,7 @@ def _get_ssh_vendor():
 
     try:
         p = subprocess.Popen(['ssh', '-V'],
-                             close_fds=True,
+                             close_fds=_close_fds,
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
@@ -114,7 +119,7 @@ class SFTPSubprocess:
                 args.extend(['-l', user])
             args.extend(['-s', 'sftp', hostname])
 
-        self.proc = subprocess.Popen(args, close_fds=True,
+        self.proc = subprocess.Popen(args, close_fds=_close_fds,
                                      stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE)
 
