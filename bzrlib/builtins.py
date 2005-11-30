@@ -395,7 +395,7 @@ class cmd_pull(Command):
                                   "  Try merge.")
         if br_to.get_parent() is None or remember:
             br_to.set_parent(location)
-        note('%d revision(s) pulled.', count)
+        note('%d revision(s) pulled.' % (count,))
 
         if verbose:
             new_rh = tree_to.branch.revision_history()
@@ -1273,7 +1273,7 @@ class cmd_commit(Command):
             raise BzrCommandError("Commit refused because there are unknown "
                                   "files in the working tree.")
         note('Committed revision %d.' % (tree.branch.revno(),))
-        
+
 
 class cmd_check(Command):
     """Validate consistency of branch history.
