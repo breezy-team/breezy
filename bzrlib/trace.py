@@ -54,6 +54,7 @@ _stderr_quiet = False
 _trace_file = None
 _bzr_log_file = None
 
+
 class QuietFormatter(logging.Formatter):
     """Formatter that supresses the details of errors.
 

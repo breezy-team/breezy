@@ -25,11 +25,17 @@ from paramiko import ServerInterface, SFTPServerInterface, SFTPServer, SFTPAttri
 
 
 class StubServer (ServerInterface):
+    def __init__(self, test_case):
+        ServerInterface.__init__(self)
+        self._test_case = test_case
+
     def check_auth_password(self, username, password):
         # all are allowed
+        self._test_case.log('sftpserver - authorizing: %s' % (username,))
         return AUTH_SUCCESSFUL
 
     def check_channel_request(self, kind, chanid):
+        self._test_case.log('sftpserver - channel request: %s, %s' % (kind, chanid))
         return OPEN_SUCCEEDED
 
 

@@ -28,24 +28,42 @@ Set the ui_factory member to define the behaviour.  The default
 displays no output.
 """
 
-
-
-
-
 import bzrlib.progress
 
 
-class TextUIFactory(object):
+class UIFactory(object):
+    """UI abstraction.
+
+    This tells the library how to display things to the user.  Through this
+    layer different applications can choose the style of UI.
+    """
     def progress_bar(self):
+        """Return a progress bar object"""
+        raise NotImplementedError
 
-        # this in turn is abstract, and creates either a tty or dots
-        # bar depending on what we think of the terminal
-        return bzrlib.progress.ProgressBar()
+    def get_password(self, prompt='', **kwargs):
+        """Prompt the user for a password.
 
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The password string, return None if the user 
+                 canceled the request.
+        """
+        raise NotImplementedError
+        
 
-class SilentUIFactory(object):
+class SilentUIFactory(UIFactory):
+    """A UI Factory which never prints anything.
+
+    This is the default UI, if another one is never registered.
+    """
     def progress_bar(self):
         return bzrlib.progress.DummyProgress()
+
+    def get_password(self, prompt='', **kwargs):
+        return None
 
 
 ui_factory = SilentUIFactory()
