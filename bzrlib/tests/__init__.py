@@ -653,6 +653,7 @@ def test_suite():
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_upgrade',
                    'bzrlib.tests.test_uncommit',
+                   'bzrlib.tests.test_ui',
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_annotate',

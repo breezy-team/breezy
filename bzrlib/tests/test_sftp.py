@@ -17,9 +17,8 @@
 import os
 import socket
 import threading
-import unittest
 
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.tests.test_transport import TestTransportMixIn
 
 try:
@@ -74,6 +73,11 @@ class SingleListener (threading.Thread):
     
     def stop(self):
         self.stop_event.set()
+        # We should consider waiting for the other thread
+        # to stop, because otherwise we get spurious
+        #   bzr: ERROR: Socket exception: Connection reset by peer (54)
+        # because the test suite finishes before the thread has a chance
+        # to close. (Especially when only running a few tests)
         
         
 class TestCaseWithSFTPServer (TestCaseInTempDir):
@@ -88,7 +92,7 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
         file(key_file, 'w').write(STUB_SERVER_KEY)
         host_key = paramiko.RSAKey.from_private_key_file(key_file)
         ssh_server.add_server_key(host_key)
-        server = StubServer()
+        server = StubServer(self)
         ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer, StubSFTPServer, root=self._root)
         event = threading.Event()
         ssh_server.start_server(event, server)
@@ -98,15 +102,19 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
     def setUp(self):
         TestCaseInTempDir.setUp(self)
         self._root = self.test_dir
+        self._is_setup = False
 
     def delayed_setup(self):
         # some tests are just stubs that call setUp and then immediately call
         # tearDwon.  so don't create the port listener until get_transport is
         # called and we know we're in an actual test.
+        if self._is_setup:
+            return
         self._listener = SingleListener(self._run_server)
         self._listener.setDaemon(True)
         self._listener.start()        
         self._sftp_url = 'sftp://foo:bar@localhost:%d/' % (self._listener.port,)
+        self._is_setup = True
         
     def tearDown(self):
         try:
@@ -118,12 +126,19 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
         
 class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
     readonly = False
-    setup = True
+
+    def setUp(self):
+        TestCaseWithSFTPServer.setUp(self)
+        self.sftplogs = []
+
+    def log(self, *args):
+        """Override the default log to grab sftp server messages"""
+        TestCaseWithSFTPServer.log(self, *args)
+        if args and args[0].startswith('sftpserver'):
+            self.sftplogs.append(args[0])
 
     def get_transport(self):
-        if self.setup:
-            self.delayed_setup()
-            self.setup = False
+        self.delayed_setup()
         from bzrlib.transport.sftp import SFTPTransport
         url = self._sftp_url
         return SFTPTransport(url)
@@ -153,20 +168,34 @@ class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
         l.unlock()
         l2.unlock()
 
+    def test_multiple_connections(self):
+        t = self.get_transport()
+        self.assertEquals(self.sftplogs, 
+                ['sftpserver - authorizing: foo'
+               , 'sftpserver - channel request: session, 1'])
+        self.sftplogs = []
+        # The second request should reuse the first connection
+        # SingleListener only allows for a single connection,
+        # So the next line fails unless the connection is reused
+        t2 = self.get_transport()
+        self.assertEquals(self.sftplogs, [])
+
 
 class FakeSFTPTransport (object):
     _sftp = object()
 fake = FakeSFTPTransport()
 
 
-class SFTPNonServerTest(unittest.TestCase):
+class SFTPNonServerTest(TestCase):
     def test_parse_url(self):
         from bzrlib.transport.sftp import SFTPTransport
         s = SFTPTransport('sftp://simple.example.com/%2fhome/source', clone_from=fake)
         self.assertEquals(s._host, 'simple.example.com')
-        self.assertEquals(s._port, None)
+        self.assertEquals(s._port, 22)
         self.assertEquals(s._path, '/home/source')
-        self.assert_(s._password is None)
+        self.failUnless(s._password is None)
+
+        self.assertEquals(s.base, 'sftp://simple.example.com/%2Fhome/source')
         
         s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/relative', clone_from=fake)
         self.assertEquals(s._host, 'example.com')
@@ -174,6 +203,20 @@ class SFTPNonServerTest(unittest.TestCase):
         self.assertEquals(s._username, 'robey')
         self.assertEquals(s._password, 'h@t')
         self.assertEquals(s._path, 'relative')
+
+        # Base should not keep track of the password
+        self.assertEquals(s.base, 'sftp://robey@example.com:2222/relative')
+
+        # Double slash should be accepted instead of using %2F
+        s = SFTPTransport('sftp://user@example.com:22//absolute/path', clone_from=fake)
+        self.assertEquals(s._host, 'example.com')
+        self.assertEquals(s._port, 22)
+        self.assertEquals(s._username, 'user')
+        self.assertEquals(s._password, None)
+        self.assertEquals(s._path, '/absolute/path')
+
+        # Also, don't show the port if it is the default 22
+        self.assertEquals(s.base, 'sftp://user@example.com/%2Fabsolute/path')
 
     def test_parse_invalid_url(self):
         from bzrlib.transport.sftp import SFTPTransport, SFTPTransportError
@@ -185,7 +228,6 @@ class SFTPNonServerTest(unittest.TestCase):
             self.assertEquals(str(e), 
                     '~janneke: invalid port number')
 
-        
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
     """Test some stuff when accessing a bzr Branch over sftp"""

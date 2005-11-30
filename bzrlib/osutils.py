@@ -240,7 +240,12 @@ def is_inside_any(dir_list, fname):
 
 def pumpfile(fromfile, tofile):
     """Copy contents of one file to another."""
-    tofile.write(fromfile.read())
+    BUFSIZE = 32768
+    while True:
+        b = fromfile.read(BUFSIZE)
+        if not b:
+            break
+        tofile.write(b)
 
 
 def sha_file(f):
