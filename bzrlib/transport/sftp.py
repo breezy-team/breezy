@@ -756,7 +756,7 @@ class SFTPTransport (Transport):
 
         :param relpath: The relative path, where the file should be opened
         """
-        path = self._abspath(relpath)
+        path = self._sftp._adjust_cwd(self._abspath(relpath))
         attr = SFTPAttributes()
         mode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE 
                 | SFTP_FLAG_TRUNC | SFTP_FLAG_EXCL)
