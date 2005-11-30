@@ -19,6 +19,10 @@ UNRELEASED CHANGES
       points to C:\Documents and Settings\User Name\Application Data), HOME.
       (John Arbash Meinel)
 
+    * Use systems' external ssh command to open connections if possible.  
+      This gives better integration with user settings such as ProxyCommand.
+      (James Henstridge)
+
   IMPROVEMENTS:
 
     * "bzr INIT dir" now initializes the specified directory, and creates 
