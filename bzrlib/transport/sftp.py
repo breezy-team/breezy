@@ -36,6 +36,7 @@ from bzrlib.errors import (FileExists,
 from bzrlib.config import config_dir
 from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import Transport, register_transport
+from bzrlib.ui import ui_factory
 
 try:
     import paramiko
@@ -678,7 +679,7 @@ class SFTPTransport (Transport):
                 (self._host, our_server_key_hex, server_key_hex),
                 ['Try editing %s or %s' % (filename1, filename2)])
 
-        self._sftp_auth(t, self._username or getpass.getuser(), self._host)
+        self._sftp_auth(t)
         
         try:
             self._sftp = t.open_sftp_client()
@@ -686,54 +687,62 @@ class SFTPTransport (Transport):
             raise BzrError('Unable to find path %s on SFTP server %s' % \
                 (self._path, self._host))
 
-    def _sftp_auth(self, transport, username, host):
+    def _sftp_auth(self, transport):
+        # paramiko requires a username, but it might be none if nothing was supplied
+        # use the local username, just in case.
+        # We don't override self._username, because if we aren't using paramiko,
+        # the username might be specified in ~/.ssh/config and we don't want to
+        # force it to something else
+        # Also, it would mess up the self.relpath() functionality
+        username = self._username or getpass.getuser()
+
         agent = paramiko.Agent()
         for key in agent.get_keys():
             mutter('Trying SSH agent key %s' % paramiko.util.hexify(key.get_fingerprint()))
             try:
-                transport.auth_publickey(self._username, key)
+                transport.auth_publickey(username, key)
                 return
             except paramiko.SSHException, e:
                 pass
         
         # okay, try finding id_rsa or id_dss?  (posix only)
-        if self._try_pkey_auth(transport, paramiko.RSAKey, 'id_rsa'):
+        if self._try_pkey_auth(transport, paramiko.RSAKey, username, 'id_rsa'):
             return
-        if self._try_pkey_auth(transport, paramiko.DSSKey, 'id_dsa'):
+        if self._try_pkey_auth(transport, paramiko.DSSKey, username, 'id_dsa'):
             return
+
 
         if self._password:
             try:
-                transport.auth_password(self._username, self._password)
+                transport.auth_password(username, self._password)
                 return
             except paramiko.SSHException, e:
                 pass
 
+            # FIXME: Don't keep a password held in memory if you can help it
+            #self._password = None
+
         # give up and ask for a password
-        # FIXME: shouldn't be implementing UI this deep into bzrlib
-        enc = sys.stdout.encoding
-        password = getpass.getpass('SSH %s@%s password: ' %
-            (self._username.encode(enc, 'replace'), self._host.encode(enc, 'replace')))
+        password = ui_factory.get_password(prompt='SSH %(user)s@%(host)s password',
+                                           user=username, host=self._host)
         try:
-            transport.auth_password(self._username, password)
+            transport.auth_password(username, password)
         except paramiko.SSHException:
             raise SFTPTransportError('Unable to authenticate to SSH host as %s@%s' % \
-                (self._username, self._host))
+                (username, self._host))
 
-    def _try_pkey_auth(self, transport, pkey_class, filename):
+    def _try_pkey_auth(self, transport, pkey_class, username, filename):
         filename = os.path.expanduser('~/.ssh/' + filename)
         try:
             key = pkey_class.from_private_key_file(filename)
-            transport.auth_publickey(self._username, key)
+            transport.auth_publickey(username, key)
             return True
         except paramiko.PasswordRequiredException:
-            # FIXME: shouldn't be implementing UI this deep into bzrlib
-            enc = sys.stdout.encoding
-            password = getpass.getpass('SSH %s password: ' % 
-                (os.path.basename(filename).encode(enc, 'replace'),))
+            password = ui_factory.get_password(prompt='SSH %(filename)s password',
+                                               filename=filename)
             try:
                 key = pkey_class.from_private_key_file(filename, password)
-                transport.auth_publickey(self._username, key)
+                transport.auth_publickey(username, key)
                 return True
             except paramiko.SSHException:
                 mutter('SSH authentication via %s key failed.' % (os.path.basename(filename),))

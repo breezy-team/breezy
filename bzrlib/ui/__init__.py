@@ -38,8 +38,21 @@ class UIFactory(object):
     layer different applications can choose the style of UI.
     """
     def progress_bar(self):
+        """Return a progress bar object"""
         raise NotImplementedError
 
+    def get_password(self, prompt='', **kwargs):
+        """Prompt the user for a password.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The password string, return None if the user 
+                 canceled the request.
+        """
+        raise NotImplementedError
+        
 
 class SilentUIFactory(UIFactory):
     """A UI Factory which never prints anything.
@@ -48,5 +61,9 @@ class SilentUIFactory(UIFactory):
     """
     def progress_bar(self):
         return bzrlib.progress.DummyProgress()
+
+    def get_password(self, prompt='', **kwargs):
+        return None
+
 
 ui_factory = SilentUIFactory()

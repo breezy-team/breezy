@@ -19,6 +19,9 @@
 """Text UI, write output to the console.
 """
 
+import getpass
+import sys
+
 import bzrlib.progress
 from bzrlib.ui import UIFactory
 
@@ -29,4 +32,21 @@ class TextUIFactory(UIFactory):
         # this in turn is abstract, and creates either a tty or dots
         # bar depending on what we think of the terminal
         return bzrlib.progress.ProgressBar()
+
+    def get_password(self, prompt='', **kwargs):
+        """Prompt the user for a password.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The password string, return None if the user 
+                 canceled the request.
+        """
+        prompt = (prompt % kwargs).encode(sys.stdout.encoding, 'replace')
+        prompt += ': '
+        try:
+            return getpass.getpass(prompt)
+        except KeyboardInterrupt:
+            return None
 
