@@ -214,6 +214,7 @@ class SFTPTransport (Transport):
     """
     Transport implementation for SFTP access.
     """
+    _do_prefetch = False # Right now Paramiko's prefetch support causes things to hang
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
@@ -306,8 +307,7 @@ class SFTPTransport (Transport):
         try:
             path = self._abspath(relpath)
             f = self._sftp.file(path)
-            # TODO: Don't prefetch until paramiko fixes itself
-            if hasattr(f, 'prefetch'):
+            if self._do_prefetch and hasattr(f, 'prefetch'):
                 f.prefetch()
             return f
         except (IOError, paramiko.SSHException), x:
@@ -328,7 +328,7 @@ class SFTPTransport (Transport):
         # TODO: implement get_partial_multi to help with knit support
         f = self.get(relpath)
         f.seek(start)
-        if hasattr(f, 'prefetch'):
+        if self._do_prefetch and hasattr(f, 'prefetch'):
             f.prefetch()
         return f
 
