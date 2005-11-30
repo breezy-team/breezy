@@ -16,36 +16,17 @@
 
 
 
-"""UI abstraction.
-
-This tells the library how to display things to the user.  Through this
-layer different applications can choose the style of UI.
-
-At the moment this layer is almost trivial: the application can just
-choose the style of progress bar.
-
-Set the ui_factory member to define the behaviour.  The default
-displays no output.
+"""Text UI, write output to the console.
 """
 
-
-
-
-
 import bzrlib.progress
+from bzrlib.ui import UIFactory
 
 
-class TextUIFactory(object):
+class TextUIFactory(UIFactory):
     def progress_bar(self):
 
         # this in turn is abstract, and creates either a tty or dots
         # bar depending on what we think of the terminal
         return bzrlib.progress.ProgressBar()
 
-
-class SilentUIFactory(object):
-    def progress_bar(self):
-        return bzrlib.progress.DummyProgress()
-
-
-ui_factory = SilentUIFactory()
