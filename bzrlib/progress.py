@@ -42,20 +42,6 @@ import os
 from collections import deque
 
 
-def _width():
-    """Return estimated terminal width.
-
-    TODO: Do something smart on Windows?
-
-    TODO: Is there anything that gets a better update when the window
-          is resized while the program is running?
-    """
-    try:
-        return int(os.environ['COLUMNS'])
-    except (IndexError, KeyError, ValueError):
-        return 80
-
-
 def _supports_progress(f):
     if not hasattr(f, 'isatty'):
         return False
@@ -162,9 +148,10 @@ class TTYProgressBar(_BaseProgressBar):
 
 
     def __init__(self, **kwargs):
+        from bzrlib.osutils import terminal_width
         _BaseProgressBar.__init__(self, **kwargs)
         self.spin_pos = 0
-        self.width = _width()
+        self.width = terminal_width()
         self.start_time = None
         self.last_update = None
         self.last_updates = deque()

@@ -35,7 +35,7 @@ import errno
 
 import bzrlib
 import bzrlib.trace
-from bzrlib.trace import mutter, note, log_error, warning
+from bzrlib.trace import mutter, note, log_error, warning, be_quiet
 from bzrlib.errors import (BzrError, 
                            BzrCheckError,
                            BzrCommandError,
@@ -486,8 +486,10 @@ def run_bzr(argv):
             opt_no_plugins = True
         elif a == '--builtin':
             opt_builtin = True
+        elif a in ('--quiet', '-q'):
+            be_quiet()
         else:
-            break
+            continue
         argv.remove(a)
 
     if (not argv) or (argv[0] == '--help'):
@@ -511,11 +513,15 @@ def run_bzr(argv):
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
 
-    if opt_profile:
-        ret = apply_profiled(cmd_obj.run_argv, argv)
-    else:
-        ret = cmd_obj.run_argv(argv)
-    return ret or 0
+    try:
+        if opt_profile:
+            ret = apply_profiled(cmd_obj.run_argv, argv)
+        else:
+            ret = cmd_obj.run_argv(argv)
+        return ret or 0
+    finally:
+        # reset, in case we may do other commands later within the same process
+        be_quiet(False)
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""
@@ -534,12 +540,15 @@ def display_command(func):
             pass
     return ignore_pipe
 
+
 def main(argv):
     import bzrlib.ui
+    ## bzrlib.trace.enable_default_logging()
     bzrlib.trace.log_startup(argv)
     bzrlib.ui.ui_factory = bzrlib.ui.TextUIFactory()
-
-    return run_bzr_catch_errors(argv[1:])
+    ret = run_bzr_catch_errors(argv[1:])
+    mutter("return code %d", ret)
+    return ret
 
 
 def run_bzr_catch_errors(argv):
