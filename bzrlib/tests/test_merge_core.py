@@ -19,6 +19,7 @@ from bzrlib.changeset import Inventory, apply_changeset, invert_dict, \
     get_contents, ReplaceContents, ChangeExecFlag
 from bzrlib.clone import copy_branch
 from bzrlib.merge import merge
+from bzrlib.workingtree import WorkingTree
 
 
 class FalseTree(object):
@@ -535,14 +536,15 @@ class FunctionalMergeTest(TestCaseInTempDir):
 
     def test_trivial_star_merge(self):
         """Test that merges in a star shape Just Work.""" 
-        from bzrlib.add import smart_add_branch, add_reporter_null
+        from bzrlib.add import smart_add_tree, add_reporter_null
         from bzrlib.clone import copy_branch
         from bzrlib.merge import merge
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
         branch = Branch.initialize("original")
-        smart_add_branch(branch, ["original"], True, add_reporter_null)
-        branch.working_tree().commit("start branch.", verbose=False)
+        tree = WorkingTree('original', branch)
+        smart_add_tree(tree, ["original"], True, add_reporter_null)
+        tree.commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
         copy_branch(branch, "mary")
@@ -573,7 +575,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         os.mkdir('a')
         a = Branch.initialize('a')
         file('a/file', 'wb').write('contents\n')
-        a.add('file')
+        a.working_tree().add('file')
         a.working_tree().commit('base revision', allow_pointless=False)
         b = copy_branch(a, 'b')
         file('a/file', 'wb').write('other contents\n')
@@ -603,12 +605,12 @@ class FunctionalMergeTest(TestCaseInTempDir):
         os.mkdir('a')
         a = Branch.initialize('a')
         file('a/a_file', 'wb').write('contents\n')
-        a.add('a_file')
+        a.working_tree().add('a_file')
         a.working_tree().commit('a_revision', allow_pointless=False)
         os.mkdir('b')
         b = Branch.initialize('b')
         file('b/b_file', 'wb').write('contents\n')
-        b.add('b_file')
+        b.working_tree().add('b_file')
         b.working_tree().commit('b_revision', allow_pointless=False)
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.lexists('a/b_file'))
@@ -620,12 +622,12 @@ class FunctionalMergeTest(TestCaseInTempDir):
         os.mkdir('a')
         a = Branch.initialize('a')
         file('a/file', 'wb').write('contents\n')
-        a.add('file')
+        a.working_tree().add('file')
         a.working_tree().commit('a_revision', allow_pointless=False)
         os.mkdir('b')
         b = Branch.initialize('b')
         file('b/file', 'wb').write('contents\n')
-        b.add('file')
+        b.working_tree().add('file')
         b.working_tree().commit('b_revision', allow_pointless=False)
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.lexists('a/file'))
@@ -636,7 +638,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         os.mkdir('a')
         a = Branch.initialize('a')
         file('a/file', 'wb').write('contents\n')
-        a.add('file')
+        a.working_tree().add('file')
         a.working_tree().commit('a_revision', allow_pointless=False)
         del a
         self.run_bzr('branch', 'a', 'b')
@@ -654,8 +656,8 @@ class FunctionalMergeTest(TestCaseInTempDir):
         os.mkdir('a')
         a = Branch.initialize('a')
         file('a/file', 'wb').write('contents\n')
-        a.add('file')
         a_wt = a.working_tree()
+        a_wt.add('file')
         a_wt.commit('r0')
         copy_branch(a, 'b')
         b = Branch.open('b')

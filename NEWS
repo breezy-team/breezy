@@ -19,6 +19,10 @@ UNRELEASED CHANGES
       points to C:\Documents and Settings\User Name\Application Data), HOME.
       (John Arbash Meinel)
 
+    * Use systems' external ssh command to open connections if possible.  
+      This gives better integration with user settings such as ProxyCommand.
+      (James Henstridge)
+
   IMPROVEMENTS:
 
     * "bzr INIT dir" now initializes the specified directory, and creates 
@@ -52,6 +56,13 @@ UNRELEASED CHANGES
 
     * New ftp transport support (on ftplib), for ftp:// and aftp:// 
       URLs.  (Daniel Silverstone)
+
+    * Commit editor temporary files now start with 'bzr_log.', to allow 
+      text editors to match the file name and set up appropriate modes or 
+      settings.  (Magnus Therning)
+
+    * Improved performance when integrating changes from a remote weave.  
+      (Goffredo Baroncelli)
 
   BUG FIXES:
 
@@ -90,6 +101,11 @@ UNRELEASED CHANGES
     * List of plugin directories in BZR_PLUGIN_PATH environment variable is
       now parsed properly under Windows. (Alexander Belchenko)
 
+    * Show number of revisions pushed/pulled/merged. (Robey Pointer)
+
+    * Keep a cached copy of the basis inventory to speed up operations 
+      that need to refer to it.  (Johan Rydberg, Martin Pool)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
@@ -109,6 +125,12 @@ UNRELEASED CHANGES
 
     * Delay in selftest/testhashcash is now issued under win32 and Cygwin.
       (John Arbash Meinel)
+
+    * Use terminal width to align verbose test output.  (Martin Pool)
+
+    * Blackbox tests are maintained within the bzrlib.tests.blackbox directory.
+      If adding a new test script please add that to
+      bzrlib.tests.blackbox.__init__. (Robert Collins)
 
   INTERNALS:
 
@@ -146,9 +168,21 @@ UNRELEASED CHANGES
     * All pending merges operations from Branch are now on WorkingTree.
       (Robert Collins)
 
-    * Branch.commit() has moved to WorkingTree.commit(). (Robert Collins)
+    * The follow operations from Branch have moved to WorkingTree:
+      add()
+      commit()
+      move()
+      rename_one()
+      unknowns()
+      (Robert Collins)
 
+    * bzrlib.add.smart_add_branch is now smart_add_tree. (Robert Collins)
 
+    * New "rio" serialization format, similar to rfc-822. (Martin Pool)
+
+    * Rename selftests to `bzrlib.tests.test_foo`.  (John A Meinel, Martin 
+      Pool)
+   
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:

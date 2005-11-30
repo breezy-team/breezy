@@ -80,12 +80,12 @@ class TestStores(object):
 
 class TestCompressedTextStore(TestCaseInTempDir, TestStores):
 
-    def get_store(self, path='.'):
+    def get_store(self, path=u'.'):
         t = LocalTransport(path)
         return TextStore(t, compressed=True)
 
     def test_total_size(self):
-        store = self.get_store('.')
+        store = self.get_store(u'.')
         store.register_suffix('dsc')
         store.add(StringIO('goodbye'), '123123')
         store.add(StringIO('goodbye2'), '123123', 'dsc')
@@ -139,7 +139,7 @@ class TestMemoryStore(TestCase):
 
 class TestTextStore(TestCaseInTempDir, TestStores):
 
-    def get_store(self, path='.'):
+    def get_store(self, path=u'.'):
         t = LocalTransport(path)
         return TextStore(t, compressed=False)
 
@@ -157,13 +157,13 @@ class TestTextStore(TestCaseInTempDir, TestStores):
 
 class TestMixedTextStore(TestCaseInTempDir, TestStores):
 
-    def get_store(self, path='.', compressed=True):
+    def get_store(self, path=u'.', compressed=True):
         t = LocalTransport(path)
         return TextStore(t, compressed=compressed)
 
     def test_get_mixed(self):
-        cs = self.get_store('.', compressed=True)
-        s = self.get_store('.', compressed=False)
+        cs = self.get_store(u'.', compressed=True)
+        s = self.get_store(u'.', compressed=False)
         cs.add(StringIO('hello there'), 'a')
 
         self.failUnlessExists('a.gz')

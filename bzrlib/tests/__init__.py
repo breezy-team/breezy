@@ -27,19 +27,35 @@ import tempfile
 import unittest
 import time
 
-from logging import debug, warning, error
-
+import bzrlib.branch
 import bzrlib.commands
-import bzrlib.trace
+from bzrlib.errors import BzrError
+import bzrlib.inventory
+import bzrlib.merge3
+import bzrlib.osutils
 import bzrlib.osutils as osutils
-from bzrlib.tests import TestUtil
+import bzrlib.plugin
+import bzrlib.store
+import bzrlib.trace
+from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.tests.treeshape import build_tree_contents
-from bzrlib.errors import BzrError
 
 MODULES_TO_TEST = []
-MODULES_TO_DOCTEST = []
-
+MODULES_TO_DOCTEST = [
+                      bzrlib.branch,
+                      bzrlib.commands,
+                      bzrlib.errors,
+                      bzrlib.inventory,
+                      bzrlib.merge3,
+                      bzrlib.osutils,
+                      bzrlib.store,
+                      ]
+def packages_to_test():
+    import bzrlib.tests.blackbox
+    return [
+            bzrlib.tests.blackbox
+            ]
 
 
 class EarlyStoppingTestResultAdapter(object):
@@ -66,33 +82,37 @@ class EarlyStoppingTestResultAdapter(object):
 
 
 class _MyResult(unittest._TextTestResult):
-    """
-    Custom TestResult.
+    """Custom TestResult.
 
-    No special behaviour for now.
+    Shows output in a different format, including displaying runtime for tests.
     """
 
     def _elapsedTime(self):
-        return "(Took %.3fs)" % (time.time() - self._start_time)
+        return "%5dms" % (1000 * (time.time() - self._start_time))
 
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
         # In a short description, the important words are in
         # the beginning, but in an id, the important words are
         # at the end
-        what = test.shortDescription()
-        if what:
-            if len(what) > 70:
-                what = what[:67] + '...'
-        else:
-            what = test.id()
-            if what.startswith('bzrlib.tests.'):
-                what = what[13:]
-            if len(what) > 70:
-                what = '...' + what[-67:]
-            
+        SHOW_DESCRIPTIONS = False
         if self.showAll:
-            self.stream.write('%-70.70s' % what)
+            width = osutils.terminal_width()
+            name_width = width - 15
+            what = None
+            if SHOW_DESCRIPTIONS:
+                what = test.shortDescription()
+                if what:
+                    if len(what) > name_width:
+                        what = what[:name_width-3] + '...'
+            if what is None:
+                what = test.id()
+                if what.startswith('bzrlib.tests.'):
+                    what = what[13:]
+                if len(what) > name_width:
+                    what = '...' + what[3-name_width:]
+            what = what.ljust(name_width)
+            self.stream.write(what)
         self.stream.flush()
         self._start_time = time.time()
 
@@ -107,14 +127,14 @@ class _MyResult(unittest._TextTestResult):
     def addFailure(self, test, err):
         unittest.TestResult.addFailure(self, test, err)
         if self.showAll:
-            self.stream.writeln("FAIL %s" % self._elapsedTime())
+            self.stream.writeln(" FAIL %s" % self._elapsedTime())
         elif self.dots:
             self.stream.write('F')
         self.stream.flush()
 
     def addSuccess(self, test):
         if self.showAll:
-            self.stream.writeln('OK %s' % self._elapsedTime())
+            self.stream.writeln('   OK %s' % self._elapsedTime())
         elif self.dots:
             self.stream.write('~')
         self.stream.flush()
@@ -236,7 +256,6 @@ class TestCase(unittest.TestCase):
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
         self._log_file = os.fdopen(fileno, 'w+')
         bzrlib.trace.enable_test_log(self._log_file)
-        debug('opened log file %s', name)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
 
@@ -310,7 +329,7 @@ class TestCase(unittest.TestCase):
             callable()
 
     def log(self, *args):
-        logging.debug(*args)
+        mutter(*args)
 
     def _get_log(self):
         """Return as a string the log for this test"""
@@ -318,6 +337,7 @@ class TestCase(unittest.TestCase):
             return open(self._log_file_name).read()
         else:
             return self._log_contents
+        # TODO: Delete the log after it's been read in
 
     def capture(self, cmd, retcode=0):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
@@ -346,6 +366,7 @@ class TestCase(unittest.TestCase):
         stdout = StringIO()
         stderr = StringIO()
         self.log('run bzr: %s', ' '.join(argv))
+        # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
         handler.setFormatter(bzrlib.trace.QuietFormatter())
         handler.setLevel(logging.INFO)
@@ -524,7 +545,7 @@ class TestCaseInTempDir(TestCase):
                 f.close()
 
     def build_tree_contents(self, shape):
-        bzrlib.tests.build_tree_contents(shape)
+        build_tree_contents(shape)
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
@@ -540,6 +561,7 @@ class MetaTestLog(TestCase):
     def test_logging(self):
         """Test logs are captured when a test fails."""
         self.log('a test message')
+        self._log_file.flush()
         self.assertContainsRe(self._get_log(), 'a test message\n')
 
 
@@ -586,11 +608,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
 
 def test_suite():
     """Build and return TestSuite for the whole program."""
-    import bzrlib.store, bzrlib.inventory, bzrlib.branch
-    import bzrlib.osutils, bzrlib.merge3, bzrlib.plugin
     from doctest import DocTestSuite
 
-    global MODULES_TO_TEST, MODULES_TO_DOCTEST
+    global MODULES_TO_DOCTEST
 
     # FIXME: If these fail to load, e.g. because of a syntax error, the
     # exception is hidden by unittest.  Sucks.  Should either fix that or
@@ -625,8 +645,6 @@ def test_suite():
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_store',
-                   'bzrlib.tests.blackbox',
-                   'bzrlib.tests.blackbox.versioning',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transport',
@@ -645,22 +663,18 @@ def test_suite():
                    'bzrlib.tests.test_reweave',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_trace',
+                   'bzrlib.tests.test_rio',
                    ]
-
-    for m in (bzrlib.store, bzrlib.inventory, bzrlib.branch,
-              bzrlib.osutils, bzrlib.commands, bzrlib.merge3,
-              bzrlib.errors,
-              ):
-        if m not in MODULES_TO_DOCTEST:
-            MODULES_TO_DOCTEST.append(m)
 
     TestCase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
     print '%-30s %s' % ('bzr binary', TestCase.BZRPATH)
     print
     suite = TestSuite()
     suite.addTest(TestLoader().loadTestsFromNames(testmod_names))
+    for package in packages_to_test():
+        suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
-         suite.addTest(TestLoader().loadTestsFromModule(m))
+        suite.addTest(TestLoader().loadTestsFromModule(m))
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
     for p in bzrlib.plugin.all_plugins:

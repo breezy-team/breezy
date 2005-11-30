@@ -36,7 +36,7 @@ class TestBranch(TestCaseInTempDir):
 
     def test_append_revisions(self):
         """Test appending more than one revision"""
-        br = Branch.initialize(".")
+        br = Branch.initialize(u".")
         br.append_revision("rev1")
         self.assertEquals(br.revision_history(), ["rev1",])
         br.append_revision("rev2", "rev3")
@@ -50,7 +50,7 @@ class TestBranch(TestCaseInTempDir):
         b1 = Branch.initialize('b1')
         b2 = Branch.initialize('b2')
         file(os.sep.join(['b1', 'foo']), 'w').write('hello')
-        b1.add(['foo'], ['foo-id'])
+        b1.working_tree().add(['foo'], ['foo-id'])
         b1.working_tree().commit('lala!', rev_id='revision-1', allow_pointless=False)
 
         mutter('start fetch')
@@ -64,7 +64,7 @@ class TestBranch(TestCaseInTempDir):
         eq(tree.get_file_text('foo-id'), 'hello')
 
     def test_revision_tree(self):
-        b1 = Branch.initialize('.')
+        b1 = Branch.initialize(u'.')
         b1.working_tree().commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = b1.revision_tree('revision-1')
         tree = b1.revision_tree(None)
@@ -77,7 +77,7 @@ class TestBranch(TestCaseInTempDir):
         os.mkdir('a')
         br_a = Branch.initialize("a")
         file('a/b', 'wb').write('b')
-        br_a.add('b')
+        br_a.working_tree().add('b')
         commit(br_a, "silly commit", rev_id='A')
         os.mkdir('b')
         br_b = Branch.initialize("b")
@@ -116,10 +116,10 @@ class TestBranch(TestCaseInTempDir):
         """Copy only part of the history of a branch."""
         self.build_tree(['a/', 'a/one'])
         br_a = Branch.initialize('a')
-        br_a.add(['one'])
+        br_a.working_tree().add(['one'])
         br_a.working_tree().commit('commit one', rev_id='u@d-1')
         self.build_tree(['a/two'])
-        br_a.add(['two'])
+        br_a.working_tree().add(['two'])
         br_a.working_tree().commit('commit two', rev_id='u@d-2')
         br_b = copy_branch(br_a, 'b', revision='u@d-1')
         self.assertEqual(br_b.last_revision(), 'u@d-1')
@@ -128,7 +128,7 @@ class TestBranch(TestCaseInTempDir):
         
     def test_record_initial_ghost_merge(self):
         """A pending merge with no revision present is still a merge."""
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         branch.working_tree().add_pending_merge('non:existent@rev--ision--0--2')
         branch.working_tree().commit('pretend to merge nonexistent-revision', rev_id='first')
         rev = branch.get_revision(branch.last_revision())
@@ -138,7 +138,7 @@ class TestBranch(TestCaseInTempDir):
         self.assertEqual(rev.parent_ids[0], 'non:existent@rev--ision--0--2')
 
     def test_bad_revision(self):
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         self.assertRaises(errors.InvalidRevisionId, branch.get_revision, None)
 
 # TODO 20051003 RBC:
@@ -148,7 +148,7 @@ class TestBranch(TestCaseInTempDir):
         
     def test_pending_merges(self):
         """Tracking pending-merged revisions."""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         wt = b.working_tree()
         self.assertEquals(wt.pending_merges(), [])
         wt.add_pending_merge('foo@azkhazan-123123-abcabc')
@@ -170,7 +170,7 @@ class TestBranch(TestCaseInTempDir):
         self.assertEquals(wt.pending_merges(), [])
 
     def test_sign_existing_revision(self):
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
         branch.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
@@ -178,17 +178,17 @@ class TestBranch(TestCaseInTempDir):
                          branch.revision_store.get('A', 'sig').read())
 
     def test_store_signature(self):
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         branch.store_revision_signature(bzrlib.gpg.LoopbackGPGStrategy(None),
                                         'FOO', 'A')
         self.assertEqual('FOO', branch.revision_store.get('A', 'sig').read())
 
     def test__relcontrolfilename(self):
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         self.assertEqual('.bzr/%25', branch._rel_controlfilename('%'))
         
     def test__relcontrolfilename_empty(self):
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         self.assertEqual('.bzr', branch._rel_controlfilename(''))
 
     def test_nicks(self):
@@ -227,7 +227,7 @@ class TestRemote(TestCaseWithWebserver):
                           self.get_remote_url(''))
         self.assertRaises(NotBranchError, Branch.open_containing,
                           self.get_remote_url('g/p/q'))
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         branch, relpath = Branch.open_containing(self.get_remote_url(''))
         self.assertEqual('', relpath)
         branch, relpath = Branch.open_containing(self.get_remote_url('g/p/q'))
@@ -237,8 +237,8 @@ class TestRemote(TestCaseWithWebserver):
 #         >>> from bzrlib.commit import commit
 #         >>> bzrlib.trace.silent = True
 #         >>> br1 = ScratchBranch(files=['foo', 'bar'])
-#         >>> br1.add('foo')
-#         >>> br1.add('bar')
+#         >>> br1.working_tree().add('foo')
+#         >>> br1.working_tree().add('bar')
 #         >>> commit(br1, "lala!", rev_id="REVISION-ID-1", verbose=False)
 #         >>> br2 = ScratchBranch()
 #         >>> br2.update_revisions(br1)
@@ -319,7 +319,7 @@ class TestBranchTransaction(TestCaseInTempDir):
 
     def setUp(self):
         super(TestBranchTransaction, self).setUp()
-        self.branch = Branch.initialize('.')
+        self.branch = Branch.initialize(u'.')
         
     def test_default_get_transaction(self):
         """branch.get_transaction on a new branch should give a PassThrough."""
@@ -368,7 +368,7 @@ class TestBranchPushLocations(TestCaseInTempDir):
 
     def setUp(self):
         super(TestBranchPushLocations, self).setUp()
-        self.branch = Branch.initialize('.')
+        self.branch = Branch.initialize(u'.')
         
     def test_get_push_location_unset(self):
         self.assertEqual(None, self.branch.get_push_location())

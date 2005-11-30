@@ -40,16 +40,16 @@ class TestBadFiles(TestCaseInTempDir):
         from bzrlib.add import smart_add
         from bzrlib.branch import Branch
 
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         self.build_tree(['one', 'two', 'three'])
-        smart_add('.')
+        smart_add(u'.')
         commit(b, "Commit one", rev_id="a@u-0-0")
         self.build_tree(['four'])
-        smart_add('.')
+        smart_add(u'.')
         commit(b, "Commit two", rev_id="a@u-0-1")
         self.build_tree(['five'])
-        smart_add('.')
+        smart_add(u'.')
         commit(b, "Commit three", rev_id="a@u-0-2")
 
         # We should now have a few files, lets try to
@@ -73,7 +73,7 @@ class TestBadFiles(TestCaseInTempDir):
         
         # Make sure smart_add can handle having a bogus
         # file in the way
-        smart_add('.')
+        smart_add(u'.')
         verify_status(self, b,
                           ['added:\n',
                            '  six\n',

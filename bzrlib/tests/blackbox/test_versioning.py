@@ -40,7 +40,7 @@ class TestVersioning(TestCaseInTempDir):
 
         from bzrlib.diff import compare_trees
         from bzrlib.branch import Branch
-        b = Branch.open('.')
+        b = Branch.open(u'.')
         
         delta = compare_trees(b.basis_tree(), b.working_tree())
 
@@ -65,7 +65,7 @@ class TestVersioning(TestCaseInTempDir):
 
         from bzrlib.diff import compare_trees
         from bzrlib.branch import Branch
-        b = Branch.open('.')
+        b = Branch.open(u'.')
         
         delta = compare_trees(b.basis_tree(), b.working_tree())
 
@@ -94,7 +94,7 @@ class TestVersioning(TestCaseInTempDir):
         self.failUnless(os.path.isdir('a/b/dir'))
 
         from bzrlib.diff import compare_trees
-        b = Branch.open('.')
+        b = Branch.open(u'.')
         b_a = Branch.open('a')
         b_b = Branch.open('a/b')
         
@@ -113,108 +113,32 @@ class TestVersioning(TestCaseInTempDir):
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)
 
-    def test_branch_add_in_unversioned(self):
+    def test_working_tree_add_in_unversioned(self):
         """Try to add a file in an unversioned directory.
 
-        "bzr add" adds the parent as necessary, but simple branch add
+        "bzr add" adds the parent as necessary, but simple working tree add
         doesn't do that.
         """
         from bzrlib.branch import Branch
         from bzrlib.errors import NotVersionedError
+        from bzrlib.workingtree import WorkingTree
 
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         self.build_tree(['foo/',
                          'foo/hello'])
 
         self.assertRaises(NotVersionedError,
-                          b.add,
+                          WorkingTree(b.base, b).add,
                           'foo/hello')
         
-        self.check_branch()
-
-    def test_add_in_unversioned(self):
-        """Try to add a file in an unversioned directory.
-
-        "bzr add" should add the parent(s) as necessary.
-        """
-        from bzrlib.branch import Branch
-        eq = self.assertEqual
-
-        b = Branch.initialize('.')
-
-        self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        eq(list(b.unknowns()), ['inertiatic'])
-        self.run_bzr('add', 'inertiatic/esp')
-        eq(list(b.unknowns()), [])
-
-        # Multiple unversioned parents
-        self.build_tree(['veil/', 'veil/cerpin/', 'veil/cerpin/taxt'])
-        eq(list(b.unknowns()), ['veil'])
-        self.run_bzr('add', 'veil/cerpin/taxt')
-        eq(list(b.unknowns()), [])
-
-        # Check whacky paths work
-        self.build_tree(['cicatriz/', 'cicatriz/esp'])
-        eq(list(b.unknowns()), ['cicatriz'])
-        self.run_bzr('add', 'inertiatic/../cicatriz/esp')
-        eq(list(b.unknowns()), [])
-
-    def test_add_in_versioned(self):
-        """Try to add a file in a versioned directory.
-
-        "bzr add" should do this happily.
-        """
-        from bzrlib.branch import Branch
-        eq = self.assertEqual
-
-        b = Branch.initialize('.')
-
-        self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        eq(list(b.unknowns()), ['inertiatic'])
-        self.run_bzr('add', '--no-recurse', 'inertiatic')
-        eq(list(b.unknowns()), ['inertiatic'+os.sep+'esp'])
-        self.run_bzr('add', 'inertiatic/esp')
-        eq(list(b.unknowns()), [])
-
-    def test_subdir_add(self):
-        """Add in subdirectory should add only things from there down"""
-        
-        from bzrlib.branch import Branch
-        
-        eq = self.assertEqual
-        ass = self.assert_
-        chdir = os.chdir
-        
-        b = Branch.initialize('.')
-        t = b.working_tree()
-        self.build_tree(['src/', 'README'])
-        
-        eq(sorted(b.unknowns()),
-           ['README', 'src'])
-        
-        self.run_bzr('add', 'src')
-        
-        self.build_tree(['src/foo.c'])
-        
-        chdir('src')
-        self.run_bzr('add')
-        
-        eq(sorted(b.unknowns()), 
-           ['README'])
-        eq(len(t.read_working_inventory()), 3)
-                
-        chdir('..')
-        self.run_bzr('add')
-        eq(list(b.unknowns()), [])
-
         self.check_branch()
 
     def check_branch(self):
         """After all the above changes, run the check and upgrade commands.
 
         The upgrade should be a no-op."""
-        b = Branch.open('.')
+        b = Branch.open(u'.')
         mutter('branch has %d revisions', b.revno())
         
         mutter('check branch...')
@@ -232,7 +156,7 @@ class SubdirCommit(TestCaseInTempDir):
         self.build_tree(['a/', 'b/'])
         
         run_bzr('init')
-        b = Branch.open('.')
+        b = Branch.open(u'.')
         
         for fn in ('a/one', 'b/two', 'top'):
             file(fn, 'w').write('old contents')

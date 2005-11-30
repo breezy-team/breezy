@@ -23,7 +23,6 @@ from sha import sha
 import sys
 
 from bzrlib.tests import TestCaseInTempDir
-from bzrlib.tests.treeshape import build_tree_contents
 from bzrlib.branch import Branch
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter
@@ -34,18 +33,18 @@ class TestamentTests(TestCaseInTempDir):
 
     def setUp(self):
         super(TestamentTests, self).setUp()
-        b = self.b = Branch.initialize('.')
+        b = self.b = Branch.initialize(u'.')
         b.nick = "test branch"
         b.working_tree().commit(message='initial null commit',
                  committer='test@user',
                  timestamp=1129025423, # 'Tue Oct 11 20:10:23 2005'
                  timezone=0,
                  rev_id='test@user-1')
-        build_tree_contents([('hello', 'contents of hello file'),
+        self.build_tree_contents([('hello', 'contents of hello file'),
                              ('src/', ),
                              ('src/foo.c', 'int main()\n{\n}\n')])
-        b.add(['hello', 'src', 'src/foo.c'],
-              ['hello-id', 'src-id', 'foo.c-id'])
+        b.working_tree().add(['hello', 'src', 'src/foo.c'],
+                             ['hello-id', 'src-id', 'foo.c-id'])
         b.working_tree().commit(message='add files and directories',
                  timestamp=1129025483,
                  timezone=36000,
@@ -96,7 +95,7 @@ class TestamentTests(TestCaseInTempDir):
         if not has_symlinks():
             return
         os.symlink('wibble/linktarget', 'link')
-        self.b.add(['link'], ['link-id'])
+        self.b.working_tree().add(['link'], ['link-id'])
         self.b.working_tree().commit(message='add symlink',
                  timestamp=1129025493,
                  timezone=36000,

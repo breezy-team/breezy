@@ -8,19 +8,10 @@ from bzrlib.errors import NotBranchError
 
 class TestBranch(TestCaseInTempDir):
 
-    def test_unknowns(self):
-        b = Branch.initialize('.')
-
-        self.build_tree(['hello.txt',
-                         'hello.txt~'])
-
-        self.assertEquals(list(b.unknowns()),
-                          ['hello.txt'])
-
     def test_no_changes(self):
         from bzrlib.errors import PointlessCommit
         
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         self.build_tree(['hello.txt'])
 
@@ -32,7 +23,7 @@ class TestBranch(TestCaseInTempDir):
         b.working_tree().commit('commit pointless tree',
                  allow_pointless=True)
 
-        b.add('hello.txt')
+        b.working_tree().add('hello.txt')
         
         b.working_tree().commit('commit first added file',
                  allow_pointless=False)
@@ -50,9 +41,9 @@ class MoreTests(TestCaseInTempDir):
 
     def test_rename_dirs(self):
         """Test renaming directories and the files within them."""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
-        b.add(['dir', 'dir/sub', 'dir/sub/file'])
+        b.working_tree().add(['dir', 'dir/sub', 'dir/sub/file'])
 
         b.working_tree().commit('create initial state')
 
@@ -68,12 +59,12 @@ class MoreTests(TestCaseInTempDir):
         self.check_inventory_shape(inv,
                                    ['dir', 'dir/sub', 'dir/sub/file'])
 
-        b.rename_one('dir', 'newdir')
+        b.working_tree().rename_one('dir', 'newdir')
 
         self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['newdir', 'newdir/sub', 'newdir/sub/file'])
 
-        b.rename_one('newdir/sub', 'newdir/newsub')
+        b.working_tree().rename_one('newdir/sub', 'newdir/newsub')
         self.check_inventory_shape(b.working_tree().read_working_inventory(),
                                    ['newdir', 'newdir/newsub',
                                     'newdir/newsub/file'])

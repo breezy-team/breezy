@@ -65,7 +65,7 @@ class SimpleLogTest(TestCaseInTempDir):
             self.assertEquals(expected, got)
 
     def test_cur_revno(self):
-        b = Branch('.', init=True)
+        b = Branch(u'.', init=True)
 
         lf = LogCatcher()
         b.working_tree().commit('empty commit')
@@ -84,7 +84,7 @@ class SimpleLogTest(TestCaseInTempDir):
                           start_revision=1, end_revision=-1) 
 
     def test_cur_revno(self):
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         lf = LogCatcher()
         b.working_tree().commit('empty commit')
@@ -105,7 +105,7 @@ class SimpleLogTest(TestCaseInTempDir):
     def test_simple_log(self):
         eq = self.assertEquals
         
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         lf = LogCatcher()
         show_log(b, lf)
@@ -123,7 +123,7 @@ class SimpleLogTest(TestCaseInTempDir):
         self.checkDelta(d)
 
         self.build_tree(['hello'])
-        b.add('hello')
+        b.working_tree().add('hello')
         b.working_tree().commit('add one file')
 
         lf = StringIO()
@@ -175,22 +175,22 @@ class SimpleLogTest(TestCaseInTempDir):
         self.assert_(msg == committed_msg)
 
     def test_trailing_newlines(self):
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         b.nick='test'
         wt = b.working_tree()
         open('a', 'wb').write('hello moto\n')
-        b.add('a')
+        wt.add('a')
         wt.commit('simple log message', rev_id='a1'
                 , timestamp=1132586655.459960938, timezone=-6*3600
                 , committer='Joe Foo <joe@foo.com>')
         open('b', 'wb').write('goodbye\n')
-        b.add('b')
+        wt.add('b')
         wt.commit('multiline\nlog\nmessage\n', rev_id='a2'
                 , timestamp=1132586842.411175966, timezone=-6*3600
                 , committer='Joe Foo <joe@foo.com>')
 
         open('c', 'wb').write('just another manic monday\n')
-        b.add('c')
+        wt.add('c')
         wt.commit('single line with trailing newline\n', rev_id='a3'
                 , timestamp=1132587176.835228920, timezone=-6*3600
                 , committer = 'Joe Foo <joe@foo.com>')
@@ -241,3 +241,35 @@ message:
   simple log message
 """)
         
+    def test_verbose_log(self):
+        """Verbose log includes changed files
+        
+        bug #4676
+        """
+        b = Branch.initialize(u'.')
+        self.build_tree(['a'])
+        wt = b.working_tree()
+        wt.add('a')
+        # XXX: why does a longer nick show up?
+        b.nick = 'test_verbose_log'
+        wt.commit(message='add a', 
+                  timestamp=1132711707, 
+                  timezone=36000,
+                  committer='Lorem Ipsum <test@example.com>')
+        logfile = file('out.tmp', 'w+')
+        formatter = LongLogFormatter(to_file=logfile)
+        show_log(b, formatter, verbose=True)
+        logfile.flush()
+        logfile.seek(0)
+        log_contents = logfile.read()
+        self.assertEqualDiff(log_contents, '''\
+------------------------------------------------------------
+revno: 1
+committer: Lorem Ipsum <test@example.com>
+branch nick: test_verbose_log
+timestamp: Wed 2005-11-23 12:08:27 +1000
+message:
+  add a
+added:
+  a
+''')

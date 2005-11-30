@@ -72,12 +72,12 @@ import pdb
 from binascii import hexlify
 from cStringIO import StringIO
 
+from bzrlib.atomicfile import AtomicFile
 from bzrlib.osutils import (local_time_offset,
                             rand_bytes, compact_date,
                             kind_marker, is_inside_any, quotefn,
                             sha_string, sha_strings, sha_file, isdir, isfile,
                             split_lines)
-from bzrlib.branch import gen_file_id
 import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
@@ -92,7 +92,7 @@ from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave_v5
-from bzrlib.atomicfile import AtomicFile
+from bzrlib.workingtree import WorkingTree
 
 
 def commit(*args, **kwargs):
@@ -124,6 +124,7 @@ class NullCommitReporter(object):
     def missing(self, path):
         pass
 
+
 class ReportCommitToLog(NullCommitReporter):
 
     def snapshot_change(self, change, path):
@@ -140,6 +141,7 @@ class ReportCommitToLog(NullCommitReporter):
 
     def missing(self, path):
         note('missing %s', path)
+
 
 class Commit(object):
     """Task of committing a new revision.
@@ -207,10 +209,11 @@ class Commit(object):
         self.revprops = {'branch-nick': branch.nick}
         if revprops:
             self.revprops.update(revprops)
+        self.work_tree = WorkingTree(branch.base, branch)
 
         if strict:
             # raise an exception as soon as we find a single unknown.
-            for unknown in branch.unknowns():
+            for unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
 
         if timestamp is None:
@@ -245,7 +248,6 @@ class Commit(object):
 
         self.branch.lock_write()
         try:
-            self.work_tree = self.branch.working_tree()
             self.work_inv = self.work_tree.inventory
             self.basis_tree = self.branch.basis_tree()
             self.basis_inv = self.basis_tree.inventory
@@ -270,8 +272,8 @@ class Commit(object):
 
             self._record_inventory()
             self._make_revision()
-            self.branch.append_revision(self.rev_id)
             self.work_tree.set_pending_merges([])
+            self.branch.append_revision(self.rev_id)
             self.reporter.completed(self.branch.revno()+1, self.rev_id)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')

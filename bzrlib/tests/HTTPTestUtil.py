@@ -27,10 +27,10 @@ class BadWebserverPath(ValueError):
 
 class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
-        self.server.test_case.log("webserver - %s - - [%s] %s" %
-                                  (self.address_string(),
-                                   self.log_date_time_string(),
-                                   format%args))
+        self.server.test_case.log("webserver - %s - - [%s] %s",
+                                  self.address_string(),
+                                  self.log_date_time_string(),
+                                  format%args)
 
     def handle_one_request(self):
         """Handle a single HTTP request.
