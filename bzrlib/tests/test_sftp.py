@@ -193,7 +193,9 @@ class SFTPNonServerTest(TestCase):
         self.assertEquals(s._host, 'simple.example.com')
         self.assertEquals(s._port, 22)
         self.assertEquals(s._path, '/home/source')
-        self.assert_(s._password is None)
+        self.failUnless(s._password is None)
+
+        self.assertEquals(s.base, 'sftp://simple.example.com/%2Fhome/source')
         
         s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/relative', clone_from=fake)
         self.assertEquals(s._host, 'example.com')
@@ -201,6 +203,20 @@ class SFTPNonServerTest(TestCase):
         self.assertEquals(s._username, 'robey')
         self.assertEquals(s._password, 'h@t')
         self.assertEquals(s._path, 'relative')
+
+        # Base should not keep track of the password
+        self.assertEquals(s.base, 'sftp://robey@example.com:2222/relative')
+
+        # Double slash should be accepted instead of using %2F
+        s = SFTPTransport('sftp://user@example.com:22//absolute/path', clone_from=fake)
+        self.assertEquals(s._host, 'example.com')
+        self.assertEquals(s._port, 22)
+        self.assertEquals(s._username, 'user')
+        self.assertEquals(s._password, None)
+        self.assertEquals(s._path, '/absolute/path')
+
+        # Also, don't show the port if it is the default 22
+        self.assertEquals(s.base, 'sftp://user@example.com/%2Fabsolute/path')
 
     def test_parse_invalid_url(self):
         from bzrlib.transport.sftp import SFTPTransport, SFTPTransportError

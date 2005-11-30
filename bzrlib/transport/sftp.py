@@ -572,7 +572,7 @@ class SFTPTransport (Transport):
         netloc = urllib.quote(self._host)
         if self._username is not None:
             netloc = '%s@%s' % (urllib.quote(self._username), netloc)
-        if self._port is not None:
+        if self._port not in (None, 22):
             netloc = '%s:%d' % (netloc, self._port)
 
         return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
