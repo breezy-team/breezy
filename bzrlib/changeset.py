@@ -683,7 +683,8 @@ class ChangesetEntry(object):
 
         :rtype: bool
         """
-
+        if None in (self.parent, self.new_parent, self.name, self.new_name):
+            return False
         return (self.parent != self.new_parent or self.name != self.new_name)
 
     def is_deletion(self, reverse):
