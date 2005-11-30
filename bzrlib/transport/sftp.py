@@ -615,8 +615,8 @@ class SFTPTransport (Transport):
     def _parse_url(self, url):
         (self._username, self._password,
          self._host, self._port, self._path) = self._split_url(url)
-         if self._port is None:
-             self._port = 22
+        if self._port is None:
+            self._port = 22
 
     def _sftp_connect(self):
         """Connect to the remote sftp server.
