@@ -41,8 +41,8 @@ class TestUpgrade(TestCaseInTempDir):
         """Upgrade simple v0.0.4 format to v6"""
         eq = self.assertEquals
         self.build_tree_contents(_upgrade1_template)
-        upgrade('.')
-        b = Branch.open('.')
+        upgrade(u'.')
+        b = Branch.open(u'.')
         eq(b._branch_format, 6)
         rh = b.revision_history()
         eq(rh,
@@ -66,8 +66,8 @@ class TestUpgrade(TestCaseInTempDir):
         its contents."""
         eq = self.assertEquals
         self.build_tree_contents(_ghost_template)
-        upgrade('.')
-        b = Branch.open('.')
+        upgrade(u'.')
+        b = Branch.open(u'.')
         revision_id = b.revision_history()[1]
         rev = b.get_revision(revision_id)
         eq(len(rev.parent_ids), 2)

@@ -173,7 +173,7 @@ class WorkingTree(bzrlib.tree.Tree):
     not listed in the Inventory and vice versa.
     """
 
-    def __init__(self, basedir='.', branch=None):
+    def __init__(self, basedir=u'.', branch=None):
         """Construct a WorkingTree for basedir.
 
         If the branch is not supplied, it is opened automatically.
@@ -230,7 +230,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if path.find('://') != -1:
                 raise NotBranchError(path=path)
         path = os.path.abspath(path)
-        tail = ''
+        tail = u''
         while True:
             try:
                 return WorkingTree(path), tail
@@ -503,7 +503,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 for ff in descend(fp, f_ie.file_id, fap):
                     yield ff
 
-        for f in descend('', inv.root.file_id, self.basedir):
+        for f in descend(u'', inv.root.file_id, self.basedir):
             yield f
 
     @needs_write_lock

@@ -355,7 +355,7 @@ class Transport(object):
 def get_transport(base):
     global _protocol_handlers
     if base is None:
-        base = '.'
+        base = u'.'
     for proto, klass in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
             return klass(base)

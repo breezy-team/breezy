@@ -12,10 +12,10 @@ from bzrlib.fetch import fetch
 class TestMerge(TestCaseInTempDir):
     """Test appending more than one revision"""
     def test_pending(self):
-        br = Branch.initialize(".")
+        br = Branch.initialize(u".")
         commit(br, "lala!")
         self.assertEquals(len(br.working_tree().pending_merges()), 0)
-        merge(['.', -1], [None, None])
+        merge([u'.', -1], [None, None])
         self.assertEquals(len(br.working_tree().pending_merges()), 0)
 
     def test_nocommits(self):
@@ -36,7 +36,7 @@ class TestMerge(TestCaseInTempDir):
     def test_pending_with_null(self):
         """When base is forced to revno 0, pending_merges is set"""
         br2 = self.test_unrelated()
-        br1 = Branch.open('.')
+        br1 = Branch.open(u'.')
         fetch(from_branch=br2, to_branch=br1)
         # merge all of branch 2 into branch 1 even though they 
         # are not related.
@@ -55,7 +55,7 @@ class TestMerge(TestCaseInTempDir):
 
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         file('name1', 'wb').write('Hello')
         tree = b.working_tree()
         tree.add('name1')
@@ -66,7 +66,7 @@ class TestMerge(TestCaseInTempDir):
 
     def test_layered_rename(self):
         """Rename both child and parent at same time"""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         tree = b.working_tree()
         os.mkdir('dirname1')
         tree.add('dirname1')

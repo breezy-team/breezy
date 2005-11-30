@@ -38,7 +38,7 @@ class BranchStatus(TestCaseInTempDir):
         from bzrlib.status import show_status
         from bzrlib.branch import Branch
         
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         # status with nothing
         tof = StringIO()
@@ -61,7 +61,7 @@ class BranchStatus(TestCaseInTempDir):
     def test_branch_status_revisions(self):
         """Tests branch status with revisions"""
         
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         tof = StringIO()
         self.build_tree(['hello.c', 'bye.c'])
@@ -129,7 +129,7 @@ class BranchStatus(TestCaseInTempDir):
         from bzrlib.status import show_status
         from bzrlib.branch import Branch
         
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
         b.working_tree().add('directory')

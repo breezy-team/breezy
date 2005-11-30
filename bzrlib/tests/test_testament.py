@@ -33,7 +33,7 @@ class TestamentTests(TestCaseInTempDir):
 
     def setUp(self):
         super(TestamentTests, self).setUp()
-        b = self.b = Branch.initialize('.')
+        b = self.b = Branch.initialize(u'.')
         b.nick = "test branch"
         b.working_tree().commit(message='initial null commit',
                  committer='test@user',

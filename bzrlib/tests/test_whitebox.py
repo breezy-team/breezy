@@ -11,7 +11,7 @@ class TestBranch(TestCaseInTempDir):
     def test_no_changes(self):
         from bzrlib.errors import PointlessCommit
         
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         self.build_tree(['hello.txt'])
 
@@ -41,7 +41,7 @@ class MoreTests(TestCaseInTempDir):
 
     def test_rename_dirs(self):
         """Test renaming directories and the files within them."""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
         b.working_tree().add(['dir', 'dir/sub', 'dir/sub/file'])
 
