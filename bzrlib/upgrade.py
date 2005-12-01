@@ -81,7 +81,7 @@ from bzrlib.atomicfile import AtomicFile
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
 from bzrlib.trace import mutter, note, warning
-from bzrlib.osutils import sha_strings, sha_string, pathjoin
+from bzrlib.osutils import sha_strings, sha_string, pathjoin, abspath
 
 
 class Convert(object):
@@ -108,7 +108,7 @@ class Convert(object):
             note('starting upgrade from format 5 to 6')
             self._convert_to_prefixed()
             self._open_branch()
-        cache = hashcache.HashCache(os.path.abspath(self.base))
+        cache = hashcache.HashCache(abspath(self.base))
         cache.clear()
         cache.write()
         note("finished")

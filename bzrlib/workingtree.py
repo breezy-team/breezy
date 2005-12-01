@@ -67,6 +67,7 @@ from bzrlib.osutils import (appendpath,
                             pumpfile,
                             splitpath,
                             rand_bytes,
+                            abspath,
                             realpath,
                             relpath,
                             rename)
@@ -230,7 +231,7 @@ class WorkingTree(bzrlib.tree.Tree):
             # sanity check.
             if path.find('://') != -1:
                 raise NotBranchError(path=path)
-        path = os.path.abspath(path)
+        path = abspath(path)
         tail = u''
         while True:
             try:
@@ -265,9 +266,9 @@ class WorkingTree(bzrlib.tree.Tree):
     def abspath(self, filename):
         return pathjoin(self.basedir, filename)
 
-    def relpath(self, abspath):
+    def relpath(self, abs):
         """Return the local path portion from a given absolute path."""
-        return relpath(self.basedir, abspath)
+        return relpath(self.basedir, abs)
 
     def has_filename(self, filename):
         return bzrlib.osutils.lexists(self.abspath(filename))

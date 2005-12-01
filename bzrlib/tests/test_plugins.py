@@ -24,7 +24,7 @@
 import os
 
 from bzrlib.tests import TestCaseInTempDir
-from bzrlib.osutils import pathjoin
+from bzrlib.osutils import pathjoin, abspath
 
 class PluginTest(TestCaseInTempDir):
     """Create an external plugin and test loading."""
@@ -44,7 +44,7 @@ class PluginTest(TestCaseInTempDir):
 #        shutil.rmtree('plugin_test')
 #
 
-#         os.environ['BZRPLUGINPATH'] = os.path.abspath('plugin_test')
+#         os.environ['BZRPLUGINPATH'] = abspath('plugin_test')
 #         help = backtick('bzr help commands')
 #         assert help.find('myplug') != -1
 #         assert help.find('Just a simple test plugin.') != -1

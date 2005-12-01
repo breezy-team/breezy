@@ -4,7 +4,7 @@ import unittest
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import NotBranchError
-from bzrlib.osutils import pathjoin
+from bzrlib.osutils import relpath, pathjoin, abspath, realpath
 
 
 class TestBranch(TestCaseInTempDir):
@@ -77,13 +77,12 @@ class MoreTests(TestCaseInTempDir):
         job: given a path (either relative to cwd or absolute), work out
         if it is inside a branch and return the path relative to the base.
         """
-        from bzrlib.osutils import relpath
         import tempfile, shutil
         
         savedir = os.getcwdu()
         dtmp = tempfile.mkdtemp()
         # On Mac OSX, /tmp actually expands to /private/tmp
-        dtmp = os.path.realpath(dtmp)
+        dtmp = realpath(dtmp)
 
         def rp(p):
             return relpath(dtmp, p)
@@ -119,7 +118,7 @@ class MoreTests(TestCaseInTempDir):
 
             self.assertEqual(rp('./foo'), 'foo')
 
-            self.assertEqual(rp(os.path.abspath('foo')), 'foo')
+            self.assertEqual(rp(abspath('foo')), 'foo')
 
             self.assertRaises(NotBranchError,
                               rp, '../foo')
