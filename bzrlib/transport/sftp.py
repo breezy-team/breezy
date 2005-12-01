@@ -282,10 +282,18 @@ class SFTPTransport (Transport):
 
     def relpath(self, abspath):
         username, password, host, port, path = self._split_url(abspath)
-        if (username != self._username or host != self._host or
-            port != self._port or not path.startswith(self._path)):
-            raise NonRelativePath('path %r is not under base URL %r'
-                           % (abspath, self.base))
+        error = []
+        if (username != self._username):
+            error.append('username mismatch')
+        if (host != self._host):
+            error.append('host mismatch')
+        if (port != self._port):
+            error.append('port mismatch')
+        if (not path.startswith(self._path)):
+            error.append('path mismatch')
+        if error:
+            raise NonRelativePath('path %r is not under base URL %r: %s'
+                           % (abspath, self.base, ', '.join(error)))
         pl = len(self._path)
         return path[pl:].lstrip('/')
 
@@ -573,7 +581,7 @@ class SFTPTransport (Transport):
         netloc = urllib.quote(self._host)
         if self._username is not None:
             netloc = '%s@%s' % (urllib.quote(self._username), netloc)
-        if self._port not in (None, 22):
+        if self._port is not None:
             netloc = '%s:%d' % (netloc, self._port)
 
         return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
@@ -616,8 +624,6 @@ class SFTPTransport (Transport):
     def _parse_url(self, url):
         (self._username, self._password,
          self._host, self._port, self._path) = self._split_url(url)
-        if self._port is None:
-            self._port = 22
 
     def _sftp_connect(self):
         """Connect to the remote sftp server.

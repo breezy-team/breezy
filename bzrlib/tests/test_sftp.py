@@ -31,8 +31,9 @@ except ImportError:
 # XXX: 20051124 jamesh
 # The tests currently pop up a password prompt when an external ssh
 # is used.  This forces the use of the paramiko implementation.
-import bzrlib.transport.sftp
-bzrlib.transport.sftp._ssh_vendor = 'none'
+if paramiko_loaded:
+    import bzrlib.transport.sftp
+    bzrlib.transport.sftp._ssh_vendor = 'none'
 
 
 STUB_SERVER_KEY = """
@@ -191,7 +192,7 @@ class SFTPNonServerTest(TestCase):
         from bzrlib.transport.sftp import SFTPTransport
         s = SFTPTransport('sftp://simple.example.com/%2fhome/source', clone_from=fake)
         self.assertEquals(s._host, 'simple.example.com')
-        self.assertEquals(s._port, 22)
+        self.assertEquals(s._port, None)
         self.assertEquals(s._path, '/home/source')
         self.failUnless(s._password is None)
 
@@ -216,7 +217,21 @@ class SFTPNonServerTest(TestCase):
         self.assertEquals(s._path, '/absolute/path')
 
         # Also, don't show the port if it is the default 22
-        self.assertEquals(s.base, 'sftp://user@example.com/%2Fabsolute/path')
+        self.assertEquals(s.base, 'sftp://user@example.com:22/%2Fabsolute/path')
+
+    def test_relpath(self):
+        from bzrlib.transport.sftp import SFTPTransport
+        from bzrlib.errors import NonRelativePath
+
+        s = SFTPTransport('sftp://user@host.com//abs/path', clone_from=fake)
+        self.assertEquals(s.relpath('sftp://user@host.com//abs/path/sub'), 'sub')
+        # Can't test this one, because we actually get an AssertionError
+        # TODO: Consider raising an exception rather than an assert
+        #self.assertRaises(NonRelativePath, s.relpath, 'http://user@host.com//abs/path/sub')
+        self.assertRaises(NonRelativePath, s.relpath, 'sftp://user2@host.com//abs/path/sub')
+        self.assertRaises(NonRelativePath, s.relpath, 'sftp://user@otherhost.com//abs/path/sub')
+        self.assertRaises(NonRelativePath, s.relpath, 'sftp://user@host.com:33//abs/path/sub')
+        self.assertRaises(NonRelativePath, s.relpath, 'sftp://user@host.com/abs/path/sub')
 
     def test_parse_invalid_url(self):
         from bzrlib.transport.sftp import SFTPTransport, SFTPTransportError
