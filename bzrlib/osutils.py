@@ -158,7 +158,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
             if success:
                 unlink_func(tmp_name)
             else:
-                rename_func(tmp_name, final_path)
+                rename_func(tmp_name, new)
 
 # Default is to just use the python builtins
 abspath = os.path.abspath

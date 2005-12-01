@@ -38,7 +38,9 @@ class ExternalCommand(Command):
             ## Empty directories are not real paths
             if not dir:
                 continue
-            path = pathjoin(dir, cmd)
+            # This needs to be os.path.join() or windows cannot
+            # find the batch file that you are wanting to execute
+            path = os.path.join(dir, cmd)
             if os.path.isfile(path):
                 return ExternalCommand(path)
 
