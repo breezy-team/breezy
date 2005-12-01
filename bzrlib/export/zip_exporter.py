@@ -54,7 +54,7 @@ def zip_exporter(tree, dest, root):
                 zipf.writestr(zinfo, tree.get_file_text(file_id))
             elif ie.kind == "directory":
                 zinfo = zipfile.ZipInfo(
-                            filename=str(pathjoin(root, dp)+os.sep),
+                            filename=str(pathjoin(root, dp)+'/'),
                             date_time=now)
                 zinfo.compress_type = compression
                 zipf.writestr(zinfo,'')

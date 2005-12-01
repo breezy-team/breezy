@@ -668,7 +668,7 @@ class TestCommands(ExternalBase):
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['added dir',
-                           'added dir'+os.sep+'sub.txt',
+                           'added dir/sub.txt',
                            'added top.txt',],
                           results)
 
@@ -715,7 +715,7 @@ class TestCommands(ExternalBase):
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
         self.run_bzr('add', '--no-recurse', 'inertiatic')
-        self.assertEquals(self.capture('unknowns'), 'inertiatic'+os.sep+'esp\n')
+        self.assertEquals(self.capture('unknowns'), 'inertiatic/esp\n')
         self.run_bzr('add', 'inertiatic/esp')
         self.assertEquals(self.capture('unknowns'), '')
 

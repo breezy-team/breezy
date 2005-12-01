@@ -49,7 +49,7 @@ class TestBranch(TestCaseInTempDir):
         os.mkdir('b2')
         b1 = Branch.initialize('b1')
         b2 = Branch.initialize('b2')
-        file(os.sep.join(['b1', 'foo']), 'w').write('hello')
+        file('b1/foo'), 'w').write('hello')
         b1.working_tree().add(['foo'], ['foo-id'])
         b1.working_tree().commit('lala!', rev_id='revision-1', allow_pointless=False)
 

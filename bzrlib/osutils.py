@@ -235,8 +235,8 @@ def is_inside(dir, fname):
     if dir == '':
         return True
 
-    if dir[-1] != os.sep:
-        dir += os.sep
+    if dir[-1] != '/':
+        dir += '/'
 
     return fname.startswith(dir)
 
@@ -500,7 +500,7 @@ def relpath(base, path):
         # to branch anymore.
         raise NotBranchError("path %r is not within branch %r" % (rp, base))
 
-    return os.sep.join(s)
+    return pathjoin(*s)
 
 
 

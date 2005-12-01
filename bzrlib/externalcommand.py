@@ -48,20 +48,17 @@ class ExternalCommand(Command):
     def __init__(self, path):
         self.path = path
 
-
     def name(self):
-        return self.path.split(os.sep)[-1]
-
+        return os.path.basename(self.path)
 
     def run(self, *args, **kwargs):
         raise NotImplementedError('should not be called on %r' % self)
 
-
     def run_argv(self, argv):
         return os.spawnv(os.P_WAIT, self.path, [self.path] + argv)
-
 
     def help(self):
         m = 'external command from %s\n\n' % self.path
         pipe = os.popen('%s --help' % self.path)
         return m + pipe.read()
+

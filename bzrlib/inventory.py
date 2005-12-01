@@ -987,12 +987,12 @@ class Inventory(object):
         >>> i = Inventory()
         >>> e = i.add(InventoryDirectory('src-id', 'src', ROOT_ID))
         >>> e = i.add(InventoryFile('foo-id', 'foo.c', parent_id='src-id'))
-        >>> print i.id2path('foo-id').replace(os.sep, '/')
+        >>> print i.id2path('foo-id')
         src/foo.c
         """
         # get all names, skipping root
         p = [self._byid[fid].name for fid in self.get_idpath(file_id)[1:]]
-        return os.sep.join(p)
+        return pathjoin(*p)
             
 
 
