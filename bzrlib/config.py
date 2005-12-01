@@ -351,14 +351,7 @@ class LocationConfig(IniBasedConfig):
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on branches.conf.
         conf_dir = os.path.dirname(self._get_filename())
-        if not os.path.isdir(conf_dir):
-            if sys.platform == 'win32':
-                parent_dir = os.path.dirname(conf_dir)
-                if not os.path.isdir(parent_dir):
-                    mutter('creating config parent directory: %r', parent_dir)
-                os.mkdir(parent_dir)
-            mutter('creating config directory: %r', conf_dir)
-            os.mkdir(conf_dir)
+        ensure_config_dir_exists(conf_dir)
         location = self.location
         if location.endswith('/'):
             location = location[:-1]
@@ -416,6 +409,23 @@ class BranchConfig(Config):
         """See Config.post_commit."""
         return self._get_location_config()._post_commit()
 
+
+def ensure_config_dir_exists(path=None):
+    """Make sure a configuration directory exists.
+    This makes sure that the directory exists.
+    On windows, since configuration directories are 2 levels deep,
+    it makes sure both the directory and the parent directory exists.
+    """
+    if path is None:
+        path = config_dir()
+    if not os.path.isdir(path):
+        if sys.platform == 'win32':
+            parent_dir = os.path.dirname(path)
+            if not os.path.isdir(parent_dir):
+                mutter('creating config parent directory: %r', parent_dir)
+            os.mkdir(parent_dir)
+        mutter('creating config directory: %r', path)
+        os.mkdir(path)
 
 def config_dir():
     """Return per-user configuration directory.

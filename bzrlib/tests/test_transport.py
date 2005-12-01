@@ -79,14 +79,14 @@ class TestTransportMixIn(object):
 
         files = ['a', 'b', 'e', 'g']
         self.build_tree(files)
-        self.assertEqual(t.get('a').read(), open('a').read())
+        self.assertEqual(t.get('a').read(), open('a', 'rb').read())
         content_f = t.get_multi(files)
         for path,f in zip(files, content_f):
-            self.assertEqual(open(path).read(), f.read())
+            self.assertEqual(f.read(), open(path, 'rb').read())
 
         content_f = t.get_multi(iter(files))
         for path,f in zip(files, content_f):
-            self.assertEqual(open(path).read(), f.read())
+            self.assertEqual(f.read(), open(path, 'rb').read())
 
         self.assertRaises(NoSuchFile, t.get, 'c')
         try:
@@ -277,7 +277,7 @@ class TestTransportMixIn(object):
                              ('dir_b/b', 'contents of dir_b/b')])
                           , 2)
         for f in ('dir_a/a', 'dir_b/b'):
-            self.assertEqual(t.get(f).read(), open(f).read())
+            self.assertEqual(t.get(f).read(), open(f, 'rb').read())
 
     def test_copy_to(self):
         import tempfile
@@ -294,8 +294,8 @@ class TestTransportMixIn(object):
 
         t.copy_to(files, local_t)
         for f in files:
-            self.assertEquals(open(f).read(),
-                    open(pathjoin(dtmp_base, f)).read())
+            self.assertEquals(open(f, 'rb').read(),
+                    open(pathjoin(dtmp_base, f), 'rb').read())
 
         # Test that copying into a missing directory raises
         # NoSuchFile
@@ -315,8 +315,8 @@ class TestTransportMixIn(object):
         files = ['a', 'b', 'c', 'd']
         t.copy_to(iter(files), local_t)
         for f in files:
-            self.assertEquals(open(f).read(),
-                    open(pathjoin(dtmp_base, f)).read())
+            self.assertEquals(open(f, 'rb').read(),
+                    open(pathjoin(dtmp_base, f), 'rb').read())
 
         del dtmp, dtmp_base, local_t
 

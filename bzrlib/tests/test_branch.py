@@ -376,18 +376,20 @@ class TestBranchPushLocations(TestCaseInTempDir):
         self.assertEqual(None, self.branch.get_push_location())
 
     def test_get_push_location_exact(self):
-        from bzrlib.config import branches_config_filename
+        from bzrlib.config import (branches_config_filename,
+                                   ensure_config_dir_exists)
+        ensure_config_dir_exists()
         fn = branches_config_filename()
-        os.makedirs(os.path.dirname(fn))
         print >> open(fn, 'wt'), ("[%s]\n"
                                   "push_location=foo" %
                                   getcwd())
         self.assertEqual("foo", self.branch.get_push_location())
 
     def test_set_push_location(self):
-        from bzrlib.config import branches_config_filename
+        from bzrlib.config import (branches_config_filename,
+                                   ensure_config_dir_exists)
+        ensure_config_dir_exists()
         fn = branches_config_filename()
-        os.makedirs(os.path.dirname(fn))
         self.branch.set_push_location('foo')
         self.assertFileEqual("[%s]\n"
                              "push_location = foo" % getcwd(),

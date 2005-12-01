@@ -33,7 +33,7 @@ from bzrlib.errors import (FileExists,
                            TransportNotPossible, NoSuchFile, NonRelativePath,
                            TransportError,
                            LockError)
-from bzrlib.config import config_dir
+from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import Transport, register_transport
 from bzrlib.osutils import pathjoin
@@ -168,8 +168,8 @@ def save_host_keys():
     """
     global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
     bzr_hostkey_path = pathjoin(config_dir(), 'ssh_host_keys')
-    if not os.path.isdir(config_dir()):
-        os.mkdir(config_dir())
+    ensure_config_dir_exists()
+
     try:
         f = open(bzr_hostkey_path, 'w')
         f.write('# SSH host keys collected by bzr\n')
