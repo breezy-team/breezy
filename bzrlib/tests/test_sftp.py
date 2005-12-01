@@ -233,6 +233,18 @@ class SFTPNonServerTest(TestCase):
         self.assertRaises(NonRelativePath, s.relpath, 'sftp://user@host.com:33//abs/path/sub')
         self.assertRaises(NonRelativePath, s.relpath, 'sftp://user@host.com/abs/path/sub')
 
+        # Make sure it works when we don't supply a username
+        s = SFTPTransport('sftp://host.com//abs/path', clone_from=fake)
+        self.assertEquals(s.relpath('sftp://host.com//abs/path/sub'), 'sub')
+
+        # Make sure it works when parts of the path will be url encoded
+        # TODO: These may be incorrect, we might need to urllib.urlencode() before
+        # we pass the paths into the SFTPTransport constructor
+        s = SFTPTransport('sftp://host.com/dev/,path', clone_from=fake)
+        self.assertEquals(s.relpath('sftp://host.com/dev/,path/sub'), 'sub')
+        s = SFTPTransport('sftp://host.com/dev/%path', clone_from=fake)
+        self.assertEquals(s.relpath('sftp://host.com/dev/%path/sub'), 'sub')
+
     def test_parse_invalid_url(self):
         from bzrlib.transport.sftp import SFTPTransport, SFTPTransportError
         try:
