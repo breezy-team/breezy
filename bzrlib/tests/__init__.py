@@ -501,7 +501,7 @@ class TestCaseInTempDir(TestCase):
             break
         # make a fake bzr directory there to prevent any tests propagating
         # up onto the source directory's real branch
-        os.mkdir(os.path.join(TestCaseInTempDir.TEST_ROOT, '.bzr'))
+        os.mkdir(osutils.pathjoin(TestCaseInTempDir.TEST_ROOT, '.bzr'))
 
     def setUp(self):
         super(TestCaseInTempDir, self).setUp()
@@ -509,7 +509,7 @@ class TestCaseInTempDir(TestCase):
         _currentdir = os.getcwdu()
         short_id = self.id().replace('bzrlib.tests.', '') \
                    .replace('__main__.', '')
-        self.test_dir = os.path.join(self.TEST_ROOT, short_id)
+        self.test_dir = osutils.pathjoin(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         os.environ['HOME'] = self.test_dir
@@ -667,7 +667,8 @@ def test_suite():
                    'bzrlib.tests.test_rio',
                    ]
 
-    TestCase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
+    TestCase.BZRPATH = osutils.pathjoin(
+            osutils.realpath(osutils.dirname(bzrlib.__path__[0])), 'bzr')
     print '%-30s %s' % ('bzr binary', TestCase.BZRPATH)
     print
     suite = TestSuite()

@@ -23,6 +23,7 @@ from bzrlib.errors import (NoSuchFile, FileExists, TransportNotPossible,
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.transport import memory, urlescape
+from bzrlib.osutils import pathjoin
 
 
 def _append(fn, txt):
@@ -294,7 +295,7 @@ class TestTransportMixIn(object):
         t.copy_to(files, local_t)
         for f in files:
             self.assertEquals(open(f).read(),
-                    open(os.path.join(dtmp_base, f)).read())
+                    open(pathjoin(dtmp_base, f)).read())
 
         # Test that copying into a missing directory raises
         # NoSuchFile
@@ -302,7 +303,7 @@ class TestTransportMixIn(object):
         open('e/f', 'wb').write('contents of e')
         self.assertRaises(NoSuchFile, t.copy_to, ['e/f'], local_t)
 
-        os.mkdir(os.path.join(dtmp_base, 'e'))
+        os.mkdir(pathjoin(dtmp_base, 'e'))
         t.copy_to(['e/f'], local_t)
 
         del dtmp, dtmp_base, local_t
@@ -315,7 +316,7 @@ class TestTransportMixIn(object):
         t.copy_to(iter(files), local_t)
         for f in files:
             self.assertEquals(open(f).read(),
-                    open(os.path.join(dtmp_base, f)).read())
+                    open(pathjoin(dtmp_base, f)).read())
 
         del dtmp, dtmp_base, local_t
 

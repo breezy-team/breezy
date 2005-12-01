@@ -4,6 +4,7 @@ import unittest
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import NotBranchError
+from bzrlib.osutils import pathjoin
 
 
 class TestBranch(TestCaseInTempDir):
@@ -89,7 +90,7 @@ class MoreTests(TestCaseInTempDir):
         
         try:
             # check paths inside dtmp while standing outside it
-            self.assertEqual(rp(os.path.join(dtmp, 'foo')), 'foo')
+            self.assertEqual(rp(pathjoin(dtmp, 'foo')), 'foo')
 
             # root = nothing
             self.assertEqual(rp(dtmp), '')
@@ -112,8 +113,7 @@ class MoreTests(TestCaseInTempDir):
             # directory, or nearby
             os.chdir(dtmp)
 
-            FOO_BAR_QUUX = os.path.join('foo', 'bar', 'quux')
-            self.assertEqual(rp('foo/bar/quux'), FOO_BAR_QUUX)
+            self.assertEqual(rp('foo/bar/quux'), 'foo/bar/quux')
 
             self.assertEqual(rp('foo'), 'foo')
 

@@ -20,6 +20,7 @@ from bzrlib.branch import Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
+from bzrlib.osutils import pathjoin
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
 
@@ -93,7 +94,7 @@ class TestWorkingTree(TestCaseInTempDir):
         branch = Branch.initialize(u'.')
         tree = WorkingTree(branch.base)
         self.assertEqual('child',
-                         tree.relpath(os.path.join(os.getcwd(), 'child')))
+                         tree.relpath(pathjoin(os.getcwd(), 'child')))
 
     def test_lock_locks_branch(self):
         branch = Branch.initialize(u'.')

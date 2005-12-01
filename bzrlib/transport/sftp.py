@@ -36,6 +36,7 @@ from bzrlib.errors import (FileExists,
 from bzrlib.config import config_dir
 from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import Transport, register_transport
+from bzrlib.osutils import pathjoin
 from bzrlib.ui import ui_factory
 
 try:
@@ -154,7 +155,7 @@ def load_host_keys():
         SYSTEM_HOSTKEYS = paramiko.util.load_host_keys(os.path.expanduser('~/.ssh/known_hosts'))
     except Exception, e:
         mutter('failed to load system host keys: ' + str(e))
-    bzr_hostkey_path = os.path.join(config_dir(), 'ssh_host_keys')
+    bzr_hostkey_path = pathjoin(config_dir(), 'ssh_host_keys')
     try:
         BZR_HOSTKEYS = paramiko.util.load_host_keys(bzr_hostkey_path)
     except Exception, e:
@@ -166,7 +167,7 @@ def save_host_keys():
     Save "discovered" host keys in $(config)/ssh_host_keys/.
     """
     global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
-    bzr_hostkey_path = os.path.join(config_dir(), 'ssh_host_keys')
+    bzr_hostkey_path = pathjoin(config_dir(), 'ssh_host_keys')
     if not os.path.isdir(config_dir()):
         os.mkdir(config_dir())
     try:
@@ -685,7 +686,7 @@ class SFTPTransport (Transport):
             save_host_keys()
         if server_key != our_server_key:
             filename1 = os.path.expanduser('~/.ssh/known_hosts')
-            filename2 = os.path.join(config_dir(), 'ssh_host_keys')
+            filename2 = pathjoin(config_dir(), 'ssh_host_keys')
             raise SFTPTransportError('Host keys for %s do not match!  %s != %s' % \
                 (self._host, our_server_key_hex, server_key_hex),
                 ['Try editing %s or %s' % (filename1, filename2)])

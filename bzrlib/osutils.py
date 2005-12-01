@@ -97,6 +97,8 @@ def kind_marker(kind):
         raise BzrError('invalid file kind %r' % kind)
 
 def lexists(f):
+    if hasattr(os.path, 'lexists'):
+        return os.path.lexists(f)
     try:
         if hasattr(os, 'lstat'):
             os.lstat(f)
@@ -129,6 +131,10 @@ else:
         return os.path.realpath(path).replace('\\', '/')
     def pathjoin(*args):
         return os.path.join(*args).replace('\\', '/')
+# Because these shrink the path, we can use the original
+# versions on any platform
+dirname = os.path.dirname
+basename = os.path.basename
 
 def normalizepath(f):
     if hasattr(os.path, 'realpath'):

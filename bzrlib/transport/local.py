@@ -28,7 +28,7 @@ import urllib
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, register_transport, \
     TransportError, NoSuchFile, FileExists
-from bzrlib.osutils import abspath
+from bzrlib.osutils import abspath, realpath, pathjoin
 
 class LocalTransportError(TransportError):
     pass
@@ -64,7 +64,7 @@ class LocalTransport(Transport):
         This can be supplied with a string or a list
         """
         assert isinstance(relpath, basestring), (type(relpath), relpath)
-        return os.path.join(self.base, urllib.unquote(relpath))
+        return pathjoin(self.base, urllib.unquote(relpath))
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
