@@ -236,7 +236,7 @@ class Branch(object):
     def set_root_id(self, file_id):
         raise NotImplementedError('set_root_id is abstract')
 
-    def print_file(self, file, revno):
+    def print_file(self, file, revision_id):
         """Print `file` to stdout."""
         raise NotImplementedError('print_file is abstract')
 
@@ -824,13 +824,22 @@ class BzrBranch(Branch):
         return inv.root.file_id
 
     @needs_read_lock
-    def print_file(self, file, revno):
+    def print_file(self, file, revision_id):
         """See Branch.print_file."""
-        tree = self.revision_tree(self.get_rev_id(revno))
+        tree = self.revision_tree(revision_id)
         # use inventory as it was in that revision
         file_id = tree.inventory.path2id(file)
         if not file_id:
-            raise BzrError("%r is not present in revision %s" % (file, revno))
+            try:
+                revno = self.revision_id_to_revno(revision_id)
+            except errors.NoSuchRevision:
+                # TODO: This should not be BzrError,
+                # but NoSuchFile doesn't fit either
+                raise BzrError('%r is not present in revision %s' 
+                                % (file, revision_id))
+            else:
+                raise BzrError('%r is not present in revision %s'
+                                % (file, revno))
         tree.print_file(file_id)
 
     @needs_write_lock
