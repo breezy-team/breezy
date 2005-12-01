@@ -122,6 +122,7 @@ if os.name == "posix":
     def realpath(path):
         return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
     pathjoin = os.path.join
+    normpath = os.path.normpath
 else:
     # We need to use the Unicode-aware os.path.abspath and
     # os.path.realpath on Windows systems.
@@ -131,6 +132,8 @@ else:
         return os.path.realpath(path).replace('\\', '/')
     def pathjoin(*args):
         return os.path.join(*args).replace('\\', '/')
+    def normpath(path):
+        return os.path.normpath(path).replace('\\', '/')
 # Because these shrink the path, we can use the original
 # versions on any platform
 dirname = os.path.dirname
@@ -207,7 +210,7 @@ def islink(f):
 def is_inside(dir, fname):
     """True if fname is inside dir.
     
-    The parameters should typically be passed to os.path.normpath first, so
+    The parameters should typically be passed to osutils.normpath first, so
     that . and .. and repeated slashes are eliminated, and the separators
     are canonical for the platform.
     

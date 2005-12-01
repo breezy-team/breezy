@@ -28,7 +28,7 @@ import urllib
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, register_transport, \
     TransportError, NoSuchFile, FileExists
-from bzrlib.osutils import abspath, realpath, pathjoin
+from bzrlib.osutils import abspath, realpath, normpath, pathjoin
 
 class LocalTransportError(TransportError):
     pass
@@ -43,8 +43,7 @@ class LocalTransport(Transport):
             base = base[7:]
         # realpath is incompatible with symlinks. When we traverse
         # up we might be able to normpath stuff. RBC 20051003
-        super(LocalTransport, self).__init__(
-            os.path.normpath(abspath(base)))
+        super(LocalTransport, self).__init__(normpath(abspath(base)))
 
     def should_cache(self):
         return False

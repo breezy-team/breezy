@@ -28,7 +28,7 @@ import bzrlib.inventory as inventory
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn,
                             rename, splitpath, sha_file,
-                            file_kind, abspath, pathjoin)
+                            file_kind, abspath, normpath, pathjoin)
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
@@ -133,8 +133,8 @@ class Branch(object):
         while True:
             try:
                 return BzrBranch(t), t.relpath(url)
-            except NotBranchError:
-                pass
+            except NotBranchError, e:
+                mutter('not a branch in: %r %s', t.base, e)
             new_t = t.clone('..')
             if new_t.base == t.base:
                 # reached the root, whatever that may be
@@ -1143,7 +1143,7 @@ class ScratchBranch(BzrBranch):
 
 def is_control_file(filename):
     ## FIXME: better check
-    filename = os.path.normpath(filename)
+    filename = normpath(filename)
     while filename != '':
         head, tail = os.path.split(filename)
         ## mutter('check %r for control file' % ((head, tail), ))

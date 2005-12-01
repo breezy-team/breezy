@@ -68,6 +68,7 @@ from bzrlib.osutils import (appendpath,
                             splitpath,
                             rand_bytes,
                             abspath,
+                            normpath,
                             realpath,
                             relpath,
                             rename)
@@ -373,7 +374,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if len(fp) == 0:
                 raise BzrError("cannot add top-level %r" % f)
 
-            fullpath = os.path.normpath(self.abspath(f))
+            fullpath = normpath(self.abspath(f))
 
             try:
                 kind = file_kind(fullpath)
