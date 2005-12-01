@@ -299,6 +299,12 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
 
         self.assertEquals(b2.revision_history(), ['a1'])
 
+        open('a/foo', 'wt').write('something new in foo\n')
+        t.commit('new', rev_id='a2')
+        b2.pull(b)
+
+        self.assertEquals(b2.revision_history(), ['a1', 'a2'])
+
 
 if not paramiko_loaded:
     # TODO: Skip these
