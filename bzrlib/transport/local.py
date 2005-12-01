@@ -19,19 +19,14 @@
 This is a fairly thin wrapper on regular file IO."""
 
 import os
-import errno
 import shutil
 from stat import ST_MODE, S_ISDIR, ST_SIZE
 import tempfile
 import urllib
 
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport, register_transport, \
-    TransportError, NoSuchFile, FileExists
+from bzrlib.transport import Transport
 from bzrlib.osutils import abspath, realpath, normpath, pathjoin
-
-class LocalTransportError(TransportError):
-    pass
 
 
 class LocalTransport(Transport):
@@ -84,10 +79,8 @@ class LocalTransport(Transport):
         try:
             path = self.abspath(relpath)
             return open(path, 'rb')
-        except IOError,e:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                raise NoSuchFile('File or directory %r does not exist' % path, orig_error=e)
-            raise LocalTransportError(orig_error=e)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
 
     def put(self, relpath, f):
         """Copy the file-like or string object into the location.
@@ -97,13 +90,12 @@ class LocalTransport(Transport):
         """
         from bzrlib.atomicfile import AtomicFile
 
+        path = relpath
         try:
             path = self.abspath(relpath)
             fp = AtomicFile(path, 'wb')
-        except IOError, e:
-            if e.errno == errno.ENOENT:
-                raise NoSuchFile('File %r does not exist' % path, orig_error=e)
-            raise LocalTransportError(orig_error=e)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
         try:
             self._pump(f, fp)
             fp.commit()
@@ -124,14 +116,12 @@ class LocalTransport(Transport):
 
     def mkdir(self, relpath):
         """Create a directory at the given path."""
+        path = relpath
         try:
-            os.mkdir(self.abspath(relpath))
-        except OSError,e:
-            if e.errno == errno.EEXIST:
-                raise FileExists(orig_error=e)
-            elif e.errno == errno.ENOENT:
-                raise NoSuchFile(orig_error=e)
-            raise LocalTransportError(orig_error=e)
+            path = self.abspath(relpath)
+            os.mkdir(path)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
 
     def append(self, relpath, f):
         """Append the text in the file-like object into the final
@@ -147,8 +137,9 @@ class LocalTransport(Transport):
         path_to = self.abspath(rel_to)
         try:
             shutil.copy(path_from, path_to)
-        except OSError,e:
-            raise LocalTransportError(orig_error=e)
+        except (IOError, OSError),e:
+            # TODO: What about path_to?
+            self._translate_error(e, path_from)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -157,15 +148,19 @@ class LocalTransport(Transport):
 
         try:
             os.rename(path_from, path_to)
-        except OSError,e:
-            raise LocalTransportError(orig_error=e)
+        except (IOError, OSError),e:
+            # TODO: What about path_to?
+            self._translate_error(e, path_from)
 
     def delete(self, relpath):
         """Delete the item at relpath"""
+        path = relpath
         try:
-            os.remove(self.abspath(relpath))
-        except OSError,e:
-            raise LocalTransportError(orig_error=e)
+            path = self.abspath(relpath)
+            os.remove(path)
+        except (IOError, OSError),e:
+            # TODO: What about path_to?
+            self._translate_error(e, path)
 
     def copy_to(self, relpaths, other, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -184,10 +179,8 @@ class LocalTransport(Transport):
                 self._update_pb(pb, 'copy-to', count, total)
                 try:
                     shutil.copy(self.abspath(path), other.abspath(path))
-                except IOError, e:
-                    if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                        raise NoSuchFile('File or directory %r does not exist' % path, orig_error=e)
-                    raise LocalTransportError(orig_error=e)
+                except (IOError, OSError),e:
+                    self._translate_error(e, path)
                 count += 1
             return count
         else:
@@ -202,18 +195,22 @@ class LocalTransport(Transport):
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
+        path = relpath
         try:
-            return os.listdir(self.abspath(relpath))
-        except OSError,e:
-            raise LocalTransportError(orig_error=e)
+            path = self.abspath(relpath)
+            return os.listdir(path)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
 
     def stat(self, relpath):
         """Return the stat information for a file.
         """
+        path = relpath
         try:
-            return os.stat(self.abspath(relpath))
-        except OSError,e:
-            raise LocalTransportError(orig_error=e)
+            path = self.abspath(relpath)
+            return os.stat(path)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.

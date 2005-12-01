@@ -18,7 +18,7 @@
 
 from bzrlib.transport import Transport, register_transport
 from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
-                           NonRelativePath, TransportError, ConnectionError)
+                           TransportError, ConnectionError)
 import os, errno
 from cStringIO import StringIO
 import urllib, urllib2
@@ -69,9 +69,6 @@ def get_url(url):
     opener = urllib2.build_opener(auth_handler)
     url_f = opener.open(url)
     return url_f
-
-class HttpTransportError(TransportError):
-    pass
 
 class HttpTransport(Transport):
     """This is the transport agent for http:// access.
@@ -168,7 +165,7 @@ class HttpTransport(Transport):
         except IOError, e:
             if e.errno == errno.ENOENT:
                 return False
-            raise HttpTransportError(orig_error=e)
+            raise TransportError(orig_error=e)
 
     def get(self, relpath, decode=False):
         """Get the file at the given relative path.
@@ -179,9 +176,8 @@ class HttpTransport(Transport):
             return get_url(self.abspath(relpath))
         except urllib2.HTTPError, e:
             if e.code == 404:
-                raise NoSuchFile(msg = "Error retrieving %s: %s" 
-                                 % (self.abspath(relpath), str(e)),
-                                 orig_error=e)
+                extra = ': ' + str(e)
+                raise NoSuchFile(self.abspath(relpath), extra=extra)
             raise
         except (BzrError, IOError), e:
             raise ConnectionError(msg = "Error retrieving %s: %s" 

@@ -30,7 +30,7 @@ import subprocess
 import weakref
 
 from bzrlib.errors import (FileExists, 
-                           TransportNotPossible, NoSuchFile, NonRelativePath,
+                           TransportNotPossible, NoSuchFile, PathNotChild,
                            TransportError,
                            LockError)
 from bzrlib.config import config_dir, ensure_config_dir_exists
@@ -181,10 +181,6 @@ def save_host_keys():
         mutter('failed to save bzr host keys: ' + str(e))
 
 
-
-class SFTPTransportError (TransportError):
-    pass
-
 class SFTPLock(object):
     """This fakes a lock in a remote location."""
     __slots__ = ['path', 'lock_path', 'lock_file', 'transport']
@@ -298,8 +294,8 @@ class SFTPTransport (Transport):
         if (not path.startswith(self._path)):
             error.append('path mismatch')
         if error:
-            raise NonRelativePath('path %r is not under base URL %r: %s'
-                           % (abspath, self.base, ', '.join(error)))
+            extra = ': ' + ', '.join(error)
+            raise PathNotChild(abspath, self.base, extra=extra)
         pl = len(self._path)
         return path[pl:].lstrip('/')
 
@@ -363,10 +359,8 @@ class SFTPTransport (Transport):
         try:
             try:
                 self._pump(f, fout)
-            except IOError, e:
-                self._translate_io_exception(e, relpath)
-            except paramiko.SSHException, x:
-                raise SFTPTransportError('Unable to write file %r' % (relpath,), x)
+            except (paramiko.SSHException, IOError), e:
+                self._translate_io_exception(e, relpath, ': unable to write')
         except Exception, e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception
@@ -390,10 +384,8 @@ class SFTPTransport (Transport):
             try:
                 try:
                     self._sftp.rename(tmp_abspath, final_path)
-                except IOError, e:
-                    self._translate_io_exception(e, relpath)
-                except paramiko.SSHException, x:
-                    raise SFTPTransportError('Unable to rename into file %r' % (path,), x) 
+                except (paramiko.SSHException, IOError), e:
+                    self._translate_io_exception(e, relpath, ': unable to rename')
                 else:
                     success = True
             finally:
@@ -420,23 +412,22 @@ class SFTPTransport (Transport):
         try:
             path = self._abspath(relpath)
             self._sftp.mkdir(path)
-        except IOError, e:
-            self._translate_io_exception(e, relpath)
-        except (IOError, paramiko.SSHException), x:
-            raise SFTPTransportError('Unable to mkdir %r' % (path,), x)
+        except (paramiko.SSHException, IOError), e:
+            self._translate_io_exception(e, relpath, ': unable to mkdir')
 
-    def _translate_io_exception(self, e, relpath):
+    def _translate_io_exception(self, e, relpath, more_info=''):
         # paramiko seems to generate detailless errors.
-        if (e.errno == errno.ENOENT or
-            e.args == ('No such file or directory',) or
-            e.args == ('No such file',)):
-            raise NoSuchFile(relpath)
-        if (e.args == ('mkdir failed',)):
-            raise FileExists(relpath)
-        # strange but true, for the paramiko server.
-        if (e.args == ('Failure',)):
-            raise FileExists(relpath)
-        raise
+        self._translate_error(e, relpath, raise_generic=False)
+        if hasattr(e, 'args'):
+            if (e.args == ('No such file or directory',) or
+                e.args == ('No such file',)):
+                raise NoSuchFile(relpath, str(e) + more_info)
+            if (e.args == ('mkdir failed',)):
+                raise FileExists(relpath, str(e) + more_info)
+            # strange but true, for the paramiko server.
+            if (e.args == ('Failure',)):
+                raise FileExists(relpath, str(e) + more_info)
+        raise e
 
     def append(self, relpath, f):
         """
@@ -448,7 +439,7 @@ class SFTPTransport (Transport):
             fout = self._sftp.file(path, 'ab')
             self._pump(f, fout)
         except (IOError, paramiko.SSHException), x:
-            raise SFTPTransportError('Unable to append file %r' % (path,), x)
+            raise TransportError('Unable to append file %r' % (path,), x)
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
@@ -480,7 +471,7 @@ class SFTPTransport (Transport):
             finally:
                 fin.close()
         except (IOError, paramiko.SSHException), x:
-            raise SFTPTransportError('Unable to copy %r to %r' % (path_from, path_to), x)
+            raise TransportError('Unable to copy %r to %r' % (path_from, path_to), x)
 
     def copy_to(self, relpaths, other, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -516,7 +507,7 @@ class SFTPTransport (Transport):
         try:
             self._sftp.rename(path_from, path_to)
         except (IOError, paramiko.SSHException), x:
-            raise SFTPTransportError('Unable to move %r to %r' % (path_from, path_to), x)
+            raise TransportError('Unable to move %r to %r' % (path_from, path_to), x)
 
     def delete(self, relpath):
         """Delete the item at relpath"""
@@ -524,7 +515,7 @@ class SFTPTransport (Transport):
         try:
             self._sftp.remove(path)
         except (IOError, paramiko.SSHException), x:
-            raise SFTPTransportError('Unable to delete %r' % (path,), x)
+            raise TransportError('Unable to delete %r' % (path,), x)
             
     def listable(self):
         """Return True if this store supports listing."""
@@ -539,7 +530,7 @@ class SFTPTransport (Transport):
         try:
             return self._sftp.listdir(path)
         except (IOError, paramiko.SSHException), x:
-            raise SFTPTransportError('Unable to list folder %r' % (path,), x)
+            raise TransportError('Unable to list folder %r' % (path,), x)
 
     def stat(self, relpath):
         """Return the stat information for a file."""
@@ -547,7 +538,7 @@ class SFTPTransport (Transport):
         try:
             return self._sftp.stat(path)
         except (IOError, paramiko.SSHException), x:
-            raise SFTPTransportError('Unable to stat %r' % (path,), x)
+            raise TransportError('Unable to stat %r' % (path,), x)
 
     def lock_read(self, relpath):
         """
@@ -613,7 +604,7 @@ class SFTPTransport (Transport):
             try:
                 port = int(port)
             except ValueError:
-                raise SFTPTransportError('%s: invalid port number' % port)
+                raise TransportError('%s: invalid port number' % port)
         host = urllib.unquote(host)
 
         path = urllib.unquote(path)
@@ -634,7 +625,7 @@ class SFTPTransport (Transport):
     def _sftp_connect(self):
         """Connect to the remote sftp server.
         After this, self._sftp should have a valid connection (or
-        we raise an SFTPTransportError 'could not connect').
+        we raise an TransportError 'could not connect').
 
         TODO: Raise a more reasonable ConnectionFailed exception
         """
@@ -665,7 +656,7 @@ class SFTPTransport (Transport):
             t = paramiko.Transport((self._host, self._port))
             t.start_client()
         except paramiko.SSHException:
-            raise SFTPTransportError('Unable to reach SSH host %s:%d' % (self._host, self._port))
+            raise TransportError('Unable to reach SSH host %s:%d' % (self._host, self._port))
             
         server_key = t.get_remote_server_key()
         server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
@@ -687,7 +678,7 @@ class SFTPTransport (Transport):
         if server_key != our_server_key:
             filename1 = os.path.expanduser('~/.ssh/known_hosts')
             filename2 = pathjoin(config_dir(), 'ssh_host_keys')
-            raise SFTPTransportError('Host keys for %s do not match!  %s != %s' % \
+            raise TransportError('Host keys for %s do not match!  %s != %s' % \
                 (self._host, our_server_key_hex, server_key_hex),
                 ['Try editing %s or %s' % (filename1, filename2)])
 
@@ -708,14 +699,19 @@ class SFTPTransport (Transport):
         # Also, it would mess up the self.relpath() functionality
         username = self._username or getpass.getuser()
 
-        agent = paramiko.Agent()
-        for key in agent.get_keys():
-            mutter('Trying SSH agent key %s' % paramiko.util.hexify(key.get_fingerprint()))
-            try:
-                transport.auth_publickey(username, key)
-                return
-            except paramiko.SSHException, e:
-                pass
+        # Paramiko tries to open a socket.AF_UNIX in order to connect
+        # to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
+        # so we get an AttributeError exception. For now, just don't try to
+        # connect to an agent if we are on win32
+        if sys.platform != 'win32':
+            agent = paramiko.Agent()
+            for key in agent.get_keys():
+                mutter('Trying SSH agent key %s' % paramiko.util.hexify(key.get_fingerprint()))
+                try:
+                    transport.auth_publickey(username, key)
+                    return
+                except paramiko.SSHException, e:
+                    pass
         
         # okay, try finding id_rsa or id_dss?  (posix only)
         if self._try_pkey_auth(transport, paramiko.RSAKey, username, 'id_rsa'):
@@ -740,7 +736,7 @@ class SFTPTransport (Transport):
         try:
             transport.auth_password(username, password)
         except paramiko.SSHException:
-            raise SFTPTransportError('Unable to authenticate to SSH host as %s@%s' % \
+            raise TransportError('Unable to authenticate to SSH host as %s@%s' % \
                 (username, self._host))
 
     def _try_pkey_auth(self, transport, pkey_class, username, filename):
@@ -784,11 +780,9 @@ class SFTPTransport (Transport):
         try:
             t, msg = self._sftp._request(CMD_OPEN, path, mode, attr)
             if t != CMD_HANDLE:
-                raise SFTPTransportError('Expected an SFTP handle')
+                raise TransportError('Expected an SFTP handle')
             handle = msg.get_string()
             return SFTPFile(self._sftp, handle, 'w', -1)
-        except IOError, e:
-            self._translate_io_exception(e, relpath)
-        except paramiko.SSHException, x:
-            raise SFTPTransportError('Unable to open file %r' % (path,), x)
+        except (paramiko.SSHException, IOError), e:
+            self._translate_io_exception(e, relpath, ': unable to open')
 
