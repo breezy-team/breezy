@@ -241,6 +241,14 @@ class TestCase(unittest.TestCase):
             return
         raise AssertionError("texts not equal:\n" + 
                              self._ndiff_strings(a, b))      
+        
+    def assertStartsWith(self, s, prefix):
+        if not s.startswith(prefix):
+            raise AssertionError('string %r does not start with %r' % (s, prefix))
+
+    def assertEndsWith(self, s, suffix):
+        if not s.endswith(prefix):
+            raise AssertionError('string %r does not end with %r' % (s, suffix))
 
     def assertContainsRe(self, haystack, needle_re):
         """Assert that a contains something matching a regular expression."""
@@ -551,12 +559,16 @@ class TestCaseInTempDir(TestCase):
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
         self.failUnless(osutils.lexists(path))
+
+    def failIfExists(self, path):
+        """Fail if path, which may be abs or relative, exists."""
+        self.failIf(osutils.lexists(path))
         
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.failUnless(osutils.lexists(path))
         self.assertEqualDiff(content, open(path, 'r').read())
-        
+
 
 class MetaTestLog(TestCase):
     def test_logging(self):

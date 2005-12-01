@@ -28,6 +28,7 @@ import string
 import sys
 import time
 import types
+import tempfile
 
 import bzrlib
 from bzrlib.errors import BzrError, NotBranchError
@@ -124,6 +125,7 @@ if os.name == "posix":
     pathjoin = os.path.join
     normpath = os.path.normpath
     getcwd = os.getcwdu
+    mkdtemp = tempfile.mkdtemp
 else:
     # We need to use the Unicode-aware os.path.abspath and
     # os.path.realpath on Windows systems.
@@ -137,6 +139,8 @@ else:
         return os.path.normpath(path).replace('\\', '/')
     def getcwd():
         return os.getcwdu().replace('\\', '/')
+    def mkdtemp(*args, **kwargs):
+        return tempfile.mkdtemp(*args, **kwargs).replace('\\', '/')
 # Because these shrink the path, we can use the original
 # versions on any platform
 dirname = os.path.dirname

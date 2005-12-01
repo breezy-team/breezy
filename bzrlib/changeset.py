@@ -25,12 +25,11 @@ primarily used by the merge code.
 import os.path
 import errno
 import stat
-from tempfile import mkdtemp
 from shutil import rmtree
 from itertools import izip
 
 from bzrlib.trace import mutter, warning
-from bzrlib.osutils import rename, sha_file, pathjoin
+from bzrlib.osutils import rename, sha_file, pathjoin, mkdtemp
 import bzrlib
 from bzrlib.errors import BzrCheckError
 

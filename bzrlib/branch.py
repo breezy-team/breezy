@@ -1129,7 +1129,7 @@ class ScratchBranch(BzrBranch):
         True
         """
         from shutil import copytree
-        from tempfile import mkdtemp
+        from bzrlib.osutils import mkdtemp
         base = mkdtemp()
         os.rmdir(base)
         copytree(self.base, base, symlinks=True)

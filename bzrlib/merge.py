@@ -16,7 +16,6 @@
 
 
 import os
-import tempfile
 import shutil
 import errno
 

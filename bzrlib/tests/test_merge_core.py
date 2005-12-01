@@ -1,7 +1,5 @@
 import os
 import shutil
-import tempfile
-import unittest
 import stat
 import sys
 
@@ -11,7 +9,7 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError)
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
-from bzrlib.osutils import file_kind, rename, sha_file, pathjoin
+from bzrlib.osutils import file_kind, rename, sha_file, pathjoin, mkdtemp
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
                                BackupBeforeChange, ExecFlagMerge, WeaveMerge)
@@ -142,7 +140,7 @@ class MergeTree(object):
 
 class MergeBuilder(object):
     def __init__(self):
-        self.dir = tempfile.mkdtemp(prefix="BaZing")
+        self.dir = mkdtemp(prefix="BaZing")
         self.base = MergeTree(pathjoin(self.dir, "base"))
         self.this = MergeTree(pathjoin(self.dir, "this"))
         self.other = MergeTree(pathjoin(self.dir, "other"))
@@ -355,7 +353,7 @@ class MergeBuilder(object):
         shutil.rmtree(self.dir)
 
 
-class MergeTest(unittest.TestCase):
+class MergeTest(TestCase):
     def test_change_name(self):
         """Test renames"""
         builder = MergeBuilder()
@@ -366,18 +364,18 @@ class MergeTest(unittest.TestCase):
         builder.add_file("3", "0", "name5", "hello3", 0755)
         builder.change_name("3", this="name6")
         cset = builder.merge_changeset(ApplyMerge3)
-        self.assert_(cset.entries["2"].is_boring())
-        self.assert_(cset.entries["1"].name == "name1")
-        self.assert_(cset.entries["1"].new_name == "name2")
-        self.assert_(cset.entries["3"].is_boring())
+        self.failUnless(cset.entries["2"].is_boring())
+        self.assertEqual(cset.entries["1"].name, "name1")
+        self.assertEqual(cset.entries["1"].new_name, "name2")
+        self.failUnless(cset.entries["3"].is_boring())
         for tree in (builder.this, builder.other, builder.base):
-            self.assert_(tree.dir != builder.dir and 
-                   tree.dir.startswith(builder.dir))
+            self.assertNotEqual(tree.dir, builder.dir)
+            self.assertStartsWith(tree.dir, builder.dir)
             for path in tree.inventory_dict.itervalues():
                 fullpath = tree.abs_path(path)
-                self.assert_(fullpath.startswith(tree.dir))
-                self.assert_(not path.startswith(tree.dir))
-                self.assert_(os.path.exists(fullpath))
+                self.assertStartsWith(fullpath, tree.dir)
+                self.failIf(path.startswith(tree.dir))
+                self.failUnless(os.path.lexists(fullpath))
         builder.apply_changeset(cset)
         builder.cleanup()
         builder = MergeBuilder()
