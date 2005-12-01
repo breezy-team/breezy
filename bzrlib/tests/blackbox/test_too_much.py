@@ -473,62 +473,6 @@ class TestCommands(ExternalBase):
         self.assert_(os.path.exists('sub/a.txt.OTHER'))
         self.assert_(os.path.exists('sub/a.txt.BASE'))
 
-    def test_pull(self):
-        """Pull changes from one branch to another."""
-        os.mkdir('a')
-        os.chdir('a')
-
-        self.example_branch()
-        self.runbzr('pull', retcode=3)
-        self.runbzr('missing', retcode=3)
-        self.runbzr('missing .')
-        self.runbzr('missing')
-        self.runbzr('pull')
-        self.runbzr('pull /', retcode=3)
-        self.runbzr('pull')
-
-        os.chdir('..')
-        self.runbzr('branch a b')
-        os.chdir('b')
-        self.runbzr('pull')
-        os.mkdir('subdir')
-        self.runbzr('add subdir')
-        self.runbzr('commit -m blah --unchanged')
-        os.chdir('../a')
-        a = Branch.open('.')
-        b = Branch.open('../b')
-        self.assertEquals(a.revision_history(), b.revision_history()[:-1])
-        self.runbzr('pull ../b')
-        self.assertEquals(a.revision_history(), b.revision_history())
-        self.runbzr('commit -m blah2 --unchanged')
-        os.chdir('../b')
-        self.runbzr('commit -m blah3 --unchanged')
-        # no overwrite
-        self.runbzr('pull ../a', retcode=3)
-        os.chdir('..')
-        self.runbzr('branch b overwriteme')
-        os.chdir('overwriteme')
-        self.runbzr('pull --overwrite ../a')
-        overwritten = Branch.open('.')
-        self.assertEqual(overwritten.revision_history(),
-                         a.revision_history())
-        os.chdir('../a')
-        self.runbzr('merge ../b')
-        self.runbzr('commit -m blah4 --unchanged')
-        os.chdir('../b/subdir')
-        self.runbzr('pull ../../a')
-        self.assertEquals(a.revision_history()[-1], b.revision_history()[-1])
-        self.runbzr('commit -m blah5 --unchanged')
-        self.runbzr('commit -m blah6 --unchanged')
-        os.chdir('..')
-        self.runbzr('pull ../a')
-        os.chdir('../a')
-        self.runbzr('commit -m blah7 --unchanged')
-        self.runbzr('merge ../b')
-        self.runbzr('commit -m blah8 --unchanged')
-        self.runbzr('pull ../b')
-        self.runbzr('pull ../b')
-
     def test_inventory(self):
         bzr = self.runbzr
         def output_equals(value, *args):
