@@ -16,31 +16,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Black-box tests for bzr.
-
-These check that it behaves properly when it's invoked through the regular
-command-line interface. This doesn't actually run a new interpreter but 
-rather starts again from the run_bzr function.
+"""Black-box tests for bzr pull.
 """
 
-
-# XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-# Note: Please don't add new tests here, it's too big and bulky.  Instead add
-# them into small suites in bzrlib.tests.blackbox.test_FOO for the particular
-# UI command/aspect that is being tested.
-
-
-from cStringIO import StringIO
 import os
-import re
-import shutil
-import sys
 
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
-from bzrlib.errors import BzrCommandError
-from bzrlib.osutils import has_symlinks
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.blackbox import ExternalBase
 
 class TestPull(ExternalBase):
