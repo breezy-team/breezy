@@ -893,11 +893,13 @@ class TestCommands(ExternalBase):
         self.runbzr('commit --unchanged -m unchanged')
 
         os.chdir('../output-branch')
-        # should be a diff as we have not pushed the tree
-        self.runbzr('diff', retcode=1)
-        self.runbzr('revert')
-        # but not now.
+        # There is no longer a difference as long as we have
+        # access to the working tree
         self.runbzr('diff')
+
+        # But we should be missing a revision
+        self.runbzr('missing ../my-branch', retcode=1)
+
         # diverge the branches
         self.runbzr('commit --unchanged -m unchanged')
         os.chdir('../my-branch')
