@@ -153,6 +153,15 @@ class BzrOptionError(BzrCommandError):
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
+
+class PathNotChild(BzrNewError):
+    """Path %(path)r is not a child of path %(base)r"""
+    def __init__(self, path, base):
+        BzrNewError.__init__(self)
+        self.path = path
+        self.base = base
+
+
 class NotBranchError(BzrNewError):
     """Not a branch: %(path)s"""
     def __init__(self, path):

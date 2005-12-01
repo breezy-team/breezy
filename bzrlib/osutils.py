@@ -31,7 +31,7 @@ import types
 import tempfile
 
 import bzrlib
-from bzrlib.errors import BzrError, NotBranchError
+from bzrlib.errors import BzrError, PathNotChild
 from bzrlib.trace import mutter
 
 
@@ -508,7 +508,7 @@ def relpath(base, path):
     else:
         # XXX This should raise a NotChildPath exception, as its not tied
         # to branch anymore.
-        raise NotBranchError("path %r is not within branch %r" % (rp, base))
+        raise PathNotChild(rp, base)
 
     if s:
         return pathjoin(*s)

@@ -244,9 +244,9 @@ class WorkingTree(bzrlib.tree.Tree):
                 tail = pathjoin(os.path.basename(path), tail)
             else:
                 tail = os.path.basename(path)
+            lastpath = path
             path = os.path.dirname(path)
-            # FIXME: top in windows is indicated how ???
-            if path == os.path.sep:
+            if lastpath == path:
                 # reached the root, whatever that may be
                 raise NotBranchError(path=path)
 
