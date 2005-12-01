@@ -1180,9 +1180,7 @@ class cmd_cat(Command):
 
     @display_command
     def run(self, filename, revision=None):
-        if revision is None:
-            raise BzrCommandError("bzr cat requires a revision number")
-        elif len(revision) != 1:
+        if revision is not None and len(revision) != 1:
             raise BzrCommandError("bzr cat --revision takes exactly one number")
         tree = None
         try:
@@ -1190,9 +1188,14 @@ class cmd_cat(Command):
             b = tree.branch
         except NotBranchError:
             pass
+
         if tree is None:
             b, relpath = Branch.open_containing(filename)
-        b.print_file(relpath, revision[0].in_history(b).revno)
+        if revision is None:
+            revision_id = b.last_revision()
+        else:
+            revision_id = revision[0].in_history(b).rev_id
+        b.print_file(relpath, revision_id)
 
 
 class cmd_local_time_offset(Command):

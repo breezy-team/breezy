@@ -516,7 +516,6 @@ def relpath(base, path):
         return ''
 
 
-
 def terminal_width():
     """Return estimated terminal width."""
 
