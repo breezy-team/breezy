@@ -58,7 +58,7 @@ def internal_tree_files(file_list, default_branch=u'.'):
     for filename in file_list:
         try:
             new_list.append(tree.relpath(filename))
-        except NotBranchError:
+        except errors.PathNotChild:
             raise FileInWrongBranch(tree.branch, filename)
     return tree, new_list
 

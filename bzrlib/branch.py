@@ -1040,9 +1040,8 @@ class BzrBranch(Branch):
         for l in _locs:
             try:
                 return self.controlfile(l, 'r').read().strip('\n')
-            except IOError, e:
-                if e.errno != errno.ENOENT:
-                    raise
+            except NoSuchFile:
+                pass
         return None
 
     def get_push_location(self):
