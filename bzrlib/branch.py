@@ -656,7 +656,7 @@ class BzrBranch(Branch):
         self._transaction = new_transaction
 
     def lock_write(self):
-        mutter("lock write: %s (%s)", self, self._lock_count)
+        #mutter("lock write: %s (%s)", self, self._lock_count)
         # TODO: Upgrade locking to support using a Transport,
         # and potentially a remote locking protocol
         if self._lock_mode:
@@ -672,7 +672,7 @@ class BzrBranch(Branch):
             self._set_transaction(transactions.PassThroughTransaction())
 
     def lock_read(self):
-        mutter("lock read: %s (%s)", self, self._lock_count)
+        #mutter("lock read: %s (%s)", self, self._lock_count)
         if self._lock_mode:
             assert self._lock_mode in ('r', 'w'), \
                    "invalid lock mode %r" % self._lock_mode
@@ -687,7 +687,7 @@ class BzrBranch(Branch):
             self.get_transaction().set_cache_size(5000)
                         
     def unlock(self):
-        mutter("unlock: %s (%s)", self, self._lock_count)
+        #mutter("unlock: %s (%s)", self, self._lock_count)
         if not self._lock_mode:
             raise LockError('branch %r is not locked' % (self))
 
@@ -848,7 +848,10 @@ class BzrBranch(Branch):
         old_revision = self.last_revision()
         new_revision = rev_history[-1]
         self.put_controlfile('revision-history', '\n'.join(rev_history))
-        self.working_tree().set_last_revision(new_revision, old_revision)
+        try:
+            self.working_tree().set_last_revision(new_revision, old_revision)
+        except NoWorkingTree:
+            mutter('Unable to set_last_revision without a working tree.')
 
     def has_revision(self, revision_id):
         """See Branch.has_revision."""
@@ -1002,7 +1005,7 @@ class BzrBranch(Branch):
             xml = self.working_tree().read_basis_inventory(revision_id)
             inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
             return RevisionTree(self.weave_store, inv, revision_id)
-        except (IndexError, NoSuchFile), e:
+        except (IndexError, NoSuchFile, NoWorkingTree), e:
             return self.revision_tree(self.last_revision())
 
     def working_tree(self):
@@ -1023,6 +1026,7 @@ class BzrBranch(Branch):
             except DivergedBranches:
                 if not overwrite:
                     raise
+            if overwrite:
                 self.set_revision_history(source.revision_history())
             new_count = len(self.revision_history())
             return new_count - old_count

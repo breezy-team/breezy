@@ -478,9 +478,18 @@ class cmd_push(Command):
                             raise BzrCommandError("Could not creeate "
                                                   "path prefix.")
             br_to = Branch.initialize(location)
+        old_rh = br_to.revision_history()
         try:
-            old_rh = br_to.revision_history()
-            count = br_to.pull(br_from, overwrite)
+            try:
+                tree_to = br_to.working_tree()
+            except NoWorkingTree:
+                # TODO: This should be updated for branches which don't have a
+                # working tree, as opposed to ones where we just couldn't 
+                # update the tree.
+                warning('Unable to update the working tree of: %s' % (br_to.base,))
+                count = br_to.pull(br_from, overwrite)
+            else:
+                count = tree_to.pull(br_from, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try a merge then push with overwrite.")
