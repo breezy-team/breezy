@@ -64,9 +64,18 @@ class TestPull(ExternalBase):
         self.runbzr('missing', retcode=3)
         self.runbzr('missing .')
         self.runbzr('missing')
-        self.runbzr('pull')
+        if sys.platform not in ('win32', 'cygwin'):
+            # This is equivalent to doing "bzr pull ."
+            # Which means that bzr creates 2 branches grabbing
+            # the same location, and tries to pull.
+            # However, 2 branches mean 2 locks on the same file
+            # which ultimately implies a deadlock.
+            # (non windows platforms allow multiple locks on the
+            # same file by the same calling process)
+            self.runbzr('pull')
         self.runbzr('pull /', retcode=3)
-        self.runbzr('pull')
+        if sys.platform not in ('win32', 'cygwin'):
+            self.runbzr('pull')
 
         os.chdir('..')
         self.runbzr('branch a b')
