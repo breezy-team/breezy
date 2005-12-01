@@ -43,7 +43,16 @@ from bzrlib.osutils import has_symlinks
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.blackbox import ExternalBase
 
-class TestCommands(ExternalBase):
+class TestPull(ExternalBase):
+
+    def example_branch(test):
+        test.runbzr('init')
+        file('hello', 'wt').write('foo')
+        test.runbzr('add hello')
+        test.runbzr('commit -m setup hello')
+        file('goodbye', 'wt').write('baz')
+        test.runbzr('add goodbye')
+        test.runbzr('commit -m setup goodbye')
 
     def test_pull(self):
         """Pull changes from one branch to another."""
@@ -101,7 +110,7 @@ class TestCommands(ExternalBase):
         self.runbzr('pull ../b')
         self.runbzr('pull ../b')
 
-    def test_pull_overwrite_uptodate(self):
+    def test_overwrite_uptodate(self):
         # Make sure pull --overwrite overwrites
         # even if the target branch has merged
         # everything already.
@@ -144,7 +153,7 @@ class TestCommands(ExternalBase):
 
         self.assertEqual(rev_history_b, rev_history_a)
 
-    def test_pull_overwrite_children(self):
+    def test_overwrite_children(self):
         # Make sure pull --overwrite sets the revision-history
         # to be identical to the pull source, even if we have convergence
         bzr = self.run_bzr
