@@ -36,7 +36,7 @@ from bzrlib.errors import (FileExists,
 from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import Transport, register_transport
-from bzrlib.osutils import pathjoin
+from bzrlib.osutils import pathjoin, fancy_rename
 import bzrlib.ui
 
 try:
@@ -356,44 +356,26 @@ class SFTPTransport (Transport):
         tmp_abspath = self._abspath(tmp_relpath)
         fout = self._sftp_open_exclusive(tmp_relpath)
 
+        closed = False
         try:
             try:
                 self._pump(f, fout)
-            except (paramiko.SSHException, IOError), e:
-                self._translate_io_exception(e, relpath, ': unable to write')
+            except (IOError, paramiko.SSHException), e:
+                self._translate_io_exception(e, tmp_abspath)
+            fout.close()
+            closed = True
+            self._rename(tmp_abspath, final_path)
         except Exception, e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception
             # but don't let another exception mess things up
             try:
-                fout.close()
+                if not closed:
+                    fout.close()
                 self._sftp.remove(tmp_abspath)
             except:
                 pass
             raise e
-        else:
-            # sftp rename doesn't allow overwriting, so play tricks:
-            tmp_safety = 'bzr.tmp.%.9f.%d.%d' % (time.time(), os.getpid(), random.randint(0, 0x7FFFFFFF))
-            tmp_safety = self._abspath(tmp_safety)
-            try:
-                self._sftp.rename(final_path, tmp_safety)
-                file_existed = True
-            except:
-                file_existed = False
-            success = False
-            try:
-                try:
-                    self._sftp.rename(tmp_abspath, final_path)
-                except (paramiko.SSHException, IOError), e:
-                    self._translate_io_exception(e, relpath, ': unable to rename')
-                else:
-                    success = True
-            finally:
-                if file_existed:
-                    if success:
-                        self._sftp.unlink(tmp_safety)
-                    else:
-                        self._sftp.rename(tmp_safety, final_path)
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
@@ -500,14 +482,23 @@ class SFTPTransport (Transport):
 
         return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
 
+    def _rename(self, abs_from, abs_to):
+        """Do a fancy rename on the remote server.
+        
+        Using the implementation provided by osutils.
+        """
+        try:
+            fancy_rename(abs_from, abs_to,
+                    rename_func=self._sftp.rename,
+                    unlink_func=self._sftp.remove)
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, abs_from, ': unable to rename to %r' % (abs_to))
+
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         path_from = self._abspath(rel_from)
         path_to = self._abspath(rel_to)
-        try:
-            self._sftp.rename(path_from, path_to)
-        except (IOError, paramiko.SSHException), x:
-            raise TransportError('Unable to move %r to %r' % (path_from, path_to), x)
+        self._rename(path_from, path_to)
 
     def delete(self, relpath):
         """Delete the item at relpath"""

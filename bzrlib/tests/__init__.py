@@ -673,6 +673,7 @@ def test_suite():
                    'bzrlib.tests.test_revprops',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_http',
+                   'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_reweave',
                    'bzrlib.tests.test_tsort',
