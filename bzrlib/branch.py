@@ -848,7 +848,10 @@ class BzrBranch(Branch):
         old_revision = self.last_revision()
         new_revision = rev_history[-1]
         self.put_controlfile('revision-history', '\n'.join(rev_history))
-        self.working_tree().set_last_revision(new_revision, old_revision)
+        try:
+            self.working_tree().set_last_revision(new_revision, old_revision)
+        except NoWorkingTree:
+            mutter('Unable to set_last_revision without a working tree.')
 
     def has_revision(self, revision_id):
         """See Branch.has_revision."""
@@ -1002,7 +1005,7 @@ class BzrBranch(Branch):
             xml = self.working_tree().read_basis_inventory(revision_id)
             inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
             return RevisionTree(self.weave_store, inv, revision_id)
-        except (IndexError, NoSuchFile), e:
+        except (IndexError, NoSuchFile, NoWorkingTree), e:
             return self.revision_tree(self.last_revision())
 
     def working_tree(self):

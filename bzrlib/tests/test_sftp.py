@@ -20,6 +20,7 @@ import threading
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.tests.test_transport import TestTransportMixIn
+import bzrlib.errors as errors
 
 try:
     import paramiko
@@ -274,6 +275,28 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         self.failUnlessExists('.bzr/branch-lock.write-lock')
         b.unlock()
         self.failIf(os.path.lexists('.bzr/branch-lock.write-lock'))
+
+    def test_no_working_tree(self):
+        from bzrlib.branch import Branch
+        self.delayed_setup()
+        b = Branch.initialize(self._sftp_url)
+        self.assertRaises(errors.NoWorkingTree, b.working_tree)
+
+    def test_push_support(self):
+        from bzrlib.branch import Branch
+        self.delayed_setup()
+
+        self.build_tree(['a/', 'a/foo'])
+        b = Branch.initialize('a')
+        t = b.working_tree()
+        t.add('foo')
+        t.commit('foo', rev_id='a1')
+
+        os.mkdir('b')
+        b2 = Branch.initialize(self._sftp_url + 'b')
+        b2.pull(b)
+
+        self.assertEquals(b2.revision_history(), ['a1'])
 
 
 if not paramiko_loaded:
