@@ -513,6 +513,7 @@ class TestCaseInTempDir(TestCase):
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         os.environ['HOME'] = self.test_dir
+        os.environ['APPDATA'] = self.test_dir
         def _leaveDirectory():
             os.chdir(_currentdir)
         self.addCleanup(_leaveDirectory)

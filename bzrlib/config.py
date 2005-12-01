@@ -61,6 +61,7 @@ import re
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin
+from bzrlib.trace import mutter
 import bzrlib.util.configobj.configobj as configobj
 from StringIO import StringIO
 
@@ -349,8 +350,15 @@ class LocationConfig(IniBasedConfig):
         """Save option and its value in the configuration."""
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on branches.conf.
-        if not os.path.isdir(os.path.dirname(self._get_filename())):
-            os.mkdir(os.path.dirname(self._get_filename()))
+        conf_dir = os.path.dirname(self._get_filename())
+        if not os.path.isdir(conf_dir):
+            if sys.platform == 'win32':
+                parent_dir = os.path.dirname(conf_dir)
+                if not os.path.isdir(parent_dir):
+                    mutter('creating config parent directory: %r', parent_dir)
+                os.mkdir(parent_dir)
+            mutter('creating config directory: %r', conf_dir)
+            os.mkdir(conf_dir)
         location = self.location
         if location.endswith('/'):
             location = location[:-1]
@@ -430,20 +438,6 @@ def config_dir():
         if base is None:
             base = os.path.expanduser("~")
         return pathjoin(base, ".bazaar")
-
-
-def ensure_config_dir_exists():
-    """Make sure the configuration directory exists.
-    On Windows, there is more than one level, so both must be created.
-    """
-    cd = config_dir()
-    if os.path.exists(cd):
-        return
-    if sys.platform == 'win32':
-        base = os.dirname(cd)
-        if not os.path.exists(base):
-            os.mkdir(base)
-    os.mkdir(cd)
 
 
 def config_filename():

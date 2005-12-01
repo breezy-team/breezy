@@ -63,6 +63,7 @@ from bzrlib.osutils import (appendpath,
                             compact_date,
                             file_kind,
                             isdir,
+                            getcwd,
                             pathjoin,
                             pumpfile,
                             splitpath,
@@ -227,7 +228,7 @@ class WorkingTree(bzrlib.tree.Tree):
         If there is one, it is returned, along with the unused portion of path.
         """
         if path is None:
-            path = os.getcwdu()
+            path = getcwd()
         else:
             # sanity check.
             if path.find('://') != -1:

@@ -123,6 +123,7 @@ if os.name == "posix":
         return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
     pathjoin = os.path.join
     normpath = os.path.normpath
+    getcwd = os.getcwdu
 else:
     # We need to use the Unicode-aware os.path.abspath and
     # os.path.realpath on Windows systems.
@@ -134,6 +135,8 @@ else:
         return os.path.join(*args).replace('\\', '/')
     def normpath(path):
         return os.path.normpath(path).replace('\\', '/')
+    def getcwd():
+        return os.getcwdu().replace('\\', '/')
 # Because these shrink the path, we can use the original
 # versions on any platform
 dirname = os.path.dirname
