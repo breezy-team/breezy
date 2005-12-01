@@ -222,17 +222,17 @@ class SFTPNonServerTest(TestCase):
 
     def test_relpath(self):
         from bzrlib.transport.sftp import SFTPTransport
-        from bzrlib.errors import NonRelativePath
+        from bzrlib.errors import PathNotChild
 
         s = SFTPTransport('sftp://user@host.com//abs/path', clone_from=fake)
         self.assertEquals(s.relpath('sftp://user@host.com//abs/path/sub'), 'sub')
         # Can't test this one, because we actually get an AssertionError
         # TODO: Consider raising an exception rather than an assert
-        #self.assertRaises(NonRelativePath, s.relpath, 'http://user@host.com//abs/path/sub')
-        self.assertRaises(NonRelativePath, s.relpath, 'sftp://user2@host.com//abs/path/sub')
-        self.assertRaises(NonRelativePath, s.relpath, 'sftp://user@otherhost.com//abs/path/sub')
-        self.assertRaises(NonRelativePath, s.relpath, 'sftp://user@host.com:33//abs/path/sub')
-        self.assertRaises(NonRelativePath, s.relpath, 'sftp://user@host.com/abs/path/sub')
+        #self.assertRaises(PathNotChild, s.relpath, 'http://user@host.com//abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'sftp://user2@host.com//abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@otherhost.com//abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@host.com:33//abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@host.com/abs/path/sub')
 
         # Make sure it works when we don't supply a username
         s = SFTPTransport('sftp://host.com//abs/path', clone_from=fake)
@@ -247,12 +247,12 @@ class SFTPNonServerTest(TestCase):
         self.assertEquals(s.relpath('sftp://host.com/dev/%path/sub'), 'sub')
 
     def test_parse_invalid_url(self):
-        from bzrlib.transport.sftp import SFTPTransport, SFTPTransportError
+        from bzrlib.transport.sftp import SFTPTransport, TransportError
         try:
             s = SFTPTransport('sftp://lilypond.org:~janneke/public_html/bzr/gub',
                               clone_from=fake)
             self.fail('expected exception not raised')
-        except SFTPTransportError, e:
+        except TransportError, e:
             self.assertEquals(str(e), 
                     '~janneke: invalid port number')
 
