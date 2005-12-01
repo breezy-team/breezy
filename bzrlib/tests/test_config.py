@@ -195,14 +195,14 @@ class TestConfigPath(TestCase):
     def test_config_dir(self):
         if sys.platform == 'win32':
             self.assertEqual(config.config_dir(), 
-                r'C:\Documents and Settings\bogus\Application Data\bazaar\2.0')
+                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0')
         else:
             self.assertEqual(config.config_dir(), '/home/bogus/.bazaar')
 
     def test_config_filename(self):
         if sys.platform == 'win32':
             self.assertEqual(config.config_filename(), 
-                r'C:\Documents and Settings\bogus\Application Data\bazaar\2.0\bazaar.conf')
+                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/bazaar.conf')
         else:
             self.assertEqual(config.config_filename(),
                              '/home/bogus/.bazaar/bazaar.conf')
@@ -210,7 +210,7 @@ class TestConfigPath(TestCase):
     def test_branches_config_filename(self):
         if sys.platform == 'win32':
             self.assertEqual(config.branches_config_filename(), 
-                r'C:\Documents and Settings\bogus\Application Data\bazaar\2.0\branches.conf')
+                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/branches.conf')
         else:
             self.assertEqual(config.branches_config_filename(),
                              '/home/bogus/.bazaar/branches.conf')
