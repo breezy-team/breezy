@@ -46,7 +46,6 @@ import logging
 
 import bzrlib
 from bzrlib.errors import BzrError, BzrNewError
-from bzrlib.osutils import pathjoin
 
 
 _file_handler = None
@@ -121,7 +120,7 @@ def open_tracefile(tracefilename='~/.bzr.log'):
     global _file_handler, _bzr_log_file
     import stat, codecs
 
-    trace_fname = pathjoin(os.path.expanduser(tracefilename))
+    trace_fname = os.path.join(os.path.expanduser(tracefilename))
     _rollover_trace_maybe(trace_fname)
     try:
         LINE_BUFFERED = 1

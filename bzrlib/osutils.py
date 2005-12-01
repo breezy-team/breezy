@@ -500,7 +500,10 @@ def relpath(base, path):
         # to branch anymore.
         raise NotBranchError("path %r is not within branch %r" % (rp, base))
 
-    return pathjoin(*s)
+    if s:
+        return pathjoin(*s)
+    else:
+        return ''
 
 
 

@@ -19,7 +19,6 @@
 
 import os
 from bzrlib.trace import mutter
-from bzrlib.osutils import pathjoin
 import zipfile
 
 def zip_exporter(tree, dest, root):
@@ -44,23 +43,21 @@ def zip_exporter(tree, dest, root):
             file_id = ie.file_id
             mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
 
-            # This may not require pathjoin, since we are doing
-            # an export, but for consistency we will use it
             if ie.kind == "file": 
                 zinfo = zipfile.ZipInfo(
-                            filename=str(pathjoin(root, dp)),
+                            filename=str(os.path.join(root, dp)),
                             date_time=now)
                 zinfo.compress_type = compression
                 zipf.writestr(zinfo, tree.get_file_text(file_id))
             elif ie.kind == "directory":
                 zinfo = zipfile.ZipInfo(
-                            filename=str(pathjoin(root, dp)+'/'),
+                            filename=str(os.path.join(root, dp)+os.sep),
                             date_time=now)
                 zinfo.compress_type = compression
                 zipf.writestr(zinfo,'')
             elif ie.kind == "symlink":
                 zinfo = zipfile.ZipInfo(
-                            filename=str(pathjoin(root, dp+".lnk")),
+                            filename=str(os.path.join(root, dp+".lnk")),
                             date_time=now)
                 zinfo.compress_type = compression
                 zipf.writestr(zinfo, ie.symlink_target)

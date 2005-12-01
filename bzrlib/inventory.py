@@ -992,7 +992,10 @@ class Inventory(object):
         """
         # get all names, skipping root
         p = [self._byid[fid].name for fid in self.get_idpath(file_id)[1:]]
-        return pathjoin(*p)
+        if p:
+            return pathjoin(*p)
+        else:
+            return ''
             
 
 
