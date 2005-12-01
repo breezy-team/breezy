@@ -63,6 +63,7 @@ from bzrlib.osutils import (appendpath,
                             compact_date,
                             file_kind,
                             isdir,
+                            pathjoin,
                             pumpfile,
                             splitpath,
                             rand_bytes,
@@ -237,7 +238,7 @@ class WorkingTree(bzrlib.tree.Tree):
             except NotBranchError:
                 pass
             if tail:
-                tail = os.path.join(os.path.basename(path), tail)
+                tail = pathjoin(os.path.basename(path), tail)
             else:
                 tail = os.path.basename(path)
             path = os.path.dirname(path)
@@ -262,7 +263,7 @@ class WorkingTree(bzrlib.tree.Tree):
                                getattr(self, 'basedir', None))
 
     def abspath(self, filename):
-        return os.path.join(self.basedir, filename)
+        return pathjoin(self.basedir, filename)
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path."""

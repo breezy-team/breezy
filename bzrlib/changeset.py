@@ -30,7 +30,7 @@ from shutil import rmtree
 from itertools import izip
 
 from bzrlib.trace import mutter, warning
-from bzrlib.osutils import rename, sha_file
+from bzrlib.osutils import rename, sha_file, pathjoin
 import bzrlib
 from bzrlib.errors import BzrCheckError
 
@@ -434,7 +434,7 @@ class Diff3Merge(object):
         return not (self == other)
 
     def dump_file(self, temp_dir, name, tree):
-        out_path = os.path.join(temp_dir, name)
+        out_path = pathjoin(temp_dir, name)
         out_file = file(out_path, "wb")
         in_file = tree.get_file(self.file_id)
         for line in in_file:
@@ -644,7 +644,7 @@ class ChangesetEntry(object):
         return os.path.dirname(self.path)
 
     def __set_dir(self, dir):
-        self.path = os.path.join(dir, os.path.basename(self.path))
+        self.path = pathjoin(dir, os.path.basename(self.path))
 
     dir = property(__get_dir, __set_dir)
     
@@ -654,7 +654,7 @@ class ChangesetEntry(object):
         return os.path.basename(self.path)
 
     def __set_name(self, name):
-        self.path = os.path.join(os.path.dirname(self.path), name)
+        self.path = pathjoin(os.path.dirname(self.path), name)
 
     name = property(__get_name, __set_name)
 
@@ -664,7 +664,7 @@ class ChangesetEntry(object):
         return os.path.dirname(self.new_path)
 
     def __set_new_dir(self, dir):
-        self.new_path = os.path.join(dir, os.path.basename(self.new_path))
+        self.new_path = pathjoin(dir, os.path.basename(self.new_path))
 
     new_dir = property(__get_new_dir, __set_new_dir)
 
@@ -674,7 +674,7 @@ class ChangesetEntry(object):
         return os.path.basename(self.new_path)
 
     def __set_new_name(self, name):
-        self.new_path = os.path.join(os.path.dirname(self.new_path), name)
+        self.new_path = pathjoin(os.path.dirname(self.new_path), name)
 
     new_name = property(__get_new_name, __set_new_name)
 
@@ -809,7 +809,7 @@ class ChangesetEntry(object):
         else:
             name = to_name
             assert(from_name is None or from_name == os.path.basename(id_map[self.id]))
-        return os.path.join(dir, name)
+        return pathjoin(dir, name)
 
     def is_boring(self):
         """Determines whether the entry does nothing
@@ -934,17 +934,17 @@ def rename_to_temp_delete(source_entries, inventory, dir, temp_dir,
     for i in range(len(source_entries)):
         entry = source_entries[i]
         if entry.is_deletion(reverse):
-            path = os.path.join(dir, inventory[entry.id])
+            path = pathjoin(dir, inventory[entry.id])
             entry.apply(path, conflict_handler, reverse)
             temp_name[entry.id] = None
 
         elif entry.needs_rename():
             if entry.is_creation(reverse):
                 continue
-            to_name = os.path.join(temp_dir, str(i))
+            to_name = pathjoin(temp_dir, str(i))
             src_path = inventory.get(entry.id)
             if src_path is not None:
-                src_path = os.path.join(dir, src_path)
+                src_path = pathjoin(dir, src_path)
                 try:
                     rename(src_path, to_name)
                     temp_name[entry.id] = to_name
@@ -977,7 +977,7 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
         new_tree_path = entry.get_new_path(inventory, changeset, reverse)
         if new_tree_path is None:
             continue
-        new_path = os.path.join(dir, new_tree_path)
+        new_path = pathjoin(dir, new_tree_path)
         old_path = changed_inventory.get(entry.id)
         if bzrlib.osutils.lexists(new_path):
             if conflict_handler.target_exists(entry, new_path, old_path) == \
@@ -1201,7 +1201,7 @@ def apply_changeset(changeset, inventory, dir, conflict_handler=None,
     """
     if conflict_handler is None:
         conflict_handler = ExceptionConflictHandler()
-    temp_dir = os.path.join(dir, "bzr-tree-change")
+    temp_dir = pathjoin(dir, "bzr-tree-change")
     try:
         os.mkdir(temp_dir)
     except OSError, e:
@@ -1222,7 +1222,7 @@ def apply_changeset(changeset, inventory, dir, conflict_handler=None,
                 warning("entry {%s} no longer present, can't be updated",
                         entry.id)
                 continue
-            path = os.path.join(dir, inventory[entry.id])
+            path = pathjoin(dir, inventory[entry.id])
             entry.apply(path, conflict_handler, reverse)
 
     # Apply renames in stages, to minimize conflicts:
@@ -1557,7 +1557,7 @@ def get_contents(tree, file_id):
 
 
 def full_path(entry, tree):
-    return os.path.join(tree.basedir, entry.path)
+    return pathjoin(tree.basedir, entry.path)
 
 def new_delete_entry(entry, tree, inventory, delete):
     if entry.path == "":

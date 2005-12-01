@@ -60,6 +60,7 @@ import re
 
 import bzrlib
 import bzrlib.errors as errors
+from bzrlib.osutils import pathjoin
 import bzrlib.util.configobj.configobj as configobj
 from StringIO import StringIO
 
@@ -423,22 +424,36 @@ def config_dir():
             base = os.environ.get('HOME', None)
         if base is None:
             raise BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
-        return os.path.join(base, 'bazaar', '2.0')
+        return pathjoin(base, 'bazaar', '2.0')
     else:
         # cygwin, linux, and darwin all have a $HOME directory
         if base is None:
             base = os.path.expanduser("~")
-        return os.path.join(base, ".bazaar")
+        return pathjoin(base, ".bazaar")
+
+
+def ensure_config_dir_exists():
+    """Make sure the configuration directory exists.
+    On Windows, there is more than one level, so both must be created.
+    """
+    cd = config_dir()
+    if os.path.exists(cd):
+        return
+    if sys.platform == 'win32':
+        base = os.dirname(cd)
+        if not os.path.exists(base):
+            os.mkdir(base)
+    os.mkdir(cd)
 
 
 def config_filename():
     """Return per-user configuration ini file filename."""
-    return os.path.join(config_dir(), 'bazaar.conf')
+    return pathjoin(config_dir(), 'bazaar.conf')
 
 
 def branches_config_filename():
     """Return per-user configuration ini file filename."""
-    return os.path.join(config_dir(), 'branches.conf')
+    return pathjoin(config_dir(), 'branches.conf')
 
 
 def _auto_user_id():

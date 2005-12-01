@@ -23,6 +23,7 @@ import os
 import sys
 
 from bzrlib.commands import Command
+from bzrlib.osutils import pathjoin
 
 
 class ExternalCommand(Command):
@@ -37,7 +38,7 @@ class ExternalCommand(Command):
             ## Empty directories are not real paths
             if not dir:
                 continue
-            path = os.path.join(dir, cmd)
+            path = pathjoin(dir, cmd)
             if os.path.isfile(path):
                 return ExternalCommand(path)
 

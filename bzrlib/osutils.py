@@ -109,17 +109,6 @@ def lexists(f):
         else:
             raise BzrError("lstat/stat of (%r): %r" % (f, e))
 
-def normalizepath(f):
-    if hasattr(os.path, 'realpath'):
-        F = os.path.realpath
-    else:
-        F = os.path.abspath
-    [p,e] = os.path.split(f)
-    if e == "" or e == "." or e == "..":
-        return F(f)
-    else:
-        return os.path.join(F(p), e)
-
 if os.name == "posix":
     # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
     # choke on a Unicode string containing a relative path if
@@ -130,11 +119,28 @@ if os.name == "posix":
         return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
     def realpath(path):
         return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
+    pathjoin = os.path.join
 else:
     # We need to use the Unicode-aware os.path.abspath and
     # os.path.realpath on Windows systems.
-    abspath = os.path.abspath
-    realpath = os.path.realpath
+    def abspath(path):
+        return os.path.abspath(path).replace('\\', '/')
+    def realpath(path):
+        return os.path.realpath(path).replace('\\', '/')
+    def pathjoin(*args):
+        return os.path.join(*args).replace('\\', '/')
+
+def normalizepath(f):
+    if hasattr(os.path, 'realpath'):
+        F = realpath
+    else:
+        F = abspath
+    [p,e] = os.path.split(f)
+    if e == "" or e == "." or e == "..":
+        return F(f)
+    else:
+        return pathjoin(F(p), e)
+
 
 def backup_file(fn):
     """Copy a file to a backup.
@@ -202,11 +208,11 @@ def is_inside(dir, fname):
     The empty string as a dir name is taken as top-of-tree and matches 
     everything.
     
-    >>> is_inside('src', os.path.join('src', 'foo.c'))
+    >>> is_inside('src', pathjoin('src', 'foo.c'))
     True
     >>> is_inside('src', 'srccontrol')
     False
-    >>> is_inside('src', os.path.join('src', 'a', 'a', 'a', 'foo.c'))
+    >>> is_inside('src', pathjoin('src', 'a', 'a', 'a', 'foo.c'))
     True
     >>> is_inside('foo.c', 'foo.c')
     True
@@ -407,14 +413,14 @@ def joinpath(p):
     for f in p:
         if (f == '..') or (f == None) or (f == ''):
             raise BzrError("sorry, %r not allowed in path" % f)
-    return os.path.join(*p)
+    return pathjoin(*p)
 
 
 def appendpath(p1, p2):
     if p1 == '':
         return p2
     else:
-        return os.path.join(p1, p2)
+        return pathjoin(p1, p2)
     
 
 def split_lines(s):

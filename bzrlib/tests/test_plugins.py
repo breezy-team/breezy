@@ -24,13 +24,14 @@
 import os
 
 from bzrlib.tests import TestCaseInTempDir
+from bzrlib.osutils import pathjoin
 
 class PluginTest(TestCaseInTempDir):
     """Create an external plugin and test loading."""
 #    def test_plugin_loading(self):
 #        orig_help = self.run_bzr_captured('bzr help commands')[0]
 #        os.mkdir('plugin_test')
-#        f = open(os.path.join('plugin_test', 'myplug.py'), 'wt')
+#        f = open(pathjoin('plugin_test', 'myplug.py'), 'wt')
 #        f.write(PLUGIN_TEXT)
 #        f.close()
 #        newhelp = self.run_bzr_captured('bzr help commands')[0]
@@ -52,7 +53,7 @@ class PluginTest(TestCaseInTempDir):
 #         assert backtick('bzr myplug') == 'Hello from my plugin\n'
 #         assert backtick('bzr mplg') == 'Hello from my plugin\n'
 
-#         f = open(os.path.join('plugin_test', 'override.py'), 'wb')
+#         f = open(pathjoin('plugin_test', 'override.py'), 'wb')
 #         f.write("""import bzrlib, bzrlib.commands
 #     class cmd_commit(bzrlib.commands.cmd_commit):
 #         '''Commit changes into a new revision.'''

@@ -23,7 +23,7 @@ import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
 from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.inventory as inventory
-from bzrlib.osutils import has_symlinks, rename
+from bzrlib.osutils import has_symlinks, rename, pathjoin
 from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
@@ -32,7 +32,7 @@ class TestInventory(TestCase):
     def test_is_within(self):
         from bzrlib.osutils import is_inside_any
 
-        SRC_FOO_C = os.path.join('src', 'foo.c')
+        SRC_FOO_C = pathjoin('src', 'foo.c')
         for dirs, fn in [(['src', 'doc'], SRC_FOO_C),
                          (['src'], SRC_FOO_C),
                          (['src'], 'src'),

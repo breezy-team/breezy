@@ -22,6 +22,7 @@ Adapted from the one in paramiko's unit tests.
 import os
 from paramiko import ServerInterface, SFTPServerInterface, SFTPServer, SFTPAttributes, \
     SFTPHandle, SFTP_OK, AUTH_SUCCESSFUL, OPEN_SUCCEEDED
+from bzrlib.osutils import pathjoin
 
 
 class StubServer (ServerInterface):
@@ -69,7 +70,7 @@ class StubSFTPServer (SFTPServerInterface):
             out = [ ]
             flist = os.listdir(path)
             for fname in flist:
-                attr = SFTPAttributes.from_stat(os.stat(os.path.join(path, fname)))
+                attr = SFTPAttributes.from_stat(os.stat(pathjoin(path, fname)))
                 attr.filename = fname
                 out.append(attr)
             return out

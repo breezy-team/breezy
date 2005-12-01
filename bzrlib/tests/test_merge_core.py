@@ -11,7 +11,7 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError)
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
-from bzrlib.osutils import file_kind, rename, sha_file
+from bzrlib.osutils import file_kind, rename, sha_file, pathjoin
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
                                BackupBeforeChange, ExecFlagMerge, WeaveMerge)
@@ -64,7 +64,7 @@ class MergeTree(object):
         self.inventory = FalseTree(self)
     
     def child_path(self, parent, name):
-        return os.path.join(self.inventory_dict[parent], name)
+        return pathjoin(self.inventory_dict[parent], name)
 
     def add_file(self, id, parent, name, contents, mode):
         path = self.child_path(parent, name)
@@ -94,7 +94,7 @@ class MergeTree(object):
         self.inventory_dict[id] = path
 
     def abs_path(self, path):
-        return os.path.join(self.dir, path)
+        return pathjoin(self.dir, path)
 
     def full_path(self, id):
         try:
@@ -123,7 +123,7 @@ class MergeTree(object):
         return self.full_path(id)
 
     def change_path(self, id, path):
-        old_path = os.path.join(self.dir, self.inventory_dict[id])
+        old_path = pathjoin(self.dir, self.inventory_dict[id])
         rename(old_path, self.abs_path(path))
         self.inventory_dict[id] = path
 
@@ -143,9 +143,9 @@ class MergeTree(object):
 class MergeBuilder(object):
     def __init__(self):
         self.dir = tempfile.mkdtemp(prefix="BaZing")
-        self.base = MergeTree(os.path.join(self.dir, "base"))
-        self.this = MergeTree(os.path.join(self.dir, "this"))
-        self.other = MergeTree(os.path.join(self.dir, "other"))
+        self.base = MergeTree(pathjoin(self.dir, "base"))
+        self.this = MergeTree(pathjoin(self.dir, "this"))
+        self.other = MergeTree(pathjoin(self.dir, "other"))
         
         self.cset = changeset.Changeset()
         self.cset.add_entry(changeset.ChangesetEntry("0", 
@@ -154,7 +154,7 @@ class MergeBuilder(object):
         if name is None:
             assert (parent is None)
             return None
-        return os.path.join(self.cset.entries[parent].path, name)
+        return pathjoin(self.cset.entries[parent].path, name)
 
     def add_file(self, id, parent, name, contents, mode):
         self.base.add_file(id, parent, name, contents, mode)
@@ -328,7 +328,7 @@ class MergeBuilder(object):
                 if parent is None:
                     return orig_inventory[file_id]
                 dirname = new_path(parent)
-                return os.path.join(dirname, orig_inventory[file_id])
+                return pathjoin(dirname, orig_inventory[file_id])
 
         new_inventory = {}
         for file_id in orig_inventory.iterkeys():

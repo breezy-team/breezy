@@ -27,8 +27,8 @@ import bzrlib
 import bzrlib.inventory as inventory
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn,
-                            rename, splitpath, sha_file, appendpath, 
-                            file_kind, abspath)
+                            rename, splitpath, sha_file,
+                            file_kind, abspath, pathjoin)
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
@@ -573,7 +573,7 @@ class BzrBranch(Branch):
                               prefixed=prefixed,
                               compressed=compressed)
             #if self._transport.should_cache():
-            #    cache_path = os.path.join(self.cache_root, name)
+            #    cache_path = pathjoin(self.cache_root, name)
             #    os.mkdir(cache_path)
             #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
@@ -1125,7 +1125,7 @@ class ScratchBranch(BzrBranch):
         ...   orig.base == clone.base
         ...
         False
-        >>> os.path.isfile(os.path.join(clone.base, "file1"))
+        >>> os.path.isfile(pathjoin(clone.base, "file1"))
         True
         """
         from shutil import copytree

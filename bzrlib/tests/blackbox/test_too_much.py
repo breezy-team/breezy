@@ -39,7 +39,7 @@ import sys
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
 from bzrlib.errors import BzrCommandError
-from bzrlib.osutils import has_symlinks
+from bzrlib.osutils import has_symlinks, pathjoin
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.blackbox import ExternalBase
 
@@ -994,7 +994,7 @@ class OldTests(ExternalBase):
         runbzr('init')
 
         self.assertEquals(capture('root').rstrip(),
-                          os.path.join(self.test_dir, 'branch1'))
+                          pathjoin(self.test_dir, 'branch1'))
 
         progress("status of new file")
 
@@ -1070,7 +1070,7 @@ class OldTests(ExternalBase):
         runbzr("rename sub1 sub2")
         runbzr("move hello.txt sub2")
         self.assertEqual(capture("relpath sub2/hello.txt"),
-                         os.path.join("sub2", "hello.txt\n"))
+                         pathjoin("sub2", "hello.txt\n"))
 
         self.assert_(exists("sub2"))
         self.assert_(exists("sub2/hello.txt"))
@@ -1092,15 +1092,15 @@ class OldTests(ExternalBase):
 
         chdir('sub1/sub2')
         self.assertEquals(capture('root')[:-1],
-                          os.path.join(self.test_dir, 'branch1'))
+                          pathjoin(self.test_dir, 'branch1'))
         runbzr('move ../hello.txt .')
         self.assert_(exists('./hello.txt'))
         self.assertEquals(capture('relpath hello.txt'),
-                          os.path.join('sub1', 'sub2', 'hello.txt') + '\n')
-        self.assertEquals(capture('relpath ../../sub1/sub2/hello.txt'), os.path.join('sub1', 'sub2', 'hello.txt\n'))
+                          pathjoin('sub1', 'sub2', 'hello.txt') + '\n')
+        self.assertEquals(capture('relpath ../../sub1/sub2/hello.txt'), pathjoin('sub1', 'sub2', 'hello.txt\n'))
         runbzr(['commit', '-m', 'move to parent directory'])
         chdir('..')
-        self.assertEquals(capture('relpath sub2/hello.txt'), os.path.join('sub1', 'sub2', 'hello.txt\n'))
+        self.assertEquals(capture('relpath sub2/hello.txt'), pathjoin('sub1', 'sub2', 'hello.txt\n'))
 
         runbzr('move sub2/hello.txt .')
         self.assert_(exists('hello.txt'))
