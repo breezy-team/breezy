@@ -23,6 +23,14 @@ UNRELEASED CHANGES
       This gives better integration with user settings such as ProxyCommand.
       (James Henstridge)
 
+    * Sftp paths can now be relative, or local, according to the IETF draft spec.
+      Paths now take the form:
+      sftp://user:pass@host:port/relative/path
+      or
+      sftp://user:pass@host:port/%2Fabsolute/path
+      or
+      sftp://user:pass@host:port//absolute/path
+
   IMPROVEMENTS:
 
     * "bzr INIT dir" now initializes the specified directory, and creates 
@@ -63,6 +71,10 @@ UNRELEASED CHANGES
 
     * Improved performance when integrating changes from a remote weave.  
       (Goffredo Baroncelli)
+
+    * Sftp will attempt to cache the connection, so it is more likely that
+      a connection will be reused, rather than requiring multiple password
+      requests.
 
   BUG FIXES:
 
