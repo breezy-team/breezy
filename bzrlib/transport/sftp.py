@@ -36,7 +36,7 @@ from bzrlib.errors import (FileExists,
 from bzrlib.config import config_dir
 from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import Transport, register_transport
-from bzrlib.ui import ui_factory
+import bzrlib.ui
 
 try:
     import paramiko
@@ -734,8 +734,9 @@ class SFTPTransport (Transport):
             #self._password = None
 
         # give up and ask for a password
-        password = ui_factory.get_password(prompt='SSH %(user)s@%(host)s password',
-                                           user=username, host=self._host)
+        password = bzrlib.ui.ui_factory.get_password(
+                prompt='SSH %(user)s@%(host)s password',
+                user=username, host=self._host)
         try:
             transport.auth_password(username, password)
         except paramiko.SSHException:
@@ -749,8 +750,9 @@ class SFTPTransport (Transport):
             transport.auth_publickey(username, key)
             return True
         except paramiko.PasswordRequiredException:
-            password = ui_factory.get_password(prompt='SSH %(filename)s password',
-                                               filename=filename)
+            password = bzrlib.ui.ui_factory.get_password(
+                    prompt='SSH %(filename)s password',
+                    filename=filename)
             try:
                 key = pkey_class.from_private_key_file(filename, password)
                 transport.auth_publickey(username, key)
