@@ -147,6 +147,9 @@ UNRELEASED CHANGES
       If adding a new test script please add that to
       bzrlib.tests.blackbox.__init__. (Robert Collins)
 
+    * Much better error message if one of the test suites can't be 
+      imported.  (Martin Pool)
+
   INTERNALS:
 
     * WorkingTree.pull has been split across Branch and WorkingTree,
