@@ -33,7 +33,6 @@ from bzrlib.errors import BzrError
 import bzrlib.inventory
 import bzrlib.merge3
 import bzrlib.osutils
-import bzrlib.osutils as osutils
 import bzrlib.plugin
 import bzrlib.store
 import bzrlib.trace
@@ -97,7 +96,7 @@ class _MyResult(unittest._TextTestResult):
         # at the end
         SHOW_DESCRIPTIONS = False
         if self.showAll:
-            width = osutils.terminal_width()
+            width = bzrlib.osutils.terminal_width()
             name_width = width - 15
             what = None
             if SHOW_DESCRIPTIONS:
@@ -325,8 +324,8 @@ class TestCase(unittest.TestCase):
 
         This should only be called from TestCase.tearDown.
         """
-        for callable in reversed(self._cleanups):
-            callable()
+        for cleanup_fn in reversed(self._cleanups):
+            cleanup_fn()
 
     def log(self, *args):
         mutter(*args)
@@ -549,16 +548,16 @@ class TestCaseInTempDir(TestCase):
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(osutils.lexists(path))
+        self.failUnless(bzrlib.osutils.lexists(path))
         
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
-        self.failUnless(osutils.lexists(path))
+        self.failUnless(bzrlib.osutils.lexists(path))
         self.assertEqualDiff(content, open(path, 'r').read())
         
 
 def filter_suite_by_re(suite, pattern):
-    result = TestUtil.TestSuite()
+    result = TestSuite()
     filter_re = re.compile(pattern)
     for test in iter_suite_tests(suite):
         if filter_re.search(test.id()):
