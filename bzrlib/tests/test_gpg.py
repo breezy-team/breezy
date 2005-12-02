@@ -47,7 +47,8 @@ class TestCommandLine(TestCase):
     def test_returns_output(self):
         # This test needs a 'cat' command or similar to work.
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        my_gpg._command_line = lambda:["cat", "-"]
+        my_gpg._command_line = lambda:['python', '-c',
+                'import sys; sys.stdout.write(sys.stdin.read())']
         self.assertEqual("some content\nwith newlines\n",
                          my_gpg.sign("some content\nwith newlines\n"))
 
