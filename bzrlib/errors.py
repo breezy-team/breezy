@@ -34,7 +34,8 @@ This means that exceptions can used like this:
 ... except:
 ...   print sys.exc_type
 ...   print sys.exc_value
-...   print sys.exc_value.path
+...   if hasattr(sys.exc_value, 'path'):
+...     print sys.exc_value.path
 bzrlib.errors.NotBranchError
 Not a branch: /foo/bar
 /foo/bar

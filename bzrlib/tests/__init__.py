@@ -661,7 +661,7 @@ def test_suite():
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transport',
-                   'bzrlib.tests.test_sftp',
+                   'bzrlib.tests.test_sftp_transport',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_upgrade',
