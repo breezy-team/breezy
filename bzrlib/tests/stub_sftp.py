@@ -94,7 +94,8 @@ class StubSFTPServer (SFTPServerInterface):
     def open(self, path, flags, attr):
         path = self._realpath(path)
         try:
-            flags |= os.O_BINARY
+            if hasattr(os, 'O_BINARY'):
+                flags |= os.O_BINARY
             fd = os.open(path, flags)
         except OSError, e:
             return SFTPServer.convert_errno(e.errno)
