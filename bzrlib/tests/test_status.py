@@ -37,7 +37,6 @@ class BranchStatus(TestCaseInTempDir):
     
     def test_branch_status(self): 
         """Test basic branch status"""
-        from cStringIO import StringIO
         from bzrlib.status import show_status
         from bzrlib.branch import Branch
         

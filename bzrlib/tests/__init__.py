@@ -665,6 +665,7 @@ def test_suite():
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_rio',
+                   'bzrlib.tests.test_msgeditor',
                    ]
 
     TestCase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')

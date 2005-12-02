@@ -1236,15 +1236,18 @@ class cmd_commit(Command):
                 StrictCommitFailed)
         from bzrlib.msgeditor import edit_commit_message
         from bzrlib.status import show_status
-        from cStringIO import StringIO
+        from tempfile import TemporaryFile
+        import codecs
 
+        # TODO: do more checks that the commit will succeed before 
+        # spending the user's valuable time typing a commit message.
+        #
+        # TODO: if the commit *does* happen to fail, then save the commit 
+        # message to a temporary file where it can be recovered
         tree, selected_list = tree_files(selected_list)
         if message is None and not file:
-            catcher = StringIO()
-            show_status(tree.branch, specific_files=selected_list,
-                        to_file=catcher)
-            message = edit_commit_message(catcher.getvalue())
-
+            template = make_commit_message_template(tree)
+            message = edit_commit_message(template)
             if message is None:
                 raise BzrCommandError("please specify a commit message"
                                       " with either --message or --file")
