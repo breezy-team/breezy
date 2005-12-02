@@ -317,7 +317,7 @@ class SFTPTransport (Transport):
         """
         try:
             path = self._abspath(relpath)
-            f = self._sftp.file(path)
+            f = self._sftp.file(path, mode='rb')
             if self._do_prefetch and hasattr(f, 'prefetch'):
                 f.prefetch()
             return f
@@ -775,7 +775,7 @@ class SFTPTransport (Transport):
             if t != CMD_HANDLE:
                 raise TransportError('Expected an SFTP handle')
             handle = msg.get_string()
-            return SFTPFile(self._sftp, handle, 'w', -1)
+            return SFTPFile(self._sftp, handle, 'wb', -1)
         except (paramiko.SSHException, IOError), e:
             self._translate_io_exception(e, relpath, ': unable to open')
 
