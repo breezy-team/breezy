@@ -652,7 +652,7 @@ class SFTPTransport (Transport):
         load_host_keys()
 
         try:
-            t = paramiko.Transport((self._host, self._port))
+            t = paramiko.Transport((self._host, self._port or 22))
             t.start_client()
         except paramiko.SSHException:
             raise TransportError('Unable to reach SSH host %s:%d' % (self._host, self._port))
