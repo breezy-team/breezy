@@ -20,7 +20,8 @@ from cStringIO import StringIO
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.errors import InstallFailed, NoSuchRevision, WeaveError
+from bzrlib.errors import (InstallFailed, NoSuchRevision, WeaveError,
+                           MissingText)
 from bzrlib.trace import mutter, note, warning
 from bzrlib.branch import Branch
 from bzrlib.progress import ProgressBar
@@ -100,6 +101,7 @@ class Fetcher(object):
         self.count_total = 0
         self.count_weaves = 0
         self.copied_file_ids = set()
+        self.file_ids_names = {}
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.progress_bar()
         else:
@@ -212,30 +214,40 @@ class Fetcher(object):
         # in memory until everything's done?  But this way is nicer
         # if it's interrupted.
         for path, ie in inv.iter_entries():
-            if ie.revision != rev_id:
-                continue
-            mutter('%s {%s} is changed in this revision',
-                   path, ie.file_id)
-            self._copy_one_weave(rev_id, ie.file_id)
+            self._copy_one_weave(rev_id, ie.file_id, ie.revision)
 
-    def _copy_one_weave(self, rev_id, file_id):
-        """Copy one file weave."""
-        mutter('copy file {%s} modified in {%s}', file_id, rev_id)
-        if file_id in self.copied_file_ids:
-            mutter('file {%s} already copied', file_id)
+    def _copy_one_weave(self, rev_id, file_id, text_revision):
+        """Copy one file weave, esuring the result contains text_revision."""
+        # check if the revision is already there
+        if file_id in self.file_ids_names.keys( ) and \
+            text_revision in self.file_ids_names[file_id]:
+                return        
+        to_weave = self.to_weaves.get_weave_or_empty(file_id,
+            self.to_branch.get_transaction())
+        if not file_id in self.file_ids_names.keys( ):
+            self.file_ids_names[file_id] = to_weave.names( )
+        if text_revision in to_weave:
             return
         from_weave = self.from_weaves.get_weave(file_id,
             self.from_branch.get_transaction())
-        to_weave = self.to_weaves.get_weave_or_empty(file_id,
-            self.to_branch.get_transaction())
-        try:
-            to_weave.join(from_weave)
-        except errors.WeaveParentMismatch:
-            to_weave.reweave(from_weave)
+        if text_revision not in from_weave:
+            raise MissingText(self.from_branch, text_revision, file_id)
+        mutter('copy file {%s} modified in {%s}', file_id, rev_id)
+
+        if to_weave.numversions() > 0:
+            # destination has contents, must merge
+            try:
+                to_weave.join(from_weave)
+            except errors.WeaveParentMismatch:
+                to_weave.reweave(from_weave)
+        else:
+            # destination is empty, just replace it
+            to_weave = from_weave.copy( )
         self.to_weaves.put_weave(file_id, to_weave,
             self.to_branch.get_transaction())
         self.count_weaves += 1
         self.copied_file_ids.add(file_id)
+        self.file_ids_names[file_id] = to_weave.names()
         mutter('copied file {%s}', file_id)
 
 

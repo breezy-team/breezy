@@ -42,16 +42,70 @@ To get a WorkingTree, call Branch.working_tree():
 # copy, and making sure there's only one WorkingTree for any directory on disk.
 # At the momenthey may alias the inventory and have old copies of it in memory.
 
+from copy import deepcopy
 import os
 import stat
 import fnmatch
  
-from bzrlib.branch import Branch, needs_read_lock, needs_write_lock, quotefn
+from bzrlib.branch import (Branch,
+                           is_control_file,
+                           needs_read_lock,
+                           needs_write_lock,
+                           quotefn)
+from bzrlib.errors import (BzrCheckError,
+                           BzrError,
+                           DivergedBranches,
+                           WeaveRevisionNotPresent,
+                           NotBranchError,
+                           NotVersionedError)
+from bzrlib.inventory import InventoryEntry
+from bzrlib.osutils import (appendpath,
+                            compact_date,
+                            file_kind,
+                            isdir,
+                            pumpfile,
+                            splitpath,
+                            rand_bytes,
+                            realpath,
+                            relpath,
+                            rename)
 import bzrlib.tree
-from bzrlib.osutils import appendpath, file_kind, isdir, splitpath, relpath
-from bzrlib.errors import BzrCheckError, DivergedBranches, NotVersionedError
 from bzrlib.trace import mutter
 import bzrlib.xml5
+
+
+def gen_file_id(name):
+    """Return new file id.
+
+    This should probably generate proper UUIDs, but for the moment we
+    cope with just randomness because running uuidgen every time is
+    slow."""
+    import re
+    from binascii import hexlify
+    from time import time
+
+    # get last component
+    idx = name.rfind('/')
+    if idx != -1:
+        name = name[idx+1 : ]
+    idx = name.rfind('\\')
+    if idx != -1:
+        name = name[idx+1 : ]
+
+    # make it not a hidden file
+    name = name.lstrip('.')
+
+    # remove any wierd characters; we don't escape them but rather
+    # just pull them out
+    name = re.sub(r'[^\w.]', '', name)
+
+    s = hexlify(rand_bytes(8))
+    return '-'.join((name, compact_date(time()), s))
+
+
+def gen_root_id():
+    """Return a new tree-root file id."""
+    return gen_file_id('TREE_ROOT')
 
 
 class TreeEntry(object):
@@ -119,7 +173,7 @@ class WorkingTree(bzrlib.tree.Tree):
     not listed in the Inventory and vice versa.
     """
 
-    def __init__(self, basedir, branch=None):
+    def __init__(self, basedir=u'.', branch=None):
         """Construct a WorkingTree for basedir.
 
         If the branch is not supplied, it is opened automatically.
@@ -136,9 +190,9 @@ class WorkingTree(bzrlib.tree.Tree):
         assert isinstance(branch, Branch), \
             "branch %r is not a Branch" % branch
         self.branch = branch
-        self.basedir = basedir
-        self._inventory = self.read_working_inventory()
-        self.path2id = self._inventory.path2id
+        self.basedir = realpath(basedir)
+
+        self._set_inventory(self.read_working_inventory())
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -154,6 +208,44 @@ class WorkingTree(bzrlib.tree.Tree):
             mutter("write hc")
             hc.write()
 
+    def _set_inventory(self, inv):
+        self._inventory = inv
+        self.path2id = self._inventory.path2id
+
+    @staticmethod
+    def open_containing(path=None):
+        """Open an existing working tree which has its root about path.
+        
+        This probes for a working tree at path and searches upwards from there.
+
+        Basically we keep looking up until we find the control directory or
+        run into /.  If there isn't one, raises NotBranchError.
+        TODO: give this a new exception.
+        If there is one, it is returned, along with the unused portion of path.
+        """
+        if path is None:
+            path = os.getcwdu()
+        else:
+            # sanity check.
+            if path.find('://') != -1:
+                raise NotBranchError(path=path)
+        path = os.path.abspath(path)
+        tail = u''
+        while True:
+            try:
+                return WorkingTree(path), tail
+            except NotBranchError:
+                pass
+            if tail:
+                tail = os.path.join(os.path.basename(path), tail)
+            else:
+                tail = os.path.basename(path)
+            path = os.path.dirname(path)
+            # FIXME: top in windows is indicated how ???
+            if path == os.path.sep:
+                # reached the root, whatever that may be
+                raise NotBranchError(path=path)
+
     def __iter__(self):
         """Iterate through file_ids for this tree.
 
@@ -165,12 +257,9 @@ class WorkingTree(bzrlib.tree.Tree):
             if bzrlib.osutils.lexists(self.abspath(path)):
                 yield ie.file_id
 
-
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,
                                getattr(self, 'basedir', None))
-
-
 
     def abspath(self, filename):
         return os.path.join(self.basedir, filename)
@@ -194,14 +283,18 @@ class WorkingTree(bzrlib.tree.Tree):
         return inv.root.file_id
         
     def _get_store_filename(self, file_id):
-        ## XXX: badly named; this isn't in the store at all
+        ## XXX: badly named; this is not in the store at all
         return self.abspath(self.id2path(file_id))
 
+    @needs_write_lock
+    def commit(self, *args, **kw):
+        from bzrlib.commit import Commit
+        Commit().commit(self.branch, *args, **kw)
+        self._set_inventory(self.read_working_inventory())
 
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
 
-                
     def has_id(self, file_id):
         # files that have been deleted are excluded
         inv = self._inventory
@@ -216,7 +309,6 @@ class WorkingTree(bzrlib.tree.Tree):
         return self.inventory.has_id(file_id)
 
     __contains__ = has_id
-    
 
     def get_file_size(self, file_id):
         return os.path.getsize(self.id2abspath(file_id))
@@ -225,7 +317,6 @@ class WorkingTree(bzrlib.tree.Tree):
         path = self._inventory.id2path(file_id)
         return self._hashcache.get_sha1(path)
 
-
     def is_executable(self, file_id):
         if os.name == "nt":
             return self._inventory[file_id].executable
@@ -233,6 +324,103 @@ class WorkingTree(bzrlib.tree.Tree):
             path = self._inventory.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
+
+    @needs_write_lock
+    def add(self, files, ids=None):
+        """Make files versioned.
+
+        Note that the command line normally calls smart_add instead,
+        which can automatically recurse.
+
+        This adds the files to the inventory, so that they will be
+        recorded by the next commit.
+
+        files
+            List of paths to add, relative to the base of the tree.
+
+        ids
+            If set, use these instead of automatically generated ids.
+            Must be the same length as the list of files, but may
+            contain None for ids that are to be autogenerated.
+
+        TODO: Perhaps have an option to add the ids even if the files do
+              not (yet) exist.
+
+        TODO: Perhaps callback with the ids and paths as they're added.
+        """
+        # TODO: Re-adding a file that is removed in the working copy
+        # should probably put it back with the previous ID.
+        if isinstance(files, basestring):
+            assert(ids is None or isinstance(ids, basestring))
+            files = [files]
+            if ids is not None:
+                ids = [ids]
+
+        if ids is None:
+            ids = [None] * len(files)
+        else:
+            assert(len(ids) == len(files))
+
+        inv = self.read_working_inventory()
+        for f,file_id in zip(files, ids):
+            if is_control_file(f):
+                raise BzrError("cannot add control file %s" % quotefn(f))
+
+            fp = splitpath(f)
+
+            if len(fp) == 0:
+                raise BzrError("cannot add top-level %r" % f)
+
+            fullpath = os.path.normpath(self.abspath(f))
+
+            try:
+                kind = file_kind(fullpath)
+            except OSError:
+                # maybe something better?
+                raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
+
+            if not InventoryEntry.versionable_kind(kind):
+                raise BzrError('cannot add: not a versionable file ('
+                               'i.e. regular file, symlink or directory): %s' % quotefn(f))
+
+            if file_id is None:
+                file_id = gen_file_id(f)
+            inv.add_path(f, kind=kind, file_id=file_id)
+
+            mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
+        self._write_inventory(inv)
+
+    @needs_write_lock
+    def add_pending_merge(self, *revision_ids):
+        # TODO: Perhaps should check at this point that the
+        # history of the revision is actually present?
+        p = self.pending_merges()
+        updated = False
+        for rev_id in revision_ids:
+            if rev_id in p:
+                continue
+            p.append(rev_id)
+            updated = True
+        if updated:
+            self.set_pending_merges(p)
+
+    def pending_merges(self):
+        """Return a list of pending merges.
+
+        These are revisions that have been merged into the working
+        directory but not yet committed.
+        """
+        cfn = self.branch._rel_controlfilename('pending-merges')
+        if not self.branch._transport.has(cfn):
+            return []
+        p = []
+        for l in self.branch.controlfile('pending-merges', 'r').readlines():
+            p.append(l.rstrip('\n'))
+        return p
+
+    @needs_write_lock
+    def set_pending_merges(self, rev_list):
+        self.branch.put_controlfile('pending-merges', '\n'.join(rev_list))
 
     def get_symlink_target(self, file_id):
         return os.readlink(self.id2abspath(file_id))
@@ -315,12 +503,145 @@ class WorkingTree(bzrlib.tree.Tree):
                 for ff in descend(fp, f_ie.file_id, fap):
                     yield ff
 
-        for f in descend('', inv.root.file_id, self.basedir):
+        for f in descend(u'', inv.root.file_id, self.basedir):
             yield f
-            
 
+    @needs_write_lock
+    def move(self, from_paths, to_name):
+        """Rename files.
 
+        to_name must exist in the inventory.
+
+        If to_name exists and is a directory, the files are moved into
+        it, keeping their old names.  
+
+        Note that to_name is only the last component of the new name;
+        this doesn't change the directory.
+
+        This returns a list of (from_path, to_path) pairs for each
+        entry that is moved.
+        """
+        result = []
+        ## TODO: Option to move IDs only
+        assert not isinstance(from_paths, basestring)
+        inv = self.inventory
+        to_abs = self.abspath(to_name)
+        if not isdir(to_abs):
+            raise BzrError("destination %r is not a directory" % to_abs)
+        if not self.has_filename(to_name):
+            raise BzrError("destination %r not in working directory" % to_abs)
+        to_dir_id = inv.path2id(to_name)
+        if to_dir_id == None and to_name != '':
+            raise BzrError("destination %r is not a versioned directory" % to_name)
+        to_dir_ie = inv[to_dir_id]
+        if to_dir_ie.kind not in ('directory', 'root_directory'):
+            raise BzrError("destination %r is not a directory" % to_abs)
+
+        to_idpath = inv.get_idpath(to_dir_id)
+
+        for f in from_paths:
+            if not self.has_filename(f):
+                raise BzrError("%r does not exist in working tree" % f)
+            f_id = inv.path2id(f)
+            if f_id == None:
+                raise BzrError("%r is not versioned" % f)
+            name_tail = splitpath(f)[-1]
+            dest_path = appendpath(to_name, name_tail)
+            if self.has_filename(dest_path):
+                raise BzrError("destination %r already exists" % dest_path)
+            if f_id in to_idpath:
+                raise BzrError("can't move %r to a subdirectory of itself" % f)
+
+        # OK, so there's a race here, it's possible that someone will
+        # create a file in this interval and then the rename might be
+        # left half-done.  But we should have caught most problems.
+        orig_inv = deepcopy(self.inventory)
+        try:
+            for f in from_paths:
+                name_tail = splitpath(f)[-1]
+                dest_path = appendpath(to_name, name_tail)
+                result.append((f, dest_path))
+                inv.rename(inv.path2id(f), to_dir_id, name_tail)
+                try:
+                    rename(self.abspath(f), self.abspath(dest_path))
+                except OSError, e:
+                    raise BzrError("failed to rename %r to %r: %s" %
+                                   (f, dest_path, e[1]),
+                            ["rename rolled back"])
+        except:
+            # restore the inventory on error
+            self._set_inventory(orig_inv)
+            raise
+        self._write_inventory(inv)
+        return result
+
+    @needs_write_lock
+    def rename_one(self, from_rel, to_rel):
+        """Rename one file.
+
+        This can change the directory or the filename or both.
+        """
+        inv = self.inventory
+        if not self.has_filename(from_rel):
+            raise BzrError("can't rename: old working file %r does not exist" % from_rel)
+        if self.has_filename(to_rel):
+            raise BzrError("can't rename: new working file %r already exists" % to_rel)
+
+        file_id = inv.path2id(from_rel)
+        if file_id == None:
+            raise BzrError("can't rename: old name %r is not versioned" % from_rel)
+
+        entry = inv[file_id]
+        from_parent = entry.parent_id
+        from_name = entry.name
+        
+        if inv.path2id(to_rel):
+            raise BzrError("can't rename: new name %r is already versioned" % to_rel)
+
+        to_dir, to_tail = os.path.split(to_rel)
+        to_dir_id = inv.path2id(to_dir)
+        if to_dir_id == None and to_dir != '':
+            raise BzrError("can't determine destination directory id for %r" % to_dir)
+
+        mutter("rename_one:")
+        mutter("  file_id    {%s}" % file_id)
+        mutter("  from_rel   %r" % from_rel)
+        mutter("  to_rel     %r" % to_rel)
+        mutter("  to_dir     %r" % to_dir)
+        mutter("  to_dir_id  {%s}" % to_dir_id)
+
+        inv.rename(file_id, to_dir_id, to_tail)
+
+        from_abs = self.abspath(from_rel)
+        to_abs = self.abspath(to_rel)
+        try:
+            rename(from_abs, to_abs)
+        except OSError, e:
+            inv.rename(file_id, from_parent, from_name)
+            raise BzrError("failed to rename %r to %r: %s"
+                    % (from_abs, to_abs, e[1]),
+                    ["rename rolled back"])
+        self._write_inventory(inv)
+
+    @needs_read_lock
     def unknowns(self):
+        """Return all unknown files.
+
+        These are files in the working directory that are not versioned or
+        control files or ignored.
+        
+        >>> from bzrlib.branch import ScratchBranch
+        >>> b = ScratchBranch(files=['foo', 'foo~'])
+        >>> tree = WorkingTree(b.base, b)
+        >>> map(str, tree.unknowns())
+        ['foo']
+        >>> tree.add('foo')
+        >>> list(b.unknowns())
+        []
+        >>> tree.remove('foo')
+        >>> list(b.unknowns())
+        [u'foo']
+        """
         for subp in self.extras():
             if not self.is_ignored(subp):
                 yield subp
@@ -341,7 +662,7 @@ class WorkingTree(bzrlib.tree.Tree):
         source.lock_read()
         try:
             old_revision_history = self.branch.revision_history()
-            self.branch.pull(source, overwrite)
+            count = self.branch.pull(source, overwrite)
             new_revision_history = self.branch.revision_history()
             if new_revision_history != old_revision_history:
                 if len(old_revision_history):
@@ -351,6 +672,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 merge_inner(self.branch,
                             self.branch.basis_tree(), 
                             self.branch.revision_tree(other_revision))
+            return count
         finally:
             source.unlock()
 
@@ -365,7 +687,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         ## TODO: Work from given directory downwards
         for path, dir_entry in self.inventory.directories():
-            mutter("search for unknowns in %r" % path)
+            mutter("search for unknowns in %r", path)
             dirabs = self.abspath(path)
             if not isdir(dirabs):
                 # e.g. directory deleted
@@ -456,6 +778,29 @@ class WorkingTree(bzrlib.tree.Tree):
         """See Branch.lock_write, and WorkingTree.unlock."""
         return self.branch.lock_write()
 
+    def _basis_inventory_name(self, revision_id):
+        return 'basis-inventory.%s' % revision_id
+
+    def set_last_revision(self, new_revision, old_revision=None):
+        if old_revision:
+            try:
+                path = self._basis_inventory_name(old_revision)
+                path = self.branch._rel_controlfilename(path)
+                self.branch._transport.delete(path)
+            except:
+                pass
+        try:
+            xml = self.branch.get_inventory_xml(new_revision)
+            path = self._basis_inventory_name(new_revision)
+            self.branch.put_controlfile(path, xml)
+        except WeaveRevisionNotPresent:
+            pass
+
+    def read_basis_inventory(self, revision_id):
+        """Read the cached basis inventory."""
+        path = self._basis_inventory_name(revision_id)
+        return self.branch.controlfile(path, 'r').read()
+        
     @needs_read_lock
     def read_working_inventory(self):
         """Read the working inventory."""
@@ -493,7 +838,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 # TODO: Perhaps make this just a warning, and continue?
                 # This tends to happen when 
                 raise NotVersionedError(path=f)
-            mutter("remove inventory entry %s {%s}" % (quotefn(f), fid))
+            mutter("remove inventory entry %s {%s}", quotefn(f), fid)
             if verbose:
                 # having remove it, it must be either ignored or unknown
                 if self.is_ignored(f):
@@ -503,7 +848,19 @@ class WorkingTree(bzrlib.tree.Tree):
                 show_status(new_status, inv[fid].kind, quotefn(f))
             del inv[fid]
 
-        self.branch._write_inventory(inv)
+        self._write_inventory(inv)
+
+    @needs_write_lock
+    def revert(self, filenames, old_tree=None, backups=True):
+        from bzrlib.merge import merge_inner
+        if old_tree is None:
+            old_tree = self.branch.basis_tree()
+        merge_inner(self.branch, old_tree,
+                    self, ignore_zero=True,
+                    backup_files=backups, 
+                    interesting_files=filenames)
+        if not len(filenames):
+            self.set_pending_merges([])
 
     @needs_write_lock
     def set_inventory(self, new_inventory_list):
@@ -526,7 +883,21 @@ class WorkingTree(bzrlib.tree.Tree):
                 inv.add(InventoryLink(file_id, name, parent))
             else:
                 raise BzrError("unknown kind %r" % kind)
-        self.branch._write_inventory(inv)
+        self._write_inventory(inv)
+
+    @needs_write_lock
+    def set_root_id(self, file_id):
+        """Set the root id for this tree."""
+        inv = self.read_working_inventory()
+        orig_root_id = inv.root.file_id
+        del inv._byid[inv.root.file_id]
+        inv.root.file_id = file_id
+        inv._byid[inv.root.file_id] = inv.root
+        for fid in inv:
+            entry = inv[fid]
+            if entry.parent_id in (None, orig_root_id):
+                entry.parent_id = inv.root.file_id
+        self._write_inventory(inv)
 
     def unlock(self):
         """See Branch.unlock.
@@ -539,6 +910,23 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         return self.branch.unlock()
 
+    @needs_write_lock
+    def _write_inventory(self, inv):
+        """Write inventory as the current inventory."""
+        from cStringIO import StringIO
+        from bzrlib.atomicfile import AtomicFile
+        sio = StringIO()
+        bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
+        sio.seek(0)
+        f = AtomicFile(self.branch.controlfilename('inventory'))
+        try:
+            pumpfile(sio, f)
+            f.commit()
+        finally:
+            f.close()
+        self._set_inventory(inv)
+        mutter('wrote working inventory')
+            
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 def get_conflicted_stem(path):

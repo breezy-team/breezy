@@ -35,7 +35,7 @@ import errno
 
 import bzrlib
 import bzrlib.trace
-from bzrlib.trace import mutter, note, log_error, warning
+from bzrlib.trace import mutter, note, log_error, warning, be_quiet
 from bzrlib.errors import (BzrError, 
                            BzrCheckError,
                            BzrCommandError,
@@ -167,6 +167,14 @@ class Command(object):
     takes_args
         List of argument forms, marked with whether they are optional,
         repeated, etc.
+
+		Examples:
+
+		['to_location', 'from_branch?', 'file*']
+
+		'to_location' is required
+		'from_branch' is optional
+		'file' can be specified 0 or more times
 
     takes_options
         List of options that may be given for this command.  These can
@@ -306,7 +314,7 @@ def parse_args(command, argv):
             a = str(a)
             optarg = None
             if a[1] == '-':
-                mutter("  got option %r" % a)
+                mutter("  got option %r", a)
                 if '=' in a:
                     optname, optarg = a[2:].split('=', 1)
                 else:
@@ -346,6 +354,9 @@ def parse_args(command, argv):
                             # into the array
                             optarg = a[2:]
             
+                if optname not in cmd_options:
+                    raise BzrOptionError('unknown short option %r for command'
+                        ' %s' % (shortopt, command.name()))
             if optname in opts:
                 # XXX: Do we ever want to support this, e.g. for -r?
                 raise BzrError('repeated option %r' % a)
@@ -475,8 +486,10 @@ def run_bzr(argv):
             opt_no_plugins = True
         elif a == '--builtin':
             opt_builtin = True
+        elif a in ('--quiet', '-q'):
+            be_quiet()
         else:
-            break
+            continue
         argv.remove(a)
 
     if (not argv) or (argv[0] == '--help'):
@@ -500,29 +513,43 @@ def run_bzr(argv):
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
 
-    if opt_profile:
-        ret = apply_profiled(cmd_obj.run_argv, argv)
-    else:
-        ret = cmd_obj.run_argv(argv)
-    return ret or 0
+    try:
+        if opt_profile:
+            ret = apply_profiled(cmd_obj.run_argv, argv)
+        else:
+            ret = cmd_obj.run_argv(argv)
+        return ret or 0
+    finally:
+        # reset, in case we may do other commands later within the same process
+        be_quiet(False)
 
 def display_command(func):
+    """Decorator that suppresses pipe/interrupt errors."""
     def ignore_pipe(*args, **kwargs):
         try:
-            return func(*args, **kwargs)
+            result = func(*args, **kwargs)
+            sys.stdout.flush()
+            return result
         except IOError, e:
+            if not hasattr(e, 'errno'):
+                raise
             if e.errno != errno.EPIPE:
                 raise
+            pass
         except KeyboardInterrupt:
             pass
     return ignore_pipe
 
+
 def main(argv):
     import bzrlib.ui
+    from bzrlib.ui.text import TextUIFactory
+    ## bzrlib.trace.enable_default_logging()
     bzrlib.trace.log_startup(argv)
-    bzrlib.ui.ui_factory = bzrlib.ui.TextUIFactory()
-
-    return run_bzr_catch_errors(argv[1:])
+    bzrlib.ui.ui_factory = TextUIFactory()
+    ret = run_bzr_catch_errors(argv[1:])
+    mutter("return code %d", ret)
+    return ret
 
 
 def run_bzr_catch_errors(argv):
@@ -532,31 +559,22 @@ def run_bzr_catch_errors(argv):
         finally:
             # do this here inside the exception wrappers to catch EPIPE
             sys.stdout.flush()
-    except BzrCommandError, e:
-        # command line syntax error, etc
-        log_error(str(e))
-        return 1
-    except BzrError, e:
-        bzrlib.trace.log_exception()
-        return 1
-    except AssertionError, e:
-        bzrlib.trace.log_exception('assertion failed: ' + str(e))
-        return 3
-    except KeyboardInterrupt, e:
-        bzrlib.trace.log_exception('interrupted')
-        return 2
     except Exception, e:
+        # used to handle AssertionError and KeyboardInterrupt
+        # specially here, but hopefully they're handled ok by the logger now
         import errno
         if (isinstance(e, IOError) 
             and hasattr(e, 'errno')
             and e.errno == errno.EPIPE):
             bzrlib.trace.note('broken pipe')
-            return 2
+            return 3
         else:
-            ## import pdb
-            ## pdb.pm()
             bzrlib.trace.log_exception()
-            return 2
+            if os.environ.get('BZR_PDB'):
+                print '**** entering debugger'
+                import pdb
+                pdb.post_mortem(sys.exc_traceback)
+            return 3
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

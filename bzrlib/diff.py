@@ -22,7 +22,7 @@ from bzrlib.delta import compare_trees
 # invoke callbacks on an object.  That object can either accumulate a
 # list, write them out directly, etc etc.
 
-def internal_diff(old_label, oldlines, new_label, newlines, to_file,
+def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
         sequence_matcher=None):
     from bzrlib.cdv.cdvdifflib import unified_diff
     from bzrlib.cdv.cdvdifflib import SequenceMatcher
@@ -46,7 +46,8 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file,
     if sequence_matcher is None:
         sequence_matcher = SequenceMatcher
     ud = unified_diff(oldlines, newlines,
-                      fromfile=old_label, tofile=new_label,
+                      fromfile=old_filename+'\t', 
+                      tofile=new_filename+'\t',
                       sequencematcher=sequence_matcher)
 
     ud = list(ud)
@@ -67,7 +68,7 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file,
     print >>to_file
 
 
-def external_diff(old_label, oldlines, new_label, newlines, to_file,
+def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
     import sys
@@ -102,9 +103,9 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
         if not diff_opts:
             diff_opts = []
         diffcmd = ['diff',
-                   '--label', old_label,
+                   '--label', old_filename+'\t',
                    oldtmpf.name,
-                   '--label', new_label,
+                   '--label', new_filename+'\t',
                    newtmpf.name]
 
         # diff only allows one style to be specified; they don't override.
@@ -146,7 +147,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
         newtmpf.close()
 
 def show_diff(b, from_spec, specific_files, external_diff_options=None,
-              revision2=None, output=None):
+              revision2=None, output=None, b2=None):
     """Shortcut for showing the diff to the working tree.
 
     b
@@ -163,12 +164,18 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
         output = sys.stdout
 
     if from_spec is None:
-        old_tree = b.basis_tree()
+        if b2 is None:
+            old_tree = b.basis_tree()
+        else:
+            old_tree = b.working_tree()
     else:
         old_tree = b.revision_tree(from_spec.in_history(b).rev_id)
 
     if revision2 is None:
-        new_tree = b.working_tree()
+        if b2 is None:
+            new_tree = b.working_tree()
+        else:
+            new_tree = b2.working_tree()
     else:
         new_tree = b.revision_tree(revision2.in_history(b).rev_id)
 

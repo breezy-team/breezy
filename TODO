@@ -17,13 +17,6 @@ less, and several days or more.
 Small things
 ------------
 
-* ``bzr status`` should show some description of patches that are merged but 
-  not yet committed.  Preferably in a very compact format so that they
-  just fit on a single line; this could also be used for say ``log
-  --tiny``::
-
-  2005-11-05      mbp  Flowers for stephane
-
 * Fix tests so that import errors caused by modules don't produce false reports
   that the tests themselves don't exist.
 
@@ -59,8 +52,6 @@ Small things
 
 * -r option should take a revision-id as well as a revno.
 
-* allow ``bzr st -r 300`` to show a summary of changes since then.
-
 * ``bzr info`` should count only people with distinct email addresses as
   different committers.  (Or perhaps only distinct userids?)
 
@@ -90,15 +81,6 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * ``bzr inventory -r REV`` and perhaps unify this with ``bzr ls``,
   giving options to display ids, types, etc.
-
-* Split BzrError into various more specific subclasses for different
-  errors people might want to catch.
-
-* If the export destination ends in '.tar', '.tar.gz', etc then create
-  a tarball instead of a directory.  (Need to actually make a
-  temporary directory and then tar that up.)
-
-  http://www.gelato.unsw.edu.au/archives/git/0504/2194.html
 
 * RemoteBranch could maintain a cache either in memory or on disk.  We
   know more than an external cache might about which files are
@@ -144,10 +126,6 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
   The basic problem is that RemoteBranch.get_revision() and similar
   methods return object, but what we really want is the raw XML, which
   can be popped into our own store.  That needs to be refactored.
-
-* ``bzr status FOO`` where foo is ignored should say so.
-
-* ``bzr mkdir A...`` should just create and add A.
 
 * Guard against repeatedly merging any particular patch.
 
@@ -206,13 +184,8 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * BZRDIR should be in branch.py not __init__.py.
 
-* ``status `` should accept a -r option to show changes relative to a revision,
-  or between revisions
-
 Medium things
 -------------
-
-* ~/.bzr.log is not written anymore for some reason.
 
 * merge should add all revision and inventory XML to the local store.
 
@@ -225,9 +198,6 @@ Medium things
 * More efficient diff of only selected files.  We should be able to
   just get the id for the selected files, look up their location and
   diff just those files.  No need to traverse the entire inventories.
-
-* ``bzr status DIR`` or ``bzr diff DIR`` should report on all changes
-  under that directory.
 
 * Fix up Inventory objects to represent root object as an entry.
 
@@ -311,13 +281,6 @@ Medium things
   - Class that describes the state of a working tree so we can just
     assert it's equal.
 
-* There are too many methods on Branch() that really manipulate the
-  WorkingTree.  They should be moved across.
-
-  Also there are some methods which are duplicated on Tree and
-  Inventory objects, and it should be made more clear which ones are
-  proxies and which ones behave differently, and how.
-
 * Try using XSLT to add some formatting to REST-generated HTML.  Or
   maybe write a small Python program that specifies a header and foot
   for the pages and calls into the docutils libraries.
@@ -339,7 +302,7 @@ Medium things
 
   - Hold the ElementTree in memory in the Inventory object and work
     directly on that, rather than converting into Python objects every
-    time it is read in.  Probably still exposoe it through some kind of
+    time it is read in.  Probably still expose it through some kind of
     object interface though, but perhaps that should just be a proxy
     for the elements.
 
@@ -351,7 +314,7 @@ Medium things
 
 * stat cache should perhaps only stat files as necessary, rather than
   doing them all up-front.  On the other hand, that disallows the
-  opimization of stating them in inode order.
+  optimization of stating them in inode order.
 
 * It'd be nice to pipeline multiple HTTP requests.  Often we can
   predict what will be wanted in future: all revisions, or all texts
@@ -361,8 +324,6 @@ Medium things
   could perhaps ride on that or just create a background thread (ew).
 
 * Paranoid mode where we never trust SHA-1 matches.
-
-* Don't commit if there are no changes unless forced.
 
 * --dry-run mode for commit?  (Or maybe just run with
   check-command=false?)
@@ -375,14 +336,12 @@ Medium things
 * XML attributes might have trouble with filenames containing \n and
   \r.  Do we really want to support this?  I think perhaps not.
 
-* Remember execute bits, so that exports will work OK.
-
 * Unify smart_add and plain Branch.add(); perhaps smart_add should
   just build a list of files to add and pass that to the regular add
   function.
 
 * Function to list a directory, saying in which revision each file was
-  last modified.  Useful for web and gui interfaces, and slow to
+  last modified.  Useful for web and GUI interfaces, and slow to
   compute one file at a time.
   
   This will be done when we track file texts by referring to the
@@ -393,20 +352,10 @@ Medium things
 * Perhaps attempts to get locks should timeout after some period of
   time, or at least display a progress message.
 
-* Split out upgrade functionality from check command into a separate
-  ``bzr upgrade``.
-
 * Don't pass around command classes but rather pass objects.  This'd
   make it cleaner to construct objects wrapping external commands.
 
 * Track all merged-in revisions in a versioned add-only metafile.
-
-* ``pull --clobber`` should discard any local changes not present
-  remotely.  Not generally what you want, but possibly useful when
-  you're just mirroring another branch and want to keep tracking it
-  even when they e.g. uncommit or make similar non-forward movements.
-  Also for push I suppose.  Clobber may not be the best name, maybe
-  ``--destroy``?
 
 * ``uncommit`` command that removes a revision from the end of the
   revision-history; just doing this is enough to remove the commit,

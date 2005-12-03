@@ -13,25 +13,26 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+"""Represent and apply a changeset.
+
+Conflicts in applying a changeset are represented as exceptions.
+
+This only handles the in-memory objects representing changesets, which are
+primarily used by the merge code. 
+"""
+
 import os.path
 import errno
-import patch
 import stat
 from tempfile import mkdtemp
 from shutil import rmtree
-from bzrlib.trace import mutter
-from bzrlib.osutils import rename, sha_file
-import bzrlib
 from itertools import izip
 
-# XXX: mbp: I'm not totally convinced that we should handle conflicts
-# as part of changeset application, rather than only in the merge
-# operation.
-
-"""Represent and apply a changeset
-
-Conflicts in applying a changeset are represented as exceptions.
-"""
+from bzrlib.trace import mutter, warning
+from bzrlib.osutils import rename, sha_file
+import bzrlib
+from bzrlib.errors import BzrCheckError
 
 __docformat__ = "restructuredtext"
 
@@ -441,6 +442,7 @@ class Diff3Merge(object):
         return out_path
 
     def apply(self, filename, conflict_handler, reverse=False):
+        import bzrlib.patch
         temp_dir = mkdtemp(prefix="bzr-")
         try:
             new_file = filename+".new"
@@ -452,7 +454,7 @@ class Diff3Merge(object):
             else:
                 base = other_file
                 other = base_file
-            status = patch.diff3(new_file, filename, base, other)
+            status = bzrlib.patch.diff3(new_file, filename, base, other)
             if status == 0:
                 os.chmod(new_file, os.stat(filename).st_mode)
                 rename(new_file, filename)
@@ -631,8 +633,10 @@ class ChangesetEntry(object):
         if self.id  == self.parent:
             raise ParentIDIsSelf(self)
 
-    def __str__(self):
+    def __repr__(self):
         return "ChangesetEntry(%s)" % self.id
+
+    __str__ = __repr__
 
     def __get_dir(self):
         if self.path is None:
@@ -748,9 +752,9 @@ class ChangesetEntry(object):
         """
         orig_path = self.get_cset_path(False)
         mod_path = self.get_cset_path(True)
-        if orig_path is not None:
+        if orig_path and orig_path.startswith('./'):
             orig_path = orig_path[2:]
-        if mod_path is not None:
+        if mod_path and mod_path.startswith('./'):
             mod_path = mod_path[2:]
         if orig_path == mod_path:
             return orig_path
@@ -772,7 +776,7 @@ class ChangesetEntry(object):
         :type reverse: bool
         :rtype: str
         """
-        mutter("Finding new path for %s" % self.summarize_name())
+        mutter("Finding new path for %s", self.summarize_name())
         if reverse:
             parent = self.parent
             to_dir = self.dir
@@ -790,15 +794,15 @@ class ChangesetEntry(object):
             return None
 
         if parent == NULL_ID or parent is None:
-            if to_name != '.':
+            if to_name != u'.':
                 raise SourceRootHasName(self, to_name)
             else:
-                return '.'
-        if from_dir == to_dir:
+                return u'.'
+        parent_entry = changeset.entries.get(parent)
+        if parent_entry is None:
             dir = os.path.dirname(id_map[self.id])
         else:
-            mutter("path, new_path: %r %r" % (self.path, self.new_path))
-            parent_entry = changeset.entries[parent]
+            mutter("path, new_path: %r %r", self.path, self.new_path)
             dir = parent_entry.get_new_path(id_map, changeset, reverse)
         if from_name == to_name:
             name = os.path.basename(id_map[self.id])
@@ -935,6 +939,8 @@ def rename_to_temp_delete(source_entries, inventory, dir, temp_dir,
             temp_name[entry.id] = None
 
         elif entry.needs_rename():
+            if entry.is_creation(reverse):
+                continue
             to_name = os.path.join(temp_dir, str(i))
             src_path = inventory.get(entry.id)
             if src_path is not None:
@@ -981,13 +987,17 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
             entry.apply(new_path, conflict_handler, reverse)
             changed_inventory[entry.id] = new_tree_path
         elif entry.needs_rename():
+            if entry.is_deletion(reverse):
+                continue
             if old_path is None:
                 continue
             try:
+                mutter('rename %s to final name %s', old_path, new_path)
                 rename(old_path, new_path)
                 changed_inventory[entry.id] = new_tree_path
             except OSError, e:
-                raise Exception ("%s is missing" % new_path)
+                raise BzrCheckError('failed to rename %s to %s for changeset entry %s: %s'
+                        % (old_path, new_path, entry, e))
 
 class TargetExists(Exception):
     def __init__(self, entry, target):
@@ -1208,6 +1218,10 @@ def apply_changeset(changeset, inventory, dir, conflict_handler=None,
     #apply changes that don't affect filenames
     for entry in changeset.entries.itervalues():
         if not entry.is_creation_or_deletion() and not entry.is_boring():
+            if entry.id not in inventory:
+                warning("entry {%s} no longer present, can't be updated",
+                        entry.id)
+                continue
             path = os.path.join(dir, inventory[entry.id])
             entry.apply(path, conflict_handler, reverse)
 
@@ -1599,7 +1613,7 @@ class Inventory(object):
             return None
         directory = self.get_dir(id)
         if directory == '.':
-            directory = './.'
+            directory = u'./.'
         if directory is None:
             return NULL_ID
         return self.get_rinventory().get(directory)

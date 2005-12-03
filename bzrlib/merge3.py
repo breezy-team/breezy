@@ -278,6 +278,11 @@ class Merge3(object):
     
 
     def reprocess_merge_regions(self, merge_regions):
+        """Where there are conflict regions, remove the agreed lines.
+
+        Lines where both A and B have made the same changes are 
+        eliminated.
+        """
         for region in merge_regions:
             if region[0] != "conflict":
                 yield region

@@ -79,7 +79,7 @@ def load_plugins():
         #raise BzrError("plugins already initialized")
     _loaded = True
 
-    dirs = os.environ.get('BZR_PLUGIN_PATH', DEFAULT_PLUGIN_PATH).split(":")
+    dirs = os.environ.get('BZR_PLUGIN_PATH', DEFAULT_PLUGIN_PATH).split(os.pathsep)
     dirs.insert(0, os.path.dirname(plugins.__file__))
 
     # The problem with imp.get_suffixes() is that it doesn't include
@@ -93,7 +93,7 @@ def load_plugins():
     for d in dirs:
         # going through them one by one allows different plugins with the same
         # filename in different directories in the path
-        mutter('looking for plugins in %s' % d)
+        mutter('looking for plugins in %s', d)
         if not d:
             continue
         plugin_names = set()
@@ -118,7 +118,7 @@ def load_plugins():
                         break
                 else:
                     continue
-            mutter('add plugin name %s' % f)
+            mutter('add plugin name %s', f)
             plugin_names.add(f)
 
         plugin_names = list(plugin_names)
@@ -126,7 +126,7 @@ def load_plugins():
         for name in plugin_names:
             try:
                 plugin_info = imp.find_module(name, [d])
-                mutter('load plugin %r' % (plugin_info,))
+                mutter('load plugin %r', plugin_info)
                 try:
                     plugin = imp.load_module('bzrlib.plugins.' + name,
                                              *plugin_info)

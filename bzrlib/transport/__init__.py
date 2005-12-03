@@ -20,10 +20,8 @@ as remote (such as http or sftp).
 """
 
 from bzrlib.trace import mutter
-from bzrlib.errors import (BzrError, 
-    TransportError, TransportNotPossible, NonRelativePath,
-    NoSuchFile, FileExists, PermissionDenied,
-    ConnectionReset)
+import bzrlib.errors as errors
+import errno
 
 _protocol_handlers = {
 }
@@ -56,6 +54,21 @@ class Transport(object):
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
+
+    def _translate_error(self, e, path, raise_generic=True):
+        """Translate an IOError or OSError into an appropriate bzr error.
+
+        This handles things like ENOENT, ENOTDIR, EEXIST, and EACCESS
+        """
+        if hasattr(e, 'errno'):
+            if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                raise errors.NoSuchFile(path, extra=e)
+            if e.errno == errno.EEXIST:
+                raise errors.FileExists(path, extra=e)
+            if e.errno == errno.EACCES:
+                raise errors.PermissionDenied(path, extra=e)
+        if raise_generic:
+            raise errors.TransportError(orig_error=e)
 
     def clone(self, offset=None):
         """Return a new Transport object, cloned from the current location,
@@ -137,9 +150,10 @@ class Transport(object):
         start with our base, but still be a relpath once aliasing is 
         resolved.
         """
+        # TODO: This might want to use bzrlib.osutils.relpath
+        #       but we have to watch out because of the prefix issues
         if not abspath.startswith(self.base):
-            raise NonRelativePath('path %r is not under base URL %r'
-                           % (abspath, self.base))
+            raise errors.PathNotChild(abspath, self.base)
         pl = len(self.base)
         return abspath[pl:].lstrip('/')
 
@@ -160,6 +174,13 @@ class Transport(object):
             self._update_pb(pb, 'has', count, total)
             yield self.has(relpath)
             count += 1
+
+    def has_any(self, relpaths):
+        """Return True if any of the paths exist."""
+        for relpath in relpaths:
+            if self.has(relpath):
+                return True
+        return False
 
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree.
@@ -250,6 +271,8 @@ class Transport(object):
         """Copy a set of entries from self into another Transport.
 
         :param relpaths: A list/generator of entries to be copied.
+        TODO: This interface needs to be updated so that the target location
+              can be different from the source location.
         """
         # The dummy implementation just does a simple get + put
         def copy_entry(path):
@@ -323,8 +346,8 @@ class Transport(object):
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
-        raise TransportNotPossible("This transport has not "
-                                   "implemented list_dir.")
+        raise errors.TransportNotPossible("This transport has not "
+                                          "implemented list_dir.")
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
@@ -346,7 +369,7 @@ class Transport(object):
 def get_transport(base):
     global _protocol_handlers
     if base is None:
-        base = '.'
+        base = u'.'
     for proto, klass in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
             return klass(base)
@@ -381,3 +404,5 @@ register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
 register_lazy_transport('http://', 'bzrlib.transport.http', 'HttpTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http', 'HttpTransport')
+register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
+register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')

@@ -182,6 +182,8 @@ class Weave(object):
         else:
             self._matcher = matcher
 
+    def __repr__(self):
+        return "Weave(%r)" % self._weave_name
 
     def copy(self):
         """Return a deep copy of self.
@@ -622,23 +624,6 @@ class Weave(object):
         # TODO: check insertions are properly nested, that there are
         # no lines outside of insertion blocks, that deletions are
         # properly paired, etc.
-
-
-
-    def merge(self, merge_versions):
-        """Automerge and mark conflicts between versions.
-
-        This returns a sequence, each entry describing alternatives
-        for a chunk of the file.  Each of the alternatives is given as
-        a list of lines.
-
-        If there is a chunk of the file where there's no diagreement,
-        only one alternative is given.
-        """
-        # approach: find the included versions common to all the
-        # merged versions
-        raise NotImplementedError()
-
 
 
     def _delta(self, included, lines):

@@ -18,10 +18,10 @@
 
 from bzrlib.transport import Transport, register_transport
 from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
-                           NonRelativePath, TransportError)
+                           TransportError, ConnectionError)
 import os, errno
 from cStringIO import StringIO
-import urllib2
+import urllib, urllib2
 import urlparse
 
 from bzrlib.errors import BzrError, BzrCheckError
@@ -29,14 +29,46 @@ from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 
 
+def extract_auth(url, password_manager):
+    """
+    Extract auth parameters from am HTTP/HTTPS url and add them to the given
+    password manager.  Return the url, minus those auth parameters (which
+    confuse urllib2).
+    """
+    assert url.startswith('http://') or url.startswith('https://')
+    scheme, host = url.split('//', 1)
+    if '/' in host:
+        host, path = host.split('/', 1)
+        path = '/' + path
+    else:
+        path = ''
+    port = ''
+    if '@' in host:
+        auth, host = host.split('@', 1)
+        if ':' in auth:
+            username, password = auth.split(':', 1)
+        else:
+            username, password = auth, None
+        if ':' in host:
+            host, port = host.split(':', 1)
+            port = ':' + port
+        # FIXME: if password isn't given, should we ask for it?
+        if password is not None:
+            username = urllib.unquote(username)
+            password = urllib.unquote(password)
+            password_manager.add_password(None, host, username, password)
+    url = scheme + '//' + host + port + path
+    return url
+    
 def get_url(url):
     import urllib2
     mutter("get_url %s" % url)
-    url_f = urllib2.urlopen(url)
+    manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
+    url = extract_auth(url, manager)
+    auth_handler = urllib2.HTTPBasicAuthHandler(manager)
+    opener = urllib2.build_opener(auth_handler)
+    url_f = opener.open(url)
     return url_f
-
-class HttpTransportError(TransportError):
-    pass
 
 class HttpTransport(Transport):
     """This is the transport agent for http:// access.
@@ -133,7 +165,7 @@ class HttpTransport(Transport):
         except IOError, e:
             if e.errno == errno.ENOENT:
                 return False
-            raise HttpTransportError(orig_error=e)
+            raise TransportError(orig_error=e)
 
     def get(self, relpath, decode=False):
         """Get the file at the given relative path.
@@ -142,14 +174,13 @@ class HttpTransport(Transport):
         """
         try:
             return get_url(self.abspath(relpath))
-        except urllib2.URLError, e:
+        except urllib2.HTTPError, e:
             if e.code == 404:
-                raise NoSuchFile(msg = "Error retrieving %s: %s" 
-                                 % (self.abspath(relpath), str(e)),
-                                 orig_error=e)
+                extra = ': ' + str(e)
+                raise NoSuchFile(self.abspath(relpath), extra=extra)
             raise
         except (BzrError, IOError), e:
-            raise NoSuchFile(msg = "Error retrieving %s: %s" 
+            raise ConnectionError(msg = "Error retrieving %s: %s" 
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
 

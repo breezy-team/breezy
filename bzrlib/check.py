@@ -34,7 +34,6 @@ from bzrlib.osutils import rename, sha_string, fingerprint_file
 from bzrlib.trace import mutter
 from bzrlib.errors import BzrCheckError, NoSuchRevision
 from bzrlib.inventory import ROOT_ID
-from bzrlib.branch import gen_root_id
 
 
 class Check(object):
@@ -54,25 +53,45 @@ class Check(object):
 
     def check(self):
         self.branch.lock_read()
+        self.progress = bzrlib.ui.ui_factory.progress_bar()
         try:
+            self.progress.update('retrieving inventory', 0, 0)
+            # do not put in init, as it should be done with progess,
+            # and inside the lock.
+            self.inventory_weave = self.branch._get_inventory_weave()
             self.history = self.branch.revision_history()
             if not len(self.history):
                 # nothing to see here
                 return
-            self.planned_revisions = self.branch.get_ancestry(self.history[-1])
-            self.planned_revisions.remove(None)
+            self.plan_revisions()
             revno = 0
-    
-            self.progress = bzrlib.ui.ui_factory.progress_bar()
             while revno < len(self.planned_revisions):
                 rev_id = self.planned_revisions[revno]
                 self.progress.update('checking revision', revno,
                                      len(self.planned_revisions))
                 revno += 1
                 self.check_one_rev(rev_id)
-            self.progress.clear()
         finally:
+            self.progress.clear()
             self.branch.unlock()
+
+    def plan_revisions(self):
+        if not self.branch.revision_store.listable():
+            self.planned_revisions = self.branch.get_ancestry(self.history[-1])
+            self.planned_revisions.remove(None)
+            # FIXME progress bars should support this more nicely.
+            self.progress.clear()
+            print ("Checking reachable history -"
+                   " for a complete check use a local branch.")
+            return
+        
+        self.planned_revisions = set(self.branch.revision_store)
+        inventoried = set(self.inventory_weave.names())
+        awol = self.planned_revisions - inventoried
+        if len(awol) > 0:
+            raise BzrCheckError('Stored revisions missing from inventory'
+                '{%s}' % ','.join([f for f in awol]))
+        self.planned_revisions = list(self.planned_revisions)
 
     def report_results(self, verbose):
         note('checked branch %s format %d',
@@ -110,7 +129,7 @@ class Check(object):
         last_rev_id - the previous one on the mainline, if any.
         """
 
-        # mutter('    revision {%s}' % rev_id)
+        # mutter('    revision {%s}', rev_id)
         branch = self.branch
         try:
             rev_history_position = self.history.index(rev_id)
@@ -143,7 +162,8 @@ class Check(object):
                     missing_links = self.missing_parent_links.get(parent, [])
                     missing_links.append(rev_id)
                     self.missing_parent_links[parent] = missing_links
-                    # list based so slow, TODO have a planned_revisions list and set.
+                    # list based so somewhat slow,
+                    # TODO have a planned_revisions list and set.
                     if self.branch.has_revision(parent):
                         missing_ancestry = self.branch.get_ancestry(parent)
                         for missing in missing_ancestry:
@@ -164,7 +184,7 @@ class Check(object):
                     ' value in revision {%s}' % rev_id)
         else:
             missing_inventory_sha_cnt += 1
-            mutter("no inventory_sha1 on revision {%s}" % rev_id)
+            mutter("no inventory_sha1 on revision {%s}", rev_id)
         self._check_revision_tree(rev_id)
         self.checked_rev_cnt += 1
 

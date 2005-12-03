@@ -34,6 +34,9 @@ class ExternalCommand(Command):
         bzrpath = os.environ.get('BZRPATH', '')
 
         for dir in bzrpath.split(os.pathsep):
+            ## Empty directories are not real paths
+            if not dir:
+                continue
             path = os.path.join(dir, cmd)
             if os.path.isfile(path):
                 return ExternalCommand(path)
