@@ -151,18 +151,23 @@ class HttpTransport(Transport):
         cleaner if we just do an http HEAD request, and parse
         the return code.
         """
+        path = relpath
         try:
-            f = get_url(self.abspath(relpath))
+            path = self.abspath(relpath)
+            f = get_url(path)
             # Without the read and then close()
             # we tend to have busy sockets.
             f.read()
             f.close()
             return True
         except urllib2.URLError, e:
+            mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
                 return False
             raise
         except IOError, e:
+            mutter('io error: %s %s for has url: %r', 
+                e.errno, errno.errorcode.get(e.errno), path)
             if e.errno == errno.ENOENT:
                 return False
             raise TransportError(orig_error=e)
@@ -172,14 +177,21 @@ class HttpTransport(Transport):
 
         :param relpath: The relative path to the file
         """
+        path = relpath
         try:
-            return get_url(self.abspath(relpath))
+            path = self.abspath(relpath)
+            return get_url(path)
         except urllib2.HTTPError, e:
+            mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
-                extra = ': ' + str(e)
-                raise NoSuchFile(self.abspath(relpath), extra=extra)
+                raise NoSuchFile(path, extra=e)
             raise
         except (BzrError, IOError), e:
+            if hasattr(e, 'errno'):
+                mutter('io error: %s %s for has url: %r', 
+                    e.errno, errno.errorcode.get(e.errno), path)
+                if e.errno == errno.ENOENT:
+                    raise NoSuchFile(path, extra=e)
             raise ConnectionError(msg = "Error retrieving %s: %s" 
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
