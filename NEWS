@@ -118,6 +118,9 @@ UNRELEASED CHANGES
     * Keep a cached copy of the basis inventory to speed up operations 
       that need to refer to it.  (Johan Rydberg, Martin Pool)
 
+    * Fix bugs in bzr status display of non-ascii characters.  (Martin 
+      Pool)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
@@ -143,6 +146,9 @@ UNRELEASED CHANGES
     * Blackbox tests are maintained within the bzrlib.tests.blackbox directory.
       If adding a new test script please add that to
       bzrlib.tests.blackbox.__init__. (Robert Collins)
+
+    * Much better error message if one of the test suites can't be 
+      imported.  (Martin Pool)
 
   INTERNALS:
 
