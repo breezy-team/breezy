@@ -1240,6 +1240,9 @@ class cmd_commit(Command):
         from tempfile import TemporaryFile
         import codecs
 
+        # TODO: Need a blackbox test for invoking the external editor; may be
+        # slightly problematic to run this cross-platform.
+
         # TODO: do more checks that the commit will succeed before 
         # spending the user's valuable time typing a commit message.
         #
