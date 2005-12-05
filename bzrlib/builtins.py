@@ -1234,7 +1234,8 @@ class cmd_commit(Command):
             unchanged=False, strict=False):
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
-        from bzrlib.msgeditor import edit_commit_message
+        from bzrlib.msgeditor import edit_commit_message, \
+                make_commit_message_template
         from bzrlib.status import show_status
         from tempfile import TemporaryFile
         import codecs
@@ -1246,7 +1247,7 @@ class cmd_commit(Command):
         # message to a temporary file where it can be recovered
         tree, selected_list = tree_files(selected_list)
         if message is None and not file:
-            template = make_commit_message_template(tree)
+            template = make_commit_message_template(tree, selected_list)
             message = edit_commit_message(template)
             if message is None:
                 raise BzrCommandError("please specify a commit message"
