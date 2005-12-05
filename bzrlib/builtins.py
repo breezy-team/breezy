@@ -1764,7 +1764,7 @@ class cmd_plugins(Command):
     def run(self):
         import bzrlib.plugin
         from inspect import getdoc
-        for plugin in bzrlib.plugin.all_plugins:
+        for name, plugin in bzrlib.plugin.all_plugins().items():
             if hasattr(plugin, '__path__'):
                 print plugin.__path__[0]
             elif hasattr(plugin, '__file__'):

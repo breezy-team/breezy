@@ -605,6 +605,7 @@ def test_suite():
 
     testmod_names = [ \
                    'bzrlib.tests.test_api',
+                   'bzrlib.tests.test_basicio',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_inv',
@@ -648,6 +649,7 @@ def test_suite():
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_nonascii',
+                   'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_reweave',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_trace',
@@ -674,9 +676,9 @@ def test_suite():
         suite.addTest(loader.loadTestsFromModule(m))
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
-    for p in bzrlib.plugin.all_plugins:
-        if hasattr(p, 'test_suite'):
-            suite.addTest(p.test_suite())
+    for name, plugin in bzrlib.plugin.all_plugins().items():
+        if hasattr(plugin, 'test_suite'):
+            suite.addTest(plugin.test_suite())
     return suite
 
 
