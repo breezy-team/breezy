@@ -71,7 +71,7 @@ class LocalTransport(Transport):
         """
         from bzrlib.osutils import relpath
         if abspath is None:
-            abspath = '.'
+            abspath = u'.'
         return relpath(self.base, abspath)
 
     def has(self, relpath):
@@ -113,7 +113,7 @@ class LocalTransport(Transport):
 
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree."""
-        queue = list(self.list_dir('.'))
+        queue = list(self.list_dir(u'.'))
         while queue:
             relpath = urllib.quote(queue.pop(0))
             st = self.stat(relpath)

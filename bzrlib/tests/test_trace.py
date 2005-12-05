@@ -24,7 +24,7 @@ import sys
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.trace import format_exception_short, mutter
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, BzrError, BzrNewError
 
 class TestTrace(TestCase):
     def test_format_sys_exception(self):
@@ -49,6 +49,17 @@ class TestTrace(TestCase):
             pass
         msg = format_exception_short(sys.exc_info())
         self.assertEqualDiff(msg, 'Not a branch: wibble')
+
+    def test_format_old_exception(self):
+        # format a class that doesn't descend from BzrNewError; 
+        # remove this test when everything is unified there
+        self.assertFalse(issubclass(BzrError, BzrNewError))
+        try:
+            raise BzrError('some old error')
+        except BzrError:
+            pass
+        msg = format_exception_short(sys.exc_info())
+        self.assertEqualDiff(msg, 'some old error')
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""

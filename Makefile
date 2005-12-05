@@ -3,6 +3,9 @@ all:
 check:
 	./bzr selftest $(tests)
 
+check-msgeditor:
+	./bzr --no-plugins selftest -v msgeditor
+
 clean: 
 	./setup.py clean
 	find . -name "*.pyc" | xargs rm

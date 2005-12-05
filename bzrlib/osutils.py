@@ -240,7 +240,12 @@ def is_inside_any(dir_list, fname):
 
 def pumpfile(fromfile, tofile):
     """Copy contents of one file to another."""
-    tofile.write(fromfile.read())
+    BUFSIZE = 32768
+    while True:
+        b = fromfile.read(BUFSIZE)
+        if not b:
+            break
+        tofile.write(b)
 
 
 def sha_file(f):
@@ -484,3 +489,18 @@ def relpath(base, path):
         raise NotBranchError("path %r is not within branch %r" % (rp, base))
 
     return os.sep.join(s)
+
+
+
+def terminal_width():
+    """Return estimated terminal width."""
+
+    # TODO: Do something smart on Windows?
+
+    # TODO: Is there anything that gets a better update when the window
+    # is resized while the program is running? We could use the Python termcap
+    # library.
+    try:
+        return int(os.environ['COLUMNS'])
+    except (IndexError, KeyError, ValueError):
+        return 80

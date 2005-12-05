@@ -287,7 +287,7 @@ class TestTransportMixIn(object):
         files = ['a', 'b', 'c', 'd']
         self.build_tree(files)
 
-        dtmp = tempfile.mkdtemp(dir='.', prefix='test-transport-')
+        dtmp = tempfile.mkdtemp(dir=u'.', prefix='test-transport-')
         dtmp_base = os.path.basename(dtmp)
         local_t = LocalTransport(dtmp)
 
@@ -307,7 +307,7 @@ class TestTransportMixIn(object):
 
         del dtmp, dtmp_base, local_t
 
-        dtmp = tempfile.mkdtemp(dir='.', prefix='test-transport-')
+        dtmp = tempfile.mkdtemp(dir=u'.', prefix='test-transport-')
         dtmp_base = os.path.basename(dtmp)
         local_t = LocalTransport(dtmp)
 
@@ -458,11 +458,15 @@ class TestTransportMixIn(object):
 
     def test_delete(self):
         # TODO: Test Transport.delete
-        pass
+        t = self.get_transport()
 
     def test_move(self):
         # TODO: Test Transport.move
-        pass
+        t = self.get_transport()
+
+    def test_copy(self):
+        # TODO: Test Transport.move
+        t = self.get_transport()
 
     def test_connection_error(self):
         """ConnectionError is raised when connection is impossible"""
@@ -482,7 +486,7 @@ class TestTransportMixIn(object):
 class LocalTransportTest(TestCaseInTempDir, TestTransportMixIn):
     def get_transport(self):
         from bzrlib.transport.local import LocalTransport
-        return LocalTransport('.')
+        return LocalTransport(u'.')
 
 
 class HttpTransportTest(TestCaseWithWebserver, TestTransportMixIn):
@@ -491,7 +495,7 @@ class HttpTransportTest(TestCaseWithWebserver, TestTransportMixIn):
 
     def get_transport(self):
         from bzrlib.transport.http import HttpTransport
-        url = self.get_remote_url('.')
+        url = self.get_remote_url(u'.')
         return HttpTransport(url)
 
     def get_bogus_transport(self):

@@ -47,7 +47,7 @@ class TestHashCache(TestCaseInTempDir):
 
         # make a dummy bzr directory just to hold the cache
         os.mkdir('.bzr')
-        hc = HashCache('.')
+        hc = HashCache(u'.')
 
         file('foo', 'wb').write('hello')
         os.mkdir('subdir')
@@ -110,7 +110,7 @@ class TestHashCache(TestCaseInTempDir):
         hc.write()
         del hc
 
-        hc = HashCache('.')
+        hc = HashCache(u'.')
         hc.read()
 
         ##self.assertEquals(len(hc._cache), 2)

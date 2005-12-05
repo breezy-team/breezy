@@ -14,8 +14,8 @@ class TestSmartAdd(TestCaseInTempDir):
         from bzrlib.add import smart_add
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
-        branch = Branch.initialize(".")
-        smart_add((".",), recurse=True)
+        branch = Branch.initialize(u".")
+        smart_add((u".",), recurse=True)
         for path in paths:
             self.assertNotEqual(branch.working_tree().path2id(path), None)
 
@@ -24,9 +24,9 @@ class TestSmartAdd(TestCaseInTempDir):
         from bzrlib.add import smart_add
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
-        branch = Branch.initialize(".")
+        branch = Branch.initialize(u".")
         os.chdir("original")
-        smart_add((".",), recurse=True)
+        smart_add((u".",), recurse=True)
         for path in paths:
             self.assertNotEqual(branch.working_tree().path2id(path), None)
 
@@ -53,9 +53,9 @@ class TestSmartAdd(TestCaseInTempDir):
                        "original/child/", "original/child/path")
         
         self.build_tree(build_paths)
-        branch = Branch.initialize(".")
+        branch = Branch.initialize(u".")
         child_branch = Branch.initialize("original/child")
-        smart_add((".",), True, add_reporter_null)
+        smart_add((u".",), True, add_reporter_null)
         for path in paths:
             self.assertNotEqual((path, branch.working_tree().path2id(path)),
                                 (path, None))
@@ -70,7 +70,7 @@ class TestSmartAdd(TestCaseInTempDir):
         from bzrlib.add import smart_add
         paths = ("file1", "file2")
         self.build_tree(paths)
-        branch = Branch.initialize(".")
+        branch = Branch.initialize(u".")
         smart_add(paths)
         for path in paths:
             self.assertNotEqual(branch.working_tree().path2id(path), None)
@@ -83,9 +83,9 @@ class TestSmartAddBranch(TestCaseInTempDir):
         from bzrlib.add import smart_add_tree
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
-        Branch.initialize(".")
+        Branch.initialize(u".")
         tree = WorkingTree()
-        smart_add_tree(tree, (".",))
+        smart_add_tree(tree, (u".",))
         for path in paths:
             self.assertNotEqual(tree.path2id(path), None)
 
@@ -94,10 +94,10 @@ class TestSmartAddBranch(TestCaseInTempDir):
         from bzrlib.add import smart_add_tree
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
-        Branch.initialize(".")
+        Branch.initialize(u".")
         tree = WorkingTree()
         os.chdir("original")
-        smart_add_tree(tree, (".",))
+        smart_add_tree(tree, (u".",))
         for path in paths:
             self.assertNotEqual(tree.path2id(path), None)
 
@@ -123,10 +123,10 @@ class TestSmartAddBranch(TestCaseInTempDir):
         build_paths = ("original/", "original/file1", "original/file2", 
                        "original/child/", "original/child/path")
         self.build_tree(build_paths)
-        Branch.initialize(".")
+        Branch.initialize(u".")
         tree = WorkingTree()
         child_branch = Branch.initialize("original/child")
-        smart_add_tree(tree, (".",))
+        smart_add_tree(tree, (u".",))
         for path in paths:
             self.assertNotEqual((path, tree.path2id(path)),
                                 (path, None))
@@ -141,7 +141,7 @@ class TestSmartAddBranch(TestCaseInTempDir):
         from bzrlib.add import smart_add_tree
         paths = ("file1", "file2")
         self.build_tree(paths)
-        Branch.initialize(".")
+        Branch.initialize(u".")
         tree = WorkingTree()
         smart_add_tree(tree, paths)
         for path in paths:

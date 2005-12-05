@@ -310,7 +310,7 @@ def merge(other_revision, base_revision,
     clients might prefer to call merge_inner(), which has less magic behavior.
     """
     if this_dir is None:
-        this_dir = '.'
+        this_dir = u'.'
     this_branch = Branch.open_containing(this_dir)[0]
     if show_base and not merge_type is ApplyMerge3:
         raise BzrCommandError("Show-base is not supported for this merge"
@@ -554,8 +554,8 @@ class Merger(object):
         adjust_ids = []
         for id, path in inv_changes.iteritems():
             if path is not None:
-                if path == '.':
-                    path = ''
+                if path == u'.':
+                    path = u''
                 else:
                     assert path.startswith('.' + '/') or path.startswith('.' + '\\'), "path is %s" % path
                 path = path[2:]
