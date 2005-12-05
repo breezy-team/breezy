@@ -1,9 +1,7 @@
 
-import bzrlib
-import unittest
 from StringIO import StringIO
 
-from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.selftest import TestCaseInTempDir, TestCase
 from bzrlib.errors import BzrError
 
 from bzrlib.diff import internal_diff
@@ -98,7 +96,7 @@ class MockTree(object):
         return text_sha1, len(self.contents[file_id])
 
 
-class CTreeTester(unittest.TestCase):
+class CTreeTester(TestCase):
     """A simple unittest tester for the ChangesetTree class."""
 
     def make_tree_1(self):
