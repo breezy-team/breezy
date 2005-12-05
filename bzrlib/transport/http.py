@@ -18,7 +18,7 @@
 
 from bzrlib.transport import Transport, register_transport
 from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
-                           NonRelativePath, TransportError, ConnectionError)
+                           TransportError, ConnectionError)
 import os, errno
 from cStringIO import StringIO
 import urllib, urllib2
@@ -69,9 +69,6 @@ def get_url(url):
     opener = urllib2.build_opener(auth_handler)
     url_f = opener.open(url)
     return url_f
-
-class HttpTransportError(TransportError):
-    pass
 
 class HttpTransport(Transport):
     """This is the transport agent for http:// access.
@@ -154,36 +151,47 @@ class HttpTransport(Transport):
         cleaner if we just do an http HEAD request, and parse
         the return code.
         """
+        path = relpath
         try:
-            f = get_url(self.abspath(relpath))
+            path = self.abspath(relpath)
+            f = get_url(path)
             # Without the read and then close()
             # we tend to have busy sockets.
             f.read()
             f.close()
             return True
         except urllib2.URLError, e:
+            mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
                 return False
             raise
         except IOError, e:
+            mutter('io error: %s %s for has url: %r', 
+                e.errno, errno.errorcode.get(e.errno), path)
             if e.errno == errno.ENOENT:
                 return False
-            raise HttpTransportError(orig_error=e)
+            raise TransportError(orig_error=e)
 
     def get(self, relpath, decode=False):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
         """
+        path = relpath
         try:
-            return get_url(self.abspath(relpath))
+            path = self.abspath(relpath)
+            return get_url(path)
         except urllib2.HTTPError, e:
+            mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
-                raise NoSuchFile(msg = "Error retrieving %s: %s" 
-                                 % (self.abspath(relpath), str(e)),
-                                 orig_error=e)
+                raise NoSuchFile(path, extra=e)
             raise
         except (BzrError, IOError), e:
+            if hasattr(e, 'errno'):
+                mutter('io error: %s %s for has url: %r', 
+                    e.errno, errno.errorcode.get(e.errno), path)
+                if e.errno == errno.ENOENT:
+                    raise NoSuchFile(path, extra=e)
             raise ConnectionError(msg = "Error retrieving %s: %s" 
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
