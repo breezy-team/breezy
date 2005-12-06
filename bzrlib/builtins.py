@@ -58,7 +58,7 @@ def internal_tree_files(file_list, default_branch=u'.'):
     for filename in file_list:
         try:
             new_list.append(tree.relpath(filename))
-        except NotBranchError:
+        except errors.PathNotChild:
             raise FileInWrongBranch(tree.branch, filename)
     return tree, new_list
 
@@ -157,9 +157,10 @@ class cmd_revno(Command):
     """Show current revision number.
 
     This is equal to the number of revisions on this branch."""
+    takes_args = ['location?']
     @display_command
-    def run(self):
-        print Branch.open_containing(u'.')[0].revno()
+    def run(self, location=u'.'):
+        print Branch.open_containing(location)[0].revno()
 
 
 class cmd_revision_info(Command):
@@ -478,9 +479,18 @@ class cmd_push(Command):
                             raise BzrCommandError("Could not creeate "
                                                   "path prefix.")
             br_to = Branch.initialize(location)
+        old_rh = br_to.revision_history()
         try:
-            old_rh = br_to.revision_history()
-            count = br_to.pull(br_from, overwrite)
+            try:
+                tree_to = br_to.working_tree()
+            except NoWorkingTree:
+                # TODO: This should be updated for branches which don't have a
+                # working tree, as opposed to ones where we just couldn't 
+                # update the tree.
+                warning('Unable to update the working tree of: %s' % (br_to.base,))
+                count = br_to.pull(br_from, overwrite)
+            else:
+                count = tree_to.pull(br_from, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try a merge then push with overwrite.")
@@ -1171,9 +1181,7 @@ class cmd_cat(Command):
 
     @display_command
     def run(self, filename, revision=None):
-        if revision is None:
-            raise BzrCommandError("bzr cat requires a revision number")
-        elif len(revision) != 1:
+        if revision is not None and len(revision) != 1:
             raise BzrCommandError("bzr cat --revision takes exactly one number")
         tree = None
         try:
@@ -1181,9 +1189,14 @@ class cmd_cat(Command):
             b = tree.branch
         except NotBranchError:
             pass
+
         if tree is None:
             b, relpath = Branch.open_containing(filename)
-        b.print_file(relpath, revision[0].in_history(b).revno)
+        if revision is None:
+            revision_id = b.last_revision()
+        else:
+            revision_id = revision[0].in_history(b).rev_id
+        b.print_file(relpath, revision_id)
 
 
 class cmd_local_time_offset(Command):

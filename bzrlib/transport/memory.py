@@ -20,9 +20,8 @@ import errno
 from cStringIO import StringIO
 
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport, \
-    TransportError, NoSuchFile, FileExists
-
+from bzrlib.errors import TransportError, NoSuchFile, FileExists
+from bzrlib.transport import Transport
 
 class MemoryStat(object):
 

@@ -607,7 +607,6 @@ def test_suite():
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
-                   'bzrlib.tests.test_basicio',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_command',
