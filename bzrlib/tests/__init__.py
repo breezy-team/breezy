@@ -605,7 +605,6 @@ def test_suite():
 
     testmod_names = [ \
                    'bzrlib.tests.test_api',
-                   'bzrlib.tests.test_basicio',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_inv',
