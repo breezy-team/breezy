@@ -26,6 +26,7 @@ import sys
 import tempfile
 import unittest
 import time
+import codecs
 
 import bzrlib.branch
 import bzrlib.commands
@@ -253,7 +254,8 @@ class TestCase(unittest.TestCase):
         The file is removed as the test is torn down.
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
-        self._log_file = os.fdopen(fileno, 'w+')
+        encoder, decoder, stream_reader, stream_writer = codecs.lookup('UTF-8')
+        self._log_file = stream_writer(os.fdopen(fileno, 'w+'))
         bzrlib.trace.enable_test_log(self._log_file)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
