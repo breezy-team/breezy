@@ -20,10 +20,9 @@ from cStringIO import StringIO
 import os
 import gzip
 
-from bzrlib.errors import BzrError, UnlistableStore
+from bzrlib.errors import BzrError, UnlistableStore, NoSuchFile
 from bzrlib.store import copy_all
 from bzrlib.transport.local import LocalTransport
-from bzrlib.transport import NoSuchFile
 from bzrlib.store.text import TextStore
 from bzrlib.tests import TestCase, TestCaseInTempDir
 import bzrlib.store as store

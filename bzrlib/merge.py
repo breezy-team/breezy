@@ -226,7 +226,10 @@ class MergeConflictHandler(ExceptionConflictHandler):
         self.conflict("Three-way conflict merging %s" % filename)
 
     def finalize(self):
-        if not self.ignore_zero:
+        if self.conflicts == 0:
+            if not self.ignore_zero:
+                note("All changes applied successfully.")
+        else:
             note("%d conflicts encountered." % self.conflicts)
             
 def get_tree(treespec, local_branch=None):

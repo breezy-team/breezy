@@ -30,7 +30,7 @@ import time
 import types
 
 import bzrlib
-from bzrlib.errors import BzrError, NotBranchError
+from bzrlib.errors import BzrError, PathNotChild
 from bzrlib.trace import mutter
 
 
@@ -240,7 +240,12 @@ def is_inside_any(dir_list, fname):
 
 def pumpfile(fromfile, tofile):
     """Copy contents of one file to another."""
-    tofile.write(fromfile.read())
+    BUFSIZE = 32768
+    while True:
+        b = fromfile.read(BUFSIZE)
+        if not b:
+            break
+        tofile.write(b)
 
 
 def sha_file(f):
@@ -481,7 +486,7 @@ def relpath(base, path):
     else:
         # XXX This should raise a NotChildPath exception, as its not tied
         # to branch anymore.
-        raise NotBranchError("path %r is not within branch %r" % (rp, base))
+        raise PathNotChild(rp, base)
 
     return os.sep.join(s)
 

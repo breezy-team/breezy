@@ -54,6 +54,7 @@ _stderr_quiet = False
 _trace_file = None
 _bzr_log_file = None
 
+
 class QuietFormatter(logging.Formatter):
     """Formatter that supresses the details of errors.
 
@@ -93,8 +94,6 @@ def mutter(fmt, *args):
     else:
         out = fmt
     out += '\n'
-    if isinstance(out, unicode):
-        out = out.encode('utf-8')
     _trace_file.write(out)
 debug = mutter
 

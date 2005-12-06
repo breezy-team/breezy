@@ -26,8 +26,8 @@ active, in which case aftp:// will be your friend.
 
 from bzrlib.transport import Transport
 
-from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
-                           NonRelativePath, TransportError, ConnectionError)
+from bzrlib.errors import (TransportNotPossible, TransportError,
+                           NoSuchFile, FileExists)
 
 import os, errno
 from cStringIO import StringIO
@@ -36,7 +36,6 @@ import urlparse
 import urllib
 import stat
 
-from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 
@@ -103,7 +102,7 @@ class FtpTransport(Transport):
                                            self.is_active)
             return self._FTP_instance
         except ftplib.error_perm, e:
-            raise FtpTransportError(msg="Error setting up connection: %s"
+            raise TransportError(msg="Error setting up connection: %s"
                                     % str(e), orig_error=e)
 
     def should_cache(self):
@@ -191,9 +190,7 @@ class FtpTransport(Transport):
             ret.seek(0)
             return ret
         except ftplib.error_perm, e:
-            raise NoSuchFile(msg="Error retrieving %s: %s"
-                             % (self.abspath(relpath), str(e)),
-                             orig_error=e)
+            raise NoSuchFile(self.abspath(relpath), extra=extra)
 
     def put(self, relpath, fp):
         """Copy the file-like or string object into the location.
@@ -225,13 +222,11 @@ class FtpTransport(Transport):
             except ftplib.error_perm, e:
                 s = str(e)
                 if 'File exists' in s:
-                    # Swallow attempts to mkdir something which is already
-                    # present. Hopefully this will shush some errors.
-                    return
+                    raise FileExists(self.abspath(relpath), extra=s)
                 else:
                     raise
         except ftplib.error_perm, e:
-            raise FtpTransportError(orig_error=e)
+            raise TransportError(orig_error=e)
 
     def append(self, relpath, f):
         """Append the text in the file-like object into the final
@@ -251,7 +246,7 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             f.rename(self._abspath(rel_from), self._abspath(rel_to))
         except ftplib.error_perm, e:
-            raise FtpTransportError(orig_error=e)
+            raise TransportError(orig_error=e)
 
     def delete(self, relpath):
         """Delete the item at relpath"""
@@ -260,7 +255,7 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             f.delete(self._abspath(relpath))
         except ftplib.error_perm, e:
-            raise FtpTransportError(orig_error=e)
+            raise TransportError(orig_error=e)
 
     def listable(self):
         """See Transport.listable."""
@@ -278,7 +273,7 @@ class FtpTransport(Transport):
             # Remove . and .. if present, and return
             return [path for path in stripped if path not in (".", "..")]
         except ftplib.error_perm, e:
-            raise FtpTransportError(orig_error=e)
+            raise TransportError(orig_error=e)
 
     def iter_files_recursive(self):
         """See Transport.iter_files_recursive.
@@ -303,7 +298,7 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             return FtpStatResult(f, self._abspath(relpath))
         except ftplib.error_perm, e:
-            raise FtpTransportError(orig_error=e)
+            raise TransportError(orig_error=e)
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.

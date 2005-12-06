@@ -59,7 +59,7 @@ def internal_tree_files(file_list, default_branch=u'.'):
     for filename in file_list:
         try:
             new_list.append(tree.relpath(filename))
-        except NotBranchError:
+        except errors.PathNotChild:
             raise FileInWrongBranch(tree.branch, filename)
     return tree, new_list
 
@@ -158,9 +158,10 @@ class cmd_revno(Command):
     """Show current revision number.
 
     This is equal to the number of revisions on this branch."""
+    takes_args = ['location?']
     @display_command
-    def run(self):
-        print Branch.open_containing(u'.')[0].revno()
+    def run(self, location=u'.'):
+        print Branch.open_containing(location)[0].revno()
 
 
 class cmd_revision_info(Command):
@@ -396,7 +397,8 @@ class cmd_pull(Command):
                                   "  Try merge.")
         if br_to.get_parent() is None or remember:
             br_to.set_parent(location)
-        note('%d revision(s) pulled.', count)
+        note('%d revision(s) pulled.' % (count,))
+
         if verbose:
             new_rh = tree_to.branch.revision_history()
             if old_rh != new_rh:
@@ -478,15 +480,25 @@ class cmd_push(Command):
                             raise BzrCommandError("Could not creeate "
                                                   "path prefix.")
             br_to = Branch.initialize(location)
+        old_rh = br_to.revision_history()
         try:
-            old_rh = br_to.revision_history()
-            count = br_to.pull(br_from, overwrite)
+            try:
+                tree_to = br_to.working_tree()
+            except NoWorkingTree:
+                # TODO: This should be updated for branches which don't have a
+                # working tree, as opposed to ones where we just couldn't 
+                # update the tree.
+                warning('Unable to update the working tree of: %s' % (br_to.base,))
+                count = br_to.pull(br_from, overwrite)
+            else:
+                count = tree_to.pull(br_from, overwrite)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try a merge then push with overwrite.")
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(location)
         note('%d revision(s) pushed.' % (count,))
+
         if verbose:
             new_rh = br_to.revision_history()
             if old_rh != new_rh:
@@ -1174,9 +1186,7 @@ class cmd_cat(Command):
 
     @display_command
     def run(self, filename, revision=None):
-        if revision is None:
-            raise BzrCommandError("bzr cat requires a revision number")
-        elif len(revision) != 1:
+        if revision is not None and len(revision) != 1:
             raise BzrCommandError("bzr cat --revision takes exactly one number")
         tree = None
         try:
@@ -1184,9 +1194,14 @@ class cmd_cat(Command):
             b = tree.branch
         except NotBranchError:
             pass
+
         if tree is None:
             b, relpath = Branch.open_containing(filename)
-        b.print_file(relpath, revision[0].in_history(b).revno)
+        if revision is None:
+            revision_id = b.last_revision()
+        else:
+            revision_id = revision[0].in_history(b).rev_id
+        b.print_file(relpath, revision_id)
 
 
 class cmd_local_time_offset(Command):
@@ -1237,17 +1252,24 @@ class cmd_commit(Command):
             unchanged=False, strict=False):
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
-        from bzrlib.msgeditor import edit_commit_message
+        from bzrlib.msgeditor import edit_commit_message, \
+                make_commit_message_template
         from bzrlib.status import show_status
-        from cStringIO import StringIO
+        from tempfile import TemporaryFile
+        import codecs
 
+        # TODO: Need a blackbox test for invoking the external editor; may be
+        # slightly problematic to run this cross-platform.
+
+        # TODO: do more checks that the commit will succeed before 
+        # spending the user's valuable time typing a commit message.
+        #
+        # TODO: if the commit *does* happen to fail, then save the commit 
+        # message to a temporary file where it can be recovered
         tree, selected_list = tree_files(selected_list)
         if message is None and not file:
-            catcher = StringIO()
-            show_status(tree.branch, specific_files=selected_list,
-                        to_file=catcher)
-            message = edit_commit_message(catcher.getvalue())
-
+            template = make_commit_message_template(tree, selected_list)
+            message = edit_commit_message(template)
             if message is None:
                 raise BzrCommandError("please specify a commit message"
                                       " with either --message or --file")
@@ -1276,7 +1298,7 @@ class cmd_commit(Command):
             raise BzrCommandError("Commit refused because there are unknown "
                                   "files in the working tree.")
         note('Committed revision %d.' % (tree.branch.revno(),))
-        
+
 
 class cmd_check(Command):
     """Validate consistency of branch history.
@@ -1775,7 +1797,7 @@ class cmd_plugins(Command):
     def run(self):
         import bzrlib.plugin
         from inspect import getdoc
-        for plugin in bzrlib.plugin.all_plugins:
+        for name, plugin in bzrlib.plugin.all_plugins().items():
             if hasattr(plugin, '__path__'):
                 print plugin.__path__[0]
             elif hasattr(plugin, '__file__'):

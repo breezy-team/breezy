@@ -176,7 +176,7 @@ class Fetcher(object):
                 continue
             if self.to_branch.has_revision(rev_id):
                 continue
-            self.pb.update('fetch revision', i, self.count_total)
+            self.pb.update('copy revision', i, self.count_total)
             self._copy_one_revision(rev_id)
             self.count_copied += 1
 
