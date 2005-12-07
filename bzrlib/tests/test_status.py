@@ -21,23 +21,25 @@ Most of these depend on the particular formatting used.
 """
 
 
+from cStringIO import StringIO
+from os import mkdir
+from tempfile import TemporaryFile
+import codecs
+
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.merge import merge
-from cStringIO import StringIO
 from bzrlib.status import show_status
 from bzrlib.branch import Branch
-from os import mkdir
 
 class BranchStatus(TestCaseInTempDir):
     
     def test_branch_status(self): 
         """Test basic branch status"""
-        from cStringIO import StringIO
         from bzrlib.status import show_status
         from bzrlib.branch import Branch
         
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         # status with nothing
         tof = StringIO()
@@ -60,7 +62,7 @@ class BranchStatus(TestCaseInTempDir):
     def test_branch_status_revisions(self):
         """Tests branch status with revisions"""
         
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         tof = StringIO()
         self.build_tree(['hello.c', 'bye.c'])
@@ -96,26 +98,28 @@ class BranchStatus(TestCaseInTempDir):
                            '  hello.c\n'])
 
     def status_string(self, branch):
-        tof = StringIO()
+        # use a real file rather than StringIO because it doesn't handle
+        # Unicode very well.
+        tof = codecs.getwriter('utf-8')(TemporaryFile())
         show_status(branch, to_file=tof)
         tof.seek(0)
-        return tof.getvalue()
+        return tof.read().decode('utf-8')
 
     def test_pending(self):
-        """Pending merges display works"""
+        """Pending merges display works, including Unicode"""
         mkdir("./branch")
         b = Branch.initialize('./branch')
         b.working_tree().commit("Empty commit 1")
         b_2 = b.clone('./copy')
-        b.working_tree().commit("Empty commit 2")
+        b.working_tree().commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)
         self.assert_(message.startswith("pending merges:\n"))
         self.assert_(message.endswith("Empty commit 2\n")) 
         b_2.working_tree().commit("merged")
         # must be long to make sure we see elipsis at the end
-        b.working_tree().commit("Empty commit 3 blah blah blah blah blah blah blah blah blah"
-                 " blah blah blah blah blah blah bleh")
+        b.working_tree().commit("Empty commit 3 " + 
+                                "blah blah blah blah " * 10)
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)
         self.assert_(message.startswith("pending merges:\n"))
@@ -128,7 +132,7 @@ class BranchStatus(TestCaseInTempDir):
         from bzrlib.status import show_status
         from bzrlib.branch import Branch
         
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
         b.working_tree().add('directory')

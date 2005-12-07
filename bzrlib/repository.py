@@ -67,6 +67,7 @@ class Repository(object):
             # or entirely uncompressed is tidy, but breaks upgrade from 
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
+            name = unicode(name)
             relpath = self.control_files._rel_controlfilename(name)
             store = TextStore(self.control_files.make_transport(relpath),
                               prefixed=prefixed, compressed=compressed)
@@ -226,6 +227,16 @@ class Repository(object):
         file_id = tree.inventory.path2id(file)
         if not file_id:
             raise BzrError("%r is not present in revision %s" % (file, revno))
+            try:
+                revno = self.revision_id_to_revno(revision_id)
+            except errors.NoSuchRevision:
+                # TODO: This should not be BzrError,
+                # but NoSuchFile doesn't fit either
+                raise BzrError('%r is not present in revision %s' 
+                                % (file, revision_id))
+            else:
+                raise BzrError('%r is not present in revision %s'
+                                % (file, revno))
         tree.print_file(file_id)
 
     def get_transaction(self):

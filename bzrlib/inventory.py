@@ -418,7 +418,7 @@ class RootEntry(InventoryEntry):
         self.children = {}
         self.kind = 'root_directory'
         self.parent_id = None
-        self.name = ''
+        self.name = u''
 
     def __eq__(self, other):
         if not isinstance(other, RootEntry):
@@ -782,7 +782,7 @@ class Inventory(object):
                 if ie.kind == 'directory':
                     descend(ie, child_path)
 
-        descend(self.root, '')
+        descend(self.root, u'')
         return accum
 
 
@@ -799,7 +799,7 @@ class Inventory(object):
             for name, child_ie in kids:
                 child_path = os.path.join(parent_path, name)
                 descend(child_ie, child_path)
-        descend(self.root, '')
+        descend(self.root, u'')
         return accum
         
 

@@ -26,6 +26,7 @@ import sys
 import tempfile
 import unittest
 import time
+import codecs
 
 import bzrlib.branch
 import bzrlib.commands
@@ -33,7 +34,6 @@ from bzrlib.errors import BzrError
 import bzrlib.inventory
 import bzrlib.merge3
 import bzrlib.osutils
-import bzrlib.osutils as osutils
 import bzrlib.plugin
 import bzrlib.store
 import bzrlib.trace
@@ -87,7 +87,6 @@ class _MyResult(unittest._TextTestResult):
     Shows output in a different format, including displaying runtime for tests.
     """
 
-    # assumes 80-column window, less 'ERROR 99999ms' = 13ch
     def _elapsedTime(self):
         return "%5dms" % (1000 * (time.time() - self._start_time))
 
@@ -97,18 +96,23 @@ class _MyResult(unittest._TextTestResult):
         # the beginning, but in an id, the important words are
         # at the end
         SHOW_DESCRIPTIONS = False
-        what = SHOW_DESCRIPTIONS and test.shortDescription()
-        if what:
-            if len(what) > 65:
-                what = what[:62] + '...'
-        else:
-            what = test.id()
-            if what.startswith('bzrlib.tests.'):
-                what = what[13:]
-            if len(what) > 65:
-                what = '...' + what[-62:]
         if self.showAll:
-            self.stream.write('%-65.65s' % what)
+            width = bzrlib.osutils.terminal_width()
+            name_width = width - 15
+            what = None
+            if SHOW_DESCRIPTIONS:
+                what = test.shortDescription()
+                if what:
+                    if len(what) > name_width:
+                        what = what[:name_width-3] + '...'
+            if what is None:
+                what = test.id()
+                if what.startswith('bzrlib.tests.'):
+                    what = what[13:]
+                if len(what) > name_width:
+                    what = '...' + what[3-name_width:]
+            what = what.ljust(name_width)
+            self.stream.write(what)
         self.stream.flush()
         self._start_time = time.time()
 
@@ -250,7 +254,8 @@ class TestCase(unittest.TestCase):
         The file is removed as the test is torn down.
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
-        self._log_file = os.fdopen(fileno, 'w+')
+        encoder, decoder, stream_reader, stream_writer = codecs.lookup('UTF-8')
+        self._log_file = stream_writer(os.fdopen(fileno, 'w+'))
         bzrlib.trace.enable_test_log(self._log_file)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
@@ -321,8 +326,8 @@ class TestCase(unittest.TestCase):
 
         This should only be called from TestCase.tearDown.
         """
-        for callable in reversed(self._cleanups):
-            callable()
+        for cleanup_fn in reversed(self._cleanups):
+            cleanup_fn()
 
     def log(self, *args):
         mutter(*args)
@@ -545,24 +550,16 @@ class TestCaseInTempDir(TestCase):
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(osutils.lexists(path))
+        self.failUnless(bzrlib.osutils.lexists(path))
         
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
-        self.failUnless(osutils.lexists(path))
+        self.failUnless(bzrlib.osutils.lexists(path))
         self.assertEqualDiff(content, open(path, 'r').read())
         
 
-class MetaTestLog(TestCase):
-    def test_logging(self):
-        """Test logs are captured when a test fails."""
-        self.log('a test message')
-        self._log_file.flush()
-        self.assertContainsRe(self._get_log(), 'a test message\n')
-
-
 def filter_suite_by_re(suite, pattern):
-    result = TestUtil.TestSuite()
+    result = TestSuite()
     filter_re = re.compile(pattern)
     for test in iter_suite_tests(suite):
         if filter_re.search(test.id()):
@@ -608,32 +605,30 @@ def test_suite():
 
     global MODULES_TO_DOCTEST
 
-    # FIXME: If these fail to load, e.g. because of a syntax error, the
-    # exception is hidden by unittest.  Sucks.  Should either fix that or
-    # perhaps import them and pass them to unittest as modules.
-    testmod_names = \
-                  ['bzrlib.tests.MetaTestLog',
-                   'bzrlib.tests.test_api',
-                   'bzrlib.tests.test_gpg',
-                   'bzrlib.tests.test_identitymap',
-                   'bzrlib.tests.test_inv',
+    testmod_names = [ \
                    'bzrlib.tests.test_ancestry',
+                   'bzrlib.tests.test_api',
+                   'bzrlib.tests.test_bad_files',
+                   'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_command',
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
+                   'bzrlib.tests.test_gpg',
+                   'bzrlib.tests.test_graph',
+                   'bzrlib.tests.test_hashcache',
+                   'bzrlib.tests.test_identitymap',
+                   'bzrlib.tests.test_inv',
+                   'bzrlib.tests.test_log',
                    'bzrlib.tests.test_merge3',
                    'bzrlib.tests.test_merge',
-                   'bzrlib.tests.test_hashcache',
-                   'bzrlib.tests.test_status',
-                   'bzrlib.tests.test_log',
+                   'bzrlib.tests.test_merge_core',
+                   'bzrlib.tests.test_msgeditor',
                    'bzrlib.tests.test_revisionnamespaces',
-                   'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revision_info',
-                   'bzrlib.tests.test_merge_core',
+                   'bzrlib.tests.test_status',
                    'bzrlib.tests.test_smart_add',
-                   'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_parent',
                    'bzrlib.tests.test_xml',
@@ -645,36 +640,55 @@ def test_suite():
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_sftp',
-                   'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_upgrade',
                    'bzrlib.tests.test_uncommit',
+                   'bzrlib.tests.test_ui',
                    'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_annotate',
-                   'bzrlib.tests.test_revprops',
-                   'bzrlib.tests.test_options',
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_nonascii',
+                   'bzrlib.tests.test_options',
+                   'bzrlib.tests.test_plugins',
+                   'bzrlib.tests.test_revprops',
                    'bzrlib.tests.test_reweave',
-                   'bzrlib.tests.test_tsort',
+                   'bzrlib.tests.test_rio',
+                   'bzrlib.tests.test_selftest',
+                   'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_trace',
-                   'bzrlib.tests.test_basicio',
+                   'bzrlib.tests.test_tsort',
                    ]
 
-    TestCase.BZRPATH = os.path.join(os.path.realpath(os.path.dirname(bzrlib.__path__[0])), 'bzr')
-    print '%-30s %s' % ('bzr binary', TestCase.BZRPATH)
+    print '%10s: %s' % ('bzr', os.path.realpath(sys.argv[0]))
+    print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
     print
     suite = TestSuite()
-    suite.addTest(TestLoader().loadTestsFromNames(testmod_names))
+    # python2.4's TestLoader.loadTestsFromNames gives very poor 
+    # errors if it fails to load a named module - no indication of what's
+    # actually wrong, just "no such module".  We should probably override that
+    # class, but for the moment just load them ourselves. (mbp 20051202)
+    loader = TestLoader()
+    for mod_name in testmod_names:
+        mod = _load_module_by_name(mod_name)
+        suite.addTest(loader.loadTestsFromModule(mod))
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
-        suite.addTest(TestLoader().loadTestsFromModule(m))
+        suite.addTest(loader.loadTestsFromModule(m))
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
-    for p in bzrlib.plugin.all_plugins:
-        if hasattr(p, 'test_suite'):
-            suite.addTest(p.test_suite())
+    for name, plugin in bzrlib.plugin.all_plugins().items():
+        if hasattr(plugin, 'test_suite'):
+            suite.addTest(plugin.test_suite())
     return suite
 
+
+def _load_module_by_name(mod_name):
+    parts = mod_name.split('.')
+    module = __import__(mod_name)
+    del parts[0]
+    # for historical reasons python returns the top-level module even though
+    # it loads the submodule; we need to walk down to get the one we want.
+    while parts:
+        module = getattr(module, parts.pop(0))
+    return module

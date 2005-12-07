@@ -28,7 +28,7 @@ class TestAncestry(TestCaseInTempDir):
 
     def test_straightline_ancestry(self):
         """Test ancestry file when just committing."""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         wt = b.working_tree()
 
         wt.commit(message='one',
@@ -45,7 +45,7 @@ class TestAncestry(TestCaseInTempDir):
                          b.storage.get_ancestry('tester@foo--1'))
 
     def test_none_is_always_an_ancestor(self):
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         # note this is tested before any commits are done.
         self.assertEqual(True, is_ancestor(None, None, b))
         wt = b.working_tree()

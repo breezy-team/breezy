@@ -108,7 +108,7 @@ class FakeControlFiles(object):
             raise NotImplementedError
         if self.email is not None:
             return StringIO(self.email)
-        raise errors.NoSuchFile
+        raise errors.NoSuchFile(filename)
 
 
 class InstrumentedConfig(config.Config):

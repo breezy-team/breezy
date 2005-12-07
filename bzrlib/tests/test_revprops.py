@@ -8,7 +8,7 @@ from bzrlib.tests import TestCaseInTempDir
 class TestRevProps(TestCaseInTempDir):
     def test_simple_revprops(self):
         """Simple revision properties"""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         b.nick = 'Nicholas'
         props = dict(flavor='choc-mint', 
                      condiment='orange\n  mint\n\tcandy')
@@ -26,7 +26,7 @@ class TestRevProps(TestCaseInTempDir):
 
     def test_invalid_revprops(self):
         """Invalid revision properties"""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         self.assertRaises(ValueError,
                           b.working_tree().commit, 
                           message='invalid',

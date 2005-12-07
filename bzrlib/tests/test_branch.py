@@ -35,7 +35,7 @@ class TestBranch(TestCaseInTempDir):
 
     def test_append_revisions(self):
         """Test appending more than one revision"""
-        br = Branch.initialize(".")
+        br = Branch.initialize(u".")
         br.append_revision("rev1")
         self.assertEquals(br.revision_history(), ["rev1",])
         br.append_revision("rev2", "rev3")
@@ -63,7 +63,7 @@ class TestBranch(TestCaseInTempDir):
         eq(tree.get_file_text('foo-id'), 'hello')
 
     def test_revision_tree(self):
-        b1 = Branch.initialize('.')
+        b1 = Branch.initialize(u'.')
         b1.working_tree().commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = b1.storage.revision_tree('revision-1')
         tree = b1.storage.revision_tree(None)
@@ -127,7 +127,7 @@ class TestBranch(TestCaseInTempDir):
         
     def test_record_initial_ghost_merge(self):
         """A pending merge with no revision present is still a merge."""
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         branch.working_tree().add_pending_merge('non:existent@rev--ision--0--2')
         branch.working_tree().commit('pretend to merge nonexistent-revision', rev_id='first')
         rev = branch.storage.get_revision(branch.last_revision())
@@ -148,7 +148,7 @@ class TestBranch(TestCaseInTempDir):
         
     def test_pending_merges(self):
         """Tracking pending-merged revisions."""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         wt = b.working_tree()
         self.assertEquals(wt.pending_merges(), [])
         wt.add_pending_merge('foo@azkhazan-123123-abcabc')
@@ -170,7 +170,7 @@ class TestBranch(TestCaseInTempDir):
         self.assertEquals(wt.pending_merges(), [])
 
     def test_sign_existing_revision(self):
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
         branch.storage.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
@@ -229,7 +229,7 @@ class TestRemote(TestCaseWithWebserver):
                           self.get_remote_url(''))
         self.assertRaises(NotBranchError, Branch.open_containing,
                           self.get_remote_url('g/p/q'))
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         branch, relpath = Branch.open_containing(self.get_remote_url(''))
         self.assertEqual('', relpath)
         branch, relpath = Branch.open_containing(self.get_remote_url('g/p/q'))
@@ -321,7 +321,7 @@ class TestBranchTransaction(TestCaseInTempDir):
 
     def setUp(self):
         super(TestBranchTransaction, self).setUp()
-        self.branch = Branch.initialize('.')
+        self.branch = Branch.initialize(u'.')
         
     def test_default_get_transaction(self):
         """branch.get_transaction on a new branch should give a PassThrough."""
@@ -370,7 +370,7 @@ class TestBranchPushLocations(TestCaseInTempDir):
 
     def setUp(self):
         super(TestBranchPushLocations, self).setUp()
-        self.branch = Branch.initialize('.')
+        self.branch = Branch.initialize(u'.')
         
     def test_get_push_location_unset(self):
         self.assertEqual(None, self.branch.get_push_location())

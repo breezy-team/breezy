@@ -3,7 +3,7 @@ import unittest
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import PathNotChild
 
 
 class TestBranch(TestCaseInTempDir):
@@ -11,7 +11,7 @@ class TestBranch(TestCaseInTempDir):
     def test_no_changes(self):
         from bzrlib.errors import PointlessCommit
         
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         self.build_tree(['hello.txt'])
 
@@ -41,7 +41,7 @@ class MoreTests(TestCaseInTempDir):
 
     def test_rename_dirs(self):
         """Test renaming directories and the files within them."""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
         b.working_tree().add(['dir', 'dir/sub', 'dir/sub/file'])
 
@@ -94,17 +94,17 @@ class MoreTests(TestCaseInTempDir):
             # root = nothing
             self.assertEqual(rp(dtmp), '')
 
-            self.assertRaises(NotBranchError,
+            self.assertRaises(PathNotChild,
                               rp,
                               '/etc')
 
             # now some near-miss operations -- note that
             # os.path.commonprefix gets these wrong!
-            self.assertRaises(NotBranchError,
+            self.assertRaises(PathNotChild,
                               rp,
                               dtmp.rstrip('\\/') + '2')
 
-            self.assertRaises(NotBranchError,
+            self.assertRaises(PathNotChild,
                               rp,
                               dtmp.rstrip('\\/') + '2/foo')
 
@@ -121,7 +121,7 @@ class MoreTests(TestCaseInTempDir):
 
             self.assertEqual(rp(os.path.abspath('foo')), 'foo')
 
-            self.assertRaises(NotBranchError,
+            self.assertRaises(PathNotChild,
                               rp, '../foo')
 
         finally:

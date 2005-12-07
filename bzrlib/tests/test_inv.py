@@ -136,7 +136,7 @@ class TestEntryDiffing(TestCaseInTempDir):
 
     def setUp(self):
         super(TestEntryDiffing, self).setUp()
-        self.branch = Branch.initialize('.')
+        self.branch = Branch.initialize(u'.')
         self.wt = self.branch.working_tree()
         print >> open('file', 'wb'), 'foo'
         self.branch.working_tree().add(['file'], ['fileid'])
@@ -239,7 +239,7 @@ class TestSnapshot(TestCaseInTempDir):
         # to change, and then test merge patterns
         # with fake parent entries.
         super(TestSnapshot, self).setUp()
-        self.branch = Branch.initialize('.')
+        self.branch = Branch.initialize(u'.')
         self.build_tree(['subdir/', 'subdir/file'], line_endings='binary')
         self.branch.working_tree().add(['subdir', 'subdir/file'],
                                        ['dirid', 'fileid'])
@@ -328,7 +328,7 @@ class TestPreviousHeads(TestCaseInTempDir):
         #   a descendent of the other. (B, D)
         super(TestPreviousHeads, self).setUp()
         self.build_tree(['file'])
-        self.branch = Branch.initialize('.')
+        self.branch = Branch.initialize(u'.')
         self.wt = self.branch.working_tree()
         self.wt.commit('new branch', allow_pointless=True, rev_id='A')
         self.inv_A = self.branch.storage.get_inventory('A')

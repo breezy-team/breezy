@@ -40,7 +40,7 @@ from bzrlib.annotate import annotate_file
 class TestAnnotate(TestCaseInTempDir):
     def setUp(self):
         super(TestAnnotate, self).setUp()
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         self.build_tree_contents([('hello.txt', 'my helicopter\n'),
                                   ('nomail.txt', 'nomail\n')])
         b.working_tree().add(['hello.txt'])

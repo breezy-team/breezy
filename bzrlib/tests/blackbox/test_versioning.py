@@ -40,7 +40,7 @@ class TestVersioning(TestCaseInTempDir):
 
         from bzrlib.diff import compare_trees
         from bzrlib.branch import Branch
-        b = Branch.open('.')
+        b = Branch.open(u'.')
         
         delta = compare_trees(b.basis_tree(), b.working_tree())
 
@@ -65,7 +65,7 @@ class TestVersioning(TestCaseInTempDir):
 
         from bzrlib.diff import compare_trees
         from bzrlib.branch import Branch
-        b = Branch.open('.')
+        b = Branch.open(u'.')
         
         delta = compare_trees(b.basis_tree(), b.working_tree())
 
@@ -94,7 +94,7 @@ class TestVersioning(TestCaseInTempDir):
         self.failUnless(os.path.isdir('a/b/dir'))
 
         from bzrlib.diff import compare_trees
-        b = Branch.open('.')
+        b = Branch.open(u'.')
         b_a = Branch.open('a')
         b_b = Branch.open('a/b')
         
@@ -123,7 +123,7 @@ class TestVersioning(TestCaseInTempDir):
         from bzrlib.errors import NotVersionedError
         from bzrlib.workingtree import WorkingTree
 
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         self.build_tree(['foo/',
                          'foo/hello'])
@@ -138,7 +138,7 @@ class TestVersioning(TestCaseInTempDir):
         """After all the above changes, run the check and upgrade commands.
 
         The upgrade should be a no-op."""
-        b = Branch.open('.')
+        b = Branch.open(u'.')
         mutter('branch has %d revisions', b.revno())
         
         mutter('check branch...')
@@ -156,7 +156,7 @@ class SubdirCommit(TestCaseInTempDir):
         self.build_tree(['a/', 'b/'])
         
         run_bzr('init')
-        b = Branch.open('.')
+        b = Branch.open(u'.')
         
         for fn in ('a/one', 'b/two', 'top'):
             file(fn, 'w').write('old contents')

@@ -39,8 +39,8 @@ class LockableFiles(object):
         if not isinstance(file_or_path, basestring):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
-            return bzrlib.BZRDIR
-        return bzrlib.transport.urlescape(bzrlib.BZRDIR + '/' + file_or_path)
+            return unicode(bzrlib.BZRDIR)
+        return bzrlib.transport.urlescape(unicode(bzrlib.BZRDIR + '/' + file_or_path))
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""

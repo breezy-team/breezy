@@ -50,7 +50,7 @@ class TestTreeLink(TestCaseInTempDir):
 class TestWorkingTree(TestCaseInTempDir):
 
     def test_listfiles(self):
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         os.mkdir('dir')
         print >> open('file', 'w'), "content"
         os.symlink('target', 'symlink')
@@ -61,11 +61,11 @@ class TestWorkingTree(TestCaseInTempDir):
         self.assertEqual(files[2], ('symlink', '?', 'symlink', None, TreeLink()))
 
     def test_open_containing(self):
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         wt, relpath = WorkingTree.open_containing()
         self.assertEqual('', relpath)
         self.assertEqual(wt.basedir, branch.base)
-        wt, relpath = WorkingTree.open_containing('.')
+        wt, relpath = WorkingTree.open_containing(u'.')
         self.assertEqual('', relpath)
         self.assertEqual(wt.basedir, branch.base)
         wt, relpath = WorkingTree.open_containing('./foo')
@@ -77,26 +77,26 @@ class TestWorkingTree(TestCaseInTempDir):
                           'file:///' + os.getcwdu())
 
     def test_construct_with_branch(self):
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         tree = WorkingTree(branch.base, branch)
         self.assertEqual(branch, tree.branch)
         self.assertEqual(branch.base, tree.basedir)
     
     def test_construct_without_branch(self):
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         tree = WorkingTree(branch.base)
         self.assertEqual(branch.base, tree.branch.base)
         self.assertEqual(branch.base, tree.basedir)
 
     def test_basic_relpath(self):
         # for comprehensive relpath tests, see whitebox.py.
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         tree = WorkingTree(branch.base)
         self.assertEqual('child',
                          tree.relpath(os.path.join(os.getcwd(), 'child')))
 
     def test_lock_locks_branch(self):
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         tree = WorkingTree(branch.base)
         tree.lock_read()
         self.assertEqual(1, tree.branch.control_files._lock_count)
@@ -135,7 +135,7 @@ class TestWorkingTree(TestCaseInTempDir):
 
     def test_revert(self):
         """Test selected-file revert"""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         self.build_tree(['hello.txt'])
         file('hello.txt', 'w').write('initial hello')
@@ -161,8 +161,8 @@ class TestWorkingTree(TestCaseInTempDir):
         self.check_file_contents('hello.txt~', 'new hello')
 
     def test_unknowns(self):
-        b = Branch.initialize('.')
-        tree = WorkingTree('.', b)
+        b = Branch.initialize(u'.')
+        tree = WorkingTree(u'.', b)
         self.build_tree(['hello.txt',
                          'hello.txt~'])
         self.assertEquals(list(tree.unknowns()),

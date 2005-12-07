@@ -20,6 +20,9 @@ from bzrlib.delta import compare_trees
 from bzrlib.log import line_log
 from bzrlib.errors import NoSuchRevision
 
+# TODO: when showing single-line logs, truncate to the width of the terminal
+# if known, but only if really going to the terminal (not into a file)
+
 
 def show_status(branch, show_unchanged=False,
                 specific_files=None,
@@ -27,7 +30,14 @@ def show_status(branch, show_unchanged=False,
                 to_file=None,
                 show_pending=True,
                 revision=None):
-    """Display status for non-ignored working files.
+    """Display summary of changes.
+
+    By default this compares the working tree to a previous revision. 
+    If the revision argument is given, summarizes changes between the 
+    working tree and another, or between two revisions.
+
+    The result is written out as Unicode and to_file should be able 
+    to encode that.
 
     show_unchanged
         If set, includes unchanged files.
@@ -83,36 +93,40 @@ def show_status(branch, show_unchanged=False,
                    show_unchanged=show_unchanged)
 
         if new_is_working_tree:
-            conflicts = new.iter_conflicts()
-            unknowns = new.unknowns()
-            list_paths('unknown', unknowns, specific_files, to_file)
-            list_paths('conflicts', conflicts, specific_files, to_file)
-            if show_pending and len(new.pending_merges()) > 0:
-                print >>to_file, 'pending merges:'
-                last_revision = branch.last_revision()
-                if last_revision is not None:
-                    ignore = set(branch.storage.get_ancestry(last_revision))
-                else:
-                    ignore = set()
-                for merge in new.pending_merges():
-                    ignore.add(merge)
-                    try:
-                        m_revision = branch.storage.get_revision(merge)
-                        print >> to_file, ' ', line_log(m_revision, 77)
-                        inner_merges = branch.storage.get_ancestry(merge)
-                        inner_merges.reverse()
-                        for mmerge in inner_merges:
-                            if mmerge in ignore:
-                                continue
-                            mm_revision = branch.storage.get_revision(mmerge)
-                            print >> to_file, '   ', line_log(mm_revision, 75)
-                            ignore.add(mmerge)
-                            
-                    except NoSuchRevision:
-                        print >> to_file, ' ', merge 
-                        
+            list_paths('unknown', new.unknowns(), specific_files, to_file)
+            list_paths('conflicts', new.iter_conflicts(), specific_files, to_file)
+        if new_is_working_tree and show_pending:
+            show_pending_merges(new, to_file)
     finally:
         branch.unlock()
+
+def show_pending_merges(new, to_file):
+    """Write out a display of pending merges in a working tree."""
+    pending = new.pending_merges()
+    branch = new.branch
+    if len(pending) == 0:
+        return
+    print >>to_file, 'pending merges:'
+    last_revision = branch.last_revision()
+    if last_revision is not None:
+        ignore = set(branch.storage.get_ancestry(last_revision))
+    else:
+        ignore = set()
+    for merge in new.pending_merges():
+        ignore.add(merge)
+        try:
+            m_revision = branch.storage.get_revision(merge)
+            print >> to_file, ' ', line_log(m_revision, 77)
+            inner_merges = branch.storage.get_ancestry(merge)
+            inner_merges.reverse()
+            for mmerge in inner_merges:
+                if mmerge in ignore:
+                    continue
+                mm_revision = branch.storage.get_revision(mmerge)
+                print >> to_file, '   ', line_log(mm_revision, 75)
+                ignore.add(mmerge)
+        except NoSuchRevision:
+            print >> to_file, ' ', merge 
         
 def list_paths(header, paths, specific_files, to_file):
     done_header = False

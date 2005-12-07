@@ -24,7 +24,6 @@ from cStringIO import StringIO
 
 
 import bzrlib
-import bzrlib.inventory as inventory
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn,
                             rename, splitpath, sha_file, appendpath, 
@@ -38,7 +37,7 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
 from bzrlib.textui import show_status
 from bzrlib.config import TreeConfig
 from bzrlib.delta import compare_trees
-from bzrlib.tree import EmptyTree, RevisionTree
+import bzrlib.inventory as inventory
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions)
@@ -46,6 +45,7 @@ from bzrlib.repository import Repository
 from bzrlib.store import copy_all
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
+from bzrlib.tree import EmptyTree, RevisionTree
 import bzrlib.ui
 import bzrlib.xml5
 
@@ -141,7 +141,7 @@ class Branch(object):
     @staticmethod
     def initialize(base):
         """Create a new branch, rooted at 'base' (url)"""
-        t = get_transport(base)
+        t = get_transport(unicode(base))
         return BzrBranch(t, init=True)
 
     def setup_caching(self, cache_root):
@@ -186,7 +186,7 @@ class Branch(object):
         """Return the id of this branches root"""
         raise NotImplementedError('get_root_id is abstract')
 
-    def print_file(self, file, revno):
+    def print_file(self, file, revision_id):
         """Print `file` to stdout."""
         raise NotImplementedError('print_file is abstract')
 
@@ -402,13 +402,14 @@ class Branch(object):
         if revision is None:
             revision = self.last_revision()
         br_to.update_revisions(self, stop_revision=revision)
+        br_to.set_parent(self.base)
+        # circular import protection
         from bzrlib.merge import build_working_dir
         build_working_dir(to_location)
-        br_to.set_parent(self.base)
         mutter("copied")
         return br_to
 
-class BzrBranch(Branch, LockableFiles):
+class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
 
     Note that it's "local" in the context of the filesystem; it doesn't
@@ -612,9 +613,9 @@ class BzrBranch(Branch, LockableFiles):
         self.control_files.unlock()
 
     @needs_read_lock
-    def print_file(self, file, revno):
+    def print_file(self, file, revision_id):
         """See Branch.print_file."""
-        return self.storage.print_file(file, self.get_rev_id(revno))
+        return self.storage.print_file(file, revision_id)
 
     @needs_write_lock
     def append_revision(self, *revision_ids):
@@ -628,8 +629,18 @@ class BzrBranch(Branch, LockableFiles):
     @needs_write_lock
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
+        old_revision = self.last_revision()
+        new_revision = rev_history[-1]
         self.control_files.put_utf8(
             'revision-history', '\n'.join(rev_history))
+        try:
+            # FIXME: RBC 20051207 this smells wrong, last_revision in the 
+            # working tree may be != to last_revision in the branch - so
+            # why is this passing in the branches last_revision ?
+            self.working_tree().set_last_revision(new_revision, old_revision)
+        except NoWorkingTree:
+            mutter('Unable to set_last_revision without a working tree.')
+
 
     def get_revision_delta(self, revno):
         """Return the delta for one revision.
@@ -701,6 +712,20 @@ class BzrBranch(Branch, LockableFiles):
                 else:
                     raise e
         
+    def basis_tree(self):
+        """See Branch.basis_tree."""
+        try:
+            revision_id = self.revision_history()[-1]
+            # FIXME: This is an abstraction violation, the basis tree 
+            # here as defined is on the working tree, the method should
+            # be too. The basis tree for a branch can be different than
+            # that for a working tree. RBC 20051207
+            xml = self.working_tree().read_basis_inventory(revision_id)
+            inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+            return RevisionTree(self.storage.weave_store, inv, revision_id)
+        except (IndexError, NoSuchFile, NoWorkingTree), e:
+            return self.storage.revision_tree(self.last_revision())
+
     def working_tree(self):
         """See Branch.working_tree."""
         from bzrlib.workingtree import WorkingTree
@@ -719,6 +744,7 @@ class BzrBranch(Branch, LockableFiles):
             except DivergedBranches:
                 if not overwrite:
                     raise
+            if overwrite:
                 self.set_revision_history(source.revision_history())
             new_count = len(self.revision_history())
             return new_count - old_count
@@ -732,9 +758,8 @@ class BzrBranch(Branch, LockableFiles):
         for l in _locs:
             try:
                 return self.control_files.controlfile(l, 'r').read().strip('\n')
-            except IOError, e:
-                if e.errno != errno.ENOENT:
-                    raise
+            except NoSuchFile:
+                pass
         return None
 
     def get_push_location(self):
@@ -785,13 +810,17 @@ class BzrBranch(Branch, LockableFiles):
         branch_to = Branch.initialize(to_location)
         mutter("copy branch from %s to %s", self, branch_to)
         branch_to.working_tree().set_root_id(self.get_root_id())
-        branch_to.set_revision_history(history)
 
         self.storage.copy(branch_to.storage)
         
+        # must be done *after* history is copied across
+        # FIXME duplicate code with base .clone().
+        # .. would template method be useful here.  RBC 20051207
+        branch_to.set_parent(self.base)
+        branch_to.append_revision(*history)
+        # circular import protection
         from bzrlib.merge import build_working_dir
         build_working_dir(to_location)
-        branch_to.set_parent(self.base)
         mutter("copied")
         return branch_to
 
