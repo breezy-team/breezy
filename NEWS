@@ -80,6 +80,12 @@ UNRELEASED CHANGES
       a connection will be reused, rather than requiring multiple password
       requests.
 
+    * bzr revno now takes an optional argument indicating the branch whose
+      revno should be printed.  (Michael Ellerman)
+
+    * bzr cat defaults to printing the last version of the file.  
+      (#3632, Matthieu Moy)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
