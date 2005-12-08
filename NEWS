@@ -89,6 +89,9 @@ UNRELEASED CHANGES
     * New global option 'bzr --lsprof COMMAND' runs bzr under the lsprof 
       profiler.  (Denys Duchier)
 
+    * Faster commits by reading only the headers of affected weave files. 
+      (Denys Duchier)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
@@ -216,6 +219,9 @@ UNRELEASED CHANGES
 
     * bzrlib.plugin.all_plugins has been changed from an attribute to a 
       query method. (Robert Collins)
+ 
+    * New options to read only the table-of-contents of a weave.  
+      (Denys Duchier)
    
 bzr 0.6 2005-10-28
 
