@@ -86,6 +86,9 @@ UNRELEASED CHANGES
     * bzr cat defaults to printing the last version of the file.  
       (#3632, Matthieu Moy)
 
+    * New global option 'bzr --lsprof COMMAND' runs bzr under the lsprof 
+      profiler.  (Denys Duchier)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)

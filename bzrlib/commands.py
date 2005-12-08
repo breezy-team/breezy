@@ -447,6 +447,13 @@ def apply_profiled(the_callable, *args, **kwargs):
         os.remove(pfname)
 
 
+def apply_lsprofiled(the_callable, *args, **kwargs):
+    from bzrlib.lsprof import profile
+    ret,stats = profile(the_callable,*args,**kwargs)
+    stats.sort()
+    stats.pprint()
+    return ret
+
 def run_bzr(argv):
     """Execute a command.
 
@@ -469,11 +476,14 @@ def run_bzr(argv):
         other behaviour.)
 
     --profile
-        Run under the Python profiler.
+        Run under the Python hotshot profiler.
+
+    --lsprof
+        Run under the Python lsprof profiler.
     """
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
 
-    opt_profile = opt_no_plugins = opt_builtin = False
+    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = False
 
     # --no-plugins is handled specially at a very early stage. We need
     # to load plugins before doing other command parsing so that they
@@ -482,6 +492,8 @@ def run_bzr(argv):
     for a in argv:
         if a == '--profile':
             opt_profile = True
+        elif a == '--lsprof':
+            opt_lsprof = True
         elif a == '--no-plugins':
             opt_no_plugins = True
         elif a == '--builtin':
@@ -514,7 +526,9 @@ def run_bzr(argv):
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
 
     try:
-        if opt_profile:
+        if opt_lsprof:
+            ret = apply_lsprofiled(cmd_obj.run_argv, argv)
+        elif opt_profile:
             ret = apply_profiled(cmd_obj.run_argv, argv)
         else:
             ret = cmd_obj.run_argv(argv)
