@@ -17,7 +17,7 @@ RA repositories can only be
 changed by doing a commit and are thus always considered 'remote' in the 
 bzr meaning of the word.
 
-Three diferrent identifiers are used in this file to refer to 
+Three different identifiers are used in this file to refer to 
 revisions:
 - revid: bzr revision ids (text data, usually containing email 
     address + sha)
@@ -69,27 +69,32 @@ class SvnRevisionTree(Tree):
         return bzrlib.osutils.sha_string(self.get_file(file_id))
 
     def is_executable(self,file_id):
-        filename = self.branch.filename_from_file_id(self.revision_id,file_id)
+        filename = self.branch.url_from_file_id(self.revision_id,file_id)
+        mutter("svn propget %r %r" % (svn.core.SVN_PROP_EXECUTABLE, filename))
         values = svn.client.propget(svn.core.SVN_PROP_EXECUTABLE, filename, self.revnum, False, self.client, self.pool)
         if len(values) == 1 and values.pop() == svn.core.SVN_PROP_EXECUTABLE_VALUE:
             return True
         return False 
     
     def get_file(self,file_id):
-        stream = svn.core.svn_stream_t(self.pool)
+        stream = svn.core.svn_stream_empty(self.pool)
         url = self.branch.url_from_file_id(self.revision_id,file_id)
-        svn.client.cat(stream,_url.encode('utf8'),self.revnum,self.client,self.pool)
-        str = Stream(stream)
-        return str.read()
+        mutter("svn cat -r %r %r" % (self.revnum.value.number,url))
+        svn.client.cat(stream,url.encode('utf8'),self.revnum,self.client,self.pool)
+        return Stream(stream).read()
 
 class SvnBranch(Branch):
     @staticmethod
     def open(url):
+        # The SVN libraries don't like trailing slashes...
+        url = url.rstrip('/')
         if os.path.exists(url):
+            url = os.path.abspath(url)
             try:
                 return LocalSvnBranch(url)
             except SubversionException, (msg, num):
-                if num == svn.core.SVN_ERR_UNVERSIONED_RESOURCE:
+                if num == svn.core.SVN_ERR_UNVERSIONED_RESOURCE or \
+                    num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
                     raise NotBranchError(path=url)
                 raise
         else:
@@ -97,7 +102,9 @@ class SvnBranch(Branch):
                 return RemoteSvnBranch(url)
             except SubversionException, (msg, num):
                 if num == svn.core.SVN_ERR_RA_ILLEGAL_URL or \
+                   num == svn.core.SVN_ERR_WC_NOT_DIRECTORY or \
                    num == svn.core.SVN_ERR_RA_NO_REPOS_UUID or \
+                   num == svn.core.SVN_ERR_RA_SVN_REPOS_NOT_FOUND or \
                    num == svn.core.SVN_ERR_RA_DAV_REQUEST_FAILED:
                     raise NotBranchError(path=url)
                 raise
@@ -131,11 +138,13 @@ class SvnBranch(Branch):
         # youngest revision number is
         revt_head = svn.core.svn_opt_revision_t()
         revt_head.kind = kind
+        self.last_revnum = None
         def rcvr(paths,rev,author,date,message,pool):
             self.last_revnum = rev
+        mutter("svn log -r HEAD %r" % self.base)
         svn.client.log2([self.base.encode('utf8')], revt_head, revt_head, \
                 1, 0, 0, rcvr, self.client, self.pool)
-        assert not self.last_revnum is None
+        assert self.last_revnum
 
     def _generate_revnum_map(self):
         #FIXME: Revids should be globally unique, so we should include the 
@@ -165,6 +174,9 @@ class SvnBranch(Branch):
             return self.revid_map[revid]
         except KeyError:
             raise NoSuchRevision(revid,self)
+
+    def set_root_id(self, file_id):
+        raise NotImplementedError('set_root_id not supported on Subversion Branches')
             
     @staticmethod
     def open_containing(base):
@@ -182,6 +194,9 @@ class SvnBranch(Branch):
 
     def push_stores(self, branch_to):
         raise NotImplementedError('push_stores is abstract') #FIXME
+
+    def get_revision_inventory(self, revision_id):
+        raise NotImplementedError('get_revision_inventory is abstract') #FIXME
 
     def sign_revision(self, revision_id, gpg_strategy):
         raise NotImplementedError('Subversion revisions can not be signed')
@@ -209,15 +224,16 @@ class SvnBranch(Branch):
         # For some odd reason this method still takes a revno rather 
         # then a revid
         revnum = self.get_revnum(self.get_rev_id(revno))
-        stream = svn.core.svn_stream_t(self.pool)
+        stream = svn.core.svn_stream_empty(self.pool)
         file_url = self.base+self.sep+file
+        mutter('svn cat -r %r %r' % (revnum.value.number,file_url))
         svn.client.cat(stream,file_url.encode('utf8'),revnum,self.client,self.pool)
         print Stream(stream).read()
 
     def get_revision(self, revision_id):
         revnum = self.get_revnum(revision_id)
-        mutter('getting revision %r for branch %r' % (revnum.value.number, self.base))
         
+        mutter('svn proplist -r %r %r' % (revnum.value.number,self.url))
         (svn_props, actual_rev) = svn.client.revprop_list(self.url.encode('utf8'), revnum, self.client, self.pool)
         assert actual_rev == revnum.value.number
 
@@ -267,6 +283,7 @@ class SvnBranch(Branch):
         revnum = self.get_revnum(revision_id)
         mutter('getting inventory %r for branch %r' % (revnum.value.number, self.base))
 
+        mutter("svn ls -r %d '%r'" % (revnum.value.number, self.base))
         remote_ls = svn.client.ls(self.base.encode('utf8'),
                                          revnum,
                                          True, # recurse
@@ -342,8 +359,9 @@ class RemoteSvnBranch(SvnBranch):
     sep = "/"
     
     def __init__(self, url):
-        SvnBranch.__init__(self,url,svn.core.svn_opt_revision_head)
+        SvnBranch.__init__(self,url,svn.core.svn_opt_revision_base)
         self.url = url
+        mutter("svn uuid '%r'" % self.url)
         self.uuid = svn.client.uuid_from_url(self.url.encode('utf8'), self.client, self.pool)
         assert self.uuid
         self._generate_revnum_map()
@@ -390,14 +408,8 @@ class RemoteSvnBranch(SvnBranch):
     def get_transaction(self):
         raise NotImplementedError('get_transaction is abstract') #FIXME
 
-    def set_root_id(self, file_id):
-        raise NotImplementedError('set_root_id is abstract') #FIXME
-
     def append_revision(self, *revision_ids):
         raise NotImplementedError('append_revision is abstract') #FIXME
-
-    def get_revision_inventory(self, revision_id):
-        raise NotImplementedError('get_revision_inventory is abstract') #FIXME
 
 class SvnWorkingTree(WorkingTree):
     def __init__(self,path,branch):
@@ -460,9 +472,6 @@ class LocalSvnBranch(SvnBranch):
     def put_controlfiles(self, files, encode=True):
         raise NotImplementedError('put_controlfiles is abstract') #FIXME
 
-    def set_root_id(self, file_id):
-        raise NotImplementedError('set_root_id is abstract') #FIXME
-
     def add(self, files, ids=None):
         for f in files:
             svn.client.add(f, False, self.client, self.pool)
@@ -474,9 +483,6 @@ class LocalSvnBranch(SvnBranch):
     def append_revision(self, *revision_ids):
         raise NotImplementedError('append_revision is abstract') #FIXME
 
-    def get_revision_inventory(self, revision_id):
-        raise NotImplementedError('get_revision_inventory is abstract') #FIXME
-
     def move(self, from_paths, to_name):
         revt = svn.core.svn_opt_revision_t()
         revt.kind = svn.core.svn_opt_revision_unspecified
@@ -485,7 +491,7 @@ class LocalSvnBranch(SvnBranch):
 
     def set_parent(self, url):
         revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_head
+        revt.kind = svn.core.svn_opt_revision_base
         self.last_revnum = svn.client.switch(self.path, url, revt, True, self.client, self.pool)
         self.url = url
         self._generate_revnum_map()
