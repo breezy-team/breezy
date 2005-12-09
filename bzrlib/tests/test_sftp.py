@@ -18,9 +18,11 @@ import os
 import socket
 import threading
 
+from bzrlib.branch import Branch
+import bzrlib.errors as errors
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.tests.test_transport import TestTransportMixIn
-import bzrlib.errors as errors
+import bzrlib.transport
 
 try:
     import paramiko
@@ -82,12 +84,12 @@ class SingleListener (threading.Thread):
         # to close. (Especially when only running a few tests)
         
         
-class TestCaseWithSFTPServer (TestCaseInTempDir):
+class TestCaseWithSFTPServer(TestCaseInTempDir):
     """
     Execute a test case with a stub SFTP server, serving files from the local
     filesystem over the loopback network.
     """
-    
+
     def _run_server(self, s, stop_event):
         ssh_server = paramiko.Transport(s)
         key_file = os.path.join(self._root, 'test_rsa.key')
@@ -95,16 +97,26 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
         host_key = paramiko.RSAKey.from_private_key_file(key_file)
         ssh_server.add_server_key(host_key)
         server = StubServer(self)
-        ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer, StubSFTPServer, root=self._root)
+        if self._override_home is None:
+            home = self._root
+        else:
+            home = self._override_home
+        ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer, 
+                                         StubSFTPServer, root='/',
+                                         home=home)
         event = threading.Event()
         ssh_server.start_server(event, server)
         event.wait(5.0)
         stop_event.wait(30.0)
 
     def setUp(self):
-        TestCaseInTempDir.setUp(self)
+        super(TestCaseWithSFTPServer, self).setUp()
         self._root = self.test_dir
+        # Set to a string in setUp to give sftp server a new homedir.
+        self._override_home = None
         self._is_setup = False
+        self._get_remote_is_absolute = True
+        self.sftplogs = []
 
     def delayed_setup(self):
         # some tests are just stubs that call setUp and then immediately call
@@ -115,9 +127,25 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
         self._listener = SingleListener(self._run_server)
         self._listener.setDaemon(True)
         self._listener.start()        
-        self._sftp_url = 'sftp://foo:bar@localhost:%d/' % (self._listener.port,)
+        self._sftp_url = self._get_sftp_url("%%2f%s" % 
+            bzrlib.transport.urlescape(self._root[1:]))
         self._is_setup = True
         
+    def _get_sftp_url(self, path):
+        """Calculate a sftp url to this server for path."""
+        return 'sftp://foo:bar@localhost:%d/%s' % (self._listener.port, path)
+
+    def get_remote_url(self, relpath_to_test_root):
+        self.delayed_setup()
+        if self._get_remote_is_absolute:
+            return self._get_sftp_url("%%2f%s" % 
+                bzrlib.transport.urlescape(self._root[1:] 
+                                           + '/'
+                                           + relpath_to_test_root))
+        else:
+            return self._get_sftp_url(
+                bzrlib.transport.urlescape(relpath_to_test_root))
+
     def tearDown(self):
         try:
             self._listener.stop()
@@ -125,25 +153,29 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
             pass
         TestCaseInTempDir.tearDown(self)
 
-        
-class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
-    readonly = False
-
-    def setUp(self):
-        TestCaseWithSFTPServer.setUp(self)
-        self.sftplogs = []
+    def get_transport(self, path=None):
+        """Return a transport relative to self._test_root."""
+        self.delayed_setup()
+        from bzrlib.transport.sftp import SFTPTransport
+        if path is None:
+            url = self._sftp_url
+            if self._get_remote_is_absolute:
+                url = self._sftp_url
+            else:
+                url = self._get_sftp_url('')
+        else:
+            url = self._get_sftp_url(path)
+        return SFTPTransport(url)
 
     def log(self, *args):
         """Override the default log to grab sftp server messages"""
-        TestCaseWithSFTPServer.log(self, *args)
+        TestCaseInTempDir.log(self, *args)
         if args and args[0].startswith('sftpserver'):
             self.sftplogs.append(args[0])
 
-    def get_transport(self):
-        self.delayed_setup()
-        from bzrlib.transport.sftp import SFTPTransport
-        url = self._sftp_url
-        return SFTPTransport(url)
+
+class SFTPTransportTestMixin (TestTransportMixIn):
+    readonly = False
 
     def test_sftp_locks(self):
         from bzrlib.errors import LockError
@@ -181,6 +213,48 @@ class SFTPTransportTest (TestCaseWithSFTPServer, TestTransportMixIn):
         # So the next line fails unless the connection is reused
         t2 = self.get_transport()
         self.assertEquals(self.sftplogs, [])
+
+
+class SFTPTransportTestAbsolute(TestCaseWithSFTPServer, SFTPTransportTestMixin):
+    """Test the SFTP transport with %2f based abs paths."""
+
+
+class SFTPTransportTestAbsoluteSibling(TestCaseWithSFTPServer, 
+                                       SFTPTransportTestMixin):
+    """Test the SFTP transport with %2f based sibling paths to $HOME."""
+
+    def setUp(self):
+        super(SFTPTransportTestAbsoluteSibling, self).setUp()
+        self._override_home = '/dev/noone/runs/tests/here'
+
+
+class SFTPTransportTestRelative(TestCaseWithSFTPServer, SFTPTransportTestMixin):
+    """Test the SFTP transport with homedir based relative paths."""
+
+    def setUp(self):
+        super(SFTPTransportTestRelative, self).setUp()
+        self._get_remote_is_absolute = False
+
+
+class SFTPTransportRemotePathTest(TestCaseWithSFTPServer):
+    
+    def test__remote_path(self):
+        t = self.get_transport()
+        # try what is currently used:
+        # remote path = self._abspath(relpath)
+        self.assertEqual(self._root + '/relative', t._remote_path('relative'))
+        # we dont os.path.join because windows gives us the wrong path
+        root_segments = self._root.split('/')
+        root_parent = '/'.join(root_segments[:-1])
+        # .. should be honoured
+        self.assertEqual(root_parent + '/sibling', t._remote_path('../sibling'))
+        # /  should be illegal ?
+        ### FIXME decide and then test for all transports. RBC20051208
+
+    def test__remote_path_relative_root(self):
+        # relative paths are preserved
+        t = self.get_transport('')
+        self.assertEqual('a', t._remote_path('a'))
 
 
 class FakeSFTPTransport (object):
@@ -262,8 +336,6 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
 
     def test_lock_file(self):
         """Make sure that a Branch accessed over sftp tries to lock itself."""
-        from bzrlib.branch import Branch
-
         self.delayed_setup()
         b = Branch.initialize(self._sftp_url)
         self.failUnlessExists('.bzr/')
@@ -277,13 +349,11 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         self.failIf(os.path.lexists('.bzr/branch-lock.write-lock'))
 
     def test_no_working_tree(self):
-        from bzrlib.branch import Branch
         self.delayed_setup()
         b = Branch.initialize(self._sftp_url)
         self.assertRaises(errors.NoWorkingTree, b.working_tree)
 
     def test_push_support(self):
-        from bzrlib.branch import Branch
         self.delayed_setup()
 
         self.build_tree(['a/', 'a/foo'])
@@ -293,7 +363,7 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         t.commit('foo', rev_id='a1')
 
         os.mkdir('b')
-        b2 = Branch.initialize(self._sftp_url + 'b')
+        b2 = Branch.initialize(self._sftp_url + '/b')
         b2.pull(b)
 
         self.assertEquals(b2.revision_history(), ['a1'])

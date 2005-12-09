@@ -160,6 +160,10 @@ UNRELEASED CHANGES
     * Much better error message if one of the test suites can't be 
       imported.  (Martin Pool)
 
+    * Test sftp with relative, absolute-in-homedir and absolute-not-in-homedir
+      paths for the transport tests. Introduce blackbox remote sftp tests that
+      test the same permutations. (Robert Collins, Robey Pointer)
+
   INTERNALS:
 
     * WorkingTree.pull has been split across Branch and WorkingTree,

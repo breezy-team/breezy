@@ -56,12 +56,24 @@ class StubSFTPHandle (SFTPHandle):
 
 
 class StubSFTPServer (SFTPServerInterface):
-    def __init__(self, server, root):
+    def __init__(self, server, root, home=None):
         SFTPServerInterface.__init__(self, server)
         self.root = root
-        
+        if home is None:
+            self.home = self.root
+        else:
+            self.home = home[len(self.root):]
+        if (len(self.home) > 0) and (self.home[0] == '/'):
+            self.home = self.home[1:]
+
     def _realpath(self, path):
         return self.root + self.canonicalize(path)
+
+    def canonicalize(self, path):
+        if os.path.isabs(path):
+            return os.path.normpath(path)
+        else:
+            return os.path.normpath('/' + os.path.join(self.home, path))
 
     def list_folder(self, path):
         path = self._realpath(path)

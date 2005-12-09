@@ -41,6 +41,7 @@ from bzrlib.clone import copy_branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import has_symlinks
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.tests.test_sftp import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
 
 class TestCommands(ExternalBase):
@@ -1250,7 +1251,7 @@ class OldTests(ExternalBase):
             progress("skipping symlink tests")
 
 
-class HttpTests(TestCaseWithWebserver):
+class RemoteTests(object):
     """Test bzr ui commands against remote branches."""
 
     def test_branch(self):
@@ -1278,3 +1279,27 @@ class HttpTests(TestCaseWithWebserver):
         branch.working_tree().commit('add file', rev_id='A')
         url = self.get_remote_url('branch/')
         self.run_bzr('check', url)
+    
+    
+class HTTPTests(TestCaseWithWebserver, RemoteTests):
+    """Test various commands against a HTTP server."""
+    
+    
+class SFTPTestsAbsolute(TestCaseWithSFTPServer, RemoteTests):
+    """Test various commands against a SFTP server using abs paths."""
+
+    
+class SFTPTestsAbsoluteSibling(TestCaseWithSFTPServer, RemoteTests):
+    """Test various commands against a SFTP server using abs paths."""
+
+    def setUp(self):
+        super(SFTPTestsAbsoluteSibling, self).setUp()
+        self._override_home = '/dev/noone/runs/tests/here'
+
+    
+class SFTPTestsRelative(TestCaseWithSFTPServer, RemoteTests):
+    """Test various commands against a SFTP server using homedir rel paths."""
+
+    def setUp(self):
+        super(SFTPTestsRelative, self).setUp()
+        self._get_remote_is_absolute = False
