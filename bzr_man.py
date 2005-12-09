@@ -166,7 +166,15 @@ bazaar-ng is at an early stage of development, and the design is still changing 
 """
 
 man_foot = """\
+.SH "EXAMPLES"
+See
+.UR http://bazaar.canonical.com/IntroductionToBzr
+.BR http://bazaar.canonical.com/IntroductionToBzr
 .SH "ENVIRONMENT"
+.TP
+.I "BZR_HOME"
+Per-user \'home\' directory. Default on Unix like systems is
+.I "~"
 .TP
 .I "BZRPATH"
 Path where
@@ -174,32 +182,41 @@ Path where
 is to look for external command.
 .TP
 .I "BZREMAIL"
-E-Mail address of the user. Overrides
-.I "~/.bzr.conf/email" and
+E-Mail address of the user. Overrides settings from
+.I "~/.bazaar/bazaar.conf" and
 .IR "EMAIL" .
 Example content:
-.I "John Doe <john@example.com>"
+  John Doe <john@example.com>
 .TP
 .I "EMAIL"
-E-Mail address of the user. Overridden by the content of the file
-.I "~/.bzr.conf/email"
+E-Mail address of the user. Overridden by the settings in the file
+.I "~/.bazaar/bazaar.conf"
 and of the environment variable
 .IR "BZREMAIL" .
 .SH "FILES"
 .TP
-.I "~/.bzr.conf/"
+.I "~/.bazaar/"
 Directory where all the user\'s settings are stored.
 .TP
-.I "~/.bzr.conf/email"
-Stores name and email address of the user. Overrides content of
+.I "~/.bazaar/bazaar.conf"
+Stores default settings like name and email address of the
+user. Settings in this file override the content of
 .I "EMAIL"
 environment variable. Example content:
-.I "John Doe <john@example.com>"
+
+  [DEFAULT]
+  email=John Doe <john@example.com>
+  editor=/usr/bin/vim
+  check_signatures=check-available
+  create_signatures=when-required
+
 .SH "SEE ALSO"
 .UR http://www.bazaar-ng.org/
 .BR http://www.bazaar-ng.org/,
 .UR http://www.bazaar-ng.org/doc/
-.BR http://www.bazaar-ng.org/doc/
+.BR http://www.bazaar-ng.org/doc/,
+.UR http://bazaar.canonical.com/BzrDocumentation
+.BR http://bazaar.canonical.com/BzrDocumentation
 """
 
 def main():
