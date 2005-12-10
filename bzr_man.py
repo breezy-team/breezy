@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
-# Copyright (C) 2005 by Hans Ulrich Niedermann
-# Portions Copyright (C) 2005 by Canonical Ltd
+# Marked portions Copyright (C) 2005 by Hans Ulrich Niedermann
+# Unmarked portions (C) 2005 Canonical Ltd.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,19 +17,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-#<<< code taken from bzr (C) Canonical
-
 import os, sys
-
 import bzrlib, bzrlib.help
-
-#>>> code taken from bzr (C) Canonical
-
-#<<< code by HUN
-
+#<<< Begin (C) Hans Ulrich Niedermann
 import time
 import re
-
 
 def man_escape(string):
     result = string.replace("\\","\\\\")
@@ -137,9 +129,8 @@ man_preamble = """\
 .\\\" Generation time: %(timestamp)s
 .\\\"
 """
+#<<< End (C) Hans Ulrich Niedermann
 
-# The DESCRIPTION text was taken from http://www.bazaar-ng.org/
-# and is thus (C) Canonical
 man_head = """\
 .TH bzr 1 "%(datestamp)s" "%(version)s" "bazaar-ng"
 .SH "NAME"
@@ -219,6 +210,7 @@ environment variable. Example content:
 .BR http://bazaar.canonical.com/BzrDocumentation
 """
 
+#<<< Begin (C) Hans Ulrich Niedermann
 def main():
     t = time.time()
     tt = time.gmtime(t)
@@ -256,6 +248,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-#>>> code by HUN
+#<<< End (C) Hans Ulrich Niedermann
