@@ -38,7 +38,18 @@ changed what.  In a distributed system that requires an identifier for
 each author that is globally unique.  Most people already have one of
 these: an email address.
 
-[after 0.0.4] To tell bzr which email address to use, put it in the file
+To tell bzr which email address to use, three options exist:
+
+  * Set $EMAIL or $BZREMAIL to the email address that you would like
+
+  * Add the following to ~/.bazaar/bazaar.conf :
+     [DEFAULT]
+     email=Your Name <name@isp.com>
+
+  * On a Brancy by branch basis by adding to ~/.bazaar/branches.conf:
+     [/the/location/for/a/branch]
+     email=Your Name <name@isp.com>
+
 ``$HOME/.bzr.conf/email``, or the environment variable ``$BZREMAIL``.
 If neither of these are set, bzr will use the ``$EMAIL``
 variable, or use your username and hostname.
@@ -48,13 +59,13 @@ the ``whoami`` ("who am i?") command::
 
   % bzr whoami
 
-Some people want to avoid sharing their email address so as not to
-get spam.  bzr will never
-disclose your email address unless you tell it to by publishing an
-archive or transmitting a changeset.  It's recommended that you do use
-a real address, so that people can contact you about your work, but
-it's not required.  You can use an address which is obfuscated, which
-bounces, or which goes through an anti-spam service such as spamgourmet.com.
+Some people want to avoid sharing their email address so as not to get
+spam.  bzr will never disclose your email address unless you tell it to by
+publishing an archive or transmitting a changeset.  It's recommended that
+you do use a real address, so that people can contact you about your work,
+but it's not required.  You can use an address which is obfuscated, which
+bounces, or which goes through an anti-spam service such as
+spamgourmet.com.
 
 
 
