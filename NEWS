@@ -35,6 +35,11 @@ UNRELEASED CHANGES
       or
       sftp://user:pass@host:port//absolute/path
 
+    * Man Page now gives full help (James Blackwell). Help also updated to 
+      reflect user config now being stored in .bazaar (Hans Ulrich
+      Niedermann)
+
+
   IMPROVEMENTS:
 
     * "bzr INIT dir" now initializes the specified directory, and creates 
