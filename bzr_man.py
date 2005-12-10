@@ -35,6 +35,9 @@ Plan (devised by jblack and ndim 2005-12-10):
   * those generator scripts walk through the command and option data
     structures to extract the required information
   * the actual names are just prototypes and subject to change
+
+TODO (for man page):
+  * add command aliases
 """
 
 import os, sys
@@ -78,12 +81,16 @@ def man_escape(string):
     return result
 
 
+def command_name_list():
+    command_names = bzrlib.commands.builtin_command_names()
+    command_names.sort()
+    return command_names
+
+
 def getcommand_list (params):
     bzrcmd = params["bzrcmd"]
     output = '.SH "COMMAND OVERVIEW"\n'
-    command_names = bzrlib.commands.builtin_command_names()
-    command_names.sort()
-    for cmd_name in command_names:
+    for cmd_name in command_name_list():
         cmd_object = bzrlib.commands.get_cmd_object(cmd_name)
         if cmd_object.hidden:
             continue
@@ -92,9 +99,9 @@ def getcommand_list (params):
             firstline = cmd_help.split('\n', 1)[0]
             tmp = '.TP\n.B "%s %s"\n%s\n' % (bzrcmd, cmd_name,
                                                         firstline)
+            output = output + tmp
         else:
-            tmp = '.TP\n.B "%s %s"\n%s\n' % (bzrcmd, cmd_name, "foo")            
-        output = output + tmp
+            raise RuntimeError, "Command '%s' has no help text" % (cmd_name)
     return output
 
 
@@ -126,9 +133,7 @@ def format_command (params, cmd):
 
 def getcommand_help(params):
     output='.SH "COMMAND REFERENCE"\n'
-    command_names = bzrlib.commands.builtin_command_names()
-    command_names.sort()
-    for cmd_name in command_names:
+    for cmd_name in command_name_list():
         cmd_object = bzrlib.commands.get_cmd_object(cmd_name)
         if cmd_object.hidden:
             continue
@@ -210,6 +215,7 @@ Publishing your branch subsequently is easier as %(bzrcmd)s remembers the push l
     
 """
 
+
 man_foot = """\
 .SH "EXAMPLES"
 See
@@ -264,6 +270,7 @@ environment variable. Example content:
 .BR http://bazaar.canonical.com/BzrDocumentation
 """
 
+
 man_preamble = """\
 .\\\" Man page for %(bzrcmd)s (bazaar-ng)
 .\\\"
@@ -274,6 +281,7 @@ man_preamble = """\
 .\\\" Generation time: %(timestamp)s
 .\\\"
 """
+
 
 if __name__ == '__main__':
     main()
