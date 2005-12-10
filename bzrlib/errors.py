@@ -271,7 +271,7 @@ class HistoryMissing(BzrError):
 
 class DivergedBranches(BzrError):
     def __init__(self, branch1, branch2):
-        BzrError.__init__(self, "These branches have diverged.")
+        BzrError.__init__(self, "These branches have diverged.  Try merge.")
         self.branch1 = branch1
         self.branch2 = branch2
 
