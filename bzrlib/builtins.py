@@ -1753,12 +1753,13 @@ class cmd_missing(Command):
                      'long', 
                      'short',
                      'show-ids',
+                     'verbose'
                      ]
 
     def run(self, other_branch=None, reverse=False, mine_only=False,
             theirs_only=False, long=True, short=False, line=False, 
-            show_ids=False):
-        from bzrlib.missing import find_unmerged
+            show_ids=False, verbose=False):
+        from bzrlib.missing import find_unmerged, iter_log_data
         from bzrlib.log import log_formatter
         local_branch = bzrlib.branch.Branch.open_containing(".")[0]
         parent = local_branch.get_parent()
@@ -1778,8 +1779,8 @@ class cmd_missing(Command):
             remote_extra.reverse()
         if local_extra and not theirs_only:
             print "You have %d extra revision(s):" % len(local_extra)
-            for revno, revision_id in local_extra:
-                lf.show(revno, local_branch.get_revision(revision_id), None)
+            for data in iter_log_data(local_extra, local_branch, verbose):
+                lf.show(*data)
             printed_local = True
         else:
             printed_local = False
@@ -1787,8 +1788,8 @@ class cmd_missing(Command):
             if printed_local is True:
                 print "\n\n"
             print "You are missing %d revision(s):" % len(remote_extra)
-            for revno, revision_id in remote_extra:
-                lf.show(revno, remote_branch.get_revision(revision_id), None)
+            for data in iter_log_data(remote_extra, remote_branch, verbose):
+                lf.show(*data)
         if not remote_extra and not local_extra:
             status_code = 0
             print "Branches are up to date."
