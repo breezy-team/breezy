@@ -57,8 +57,8 @@ def main(argv):
     parser.add_option("-s", "--show-filename",
                       action="store_true", dest="show_filename", default=False,
                       help="print default filename on stdout")
-    parser.add_option("-f", "--file", dest="filename",
-                      help="write report to FILE", metavar="FILE")
+    parser.add_option("-o", "--output", dest="filename",
+                      help="write output to FILE", metavar="FILE")
     parser.add_option("-b", "--bzr-name", dest="bzr_name", default="bzr",
                       help="name of bzr executable", metavar="EXEC_NAME")
     parser.add_option("-q", "--quiet",
