@@ -102,7 +102,7 @@ class FakeBranch(object):
             raise NotImplementedError
         if self.email is not None:
             return StringIO(self.email)
-        raise errors.NoSuchFile
+        raise errors.NoSuchFile(filename)
 
 
 class InstrumentedConfig(config.Config):
@@ -511,10 +511,9 @@ class TestLocationConfig(TestCaseInTempDir):
         self.get_location_config('/a/c')
         record = InstrumentedConfigObj("foo")
         self.my_config._parser = record
+        print ("test_set_user_setting_sets_and_saves broken: creates .bazaar "
+               "in the top-level directory, not inside the test directory")
         return
-        # XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-        # broken: creates .bazaar in the top-level directory, not 
-        # inside the test directory
         self.my_config.set_user_option('foo', 'bar')
         self.assertEqual([('__contains__', '/a/c'),
                           ('__contains__', '/a/c/'),

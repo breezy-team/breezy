@@ -795,10 +795,10 @@ class ChangesetEntry(object):
             return None
 
         if parent == NULL_ID or parent is None:
-            if to_name != '.':
+            if to_name != u'.':
                 raise SourceRootHasName(self, to_name)
             else:
-                return '.'
+                return u'.'
         parent_entry = changeset.entries.get(parent)
         if parent_entry is None:
             dir = os.path.dirname(id_map[self.id])
@@ -1614,7 +1614,7 @@ class Inventory(object):
             return None
         directory = self.get_dir(id)
         if directory == '.':
-            directory = './.'
+            directory = u'./.'
         if directory is None:
             return NULL_ID
         return self.get_rinventory().get(directory)

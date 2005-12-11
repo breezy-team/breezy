@@ -28,8 +28,8 @@ try:
     from cElementTree import (ElementTree, SubElement, Element,
                               XMLTreeBuilder, fromstring, tostring)
 except ImportError:
-    ## from warnings import warn
-    ## warn('using slower ElementTree; consider installing cElementTree')
+    mutter('WARNING: using slower ElementTree; consider installing cElementTree'
+           " and make sure it's on your PYTHONPATH")
     from util.elementtree.ElementTree import (ElementTree, SubElement,
                                               Element, XMLTreeBuilder,
                                               fromstring, tostring)
