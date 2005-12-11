@@ -8,7 +8,7 @@ from bzrlib.tests import TestCaseInTempDir
 
 class TestMissing(TestCaseInTempDir):
     def test_missing(self):
-        missing = "You are missing the following revisions:"
+        missing = "You are missing 1 revision(s):"
 
         # create a source branch
         os.mkdir('a')
@@ -26,7 +26,7 @@ class TestMissing(TestCaseInTempDir):
 
         # compare a against b
         os.chdir('../a')
-        lines = self.capture('missing ../b').splitlines()
+        lines = self.capture('missing ../b', retcode=1).splitlines()
         # we're missing the extra revision here
         self.assertEqual(missing, lines[0])
         self.assertEqual(8, len(lines))
@@ -36,17 +36,18 @@ class TestMissing(TestCaseInTempDir):
         self.capture('commit -m merge')
 
         # compare again, but now we have the 'merge' commit extra
-        lines = self.capture('missing ../b').splitlines()
-        self.assertEqual("You have the following extra revisions:", lines[0])
+        lines = self.capture('missing ../b', retcode=1).splitlines()
+        self.assertEqual("You have 1 extra revision(s):", lines[0])
         self.assertEqual(8, len(lines))
 
         # relative to a, missing the 'merge' commit 
         os.chdir('../b')
-        lines = self.capture('missing ../a').splitlines()
+        lines = self.capture('missing ../a', retcode=1).splitlines()
         self.assertEqual(missing, lines[0])
         self.assertEqual(8, len(lines))
         
         # after a pull we're back on track
         self.capture('pull')
-        self.assertEqual("Branches are up to date.\n", self.capture('missing ../a'))
+        self.assertEqual("Branches are up to date.\n", 
+                         self.capture('missing ../a'))
 
