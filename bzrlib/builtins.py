@@ -1761,9 +1761,12 @@ class cmd_missing(Command):
         from bzrlib.missing import find_unmerged
         from bzrlib.log import log_formatter
         local_branch = bzrlib.branch.Branch.open_containing(".")[0]
+        parent = local_branch.get_parent()
         if other_branch is None:
+            other_branch = parent
+            if other_branch is None:
+                raise BzrCommandError("No missing location known or specified.")
             print "Using last location: " + local_branch.get_parent()
-            other_branch = local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
         local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
         log_format = get_log_format(long=long, short=short, line=line)
@@ -1788,6 +1791,8 @@ class cmd_missing(Command):
                 lf.show(revno, remote_branch.get_revision(revision_id), None)
         if not remote_extra and not local_extra:
             print "Branches are up to date."
+        if parent is None and other_branch is not None:
+            local_branch.set_parent(other_branch)
 
 
 class cmd_plugins(Command):
