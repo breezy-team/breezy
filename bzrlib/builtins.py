@@ -1774,7 +1774,7 @@ class cmd_missing(Command):
             local_extra.reverse()
             remote_extra.reverse()
         if local_extra and not theirs_only:
-            print "You have the following extra revisions:"
+            print "You have %d extra revision(s):" % len(local_extra)
             for revno, revision_id in local_extra:
                 lf.show(revno, local_branch.get_revision(revision_id), None)
             printed_local = True
@@ -1783,7 +1783,7 @@ class cmd_missing(Command):
         if remote_extra and not mine_only:
             if printed_local is True:
                 print "\n\n"
-            print "You are missing the following revisions:"
+            print "You are missing %d revision(s):" % len(remote_extra)
             for revno, revision_id in remote_extra:
                 lf.show(revno, remote_branch.get_revision(revision_id), None)
         if not remote_extra and not local_extra:
