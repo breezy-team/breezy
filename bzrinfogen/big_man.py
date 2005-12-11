@@ -16,27 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""bzr_man.py - create man page from built-in bzr help and static text
+"""big_man.py - create man page from built-in bzr help and static text
 
-Plan (devised by jblack and ndim 2005-12-10):
-  * one bzr_gen_stuff.py script in top level dir right beside bzr
-  * one gen_stuff_extras/ directory
-  * several generator scripts like
-          gen_stuff_extras/gen_man_page.py
-                           gen_docbook_xml.py
-			   gen_html.py
-                           gen_bash_completion.py
-			   gen_zsh_completion.py
-  * scripts are called by running "bzr_gen_stuff.py --man-page" or
-    "--bash-completion"
-  * one test case which iterates through all gen_*.py scripts and
-    tries to generate all the file types, checking that all generators
-    work
-  * those generator scripts walk through the command and option data
-    structures to extract the required information
-  * the actual names are just prototypes and subject to change
-
-TODO (for man page):
+TODO:
+  * use usage information instead of simple "bzr foo" in COMMAND OVERVIEW
   * add command aliases
 """
 
@@ -44,25 +27,21 @@ import os, sys
 import bzrlib, bzrlib.help, bzrlib.commands
 import textwrap
 import time
-import re
 
-def main():
+
+def get_filename(options):
+    return "%s.1" % (options.bzr_name)
+
+
+def infogen(options, outfile):
     t = time.time()
     tt = time.gmtime(t)
     params = \
-           { "bzrcmd": "bzr",
+           { "bzrcmd": options.bzr_name,
              "datestamp": time.strftime("%Y-%m-%d",tt),
              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000",tt),
              "version": bzrlib.__version__,
              }
-
-    filename = "bzr.1"
-    if len(sys.argv) == 2:
-        filename = sys.argv[1]
-    if filename == "-":
-        outfile = sys.stdout
-    else:
-        outfile = open(filename,"w")
 
     outfile.write(man_preamble % params)
     outfile.write(man_escape(man_head % params))
@@ -261,6 +240,20 @@ environment variable. Example content:
   check_signatures=check-available
   create_signatures=when-required
 
+.TP
+.I "~/.bazaar/branches.conf"
+Override settings for a specific branch in this file. The sections in this file are named after the locations of the branch, and the settings in that section look just like the ones in the
+.B DEFAULT
+section of the
+.I "~/.bazaar/bazaar.conf"
+file. Example:
+
+  [/home/john/src/boofar.dev-john]
+  email="John Doe <john@boofar.example.com>
+
+  [http://erk.example.com/boo]
+  check_signatures=always
+
 .SH "SEE ALSO"
 .UR http://www.bazaar-ng.org/
 .BR http://www.bazaar-ng.org/,
@@ -281,7 +274,3 @@ man_preamble = """\
 .\\\" Generation time: %(timestamp)s
 .\\\"
 """
-
-
-if __name__ == '__main__':
-    main()
