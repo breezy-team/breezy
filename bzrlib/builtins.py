@@ -1790,9 +1790,13 @@ class cmd_missing(Command):
             for revno, revision_id in remote_extra:
                 lf.show(revno, remote_branch.get_revision(revision_id), None)
         if not remote_extra and not local_extra:
+            status_code = 0
             print "Branches are up to date."
+        else:
+            status_code = 1
         if parent is None and other_branch is not None:
             local_branch.set_parent(other_branch)
+        return status_code
 
 
 class cmd_plugins(Command):
