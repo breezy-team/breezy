@@ -51,7 +51,7 @@ Run "bzr-infogen.py --help" for usage information.
 
 
 import sys
-import bzrinfogen
+import doc_generate
 
 
 def main(argv):
@@ -73,7 +73,7 @@ def main(argv):
         parser.error("incorrect number of arguments")
 
     infogen_type = args[1]
-    infogen_mod = bzrinfogen.get_infogen_mod(infogen_type)
+    infogen_mod = bzrinfogen.generate(infogen_type)
 
     if options.filename:
         outfilename = options.filename

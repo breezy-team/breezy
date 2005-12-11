@@ -24,11 +24,11 @@
 
 import sys
 
-
-def get_infogen_mod(infogen_type):
-    mod_name = "bzrinfogen.big_%s" % (infogen_type)
+def generate(doc_type, target):
+    mod_name = "%s_%s" % (doc_type, target)
     mod = __import__(mod_name)
     components = mod_name.split('.')
     for comp in components[1:]:
         mod = getattr(mod, comp)
     return mod
+
