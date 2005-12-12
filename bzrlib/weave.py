@@ -1110,12 +1110,24 @@ def profile_main(argv):
     return ret
 
 
+def lsprofile_main(argv): 
+    from bzrlib.lsprof import profile
+    ret,stats = profile(main, argv)
+    stats.sort()
+    stats.pprint()
+    return ret
+
+
 if __name__ == '__main__':
     import sys
     if '--profile' in sys.argv:
         args = sys.argv[:]
         args.remove('--profile')
         sys.exit(profile_main(args))
+    elif '--lsprof' in sys.argv:
+        args = sys.argv[:]
+        args.remove('--lsprof')
+        sys.exit(lsprofile_main(args))
     else:
         sys.exit(main(sys.argv))
 

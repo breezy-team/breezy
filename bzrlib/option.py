@@ -203,6 +203,8 @@ _global_option('remember', help='Remember the specified location as a'
                ' default.')
 _global_option('reprocess', help='Reprocess to reduce spurious conflicts')
 _global_option('kind', type=str)
+_global_option('dry-run',
+               help="show what would be done, but don't actually do anything")
 
 
 def _global_short(short_name, long_name):

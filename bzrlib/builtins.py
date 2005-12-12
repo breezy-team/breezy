@@ -14,10 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""builtin bzr commands"""
+
 # DO NOT change this to cStringIO - it results in control files 
 # written as UCS4
 # FIXIT! (Only deal with byte streams OR unicode at any one layer.)
 # RBC 20051018
+
 from StringIO import StringIO
 import sys
 import os
@@ -214,17 +217,28 @@ class cmd_add(Command):
     implicitly add the parent, and so on up to the root. This means
     you should never need to explictly add a directory, they'll just
     get added when you add a file in the directory.
+
+    --dry-run will show which files would be added, but not actually 
+    add them.
     """
     takes_args = ['file*']
-    takes_options = ['no-recurse']
-    
-    def run(self, file_list, no_recurse=False):
-        from bzrlib.add import smart_add, add_reporter_print, add_reporter_null
-        if is_quiet():
-            reporter = add_reporter_null
+    takes_options = ['no-recurse', 'dry-run']
+
+    def run(self, file_list, no_recurse=False, dry_run=False):
+        import bzrlib.add
+
+        if dry_run:
+            if is_quiet():
+                # This is pointless, but I'd rather not raise an error
+                action = bzrlib.add.add_action_null
+            else:
+                action = bzrlib.add.add_action_print
+        elif is_quiet():
+            action = bzrlib.add.add_action_add
         else:
-            reporter = add_reporter_print
-        smart_add(file_list, not no_recurse, reporter)
+            action = bzrlib.add.add_action_add_and_print
+
+        bzrlib.add.smart_add(file_list, not no_recurse, action)
 
 
 class cmd_mkdir(Command):
@@ -1753,17 +1767,21 @@ class cmd_missing(Command):
                      'long', 
                      'short',
                      'show-ids',
+                     'verbose'
                      ]
 
     def run(self, other_branch=None, reverse=False, mine_only=False,
             theirs_only=False, long=True, short=False, line=False, 
-            show_ids=False):
-        from bzrlib.missing import find_unmerged
+            show_ids=False, verbose=False):
+        from bzrlib.missing import find_unmerged, iter_log_data
         from bzrlib.log import log_formatter
         local_branch = bzrlib.branch.Branch.open_containing(".")[0]
+        parent = local_branch.get_parent()
         if other_branch is None:
+            other_branch = parent
+            if other_branch is None:
+                raise BzrCommandError("No missing location known or specified.")
             print "Using last location: " + local_branch.get_parent()
-            other_branch = local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
         local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
         log_format = get_log_format(long=long, short=short, line=line)
@@ -1774,20 +1792,26 @@ class cmd_missing(Command):
             local_extra.reverse()
             remote_extra.reverse()
         if local_extra and not theirs_only:
-            print "You have the following extra revisions:"
-            for revno, revision_id in local_extra:
-                lf.show(revno, local_branch.get_revision(revision_id), None)
+            print "You have %d extra revision(s):" % len(local_extra)
+            for data in iter_log_data(local_extra, local_branch, verbose):
+                lf.show(*data)
             printed_local = True
         else:
             printed_local = False
         if remote_extra and not mine_only:
             if printed_local is True:
                 print "\n\n"
-            print "You are missing the following revisions:"
-            for revno, revision_id in remote_extra:
-                lf.show(revno, remote_branch.get_revision(revision_id), None)
+            print "You are missing %d revision(s):" % len(remote_extra)
+            for data in iter_log_data(remote_extra, remote_branch, verbose):
+                lf.show(*data)
         if not remote_extra and not local_extra:
+            status_code = 0
             print "Branches are up to date."
+        else:
+            status_code = 1
+        if parent is None and other_branch is not None:
+            local_branch.set_parent(other_branch)
+        return status_code
 
 
 class cmd_plugins(Command):
