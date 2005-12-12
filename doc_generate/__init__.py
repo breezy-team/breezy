@@ -24,8 +24,8 @@
 
 import sys
 
-def generate(doc_type, target):
-    mod_name = "%s_%s" % (doc_type, target)
+def generate(target):
+    mod_name = "autodoc_%s" % (target)
     mod = __import__(mod_name)
     components = mod_name.split('.')
     for comp in components[1:]:
