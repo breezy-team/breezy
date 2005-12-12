@@ -19,7 +19,7 @@
 import os
 import sys
 
-from bzrlib.tests import TestCase, _load_module_by_name
+from bzrlib.tests import TestCase, TestCaseInTempDir, _load_module_by_name
 
 
 class SelftestTests(TestCase):
@@ -35,8 +35,17 @@ class SelftestTests(TestCase):
 
 
 class MetaTestLog(TestCase):
+
     def test_logging(self):
         """Test logs are captured when a test fails."""
         self.log('a test message')
         self._log_file.flush()
         self.assertContainsRe(self._get_log(), 'a test message\n')
+
+
+class TestTreeShape(TestCaseInTempDir):
+
+    def test_unicode_paths(self):
+        filename = u'hell\u00d8'
+        self.build_tree_contents([(filename, 'contents of hello')])
+        self.failUnlessExists(filename)
