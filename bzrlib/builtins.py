@@ -14,10 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""builtin bzr commands"""
+
 # DO NOT change this to cStringIO - it results in control files 
 # written as UCS4
 # FIXIT! (Only deal with byte streams OR unicode at any one layer.)
 # RBC 20051018
+
 from StringIO import StringIO
 import sys
 import os
@@ -214,17 +217,28 @@ class cmd_add(Command):
     implicitly add the parent, and so on up to the root. This means
     you should never need to explictly add a directory, they'll just
     get added when you add a file in the directory.
+
+    --dry-run will show which files would be added, but not actually 
+    add them.
     """
     takes_args = ['file*']
-    takes_options = ['no-recurse']
-    
-    def run(self, file_list, no_recurse=False):
-        from bzrlib.add import smart_add, add_reporter_print, add_reporter_null
-        if is_quiet():
-            reporter = add_reporter_null
+    takes_options = ['no-recurse', 'dry-run']
+
+    def run(self, file_list, no_recurse=False, dry_run=False):
+        import bzrlib.add
+
+        if dry_run:
+            if is_quiet():
+                # This is pointless, but I'd rather not raise an error
+                action = bzrlib.add.add_action_null
+            else:
+                action = bzrlib.add.add_action_print
+        elif is_quiet():
+            action = bzrlib.add.add_action_add
         else:
-            reporter = add_reporter_print
-        smart_add(file_list, not no_recurse, reporter)
+            action = bzrlib.add.add_action_add_and_print
+
+        bzrlib.add.smart_add(file_list, not no_recurse, action)
 
 
 class cmd_mkdir(Command):
