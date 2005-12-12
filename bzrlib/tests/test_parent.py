@@ -27,13 +27,13 @@ from bzrlib.clone import copy_branch
 class TestParent(TestCaseInTempDir):
     def test_no_default_parent(self):
         """Branches should have no parent by default"""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         self.assertEquals(b.get_parent(), None)
         
     
     def test_set_get_parent(self):
         """Set and then re-get the parent"""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         url = 'http://bazaar-ng.org/bzr/bzr.dev'
         b.set_parent(url)
         self.assertEquals(b.get_parent(), url)

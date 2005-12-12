@@ -47,7 +47,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_simple_commit(self):
         """Commit and check two versions of a single file."""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         file('hello', 'w').write('hello world')
         b.working_tree().add('hello')
         b.working_tree().commit(message='add hello')
@@ -71,7 +71,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_delete_commit(self):
         """Test a commit with a deleted file"""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         file('hello', 'w').write('hello world')
         b.working_tree().add(['hello'], ['hello-id'])
         b.working_tree().commit(message='add hello')
@@ -84,7 +84,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_pointless_commit(self):
         """Commit refuses unless there are changes or it's forced."""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         file('hello', 'w').write('hello')
         b.working_tree().add(['hello'])
         b.working_tree().commit(message='add hello')
@@ -97,7 +97,7 @@ class TestCommit(TestCaseInTempDir):
         
     def test_commit_empty(self):
         """Commiting an empty tree works."""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         b.working_tree().commit(message='empty tree', allow_pointless=True)
         self.assertRaises(PointlessCommit,
                           b.working_tree().commit,
@@ -109,7 +109,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_selective_delete(self):
         """Selective commit in tree with deletions"""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         file('hello', 'w').write('hello')
         file('buongia', 'w').write('buongia')
         b.working_tree().add(['hello', 'buongia'],
@@ -144,8 +144,8 @@ class TestCommit(TestCaseInTempDir):
 
     def test_commit_rename(self):
         """Test commit of a revision where a file is renamed."""
-        b = Branch.initialize('.')
-        tree = WorkingTree('.', b)
+        b = Branch.initialize(u'.')
+        tree = WorkingTree(u'.', b)
         self.build_tree(['hello'], line_endings='binary')
         tree.add(['hello'], ['hello-id'])
         tree.commit(message='one', rev_id='test@rev-1', allow_pointless=False)
@@ -171,7 +171,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_reused_rev_id(self):
         """Test that a revision id cannot be reused in a branch"""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         b.working_tree().commit('initial', rev_id='test@rev-1', allow_pointless=True)
         self.assertRaises(Exception,
                           b.working_tree().commit,
@@ -182,7 +182,7 @@ class TestCommit(TestCaseInTempDir):
     def test_commit_move(self):
         """Test commit of revisions with moved files and directories"""
         eq = self.assertEquals
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         r1 = 'test@rev-1'
         self.build_tree(['hello', 'a/', 'b/'])
         b.working_tree().add(['hello', 'a', 'b'], ['hello-id', 'a-id', 'b-id'])
@@ -215,7 +215,7 @@ class TestCommit(TestCaseInTempDir):
         
     def test_removed_commit(self):
         """Commit with a removed file"""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         wt = b.working_tree()
         file('hello', 'w').write('hello world')
         b.working_tree().add(['hello'], ['hello-id'])
@@ -231,7 +231,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_committed_ancestry(self):
         """Test commit appends revisions to ancestry."""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         rev_ids = []
         for i in range(4):
             file('hello', 'w').write((str(i) * 4) + '\n')
@@ -248,7 +248,7 @@ class TestCommit(TestCaseInTempDir):
             eq(anc, [None] + rev_ids[:i+1])
 
     def test_commit_new_subdir_child_selective(self):
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         self.build_tree(['dir/', 'dir/file1', 'dir/file2'])
         b.working_tree().add(['dir', 'dir/file1', 'dir/file2'],
               ['dirid', 'file1id', 'file2id'])
@@ -262,7 +262,7 @@ class TestCommit(TestCaseInTempDir):
     def test_strict_commit(self):
         """Try and commit with unknown files and strict = True, should fail."""
         from bzrlib.errors import StrictCommitFailed
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         file('hello', 'w').write('hello world')
         b.working_tree().add('hello')
         file('goodbye', 'w').write('goodbye cruel world!')
@@ -273,14 +273,14 @@ class TestCommit(TestCaseInTempDir):
         """Try and commit with no unknown files and strict = True,
         should work."""
         from bzrlib.errors import StrictCommitFailed
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         file('hello', 'w').write('hello world')
         b.working_tree().add('hello')
         b.working_tree().commit(message='add hello', strict=True)
 
     def test_nonstrict_commit(self):
         """Try and commit with unknown files and strict = False, should work."""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         file('hello', 'w').write('hello world')
         b.working_tree().add('hello')
         file('goodbye', 'w').write('goodbye cruel world!')
@@ -289,7 +289,7 @@ class TestCommit(TestCaseInTempDir):
     def test_nonstrict_commit_without_unknowns(self):
         """Try and commit with no unknown files and strict = False,
         should work."""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         file('hello', 'w').write('hello world')
         b.working_tree().add('hello')
         b.working_tree().commit(message='add hello', strict=False)
@@ -298,7 +298,7 @@ class TestCommit(TestCaseInTempDir):
         import bzrlib.gpg
         import bzrlib.commit as commit
         oldstrategy = bzrlib.gpg.GPGStrategy
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
         self.failIf(branch.revision_store.has_id('A', 'sig'))
         try:
@@ -317,7 +317,7 @@ class TestCommit(TestCaseInTempDir):
         import bzrlib.gpg
         import bzrlib.commit as commit
         oldstrategy = bzrlib.gpg.GPGStrategy
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
         self.failIf(branch.revision_store.has_id('A', 'sig'))
         try:
@@ -330,7 +330,7 @@ class TestCommit(TestCaseInTempDir):
                               branch, "base",
                               allow_pointless=True,
                               rev_id='B')
-            branch = Branch.open('.')
+            branch = Branch.open(u'.')
             self.assertEqual(branch.revision_history(), ['A'])
             self.failIf(branch.revision_store.has_id('B'))
         finally:
@@ -338,7 +338,7 @@ class TestCommit(TestCaseInTempDir):
 
     def test_commit_invokes_hooks(self):
         import bzrlib.commit as commit
-        branch = Branch.initialize('.')
+        branch = Branch.initialize(u'.')
         calls = []
         def called(branch, rev_id):
             calls.append('called')

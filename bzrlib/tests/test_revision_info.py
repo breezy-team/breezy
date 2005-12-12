@@ -42,14 +42,14 @@ class TestRevisionInfo(TestCaseInTempDir):
         """Test that 'bzr revision-info' reports the correct thing.
         """
 
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         b.working_tree().commit('Commit one', rev_id='a@r-0-1')
         b.working_tree().commit('Commit two', rev_id='a@r-0-2')
         b.working_tree().commit('Commit three', rev_id='a@r-0-3')
 
         # Make sure revision-info without any arguments throws an exception
-        self.check_error('bzr: ERROR: bzrlib.errors.BzrCommandError: '
+        self.check_error('bzr: ERROR: '
                          'You must supply a revision identifier\n',
                          'revision-info')
 
@@ -85,7 +85,7 @@ class TestRevisionInfo(TestCaseInTempDir):
     def test_cat_revision(self):
         """Test bzr cat-revision.
         """
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         b.working_tree().commit('Commit one', rev_id='a@r-0-1')
         b.working_tree().commit('Commit two', rev_id='a@r-0-2')

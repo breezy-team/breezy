@@ -19,6 +19,22 @@ UNRELEASED CHANGES
       points to C:\Documents and Settings\User Name\Application Data), HOME.
       (John Arbash Meinel)
 
+    * Plugins with the same name in different directories in the bzr plugin
+      path are no longer loaded: only the first successfully loaded one is
+      used. (Robert Collins)
+
+    * Use systems' external ssh command to open connections if possible.  
+      This gives better integration with user settings such as ProxyCommand.
+      (James Henstridge)
+
+    * Sftp paths can now be relative, or local, according to the IETF draft spec.
+      Paths now take the form:
+      sftp://user:pass@host:port/relative/path
+      or
+      sftp://user:pass@host:port/%2Fabsolute/path
+      or
+      sftp://user:pass@host:port//absolute/path
+
   IMPROVEMENTS:
 
     * "bzr INIT dir" now initializes the specified directory, and creates 
@@ -56,6 +72,19 @@ UNRELEASED CHANGES
     * Commit editor temporary files now start with 'bzr_log.', to allow 
       text editors to match the file name and set up appropriate modes or 
       settings.  (Magnus Therning)
+
+    * Improved performance when integrating changes from a remote weave.  
+      (Goffredo Baroncelli)
+
+    * Sftp will attempt to cache the connection, so it is more likely that
+      a connection will be reused, rather than requiring multiple password
+      requests.
+
+    * bzr revno now takes an optional argument indicating the branch whose
+      revno should be printed.  (Michael Ellerman)
+
+    * bzr cat defaults to printing the last version of the file.  
+      (#3632, Matthieu Moy)
 
   BUG FIXES:
 
@@ -96,6 +125,12 @@ UNRELEASED CHANGES
 
     * Show number of revisions pushed/pulled/merged. (Robey Pointer)
 
+    * Keep a cached copy of the basis inventory to speed up operations 
+      that need to refer to it.  (Johan Rydberg, Martin Pool)
+
+    * Fix bugs in bzr status display of non-ascii characters.  (Martin 
+      Pool)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
@@ -115,6 +150,15 @@ UNRELEASED CHANGES
 
     * Delay in selftest/testhashcash is now issued under win32 and Cygwin.
       (John Arbash Meinel)
+
+    * Use terminal width to align verbose test output.  (Martin Pool)
+
+    * Blackbox tests are maintained within the bzrlib.tests.blackbox directory.
+      If adding a new test script please add that to
+      bzrlib.tests.blackbox.__init__. (Robert Collins)
+
+    * Much better error message if one of the test suites can't be 
+      imported.  (Martin Pool)
 
   INTERNALS:
 
@@ -162,10 +206,13 @@ UNRELEASED CHANGES
 
     * bzrlib.add.smart_add_branch is now smart_add_tree. (Robert Collins)
 
-    * New basic_io serialization format. (Martin Pool)
+    * New "rio" serialization format, similar to rfc-822. (Martin Pool)
 
     * Rename selftests to `bzrlib.tests.test_foo`.  (John A Meinel, Martin 
       Pool)
+
+    * bzrlib.plugin.all_plugins has been changed from an attribute to a 
+      query method. (Robert Collins)
    
 bzr 0.6 2005-10-28
 

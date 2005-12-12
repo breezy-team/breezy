@@ -57,7 +57,7 @@ def _prepare_file_list(file_list):
     if sys.platform == 'win32':
         file_list = glob_expand_for_win32(file_list)
     if not file_list:
-        file_list = ['.']
+        file_list = [u'.']
     file_list = list(file_list)
     return file_list
 

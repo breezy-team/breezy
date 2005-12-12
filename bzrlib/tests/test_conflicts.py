@@ -29,7 +29,7 @@ class TestConflicts(TestCaseInTempDir):
 
     def test_conflicts(self):
         """Conflicts are detected properly"""
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
         file('hello', 'w').write('hello world4')
         file('hello.THIS', 'w').write('hello world2')
         file('hello.BASE', 'w').write('hello world1')
