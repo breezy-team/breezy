@@ -654,22 +654,27 @@ class TestTransportMixIn(object):
             self.assertRaises(TransportNotPossible, t.list_dir, '.')
             return
 
+        def sorted_list(d):
+            l = list(t.list_dir(d))
+            l.sort()
+            return l
+
         # SftpServer creates control files in the working directory
         # so lets move down a directory to be safe
         os.mkdir('wd')
         os.chdir('wd')
         t = t.clone('wd')
 
-        self.assertEqual([], list(t.list_dir('.')))
+        self.assertEqual([], sorted_list(u'.'))
         self.build_tree(['a', 'b', 'c/', 'c/d', 'c/e'])
 
-        self.assertEqual(['a', 'b', 'c'], list(t.list_dir('.')))
-        self.assertEqual(['d', 'e'], list(t.list_dir('c')))
+        self.assertEqual([u'a', u'b', u'c'], sorted_list(u'.'))
+        self.assertEqual([u'd', u'e'], sorted_list(u'c'))
 
         os.remove('c/d')
         os.remove('b')
-        self.assertEqual(['a', 'c'], list(t.list_dir('.')))
-        self.assertEqual(['e'], list(t.list_dir('c')))
+        self.assertEqual([u'a', u'c'], sorted_list('.'))
+        self.assertEqual([u'e'], sorted_list(u'c'))
 
         self.assertListRaises(NoSuchFile, t.list_dir, 'q')
         self.assertListRaises(NoSuchFile, t.list_dir, 'c/f')

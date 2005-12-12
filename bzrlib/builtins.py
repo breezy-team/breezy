@@ -157,9 +157,10 @@ class cmd_revno(Command):
     """Show current revision number.
 
     This is equal to the number of revisions on this branch."""
+    takes_args = ['location?']
     @display_command
-    def run(self):
-        print Branch.open_containing(u'.')[0].revno()
+    def run(self, location=u'.'):
+        print Branch.open_containing(location)[0].revno()
 
 
 class cmd_revision_info(Command):
@@ -1246,17 +1247,24 @@ class cmd_commit(Command):
             unchanged=False, strict=False):
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
-        from bzrlib.msgeditor import edit_commit_message
+        from bzrlib.msgeditor import edit_commit_message, \
+                make_commit_message_template
         from bzrlib.status import show_status
-        from cStringIO import StringIO
+        from tempfile import TemporaryFile
+        import codecs
 
+        # TODO: Need a blackbox test for invoking the external editor; may be
+        # slightly problematic to run this cross-platform.
+
+        # TODO: do more checks that the commit will succeed before 
+        # spending the user's valuable time typing a commit message.
+        #
+        # TODO: if the commit *does* happen to fail, then save the commit 
+        # message to a temporary file where it can be recovered
         tree, selected_list = tree_files(selected_list)
         if message is None and not file:
-            catcher = StringIO()
-            show_status(tree.branch, specific_files=selected_list,
-                        to_file=catcher)
-            message = edit_commit_message(catcher.getvalue())
-
+            template = make_commit_message_template(tree, selected_list)
+            message = edit_commit_message(template)
             if message is None:
                 raise BzrCommandError("please specify a commit message"
                                       " with either --message or --file")
@@ -1769,7 +1777,7 @@ class cmd_plugins(Command):
     def run(self):
         import bzrlib.plugin
         from inspect import getdoc
-        for plugin in bzrlib.plugin.all_plugins:
+        for name, plugin in bzrlib.plugin.all_plugins().items():
             if hasattr(plugin, '__path__'):
                 print plugin.__path__[0]
             elif hasattr(plugin, '__file__'):
