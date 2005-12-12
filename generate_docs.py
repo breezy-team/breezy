@@ -15,31 +15,35 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""%(prog)s - generate information from built-in bzr help
 
-"""bzr-infogen.py - generate information from built-in bzr help
-
-bzr-infogen.py creates a file with information on bzr in one of
-several different output formats:\n
+%(prog)s creates a file with information on bzr in one of
+several different output formats:
 
     man              man page
     bash_completion  bash completion script
     ...
 
-Run "bzr-infogen.py --help" for usage information.
+Examples: 
+
+    python2.4 generated-docs.py man
+    python2.4 generated-docs.py bash_completion
+
+Run "%(prog)s --help" for the option reference.
 """
 
 # Plan (devised by jblack and ndim 2005-12-10):
 #   * one generate_doc.py script in top level dir right beside bzr
-#   * one doc_generate/ directory (python module)
+#   * one tools/doc_generate/ directory (python module)
 #     We did not put the stuff into bzrlib because we thought
 #     that all this stuff doesn't need to get loaded every time you run bzr.
 #     However, I'm not sure that is actually true (ndim 2005-12-11).
 #   * several generator scripts like
-#           doc_generate/autodoc_man_page.py
-#                        autodoc_docbook_xml.py
-#                        autodoc_html.py
-#                        autodoc_bash_completion.py
-#                        autodoc_zsh_completion.py
+#           tools/doc_generate/autodoc_man_page.py
+#                              autodoc_docbook_xml.py
+#                              autodoc_html.py
+#                              autodoc_bash_completion.py
+#                              autodoc_zsh_completion.py
 #   * scripts are called by running something like
 #     "python2.4 generated_docs.py --man-page"         or
 #     "python2.4 generated_docs.py --bash-completion"   or
@@ -54,17 +58,7 @@ Run "bzr-infogen.py --help" for usage information.
 
 
 import sys
-import doc_generate
-
-descr = """generated-docs.py creates a file with information on bzr in a variety
-of output formats. Currently included: man and bash_completion.
-
-Examples: 
-
-    python2.4 generated-docs.py --man
-    python2.4 generated-docs.py --bash_completion
-    python2.4 generated-docs.py --all
-"""
+import tools.doc_generate
 
 def main(argv):
     from optparse import OptionParser
@@ -93,7 +87,7 @@ def main(argv):
         sys.exit(1)
 
     infogen_type = args[1]
-    infogen_mod = doc_generate.generate(infogen_type)
+    infogen_mod = tools.doc_generate.get_module(infogen_type)
 
     if options.filename:
         outfilename = options.filename
@@ -111,9 +105,8 @@ def main(argv):
     infogen_mod.infogen(options, outfile)
 
 def print_extended_help(option, opt, value, parser):
-    print >>sys.stdout, __doc__
-    sys.exit(0)
-
+        print >>sys.stdout, __doc__ % {"prog":sys.argv[0]}
+        sys.exit(0)
 
 if __name__ == '__main__':
     main(sys.argv)
