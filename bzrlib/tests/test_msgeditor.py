@@ -37,7 +37,7 @@ class MsgEditorTest(TestCaseInTempDir):
     
     def test_commit_template(self):
         """Test building a commit message template"""
-        working_tree = make_uncommitted_tree()
+        working_tree = self.make_uncommitted_tree()
         template = make_commit_message_template(working_tree, None)
         self.assertEqualDiff(template,
 u"""\
