@@ -76,8 +76,8 @@ def getcommand_list (params):
         cmd_help = cmd_object.help()
         if cmd_help:
             firstline = cmd_help.split('\n', 1)[0]
-            tmp = '.TP\n.B "%s %s"\n%s\n' % (bzrcmd, cmd_name,
-                                                        firstline)
+            usage = bzrlib.help.command_usage(cmd_object)
+            tmp = '.TP\n.B "%s"\n%s\n' % (usage, firstline)
             output = output + tmp
         else:
             raise RuntimeError, "Command '%s' has no help text" % (cmd_name)
@@ -85,9 +85,11 @@ def getcommand_list (params):
 
 
 def format_command (params, cmd):
-    subsection_header = '.SS "%s %s"\n' % (params["bzrcmd"], cmd.name())
-    cmdusage = '.TP\n.B "Usage: %s"\n.PP\n' % (bzrlib.help.command_usage(cmd))
+    subsection_header = '.SS "%s"\n' % (bzrlib.help.command_usage(cmd))
     doc = "%s\n" % (cmd.__doc__)
+    docsplit = cmd.__doc__.split('\n')
+    doc = '\n'.join([docsplit[0]] + [line[4:] for line in docsplit[1:]])
+
     option_str = ""
     options = cmd.options()
     # option walk code stolen from bzrlib/help.py
@@ -107,7 +109,7 @@ def format_command (params, cmd):
             wrapped = textwrap.fill(l, initial_indent='',
                                     subsequent_indent=30*' ')
             option_str = option_str + wrapped + '\n'       
-    return subsection_header + cmdusage + doc + option_str
+    return subsection_header + option_str + "\n" + doc + "\n"
 
 
 def getcommand_help(params):
