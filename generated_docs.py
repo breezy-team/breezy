@@ -29,19 +29,22 @@ Run "bzr-infogen.py --help" for usage information.
 """
 
 # Plan (devised by jblack and ndim 2005-12-10):
-#   * one bzr-infogen.py script in top level dir right beside bzr
-#   * one bzrinfogen/ directory (python module)
-#     We did not put the stuff into bzrlib/infogen/ because we thought
+#   * one generate_doc.py script in top level dir right beside bzr
+#   * one doc_generate/ directory (python module)
+#     We did not put the stuff into bzrlib because we thought
 #     that all this stuff doesn't need to get loaded every time you run bzr.
 #     However, I'm not sure that is actually true (ndim 2005-12-11).
 #   * several generator scripts like
-#           bzrinfogen/gen_man_page.py
-#                      gen_docbook_xml.py
-#                      gen_html.py
-#                      gen_bash_completion.py
-#                      gen_zsh_completion.py
+#           doc_generate/autodoc_man_page.py
+#                        autodoc_docbook_xml.py
+#                        autodoc_html.py
+#                        autodoc_bash_completion.py
+#                        autodoc_zsh_completion.py
 #   * scripts are called by running something like
-#     "bzr-infogen.py --man-page" or "bzr-infogen.py --bash-completion"
+#     "python2.4 generated_docs.py --man-page"         or
+#     "python2.4 generated_docs.py --bash-completion"   or
+#     "pytohn2.4 generated_docs.py --all"
+#     
 #   * one test case which iterates through all gen_*.py scripts and
 #     tries to generate all the file types, checking that all generators
 #     work (we'll let bzrinfogen/__init__.py provide the list to walk through)
