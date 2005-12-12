@@ -73,7 +73,7 @@ def main(argv):
         parser.error("incorrect number of arguments")
 
     infogen_type = args[1]
-    infogen_mod = bzrinfogen.generate(infogen_type)
+    infogen_mod = doc_generate.generate(infogen_type)
 
     if options.filename:
         outfilename = options.filename
