@@ -260,7 +260,7 @@ class TestCDVDiffLib(TestCase):
                           , list(unified_diff(txt_a, txt_b
                                         , sequencematcher=SequenceMatcher)))
 
-class TestCDVDiffLibFiles(TestCase):
+class TestCDVDiffLibFiles(TestCaseInTempDir):
 
     def test_cdv_unified_diff_files(self):
         from bzrlib.cdv.cdvdifflib import unified_diff_files
