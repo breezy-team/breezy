@@ -1761,7 +1761,7 @@ class cmd_missing(Command):
             show_ids=False, verbose=False):
         from bzrlib.missing import find_unmerged, iter_log_data
         from bzrlib.log import log_formatter
-        local_branch = bzrlib.branch.Branch.open_containing(".")[0]
+        local_branch = bzrlib.branch.Branch.open_containing(u".")[0]
         parent = local_branch.get_parent()
         if other_branch is None:
             other_branch = parent
