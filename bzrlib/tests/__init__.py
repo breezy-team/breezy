@@ -657,6 +657,7 @@ def test_suite():
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_msgeditor',
                    'bzrlib.tests.test_selftest',
+                   'bzrlib.tests.test_missing',
                    ]
 
     print '%10s: %s' % ('bzr', os.path.realpath(sys.argv[0]))
