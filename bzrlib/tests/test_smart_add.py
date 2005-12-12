@@ -4,7 +4,7 @@ import unittest
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.branch import Branch
 from bzrlib.errors import NotBranchError
-from bzrlib.inventory import InventoryFile
+from bzrlib.inventory import InventoryFile, Inventory
 from bzrlib.workingtree import WorkingTree
 
 class TestSmartAdd(TestCaseInTempDir):
@@ -15,7 +15,7 @@ class TestSmartAdd(TestCaseInTempDir):
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
         branch = Branch.initialize(u".")
-        smart_add((u".",), recurse=True)
+        smart_add((u".",))
         for path in paths:
             self.assertNotEqual(branch.working_tree().path2id(path), None)
 
@@ -26,7 +26,7 @@ class TestSmartAdd(TestCaseInTempDir):
         self.build_tree(paths)
         branch = Branch.initialize(u".")
         os.chdir("original")
-        smart_add((u".",), recurse=True)
+        smart_add((u".",))
         for path in paths:
             self.assertNotEqual(branch.working_tree().path2id(path), None)
 
@@ -44,8 +44,7 @@ class TestSmartAdd(TestCaseInTempDir):
 
     def test_add_above_tree_preserves_tree(self):
         """Test nested trees are not affect by an add above them."""
-        from bzrlib.add import smart_add, add_reporter_null
-        
+        from bzrlib.add import smart_add
         paths = ("original/", "original/file1", "original/file2")
         child_paths = ("path",)
         full_child_paths = ("original/child", "original/child/path")
@@ -55,7 +54,7 @@ class TestSmartAdd(TestCaseInTempDir):
         self.build_tree(build_paths)
         branch = Branch.initialize(u".")
         child_branch = Branch.initialize("original/child")
-        smart_add((u".",), True, add_reporter_null)
+        smart_add((u".",))
         for path in paths:
             self.assertNotEqual((path, branch.working_tree().path2id(path)),
                                 (path, None))
@@ -74,7 +73,18 @@ class TestSmartAdd(TestCaseInTempDir):
         smart_add(paths)
         for path in paths:
             self.assertNotEqual(branch.working_tree().path2id(path), None)
-            
+
+    def test_add_dry_run(self):
+        """Test a dry run add, make sure nothing is added."""
+        from bzrlib.commands import run_bzr
+        eq = self.assertEqual
+        b = Branch.initialize(u'.')
+        t = b.working_tree()
+        self.build_tree(['inertiatic/', 'inertiatic/esp'])
+        eq(list(t.unknowns()), ['inertiatic'])
+        self.capture('add --dry-run .')
+        eq(list(t.unknowns()), ['inertiatic'])
+
 class TestSmartAddBranch(TestCaseInTempDir):
     """Test smart adds with a specified branch."""
 
@@ -147,20 +157,34 @@ class TestSmartAddBranch(TestCaseInTempDir):
         for path in paths:
             self.assertNotEqual(tree.path2id(path), None)
 
-class TestAddCallbacks(TestCaseInTempDir):
+class TestAddActions(TestCaseInTempDir):
 
-    def setUp(self):
-        super(TestAddCallbacks, self).setUp()
+    def test_null(self):
+        from bzrlib.add import add_action_null
+        self.run_action(add_action_null, "", False)
+
+    def test_add(self):
         self.entry = InventoryFile("id", "name", None)
+        from bzrlib.add import add_action_add
+        self.run_action(add_action_add, "", True)
 
-    def test_null_callback(self):
-        from bzrlib.add import add_reporter_null
-        add_reporter_null('path', 'file', self.entry)
+    def test_add_and_print(self):
+        from bzrlib.add import add_action_add_and_print
+        self.run_action(add_action_add_and_print, "added path\n", True)
 
-    def test_print_callback(self):
-        from bzrlib.add import add_reporter_print
+    def test_print(self):
+        from bzrlib.add import add_action_print
+        self.run_action(add_action_print, "added path\n", False)
+
+    def run_action(self, action, output, should_add):
         from StringIO import StringIO
+        inv = Inventory()
         stdout = StringIO()
-        self.apply_redirected(None, stdout, None, add_reporter_print,
-                              'path', 'file', self.entry)
-        self.assertEqual(stdout.getvalue(), "added path\n")
+
+        self.apply_redirected(None, stdout, None, action, inv, 'path', 'file')
+        self.assertEqual(stdout.getvalue(), output)
+
+        if should_add:
+            self.assertNotEqual(inv.path2id('path'), None)
+        else:
+            self.assertEqual(inv.path2id('path'), None)

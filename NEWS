@@ -92,6 +92,8 @@ UNRELEASED CHANGES
     * Faster commits by reading only the headers of affected weave files. 
       (Denys Duchier)
 
+    * New --dry-run option for add.  (Michael Ellerman)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
