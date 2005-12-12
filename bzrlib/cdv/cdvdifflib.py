@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright (C) 2005 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
@@ -16,10 +17,12 @@
 
 
 from nofrillsprecisemerge import recurse_matches
-from bzrlib.errors import BzrError
 import difflib
+import time
+import os
+import sys
 
-__all__ = ['SequenceMatcher', 'unified_diff']
+__all__ = ['SequenceMatcher', 'unified_diff', 'unified_diff_files']
 
 class SequenceMatcher(difflib.SequenceMatcher):
     """Compare a pair of sequences using longest common subset."""
@@ -171,4 +174,53 @@ def unified_diff(a, b, fromfile='', tofile='', fromfiledate='',
             if tag == 'replace' or tag == 'insert':
                 for line in b[j1:j2]:
                     yield '+' + line
+
+def unified_diff_files(a, b, sequencematcher=None):
+    """Generate the diff for two files.
+    """
+    # Should this actually be an error?
+    if a == b:
+        return []
+    if a == '-':
+        file_a = sys.stdin
+        time_a = time.time()
+    else:
+        file_a = open(a, 'rb')
+        time_a = os.stat(a).st_mtime
+
+    if b == '-':
+        file_b = sys.stdin
+        time_b = time.time()
+    else:
+        file_b = open(b, 'rb')
+        time_b = os.stat(b).st_mtime
+
+    # TODO: Include fromfiledate and tofiledate
+    return unified_diff(file_a.readlines(), file_b.readlines(),
+                        fromfile=a, tofile=b,
+                        sequencematcher=sequencematcher)
+
+def main(args):
+    import optparse
+    p = optparse.OptionParser(usage='%prog [options] file_a file_b'
+                                    '\nFiles can be "-" to read from stdin')
+    p.add_option('--cdv', dest='matcher', action='store_const', const='cdv',
+                 default='cdv', help='Use the cdv difference algorithm')
+    p.add_option('--difflib', dest='matcher', action='store_const', const='difflib',
+                 default='cdv', help='Use python\'s difflib algorithm')
+
+    algorithms = {'cdv':SequenceMatcher, 'difflib':difflib.SequenceMatcher}
+
+    (opts, args) = p.parse_args(args)
+    matcher = algorithms[opts.matcher]
+
+    if len(args) != 2:
+        print 'You must supply 2 filenames to diff'
+        return -1
+
+    for line in unified_diff_files(args[0], args[1], sequencematcher=matcher):
+        sys.stdout.write(line)
+    
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))
 

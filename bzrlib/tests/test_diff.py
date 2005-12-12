@@ -1,4 +1,4 @@
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.diff import internal_diff
 from cStringIO import StringIO
 def udiff_lines(old, new):
@@ -76,10 +76,13 @@ class TestCDVDiffLib(TestCase):
         test_one(['a', 'c', 'b', 'a', 'c'], ['a', 'b', 'c'],
                  [(0, 0), (2, 1), (4, 2)])
 
-        # FIXME: recurse_matches won't match non-unique lines, 
-        # surrounded by bogus text
-        # This is what it should be
+        # recurse_matches doesn't match non-unique 
+        # lines surrounded by bogus text.
+        # The update has been done in cdvdifflib.SequenceMatcher instead
+
+        # This is what it could be
         #test_one('aBccDe', 'abccde', [(0,0), (2,2), (3,3), (5,5)])
+
         # This is what it currently gives:
         test_one('aBccDe', 'abccde', [(0,0), (5,5)])
 
@@ -197,4 +200,128 @@ class TestCDVDiffLib(TestCase):
                 , ('replace', 7,8, 7,8)
                 , ('equal',   8,9, 8,9)
                 ])
+
+    def test_cdv_unified_diff(self):
+        from bzrlib.cdv.cdvdifflib import unified_diff
+        from bzrlib.cdv.cdvdifflib import SequenceMatcher
+
+        txt_a = [ 'hello there\n'
+                , 'world\n'
+                , 'how are you today?\n']
+        txt_b = [ 'hello there\n'
+                , 'how are you today?\n']
+
+        self.assertEquals([ '---  \n'
+                          , '+++  \n'
+                          , '@@ -1,3 +1,2 @@\n'
+                          , ' hello there\n'
+                          , '-world\n'
+                          , ' how are you today?\n'
+                          ]
+                          , list(unified_diff(txt_a, txt_b
+                                        , sequencematcher=SequenceMatcher)))
+
+        txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
+        txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
+
+        # This is the result with LongestCommonSubstring matching
+        self.assertEquals([ '---  \n'
+                          , '+++  \n'
+                          , '@@ -1,6 +1,11 @@\n'
+                          , ' a\n'
+                          , ' b\n'
+                          , ' c\n'
+                          , '+d\n'
+                          , '+e\n'
+                          , '+f\n'
+                          , '+x\n'
+                          , '+y\n'
+                          , ' d\n'
+                          , ' e\n'
+                          , ' f\n']
+                          , list(unified_diff(txt_a, txt_b)))
+
+        # And the cdv diff
+        self.assertEquals([ '---  \n'
+                          , '+++  \n'
+                          , '@@ -4,6 +4,11 @@\n'
+                          , ' d\n'
+                          , ' e\n'
+                          , ' f\n'
+                          , '+x\n'
+                          , '+y\n'
+                          , '+d\n'
+                          , '+e\n'
+                          , '+f\n'
+                          , ' g\n'
+                          , ' h\n'
+                          , ' i\n'
+                          ]
+                          , list(unified_diff(txt_a, txt_b
+                                        , sequencematcher=SequenceMatcher)))
+
+class TestCDVDiffLibFiles(TestCase):
+
+    def test_cdv_unified_diff_files(self):
+        from bzrlib.cdv.cdvdifflib import unified_diff_files
+        from bzrlib.cdv.cdvdifflib import SequenceMatcher
+
+        txt_a = [ 'hello there\n'
+                , 'world\n'
+                , 'how are you today?\n']
+        txt_b = [ 'hello there\n'
+                , 'how are you today?\n']
+        open('a1', 'wb').writelines(txt_a)
+        open('b1', 'wb').writelines(txt_b)
+
+        self.assertEquals([ '--- a1 \n'
+                          , '+++ b1 \n'
+                          , '@@ -1,3 +1,2 @@\n'
+                          , ' hello there\n'
+                          , '-world\n'
+                          , ' how are you today?\n'
+                          ]
+                          , list(unified_diff_files('a1', 'b1'
+                                        , sequencematcher=SequenceMatcher)))
+
+        txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
+        txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
+        open('a2', 'wb').writelines(txt_a)
+        open('b2', 'wb').writelines(txt_b)
+
+        # This is the result with LongestCommonSubstring matching
+        self.assertEquals([ '--- a2 \n'
+                          , '+++ b2 \n'
+                          , '@@ -1,6 +1,11 @@\n'
+                          , ' a\n'
+                          , ' b\n'
+                          , ' c\n'
+                          , '+d\n'
+                          , '+e\n'
+                          , '+f\n'
+                          , '+x\n'
+                          , '+y\n'
+                          , ' d\n'
+                          , ' e\n'
+                          , ' f\n']
+                          , list(unified_diff_files('a2', 'b2')))
+
+        # And the cdv diff
+        self.assertEquals([ '--- a2 \n'
+                          , '+++ b2 \n'
+                          , '@@ -4,6 +4,11 @@\n'
+                          , ' d\n'
+                          , ' e\n'
+                          , ' f\n'
+                          , '+x\n'
+                          , '+y\n'
+                          , '+d\n'
+                          , '+e\n'
+                          , '+f\n'
+                          , ' g\n'
+                          , ' h\n'
+                          , ' i\n'
+                          ]
+                          , list(unified_diff_files('a2', 'b2'
+                                        , sequencematcher=SequenceMatcher)))
 
