@@ -40,10 +40,18 @@ class TestApiUsage(TestCase):
                 occurences += 1
         return occurences
 
+    def source_file_name(self, package):
+        """Return the path of the .py file for package."""
+        path = package.__file__
+        if path[-1] in 'co':
+            return path[:-1]
+        else:
+            return path
+
     def test_branch_working_tree(self):
         """Test that the number of uses of working_tree in branch is stable."""
         occurences = self.find_occurences('self.working_tree()',
-                                          bzrlib.branch.__file__[:-1])
+                                          self.source_file_name(bzrlib.branch))
         # do not even think of increasing this number. If you think you need to
         # increase it, then you almost certainly are doing something wrong as
         # the relationship from working_tree to branch is one way.
@@ -56,7 +64,7 @@ class TestApiUsage(TestCase):
     def test_branch_WorkingTree(self):
         """Test that the number of uses of working_tree in branch is stable."""
         occurences = self.find_occurences('WorkingTree',
-                                          bzrlib.branch.__file__[:-1])
+                                          self.source_file_name(bzrlib.branch))
         # do not even think of increasing this number. If you think you need to
         # increase it, then you almost certainly are doing something wrong as
         # the relationship from working_tree to branch is one way.
