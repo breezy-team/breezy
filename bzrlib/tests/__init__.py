@@ -634,6 +634,7 @@ def test_suite():
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_parent',
                    'bzrlib.tests.test_plugins',
+                   'bzrlib.tests.test_remove',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revision_info',
                    'bzrlib.tests.test_revisionnamespaces',
