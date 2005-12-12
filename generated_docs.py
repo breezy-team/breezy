@@ -19,7 +19,7 @@
 """bzr-infogen.py - generate information from built-in bzr help
 
 bzr-infogen.py creates a file with information on bzr in one of
-several different output formats:
+several different output formats:\n
 
     man              man page
     bash_completion  bash completion script
@@ -56,24 +56,41 @@ Run "bzr-infogen.py --help" for usage information.
 import sys
 import doc_generate
 
+descr = """generated-docs.py creates a file with information on bzr in a variety
+of output formats. Currently included: man and bash_completion.
+
+Examples: 
+
+    python2.4 generated-docs.py --man
+    python2.4 generated-docs.py --bash_completion
+    python2.4 generated-docs.py --all
+"""
 
 def main(argv):
     from optparse import OptionParser
     parser = OptionParser(usage="%prog [options] OUTPUT_FORMAT")
+
     parser.add_option("-s", "--show-filename",
                       action="store_true", dest="show_filename", default=False,
                       help="print default filename on stdout")
-    parser.add_option("-o", "--output", dest="filename",
-                      help="write output to FILE", metavar="FILE")
-    parser.add_option("-b", "--bzr-name", dest="bzr_name", default="bzr",
-                      help="name of bzr executable", metavar="EXEC_NAME")
-    parser.add_option("-q", "--quiet",
-                      action="store_false", dest="verbose", default=True,
-                      help="don't print status messages to stdout")
+
+    parser.add_option("-o", "--output", dest="filename", metavar="FILE",
+                      help="write output to FILE")
+
+    parser.add_option("-b", "--bzr-name",
+                      dest="bzr_name", default="bzr", metavar="EXEC_NAME",
+                      help="name of bzr executable")
+
+    parser.add_option("-e", "--examples",
+                       action="callback", callback=print_extended_help,
+                       help="Examples of ways to call generate_doc")
+
+
     (options, args) = parser.parse_args(argv)
 
     if len(args) != 2:
-        parser.error("incorrect number of arguments")
+        parser.print_help()
+        sys.exit(1)
 
     infogen_type = args[1]
     infogen_mod = doc_generate.generate(infogen_type)
@@ -92,6 +109,10 @@ def main(argv):
         print >>sys.stdout, outfilename
     
     infogen_mod.infogen(options, outfile)
+
+def print_extended_help(option, opt, value, parser):
+    print >>sys.stdout, __doc__
+    sys.exit(0)
 
 
 if __name__ == '__main__':
