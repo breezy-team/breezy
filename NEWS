@@ -37,6 +37,9 @@ UNRELEASED CHANGES
 
   IMPROVEMENTS:
 
+    * 'bzr add' now takes a --dry-run parameter which shows you what would be
+      added, but doesn't actually add anything. (Michael Ellerman)
+
     * "bzr INIT dir" now initializes the specified directory, and creates 
       it if it does not exist.  (John Arbash Meinel)
 
