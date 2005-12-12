@@ -1144,8 +1144,8 @@ class cmd_export(Command):
 
     Note: export of tree with non-ascii filenames to zip is not supported.
 
-    Supported formats       Autodetected by extension
-    -----------------       -------------------------
+     Supported formats       Autodetected by extension
+     -----------------       -------------------------
          dir                            -
          tar                          .tar
          tbz2                    .tar.bz2, .tbz2
@@ -1368,8 +1368,8 @@ class cmd_whoami(Command):
             print config.username()
 
 class cmd_nick(Command):
-    """\
-    Print or set the branch nickname.  
+    """Print or set the branch nickname.  
+
     If unset, the tree root directory name is used as the nickname
     To print the current nickname, execute with no argument.  
     """
