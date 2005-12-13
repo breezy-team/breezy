@@ -663,13 +663,16 @@ class TestCommands(ExternalBase):
     def test_add_reports(self):
         """add command prints the names of added files."""
         b = Branch.initialize('.')
-        self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
+        self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
         out = self.run_bzr_captured(['add'], retcode=0)[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['added dir',
+        self.assertEquals(['If you wish to add some of these files, please'\
+                           ' add them by name.',
+                           'added dir',
                            'added dir'+os.sep+'sub.txt',
-                           'added top.txt',],
+                           'added top.txt',
+                           'ignored 1 file(s) matching "CVS"'],
                           results)
 
     def test_add_quiet_is(self):

@@ -238,7 +238,15 @@ class cmd_add(Command):
         else:
             action = bzrlib.add.add_action_add_and_print
 
-        bzrlib.add.smart_add(file_list, not no_recurse, action)
+        added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
+                                              action)
+        if len(ignored) > 0:
+            for glob in sorted(ignored.keys()):
+                match_len = len(ignored[glob])
+                print "ignored %d file(s) matching \"%s\"" % (match_len,
+                                                              glob)
+            print "If you wish to add some of these files, please add them"\
+                " by name."
 
 
 class cmd_mkdir(Command):
