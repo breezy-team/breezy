@@ -31,16 +31,47 @@ import bzrlib.branch
 
 class TestApiUsage(TestCase):
 
+    def find_occurences(self, rule, filename):
+        """Find the number of occurences of rule in a file."""
+        occurences = 0
+        source = file(filename, 'r')
+        for line in source:
+            if line.find(rule) > -1:
+                occurences += 1
+        return occurences
+
+    def source_file_name(self, package):
+        """Return the path of the .py file for package."""
+        path = package.__file__
+        if path[-1] in 'co':
+            return path[:-1]
+        else:
+            return path
+
     def test_branch_working_tree(self):
         """Test that the number of uses of working_tree in branch is stable."""
-        occurences = 0
-        source = file(bzrlib.branch.__file__[:-1], 'r')
-        for line in source:
-            if line.find('self.working_tree()') > -1:
-                occurences += 1
+        occurences = self.find_occurences('self.working_tree()',
+                                          self.source_file_name(bzrlib.branch))
         # do not even think of increasing this number. If you think you need to
         # increase it, then you almost certainly are doing something wrong as
         # the relationship from working_tree to branch is one way.
         # This number should be 0, but the basis_inventory merge was done
-        # before this test was written.
+        # before this test was written. Note that this is an exact equality
+        # so that when the number drops, it is not given a buffer but rather
+        # this test updated immediately.
         self.assertEqual(2, occurences)
+
+    def test_branch_WorkingTree(self):
+        """Test that the number of uses of working_tree in branch is stable."""
+        occurences = self.find_occurences('WorkingTree',
+                                          self.source_file_name(bzrlib.branch))
+        # do not even think of increasing this number. If you think you need to
+        # increase it, then you almost certainly are doing something wrong as
+        # the relationship from working_tree to branch is one way.
+        # This number should be 4 (import NoWorkingTree and WorkingTree, 
+        # raise NoWorkingTree from working_tree(), and construct a working tree
+        # there) but a merge that regressed this was done before this test was
+        # written. Note that this is an exact equality so that when the number
+        # drops, it is not given a buffer but rather this test updated
+        # immediately.
+        self.assertEqual(6, occurences)
