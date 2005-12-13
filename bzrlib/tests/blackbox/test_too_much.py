@@ -15,6 +15,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# Mr. Smoketoomuch: I'm sorry?
+# Mr. Bounder: You'd better cut down a little then.
+# Mr. Smoketoomuch: Oh, I see! Smoke too much so I'd better cut down a little
+#                   then!
 
 """Black-box tests for bzr.
 
@@ -673,6 +677,12 @@ class TestCommands(ExternalBase):
                            'added dir'+os.sep+'sub.txt',
                            'added top.txt',
                            'ignored 1 file(s) matching "CVS"'],
+                          results)
+        out = self.run_bzr_captured(['add', '-v'], retcode=0)[0]
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEquals(['If you wish to add some of these files, please'\
+                           ' add them by name.',
+                           'ignored CVS matching "CVS"'],
                           results)
 
     def test_add_quiet_is(self):

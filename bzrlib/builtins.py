@@ -222,9 +222,9 @@ class cmd_add(Command):
     add them.
     """
     takes_args = ['file*']
-    takes_options = ['no-recurse', 'dry-run']
+    takes_options = ['no-recurse', 'dry-run', 'verbose']
 
-    def run(self, file_list, no_recurse=False, dry_run=False):
+    def run(self, file_list, no_recurse=False, dry_run=False, verbose=False):
         import bzrlib.add
 
         if dry_run:
@@ -243,7 +243,11 @@ class cmd_add(Command):
         if len(ignored) > 0:
             for glob in sorted(ignored.keys()):
                 match_len = len(ignored[glob])
-                print "ignored %d file(s) matching \"%s\"" % (match_len,
+                if verbose:
+                    for path in ignored[glob]:
+                        print "ignored %s matching \"%s\"" % (path, glob)
+                else:
+                    print "ignored %d file(s) matching \"%s\"" % (match_len,
                                                               glob)
             print "If you wish to add some of these files, please add them"\
                 " by name."
