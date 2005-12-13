@@ -142,10 +142,10 @@ class _MyResult(unittest._TextTestResult):
         self.stream.flush()
         unittest.TestResult.addSuccess(self, test)
 
-    def addSkipped(self, test, skip_exception):
+    def addSkipped(self, test, skip_excinfo):
         if self.showAll:
-            self.stream.write(' SKIP %s' % self._elapsedTime())
-            self.stream.write('     %s' % skip_exception)
+            print >>self.stream, ' SKIP %s' % self._elapsedTime()
+            print >>self.stream, '     %s' % skip_excinfo[1]
         elif self.dots:
             self.stream.write('S')
         self.stream.flush()
