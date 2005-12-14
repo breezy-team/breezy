@@ -201,6 +201,75 @@ class TestCDVDiffLib(TestCase):
                 , ('equal',   8,9, 8,9)
                 ])
 
+    def test_multiple_ranges(self):
+        # There was an earlier bug where we used a bad set of ranges,
+        # this triggers that specific bug, to make sure it doesn't regress
+        from bzrlib.cdv.cdvdifflib import SequenceMatcher
+
+        def chk_blocks(a, b, matching):
+            # difflib always adds a signature of the total
+            # length, with no matching entries at the end
+            s = SequenceMatcher(None, a, b)
+            blocks = s.get_matching_blocks()
+            x = blocks.pop()
+            self.assertEquals(x, (len(a), len(b), 0))
+            self.assertEquals(matching, blocks)
+
+        chk_blocks('abcdefghijklmnop'
+                 , 'abcXghiYZQRSTUVWXYZijklmnop'
+                 , [(0, 0, 3), (6, 4, 3), (9, 20, 7)])
+
+        chk_blocks('ABCd efghIjk  L'
+                 , 'AxyzBCn mo pqrstuvwI1 2  L'
+                 , [(0,0,1), (1, 4, 2), (4, 7, 1), (9, 19, 1), (12, 23, 3)])
+
+        chk_blocks('''\
+    get added when you add a file in the directory.
+    """
+    takes_args = ['file*']
+    takes_options = ['no-recurse']
+    
+    def run(self, file_list, no_recurse=False):
+        from bzrlib.add import smart_add, add_reporter_print, add_reporter_null
+        if is_quiet():
+            reporter = add_reporter_null
+        else:
+            reporter = add_reporter_print
+        smart_add(file_list, not no_recurse, reporter)
+
+
+class cmd_mkdir(Command):
+'''.splitlines(True)
+, '''\
+    get added when you add a file in the directory.
+
+    --dry-run will show which files would be added, but not actually 
+    add them.
+    """
+    takes_args = ['file*']
+    takes_options = ['no-recurse', 'dry-run']
+
+    def run(self, file_list, no_recurse=False, dry_run=False):
+        import bzrlib.add
+
+        if dry_run:
+            if is_quiet():
+                # This is pointless, but I'd rather not raise an error
+                action = bzrlib.add.add_action_null
+            else:
+                action = bzrlib.add.add_action_print
+        elif is_quiet():
+            action = bzrlib.add.add_action_add
+        else:
+            action = bzrlib.add.add_action_add_and_print
+
+        bzrlib.add.smart_add(file_list, not no_recurse, action)
+
+
+class cmd_mkdir(Command):
+'''.splitlines(True)
+, [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
+
     def test_cdv_unified_diff(self):
         from bzrlib.cdv.cdvdifflib import unified_diff
         from bzrlib.cdv.cdvdifflib import SequenceMatcher

@@ -57,7 +57,7 @@ class SequenceMatcher(difflib.SequenceMatcher):
         # neighbors, so we only need to run if there is
         # enough space to do so
         if ahi - alo > 2 and bhi - blo > 2:
-            a = self.a[alo+1:bhi-1]
+            a = self.a[alo+1:ahi-1]
             b = self.b[blo+1:bhi-1]
             m = difflib.SequenceMatcher(None, a, b)
             new_blocks = m.get_matching_blocks()
@@ -106,6 +106,16 @@ class SequenceMatcher(difflib.SequenceMatcher):
         if not matches:
             # Nothing matched, so we need to send the complete text
             self._check_with_diff(alo-1, ahi+1, blo-1, bhi+1, answer)
+
+        # For consistency sake, make sure all matches are only increasing
+        if __debug__:
+            next_a = -1
+            next_b = -1
+            for a,b,match_len in answer:
+                assert a >= next_a, 'Non increasing matches for a'
+                assert b >= next_b, 'Not increasing matches for b'
+                next_a = a + match_len
+                next_b = b + match_len
 
 # This is a version of unified_diff which only adds a factory parameter
 # so that you can override the default SequenceMatcher
