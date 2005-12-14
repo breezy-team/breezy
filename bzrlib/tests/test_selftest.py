@@ -54,7 +54,11 @@ class TestTreeShape(TestCaseInTempDir):
 
     def test_unicode_paths(self):
         filename = u'hell\u00d8'
-        self.build_tree_contents([(filename, 'contents of hello')])
+        try:
+            self.build_tree_contents([(filename, 'contents of hello')])
+        except UnicodeEncodeError:
+            raise TestSkipped("can't build unicode working tree in "
+                "filesystem encoding %s" % sys.getfilesystemencoding())
         self.failUnlessExists(filename)
 
 

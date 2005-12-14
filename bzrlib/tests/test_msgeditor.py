@@ -26,7 +26,7 @@ from bzrlib.tests import TestCaseInTempDir, TestSkipped
 
 class MsgEditorTest(TestCaseInTempDir):
 
-    def make_uncommitted_tree():
+    def make_uncommitted_tree(self):
         """Build a branch with uncommitted unicode named changes in the cwd."""
         b = Branch.initialize('.')
         working_tree = b.working_tree()
