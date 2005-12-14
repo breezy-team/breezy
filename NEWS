@@ -168,6 +168,9 @@ UNRELEASED CHANGES
     * Much better error message if one of the test suites can't be 
       imported.  (Martin Pool)
 
+    * Tests can now run TestSkipped if they can't execute for any reason.
+      (Martin Pool)
+
   INTERNALS:
 
     * WorkingTree.pull has been split across Branch and WorkingTree,

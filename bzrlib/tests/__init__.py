@@ -117,6 +117,8 @@ class _MyResult(unittest._TextTestResult):
         self._start_time = time.time()
 
     def addError(self, test, err):
+        if isinstance(err[1], TestSkipped):
+            return self.addSkipped(test, err)    
         unittest.TestResult.addError(self, test, err)
         if self.showAll:
             self.stream.writeln("ERROR %s" % self._elapsedTime())
@@ -140,14 +142,28 @@ class _MyResult(unittest._TextTestResult):
         self.stream.flush()
         unittest.TestResult.addSuccess(self, test)
 
+    def addSkipped(self, test, skip_excinfo):
+        if self.showAll:
+            print >>self.stream, ' SKIP %s' % self._elapsedTime()
+            print >>self.stream, '     %s' % skip_excinfo[1]
+        elif self.dots:
+            self.stream.write('S')
+        self.stream.flush()
+        # seems best to treat this as success from point-of-view of unittest
+        # -- it actually does nothing so it barely matters :)
+        unittest.TestResult.addSuccess(self, test)
+
     def printErrorList(self, flavour, errors):
         for test, err in errors:
             self.stream.writeln(self.separator1)
             self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
             if hasattr(test, '_get_log'):
-                self.stream.writeln()
-                self.stream.writeln('log from this test:')
+                print >>self.stream
+                print >>self.stream, \
+                        ('vvvv[log from %s]' % test).ljust(78,'-')
                 print >>self.stream, test._get_log()
+                print >>self.stream, \
+                        ('^^^^[log from %s]' % test).ljust(78,'-')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 

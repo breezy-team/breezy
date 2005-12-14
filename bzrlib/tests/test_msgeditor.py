@@ -21,7 +21,7 @@ import sys
 
 from bzrlib.branch import Branch
 from bzrlib.msgeditor import make_commit_message_template
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir, TestSkipped
 
 from bzrlib.tests.treeshape import build_tree_contents
 
@@ -31,7 +31,11 @@ def make_uncommitted_tree():
     b = Branch.initialize('.')
     working_tree = b.working_tree()
     filename = u'hell\u00d8'
-    build_tree_contents([(filename, 'contents of hello')])
+    try:
+        build_tree_contents([(filename, 'contents of hello')])
+    except UnicodeEncodeError:
+        raise TestSkipped("can't build unicode working tree in "
+                "filesystem encoding %s" % sys.getfilesystemencoding())
     working_tree.add(filename)
     return working_tree
 
