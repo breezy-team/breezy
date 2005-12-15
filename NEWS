@@ -94,7 +94,8 @@ UNRELEASED CHANGES
 
     * New --dry-run option for add.  (Michael Ellerman)
 
-    * Add now shows number of ignored files, by pattern.
+    * bzr add now lists how many files were ignored per glob.  add --verbose
+      lists the specific files.  (Aaron Bentley)
 
   BUG FIXES:
 
