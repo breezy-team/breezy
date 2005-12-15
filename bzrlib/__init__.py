@@ -69,7 +69,6 @@ DEFAULT_IGNORE = [
                   'config.log',
                   'config.status',
                   'config.sub',
-                  'configure.in',
                   'stamp-h',
                   'stamp-h.in',
                   'stamp-h1',
