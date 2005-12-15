@@ -634,6 +634,7 @@ def test_suite():
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_fetch',
+                   'bzrlib.tests.test_fileid_involved',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
@@ -677,7 +678,6 @@ def test_suite():
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_xml',
-                   'bzrlib.tests.test_file_involved',
                    ]
 
     print '%10s: %s' % ('bzr', os.path.realpath(sys.argv[0]))

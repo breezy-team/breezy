@@ -11,7 +11,7 @@ from bzrlib.merge import merge
 from bzrlib.workingtree import WorkingTree
 from bzrlib.delta import compare_trees
 
-class TestFileInvolved(TestCaseInTempDir):
+class TestFileIdInvolved(TestCaseInTempDir):
 
     def touch(self,filename):
         f = file(filename,"a")
@@ -26,7 +26,7 @@ class TestFileInvolved(TestCaseInTempDir):
             check_clean=(not force) )
 
     def setUp(self):
-        super(TestFileInvolved, self).setUp()
+        super(TestFileIdInvolved, self).setUp()
         # create three branches, and merge it
         #
         #           /-->J ------>K                (branch2)
@@ -110,17 +110,17 @@ class TestFileInvolved(TestCaseInTempDir):
         self.branch = Branch.open(".")
 
 
-    def test_file_involved_all_revs(self):
+    def test_fileid_involved_all_revs(self):
 
         l = self.branch.fileid_involved( )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["a","b","c","d"])
 
-    def test_file_involved_one_rev(self):
+    def test_fileid_involved_one_rev(self):
 
         l = self.branch.fileid_involved("rev-B" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["a","b","c"])
 
-    def test_file_involved_two_revs(self):
+    def test_fileid_involved_two_revs(self):
 
         l = self.branch.fileid_involved_between_revs("rev-B","rev-K" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["b","c"])
@@ -135,7 +135,7 @@ class TestFileInvolved(TestCaseInTempDir):
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["a", "b","c","d"])
 
 
-    def test_file_involved_sets(self):
+    def test_fileid_involved_sets(self):
 
         l = self.branch.fileid_involved_by_set(set(["rev-B"]))
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["a"])
@@ -143,7 +143,7 @@ class TestFileInvolved(TestCaseInTempDir):
         l = self.branch.fileid_involved_by_set(set(["rev-D"]))
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["b"])
 
-    def test_file_involved_compare(self):
+    def test_fileid_involved_compare(self):
 
         l1 = self.branch.fileid_involved_between_revs("rev-E", "rev-D")
         l2 = self.branch.fileid_involved_by_set(set(["rev-D","rev-F","rev-C","rev-B"]))
@@ -154,7 +154,7 @@ class TestFileInvolved(TestCaseInTempDir):
             set(["rev-G","rev-D","rev-F","rev-K","rev-J"]))
         self.assertEquals( l1, l2 )
 
-    def test_file_involved_full_compare(self):
+    def test_fileid_involved_full_compare(self):
         from bzrlib.tsort import topo_sort
         pp=[]
         history = self.branch.revision_history( )
