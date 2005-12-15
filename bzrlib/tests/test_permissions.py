@@ -53,8 +53,18 @@ def chmod_r(base, file_mode, dir_mode):
             os.chmod(p, file_mode)
 
 
-def check_mode_r(test, base, file_mode, dir_mode):
-    """Check that all permissions match"""
+def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
+    """Check that all permissions match
+
+    :param test: The TestCase being run
+    :param base: The path to the root directory to check
+    :param file_mode: The mode for all files
+    :param dir_mode: The mode for all directories
+    :param include_base: If false, only check the subdirectories
+    """
+    assert os.path.isdir(base)
+    if include_base:
+        check_mode(test, base, dir_mode)
     for root, dirs, files in os.walk(base):
         for d in dirs:
             p = os.path.join(root, d)
@@ -137,6 +147,69 @@ class TestPermissions(TestCaseInTempDir):
         t.add('d')
         t.commit('new d')
         check_mode_r(self, '.bzr', 0664, 02775)
+
+    def test_disable_set_mode(self):
+        # TODO: jam 20051215 Ultimately, this test should probably test that
+        #                    extra chmod calls aren't being made
+        import bzrlib.branch
+        try:
+            b = Branch.initialize(u'.')
+            self.assertNotEqual(None, b._dir_mode)
+            self.assertNotEqual(None, b._file_mode)
+
+            bzrlib.branch.BzrBranch._set_dir_mode = False
+            b = Branch.open(u'.')
+            self.assertEqual(None, b._dir_mode)
+            self.assertNotEqual(None, b._file_mode)
+
+            bzrlib.branch.BzrBranch._set_file_mode = False
+            b = Branch.open(u'.')
+            self.assertEqual(None, b._dir_mode)
+            self.assertEqual(None, b._file_mode)
+
+            bzrlib.branch.BzrBranch._set_dir_mode = True
+            b = Branch.open(u'.')
+            self.assertNotEqual(None, b._dir_mode)
+            self.assertEqual(None, b._file_mode)
+
+            bzrlib.branch.BzrBranch._set_file_mode = True
+            b = Branch.open(u'.')
+            self.assertNotEqual(None, b._dir_mode)
+            self.assertNotEqual(None, b._file_mode)
+        finally:
+            bzrlib.branch.BzrBranch._set_dir_mode = True
+            bzrlib.branch.BzrBranch._set_file_mode = True
+
+    def test_new_branch(self):
+        if sys.platform == 'win32':
+            raise TestSkipped('chmod has no effect on win32')
+
+        os.mkdir('a')
+        mode = stat.S_IMODE(os.stat('a').st_mode)
+        b = Branch.initialize('a')
+        assertEqualMode(self, mode, b._dir_mode)
+        assertEqualMode(self, mode & ~07111, b._file_mode)
+
+        os.mkdir('b')
+        os.chmod('b', 02777)
+        b = Branch.initialize('b')
+        assertEqualMode(self, 02777, b._dir_mode)
+        assertEqualMode(self, 00666, b._file_mode)
+        check_mode_r(self, 'b/.bzr', 00666, 02777)
+
+        os.mkdir('c')
+        os.chmod('c', 02750)
+        b = Branch.initialize('c')
+        assertEqualMode(self, 02750, b._dir_mode)
+        assertEqualMode(self, 00640, b._file_mode)
+        check_mode_r(self, 'c/.bzr', 00640, 02750)
+
+        os.mkdir('d')
+        os.chmod('d', 0700)
+        b = Branch.initialize('d')
+        assertEqualMode(self, 0700, b._dir_mode)
+        assertEqualMode(self, 0600, b._file_mode)
+        check_mode_r(self, 'd/.bzr', 00600, 0700)
 
 try:
     import paramiko

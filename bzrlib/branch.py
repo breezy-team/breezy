@@ -512,6 +512,10 @@ class BzrBranch(Branch):
     _lock_count = None
     _lock = None
     _inventory_weave = None
+    # If set to False (by a plugin, etc) BzrBranch will not set the
+    # mode on created files or directories
+    _set_file_mode = True
+    _set_dir_mode = True
     
     # Map some sort of prefix into a namespace
     # stuff like "revno:10", "revid:", etc.
@@ -766,6 +770,10 @@ class BzrBranch(Branch):
             self._dir_mode = st.st_mode & 07777
             # Remove the sticky and execute bits for files
             self._file_mode = self._dir_mode & ~07111
+        if not self._set_dir_mode:
+            self._dir_mode = None
+        if not self._set_file_mode:
+            self._file_mode = None
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
