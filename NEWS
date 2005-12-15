@@ -92,7 +92,8 @@ UNRELEASED CHANGES
     * Faster commits by reading only the headers of affected weave files. 
       (Denys Duchier)
 
-    * New --dry-run option for add.  (Michael Ellerman)
+    * 'bzr add' now takes a --dry-run parameter which shows you what would be
+      added, but doesn't actually add anything. (Michael Ellerman)
 
   BUG FIXES:
 
