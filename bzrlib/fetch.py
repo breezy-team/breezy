@@ -108,8 +108,7 @@ class Fetcher(object):
             self.pb = pb
         self.from_branch.lock_read()
         try:
-            #self._fetch_revisions(last_revision)
-            revs = self._revs_to_fetch(last_revision )
+            revs = self._revids_to_fetch(last_revision )
             # nothing to do
             if revs: 
                 self._fetch_revision_texts( revs )
@@ -120,7 +119,7 @@ class Fetcher(object):
             self.from_branch.unlock()
             self.pb.clear()
 
-    def _revs_to_fetch(self, last_revision):
+    def _revids_to_fetch(self, last_revision):
         self.last_revision = self._find_last_revision(last_revision)
         mutter('fetch up to rev {%s}', self.last_revision)
         if (self.last_revision is not None and 
@@ -140,9 +139,8 @@ class Fetcher(object):
         self.to_branch.revision_store.copy_multi(
             self.from_branch.revision_store, revs )
 
-
     def _fetch_weave_texts( self, revs ):
-        file_ids = self.from_branch.file_involved( revs )
+        file_ids = self.from_branch.file_involved_by_set( revs )
         count = 0
         num_file_ids = len(file_ids)
         for file_id in file_ids:
@@ -168,16 +166,14 @@ class Fetcher(object):
 
         self.pb.clear( )
 
-
-
     def _fetch_inventory_weave( self, revs ):
         self.pb.update( "inventory merge",0,1)
-        
+
         from_weave = self.from_control.get_weave('inventory',
                 self.from_branch.get_transaction())
         to_weave = self.to_control.get_weave('inventory',
                 self.to_branch.get_transaction())
-        
+
         if to_weave.numversions() > 0:
             # destination has contents, must merge
             try:
@@ -190,7 +186,7 @@ class Fetcher(object):
 
         self.to_control.put_weave('inventory', to_weave,
             self.to_branch.get_transaction())
-            
+
         self.pb.clear( )
 
     def _find_last_revision(self, last_revision):
@@ -209,6 +205,5 @@ class Fetcher(object):
             return from_history[-1]
         else:
             return None                 # no history in the source branch
-        
 
 fetch = Fetcher
