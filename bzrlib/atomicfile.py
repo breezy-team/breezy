@@ -31,7 +31,7 @@ class AtomicFile(object):
     An encoding can be specified; otherwise the default is ascii.
     """
 
-    def __init__(self, filename, mode='wb', encoding=None):
+    def __init__(self, filename, mode='wb', encoding=None, new_mode=None):
         if mode != 'wb' and mode != 'wt':
             raise ValueError("invalid AtomicFile mode %r" % mode)
 
@@ -48,6 +48,7 @@ class AtomicFile(object):
 
         self.write = self.f.write
         self.closed = False
+        self._new_mode = new_mode
 
 
     def __repr__(self):
@@ -67,11 +68,14 @@ class AtomicFile(object):
         self.f = None
         
         try:
-            stat = os.lstat(self.realfilename)
-            os.chmod(self.tmpfilename, stat.st_mode)
+            if self._new_mode is None:
+                self._new_mode = os.lstat(self.realfilename).st_mode
         except OSError, e:
             if e.errno != errno.ENOENT:
                 raise
+        else:
+            os.chmod(self.tmpfilename, self._new_mode)
+
         rename(self.tmpfilename, self.realfilename)
 
 

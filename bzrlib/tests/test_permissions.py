@@ -16,7 +16,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Black-box tests for bzr setting permissions.
+"""Tests for bzr setting permissions.
+
+Files which are created underneath .bzr/ should inherit its permissions.
+So if the directory is group writable, the files and subdirs should be as well.
+
+In the future, when we have Repository/Branch/Checkout information, the
+permissions should be inherited individually, rather than all be the same.
+
+TODO: jam 20051215 There are no tests for ftp yet, because we have no ftp server
+TODO: jam 20051215 Currently the default behavior for 'bzr branch' is just 
+                   defined by the local umask. This isn't terrible, is it
+                   the truly desired behavior?
 """
 
 import os
@@ -26,6 +37,7 @@ import stat
 from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_sftp import TestCaseWithSFTPServer
+from bzrlib.tests.test_transport import check_mode
 
 
 def chmod_r(base, file_mode, dir_mode):
@@ -37,13 +49,6 @@ def chmod_r(base, file_mode, dir_mode):
         for f in files:
             p = os.path.join(root, f)
             os.chmod(p, file_mode)
-
-
-def check_mode(test, path, mode):
-    """Check that a particular path has the correct mode."""
-    actual_mode = stat.S_IMODE(os.stat(path).st_mode)
-    test.assertEqual(mode, actual_mode,
-        'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
 
 
 def check_mode_r(test, base, file_mode, dir_mode):
@@ -106,13 +111,13 @@ class TestPermissions(TestCaseInTempDir):
         check_mode_r(self, '.bzr', 0664, 0775)
 
 
-# TODO: JAM 20051215 Probably we want to check FTP permissions as well
-#       but we need an FTP server for that
 class TestSftpPermissions(TestCaseWithSFTPServer):
 
     def test_new_files(self):
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
+        # Though it would be nice to test that SFTP to a server
+        # which does support chmod has the right effect
 
         # We don't actually use it directly, we just want to
         # keep the connection open, since StubSFTPServer only

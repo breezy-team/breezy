@@ -16,6 +16,7 @@
 
 
 import os
+import sys
 from cStringIO import StringIO
 
 from bzrlib.errors import (NoSuchFile, FileExists,
@@ -38,6 +39,21 @@ class TestTransport(TestCase):
 
     def test_urlescape(self):
         self.assertEqual('%25', urlescape('%'))
+
+if sys.platform != 'win32':
+    def check_mode(test, path, mode):
+        """Check that a particular path has the correct mode."""
+        # We are ignoring stuff like group sticky bits
+        actual_mode = os.stat(path).st_mode & 0777
+        test.assertEqual(mode, actual_mode,
+            'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
+else:
+    def check_mode(test, path, mode):
+        """On win32 chmod doesn't have any effect, 
+        so don't actually check anything
+        """
+        return
+
 
 
 class TestTransportMixIn(object):
@@ -108,6 +124,14 @@ class TestTransportMixIn(object):
     def test_put(self):
         t = self.get_transport()
 
+        # TODO: jam 20051215 No need to do anything if the test is readonly
+        #                    origininally it was thought that it would give
+        #                    more of a workout to readonly tests. By now the
+        #                    suite is probably thorough enough without testing
+        #                    readonly protocols in write sections
+        #                    The only thing that needs to be tested is that the
+        #                    right error is raised
+
         if self.readonly:
             self.assertRaises(TransportNotPossible,
                     t.put, 'a', 'some text for a\n')
@@ -157,6 +181,26 @@ class TestTransportMixIn(object):
         else:
             self.assertRaises(NoSuchFile,
                     t.put, 'path/doesnt/exist/c', 'contents')
+
+        if not self.readonly:
+            t.put('mode644', 'test text\n', mode=0644)
+            check_mode(self, 'mode644', 0644)
+
+            t.put('mode666', 'test text\n', mode=0666)
+            check_mode(self, 'mode666', 0666)
+
+            t.put('mode600', 'test text\n', mode=0600)
+            check_mode(self, 'mode600', 0600)
+
+            # Yes, you can put a file such that it becomes readonly
+            t.put('mode400', 'test text\n', mode=0400)
+            check_mode(self, 'mode400', 0400)
+
+            t.put_multi([('mmode644', 'text\n')], mode=0644)
+            check_mode(self, 'mmode644', 0644)
+
+        # TODO: jam 20051215 test put_multi with a mode. I didn't bother because
+        #                    it seems most people don't like the _multi functions
 
     def test_put_file(self):
         t = self.get_transport()
@@ -211,6 +255,24 @@ class TestTransportMixIn(object):
 
         self.check_file_contents('f5', 'here is some text\nand a bit more\n')
         self.check_file_contents('f6', 'some text for the\nthird file created\n')
+
+        if not self.readonly:
+            sio = StringIO('test text\n')
+            t.put('mode644', sio, mode=0644)
+            check_mode(self, 'mode644', 0644)
+
+            a = open('mode644', 'rb')
+            t.put('mode666', a, mode=0666)
+            check_mode(self, 'mode666', 0666)
+
+            a = open('mode644', 'rb')
+            t.put('mode600', a, mode=0600)
+            check_mode(self, 'mode600', 0600)
+
+            # Yes, you can put a file such that it becomes readonly
+            a = open('mode644', 'rb')
+            t.put('mode400', a, mode=0400)
+            check_mode(self, 'mode400', 0400)
 
     def test_mkdir(self):
         t = self.get_transport()
@@ -280,6 +342,25 @@ class TestTransportMixIn(object):
         for f in ('dir_a/a', 'dir_b/b'):
             self.assertEqual(t.get(f).read(), open(f).read())
 
+        if not self.readonly:
+            # Test mkdir with a mode
+            t.mkdir('dmode755', mode=0755)
+            check_mode(self, 'dmode755', 0755)
+
+            t.mkdir('dmode555', mode=0555)
+            check_mode(self, 'dmode555', 0555)
+
+            t.mkdir('dmode777', mode=0777)
+            check_mode(self, 'dmode777', 0777)
+
+            t.mkdir('dmode700', mode=0700)
+            check_mode(self, 'dmode700', 0700)
+
+            # TODO: jam 20051215 test mkdir_multi with a mode
+            t.mkdir_multi(['mdmode755'], mode=0755)
+            check_mode(self, 'mdmode755', 0755)
+
+
     def test_copy_to(self):
         import tempfile
         from bzrlib.transport.local import LocalTransport
@@ -289,9 +370,11 @@ class TestTransportMixIn(object):
         files = ['a', 'b', 'c', 'd']
         self.build_tree(files)
 
-        dtmp = tempfile.mkdtemp(dir=u'.', prefix='test-transport-')
-        dtmp_base = os.path.basename(dtmp)
-        local_t = LocalTransport(dtmp)
+        def get_temp_local():
+            dtmp = tempfile.mkdtemp(dir=u'.', prefix='test-transport-')
+            dtmp_base = os.path.basename(dtmp)
+            return dtmp_base, LocalTransport(dtmp)
+        dtmp_base, local_t = get_temp_local()
 
         t.copy_to(files, local_t)
         for f in files:
@@ -307,11 +390,9 @@ class TestTransportMixIn(object):
         os.mkdir(os.path.join(dtmp_base, 'e'))
         t.copy_to(['e/f'], local_t)
 
-        del dtmp, dtmp_base, local_t
+        del dtmp_base, local_t
 
-        dtmp = tempfile.mkdtemp(dir=u'.', prefix='test-transport-')
-        dtmp_base = os.path.basename(dtmp)
-        local_t = LocalTransport(dtmp)
+        dtmp_base, local_t = get_temp_local()
 
         files = ['a', 'b', 'c', 'd']
         t.copy_to(iter(files), local_t)
@@ -319,7 +400,13 @@ class TestTransportMixIn(object):
             self.assertEquals(open(f).read(),
                     open(os.path.join(dtmp_base, f)).read())
 
-        del dtmp, dtmp_base, local_t
+        del dtmp_base, local_t
+
+        for mode in (0666, 0644, 0600, 0400):
+            dtmp_base, local_t = get_temp_local()
+            t.copy_to(files, local_t, mode=mode)
+            for f in files:
+                check_mode(self, os.path.join(dtmp_base, f), mode)
 
     def test_append(self):
         t = self.get_transport()
