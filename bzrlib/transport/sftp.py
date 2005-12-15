@@ -366,9 +366,6 @@ class SFTPTransport (Transport):
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
                         os.getpid(), random.randint(0,0x7FFFFFFF))
         fout = self._sftp_open_exclusive(tmp_abspath, mode=mode)
-        if mode is not None:
-            self._sftp.chmod(tmp_abspath, mode)
-
         try:
             try:
                 fout.set_pipelined(True)
@@ -388,6 +385,13 @@ class SFTPTransport (Transport):
                 pass
             raise e
         else:
+            # Do a chmod right before we close the file, since that will
+            # require syncronization, so that the close() has nothing
+            # more to synchronize.
+            if mode is not None:
+                self._sftp.chmod(tmp_abspath, mode)
+            fout.close()
+
             # sftp rename doesn't allow overwriting, so play tricks:
             tmp_safety = 'bzr.tmp.%.9f.%d.%d' % (time.time(), os.getpid(), random.randint(0, 0x7FFFFFFF))
             tmp_safety = self._abspath(tmp_safety)
