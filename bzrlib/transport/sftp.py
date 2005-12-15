@@ -366,6 +366,8 @@ class SFTPTransport (Transport):
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
                         os.getpid(), random.randint(0,0x7FFFFFFF))
         fout = self._sftp_open_exclusive(tmp_abspath, mode=mode)
+        if mode is not None:
+            self._sftp.chmod(tmp_abspath, mode)
 
         try:
             try:
