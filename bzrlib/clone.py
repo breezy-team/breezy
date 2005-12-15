@@ -96,7 +96,6 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
     finally:
         branch_from.unlock()
 
-
 def _get_truncated_history(branch_from, revision_id):
     history = branch_from.revision_history()
     if revision_id is None:
@@ -108,22 +107,18 @@ def _get_truncated_history(branch_from, revision_id):
     return history[:idx+1]
 
 def _copy_text_weaves(branch_from, branch_to, history):
-
     from_set = set(branch_from.get_ancestry(history[-1])[1:])
     file_ids = branch_from.file_involved( from_set )
     branch_to.weave_store.copy_multi(branch_from.weave_store, file_ids )
 
-
 def _copy_revision_store(branch_from, branch_to, history):
-
     # copy all revision
     from_set = set(branch_from.get_ancestry(history[-1])[1:])
     branch_to.revision_store.copy_multi(branch_from.revision_store, from_set )
 
-
 def _copy_control_weaves(branch_from, branch_to, history):
     to_control = branch_to.control_weaves
     from_control = branch_from.control_weaves
-    # TODO, we need only the minimal revision !!!!!
+    # TODO Goffredo 20051215: we need only the minimal revision !!!!!
     to_control.copy_multi(from_control, ['inventory'])
 
