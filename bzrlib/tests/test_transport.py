@@ -34,11 +34,6 @@ def _append(fn, txt):
     f.close()
     del f
 
-class TestTransport(TestCase):
-    """Test the non transport-concrete class functionality."""
-
-    def test_urlescape(self):
-        self.assertEqual('%25', urlescape('%'))
 
 if sys.platform != 'win32':
     def check_mode(test, path, mode):
@@ -54,6 +49,12 @@ else:
         """
         return
 
+
+class TestTransport(TestCase):
+    """Test the non transport-concrete class functionality."""
+
+    def test_urlescape(self):
+        self.assertEqual('%25', urlescape('%'))
 
 
 class TestTransportMixIn(object):
