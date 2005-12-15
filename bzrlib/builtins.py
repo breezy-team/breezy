@@ -399,16 +399,13 @@ class cmd_pull(Command):
             else:
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
+
         br_from = Branch.open(location)
         br_to = tree_to.branch
-        try:
-            old_rh = br_to.revision_history()
-            count = tree_to.pull(br_from, overwrite)
-        except DivergedBranches:
-            # FIXME: Just make DivergedBranches display the right message
-            # itself.
-            raise BzrCommandError("These branches have diverged."
-                                  "  Try merge.")
+
+        old_rh = br_to.revision_history()
+        count = tree_to.pull(br_from, overwrite)
+
         if br_to.get_parent() is None or remember:
             br_to.set_parent(location)
         note('%d revision(s) pulled.' % (count,))

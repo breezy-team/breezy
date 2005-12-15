@@ -227,6 +227,13 @@ UNRELEASED CHANGES
  
     * New options to read only the table-of-contents of a weave.  
       (Denys Duchier)
+
+    * Raise NoSuchFile when someone tries to add a non-existant file.
+      (Michael Ellerman)
+
+    * Simplify handling of DivergedBranches in cmd_pull().
+      (Michael Ellerman)
+		   
    
 bzr 0.6 2005-10-28
 

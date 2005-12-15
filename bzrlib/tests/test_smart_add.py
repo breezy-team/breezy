@@ -3,7 +3,7 @@ import unittest
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.branch import Branch
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, NoSuchFile
 from bzrlib.inventory import InventoryFile, Inventory
 from bzrlib.workingtree import WorkingTree
 
@@ -84,6 +84,13 @@ class TestSmartAdd(TestCaseInTempDir):
         eq(list(t.unknowns()), ['inertiatic'])
         self.capture('add --dry-run .')
         eq(list(t.unknowns()), ['inertiatic'])
+
+    def test_add_non_existant(self):
+        """Test smart-adding a file that does not exist."""
+        from bzrlib.add import smart_add
+        branch = Branch.initialize(u".")
+        self.assertRaises(NoSuchFile, smart_add, 'non-existant-file')
+
 
 class TestSmartAddBranch(TestCaseInTempDir):
     """Test smart adds with a specified branch."""
