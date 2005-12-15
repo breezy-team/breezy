@@ -649,6 +649,7 @@ def test_suite():
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_parent',
+                   'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_remove',
                    'bzrlib.tests.test_revision',
