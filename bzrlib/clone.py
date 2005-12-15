@@ -108,7 +108,7 @@ def _get_truncated_history(branch_from, revision_id):
 
 def _copy_text_weaves(branch_from, branch_to, history):
     from_set = set(branch_from.get_ancestry(history[-1])[1:])
-    file_ids = branch_from.file_involved( from_set )
+    file_ids = branch_from.fileid_involved_by_set( from_set )
     branch_to.weave_store.copy_multi(branch_from.weave_store, file_ids )
 
 def _copy_revision_store(branch_from, branch_to, history):

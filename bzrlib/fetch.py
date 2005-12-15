@@ -140,7 +140,7 @@ class Fetcher(object):
             self.from_branch.revision_store, revs )
 
     def _fetch_weave_texts( self, revs ):
-        file_ids = self.from_branch.file_involved_by_set( revs )
+        file_ids = self.from_branch.fileid_involved_by_set( revs )
         count = 0
         num_file_ids = len(file_ids)
         for file_id in file_ids:
