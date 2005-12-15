@@ -108,23 +108,90 @@ class Fetcher(object):
             self.pb = pb
         self.from_branch.lock_read()
         try:
-            self._fetch_revisions(last_revision)
+            #self._fetch_revisions(last_revision)
+            revs = self._revs_to_fetch(last_revision )
+            # nothing to do
+            if revs: 
+                self._fetch_revision_texts( revs )
+                self._fetch_weave_texts( revs )
+                self._fetch_inventory_weave( revs )
+                self.count_copied += len(revs)
         finally:
             self.from_branch.unlock()
             self.pb.clear()
 
-    def _fetch_revisions(self, last_revision):
+    def _revs_to_fetch(self, last_revision):
         self.last_revision = self._find_last_revision(last_revision)
         mutter('fetch up to rev {%s}', self.last_revision)
         if (self.last_revision is not None and 
             self.to_branch.has_revision(self.last_revision)):
             return
         try:
-            revs_to_fetch = self._compare_ancestries()
+            branch_from_revs = set(self.from_branch.get_ancestry(self.last_revision))
         except WeaveError:
             raise InstallFailed([self.last_revision])
-        self._copy_revisions(revs_to_fetch)
-        self.new_ancestry = revs_to_fetch
+
+        self.dest_last_rev = self.to_branch.last_revision()
+        branch_to_revs = set(self.to_branch.get_ancestry(self.dest_last_rev))
+
+        return branch_from_revs.difference( branch_to_revs )
+
+    def _fetch_revision_texts( self, revs ):
+        self.to_branch.revision_store.copy_multi(
+            self.from_branch.revision_store, revs )
+
+
+    def _fetch_weave_texts( self, revs ):
+        file_ids = self.from_branch.file_involved( revs )
+        count = 0
+        num_file_ids = len(file_ids)
+        for file_id in file_ids:
+            self.pb.update( "merge weave merge",count,num_file_ids)
+            count +=1
+            to_weave = self.to_weaves.get_weave_or_empty(file_id,
+                self.to_branch.get_transaction())
+            from_weave = self.from_weaves.get_weave(file_id,
+                self.from_branch.get_transaction())
+
+            if to_weave.numversions() > 0:
+                # destination has contents, must merge
+                try:
+                    to_weave.join(from_weave)
+                except errors.WeaveParentMismatch:
+                    to_weave.reweave(from_weave)
+            else:
+                # destination is empty, just replace it
+                to_weave = from_weave.copy( )
+
+            self.to_weaves.put_weave(file_id, to_weave,
+                self.to_branch.get_transaction())
+
+        self.pb.clear( )
+
+
+
+    def _fetch_inventory_weave( self, revs ):
+        self.pb.update( "inventory merge",0,1)
+        
+        from_weave = self.from_control.get_weave('inventory',
+                self.from_branch.get_transaction())
+        to_weave = self.to_control.get_weave('inventory',
+                self.to_branch.get_transaction())
+        
+        if to_weave.numversions() > 0:
+            # destination has contents, must merge
+            try:
+                to_weave.join(from_weave)
+            except errors.WeaveParentMismatch:
+                to_weave.reweave(from_weave)
+        else:
+            # destination is empty, just replace it
+            to_weave = from_weave.copy( )
+
+        self.to_control.put_weave('inventory', to_weave,
+            self.to_branch.get_transaction())
+            
+        self.pb.clear( )
 
     def _find_last_revision(self, last_revision):
         """Find the limiting source revision.
@@ -142,113 +209,6 @@ class Fetcher(object):
             return from_history[-1]
         else:
             return None                 # no history in the source branch
-            
-
-    def _compare_ancestries(self):
-        """Get a list of revisions that must be copied.
-
-        That is, every revision that's in the ancestry of the source
-        branch and not in the destination branch."""
-        self.pb.update('get source ancestry')
-        self.from_ancestry = self.from_branch.get_ancestry(self.last_revision)
-
-        dest_last_rev = self.to_branch.last_revision()
-        self.pb.update('get destination ancestry')
-        if dest_last_rev:
-            dest_ancestry = self.to_branch.get_ancestry(dest_last_rev)
-        else:
-            dest_ancestry = []
-        ss = set(dest_ancestry)
-        to_fetch = []
-        for rev_id in self.from_ancestry:
-            if rev_id not in ss:
-                to_fetch.append(rev_id)
-                mutter('need to get revision {%s}', rev_id)
-        mutter('need to get %d revisions in total', len(to_fetch))
-        self.count_total = len(to_fetch)
-        return to_fetch
-
-    def _copy_revisions(self, revs_to_fetch):
-        i = 0
-        for rev_id in revs_to_fetch:
-            i += 1
-            if rev_id is None:
-                continue
-            if self.to_branch.has_revision(rev_id):
-                continue
-            self.pb.update('copy revision', i, self.count_total)
-            self._copy_one_revision(rev_id)
-            self.count_copied += 1
-
-
-    def _copy_one_revision(self, rev_id):
-        """Copy revision and everything referenced by it."""
-        mutter('copying revision {%s}', rev_id)
-        rev_xml = self.from_branch.get_revision_xml(rev_id)
-        inv_xml = self.from_branch.get_inventory_xml(rev_id)
-        rev = serializer_v5.read_revision_from_string(rev_xml)
-        inv = serializer_v5.read_inventory_from_string(inv_xml)
-        assert rev.revision_id == rev_id
-        assert rev.inventory_sha1 == sha_string(inv_xml)
-        mutter('  commiter %s, %d parents',
-               rev.committer,
-               len(rev.parent_ids))
-        self._copy_new_texts(rev_id, inv)
-        parents = rev.parent_ids
-        new_parents = copy(parents)
-        for parent in parents:
-            if not self.to_branch.has_revision(parent):
-                new_parents.pop(new_parents.index(parent))
-        self._copy_inventory(rev_id, inv_xml, new_parents)
-        self.to_branch.revision_store.add(StringIO(rev_xml), rev_id)
-        mutter('copied revision %s', rev_id)
-
-    def _copy_inventory(self, rev_id, inv_xml, parent_ids):
-        self.to_control.add_text('inventory', rev_id,
-                                split_lines(inv_xml), parent_ids,
-                                self.to_branch.get_transaction())
-
-    def _copy_new_texts(self, rev_id, inv):
-        """Copy any new texts occuring in this revision."""
-        # TODO: Rather than writing out weaves every time, hold them
-        # in memory until everything's done?  But this way is nicer
-        # if it's interrupted.
-        for path, ie in inv.iter_entries():
-            self._copy_one_weave(rev_id, ie.file_id, ie.revision)
-
-    def _copy_one_weave(self, rev_id, file_id, text_revision):
-        """Copy one file weave, esuring the result contains text_revision."""
-        # check if the revision is already there
-        if file_id in self.file_ids_names.keys( ) and \
-            text_revision in self.file_ids_names[file_id]:
-                return        
-        to_weave = self.to_weaves.get_weave_or_empty(file_id,
-            self.to_branch.get_transaction())
-        if not file_id in self.file_ids_names.keys( ):
-            self.file_ids_names[file_id] = to_weave.names( )
-        if text_revision in to_weave:
-            return
-        from_weave = self.from_weaves.get_weave(file_id,
-            self.from_branch.get_transaction())
-        if text_revision not in from_weave:
-            raise MissingText(self.from_branch, text_revision, file_id)
-        mutter('copy file {%s} modified in {%s}', file_id, rev_id)
-
-        if to_weave.numversions() > 0:
-            # destination has contents, must merge
-            try:
-                to_weave.join(from_weave)
-            except errors.WeaveParentMismatch:
-                to_weave.reweave(from_weave)
-        else:
-            # destination is empty, just replace it
-            to_weave = from_weave.copy( )
-        self.to_weaves.put_weave(file_id, to_weave,
-            self.to_branch.get_transaction())
-        self.count_weaves += 1
-        self.copied_file_ids.add(file_id)
-        self.file_ids_names[file_id] = to_weave.names()
-        mutter('copied file {%s}', file_id)
-
+        
 
 fetch = Fetcher
