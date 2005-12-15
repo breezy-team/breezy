@@ -487,6 +487,27 @@ class Branch(object):
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError('store_revision_signature is abstract')
 
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """ This function returns the file_id(s) involved in the
+            changese between the from_revid revision and the to_revid
+            revision
+        """
+        raise NotImplementedError('fileid_involved_between_revs is abstract')
+
+    def fileid_involved(self, last_revid=None):
+        """ This function returns the file_id(s) involved in the
+            changese up to the revision last_revid
+            If no parametr is passed, then all file_id[s] present in the
+            repository are returned
+        """
+        raise NotImplementedError('fileid_involved is abstract')
+
+    def fileid_involved_by_set(self, changes):
+        """ This function returns the file_id(s) involved in the
+            changes present in the set 'changes'
+        """
+        raise NotImplementedError('fileid_involved_by_set is abstract')
+
 class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
 
@@ -1091,54 +1112,49 @@ class BzrBranch(Branch):
         self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
                                 revision_id, "sig")
 
-    def file_involved(self, arg1=None, arg2=None):
+    def fileid_involved_between_revs(self, from_revid, to_revid):
         """ This function returns the file_id(s) involved in the
-            changese between two revisions, or in the changes
-
-            The revisions are expressed as revision_id
-
-            if two args are passed,the changes are searched between
-                'rev-arg1'..'rev-arg2'
-            if one arg is passed, the changes are searched up to rev-arg1 or
-                if it is a set, inside this set
-            if no args is passed, all files_id are returned
+            changese between the from_revid revision and the to_revid
+            revision
         """
-
         w = self._get_inventory_weave( )
-        file_id = set( )
+        from_set = set(w.inclusions([w.lookup(from_revid)]))
+        to_set = set(w.inclusions([w.lookup(to_revid)]))
+        changed = to_set.difference(from_set)
+        return self.fileid_involved_by_set(changed)
 
-        if arg2:
-            from_set = set(w.inclusions([w.lookup(arg1)]))
-            to_set = set(w.inclusions([w.lookup(arg2)]))
-            changed = to_set.difference(from_set)
-        elif arg1:
-            if isinstance(arg1, set):
-                changed = map(w.lookup, arg1 )
-            else:
-                changed = w.inclusions([w.lookup(arg1)])
-        else:
+    def fileid_involved(self, last_revid=None):
+        """ This function returns the file_id(s) involved in the
+            changese up to the revision last_revid
+            If no parametr is passed, then all file_id[s] present in the
+            repository are returned
+        """
+        w = self._get_inventory_weave( )
+        if not last_revid:
             changed = set(w.inclusions([w.numversions( )-1]))
+        else:
+            changed = w.inclusions([w.lookup(last_revid)])
+        return self.fileid_involved_by_set(changed)
+
+    def fileid_involved_by_set(self, changes):
+        """ This function returns the file_id(s) involved in the
+            changese present in the set changes
+        """
+        w = self._get_inventory_weave( )
+        file_ids = set( )
 
         for lineno, insert, deleteset, line in w._walk():
-            if insert in changed:
+            if insert in changes:
 
                 start = line.find('file_id="')+9
                 if start < 9: continue
                 end = line.find('"',start)
                 assert end>= 0
-                fid = line[start:end]
+                file_id = line[start:end]
 
-                start = line.find('revision="')+10
-                if start < 10: continue
-                end = line.find('"',start)
-                assert end>= 0
-                rev = line[start:end]
+                file_ids.add(file_id)
 
-                if w.lookup(rev) != insert: continue
-
-                file_id.add(fid)
-
-        return file_id
+        return file_ids
 
 
 class ScratchBranch(BzrBranch):
