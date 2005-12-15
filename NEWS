@@ -95,6 +95,9 @@ UNRELEASED CHANGES
     * 'bzr add' now takes a --dry-run parameter which shows you what would be
       added, but doesn't actually add anything. (Michael Ellerman)
 
+    * bzr add now lists how many files were ignored per glob.  add --verbose
+      lists the specific files.  (Aaron Bentley)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
