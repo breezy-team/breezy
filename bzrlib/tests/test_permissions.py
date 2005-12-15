@@ -42,6 +42,8 @@ from bzrlib.tests.test_transport import check_mode
 
 def chmod_r(base, file_mode, dir_mode):
     """Recursively chmod from a base directory"""
+    assert os.path.isdir(base)
+    os.chmod(base, dir_mode)
     for root, dirs, files in os.walk(base):
         for d in dirs:
             p = os.path.join(root, d)
@@ -61,6 +63,9 @@ def check_mode_r(test, base, file_mode, dir_mode):
             p = os.path.join(root, f)
             check_mode(test, p, file_mode)
 
+def assertEqualMode(test, mode, mode_test):
+    test.assertEqual(mode, mode_test,
+                     'mode mismatch %o != %o' % (mode, mode_test))
 
 class TestPermissions(TestCaseInTempDir):
 
@@ -81,6 +86,8 @@ class TestPermissions(TestCaseInTempDir):
 
         b = Branch.open('.')
         t = b.working_tree()
+        assertEqualMode(self, 0755, b._dir_mode)
+        assertEqualMode(self, 0644, b._file_mode)
 
         # Modifying a file shouldn't break the permissions
         open('a', 'wb').write('foo2\n')
@@ -100,6 +107,8 @@ class TestPermissions(TestCaseInTempDir):
         check_mode_r(self, '.bzr', 0664, 0775)
         b = Branch.open('.')
         t = b.working_tree()
+        assertEqualMode(self, 0775, b._dir_mode)
+        assertEqualMode(self, 0664, b._file_mode)
 
         open('a', 'wb').write('foo3\n')
         t.commit('foo3')
@@ -110,6 +119,31 @@ class TestPermissions(TestCaseInTempDir):
         t.commit('new c')
         check_mode_r(self, '.bzr', 0664, 0775)
 
+        # Test the group sticky bit
+        del b, t
+        # Recursively update the modes of all files
+        chmod_r('.bzr', 0664, 02775)
+        check_mode_r(self, '.bzr', 0664, 02775)
+        b = Branch.open('.')
+        t = b.working_tree()
+        assertEqualMode(self, 02775, b._dir_mode)
+        assertEqualMode(self, 0664, b._file_mode)
+
+        open('a', 'wb').write('foo4\n')
+        t.commit('foo4')
+        check_mode_r(self, '.bzr', 0664, 02775)
+
+        open('d', 'wb').write('new d\n')
+        t.add('d')
+        t.commit('new d')
+        check_mode_r(self, '.bzr', 0664, 02775)
+
+try:
+    import paramiko
+except ImportError:
+    has_paramiko = False
+else:
+    has_paramiko = True
 
 class TestSftpPermissions(TestCaseWithSFTPServer):
 
@@ -119,10 +153,16 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         # Though it would be nice to test that SFTP to a server
         # which does support chmod has the right effect
 
+        if not has_paramiko:
+            raise TestSkipped('You must have paramiko installed to test sftp')
+
+        from bzrlib.transport.sftp import SFTPTransport
+
         # We don't actually use it directly, we just want to
         # keep the connection open, since StubSFTPServer only
-        # allows 1 connection. Also, this calls delayed_setup()
-        _transport = self.get_transport()
+        # allows 1 connection
+        self.delayed_setup()
+        _transport = SFTPTransport(self._sftp_url)
 
         os.mkdir('local')
         b_local = Branch.initialize(u'local')
@@ -138,10 +178,12 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
 
         b_local = Branch.open(u'local')
         t_local = b_local.working_tree()
-        os.chdir('..')
+        assertEqualMode(self, 0755, b_local._dir_mode)
+        assertEqualMode(self, 0644, b_local._file_mode)
 
         os.mkdir('sftp')
-        sftp_url = self._sftp_url + '/sftp'
+        # Why does self._sftp_url end with a slash????
+        sftp_url = self._sftp_url + 'sftp'
         b_sftp = Branch.initialize(sftp_url)
 
         b_sftp.pull(b_local)
@@ -150,6 +192,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         check_mode_r(self, 'sftp/.bzr', 0644, 0755)
 
         b_sftp = Branch.open(sftp_url)
+        assertEqualMode(self, 0755, b_sftp._dir_mode)
+        assertEqualMode(self, 0644, b_sftp._file_mode)
 
         open('local/a', 'wb').write('foo2\n')
         t_local.commit('foo2')
@@ -157,7 +201,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         # The mode should be maintained after commit
         check_mode_r(self, 'sftp/.bzr', 0644, 0755)
 
-        open('b', 'wb').write('new b\n')
+        open('local/b', 'wb').write('new b\n')
         t_local.add('b')
         t_local.commit('new b')
         b_sftp.pull(b_local)
@@ -169,16 +213,17 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         check_mode_r(self, 'sftp/.bzr', 0664, 0775)
 
         b_sftp = Branch.open(sftp_url)
+        assertEqualMode(self, 0775, b_sftp._dir_mode)
+        assertEqualMode(self, 0664, b_sftp._file_mode)
 
-        open('a', 'wb').write('foo3\n')
+        open('local/a', 'wb').write('foo3\n')
         t_local.commit('foo3')
         b_sftp.pull(b_local)
         check_mode_r(self, 'sftp/.bzr', 0664, 0775)
 
-        open('c', 'wb').write('new c\n')
+        open('local/c', 'wb').write('new c\n')
         t_local.add('c')
         t_local.commit('new c')
         b_sftp.pull(b_local)
         check_mode_r(self, 'sftp/.bzr', 0664, 0775)
-
 

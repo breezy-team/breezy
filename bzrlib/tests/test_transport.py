@@ -17,6 +17,7 @@
 
 import os
 import sys
+import stat
 from cStringIO import StringIO
 
 from bzrlib.errors import (NoSuchFile, FileExists,
@@ -38,8 +39,7 @@ def _append(fn, txt):
 if sys.platform != 'win32':
     def check_mode(test, path, mode):
         """Check that a particular path has the correct mode."""
-        # We are ignoring stuff like group sticky bits
-        actual_mode = os.stat(path).st_mode & 0777
+        actual_mode = stat.S_IMODE(os.stat(path).st_mode)
         test.assertEqual(mode, actual_mode,
             'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
 else:

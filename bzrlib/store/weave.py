@@ -40,9 +40,11 @@ class WeaveStore(TransportStore):
     """
     FILE_SUFFIX = '.weave'
 
-    def __init__(self, transport, prefixed=False, precious=False):
-        self._transport = transport
-        self._prefixed = prefixed
+    def __init__(self, transport, prefixed=False, precious=False,
+                 dir_mode=None, file_mode=None):
+        super(WeaveStore, self).__init__(transport,
+                dir_mode=dir_mode, file_mode=file_mode,
+                prefixed=prefixed, compressed=False)
         self._precious = precious
 
     def filename(self, file_id):
@@ -67,10 +69,10 @@ class WeaveStore(TransportStore):
     def _put(self, file_id, f):
         if self._prefixed:
             try:
-                self._transport.mkdir(hash_prefix(file_id))
+                self._transport.mkdir(hash_prefix(file_id), mode=self._dir_mode)
             except FileExists:
                 pass
-        return self._transport.put(self.filename(file_id), f)
+        return self._transport.put(self.filename(file_id), f, mode=self._file_mode)
 
     def get_weave(self, file_id, transaction):
         weave = transaction.map.find_weave(file_id)

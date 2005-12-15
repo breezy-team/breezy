@@ -144,6 +144,10 @@ class Store(object):
 class TransportStore(Store):
     """A TransportStore is a Store superclass for Stores that use Transports."""
 
+    # Just some constants so that plugins/etc could override them if they want
+    _default_dir_mode = 0755
+    _default_file_mode = 0644
+
     def add(self, f, fileid, suffix=None):
         """Add contents of a file into the store.
 
@@ -220,13 +224,26 @@ class TransportStore(Store):
                 pass
         raise KeyError(fileid)
 
-    def __init__(self, a_transport, prefixed=False, compressed=False):
+    def __init__(self, a_transport, prefixed=False, compressed=False,
+                 dir_mode=None, file_mode=None):
         assert isinstance(a_transport, transport.Transport)
         super(TransportStore, self).__init__()
         self._transport = a_transport
         self._prefixed = prefixed
         self._compressed = compressed
         self._suffixes = set()
+
+        if dir_mode is None:
+            # This really should only happen in the test suite
+            self._dir_mode = self._default_dir_mode
+        else:
+            self._dir_mode = dir_mode
+
+        if file_mode is None:
+            # This really should only happen in the test suite
+            self._file_mode = self._default_file_mode
+        else:
+            self._file_mode = file_mode
 
     def _iter_files_recursive(self):
         """Iterate through the files in the transport."""
@@ -302,37 +319,6 @@ class TransportStore(Store):
 def ImmutableMemoryStore():
     return bzrlib.store.text.TextStore(transport.memory.MemoryTransport())
         
-
-class CachedStore(Store):
-    """A store that caches data locally, to avoid repeated downloads.
-    The precacache method should be used to avoid server round-trips for
-    every piece of data.
-    """
-
-    def __init__(self, store, cache_dir):
-        super(CachedStore, self).__init__()
-        self.source_store = store
-        # This clones the source store type with a locally bound
-        # transport. FIXME: it assumes a constructor is == cloning.
-        # clonable store - it might be nicer to actually have a clone()
-        # or something. RBC 20051003
-        self.cache_store = store.__class__(LocalTransport(cache_dir))
-
-    def get(self, id):
-        mutter("Cache add %s", id)
-        if id not in self.cache_store:
-            self.cache_store.add(self.source_store.get(id), id)
-        return self.cache_store.get(id)
-
-    def has_id(self, fileid, suffix=None):
-        """See Store.has_id."""
-        if self.cache_store.has_id(fileid, suffix):
-            return True
-        if self.source_store.has_id(fileid, suffix):
-            # We could asynchronously copy at this time
-            return True
-        return False
-
 
 def copy_all(store_from, store_to):
     """Copy all ids from one store to another."""

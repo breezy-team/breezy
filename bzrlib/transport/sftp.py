@@ -434,7 +434,7 @@ class SFTPTransport (Transport):
             if mode is not None:
                 self._sftp.chmod(path, mode=mode)
         except (paramiko.SSHException, IOError), e:
-            self._translate_io_exception(e, relpath, ': unable to mkdir',
+            self._translate_io_exception(e, path, ': unable to mkdir',
                 failure_exc=FileExists)
 
     def _translate_io_exception(self, e, path, more_info='', failure_exc=NoSuchFile):
