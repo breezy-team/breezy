@@ -178,3 +178,4 @@ class TestFileInvolved(TestCaseInTempDir):
                             delta.modified ]
 
                 self.assertEquals( l1, set(l2) )
+

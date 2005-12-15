@@ -489,14 +489,14 @@ class Branch(object):
 
     def fileid_involved_between_revs(self, from_revid, to_revid):
         """ This function returns the file_id(s) involved in the
-            changese between the from_revid revision and the to_revid
+            changes between the from_revid revision and the to_revid
             revision
         """
         raise NotImplementedError('fileid_involved_between_revs is abstract')
 
     def fileid_involved(self, last_revid=None):
         """ This function returns the file_id(s) involved in the
-            changese up to the revision last_revid
+            changes up to the revision last_revid
             If no parametr is passed, then all file_id[s] present in the
             repository are returned
         """
@@ -1114,7 +1114,7 @@ class BzrBranch(Branch):
 
     def fileid_involved_between_revs(self, from_revid, to_revid):
         """ This function returns the file_id(s) involved in the
-            changese between the from_revid revision and the to_revid
+            changes between the from_revid revision and the to_revid
             revision
         """
         w = self._get_inventory_weave( )
@@ -1126,7 +1126,7 @@ class BzrBranch(Branch):
 
     def fileid_involved(self, last_revid=None):
         """ This function returns the file_id(s) involved in the
-            changese up to the revision last_revid
+            changes up to the revision last_revid
             If no parametr is passed, then all file_id[s] present in the
             repository are returned
         """
