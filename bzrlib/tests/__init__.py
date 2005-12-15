@@ -677,6 +677,7 @@ def test_suite():
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_xml',
+                   'bzrlib.tests.test_file_involved',
                    ]
 
     print '%10s: %s' % ('bzr', os.path.realpath(sys.argv[0]))

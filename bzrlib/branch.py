@@ -1091,6 +1091,55 @@ class BzrBranch(Branch):
         self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
                                 revision_id, "sig")
 
+    def file_involved(self, arg1=None, arg2=None):
+        """ This function returns the file_id(s) involved in the
+            changese between two revisions, or in the changes
+
+            The revisions are expressed as revision_id
+
+            if two args are passed,the changes are searched between
+                'rev-arg1'..'rev-arg2'
+            if one arg is passed, the changes are searched up to rev-arg1 or
+                if it is a set, inside this set
+            if no args is passed, all files_id are returned
+        """
+
+        w = self._get_inventory_weave( )
+        file_id = set( )
+
+        if arg2:
+            from_set = set(w.inclusions([w.lookup(arg1)]))
+            to_set = set(w.inclusions([w.lookup(arg2)]))
+            changed = to_set.difference(from_set)
+        elif arg1:
+            if isinstance(arg1, set):
+                changed = map(w.lookup, arg1 )
+            else:
+                changed = w.inclusions([w.lookup(arg1)])
+        else:
+            changed = set(w.inclusions([w.numversions( )-1]))
+
+        for lineno, insert, deleteset, line in w._walk():
+            if insert in changed:
+
+                start = line.find('file_id="')+9
+                if start < 9: continue
+                end = line.find('"',start)
+                assert end>= 0
+                fid = line[start:end]
+
+                start = line.find('revision="')+10
+                if start < 10: continue
+                end = line.find('"',start)
+                assert end>= 0
+                rev = line[start:end]
+
+                if w.lookup(rev) != insert: continue
+
+                file_id.add(fid)
+
+        return file_id
+
 
 class ScratchBranch(BzrBranch):
     """Special test class: a branch that cleans up after itself.
