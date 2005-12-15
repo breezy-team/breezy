@@ -144,10 +144,6 @@ class Store(object):
 class TransportStore(Store):
     """A TransportStore is a Store superclass for Stores that use Transports."""
 
-    # Just some constants so that plugins/etc could override them if they want
-    _default_dir_mode = 0755
-    _default_file_mode = 0644
-
     def add(self, f, fileid, suffix=None):
         """Add contents of a file into the store.
 
@@ -233,17 +229,10 @@ class TransportStore(Store):
         self._compressed = compressed
         self._suffixes = set()
 
-        if dir_mode is None:
-            # This really should only happen in the test suite
-            self._dir_mode = self._default_dir_mode
-        else:
-            self._dir_mode = dir_mode
-
-        if file_mode is None:
-            # This really should only happen in the test suite
-            self._file_mode = self._default_file_mode
-        else:
-            self._file_mode = file_mode
+        # It is okay for these to be None, it just means they
+        # will just use the filesystem defaults
+        self._dir_mode = dir_mode
+        self._file_mode = file_mode
 
     def _iter_files_recursive(self):
         """Iterate through the files in the transport."""
