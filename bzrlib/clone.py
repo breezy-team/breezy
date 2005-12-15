@@ -78,19 +78,15 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
         note("basis_branch is not supported for fast weave copy yet.")
     branch_from.lock_read()
     try:
-        if not (branch_from.weave_store.listable()
-                and branch_from.revision_store.listable()):
-            return copy_branch_slower(branch_from, to_location, revision,
-                                      basis_branch)
         history = _get_truncated_history(branch_from, revision)
         if not bzrlib.osutils.lexists(to_location):
             os.mkdir(to_location)
         branch_to = Branch.initialize(to_location)
         mutter("copy branch from %s to %s", branch_from, branch_to)
         branch_to.working_tree().set_root_id(branch_from.get_root_id())
-        _copy_control_weaves(branch_from, branch_to)
-        _copy_text_weaves(branch_from, branch_to)
-        _copy_revision_store(branch_from, branch_to)
+        _copy_control_weaves(branch_from, branch_to, history)
+        _copy_text_weaves(branch_from, branch_to, history)
+        _copy_revision_store(branch_from, branch_to, history)
         branch_to.set_parent(branch_from.base)
         # must be done *after* history is copied across
         branch_to.append_revision(*history)
@@ -111,52 +107,23 @@ def _get_truncated_history(branch_from, revision_id):
         raise InvalidRevisionId(revision_id=revision, branch=branch_from)
     return history[:idx+1]
 
-def _copy_text_weaves(branch_from, branch_to):
-    copy_all(branch_from.weave_store, branch_to.weave_store)
+def _copy_text_weaves(branch_from, branch_to, history):
+
+    from_set = set(branch_from.get_ancestry(history[-1])[1:])
+    file_ids = branch_from.file_involved( from_set )
+    branch_to.weave_store.copy_multi(branch_from.weave_store, file_ids )
 
 
-def _copy_revision_store(branch_from, branch_to):
-    copy_all(branch_from.revision_store, branch_to.revision_store)
+def _copy_revision_store(branch_from, branch_to, history):
+
+    # copy all revision
+    from_set = set(branch_from.get_ancestry(history[-1])[1:])
+    branch_to.revision_store.copy_multi(branch_from.revision_store, from_set )
 
 
-def _copy_control_weaves(branch_from, branch_to):
+def _copy_control_weaves(branch_from, branch_to, history):
     to_control = branch_to.control_weaves
     from_control = branch_from.control_weaves
+    # TODO, we need only the minimal revision !!!!!
     to_control.copy_multi(from_control, ['inventory'])
 
-    
-def copy_branch_slower(branch_from, to_location, revision=None, basis_branch=None):
-    """Copy branch_from into the existing directory to_location.
-
-    revision
-        If not None, only revisions up to this point will be copied.
-        The head of the new branch will be that revision.  Must be a
-        revid or None.
-
-    to_location -- The destination directory; must either exist and be 
-        empty, or not exist, in which case it is created.
-
-    revno
-        The revision to copy up to
-
-    basis_branch
-        A local branch to copy revisions from, related to branch_from. 
-        This is used when branching from a remote (slow) branch, and we have
-        a local branch that might contain some relevant revisions.
-    """
-    assert isinstance(branch_from, Branch)
-    assert isinstance(to_location, basestring)
-    if not bzrlib.osutils.lexists(to_location):
-        os.mkdir(to_location)
-    br_to = Branch.initialize(to_location)
-    mutter("copy branch from %s to %s", branch_from, br_to)
-    if basis_branch is not None:
-        basis_branch.push_stores(br_to)
-    br_to.working_tree().set_root_id(branch_from.get_root_id())
-    if revision is None:
-        revision = branch_from.last_revision()
-    br_to.update_revisions(branch_from, stop_revision=revision)
-    build_working_dir(to_location)
-    br_to.set_parent(branch_from.base)
-    mutter("copied")
-    return br_to
