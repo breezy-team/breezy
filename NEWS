@@ -27,13 +27,16 @@ UNRELEASED CHANGES
       This gives better integration with user settings such as ProxyCommand.
       (James Henstridge)
 
-    * Sftp paths can now be relative, or local, according to the IETF draft spec.
-      Paths now take the form:
+    * Sftp paths can now be relative, or local, according to the IETF 
+      draft spec.  Paths now take the form:
       sftp://user:pass@host:port/relative/path
       or
       sftp://user:pass@host:port/%2Fabsolute/path
       or
       sftp://user:pass@host:port//absolute/path
+
+    * configure.in and config.guess are no longer in the builtin default 
+      ignore list.
 
   IMPROVEMENTS:
 
