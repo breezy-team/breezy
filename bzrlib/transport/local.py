@@ -26,7 +26,7 @@ import urllib
 
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
-from bzrlib.osutils import abspath
+from bzrlib.osutils import abspath, realpath, normpath, pathjoin, rename
 
 
 class LocalTransport(Transport):
@@ -38,8 +38,7 @@ class LocalTransport(Transport):
             base = base[7:]
         # realpath is incompatible with symlinks. When we traverse
         # up we might be able to normpath stuff. RBC 20051003
-        super(LocalTransport, self).__init__(
-            os.path.normpath(abspath(base)))
+        super(LocalTransport, self).__init__(normpath(abspath(base)))
 
     def should_cache(self):
         return False
@@ -59,7 +58,7 @@ class LocalTransport(Transport):
         This can be supplied with a string or a list
         """
         assert isinstance(relpath, basestring), (type(relpath), relpath)
-        return os.path.join(self.base, urllib.unquote(relpath))
+        return pathjoin(self.base, urllib.unquote(relpath))
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
@@ -148,7 +147,7 @@ class LocalTransport(Transport):
         path_to = self.abspath(rel_to)
 
         try:
-            os.rename(path_from, path_to)
+            rename(path_from, path_to)
         except (IOError, OSError),e:
             # TODO: What about path_to?
             self._translate_error(e, path_from)

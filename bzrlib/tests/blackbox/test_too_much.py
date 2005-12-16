@@ -39,7 +39,7 @@ import sys
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
 from bzrlib.errors import BzrCommandError
-from bzrlib.osutils import has_symlinks
+from bzrlib.osutils import has_symlinks, pathjoin
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.blackbox import ExternalBase
 
@@ -211,17 +211,20 @@ class TestCommands(ExternalBase):
         os.rmdir('revertdir')
         self.runbzr('revert')
 
-        os.symlink('/unlikely/to/exist', 'symlink')
-        self.runbzr('add symlink')
-        self.runbzr('commit -m f')
-        os.unlink('symlink')
-        self.runbzr('revert')
-        self.failUnlessExists('symlink')
-        os.unlink('symlink')
-        os.symlink('a-different-path', 'symlink')
-        self.runbzr('revert')
-        self.assertEqual('/unlikely/to/exist',
-                         os.readlink('symlink'))
+        if has_symlinks():
+            os.symlink('/unlikely/to/exist', 'symlink')
+            self.runbzr('add symlink')
+            self.runbzr('commit -m f')
+            os.unlink('symlink')
+            self.runbzr('revert')
+            self.failUnlessExists('symlink')
+            os.unlink('symlink')
+            os.symlink('a-different-path', 'symlink')
+            self.runbzr('revert')
+            self.assertEqual('/unlikely/to/exist',
+                             os.readlink('symlink'))
+        else:
+            self.log("skipping revert symlink tests")
         
         file('hello', 'wt').write('xyz')
         self.runbzr('commit -m xyz hello')
@@ -668,7 +671,7 @@ class TestCommands(ExternalBase):
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['added dir',
-                           'added dir'+os.sep+'sub.txt',
+                           'added dir/sub.txt',
                            'added top.txt',],
                           results)
 
@@ -715,7 +718,7 @@ class TestCommands(ExternalBase):
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
         self.run_bzr('add', '--no-recurse', 'inertiatic')
-        self.assertEquals(self.capture('unknowns'), 'inertiatic'+os.sep+'esp\n')
+        self.assertEquals(self.capture('unknowns'), 'inertiatic/esp\n')
         self.run_bzr('add', 'inertiatic/esp')
         self.assertEquals(self.capture('unknowns'), '')
 
@@ -994,7 +997,7 @@ class OldTests(ExternalBase):
         runbzr('init')
 
         self.assertEquals(capture('root').rstrip(),
-                          os.path.join(self.test_dir, 'branch1'))
+                          pathjoin(self.test_dir, 'branch1'))
 
         progress("status of new file")
 
@@ -1070,7 +1073,7 @@ class OldTests(ExternalBase):
         runbzr("rename sub1 sub2")
         runbzr("move hello.txt sub2")
         self.assertEqual(capture("relpath sub2/hello.txt"),
-                         os.path.join("sub2", "hello.txt\n"))
+                         pathjoin("sub2", "hello.txt\n"))
 
         self.assert_(exists("sub2"))
         self.assert_(exists("sub2/hello.txt"))
@@ -1092,15 +1095,15 @@ class OldTests(ExternalBase):
 
         chdir('sub1/sub2')
         self.assertEquals(capture('root')[:-1],
-                          os.path.join(self.test_dir, 'branch1'))
+                          pathjoin(self.test_dir, 'branch1'))
         runbzr('move ../hello.txt .')
         self.assert_(exists('./hello.txt'))
         self.assertEquals(capture('relpath hello.txt'),
-                          os.path.join('sub1', 'sub2', 'hello.txt') + '\n')
-        self.assertEquals(capture('relpath ../../sub1/sub2/hello.txt'), os.path.join('sub1', 'sub2', 'hello.txt\n'))
+                          pathjoin('sub1', 'sub2', 'hello.txt') + '\n')
+        self.assertEquals(capture('relpath ../../sub1/sub2/hello.txt'), pathjoin('sub1', 'sub2', 'hello.txt\n'))
         runbzr(['commit', '-m', 'move to parent directory'])
         chdir('..')
-        self.assertEquals(capture('relpath sub2/hello.txt'), os.path.join('sub1', 'sub2', 'hello.txt\n'))
+        self.assertEquals(capture('relpath sub2/hello.txt'), pathjoin('sub1', 'sub2', 'hello.txt\n'))
 
         runbzr('move sub2/hello.txt .')
         self.assert_(exists('hello.txt'))

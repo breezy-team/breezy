@@ -19,6 +19,10 @@ UNRELEASED CHANGES
       points to C:\Documents and Settings\User Name\Application Data), HOME.
       (John Arbash Meinel)
 
+    * Plugins with the same name in different directories in the bzr plugin
+      path are no longer loaded: only the first successfully loaded one is
+      used. (Robert Collins)
+
     * Use systems' external ssh command to open connections if possible.  
       This gives better integration with user settings such as ProxyCommand.
       (James Henstridge)
@@ -75,6 +79,20 @@ UNRELEASED CHANGES
     * Sftp will attempt to cache the connection, so it is more likely that
       a connection will be reused, rather than requiring multiple password
       requests.
+
+    * bzr revno now takes an optional argument indicating the branch whose
+      revno should be printed.  (Michael Ellerman)
+
+    * bzr cat defaults to printing the last version of the file.  
+      (#3632, Matthieu Moy)
+
+    * New global option 'bzr --lsprof COMMAND' runs bzr under the lsprof 
+      profiler.  (Denys Duchier)
+
+    * Faster commits by reading only the headers of affected weave files. 
+      (Denys Duchier)
+
+    * New --dry-run option for add.  (Michael Ellerman)
 
   BUG FIXES:
 
@@ -150,6 +168,9 @@ UNRELEASED CHANGES
     * Much better error message if one of the test suites can't be 
       imported.  (Martin Pool)
 
+    * Tests can now run TestSkipped if they can't execute for any reason.
+      (Martin Pool)
+
   INTERNALS:
 
     * WorkingTree.pull has been split across Branch and WorkingTree,
@@ -200,6 +221,12 @@ UNRELEASED CHANGES
 
     * Rename selftests to `bzrlib.tests.test_foo`.  (John A Meinel, Martin 
       Pool)
+
+    * bzrlib.plugin.all_plugins has been changed from an attribute to a 
+      query method. (Robert Collins)
+ 
+    * New options to read only the table-of-contents of a weave.  
+      (Denys Duchier)
    
 bzr 0.6 2005-10-28
 

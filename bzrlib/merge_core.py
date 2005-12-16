@@ -2,7 +2,7 @@ import os.path
 
 import changeset
 from changeset import Inventory, apply_changeset, invert_dict
-from bzrlib.osutils import backup_file, rename
+from bzrlib.osutils import backup_file, rename, pathjoin
 from bzrlib.merge3 import Merge3
 import bzrlib
 from bzrlib.atomicfile import AtomicFile
@@ -239,7 +239,7 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
             parent_dir = {this_parent: this_dir, other_parent: other_dir, 
                           base_parent: base_dir}
             directory = parent_dir[parent]
-            return os.path.join(directory, name)
+            return pathjoin(directory, name)
         else:
             assert parent is None
             return None

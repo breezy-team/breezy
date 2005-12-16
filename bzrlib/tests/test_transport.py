@@ -23,6 +23,7 @@ from bzrlib.errors import (NoSuchFile, FileExists,
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.transport import memory, urlescape
+from bzrlib.osutils import pathjoin
 
 
 def _append(fn, txt):
@@ -95,11 +96,11 @@ class TestTransportMixIn(object):
         self.assertEqual(open('a', 'rb').read(), t.get('a').read())
         content_f = t.get_multi(files)
         for path,f in zip(files, content_f):
-            self.assertEqual(open(path).read(), f.read())
+            self.assertEqual(f.read(), open(path, 'rb').read())
 
         content_f = t.get_multi(iter(files))
         for path,f in zip(files, content_f):
-            self.assertEqual(f.read(), open(path).read())
+            self.assertEqual(f.read(), open(path, 'rb').read())
 
         self.assertRaises(NoSuchFile, t.get, 'c')
         self.assertListRaises(NoSuchFile, t.get_multi, ['a', 'b', 'c'])
@@ -278,7 +279,7 @@ class TestTransportMixIn(object):
                              ('dir_b/b', 'contents of dir_b/b')])
                           , 2)
         for f in ('dir_a/a', 'dir_b/b'):
-            self.assertEqual(t.get(f).read(), open(f).read())
+            self.assertEqual(t.get(f).read(), open(f, 'rb').read())
 
     def test_copy_to(self):
         import tempfile
@@ -295,8 +296,8 @@ class TestTransportMixIn(object):
 
         t.copy_to(files, local_t)
         for f in files:
-            self.assertEquals(open(f).read(),
-                    open(os.path.join(dtmp_base, f)).read())
+            self.assertEquals(open(f, 'rb').read(),
+                    open(pathjoin(dtmp_base, f), 'rb').read())
 
         # Test that copying into a missing directory raises
         # NoSuchFile
@@ -304,7 +305,7 @@ class TestTransportMixIn(object):
         open('e/f', 'wb').write('contents of e')
         self.assertRaises(NoSuchFile, t.copy_to, ['e/f'], local_t)
 
-        os.mkdir(os.path.join(dtmp_base, 'e'))
+        os.mkdir(pathjoin(dtmp_base, 'e'))
         t.copy_to(['e/f'], local_t)
 
         del dtmp, dtmp_base, local_t
@@ -316,8 +317,8 @@ class TestTransportMixIn(object):
         files = ['a', 'b', 'c', 'd']
         t.copy_to(iter(files), local_t)
         for f in files:
-            self.assertEquals(open(f).read(),
-                    open(os.path.join(dtmp_base, f)).read())
+            self.assertEquals(open(f, 'rb').read(),
+                    open(pathjoin(dtmp_base, f), 'rb').read())
 
         del dtmp, dtmp_base, local_t
 
@@ -654,22 +655,27 @@ class TestTransportMixIn(object):
             self.assertRaises(TransportNotPossible, t.list_dir, '.')
             return
 
+        def sorted_list(d):
+            l = list(t.list_dir(d))
+            l.sort()
+            return l
+
         # SftpServer creates control files in the working directory
         # so lets move down a directory to be safe
         os.mkdir('wd')
         os.chdir('wd')
         t = t.clone('wd')
 
-        self.assertEqual([], list(t.list_dir('.')))
+        self.assertEqual([], sorted_list(u'.'))
         self.build_tree(['a', 'b', 'c/', 'c/d', 'c/e'])
 
-        self.assertEqual(['a', 'b', 'c'], list(t.list_dir('.')))
-        self.assertEqual(['d', 'e'], list(t.list_dir('c')))
+        self.assertEqual([u'a', u'b', u'c'], sorted_list(u'.'))
+        self.assertEqual([u'd', u'e'], sorted_list(u'c'))
 
         os.remove('c/d')
         os.remove('b')
-        self.assertEqual(['a', 'c'], list(t.list_dir('.')))
-        self.assertEqual(['e'], list(t.list_dir('c')))
+        self.assertEqual([u'a', u'c'], sorted_list('.'))
+        self.assertEqual([u'e'], sorted_list(u'c'))
 
         self.assertListRaises(NoSuchFile, t.list_dir, 'q')
         self.assertListRaises(NoSuchFile, t.list_dir, 'c/f')

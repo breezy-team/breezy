@@ -94,8 +94,6 @@ def mutter(fmt, *args):
     else:
         out = fmt
     out += '\n'
-    if isinstance(out, unicode):
-        out = out.encode('utf-8')
     _trace_file.write(out)
 debug = mutter
 

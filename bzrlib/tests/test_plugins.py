@@ -23,14 +23,17 @@
 
 import os
 
+import bzrlib.plugin
+import bzrlib.plugins
 from bzrlib.tests import TestCaseInTempDir
+from bzrlib.osutils import pathjoin, abspath
 
 class PluginTest(TestCaseInTempDir):
     """Create an external plugin and test loading."""
 #    def test_plugin_loading(self):
 #        orig_help = self.run_bzr_captured('bzr help commands')[0]
 #        os.mkdir('plugin_test')
-#        f = open(os.path.join('plugin_test', 'myplug.py'), 'wt')
+#        f = open(pathjoin('plugin_test', 'myplug.py'), 'wt')
 #        f.write(PLUGIN_TEXT)
 #        f.close()
 #        newhelp = self.run_bzr_captured('bzr help commands')[0]
@@ -43,7 +46,7 @@ class PluginTest(TestCaseInTempDir):
 #        shutil.rmtree('plugin_test')
 #
 
-#         os.environ['BZRPLUGINPATH'] = os.path.abspath('plugin_test')
+#         os.environ['BZRPLUGINPATH'] = abspath('plugin_test')
 #         help = backtick('bzr help commands')
 #         assert help.find('myplug') != -1
 #         assert help.find('Just a simple test plugin.') != -1
@@ -52,7 +55,7 @@ class PluginTest(TestCaseInTempDir):
 #         assert backtick('bzr myplug') == 'Hello from my plugin\n'
 #         assert backtick('bzr mplg') == 'Hello from my plugin\n'
 
-#         f = open(os.path.join('plugin_test', 'override.py'), 'wb')
+#         f = open(pathjoin('plugin_test', 'override.py'), 'wb')
 #         f.write("""import bzrlib, bzrlib.commands
 #     class cmd_commit(bzrlib.commands.cmd_commit):
 #         '''Commit changes into a new revision.'''
@@ -77,3 +80,60 @@ class cmd_myplug(bzrlib.commands.Command):
 """
 
 # TODO: Write a test for plugin decoration of commands.
+
+class TestOneNamedPluginOnly(TestCaseInTempDir):
+
+    activeattributes = {}
+
+    def test_plugins_with_the_same_name_are_not_loaded(self):
+        # This test tests that having two plugins in different
+        # directories does not result in both being loaded.
+        # get a file name we can use which is also a valid attribute
+        # for accessing in activeattributes. - we cannot give import parameters.
+        tempattribute = "0"
+        self.failIf(tempattribute in self.activeattributes)
+        # set a place for the plugins to record their loading, and at the same
+        # time validate that the location the plugins should record to is
+        # valid and correct.
+        bzrlib.tests.test_plugins.TestOneNamedPluginOnly.activeattributes \
+            [tempattribute] = []
+        self.failUnless(tempattribute in self.activeattributes)
+        # create two plugin directories
+        os.mkdir('first')
+        os.mkdir('second')
+        # write a plugin that will record when its loaded in the 
+        # tempattribute list.
+        template = ("from bzrlib.tests.test_plugins import TestOneNamedPluginOnly\n"
+                    "TestOneNamedPluginOnly.activeattributes[%r].append('%s')\n")
+        print >> file(os.path.join('first', 'plugin.py'), 'w'), template % (tempattribute, 'first')
+        print >> file(os.path.join('second', 'plugin.py'), 'w'), template % (tempattribute, 'second')
+        try:
+            bzrlib.plugin.load_from_dirs(['first', 'second'])
+            self.assertEqual(['first'], self.activeattributes[tempattribute])
+        finally:
+            # remove the plugin 'plugin'
+            del self.activeattributes[tempattribute]
+            if getattr(bzrlib.plugins, 'plugin', None):
+                del bzrlib.plugins.plugin
+        self.failIf(getattr(bzrlib.plugins, 'plugin', None))
+
+
+class TestAllPlugins(TestCaseInTempDir):
+
+    def test_plugin_appears_in_all_plugins(self):
+        # This test tests a new plugin appears in bzrlib.plugin.all_plugins().
+        # check the plugin is not loaded already
+        self.failIf(getattr(bzrlib.plugins, 'plugin', None))
+        # write a plugin that _cannot_ fail to load.
+        print >> file('plugin.py', 'w'), ""
+        try:
+            bzrlib.plugin.load_from_dirs(['.'])
+            self.failUnless('plugin' in bzrlib.plugin.all_plugins())
+            self.failUnless(getattr(bzrlib.plugins, 'plugin', None))
+            self.assertEqual(bzrlib.plugin.all_plugins()['plugin'],
+                             bzrlib.plugins.plugin)
+        finally:
+            # remove the plugin 'plugin'
+            if getattr(bzrlib.plugins, 'plugin', None):
+                del bzrlib.plugins.plugin
+        self.failIf(getattr(bzrlib.plugins, 'plugin', None))

@@ -28,9 +28,10 @@ import string
 import sys
 import time
 import types
+import tempfile
 
 import bzrlib
-from bzrlib.errors import BzrError, PathNotChild
+from bzrlib.errors import BzrError, PathNotChild, NoSuchFile
 from bzrlib.trace import mutter
 
 
@@ -97,6 +98,8 @@ def kind_marker(kind):
         raise BzrError('invalid file kind %r' % kind)
 
 def lexists(f):
+    if hasattr(os.path, 'lexists'):
+        return os.path.lexists(f)
     try:
         if hasattr(os, 'lstat'):
             os.lstat(f)
@@ -109,16 +112,64 @@ def lexists(f):
         else:
             raise BzrError("lstat/stat of (%r): %r" % (f, e))
 
-def normalizepath(f):
-    if hasattr(os.path, 'realpath'):
-        F = os.path.realpath
+def fancy_rename(old, new, rename_func, unlink_func):
+    """A fancy rename, when you don't have atomic rename.
+    
+    :param old: The old path, to rename from
+    :param new: The new path, to rename to
+    :param rename_func: The potentially non-atomic rename function
+    :param unlink_func: A way to delete the target file if the full rename succeeds
+    """
+
+    # sftp rename doesn't allow overwriting, so play tricks:
+    import random
+    base = os.path.basename(new)
+    dirname = os.path.dirname(new)
+    tmp_name = u'tmp.%s.%.9f.%d.%d' % (base, time.time(), os.getpid(), random.randint(0, 0x7FFFFFFF))
+    tmp_name = pathjoin(dirname, tmp_name)
+
+    # Rename the file out of the way, but keep track if it didn't exist
+    # We don't want to grab just any exception
+    # something like EACCES should prevent us from continuing
+    # The downside is that the rename_func has to throw an exception
+    # with an errno = ENOENT, or NoSuchFile
+    file_existed = False
+    try:
+        rename_func(new, tmp_name)
+    except (NoSuchFile,), e:
+        pass
+    except Exception, e:
+        if (not hasattr(e, 'errno') 
+            or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
+            raise
     else:
-        F = os.path.abspath
-    [p,e] = os.path.split(f)
-    if e == "" or e == "." or e == "..":
-        return F(f)
-    else:
-        return os.path.join(F(p), e)
+        file_existed = True
+
+    success = False
+    try:
+        # This may throw an exception, in which case success will
+        # not be set.
+        rename_func(old, new)
+        success = True
+    finally:
+        if file_existed:
+            # If the file used to exist, rename it back into place
+            # otherwise just delete it from the tmp location
+            if success:
+                unlink_func(tmp_name)
+            else:
+                rename_func(tmp_name, new)
+
+# Default is to just use the python builtins
+abspath = os.path.abspath
+realpath = os.path.realpath
+pathjoin = os.path.join
+normpath = os.path.normpath
+getcwd = os.getcwdu
+mkdtemp = tempfile.mkdtemp
+rename = os.rename
+dirname = os.path.dirname
+basename = os.path.basename
 
 if os.name == "posix":
     # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
@@ -128,13 +179,45 @@ if os.name == "posix":
     _fs_enc = sys.getfilesystemencoding()
     def abspath(path):
         return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
+
     def realpath(path):
         return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
-else:
+
+if sys.platform == 'win32':
     # We need to use the Unicode-aware os.path.abspath and
     # os.path.realpath on Windows systems.
-    abspath = os.path.abspath
-    realpath = os.path.realpath
+    def abspath(path):
+        return os.path.abspath(path).replace('\\', '/')
+
+    def realpath(path):
+        return os.path.realpath(path).replace('\\', '/')
+
+    def pathjoin(*args):
+        return os.path.join(*args).replace('\\', '/')
+
+    def normpath(path):
+        return os.path.normpath(path).replace('\\', '/')
+
+    def getcwd():
+        return os.getcwdu().replace('\\', '/')
+
+    def mkdtemp(*args, **kwargs):
+        return tempfile.mkdtemp(*args, **kwargs).replace('\\', '/')
+
+    def rename(old, new):
+        fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+
+def normalizepath(f):
+    if hasattr(os.path, 'realpath'):
+        F = realpath
+    else:
+        F = abspath
+    [p,e] = os.path.split(f)
+    if e == "" or e == "." or e == "..":
+        return F(f)
+    else:
+        return pathjoin(F(p), e)
+
 
 def backup_file(fn):
     """Copy a file to a backup.
@@ -163,12 +246,6 @@ def backup_file(fn):
     finally:
         outf.close()
 
-if os.name == 'nt':
-    import shutil
-    rename = shutil.move
-else:
-    rename = os.rename
-
 
 def isdir(f):
     """True if f is an accessible directory."""
@@ -195,18 +272,18 @@ def islink(f):
 def is_inside(dir, fname):
     """True if fname is inside dir.
     
-    The parameters should typically be passed to os.path.normpath first, so
+    The parameters should typically be passed to osutils.normpath first, so
     that . and .. and repeated slashes are eliminated, and the separators
     are canonical for the platform.
     
     The empty string as a dir name is taken as top-of-tree and matches 
     everything.
     
-    >>> is_inside('src', os.path.join('src', 'foo.c'))
+    >>> is_inside('src', pathjoin('src', 'foo.c'))
     True
     >>> is_inside('src', 'srccontrol')
     False
-    >>> is_inside('src', os.path.join('src', 'a', 'a', 'a', 'foo.c'))
+    >>> is_inside('src', pathjoin('src', 'a', 'a', 'a', 'foo.c'))
     True
     >>> is_inside('foo.c', 'foo.c')
     True
@@ -223,8 +300,8 @@ def is_inside(dir, fname):
     if dir == '':
         return True
 
-    if dir[-1] != os.sep:
-        dir += os.sep
+    if dir[-1] != '/':
+        dir += '/'
 
     return fname.startswith(dir)
 
@@ -407,14 +484,14 @@ def joinpath(p):
     for f in p:
         if (f == '..') or (f == None) or (f == ''):
             raise BzrError("sorry, %r not allowed in path" % f)
-    return os.path.join(*p)
+    return pathjoin(*p)
 
 
 def appendpath(p1, p2):
     if p1 == '':
         return p2
     else:
-        return os.path.join(p1, p2)
+        return pathjoin(p1, p2)
     
 
 def split_lines(s):
@@ -488,8 +565,10 @@ def relpath(base, path):
         # to branch anymore.
         raise PathNotChild(rp, base)
 
-    return os.sep.join(s)
-
+    if s:
+        return pathjoin(*s)
+    else:
+        return ''
 
 
 def terminal_width():

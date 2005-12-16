@@ -22,6 +22,7 @@ as remote (such as http or sftp).
 from bzrlib.trace import mutter
 import bzrlib.errors as errors
 import errno
+import sys
 
 _protocol_handlers = {
 }
@@ -62,6 +63,12 @@ class Transport(object):
         """
         if hasattr(e, 'errno'):
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                raise errors.NoSuchFile(path, extra=e)
+            # I would rather use errno.EFOO, but there doesn't seem to be
+            # any matching for 267
+            # This is the error when doing a listdir on a file:
+            # WindowsError: [Errno 267] The directory name is invalid
+            if sys.platform == 'win32' and e.errno in (errno.ESRCH, 267):
                 raise errors.NoSuchFile(path, extra=e)
             if e.errno == errno.EEXIST:
                 raise errors.FileExists(path, extra=e)
@@ -370,6 +377,8 @@ def get_transport(base):
     global _protocol_handlers
     if base is None:
         base = u'.'
+    else:
+        base = unicode(base)
     for proto, klass in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
             return klass(base)

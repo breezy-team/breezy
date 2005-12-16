@@ -26,6 +26,7 @@ import sys
 import tempfile
 import unittest
 import time
+import codecs
 
 import bzrlib.branch
 import bzrlib.commands
@@ -117,6 +118,8 @@ class _MyResult(unittest._TextTestResult):
         self._start_time = time.time()
 
     def addError(self, test, err):
+        if isinstance(err[1], TestSkipped):
+            return self.addSkipped(test, err)    
         unittest.TestResult.addError(self, test, err)
         if self.showAll:
             self.stream.writeln("ERROR %s" % self._elapsedTime())
@@ -140,14 +143,28 @@ class _MyResult(unittest._TextTestResult):
         self.stream.flush()
         unittest.TestResult.addSuccess(self, test)
 
+    def addSkipped(self, test, skip_excinfo):
+        if self.showAll:
+            print >>self.stream, ' SKIP %s' % self._elapsedTime()
+            print >>self.stream, '     %s' % skip_excinfo[1]
+        elif self.dots:
+            self.stream.write('S')
+        self.stream.flush()
+        # seems best to treat this as success from point-of-view of unittest
+        # -- it actually does nothing so it barely matters :)
+        unittest.TestResult.addSuccess(self, test)
+
     def printErrorList(self, flavour, errors):
         for test, err in errors:
             self.stream.writeln(self.separator1)
             self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
             if hasattr(test, '_get_log'):
-                self.stream.writeln()
-                self.stream.writeln('log from this test:')
+                print >>self.stream
+                print >>self.stream, \
+                        ('vvvv[log from %s]' % test).ljust(78,'-')
                 print >>self.stream, test._get_log()
+                print >>self.stream, \
+                        ('^^^^[log from %s]' % test).ljust(78,'-')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
@@ -241,6 +258,14 @@ class TestCase(unittest.TestCase):
             return
         raise AssertionError("texts not equal:\n" + 
                              self._ndiff_strings(a, b))      
+        
+    def assertStartsWith(self, s, prefix):
+        if not s.startswith(prefix):
+            raise AssertionError('string %r does not start with %r' % (s, prefix))
+
+    def assertEndsWith(self, s, suffix):
+        if not s.endswith(prefix):
+            raise AssertionError('string %r does not end with %r' % (s, suffix))
 
     def assertContainsRe(self, haystack, needle_re):
         """Assert that a contains something matching a regular expression."""
@@ -254,7 +279,8 @@ class TestCase(unittest.TestCase):
         The file is removed as the test is torn down.
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
-        self._log_file = os.fdopen(fileno, 'w+')
+        encoder, decoder, stream_reader, stream_writer = codecs.lookup('UTF-8')
+        self._log_file = stream_writer(os.fdopen(fileno, 'w+'))
         bzrlib.trace.enable_test_log(self._log_file)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
@@ -325,8 +351,8 @@ class TestCase(unittest.TestCase):
 
         This should only be called from TestCase.tearDown.
         """
-        for callable in reversed(self._cleanups):
-            callable()
+        for cleanup_fn in reversed(self._cleanups):
+            cleanup_fn()
 
     def log(self, *args):
         mutter(*args)
@@ -497,11 +523,11 @@ class TestCaseInTempDir(TestCase):
                 else:
                     raise
             # successfully created
-            TestCaseInTempDir.TEST_ROOT = os.path.abspath(root)
+            TestCaseInTempDir.TEST_ROOT = osutils.abspath(root)
             break
         # make a fake bzr directory there to prevent any tests propagating
         # up onto the source directory's real branch
-        os.mkdir(os.path.join(TestCaseInTempDir.TEST_ROOT, '.bzr'))
+        os.mkdir(osutils.pathjoin(TestCaseInTempDir.TEST_ROOT, '.bzr'))
 
     def setUp(self):
         super(TestCaseInTempDir, self).setUp()
@@ -509,10 +535,11 @@ class TestCaseInTempDir(TestCase):
         _currentdir = os.getcwdu()
         short_id = self.id().replace('bzrlib.tests.', '') \
                    .replace('__main__.', '')
-        self.test_dir = os.path.join(self.TEST_ROOT, short_id)
+        self.test_dir = osutils.pathjoin(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         os.environ['HOME'] = self.test_dir
+        os.environ['APPDATA'] = self.test_dir
         def _leaveDirectory():
             os.chdir(_currentdir)
         self.addCleanup(_leaveDirectory)
@@ -550,15 +577,19 @@ class TestCaseInTempDir(TestCase):
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
         self.failUnless(osutils.lexists(path))
+
+    def failIfExists(self, path):
+        """Fail if path, which may be abs or relative, exists."""
+        self.failIf(osutils.lexists(path))
         
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.failUnless(osutils.lexists(path))
         self.assertEqualDiff(content, open(path, 'r').read())
-        
+
 
 def filter_suite_by_re(suite, pattern):
-    result = TestUtil.TestSuite()
+    result = TestSuite()
     filter_re = re.compile(pattern)
     for test in iter_suite_tests(suite):
         if filter_re.search(test.id()):
@@ -605,59 +636,67 @@ def test_suite():
     global MODULES_TO_DOCTEST
 
     testmod_names = [ \
-                   'bzrlib.tests.test_api',
-                   'bzrlib.tests.test_gpg',
-                   'bzrlib.tests.test_identitymap',
-                   'bzrlib.tests.test_inv',
-                   'bzrlib.tests.test_ancestry',
-                   'bzrlib.tests.test_commit',
-                   'bzrlib.tests.test_command',
-                   'bzrlib.tests.test_commit_merge',
-                   'bzrlib.tests.test_config',
-                   'bzrlib.tests.test_merge3',
-                   'bzrlib.tests.test_merge',
-                   'bzrlib.tests.test_hashcache',
-                   'bzrlib.tests.test_status',
-                   'bzrlib.tests.test_log',
-                   'bzrlib.tests.test_revisionnamespaces',
-                   'bzrlib.tests.test_branch',
-                   'bzrlib.tests.test_revision',
-                   'bzrlib.tests.test_revision_info',
-                   'bzrlib.tests.test_merge_core',
-                   'bzrlib.tests.test_smart_add',
-                   'bzrlib.tests.test_bad_files',
-                   'bzrlib.tests.test_diff',
-                   'bzrlib.tests.test_parent',
-                   'bzrlib.tests.test_xml',
-                   'bzrlib.tests.test_weave',
-                   'bzrlib.tests.test_fetch',
-                   'bzrlib.tests.test_whitebox',
-                   'bzrlib.tests.test_store',
-                   'bzrlib.tests.test_sampler',
-                   'bzrlib.tests.test_transactions',
-                   'bzrlib.tests.test_transport',
-                   'bzrlib.tests.test_sftp',
-                   'bzrlib.tests.test_graph',
-                   'bzrlib.tests.test_workingtree',
-                   'bzrlib.tests.test_upgrade',
-                   'bzrlib.tests.test_uncommit',
-                   'bzrlib.tests.test_ui',
-                   'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_testament',
-                   'bzrlib.tests.test_annotate',
-                   'bzrlib.tests.test_revprops',
-                   'bzrlib.tests.test_options',
-                   'bzrlib.tests.test_http',
-                   'bzrlib.tests.test_nonascii',
-                   'bzrlib.tests.test_reweave',
-                   'bzrlib.tests.test_tsort',
-                   'bzrlib.tests.test_trace',
-                   'bzrlib.tests.test_rio',
-                   'bzrlib.tests.test_msgeditor',
-                   'bzrlib.tests.test_selftest',
-                   ]
+                    'bzrlib.tests.test_ancestry',
+                    'bzrlib.tests.test_annotate',
+                    'bzrlib.tests.test_api',
+                    'bzrlib.tests.test_bad_files',
+                    'bzrlib.tests.test_branch',
+                    'bzrlib.tests.test_command',
+                    'bzrlib.tests.test_commit',
+                    'bzrlib.tests.test_commit_merge',
+                    'bzrlib.tests.test_config',
+                    'bzrlib.tests.test_conflicts',
+                    'bzrlib.tests.test_diff',
+                    'bzrlib.tests.test_fetch',
+                    'bzrlib.tests.test_gpg',
+                    'bzrlib.tests.test_graph',
+                    'bzrlib.tests.test_hashcache',
+                    'bzrlib.tests.test_http',
+                    'bzrlib.tests.test_identitymap',
+                    'bzrlib.tests.test_inv',
+                    'bzrlib.tests.test_log',
+                    'bzrlib.tests.test_merge',
+                    'bzrlib.tests.test_merge3',
+                    'bzrlib.tests.test_merge_core',
+                    'bzrlib.tests.test_missing',
+                    'bzrlib.tests.test_msgeditor',
+                    'bzrlib.tests.test_nonascii',
+                    'bzrlib.tests.test_options',
+                    'bzrlib.tests.test_osutils',
+                    'bzrlib.tests.test_parent',
+                    'bzrlib.tests.test_plugins',
+                    'bzrlib.tests.test_remove',
+                    'bzrlib.tests.test_revision',
+                    'bzrlib.tests.test_revision_info',
+                    'bzrlib.tests.test_revisionnamespaces',
+                    'bzrlib.tests.test_revprops',
+                    'bzrlib.tests.test_reweave',
+                    'bzrlib.tests.test_rio',
+                    'bzrlib.tests.test_sampler',
+                    'bzrlib.tests.test_selftest',
+                    'bzrlib.tests.test_setup',
+                    'bzrlib.tests.test_sftp_transport',
+                    'bzrlib.tests.test_smart_add',
+                    'bzrlib.tests.test_source',
+                    'bzrlib.tests.test_status',
+                    'bzrlib.tests.test_store',
+                    'bzrlib.tests.test_testament',
+                    'bzrlib.tests.test_trace',
+                    'bzrlib.tests.test_transactions',
+                    'bzrlib.tests.test_transport',
+                    'bzrlib.tests.test_tsort',
+                    'bzrlib.tests.test_ui',
+                    'bzrlib.tests.test_uncommit',
+                    'bzrlib.tests.test_upgrade',
+                    'bzrlib.tests.test_weave',
+                    'bzrlib.tests.test_whitebox',
+                    'bzrlib.tests.test_workingtree',
+                    'bzrlib.tests.test_xml',
+                    ]
 
-    print '%10s: %s' % ('bzr', os.path.realpath(sys.argv[0]))
+    TestCase.BZRPATH = osutils.pathjoin(
+            osutils.realpath(osutils.dirname(bzrlib.__path__[0])), 'bzr')
+    print '%10s: %s' % ('bzr', osutils.realpath(sys.argv[0]))
     print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
     print
     suite = TestSuite()
@@ -675,9 +714,9 @@ def test_suite():
         suite.addTest(loader.loadTestsFromModule(m))
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
-    for p in bzrlib.plugin.all_plugins:
-        if hasattr(p, 'test_suite'):
-            suite.addTest(p.test_suite())
+    for name, plugin in bzrlib.plugin.all_plugins().items():
+        if hasattr(plugin, 'test_suite'):
+            suite.addTest(plugin.test_suite())
     return suite
 
 

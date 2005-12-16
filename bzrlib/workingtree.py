@@ -63,12 +63,17 @@ from bzrlib.osutils import (appendpath,
                             compact_date,
                             file_kind,
                             isdir,
+                            getcwd,
+                            pathjoin,
                             pumpfile,
                             splitpath,
                             rand_bytes,
+                            abspath,
+                            normpath,
                             realpath,
                             relpath,
                             rename)
+from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.trace import mutter
 import bzrlib.xml5
@@ -224,12 +229,12 @@ class WorkingTree(bzrlib.tree.Tree):
         If there is one, it is returned, along with the unused portion of path.
         """
         if path is None:
-            path = os.getcwdu()
+            path = getcwd()
         else:
             # sanity check.
             if path.find('://') != -1:
                 raise NotBranchError(path=path)
-        path = os.path.abspath(path)
+        path = abspath(path)
         tail = u''
         while True:
             try:
@@ -237,12 +242,12 @@ class WorkingTree(bzrlib.tree.Tree):
             except NotBranchError:
                 pass
             if tail:
-                tail = os.path.join(os.path.basename(path), tail)
+                tail = pathjoin(os.path.basename(path), tail)
             else:
                 tail = os.path.basename(path)
+            lastpath = path
             path = os.path.dirname(path)
-            # FIXME: top in windows is indicated how ???
-            if path == os.path.sep:
+            if lastpath == path:
                 # reached the root, whatever that may be
                 raise NotBranchError(path=path)
 
@@ -262,11 +267,11 @@ class WorkingTree(bzrlib.tree.Tree):
                                getattr(self, 'basedir', None))
 
     def abspath(self, filename):
-        return os.path.join(self.basedir, filename)
+        return pathjoin(self.basedir, filename)
 
-    def relpath(self, abspath):
+    def relpath(self, abs):
         """Return the local path portion from a given absolute path."""
-        return relpath(self.basedir, abspath)
+        return relpath(self.basedir, abs)
 
     def has_filename(self, filename):
         return bzrlib.osutils.lexists(self.abspath(filename))
@@ -371,7 +376,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if len(fp) == 0:
                 raise BzrError("cannot add top-level %r" % f)
 
-            fullpath = os.path.normpath(self.abspath(f))
+            fullpath = normpath(self.abspath(f))
 
             try:
                 kind = file_kind(fullpath)

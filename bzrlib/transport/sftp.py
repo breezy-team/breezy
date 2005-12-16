@@ -33,9 +33,10 @@ from bzrlib.errors import (FileExists,
                            TransportNotPossible, NoSuchFile, PathNotChild,
                            TransportError,
                            LockError)
-from bzrlib.config import config_dir
+from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import Transport, register_transport
+from bzrlib.osutils import pathjoin, fancy_rename
 import bzrlib.ui
 
 try:
@@ -154,7 +155,7 @@ def load_host_keys():
         SYSTEM_HOSTKEYS = paramiko.util.load_host_keys(os.path.expanduser('~/.ssh/known_hosts'))
     except Exception, e:
         mutter('failed to load system host keys: ' + str(e))
-    bzr_hostkey_path = os.path.join(config_dir(), 'ssh_host_keys')
+    bzr_hostkey_path = pathjoin(config_dir(), 'ssh_host_keys')
     try:
         BZR_HOSTKEYS = paramiko.util.load_host_keys(bzr_hostkey_path)
     except Exception, e:
@@ -166,9 +167,9 @@ def save_host_keys():
     Save "discovered" host keys in $(config)/ssh_host_keys/.
     """
     global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
-    bzr_hostkey_path = os.path.join(config_dir(), 'ssh_host_keys')
-    if not os.path.isdir(config_dir()):
-        os.mkdir(config_dir())
+    bzr_hostkey_path = pathjoin(config_dir(), 'ssh_host_keys')
+    ensure_config_dir_exists()
+
     try:
         f = open(bzr_hostkey_path, 'w')
         f.write('# SSH host keys collected by bzr\n')
@@ -316,7 +317,7 @@ class SFTPTransport (Transport):
         """
         try:
             path = self._abspath(relpath)
-            f = self._sftp.file(path)
+            f = self._sftp.file(path, mode='rb')
             if self._do_prefetch and hasattr(f, 'prefetch'):
                 f.prefetch()
             return f
@@ -355,44 +356,26 @@ class SFTPTransport (Transport):
         tmp_abspath = self._abspath(tmp_relpath)
         fout = self._sftp_open_exclusive(tmp_relpath)
 
+        closed = False
         try:
             try:
                 self._pump(f, fout)
-            except (paramiko.SSHException, IOError), e:
-                self._translate_io_exception(e, relpath, ': unable to write')
+            except (IOError, paramiko.SSHException), e:
+                self._translate_io_exception(e, tmp_abspath)
+            fout.close()
+            closed = True
+            self._rename(tmp_abspath, final_path)
         except Exception, e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception
             # but don't let another exception mess things up
             try:
-                fout.close()
+                if not closed:
+                    fout.close()
                 self._sftp.remove(tmp_abspath)
             except:
                 pass
             raise e
-        else:
-            # sftp rename doesn't allow overwriting, so play tricks:
-            tmp_safety = 'bzr.tmp.%.9f.%d.%d' % (time.time(), os.getpid(), random.randint(0, 0x7FFFFFFF))
-            tmp_safety = self._abspath(tmp_safety)
-            try:
-                self._sftp.rename(final_path, tmp_safety)
-                file_existed = True
-            except:
-                file_existed = False
-            success = False
-            try:
-                try:
-                    self._sftp.rename(tmp_abspath, final_path)
-                except (paramiko.SSHException, IOError), e:
-                    self._translate_io_exception(e, relpath, ': unable to rename')
-                else:
-                    success = True
-            finally:
-                if file_existed:
-                    if success:
-                        self._sftp.unlink(tmp_safety)
-                    else:
-                        self._sftp.rename(tmp_safety, final_path)
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
@@ -512,14 +495,23 @@ class SFTPTransport (Transport):
 
         return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
 
+    def _rename(self, abs_from, abs_to):
+        """Do a fancy rename on the remote server.
+        
+        Using the implementation provided by osutils.
+        """
+        try:
+            fancy_rename(abs_from, abs_to,
+                    rename_func=self._sftp.rename,
+                    unlink_func=self._sftp.remove)
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, abs_from, ': unable to rename to %r' % (abs_to))
+
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         path_from = self._abspath(rel_from)
         path_to = self._abspath(rel_to)
-        try:
-            self._sftp.rename(path_from, path_to)
-        except (IOError, paramiko.SSHException), e:
-            self._translate_io_exception(e, path_from, ': unable to move to: %r' % path_to)
+        self._rename(path_from, path_to)
 
     def delete(self, relpath):
         """Delete the item at relpath"""
@@ -691,7 +683,7 @@ class SFTPTransport (Transport):
             save_host_keys()
         if server_key != our_server_key:
             filename1 = os.path.expanduser('~/.ssh/known_hosts')
-            filename2 = os.path.join(config_dir(), 'ssh_host_keys')
+            filename2 = pathjoin(config_dir(), 'ssh_host_keys')
             raise TransportError('Host keys for %s do not match!  %s != %s' % \
                 (self._host, our_server_key_hex, server_key_hex),
                 ['Try editing %s or %s' % (filename1, filename2)])
@@ -798,7 +790,7 @@ class SFTPTransport (Transport):
             if t != CMD_HANDLE:
                 raise TransportError('Expected an SFTP handle')
             handle = msg.get_string()
-            return SFTPFile(self._sftp, handle, 'w', -1)
+            return SFTPFile(self._sftp, handle, 'wb', -1)
         except (paramiko.SSHException, IOError), e:
             self._translate_io_exception(e, relpath, ': unable to open',
                 failure_exc=FileExists)

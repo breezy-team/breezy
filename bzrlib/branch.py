@@ -27,8 +27,8 @@ import bzrlib
 import bzrlib.inventory as inventory
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn,
-                            rename, splitpath, sha_file, appendpath, 
-                            file_kind, abspath)
+                            rename, splitpath, sha_file,
+                            file_kind, abspath, normpath, pathjoin)
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
@@ -133,8 +133,8 @@ class Branch(object):
         while True:
             try:
                 return BzrBranch(t), t.relpath(url)
-            except NotBranchError:
-                pass
+            except NotBranchError, e:
+                mutter('not a branch in: %r %s', t.base, e)
             new_t = t.clone('..')
             if new_t.base == t.base:
                 # reached the root, whatever that may be
@@ -568,26 +568,27 @@ class BzrBranch(Branch):
             # or entirely uncompressed is tidy, but breaks upgrade from 
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
-            relpath = self._rel_controlfilename(name)
+            relpath = self._rel_controlfilename(unicode(name))
             store = TextStore(self._transport.clone(relpath),
                               prefixed=prefixed,
                               compressed=compressed)
             #if self._transport.should_cache():
-            #    cache_path = os.path.join(self.cache_root, name)
+            #    cache_path = pathjoin(self.cache_root, name)
             #    os.mkdir(cache_path)
             #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
+
         def get_weave(name, prefixed=False):
-            relpath = self._rel_controlfilename(name)
+            relpath = self._rel_controlfilename(unicode(name))
             ws = WeaveStore(self._transport.clone(relpath), prefixed=prefixed)
             if self._transport.should_cache():
                 ws.enable_cache = True
             return ws
 
         if self._branch_format == 4:
-            self.inventory_store = get_store(u'inventory-store')
-            self.text_store = get_store(u'text-store')
-            self.revision_store = get_store(u'revision-store')
+            self.inventory_store = get_store('inventory-store')
+            self.text_store = get_store('text-store')
+            self.revision_store = get_store('revision-store')
         elif self._branch_format == 5:
             self.control_weaves = get_weave(u'')
             self.weave_store = get_weave(u'weaves')
@@ -1133,11 +1134,11 @@ class ScratchBranch(BzrBranch):
         ...   orig.base == clone.base
         ...
         False
-        >>> os.path.isfile(os.path.join(clone.base, "file1"))
+        >>> os.path.isfile(pathjoin(clone.base, "file1"))
         True
         """
         from shutil import copytree
-        from tempfile import mkdtemp
+        from bzrlib.osutils import mkdtemp
         base = mkdtemp()
         os.rmdir(base)
         copytree(self.base, base, symlinks=True)
@@ -1151,7 +1152,7 @@ class ScratchBranch(BzrBranch):
 
 def is_control_file(filename):
     ## FIXME: better check
-    filename = os.path.normpath(filename)
+    filename = normpath(filename)
     while filename != '':
         head, tail = os.path.split(filename)
         ## mutter('check %r for control file' % ((head, tail), ))

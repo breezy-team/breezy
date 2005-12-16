@@ -36,7 +36,7 @@ import types
 
 import bzrlib
 from bzrlib.osutils import (pumpfile, quotefn, splitpath, joinpath,
-                            appendpath, sha_strings)
+                            pathjoin, sha_strings)
 from bzrlib.trace import mutter
 from bzrlib.errors import (NotVersionedError, InvalidEntryName,
                            BzrError, BzrCheckError)
@@ -79,7 +79,7 @@ class InventoryEntry(object):
     InventoryDirectory('123', 'src', parent_id='TREE_ROOT')
     >>> i.add(InventoryFile('2323', 'hello.c', parent_id='123'))
     InventoryFile('2323', 'hello.c', parent_id='123')
-    >>> shouldbe = {0: 'src', 1: os.path.join('src','hello.c')}
+    >>> shouldbe = {0: 'src', 1: pathjoin('src','hello.c')}
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
     ... 
@@ -102,7 +102,7 @@ class InventoryEntry(object):
     >>> i['2326']
     InventoryFile('2326', 'wibble.c', parent_id='2325')
     >>> for path, entry in i.iter_entries():
-    ...     print path.replace('\\\\', '/')     # for win32 os.sep
+    ...     print path
     ...     assert i.path2id(path)
     ... 
     src
@@ -110,7 +110,7 @@ class InventoryEntry(object):
     src/hello.c
     src/wibble
     src/wibble/wibble.c
-    >>> i.id2path('2326').replace('\\\\', '/')
+    >>> i.id2path('2326')
     'src/wibble/wibble.c'
     """
     
@@ -202,7 +202,7 @@ class InventoryEntry(object):
 
     def get_tar_item(self, root, dp, now, tree):
         """Get a tarfile item and a file stream for its content."""
-        item = tarfile.TarInfo(os.path.join(root, dp))
+        item = tarfile.TarInfo(pathjoin(root, dp))
         # TODO: would be cool to actually set it to the timestamp of the
         # revision it was last changed
         item.mtime = now
@@ -267,7 +267,7 @@ class InventoryEntry(object):
         
         This is a template method - implement _put_on_disk in subclasses.
         """
-        fullpath = appendpath(dest, dp)
+        fullpath = pathjoin(dest, dp)
         self._put_on_disk(fullpath, tree)
         mutter("  export {%s} kind %s to %s", self.file_id,
                 self.kind, fullpath)
@@ -764,7 +764,7 @@ class Inventory(object):
             yield name, ie
             if ie.kind == 'directory':
                 for cn, cie in self.iter_entries(from_dir=ie.file_id):
-                    yield os.path.join(name, cn), cie
+                    yield pathjoin(name, cn), cie
 
 
     def entries(self):
@@ -777,7 +777,7 @@ class Inventory(object):
             kids = dir_ie.children.items()
             kids.sort()
             for name, ie in kids:
-                child_path = os.path.join(dir_path, name)
+                child_path = pathjoin(dir_path, name)
                 accum.append((child_path, ie))
                 if ie.kind == 'directory':
                     descend(ie, child_path)
@@ -797,7 +797,7 @@ class Inventory(object):
             kids.sort()
 
             for name, child_ie in kids:
-                child_path = os.path.join(parent_path, name)
+                child_path = pathjoin(parent_path, name)
                 descend(child_ie, child_path)
         descend(self.root, u'')
         return accum
@@ -864,7 +864,7 @@ class Inventory(object):
 
         if parent.children.has_key(entry.name):
             raise BzrError("%s is already versioned" %
-                    appendpath(self.id2path(parent.file_id), entry.name))
+                    pathjoin(self.id2path(parent.file_id), entry.name))
 
         self._byid[entry.file_id] = entry
         parent.children[entry.name] = entry
@@ -987,12 +987,15 @@ class Inventory(object):
         >>> i = Inventory()
         >>> e = i.add(InventoryDirectory('src-id', 'src', ROOT_ID))
         >>> e = i.add(InventoryFile('foo-id', 'foo.c', parent_id='src-id'))
-        >>> print i.id2path('foo-id').replace(os.sep, '/')
+        >>> print i.id2path('foo-id')
         src/foo.c
         """
         # get all names, skipping root
         p = [self._byid[fid].name for fid in self.get_idpath(file_id)[1:]]
-        return os.sep.join(p)
+        if p:
+            return pathjoin(*p)
+        else:
+            return ''
             
 
 
