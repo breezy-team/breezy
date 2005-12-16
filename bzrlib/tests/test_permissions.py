@@ -300,3 +300,33 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_sftp.pull(b_local)
         check_mode_r(self, 'sftp/.bzr', 0664, 0775)
 
+    def test_sftp_server_modes(self):
+        if sys.platform == 'win32':
+            raise TestSkipped('chmod has no effect on win32')
+        if not has_paramiko:
+            raise TestSkipped('You must have paramiko installed to test sftp')
+
+        umask = 0022
+        original_umask = os.umask(umask)
+
+        try:
+            from bzrlib.transport.sftp import SFTPTransport
+            self.delayed_setup()
+            t = SFTPTransport(self._sftp_url)
+            # Direct access should be masked by umask
+            t._sftp_open_exclusive('a', mode=0666).write('foo\n')
+            check_mode(self, 'a', 0666 &~umask)
+
+            # but Transport overrides umask
+            t.put('b', 'txt', mode=0666)
+            check_mode(self, 'b', 0666)
+
+            t._sftp.mkdir('c', mode=0777)
+            check_mode(self, 'c', 0777 &~umask)
+
+            t.mkdir('d', mode=0777)
+            check_mode(self, 'd', 0777)
+        finally:
+            os.umask(original_umask)
+
+

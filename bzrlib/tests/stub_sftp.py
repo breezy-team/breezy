@@ -102,10 +102,14 @@ class StubSFTPServer (SFTPServerInterface):
     def open(self, path, flags, attr):
         path = self._realpath(path)
         try:
-            fd = os.open(path, flags)
+            if (attr is not None) and hasattr(attr, 'st_mode'):
+                fd = os.open(path, flags, attr.st_mode)
+            else:
+                fd = os.open(path, flags)
         except OSError, e:
             return SFTPServer.convert_errno(e.errno)
         if (flags & os.O_CREAT) and (attr is not None):
+            attr._flags &= ~attr.FLAG_PERMISSIONS
             SFTPServer.set_file_attr(path, attr)
         if flags & os.O_WRONLY:
             fstr = 'w'
