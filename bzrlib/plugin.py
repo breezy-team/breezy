@@ -42,6 +42,7 @@ new command to the plugin_cmds variable.
 import imp
 import os
 import sys
+import types
 
 import bzrlib
 from bzrlib.config import config_dir
@@ -53,27 +54,30 @@ from bzrlib.osutils import pathjoin
 
 DEFAULT_PLUGIN_PATH = pathjoin(config_dir(), 'plugins')
 
-all_plugins = []
 _loaded = False
 
 
+def all_plugins():
+    """Return a dictionary of the plugins."""
+    result = {}
+    for name, plugin in bzrlib.plugins.__dict__.items():
+        if isinstance(plugin, types.ModuleType):
+            result[name] = plugin
+    return result
+
+
 def load_plugins():
-    """Find all python plugins and load them.
-
-    Loading a plugin means importing it into the python interpreter.
-    The plugin is expected to make calls to register commands when
-    it's loaded (or perhaps access other hooks in future.)
-
-    A list of plugs is stored in bzrlib.plugin.all_plugins for future
-    reference.
+    """Load bzrlib plugins.
 
     The environment variable BZR_PLUGIN_PATH is considered a delimited
     set of paths to look through. Each entry is searched for *.py
     files (and whatever other extensions are used in the platform,
     such as *.pyd).
-    """
 
-    global all_plugins, _loaded
+    load_from_dirs() provides the underlying mechanism and is called with
+    the default directory list to provide the normal behaviour.
+    """
+    global _loaded
     if _loaded:
         # People can make sure plugins are loaded, they just won't be twice
         return
@@ -83,6 +87,19 @@ def load_plugins():
     dirs = os.environ.get('BZR_PLUGIN_PATH', DEFAULT_PLUGIN_PATH).split(os.pathsep)
     dirs.insert(0, os.path.dirname(plugins.__file__))
 
+    load_from_dirs(dirs)
+
+
+def load_from_dirs(dirs):
+    """Load bzrlib plugins found in each dir in dirs.
+
+    Loading a plugin means importing it into the python interpreter.
+    The plugin is expected to make calls to register commands when
+    it's loaded (or perhaps access other hooks in future.)
+
+    Plugins are loaded into bzrlib.plugins.NAME, and can be found there
+    for future reference.
+    """
     # The problem with imp.get_suffixes() is that it doesn't include
     # .pyo which is technically valid
     # It also means that "testmodule.so" will show up as both test and testmodule
@@ -92,11 +109,9 @@ def load_plugins():
     suffixes.append(('.pyo', 'rb', imp.PY_COMPILED))
     package_entries = ['__init__.py', '__init__.pyc', '__init__.pyo']
     for d in dirs:
-        # going through them one by one allows different plugins with the same
-        # filename in different directories in the path
-        mutter('looking for plugins in %s', d)
         if not d:
             continue
+        mutter('looking for plugins in %s', d)
         plugin_names = set()
         if not os.path.isdir(d):
             continue
@@ -119,8 +134,11 @@ def load_plugins():
                         break
                 else:
                     continue
-            mutter('add plugin name %s', f)
-            plugin_names.add(f)
+            if getattr(bzrlib.plugins, f, None):
+                mutter('Plugin name %s already loaded', f)
+            else:
+                mutter('add plugin name %s', f)
+                plugin_names.add(f)
 
         plugin_names = list(plugin_names)
         plugin_names.sort()
@@ -131,7 +149,6 @@ def load_plugins():
                 try:
                     plugin = imp.load_module('bzrlib.plugins.' + name,
                                              *plugin_info)
-                    all_plugins.append(plugin)
                     setattr(bzrlib.plugins, name, plugin)
                 finally:
                     if plugin_info[0] is not None:

@@ -18,8 +18,8 @@
 import os
 from cStringIO import StringIO
 
-from bzrlib.errors import (NoSuchFile, FileExists, TransportNotPossible,
-                           ConnectionError)
+from bzrlib.errors import (NoSuchFile, FileExists,
+                           TransportNotPossible, ConnectionError)
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.transport import memory, urlescape
@@ -57,29 +57,43 @@ class TestTransportMixIn(object):
         """
         raise NotImplementedError
 
+    def assertListRaises(self, excClass, func, *args, **kwargs):
+        """Many transport functions can return generators this makes sure
+        to wrap them in a list() call to make sure the whole generator
+        is run, and that the proper exception is raised.
+        """
+        try:
+            list(func(*args, **kwargs))
+        except excClass:
+            return
+        else:
+            if hasattr(excClass,'__name__'): excName = excClass.__name__
+            else: excName = str(excClass)
+            raise self.failureException, "%s not raised" % excName
+
     def test_has(self):
         t = self.get_transport()
 
         files = ['a', 'b', 'e', 'g', '%']
         self.build_tree(files)
-        self.assertEqual(t.has('a'), True)
-        self.assertEqual(t.has('c'), False)
-        self.assertEqual(t.has(urlescape('%')), True)
+        self.assertEqual(True, t.has('a'))
+        self.assertEqual(False, t.has('c'))
+        self.assertEqual(True, t.has(urlescape('%')))
         self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
                 [True, True, False, False, True, False, True, False])
-        self.assertEqual(t.has_any(['a', 'b', 'c']), True)
-        self.assertEqual(t.has_any(['c', 'd', 'f', urlescape('%%')]), False)
+        self.assertEqual(True, t.has_any(['a', 'b', 'c']))
+        self.assertEqual(False, t.has_any(['c', 'd', 'f', urlescape('%%')]))
         self.assertEqual(list(t.has_multi(iter(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']))),
                 [True, True, False, False, True, False, True, False])
-        self.assertEqual(t.has_any(['c', 'c', 'c']), False)
-        self.assertEqual(t.has_any(['b', 'b', 'b']), True)
+        self.assertEqual(False, t.has_any(['c', 'c', 'c']))
+        self.assertEqual(True, t.has_any(['b', 'b', 'b']))
 
     def test_get(self):
         t = self.get_transport()
 
         files = ['a', 'b', 'e', 'g']
         self.build_tree(files)
-        self.assertEqual(t.get('a').read(), open('a', 'rb').read())
+        self.assertEqual(open('a', 'rb').read(), t.get('a').read())
         content_f = t.get_multi(files)
         for path,f in zip(files, content_f):
             self.assertEqual(f.read(), open(path, 'rb').read())
@@ -89,18 +103,8 @@ class TestTransportMixIn(object):
             self.assertEqual(f.read(), open(path, 'rb').read())
 
         self.assertRaises(NoSuchFile, t.get, 'c')
-        try:
-            files = list(t.get_multi(['a', 'b', 'c']))
-        except NoSuchFile:
-            pass
-        else:
-            self.fail('Failed to raise NoSuchFile for missing file in get_multi')
-        try:
-            files = list(t.get_multi(iter(['a', 'b', 'c', 'e'])))
-        except NoSuchFile:
-            pass
-        else:
-            self.fail('Failed to raise NoSuchFile for missing file in get_multi')
+        self.assertListRaises(NoSuchFile, t.get_multi, ['a', 'b', 'c'])
+        self.assertListRaises(NoSuchFile, t.get_multi, iter(['a', 'b', 'c']))
 
     def test_put(self):
         t = self.get_transport()
@@ -208,8 +212,6 @@ class TestTransportMixIn(object):
 
         self.check_file_contents('f5', 'here is some text\nand a bit more\n')
         self.check_file_contents('f6', 'some text for the\nthird file created\n')
-
-
 
     def test_mkdir(self):
         t = self.get_transport()
@@ -376,6 +378,23 @@ class TestTransportMixIn(object):
                 'some\nmore\nfor\nb\n'
                 'from an iterator\n')
 
+        if self.readonly:
+            _append('c', 'some text\nfor a missing file\n')
+            _append('a', 'some text in a\n')
+            _append('d', 'missing file r\n')
+        else:
+            t.append('c', 'some text\nfor a missing file\n')
+            t.append_multi([('a', 'some text in a\n'),
+                            ('d', 'missing file r\n')])
+        self.check_file_contents('a', 
+            'diff\ncontents for\na\n'
+            'add\nsome\nmore\ncontents\n'
+            'and\nthen\nsome\nmore\n'
+            'a little bit more\n'
+            'some text in a\n')
+        self.check_file_contents('c', 'some text\nfor a missing file\n')
+        self.check_file_contents('d', 'missing file r\n')
+
     def test_append_file(self):
         t = self.get_transport()
 
@@ -457,17 +476,116 @@ class TestTransportMixIn(object):
                 'some text for the\nthird file created\n'
                 'some garbage\nto put in three\n')
 
+        a5 = open('f2', 'rb')
+        a6 = open('f2', 'rb')
+        a7 = open('f3', 'rb')
+        if self.readonly:
+            _append('c', a5.read())
+            _append('a', a6.read())
+            _append('d', a7.read())
+        else:
+            t.append('c', a5)
+            t.append_multi([('a', a6), ('d', a7)])
+        del a5, a6, a7
+        self.check_file_contents('c', open('f2', 'rb').read())
+        self.check_file_contents('d', open('f3', 'rb').read())
+
+
     def test_delete(self):
         # TODO: Test Transport.delete
         t = self.get_transport()
 
+        # Not much to do with a readonly transport
+        if self.readonly:
+            return
+
+        open('a', 'wb').write('a little bit of text\n')
+        self.failUnless(t.has('a'))
+        self.failUnlessExists('a')
+        t.delete('a')
+        self.failIf(os.path.lexists('a'))
+
+        self.assertRaises(NoSuchFile, t.delete, 'a')
+
+        open('a', 'wb').write('a text\n')
+        open('b', 'wb').write('b text\n')
+        open('c', 'wb').write('c text\n')
+        self.assertEqual([True, True, True],
+                list(t.has_multi(['a', 'b', 'c'])))
+        t.delete_multi(['a', 'c'])
+        self.assertEqual([False, True, False],
+                list(t.has_multi(['a', 'b', 'c'])))
+        self.failIf(os.path.lexists('a'))
+        self.failUnlessExists('b')
+        self.failIf(os.path.lexists('c'))
+
+        self.assertRaises(NoSuchFile,
+                t.delete_multi, ['a', 'b', 'c'])
+
+        self.assertRaises(NoSuchFile,
+                t.delete_multi, iter(['a', 'b', 'c']))
+
+        open('a', 'wb').write('another a text\n')
+        open('c', 'wb').write('another c text\n')
+        t.delete_multi(iter(['a', 'b', 'c']))
+
+        # We should have deleted everything
+        # SftpServer creates control files in the
+        # working directory, so we can just do a
+        # plain "listdir".
+        # self.assertEqual([], os.listdir('.'))
+
     def test_move(self):
-        # TODO: Test Transport.move
         t = self.get_transport()
 
+        if self.readonly:
+            return
+
+        # TODO: I would like to use os.listdir() to
+        # make sure there are no extra files, but SftpServer
+        # creates control files in the working directory
+        # perhaps all of this could be done in a subdirectory
+
+        open('a', 'wb').write('a first file\n')
+        self.assertEquals([True, False], list(t.has_multi(['a', 'b'])))
+
+        t.move('a', 'b')
+        self.failUnlessExists('b')
+        self.failIf(os.path.lexists('a'))
+
+        self.check_file_contents('b', 'a first file\n')
+        self.assertEquals([False, True], list(t.has_multi(['a', 'b'])))
+
+        # Overwrite a file
+        open('c', 'wb').write('c this file\n')
+        t.move('c', 'b')
+        self.failIf(os.path.lexists('c'))
+        self.check_file_contents('b', 'c this file\n')
+
+        # TODO: Try to write a test for atomicity
+        # TODO: Test moving into a non-existant subdirectory
+        # TODO: Test Transport.move_multi
+
     def test_copy(self):
-        # TODO: Test Transport.move
         t = self.get_transport()
+
+        if self.readonly:
+            return
+
+        open('a', 'wb').write('a file\n')
+        t.copy('a', 'b')
+        self.check_file_contents('b', 'a file\n')
+
+        self.assertRaises(NoSuchFile, t.copy, 'c', 'd')
+        os.mkdir('c')
+        # What should the assert be if you try to copy a
+        # file over a directory?
+        #self.assertRaises(Something, t.copy, 'a', 'c')
+        open('d', 'wb').write('text in d\n')
+        t.copy('d', 'b')
+        self.check_file_contents('b', 'text in d\n')
+
+        # TODO: test copy_multi
 
     def test_connection_error(self):
         """ConnectionError is raised when connection is impossible"""
@@ -482,6 +600,117 @@ class TestTransportMixIn(object):
             self.failIf(True, 'Wrong exception thrown: %s' % e)
         else:
             self.failIf(True, 'Did not get the expected exception.')
+
+    def test_stat(self):
+        # TODO: Test stat, just try once, and if it throws, stop testing
+        from stat import S_ISDIR, S_ISREG
+
+        t = self.get_transport()
+
+        try:
+            st = t.stat('.')
+        except TransportNotPossible, e:
+            # This transport cannot stat
+            return
+
+        paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e']
+        self.build_tree(paths)
+
+        local_stats = []
+
+        for p in paths:
+            st = t.stat(p)
+            local_st = os.stat(p)
+            if p.endswith('/'):
+                self.failUnless(S_ISDIR(st.st_mode))
+            else:
+                self.failUnless(S_ISREG(st.st_mode))
+            self.assertEqual(local_st.st_size, st.st_size)
+            self.assertEqual(local_st.st_mode, st.st_mode)
+            local_stats.append(local_st)
+
+        remote_stats = list(t.stat_multi(paths))
+        remote_iter_stats = list(t.stat_multi(iter(paths)))
+
+        for local, remote, remote_iter in \
+            zip(local_stats, remote_stats, remote_iter_stats):
+            self.assertEqual(local.st_mode, remote.st_mode)
+            self.assertEqual(local.st_mode, remote_iter.st_mode)
+
+            self.assertEqual(local.st_size, remote.st_size)
+            self.assertEqual(local.st_size, remote_iter.st_size)
+            # Should we test UID/GID?
+
+        self.assertRaises(NoSuchFile, t.stat, 'q')
+        self.assertRaises(NoSuchFile, t.stat, 'b/a')
+
+        self.assertListRaises(NoSuchFile, t.stat_multi, ['a', 'c', 'd'])
+        self.assertListRaises(NoSuchFile, t.stat_multi, iter(['a', 'c', 'd']))
+
+    def test_list_dir(self):
+        # TODO: Test list_dir, just try once, and if it throws, stop testing
+        t = self.get_transport()
+        
+        if not t.listable():
+            self.assertRaises(TransportNotPossible, t.list_dir, '.')
+            return
+
+        def sorted_list(d):
+            l = list(t.list_dir(d))
+            l.sort()
+            return l
+
+        # SftpServer creates control files in the working directory
+        # so lets move down a directory to be safe
+        os.mkdir('wd')
+        os.chdir('wd')
+        t = t.clone('wd')
+
+        self.assertEqual([], sorted_list(u'.'))
+        self.build_tree(['a', 'b', 'c/', 'c/d', 'c/e'])
+
+        self.assertEqual([u'a', u'b', u'c'], sorted_list(u'.'))
+        self.assertEqual([u'd', u'e'], sorted_list(u'c'))
+
+        os.remove('c/d')
+        os.remove('b')
+        self.assertEqual([u'a', u'c'], sorted_list('.'))
+        self.assertEqual([u'e'], sorted_list(u'c'))
+
+        self.assertListRaises(NoSuchFile, t.list_dir, 'q')
+        self.assertListRaises(NoSuchFile, t.list_dir, 'c/f')
+        self.assertListRaises(NoSuchFile, t.list_dir, 'a')
+
+    def test_clone(self):
+        # TODO: Test that clone moves up and down the filesystem
+        t1 = self.get_transport()
+
+        self.build_tree(['a', 'b/', 'b/c'])
+
+        self.failUnless(t1.has('a'))
+        self.failUnless(t1.has('b/c'))
+        self.failIf(t1.has('c'))
+
+        t2 = t1.clone('b')
+        self.failUnless(t2.has('c'))
+        self.failIf(t2.has('a'))
+
+        t3 = t2.clone('..')
+        self.failUnless(t3.has('a'))
+        self.failIf(t3.has('c'))
+
+        self.failIf(t1.has('b/d'))
+        self.failIf(t2.has('d'))
+        self.failIf(t3.has('b/d'))
+
+        if self.readonly:
+            open('b/d', 'wb').write('newfile\n')
+        else:
+            t2.put('d', 'newfile\n')
+
+        self.failUnless(t1.has('b/d'))
+        self.failUnless(t2.has('d'))
+        self.failUnless(t3.has('b/d'))
 
         
 class LocalTransportTest(TestCaseInTempDir, TestTransportMixIn):

@@ -143,6 +143,11 @@ class BzrCommandError(BzrError):
     # Error from malformed user command
     # This is being misused as a generic exception
     # pleae subclass. RBC 20051030
+    #
+    # I think it's a waste of effort to differentiate between errors that
+    # are not intended to be caught anyway.  UI code need not subclass
+    # BzrCommandError, and non-UI code should not throw a subclass of
+    # BzrCommandError.  ADHB 20051211
     def __str__(self):
         return self.args[0]
 

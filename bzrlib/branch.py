@@ -568,7 +568,7 @@ class BzrBranch(Branch):
             # or entirely uncompressed is tidy, but breaks upgrade from 
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
-            relpath = self._rel_controlfilename(name)
+            relpath = self._rel_controlfilename(unicode(name))
             store = TextStore(self._transport.clone(relpath),
                               prefixed=prefixed,
                               compressed=compressed)
@@ -577,17 +577,18 @@ class BzrBranch(Branch):
             #    os.mkdir(cache_path)
             #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
+
         def get_weave(name, prefixed=False):
-            relpath = self._rel_controlfilename(name)
+            relpath = self._rel_controlfilename(unicode(name))
             ws = WeaveStore(self._transport.clone(relpath), prefixed=prefixed)
             if self._transport.should_cache():
                 ws.enable_cache = True
             return ws
 
         if self._branch_format == 4:
-            self.inventory_store = get_store(u'inventory-store')
-            self.text_store = get_store(u'text-store')
-            self.revision_store = get_store(u'revision-store')
+            self.inventory_store = get_store('inventory-store')
+            self.text_store = get_store('text-store')
+            self.revision_store = get_store('revision-store')
         elif self._branch_format == 5:
             self.control_weaves = get_weave(u'')
             self.weave_store = get_weave(u'weaves')

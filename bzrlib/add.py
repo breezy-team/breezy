@@ -41,16 +41,6 @@ def glob_expand_for_win32(file_list):
     return expanded_file_list
 
 
-def add_reporter_null(path, kind, entry):
-    """Absorb add reports and do nothing."""
-    pass
-
-
-def add_reporter_print(path, kind, entry):
-    """Print a line to stdout for each file that's added."""
-    print "added", bzrlib.osutils.quotefn(path)
-
-
 def _prepare_file_list(file_list):
     """Prepare a file list for use by smart_add_*."""
     import sys
@@ -62,7 +52,26 @@ def _prepare_file_list(file_list):
     return file_list
 
 
-def smart_add(file_list, recurse=True, reporter=add_reporter_null):
+def add_action_null(inv, path, kind):
+    """Absorb add actions and do nothing."""
+    pass
+
+def add_action_print(inv, path, kind):
+    """Print a line to stdout for each file that would be added."""
+    print "added", bzrlib.osutils.quotefn(path)
+
+def add_action_add(inv, path, kind):
+    """Add each file to the given inventory. Produce no output."""
+    entry = inv.add_path(path, kind=kind)
+    mutter("added %r kind %r file_id={%s}" % (path, kind, entry.file_id))
+
+def add_action_add_and_print(inv, path, kind):
+    """Add each file to the given inventory, and print a line to stdout."""
+    add_action_add(inv, path, kind)
+    add_action_print(inv, path, kind)
+
+
+def smart_add(file_list, recurse=True, action=add_action_add):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
@@ -72,10 +81,9 @@ def smart_add(file_list, recurse=True, reporter=add_reporter_null):
     """
     file_list = _prepare_file_list(file_list)
     tree = WorkingTree.open_containing(file_list[0])[0]
-    return smart_add_tree(tree, file_list, recurse, reporter)
+    return smart_add_tree(tree, file_list, recurse, action)
 
-        
-def smart_add_tree(tree, file_list, recurse=True, reporter=add_reporter_null):
+def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
@@ -133,7 +141,7 @@ def smart_add_tree(tree, file_list, recurse=True, reporter=add_reporter_null):
         elif sub_tree:
             mutter("%r is a bzr tree", f)
         else:
-            count += __add_one(tree, inv, rf, kind, reporter)
+            count += __add_one(tree, inv, rf, kind, action)
 
         if kind == 'directory' and recurse and not sub_tree:
             for subf in os.listdir(af):
@@ -154,7 +162,7 @@ def smart_add_tree(tree, file_list, recurse=True, reporter=add_reporter_null):
 
     return count
 
-def __add_one(tree, inv, path, kind, reporter):
+def __add_one(tree, inv, path, kind, action):
     """Add a file or directory, automatically add unversioned parents."""
 
     # Nothing to do if path is already versioned.
@@ -164,10 +172,7 @@ def __add_one(tree, inv, path, kind, reporter):
         return 0
 
     # add parent
-    count = __add_one(tree, inv, dirname(path), 'directory', reporter)
-
-    entry = inv.add_path(path, kind=kind)
-    mutter("added %r kind %r file_id={%s}", path, kind, entry.file_id)
-    reporter(path, kind, entry)
+    count = __add_one(tree, inv, dirname(path), 'directory', action)
+    action(inv, path, kind)
 
     return count + 1

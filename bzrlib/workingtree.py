@@ -73,6 +73,7 @@ from bzrlib.osutils import (appendpath,
                             realpath,
                             relpath,
                             rename)
+from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.trace import mutter
 import bzrlib.xml5
