@@ -211,12 +211,6 @@ class TestPermissions(TestCaseInTempDir):
         assertEqualMode(self, 0600, b._file_mode)
         check_mode_r(self, 'd/.bzr', 00600, 0700)
 
-try:
-    import paramiko
-except ImportError:
-    has_paramiko = False
-else:
-    has_paramiko = True
 
 class TestSftpPermissions(TestCaseWithSFTPServer):
 
@@ -225,9 +219,6 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
             raise TestSkipped('chmod has no effect on win32')
         # Though it would be nice to test that SFTP to a server
         # which does support chmod has the right effect
-
-        if not has_paramiko:
-            raise TestSkipped('You must have paramiko installed to test sftp')
 
         from bzrlib.transport.sftp import SFTPTransport
 
@@ -303,8 +294,6 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
     def test_sftp_server_modes(self):
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
-        if not has_paramiko:
-            raise TestSkipped('You must have paramiko installed to test sftp')
 
         umask = 0022
         original_umask = os.umask(umask)
