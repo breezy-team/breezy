@@ -26,7 +26,7 @@ import urllib
 
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
-from bzrlib.osutils import abspath, realpath, normpath, pathjoin
+from bzrlib.osutils import abspath, realpath, normpath, pathjoin, rename
 
 
 class LocalTransport(Transport):
@@ -147,7 +147,7 @@ class LocalTransport(Transport):
         path_to = self.abspath(rel_to)
 
         try:
-            os.rename(path_from, path_to)
+            rename(path_from, path_to)
         except (IOError, OSError),e:
             # TODO: What about path_to?
             self._translate_error(e, path_from)

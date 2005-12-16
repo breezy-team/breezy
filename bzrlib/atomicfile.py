@@ -17,7 +17,7 @@
 
 
 from warnings import warn
-from osutils import rename
+from bzrlib.osutils import rename
 import errno
 
 class AtomicFile(object):
