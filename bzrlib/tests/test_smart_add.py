@@ -3,9 +3,10 @@ import unittest
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.branch import Branch
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, NoSuchFile
 from bzrlib.inventory import InventoryFile, Inventory
 from bzrlib.workingtree import WorkingTree
+from bzrlib.add import smart_add
 
 class TestSmartAdd(TestCaseInTempDir):
 
@@ -85,6 +86,26 @@ class TestSmartAdd(TestCaseInTempDir):
         self.capture('add --dry-run .')
         eq(list(t.unknowns()), ['inertiatic'])
 
+    def test_add_non_existant(self):
+        """Test smart-adding a file that does not exist."""
+        from bzrlib.add import smart_add
+        branch = Branch.initialize(u".")
+        self.assertRaises(NoSuchFile, smart_add, 'non-existant-file')
+
+    def test_returns(self):
+        """Correctly returns added/ignored files"""
+        from bzrlib.commands import run_bzr
+        b = Branch.initialize(u'.')
+        t = b.working_tree()
+        self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS', 
+                        'inertiatic/foo.pyc'])
+        added, ignored = smart_add(u'.')
+        self.AssertSubset(('inertiatic', 'inertiatic/esp'), added)
+        self.AssertSubset(('CVS', '*.py[oc]'), ignored)
+        self.AssertSubset(('inertiatic/CVS',), ignored['CVS'])
+        self.AssertSubset(('inertiatic/foo.pyc',), ignored['*.py[oc]'])
+
+
 class TestSmartAddBranch(TestCaseInTempDir):
     """Test smart adds with a specified branch."""
 
@@ -156,6 +177,7 @@ class TestSmartAddBranch(TestCaseInTempDir):
         smart_add_tree(tree, paths)
         for path in paths:
             self.assertNotEqual(tree.path2id(path), None)
+
 
 class TestAddActions(TestCaseInTempDir):
 

@@ -92,7 +92,11 @@ UNRELEASED CHANGES
     * Faster commits by reading only the headers of affected weave files. 
       (Denys Duchier)
 
-    * New --dry-run option for add.  (Michael Ellerman)
+    * 'bzr add' now takes a --dry-run parameter which shows you what would be
+      added, but doesn't actually add anything. (Michael Ellerman)
+
+    * bzr add now lists how many files were ignored per glob.  add --verbose
+      lists the specific files.  (Aaron Bentley)
 
   BUG FIXES:
 
@@ -235,6 +239,13 @@ UNRELEASED CHANGES
  
     * New options to read only the table-of-contents of a weave.  
       (Denys Duchier)
+
+    * Raise NoSuchFile when someone tries to add a non-existant file.
+      (Michael Ellerman)
+
+    * Simplify handling of DivergedBranches in cmd_pull().
+      (Michael Ellerman)
+		   
    
 bzr 0.6 2005-10-28
 

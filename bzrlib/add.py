@@ -93,20 +93,26 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
 
     Returns the number of files added.
     """
-    import os
+    import os, errno
     from bzrlib.errors import BadFileKindError, ForbiddenFileError
     assert isinstance(recurse, bool)
 
     file_list = _prepare_file_list(file_list)
     user_list = file_list[:]
     inv = tree.read_working_inventory()
-    count = 0
+    added = []
+    ignored = {}
 
     for f in file_list:
         rf = tree.relpath(f)
         af = tree.abspath(rf)
 
-        kind = bzrlib.osutils.file_kind(af)
+        try:
+            kind = bzrlib.osutils.file_kind(af)
+        except OSError, e:
+            if hasattr(e, 'errno') and e.errno == errno.ENOENT:
+                raise errors.NoSuchFile(rf)
+            raise
 
         if not InventoryEntry.versionable_kind(kind):
             if f in user_list:
@@ -141,26 +147,31 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
         elif sub_tree:
             mutter("%r is a bzr tree", f)
         else:
-            count += __add_one(tree, inv, rf, kind, action)
+            added.extend(__add_one(tree, inv, rf, kind, action))
 
         if kind == 'directory' and recurse and not sub_tree:
             for subf in os.listdir(af):
                 subp = os.path.join(rf, subf)
                 if subf == bzrlib.BZRDIR:
                     mutter("skip control directory %r", subp)
-                elif tree.is_ignored(subp):
-                    mutter("skip ignored sub-file %r", subp)
                 else:
-                    mutter("queue to add sub-file %r", subp)
-                    file_list.append(tree.abspath(subp))
+                    ignore_glob = tree.is_ignored(subp)
+                    if ignore_glob is not None:
+                        mutter("skip ignored sub-file %r", subp)
+                        if ignore_glob not in ignored:
+                            ignored[ignore_glob] = []
+                        ignored[ignore_glob].append(subp)
+                    else:
+                        mutter("queue to add sub-file %r", subp)
+                        file_list.append(tree.abspath(subp))
 
 
-    mutter('added %d entries', count)
+    mutter('added %d entries', len(added))
     
-    if count > 0:
+    if len(added) > 0:
         tree._write_inventory(inv)
 
-    return count
+    return added, ignored
 
 def __add_one(tree, inv, path, kind, action):
     """Add a file or directory, automatically add unversioned parents."""
@@ -169,10 +180,10 @@ def __add_one(tree, inv, path, kind, action):
     # This is safe from infinite recursion because the tree root is
     # always versioned.
     if inv.path2id(path) != None:
-        return 0
+        return []
 
     # add parent
-    count = __add_one(tree, inv, dirname(path), 'directory', action)
+    added = __add_one(tree, inv, dirname(path), 'directory', action)
     action(inv, path, kind)
 
-    return count + 1
+    return added + [path]
