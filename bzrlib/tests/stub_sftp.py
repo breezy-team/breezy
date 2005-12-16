@@ -148,8 +148,12 @@ class StubSFTPServer (SFTPServerInterface):
     def mkdir(self, path, attr):
         path = self._realpath(path)
         try:
-            os.mkdir(path)
+            if attr is not None and hasattr(attr, 'st_mode'):
+                os.mkdir(path, attr.st_mode)
+            else:
+                os.mkdir(path)
             if attr is not None:
+                attr._flags &= ~attr.FLAG_PERMISSIONS
                 SFTPServer.set_file_attr(path, attr)
         except OSError, e:
             return SFTPServer.convert_errno(e.errno)
