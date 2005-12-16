@@ -55,7 +55,7 @@ class TestCommandLine(TestCase):
             # But stupid windows and line-ending conversions. 
             # It is too much work to make sys.stdout be in binary mode.
             # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/65443
-            my_gpg._command_line = lambda:['python', '-c',
+            my_gpg._command_line = lambda:[sys.executable, '-c',
                     'import sys; sys.stdout.write(sys.stdin.read())']
             new_content = content.replace('\n', '\r\n')
 
