@@ -264,6 +264,16 @@ class TestCase(unittest.TestCase):
             raise AssertionError('pattern "%s" not found in "%s"'
                     % (needle_re, haystack))
 
+    def AssertSubset(self, sublist, superlist):
+        """Assert that every entry in sublist is present in superlist."""
+        missing = []
+        for entry in sublist:
+            if entry not in superlist:
+                missing.append(entry)
+        if len(missing) > 0:
+            raise AssertionError("value(s) %r not present in container %r" % 
+                                 (missing, superlist))
+
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
 
