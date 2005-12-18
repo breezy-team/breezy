@@ -92,7 +92,8 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
         self.assertEqual(store.total_size(), (2, 55))
         
     def test__relpath_suffixed(self):
-        my_store = TextStore(MockTransport(), True, compressed=True)
+        my_store = TextStore(MockTransport(),
+                             prefixed=True, compressed=True)
         my_store.register_suffix('dsc')
         self.assertEqual('45/foo.dsc', my_store._relpath('foo', ['dsc']))
 
@@ -357,7 +358,8 @@ class TestTransportStore(TestCase):
                          my_store.get('missing', 'sig').read())
 
     def test___iter__no_suffix(self):
-        my_store = TextStore(MemoryTransport(), False, compressed=False)
+        my_store = TextStore(MemoryTransport(),
+                             prefixed=False, compressed=False)
         stream = StringIO("content")
         my_store.add(stream, "foo")
         self.assertEqual(set(['foo']),
@@ -382,7 +384,8 @@ class TestTransportStore(TestCase):
 
     def test_copy_suffixes(self):
         from_store = self.get_populated_store()
-        to_store = TextStore(MemoryTransport(), True, compressed=True)
+        to_store = TextStore(MemoryTransport(),
+                             prefixed=True, compressed=True)
         to_store.register_suffix('sig')
         copy_all(from_store, to_store)
         self.assertEqual(1, len(to_store))

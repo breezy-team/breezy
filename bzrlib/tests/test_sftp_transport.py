@@ -18,7 +18,7 @@ import os
 import socket
 import threading
 
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 from bzrlib.tests.test_transport import TestTransportMixIn
 import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin, lexists
@@ -104,6 +104,8 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
 
     def setUp(self):
         TestCaseInTempDir.setUp(self)
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
         self._root = self.test_dir
         self._is_setup = False
 
@@ -190,6 +192,11 @@ fake = FakeSFTPTransport()
 
 
 class SFTPNonServerTest(TestCase):
+    def setUp(self):
+        TestCase.setUp(self)
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
+
     def test_parse_url(self):
         from bzrlib.transport.sftp import SFTPTransport
         s = SFTPTransport('sftp://simple.example.com/%2fhome/source', clone_from=fake)
@@ -306,8 +313,3 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         self.assertEquals(b2.revision_history(), ['a1', 'a2'])
 
 
-if not paramiko_loaded:
-    # TODO: Skip these
-    del SFTPTransportTest
-    del SFTPNonServerTest
-    del SFTPBranchTest

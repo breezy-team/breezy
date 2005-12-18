@@ -355,7 +355,7 @@ class Branch(object):
         >>> commit(br1, "lala!", rev_id="REVISION-ID-2B")
         >>> br1.missing_revisions(br2)
         Traceback (most recent call last):
-        DivergedBranches: These branches have diverged.
+        DivergedBranches: These branches have diverged.  Try merge.
         """
         self_history = self.revision_history()
         self_len = len(self_history)
@@ -512,6 +512,10 @@ class BzrBranch(Branch):
     _lock_count = None
     _lock = None
     _inventory_weave = None
+    # If set to False (by a plugin, etc) BzrBranch will not set the
+    # mode on created files or directories
+    _set_file_mode = True
+    _set_dir_mode = True
     
     # Map some sort of prefix into a namespace
     # stuff like "revno:10", "revid:", etc.
@@ -562,25 +566,23 @@ class BzrBranch(Branch):
         if init:
             self._make_control()
         self._check_format(relax_version_check)
+        self._find_modes()
 
         def get_store(name, compressed=True, prefixed=False):
-            # FIXME: This approach of assuming stores are all entirely compressed
-            # or entirely uncompressed is tidy, but breaks upgrade from 
-            # some existing branches where there's a mixture; we probably 
-            # still want the option to look for both.
             relpath = self._rel_controlfilename(unicode(name))
             store = TextStore(self._transport.clone(relpath),
+                              dir_mode=self._dir_mode,
+                              file_mode=self._file_mode,
                               prefixed=prefixed,
                               compressed=compressed)
-            #if self._transport.should_cache():
-            #    cache_path = pathjoin(self.cache_root, name)
-            #    os.mkdir(cache_path)
-            #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
 
         def get_weave(name, prefixed=False):
             relpath = self._rel_controlfilename(unicode(name))
-            ws = WeaveStore(self._transport.clone(relpath), prefixed=prefixed)
+            ws = WeaveStore(self._transport.clone(relpath),
+                            prefixed=prefixed,
+                            dir_mode=self._dir_mode,
+                            file_mode=self._file_mode)
             if self._transport.should_cache():
                 ws.enable_cache = True
             return ws
@@ -753,7 +755,25 @@ class BzrBranch(Branch):
                     f = codecs.getwriter('utf-8')(f, errors='replace')
             path = self._rel_controlfilename(path)
             ctrl_files.append((path, f))
-        self._transport.put_multi(ctrl_files)
+        self._transport.put_multi(ctrl_files, mode=self._file_mode)
+
+    def _find_modes(self, path=None):
+        """Determine the appropriate modes for files and directories."""
+        try:
+            if path is None:
+                path = self._rel_controlfilename('')
+            st = self._transport.stat(path)
+        except errors.TransportNotPossible:
+            self._dir_mode = 0755
+            self._file_mode = 0644
+        else:
+            self._dir_mode = st.st_mode & 07777
+            # Remove the sticky and execute bits for files
+            self._file_mode = self._dir_mode & ~07111
+        if not self._set_dir_mode:
+            self._dir_mode = None
+        if not self._set_file_mode:
+            self._file_mode = None
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
@@ -771,7 +791,12 @@ class BzrBranch(Branch):
         bzrlib.weavefile.write_weave_v5(Weave(), sio)
         empty_weave = sio.getvalue()
 
-        dirs = [[], 'revision-store', 'weaves']
+        cfn = self._rel_controlfilename
+        # Since we don't have a .bzr directory, inherit the
+        # mode from the root directory
+        self._find_modes(u'.')
+
+        dirs = ['', 'revision-store', 'weaves']
         files = [('README', 
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.\n"),
@@ -784,8 +809,7 @@ class BzrBranch(Branch):
             ('inventory.weave', empty_weave),
             ('ancestry.weave', empty_weave)
         ]
-        cfn = self._rel_controlfilename
-        self._transport.mkdir_multi([cfn(d) for d in dirs])
+        self._transport.mkdir_multi([cfn(d) for d in dirs], mode=self._dir_mode)
         self.put_controlfiles(files)
         mutter('created control directory in ' + self._transport.base)
 

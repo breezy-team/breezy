@@ -23,6 +23,7 @@ import os
 from paramiko import ServerInterface, SFTPServerInterface, SFTPServer, SFTPAttributes, \
     SFTPHandle, SFTP_OK, AUTH_SUCCESSFUL, OPEN_SUCCEEDED
 from bzrlib.osutils import pathjoin
+from bzrlib.trace import mutter
 
 
 class StubServer (ServerInterface):
@@ -50,6 +51,7 @@ class StubSFTPHandle (SFTPHandle):
     def chattr(self, attr):
         # python doesn't have equivalents to fchown or fchmod, so we have to
         # use the stored filename
+        mutter('Changing permissions on %s to %s', self.filename, attr)
         try:
             SFTPServer.set_file_attr(self.filename, attr)
         except OSError, e:
@@ -63,6 +65,13 @@ class StubSFTPServer (SFTPServerInterface):
         
     def _realpath(self, path):
         return self.root + self.canonicalize(path)
+
+    def chattr(self, path, attr):
+        try:
+            SFTPServer.set_file_attr(path, attr)
+        except OSError, e:
+            return SFTPServer.convert_errno(e.errno)
+        return SFTP_OK
 
     def list_folder(self, path):
         path = self._realpath(path)
@@ -96,10 +105,14 @@ class StubSFTPServer (SFTPServerInterface):
         try:
             if hasattr(os, 'O_BINARY'):
                 flags |= os.O_BINARY
-            fd = os.open(path, flags)
+            if (attr is not None) and hasattr(attr, 'st_mode'):
+                fd = os.open(path, flags, attr.st_mode)
+            else:
+                fd = os.open(path, flags)
         except OSError, e:
             return SFTPServer.convert_errno(e.errno)
         if (flags & os.O_CREAT) and (attr is not None):
+            attr._flags &= ~attr.FLAG_PERMISSIONS
             SFTPServer.set_file_attr(path, attr)
         if flags & os.O_WRONLY:
             fstr = 'wb'
@@ -138,8 +151,12 @@ class StubSFTPServer (SFTPServerInterface):
     def mkdir(self, path, attr):
         path = self._realpath(path)
         try:
-            os.mkdir(path)
+            if attr is not None and hasattr(attr, 'st_mode'):
+                os.mkdir(path, attr.st_mode)
+            else:
+                os.mkdir(path)
             if attr is not None:
+                attr._flags &= ~attr.FLAG_PERMISSIONS
                 SFTPServer.set_file_attr(path, attr)
         except OSError, e:
             return SFTPServer.convert_errno(e.errno)

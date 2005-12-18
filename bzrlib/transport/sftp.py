@@ -127,6 +127,13 @@ class SFTPSubprocess:
     def send(self, data):
         return os.write(self.proc.stdin.fileno(), data)
 
+    def recv_ready(self):
+        # TODO: jam 20051215 this function is necessary to support the
+        # pipelined() function. In reality, it probably should use
+        # poll() or select() to actually return if there is data
+        # available, otherwise we probably don't get any benefit
+        return True
+
     def recv(self, count):
         return os.read(self.proc.stdout.fileno(), count)
 
@@ -192,7 +199,8 @@ class SFTPLock(object):
         self.lock_path = path + '.write-lock'
         self.transport = transport
         try:
-            self.lock_file = transport._sftp_open_exclusive(self.lock_path)
+            abspath = transport._abspath(self.lock_path)
+            self.lock_file = transport._sftp_open_exclusive(abspath)
         except FileExists:
             raise LockError('File %r already locked' % (self.path,))
 
@@ -343,32 +351,42 @@ class SFTPTransport (Transport):
             f.prefetch()
         return f
 
-    def put(self, relpath, f):
+    def put(self, relpath, f, mode=None):
         """
         Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
+        :param mode: The final mode for the file
         """
         final_path = self._abspath(relpath)
-        tmp_relpath = '%s.tmp.%.9f.%d.%d' % (relpath, time.time(),
-                        os.getpid(), random.randint(0,0x7FFFFFFF))
-        tmp_abspath = self._abspath(tmp_relpath)
-        fout = self._sftp_open_exclusive(tmp_relpath)
+        self._put(final_path, f, mode=mode)
 
+    def _put(self, abspath, f, mode=None):
+        """Helper function so both put() and copy_abspaths can reuse the code"""
+        tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
+                        os.getpid(), random.randint(0,0x7FFFFFFF))
+        fout = self._sftp_open_exclusive(tmp_abspath, mode=mode)
         closed = False
         try:
             try:
+                fout.set_pipelined(True)
                 self._pump(f, fout)
             except (IOError, paramiko.SSHException), e:
                 self._translate_io_exception(e, tmp_abspath)
+            if mode is not None:
+                self._sftp.chmod(tmp_abspath, mode)
             fout.close()
             closed = True
-            self._rename(tmp_abspath, final_path)
+            self._rename(tmp_abspath, abspath)
         except Exception, e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception
             # but don't let another exception mess things up
+            # Write out the traceback, because otherwise
+            # the catch and throw destroys it
+            import traceback
+            mutter(traceback.format_exc())
             try:
                 if not closed:
                     fout.close()
@@ -389,13 +407,20 @@ class SFTPTransport (Transport):
             else:
                 yield relpath
 
-    def mkdir(self, relpath):
+    def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         try:
             path = self._abspath(relpath)
+            # In the paramiko documentation, it says that passing a mode flag 
+            # will filtered against the server umask.
+            # StubSFTPServer does not do this, which would be nice, because it is
+            # what we really want :)
+            # However, real servers do use umask, so we really should do it that way
             self._sftp.mkdir(path)
+            if mode is not None:
+                self._sftp.chmod(path, mode=mode)
         except (paramiko.SSHException, IOError), e:
-            self._translate_io_exception(e, relpath, ': unable to mkdir',
+            self._translate_io_exception(e, path, ': unable to mkdir',
                 failure_exc=FileExists)
 
     def _translate_io_exception(self, e, path, more_info='', failure_exc=NoSuchFile):
@@ -422,6 +447,9 @@ class SFTPTransport (Transport):
             # strange but true, for the paramiko server.
             if (e.args == ('Failure',)):
                 raise failure_exc(path, str(e) + more_info)
+            mutter('Raising exception with args %s', e.args)
+        if hasattr(e, 'errno'):
+            mutter('Raising exception with errno %s', e.errno)
         raise e
 
     def append(self, relpath, f):
@@ -442,7 +470,7 @@ class SFTPTransport (Transport):
         path_to = self._abspath(rel_to)
         self._copy_abspaths(path_from, path_to)
 
-    def _copy_abspaths(self, path_from, path_to):
+    def _copy_abspaths(self, path_from, path_to, mode=None):
         """Copy files given an absolute path
 
         :param path_from: Path on remote server to read
@@ -457,18 +485,13 @@ class SFTPTransport (Transport):
         try:
             fin = self._sftp.file(path_from, 'rb')
             try:
-                fout = self._sftp.file(path_to, 'wb')
-                try:
-                    fout.set_pipelined(True)
-                    self._pump(fin, fout)
-                finally:
-                    fout.close()
+                self._put(path_to, fin, mode=mode)
             finally:
                 fin.close()
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path_from, ': unable copy to: %r' % path_to)
 
-    def copy_to(self, relpaths, other, pb=None):
+    def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
 
         :param relpaths: A list/generator of entries to be copied.
@@ -483,17 +506,11 @@ class SFTPTransport (Transport):
                 path_from = self._abspath(relpath)
                 path_to = other._abspath(relpath)
                 self._update_pb(pb, 'copy-to', count, total)
-                self._copy_abspaths(path_from, path_to)
+                self._copy_abspaths(path_from, path_to, mode=mode)
                 count += 1
             return count
         else:
-            return super(SFTPTransport, self).copy_to(relpaths, other, pb=pb)
-
-        # The dummy implementation just does a simple get + put
-        def copy_entry(path):
-            other.put(path, self.get(path))
-
-        return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
+            return super(SFTPTransport, self).copy_to(relpaths, other, mode=mode, pb=pb)
 
     def _rename(self, abs_from, abs_to):
         """Do a fancy rename on the remote server.
@@ -768,7 +785,7 @@ class SFTPTransport (Transport):
             pass
         return False
 
-    def _sftp_open_exclusive(self, relpath):
+    def _sftp_open_exclusive(self, abspath, mode=None):
         """Open a remote path exclusively.
 
         SFTP supports O_EXCL (SFTP_FLAG_EXCL), which fails if
@@ -779,19 +796,22 @@ class SFTPTransport (Transport):
         WARNING: This breaks the SFTPClient abstraction, so it
         could easily break against an updated version of paramiko.
 
-        :param relpath: The relative path, where the file should be opened
+        :param abspath: The remote absolute path where the file should be opened
+        :param mode: The mode permissions bits for the new file
         """
-        path = self._sftp._adjust_cwd(self._abspath(relpath))
+        path = self._sftp._adjust_cwd(abspath)
         attr = SFTPAttributes()
-        mode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE 
+        if mode is not None:
+            attr.st_mode = mode
+        omode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE 
                 | SFTP_FLAG_TRUNC | SFTP_FLAG_EXCL)
         try:
-            t, msg = self._sftp._request(CMD_OPEN, path, mode, attr)
+            t, msg = self._sftp._request(CMD_OPEN, path, omode, attr)
             if t != CMD_HANDLE:
                 raise TransportError('Expected an SFTP handle')
             handle = msg.get_string()
             return SFTPFile(self._sftp, handle, 'wb', -1)
         except (paramiko.SSHException, IOError), e:
-            self._translate_io_exception(e, relpath, ': unable to open',
+            self._translate_io_exception(e, abspath, ': unable to open',
                 failure_exc=FileExists)
 
