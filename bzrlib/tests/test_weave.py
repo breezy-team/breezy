@@ -928,6 +928,8 @@ class Corruption(TestCase):
         self.assertEqual(['f572d396fae9206628714fb2ce00f72e94f2258f'
                         , '90f265c6e75f1c8f9ab76dcf85528352c5f215ef'
                         ], w._sha1s)
+        w.check()
+
         # Corrupted
         w._weave[4] = 'There\n'
 
@@ -935,6 +937,7 @@ class Corruption(TestCase):
         self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
         self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
         self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
         # Corrected
         w._weave[4] = 'there\n'
@@ -947,6 +950,7 @@ class Corruption(TestCase):
         self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
         self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
         self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
     def test_written_detection(self):
         """Test detection of weave file corruption.
@@ -983,6 +987,7 @@ class Corruption(TestCase):
         self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
         self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
         self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
         # Change the sha checksum
         tmpf = StringIO('# bzr weave file v5\n'
@@ -996,5 +1001,6 @@ class Corruption(TestCase):
         self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
         self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
         self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
 

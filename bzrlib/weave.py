@@ -606,7 +606,6 @@ class Weave(object):
     def __len__(self):
         return self.numversions()
 
-
     def check(self, progress_bar=None):
         # check no circular inclusions
         for version in range(self.numversions()):
@@ -617,21 +616,74 @@ class Weave(object):
                     raise WeaveFormatError("invalid included version %d for index %d"
                                            % (inclusions[-1], version))
 
-        # try extracting all versions; this is a bit slow and parallel
-        # extraction could be used
+        # try extracting all versions; parallel extraction is used
         nv = self.numversions()
+        sha1s = [sha.new() for i in range(nv)]
+        texts = [[] for i in range(nv)]
+        inclusions = []
+        for i in range(nv):
+            if progress_bar:
+                progress_bar.update('determining ancestry', i, nv)
+            # For creating the ancestry, IntSet is much faster (3.7s vs 0.17s)
+            # The problem is that set membership is much more expensive
+            new_inc = set([i])
+            for p in self._parents[i]:
+                new_inc.update(inclusions[p])
+
+            #assert set(new_inc) == self.inclusions([i]), 'failed %s != %s' % (new_inc, self.inclusions([i]))
+            inclusions.append(new_inc)
+        istack = []
+        dset = set()
+
+        nlines = len(self._weave)
+        for lineno, l in enumerate(self._weave):
+            if progress_bar:
+                progress_bar.update('processing line', lineno, nlines)
+            if isinstance(l, tuple):
+                c, v = l
+                if c == '{':
+                    assert v not in istack
+                    istack.append(v)
+                elif c == '}':
+                    istack.pop()
+                elif c == '[':
+                    assert v not in dset
+                    dset.add(v)
+                else:
+                    assert c == ']'
+                    assert v in dset
+                    dset.remove(v)
+            else:
+                assert isinstance(l, basestring)
+                if istack:
+                    cur = istack[-1]
+                else:
+                    cur = None
+
+                for j, j_inc in enumerate(inclusions):
+                    # The active inclusion must be an ancestor,
+                    # and no ancestors must have deleted this line,
+                    # because we don't support resurrection.
+                    if (cur in j_inc) and not (dset & j_inc):
+                        sha1s[j].update(l)
+
+        if istack:
+            raise WeaveFormatError("unclosed insertion blocks "
+                    "at end of weave: %s" % istack)
+        if dset:
+            raise WeaveFormatError("unclosed deletion blocks at end of weave: %s"
+                                   % dset)
+
         for version in range(nv):
             if progress_bar:
                 progress_bar.update('checking text', version, nv)
-            s = sha.new()
-            for l in self.get_iter(version):
-                s.update(l)
-            hd = s.hexdigest()
+            hd = sha1s[version].hexdigest()
             expected = self._sha1s[version]
             if hd != expected:
-                raise WeaveError("mismatched sha1 for version %d; "
-                                 "got %s, expected %s"
-                                 % (version, hd, expected))
+                raise errors.WeaveInvalidChecksum(
+                        "mismatched sha1 for version %s: "
+                        "got %s, expected %s"
+                        % (self._names[version], hd, expected))
 
         # TODO: check insertions are properly nested, that there are
         # no lines outside of insertion blocks, that deletions are
