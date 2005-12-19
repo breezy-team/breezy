@@ -31,7 +31,6 @@ import codecs
 import bzrlib.branch
 import bzrlib.commands
 from bzrlib.errors import BzrError
-import bzrlib.intset
 import bzrlib.inventory
 import bzrlib.merge3
 import bzrlib.osutils
@@ -48,7 +47,6 @@ MODULES_TO_DOCTEST = [
                       bzrlib.branch,
                       bzrlib.commands,
                       bzrlib.errors,
-                      bzrlib.intset,
                       bzrlib.inventory,
                       bzrlib.merge3,
                       bzrlib.osutils,
