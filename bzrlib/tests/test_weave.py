@@ -288,6 +288,8 @@ class CannedDelete(TestBase):
                 'last line',
                 ('}', 0),
                 ]
+        k._sha1s = [sha_string('first lineline to be deletedlast line')
+                  , sha_string('first linelast line')]
 
         self.assertEqual(k.get(0),
                          ['first line',
@@ -321,6 +323,8 @@ class CannedReplacement(TestBase):
                 'last line',
                 ('}', 0),
                 ]
+        k._sha1s = [sha_string('first lineline to be deletedlast line')
+                  , sha_string('first linereplacement linelast line')]
 
         self.assertEqual(k.get(0),
                          ['first line',
@@ -421,6 +425,12 @@ class InsertNested(TestBase):
                 '}',
                 ('}', 0)]
 
+        k._sha1s = [sha_string('foo {}')
+                  , sha_string('foo {  added in version 1  also from v1}')
+                  , sha_string('foo {  added in v2}')
+                  , sha_string('foo {  added in version 1  added in v2  also from v1}')
+                  ]
+
         self.assertEqual(k.get(0),
                          ['foo {',
                           '}'])
@@ -494,6 +504,9 @@ class IncludeVersions(TestBase):
                 "second line",
                 ('}', 1)]
 
+        k._sha1s = [sha_string('first line')
+                  , sha_string('first linesecond line')]
+
         self.assertEqual(k.get(1),
                          ["first line",
                           "second line"])
@@ -522,6 +535,10 @@ class DivergedIncludes(TestBase):
                 "alternative second line",
                 ('}', 2),                
                 ]
+
+        k._sha1s = [sha_string('first line')
+                  , sha_string('first linesecond line')
+                  , sha_string('first linealternative second line')]
 
         self.assertEqual(k.get(0),
                          ["first line"])
@@ -881,3 +898,103 @@ class JoinWeavesTests(TestBase):
         eq = self.assertEquals
         eq(sorted(wa.iter_names()), ['v1', 'v2', 'v3', 'x1',])
         eq(wa.get_text('x1'), 'line from x1\n')
+
+
+
+class Corruption(TestCase):
+
+    def test_detection(self):
+        """Test weaves detect corruption.
+
+        Weaves contain a checksum of their texts.
+        When a text is extracted, this checksum should be
+        verified.
+        """
+
+        w = Weave()
+        w.add('v1', [], ['hello\n'])
+        w.add('v2', ['v1'], ['hello\n', 'there\n'])
+
+        # We are going to invasively corrupt the text
+        # Make sure the internals of weave are the same
+        self.assertEqual([('{', 0)
+                        , 'hello\n'
+                        , ('}', None)
+                        , ('{', 1)
+                        , 'there\n'
+                        , ('}', None)
+                        ], w._weave)
+
+        self.assertEqual(['f572d396fae9206628714fb2ce00f72e94f2258f'
+                        , '90f265c6e75f1c8f9ab76dcf85528352c5f215ef'
+                        ], w._sha1s)
+        # Corrupted
+        w._weave[4] = 'There\n'
+
+        self.assertEqual('hello\n', w.get_text('v1'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+
+        # Corrected
+        w._weave[4] = 'there\n'
+        self.assertEqual('hello\nthere\n', w.get_text('v2'))
+
+        #Invalid checksum, first digit changed
+        w._sha1s[1] =  'f0f265c6e75f1c8f9ab76dcf85528352c5f215ef'
+
+        self.assertEqual('hello\n', w.get_text('v1'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+
+    def test_written_detection(self):
+        """Test detection of weave file corruption.
+
+        Make sure that we can detect if a weave file has
+        been corrupted. This doesn't test all forms of corruption,
+        but it at least helps verify the data you get, is what you want.
+        """
+        from cStringIO import StringIO
+
+        w = Weave()
+        w.add('v1', [], ['hello\n'])
+        w.add('v2', ['v1'], ['hello\n', 'there\n'])
+
+        tmpf = StringIO()
+        write_weave(w, tmpf)
+
+        # Because we are corrupting, we need to make sure we have the exact text
+        self.assertEquals('# bzr weave file v5\n'
+                          'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
+                          'i 0\n1 90f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
+                          'w\n{ 0\n. hello\n}\n{ 1\n. there\n}\nW\n',
+                          tmpf.getvalue())
+
+        # Change a single letter
+        tmpf = StringIO('# bzr weave file v5\n'
+                        'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
+                        'i 0\n1 90f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
+                        'w\n{ 0\n. hello\n}\n{ 1\n. There\n}\nW\n')
+
+        w = read_weave(tmpf)
+
+        self.assertEqual('hello\n', w.get_text('v1'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+
+        # Change the sha checksum
+        tmpf = StringIO('# bzr weave file v5\n'
+                        'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
+                        'i 0\n1 f0f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
+                        'w\n{ 0\n. hello\n}\n{ 1\n. there\n}\nW\n')
+
+        w = read_weave(tmpf)
+
+        self.assertEqual('hello\n', w.get_text('v1'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+
+

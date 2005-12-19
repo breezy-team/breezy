@@ -371,6 +371,10 @@ class WeaveParentMismatch(WeaveError):
     """Parents are mismatched between two revisions."""
     
 
+class WeaveInvalidChecksum(WeaveError):
+    """Text did not match it's checksum: %(message)s"""
+
+
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""
     def __init__(self, format):

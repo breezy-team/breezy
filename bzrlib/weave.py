@@ -71,8 +71,9 @@ import sha
 from difflib import SequenceMatcher
 
 from bzrlib.trace import mutter
-from bzrlib.errors import WeaveError, WeaveFormatError, WeaveParentMismatch, \
-        WeaveRevisionNotPresent, WeaveRevisionAlreadyPresent
+from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
+        WeaveRevisionNotPresent, WeaveRevisionAlreadyPresent)
+import bzrlib.errors as errors
 from bzrlib.tsort import topo_sort
 
 
@@ -548,8 +549,24 @@ class Weave(object):
     def get_iter(self, name_or_index):
         """Yield lines for the specified version."""
         incls = [self.maybe_lookup(name_or_index)]
+        if len(incls) == 1:
+            index= incls[0]
+            s = sha.new()
+        else:
+            # We don't have sha1 sums for multiple entries
+            s = None
         for origin, lineno, line in self._extract(incls):
+            if s:
+                s.update(line)
             yield line
+        if s:
+            expected_sha1 = self._sha1s[index]
+            measured_sha1 = s.hexdigest() 
+            if measured_sha1 != expected_sha1:
+                raise errors.WeaveInvalidChecksum(
+                        'file %s, revision %s, expected: %s, measured %s' 
+                        % (self._weave_name, self._names[index],
+                           expected_sha1, measured_sha1))
 
 
     def get_text(self, name_or_index):
