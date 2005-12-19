@@ -484,7 +484,12 @@ class Weave(object):
                 yield lineno, istack[-1], dset, l
             lineno += 1
 
-
+        if istack:
+            raise WeaveFormatError("unclosed insertion blocks "
+                    "at end of weave: %s" % istack)
+        if dset:
+            raise WeaveFormatError("unclosed deletion blocks at end of weave: %s"
+                                   % dset)
 
     def _extract(self, versions):
         """Yield annotation of lines in included set.
@@ -632,47 +637,18 @@ class Weave(object):
 
             #assert set(new_inc) == self.inclusions([i]), 'failed %s != %s' % (new_inc, self.inclusions([i]))
             inclusions.append(new_inc)
-        istack = []
-        dset = set()
 
         nlines = len(self._weave)
-        for lineno, l in enumerate(self._weave):
+        for lineno, insert, deleteset, line in self._walk():
             if progress_bar:
                 progress_bar.update('processing line', lineno, nlines)
-            if isinstance(l, tuple):
-                c, v = l
-                if c == '{':
-                    assert v not in istack
-                    istack.append(v)
-                elif c == '}':
-                    istack.pop()
-                elif c == '[':
-                    assert v not in dset
-                    dset.add(v)
-                else:
-                    assert c == ']'
-                    assert v in dset
-                    dset.remove(v)
-            else:
-                assert isinstance(l, basestring)
-                if istack:
-                    cur = istack[-1]
-                else:
-                    cur = None
 
-                for j, j_inc in enumerate(inclusions):
-                    # The active inclusion must be an ancestor,
-                    # and no ancestors must have deleted this line,
-                    # because we don't support resurrection.
-                    if (cur in j_inc) and not (dset & j_inc):
-                        sha1s[j].update(l)
-
-        if istack:
-            raise WeaveFormatError("unclosed insertion blocks "
-                    "at end of weave: %s" % istack)
-        if dset:
-            raise WeaveFormatError("unclosed deletion blocks at end of weave: %s"
-                                   % dset)
+            for j, j_inc in enumerate(inclusions):
+                # The active inclusion must be an ancestor,
+                # and no ancestors must have deleted this line,
+                # because we don't support resurrection.
+                if (insert in j_inc) and not (deleteset & j_inc):
+                    sha1s[j].update(line)
 
         for version in range(nv):
             if progress_bar:
@@ -688,7 +664,6 @@ class Weave(object):
         # TODO: check insertions are properly nested, that there are
         # no lines outside of insertion blocks, that deletions are
         # properly paired, etc.
-
 
     def _delta(self, included, lines):
         """Return changes from basis to new revision.
