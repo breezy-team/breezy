@@ -82,6 +82,31 @@ class WeaveStore(TransportStore):
         w = read_weave(self._get(file_id))
         transaction.map.add_weave(file_id, w)
         transaction.register_clean(w, precious=self._precious)
+        # TODO: jam 20051219 This should check if there is a prelude
+        #       which is already cached, and if so, should remove it
+        #       But transaction doesn't seem to have a 'remove'
+        #       One workaround would be to re-add the object with
+        #       the PRELUDE marker.
+        return w
+
+    def get_weave_prelude(self, file_id, transaction):
+        weave_id = file_id
+        weave = transaction.map.find_weave(weave_id)
+        if weave:
+            mutter("cache hit in %s for %s", self, weave_id)
+            return weave
+        # We want transactions to also cache preludes if that
+        # is all that we are loading. So we need a unique
+        # identifier, so that someone who wants the whole text
+        # won't get just the prelude
+        weave_id = 'PRELUDE-' + file_id
+        weave = transaction.map.find_weave(weave_id)
+        if weave:
+            mutter("cache hit in %s for %s", self, weave_id)
+            return weave
+        w = read_weave(self._get(file_id), prelude=True)
+        transaction.map.add_weave(weave_id, w)
+        transaction.register_clean(w, precious=self._precious)
         return w
 
     def get_lines(self, file_id, rev_id, transaction):
@@ -94,14 +119,15 @@ class WeaveStore(TransportStore):
     def get_weave_prelude_or_empty(self, file_id, transaction):
         """cheap version that reads the prelude but not the lines
         """
-        weave = transaction.map.find_weave(file_id)
-        if weave:
-            mutter("cache hit in %s for %s", self, file_id)
-            return weave
         try:
-            return read_weave(self._get(file_id),prelude=True)
+            return self.get_weave_prelude(file_id, transaction)
         except NoSuchFile:
-            return Weave(weave_name=file_id)
+            # We can cache here, because we know that there
+            # is no complete object, since we got NoSuchFile
+            weave = Weave(weave_name=file_id)
+            transaction.map.add_weave(file_id, weave)
+            transaction.register_clean(weave, precious=self._precious)
+            return weave
 
     def get_weave_or_empty(self, file_id, transaction):
         """Return a weave, or an empty one if it doesn't exist.""" 

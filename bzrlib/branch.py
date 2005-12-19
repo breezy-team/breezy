@@ -1030,7 +1030,7 @@ class BzrBranch(Branch):
             return EmptyTree()
         else:
             inv = self.get_revision_inventory(revision_id)
-            return RevisionTree(self.weave_store, inv, revision_id)
+            return RevisionTree(self, inv, revision_id)
 
     def basis_tree(self):
         """See Branch.basis_tree."""
@@ -1038,7 +1038,7 @@ class BzrBranch(Branch):
             revision_id = self.revision_history()[-1]
             xml = self.working_tree().read_basis_inventory(revision_id)
             inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
-            return RevisionTree(self.weave_store, inv, revision_id)
+            return RevisionTree(self, inv, revision_id)
         except (IndexError, NoSuchFile, NoWorkingTree), e:
             return self.revision_tree(self.last_revision())
 

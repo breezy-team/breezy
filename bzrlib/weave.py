@@ -67,6 +67,7 @@
 # the possible relationships.
 
 
+import os
 import sha
 from difflib import SequenceMatcher
 
@@ -586,6 +587,13 @@ class Weave(object):
     get = get_lines
 
 
+    def get_sha1(self, name):
+        """Get the stored sha1 sum for the given revision.
+        
+        :param name: The name of the version to lookup
+        """
+        return self._sha1s[self.lookup(name)]
+
     def mash_iter(self, included):
         """Return composed version of multiple included versions."""
         included = map(self.maybe_lookup, included)
@@ -627,8 +635,6 @@ class Weave(object):
         texts = [[] for i in range(nv)]
         inclusions = []
         for i in range(nv):
-            if progress_bar:
-                progress_bar.update('determining ancestry', i, nv)
             # For creating the ancestry, IntSet is much faster (3.7s vs 0.17s)
             # The problem is that set membership is much more expensive
             new_inc = set([i])
@@ -639,9 +645,16 @@ class Weave(object):
             inclusions.append(new_inc)
 
         nlines = len(self._weave)
+
+        update_text = 'checking weave'
+        if self._weave_name:
+            short_name = os.path.basename(self._weave_name)
+            update_text = 'checking %s' % (short_name,)
+            update_text = update_text[:25]
+
         for lineno, insert, deleteset, line in self._walk():
             if progress_bar:
-                progress_bar.update('processing line', lineno, nlines)
+                progress_bar.update(update_text, lineno, nlines)
 
             for j, j_inc in enumerate(inclusions):
                 # The active inclusion must be an ancestor,
@@ -651,8 +664,6 @@ class Weave(object):
                     sha1s[j].update(line)
 
         for version in range(nv):
-            if progress_bar:
-                progress_bar.update('checking text', version, nv)
             hd = sha1s[version].hexdigest()
             expected = self._sha1s[version]
             if hd != expected:

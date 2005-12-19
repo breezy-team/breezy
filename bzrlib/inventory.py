@@ -482,13 +482,26 @@ class InventoryFile(InventoryEntry):
             else:
                 checker.repeated_text_cnt += 1
                 return
+
+        if self.file_id not in checker.checked_weaves:
+            mutter('check weave {%s}', self.file_id)
+            w = tree.get_weave(self.file_id)
+            # Not passing a progress bar, because it creates a new
+            # progress, which overwrites the current progress,
+            # and doesn't look nice
+            w.check()
+            checker.checked_weaves[self.file_id] = True
+        else:
+            w = tree.get_weave_prelude(self.file_id)
+
         mutter('check version {%s} of {%s}', rev_id, self.file_id)
-        file_lines = tree.get_file_lines(self.file_id)
         checker.checked_text_cnt += 1 
-        if self.text_size != sum(map(len, file_lines)):
-            raise BzrCheckError('text {%s} wrong size' % self.text_id)
-        if self.text_sha1 != sha_strings(file_lines):
-            raise BzrCheckError('text {%s} wrong sha1' % self.text_id)
+        # We can't check the length, because Weave doesn't store that
+        # information, and the whole point of looking at the weave's
+        # sha1sum is that we don't have to extract the text.
+        if self.text_sha1 != w.get_sha1(self.revision):
+            raise BzrCheckError('text {%s} version {%s} wrong sha1' 
+                                % (self.file_id, self.revision))
         checker.checked_texts[t] = self.text_sha1
 
     def copy(self):
