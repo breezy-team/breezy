@@ -1,0 +1,104 @@
+SVN-fs-dump-format-version: 2
+
+UUID: 8e11036a-4808-0410-b2b2-dca3825221e6
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2005-12-19T15:43:36.096412Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 112
+Content-length: 112
+
+K 7
+svn:log
+V 11
+Add a file
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2005-12-19T15:43:51.614727Z
+PROPS-END
+
+Node-path: file
+Node-kind: file
+Node-action: add
+Prop-content-length: 10
+Text-content-length: 0
+Text-content-md5: d41d8cd98f00b204e9800998ecf8427e
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 2
+Prop-content-length: 120
+Content-length: 120
+
+K 7
+svn:log
+V 19
+Make it executable
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2005-12-19T15:44:04.928232Z
+PROPS-END
+
+Node-path: file
+Node-kind: file
+Node-action: change
+Prop-content-length: 36
+Content-length: 36
+
+K 14
+svn:executable
+V 1
+*
+PROPS-END
+
+
+Revision-number: 3
+Prop-content-length: 127
+Content-length: 127
+
+K 7
+svn:log
+V 26
+Remove the executable bit
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2005-12-19T15:44:35.573025Z
+PROPS-END
+
+Node-path: file
+Node-kind: file
+Node-action: change
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+

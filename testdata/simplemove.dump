@@ -1,0 +1,93 @@
+SVN-fs-dump-format-version: 2
+
+UUID: fa0b442c-6f07-0410-846f-99fdd79b8ee7
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2005-12-08T20:32:52.264203Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 126
+Content-length: 126
+
+K 7
+svn:log
+V 25
+This is the first commit
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2005-12-08T20:34:05.232195Z
+PROPS-END
+
+Node-path: dir1
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Node-path: dir1/dummy
+Node-kind: file
+Node-action: add
+Prop-content-length: 10
+Text-content-length: 4
+Text-content-md5: d3b07384d113edec49eaa6238ad5ff00
+Content-length: 14
+
+PROPS-END
+foo
+
+
+Node-path: dir2
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 2
+Prop-content-length: 121
+Content-length: 121
+
+K 7
+svn:log
+V 20
+And this one breaks
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2005-12-08T20:34:20.265340Z
+PROPS-END
+
+Node-path: dir1/dummy
+Node-action: delete
+
+
+Node-path: dir2/dummy
+Node-kind: file
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: dir1/dummy
+
+
