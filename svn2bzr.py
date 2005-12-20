@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.4
 #
 # Copyright (C) 2005 by Canonical Ltd
 #
@@ -935,7 +935,7 @@ def parse_options():
 
 
 def main():
-
+    bzrlib.user_encoding = 'utf8'
     opts = parse_options()
 
     if opts.scheme == "trunk":
