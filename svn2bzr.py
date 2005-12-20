@@ -82,6 +82,7 @@ class BranchCreator(object):
             self._prefix = None
             self._prefix_dir = None
         self._revisions = {}
+        self._branches = {}
         self._changed = {}
         self._filter = []
         self._log = log or get_logger()
@@ -322,8 +323,8 @@ class BranchCreator(object):
         else:
             self._log.info("Nothing changed in revision %d" % revno)
         self._revisions[revno] = revs = {}
-        for branch in self._get_all_branches():
-            revs[branch] = branch.revno()
+        for (path,branch) in self._branches.items():
+            revs[path] = (branch, branch.last_revision())
         self._changed.clear()
 
     def run(self):
@@ -428,6 +429,7 @@ class SingleBranchCreator(BranchCreator):
     def _get_branch(self, path):
         if not self._branch:
             self._branch = Branch.initialize(self._root)
+            self._new_branch(self._branch)
         return self._branch
 
     def _get_all_branches(self):
@@ -438,22 +440,41 @@ class SingleBranchCreator(BranchCreator):
 
 
 class DynamicBranchCreator(BranchCreator):
+    ATTICDIR = "attic"
 
     def __init__(self, dump, root, prefix=None, log=None):
         BranchCreator.__init__(self, dump, root, prefix, log)
-        self._branches = {}
 
     def _remove_branch(self, branch):
-        shutil.rmtree(branch.base)
-        del self._branches[branch.base[len(self._root)+1:]]
+        # Retire a branch to the attic
+        rel_path = branch.base[len(self._root)+1:]
+        attic_branch = "%s-r%d" % (os.path.basename(rel_path), self._revisions.keys()[-1])
+        branch_top = os.path.join(self._root, DynamicBranchCreator.ATTICDIR, os.path.dirname(rel_path))
+        if not os.path.isdir(branch_top):
+            os.makedirs(branch_top)
+        attic_path = os.path.join(branch_top, attic_branch)
+        shutil.move(branch.base, attic_path)
+        new_branch = Branch.open(attic_path)
+        self._new_branch(new_branch)
+
+        # Set correct path for old revisions that used this branch
+        for revno in self._revisions:
+            if not self._revisions[revno].has_key(rel_path):
+                continue
+
+            (b,r) = self._revisions[revno][rel_path] 
+            if b == branch:
+                self._revisions[revno][rel_path] = (new_branch,r)
+        
+        del self._branches[rel_path]
 
     def _want_branch(self, path):
         raise NotImplemented
 
     def _get_branch(self, path):
-        for branch_path in self._branches:
-            if path == branch_path or path.startswith(branch_path+"/"):
-                return self._branches[branch_path]
+        for (bp,branch) in self._branches.items():
+            if path == bp or path.startswith(bp+"/") or (path+"/") == bp:
+                return branch
 
     def _get_all_branches(self):
         return self._branches.values()
@@ -478,7 +499,7 @@ class DynamicBranchCreator(BranchCreator):
         unpref_dest_path = self.unprefix(dest_path)
         orig_abspath = os.path.join(self._root, unpref_orig_path)
         if (unpref_orig_path is None or
-            not os.path.isdir(os.path.join(orig_abspath, ".bzr")) or
+            not self._revisions[orig_revno].has_key(unpref_orig_path) or
             self._get_branch(unpref_dest_path)):
 
             # Normal copy
@@ -489,10 +510,8 @@ class DynamicBranchCreator(BranchCreator):
 
             # Create new branch
             dest_abspath = os.path.join(self._root, unpref_dest_path)
-            orig_branch = self._get_branch(unpref_orig_path)
-            revno = self._revisions[orig_revno][orig_branch]
+            (orig_branch,revid) = self._revisions[orig_revno][unpref_orig_path]
             os.makedirs(dest_abspath)
-            revid = orig_branch.get_rev_id(revno)
             copy_branch(orig_branch, dest_abspath, revid)
             branch = Branch.open(dest_abspath)
             self._branches[unpref_dest_path] = branch
