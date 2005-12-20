@@ -33,22 +33,13 @@ logger = logging.getLogger("bzr")
 logger.addHandler(logging.FileHandler("/dev/null"))
 
 from bzrlib.branch import Branch
+from bzrlib.clone import copy_branch
 import bzrlib.trace
 
-try:
-    from bzrlib.branch import copy_branch
-except ImportError:
-    from bzrlib.clone import copy_branch
+VERSION = "0.6"
 
-
-VERSION = "0.5"
-
-
-# For compatibility with previous code.
-if not hasattr(Branch, "initialize"):
-    Branch.initialize = staticmethod(lambda path: Branch(path, init=True))
-    Branch.open = staticmethod(lambda path: Branch(path))
-
+# Bogus difflib
+sys.setrecursionlimit(10000)
 
 def get_logger():
     if hasattr(get_logger, "initialized"):
@@ -108,15 +99,17 @@ class BranchCreator(object):
 
     def _do_now(self, branch, action, paths):
         if action == "add":
-            branch.add(paths)
+            branch.__wt.add(paths)
         elif action == "remove":
-            # For some reason I've found cases where the inventory
-            # is empty when doing that. (!?)
-            #branch.__wt.remove(paths)
-            branch = Branch.open(branch.base)
-            branch.working_tree().remove(paths)
+            branch.__wt.remove(paths)
         else:
             raise RuntimeError, "Unknown action: %r" % action
+
+    def _process_do_cache(self, branch):
+        last = self._do_cache.get(branch)
+        if last:
+            self._do_now(branch, *last)
+            del self._do_cache[branch]
 
     def _new_branch(self, branch):
         # Ugly, but let's wait until that API stabilizes. Right
@@ -140,14 +133,6 @@ class BranchCreator(object):
                 abspath = os.path.join(self._root, path)
                 return branch, branch.__wt.relpath(abspath)
         return None, None
-
-    def _get_tree(self, branch, revision=None):
-        if revision is None:
-            return branch.__wt
-        else:
-            revno = self._revisions[revision][branch]
-            revid = branch.get_rev_id(revno)
-            return branch.revision_tree(revid)
 
     def add_filter(self, include, regexp):
         self._filter.append((include, re.compile(regexp)))
@@ -272,19 +257,17 @@ class BranchCreator(object):
             self.remove(orig_path)
             self.copy(orig_path, orig_revno, dest_path)
         else:
+            self._process_do_cache(orig_branch)
             orig_abspath = orig_branch.__wt.abspath(orig_path_branch)
             if not os.path.exists(orig_abspath):
                 # Was previously removed, as usual in svn.
-                orig_branch.revert([orig_path_branch])
+                orig_branch.__wt.revert([orig_abspath])
+                # Revert is currently broken. It invalidates the inventory.
+                orig_branch.__wt = orig_branch.working_tree()
             self._log.debug("Moving: %s to %s" %
                             (orig_abspath,
                              dest_branch.__wt.abspath(dest_path_branch)))
-            if (os.path.dirname(orig_path_branch) ==
-                os.path.dirname(dest_path_branch)):
-                orig_branch.rename_one(orig_path_branch,
-                                       dest_path_branch)
-            else:
-                orig_branch.move([orig_path_branch], dest_path_branch)
+            orig_branch.__wt.rename_one(orig_path_branch, dest_path_branch)
             self._changed[orig_branch] = True
 
     def remove(self, path):
@@ -321,11 +304,9 @@ class BranchCreator(object):
         if self._changed:
             self._log.info("Committing revision %d" % revno)
             for branch in self._changed:
-                if branch in self._do_cache:
-                    self._do_now(branch, *self._do_cache[branch])
+                self._process_do_cache(branch)
                 branch.__wt.commit(message, committer=committer,
                                    timestamp=timestamp, verbose=False)
-            self._do_cache.clear()
         else:
             self._log.info("Nothing changed in revision %d" % revno)
         self._revisions[revno] = revs = {}
