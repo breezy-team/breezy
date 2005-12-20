@@ -367,10 +367,8 @@ class BranchCreator(object):
                 node_action = entry["node-action"]
                 node_kind = entry.get("node-kind")
                 
-                if node_kind not in (None, "file", "dir"):
-                    raise Error, "Unknown entry kind: %s" % node_kind
-                if node_action not in ("add", "delete", "change", "replace"):
-                    raise Error, "Unknown action: %s" % node_action
+                assert node_kind in (None, "file", "dir")
+                assert node_action in ("add", "delete", "change", "replace")
 
                 if node_action == "delete":
                     self.remove(node_path)
@@ -738,7 +736,7 @@ class Dump(object):
 
             if node_path_id not in tree:
                 raise IncrementalDumpError, \
-                      "Dump references a missing revision"
+                      "Dump references missing revision %s" % node_path_id
 
             if building:
                 entry.change_from = self._dump[tree[node_path_id]]
@@ -755,7 +753,7 @@ class Dump(object):
 
             if node_path_id not in tree:
                 raise IncrementalDumpError, \
-                      "Dump references a missing revision"
+                      "Dump references a missing revision %s" % node_path_id
 
             tree_entry = self._dump[tree[node_path_id]]
 
@@ -857,7 +855,7 @@ class Dump(object):
             elif "revision-number" in entry:
 
                 if revision:
-                    self._log.info("Revision %d read" % revno)
+                    self._log.info("Revision %d read" % entry['revision-number'])
                     self._log.debug("Tree has %d entries" % len(tree))
 
                     self._revision_index[revno] = revision_index
