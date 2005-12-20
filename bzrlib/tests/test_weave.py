@@ -38,7 +38,6 @@ TEXT_1 = ["Hello world",
           "A second line"]
 
 
-
 class TestBase(TestCase):
     def check_read_write(self, k):
         """Check the weave k can be written & re-read."""
@@ -85,7 +84,6 @@ class StoreText(TestBase):
         self.assertEqual(idx, 0)
 
 
-
 class AnnotateOne(TestBase):
     def runTest(self):
         k = Weave()
@@ -106,7 +104,6 @@ class StoreTwo(TestBase):
 
         self.assertEqual(k.get(0), TEXT_0)
         self.assertEqual(k.get(1), TEXT_1)
-
 
 
 class AddWithGivenSha(TestBase):
@@ -151,7 +148,6 @@ class RepeatedAdd(TestBase):
         self.assertEqual(idx, idx2)
 
 
-
 class InvalidRepeatedAdd(TestBase):
     def runTest(self):
         k = Weave()
@@ -167,7 +163,6 @@ class InvalidRepeatedAdd(TestBase):
                           [12],         # not the right parents
                           TEXT_0)
         
-
 
 class InsertLines(TestBase):
     """Store a revision that adds one line to the original.
@@ -225,7 +220,6 @@ class InsertLines(TestBase):
                           (4, 'ccc')])
 
 
-
 class DeleteLines(TestBase):
     """Deletion of lines from existing text.
 
@@ -255,8 +249,6 @@ class DeleteLines(TestBase):
         for i in range(len(texts)):
             self.assertEqual(k.get(i+1),
                              texts[i])
-            
-
 
 
 class SuicideDelete(TestBase):
@@ -280,7 +272,6 @@ class SuicideDelete(TestBase):
         self.assertRaises(WeaveFormatError,
                           k.get,
                           0)        
-
 
 
 class CannedDelete(TestBase):
@@ -312,7 +303,6 @@ class CannedDelete(TestBase):
                          ['first line',
                           'last line',
                           ])
-
 
 
 class CannedReplacement(TestBase):
@@ -348,7 +338,6 @@ class CannedReplacement(TestBase):
                           'replacement line',
                           'last line',
                           ])
-
 
 
 class BadWeave(TestBase):
@@ -465,7 +454,6 @@ class InsertNested(TestBase):
                           '}'])
                          
 
-
 class DeleteLines2(TestBase):
     """Test recording revisions that delete lines.
 
@@ -491,7 +479,6 @@ class DeleteLines2(TestBase):
         self.assertEqual(k.annotate(1),
                          [(0, "line the first"),
                           (0, "fine")])
-
 
 
 class IncludeVersions(TestBase):
@@ -566,7 +553,6 @@ class DivergedIncludes(TestBase):
                          [0, 2])
 
 
-
 class ReplaceLine(TestBase):
     def runTest(self):
         k = Weave()
@@ -581,7 +567,6 @@ class ReplaceLine(TestBase):
 
         self.assertEqual(k.get(0), text0)
         self.assertEqual(k.get(1), text1)
-
 
 
 class Merge(TestBase):
@@ -640,7 +625,6 @@ class Conflicts(TestBase):
                            [['bbb']]])
 
 
-
 class NonConflict(TestBase):
     """Two descendants insert compatible changes.
 
@@ -652,9 +636,6 @@ class NonConflict(TestBase):
         k.add([], ['aaa', 'bbb'])
         k.add([0], ['111', 'aaa', 'ccc', 'bbb'])
         k.add([1], ['aaa', 'ccc', 'bbb', '222'])
-
-    
-    
 
 
 class AutoMerge(TestBase):
@@ -679,7 +660,6 @@ class AutoMerge(TestBase):
                           'line from 1',
                           'bbb',
                           'line from 2', 'more from 2'])
-        
 
 
 class Khayyam(TestBase):
@@ -727,7 +707,6 @@ class Khayyam(TestBase):
             self.assertEqual(k.get(i), t)
 
         self.check_read_write(k)
-
 
 
 class MergeCases(TestBase):
@@ -911,16 +890,14 @@ class JoinWeavesTests(TestBase):
         eq(wa.get_text('x1'), 'line from x1\n')
 
 
-
 class Corruption(TestCase):
 
     def test_detection(self):
-        """Test weaves detect corruption.
-
-        Weaves contain a checksum of their texts.
-        When a text is extracted, this checksum should be
-        verified.
-        """
+        # Test weaves detect corruption.
+        #
+        # Weaves contain a checksum of their texts.
+        # When a text is extracted, this checksum should be
+        # verified.
 
         w = Weave()
         w.add('v1', [], ['hello\n'])
@@ -964,12 +941,11 @@ class Corruption(TestCase):
         self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
     def test_written_detection(self):
-        """Test detection of weave file corruption.
-
-        Make sure that we can detect if a weave file has
-        been corrupted. This doesn't test all forms of corruption,
-        but it at least helps verify the data you get, is what you want.
-        """
+        # Test detection of weave file corruption.
+        #
+        # Make sure that we can detect if a weave file has
+        # been corrupted. This doesn't test all forms of corruption,
+        # but it at least helps verify the data you get, is what you want.
         from cStringIO import StringIO
 
         w = Weave()

@@ -556,18 +556,18 @@ class Weave(object):
         """Yield lines for the specified version."""
         incls = [self.maybe_lookup(name_or_index)]
         if len(incls) == 1:
-            index= incls[0]
-            s = sha.new()
+            index = incls[0]
+            cur_sha = sha.new()
         else:
             # We don't have sha1 sums for multiple entries
-            s = None
+            cur_sha = None
         for origin, lineno, line in self._extract(incls):
-            if s:
-                s.update(line)
+            if cur_sha:
+                cur_sha.update(line)
             yield line
-        if s:
+        if cur_sha:
             expected_sha1 = self._sha1s[index]
-            measured_sha1 = s.hexdigest() 
+            measured_sha1 = cur_sha.hexdigest() 
             if measured_sha1 != expected_sha1:
                 raise errors.WeaveInvalidChecksum(
                         'file %s, revision %s, expected: %s, measured %s' 
