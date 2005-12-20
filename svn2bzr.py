@@ -243,6 +243,18 @@ class BranchCreator(object):
             elif node_kind == "dir":
                 self.add_dir(copy_dest_path)
 
+
+    def set_executable(self, path, executable):
+        branch, path_branch = self._get_branch_path(path)
+        abspath = branch.working_tree().abspath(path_branch)
+        mode = os.stat(abspath).st_mode
+        if executable:
+            mode = mode | 0111
+        else:
+            mode = mode &~ 0111
+        os.chmod(abspath, mode)
+        self._changed[branch] = True
+
     def copy(self, orig_path, orig_revno, dest_path):
         orig_entry = self._dump.get_entry(orig_revno, orig_path)
         if orig_entry["node-kind"] == "dir":
@@ -394,6 +406,13 @@ class BranchCreator(object):
                         content = self._dump.get_entry_content(entry)
                         self.change_file(node_path, content)
 
+                if os.path.isdir(node_path):
+                    if entry.prop.has_key('svn:executable') and \
+                        entry.prop['svn:executable'] == '*':
+                        self.set_executable(node_path, True)
+                    else:
+                        self.set_executable(node_path, False)
+
         if revision is not None:
             commit()
 
@@ -411,7 +430,6 @@ class SingleBranchCreator(BranchCreator):
     def _get_branch(self, path):
         if not self._branch:
             self._branch = Branch.initialize(self._root)
-            self._new_branch(self._branch)
         return self._branch
 
     def _get_all_branches(self):
