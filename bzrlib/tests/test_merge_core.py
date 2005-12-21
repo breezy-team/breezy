@@ -328,7 +328,7 @@ class MergeBuilder(object):
                 if parent is None:
                     return orig_inventory[file_id]
                 dirname = new_path(parent)
-                return os.path.join(dirname, orig_inventory[file_id])
+                return os.path.join(dirname, os.path.basename(orig_inventory[file_id]))
 
         new_inventory = {}
         for file_id in orig_inventory.iterkeys():
