@@ -791,22 +791,6 @@ class Changeset(object):
             raise IDPresent(entry.id)
         self.entries[entry.id] = entry
 
-def my_sort(sequence, key, reverse=False):
-    """A sort function that supports supplying a key for comparison
-    
-    :param sequence: The sequence to sort
-    :param key: A callable object that returns the values to be compared
-    :param reverse: If true, sort in reverse order
-    :type reverse: bool
-    """
-    def cmp_by_key(entry_a, entry_b):
-        if reverse:
-            tmp=entry_a
-            entry_a = entry_b
-            entry_b = tmp
-        return cmp(key(entry_a), key(entry_b))
-    sequence.sort(cmp_by_key)
-
 def get_rename_entries(changeset, inventory):
     """Return a list of entries that will be renamed.  Entries are sorted from
     longest to shortest source path and from shortest to longest target path.
@@ -828,7 +812,7 @@ def get_rename_entries(changeset, inventory):
             return 0
         else:
             return len(path)
-    my_sort(source_entries, longest_to_shortest, reverse=True)
+    source_entries.sort(None, longest_to_shortest, True)
 
     target_entries = source_entries[:]
     # These are done from shortest to longest path, to avoid creating a
@@ -839,7 +823,7 @@ def get_rename_entries(changeset, inventory):
             return 0
         else:
             return len(path)
-    my_sort(target_entries, shortest_to_longest)
+    target_entries.sort(None, shortest_to_longest)
     return (source_entries, target_entries)
 
 def rename_to_temp_delete(source_entries, inventory, dir, temp_dir, 
