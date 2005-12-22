@@ -326,7 +326,7 @@ class MergeBuilder(object):
                 if parent is None:
                     return orig_inventory[file_id]
                 dirname = new_path(parent)
-                return pathjoin(dirname, orig_inventory[file_id])
+                return pathjoin(dirname, os.path.basename(orig_inventory[file_id]))
 
         new_inventory = {}
         for file_id in orig_inventory.iterkeys():
@@ -668,6 +668,48 @@ class FunctionalMergeTest(TestCaseInTempDir):
         b_wt.commit('exec a')
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.exists('a/file'))
+
+    def test_merge_swapping_renames(self):
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/un','wb').write('UN')
+        file('a/deux','wb').write('DEUX')
+        a_wt = a.working_tree()
+        a_wt.add('un')
+        a_wt.add('deux')
+        a_wt.commit('r0')
+        copy_branch(a,'b')
+        b = Branch.open('b')
+        b_wt = b.working_tree()
+        b_wt.rename_one('un','tmp')
+        b_wt.rename_one('deux','un')
+        b_wt.rename_one('tmp','deux')
+        b_wt.commit('r1')
+        merge(['b', -1],['b', 1],this_dir='a')
+        self.assert_(os.path.exists('a/un'))
+        self.assert_(os.path.exists('a/deux'))
+        self.assertFalse(os.path.exists('a/tmp'))
+        self.assertEqual(file('a/un').read(),'DEUX')
+        self.assertEqual(file('a/deux').read(),'UN')
+
+    def test_merge_delete_and_add_same(self):
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/file', 'wb').write('THIS')
+        a_wt = a.working_tree()
+        a_wt.add('file')
+        a_wt.commit('r0')
+        copy_branch(a, 'b')
+        b = Branch.open('b')
+        b_wt = b.working_tree()
+        os.remove('b/file')
+        b_wt.commit('r1')
+        file('b/file', 'wb').write('THAT')
+        b_wt.add('file')
+        b_wt.commit('r2')
+        merge(['b', -1],['b', 1],this_dir='a')
+        self.assert_(os.path.exists('a/file'))
+        self.assertEqual(file('a/file').read(),'THAT')
 
     def test_merge_rename_before_create(self):
         """rename before create
