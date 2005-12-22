@@ -138,6 +138,7 @@ class MergeTree(object):
     def get_file_sha1(self, file_id):
         return sha_file(file(self.full_path(file_id), "rb"))
 
+
 class MergeBuilder(object):
     def __init__(self):
         self.dir = mkdtemp(prefix="BaZing")
@@ -148,6 +149,7 @@ class MergeBuilder(object):
         self.cset = changeset.Changeset()
         self.cset.add_entry(changeset.ChangesetEntry("0", 
                                                      changeset.NULL_ID, "./."))
+
     def get_cset_path(self, parent, name):
         if name is None:
             assert (parent is None)

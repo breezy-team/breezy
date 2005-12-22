@@ -35,12 +35,16 @@ from bzrlib.errors import BzrCheckError
 
 __docformat__ = "restructuredtext"
 
+
 NULL_ID = "!NULL"
+
 
 class OldFailedTreeOp(Exception):
     def __init__(self):
         Exception.__init__(self, "bzr-tree-change contains files from a"
                            " previous failed merge operation.")
+
+
 def invert_dict(dict):
     newdict = {}
     for (key,value) in dict.iteritems():
@@ -174,6 +178,7 @@ class SymlinkCreate(object):
     def __ne__(self, other):
         return not (self == other)
 
+
 class FileCreate(object):
     """Create or delete a file (for use with ReplaceContents)"""
     def __init__(self, contents):
@@ -229,6 +234,7 @@ class FileCreate(object):
                     raise
                 if conflict_handler.missing_for_rm(filename, undo) == "skip":
                     return
+
 
 class TreeFileCreate(object):
     """Create or delete a file (for use with ReplaceContents)"""
@@ -293,6 +299,7 @@ class TreeFileCreate(object):
                     raise
                 if conflict_handler.missing_for_rm(filename, undo) == "skip":
                     return
+
 
 class ReplaceContents(object):
     """A contents-replacement framework.  It allows a file/directory/symlink to
@@ -429,6 +436,7 @@ def CreateDir():
     """
     return ReplaceContents(None, dir_create)
 
+
 def DeleteDir():
     """Convenience function to delete a directory.
 
@@ -436,6 +444,7 @@ def DeleteDir():
     :rtype: `ReplaceContents`
     """
     return ReplaceContents(dir_create, None)
+
 
 def CreateFile(contents):
     """Convenience fucntion to create a file.
@@ -447,6 +456,7 @@ def CreateFile(contents):
     """
     return ReplaceContents(None, FileCreate(contents))
 
+
 def DeleteFile(contents):
     """Convenience fucntion to delete a file.
     
@@ -456,6 +466,7 @@ def DeleteFile(contents):
     :rtype: `ReplaceContents`
     """
     return ReplaceContents(FileCreate(contents), None)
+
 
 def ReplaceFileContents(old_tree, new_tree, file_id):
     """Convenience fucntion to replace the contents of a file.
@@ -470,6 +481,7 @@ def ReplaceFileContents(old_tree, new_tree, file_id):
     return ReplaceContents(TreeFileCreate(old_tree, file_id), 
                            TreeFileCreate(new_tree, file_id))
 
+
 def CreateSymlink(target):
     """Convenience fucntion to create a symlink.
     
@@ -480,6 +492,7 @@ def CreateSymlink(target):
     """
     return ReplaceContents(None, SymlinkCreate(target))
 
+
 def DeleteSymlink(target):
     """Convenience fucntion to delete a symlink.
     
@@ -489,6 +502,7 @@ def DeleteSymlink(target):
     :rtype: `ReplaceContents`
     """
     return ReplaceContents(SymlinkCreate(target), None)
+
 
 def ChangeTarget(old_target, new_target):
     """Convenience fucntion to change the target of a symlink.
@@ -533,6 +547,7 @@ class SourceRootHasName(InvalidEntry):
         msg = 'Child of !NULL is named "%s", not "./.".' % name
         InvalidEntry.__init__(self, entry, msg)
 
+
 class NullIDAssigned(InvalidEntry):
     """The id !NULL was assigned to a real entry"""
     def __init__(self, entry):
@@ -543,6 +558,7 @@ class NullIDAssigned(InvalidEntry):
         """
         msg = '"!NULL" id assigned to a file "%s".' % entry.path
         InvalidEntry.__init__(self, entry, msg)
+
 
 class ParentIDIsSelf(InvalidEntry):
     """An entry is marked as its own parent"""
@@ -555,6 +571,7 @@ class ParentIDIsSelf(InvalidEntry):
         msg = 'file %s has "%s" id for both self id and parent id.' % \
             (entry.path, entry.id)
         InvalidEntry.__init__(self, entry, msg)
+
 
 class ChangesetEntry(object):
     """An entry the changeset"""
@@ -704,7 +721,6 @@ class ChangesetEntry(object):
         else:
             return "%s => %s" % (orig_path, mod_path)
 
-
     def get_new_path(self, id_map, changeset):
         """Determine the full pathname to rename to
 
@@ -772,12 +788,14 @@ class ChangesetEntry(object):
         if not self.is_deletion() and self.metadata_change is not None:
             self.metadata_change.apply(filename, conflict_handler)
 
+
 class IDPresent(Exception):
     def __init__(self, id):
         msg = "Cannot add entry because that id has already been used:\n%s" %\
             id
         Exception.__init__(self, msg)
         self.id = id
+
 
 class Changeset(object):
     """A set of changes to apply"""
@@ -789,6 +807,7 @@ class Changeset(object):
         if self.entries.has_key(entry.id):
             raise IDPresent(entry.id)
         self.entries[entry.id] = entry
+
 
 def get_rename_entries(changeset, inventory):
     """Return a list of entries that will be renamed.  Entries are sorted from
@@ -824,6 +843,7 @@ def get_rename_entries(changeset, inventory):
             return len(path)
     target_entries.sort(None, shortest_to_longest)
     return (source_entries, target_entries)
+
 
 def rename_to_temp_delete(source_entries, inventory, dir, temp_dir, 
                           conflict_handler):
@@ -906,12 +926,14 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
                 raise BzrCheckError('failed to rename %s to %s for changeset entry %s: %s'
                         % (old_path, new_path, entry, e))
 
+
 class TargetExists(Exception):
     def __init__(self, entry, target):
         msg = "The path %s already exists" % target
         Exception.__init__(self, msg)
         self.entry = entry
         self.target = target
+
 
 class RenameConflict(Exception):
     def __init__(self, id, this_name, base_name, other_name):
@@ -925,6 +947,7 @@ other: %s
         self.base_name = base_name
         self_other_name = other_name
 
+
 class MoveConflict(Exception):
     def __init__(self, id, this_parent, base_parent, other_parent):
         msg = """The file is in different directories in every tree
@@ -937,16 +960,19 @@ other: %s
         self.base_parent = base_parent
         self_other_parent = other_parent
 
+
 class MergeConflict(Exception):
     def __init__(self, this_path):
         Exception.__init__(self, "Conflict applying changes to %s" % this_path)
         self.this_path = this_path
+
 
 class WrongOldContents(Exception):
     def __init__(self, filename):
         msg = "Contents mismatch deleting %s" % filename
         self.filename = filename
         Exception.__init__(self, msg)
+
 
 class WrongOldExecFlag(Exception):
     def __init__(self, filename, old_exec_flag, new_exec_flag):
@@ -955,12 +981,14 @@ class WrongOldExecFlag(Exception):
         self.filename = filename
         Exception.__init__(self, msg)
 
+
 class RemoveContentsConflict(Exception):
     def __init__(self, filename):
         msg = "Conflict deleting %s, which has different contents in BASE"\
             " and THIS" % filename
         self.filename = filename
         Exception.__init__(self, msg)
+
 
 class DeletingNonEmptyDirectory(Exception):
     def __init__(self, filename):
@@ -975,12 +1003,14 @@ class PatchTargetMissing(Exception):
         Exception.__init__(self, msg)
         self.filename = filename
 
+
 class MissingForSetExec(Exception):
     def __init__(self, filename):
         msg = "Attempt to change permissions on  %s, which does not exist" %\
             filename
         Exception.__init__(self, msg)
         self.filename = filename
+
 
 class MissingForRm(Exception):
     def __init__(self, filename):
@@ -995,15 +1025,18 @@ class MissingForRename(Exception):
         Exception.__init__(self, msg)
         self.filename = filename
 
+
 class NewContentsConflict(Exception):
     def __init__(self, filename):
         msg = "Conflicting contents for new file %s" % (filename)
         Exception.__init__(self, msg)
 
+
 class WeaveMergeConflict(Exception):
     def __init__(self, filename):
         msg = "Conflicting contents for file %s" % (filename)
         Exception.__init__(self, msg)
+
 
 class ThreewayContentsConflict(Exception):
     def __init__(self, filename):
@@ -1090,6 +1123,7 @@ class ExceptionConflictHandler(object):
 
     def finalize(self):
         pass
+
 
 def apply_changeset(changeset, inventory, dir, conflict_handler=None):
     """Apply a changeset to a directory.
@@ -1179,6 +1213,7 @@ def print_changeset(cset):
         print entry.id
         print entry.summarize_name(cset)
 
+
 class UnsupportedFiletype(Exception):
     def __init__(self, kind, full_path):
         msg = "The file \"%s\" is a %s, which is not a supported filetype." \
@@ -1186,6 +1221,7 @@ class UnsupportedFiletype(Exception):
         Exception.__init__(self, msg)
         self.full_path = full_path
         self.kind = kind
+
 
 def generate_changeset(tree_a, tree_b, interesting_ids=None):
     return ChangesetGenerator(tree_a, tree_b, interesting_ids)()
@@ -1281,7 +1317,6 @@ class ChangesetGenerator(object):
             return self.make_entry(id, only_interesting=False)
         else:
             return cs_entry
-        
 
     def make_entry(self, id, only_interesting=True):
         cs_entry = self.make_basic_entry(id, only_interesting)
@@ -1338,6 +1373,7 @@ def get_contents(tree, file_id):
 def full_path(entry, tree):
     return pathjoin(tree.basedir, entry.path)
 
+
 def new_delete_entry(entry, tree, inventory, delete):
     if entry.path == "":
         parent = NULL_ID
@@ -1354,10 +1390,8 @@ def new_delete_entry(entry, tree, inventory, delete):
     status = os.lstat(full_path)
     if stat.S_ISDIR(file_stat.st_mode):
         action = dir_create
-    
 
 
-        
 # XXX: Can't we unify this with the regular inventory object
 class Inventory(object):
     def __init__(self, inventory):
@@ -1396,3 +1430,5 @@ class Inventory(object):
         if directory is None:
             return NULL_ID
         return self.get_rinventory().get(directory)
+
+
