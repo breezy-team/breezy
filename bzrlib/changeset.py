@@ -295,11 +295,6 @@ class TreeFileCreate(object):
                 if conflict_handler.missing_for_rm(filename, undo) == "skip":
                     return
 
-def reversed(sequence):
-    max = len(sequence) - 1
-    for i in range(len(sequence)):
-        yield sequence[max - i]
-
 class ReplaceContents(object):
     """A contents-replacement framework.  It allows a file/directory/symlink to
     be created, deleted, or replaced with another file/directory/symlink.
