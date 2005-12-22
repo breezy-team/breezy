@@ -63,7 +63,6 @@ DEFAULT_IGNORE = [
                   '_darcs',
                   'aclocal.m4',
                   'autom4te*',
-                  'config.guess',
                   'config.h',
                   'config.h.in',
                   'config.log',

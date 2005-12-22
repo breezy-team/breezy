@@ -93,7 +93,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
 
     Returns the number of files added.
     """
-    import os
+    import os, errno
     from bzrlib.errors import BadFileKindError, ForbiddenFileError
     assert isinstance(recurse, bool)
 
@@ -107,7 +107,12 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
         rf = tree.relpath(f)
         af = tree.abspath(rf)
 
-        kind = bzrlib.osutils.file_kind(af)
+        try:
+            kind = bzrlib.osutils.file_kind(af)
+        except OSError, e:
+            if hasattr(e, 'errno') and e.errno == errno.ENOENT:
+                raise errors.NoSuchFile(rf)
+            raise
 
         if not InventoryEntry.versionable_kind(kind):
             if f in user_list:
