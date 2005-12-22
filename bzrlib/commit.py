@@ -392,7 +392,7 @@ class Commit(object):
         for path, ie in self.new_inv.iter_entries():
             previous_entries = ie.find_previous_heads(
                 self.parent_invs, 
-                self.weave_store.get_weave_or_empty(ie.file_id,
+                self.weave_store.get_weave_prelude_or_empty(ie.file_id,
                     self.branch.get_transaction()))
             if ie.revision is None:
                 change = ie.snapshot(self.rev_id, path, previous_entries,

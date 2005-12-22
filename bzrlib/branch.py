@@ -242,7 +242,7 @@ class Branch(object):
         >>> commit(br1, "lala!", rev_id="REVISION-ID-2B")
         >>> br1.missing_revisions(br2)
         Traceback (most recent call last):
-        DivergedBranches: These branches have diverged.
+        DivergedBranches: These branches have diverged.  Try merge.
         """
         self_history = self.revision_history()
         self_len = len(self_history)

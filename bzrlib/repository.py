@@ -55,7 +55,7 @@ class Repository(object):
         object.__init__(self)
         self.control_files = LockableFiles(transport, 'storage-lock')
         def get_weave(name, prefixed=False):
-            relpath = self.control_files._rel_controlfilename(name)
+            relpath = self.control_files._rel_controlfilename(unicode(name))
             weave_transport = self.control_files.make_transport(relpath)
             ws = WeaveStore(weave_transport, prefixed=prefixed)
             if self.control_files._transport.should_cache():
