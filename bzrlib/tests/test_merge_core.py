@@ -341,11 +341,11 @@ class MergeBuilder(object):
             new_inventory[file_id] = path
         return new_inventory
 
-    def apply_changeset(self, cset, conflict_handler=None, reverse=False):
+    def apply_changeset(self, cset, conflict_handler=None):
         inventory_change = changeset.apply_changeset(cset,
                                                      self.this.inventory_dict,
                                                      self.this.dir,
-                                                     conflict_handler, reverse)
+                                                     conflict_handler)
         self.this.inventory_dict =  self.apply_inv_change(inventory_change, 
                                                      self.this.inventory_dict)
 

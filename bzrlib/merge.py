@@ -171,13 +171,8 @@ class MergeConflictHandler(ExceptionConflictHandler):
         return "skip"
 
     def rem_contents_conflict(self, filename, this_contents, base_contents):
-        base_contents(filename+".BASE", self, False)
-        this_contents(filename+".THIS", self, False)
-        return ReplaceContents(this_contents, None)
-
-    def rem_contents_conflict(self, filename, this_contents, base_contents):
-        base_contents(filename+".BASE", self, False)
-        this_contents(filename+".THIS", self, False)
+        base_contents(filename+".BASE", self)
+        this_contents(filename+".THIS", self)
         self.conflict("Other branch deleted locally modified file %s" %
                       filename)
         return ReplaceContents(this_contents, None)
@@ -206,10 +201,10 @@ class MergeConflictHandler(ExceptionConflictHandler):
             self.create(file_id, entry_path, tree)
         return entry_path
 
-    def create(self, file_id, path, tree, reverse=False):
+    def create(self, file_id, path, tree):
         """Uses tree data to create a filesystem object for the file_id"""
         from changeset import get_contents
-        get_contents(tree, file_id)(path, self, reverse)
+        get_contents(tree, file_id)(path, self)
 
     def missing_for_merge(self, file_id, other_path):
         """The file_id doesn't exist in THIS, but does in OTHER and BASE"""
