@@ -56,13 +56,9 @@ class ChangeExecFlag(object):
         self.old_exec_flag = old_exec_flag
         self.new_exec_flag = new_exec_flag
 
-    def apply(self, filename, conflict_handler, reverse=False):
-        if not reverse:
-            from_exec_flag = self.old_exec_flag
-            to_exec_flag = self.new_exec_flag
-        else:
-            from_exec_flag = self.new_exec_flag
-            to_exec_flag = self.old_exec_flag
+    def apply(self, filename, conflict_handler):
+        from_exec_flag = self.old_exec_flag
+        to_exec_flag = self.new_exec_flag
         try:
             current_exec_flag = bool(os.stat(filename).st_mode & 0111)
         except OSError, e:
@@ -105,7 +101,7 @@ class ChangeExecFlag(object):
         return not (self == other)
 
 
-def dir_create(filename, conflict_handler, reverse):
+def dir_create(filename, conflict_handler, reverse=False):
     """Creates the directory, or deletes it if reverse is true.  Intended to be
     used with ReplaceContents.
 
@@ -150,7 +146,7 @@ class SymlinkCreate(object):
     def __repr__(self):
         return "SymlinkCreate(%s)" % self.target
 
-    def __call__(self, filename, conflict_handler, reverse):
+    def __call__(self, filename, conflict_handler, reverse=False):
         """Creates or destroys the symlink.
 
         :param filename: The name of the symlink to create
@@ -203,7 +199,7 @@ class FileCreate(object):
     def __ne__(self, other):
         return not (self == other)
 
-    def __call__(self, filename, conflict_handler, reverse):
+    def __call__(self, filename, conflict_handler, reverse=False):
         """Create or delete a file
 
         :param filename: The name of the file to create
@@ -234,8 +230,6 @@ class FileCreate(object):
                     raise
                 if conflict_handler.missing_for_rm(filename, undo) == "skip":
                     return
-
-                    
 
 class TreeFileCreate(object):
     """Create or delete a file (for use with ReplaceContents)"""
@@ -269,7 +263,7 @@ class TreeFileCreate(object):
         in_file = file(filename, "rb")
         return sha_file(in_file) == self.tree.get_file_sha1(self.file_id)
 
-    def __call__(self, filename, conflict_handler, reverse):
+    def __call__(self, filename, conflict_handler, reverse=False):
         """Create or delete a file
 
         :param filename: The name of the file to create
@@ -300,8 +294,6 @@ class TreeFileCreate(object):
                     raise
                 if conflict_handler.missing_for_rm(filename, undo) == "skip":
                     return
-
-                    
 
 def reversed(sequence):
     max = len(sequence) - 1
@@ -344,20 +336,14 @@ class ReplaceContents(object):
     def __ne__(self, other):
         return not (self == other)
 
-    def apply(self, filename, conflict_handler, reverse=False):
+    def apply(self, filename, conflict_handler):
         """Applies the FileReplacement to the specified filename
 
         :param filename: The name of the file to apply changes to
         :type filename: str
-        :param reverse: If true, apply the change in reverse
-        :type reverse: bool
         """
-        if not reverse:
-            undo = self.old_contents
-            perform = self.new_contents
-        else:
-            undo = self.new_contents
-            perform = self.old_contents
+        undo = self.old_contents
+        perform = self.new_contents
         mode = None
         if undo is not None:
             try:
@@ -371,7 +357,7 @@ class ReplaceContents(object):
                     return
             undo(filename, conflict_handler, reverse=True)
         if perform is not None:
-            perform(filename, conflict_handler, reverse=False)
+            perform(filename, conflict_handler)
             if mode is not None:
                 os.chmod(filename, mode)
 
@@ -380,35 +366,6 @@ class ReplaceContents(object):
 
     def is_deletion(self):
         return self.old_contents is not None and self.new_contents is None
-
-class ApplySequence(object):
-    def __init__(self, changes=None):
-        self.changes = []
-        if changes is not None:
-            self.changes.extend(changes)
-
-    def __eq__(self, other):
-        if not isinstance(other, ApplySequence):
-            return False
-        elif len(other.changes) != len(self.changes):
-            return False
-        else:
-            for i in range(len(self.changes)):
-                if self.changes[i] != other.changes[i]:
-                    return False
-            return True
-
-    def __ne__(self, other):
-        return not (self == other)
-
-    
-    def apply(self, filename, conflict_handler, reverse=False):
-        if not reverse:
-            iter = self.changes
-        else:
-            iter = reversed(self.changes)
-        for change in iter:
-            change.apply(filename, conflict_handler, reverse)
 
 
 class Diff3Merge(object):
@@ -441,19 +398,15 @@ class Diff3Merge(object):
             out_file.write(line)
         return out_path
 
-    def apply(self, filename, conflict_handler, reverse=False):
+    def apply(self, filename, conflict_handler):
         import bzrlib.patch
         temp_dir = mkdtemp(prefix="bzr-")
         try:
             new_file = filename+".new"
             base_file = self.dump_file(temp_dir, "base", self.base)
             other_file = self.dump_file(temp_dir, "other", self.other)
-            if not reverse:
-                base = base_file
-                other = other_file
-            else:
-                base = other_file
-                other = base_file
+            base = base_file
+            other = other_file
             status = bzrlib.patch.diff3(new_file, filename, base, other)
             if status == 0:
                 os.chmod(new_file, os.stat(filename).st_mode)
@@ -686,7 +639,7 @@ class ChangesetEntry(object):
 
         return (self.parent != self.new_parent or self.name != self.new_name)
 
-    def is_deletion(self, reverse):
+    def is_deletion(self, reverse=False):
         """Return true if applying the entry would delete a file/directory.
 
         :param reverse: if true, the changeset is being applied in reverse
@@ -694,7 +647,7 @@ class ChangesetEntry(object):
         """
         return self.is_creation(not reverse)
 
-    def is_creation(self, reverse):
+    def is_creation(self, reverse=False):
         """Return true if applying the entry would create a file/directory.
 
         :param reverse: if true, the changeset is being applied in reverse
@@ -713,7 +666,7 @@ class ChangesetEntry(object):
 
         :rtype: bool
         """
-        return self.is_creation(False) or self.is_deletion(False)
+        return self.is_creation() or self.is_deletion()
 
     def get_cset_path(self, mod=False):
         """Determine the path of the entry according to the changeset.
@@ -739,15 +692,11 @@ class ChangesetEntry(object):
                 return None
             return self.path
 
-    def summarize_name(self, reverse=False):
+    def summarize_name(self):
         """Produce a one-line summary of the filename.  Indicates renames as
         old => new, indicates creation as None => new, indicates deletion as
         old => None.
 
-        :param changeset: The changeset to get paths from
-        :type changeset: `Changeset`
-        :param reverse: If true, reverse the names in the output
-        :type reverse: bool
         :rtype: str
         """
         orig_path = self.get_cset_path(False)
@@ -759,36 +708,24 @@ class ChangesetEntry(object):
         if orig_path == mod_path:
             return orig_path
         else:
-            if not reverse:
-                return "%s => %s" % (orig_path, mod_path)
-            else:
-                return "%s => %s" % (mod_path, orig_path)
+            return "%s => %s" % (orig_path, mod_path)
 
 
-    def get_new_path(self, id_map, changeset, reverse=False):
+    def get_new_path(self, id_map, changeset):
         """Determine the full pathname to rename to
 
         :param id_map: The map of ids to filenames for the tree
         :type id_map: Dictionary
         :param changeset: The changeset to get data from
         :type changeset: `Changeset`
-        :param reverse: If true, we're applying the changeset in reverse
-        :type reverse: bool
         :rtype: str
         """
         mutter("Finding new path for %s", self.summarize_name())
-        if reverse:
-            parent = self.parent
-            to_dir = self.dir
-            from_dir = self.new_dir
-            to_name = self.name
-            from_name = self.new_name
-        else:
-            parent = self.new_parent
-            to_dir = self.new_dir
-            from_dir = self.dir
-            to_name = self.new_name
-            from_name = self.name
+        parent = self.new_parent
+        to_dir = self.new_dir
+        from_dir = self.dir
+        to_name = self.new_name
+        from_name = self.name
 
         if to_name is None:
             return None
@@ -803,7 +740,7 @@ class ChangesetEntry(object):
             dir = os.path.dirname(id_map[self.id])
         else:
             mutter("path, new_path: %r %r", self.path, self.new_path)
-            dir = parent_entry.get_new_path(id_map, changeset, reverse)
+            dir = parent_entry.get_new_path(id_map, changeset)
         if from_name == to_name:
             name = os.path.basename(id_map[self.id])
         else:
@@ -828,20 +765,18 @@ class ChangesetEntry(object):
         else:
             return True
 
-    def apply(self, filename, conflict_handler, reverse=False):
+    def apply(self, filename, conflict_handler):
         """Applies the file content and/or metadata changes.
 
         :param filename: the filename of the entry
         :type filename: str
-        :param reverse: If true, apply the changes in reverse
-        :type reverse: bool
         """
-        if self.is_deletion(reverse) and self.metadata_change is not None:
-            self.metadata_change.apply(filename, conflict_handler, reverse)
+        if self.is_deletion() and self.metadata_change is not None:
+            self.metadata_change.apply(filename, conflict_handler)
         if self.contents_change is not None:
-            self.contents_change.apply(filename, conflict_handler, reverse)
-        if not self.is_deletion(reverse) and self.metadata_change is not None:
-            self.metadata_change.apply(filename, conflict_handler, reverse)
+            self.contents_change.apply(filename, conflict_handler)
+        if not self.is_deletion() and self.metadata_change is not None:
+            self.metadata_change.apply(filename, conflict_handler)
 
 class IDPresent(Exception):
     def __init__(self, id):
@@ -877,7 +812,7 @@ def my_sort(sequence, key, reverse=False):
         return cmp(key(entry_a), key(entry_b))
     sequence.sort(cmp_by_key)
 
-def get_rename_entries(changeset, inventory, reverse):
+def get_rename_entries(changeset, inventory):
     """Return a list of entries that will be renamed.  Entries are sorted from
     longest to shortest source path and from shortest to longest target path.
 
@@ -885,8 +820,6 @@ def get_rename_entries(changeset, inventory, reverse):
     :type changeset: `Changeset`
     :param inventory: The source of current tree paths for the given ids
     :type inventory: Dictionary
-    :param reverse: If true, the changeset is being applied in reverse
-    :type reverse: bool
     :return: source entries and target entries as a tuple
     :rtype: (List, List)
     """
@@ -906,7 +839,7 @@ def get_rename_entries(changeset, inventory, reverse):
     # These are done from shortest to longest path, to avoid creating a
     # child before its parent has been created/renamed
     def shortest_to_longest(entry):
-        path = entry.get_new_path(inventory, changeset, reverse)
+        path = entry.get_new_path(inventory, changeset)
         if path is None:
             return 0
         else:
@@ -915,7 +848,7 @@ def get_rename_entries(changeset, inventory, reverse):
     return (source_entries, target_entries)
 
 def rename_to_temp_delete(source_entries, inventory, dir, temp_dir, 
-                          conflict_handler, reverse):
+                          conflict_handler):
     """Delete and rename entries as appropriate.  Entries are renamed to temp
     names.  A map of id -> temp name (or None, for deletions) is returned.
 
@@ -925,21 +858,19 @@ def rename_to_temp_delete(source_entries, inventory, dir, temp_dir,
     :type inventory: Dictionary
     :param dir: The directory to apply changes to
     :type dir: str
-    :param reverse: Apply changes in reverse
-    :type reverse: bool
     :return: a mapping of id to temporary name
     :rtype: Dictionary
     """
     temp_name = {}
     for i in range(len(source_entries)):
         entry = source_entries[i]
-        if entry.is_deletion(reverse):
+        if entry.is_deletion():
             path = os.path.join(dir, inventory[entry.id])
-            entry.apply(path, conflict_handler, reverse)
+            entry.apply(path, conflict_handler)
             temp_name[entry.id] = None
 
         elif entry.needs_rename():
-            if entry.is_creation(reverse):
+            if entry.is_creation():
                 continue
             to_name = os.path.join(temp_dir, str(i))
             src_path = inventory.get(entry.id)
@@ -959,7 +890,7 @@ def rename_to_temp_delete(source_entries, inventory, dir, temp_dir,
 
 
 def rename_to_new_create(changed_inventory, target_entries, inventory, 
-                         changeset, dir, conflict_handler, reverse):
+                         changeset, dir, conflict_handler):
     """Rename entries with temp names to their final names, create new files.
 
     :param changed_inventory: A mapping of id to temporary name
@@ -970,11 +901,9 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
     :type changeset: `Changeset`
     :param dir: The directory to apply changes to
     :type dir: str
-    :param reverse: If true, apply changes in reverse
-    :type reverse: bool
     """
     for entry in target_entries:
-        new_tree_path = entry.get_new_path(inventory, changeset, reverse)
+        new_tree_path = entry.get_new_path(inventory, changeset)
         if new_tree_path is None:
             continue
         new_path = os.path.join(dir, new_tree_path)
@@ -983,11 +912,11 @@ def rename_to_new_create(changed_inventory, target_entries, inventory,
             if conflict_handler.target_exists(entry, new_path, old_path) == \
                 "skip":
                 continue
-        if entry.is_creation(reverse):
-            entry.apply(new_path, conflict_handler, reverse)
+        if entry.is_creation():
+            entry.apply(new_path, conflict_handler)
             changed_inventory[entry.id] = new_tree_path
         elif entry.needs_rename():
-            if entry.is_deletion(reverse):
+            if entry.is_deletion():
                 continue
             if old_path is None:
                 continue
@@ -1184,8 +1113,7 @@ class ExceptionConflictHandler(object):
     def finalize(self):
         pass
 
-def apply_changeset(changeset, inventory, dir, conflict_handler=None, 
-                    reverse=False):
+def apply_changeset(changeset, inventory, dir, conflict_handler=None):
     """Apply a changeset to a directory.
 
     :param changeset: The changes to perform
@@ -1194,8 +1122,6 @@ def apply_changeset(changeset, inventory, dir, conflict_handler=None,
     :type inventory: Dictionary
     :param dir: The path of the directory to apply the changes to
     :type dir: str
-    :param reverse: If true, apply the changes in reverse
-    :type reverse: bool
     :return: The mapping of the changed entries
     :rtype: Dictionary
     """
@@ -1223,37 +1149,34 @@ def apply_changeset(changeset, inventory, dir, conflict_handler=None,
                         entry.id)
                 continue
             path = os.path.join(dir, inventory[entry.id])
-            entry.apply(path, conflict_handler, reverse)
+            entry.apply(path, conflict_handler)
 
     # Apply renames in stages, to minimize conflicts:
     # Only files whose name or parent change are interesting, because their
     # target name may exist in the source tree.  If a directory's name changes,
     # that doesn't make its children interesting.
-    (source_entries, target_entries) = get_rename_entries(changeset, inventory,
-                                                          reverse)
+    (source_entries, target_entries) = get_rename_entries(changeset, inventory)
 
     changed_inventory = rename_to_temp_delete(source_entries, inventory, dir,
-                                              temp_dir, conflict_handler,
-                                              reverse)
+                                              temp_dir, conflict_handler)
 
     rename_to_new_create(changed_inventory, target_entries, inventory,
-                         changeset, dir, conflict_handler, reverse)
+                         changeset, dir, conflict_handler)
     os.rmdir(temp_dir)
     return changed_inventory
 
 
-def apply_changeset_tree(cset, tree, reverse=False):
+def apply_changeset_tree(cset, tree):
     r_inventory = {}
     for entry in tree.source_inventory().itervalues():
         inventory[entry.id] = entry.path
-    new_inventory = apply_changeset(cset, r_inventory, tree.basedir,
-                                    reverse=reverse)
+    new_inventory = apply_changeset(cset, r_inventory, tree.basedir)
     new_entries, remove_entries = \
-        get_inventory_change(inventory, new_inventory, cset, reverse)
+        get_inventory_change(inventory, new_inventory, cset)
     tree.update_source_inventory(new_entries, remove_entries)
 
 
-def get_inventory_change(inventory, new_inventory, cset, reverse=False):
+def get_inventory_change(inventory, new_inventory, cset):
     new_entries = {}
     remove_entries = []
     for entry in cset.entries.itervalues():
@@ -1277,128 +1200,6 @@ def print_changeset(cset):
             continue
         print entry.id
         print entry.summarize_name(cset)
-
-class CompositionFailure(Exception):
-    def __init__(self, old_entry, new_entry, problem):
-        msg = "Unable to conpose entries.\n %s" % problem
-        Exception.__init__(self, msg)
-
-class IDMismatch(CompositionFailure):
-    def __init__(self, old_entry, new_entry):
-        problem = "Attempt to compose entries with different ids: %s and %s" %\
-            (old_entry.id, new_entry.id)
-        CompositionFailure.__init__(self, old_entry, new_entry, problem)
-
-def compose_changesets(old_cset, new_cset):
-    """Combine two changesets into one.  This works well for exact patching.
-    Otherwise, not so well.
-
-    :param old_cset: The first changeset that would be applied
-    :type old_cset: `Changeset`
-    :param new_cset: The second changeset that would be applied
-    :type new_cset: `Changeset`
-    :return: A changeset that combines the changes in both changesets
-    :rtype: `Changeset`
-    """
-    composed = Changeset()
-    for old_entry in old_cset.entries.itervalues():
-        new_entry = new_cset.entries.get(old_entry.id)
-        if new_entry is None:
-            composed.add_entry(old_entry)
-        else:
-            composed_entry = compose_entries(old_entry, new_entry)
-            if composed_entry.parent is not None or\
-                composed_entry.new_parent is not None:
-                composed.add_entry(composed_entry)
-    for new_entry in new_cset.entries.itervalues():
-        if not old_cset.entries.has_key(new_entry.id):
-            composed.add_entry(new_entry)
-    return composed
-
-def compose_entries(old_entry, new_entry):
-    """Combine two entries into one.
-
-    :param old_entry: The first entry that would be applied
-    :type old_entry: ChangesetEntry
-    :param old_entry: The second entry that would be applied
-    :type old_entry: ChangesetEntry
-    :return: A changeset entry combining both entries
-    :rtype: `ChangesetEntry`
-    """
-    if old_entry.id != new_entry.id:
-        raise IDMismatch(old_entry, new_entry)
-    output = ChangesetEntry(old_entry.id, old_entry.parent, old_entry.path)
-
-    if (old_entry.parent != old_entry.new_parent or 
-        new_entry.parent != new_entry.new_parent):
-        output.new_parent = new_entry.new_parent
-
-    if (old_entry.path != old_entry.new_path or 
-        new_entry.path != new_entry.new_path):
-        output.new_path = new_entry.new_path
-
-    output.contents_change = compose_contents(old_entry, new_entry)
-    output.metadata_change = compose_metadata(old_entry, new_entry)
-    return output
-
-def compose_contents(old_entry, new_entry):
-    """Combine the contents of two changeset entries.  Entries are combined
-    intelligently where possible, but the fallback behavior returns an 
-    ApplySequence.
-
-    :param old_entry: The first entry that would be applied
-    :type old_entry: `ChangesetEntry`
-    :param new_entry: The second entry that would be applied
-    :type new_entry: `ChangesetEntry`
-    :return: A combined contents change
-    :rtype: anything supporting the apply(reverse=False) method
-    """
-    old_contents = old_entry.contents_change
-    new_contents = new_entry.contents_change
-    if old_entry.contents_change is None:
-        return new_entry.contents_change
-    elif new_entry.contents_change is None:
-        return old_entry.contents_change
-    elif isinstance(old_contents, ReplaceContents) and \
-        isinstance(new_contents, ReplaceContents):
-        if old_contents.old_contents == new_contents.new_contents:
-            return None
-        else:
-            return ReplaceContents(old_contents.old_contents,
-                                   new_contents.new_contents)
-    elif isinstance(old_contents, ApplySequence):
-        output = ApplySequence(old_contents.changes)
-        if isinstance(new_contents, ApplySequence):
-            output.changes.extend(new_contents.changes)
-        else:
-            output.changes.append(new_contents)
-        return output
-    elif isinstance(new_contents, ApplySequence):
-        output = ApplySequence((old_contents.changes,))
-        output.extend(new_contents.changes)
-        return output
-    else:
-        return ApplySequence((old_contents, new_contents))
-
-def compose_metadata(old_entry, new_entry):
-    old_meta = old_entry.metadata_change
-    new_meta = new_entry.metadata_change
-    if old_meta is None:
-        return new_meta
-    elif new_meta is None:
-        return old_meta
-    elif (isinstance(old_meta, ChangeExecFlag) and
-          isinstance(new_meta, ChangeExecFlag)):
-        return ChangeExecFlag(old_meta.old_exec_flag, new_meta.new_exec_flag)
-    else:
-        return ApplySequence(old_meta, new_meta)
-
-
-def changeset_is_null(changeset):
-    for entry in changeset.entries.itervalues():
-        if not entry.is_boring():
-            return False
-    return True
 
 class UnsupportedFiletype(Exception):
     def __init__(self, kind, full_path):

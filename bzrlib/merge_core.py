@@ -33,14 +33,10 @@ class ApplyMerge3:
     def __ne__(self, other):
         return not (self == other)
 
-    def apply(self, filename, conflict_handler, reverse=False):
+    def apply(self, filename, conflict_handler):
         new_file = filename+".new" 
-        if not reverse:
-            base = self.base
-            other = self.other
-        else:
-            base = self.other
-            other = self.base
+        base = self.base
+        other = self.other
         def get_lines(tree):
             if self.file_id not in tree:
                 raise Exception("%s not in tree" % self.file_id)
@@ -99,7 +95,7 @@ class WeaveMerge:
     def __ne__(self, other):
         return not (self == other)
 
-    def apply(self, filename, conflict_handler, reverse=False):
+    def apply(self, filename, conflict_handler):
         this_i = self.weave.lookup(self.this_revision_id)
         other_i = self.weave.lookup(self.other_revision_id)
         plan = self.weave.plan_merge(this_i, other_i)
@@ -135,9 +131,9 @@ class BackupBeforeChange:
     def __ne__(self, other):
         return not (self == other)
 
-    def apply(self, filename, conflict_handler, reverse=False):
+    def apply(self, filename, conflict_handler):
         backup_file(filename)
-        self.contents_change.apply(filename, conflict_handler, reverse)
+        self.contents_change.apply(filename, conflict_handler)
 
 
 def invert_invent(inventory):
@@ -158,7 +154,7 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
     new_cset = make_merge_changeset(cset, this, base, other, 
                                     conflict_handler, merge_factory)
     result = apply_changeset(new_cset, invert_invent(this.inventory),
-                             this.basedir, conflict_handler, False)
+                             this.basedir, conflict_handler)
     return result
     
 
@@ -329,13 +325,9 @@ class ExecFlagMerge(object):
         self.other_tree = other_tree
         self.file_id = file_id
 
-    def apply(self, filename, conflict_handler, reverse=False):
-        if not reverse:
-            base = self.base_tree
-            other = self.other_tree
-        else:
-            base = self.other_tree
-            other = self.base_tree
+    def apply(self, filename, conflict_handler):
+        base = self.base_tree
+        other = self.other_tree
         base_exec_flag = base.is_executable(self.file_id)
         other_exec_flag = other.is_executable(self.file_id)
         this_mode = os.stat(filename).st_mode
