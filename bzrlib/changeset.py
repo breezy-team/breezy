@@ -1145,29 +1145,6 @@ def apply_changeset(changeset, inventory, dir, conflict_handler=None):
     return changed_inventory
 
 
-def apply_changeset_tree(cset, tree):
-    r_inventory = {}
-    for entry in tree.source_inventory().itervalues():
-        inventory[entry.id] = entry.path
-    new_inventory = apply_changeset(cset, r_inventory, tree.basedir)
-    new_entries, remove_entries = \
-        get_inventory_change(inventory, new_inventory, cset)
-    tree.update_source_inventory(new_entries, remove_entries)
-
-
-def get_inventory_change(inventory, new_inventory, cset):
-    new_entries = {}
-    remove_entries = []
-    for entry in cset.entries.itervalues():
-        if entry.needs_rename():
-            new_path = entry.get_new_path(inventory, cset)
-            if new_path is None:
-                remove_entries.append(entry.id)
-            else:
-                new_entries[new_path] = entry.id
-    return new_entries, remove_entries
-
-
 def print_changeset(cset):
     """Print all non-boring changeset entries
     
