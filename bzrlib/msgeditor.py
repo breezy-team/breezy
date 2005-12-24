@@ -19,9 +19,11 @@
 
 """Commit message editor support."""
 
+import codecs
 import os
 from subprocess import call
 
+import bzrlib
 import bzrlib.config as config
 from bzrlib.errors import BzrError
 
@@ -84,7 +86,8 @@ def edit_commit_message(infotext, ignoreline=None):
         if infotext is not None and infotext != "":
             hasinfo = True
             msgfile = file(msgfilename, "w")
-            msgfile.write("\n\n%s\n\n%s" % (ignoreline, infotext))
+            msgfile.write("\n\n%s\n\n%s" % (ignoreline,
+                                        infotext.encode(bzrlib.user_encoding)))
             msgfile.close()
         else:
             hasinfo = False
@@ -95,7 +98,7 @@ def edit_commit_message(infotext, ignoreline=None):
         started = False
         msg = []
         lastline, nlines = 0, 0
-        for line in file(msgfilename, "r"):
+        for line in codecs.open(msgfilename, 'r', bzrlib.user_encoding):
             stripped_line = line.strip()
             # strip empty line before the log message starts
             if not started:
