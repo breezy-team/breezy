@@ -52,8 +52,15 @@ MODULES_TO_DOCTEST = [
                       bzrlib.store,
                       ]
 def packages_to_test():
+    """Return a list of packages to test.
+
+    The packages are not globally imported so that import failures are
+    triggered when running selftest, not when importing the command.
+    """
+    import bzrlib.doc
     import bzrlib.tests.blackbox
     return [
+            bzrlib.doc,
             bzrlib.tests.blackbox
             ]
 
