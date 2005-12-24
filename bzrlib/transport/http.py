@@ -271,3 +271,7 @@ class HttpTransport(Transport):
         :return: A lock object, which should be passed to Transport.unlock()
         """
         raise TransportNotPossible('http does not support lock_write()')
+
+
+class HttpServer(object):
+    """A test server for http transports."""

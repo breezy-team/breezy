@@ -245,3 +245,15 @@ class ScratchTransport(LocalTransport):
     def __del__(self):
         shutil.rmtree(self.base, ignore_errors=True)
         mutter("%r destroyed" % self)
+
+
+class LocalRelpathServer(object):
+    """A pretend server for local transports, using relpaths."""
+
+
+class LocalAbspathServer(object):
+    """A pretend server for local transports, using absolute paths."""
+
+
+class LocalURLServer(object):
+    """A pretend server for local transports, using file:// urls."""

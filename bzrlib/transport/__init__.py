@@ -19,9 +19,12 @@ The abstraction is to allow access from the local filesystem, as well
 as remote (such as http or sftp).
 """
 
+import errno
+from copy import deepcopy
+from unittest import TestSuite
+
 from bzrlib.trace import mutter
 import bzrlib.errors as errors
-import errno
 
 _protocol_handlers = {
 }
@@ -397,6 +400,42 @@ def urlescape(relpath):
     import urllib
     return urllib.quote(relpath)
 
+
+class TransportTestProviderAdapter(object):
+    """A class which can setup transport interface tests."""
+
+    def adapt(self, test):
+        result = TestSuite()
+        for klass, server_factory in self._test_permutations():
+            new_test = deepcopy(test)
+            new_test.transport_class = klass
+            new_test.transport_server = server_factory
+            result.addTest(new_test)
+        return result
+
+    def _test_permutations(self):
+        """Return a list of the klass, server_factory pairs to test."""
+        from bzrlib.transport.local import (LocalTransport,
+                                            LocalRelpathServer,
+                                            LocalAbspathServer,
+                                            LocalURLServer
+                                            )
+        from bzrlib.transport.sftp import (SFTPTransport,
+                                           SFTPAbsoluteServer,
+                                           SFTPHomeDirServer
+                                           )
+        from bzrlib.transport.http import (HttpTransport,
+                                           HttpServer
+                                           )
+        from bzrlib.transport.ftp import FtpTransport
+        return [(LocalTransport, LocalRelpathServer),
+                (LocalTransport, LocalAbspathServer),
+                (LocalTransport, LocalURLServer),
+                (SFTPTransport, SFTPAbsoluteServer),
+                (SFTPTransport, SFTPHomeDirServer),
+                (HttpTransport, HttpServer),
+                ]
+        
 
 # None is the default transport, for things with no url scheme
 register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')

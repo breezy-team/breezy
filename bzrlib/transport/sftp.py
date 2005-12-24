@@ -803,3 +803,10 @@ class SFTPTransport (Transport):
             self._translate_io_exception(e, relpath, ': unable to open',
                 failure_exc=FileExists)
 
+
+class SFTPAbsoluteServer(object):
+    """A test server for sftp transports, using absolute urls."""
+
+
+class SFTPHomeDirServer(object):
+    """A test server for sftp transports, using homedir relative urls."""
