@@ -643,6 +643,7 @@ def test_suite():
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_diff',
+                   'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
