@@ -117,6 +117,8 @@ class _MyResult(unittest._TextTestResult):
         self._start_time = time.time()
 
     def addError(self, test, err):
+        if isinstance(err[1], TestSkipped):
+            return self.addSkipped(test, err)    
         unittest.TestResult.addError(self, test, err)
         if self.showAll:
             self.stream.writeln("ERROR %s" % self._elapsedTime())
@@ -140,14 +142,28 @@ class _MyResult(unittest._TextTestResult):
         self.stream.flush()
         unittest.TestResult.addSuccess(self, test)
 
+    def addSkipped(self, test, skip_excinfo):
+        if self.showAll:
+            print >>self.stream, ' SKIP %s' % self._elapsedTime()
+            print >>self.stream, '     %s' % skip_excinfo[1]
+        elif self.dots:
+            self.stream.write('S')
+        self.stream.flush()
+        # seems best to treat this as success from point-of-view of unittest
+        # -- it actually does nothing so it barely matters :)
+        unittest.TestResult.addSuccess(self, test)
+
     def printErrorList(self, flavour, errors):
         for test, err in errors:
             self.stream.writeln(self.separator1)
             self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
             if hasattr(test, '_get_log'):
-                self.stream.writeln()
-                self.stream.writeln('log from this test:')
+                print >>self.stream
+                print >>self.stream, \
+                        ('vvvv[log from %s]' % test).ljust(78,'-')
                 print >>self.stream, test._get_log()
+                print >>self.stream, \
+                        ('^^^^[log from %s]' % test).ljust(78,'-')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
@@ -247,6 +263,16 @@ class TestCase(unittest.TestCase):
         if not re.search(needle_re, haystack):
             raise AssertionError('pattern "%s" not found in "%s"'
                     % (needle_re, haystack))
+
+    def AssertSubset(self, sublist, superlist):
+        """Assert that every entry in sublist is present in superlist."""
+        missing = []
+        for entry in sublist:
+            if entry not in superlist:
+                missing.append(entry)
+        if len(missing) > 0:
+            raise AssertionError("value(s) %r not present in container %r" % 
+                                 (missing, superlist))
 
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
@@ -606,57 +632,61 @@ def test_suite():
     global MODULES_TO_DOCTEST
 
     testmod_names = [ \
-                   'bzrlib.tests.test_api',
-                   'bzrlib.tests.test_gpg',
-                   'bzrlib.tests.test_identitymap',
-                   'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_ancestry',
-                   'bzrlib.tests.test_commit',
+                   'bzrlib.tests.test_annotate',
+                   'bzrlib.tests.test_api',
+                   'bzrlib.tests.test_bad_files',
+                   'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_command',
+                   'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
-                   'bzrlib.tests.test_merge3',
-                   'bzrlib.tests.test_merge',
+                   'bzrlib.tests.test_conflicts',
+                   'bzrlib.tests.test_diff',
+                   'bzrlib.tests.test_fetch',
+                   'bzrlib.tests.test_gpg',
+                   'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
-                   'bzrlib.tests.test_status',
+                   'bzrlib.tests.test_http',
+                   'bzrlib.tests.test_identitymap',
+                   'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_log',
-                   'bzrlib.tests.test_revisionnamespaces',
-                   'bzrlib.tests.test_branch',
+                   'bzrlib.tests.test_merge',
+                   'bzrlib.tests.test_merge3',
+                   'bzrlib.tests.test_merge_core',
+                   'bzrlib.tests.test_missing',
+                   'bzrlib.tests.test_msgeditor',
+                   'bzrlib.tests.test_nonascii',
+                   'bzrlib.tests.test_options',
+                   'bzrlib.tests.test_parent',
+                   'bzrlib.tests.test_plugins',
+                   'bzrlib.tests.test_remove',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revision_info',
-                   'bzrlib.tests.test_merge_core',
-                   'bzrlib.tests.test_smart_add',
-                   'bzrlib.tests.test_bad_files',
-                   'bzrlib.tests.test_diff',
-                   'bzrlib.tests.test_parent',
-                   'bzrlib.tests.test_xml',
-                   'bzrlib.tests.test_weave',
-                   'bzrlib.tests.test_fetch',
-                   'bzrlib.tests.test_whitebox',
-                   'bzrlib.tests.test_store',
+                   'bzrlib.tests.test_revisionnamespaces',
+                   'bzrlib.tests.test_revprops',
+                   'bzrlib.tests.test_reweave',
+                   'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
+                   'bzrlib.tests.test_selftest',
+                   'bzrlib.tests.test_setup',
+                   'bzrlib.tests.test_sftp',
+                   'bzrlib.tests.test_smart_add',
+                   'bzrlib.tests.test_source',
+                   'bzrlib.tests.test_status',
+                   'bzrlib.tests.test_store',
+                   'bzrlib.tests.test_testament',
+                   'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transport',
-                   'bzrlib.tests.test_sftp',
-                   'bzrlib.tests.test_graph',
-                   'bzrlib.tests.test_workingtree',
-                   'bzrlib.tests.test_upgrade',
-                   'bzrlib.tests.test_uncommit',
-                   'bzrlib.tests.test_ui',
-                   'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_testament',
-                   'bzrlib.tests.test_annotate',
-                   'bzrlib.tests.test_revprops',
-                   'bzrlib.tests.test_options',
-                   'bzrlib.tests.test_http',
-                   'bzrlib.tests.test_nonascii',
-                   'bzrlib.tests.test_plugins',
-                   'bzrlib.tests.test_reweave',
                    'bzrlib.tests.test_tsort',
-                   'bzrlib.tests.test_trace',
-                   'bzrlib.tests.test_rio',
-                   'bzrlib.tests.test_msgeditor',
-                   'bzrlib.tests.test_selftest',
+                   'bzrlib.tests.test_ui',
+                   'bzrlib.tests.test_uncommit',
+                   'bzrlib.tests.test_upgrade',
+                   'bzrlib.tests.test_weave',
+                   'bzrlib.tests.test_whitebox',
+                   'bzrlib.tests.test_workingtree',
+                   'bzrlib.tests.test_xml',
                    ]
 
     print '%10s: %s' % ('bzr', os.path.realpath(sys.argv[0]))

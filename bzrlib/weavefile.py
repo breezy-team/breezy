@@ -92,11 +92,11 @@ def write_weave_v5(weave, f):
 
 
 
-def read_weave(f):
-    return read_weave_v5(f)
+def read_weave(f,prelude=False):
+    return read_weave_v5(f,prelude=prelude)
 
 
-def read_weave_v5(f):
+def read_weave_v5(f,prelude=False):
     from weave import Weave, WeaveFormatError
     w = Weave(getattr(f, 'name', None))
 
@@ -132,6 +132,9 @@ def read_weave_v5(f):
             break
         else:
             raise WeaveFormatError('unexpected line %r' % l)
+
+    if prelude:
+        return w
 
     while True:
         l = f.readline()
