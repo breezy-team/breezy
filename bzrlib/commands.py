@@ -462,6 +462,8 @@ def run_bzr(argv):
     
     argv
        The command-line arguments, without the program name from argv[0]
+       These should already be decoded. All library/test code calling
+       run_bzr should be passing valid strings (don't need decoding).
     
     Returns a command status or raises an exception.
 
@@ -481,7 +483,7 @@ def run_bzr(argv):
     --lsprof
         Run under the Python lsprof profiler.
     """
-    argv = [a.decode(bzrlib.user_encoding) for a in argv]
+    argv = list(argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = False
 
@@ -561,7 +563,9 @@ def main(argv):
     ## bzrlib.trace.enable_default_logging()
     bzrlib.trace.log_startup(argv)
     bzrlib.ui.ui_factory = TextUIFactory()
-    ret = run_bzr_catch_errors(argv[1:])
+
+    argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+    ret = run_bzr_catch_errors(argv)
     mutter("return code %d", ret)
     return ret
 

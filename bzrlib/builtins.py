@@ -955,9 +955,11 @@ class cmd_log(Command):
             (rev2, rev1) = (rev1, rev2)
 
         output_encoding = getattr(sys.stdout, 'encoding', None)
-        if output_encoding is None:
+        if not output_encoding:
             output_encoding = bzrlib.user_encoding
-        mutter('encoding log as %r', output_encoding)
+            mutter('encoding log as bzrlib.user_encoding %r', output_encoding)
+        else:
+            mutter('encoding log as sys.stdout encoding %r', output_encoding)
 
         # use 'replace' so that we don't abort if trying to write out
         # in e.g. the default C locale.
@@ -977,6 +979,7 @@ class cmd_log(Command):
                  start_revision=rev1,
                  end_revision=rev2,
                  search=message)
+
 
 def get_log_format(long=False, short=False, line=False, default='long'):
     log_format = default
