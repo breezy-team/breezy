@@ -954,11 +954,15 @@ class cmd_log(Command):
         if rev1 > rev2:
             (rev2, rev1) = (rev1, rev2)
 
-        mutter('encoding log as %r', bzrlib.user_encoding)
+        if hasattr(sys.stdout, "encoding"):
+            output_encoding = sys.stdout.encoding or bzrlib.user_encoding
+        else:
+            output_encoding = bzrlib.user_encoding
+        mutter('encoding log as %r', output_encoding)
 
         # use 'replace' so that we don't abort if trying to write out
         # in e.g. the default C locale.
-        outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
+        outf = codecs.getwriter(output_encoding)(sys.stdout, errors='replace')
 
         log_format = get_log_format(long=long, short=short, line=line)
         lf = log_formatter(log_format,
