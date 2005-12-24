@@ -954,9 +954,8 @@ class cmd_log(Command):
         if rev1 > rev2:
             (rev2, rev1) = (rev1, rev2)
 
-        if hasattr(sys.stdout, "encoding"):
-            output_encoding = sys.stdout.encoding or bzrlib.user_encoding
-        else:
+        output_encoding = getattr(sys.stdout, 'encoding', None)
+        if output_encoding is None:
             output_encoding = bzrlib.user_encoding
         mutter('encoding log as %r', output_encoding)
 
