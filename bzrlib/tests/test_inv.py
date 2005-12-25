@@ -335,7 +335,11 @@ class TestPreviousHeads(TestCaseInTempDir):
         self.wt.add(['file'], ['fileid'])
         self.wt.commit('add file', rev_id='B')
         self.inv_B = self.branch.repository.get_inventory('B')
-        self.branch.control_files.put_utf8('revision-history', 'A\n')
+        self.branch.lock_write()
+        try:
+            self.branch.control_files.put_utf8('revision-history', 'A\n')
+        finally:
+            self.branch.unlock()
         self.assertEqual(self.branch.revision_history(), ['A'])
         self.wt.commit('another add of file', rev_id='C')
         self.inv_C = self.branch.repository.get_inventory('C')

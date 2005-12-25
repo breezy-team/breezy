@@ -602,7 +602,12 @@ class cmd_branch(Command):
             branch = Branch.open(to_location)
             if name:
                 name = StringIO(name)
-                branch.control_files.put_utf8('branch-name', name)
+                branch.lock_write()
+                try:
+                    branch.control_files.put_utf8('branch-name', name)
+                finally:
+                    branch.unlock()
+                    
             note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()

@@ -102,11 +102,19 @@ class Convert(object):
         self.pb = ui_factory.progress_bar()
         if self.old_format == 4:
             note('starting upgrade from format 4 to 5')
-            self._convert_to_weaves()
+            self.branch.lock_write()
+            try:
+                self._convert_to_weaves()
+            finally:
+                self.branch.unlock()
             self._open_branch()
         if self.old_format == 5:
             note('starting upgrade from format 5 to 6')
-            self._convert_to_prefixed()
+            self.branch.lock_write()
+            try:
+                self._convert_to_prefixed()
+            finally:
+                self.branch.unlock()
             self._open_branch()
         cache = hashcache.HashCache(os.path.abspath(self.base))
         cache.clear()

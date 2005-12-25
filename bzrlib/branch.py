@@ -558,9 +558,13 @@ class BzrBranch(Branch):
         ]
         cfn = self.control_files._rel_controlfilename
         self.control_files._transport.mkdir_multi([cfn(d) for d in dirs])
-        for file, content in files:
-            self.control_files.put_utf8(file, content)
-        mutter('created control directory in ' + self.base)
+        self.control_files.lock_write()
+        try:
+            for file, content in files:
+                self.control_files.put_utf8(file, content)
+            mutter('created control directory in ' + self.base)
+        finally:
+            self.control_files.unlock()
 
     def _check_format(self, relax_version_check):
         """Check this branch format is supported.
