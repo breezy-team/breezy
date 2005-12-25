@@ -58,11 +58,11 @@ class TestUpgrade(TestCaseInTempDir):
         """Upgrade v0.0.4 tree containing ghost references.
 
         That is, some of the parents of revisions mentioned in the branch
-        aren't present in the branches storage. 
+        aren't present in the branch's storage. 
 
         This shouldn't normally happen in branches created entirely in 
-        bzr but can happen in imports from baz and arch, or from other  
-        systems, where the importer knows about a revision but not 
+        bzr, but can happen in branches imported from baz and arch, or from
+        other systems, where the importer knows about a revision but not 
         its contents."""
         eq = self.assertEquals
         self.build_tree_contents(_ghost_template)
