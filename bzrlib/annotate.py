@@ -55,8 +55,8 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
 def _annotate_file(branch, rev_id, file_id ):
 
     rh = branch.revision_history()
-    w = branch.storage.weave_store.get_weave(file_id, 
-                                             branch.storage.get_transaction())
+    w = branch.repository.weave_store.get_weave(file_id, 
+        branch.repository.get_transaction())
     last_origin = None
     for origin, text in w.annotate_iter(rev_id):
         text = text.rstrip('\r\n')
@@ -65,14 +65,14 @@ def _annotate_file(branch, rev_id, file_id ):
         else:
             last_origin = origin
             line_rev_id = w.idx_to_name(origin)
-            if not branch.storage.has_revision(line_rev_id):
+            if not branch.repository.has_revision(line_rev_id):
                 (revno_str, author, date_str) = ('?','?','?')
             else:
                 if line_rev_id in rh:
                     revno_str = str(rh.index(line_rev_id) + 1)
                 else:
                     revno_str = 'merge'
-            rev = branch.storage.get_revision(line_rev_id)
+            rev = branch.repository.get_revision(line_rev_id)
             tz = rev.timezone or 0
             date_str = time.strftime('%Y%m%d', 
                                      time.gmtime(rev.timestamp + tz))

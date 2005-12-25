@@ -71,13 +71,13 @@ def show_status(branch, show_unchanged=False,
         elif len(revision) > 0:
             try:
                 rev_id = revision[0].in_history(branch).rev_id
-                old = branch.storage.revision_tree(rev_id)
+                old = branch.repository.revision_tree(rev_id)
             except NoSuchRevision, e:
                 raise BzrCommandError(str(e))
             if len(revision) > 1:
                 try:
                     rev_id = revision[1].in_history(branch).rev_id
-                    new = branch.storage.revision_tree(rev_id)
+                    new = branch.repository.revision_tree(rev_id)
                     new_is_working_tree = False
                 except NoSuchRevision, e:
                     raise BzrCommandError(str(e))
@@ -109,20 +109,20 @@ def show_pending_merges(new, to_file):
     print >>to_file, 'pending merges:'
     last_revision = branch.last_revision()
     if last_revision is not None:
-        ignore = set(branch.storage.get_ancestry(last_revision))
+        ignore = set(branch.repository.get_ancestry(last_revision))
     else:
         ignore = set()
     for merge in new.pending_merges():
         ignore.add(merge)
         try:
-            m_revision = branch.storage.get_revision(merge)
+            m_revision = branch.repository.get_revision(merge)
             print >> to_file, ' ', line_log(m_revision, 77)
-            inner_merges = branch.storage.get_ancestry(merge)
+            inner_merges = branch.repository.get_ancestry(merge)
             inner_merges.reverse()
             for mmerge in inner_merges:
                 if mmerge in ignore:
                     continue
-                mm_revision = branch.storage.get_revision(mmerge)
+                mm_revision = branch.repository.get_revision(mmerge)
                 print >> to_file, '   ', line_log(mm_revision, 75)
                 ignore.add(mmerge)
         except NoSuchRevision:

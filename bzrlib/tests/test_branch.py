@@ -58,17 +58,17 @@ class TestBranch(TestCaseInTempDir):
         eq(f.count_copied, 1)
         eq(f.last_revision, 'revision-1')
 
-        rev = b2.storage.get_revision('revision-1')
-        tree = b2.storage.revision_tree('revision-1')
+        rev = b2.repository.get_revision('revision-1')
+        tree = b2.repository.revision_tree('revision-1')
         eq(tree.get_file_text('foo-id'), 'hello')
 
     def test_revision_tree(self):
         b1 = Branch.initialize(u'.')
         b1.working_tree().commit('lala!', rev_id='revision-1', allow_pointless=True)
-        tree = b1.storage.revision_tree('revision-1')
-        tree = b1.storage.revision_tree(None)
+        tree = b1.repository.revision_tree('revision-1')
+        tree = b1.repository.revision_tree(None)
         self.assertEqual(len(tree.list_files()), 0)
-        tree = b1.storage.revision_tree(NULL_REVISION)
+        tree = b1.repository.revision_tree(NULL_REVISION)
         self.assertEqual(len(tree.list_files()), 0)
 
     def get_unbalanced_branch_pair(self):
@@ -92,12 +92,12 @@ class TestBranch(TestCaseInTempDir):
         """Copy the stores from one branch to another"""
         br_a, br_b = self.get_unbalanced_branch_pair()
         # ensure the revision is missing.
-        self.assertRaises(NoSuchRevision, br_b.storage.get_revision, 
+        self.assertRaises(NoSuchRevision, br_b.repository.get_revision, 
                           br_a.revision_history()[0])
         br_a.push_stores(br_b)
         # check that b now has all the data from a's first commit.
-        rev = br_b.storage.get_revision(br_a.revision_history()[0])
-        tree = br_b.storage.revision_tree(br_a.revision_history()[0])
+        rev = br_b.repository.get_revision(br_a.revision_history()[0])
+        tree = br_b.repository.revision_tree(br_a.revision_history()[0])
         for file_id in tree:
             if tree.inventory[file_id].kind == "file":
                 tree.get_file(file_id).read()
@@ -130,7 +130,7 @@ class TestBranch(TestCaseInTempDir):
         branch = Branch.initialize(u'.')
         branch.working_tree().add_pending_merge('non:existent@rev--ision--0--2')
         branch.working_tree().commit('pretend to merge nonexistent-revision', rev_id='first')
-        rev = branch.storage.get_revision(branch.last_revision())
+        rev = branch.repository.get_revision(branch.last_revision())
         self.assertEqual(len(rev.parent_ids), 1)
         # parent_sha1s is not populated now, WTF. rbc 20051003
         self.assertEqual(len(rev.parent_sha1s), 0)
@@ -139,7 +139,7 @@ class TestBranch(TestCaseInTempDir):
     def test_bad_revision(self):
         branch = Branch.initialize('.')
         self.assertRaises(errors.InvalidRevisionId, 
-                          branch.storage.get_revision, None)
+                          branch.repository.get_revision, None)
 
 # TODO 20051003 RBC:
 # compare the gpg-to-sign info for a commit with a ghost and 
@@ -160,7 +160,7 @@ class TestBranch(TestCaseInTempDir):
                           ['foo@azkhazan-123123-abcabc',
                            'wibble@fofof--20050401--1928390812'])
         b.working_tree().commit("commit from base with two merges")
-        rev = b.storage.get_revision(b.revision_history()[0])
+        rev = b.repository.get_revision(b.revision_history()[0])
         self.assertEquals(len(rev.parent_ids), 2)
         self.assertEquals(rev.parent_ids[0],
                           'foo@azkhazan-123123-abcabc')
@@ -173,17 +173,20 @@ class TestBranch(TestCaseInTempDir):
         branch = Branch.initialize(u'.')
         branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
-        branch.storage.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
-        self.assertEqual(Testament.from_revision(branch.storage, 
+        strategy = bzrlib.gpg.LoopbackGPGStrategy(None)
+        branch.repository.sign_revision('A', strategy)
+        self.assertEqual(Testament.from_revision(branch.repository, 
                          'A').as_short_text(),
-                         branch.storage.revision_store.get('A', 'sig').read())
+                         branch.repository.revision_store.get('A', 
+                         'sig').read())
 
     def test_store_signature(self):
         branch = Branch.initialize('.')
-        branch.storage.store_revision_signature(
+        branch.repository.store_revision_signature(
             bzrlib.gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
         self.assertEqual('FOO', 
-                         branch.storage.revision_store.get('A', 'sig').read())
+                         branch.repository.revision_store.get('A', 
+                         'sig').read())
 
     def test__relcontrolfilename(self):
         branch = Branch.initialize('.')
@@ -217,7 +220,7 @@ class TestBranch(TestCaseInTempDir):
         branch = Branch.initialize('bzr.dev')
         branch.nick = "My happy branch"
         branch.working_tree().commit('My commit respect da nick.')
-        committed = branch.storage.get_revision(branch.last_revision())
+        committed = branch.repository.get_revision(branch.last_revision())
         self.assertEqual(committed.properties["branch-nick"], 
                          "My happy branch")
 

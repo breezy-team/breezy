@@ -48,10 +48,10 @@ class TestUpgrade(TestCaseInTempDir):
         eq(rh,
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
-        t = b.storage.revision_tree(rh[0])
+        t = b.repository.revision_tree(rh[0])
         foo_id = 'foo-20051004035605-91e788d1875603ae'
         eq(t.get_file_text(foo_id), 'initial contents\n')
-        t = b.storage.revision_tree(rh[1])
+        t = b.repository.revision_tree(rh[1])
         eq(t.get_file_text(foo_id), 'new contents\n')
 
     def test_upgrade_with_ghosts(self):
@@ -69,7 +69,7 @@ class TestUpgrade(TestCaseInTempDir):
         upgrade(u'.')
         b = Branch.open(u'.')
         revision_id = b.revision_history()[1]
-        rev = b.storage.get_revision(revision_id)
+        rev = b.repository.get_revision(revision_id)
         eq(len(rev.parent_ids), 2)
         eq(rev.parent_ids[1], 'wibble@wobble-2')
 

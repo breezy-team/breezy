@@ -44,9 +44,9 @@ def find_unmerged(local_branch, remote_branch):
                                                 remote_rev_history_map)
                 return local_extra, remote_extra
 
-            local_ancestry = _get_ancestry(local_branch.storage, progress, 
+            local_ancestry = _get_ancestry(local_branch.repository, progress, 
                                            "local", 2, local_rev_history)
-            remote_ancestry = _get_ancestry(remote_branch.storage, progress,
+            remote_ancestry = _get_ancestry(remote_branch.repository, progress,
                                             "remote", 3, remote_rev_history)
             progress.update('pondering', 4, 5)
             extras = local_ancestry.symmetric_difference(remote_ancestry) 

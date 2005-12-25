@@ -670,9 +670,10 @@ class WorkingTree(bzrlib.tree.Tree):
                     other_revision = old_revision_history[-1]
                 else:
                     other_revision = None
+                repository = self.branch.repository
                 merge_inner(self.branch,
                             self.branch.basis_tree(), 
-                            self.branch.storage.revision_tree(other_revision))
+                            repository.revision_tree(other_revision))
             return count
         finally:
             source.unlock()
@@ -791,7 +792,7 @@ class WorkingTree(bzrlib.tree.Tree):
             except:
                 pass
         try:
-            xml = self.branch.storage.get_inventory_xml(new_revision)
+            xml = self.branch.repository.get_inventory_xml(new_revision)
             path = self._basis_inventory_name(new_revision)
             self.branch.control_files.put_utf8(path, xml)
         except WeaveRevisionNotPresent:

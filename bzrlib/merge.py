@@ -251,9 +251,9 @@ def get_revid_tree(branch, revision, local_branch):
     else:
         if local_branch is not None:
             greedy_fetch(local_branch, branch, revision)
-            base_tree = local_branch.storage.revision_tree(revision)
+            base_tree = local_branch.repository.revision_tree(revision)
         else:
-            base_tree = branch.storage.revision_tree(revision)
+            base_tree = branch.repository.revision_tree(revision)
     return base_tree
 
 
@@ -395,11 +395,11 @@ class Merger(object):
                                                      other_tree)
 
     def revision_tree(self, revision_id):
-        return self.this_branch.storage.revision_tree(revision_id)
+        return self.this_branch.repository.revision_tree(revision_id)
 
     def ensure_revision_trees(self):
         if self.this_revision_tree is None:
-            self.this_basis_tree = self.this_branch.storage.revision_tree(
+            self.this_basis_tree = self.this_branch.repository.revision_tree(
                 self.this_basis)
             if self.this_basis == self.this_rev_id:
                 self.this_revision_tree = self.this_basis_tree
@@ -495,7 +495,7 @@ class Merger(object):
             return
         if self.other_rev_id is None:
             return
-        ancestry = self.this_branch.storage.get_ancestry(self.this_basis)
+        ancestry = self.this_branch.repository.get_ancestry(self.this_basis)
         if self.other_rev_id in ancestry:
             return
         self.this_branch.working_tree().add_pending_merge(self.other_rev_id)
@@ -525,7 +525,7 @@ class Merger(object):
             try:
                 self.base_rev_id = common_ancestor(self.this_basis, 
                                                    self.other_basis, 
-                                                   self.this_branch.storage)
+                                                   self.this_branch.repository)
             except NoCommonAncestor:
                 raise UnrelatedBranches()
             self.base_tree = get_revid_tree(self.this_branch, self.base_rev_id,
