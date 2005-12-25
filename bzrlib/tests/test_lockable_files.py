@@ -27,6 +27,29 @@ class TestLockableFiles(TestCaseInTempDir):
         transport.mkdir('.bzr')
         self.lockable = LockableFiles(transport, 'my-lock')
 
+    def test_read_write(self):
+        self.assertRaises(NoSuchFile, self.lockable.controlfile, 'foo')
+        self.lockable.lock_write()
+        try:
+            unicode_string = u'bar\u1234'
+            self.assertEqual(4, len(unicode_string))
+            byte_string = unicode_string.encode('utf-8')
+            self.assertEqual(6, len(byte_string))
+            self.assertRaises(UnicodeEncodeError, self.lockable.put, 'foo', 
+                              StringIO(unicode_string))
+            self.lockable.put('foo', StringIO(byte_string))
+            self.assertEqual(byte_string,
+                             self.lockable.controlfile('foo', 'rb').read())
+            self.assertEqual(unicode_string,
+                             self.lockable.controlfile('foo', 'r').read())
+            self.lockable.put_utf8('bar', StringIO(unicode_string))
+            self.assertEqual(unicode_string, 
+                             self.lockable.controlfile('bar', 'r').read())
+            self.assertEqual(byte_string, 
+                             self.lockable.controlfile('bar', 'rb').read())
+        finally:
+            self.lockable.unlock()
+
     def test_locks(self):
         self.assertRaises(ReadOnlyError, self.lockable.put, 'foo', 
                           StringIO('bar\u1234'))

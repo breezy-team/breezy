@@ -96,12 +96,21 @@ class LockableFiles(object):
         :param f: A file-like or string object whose contents should be copied.
         """
         import codecs
+        from iterablefile import IterableFile
         ctrl_files = []
-        if isinstance(file, basestring):
-            file = file.encode('utf-8', 'replace')
+        def file_iterator(unicode_file, bufsize=32768):
+            while True:
+                b = unicode_file.read(bufsize)
+                if len(b) == 0:
+                    break
+                yield b
+        if hasattr(file, 'read'):
+            iterator = file_iterator(file)
         else:
-            file = codecs.getwriter('utf-8')(file, errors='replace')
-        self.put(path, file)
+            iterator = file
+        encoded_file = IterableFile(b.encode('utf-8', 'replace') for b in 
+                                    iterator)
+        self.put(path, encoded_file)
 
     def lock_write(self):
         mutter("lock write: %s (%s)", self, self._lock_count)

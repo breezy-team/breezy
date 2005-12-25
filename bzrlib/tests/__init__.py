@@ -32,6 +32,7 @@ import bzrlib.branch
 import bzrlib.commands
 from bzrlib.errors import BzrError
 import bzrlib.inventory
+import bzrlib.iterablefile
 import bzrlib.merge3
 import bzrlib.osutils
 import bzrlib.plugin
@@ -47,6 +48,7 @@ MODULES_TO_DOCTEST = [
                       bzrlib.commands,
                       bzrlib.errors,
                       bzrlib.inventory,
+                      bzrlib.iterablefile,
                       bzrlib.merge3,
                       bzrlib.osutils,
                       bzrlib.store,
