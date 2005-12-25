@@ -1,6 +1,6 @@
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.errors import LockError
+from bzrlib.errors import LockError, ReadOnlyError
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
 
@@ -84,6 +84,8 @@ class LockableFiles(object):
                      directory
         :param f: A file-like or string object whose contents should be copied.
         """
+        if not self._lock_mode == 'w':
+            raise ReadOnlyError()
         self._transport.put(self._rel_controlfilename(path), file)
 
     def put_utf8(self, path, file):
