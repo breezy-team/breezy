@@ -53,7 +53,7 @@ def needs_write_lock(unbound):
 class Repository(object):
     def __init__(self, transport, branch_format):
         object.__init__(self)
-        self.control_files = LockableFiles(transport, 'branch-lock')
+        self.control_files = LockableFiles(transport, 'README')
         def get_weave(name, prefixed=False):
             relpath = self.control_files._rel_controlfilename(unicode(name))
             weave_transport = self.control_files.make_transport(relpath)
