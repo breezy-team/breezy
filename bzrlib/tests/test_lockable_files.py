@@ -16,6 +16,7 @@
 
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.transport import get_transport
+from bzrlib.transactions import PassThroughTransaction, ReadOnlyTransaction
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.errors import NoSuchFile, ReadOnlyError
 from StringIO import StringIO
@@ -56,3 +57,19 @@ class TestLockableFiles(TestCaseInTempDir):
         self.lockable.unlock()
         self.assertRaises(ReadOnlyError, self.lockable.put, 'foo', 
                           StringIO('bar\u1234'))
+
+    def test_transactions(self):
+        self.assertIs(self.lockable.get_transaction().__class__,
+                      PassThroughTransaction)
+        self.lockable.lock_read()
+        try:
+            self.assertIs(self.lockable.get_transaction().__class__,
+                          ReadOnlyTransaction)
+        finally:
+            self.lockable.unlock()
+        self.assertIs(self.lockable.get_transaction().__class__,
+                      PassThroughTransaction)
+        self.lockable.lock_write()
+        self.assertIs(self.lockable.get_transaction().__class__,
+                      PassThroughTransaction)
+        self.lockable.unlock()
