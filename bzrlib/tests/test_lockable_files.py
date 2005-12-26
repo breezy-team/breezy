@@ -27,7 +27,7 @@ class TestLockableFiles(TestCaseInTempDir):
         transport = get_transport('.')
         transport.mkdir('.bzr')
         transport.put('.bzr/my-lock', StringIO(''))
-        self.lockable = LockableFiles(transport, 'my-lock')
+        self.lockable = LockableFiles(transport, '.bzr', 'my-lock')
 
     def test_read_write(self):
         self.assertRaises(NoSuchFile, self.lockable.controlfile, 'foo')

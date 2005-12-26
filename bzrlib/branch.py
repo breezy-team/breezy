@@ -468,7 +468,7 @@ class BzrBranch(Branch):
         """
         assert isinstance(transport, Transport), \
             "%r is not a Transport" % transport
-        self.control_files = LockableFiles(transport, 'branch-lock')
+        self.control_files = LockableFiles(transport, bzrlib.BZRDIR, 'branch-lock')
         if init:
             self._make_control()
         self._check_format(relax_version_check)

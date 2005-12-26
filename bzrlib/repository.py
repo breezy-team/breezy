@@ -53,7 +53,7 @@ def needs_write_lock(unbound):
 class Repository(object):
     def __init__(self, transport, branch_format):
         object.__init__(self)
-        self.control_files = LockableFiles(transport, 'README')
+        self.control_files = LockableFiles(transport, bzrlib.BZRDIR, 'README')
         def get_weave(name, prefixed=False):
             relpath = self.control_files._rel_controlfilename(unicode(name))
             weave_transport = transport.clone(relpath)

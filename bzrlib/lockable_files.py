@@ -23,9 +23,10 @@ class LockableFiles(object):
     _lock_count = None
     _lock = None
 
-    def __init__(self, transport, lock_name):
+    def __init__(self, transport, base, lock_name):
         object.__init__(self)
         self._transport = transport
+        self.base = base
         self.lock_name = lock_name
         self._transaction = None
 
@@ -41,8 +42,9 @@ class LockableFiles(object):
         if not isinstance(file_or_path, basestring):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
-            return unicode(bzrlib.BZRDIR)
-        return bzrlib.transport.urlescape(unicode(bzrlib.BZRDIR + '/' + file_or_path))
+            return unicode(self.base)
+        return bzrlib.transport.urlescape(unicode(self.base + '/' + 
+                                                  file_or_path))
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
