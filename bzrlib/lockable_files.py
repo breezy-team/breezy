@@ -133,7 +133,7 @@ class LockableFiles(object):
             self._lock_count += 1
         else:
             self._lock = self._transport.lock_read(
-                    self._rel_controlfilename('branch-lock'))
+                    self._rel_controlfilename(self.lock_name))
             self._lock_mode = 'r'
             self._lock_count = 1
             self._set_transaction(transactions.ReadOnlyTransaction())

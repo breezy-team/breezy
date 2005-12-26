@@ -25,6 +25,7 @@ class TestLockableFiles(TestCaseInTempDir):
         super(self.__class__, self).setUp()
         transport = get_transport('.')
         transport.mkdir('.bzr')
+        transport.put('.bzr/my-lock', StringIO(''))
         self.lockable = LockableFiles(transport, 'my-lock')
 
     def test_read_write(self):
@@ -51,5 +52,7 @@ class TestLockableFiles(TestCaseInTempDir):
             self.lockable.unlock()
 
     def test_locks(self):
+        self.lockable.lock_read()
+        self.lockable.unlock()
         self.assertRaises(ReadOnlyError, self.lockable.put, 'foo', 
                           StringIO('bar\u1234'))
