@@ -276,6 +276,10 @@ class TestCase(unittest.TestCase):
             raise AssertionError("value(s) %r not present in container %r" % 
                                  (missing, superlist))
 
+    def assertIs(self, left, right):
+        if not (left is right):
+            raise AssertionError("%r is not %r." % (left, right))
+
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
 
