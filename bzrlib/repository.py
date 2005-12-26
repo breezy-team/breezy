@@ -56,7 +56,7 @@ class Repository(object):
         self.control_files = LockableFiles(transport, 'README')
         def get_weave(name, prefixed=False):
             relpath = self.control_files._rel_controlfilename(unicode(name))
-            weave_transport = self.control_files.make_transport(relpath)
+            weave_transport = transport.clone(relpath)
             ws = WeaveStore(weave_transport, prefixed=prefixed)
             if self.control_files._transport.should_cache():
                 ws.enable_cache = True
@@ -69,7 +69,7 @@ class Repository(object):
             # still want the option to look for both.
             name = unicode(name)
             relpath = self.control_files._rel_controlfilename(name)
-            store = TextStore(self.control_files.make_transport(relpath),
+            store = TextStore(transport.clone(relpath),
                               prefixed=prefixed, compressed=compressed)
             #if self._transport.should_cache():
             #    cache_path = os.path.join(self.cache_root, name)

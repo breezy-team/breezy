@@ -154,9 +154,6 @@ class LockableFiles(object):
             self._lock = None
             self._lock_mode = self._lock_count = None
 
-    def make_transport(self, relpath):
-        return self._transport.clone(relpath)
-
     def get_transaction(self):
         """Return the current active transaction.
 
