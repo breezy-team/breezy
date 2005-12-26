@@ -212,6 +212,7 @@ class SFTPLock(object):
             # What specific errors should we catch here?
             pass
 
+
 class SFTPTransport (Transport):
     """
     Transport implementation for SFTP access.
@@ -254,13 +255,16 @@ class SFTPTransport (Transport):
         @param relpath: the relative path or path components
         @type relpath: str or list
         """
-        return self._unparse_url(self._abspath(relpath))
+        return self._unparse_url(self._remote_path(relpath))
     
-    def _abspath(self, relpath):
-        """Return the absolute path segment without the SFTP URL."""
+    def _remote_path(self, relpath):
+        """Return the path to be passed along the sftp protocol for relpath.
+        
+        relpath is a urlencoded string.
+        """
         # FIXME: share the common code across transports
         assert isinstance(relpath, basestring)
-        relpath = [urllib.unquote(relpath)]
+        relpath = urllib.unquote(relpath).split('/')
         basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
@@ -278,7 +282,6 @@ class SFTPTransport (Transport):
                 basepath.append(p)
 
         path = '/'.join(basepath)
-        # could still be a "relative" path here, but relative on the sftp server
         return path
 
     def relpath(self, abspath):
@@ -303,7 +306,7 @@ class SFTPTransport (Transport):
         Does the target location exist?
         """
         try:
-            self._sftp.stat(self._abspath(relpath))
+            self._sftp.stat(self._remote_path(relpath))
             return True
         except IOError:
             return False
@@ -315,7 +318,7 @@ class SFTPTransport (Transport):
         :param relpath: The relative path to the file
         """
         try:
-            path = self._abspath(relpath)
+            path = self._remote_path(relpath)
             f = self._sftp.file(path)
             if self._do_prefetch and hasattr(f, 'prefetch'):
                 f.prefetch()
@@ -349,10 +352,10 @@ class SFTPTransport (Transport):
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
         """
-        final_path = self._abspath(relpath)
+        final_path = self._remote_path(relpath)
         tmp_relpath = '%s.tmp.%.9f.%d.%d' % (relpath, time.time(),
                         os.getpid(), random.randint(0,0x7FFFFFFF))
-        tmp_abspath = self._abspath(tmp_relpath)
+        tmp_abspath = self._remote_path(tmp_relpath)
         fout = self._sftp_open_exclusive(tmp_relpath)
 
         try:
@@ -373,7 +376,7 @@ class SFTPTransport (Transport):
         else:
             # sftp rename doesn't allow overwriting, so play tricks:
             tmp_safety = 'bzr.tmp.%.9f.%d.%d' % (time.time(), os.getpid(), random.randint(0, 0x7FFFFFFF))
-            tmp_safety = self._abspath(tmp_safety)
+            tmp_safety = self._remote_path(tmp_safety)
             try:
                 self._sftp.rename(final_path, tmp_safety)
                 file_existed = True
@@ -409,7 +412,7 @@ class SFTPTransport (Transport):
     def mkdir(self, relpath):
         """Create a directory at the given path."""
         try:
-            path = self._abspath(relpath)
+            path = self._remote_path(relpath)
             self._sftp.mkdir(path)
         except (paramiko.SSHException, IOError), e:
             self._translate_io_exception(e, relpath, ': unable to mkdir',
@@ -447,7 +450,7 @@ class SFTPTransport (Transport):
         location.
         """
         try:
-            path = self._abspath(relpath)
+            path = self._remote_path(relpath)
             fout = self._sftp.file(path, 'ab')
             self._pump(f, fout)
         except (IOError, paramiko.SSHException), e:
@@ -455,8 +458,8 @@ class SFTPTransport (Transport):
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
-        path_from = self._abspath(rel_from)
-        path_to = self._abspath(rel_to)
+        path_from = self._remote_path(rel_from)
+        path_to = self._remote_path(rel_to)
         self._copy_abspaths(path_from, path_to)
 
     def _copy_abspaths(self, path_from, path_to):
@@ -497,8 +500,8 @@ class SFTPTransport (Transport):
             total = self._get_total(relpaths)
             count = 0
             for path in relpaths:
-                path_from = self._abspath(relpath)
-                path_to = other._abspath(relpath)
+                path_from = self._remote_path(relpath)
+                path_to = other._remote_path(relpath)
                 self._update_pb(pb, 'copy-to', count, total)
                 self._copy_abspaths(path_from, path_to)
                 count += 1
@@ -514,8 +517,8 @@ class SFTPTransport (Transport):
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
-        path_from = self._abspath(rel_from)
-        path_to = self._abspath(rel_to)
+        path_from = self._remote_path(rel_from)
+        path_to = self._remote_path(rel_to)
         try:
             self._sftp.rename(path_from, path_to)
         except (IOError, paramiko.SSHException), e:
@@ -523,7 +526,7 @@ class SFTPTransport (Transport):
 
     def delete(self, relpath):
         """Delete the item at relpath"""
-        path = self._abspath(relpath)
+        path = self._remote_path(relpath)
         try:
             self._sftp.remove(path)
         except (IOError, paramiko.SSHException), e:
@@ -538,7 +541,7 @@ class SFTPTransport (Transport):
         Return a list of all files at the given location.
         """
         # does anything actually use this?
-        path = self._abspath(relpath)
+        path = self._remote_path(relpath)
         try:
             return self._sftp.listdir(path)
         except (IOError, paramiko.SSHException), e:
@@ -546,7 +549,7 @@ class SFTPTransport (Transport):
 
     def stat(self, relpath):
         """Return the stat information for a file."""
-        path = self._abspath(relpath)
+        path = self._remote_path(relpath)
         try:
             return self._sftp.stat(path)
         except (IOError, paramiko.SSHException), e:
@@ -789,7 +792,7 @@ class SFTPTransport (Transport):
 
         :param relpath: The relative path, where the file should be opened
         """
-        path = self._sftp._adjust_cwd(self._abspath(relpath))
+        path = self._sftp._adjust_cwd(self._remote_path(relpath))
         attr = SFTPAttributes()
         mode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE 
                 | SFTP_FLAG_TRUNC | SFTP_FLAG_EXCL)
