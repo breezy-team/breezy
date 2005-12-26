@@ -33,6 +33,7 @@ class LockableFiles(object):
         if self._lock_mode or self._lock:
             # XXX: This should show something every time, and be suitable for
             # headless operation and embedding
+            from warnings import warn
             warn("file group %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
