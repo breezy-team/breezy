@@ -3,6 +3,7 @@ import bzrlib.errors as errors
 from bzrlib.errors import LockError, ReadOnlyError
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
+from osutils import file_iterator
 
 class LockableFiles(object):
     """Object representing a set of lockable files
@@ -98,16 +99,12 @@ class LockableFiles(object):
         import codecs
         from iterablefile import IterableFile
         ctrl_files = []
-        def file_iterator(unicode_file, bufsize=32768):
-            while True:
-                b = unicode_file.read(bufsize)
-                if len(b) == 0:
-                    break
-                yield b
         if hasattr(file, 'read'):
             iterator = file_iterator(file)
         else:
             iterator = file
+        # IterableFile would not be needed if Transport.put took iterables
+        # instead of files.  ADHB 2005-12-25
         encoded_file = IterableFile(b.encode('utf-8', 'replace') for b in 
                                     iterator)
         self.put(path, encoded_file)
