@@ -730,3 +730,14 @@ class HttpTransportTest(TestCaseWithWebserver, TestTransportMixIn):
     def get_bogus_transport(self):
         from bzrlib.transport.http import HttpTransport
         return HttpTransport('http://jasldkjsalkdjalksjdkljasd')
+
+
+class MemoryTransportTest(TestCase):
+    """Memory transport specific tests."""
+
+    def test_parameters(self):
+        import bzrlib.transport.memory as memory
+        transport = memory.MemoryTransport()
+        self.assertEqual(True, transport.listable())
+        self.assertEqual(False, transport.should_cache())
+        self.assertEqual(False, transport.is_readonly())
