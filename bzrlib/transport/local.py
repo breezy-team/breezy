@@ -132,7 +132,10 @@ class LocalTransport(Transport):
         """Append the text in the file-like object into the final
         location.
         """
-        fp = open(self.abspath(relpath), 'ab')
+        try:
+            fp = open(self.abspath(relpath), 'ab')
+        except (IOError, OSError),e:
+            self._translate_error(e, relpath)
         self._pump(f, fp)
 
     def copy(self, rel_from, rel_to):

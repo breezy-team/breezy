@@ -215,6 +215,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.check_transport_contents('contents of dir_a/a', t, 'dir_a/a')
         self.check_transport_contents('contents of dir_b/b', t, 'dir_b/b')
 
+        # mkdir of a dir with an absent parent
+        self.assertRaises(NoSuchFile, t.mkdir, 'missing/dir')
+
     def test_copy_to(self):
         import tempfile
         from bzrlib.transport.memory import MemoryTransport
@@ -332,6 +335,12 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.check_transport_contents('some text\nfor a missing file\n',
                                       t, 'c')
         self.check_transport_contents('missing file r\n', t, 'd')
+        
+        # a file with no parent should fail..
+        if not t.is_readonly():
+            self.assertRaises(NoSuchFile,
+                              t.append, 'missing/path', 
+                              StringIO('content'))
 
     def test_append_file(self):
         t = self.get_transport()
@@ -662,7 +671,6 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
 
-        
 ###class HttpTransportTest(TestCaseWithWebserver):
 ###
 ###    readonly = True
@@ -671,86 +679,18 @@ class TestTransportImplementation(TestCaseInTempDir):
 ###        from bzrlib.transport.http import HttpTransport
 ###        return HttpTransport('http://jasldkjsalkdjalksjdkljasd')
 
-
-class TestMemoryTransport(TestCase):
-
-    def test_get_transport(self):
-        memory.MemoryTransport()
-
-    def test_relpath(self):
-        transport = memory.MemoryTransport()
-
-    def test_append_and_get(self):
-        transport = memory.MemoryTransport()
-        transport.append('path', StringIO('content'))
-        self.assertEqual(transport.get('path').read(), 'content')
-        transport.append('path', StringIO('content'))
-        self.assertEqual(transport.get('path').read(), 'contentcontent')
-
-    def test_put_and_get(self):
-        transport = memory.MemoryTransport()
-        transport.put('path', StringIO('content'))
-        self.assertEqual(transport.get('path').read(), 'content')
-        transport.put('path', StringIO('content'))
-        self.assertEqual(transport.get('path').read(), 'content')
-
-    def test_append_without_dir_fails(self):
-        transport = memory.MemoryTransport()
-        self.assertRaises(NoSuchFile,
-                          transport.append, 'dir/path', StringIO('content'))
-
-    def test_put_without_dir_fails(self):
-        transport = memory.MemoryTransport()
-        self.assertRaises(NoSuchFile,
-                          transport.put, 'dir/path', StringIO('content'))
-
-    def test_get_missing(self):
-        transport = memory.MemoryTransport()
-        self.assertRaises(NoSuchFile, transport.get, 'foo')
-
-    def test_has_missing(self):
-        transport = memory.MemoryTransport()
-        self.assertEquals(False, transport.has('foo'))
-
-    def test_has_present(self):
-        transport = memory.MemoryTransport()
-        transport.append('foo', StringIO('content'))
-        self.assertEquals(True, transport.has('foo'))
-
-    def test_mkdir(self):
-        transport = memory.MemoryTransport()
-        transport.mkdir('dir')
-        transport.append('dir/path', StringIO('content'))
-        self.assertEqual(transport.get('dir/path').read(), 'content')
-
-    def test_mkdir_missing_parent(self):
-        transport = memory.MemoryTransport()
-        self.assertRaises(NoSuchFile,
-                          transport.mkdir, 'dir/dir')
-
-    def test_mkdir_twice(self):
-        transport = memory.MemoryTransport()
-        transport.mkdir('dir')
-        self.assertRaises(FileExists, transport.mkdir, 'dir')
-
-    def test_parameters(self):
-        transport = memory.MemoryTransport()
-        self.assertEqual(True, transport.listable())
-        self.assertEqual(False, transport.should_cache())
-
     def test_iter_files_recursive(self):
-        transport = memory.MemoryTransport()
-        transport.mkdir('dir')
-        transport.put('dir/foo', StringIO('content'))
-        transport.put('dir/bar', StringIO('content'))
-        transport.put('bar', StringIO('content'))
+        transport = self.get_transport()
+        if not transport.listable():
+            self.assertRaises(TransportNotPossible, 
+                              transport.iter_files_recursive)
+            return
+        self.build_tree(['isolated/', 
+                         'isolated/dir/',
+                         'isolated/dir/foo',
+                         'isolated/dir/bar',
+                         'isolated/bar'],
+                        transport=transport)
+        transport = transport.clone('isolated')
         paths = set(transport.iter_files_recursive())
         self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
-
-    def test_stat(self):
-        transport = memory.MemoryTransport()
-        transport.put('foo', StringIO('content'))
-        transport.put('bar', StringIO('phowar'))
-        self.assertEqual(7, transport.stat('foo').st_size)
-        self.assertEqual(6, transport.stat('bar').st_size)
-

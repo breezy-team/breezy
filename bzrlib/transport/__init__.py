@@ -190,7 +190,10 @@ class Transport(object):
         As with other listing functions, only some transports implement this,.
         you may check via is_listable to determine if it will.
         """
-        raise NotImplementedError
+        raise errors.TransportNotPossible("This transport has not "
+                                          "implemented iter_files_recursive."
+                                          "(but must claim to be listable "
+                                          "to trigger this error).")
 
     def get(self, relpath):
         """Get the file at the given relative path.
