@@ -25,7 +25,7 @@ import tempfile
 import urllib
 
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport
+from bzrlib.transport import Transport, Server
 from bzrlib.osutils import abspath
 
 
@@ -38,8 +38,10 @@ class LocalTransport(Transport):
             base = base[7:]
         # realpath is incompatible with symlinks. When we traverse
         # up we might be able to normpath stuff. RBC 20051003
-        super(LocalTransport, self).__init__(
-            os.path.normpath(abspath(base)))
+        base = os.path.normpath(abspath(base))
+        if base[-1] != '/':
+            base = base + '/'
+        super(LocalTransport, self).__init__(base)
 
     def should_cache(self):
         return False
@@ -67,7 +69,9 @@ class LocalTransport(Transport):
         from bzrlib.osutils import relpath
         if abspath is None:
             abspath = u'.'
-        return relpath(self.base, abspath)
+        if abspath.endswith('/'):
+            abspath = abspath[:-1]
+        return relpath(self.base[:-1], abspath)
 
     def has(self, relpath):
         return os.access(self.abspath(relpath), os.F_OK)
@@ -247,13 +251,26 @@ class ScratchTransport(LocalTransport):
         mutter("%r destroyed" % self)
 
 
-class LocalRelpathServer(object):
+class LocalRelpathServer(Server):
     """A pretend server for local transports, using relpaths."""
 
+    def get_url(self):
+        """See Transport.Server.get_url."""
+        return "."
 
-class LocalAbspathServer(object):
+
+class LocalAbspathServer(Server):
     """A pretend server for local transports, using absolute paths."""
 
+    def get_url(self):
+        """See Transport.Server.get_url."""
+        return os.path.abspath("")
 
-class LocalURLServer(object):
+
+class LocalURLServer(Server):
     """A pretend server for local transports, using file:// urls."""
+
+    def get_url(self):
+        """See Transport.Server.get_url."""
+        # FIXME: \ to / on windows
+        return "file://%s" % os.path.abspath("")

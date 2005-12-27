@@ -155,11 +155,10 @@ class Transport(object):
         """
         # TODO: This might want to use bzrlib.osutils.relpath
         #       but we have to watch out because of the prefix issues
-        if not abspath.startswith(self.base):
+        if not (abspath == self.base[:-1] or abspath.startswith(self.base)):
             raise errors.PathNotChild(abspath, self.base)
         pl = len(self.base)
-        return abspath[pl:].lstrip('/')
-
+        return abspath[pl:].strip('/')
 
     def has(self, relpath):
         """Does the file relpath exist?
@@ -226,7 +225,7 @@ class Transport(object):
         raise NotImplementedError
 
     def put_multi(self, files, pb=None):
-        """Put a set of files or strings into the location.
+        """Put a set of files into the location.
 
         :param files: A list of tuples of relpath, file object [(path1, file1), (path2, file2),...]
         :param pb:  An optional ProgressBar for indicating percent done.
@@ -258,8 +257,12 @@ class Transport(object):
         return self._iterate_over(files, self.append, pb, 'append', expand=True)
 
     def copy(self, rel_from, rel_to):
-        """Copy the item at rel_from to the location at rel_to"""
-        raise NotImplementedError
+        """Copy the item at rel_from to the location at rel_to.
+        
+        Override this for efficiency if a specific transport can do it 
+        faster than this default implementation.
+        """
+        self.put(rel_to, self.get(rel_from))
 
     def copy_multi(self, relpaths, pb=None):
         """Copy a bunch of entries.
@@ -285,8 +288,13 @@ class Transport(object):
 
 
     def move(self, rel_from, rel_to):
-        """Move the item at rel_from to the location at rel_to"""
-        raise NotImplementedError
+        """Move the item at rel_from to the location at rel_to.
+        
+        If a transport can directly implement this it is suggested that
+        it do so for efficiency.
+        """
+        self.copy(rel_from, rel_to)
+        self.delete(rel_from)
 
     def move_multi(self, relpaths, pb=None):
         """Move a bunch of entries.
@@ -350,7 +358,9 @@ class Transport(object):
         it if at all possible.
         """
         raise errors.TransportNotPossible("This transport has not "
-                                          "implemented list_dir.")
+                                          "implemented list_dir."
+                                          "(but must claim to be listable "
+                                          "to trigger this error).")
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
@@ -367,6 +377,10 @@ class Transport(object):
         :return: A lock object, which should contain an unlock() function.
         """
         raise NotImplementedError
+
+    def is_readonly(self):
+        """Return true if this connection cannot be written to."""
+        return False
 
 
 def get_transport(base):
@@ -401,6 +415,27 @@ def urlescape(relpath):
     return urllib.quote(relpath)
 
 
+class Server(object):
+    """Basic server API for paths."""
+
+    def setUp(self):
+        """Setup the server to service requests."""
+
+    def tearDown(self):
+        """Remove the server and cleanup any resources it owns."""
+
+    def get_url(self):
+        """Return a url for this server to os.getcwdu.
+        
+        If the transport does not represent a disk directory (i.e. it is 
+        a databse like svn, or a memory only transport, it should return
+        a connection to a newly established resource for this Server.
+        
+        Subsequent calls will return the same resource.
+        """
+        raise NotImplementedError
+
+
 class TransportTestProviderAdapter(object):
     """A class which can setup transport interface tests."""
 
@@ -410,6 +445,10 @@ class TransportTestProviderAdapter(object):
             new_test = deepcopy(test)
             new_test.transport_class = klass
             new_test.transport_server = server_factory
+            def make_new_test_id():
+                new_id = "%s(%s)" % (new_test.id(), server_factory.__name__)
+                return lambda: new_id
+            new_test.id = make_new_test_id()
             result.addTest(new_test)
         return result
 
@@ -428,12 +467,16 @@ class TransportTestProviderAdapter(object):
                                            HttpServer
                                            )
         from bzrlib.transport.ftp import FtpTransport
+        from bzrlib.transport.memory import (MemoryTransport,
+                                             MemoryServer
+                                             )
         return [(LocalTransport, LocalRelpathServer),
                 (LocalTransport, LocalAbspathServer),
                 (LocalTransport, LocalURLServer),
                 (SFTPTransport, SFTPAbsoluteServer),
                 (SFTPTransport, SFTPHomeDirServer),
                 (HttpTransport, HttpServer),
+                (MemoryTransport, MemoryServer),
                 ]
         
 

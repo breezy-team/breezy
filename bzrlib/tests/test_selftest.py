@@ -75,6 +75,9 @@ class TestTransportProviderAdapter(TestCase):
                                            HttpServer
                                            )
         from bzrlib.transport.ftp import FtpTransport
+        from bzrlib.transport.memory import (MemoryTransport,
+                                             MemoryServer
+                                             )
         from bzrlib.transport import TransportTestProviderAdapter
         # FIXME. What we want is a factory for the things
         # needed to test the implementation. I.e. for transport we want:
@@ -101,6 +104,7 @@ class TestTransportProviderAdapter(TestCase):
         sftp_abs_test = test_iter.next()
         sftp_homedir_test = test_iter.next()
         http_test = test_iter.next()
+        memory_test = test_iter.next()
         # ftp_test = test_iter.next()
         self.assertRaises(StopIteration, test_iter.next)
         self.assertEqual(LocalTransport, local_relpath_test.transport_class)
@@ -116,7 +120,20 @@ class TestTransportProviderAdapter(TestCase):
         self.assertEqual(SFTPAbsoluteServer, sftp_abs_test.transport_server)
         self.assertEqual(SFTPTransport, sftp_homedir_test.transport_class)
         self.assertEqual(SFTPHomeDirServer, sftp_homedir_test.transport_server)
+
         self.assertEqual(HttpTransport, http_test.transport_class)
         self.assertEqual(HttpServer, http_test.transport_server)
         # self.assertEqual(FtpTransport, ftp_test.transport_class)
+
+        self.assertEqual(MemoryTransport, memory_test.transport_class)
+        self.assertEqual(MemoryServer, memory_test.transport_server)
         
+        # we could test all of them for .id, but two is probably sufficient.
+        self.assertEqual("bzrlib.tests.test_selftest."
+                         "TestTransportProviderAdapter."
+                         "test_adapter_sets_transport_class(MemoryServer)",
+                         memory_test.id())
+        self.assertEqual("bzrlib.tests.test_selftest."
+                         "TestTransportProviderAdapter."
+                         "test_adapter_sets_transport_class(LocalRelpathServer)",
+                         local_relpath_test.id())

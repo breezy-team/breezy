@@ -37,6 +37,7 @@ import bzrlib.osutils
 import bzrlib.plugin
 import bzrlib.store
 import bzrlib.trace
+from bzrlib.transport import urlescape
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.tests.treeshape import build_tree_contents
@@ -156,14 +157,14 @@ class _MyResult(unittest._TextTestResult):
     def printErrorList(self, flavour, errors):
         for test, err in errors:
             self.stream.writeln(self.separator1)
-            self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
+            self.stream.writeln("%s: %s" % (flavour, self.getDescription(test)))
             if hasattr(test, '_get_log'):
                 print >>self.stream
                 print >>self.stream, \
-                        ('vvvv[log from %s]' % test).ljust(78,'-')
+                        ('vvvv[log from %s]' % test.id()).ljust(78,'-')
                 print >>self.stream, test._get_log()
                 print >>self.stream, \
-                        ('^^^^[log from %s]' % test).ljust(78,'-')
+                        ('^^^^[log from %s]' % test.id()).ljust(78,'-')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
@@ -544,7 +545,7 @@ class TestCaseInTempDir(TestCase):
             os.chdir(_currentdir)
         self.addCleanup(_leaveDirectory)
         
-    def build_tree(self, shape, line_endings='native'):
+    def build_tree(self, shape, line_endings='native', transport=None):
         """Build a test tree according to a pattern.
 
         shape is a sequence of file specifications.  If the final
@@ -555,21 +556,27 @@ class TestCaseInTempDir(TestCase):
                              in binary mode, exact contents are written
                              in native mode, the line endings match the
                              default platform endings.
+
+        :param transport: A transport to write to, for building trees on 
+                          VFS's. If the transport is readonly or None,
+                          "." is opened automatically.
         """
         # XXX: It's OK to just create them using forward slashes on windows?
+        if transport is None or transport.is_readonly():
+            transport = bzrlib.transport.get_transport(".")
         for name in shape:
             self.assert_(isinstance(name, basestring))
             if name[-1] == '/':
-                os.mkdir(name[:-1])
+                transport.mkdir(urlescape(name[:-1]))
             else:
                 if line_endings == 'binary':
-                    f = file(name, 'wb')
+                    end = '\n'
                 elif line_endings == 'native':
-                    f = file(name, 'wt')
+                    end = os.linesep
                 else:
                     raise BzrError('Invalid line ending request %r' % (line_endings,))
-                print >>f, "contents of", name
-                f.close()
+                content = "contents of %s%s" % (name, end)
+                transport.put(urlescape(name), StringIO(content))
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
@@ -688,6 +695,8 @@ def test_suite():
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_xml',
                    ]
+    test_transport_implementations = [
+        'bzrlib.tests.test_transport_implementations']
 
     print '%10s: %s' % ('bzr', os.path.realpath(sys.argv[0]))
     print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
@@ -698,6 +707,12 @@ def test_suite():
     # actually wrong, just "no such module".  We should probably override that
     # class, but for the moment just load them ourselves. (mbp 20051202)
     loader = TestLoader()
+    from bzrlib.transport import TransportTestProviderAdapter
+    adapter = TransportTestProviderAdapter()
+    for mod_name in test_transport_implementations:
+        mod = _load_module_by_name(mod_name)
+        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
+            suite.addTests(adapter.adapt(test))
     for mod_name in testmod_names:
         mod = _load_module_by_name(mod_name)
         suite.addTest(loader.loadTestsFromModule(mod))

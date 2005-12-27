@@ -52,7 +52,4 @@ class TestParent(TestCaseInTempDir):
         copy_branch(branch_from, 'to', None)
 
         branch_to = Branch.open('to')
-        abspath = os.path.abspath('from')
-        self.assertEquals(branch_to.get_parent(), abspath)
-        
-
+        self.assertEquals(branch_to.get_parent(), branch_from.base)

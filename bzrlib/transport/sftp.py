@@ -29,13 +29,15 @@ import random
 import subprocess
 import weakref
 
-from bzrlib.errors import (FileExists, 
+from bzrlib.errors import (ConnectionError,
+                           FileExists, 
                            TransportNotPossible, NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError)
+                           LockError
+                           )
 from bzrlib.config import config_dir
 from bzrlib.trace import mutter, warning, error
-from bzrlib.transport import Transport, register_transport
+from bzrlib.transport import Transport, Server, urlescape
 import bzrlib.ui
 
 try:
@@ -98,8 +100,7 @@ def _get_ssh_vendor():
 
 class SFTPSubprocess:
     """A socket-like object that talks to an ssh subprocess via pipes."""
-    def __init__(self, hostname, port=None, user=None):
-        vendor = _get_ssh_vendor()
+    def __init__(self, hostname, vendor, port=None, user=None):
         assert vendor in ['openssh', 'ssh']
         if vendor == 'openssh':
             args = ['ssh',
@@ -213,6 +214,7 @@ class SFTPLock(object):
             pass
 
 
+
 class SFTPTransport (Transport):
     """
     Transport implementation for SFTP access.
@@ -223,6 +225,8 @@ class SFTPTransport (Transport):
         assert base.startswith('sftp://')
         self._parse_url(base)
         base = self._unparse_url()
+        if base[-1] != '/':
+            base = base + '/'
         super(SFTPTransport, self).__init__(base)
         if clone_from is None:
             self._sftp_connect()
@@ -299,7 +303,7 @@ class SFTPTransport (Transport):
             extra = ': ' + ', '.join(error)
             raise PathNotChild(abspath, self.base, extra=extra)
         pl = len(self._path)
-        return path[pl:].lstrip('/')
+        return path[pl:].strip('/')
 
     def has(self, relpath):
         """
@@ -656,7 +660,8 @@ class SFTPTransport (Transport):
         
         vendor = _get_ssh_vendor()
         if vendor != 'none':
-            sock = SFTPSubprocess(self._host, self._port, self._username)
+            sock = SFTPSubprocess(self._host, vendor, self._port,
+                                  self._username)
             self._sftp = SFTPClient(sock)
         else:
             self._paramiko_connect()
@@ -736,7 +741,6 @@ class SFTPTransport (Transport):
         if self._try_pkey_auth(transport, paramiko.DSSKey, username, 'id_dsa'):
             return
 
-
         if self._password:
             try:
                 transport.auth_password(username, self._password)
@@ -807,9 +811,123 @@ class SFTPTransport (Transport):
                 failure_exc=FileExists)
 
 
-class SFTPAbsoluteServer(object):
+# ------------- server test implementation --------------
+import socket
+import threading
+
+from bzrlib.tests.stub_sftp import StubServer, StubSFTPServer
+
+STUB_SERVER_KEY = """
+-----BEGIN RSA PRIVATE KEY-----
+MIICWgIBAAKBgQDTj1bqB4WmayWNPB+8jVSYpZYk80Ujvj680pOTh2bORBjbIAyz
+oWGW+GUjzKxTiiPvVmxFgx5wdsFvF03v34lEVVhMpouqPAYQ15N37K/ir5XY+9m/
+d8ufMCkjeXsQkKqFbAlQcnWMCRnOoPHS3I4vi6hmnDDeeYTSRvfLbW0fhwIBIwKB
+gBIiOqZYaoqbeD9OS9z2K9KR2atlTxGxOJPXiP4ESqP3NVScWNwyZ3NXHpyrJLa0
+EbVtzsQhLn6rF+TzXnOlcipFvjsem3iYzCpuChfGQ6SovTcOjHV9z+hnpXvQ/fon
+soVRZY65wKnF7IAoUwTmJS9opqgrN6kRgCd3DASAMd1bAkEA96SBVWFt/fJBNJ9H
+tYnBKZGw0VeHOYmVYbvMSstssn8un+pQpUm9vlG/bp7Oxd/m+b9KWEh2xPfv6zqU
+avNwHwJBANqzGZa/EpzF4J8pGti7oIAPUIDGMtfIcmqNXVMckrmzQ2vTfqtkEZsA
+4rE1IERRyiJQx6EJsz21wJmGV9WJQ5kCQQDwkS0uXqVdFzgHO6S++tjmjYcxwr3g
+H0CoFYSgbddOT6miqRskOQF3DZVkJT3kyuBgU2zKygz52ukQZMqxCb1fAkASvuTv
+qfpH87Qq5kQhNKdbbwbmd2NxlNabazPijWuphGTdW0VfJdWfklyS2Kr+iqrs/5wV
+HhathJt636Eg7oIjAkA8ht3MQ+XSl9yIJIS8gVpbPxSw5OMfw0PjVE7tBdQruiSc
+nvuQES5C9BMHjF39LZiGH1iLQy7FgdHyoP+eodI7
+-----END RSA PRIVATE KEY-----
+"""
+    
+
+class SingleListener(threading.Thread):
+
+    def __init__(self, callback):
+        threading.Thread.__init__(self)
+        self._callback = callback
+        self._socket = socket.socket()
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._socket.bind(('localhost', 0))
+        self._socket.listen(1)
+        self.port = self._socket.getsockname()[1]
+        self.stop_event = threading.Event()
+
+    def run(self):
+        s, _ = self._socket.accept()
+        # now close the listen socket
+        self._socket.close()
+        self._callback(s, self.stop_event)
+    
+    def stop(self):
+        self.stop_event.set()
+        # We should consider waiting for the other thread
+        # to stop, because otherwise we get spurious
+        #   bzr: ERROR: Socket exception: Connection reset by peer (54)
+        # because the test suite finishes before the thread has a chance
+        # to close. (Especially when only running a few tests)
+        
+        
+class SFTPServer(Server):
+    """Common code for SFTP server facilities."""
+
+    def _get_sftp_url(self, path):
+        """Calculate a sftp url to this server for path."""
+        return 'sftp://foo:bar@localhost:%d/%s' % (self._listener.port, path)
+
+    def __init__(self):
+        self._original_vendor = None
+        self._homedir = None
+        self._listener = None
+        self._root = None
+
+    def log(self, *args, **kwargs):
+        """What to do here? do we need this? Its for the StubServer.."""
+
+    def _run_server(self, s, stop_event):
+        ssh_server = paramiko.Transport(s)
+        key_file = os.path.join(self._homedir, 'test_rsa.key')
+        file(key_file, 'w').write(STUB_SERVER_KEY)
+        host_key = paramiko.RSAKey.from_private_key_file(key_file)
+        ssh_server.add_server_key(host_key)
+        server = StubServer(self)
+        ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer,
+                                         StubSFTPServer, root=self._root,
+                                         home=self._homedir)
+        event = threading.Event()
+        ssh_server.start_server(event, server)
+        event.wait(5.0)
+        stop_event.wait(30.0)
+
+    def setUp(self):
+        """See bzrlib.transport.Server.setUp."""
+        # XXX: 20051124 jamesh
+        # The tests currently pop up a password prompt when an external ssh
+        # is used.  This forces the use of the paramiko implementation.
+        global _ssh_vendor
+        self._original_vendor = _ssh_vendor
+        _ssh_vendor = 'none'
+        self._homedir = os.getcwdu()
+        self._root = '/'
+        # FIXME WINDOWS: _root should be _homedir[0]:/
+        self._listener = SingleListener(self._run_server)
+        self._listener.setDaemon(True)
+        self._listener.start()
+
+    def tearDown(self):
+        """See bzrlib.transport.Server.tearDown."""
+        global _ssh_vendor
+        self._listener.stop()
+        _ssh_vendor = self._original_vendor
+
+
+class SFTPAbsoluteServer(SFTPServer):
     """A test server for sftp transports, using absolute urls."""
 
+    def get_url(self):
+        """See bzrlib.transport.Server.get_url."""
+        return self._get_sftp_url("%%2f%s" % 
+                urlescape(self._homedir[1:]))
 
-class SFTPHomeDirServer(object):
+
+class SFTPHomeDirServer(SFTPServer):
     """A test server for sftp transports, using homedir relative urls."""
+
+    def get_url(self):
+        """See bzrlib.transport.Server.get_url."""
+        return self._get_sftp_url("")

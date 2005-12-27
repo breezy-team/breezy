@@ -16,14 +16,14 @@
 """Implementation of Transport over http.
 """
 
-from bzrlib.transport import Transport, register_transport
-from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
-                           TransportError, ConnectionError)
 import os, errno
 from cStringIO import StringIO
 import urllib, urllib2
 import urlparse
 
+from bzrlib.transport import Transport, Server
+from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
+                           TransportError, ConnectionError)
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
@@ -79,6 +79,8 @@ class HttpTransport(Transport):
     def __init__(self, base):
         """Set the base path where files will be stored."""
         assert base.startswith('http://') or base.startswith('https://')
+        if base[-1] != '/':
+            base = base + '/'
         super(HttpTransport, self).__init__(base)
         # In the future we might actually connect to the remote host
         # rather than using get_url
@@ -242,6 +244,10 @@ class HttpTransport(Transport):
         """Delete the item at relpath"""
         raise TransportNotPossible('http does not support delete()')
 
+    def is_readonly(self):
+        """See Transport.is_readonly."""
+        return True
+
     def listable(self):
         """See Transport.listable."""
         return False
@@ -273,5 +279,144 @@ class HttpTransport(Transport):
         raise TransportNotPossible('http does not support lock_write()')
 
 
-class HttpServer(object):
+#---------------- test server facilities ----------------
+import BaseHTTPServer, SimpleHTTPServer, socket, time
+import threading
+
+
+class WebserverNotAvailable(Exception):
+    pass
+
+
+class BadWebserverPath(ValueError):
+    def __str__(self):
+        return 'path %s is not in %s' % self.args
+
+
+class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+
+    def log_message(self, format, *args):
+        self.server.test_case.log("webserver - %s - - [%s] %s",
+                                  self.address_string(),
+                                  self.log_date_time_string(),
+                                  format%args)
+
+    def handle_one_request(self):
+        """Handle a single HTTP request.
+
+        You normally don't need to override this method; see the class
+        __doc__ string for information on how to handle specific HTTP
+        commands such as GET and POST.
+
+        """
+        for i in xrange(1,11): # Don't try more than 10 times
+            try:
+                self.raw_requestline = self.rfile.readline()
+            except socket.error, e:
+                if e.args[0] in (errno.EAGAIN, errno.EWOULDBLOCK):
+                    # omitted for now because some tests look at the log of
+                    # the server and expect to see no errors.  see recent
+                    # email thread. -- mbp 20051021. 
+                    ## self.log_message('EAGAIN (%d) while reading from raw_requestline' % i)
+                    time.sleep(0.01)
+                    continue
+                raise
+            else:
+                break
+        if not self.raw_requestline:
+            self.close_connection = 1
+            return
+        if not self.parse_request(): # An error code has been sent, just exit
+            return
+        mname = 'do_' + self.command
+        if not hasattr(self, mname):
+            self.send_error(501, "Unsupported method (%r)" % self.command)
+            return
+        method = getattr(self, mname)
+        method()
+
+class TestingHTTPServer(BaseHTTPServer.HTTPServer):
+    def __init__(self, server_address, RequestHandlerClass, test_case):
+        BaseHTTPServer.HTTPServer.__init__(self, server_address,
+                                                RequestHandlerClass)
+        self.test_case = test_case
+
+
+class HttpServer(Server):
     """A test server for http transports."""
+
+    _HTTP_PORTS = range(13000, 0x8000)
+
+    def _http_start(self):
+        httpd = None
+        for port in self._HTTP_PORTS:
+            try:
+                httpd = TestingHTTPServer(('localhost', port),
+                                          TestingHTTPRequestHandler,
+                                          self)
+            except socket.error, e:
+                if e.args[0] == errno.EADDRINUSE:
+                    continue
+                print >>sys.stderr, "Cannot run webserver :-("
+                raise
+            else:
+                break
+
+        if httpd is None:
+            raise WebserverNotAvailable("Cannot run webserver :-( "
+                                        "no free ports in range %s..%s" %
+                                        (_HTTP_PORTS[0], _HTTP_PORTS[-1]))
+
+        self._http_base_url = 'http://localhost:%s/' % port
+        self._http_starting.release()
+        httpd.socket.settimeout(0.1)
+
+        while self._http_running:
+            try:
+                httpd.handle_request()
+            except socket.timeout:
+                pass
+
+    def _get_remote_url(self, path):
+        path_parts = path.split(os.path.sep)
+        if os.path.isabs(path):
+            if path_parts[:len(self._local_path_parts)] != \
+                   self._local_path_parts:
+                raise BadWebserverPath(path, self.test_dir)
+            remote_path = '/'.join(path_parts[len(self._local_path_parts):])
+        else:
+            remote_path = '/'.join(path_parts)
+
+        self._http_starting.acquire()
+        self._http_starting.release()
+        return self._http_base_url + remote_path
+
+    def log(self, *args, **kwargs):
+        """Capture Server log output."""
+
+    def setUp(self):
+        """See bzrlib.transport.Server.setUp."""
+        self._home_dir = os.getcwdu()
+        self._local_path_parts = self._home_dir.split(os.path.sep)
+        self._http_starting = threading.Lock()
+        self._http_starting.acquire()
+        self._http_running = True
+        self._http_base_url = None
+        self._http_thread = threading.Thread(target=self._http_start)
+        self._http_thread.setDaemon(True)
+        self._http_thread.start()
+        self._http_proxy = os.environ.get("http_proxy")
+        if self._http_proxy is not None:
+            del os.environ["http_proxy"]
+
+    def tearDown(self):
+        """See bzrlib.transport.Server.tearDown."""
+        self._http_running = False
+        self._http_thread.join()
+        if self._http_proxy is not None:
+            import os
+            os.environ["http_proxy"] = self._http_proxy
+
+    def get_url(self):
+        """See bzrlib.transport.Server.get_url."""
+        return self._get_remote_url(self._home_dir)
