@@ -68,16 +68,13 @@ class cmd_version_info(Command):
 
         outf = codecs.getwriter('utf-8')(sys.stdout)
 
-        include_log_info = False
         if all:
             include_history = True
             check_clean = True
-            include_log_info = True
 
         format(b, to_file=outf,
                 check_for_clean=check_clean,
-                include_revision_history=include_history,
-                include_log_info=include_log_info)
+                include_revision_history=include_history)
 
 
 register_command(cmd_version_info)
