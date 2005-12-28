@@ -875,9 +875,12 @@ class SFTPServer(Server):
         self._homedir = None
         self._listener = None
         self._root = None
+        # sftp server logs
+        self.logs = []
 
-    def log(self, *args, **kwargs):
+    def log(self, message):
         """What to do here? do we need this? Its for the StubServer.."""
+        self.logs.append(message)
 
     def _run_server(self, s, stop_event):
         ssh_server = paramiko.Transport(s)

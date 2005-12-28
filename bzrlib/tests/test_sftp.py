@@ -26,157 +26,52 @@ import bzrlib.transport
 
 try:
     import paramiko
-    from stub_sftp import StubServer, StubSFTPServer
     paramiko_loaded = True
 except ImportError:
     paramiko_loaded = False
 
-# XXX: 20051124 jamesh
-# The tests currently pop up a password prompt when an external ssh
-# is used.  This forces the use of the paramiko implementation.
-if paramiko_loaded:
-    import bzrlib.transport.sftp
-    bzrlib.transport.sftp._ssh_vendor = 'none'
 
-
-STUB_SERVER_KEY = """
------BEGIN RSA PRIVATE KEY-----
-MIICWgIBAAKBgQDTj1bqB4WmayWNPB+8jVSYpZYk80Ujvj680pOTh2bORBjbIAyz
-oWGW+GUjzKxTiiPvVmxFgx5wdsFvF03v34lEVVhMpouqPAYQ15N37K/ir5XY+9m/
-d8ufMCkjeXsQkKqFbAlQcnWMCRnOoPHS3I4vi6hmnDDeeYTSRvfLbW0fhwIBIwKB
-gBIiOqZYaoqbeD9OS9z2K9KR2atlTxGxOJPXiP4ESqP3NVScWNwyZ3NXHpyrJLa0
-EbVtzsQhLn6rF+TzXnOlcipFvjsem3iYzCpuChfGQ6SovTcOjHV9z+hnpXvQ/fon
-soVRZY65wKnF7IAoUwTmJS9opqgrN6kRgCd3DASAMd1bAkEA96SBVWFt/fJBNJ9H
-tYnBKZGw0VeHOYmVYbvMSstssn8un+pQpUm9vlG/bp7Oxd/m+b9KWEh2xPfv6zqU
-avNwHwJBANqzGZa/EpzF4J8pGti7oIAPUIDGMtfIcmqNXVMckrmzQ2vTfqtkEZsA
-4rE1IERRyiJQx6EJsz21wJmGV9WJQ5kCQQDwkS0uXqVdFzgHO6S++tjmjYcxwr3g
-H0CoFYSgbddOT6miqRskOQF3DZVkJT3kyuBgU2zKygz52ukQZMqxCb1fAkASvuTv
-qfpH87Qq5kQhNKdbbwbmd2NxlNabazPijWuphGTdW0VfJdWfklyS2Kr+iqrs/5wV
-HhathJt636Eg7oIjAkA8ht3MQ+XSl9yIJIS8gVpbPxSw5OMfw0PjVE7tBdQruiSc
-nvuQES5C9BMHjF39LZiGH1iLQy7FgdHyoP+eodI7
------END RSA PRIVATE KEY-----
-"""
-    
-
-class SingleListener (threading.Thread):
-
-    def __init__(self, callback):
-        threading.Thread.__init__(self)
-        self._callback = callback
-        self._socket = socket.socket()
-        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self._socket.bind(('localhost', 0))
-        self._socket.listen(1)
-        self.port = self._socket.getsockname()[1]
-        self.stop_event = threading.Event()
-
-    def run(self):
-        s, _ = self._socket.accept()
-        # now close the listen socket
-        self._socket.close()
-        self._callback(s, self.stop_event)
-    
-    def stop(self):
-        self.stop_event.set()
-        # We should consider waiting for the other thread
-        # to stop, because otherwise we get spurious
-        #   bzr: ERROR: Socket exception: Connection reset by peer (54)
-        # because the test suite finishes before the thread has a chance
-        # to close. (Especially when only running a few tests)
-        
-        
 class TestCaseWithSFTPServer(TestCaseInTempDir):
-    """
-    Execute a test case with a stub SFTP server, serving files from the local
-    filesystem over the loopback network.
-    """
-
-    def _run_server(self, s, stop_event):
-        ssh_server = paramiko.Transport(s)
-        key_file = os.path.join(self._root, 'test_rsa.key')
-        file(key_file, 'w').write(STUB_SERVER_KEY)
-        host_key = paramiko.RSAKey.from_private_key_file(key_file)
-        ssh_server.add_server_key(host_key)
-        server = StubServer(self)
-        if self._override_home is None:
-            home = self._root
-        else:
-            home = self._override_home
-        ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer, 
-                                         StubSFTPServer, root='/',
-                                         home=home)
-        event = threading.Event()
-        ssh_server.start_server(event, server)
-        event.wait(5.0)
-        stop_event.wait(30.0)
+    """A test case base class that provides a sftp server on localhost."""
 
     def setUp(self):
         super(TestCaseWithSFTPServer, self).setUp()
+        from bzrlib.transport.sftp import SFTPAbsoluteServer, SFTPHomeDirServer
+        if getattr(self, '_get_remote_is_absolute', None) is None:
+            self._get_remote_is_absolute = True
+        if self._get_remote_is_absolute:
+            self.server = SFTPAbsoluteServer()
+        else:
+            self.server = SFTPHomeDirServer()
+        self.server.setUp()
+        self._sftp_url = self.server.get_url()
         self._root = self.test_dir
         # Set to a string in setUp to give sftp server a new homedir.
         self._override_home = None
         self._is_setup = False
-        self._get_remote_is_absolute = True
         self.sftplogs = []
 
-    def delayed_setup(self):
-        # some tests are just stubs that call setUp and then immediately call
-        # tearDwon.  so don't create the port listener until get_transport is
-        # called and we know we're in an actual test.
-        if self._is_setup:
-            return
-        self._listener = SingleListener(self._run_server)
-        self._listener.setDaemon(True)
-        self._listener.start()        
-        self._sftp_url = self._get_sftp_url("%%2f%s" % 
-            bzrlib.transport.urlescape(self._root[1:]))
-        self._is_setup = True
-        
-    def _get_sftp_url(self, path):
-        """Calculate a sftp url to this server for path."""
-        return 'sftp://foo:bar@localhost:%d/%s' % (self._listener.port, path)
-
     def get_remote_url(self, relpath_to_test_root):
-        self.delayed_setup()
-        if self._get_remote_is_absolute:
-            return self._get_sftp_url("%%2f%s" % 
-                bzrlib.transport.urlescape(self._root[1:] 
-                                           + '/'
-                                           + relpath_to_test_root))
-        else:
-            return self._get_sftp_url(
-                bzrlib.transport.urlescape(relpath_to_test_root))
+        # FIXME use urljoin ?
+        return self._sftp_url + '/' + relpath_to_test_root
 
     def tearDown(self):
         try:
-            self._listener.stop()
-        except AttributeError:
-            pass
-        TestCaseInTempDir.tearDown(self)
+            self.server.tearDown()
+        finally:
+            TestCaseInTempDir.tearDown(self)
 
     def get_transport(self, path=None):
         """Return a transport relative to self._test_root."""
-        self.delayed_setup()
-        from bzrlib.transport.sftp import SFTPTransport
+        from bzrlib.transport import get_transport
+        transport = get_transport(self._sftp_url)
         if path is None:
-            url = self._sftp_url
-            if self._get_remote_is_absolute:
-                url = self._sftp_url
-            else:
-                url = self._get_sftp_url('')
+            return transport
         else:
-            url = self._get_sftp_url(path)
-        return SFTPTransport(url)
-
-    def log(self, *args):
-        """Override the default log to grab sftp server messages"""
-        TestCaseInTempDir.log(self, *args)
-        if args and args[0].startswith('sftpserver'):
-            self.sftplogs.append(args[0])
+            return transport.clone(path)
 
 
-class SFTPTransportTestMixin (TestTransportMixIn):
-    readonly = False
+class SFTPLockTests (TestCaseWithSFTPServer):
 
     def test_sftp_locks(self):
         from bzrlib.errors import LockError
@@ -205,40 +100,29 @@ class SFTPTransportTestMixin (TestTransportMixIn):
 
     def test_multiple_connections(self):
         t = self.get_transport()
-        self.assertEquals(self.sftplogs, 
+        self.assertEquals(self.server.logs, 
                 ['sftpserver - authorizing: foo'
                , 'sftpserver - channel request: session, 1'])
-        self.sftplogs = []
+        self.server.logs = []
         # The second request should reuse the first connection
         # SingleListener only allows for a single connection,
         # So the next line fails unless the connection is reused
         t2 = self.get_transport()
-        self.assertEquals(self.sftplogs, [])
-
-
-class SFTPTransportTestAbsolute(TestCaseWithSFTPServer, SFTPTransportTestMixin):
-    """Test the SFTP transport with %2f based abs paths."""
+        self.assertEquals(self.server.logs, [])
 
 
 class SFTPTransportTestAbsoluteSibling(TestCaseWithSFTPServer, 
-                                       SFTPTransportTestMixin):
+                                       TestTransportMixIn):
     """Test the SFTP transport with %2f based sibling paths to $HOME."""
 
     def setUp(self):
-        super(SFTPTransportTestAbsoluteSibling, self).setUp()
         self._override_home = '/dev/noone/runs/tests/here'
+        super(SFTPTransportTestAbsoluteSibling, self).setUp()
 
 
-class SFTPTransportTestRelative(TestCaseWithSFTPServer, SFTPTransportTestMixin):
+class SFTPTransportTestRelative(TestCaseWithSFTPServer):
     """Test the SFTP transport with homedir based relative paths."""
 
-    def setUp(self):
-        super(SFTPTransportTestRelative, self).setUp()
-        self._get_remote_is_absolute = False
-
-
-class SFTPTransportRemotePathTest(TestCaseWithSFTPServer):
-    
     def test__remote_path(self):
         t = self.get_transport()
         # try what is currently used:
@@ -251,6 +135,14 @@ class SFTPTransportRemotePathTest(TestCaseWithSFTPServer):
         self.assertEqual(root_parent + '/sibling', t._remote_path('../sibling'))
         # /  should be illegal ?
         ### FIXME decide and then test for all transports. RBC20051208
+
+
+class SFTPTransportTestRelative(TestCaseWithSFTPServer):
+    """Test the SFTP transport with homedir based relative paths."""
+
+    def setUp(self):
+        self._get_remote_is_absolute = False
+        super(SFTPTransportTestRelative, self).setUp()
 
     def test__remote_path_relative_root(self):
         # relative paths are preserved
@@ -337,7 +229,6 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
 
     def test_lock_file(self):
         """Make sure that a Branch accessed over sftp tries to lock itself."""
-        self.delayed_setup()
         b = Branch.initialize(self._sftp_url)
         self.failUnlessExists('.bzr/')
         self.failUnlessExists('.bzr/branch-format')
@@ -350,13 +241,10 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         self.failIf(os.path.lexists('.bzr/branch-lock.write-lock'))
 
     def test_no_working_tree(self):
-        self.delayed_setup()
         b = Branch.initialize(self._sftp_url)
         self.assertRaises(errors.NoWorkingTree, b.working_tree)
 
     def test_push_support(self):
-        self.delayed_setup()
-
         self.build_tree(['a/', 'a/foo'])
         b = Branch.initialize('a')
         t = b.working_tree()
