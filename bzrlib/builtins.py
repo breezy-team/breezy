@@ -1466,7 +1466,10 @@ def show_version():
     # is bzrlib itself in a branch?
     bzrrev = bzrlib.get_bzr_revision()
     if bzrrev:
-        print "  (bzr checkout, revision %d {%s})" % bzrrev
+        revno, revision_id, branch = bzrrev
+        print "  bzr checkout, revision %d" % (revno,)
+        print "  nick: %s" % (branch.nick,)
+        print "  revid: %s" % (revision_id,)
     print bzrlib.__copyright__
     print "http://bazaar-ng.org/"
     print

@@ -103,7 +103,7 @@ def get_bzr_revision():
         branch = Branch.open(os.path.dirname(__path__[0]))
         rh = branch.revision_history()
         if rh:
-            return len(rh), rh[-1]
+            return len(rh), rh[-1], branch
         else:
             return None
     except bzrlib.errors.BzrError:
