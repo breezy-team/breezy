@@ -20,6 +20,11 @@ Blackbox tests for version_info
 
 from bzrlib.tests import TestCase, TestCaseInTempDir
 
+
 class TestVersionInfo(TestCaseInTempDir):
-    pass
+
+    def test_invalid_format(self):
+        bzr = self.run_bzr
+
+        bzr('version-info', '--format', 'quijibo', retcode=3)
 

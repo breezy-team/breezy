@@ -18,7 +18,6 @@
 Routines for extracting all version information from a bzr branch.
 """
 
-import sys
 import time
 
 from bzrlib.rio import RioReader, RioWriter, Stanza
@@ -61,7 +60,7 @@ def is_clean(branch):
         raise UncleanError(branch, 'have renamed files: %r' % (delta.renamed,))
 
 
-def generate_rio_version(branch, to_file=sys.stdout,
+def generate_rio_version(branch, to_file,
         check_for_clean=False,
         include_revision_history=False,
         include_log_info=False,
@@ -83,25 +82,21 @@ def generate_rio_version(branch, to_file=sys.stdout,
     # TODO: jam 20051228 This might be better as the datestamp 
     #       of the last commit
     info.add('date', time.strftime('%Y-%m-%d %H:%M:%S (%A, %B %d, %Y, %Z)'))
-    info.add('revno', branch.revno())
-    info.add('revision_id', branch.last_revision())
-    info.add('branch_nick', branch.nick)
+    info.add('revno', str(branch.revno()))
+    last_rev = branch.last_revision()
+    if last_rev is not None:
+        info.add('revision_id', last_rev)
+    if branch.nick is not None:
+        info.add('branch_nick', branch.nick)
     if check_for_clean:
         try:
-            wt = branch.working_tree()
-        except NoWorkingTree:
-            pass
+            is_clean(branch)
+        except UncleanError:
+            info.add('clean', 'False')
         else:
-            pass
-    info.update(_get_bzr_info(path=path, full=full))
-    if info['branch_nick'] is not None:
-        info['version'] = '%(branch_nick)s-%(revno)s' % info
-    elif info['revno'] is not None:
-        info['version'] = str(info['revno'])
-    else:
-        info['version'] = 'unknown'
+            info.add('clean', 'True')
+    writer = RioWriter(to_file=to_file)
+    writer.write_stanza(info)
 
-    f = open(version_fn, 'wb')
-    f.write(_version_template % info)
-    f.close()
+version_formats = {None:generate_rio_version, 'rio':generate_rio_version}
 
