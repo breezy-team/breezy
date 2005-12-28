@@ -40,10 +40,17 @@ class TestIsClean(TestCaseInTempDir):
         wt = b.working_tree()
 
         def not_clean(b):
-            self.assertRaises(UncleanError, is_clean, b)
+            clean, message = is_clean(b)
+            if clean:
+                self.fail('Tree should not be clean')
+
+        def check_clean(b):
+            clean, message = is_clean(b)
+            if not clean:
+                self.fail(message)
 
         # Nothing happened yet
-        is_clean(b)
+        check_clean(b)
 
         # Unknown file
         open('a', 'wb').write('a file\n')
@@ -55,7 +62,7 @@ class TestIsClean(TestCaseInTempDir):
 
         # We committed, things are clean
         wt.commit('added a')
-        is_clean(b)
+        check_clean(b)
 
         # Unknown
         open('b', 'wb').write('b file\n')
@@ -65,25 +72,25 @@ class TestIsClean(TestCaseInTempDir):
         not_clean(b)
 
         wt.commit('added b')
-        is_clean(b)
+        check_clean(b)
 
         open('a', 'wb').write('different\n')
         not_clean(b)
 
         wt.commit('mod a')
-        is_clean(b)
+        check_clean(b)
 
         os.remove('a')
         not_clean(b)
 
         wt.commit('del a')
-        is_clean(b)
+        check_clean(b)
 
         wt.rename_one('b', 'a')
         not_clean(b)
 
         wt.commit('rename b => a')
-        is_clean(b)
+        check_clean(b)
 
 
 class TestVersionInfo(TestCaseInTempDir):

@@ -54,7 +54,8 @@ class cmd_version_info(Command):
     takes_args = ['location?']
 
     def run(self, location=None, format=None,
-            all=False, check_clean=False, include_history=False):
+            all=False, check_clean=False, include_history=False,
+            verbose=False):
 
         if location is None:
             location = u'.'
@@ -68,18 +69,15 @@ class cmd_version_info(Command):
         outf = codecs.getwriter('utf-8')(sys.stdout)
 
         include_log_info = False
-        include_log_deltas = False
         if all:
             include_history = True
             check_clean = True
             include_log_info = True
-            include_log_deltas = True
 
         format(b, to_file=outf,
                 check_for_clean=check_clean,
                 include_revision_history=include_history,
-                include_log_info=include_log_info,
-                include_log_deltas=include_log_deltas)
+                include_log_info=include_log_info)
 
 
 register_command(cmd_version_info)
