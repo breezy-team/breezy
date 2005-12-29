@@ -139,11 +139,11 @@ class TestVersionInfo(TestCaseInTempDir):
         os.remove('branch/c')
 
         val = regen(include_revision_history=True)
-        self.assertContainsRe(val, 'revision: r1')
+        self.assertContainsRe(val, 'id: r1')
         self.assertContainsRe(val, 'message: a')
-        self.assertContainsRe(val, 'revision: r2')
+        self.assertContainsRe(val, 'id: r2')
         self.assertContainsRe(val, 'message: b')
-        self.assertContainsRe(val, 'revision: r3')
+        self.assertContainsRe(val, 'id: r3')
         self.assertContainsRe(val, 'message: a2')
 
     def test_python_version(self):

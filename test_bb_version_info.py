@@ -18,6 +18,8 @@
 Blackbox tests for version_info
 """
 
+import os
+import sys
 from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
@@ -27,4 +29,104 @@ class TestVersionInfo(TestCaseInTempDir):
         bzr = self.run_bzr
 
         bzr('version-info', '--format', 'quijibo', retcode=3)
+
+    def create_branch(self):
+        bzr = self.run_bzr
+
+        os.mkdir('branch')
+        os.chdir('branch')
+        bzr('init')
+        open('a', 'wb').write('a file\n')
+        bzr('add')
+        bzr('commit', '-m', 'adding a')
+
+        open('b', 'wb').write('b file\n')
+        bzr('add')
+        bzr('commit', '-m', 'adding b')
+        os.chdir('..')
+
+    def get_revisions(self):
+        os.chdir('branch')
+        revisions = self.run_bzr('revision-history')[0].strip().split('\n')
+        os.chdir('..')
+        return revisions
+
+    def test_rio(self):
+        self.create_branch()
+
+        def regen(*args):
+            return self.run_bzr('version-info', '--format', 'rio', 
+                                'branch', *args)[0]
+
+        revisions = self.get_revisions()
+        txt = regen()
+        self.assertContainsRe(txt, 'date:')
+        self.assertContainsRe(txt, 'revno: 2')
+        self.assertContainsRe(txt, 'revision_id: ' + revisions[-1])
+
+        txt = regen('--all')
+        self.assertContainsRe(txt, 'date:')
+        self.assertContainsRe(txt, 'revno: 2')
+        self.assertContainsRe(txt, 'revision_id: ' + revisions[-1])
+        self.assertContainsRe(txt, 'clean: True')
+        self.assertContainsRe(txt, 'revisions:')
+        for rev_id in revisions:
+            self.assertContainsRe(txt, 'id: ' + rev_id)
+        self.assertContainsRe(txt, 'message: adding a')
+        self.assertContainsRe(txt, 'message: adding b')
+
+        txt = regen('--check-clean')
+        self.assertContainsRe(txt, 'clean: True')
+
+        open('branch/c', 'wb').write('now unclean\n')
+        txt = regen('--check-clean')
+        self.assertContainsRe(txt, 'clean: False')
+        os.remove('branch/c')
+
+        # Make sure it works without a directory
+        os.chdir('branch')
+        txt = self.run_bzr('version-info', '--format', 'rio')
+
+    def test_python(self):
+        def bzr(*args, **kwargs):
+            return self.run_bzr(*args, **kwargs)[0]
+
+        def regen(*args):
+            txt = self.run_bzr('version-info', '--format', 'python',
+                               'branch', *args)[0]
+            outf = open('test_version_information.py', 'wb')
+            outf.write(txt)
+            outf.close()
+            try:
+                sys.path.append(os.getcwdu())
+                import test_version_information as tvi
+                reload(tvi)
+            finally:
+                sys.path.pop()
+            # Make sure the module isn't cached
+            sys.modules.pop('tvi', None)
+            sys.modules.pop('test_version_information', None)
+            # Delete the compiled versions, because we are generating
+            # a new file fast enough that python doen't detect it
+            # needs to recompile, and using sleep() just makes the
+            # test slow
+            if os.path.exists('test_version_information.pyc'):
+                os.remove('test_version_information.pyc')
+            if os.path.exists('test_version_information.pyo'):
+                os.remove('test_version_information.pyo')
+            return tvi
+
+        self.create_branch()
+        revisions = self.get_revisions()
+
+        tvi = regen()
+        self.assertEqual(tvi.version_info['revno'], 2)
+        self.failUnless(tvi.version_info.has_key('date'))
+        self.assertEqual(revisions[-1], tvi.version_info['revision_id'])
+
+        tvi = regen('--all')
+        self.assertEqual([(revisions[0], 'adding a'),
+                          (revisions[1], 'adding b')],
+                         tvi.version_info['revisions'])
+        self.assertEqual(True, tvi.version_info['clean'])
 

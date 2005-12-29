@@ -109,7 +109,7 @@ def generate_rio_version(branch, to_file,
         log = Stanza()
         for rev_id in revs:
             rev = branch.get_revision(rev_id)
-            log.add('revision', rev_id)
+            log.add('id', rev_id)
             log.add('message', rev.message)
         sio = StringIO()
         log_writer = RioWriter(to_file=sio)
