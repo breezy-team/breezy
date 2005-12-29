@@ -31,7 +31,6 @@ from bzrlib.rio import read_stanzas
 
 from generate_version_info import (is_clean,
         generate_rio_version, generate_python_version)
-from errors import UncleanError
 
 
 class TestIsClean(TestCaseInTempDir):

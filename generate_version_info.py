@@ -26,7 +26,6 @@ from StringIO import StringIO
 from bzrlib.errors import NoWorkingTree
 from bzrlib.log import show_log, log_formatter
 from bzrlib.rio import RioReader, RioWriter, Stanza
-from errors import UncleanError
 
 
 def is_clean(branch):
