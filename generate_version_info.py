@@ -177,7 +177,8 @@ def generate_python_version(branch, to_file,
         info['revisions'] = log
 
     if check_for_clean:
-        if is_clean(branch):
+        clean, message = is_clean(branch)
+        if clean:
             info['clean'] = True
         else:
             info['clean'] = False

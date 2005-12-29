@@ -19,14 +19,17 @@ Tests for version_info
 """
 
 import os
+import sys
 
+from StringIO import StringIO
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.branch import Branch
 
 # TODO: jam 20051228 When part of bzrlib, this should become
 #       from bzrlib.generate_version_info import foo
 
-from generate_version_info import is_clean
+from generate_version_info import (is_clean,
+        generate_rio_version, generate_python_version)
 from errors import UncleanError
 
 
@@ -94,5 +97,97 @@ class TestIsClean(TestCaseInTempDir):
 
 
 class TestVersionInfo(TestCaseInTempDir):
-    pass
+
+    def create_branch(self):
+        os.mkdir('branch')
+        b = Branch.initialize(u'branch')
+        wt = b.working_tree()
+        
+        open('branch/a', 'wb').write('a file\n')
+        wt.add('a')
+        wt.commit('a', rev_id='r1')
+
+        open('branch/b', 'wb').write('b file\n')
+        wt.add('b')
+        wt.commit('b', rev_id='r2')
+
+        open('branch/a', 'wb').write('new contents\n')
+        wt.commit('a2', rev_id='r3')
+
+        return b, wt
+
+    def test_rio_version(self):
+        b, wt = self.create_branch()
+
+        def regen(**kwargs):
+            sio = StringIO()
+            generate_rio_version(b, to_file=sio, **kwargs)
+            val = sio.getvalue()
+            return val
+
+        val = regen()
+        self.assertContainsRe(val, 'date:')
+        self.assertContainsRe(val, 'revno: 3')
+        self.assertContainsRe(val, 'revision_id: r3')
+
+        val = regen(check_for_clean=True)
+        self.assertContainsRe(val, 'clean: True')
+
+        open('branch/c', 'wb').write('now unclean\n')
+        val = regen(check_for_clean=True)
+        self.assertContainsRe(val, 'clean: False')
+        os.remove('branch/c')
+
+        val = regen(include_revision_history=True)
+        self.assertContainsRe(val, 'revision: r1')
+        self.assertContainsRe(val, 'message: a')
+        self.assertContainsRe(val, 'revision: r2')
+        self.assertContainsRe(val, 'message: b')
+        self.assertContainsRe(val, 'revision: r3')
+        self.assertContainsRe(val, 'message: a2')
+
+    def test_python_version(self):
+        b, wt = self.create_branch()
+
+        def regen(**kwargs):
+            outf = open('test_version_information.py', 'wb')
+            generate_python_version(b, to_file=outf, **kwargs)
+            outf.close()
+            try:
+                sys.path.append(os.getcwdu())
+                import test_version_information as tvi
+                reload(tvi)
+            finally:
+                sys.path.pop()
+            # Make sure the module isn't cached
+            sys.modules.pop('tvi', None)
+            sys.modules.pop('test_version_information', None)
+            # Delete the compiled versions, because we are generating
+            # a new file fast enough that python doesn't detect it
+            # needs to recompile, and using sleep() just makes the
+            # test slow
+            if os.path.exists('test_version_information.pyc'):
+                os.remove('test_version_information.pyc')
+            if os.path.exists('test_version_information.pyo'):
+                os.remove('test_version_information.pyo')
+            return tvi
+
+        tvi = regen()
+        self.assertEquals(3, tvi.version_info['revno'])
+        self.assertEquals('r3', tvi.version_info['revision_id'])
+        self.failUnless(tvi.version_info.has_key('date'))
+        self.assertEquals(None, tvi.version_info['clean'])
+
+        tvi = regen(check_for_clean=True)
+        self.assertEquals(True, tvi.version_info['clean'])
+
+        open('branch/c', 'wb').write('now unclean\n')
+        tvi = regen(check_for_clean=True)
+        self.assertEquals(False, tvi.version_info['clean'])
+        os.remove('branch/c')
+
+        tvi = regen(include_revision_history=True)
+        self.assertEqual([('r1', 'a'), ('r2', 'b'), ('r3', 'a2')],
+                         tvi.version_info['revisions'])
+
 
