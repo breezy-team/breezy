@@ -40,7 +40,7 @@ def dir_exporter(tree, dest, root):
         # .bzrignore has no meaning outside of a working tree
         # so do not export it
         if dp == ".bzrignore":
-			continue
-		
+            continue
+        
         ie.put_on_disk(dest, dp, tree)
 
