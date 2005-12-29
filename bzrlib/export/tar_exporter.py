@@ -40,6 +40,11 @@ def tar_exporter(tree, dest, root, compression=None):
     mutter('export version %r', tree)
     inv = tree.inventory
     for dp, ie in inv.iter_entries():
+		# .bzrignore has no meaning outside of a working tree
+		# so do not export it
+        if dp == ".bzrignore":
+			continue
+		
         mutter("  export {%s} kind %s to %s", ie.file_id, ie.kind, dest)
         item, fileobj = ie.get_tar_item(root, dp, now, tree)
         ball.addfile(item, fileobj)
