@@ -24,6 +24,7 @@ import sys
 from StringIO import StringIO
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.branch import Branch
+from bzrlib.rio import read_stanzas
 
 # TODO: jam 20051228 When part of bzrlib, this should become
 #       from bzrlib.generate_version_info import foo
@@ -116,7 +117,7 @@ class TestVersionInfo(TestCaseInTempDir):
 
         return b, wt
 
-    def test_rio_version(self):
+    def test_rio_version_text(self):
         b, wt = self.create_branch()
 
         def regen(**kwargs):
@@ -145,6 +146,38 @@ class TestVersionInfo(TestCaseInTempDir):
         self.assertContainsRe(val, 'message: b')
         self.assertContainsRe(val, 'id: r3')
         self.assertContainsRe(val, 'message: a2')
+
+    def test_rio_version(self):
+        b, wt = self.create_branch()
+
+        def regen(**kwargs):
+            sio = StringIO()
+            generate_rio_version(b, to_file=sio, **kwargs)
+            sio.seek(0)
+            stanzas = list(read_stanzas(sio))
+            self.assertEqual(1, len(stanzas))
+            return stanzas[0]
+
+        stanza = regen()
+        self.failUnless('date' in stanza)
+        self.assertEqual(['3'], stanza.get_all('revno'))
+        self.assertEqual(['r3'], stanza.get_all('revision_id'))
+
+        stanza = regen(check_for_clean=True)
+        self.assertEqual(['True'], stanza.get_all('clean'))
+
+        open('branch/c', 'wb').write('now unclean\n')
+        stanza = regen(check_for_clean=True)
+        self.assertEqual(['False'], stanza.get_all('clean'))
+        os.remove('branch/c')
+
+        stanza = regen(include_revision_history=True)
+        txt = stanza['revisions']
+        revision_stanza = list(read_stanzas(StringIO(txt)))
+        self.assertEqual(1, len(revision_stanza))
+        revision_stanza = revision_stanza[0]
+        self.assertEqual(['r1', 'r2', 'r3'], revision_stanza.get_all('id'))
+        self.assertEqual(['a', 'b', 'a2'], revision_stanza.get_all('message'))
 
     def test_python_version(self):
         b, wt = self.create_branch()
