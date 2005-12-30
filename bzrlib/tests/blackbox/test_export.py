@@ -57,3 +57,18 @@ class TestExport(ExternalBase):
         for m in ball.namelist():
             #print m
             self.failIf(os.path.basename(m) == '.bzrignore', 'zip export contains .bzrignore')
+
+    def test_dir_export(self):
+
+        os.mkdir('dir')
+        os.chdir('dir')
+
+        self.runbzr('init')
+        open('a', 'wb').write('foo\n')
+        self.runbzr('add a')
+        self.runbzr('ignore something')
+        self.runbzr('commit -m 1')
+        self.runbzr('export direxport')
+
+        files = sorted(os.listdir('direxport'))
+        self.assertEqual(['a'], files, 'dir contains .bzrignore')
