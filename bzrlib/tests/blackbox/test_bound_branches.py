@@ -16,13 +16,12 @@
 
 
 """Tests of bound branches (binding, unbinding, commit, etc) command.
-
 """
 
 import os
 from cStringIO import StringIO
 
-from bzrlib.selftest import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir
 from bzrlib.branch import Branch
 
 class TestBoundBranches(TestCaseInTempDir):

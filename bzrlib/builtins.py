@@ -1325,8 +1325,6 @@ class cmd_commit(Command):
         except StrictCommitFailed:
             raise BzrCommandError("Commit refused because there are unknown "
                                   "files in the working tree.")
-        except errors.CannotInstallRevisions, e:
-            raise BzrCommandError(e.msg)
 
         note('Committed revision %d.' % (tree.branch.revno(),))
 
@@ -1946,6 +1944,7 @@ class cmd_re_sign(Command):
             else:
                 raise BzrCommandError('Please supply either one revision, or a range.')
 
+
 class cmd_bind(Command):
     """Bind the current branch to its parent.
 
@@ -1957,7 +1956,7 @@ class cmd_bind(Command):
     takes_options = []
 
     def run(self, location=None):
-        b, relpath = Branch.open_containing('.')
+        b, relpath = Branch.open_containing(u'.')
         if location is None:
             location = b.get_bound_location()
         if location is None:
@@ -1972,6 +1971,7 @@ class cmd_bind(Command):
             raise BzrCommandError('These branches have diverged.'
                                   ' Try merging, and then bind again.')
 
+
 class cmd_unbind(Command):
     """Bind the current branch to its parent.
 
@@ -1982,23 +1982,26 @@ class cmd_unbind(Command):
     takes_options = []
 
     def run(self):
-        b, relpath = Branch.open_containing('.')
-        b.unbind()
+        b, relpath = Branch.open_containing(u'.')
+        if not b.unbind():
+            raise BzrCommandError('Local branch is not bound')
+
 
 class cmd_update(Command):
     """Update the local tree for checkouts and bound branches.
     """
     def run(self):
-        br_local, relpath = Branch.open_containing('.')
-        # TODO: Check here to see if this is a checkout
-        bound_loc = br_local.get_bound_location()
+        wt, relpath = WorkingTree.open_containing(u'.')
+        # TODO: jam 20051127 Check here to see if this is a checkout
+        bound_loc = wt.branch.get_bound_location()
         if not bound_loc:
-            raise BzrCommandError('Branch %s is not a checkout or a bound branch,'
-                                  ' you probably want pull' % br_local.base)
+            raise BzrCommandError('Working tree %s is not a checkout'
+                                  ' or a bound branch, you probably'
+                                  ' want pull' % wt.base)
 
         br_bound = Branch.open(bound_loc)
         try:
-            br_local.working_tree().pull(br_bound, overwrite=False)
+            wt.pull(br_bound, overwrite=False)
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try merge.")

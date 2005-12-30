@@ -255,20 +255,10 @@ class ReadOnlyError(LockError):
 class PointlessCommit(BzrNewError):
     """No changes to commit"""
 
+
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
-class CannotBind(BzrNewError):
-    """Cannot bind: %(msg)s"""
-    def __init__(self, msg):
-        BzrNewError.__init__(self)
-        self.msg = msg
-
-class CannotInstallRevisions(BzrNewError):
-    """Cannot install revisions: %(msg)s"""
-    def __init__(self, msg):
-        BzrNewError.__init__(self)
-        self.msg = msg
 
 class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):

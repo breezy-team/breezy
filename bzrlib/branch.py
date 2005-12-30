@@ -1095,7 +1095,7 @@ class BzrBranch(Branch):
         self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
                                 revision_id, "sig")
 
-    # Do we want a read lock?
+    @needs_read_lock
     def get_bound_location(self):
         bound_path = self._rel_controlfilename('bound')
         try:
@@ -1116,11 +1116,27 @@ class BzrBranch(Branch):
         :param other: The branch to bind to
         :type other: Branch
         """
+        # TODO: jam 20051230 According to the API tests, Branch should 
+        #       avoid knowing about the working tree. However, since on
+        #       binding A pulls B and B pulls A even if we moved this 
+        #       code into Working Tree, you get much more complicated
+        #       logic to handle where one of them has a working tree,
+        #       but the other one doesn't
+        #       And all we really end up doing is moving the try/except
+        #       into builtins.bind()
+        #       The other issue is that Working Tree should not have
+        #       a bind() member. Because working trees are not bound.
+        #       at some point in the future they may be checkouts,
+        #       which means they reference some other branch. But
+        #       only the branch itself is bound.
+        #       I started creating a Working Tree.bind() but realized
+        #       that was worse than having Branch.bind() try to
+        #       update its working tree.
+
         # It is debatable whether you should be able to bind to
         # a branch which is itself bound.
-        # Committing is obviously forbidden, but binding itself may not be.
-        #if other.is_bound():
-        #    raise errors.CannotBind(msg='branch %s is bound' % (other.base))
+        # Committing is obviously forbidden,
+        # but binding itself may not be.
         try:
             self.working_tree().pull(other)
         except NoWorkingTree:
@@ -1154,7 +1170,8 @@ class BzrBranch(Branch):
         try:
             self._transport.delete(bound_path)
         except NoSuchFile:
-            pass
+            return False
+        return True
 
 
 class ScratchBranch(BzrBranch):
