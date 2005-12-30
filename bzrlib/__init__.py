@@ -63,13 +63,11 @@ DEFAULT_IGNORE = [
                   '_darcs',
                   'aclocal.m4',
                   'autom4te*',
-                  'config.guess',
                   'config.h',
                   'config.h.in',
                   'config.log',
                   'config.status',
                   'config.sub',
-                  'configure.in',
                   'stamp-h',
                   'stamp-h.in',
                   'stamp-h1',
@@ -79,7 +77,14 @@ DEFAULT_IGNORE = [
 IGNORE_FILENAME = ".bzrignore"
 
 import os
-import locale
+import sys
+if sys.platform == 'darwin':
+    # work around egregious python 2.4 bug
+    sys.platform = 'posix'
+    import locale
+    sys.platform = 'darwin'
+else:
+    import locale
 user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 

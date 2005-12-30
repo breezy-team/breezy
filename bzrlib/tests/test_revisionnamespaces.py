@@ -32,7 +32,7 @@ class TestRevisionNamespaces(TestCaseInTempDir):
 
         These identify revisions by date, etc."""
 
-        b = Branch.initialize('.')
+        b = Branch.initialize(u'.')
 
         b.working_tree().commit('Commit one', rev_id='a@r-0-1', timestamp=time.time() - 60*60*24)
         b.working_tree().commit('Commit two', rev_id='a@r-0-2')

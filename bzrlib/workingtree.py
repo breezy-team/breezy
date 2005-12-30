@@ -55,6 +55,7 @@ from bzrlib.branch import (Branch,
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
                            DivergedBranches,
+                           WeaveRevisionNotPresent,
                            NotBranchError,
                            NotVersionedError)
 from bzrlib.inventory import InventoryEntry
@@ -68,6 +69,7 @@ from bzrlib.osutils import (appendpath,
                             realpath,
                             relpath,
                             rename)
+from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.trace import mutter
 import bzrlib.xml5
@@ -172,7 +174,7 @@ class WorkingTree(bzrlib.tree.Tree):
     not listed in the Inventory and vice versa.
     """
 
-    def __init__(self, basedir='.', branch=None):
+    def __init__(self, basedir=u'.', branch=None):
         """Construct a WorkingTree for basedir.
 
         If the branch is not supplied, it is opened automatically.
@@ -229,7 +231,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if path.find('://') != -1:
                 raise NotBranchError(path=path)
         path = os.path.abspath(path)
-        tail = ''
+        tail = u''
         while True:
             try:
                 return WorkingTree(path), tail
@@ -502,7 +504,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 for ff in descend(fp, f_ie.file_id, fap):
                     yield ff
 
-        for f in descend('', inv.root.file_id, self.basedir):
+        for f in descend(u'', inv.root.file_id, self.basedir):
             yield f
 
     @needs_write_lock
@@ -777,6 +779,29 @@ class WorkingTree(bzrlib.tree.Tree):
         """See Branch.lock_write, and WorkingTree.unlock."""
         return self.branch.lock_write()
 
+    def _basis_inventory_name(self, revision_id):
+        return 'basis-inventory.%s' % revision_id
+
+    def set_last_revision(self, new_revision, old_revision=None):
+        if old_revision:
+            try:
+                path = self._basis_inventory_name(old_revision)
+                path = self.branch._rel_controlfilename(path)
+                self.branch._transport.delete(path)
+            except:
+                pass
+        try:
+            xml = self.branch.get_inventory_xml(new_revision)
+            path = self._basis_inventory_name(new_revision)
+            self.branch.put_controlfile(path, xml)
+        except WeaveRevisionNotPresent:
+            pass
+
+    def read_basis_inventory(self, revision_id):
+        """Read the cached basis inventory."""
+        path = self._basis_inventory_name(revision_id)
+        return self.branch.controlfile(path, 'r').read()
+        
     @needs_read_lock
     def read_working_inventory(self):
         """Read the working inventory."""

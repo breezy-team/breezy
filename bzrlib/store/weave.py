@@ -89,6 +89,18 @@ class WeaveStore(TransportStore):
         w = self.get_weave(file_id, transaction)
         return w.get(w.lookup(rev_id))
     
+    def get_weave_prelude_or_empty(self, file_id, transaction):
+        """cheap version that reads the prelude but not the lines
+        """
+        weave = transaction.map.find_weave(file_id)
+        if weave:
+            mutter("cache hit in %s for %s", self, file_id)
+            return weave
+        try:
+            return read_weave(self._get(file_id),prelude=True)
+        except NoSuchFile:
+            return Weave(weave_name=file_id)
+
     def get_weave_or_empty(self, file_id, transaction):
         """Return a weave, or an empty one if it doesn't exist.""" 
         try:
