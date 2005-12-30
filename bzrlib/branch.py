@@ -329,7 +329,7 @@ class Branch(object):
         else:
             return None
 
-    def missing_revisions(self, other, stop_revision=None, other_history=None):
+    def missing_revisions(self, other, stop_revision=None):
         """Return a list of new revisions that would perfectly fit.
         
         If self and other have not diverged, return a list of the revisions
@@ -359,8 +359,7 @@ class Branch(object):
         """
         self_history = self.revision_history()
         self_len = len(self_history)
-        if other_history is None:
-            other_history = other.revision_history()
+        other_history = other.revision_history()
         other_len = len(other_history)
         common_index = min(self_len, other_len) -1
         if common_index >= 0 and \
@@ -375,17 +374,16 @@ class Branch(object):
                 raise bzrlib.errors.NoSuchRevision(self, stop_revision)
         return other_history[self_len:stop_revision]
     
-    def update_revisions(self, other, stop_revision=None, other_history=None):
+    def update_revisions(self, other, stop_revision=None):
         """Pull in new perfect-fit revisions.
 
         :param other: Another Branch to pull from
         :param stop_revision: Updated until the given revision
-        :param other_history: Alternative history to other.revision_history()
         :return: None
         """
         raise NotImplementedError('update_revisions is abstract')
 
-    def pullable_revisions(self, other, stop_revision, other_history=None):
+    def pullable_revisions(self, other, stop_revision):
         raise NotImplementedError('pullable_revisions is abstract')
         
     def revision_id_to_revno(self, revision_id):
@@ -862,18 +860,6 @@ class BzrBranch(Branch):
     @needs_write_lock
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
-        bound_loc = self.get_bound_location()
-        if bound_loc is not None:
-            # TODO: At this point, we could get a NotBranchError
-            # because we can't connect to the remote location.
-            # How do we distinguish this from a remote branch
-            # which has been deleted?
-            try:
-                rev_history = self._update_remote_location(bound_loc,
-                                                           rev_history)
-            except DivergedBranches:
-                raise errors.CannotInstallRevisions('Remote tree has commits.'
-                            ' Use bzr update to come up to date')
         old_revision = self.last_revision()
         new_revision = rev_history[-1]
         self.put_controlfile('revision-history', '\n'.join(rev_history))
@@ -985,36 +971,25 @@ class BzrBranch(Branch):
         # transaction.register_clean(history, precious=True)
         return list(history)
 
-    def update_revisions(self, other, stop_revision=None, other_history=None):
+    def update_revisions(self, other, stop_revision=None):
         """See Branch.update_revisions."""
         from bzrlib.fetch import greedy_fetch
         if stop_revision is None:
-            if other_history is not None:
-                stop_revision = other_history[-1]
-            else:
-                stop_revision = other.last_revision()
+            stop_revision = other.last_revision()
         ### Should this be checking is_ancestor instead of revision_history?
         if (stop_revision is not None and 
             stop_revision in self.revision_history()):
             return
         greedy_fetch(to_branch=self, from_branch=other,
                      revision=stop_revision)
-        pullable_revs = self.pullable_revisions(other, stop_revision,
-                other_history=other_history)
+        pullable_revs = self.pullable_revisions(other, stop_revision)
         if len(pullable_revs) > 0:
             self.append_revision(*pullable_revs)
 
-    def pullable_revisions(self, other, stop_revision, other_history=None):
-        if other_history is not None:
-            try:
-                other_revno = other_history.index(stop_revision) + 1
-            except ValueError:
-                raise errors.NoSuchRevision(self, stop_revision)
-        else:
-            other_revno = other.revision_id_to_revno(stop_revision)
+    def pullable_revisions(self, other, stop_revision):
+        other_revno = other.revision_id_to_revno(stop_revision)
         try:
-            return self.missing_revisions(other, other_revno,
-                    other_history=other_history)
+            return self.missing_revisions(other, other_revno)
         except DivergedBranches, e:
             try:
                 pullable_revs = get_intervening_revisions(self.last_revision(),
@@ -1180,28 +1155,6 @@ class BzrBranch(Branch):
             self._transport.delete(bound_path)
         except NoSuchFile:
             pass
-
-    @needs_read_lock
-    def _update_remote_location(self, other_loc, revision_history):
-        """Make sure the remote location has the local changes.
-
-        :param other_loc: Path to the other location
-        :param revision_history: Total history to be updated
-        :return: The remote revision_history
-        """
-        from bzrlib.fetch import greedy_fetch
-        mutter('_update_remote_location: %r, %r', other_loc, revision_history)
-        other = Branch.open(other_loc)
-        bound_loc = other.get_bound_location()
-        if bound_loc is not None:
-            raise errors.CannotInstallRevisions('Remote tree is bound')
-        other.lock_write()
-        try:
-            # update_revisions should also append to the revision history.
-            other.update_revisions(self, other_history=revision_history)
-            return other.revision_history()
-        finally:
-            other.unlock()
 
 
 class ScratchBranch(BzrBranch):
