@@ -29,7 +29,7 @@ from bzrlib.tests import TestCaseInTempDir, BzrTestBase
 def test_suite():
     testmod_names = [
                      'bzrlib.tests.blackbox.test_cat',
-                     'bzrlib.tests.blackbox.test_missing'
+                     'bzrlib.tests.blackbox.test_missing',
                      'bzrlib.tests.blackbox.test_pull',
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_info',
