@@ -533,6 +533,7 @@ class TestLocationConfig(TestCaseInTempDir):
                           ('write',)],
                          record._calls[1:])
 
+
 class TestBranchConfigItems(TestCase):
 
     def test_user_id(self):
