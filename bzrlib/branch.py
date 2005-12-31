@@ -517,6 +517,7 @@ class BzrBranch(Branch):
     _lock_count = None
     _lock = None
     _inventory_weave = None
+    _master_branch = None
     
     # Map some sort of prefix into a namespace
     # stuff like "revno:10", "revid:", etc.
@@ -704,6 +705,7 @@ class BzrBranch(Branch):
             self._lock.unlock()
             self._lock = None
             self._lock_mode = self._lock_count = None
+            # TODO: jam 20051230 Consider letting go of the master_branch
 
     def abspath(self, name):
         """See Branch.abspath."""
@@ -1045,6 +1047,14 @@ class BzrBranch(Branch):
     @needs_write_lock
     def pull(self, source, overwrite=False):
         """See Branch.pull."""
+        # TODO: jam 20051230 This does work, in that 'bzr pull'
+        #       will update the master branch before updating the
+        #       local branch. However, 'source' can also already
+        #       be the master branch. Which means that we are
+        #       asking it to update from itself, before we continue.
+        #       This probably causes double downloads, etc.
+        #       So we probably want to put in an explicit check
+        #       of whether source is already the master branch.
         master_branch = self.get_master_branch()
         if master_branch:
             # TODO: jam 20051230 It would certainly be possible
@@ -1052,7 +1062,7 @@ class BzrBranch(Branch):
             #       a little funny about doing it. This should be
             #       discussed.
             if overwrite:
-                raise errors.OverwriteBoundBranch(branch)
+                raise errors.OverwriteBoundBranch(self)
             master_branch.pull(source)
             source = master_branch
 
@@ -1137,11 +1147,19 @@ class BzrBranch(Branch):
         """
         bound_loc = self.get_bound_location()
         if not bound_loc:
+            self._master_branch = None
             return None
-        return Branch.open(bound_loc)
+        if self._master_branch is None:
+            self._master_branch = Branch.open(bound_loc)
+        return self._master_branch
 
     @needs_write_lock
     def set_bound_location(self, location):
+        """Set the target where this branch is bound to.
+
+        :param location: URL to the target branch
+        """
+        self._master_branch = None
         if location:
             self.put_controlfile('bound', location+'\n')
         else:

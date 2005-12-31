@@ -310,7 +310,7 @@ class Commit(object):
         # If the master branch is bound, we must fail
         master_bound_location = self.master_branch.get_bound_location()
         if master_bound_location:
-            raise CommitToDoubleBoundBranch(self.branch,
+            raise errors.CommitToDoubleBoundBranch(self.branch,
                     self.master_branch, master_bound_location)
 
         # TODO: jam 20051230 We could automatically push local
