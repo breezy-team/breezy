@@ -1325,6 +1325,9 @@ class cmd_commit(Command):
         except StrictCommitFailed:
             raise BzrCommandError("Commit refused because there are unknown "
                                   "files in the working tree.")
+        except errors.BoundBranchOutOfDate, e:
+            raise BzrCommandError(str(e)
+                                  + ' Either unbind or update.')
 
         note('Committed revision %d.' % (tree.branch.revno(),))
 

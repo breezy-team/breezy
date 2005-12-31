@@ -41,16 +41,14 @@ class TestBoundBranches(TestCaseInTempDir):
 
         self.failUnlessExists('child')
 
-        os.chdir('child')
-        self.check_revno(1)
-        self.failUnlessExists('.bzr/bound')
-        os.chdir('..')
+        self.check_revno(1, 'child')
+        self.failUnlessExists('child/.bzr/bound')
 
     def check_revno(self, val, loc=None):
         if loc is not None:
             cwd = os.getcwd()
             os.chdir(loc)
-        self.assertEquals(self.capture('revno').strip(), str(val))
+        self.assertEquals(str(val), self.run_bzr('revno')[0].strip())
         if loc is not None:
             os.chdir(cwd)
 
@@ -88,8 +86,7 @@ class TestBoundBranches(TestCaseInTempDir):
         self.check_revno(2)
 
         # Make sure it committed on the parent
-        os.chdir('../base')
-        self.check_revno(2)
+        self.check_revno(2, '../base')
 
     def test_bound_fail(self):
         """Make sure commit fails if out of date."""
@@ -109,8 +106,7 @@ class TestBoundBranches(TestCaseInTempDir):
 
         bzr('commit', '-m', 'child')
         self.check_revno(3)
-        os.chdir('../base')
-        self.check_revno(3)
+        self.check_revno(3, '../base')
 
     def test_double_binding(self):
         bzr = self.run_bzr
@@ -159,7 +155,6 @@ class TestBoundBranches(TestCaseInTempDir):
 
         os.chdir('../child')
         bzr('commit', '-m', 'failure', '--unchanged', retcode=3)
-        
 
     def test_pull_updates_both(self):
         bzr = self.run_bzr
@@ -176,8 +171,7 @@ class TestBoundBranches(TestCaseInTempDir):
         bzr('pull', '../newchild')
         self.check_revno(2)
 
-        os.chdir('../base')
-        self.check_revno(2)
+        self.check_revno(2, '../base')
 
     def test_bind_diverged(self):
         bzr = self.run_bzr
@@ -211,9 +205,9 @@ class TestBoundBranches(TestCaseInTempDir):
         self.check_revno(3, '../base')
 
         # After binding, the revision history should be identical
-        child_rh = self.capture('revision-history')
+        child_rh = bzr('revision-history')[0]
         os.chdir('../base')
-        base_rh = self.capture('revision-history')
+        base_rh = bzr('revision-history')[0]
         self.assertEquals(child_rh, base_rh)
 
     def test_bind_parent_ahead(self):
@@ -268,4 +262,48 @@ class TestBoundBranches(TestCaseInTempDir):
         self.check_revno(2, '../base')
         bzr('bind')
         self.check_revno(5, '../base')
+
+    def test_commit_after_merge(self):
+        bzr = self.run_bzr
+        self.create_branches()
+
+        # We want merge to be able to be a local only
+        # operation, because it can be without violating
+        # the binding invariants.
+        # But we can't fail afterwards
+
+        bzr('branch', 'child', 'other')
+
+        os.chdir('other')
+        open('c', 'wb').write('file c\n')
+        bzr('add', 'c')
+        bzr('commit', '-m', 'adding c')
+        new_rev_id = bzr('revision-history')[0].strip().split('\n')[-1]
+
+        os.chdir('../child')
+        bzr('merge', '../other')
+
+        self.failUnlessExists('c')
+        self.assertEqual(new_rev_id,
+                open('.bzr/pending-merges', 'rb').read().strip())
+
+        # Make sure the local branch has the installed revision
+        bzr('cat-revision', new_rev_id)
+        
+        # And make sure that the base tree does not
+        os.chdir('../base')
+        bzr('cat-revision', new_rev_id, retcode=3)
+
+        # Commit should succeed, and cause merged revisions to
+        # be pulled into base
+        os.chdir('../child')
+        bzr('commit', '-m', 'merge other')
+
+        self.check_revno(2)
+
+        os.chdir('../base')
+        self.check_revno(2)
+
+        bzr('cat-revision', new_rev_id)
+
 

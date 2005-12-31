@@ -84,6 +84,7 @@ from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
+import bzrlib.errors as errors
 import bzrlib.gpg as gpg
 from bzrlib.revision import Revision
 from bzrlib.testament import Testament
@@ -202,6 +203,8 @@ class Commit(object):
         mutter('preparing to commit')
 
         self.branch = branch
+        self.bound_branch = None
+        self.master_branch = None
         self.weave_store = branch.weave_store
         self.rev_id = rev_id
         self.specific_files = specific_files
@@ -209,7 +212,7 @@ class Commit(object):
         self.revprops = {'branch-nick': branch.nick}
         if revprops:
             self.revprops.update(revprops)
-        self.work_tree = WorkingTree(branch.base, branch)
+        self.work_tree = branch.working_tree()
 
         if strict:
             # raise an exception as soon as we find a single unknown.
@@ -248,6 +251,8 @@ class Commit(object):
 
         self.branch.lock_write()
         try:
+            self._check_bound_branch()
+
             self.work_inv = self.work_tree.inventory
             self.basis_tree = self.branch.basis_tree()
             self.basis_inv = self.basis_tree.inventory
@@ -274,6 +279,7 @@ class Commit(object):
             self._make_revision()
             self.work_tree.set_pending_merges([])
             self.branch.append_revision(self.rev_id)
+            self._update_bound_branch()
             self.reporter.completed(self.branch.revno()+1, self.rev_id)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
@@ -284,7 +290,76 @@ class Commit(object):
                                    'bzrlib':bzrlib,
                                    'rev_id':self.rev_id})
         finally:
+            self._cleanup_bound_branch()
             self.branch.unlock()
+
+    def _check_bound_branch(self):
+        """Check to see if the local branch is bound.
+
+        If it is bound, then most of the commit will actually be
+        done using the remote branch as the target branch.
+        Only at the end will the local branch be updated.
+        """
+        # TODO: jam 20051230 Consider a special error for the case
+        #       where the local branch is bound, and can't access the
+        #       master branch
+        self.master_branch = self.branch.get_bound_branch()
+        if not self.master_branch:
+            return
+
+        # If the master branch is bound, we must fail
+        master_bound_location = self.master_branch.get_bound_location()
+        if master_bound_location:
+            raise CommitToDoubleBoundBranch(self.branch,
+                    self.master_branch, master_bound_location)
+
+        # TODO: jam 20051230 We could automatically push local
+        #       commits to the remote branch if they would fit.
+        #       But for now, just require remote to be identical
+        #       to local.
+        
+        # Make sure the local branch is identical to the master
+        master_rh = self.master_branch.revision_history()
+        local_rh = self.branch.revision_history()
+        if local_rh != master_rh:
+            raise errors.BoundBranchOutOfDate(self.branch,
+                    self.master_branch)
+
+        # Now things are ready to change the master branch
+        # so grab the lock
+        self.bound_branch = self.branch
+        self.master_branch.lock_write()
+        self.branch = self.master_branch
+
+        # Check to see if we have any pending merges. If we do
+        # those need to be pushed into the master branch
+        pending_merges = self.work_tree.pending_merges()
+        if pending_merges:
+            from bzrlib.fetch import fetch
+            for revision_id in pending_merges:
+                fetch(self.master_branch, self.bound_branch, revision_id)
+
+    def _cleanup_bound_branch(self):
+        """Executed at the end of a try/finally to cleanup a bound branch.
+
+        If the branch wasn't bound, this is a no-op.
+        If it was, it resents self.branch to the local branch, instead
+        of being the master.
+        """
+        if not self.bound_branch:
+            return
+        self.branch = self.bound_branch
+        self.master_branch.unlock()
+
+    def _update_bound_branch(self):
+        """Update the local bound branch, after commit.
+
+        This only runs if the commit to the remote branch succeeds.
+        """
+        if not self.bound_branch:
+            return
+        # We always want the local branch to look like the remote one
+        self.bound_branch.pull(self.master_branch)
 
     def _record_inventory(self):
         """Store the inventory for the new revision."""

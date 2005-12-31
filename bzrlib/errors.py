@@ -344,6 +344,23 @@ class UnlistableBranch(BzrError):
         BzrError.__init__(self, "Stores for branch %s are not listable" % br)
 
 
+class BoundBranchOutOfDate(BzrNewError):
+    """Bound branch %(branch)s is out of date with master branch %(master)s."""
+    def __init__(self, branch, master):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.master = master
+
+        
+class CommitToDoubleBoundBranch(BzrNewError):
+    """Cannot commit to branch %(branch)s. It is bound to %(master)s, which is bound to %(remote)s."""
+    def __init__(self, branch, master, remote):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.master = master
+        self.remote = remote
+
+        
 class WeaveError(BzrNewError):
     """Error in processing weave: %(message)s"""
     def __init__(self, message=None):

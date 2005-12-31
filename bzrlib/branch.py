@@ -862,6 +862,19 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         old_revision = self.last_revision()
         new_revision = rev_history[-1]
+        
+        # TODO: jam 20051230 This is actually just an integrity check
+        #       This shouldn't be necessary, as other code should
+        #       handle making sure this is correct
+        master_branch = self.get_bound_branch()
+        if master_branch:
+            master_history = master_branch.revision_history()
+            if rev_history != master_history[:len(rev_history)]:
+                mutter('Invalid revision history, bound branches should always be a subset of their master history')
+                mutter('Local: %s', rev_history)
+                mutter('Master: %s', master_history)
+                assert False, 'Invalid revision history'
+
         self.put_controlfile('revision-history', '\n'.join(rev_history))
         try:
             self.working_tree().set_last_revision(new_revision, old_revision)
@@ -1105,6 +1118,17 @@ class BzrBranch(Branch):
         else:
             return f.read().strip()
 
+    @needs_read_lock
+    def get_bound_branch(self):
+        """Return the branch we are bound to.
+        
+        :return: Either a Branch, or None
+        """
+        bound_loc = self.get_bound_location()
+        if not bound_loc:
+            return None
+        return Branch.open(bound_loc)
+
     @needs_write_lock
     def set_bound_location(self, location):
         self.put_controlfile('bound', location+'\n')
@@ -1133,10 +1157,13 @@ class BzrBranch(Branch):
         #       that was worse than having Branch.bind() try to
         #       update its working tree.
 
-        # It is debatable whether you should be able to bind to
-        # a branch which is itself bound.
-        # Committing is obviously forbidden,
-        # but binding itself may not be.
+        # TODO: jam 20051230 Consider checking if the target is bound
+        #       It is debatable whether you should be able to bind to
+        #       a branch which is itself bound.
+        #       Committing is obviously forbidden,
+        #       but binding itself may not be.
+        #       Since we *have* to check at commit time, we don't
+        #       *need* to check here
         try:
             self.working_tree().pull(other)
         except NoWorkingTree:
@@ -1151,6 +1178,14 @@ class BzrBranch(Branch):
         # TODO: capture an exception which indicates the remote branch
         #       is not writeable. 
         #       If it is up-to-date, this probably should not be a failure
+
+        # TODO: jam 20051230 Consider not updating the remote working tree.
+        #       Right now, it seems undesirable, since it is actually
+        #       its own branch, and we don't really want to generate
+        #       conflicts in the other working tree.
+        #       However, it means if there are uncommitted changes in
+        #       the remote tree, it is very difficult to update to
+        #       the latest version without losing
         try:
             other.working_tree().pull(self)
         except NoWorkingTree:
