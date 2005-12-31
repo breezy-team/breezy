@@ -359,7 +359,14 @@ class Commit(object):
         if not self.bound_branch:
             return
         # We always want the local branch to look like the remote one
+        # TODO: jam 20051231 We might want overwrite=True here, but
+        #       the local branch should be a child of master anyway
         self.bound_branch.pull(self.master_branch)
+
+        # TODO: jam 20051231 At this point we probably 
+        #       want to merge any changes into master branch's
+        #       working tree.
+        
 
     def _record_inventory(self):
         """Store the inventory for the new revision."""

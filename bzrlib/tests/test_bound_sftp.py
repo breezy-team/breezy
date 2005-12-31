@@ -349,8 +349,39 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
         self.assertEqual(['r@b-1', 'r@c-2'], b_base.revision_history())
         self.assertEqual(['r@b-1', 'r@c-2'], b_child.revision_history())
 
-    # TODO: jam 20051230 Test that commit & pull fail when the branch we 
-    #       are bound to is not available
+    def test_commit_fails(self):
+        b_base, b_child = self.create_branches()
+
+        wt_child = b_child.working_tree()
+        open('a', 'ab').write('child adds some text\n')
+
+        del b_base
+        os.rename('base', 'hidden_base')
+
+        self.assertRaises(errors.BoundBranchConnectionFailure,
+                wt_child.commit, 'added text', rev_id='r@c-2')
+
+    def test_pull_fails(self):
+        b_base, b_child = self.create_branches()
+
+        b_other = copy_branch(b_child, 'other')
+        wt_other = b_other.working_tree()
+        open('other/a', 'wb').write('new contents\n')
+        wt_other.commit('changed a', rev_id='r@d-2')
+
+        wt_child = b_child.working_tree()
+        self.assertEqual(['r@b-1'], b_base.revision_history())
+        self.assertEqual(['r@b-1'], b_child.revision_history())
+        self.assertEqual(['r@b-1', 'r@d-2'], b_other.revision_history())
+
+        del b_base
+        os.rename('base', 'hidden_base')
+
+        self.assertRaises(errors.BoundBranchConnectionFailure,
+                b_child.pull, b_other)
+
+    # TODO: jam 20051231 We need invasive failure tests, so that we can show
+    #       performance even when something fails.
 
 
 if not paramiko_loaded:

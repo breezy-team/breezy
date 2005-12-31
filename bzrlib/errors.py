@@ -367,7 +367,16 @@ class OverwriteBoundBranch(BzrNewError):
         BzrNewError.__init__(self)
         self.branch = branch
 
-        
+
+class BoundBranchConnectionFailure(BzrNewError):
+    """Unable to connect to target of bound branch %(branch)s => %(target)s: %(error)s"""
+    def __init__(self, branch, target, error):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.target = target
+        self.error = error
+
+
 class WeaveError(BzrNewError):
     """Error in processing weave: %(message)s"""
     def __init__(self, message=None):

@@ -1063,6 +1063,7 @@ class BzrBranch(Branch):
             #       discussed.
             if overwrite:
                 raise errors.OverwriteBoundBranch(self)
+            # TODO: jam 20051230 Consider updating the working tree
             master_branch.pull(source)
             source = master_branch
 
@@ -1150,7 +1151,11 @@ class BzrBranch(Branch):
             self._master_branch = None
             return None
         if self._master_branch is None:
-            self._master_branch = Branch.open(bound_loc)
+            try:
+                self._master_branch = Branch.open(bound_loc)
+            except (errors.NotBranchError, errors.ConnectionError), e:
+                raise errors.BoundBranchConnectionFailure(
+                        self, bound_loc, e)
         return self._master_branch
 
     @needs_write_lock
@@ -1201,6 +1206,7 @@ class BzrBranch(Branch):
         #       but binding itself may not be.
         #       Since we *have* to check at commit time, we don't
         #       *need* to check here
+        
         try:
             self.working_tree().pull(other)
         except NoWorkingTree:
@@ -1216,17 +1222,11 @@ class BzrBranch(Branch):
         #       is not writeable. 
         #       If it is up-to-date, this probably should not be a failure
 
-        # TODO: jam 20051230 Consider not updating the remote working tree.
-        #       Right now, it seems undesirable, since it is actually
-        #       its own branch, and we don't really want to generate
-        #       conflicts in the other working tree.
-        #       However, it means if there are uncommitted changes in
-        #       the remote tree, it is very difficult to update to
-        #       the latest version without losing
-        try:
-            other.working_tree().pull(self)
-        except NoWorkingTree:
-            other.pull(self)
+        # We used to update the working tree here.
+        # However, it was the only place. 'bzr pull', and 'bzr commit'
+        # Would not update the remote working tree.
+        # So for consistency, we are only updating the branch information
+        other.pull(self)
 
         # Make sure the revision histories are now identical
         other_rh = other.revision_history()
