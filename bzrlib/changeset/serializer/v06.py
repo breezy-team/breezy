@@ -26,6 +26,8 @@ from bzrlib.changeset.serializer import (ChangesetSerializer,
 from sha import sha
 from bzrlib.diff import internal_diff
 from bzrlib.delta import compare_trees
+from bzrlib.rio import RioWriter, read_stanzas
+from bzrlib.osutils import pathjoin
 
 
 class ChangesetSerializerV06(ChangesetSerializer):
@@ -153,15 +155,11 @@ class ChangesetSerializerV06(ChangesetSerializer):
         old_label = ''
         new_label = ''
 
-        def pjoin(*args):
-            # Only forward slashes in changesets
-            return os.path.join(*args).replace('\\', '/')
-
         def do_diff(old_path, file_id, new_path, kind):
             new_entry = new_tree.inventory[file_id]
             old_tree.inventory[file_id].diff(internal_diff,
-                    pjoin(old_label, old_path), old_tree,
-                    pjoin(new_label, new_path), new_entry, new_tree,
+                    pathjoin(old_label, old_path), old_tree,
+                    pathjoin(new_label, new_path), new_entry, new_tree,
                     self.to_file)
         def do_meta(file_id):
             ie = new_tree.inventory[file_id]
@@ -182,7 +180,7 @@ class ChangesetSerializerV06(ChangesetSerializer):
         for path, file_id, kind in delta.added:
             w('=== added %s %s // file-id:%s\n' % (kind, path, file_id))
             new_tree.inventory[file_id].diff(internal_diff,
-                    pjoin(new_label, path), new_tree,
+                    pathjoin(new_label, path), new_tree,
                     DEVNULL, None, None,
                     self.to_file, reverse=True)
 

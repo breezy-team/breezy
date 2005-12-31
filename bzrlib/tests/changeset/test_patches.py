@@ -14,19 +14,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.tests import TestLoader, TestSuite, _load_module_by_name
-from bzrlib.tests import TestCaseInTempDir, BzrTestBase
+# Just import the tester built-into the patch file
+
+from bzrlib.patches import PatchesTester
+import os
 
 
-def test_suite():
-    testmod_names = [
-        'bzrlib.tests.changeset.test_patches',
-    ]
-    suite = TestSuite()
-    loader = TestLoader()
-    for mod_name in testmod_names:
-        mod = _load_module_by_name(mod_name)
-        suite.addTest(loader.loadTestsFromModule(mod))
-    return suite
+# We have to inherit so that unittest will consider it
+# Also, the testdata directory is relative to this file
+# so override datafile
+class TestPatches(PatchesTester):
+    
+    def datafile(self, filename):
+        data_path = os.path.join(os.path.dirname(__file__), "testdata", 
+                                 filename)
+        return file(data_path, "rb")
 
 

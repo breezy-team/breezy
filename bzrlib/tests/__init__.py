@@ -37,6 +37,7 @@ import bzrlib.osutils
 import bzrlib.plugin
 import bzrlib.store
 import bzrlib.trace
+import bzrlib.changeset.serializer
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.tests.treeshape import build_tree_contents
@@ -44,6 +45,7 @@ from bzrlib.tests.treeshape import build_tree_contents
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
                       bzrlib.branch,
+                      bzrlib.changeset.serializer,
                       bzrlib.commands,
                       bzrlib.errors,
                       bzrlib.inventory,
@@ -51,10 +53,14 @@ MODULES_TO_DOCTEST = [
                       bzrlib.osutils,
                       bzrlib.store,
                       ]
+
+
 def packages_to_test():
     import bzrlib.tests.blackbox
+    import bzrlib.tests.changeset
     return [
-            bzrlib.tests.blackbox
+            bzrlib.tests.blackbox,
+            bzrlib.tests.changeset
             ]
 
 
