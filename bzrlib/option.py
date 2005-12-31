@@ -191,7 +191,9 @@ _global_option('verbose',
 _global_option('version')
 _global_option('email')
 _global_option('update')
-_global_option('long')
+_global_option('long', help='Use detailed log format')
+_global_option('short', help='Use moderately short log format')
+_global_option('line', help='Use log format with one line per revision')
 _global_option('root', type=str)
 _global_option('no-backup')
 _global_option('merge-type', type=_parse_merge_type)
@@ -200,6 +202,9 @@ _global_option('quiet')
 _global_option('remember', help='Remember the specified location as a'
                ' default.')
 _global_option('reprocess', help='Reprocess to reduce spurious conflicts')
+_global_option('kind', type=str)
+_global_option('dry-run',
+               help="show what would be done, but don't actually do anything")
 
 
 def _global_short(short_name, long_name):

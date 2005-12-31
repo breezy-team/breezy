@@ -54,6 +54,7 @@ create_signatures - this option controls whether bzr will always create
 
 import errno
 import os
+import sys
 from fnmatch import fnmatch
 import re
 
@@ -133,12 +134,7 @@ class Config(object):
 
     def user_email(self):
         """Return just the email component of a username."""
-        e = self.username()
-        m = re.search(r'[\w+.-]+@[\w+.-]+', e)
-        if not m:
-            raise BzrError("%r doesn't seem to contain "
-                           "a reasonable email address" % e)
-        return m.group(0)
+        return extract_email_address(self.username())
 
     def username(self):
         """Return email-style username.
@@ -147,8 +143,8 @@ class Config(object):
         
         $BZREMAIL can be set to override this, then
         the concrete policy type is checked, and finally
-        $EMAIL is examinged.
-        but if none is found, a reasonable default is (hopefully)
+        $EMAIL is examined.
+        If none is found, a reasonable default is (hopefully)
         created.
     
         TODO: Check it's reasonably well-formed.
@@ -419,7 +415,20 @@ def config_dir():
     
     TODO: Global option --config-dir to override this.
     """
-    return os.path.join(os.path.expanduser("~"), ".bazaar")
+    base = os.environ.get('BZR_HOME', None)
+    if sys.platform == 'win32':
+        if base is None:
+            base = os.environ.get('APPDATA', None)
+        if base is None:
+            base = os.environ.get('HOME', None)
+        if base is None:
+            raise BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
+        return os.path.join(base, 'bazaar', '2.0')
+    else:
+        # cygwin, linux, and darwin all have a $HOME directory
+        if base is None:
+            base = os.path.expanduser("~")
+        return os.path.join(base, ".bazaar")
 
 
 def config_filename():
@@ -480,8 +489,8 @@ def extract_email_address(e):
     """
     m = re.search(r'[\w+.-]+@[\w+.-]+', e)
     if not m:
-        raise BzrError("%r doesn't seem to contain "
-                       "a reasonable email address" % e)
+        raise errors.BzrError("%r doesn't seem to contain "
+                              "a reasonable email address" % e)
     return m.group(0)
 
 class TreeConfig(object):

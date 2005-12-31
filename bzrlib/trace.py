@@ -1,17 +1,4 @@
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
+# Copyright (C) 2005, Canonical Ltd
 
 """Messages and logging for bazaar-ng.
 
@@ -27,6 +14,8 @@ such as running the test suite, they can also be redirected away from both of
 those two places to another location.
 
 ~/.bzr.log gets all messages, and full tracebacks for uncaught exceptions.
+This trace file is always in UTF-8, regardless of the user's default encoding,
+so that we can always rely on writing any message.
 
 Output to stderr depends on the mode chosen by the user.  By default, messages
 of info and above are sent out, which results in progress messages such as the
@@ -43,12 +32,8 @@ KeyError, which typically just str to "0".  They're printed in a different
 form.
 """
 
-
 # TODO: in debug mode, stderr should get full tracebacks and also
 # debug messages.  (Is this really needed?)
-
-# TODO: When running the test suites, we should add an additional
-# logger that sends messages into the test log file.
 
 # FIXME: Unfortunately it turns out that python's logging module
 # is quite expensive, even when the message is not printed by any handlers.
@@ -60,11 +45,15 @@ import os
 import logging
 
 import bzrlib
-from bzrlib.errors import BzrNewError
+from bzrlib.errors import BzrError, BzrNewError
 
 
 _file_handler = None
 _stderr_handler = None
+_stderr_quiet = False
+_trace_file = None
+_bzr_log_file = None
+
 
 class QuietFormatter(logging.Formatter):
     """Formatter that supresses the details of errors.
@@ -85,10 +74,6 @@ class QuietFormatter(logging.Formatter):
             s += '\n' + format_exception_short(record.exc_info)
         return s
         
-
-
-
-################
 # configure convenient aliases for output routines
 
 _bzr_logger = logging.getLogger('bzr')
@@ -97,8 +82,20 @@ info = note = _bzr_logger.info
 warning =   _bzr_logger.warning
 log_error = _bzr_logger.error
 error =     _bzr_logger.error
-mutter =    _bzr_logger.debug
-debug =     _bzr_logger.debug
+
+
+def mutter(fmt, *args):
+    if _trace_file is None:
+        return
+    if hasattr(_trace_file, 'closed') and _trace_file.closed:
+        return
+    if len(args) > 0:
+        out = fmt % args
+    else:
+        out = fmt
+    out += '\n'
+    _trace_file.write(out)
+debug = mutter
 
 
 def _rollover_trace_maybe(trace_fname):
@@ -118,7 +115,7 @@ def open_tracefile(tracefilename='~/.bzr.log'):
     # Messages are always written to here, so that we have some
     # information if something goes wrong.  In a future version this
     # file will be removed on successful completion.
-    global _file_handler
+    global _file_handler, _bzr_log_file
     import stat, codecs
 
     trace_fname = os.path.join(os.path.expanduser(tracefilename))
@@ -126,12 +123,11 @@ def open_tracefile(tracefilename='~/.bzr.log'):
     try:
         LINE_BUFFERED = 1
         tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
-
-        if os.fstat(tf.fileno())[stat.ST_SIZE] == 0:
+        _bzr_log_file = tf
+        if tf.tell() == 0:
             tf.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
             tf.write("you can delete or truncate this file, or include sections in\n")
             tf.write("bug reports to bazaar-ng@lists.canonical.com\n\n")
-        
         _file_handler = logging.StreamHandler(tf)
         fmt = r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s'
         datefmt = r'%a %H:%M:%S'
@@ -143,7 +139,7 @@ def open_tracefile(tracefilename='~/.bzr.log'):
 
 
 def log_startup(argv):
-    debug('bzr %s invoked on python %s (%s)',
+    debug('\n\nbzr %s invoked on python %s (%s)',
           bzrlib.__version__,
           '.'.join(map(str, sys.version_info)),
           sys.platform)
@@ -157,10 +153,12 @@ def log_exception(msg=None):
     The exception string representation is used as the error
     summary, unless msg is given.
     """
-    exc_str = format_exception_short(sys.exc_info())
     if msg:
-        _bzr_logger.exception(msg)
-    _bzr_logger.error(exc_str)
+        error(msg)
+    else:
+        exc_str = format_exception_short(sys.exc_info())
+        error(exc_str)
+    log_exception_quietly()
 
 
 def log_exception_quietly():
@@ -176,26 +174,35 @@ def log_exception_quietly():
 
 def enable_default_logging():
     """Configure default logging to stderr and .bzr.log"""
-    global _stderr_handler, _file_handler
-
+    # FIXME: if this is run twice, things get confused
+    global _stderr_handler, _file_handler, _trace_file, _bzr_log_file
     _stderr_handler = logging.StreamHandler()
     _stderr_handler.setFormatter(QuietFormatter())
     logging.getLogger('').addHandler(_stderr_handler)
-
-    if os.environ.get('BZR_DEBUG'):
-        level = logging.DEBUG
-    else:
-        level = logging.INFO
-
     _stderr_handler.setLevel(logging.INFO)
-
     if not _file_handler:
         open_tracefile()
-
+    _trace_file = _bzr_log_file
     if _file_handler:
-        _file_handler.setLevel(level)
+        _file_handler.setLevel(logging.DEBUG)
+    _bzr_logger.setLevel(logging.DEBUG) 
 
-    _bzr_logger.setLevel(level) 
+
+
+def be_quiet(quiet=True):
+    global _stderr_handler, _stderr_quiet
+    
+    _stderr_quiet = quiet
+    if quiet:
+        _stderr_handler.setLevel(logging.WARNING)
+    else:
+        _stderr_handler.setLevel(logging.INFO)
+
+
+def is_quiet():
+    global _stderr_quiet
+    return _stderr_quiet
+
 
 def disable_default_logging():
     """Turn off default log handlers.
@@ -208,22 +215,25 @@ def disable_default_logging():
     l.removeHandler(_stderr_handler)
     if _file_handler:
         l.removeHandler(_file_handler)
+    _trace_file = None
 
 
 def enable_test_log(to_file):
     """Redirect logging to a temporary file for a test"""
     disable_default_logging()
-    global _test_log_hdlr
+    global _test_log_hdlr, _trace_file
     hdlr = logging.StreamHandler(to_file)
     hdlr.setLevel(logging.DEBUG)
     hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
-    logging.getLogger('').addHandler(hdlr)
-    logging.getLogger('').setLevel(logging.DEBUG)
+    _bzr_logger.addHandler(hdlr)
+    _bzr_logger.setLevel(logging.DEBUG)
     _test_log_hdlr = hdlr
+    _trace_file = to_file
 
 
 def disable_test_log():
-    logging.getLogger('').removeHandler(_test_log_hdlr)
+    _bzr_logger.removeHandler(_test_log_hdlr)
+    _trace_file = None
     enable_default_logging()
 
 
@@ -241,7 +251,7 @@ def format_exception_short(exc_info):
     try:
         if exc_type is None:
             return '(no exception)'
-        if isinstance(exc_object, BzrNewError):
+        if isinstance(exc_object, (BzrError, BzrNewError)):
             return str(exc_object)
         else:
             import traceback
@@ -252,5 +262,7 @@ def format_exception_short(exc_info):
             if tb:
                 msg += '\n  at %s line %d\n  in %s' % (tb[-1][:3])
             return msg
-    except:
-        return '(error formatting exception of type %s)' % exc_type
+    except Exception, formatting_exc:
+        # XXX: is this really better than just letting it run up?
+        return '(error formatting exception of type %s: %s)' \
+                % (exc_type, formatting_exc)

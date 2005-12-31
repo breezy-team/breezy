@@ -21,7 +21,11 @@ Overall
   core improvements should be tested closer to the code that is doing the
   work. Command line level tests should be placed in 'blackbox.py'.
 
-* Before fixing a bug, write a test case so that it does not regress.
+* Try to practice Test-Driven Development.  before fixing a bug, write a
+  test case so that it does not regress.  Similarly for adding a new
+  feature: write a test case for a small version of the new feature before
+  starting on the code itself.  Check the test fails on the old code, then
+  add the feature or fix and check it passes.
 
 * Exceptions should be defined inside bzrlib.errors, so that we can
   see the whole tree at a glance.
@@ -34,7 +38,7 @@ Overall
 * Module names should always be given fully-qualified,
   i.e. ``bzrlib.hashcache`` not just ``hashcache``.
 
-* Commands should return Non-Zero when they encounter circumstances that
+* Commands should return non-zero when they encounter circumstances that
   the user should really pay attention to - which includes trivial shell
   pipelines.
 
@@ -243,4 +247,48 @@ revno
     Revision 0 is always the null revision; others are 1-based
     indexes into the branch's revision history.
 
-:: vim: tw=74 ai
+
+Merge/review process
+====================
+
+If you'd like to propose a change, please post to the
+bazaar-ng@lists.canonical.com list with a patch, bzr changeset, or link to a
+branch.  Please put '[patch]' in the subject so we can pick them out, and
+include some text explaining the change.  Remember to put an update to the NEWS
+file in your diff, if it makes any changes visible to users or plugin
+developers.  Please include a diff against mainline if you're giving a link to
+a branch.
+
+Please indicate if you think the code is ready to merge, or if it's just a
+draft or for discussion.  If you want comments from many developers rather than
+to be merged, you can put '[rfc]' in the subject lines.
+
+Anyone is welcome to review code.  There are broadly three gates for
+code to get in:
+
+ * Doesn't reduce test coverage: if it adds new methods or commands,
+   there should be tests for them.  There is a good test framework
+   and plenty of examples to crib from, but if you are having trouble
+   working out how to test something feel free to post a draft patch
+   and ask for help.
+
+ * Doesn't reduce design clarity, such as by entangling objects
+   we're trying to separate.  This is mostly something the more
+   experienced reviewers need to help check.
+
+ * Improves bugs, features, speed, or code simplicity.
+
+Code that goes in should pass all three.
+
+If you read a patch please reply and say so.  We can use a numeric scale
+of -1, -0, +0, +1, meaning respectively "really don't want it in current
+form", "somewhat uncomfortable", "ok with me", and "please put it in".
+Anyone can "vote".   (It's not really voting, just a terse expression.)
+
+If something gets say two +1 votes from core reviewers, and no
+vetos, then it's OK to come in.  Any of the core developers can bring it
+into their integration branch, which I'll merge regularly.  (If you do
+so, please reply and say so.)
+
+
+:: vim:tw=74:ai

@@ -142,6 +142,11 @@ class BzrCommandError(BzrError):
     # Error from malformed user command
     # This is being misused as a generic exception
     # pleae subclass. RBC 20051030
+    #
+    # I think it's a waste of effort to differentiate between errors that
+    # are not intended to be caught anyway.  UI code need not subclass
+    # BzrCommandError, and non-UI code should not throw a subclass of
+    # BzrCommandError.  ADHB 20051211
     def __str__(self):
         return self.args[0]
 
@@ -153,10 +158,55 @@ class BzrOptionError(BzrCommandError):
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
+
+class PathError(BzrNewError):
+    """Generic path error: %(path)r%(extra)s)"""
+    def __init__(self, path, extra=None):
+        BzrNewError.__init__(self)
+        self.path = path
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
+
+
+class NoSuchFile(PathError):
+    """No such file: %(path)r%(extra)s"""
+
+
+class FileExists(PathError):
+    """File exists: %(path)r%(extra)s"""
+
+
+class PermissionDenied(PathError):
+    """Permission denied: %(path)r%(extra)s"""
+
+
+class PathNotChild(BzrNewError):
+    """Path %(path)r is not a child of path %(base)r%(extra)s"""
+    def __init__(self, path, base, extra=None):
+        BzrNewError.__init__(self)
+        self.path = path
+        self.base = base
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
+
+
 class NotBranchError(BzrNewError):
     """Not a branch: %(path)s"""
     def __init__(self, path):
         BzrNewError.__init__(self)
+        self.path = path
+
+
+class FileInWrongBranch(BzrNewError):
+    """File %(path)s in not in branch %(branch_base)s."""
+    def __init__(self, branch, path):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.branch_base = branch.base
         self.path = path
 
 
@@ -226,7 +276,7 @@ class HistoryMissing(BzrError):
 
 class DivergedBranches(BzrError):
     def __init__(self, branch1, branch2):
-        BzrError.__init__(self, "These branches have diverged.")
+        BzrError.__init__(self, "These branches have diverged.  Try merge.")
         self.branch1 = branch1
         self.branch2 = branch2
 
@@ -256,15 +306,6 @@ class NotAncestor(BzrError):
         BzrError.__init__(self, msg)
         self.rev_id = rev_id
         self.not_ancestor_id = not_ancestor_id
-
-
-class NotAncestor(BzrError):
-    def __init__(self, rev_id, not_ancestor_id):
-        self.rev_id = rev_id
-        self.not_ancestor_id = not_ancestor_id
-        msg = "Revision %s is not an ancestor of %s" % (not_ancestor_id, 
-                                                        rev_id)
-        BzrError.__init__(self, msg)
 
 
 class InstallFailed(BzrError):
@@ -329,6 +370,13 @@ class WeaveParentMismatch(WeaveError):
     """Parents are mismatched between two revisions."""
     
 
+class NoSuchExportFormat(BzrNewError):
+    """Export format %(format)r not supported"""
+    def __init__(self, format):
+        BzrNewError.__init__(self)
+        self.format = format
+
+
 class TransportError(BzrError):
     """All errors thrown by Transport implementations should derive
     from this class.
@@ -347,58 +395,15 @@ class TransportNotPossible(TransportError):
     """
     pass
 
-class NonRelativePath(TransportError):
-    """An absolute path was supplied, that could not be decoded into
-    a relative path.
-    """
-    pass
 
-class NoSuchFile(TransportError, IOError):
-    """A get() was issued for a file that doesn't exist."""
-
-    # XXX: Is multiple inheritance for exceptions really needed?
-
-    def __str__(self):
-        return 'no such file: ' + self.msg
-
-    def __init__(self, msg=None, orig_error=None):
-        import errno
-        TransportError.__init__(self, msg=msg, orig_error=orig_error)
-        IOError.__init__(self, errno.ENOENT, self.msg)
-
-class ConnectionError(TransportError, IOError):
-    """
-    A connection problem prevents file retrieval.
+class ConnectionError(TransportError):
+    """A connection problem prevents file retrieval.
     This does not indicate whether the file exists or not; it indicates that a
     precondition for requesting the file was not met.
     """
-
-    # XXX: Is multiple inheritance for exceptions really needed?
-
-    def __str__(self):
-        return 'connection error: ' + self.msg
-
     def __init__(self, msg=None, orig_error=None):
-        import errno
         TransportError.__init__(self, msg=msg, orig_error=orig_error)
-        IOError.__init__(self, errno.ENOENT, self.msg)
 
-
-class FileExists(TransportError, OSError):
-    """An operation was attempted, which would overwrite an entry,
-    but overwritting is not supported.
-
-    mkdir() can throw this, but put() just overwites existing files.
-    """
-    # XXX: Is multiple inheritance for exceptions really needed?
-    def __init__(self, msg=None, orig_error=None):
-        import errno
-        TransportError.__init__(self, msg=msg, orig_error=orig_error)
-        OSError.__init__(self, errno.EEXIST, self.msg)
-
-class PermissionDenied(TransportError):
-    """An operation cannot succeed because of a lack of permissions."""
-    pass
 
 class ConnectionReset(TransportError):
     """The connection has been closed."""
@@ -465,3 +470,10 @@ class ChangesetNotSupported(BzrNewError):
         self.msg = msg
 
 
+class MissingText(BzrNewError):
+    """Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"""
+    def __init__(self, branch, text_revision, file_id):
+        self.branch = branch
+        self.base = branch.base
+        self.text_revision = text_revision
+        self.file_id = file_id

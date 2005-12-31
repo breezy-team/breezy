@@ -1,5 +1,43 @@
 UNRELEASED CHANGES
 
+  CHANGES:
+
+    * .bzrignore is excluded from exports, on the grounds that it's a bzr 
+      internal-use file and may not be wanted.  (Jamie Wilkinson)
+
+    * The "bzr directories" command were removed in favor of the new
+      --kind option to the "bzr inventory" command.  To list all 
+      versioned directories, now use "bzr inventory --kind directory".  
+      (Johan Rydberg)
+
+    * Under Windows configuration directory is now %APPDATA%\bazaar\2.0
+      by default. (John Arbash Meinel)
+
+    * The parent of Bzr configuration directory can be set by BZR_HOME
+      environment variable. Now the path for it is searched in BZR_HOME, then
+      in HOME. Under Windows the order is: BZR_HOME, APPDATA (usually
+      points to C:\Documents and Settings\User Name\Application Data), HOME.
+      (John Arbash Meinel)
+
+    * Plugins with the same name in different directories in the bzr plugin
+      path are no longer loaded: only the first successfully loaded one is
+      used. (Robert Collins)
+
+    * Use systems' external ssh command to open connections if possible.  
+      This gives better integration with user settings such as ProxyCommand.
+      (James Henstridge)
+
+    * Sftp paths can now be relative, or local, according to the IETF 
+      draft spec.  Paths now take the form:
+      sftp://user:pass@host:port/relative/path
+      or
+      sftp://user:pass@host:port/%2Fabsolute/path
+      or
+      sftp://user:pass@host:port//absolute/path
+
+    * configure.in and config.guess are no longer in the builtin default 
+      ignore list.
+
   IMPROVEMENTS:
 
     * "bzr INIT dir" now initializes the specified directory, and creates 
@@ -31,6 +69,38 @@ UNRELEASED CHANGES
     * Accept 'bzr resolved' (an alias for 'bzr resolve'), as this is
       the same as Subversion.  (Martin Pool)
 
+    * New ftp transport support (on ftplib), for ftp:// and aftp:// 
+      URLs.  (Daniel Silverstone)
+
+    * Commit editor temporary files now start with 'bzr_log.', to allow 
+      text editors to match the file name and set up appropriate modes or 
+      settings.  (Magnus Therning)
+
+    * Improved performance when integrating changes from a remote weave.  
+      (Goffredo Baroncelli)
+
+    * Sftp will attempt to cache the connection, so it is more likely that
+      a connection will be reused, rather than requiring multiple password
+      requests.
+
+    * bzr revno now takes an optional argument indicating the branch whose
+      revno should be printed.  (Michael Ellerman)
+
+    * bzr cat defaults to printing the last version of the file.  
+      (#3632, Matthieu Moy)
+
+    * New global option 'bzr --lsprof COMMAND' runs bzr under the lsprof 
+      profiler.  (Denys Duchier)
+
+    * Faster commits by reading only the headers of affected weave files. 
+      (Denys Duchier)
+
+    * 'bzr add' now takes a --dry-run parameter which shows you what would be
+      added, but doesn't actually add anything. (Michael Ellerman)
+
+    * bzr add now lists how many files were ignored per glob.  add --verbose
+      lists the specific files.  (Aaron Bentley)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
@@ -52,12 +122,69 @@ UNRELEASED CHANGES
     * Stores with some compressed texts and some uncompressed texts are now
       able to be used. (John A Meinel)
 
+    * Fix for bzr pull failing sometimes under windows
+
+    * Fix for sftp transport under windows when using interactive auth
+
+    * Show files which are both renamed and modified as such in 'bzr 
+      status' output.  (#4503, Daniel Silverstone)
+
+    * Make annotate cope better with revisions committed without a valid 
+      email address.  (Marien Zwart)
+
+    * Fix representation of tab characters in commit messages.  (Harald 
+      Meland)
+
+    * List of plugin directories in BZR_PLUGIN_PATH environment variable is
+      now parsed properly under Windows. (Alexander Belchenko)
+
+    * Show number of revisions pushed/pulled/merged. (Robey Pointer)
+
+    * Keep a cached copy of the basis inventory to speed up operations 
+      that need to refer to it.  (Johan Rydberg, Martin Pool)
+
+    * Fix bugs in bzr status display of non-ascii characters.  (Martin 
+      Pool)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
       (Robey Pointer, Jelmer Vernooij) 
 
     * Fix selftest run with 'python -O'.  (Martin Pool)
+
+    * Fix HTTP tests under Windows. (John Arbash Meinel)
+
+    * Make tests work even if HOME is not set (Aaron Bentley)
+
+    * Updated build_tree to use fixed line-endings for tests which read 
+      the file cotents and compare. Make some tests use this to pass under
+      Windows. (John Arbash Meinel)
+
+    * Skip stat and symlink tests under Windows. (Alexander Belchenko)
+
+    * Delay in selftest/testhashcash is now issued under win32 and Cygwin.
+      (John Arbash Meinel)
+
+    * Use terminal width to align verbose test output.  (Martin Pool)
+
+    * Blackbox tests are maintained within the bzrlib.tests.blackbox directory.
+      If adding a new test script please add that to
+      bzrlib.tests.blackbox.__init__. (Robert Collins)
+
+    * Much better error message if one of the test suites can't be 
+      imported.  (Martin Pool)
+
+    * Make check now runs the test suite twice - once with the default locale,
+      and once with all locales forced to C, to expose bugs. This is not 
+      trivially done within python, so for now its only triggered by running
+      Make check. Integrators and packagers who wish to check for full 
+      platform support should run 'make check' to test the source.
+      (Robert Collins)
+
+    * Tests can now run TestSkipped if they can't execute for any reason.
+      (Martin Pool) (NB: TestSkipped should only be raised for correctable
+      reasons - see the wiki spec ImprovingBzrTestSuite).
 
   INTERNALS:
 
@@ -95,8 +222,34 @@ UNRELEASED CHANGES
     * All pending merges operations from Branch are now on WorkingTree.
       (Robert Collins)
 
-    * Branch.commit() has moved to WorkingTree.commit(). (Robert Collins)
+    * The follow operations from Branch have moved to WorkingTree:
+      add()
+      commit()
+      move()
+      rename_one()
+      unknowns()
+      (Robert Collins)
 
+    * bzrlib.add.smart_add_branch is now smart_add_tree. (Robert Collins)
+
+    * New "rio" serialization format, similar to rfc-822. (Martin Pool)
+
+    * Rename selftests to `bzrlib.tests.test_foo`.  (John A Meinel, Martin 
+      Pool)
+
+    * bzrlib.plugin.all_plugins has been changed from an attribute to a 
+      query method. (Robert Collins)
+ 
+    * New options to read only the table-of-contents of a weave.  
+      (Denys Duchier)
+
+    * Raise NoSuchFile when someone tries to add a non-existant file.
+      (Michael Ellerman)
+
+    * Simplify handling of DivergedBranches in cmd_pull().
+      (Michael Ellerman)
+		   
+   
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:

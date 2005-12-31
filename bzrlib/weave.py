@@ -176,6 +176,9 @@ class Weave(object):
         self._name_map = {}
         self._weave_name = weave_name
 
+    def __repr__(self):
+        return "Weave(%r)" % self._weave_name
+
 
     def copy(self):
         """Return a deep copy of self.
@@ -618,23 +621,6 @@ class Weave(object):
         # properly paired, etc.
 
 
-
-    def merge(self, merge_versions):
-        """Automerge and mark conflicts between versions.
-
-        This returns a sequence, each entry describing alternatives
-        for a chunk of the file.  Each of the alternatives is given as
-        a list of lines.
-
-        If there is a chunk of the file where there's no diagreement,
-        only one alternative is given.
-        """
-        # approach: find the included versions common to all the
-        # merged versions
-        raise NotImplementedError()
-
-
-
     def _delta(self, included, lines):
         """Return changes from basis to new revision.
 
@@ -709,7 +695,11 @@ class Weave(object):
         lines_a = []
         lines_b = []
         ch_a = ch_b = False
-
+        # TODO: Return a structured form of the conflicts (e.g. 2-tuples for
+        # conflicted regions), rather than just inserting the markers.
+        # 
+        # TODO: Show some version information (e.g. author, date) on 
+        # conflicted regions.
         for state, line in plan:
             if state == 'unchanged' or state == 'killed-both':
                 # resync and flush queued conflicts changes if any
@@ -753,8 +743,9 @@ class Weave(object):
                                  'killed-both'), \
                        state
 
-                
+
     def join(self, other):
+        import sys, time
         """Integrate versions from other into this weave.
 
         The resulting weave contains all the history of both weaves; 
@@ -770,18 +761,37 @@ class Weave(object):
         # will be ok
         # work through in index order to make sure we get all dependencies
         for other_idx, name in enumerate(other._names):
-            if self._check_version_consistent(other, other_idx, name):
-                continue
+            self._check_version_consistent(other, other_idx, name)
+
+        merged = 0
+        processed = 0
+        time0 = time.time( )
         for other_idx, name in enumerate(other._names):
-            # TODO: If all the parents of the other version are already 
+            # TODO: If all the parents of the other version are already
             # present then we can avoid some work by just taking the delta
             # and adjusting the offsets.
             new_parents = self._imported_parents(other, other_idx)
-            lines = other.get_lines(other_idx)
             sha1 = other._sha1s[other_idx]
+
+            processed += 1
+           
+            if name in self._names:
+                idx = self.lookup(name)
+                n1 = map(other.idx_to_name, other._parents[other_idx] )
+                n2 = map(self.idx_to_name, self._parents[other_idx] )
+                if sha1 ==  self._sha1s[idx] and n1 == n2:
+                        continue
+
+            merged += 1
+            lines = other.get_lines(other_idx)
             self.add(name, new_parents, lines, sha1)
 
+        mutter("merged = %d, processed = %d, file_id=%s; deltat=%d"%(
+                merged,processed,self._weave_name, time.time( )-time0))
 
+
+
+ 
     def _imported_parents(self, other, other_idx):
         """Return list of parents in self corresponding to indexes in other."""
         new_parents = []
@@ -1124,12 +1134,24 @@ def profile_main(argv):
     return ret
 
 
+def lsprofile_main(argv): 
+    from bzrlib.lsprof import profile
+    ret,stats = profile(main, argv)
+    stats.sort()
+    stats.pprint()
+    return ret
+
+
 if __name__ == '__main__':
     import sys
     if '--profile' in sys.argv:
         args = sys.argv[:]
         args.remove('--profile')
         sys.exit(profile_main(args))
+    elif '--lsprof' in sys.argv:
+        args = sys.argv[:]
+        args.remove('--lsprof')
+        sys.exit(lsprofile_main(args))
     else:
         sys.exit(main(sys.argv))
 

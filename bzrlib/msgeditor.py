@@ -79,7 +79,7 @@ def edit_commit_message(infotext, ignoreline=None):
         ignoreline = "-- This line and the following will be ignored --"
         
     try:
-        tmp_fileno, msgfilename = tempfile.mkstemp()
+        tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
         msgfile = os.close(tmp_fileno)
         if infotext is not None and infotext != "":
             hasinfo = True
@@ -127,3 +127,21 @@ def edit_commit_message(infotext, ignoreline=None):
         try: os.unlink(msgfilename)
         except IOError: pass
 
+
+def make_commit_message_template(working_tree, specific_files):
+    """Prepare a template file for a commit into a branch.
+
+    Returns a unicode string containing the template.
+    """
+    # TODO: Should probably be given the WorkingTree not the branch
+    #
+    # TODO: make provision for this to be overridden or modified by a hook
+    #
+    # TODO: Rather than running the status command, should prepare a draft of
+    # the revision to be committed, then pause and ask the user to
+    # confirm/write a message.
+    from StringIO import StringIO       # must be unicode-safe
+    from bzrlib.status import show_status
+    status_tmp = StringIO()
+    show_status(working_tree.branch, specific_files=specific_files, to_file=status_tmp)
+    return status_tmp.getvalue()

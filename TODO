@@ -82,15 +82,6 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 * ``bzr inventory -r REV`` and perhaps unify this with ``bzr ls``,
   giving options to display ids, types, etc.
 
-* Split BzrError into various more specific subclasses for different
-  errors people might want to catch.
-
-* If the export destination ends in '.tar', '.tar.gz', etc then create
-  a tarball instead of a directory.  (Need to actually make a
-  temporary directory and then tar that up.)
-
-  http://www.gelato.unsw.edu.au/archives/git/0504/2194.html
-
 * RemoteBranch could maintain a cache either in memory or on disk.  We
   know more than an external cache might about which files are
   immutable and which can vary.  On the other hand, it's much simpler
@@ -290,13 +281,6 @@ Medium things
   - Class that describes the state of a working tree so we can just
     assert it's equal.
 
-* There are too many methods on Branch() that really manipulate the
-  WorkingTree.  They should be moved across.
-
-  Also there are some methods which are duplicated on Tree and
-  Inventory objects, and it should be made more clear which ones are
-  proxies and which ones behave differently, and how.
-
 * Try using XSLT to add some formatting to REST-generated HTML.  Or
   maybe write a small Python program that specifies a header and foot
   for the pages and calls into the docutils libraries.
@@ -341,8 +325,6 @@ Medium things
 
 * Paranoid mode where we never trust SHA-1 matches.
 
-* Don't commit if there are no changes unless forced.
-
 * --dry-run mode for commit?  (Or maybe just run with
   check-command=false?)
 
@@ -353,8 +335,6 @@ Medium things
 
 * XML attributes might have trouble with filenames containing \n and
   \r.  Do we really want to support this?  I think perhaps not.
-
-* Remember execute bits, so that exports will work OK.
 
 * Unify smart_add and plain Branch.add(); perhaps smart_add should
   just build a list of files to add and pass that to the regular add
@@ -372,20 +352,10 @@ Medium things
 * Perhaps attempts to get locks should timeout after some period of
   time, or at least display a progress message.
 
-* Split out upgrade functionality from check command into a separate
-  ``bzr upgrade``.
-
 * Don't pass around command classes but rather pass objects.  This'd
   make it cleaner to construct objects wrapping external commands.
 
 * Track all merged-in revisions in a versioned add-only metafile.
-
-* ``pull --clobber`` should discard any local changes not present
-  remotely.  Not generally what you want, but possibly useful when
-  you're just mirroring another branch and want to keep tracking it
-  even when they e.g. uncommit or make similar non-forward movements.
-  Also for push I suppose.  Clobber may not be the best name, maybe
-  ``--destroy``?
 
 * ``uncommit`` command that removes a revision from the end of the
   revision-history; just doing this is enough to remove the commit,
