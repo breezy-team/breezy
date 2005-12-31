@@ -7,6 +7,7 @@ from bzrlib.merge import merge, transform_tree
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
 from bzrlib.revision import common_ancestor
 from bzrlib.fetch import fetch
+from bzrlib.osutils import pathjoin
 
 
 class TestMerge(TestCaseInTempDir):
@@ -70,11 +71,11 @@ class TestMerge(TestCaseInTempDir):
         tree = b.working_tree()
         os.mkdir('dirname1')
         tree.add('dirname1')
-        filename = os.path.join('dirname1', 'name1')
+        filename = pathjoin('dirname1', 'name1')
         file(filename, 'wb').write('Hello')
         tree.add(filename)
         tree.commit(message="hello")
-        filename2 = os.path.join('dirname1', 'name2')
+        filename2 = pathjoin('dirname1', 'name2')
         tree.rename_one(filename, filename2)
         tree.rename_one('dirname1', 'dirname2')
         transform_tree(tree, b.basis_tree())

@@ -116,8 +116,9 @@ class RevisionTree(Tree):
            or at least passing a description to the constructor.
     """
     
-    def __init__(self, weave_store, inv, revision_id):
-        self._weave_store = weave_store
+    def __init__(self, branch, inv, revision_id):
+        self._branch = branch
+        self._weave_store = branch.weave_store
         self._inventory = inv
         self._revision_id = revision_id
 
@@ -126,22 +127,22 @@ class RevisionTree(Tree):
         return self._revision_id
 
     def get_weave(self, file_id):
-        # FIXME: RevisionTree should be given a branch
-        # not a store, or the store should know the branch.
         import bzrlib.transactions as transactions
         return self._weave_store.get_weave(file_id,
-            transactions.PassThroughTransaction())
+                self._branch.get_transaction())
 
+    def get_weave_prelude(self, file_id):
+        import bzrlib.transactions as transactions
+        return self._weave_store.get_weave_prelude(file_id,
+                self._branch.get_transaction())
 
     def get_file_lines(self, file_id):
         ie = self._inventory[file_id]
         weave = self.get_weave(file_id)
         return weave.get(ie.revision)
-        
 
     def get_file_text(self, file_id):
         return ''.join(self.get_file_lines(file_id))
-
 
     def get_file(self, file_id):
         return StringIO(self.get_file_text(file_id))
