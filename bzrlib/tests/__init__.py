@@ -636,6 +636,7 @@ def test_suite():
                    'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
+                   'bzrlib.tests.test_bound_sftp',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_command',
                    'bzrlib.tests.test_commit',

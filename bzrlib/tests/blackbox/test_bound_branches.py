@@ -72,8 +72,7 @@ class TestBoundBranches(TestCaseInTempDir):
         bzr('unbind')
         self.failIf(os.path.lexists('.bzr/bound'))
 
-        # TODO: Should unbinding a non-bound branch fail?
-        #bzr('unbind')
+        bzr('unbind', retcode=3)
 
     def test_bound_commit(self):
         bzr = self.run_bzr
@@ -89,7 +88,7 @@ class TestBoundBranches(TestCaseInTempDir):
         self.check_revno(2, '../base')
 
     def test_bound_fail(self):
-        """Make sure commit fails if out of date."""
+        # Make sure commit fails if out of date.
         bzr = self.run_bzr
         self.create_branches()
 
