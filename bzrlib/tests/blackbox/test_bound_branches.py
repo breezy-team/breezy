@@ -306,4 +306,37 @@ class TestBoundBranches(TestCaseInTempDir):
 
         bzr('cat-revision', new_rev_id)
 
+    def test_pull_overwrite_fails(self):
+        bzr = self.run_bzr
+        self.create_branches()
+
+        bzr('branch', 'child', 'other')
+        
+        os.chdir('other')
+        open('a', 'wb').write('new contents\n')
+        bzr('commit', '-m', 'changed a')
+        self.check_revno(2)
+        open('a', 'ab').write('and then some\n')
+        bzr('commit', '-m', 'another a')
+        self.check_revno(3)
+        open('a', 'ab').write('and some more\n')
+        bzr('commit', '-m', 'yet another a')
+        self.check_revno(4)
+
+        os.chdir('../child')
+        open('a', 'wb').write('also changed a\n')
+        bzr('commit', '-m', 'child modified a')
+
+        self.check_revno(2)
+        self.check_revno(2, '../base')
+
+        # It might be possible that we want pull --overwrite to
+        # actually succeed.
+        # If we want it, just change this test to make sure that 
+        # both base and child are updated properly
+        bzr('pull', '--overwrite', '../other', retcode=3)
+
+        # It should fail without changing the local revision
+        self.check_revno(2)
+        self.check_revno(2, '../base')
 

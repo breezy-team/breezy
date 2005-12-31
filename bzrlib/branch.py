@@ -866,7 +866,7 @@ class BzrBranch(Branch):
         # TODO: jam 20051230 This is actually just an integrity check
         #       This shouldn't be necessary, as other code should
         #       handle making sure this is correct
-        master_branch = self.get_bound_branch()
+        master_branch = self.get_master_branch()
         if master_branch:
             master_history = master_branch.revision_history()
             if rev_history != master_history[:len(rev_history)]:
@@ -1045,6 +1045,17 @@ class BzrBranch(Branch):
     @needs_write_lock
     def pull(self, source, overwrite=False):
         """See Branch.pull."""
+        master_branch = self.get_master_branch()
+        if master_branch:
+            # TODO: jam 20051230 It would certainly be possible
+            #       to overwrite the master branch, I just feel
+            #       a little funny about doing it. This should be
+            #       discussed.
+            if overwrite:
+                raise errors.OverwriteBoundBranch(branch)
+            master_branch.pull(source)
+            source = master_branch
+
         source.lock_read()
         try:
             old_count = len(self.revision_history())
@@ -1119,7 +1130,7 @@ class BzrBranch(Branch):
             return f.read().strip()
 
     @needs_read_lock
-    def get_bound_branch(self):
+    def get_master_branch(self):
         """Return the branch we are bound to.
         
         :return: Either a Branch, or None
@@ -1131,7 +1142,15 @@ class BzrBranch(Branch):
 
     @needs_write_lock
     def set_bound_location(self, location):
-        self.put_controlfile('bound', location+'\n')
+        if location:
+            self.put_controlfile('bound', location+'\n')
+        else:
+            bound_path = self._rel_controlfilename('bound')
+            try:
+                self._transport.delete(bound_path)
+            except NoSuchFile:
+                return False
+            return True
 
     @needs_write_lock
     def bind(self, other):
@@ -1201,12 +1220,7 @@ class BzrBranch(Branch):
     @needs_write_lock
     def unbind(self):
         """If bound, unbind"""
-        bound_path = self._rel_controlfilename('bound')
-        try:
-            self._transport.delete(bound_path)
-        except NoSuchFile:
-            return False
-        return True
+        return self.set_bound_location(None)
 
 
 class ScratchBranch(BzrBranch):

@@ -96,6 +96,10 @@ def copy_branch(branch_from, to_location, revision=None, basis_branch=None):
         branch_to.append_revision(*history)
         build_working_dir(to_location)
         mutter("copied")
+
+        # TODO: jam 20051230 When cloning a bound branch, should the
+        #       cloned branch also be bound?
+        # branch_to.set_bound_location(branch_from.get_bound_location())
         return branch_to
     finally:
         branch_from.unlock()

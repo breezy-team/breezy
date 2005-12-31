@@ -303,7 +303,7 @@ class Commit(object):
         # TODO: jam 20051230 Consider a special error for the case
         #       where the local branch is bound, and can't access the
         #       master branch
-        self.master_branch = self.branch.get_bound_branch()
+        self.master_branch = self.branch.get_master_branch()
         if not self.master_branch:
             return
 

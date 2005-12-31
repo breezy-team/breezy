@@ -360,6 +360,13 @@ class CommitToDoubleBoundBranch(BzrNewError):
         self.master = master
         self.remote = remote
 
+
+class OverwriteBoundBranch(BzrNewError):
+    """Cannot pull --overwrite to a branch which is bound %(branch)s"""
+    def __init__(self, branch):
+        BzrNewError.__init__(self)
+        self.branch = branch
+
         
 class WeaveError(BzrNewError):
     """Error in processing weave: %(message)s"""
