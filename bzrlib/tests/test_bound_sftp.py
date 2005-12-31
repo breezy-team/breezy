@@ -349,6 +349,9 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
         self.assertEqual(['r@b-1', 'r@c-2'], b_base.revision_history())
         self.assertEqual(['r@b-1', 'r@c-2'], b_child.revision_history())
 
+    # TODO: jam 20051230 Test that commit & pull fail when the branch we 
+    #       are bound to is not available
+
 
 if not paramiko_loaded:
     del BoundSFTPBranch

@@ -339,3 +339,7 @@ class TestBoundBranches(TestCaseInTempDir):
         self.check_revno(2)
         self.check_revno(2, '../base')
 
+    # TODO: jam 20051230 Test that commit & pull fail when the branch we 
+    #       are bound to is not available
+
+
