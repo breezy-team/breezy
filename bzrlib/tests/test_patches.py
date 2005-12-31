@@ -17,6 +17,7 @@
 # Just import the tester built-into the patch file
 
 from bzrlib.patches import PatchesTester
+from bzrlib.osutils import pathjoin
 import os
 
 
@@ -26,8 +27,9 @@ import os
 class TestPatches(PatchesTester):
     
     def datafile(self, filename):
-        data_path = os.path.join(os.path.dirname(__file__), "testdata", 
-                                 filename)
+        data_path = os.path.join(os.path.dirname(__file__),
+                            "test_patches_data", filename)
         return file(data_path, "rb")
 
-
+# we have to delete the original, or it will also be tested
+del PatchesTester

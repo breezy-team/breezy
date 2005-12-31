@@ -58,10 +58,8 @@ MODULES_TO_DOCTEST = [
 
 def packages_to_test():
     import bzrlib.tests.blackbox
-    import bzrlib.tests.changeset
     return [
             bzrlib.tests.blackbox,
-            bzrlib.tests.changeset
             ]
 
 
@@ -681,6 +679,7 @@ def test_suite():
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_parent',
+                   'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_remove',

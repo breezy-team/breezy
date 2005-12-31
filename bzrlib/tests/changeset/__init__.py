@@ -20,7 +20,6 @@ from bzrlib.tests import TestCaseInTempDir, BzrTestBase
 
 def test_suite():
     testmod_names = [
-        'bzrlib.tests.changeset.test_patches',
     ]
     suite = TestSuite()
     loader = TestLoader()
