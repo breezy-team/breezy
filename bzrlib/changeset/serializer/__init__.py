@@ -189,7 +189,7 @@ class ChangesetSerializer(object):
         """Read the rest of the changesets from the supplied file.
 
         :param f: The file to read from
-        :return: A list of changesets
+        :return: A list of changeset trees
         """
         raise NotImplementedError
 
