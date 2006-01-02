@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import sys
 
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.clone import copy_branch
@@ -22,6 +23,7 @@ from bzrlib.commit import commit
 import bzrlib.errors as errors
 from bzrlib.errors import NoSuchRevision, UnlistableBranch, NotBranchError
 import bzrlib.gpg
+from bzrlib.osutils import getcwd
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
@@ -49,7 +51,7 @@ class TestBranch(TestCaseInTempDir):
         os.mkdir('b2')
         b1 = Branch.initialize('b1')
         b2 = Branch.initialize('b2')
-        file(os.sep.join(['b1', 'foo']), 'w').write('hello')
+        file('b1/foo', 'w').write('hello')
         b1.working_tree().add(['foo'], ['foo-id'])
         b1.working_tree().commit('lala!', rev_id='revision-1', allow_pointless=False)
 
@@ -374,17 +376,24 @@ class TestBranchPushLocations(TestCaseInTempDir):
         self.assertEqual(None, self.branch.get_push_location())
 
     def test_get_push_location_exact(self):
-        self.build_tree(['.bazaar/'])
-        print >> open('.bazaar/branches.conf', 'wt'), ("[%s]\n"
-                                                       "push_location=foo" %
-                                                       os.getcwdu())
+        from bzrlib.config import (branches_config_filename,
+                                   ensure_config_dir_exists)
+        ensure_config_dir_exists()
+        fn = branches_config_filename()
+        print >> open(fn, 'wt'), ("[%s]\n"
+                                  "push_location=foo" %
+                                  getcwd())
         self.assertEqual("foo", self.branch.get_push_location())
 
     def test_set_push_location(self):
+        from bzrlib.config import (branches_config_filename,
+                                   ensure_config_dir_exists)
+        ensure_config_dir_exists()
+        fn = branches_config_filename()
         self.branch.set_push_location('foo')
         self.assertFileEqual("[%s]\n"
-                             "push_location = foo" % os.getcwdu(),
-                             '.bazaar/branches.conf')
+                             "push_location = foo" % getcwd(),
+                             fn)
 
     # TODO RBC 20051029 test getting a push location from a branch in a 
     # recursive section - that is, it appends the branch name.

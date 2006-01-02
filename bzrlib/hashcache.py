@@ -35,6 +35,7 @@ import sha
 from bzrlib.osutils import sha_file
 from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
+from bzrlib.osutils import pathjoin
 
 
 FP_MODE_COLUMN = 5
@@ -104,7 +105,7 @@ class HashCache(object):
     def cache_file_name(self):
         # FIXME: duplicate path logic here, this should be 
         # something like 'branch.controlfile'.
-        return os.sep.join([self.basedir, '.bzr', 'stat-cache'])
+        return pathjoin(self.basedir, '.bzr', 'stat-cache')
 
     def clear(self):
         """Discard all cached information.
@@ -125,7 +126,7 @@ class HashCache(object):
         prep.sort()
         
         for inum, path, cache_entry in prep:
-            abspath = os.sep.join([self.basedir, path])
+            abspath = pathjoin(self.basedir, path)
             fp = _fingerprint(abspath)
             self.stat_count += 1
             
@@ -141,7 +142,7 @@ class HashCache(object):
     def get_sha1(self, path):
         """Return the sha1 of a file.
         """
-        abspath = os.sep.join([self.basedir, path])
+        abspath = pathjoin(self.basedir, path)
         self.stat_count += 1
         file_fp = _fingerprint(abspath)
         

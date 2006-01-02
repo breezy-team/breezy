@@ -38,7 +38,6 @@ TEXT_1 = ["Hello world",
           "A second line"]
 
 
-
 class TestBase(TestCase):
     def check_read_write(self, k):
         """Check the weave k can be written & re-read."""
@@ -85,7 +84,6 @@ class StoreText(TestBase):
         self.assertEqual(idx, 0)
 
 
-
 class AnnotateOne(TestBase):
     def runTest(self):
         k = Weave()
@@ -108,7 +106,6 @@ class StoreTwo(TestBase):
         self.assertEqual(k.get(1), TEXT_1)
 
 
-
 class AddWithGivenSha(TestBase):
     def runTest(self):
         """Add with caller-supplied SHA-1"""
@@ -118,6 +115,17 @@ class AddWithGivenSha(TestBase):
         k.add('text0', [], [t], sha1=sha_string(t))
 
 
+class GetSha1(TestBase):
+    def test_get_sha1(self):
+        k = Weave()
+        k.add('text0', [], 'text0')
+        self.assertEqual('34dc0e430c642a26c3dd1c2beb7a8b4f4445eb79',
+                         k.get_sha1('text0'))
+        self.assertRaises(errors.WeaveRevisionNotPresent,
+                          k.get_sha1, 0)
+        self.assertRaises(errors.WeaveRevisionNotPresent,
+                          k.get_sha1, 'text1')
+                        
 
 class InvalidAdd(TestBase):
     """Try to use invalid version number during add."""
@@ -140,7 +148,6 @@ class RepeatedAdd(TestBase):
         self.assertEqual(idx, idx2)
 
 
-
 class InvalidRepeatedAdd(TestBase):
     def runTest(self):
         k = Weave()
@@ -156,7 +163,6 @@ class InvalidRepeatedAdd(TestBase):
                           [12],         # not the right parents
                           TEXT_0)
         
-
 
 class InsertLines(TestBase):
     """Store a revision that adds one line to the original.
@@ -214,7 +220,6 @@ class InsertLines(TestBase):
                           (4, 'ccc')])
 
 
-
 class DeleteLines(TestBase):
     """Deletion of lines from existing text.
 
@@ -244,8 +249,6 @@ class DeleteLines(TestBase):
         for i in range(len(texts)):
             self.assertEqual(k.get(i+1),
                              texts[i])
-            
-
 
 
 class SuicideDelete(TestBase):
@@ -271,7 +274,6 @@ class SuicideDelete(TestBase):
                           0)        
 
 
-
 class CannedDelete(TestBase):
     """Unpack canned weave with deleted lines."""
     def runTest(self):
@@ -288,6 +290,8 @@ class CannedDelete(TestBase):
                 'last line',
                 ('}', 0),
                 ]
+        k._sha1s = [sha_string('first lineline to be deletedlast line')
+                  , sha_string('first linelast line')]
 
         self.assertEqual(k.get(0),
                          ['first line',
@@ -299,7 +303,6 @@ class CannedDelete(TestBase):
                          ['first line',
                           'last line',
                           ])
-
 
 
 class CannedReplacement(TestBase):
@@ -321,6 +324,8 @@ class CannedReplacement(TestBase):
                 'last line',
                 ('}', 0),
                 ]
+        k._sha1s = [sha_string('first lineline to be deletedlast line')
+                  , sha_string('first linereplacement linelast line')]
 
         self.assertEqual(k.get(0),
                          ['first line',
@@ -333,7 +338,6 @@ class CannedReplacement(TestBase):
                           'replacement line',
                           'last line',
                           ])
-
 
 
 class BadWeave(TestBase):
@@ -421,6 +425,12 @@ class InsertNested(TestBase):
                 '}',
                 ('}', 0)]
 
+        k._sha1s = [sha_string('foo {}')
+                  , sha_string('foo {  added in version 1  also from v1}')
+                  , sha_string('foo {  added in v2}')
+                  , sha_string('foo {  added in version 1  added in v2  also from v1}')
+                  ]
+
         self.assertEqual(k.get(0),
                          ['foo {',
                           '}'])
@@ -443,7 +453,6 @@ class InsertNested(TestBase):
                           '  also from v1',
                           '}'])
                          
-
 
 class DeleteLines2(TestBase):
     """Test recording revisions that delete lines.
@@ -472,7 +481,6 @@ class DeleteLines2(TestBase):
                           (0, "fine")])
 
 
-
 class IncludeVersions(TestBase):
     """Check texts that are stored across multiple revisions.
 
@@ -493,6 +501,9 @@ class IncludeVersions(TestBase):
                 ('{', 1),
                 "second line",
                 ('}', 1)]
+
+        k._sha1s = [sha_string('first line')
+                  , sha_string('first linesecond line')]
 
         self.assertEqual(k.get(1),
                          ["first line",
@@ -523,6 +534,10 @@ class DivergedIncludes(TestBase):
                 ('}', 2),                
                 ]
 
+        k._sha1s = [sha_string('first line')
+                  , sha_string('first linesecond line')
+                  , sha_string('first linealternative second line')]
+
         self.assertEqual(k.get(0),
                          ["first line"])
 
@@ -536,7 +551,6 @@ class DivergedIncludes(TestBase):
 
         self.assertEqual(list(k.inclusions([2])),
                          [0, 2])
-
 
 
 class ReplaceLine(TestBase):
@@ -553,7 +567,6 @@ class ReplaceLine(TestBase):
 
         self.assertEqual(k.get(0), text0)
         self.assertEqual(k.get(1), text1)
-
 
 
 class Merge(TestBase):
@@ -612,7 +625,6 @@ class Conflicts(TestBase):
                            [['bbb']]])
 
 
-
 class NonConflict(TestBase):
     """Two descendants insert compatible changes.
 
@@ -624,9 +636,6 @@ class NonConflict(TestBase):
         k.add([], ['aaa', 'bbb'])
         k.add([0], ['111', 'aaa', 'ccc', 'bbb'])
         k.add([1], ['aaa', 'ccc', 'bbb', '222'])
-
-    
-    
 
 
 class AutoMerge(TestBase):
@@ -651,7 +660,6 @@ class AutoMerge(TestBase):
                           'line from 1',
                           'bbb',
                           'line from 2', 'more from 2'])
-        
 
 
 class Khayyam(TestBase):
@@ -699,7 +707,6 @@ class Khayyam(TestBase):
             self.assertEqual(k.get(i), t)
 
         self.check_read_write(k)
-
 
 
 class MergeCases(TestBase):
@@ -881,3 +888,106 @@ class JoinWeavesTests(TestBase):
         eq = self.assertEquals
         eq(sorted(wa.iter_names()), ['v1', 'v2', 'v3', 'x1',])
         eq(wa.get_text('x1'), 'line from x1\n')
+
+
+class Corruption(TestCase):
+
+    def test_detection(self):
+        # Test weaves detect corruption.
+        #
+        # Weaves contain a checksum of their texts.
+        # When a text is extracted, this checksum should be
+        # verified.
+
+        w = Weave()
+        w.add('v1', [], ['hello\n'])
+        w.add('v2', ['v1'], ['hello\n', 'there\n'])
+
+        # We are going to invasively corrupt the text
+        # Make sure the internals of weave are the same
+        self.assertEqual([('{', 0)
+                        , 'hello\n'
+                        , ('}', None)
+                        , ('{', 1)
+                        , 'there\n'
+                        , ('}', None)
+                        ], w._weave)
+
+        self.assertEqual(['f572d396fae9206628714fb2ce00f72e94f2258f'
+                        , '90f265c6e75f1c8f9ab76dcf85528352c5f215ef'
+                        ], w._sha1s)
+        w.check()
+
+        # Corrupted
+        w._weave[4] = 'There\n'
+
+        self.assertEqual('hello\n', w.get_text('v1'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
+
+        # Corrected
+        w._weave[4] = 'there\n'
+        self.assertEqual('hello\nthere\n', w.get_text('v2'))
+
+        #Invalid checksum, first digit changed
+        w._sha1s[1] =  'f0f265c6e75f1c8f9ab76dcf85528352c5f215ef'
+
+        self.assertEqual('hello\n', w.get_text('v1'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
+
+    def test_written_detection(self):
+        # Test detection of weave file corruption.
+        #
+        # Make sure that we can detect if a weave file has
+        # been corrupted. This doesn't test all forms of corruption,
+        # but it at least helps verify the data you get, is what you want.
+        from cStringIO import StringIO
+
+        w = Weave()
+        w.add('v1', [], ['hello\n'])
+        w.add('v2', ['v1'], ['hello\n', 'there\n'])
+
+        tmpf = StringIO()
+        write_weave(w, tmpf)
+
+        # Because we are corrupting, we need to make sure we have the exact text
+        self.assertEquals('# bzr weave file v5\n'
+                          'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
+                          'i 0\n1 90f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
+                          'w\n{ 0\n. hello\n}\n{ 1\n. there\n}\nW\n',
+                          tmpf.getvalue())
+
+        # Change a single letter
+        tmpf = StringIO('# bzr weave file v5\n'
+                        'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
+                        'i 0\n1 90f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
+                        'w\n{ 0\n. hello\n}\n{ 1\n. There\n}\nW\n')
+
+        w = read_weave(tmpf)
+
+        self.assertEqual('hello\n', w.get_text('v1'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
+
+        # Change the sha checksum
+        tmpf = StringIO('# bzr weave file v5\n'
+                        'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
+                        'i 0\n1 f0f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
+                        'w\n{ 0\n. hello\n}\n{ 1\n. there\n}\nW\n')
+
+        w = read_weave(tmpf)
+
+        self.assertEqual('hello\n', w.get_text('v1'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
+
+
