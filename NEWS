@@ -27,13 +27,16 @@ UNRELEASED CHANGES
       This gives better integration with user settings such as ProxyCommand.
       (James Henstridge)
 
-    * Sftp paths can now be relative, or local, according to the IETF draft spec.
-      Paths now take the form:
+    * Sftp paths can now be relative, or local, according to the IETF 
+      draft spec.  Paths now take the form:
       sftp://user:pass@host:port/relative/path
       or
       sftp://user:pass@host:port/%2Fabsolute/path
       or
       sftp://user:pass@host:port//absolute/path
+
+    * configure.in and config.guess are no longer in the builtin default 
+      ignore list.
 
   IMPROVEMENTS:
 
@@ -172,8 +175,16 @@ UNRELEASED CHANGES
     * Much better error message if one of the test suites can't be 
       imported.  (Martin Pool)
 
+    * Make check now runs the test suite twice - once with the default locale,
+      and once with all locales forced to C, to expose bugs. This is not 
+      trivially done within python, so for now its only triggered by running
+      Make check. Integrators and packagers who wish to check for full 
+      platform support should run 'make check' to test the source.
+      (Robert Collins)
+
     * Tests can now run TestSkipped if they can't execute for any reason.
-      (Martin Pool)
+      (Martin Pool) (NB: TestSkipped should only be raised for correctable
+      reasons - see the wiki spec ImprovingBzrTestSuite).
 
   INTERNALS:
 
