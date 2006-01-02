@@ -45,7 +45,7 @@ class cmd_version_info(Command):
     """
 
     takes_options = [Option('format', type=_parse_version_info_format,
-                            help='Select the '),
+                            help='Select the output format'),
                      Option('all', help='include all possible information'),
                      Option('check-clean', help='check if tree is clean'),
                      Option('include-history', 
