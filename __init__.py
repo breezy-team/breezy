@@ -63,8 +63,7 @@ class cmd_version_info(Command):
         if format is None:
             format = version_formats[None]
 
-        # TODO: jam 20051228 This could be open_containing
-        b = Branch.open(location)
+        b = Branch.open_containing(location)
 
         outf = codecs.getwriter('utf-8')(sys.stdout)
 
