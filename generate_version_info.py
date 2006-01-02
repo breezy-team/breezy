@@ -86,7 +86,7 @@ def generate_rio_version(branch, to_file,
     info = Stanza()
     # TODO: jam 20051228 This might be better as the datestamp 
     #       of the last commit
-    info.add('date', time.strftime('%Y-%m-%d %H:%M:%S (%A, %B %d, %Y, %Z)'))
+    info.add('date', time.strftime('%Y-%m-%d %H:%M:%S'))
     info.add('revno', str(branch.revno()))
 
     last_rev = branch.last_revision()
@@ -159,7 +159,7 @@ def generate_python_version(branch, to_file,
     """
     # TODO: jam 20051228 The python output doesn't actually need to be
     #       encoded, because it should only generate ascii safe output.
-    info = {'date':time.strftime('%Y-%m-%d %H:%M:%S (%A, %B %d, %Y, %Z)')
+    info = {'date':time.strftime('%Y-%m-%d %H:%M:%S')
               , 'revno':branch.revno()
               , 'revision_id':branch.last_revision()
               , 'revisions':None
