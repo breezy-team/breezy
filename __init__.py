@@ -63,7 +63,7 @@ class cmd_version_info(Command):
         if format is None:
             format = version_formats[None]
 
-        b = Branch.open_containing(location)
+        b = Branch.open_containing(location)[0]
 
         outf = codecs.getwriter('utf-8')(sys.stdout)
 
