@@ -241,9 +241,9 @@ def generate_python_version(branch, to_file,
 
     info_str = pprint.pformat(info)
     to_file.write(_py_version_header)
-    to_file.write('version_info =')
+    to_file.write('version_info = ')
     to_file.write(info_str)
-    to_file.write('\n')
+    to_file.write('\n\n')
 
     if include_revision_history:
         revs = branch.revision_history()
@@ -253,7 +253,7 @@ def generate_python_version(branch, to_file,
         revision_str = pprint.pformat(revisions)
         to_file.write('revisions = ')
         to_file.write(revision_str)
-        to_file.write('\n')
+        to_file.write('\n\n')
     else:
         to_file.write('revisions = {}\n\n')
 
@@ -261,7 +261,7 @@ def generate_python_version(branch, to_file,
         file_rev_str = pprint.pformat(file_revisions)
         to_file.write('file_revisions = ')
         to_file.write(file_rev_str)
-        to_file.write('\n')
+        to_file.write('\n\n')
     else:
         to_file.write('file_revisions = {}\n\n')
 
