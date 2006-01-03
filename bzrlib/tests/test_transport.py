@@ -801,12 +801,6 @@ class TestTransportMixIn(object):
         self.failUnless(t3.has('b/d'))
 
         
-class LocalTransportTest(TestCaseInTempDir, TestTransportMixIn):
-    def get_transport(self):
-        from bzrlib.transport.local import LocalTransport
-        return LocalTransport(u'.')
-
-
 class HttpTransportTest(TestCaseWithWebserver, TestTransportMixIn):
 
     readonly = True

@@ -888,6 +888,7 @@ class SFTPServer(Server):
     def __init__(self):
         self._original_vendor = None
         self._homedir = None
+        self._server_homedir = None
         self._listener = None
         self._root = None
         # sftp server logs
@@ -906,7 +907,7 @@ class SFTPServer(Server):
         server = StubServer(self)
         ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer,
                                          StubSFTPServer, root=self._root,
-                                         home=self._homedir)
+                                         home=self._server_homedir)
         event = threading.Event()
         ssh_server.start_server(event, server)
         event.wait(5.0)
@@ -921,8 +922,10 @@ class SFTPServer(Server):
         self._original_vendor = _ssh_vendor
         _ssh_vendor = 'none'
         self._homedir = os.getcwdu()
+        if self._server_homedir is None:
+            self._server_homedir = self._homedir
         self._root = '/'
-        # FIXME WINDOWS: _root should be _homedir[0]:/
+        # FIXME WINDOWS: _root should be _server_homedir[0]:/
         self._listener = SingleListener(self._run_server)
         self._listener.setDaemon(True)
         self._listener.start()
@@ -949,3 +952,11 @@ class SFTPHomeDirServer(SFTPServer):
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
         return self._get_sftp_url("")
+
+
+class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
+    """A test servere for sftp transports, using absolute urls to non-home."""
+
+    def setUp(self):
+        self._server_homedir = '/dev/noone/runs/tests/here'
+        super(SFTPSiblingAbsoluteServer, self).setUp()

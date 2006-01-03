@@ -22,7 +22,6 @@ from bzrlib.branch import Branch
 import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin, lexists
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
-from bzrlib.tests.test_transport import TestTransportMixIn
 import bzrlib.transport
 
 try:
@@ -112,15 +111,6 @@ class SFTPLockTests (TestCaseWithSFTPServer):
         # So the next line fails unless the connection is reused
         t2 = self.get_transport()
         self.assertEquals(self.server.logs, [])
-
-
-class SFTPTransportTestAbsoluteSibling(TestCaseWithSFTPServer, 
-                                       TestTransportMixIn):
-    """Test the SFTP transport with %2f based sibling paths to $HOME."""
-
-    def setUp(self):
-        self._override_home = '/dev/noone/runs/tests/here'
-        super(SFTPTransportTestAbsoluteSibling, self).setUp()
 
 
 class SFTPTransportTestRelative(TestCaseWithSFTPServer):

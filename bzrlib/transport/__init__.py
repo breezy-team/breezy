@@ -481,7 +481,8 @@ class TransportTestProviderAdapter(object):
                                             )
         from bzrlib.transport.sftp import (SFTPTransport,
                                            SFTPAbsoluteServer,
-                                           SFTPHomeDirServer
+                                           SFTPHomeDirServer,
+                                           SFTPSiblingAbsoluteServer,
                                            )
         from bzrlib.transport.http import (HttpTransport,
                                            HttpServer
@@ -495,6 +496,7 @@ class TransportTestProviderAdapter(object):
                 (LocalTransport, LocalURLServer),
                 (SFTPTransport, SFTPAbsoluteServer),
                 (SFTPTransport, SFTPHomeDirServer),
+                (SFTPTransport, SFTPSiblingAbsoluteServer),
                 (HttpTransport, HttpServer),
                 (MemoryTransport, MemoryServer),
                 ]

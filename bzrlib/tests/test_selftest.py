@@ -85,7 +85,8 @@ class TestTransportProviderAdapter(TestCase):
                                             )
         from bzrlib.transport.sftp import (SFTPTransport,
                                            SFTPAbsoluteServer,
-                                           SFTPHomeDirServer
+                                           SFTPHomeDirServer,
+                                           SFTPSiblingAbsoluteServer,
                                            )
         from bzrlib.transport.http import (HttpTransport,
                                            HttpServer
@@ -119,6 +120,7 @@ class TestTransportProviderAdapter(TestCase):
         local_urlpath_test = test_iter.next()
         sftp_abs_test = test_iter.next()
         sftp_homedir_test = test_iter.next()
+        sftp_sibling_abs_test = test_iter.next()
         http_test = test_iter.next()
         memory_test = test_iter.next()
         # ftp_test = test_iter.next()
@@ -136,6 +138,9 @@ class TestTransportProviderAdapter(TestCase):
         self.assertEqual(SFTPAbsoluteServer, sftp_abs_test.transport_server)
         self.assertEqual(SFTPTransport, sftp_homedir_test.transport_class)
         self.assertEqual(SFTPHomeDirServer, sftp_homedir_test.transport_server)
+        self.assertEqual(SFTPTransport, sftp_sibling_abs_test.transport_class)
+        self.assertEqual(SFTPSiblingAbsoluteServer,
+                         sftp_sibling_abs_test.transport_server)
 
         self.assertEqual(HttpTransport, http_test.transport_class)
         self.assertEqual(HttpServer, http_test.transport_server)
