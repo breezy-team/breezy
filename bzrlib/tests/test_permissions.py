@@ -73,9 +73,11 @@ def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
             p = os.path.join(root, f)
             check_mode(test, p, file_mode)
 
+
 def assertEqualMode(test, mode, mode_test):
     test.assertEqual(mode, mode_test,
                      'mode mismatch %o != %o' % (mode, mode_test))
+
 
 class TestPermissions(TestCaseInTempDir):
 

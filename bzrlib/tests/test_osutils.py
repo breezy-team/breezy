@@ -21,8 +21,9 @@ import os
 import sys
 
 import bzrlib
-from bzrlib.tests import TestCaseInTempDir
 import bzrlib.osutils as osutils
+from bzrlib.tests import TestCaseInTempDir
+
 
 class TestOSUtils(TestCaseInTempDir):
 

@@ -103,9 +103,9 @@ class TestCaseWithSFTPServer (TestCaseInTempDir):
         stop_event.wait(30.0)
 
     def setUp(self):
-        TestCaseInTempDir.setUp(self)
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
+        TestCaseInTempDir.setUp(self)
         self._root = self.test_dir
         self._is_setup = False
 

@@ -138,6 +138,12 @@ def fancy_rename(old, new, rename_func, unlink_func):
         rename_func(new, tmp_name)
     except (NoSuchFile,), e:
         pass
+    except IOError, e:
+        # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
+        # function raises an IOError with errno == None when a rename fails.
+        # This then gets caught here.
+        if e.errno is not None:
+            raise
     except Exception, e:
         if (not hasattr(e, 'errno') 
             or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
@@ -206,6 +212,7 @@ if sys.platform == 'win32':
 
     def rename(old, new):
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+
 
 def normalizepath(f):
     if hasattr(os.path, 'realpath'):

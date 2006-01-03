@@ -171,3 +171,17 @@ class TestWorkingTree(TestCaseInTempDir):
         self.assertEquals(list(tree.unknowns()),
                           ['hello.txt'])
 
+    def test_hashcache(self):
+        from bzrlib.tests.test_hashcache import pause
+        b = Branch.initialize(u'.')
+        tree = WorkingTree(u'.', b)
+        self.build_tree(['hello.txt',
+                         'hello.txt~'])
+        tree.add('hello.txt')
+        pause()
+        sha = tree.get_file_sha1(tree.path2id('hello.txt'))
+        self.assertEqual(1, tree._hashcache.miss_count)
+        tree2 = WorkingTree(u'.', b)
+        sha2 = tree2.get_file_sha1(tree2.path2id('hello.txt'))
+        self.assertEqual(0, tree2._hashcache.miss_count)
+        self.assertEqual(1, tree2._hashcache.hit_count)

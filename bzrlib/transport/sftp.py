@@ -392,8 +392,10 @@ class SFTPTransport (Transport):
                     fout.close()
                 self._sftp.remove(tmp_abspath)
             except:
-                pass
-            raise e
+                # raise the saved except
+                raise e
+            # raise the original with its traceback if we can.
+            raise
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
