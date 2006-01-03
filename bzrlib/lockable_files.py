@@ -92,7 +92,7 @@ class LockableFiles(object):
             raise ReadOnlyError()
         self._transport.put(self._rel_controlfilename(path), file)
 
-    def put_utf8(self, path, file):
+    def put_utf8(self, path, file, mode=None):
         """Write a file, encoding as utf-8.
 
         :param path: The path to put the file, relative to the .bzr control
@@ -108,6 +108,8 @@ class LockableFiles(object):
             iterator = file
         # IterableFile would not be needed if Transport.put took iterables
         # instead of files.  ADHB 2005-12-25
+        # RBC 20060103 surely its not needed anyway, with codecs transcode
+        # file support ?
         encoded_file = IterableFile(b.encode('utf-8', 'replace') for b in 
                                     iterator)
         self.put(path, encoded_file)

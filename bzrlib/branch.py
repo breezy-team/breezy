@@ -26,8 +26,8 @@ from cStringIO import StringIO
 import bzrlib
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn,
-                            rename, splitpath, sha_file, appendpath, 
-                            file_kind, abspath)
+                            rename, splitpath, sha_file,
+                            file_kind, abspath, normpath, pathjoin)
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
@@ -130,8 +130,8 @@ class Branch(object):
         while True:
             try:
                 return BzrBranch(t), t.relpath(url)
-            except NotBranchError:
-                pass
+            except NotBranchError, e:
+                mutter('not a branch in: %r %s', t.base, e)
             new_t = t.clone('..')
             if new_t.base == t.base:
                 # reached the root, whatever that may be
@@ -422,6 +422,10 @@ class BzrBranch(Branch):
     # filesystem access, so that in a later step, we can extricate them to
     # a separarte ("storage") class.
     _inventory_weave = None
+    # If set to False (by a plugin, etc) BzrBranch will not set the
+    # mode on created files or directories
+    _set_file_mode = True
+    _set_dir_mode = True
     
     # Map some sort of prefix into a namespace
     # stuff like "revno:10", "revid:", etc.
@@ -472,7 +476,10 @@ class BzrBranch(Branch):
         if init:
             self._make_control()
         self._check_format(relax_version_check)
-        self.repository = Repository(transport, self._branch_format)
+        self._find_modes()
+        self.repository = Repository(transport, self._branch_format,
+                                     dir_mode=self._dir_mode,
+                                     file_mode=self._file_mode)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)
@@ -527,6 +534,26 @@ class BzrBranch(Branch):
         """See Branch.abspath."""
         return self.control_files._transport.abspath(name)
 
+    def _find_modes(self, path=None):
+        """Determine the appropriate modes for files and directories."""
+        # RBC 20060103 FIXME where does this belong ?
+        try:
+            if path is None:
+                path = ''
+                #self.control_files._rel_controlfilename('')
+            st = self.control_files._transport.stat(path)
+        except errors.TransportNotPossible:
+            self._dir_mode = 0755
+            self._file_mode = 0644
+        else:
+            self._dir_mode = st.st_mode & 07777
+            # Remove the sticky and execute bits for files
+            self._file_mode = self._dir_mode & ~07111
+        if not self._set_dir_mode:
+            self._dir_mode = None
+        if not self._set_file_mode:
+            self._file_mode = None
+
     def _make_control(self):
         from bzrlib.inventory import Inventory
         from bzrlib.weavefile import write_weave_v5
@@ -543,7 +570,11 @@ class BzrBranch(Branch):
         bzrlib.weavefile.write_weave_v5(Weave(), sio)
         empty_weave = sio.getvalue()
 
-        dirs = [[], 'revision-store', 'weaves']
+        # Since we don't have a .bzr directory, inherit the
+        # mode from the root directory
+        self._find_modes('.')
+
+        dirs = ['', 'revision-store', 'weaves']
         files = [('README', 
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.\n"),
@@ -557,7 +588,8 @@ class BzrBranch(Branch):
             ('ancestry.weave', empty_weave)
         ]
         cfn = self.control_files._rel_controlfilename
-        self.control_files._transport.mkdir_multi([cfn(d) for d in dirs])
+        self.control_files._transport.mkdir_multi([cfn(d) for d in dirs],
+                                                  mode=self._dir_mode)
         self.control_files.lock_write()
         try:
             for file, content in files:
@@ -645,7 +677,6 @@ class BzrBranch(Branch):
         except NoWorkingTree:
             mutter('Unable to set_last_revision without a working tree.')
 
-
     def get_revision_delta(self, revno):
         """Return the delta for one revision.
 
@@ -726,7 +757,7 @@ class BzrBranch(Branch):
             # that for a working tree. RBC 20051207
             xml = self.working_tree().read_basis_inventory(revision_id)
             inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
-            return RevisionTree(self.repository.weave_store, inv, revision_id)
+            return RevisionTree(self.repository, inv, revision_id)
         except (IndexError, NoSuchFile, NoWorkingTree), e:
             return self.repository.revision_tree(self.last_revision())
 
@@ -880,11 +911,11 @@ class ScratchBranch(BzrBranch):
         ...   orig.base == clone.base
         ...
         False
-        >>> os.path.isfile(os.path.join(clone.base, "file1"))
+        >>> os.path.isfile(pathjoin(clone.base, "file1"))
         True
         """
         from shutil import copytree
-        from tempfile import mkdtemp
+        from bzrlib.osutils import mkdtemp
         base = mkdtemp()
         os.rmdir(base)
         copytree(self.base, base, symlinks=True)
@@ -898,7 +929,7 @@ class ScratchBranch(BzrBranch):
 
 def is_control_file(filename):
     ## FIXME: better check
-    filename = os.path.normpath(filename)
+    filename = normpath(filename)
     while filename != '':
         head, tail = os.path.split(filename)
         ## mutter('check %r for control file' % ((head, tail), ))

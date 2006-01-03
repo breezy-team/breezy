@@ -16,7 +16,6 @@
 
 
 import os
-import tempfile
 import shutil
 import errno
 
@@ -39,7 +38,7 @@ from bzrlib.delta import compare_trees
 from bzrlib.trace import mutter, warning, note
 from bzrlib.fetch import greedy_fetch, fetch
 from bzrlib.revision import is_ancestor, NULL_REVISION
-from bzrlib.osutils import rename
+from bzrlib.osutils import rename, pathjoin
 from bzrlib.revision import common_ancestor, MultipleRevisionSources
 from bzrlib.errors import NoSuchRevision
 
@@ -172,13 +171,8 @@ class MergeConflictHandler(ExceptionConflictHandler):
         return "skip"
 
     def rem_contents_conflict(self, filename, this_contents, base_contents):
-        base_contents(filename+".BASE", self, False)
-        this_contents(filename+".THIS", self, False)
-        return ReplaceContents(this_contents, None)
-
-    def rem_contents_conflict(self, filename, this_contents, base_contents):
-        base_contents(filename+".BASE", self, False)
-        this_contents(filename+".THIS", self, False)
+        base_contents(filename+".BASE", self)
+        this_contents(filename+".THIS", self)
         self.conflict("Other branch deleted locally modified file %s" %
                       filename)
         return ReplaceContents(this_contents, None)
@@ -202,22 +196,22 @@ class MergeConflictHandler(ExceptionConflictHandler):
             abspath = self.create_all_missing(entry.parent_id, tree)
         else:
             abspath = self.abs_this_path(entry.parent_id)
-        entry_path = os.path.join(abspath, entry.name)
+        entry_path = pathjoin(abspath, entry.name)
         if not os.path.isdir(entry_path):
             self.create(file_id, entry_path, tree)
         return entry_path
 
-    def create(self, file_id, path, tree, reverse=False):
+    def create(self, file_id, path, tree):
         """Uses tree data to create a filesystem object for the file_id"""
         from changeset import get_contents
-        get_contents(tree, file_id)(path, self, reverse)
+        get_contents(tree, file_id)(path, self)
 
     def missing_for_merge(self, file_id, other_path):
         """The file_id doesn't exist in THIS, but does in OTHER and BASE"""
         self.conflict("Other branch modified locally deleted file %s" %
                       other_path)
         parent_dir = self.add_missing_parents(file_id, self.other_tree)
-        stem = os.path.join(parent_dir, os.path.basename(other_path))
+        stem = pathjoin(parent_dir, os.path.basename(other_path))
         self.create(file_id, stem+".OTHER", self.other_tree)
         self.create(file_id, stem+".BASE", self.base_tree)
 
@@ -587,7 +581,7 @@ class Merger(object):
             entry = old_entries[file_id]
             if entry.parent_id is None:
                 return entry.name
-            return os.path.join(id2path(entry.parent_id), entry.name)
+            return pathjoin(id2path(entry.parent_id), entry.name)
             
         for file_id in old_entries:
             entry = old_entries[file_id]
@@ -614,7 +608,7 @@ class Merger(object):
                 parent = None
             else:
                 parent = by_path[os.path.dirname(path)]
-            abspath = os.path.join(self.this_tree.basedir, path)
+            abspath = pathjoin(self.this_tree.basedir, path)
             kind = bzrlib.osutils.file_kind(abspath)
             new_inventory[file_id] = (path, file_id, parent, kind)
             by_path[path] = file_id 

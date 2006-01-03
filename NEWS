@@ -35,6 +35,10 @@ UNRELEASED CHANGES
       or
       sftp://user:pass@host:port//absolute/path
 
+    * Permissions on files underneath .bzr/ are inherited from the .bzr 
+      directory. So for a shared repository, simply doing 'chmod -R g+w .bzr/'
+      will mean that future file will be created with group write permissions.
+
     * configure.in and config.guess are no longer in the builtin default 
       ignore list.
 

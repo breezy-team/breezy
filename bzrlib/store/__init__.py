@@ -221,7 +221,8 @@ class TransportStore(Store):
                 pass
         raise KeyError(fileid)
 
-    def __init__(self, a_transport, prefixed=False, compressed=False):
+    def __init__(self, a_transport, prefixed=False, compressed=False,
+                 dir_mode=None, file_mode=None):
         assert isinstance(a_transport, transport.Transport)
         super(TransportStore, self).__init__()
         self._transport = a_transport
@@ -229,6 +230,11 @@ class TransportStore(Store):
         # FIXME RBC 20051128 this belongs in TextStore.
         self._compressed = compressed
         self._suffixes = set()
+
+        # It is okay for these to be None, it just means they
+        # will just use the filesystem defaults
+        self._dir_mode = dir_mode
+        self._file_mode = file_mode
 
     def _iter_files_recursive(self):
         """Iterate through the files in the transport."""
@@ -304,37 +310,6 @@ class TransportStore(Store):
 def ImmutableMemoryStore():
     return bzrlib.store.text.TextStore(transport.memory.MemoryTransport())
         
-
-class CachedStore(Store):
-    """A store that caches data locally, to avoid repeated downloads.
-    The precacache method should be used to avoid server round-trips for
-    every piece of data.
-    """
-
-    def __init__(self, store, cache_dir):
-        super(CachedStore, self).__init__()
-        self.source_store = store
-        # This clones the source store type with a locally bound
-        # transport. FIXME: it assumes a constructor is == cloning.
-        # clonable store - it might be nicer to actually have a clone()
-        # or something. RBC 20051003
-        self.cache_store = store.__class__(LocalTransport(cache_dir))
-
-    def get(self, id):
-        mutter("Cache add %s", id)
-        if id not in self.cache_store:
-            self.cache_store.add(self.source_store.get(id), id)
-        return self.cache_store.get(id)
-
-    def has_id(self, fileid, suffix=None):
-        """See Store.has_id."""
-        if self.cache_store.has_id(fileid, suffix):
-            return True
-        if self.source_store.has_id(fileid, suffix):
-            # We could asynchronously copy at this time
-            return True
-        return False
-
 
 def copy_all(store_from, store_to):
     """Copy all ids from one store to another."""

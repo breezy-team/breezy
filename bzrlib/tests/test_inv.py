@@ -22,7 +22,7 @@ import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
 from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.inventory as inventory
-from bzrlib.osutils import has_symlinks, rename
+from bzrlib.osutils import has_symlinks, rename, pathjoin
 from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
@@ -31,7 +31,7 @@ class TestInventory(TestCase):
     def test_is_within(self):
         from bzrlib.osutils import is_inside_any
 
-        SRC_FOO_C = os.path.join('src', 'foo.c')
+        SRC_FOO_C = pathjoin('src', 'foo.c')
         for dirs, fn in [(['src', 'doc'], SRC_FOO_C),
                          (['src'], SRC_FOO_C),
                          (['src'], 'src'),
@@ -379,3 +379,118 @@ class TestPreviousHeads(TestCaseInTempDir):
                          self.get_previous_heads([self.inv_D, self.inv_B]))
 
     # TODO: test two inventories with the same file revision 
+
+
+class TestExecutable(TestCaseInTempDir):
+
+    def test_stays_executable(self):
+        basic_inv = """<inventory format="5">
+<file file_id="a-20051208024829-849e76f7968d7a86" name="a" executable="yes" />
+<file file_id="b-20051208024829-849e76f7968d7a86" name="b" />
+</inventory>
+"""
+        os.mkdir('b1')
+        b = Branch.initialize('b1')
+        open('b1/a', 'wb').write('a test\n')
+        open('b1/b', 'wb').write('b test\n')
+        os.chmod('b1/a', 0755)
+        os.chmod('b1/b', 0644)
+        # Manually writing the inventory, to ensure that
+        # the executable="yes" entry is set for 'a' and not for 'b'
+        open('b1/.bzr/inventory', 'wb').write(basic_inv)
+
+        a_id = "a-20051208024829-849e76f7968d7a86"
+        b_id = "b-20051208024829-849e76f7968d7a86"
+        t = b.working_tree()
+        self.assertEqual(['a', 'b'], [cn for cn,ie in t.inventory.iter_entries()])
+
+        self.failUnless(t.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(t.is_executable(b_id), "'b' gained an execute bit")
+
+        t.commit('adding a,b', rev_id='r1')
+
+        rev_tree = b.repository.revision_tree('r1')
+        self.failUnless(rev_tree.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(rev_tree.is_executable(b_id), "'b' gained an execute bit")
+
+        self.failUnless(rev_tree.inventory[a_id].executable)
+        self.failIf(rev_tree.inventory[b_id].executable)
+
+        # Make sure the entries are gone
+        os.remove('b1/a')
+        os.remove('b1/b')
+        self.failIf(t.has_id(a_id))
+        self.failIf(t.has_filename('a'))
+        self.failIf(t.has_id(b_id))
+        self.failIf(t.has_filename('b'))
+
+        # Make sure that revert is able to bring them back,
+        # and sets 'a' back to being executable
+
+        t.revert(['b1/a', 'b1/b'], rev_tree, backups=False)
+        self.assertEqual(['a', 'b'], [cn for cn,ie in t.inventory.iter_entries()])
+
+        self.failUnless(t.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(t.is_executable(b_id), "'b' gained an execute bit")
+
+        # Now remove them again, and make sure that after a
+        # commit, they are still marked correctly
+        os.remove('b1/a')
+        os.remove('b1/b')
+        t.commit('removed', rev_id='r2')
+
+        self.assertEqual([], [cn for cn,ie in t.inventory.iter_entries()])
+        self.failIf(t.has_id(a_id))
+        self.failIf(t.has_filename('a'))
+        self.failIf(t.has_id(b_id))
+        self.failIf(t.has_filename('b'))
+
+        # Now revert back to the previous commit
+        t.revert([], rev_tree, backups=False)
+        # TODO: FIXME: For some reason, after revert, the tree does not 
+        # regenerate its working inventory, so we have to manually delete
+        # the working tree, and create a new one
+        # This seems to happen any time you do a merge operation on the
+        # working tree
+        del t
+        t = b.working_tree()
+
+        self.assertEqual(['a', 'b'], [cn for cn,ie in t.inventory.iter_entries()])
+
+        self.failUnless(t.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(t.is_executable(b_id), "'b' gained an execute bit")
+
+        # Now make sure that 'bzr branch' also preserves the
+        # executable bit
+        # TODO: Maybe this should be a blackbox test
+        b.clone('b2', revision='r1')
+        b2 = Branch.open('b2')
+        self.assertEquals('r1', b2.last_revision())
+        t2 = b2.working_tree()
+
+        self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
+        self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
+
+        # Make sure pull will delete the files
+        t2.pull(b)
+        self.assertEquals('r2', b2.last_revision())
+        # FIXME: Same thing here, t2 needs to be recreated
+        del t2
+        t2 = b2.working_tree()
+        self.assertEqual([], [cn for cn,ie in t2.inventory.iter_entries()])
+
+        # Now commit the changes on the first branch
+        # so that the second branch can pull the changes
+        # and make sure that the executable bit has been copied
+        t.commit('resurrected', rev_id='r3')
+
+        t2.pull(b)
+        # FIXME: And here
+        del t2
+        t2 = b2.working_tree()
+        self.assertEquals('r3', b2.last_revision())
+        self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
+
+        self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")

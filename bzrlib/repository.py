@@ -51,13 +51,17 @@ def needs_write_lock(unbound):
 
 
 class Repository(object):
-    def __init__(self, transport, branch_format):
+
+    def __init__(self, transport, branch_format, 
+                 dir_mode=None, file_mode=None):
         object.__init__(self)
         self.control_files = LockableFiles(transport, bzrlib.BZRDIR, 'README')
         def get_weave(name, prefixed=False):
             relpath = self.control_files._rel_controlfilename(unicode(name))
             weave_transport = transport.clone(relpath)
-            ws = WeaveStore(weave_transport, prefixed=prefixed)
+            ws = WeaveStore(weave_transport, prefixed=prefixed,
+                            dir_mode=dir_mode,
+                            file_mode=file_mode)
             if self.control_files._transport.should_cache():
                 ws.enable_cache = True
             return ws
@@ -70,7 +74,9 @@ class Repository(object):
             name = unicode(name)
             relpath = self.control_files._rel_controlfilename(name)
             store = TextStore(transport.clone(relpath),
-                              prefixed=prefixed, compressed=compressed)
+                              prefixed=prefixed, compressed=compressed,
+                              dir_mode=dir_mode,
+                              file_mode=file_mode)
             #if self._transport.should_cache():
             #    cache_path = os.path.join(self.cache_root, name)
             #    os.mkdir(cache_path)
@@ -206,7 +212,7 @@ class Repository(object):
             return EmptyTree()
         else:
             inv = self.get_revision_inventory(revision_id)
-            return RevisionTree(self.weave_store, inv, revision_id)
+            return RevisionTree(self, inv, revision_id)
 
     def get_ancestry(self, revision_id):
         """Return a list of revision-ids integrated by a revision.

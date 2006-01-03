@@ -40,9 +40,11 @@ class WeaveStore(TransportStore):
     """
     FILE_SUFFIX = '.weave'
 
-    def __init__(self, transport, prefixed=False, precious=False):
-        self._transport = transport
-        self._prefixed = prefixed
+    def __init__(self, transport, prefixed=False, precious=False,
+                 dir_mode=None, file_mode=None):
+        super(WeaveStore, self).__init__(transport,
+                dir_mode=dir_mode, file_mode=file_mode,
+                prefixed=prefixed, compressed=False)
         self._precious = precious
 
     def filename(self, file_id):
@@ -67,10 +69,10 @@ class WeaveStore(TransportStore):
     def _put(self, file_id, f):
         if self._prefixed:
             try:
-                self._transport.mkdir(hash_prefix(file_id))
+                self._transport.mkdir(hash_prefix(file_id), mode=self._dir_mode)
             except FileExists:
                 pass
-        return self._transport.put(self.filename(file_id), f)
+        return self._transport.put(self.filename(file_id), f, mode=self._file_mode)
 
     def get_weave(self, file_id, transaction):
         weave = transaction.map.find_weave(file_id)
@@ -79,6 +81,31 @@ class WeaveStore(TransportStore):
             return weave
         w = read_weave(self._get(file_id))
         transaction.map.add_weave(file_id, w)
+        transaction.register_clean(w, precious=self._precious)
+        # TODO: jam 20051219 This should check if there is a prelude
+        #       which is already cached, and if so, should remove it
+        #       But transaction doesn't seem to have a 'remove'
+        #       One workaround would be to re-add the object with
+        #       the PRELUDE marker.
+        return w
+
+    def get_weave_prelude(self, file_id, transaction):
+        weave_id = file_id
+        weave = transaction.map.find_weave(weave_id)
+        if weave:
+            mutter("cache hit in %s for %s", self, weave_id)
+            return weave
+        # We want transactions to also cache preludes if that
+        # is all that we are loading. So we need a unique
+        # identifier, so that someone who wants the whole text
+        # won't get just the prelude
+        weave_id = 'PRELUDE-' + file_id
+        weave = transaction.map.find_weave(weave_id)
+        if weave:
+            mutter("cache hit in %s for %s", self, weave_id)
+            return weave
+        w = read_weave(self._get(file_id), prelude=True)
+        transaction.map.add_weave(weave_id, w)
         transaction.register_clean(w, precious=self._precious)
         return w
 
@@ -92,14 +119,15 @@ class WeaveStore(TransportStore):
     def get_weave_prelude_or_empty(self, file_id, transaction):
         """cheap version that reads the prelude but not the lines
         """
-        weave = transaction.map.find_weave(file_id)
-        if weave:
-            mutter("cache hit in %s for %s", self, file_id)
-            return weave
         try:
-            return read_weave(self._get(file_id),prelude=True)
+            return self.get_weave_prelude(file_id, transaction)
         except NoSuchFile:
-            return Weave(weave_name=file_id)
+            # We can cache here, because we know that there
+            # is no complete object, since we got NoSuchFile
+            weave = Weave(weave_name=file_id)
+            transaction.map.add_weave(file_id, weave)
+            transaction.register_clean(weave, precious=self._precious)
+            return weave
 
     def get_weave_or_empty(self, file_id, transaction):
         """Return a weave, or an empty one if it doesn't exist.""" 

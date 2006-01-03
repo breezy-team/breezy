@@ -1,7 +1,5 @@
 import os
 import shutil
-import tempfile
-import unittest
 import stat
 import sys
 
@@ -11,7 +9,7 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError)
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
-from bzrlib.osutils import file_kind, rename, sha_file
+from bzrlib.osutils import file_kind, rename, sha_file, pathjoin, mkdtemp
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
                                BackupBeforeChange, ExecFlagMerge, WeaveMerge)
@@ -63,7 +61,7 @@ class MergeTree(object):
         self.inventory = FalseTree(self)
     
     def child_path(self, parent, name):
-        return os.path.join(self.inventory_dict[parent], name)
+        return pathjoin(self.inventory_dict[parent], name)
 
     def add_file(self, id, parent, name, contents, mode):
         path = self.child_path(parent, name)
@@ -93,7 +91,7 @@ class MergeTree(object):
         self.inventory_dict[id] = path
 
     def abs_path(self, path):
-        return os.path.join(self.dir, path)
+        return pathjoin(self.dir, path)
 
     def full_path(self, id):
         try:
@@ -122,7 +120,7 @@ class MergeTree(object):
         return self.full_path(id)
 
     def change_path(self, id, path):
-        old_path = os.path.join(self.dir, self.inventory_dict[id])
+        old_path = pathjoin(self.dir, self.inventory_dict[id])
         rename(old_path, self.abs_path(path))
         self.inventory_dict[id] = path
 
@@ -139,21 +137,23 @@ class MergeTree(object):
     def get_file_sha1(self, file_id):
         return sha_file(file(self.full_path(file_id), "rb"))
 
+
 class MergeBuilder(object):
     def __init__(self):
-        self.dir = tempfile.mkdtemp(prefix="BaZing")
-        self.base = MergeTree(os.path.join(self.dir, "base"))
-        self.this = MergeTree(os.path.join(self.dir, "this"))
-        self.other = MergeTree(os.path.join(self.dir, "other"))
+        self.dir = mkdtemp(prefix="BaZing")
+        self.base = MergeTree(pathjoin(self.dir, "base"))
+        self.this = MergeTree(pathjoin(self.dir, "this"))
+        self.other = MergeTree(pathjoin(self.dir, "other"))
         
         self.cset = changeset.Changeset()
         self.cset.add_entry(changeset.ChangesetEntry("0", 
                                                      changeset.NULL_ID, "./."))
+
     def get_cset_path(self, parent, name):
         if name is None:
             assert (parent is None)
             return None
-        return os.path.join(self.cset.entries[parent].path, name)
+        return pathjoin(self.cset.entries[parent].path, name)
 
     def add_file(self, id, parent, name, contents, mode):
         self.base.add_file(id, parent, name, contents, mode)
@@ -327,7 +327,7 @@ class MergeBuilder(object):
                 if parent is None:
                     return orig_inventory[file_id]
                 dirname = new_path(parent)
-                return os.path.join(dirname, orig_inventory[file_id])
+                return pathjoin(dirname, os.path.basename(orig_inventory[file_id]))
 
         new_inventory = {}
         for file_id in orig_inventory.iterkeys():
@@ -342,11 +342,11 @@ class MergeBuilder(object):
             new_inventory[file_id] = path
         return new_inventory
 
-    def apply_changeset(self, cset, conflict_handler=None, reverse=False):
+    def apply_changeset(self, cset, conflict_handler=None):
         inventory_change = changeset.apply_changeset(cset,
                                                      self.this.inventory_dict,
                                                      self.this.dir,
-                                                     conflict_handler, reverse)
+                                                     conflict_handler)
         self.this.inventory_dict =  self.apply_inv_change(inventory_change, 
                                                      self.this.inventory_dict)
 
@@ -354,7 +354,7 @@ class MergeBuilder(object):
         shutil.rmtree(self.dir)
 
 
-class MergeTest(unittest.TestCase):
+class MergeTest(TestCase):
     def test_change_name(self):
         """Test renames"""
         builder = MergeBuilder()
@@ -365,18 +365,18 @@ class MergeTest(unittest.TestCase):
         builder.add_file("3", "0", "name5", "hello3", 0755)
         builder.change_name("3", this="name6")
         cset = builder.merge_changeset(ApplyMerge3)
-        self.assert_(cset.entries["2"].is_boring())
-        self.assert_(cset.entries["1"].name == "name1")
-        self.assert_(cset.entries["1"].new_name == "name2")
-        self.assert_(cset.entries["3"].is_boring())
+        self.failUnless(cset.entries["2"].is_boring())
+        self.assertEqual(cset.entries["1"].name, "name1")
+        self.assertEqual(cset.entries["1"].new_name, "name2")
+        self.failUnless(cset.entries["3"].is_boring())
         for tree in (builder.this, builder.other, builder.base):
-            self.assert_(tree.dir != builder.dir and 
-                   tree.dir.startswith(builder.dir))
+            self.assertNotEqual(tree.dir, builder.dir)
+            self.assertStartsWith(tree.dir, builder.dir)
             for path in tree.inventory_dict.itervalues():
                 fullpath = tree.abs_path(path)
-                self.assert_(fullpath.startswith(tree.dir))
-                self.assert_(not path.startswith(tree.dir))
-                self.assert_(os.path.exists(fullpath))
+                self.assertStartsWith(fullpath, tree.dir)
+                self.failIf(path.startswith(tree.dir))
+                self.failUnless(os.path.lexists(fullpath))
         builder.apply_changeset(cset)
         builder.cleanup()
         builder = MergeBuilder()
@@ -668,4 +668,169 @@ class FunctionalMergeTest(TestCaseInTempDir):
         b_wt.commit('exec a')
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.exists('a/file'))
+
+    def test_merge_swapping_renames(self):
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/un','wb').write('UN')
+        file('a/deux','wb').write('DEUX')
+        a_wt = a.working_tree()
+        a_wt.add('un')
+        a_wt.add('deux')
+        a_wt.commit('r0')
+        a.clone('b')
+        b = Branch.open('b')
+        b_wt = b.working_tree()
+        b_wt.rename_one('un', 'tmp')
+        b_wt.rename_one('deux', 'un')
+        b_wt.rename_one('tmp', 'deux')
+        b_wt.commit('r1')
+        merge(['b', -1],['b', 1],this_dir='a')
+        self.assert_(os.path.exists('a/un'))
+        self.assert_(os.path.exists('a/deux'))
+        self.assertFalse(os.path.exists('a/tmp'))
+        self.assertEqual(file('a/un').read(),'DEUX')
+        self.assertEqual(file('a/deux').read(),'UN')
+
+    def test_merge_delete_and_add_same(self):
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/file', 'wb').write('THIS')
+        a_wt = a.working_tree()
+        a_wt.add('file')
+        a_wt.commit('r0')
+        a.clone('b')
+        b = Branch.open('b')
+        b_wt = b.working_tree()
+        os.remove('b/file')
+        b_wt.commit('r1')
+        file('b/file', 'wb').write('THAT')
+        b_wt.add('file')
+        b_wt.commit('r2')
+        merge(['b', -1],['b', 1],this_dir='a')
+        self.assert_(os.path.exists('a/file'))
+        self.assertEqual(file('a/file').read(),'THAT')
+
+    def test_merge_rename_before_create(self):
+        """rename before create
+        
+        This case requires that you must not do creates
+        before move-into-place:
+
+        $ touch foo
+        $ bzr add foo
+        $ bzr commit
+        $ bzr mv foo bar
+        $ touch foo
+        $ bzr add foo
+        $ bzr commit
+        """
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/foo', 'wb').write('A/FOO')
+        a_wt = a.working_tree()
+        a_wt.add('foo')
+        a_wt.commit('added foo')
+        a.clone('b')
+        b = Branch.open('b')
+        b_wt = b.working_tree()
+        b_wt.rename_one('foo', 'bar')
+        file('b/foo', 'wb').write('B/FOO')
+        b_wt.add('foo')
+        b_wt.commit('moved foo to bar, added new foo')
+        merge(['b', -1],['b', 1],this_dir='a')
+
+    def test_merge_create_before_rename(self):
+        """create before rename, target parents before children
+
+        This case requires that you must not do move-into-place
+        before creates, and that you must not do children after
+        parents:
+
+        $ touch foo
+        $ bzr add foo
+        $ bzr commit
+        $ bzr mkdir bar
+        $ bzr add bar
+        $ bzr mv foo bar/foo
+        $ bzr commit
+        """
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/foo', 'wb').write('A/FOO')
+        a_wt = a.working_tree()
+        a_wt.add('foo')
+        a_wt.commit('added foo')
+        a.clone('b')
+        b = Branch.open('b')
+        b_wt = b.working_tree()
+        os.mkdir('b/bar')
+        b_wt.add('bar')
+        b_wt.rename_one('foo', 'bar/foo')
+        b_wt.commit('created bar dir, moved foo into bar')
+        merge(['b', -1],['b', 1],this_dir='a')
+
+    def test_merge_rename_to_temp_before_delete(self):
+        """rename to temp before delete, source children before parents
+
+        This case requires that you must not do deletes before
+        move-out-of-the-way, and that you must not do children
+        after parents:
+        
+        $ mkdir foo
+        $ touch foo/bar
+        $ bzr add foo/bar
+        $ bzr commit
+        $ bzr mv foo/bar bar
+        $ rmdir foo
+        $ bzr commit
+        """
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        os.mkdir('a/foo')
+        file('a/foo/bar', 'wb').write('A/FOO/BAR')
+        a_wt = a.working_tree()
+        a_wt.add('foo')
+        a_wt.add('foo/bar')
+        a_wt.commit('added foo/bar')
+        a.clone('b')
+        b = Branch.open('b')
+        b_wt = b.working_tree()
+        b_wt.rename_one('foo/bar', 'bar')
+        os.rmdir('b/foo')
+        b_wt.remove('foo')
+        b_wt.commit('moved foo/bar to bar, deleted foo')
+        merge(['b', -1],['b', 1],this_dir='a')
+
+    def test_merge_delete_before_rename_to_temp(self):
+        """delete before rename to temp
+
+        This case requires that you must not do
+        move-out-of-the-way before deletes:
+        
+        $ touch foo
+        $ touch bar
+        $ bzr add foo bar
+        $ bzr commit
+        $ rm foo
+        $ bzr rm foo
+        $ bzr mv bar foo
+        $ bzr commit
+        """
+        os.mkdir('a')
+        a = Branch.initialize('a')
+        file('a/foo', 'wb').write('A/FOO')
+        file('a/bar', 'wb').write('A/BAR')
+        a_wt = a.working_tree()
+        a_wt.add('foo')
+        a_wt.add('bar')
+        a_wt.commit('added foo and bar')
+        a.clone('b')
+        b = Branch.open('b')
+        b_wt = b.working_tree()
+        os.unlink('b/foo')
+        b_wt.remove('foo')
+        b_wt.rename_one('bar', 'foo')
+        b_wt.commit('deleted foo, renamed bar to foo')
+        merge(['b', -1],['b', 1],this_dir='a')
 

@@ -51,6 +51,7 @@ class Check(object):
         self.missing_revision_cnt = 0
         # maps (file-id, version) -> sha1
         self.checked_texts = {}
+        self.checked_weaves = {}
 
     def check(self):
         self.branch.lock_read()
@@ -66,6 +67,7 @@ class Check(object):
                 return
             self.plan_revisions()
             revno = 0
+            self.check_weaves()
             while revno < len(self.planned_revisions):
                 rev_id = self.planned_revisions[revno]
                 self.progress.update('checking revision', revno,
@@ -103,6 +105,7 @@ class Check(object):
         note('%6d revisions', self.checked_rev_cnt)
         note('%6d unique file texts', self.checked_text_cnt)
         note('%6d repeated file texts', self.repeated_text_cnt)
+        note('%6d weaves', len(self.checked_weaves))
         if self.missing_inventory_sha_cnt:
             note('%6d revisions are missing inventory_sha1',
                  self.missing_inventory_sha_cnt)
@@ -189,6 +192,24 @@ class Check(object):
             mutter("no inventory_sha1 on revision {%s}", rev_id)
         self._check_revision_tree(rev_id)
         self.checked_rev_cnt += 1
+
+    def check_weaves(self):
+        """Check all the weaves we can get our hands on.
+        """
+        n_weaves = 1
+        weave_ids = []
+        if self.branch.repository.weave_store.listable():
+            weave_ids = list(self.branch.repository.weave_store)
+            n_weaves = len(weave_ids)
+        self.progress.update('checking weave', 0, n_weaves)
+        self.inventory_weave.check(progress_bar=self.progress)
+        for i, weave_id in enumerate(weave_ids):
+            self.progress.update('checking weave', i, n_weaves)
+            w = self.branch.repository.weave_store.get_weave(weave_id,
+                    self.branch.repository.get_transaction())
+            # No progress here, because it looks ugly.
+            w.check()
+            self.checked_weaves[weave_id] = True
 
     def _check_revision_tree(self, rev_id):
         tree = self.branch.repository.revision_tree(rev_id)
