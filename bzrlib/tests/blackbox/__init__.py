@@ -30,11 +30,13 @@ def test_suite():
     testmod_names = [
                      'bzrlib.tests.blackbox.test_bound_branches',
                      'bzrlib.tests.blackbox.test_cat',
-                     'bzrlib.tests.blackbox.test_too_much',
+                     'bzrlib.tests.blackbox.test_export',
+                     'bzrlib.tests.blackbox.test_missing',
                      'bzrlib.tests.blackbox.test_pull',
                      'bzrlib.tests.blackbox.test_revno',
+                     'bzrlib.tests.blackbox.test_revision_info',
+                     'bzrlib.tests.blackbox.test_too_much',
                      'bzrlib.tests.blackbox.test_versioning',
-                     'bzrlib.tests.blackbox.test_missing'
                      ]
     return TestLoader().loadTestsFromNames(testmod_names)
 

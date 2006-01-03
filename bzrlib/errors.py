@@ -34,7 +34,9 @@ This means that exceptions can used like this:
 ... except:
 ...   print sys.exc_type
 ...   print sys.exc_value
-...   print sys.exc_value.path
+...   path = getattr(sys.exc_value, 'path')
+...   if path is not None:
+...     print path
 bzrlib.errors.NotBranchError
 Not a branch: /foo/bar
 /foo/bar
@@ -410,6 +412,10 @@ class WeaveFormatError(WeaveError):
 class WeaveParentMismatch(WeaveError):
     """Parents are mismatched between two revisions."""
     
+
+class WeaveInvalidChecksum(WeaveError):
+    """Text did not match it's checksum: %(message)s"""
+
 
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""

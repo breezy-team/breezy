@@ -20,7 +20,7 @@ Tests for branches bound to an sftp branch.
 
 import os
 
-from bzrlib.tests.test_sftp import TestCaseWithSFTPServer, paramiko_loaded
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer, paramiko_loaded
 import bzrlib.errors as errors
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch

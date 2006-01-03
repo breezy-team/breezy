@@ -81,7 +81,7 @@ from bzrlib.atomicfile import AtomicFile
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
 from bzrlib.trace import mutter, note, warning
-from bzrlib.osutils import sha_strings, sha_string
+from bzrlib.osutils import sha_strings, sha_string, pathjoin, abspath
 
 
 class Convert(object):
@@ -108,7 +108,7 @@ class Convert(object):
             note('starting upgrade from format 5 to 6')
             self._convert_to_prefixed()
             self._open_branch()
-        cache = hashcache.HashCache(os.path.abspath(self.base))
+        cache = hashcache.HashCache(abspath(self.base))
         cache.clear()
         cache.write()
         note("finished")
@@ -118,17 +118,17 @@ class Convert(object):
         from bzrlib.store import hash_prefix
         for store_name in ["weaves", "revision-store"]:
             note("adding prefixes to %s" % store_name) 
-            store_dir = os.path.join(self.base, ".bzr", store_name)
+            store_dir = pathjoin(self.base, ".bzr", store_name)
             for filename in os.listdir(store_dir):
                 if filename.endswith(".weave") or filename.endswith(".gz"):
                     file_id = os.path.splitext(filename)[0]
                 else:
                     file_id = filename
-                prefix_dir = os.path.join(store_dir, hash_prefix(file_id))
+                prefix_dir = pathjoin(store_dir, hash_prefix(file_id))
                 if not os.path.isdir(prefix_dir):
                     os.mkdir(prefix_dir)
-                os.rename(os.path.join(store_dir, filename),
-                          os.path.join(prefix_dir, filename))
+                os.rename(pathjoin(store_dir, filename),
+                          pathjoin(prefix_dir, filename))
         self._set_new_format(BZR_BRANCH_FORMAT_6)
 
 

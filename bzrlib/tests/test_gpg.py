@@ -47,9 +47,22 @@ class TestCommandLine(TestCase):
     def test_returns_output(self):
         # This test needs a 'cat' command or similar to work.
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        my_gpg._command_line = lambda:["cat", "-"]
-        self.assertEqual("some content\nwith newlines\n",
-                         my_gpg.sign("some content\nwith newlines\n"))
+        content = "some content\nwith newlines\n"
+
+        if sys.platform == 'win32':
+            # Windows doesn't come with cat, and we don't require it
+            # so lets try using python instead.
+            # But stupid windows and line-ending conversions. 
+            # It is too much work to make sys.stdout be in binary mode.
+            # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/65443
+            my_gpg._command_line = lambda:[sys.executable, '-c',
+                    'import sys; sys.stdout.write(sys.stdin.read())']
+            new_content = content.replace('\n', '\r\n')
+
+            self.assertEqual(new_content, my_gpg.sign(content))
+        else:
+            my_gpg._command_line = lambda:['cat', '-']
+            self.assertEqual(content, my_gpg.sign(content))
 
 
 class TestDisabled(TestCase):
