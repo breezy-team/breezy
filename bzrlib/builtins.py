@@ -418,7 +418,7 @@ class cmd_pull(Command):
         if revision is None:
             rev_id = None
         elif len(revision) == 1:
-            rev_id = revision[0]._match_on(br_from,br_from.revision_history()).rev_id
+            rev_id = revision[0].in_history(br_from).rev_id
         else:
             raise BzrCommandError('bzr pull --revision takes one value.')
 
