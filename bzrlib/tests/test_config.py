@@ -513,14 +513,24 @@ class TestLocationConfig(TestCaseInTempDir):
         self.my_config._get_global_config()._get_parser(global_file)
 
     def test_set_user_setting_sets_and_saves(self):
-        # TODO RBC 20051029 test hat mkdir ~/.bazaar is called ..
         self.get_location_config('/a/c')
         record = InstrumentedConfigObj("foo")
         self.my_config._parser = record
-        print ("test_set_user_setting_sets_and_saves broken: creates .bazaar "
-               "in the top-level directory, not inside the test directory")
-        return
-        self.my_config.set_user_option('foo', 'bar')
+
+        real_mkdir = os.mkdir
+        self.created = False
+        def checked_mkdir(path, mode=0777):
+            self.log('making directory: %s', path)
+            real_mkdir(path, mode)
+            self.created = True
+
+        os.mkdir = checked_mkdir
+        try:
+            self.my_config.set_user_option('foo', 'bar')
+        finally:
+            os.mkdir = real_mkdir
+
+        self.failUnless(self.created, 'Failed to create ~/.bazaar')
         self.assertEqual([('__contains__', '/a/c'),
                           ('__contains__', '/a/c/'),
                           ('__setitem__', '/a/c', {}),

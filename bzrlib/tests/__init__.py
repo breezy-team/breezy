@@ -686,7 +686,6 @@ def test_suite():
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_remove',
                    'bzrlib.tests.test_revision',
-                   'bzrlib.tests.test_revision_info',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revprops',
                    'bzrlib.tests.test_reweave',
