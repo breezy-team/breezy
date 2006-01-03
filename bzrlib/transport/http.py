@@ -198,7 +198,7 @@ class HttpTransport(Transport):
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
 
-    def put(self, relpath, f):
+    def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
@@ -206,7 +206,7 @@ class HttpTransport(Transport):
         """
         raise TransportNotPossible('http PUT not supported')
 
-    def mkdir(self, relpath):
+    def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         raise TransportNotPossible('http does not support mkdir()')
 
@@ -220,7 +220,7 @@ class HttpTransport(Transport):
         """Copy the item at rel_from to the location at rel_to"""
         raise TransportNotPossible('http does not support copy()')
 
-    def copy_to(self, relpaths, other, pb=None):
+    def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
 
         :param relpaths: A list/generator of entries to be copied.
@@ -234,7 +234,7 @@ class HttpTransport(Transport):
         if isinstance(other, HttpTransport):
             raise TransportNotPossible('http cannot be the target of copy_to()')
         else:
-            return super(HttpTransport, self).copy_to(relpaths, other, pb=pb)
+            return super(HttpTransport, self).copy_to(relpaths, other, mode=mode, pb=pb)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""

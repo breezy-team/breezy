@@ -20,9 +20,13 @@ import os
 import sys
 import unittest
 
-from bzrlib.tests import TestCase, _load_module_by_name, \
-        TestSkipped
-import bzrlib.tests
+from bzrlib.tests import (
+                          _load_module_by_name,
+                          TestCase,
+                          TestCaseInTempDir,
+                          TestSkipped,
+                          TextTestRunner,
+                          )
 
 
 class SelftestTests(TestCase):
@@ -46,6 +50,18 @@ class MetaTestLog(TestCase):
         self.assertContainsRe(self._get_log(), 'a test message\n')
 
 
+class TestTreeShape(TestCaseInTempDir):
+
+    def test_unicode_paths(self):
+        filename = u'hell\u00d8'
+        try:
+            self.build_tree_contents([(filename, 'contents of hello')])
+        except UnicodeEncodeError:
+            raise TestSkipped("can't build unicode working tree in "
+                "filesystem encoding %s" % sys.getfilesystemencoding())
+        self.failUnlessExists(filename)
+
+
 class TestSkippedTest(TestCase):
     """Try running a test which is skipped, make sure it's reported properly."""
 
@@ -53,7 +69,7 @@ class TestSkippedTest(TestCase):
         # must be hidden in here so it's not run as a real test
         def skipping_test():
             raise TestSkipped('test intentionally skipped')
-        runner = bzrlib.tests.TextTestRunner(stream=self._log_file)
+        runner = TextTestRunner(stream=self._log_file)
         test = unittest.FunctionTestCase(skipping_test)
         result = runner.run(test)
         self.assertTrue(result.wasSuccessful())

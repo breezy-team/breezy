@@ -21,6 +21,7 @@ as remote (such as http or sftp).
 
 import errno
 from copy import deepcopy
+import sys
 from unittest import TestSuite
 
 from bzrlib.trace import mutter
@@ -65,6 +66,12 @@ class Transport(object):
         """
         if hasattr(e, 'errno'):
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                raise errors.NoSuchFile(path, extra=e)
+            # I would rather use errno.EFOO, but there doesn't seem to be
+            # any matching for 267
+            # This is the error when doing a listdir on a file:
+            # WindowsError: [Errno 267] The directory name is invalid
+            if sys.platform == 'win32' and e.errno in (errno.ESRCH, 267):
                 raise errors.NoSuchFile(path, extra=e)
             if e.errno == errno.EEXIST:
                 raise errors.FileExists(path, extra=e)
@@ -219,30 +226,37 @@ class Transport(object):
             yield self.get(relpath)
             count += 1
 
-    def put(self, relpath, f):
+    def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
+        :param mode: The mode for the newly created file, 
+                     None means just use the default
         """
         raise NotImplementedError
 
-    def put_multi(self, files, pb=None):
+    def put_multi(self, files, mode=None, pb=None):
         """Put a set of files into the location.
 
         :param files: A list of tuples of relpath, file object [(path1, file1), (path2, file2),...]
         :param pb:  An optional ProgressBar for indicating percent done.
+        :param mode: The mode for the newly created files
         :return: The number of files copied.
         """
-        return self._iterate_over(files, self.put, pb, 'put', expand=True)
+        def put(path, f):
+            self.put(path, f, mode=mode)
+        return self._iterate_over(files, put, pb, 'put', expand=True)
 
-    def mkdir(self, relpath):
+    def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         raise NotImplementedError
 
-    def mkdir_multi(self, relpaths, pb=None):
+    def mkdir_multi(self, relpaths, mode=None, pb=None):
         """Create a group of directories"""
-        return self._iterate_over(relpaths, self.mkdir, pb, 'mkdir', expand=False)
+        def mkdir(path):
+            self.mkdir(path, mode=mode)
+        return self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False)
 
     def append(self, relpath, f):
         """Append the text in the file-like or string object to 
@@ -276,16 +290,17 @@ class Transport(object):
         # implementors don't have to implement everything.
         return self._iterate_over(relpaths, self.copy, pb, 'copy', expand=True)
 
-    def copy_to(self, relpaths, other, pb=None):
+    def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
 
         :param relpaths: A list/generator of entries to be copied.
+        :param mode: This is the target mode for the newly created files
         TODO: This interface needs to be updated so that the target location
               can be different from the source location.
         """
         # The dummy implementation just does a simple get + put
         def copy_entry(path):
-            other.put(path, self.get(path))
+            other.put(path, self.get(path), mode=mode)
 
         return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
 
@@ -390,6 +405,8 @@ def get_transport(base):
     global _protocol_handlers
     if base is None:
         base = u'.'
+    else:
+        base = unicode(base)
     for proto, klass in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
             return klass(base)

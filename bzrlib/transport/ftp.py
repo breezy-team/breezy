@@ -179,11 +179,13 @@ class FtpTransport(Transport):
         except ftplib.error_perm, e:
             raise NoSuchFile(self.abspath(relpath), extra=extra)
 
-    def put(self, relpath, fp):
+    def put(self, relpath, fp, mode=None):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
+        TODO: jam 20051215 This should be an atomic put, not overwritting files in place
+        TODO: jam 20051215 ftp as a protocol seems to support chmod, but ftplib does not
         """
         if not hasattr(fp, 'read'):
             fp = StringIO(fp)
@@ -194,7 +196,7 @@ class FtpTransport(Transport):
         except ftplib.error_perm, e:
             raise TransportError(orig_error=e)
 
-    def mkdir(self, relpath):
+    def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         try:
             mutter("FTP mkd: %s" % self._abspath(relpath))

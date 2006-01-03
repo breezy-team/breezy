@@ -19,6 +19,7 @@ import os
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
+from bzrlib.osutils import abspath, realpath
 
 
 """Tests for Branch parent URL"""

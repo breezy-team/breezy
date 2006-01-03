@@ -20,7 +20,8 @@ import threading
 
 from bzrlib.branch import Branch
 import bzrlib.errors as errors
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.osutils import pathjoin, lexists
+from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 from bzrlib.tests.test_transport import TestTransportMixIn
 import bzrlib.transport
 
@@ -35,6 +36,8 @@ class TestCaseWithSFTPServer(TestCaseInTempDir):
     """A test case base class that provides a sftp server on localhost."""
 
     def setUp(self):
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
         super(TestCaseWithSFTPServer, self).setUp()
         from bzrlib.transport.sftp import SFTPAbsoluteServer, SFTPHomeDirServer
         if getattr(self, '_get_remote_is_absolute', None) is None:
@@ -85,7 +88,7 @@ class SFTPLockTests (TestCaseWithSFTPServer):
         self.assertRaises(LockError, t.lock_write, 'bogus')
 
         l.unlock()
-        self.failIf(os.path.lexists('bogus.write-lock'))
+        self.failIf(lexists('bogus.write-lock'))
 
         open('something.write-lock', 'wb').write('fake lock\n')
         self.assertRaises(LockError, t.lock_write, 'something')
@@ -156,6 +159,11 @@ fake = FakeSFTPTransport()
 
 
 class SFTPNonServerTest(TestCase):
+    def setUp(self):
+        TestCase.setUp(self)
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
+
     def test_parse_url(self):
         from bzrlib.transport.sftp import SFTPTransport
         s = SFTPTransport('sftp://simple.example.com/%2fhome/source', clone_from=fake)
@@ -234,11 +242,11 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         self.failUnlessExists('.bzr/branch-format')
         self.failUnlessExists('.bzr/branch-lock')
 
-        self.failIf(os.path.lexists('.bzr/branch-lock.write-lock'))
+        self.failIf(lexists('.bzr/branch-lock.write-lock'))
         b.lock_write()
         self.failUnlessExists('.bzr/branch-lock.write-lock')
         b.unlock()
-        self.failIf(os.path.lexists('.bzr/branch-lock.write-lock'))
+        self.failIf(lexists('.bzr/branch-lock.write-lock'))
 
     def test_no_working_tree(self):
         b = Branch.initialize(self._sftp_url)
@@ -257,9 +265,10 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
 
         self.assertEquals(b2.revision_history(), ['a1'])
 
+        open('a/foo', 'wt').write('something new in foo\n')
+        t.commit('new', rev_id='a2')
+        b2.pull(b)
 
-if not paramiko_loaded:
-    # TODO: Skip these
-    del SFTPTransportTest
-    del SFTPNonServerTest
-    del SFTPBranchTest
+        self.assertEquals(b2.revision_history(), ['a1', 'a2'])
+
+

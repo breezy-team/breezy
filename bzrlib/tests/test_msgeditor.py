@@ -23,28 +23,25 @@ from bzrlib.branch import Branch
 from bzrlib.msgeditor import make_commit_message_template
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 
-from bzrlib.tests.treeshape import build_tree_contents
-
-
-def make_uncommitted_tree():
-    """Build a branch with uncommitted changes in the cwd."""
-    b = Branch.initialize('.')
-    working_tree = b.working_tree()
-    filename = u'hell\u00d8'
-    try:
-        build_tree_contents([(filename, 'contents of hello')])
-    except UnicodeEncodeError:
-        raise TestSkipped("can't build unicode working tree in "
-                "filesystem encoding %s" % sys.getfilesystemencoding())
-    working_tree.add(filename)
-    return working_tree
-
 
 class MsgEditorTest(TestCaseInTempDir):
 
+    def make_uncommitted_tree(self):
+        """Build a branch with uncommitted unicode named changes in the cwd."""
+        b = Branch.initialize('.')
+        working_tree = b.working_tree()
+        filename = u'hell\u00d8'
+        try:
+            self.build_tree_contents([(filename, 'contents of hello')])
+        except UnicodeEncodeError:
+            raise TestSkipped("can't build unicode working tree in "
+                "filesystem encoding %s" % sys.getfilesystemencoding())
+        working_tree.add(filename)
+        return working_tree
+    
     def test_commit_template(self):
         """Test building a commit message template"""
-        working_tree = make_uncommitted_tree()
+        working_tree = self.make_uncommitted_tree()
         template = make_commit_message_template(working_tree, None)
         self.assertEqualDiff(template,
 u"""\

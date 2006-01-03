@@ -16,14 +16,11 @@
 
 import BaseHTTPServer, SimpleHTTPServer, socket, errno, time
 from bzrlib.tests import TestCaseInTempDir
+from bzrlib.osutils import relpath
 
 
 class WebserverNotAvailable(Exception):
     pass
-
-class BadWebserverPath(ValueError):
-    def __str__(self):
-        return 'path %s is not in %s' % self.args
 
 class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -116,14 +113,10 @@ class TestCaseWithWebserver(TestCaseInTempDir):
     def get_remote_url(self, path):
         import os
 
-        path_parts = path.split(os.path.sep)
         if os.path.isabs(path):
-            if path_parts[:len(self._local_path_parts)] != \
-                   self._local_path_parts:
-                raise BadWebserverPath(path, self.test_dir)
-            remote_path = '/'.join(path_parts[len(self._local_path_parts):])
+            remote_path = relpath(self.test_dir, path)
         else:
-            remote_path = '/'.join(path_parts)
+            remote_path = path
 
         self._http_starting.acquire()
         self._http_starting.release()
@@ -132,7 +125,6 @@ class TestCaseWithWebserver(TestCaseInTempDir):
     def setUp(self):
         TestCaseInTempDir.setUp(self)
         import threading, os
-        self._local_path_parts = self.test_dir.split(os.path.sep)
         self._http_starting = threading.Lock()
         self._http_starting.acquire()
         self._http_running = True

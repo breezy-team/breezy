@@ -30,6 +30,7 @@ from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError, NotConflicted
 from bzrlib.commands import register_command
 from bzrlib.workingtree import CONFLICT_SUFFIXES
+from bzrlib.osutils import rename
 
 class cmd_conflicts(bzrlib.commands.Command):
     """List files with conflicts.
@@ -80,7 +81,7 @@ def restore(filename):
     """
     conflicted = False
     try:
-        os.rename(filename + ".THIS", filename)
+        rename(filename + ".THIS", filename)
         conflicted = True
     except OSError, e:
         if e.errno != errno.ENOENT:

@@ -208,3 +208,22 @@ class IntSet(Exception):
         if not self._val & m:
             raise KeyError(to_remove)
         self._val ^= m
+
+    def set_remove(self, to_remove):
+        """Remove all values that exist in to_remove.
+
+        >>> a = IntSet(range(10))
+        >>> b = IntSet([2,3,4,7,12])
+        >>> a.set_remove(b)
+        >>> list(a)
+        [0, 1, 5, 6, 8, 9]
+        >>> a.set_remove([1,2,5])
+        >>> list(a)
+        [0, 6, 8, 9]
+        """
+        if not isinstance(to_remove, IntSet):
+            self.set_remove(IntSet(to_remove))
+            return
+        intersect = self._val & to_remove._val
+        self._val ^= intersect
+

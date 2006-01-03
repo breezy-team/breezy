@@ -31,6 +31,7 @@ import os
 import stat
 
 from bzrlib.trace import warning
+from bzrlib.osutils import pathjoin
 
 def build_tree_contents(template):
     """Reconstitute some files from a text description.
@@ -63,7 +64,7 @@ def capture_tree_contents(top):
         yield (dirpath + '/', )
         filenames.sort()
         for fn in filenames:
-            fullpath = os.path.join(dirpath, fn)
+            fullpath = pathjoin(dirpath, fn)
             self.assertFalse(fullpath[-1] in '@/')
             info = os.lstat(fullpath)
             if stat.S_ISLNK(info.st_mode):

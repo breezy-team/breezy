@@ -151,7 +151,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
 
         if kind == 'directory' and recurse and not sub_tree:
             for subf in os.listdir(af):
-                subp = os.path.join(rf, subf)
+                subp = bzrlib.osutils.pathjoin(rf, subf)
                 if subf == bzrlib.BZRDIR:
                     mutter("skip control directory %r", subp)
                 else:
