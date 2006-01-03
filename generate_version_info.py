@@ -26,53 +26,88 @@ from StringIO import StringIO
 from bzrlib.errors import NoWorkingTree
 from bzrlib.log import show_log, log_formatter
 from bzrlib.rio import RioReader, RioWriter, Stanza
+from bzrlib.osutils import local_time_offset, format_date
 
 
-def is_clean(branch):
-    """Check if a branch is clean.
+def get_file_revisions(branch, check=False):
+    """Get the last changed revision for all files.
 
-    :param branch: The branch to check for changes
-    TODO: jam 20051228 This might be better to ask for a WorkingTree
-            instead of a Branch.
-    :return: (is_clean, message)
+    :param branch: The branch we are checking.
+    :param check: See if there are uncommitted changes.
+    :return: ({file_path => last changed revision}, Tree_is_clean)
     """
+    clean = True
+    file_revisions = {}
+    basis_tree = branch.basis_tree()
+    for path, ie in basis_tree.inventory.iter_entries():
+        file_revisions[path] = ie.revision
+
+    if not check:
+        # Without checking, the tree looks clean
+        return file_revisions, clean
     try:
         new_tree = branch.working_tree()
     except NoWorkingTree:
-        # Trees without a working tree can't be dirty :)
-        return True, ''
-
-    # Look for unknown files in the new tree
-    for info in new_tree.list_files():
-        path = info[0]
-        file_class = info[1]
-        if file_class == '?':
-            return False, 'path %s is unknown' % (path,)
+        # Without a working tree, everything is clean
+        return file_revisions, clean
 
     from bzrlib.diff import compare_trees
-    # See if there is anything that has been changed
-    old_tree = branch.basis_tree()
-    delta = compare_trees(old_tree, new_tree, want_unchanged=False)
-    if len(delta.added) > 0:
-        return False, 'have added files: %r' % (delta.added,)
-    if len(delta.removed) > 0:
-        return False, 'have removed files: %r' % (delta.removed,)
-    if len(delta.modified) > 0:
-        return False, 'have modified files: %r' % (delta.modified,)
-    if len(delta.renamed) > 0:
-        return False, 'have renamed files: %r' % (delta.renamed,)
+    delta = compare_trees(basis_tree, new_tree, want_unchanged=False)
 
-    return True, ''
+    # Using a 2-pass algorithm for renames. This is because you might have
+    # renamed something out of the way, and then created a new file
+    # in which case we would rather see the new marker
+    # Or you might have removed the target, and then renamed
+    # in which case we would rather see the renamed marker
+    for old_path, new_path, file_id, kind, text_mod, meta_mod in delta.renamed:
+        clean = False
+        file_revisions[old_path] = u'renamed to %s' % (new_path,)
+    for path, file_id, kind in delta.removed:
+        clean = False
+        file_revisions[path] = 'removed'
+    for path, file_id, kind in delta.added:
+        clean = False
+        file_revisions[path] = 'new'
+    for old_path, new_path, file_id, kind, text_mod, meta_mod in delta.renamed:
+        clean = False
+        file_revisions[new_path] = u'renamed from %s' % (old_path,)
+    for path, file_id, kind, text_mod, meta_mod in delta.modified:
+        clean = False
+        file_revisions[path] = 'modified'
+
+    for info in new_tree.list_files():
+        path, status = info[0:2]
+        if status == '?':
+            file_revisions[path] = 'unversioned'
+            clean = False
+
+    return file_revisions, clean
 
 
 # This contains a map of format id => formatter
 # None is considered the default formatter
 version_formats = {}
 
+def create_date_str(timestamp=None, offset=None):
+    """Just a wrapper around format_date to provide the right format.
+    
+    We don't want to use '%a' in the time string, because it is locale
+    dependant. We also want to force timezone original, and show_offset
+
+    Without parameters this function yields the current date in the local
+    time zone.
+    """
+    if timestamp is None and offset is None:
+        timestamp = time.time()
+        offset = local_time_offset()
+    return format_date(timestamp, offset, date_fmt='%Y-%m-%d %H:%M:%S',
+                       timezone='original', show_offset=True)
+
 
 def generate_rio_version(branch, to_file,
         check_for_clean=False,
-        include_revision_history=False):
+        include_revision_history=False,
+        include_file_revisions=False):
     """Create the version file for this project.
 
     :param branch: The branch to write information about
@@ -82,22 +117,28 @@ def generate_rio_version(branch, to_file,
         valid for branches with working trees.
     :param include_revision_history: Write out the list of revisions, and
         the commit message associated with each
+    :param include_file_revisions: Write out the set of last changed revision
+        for each file.
     """
     info = Stanza()
-    # TODO: jam 20051228 This might be better as the datestamp 
-    #       of the last commit
-    info.add('date', time.strftime('%Y-%m-%d %H:%M:%S'))
+    info.add('build-date', create_date_str())
     info.add('revno', str(branch.revno()))
 
-    last_rev = branch.last_revision()
-    if last_rev is not None:
-        info.add('revision_id', last_rev)
+    last_rev_id = branch.last_revision()
+    if last_rev_id is not None:
+        info.add('revision_id', last_rev_id)
+        rev = branch.get_revision(last_rev_id)
+        info.add('date', create_date_str(rev.timestamp, rev.timezone))
 
     if branch.nick is not None:
         info.add('branch_nick', branch.nick)
 
+    file_revisions = {}
+    clean = True
+    if check_for_clean or include_file_revisions:
+        file_revisions, clean = get_file_revisions(branch, check=check_for_clean)
+
     if check_for_clean:
-        clean, message = is_clean(branch)
         if clean:
             info.add('clean', 'True')
         else:
@@ -114,6 +155,16 @@ def generate_rio_version(branch, to_file,
         log_writer = RioWriter(to_file=sio)
         log_writer.write_stanza(log)
         info.add('revisions', sio.getvalue())
+
+    if include_file_revisions:
+        files = Stanza()
+        for path in sorted(file_revisions.keys()):
+            files.add('path', path)
+            files.add('revision', file_revisions[path])
+        sio = StringIO()
+        file_writer = RioWriter(to_file=sio)
+        file_writer.write_stanza(files)
+        info.add('file-revisions', sio.getvalue())
 
     writer = RioWriter(to_file=to_file)
     writer.write_stanza(info)
@@ -146,7 +197,8 @@ if __name__ == '__main__':
 
 def generate_python_version(branch, to_file,
         check_for_clean=False,
-        include_revision_history=False):
+        include_revision_history=False,
+        include_file_revisions=False):
     """Create a python version file for this project.
 
     :param branch: The branch to write information about
@@ -156,27 +208,32 @@ def generate_python_version(branch, to_file,
         valid for branches with working trees.
     :param include_revision_history: Write out the list of revisions, and
         the commit message associated with each
+    :param include_file_revisions: Write out the set of last changed revision
+        for each file.
     """
     # TODO: jam 20051228 The python output doesn't actually need to be
     #       encoded, because it should only generate ascii safe output.
-    info = {'date':time.strftime('%Y-%m-%d %H:%M:%S')
+    info = {'build-date':create_date_str()
               , 'revno':branch.revno()
-              , 'revision_id':branch.last_revision()
-              , 'revisions':None
+              , 'revision_id':None
               , 'branch_nick':branch.nick
               , 'clean':None
+              , 'date':None
     }
+    revisions = []
 
-    if include_revision_history:
-        revs = branch.revision_history()
-        log = []
-        for rev_id in revs:
-            rev = branch.get_revision(rev_id)
-            log.append((rev_id, rev.message))
-        info['revisions'] = log
+    last_rev_id = branch.last_revision()
+    if last_rev_id:
+        rev = branch.get_revision(last_rev_id)
+        info['revision_id'] = last_rev_id
+        info['date'] = create_date_str(rev.timestamp, rev.timezone)
+
+    file_revisions = {}
+    clean = True
+    if check_for_clean or include_file_revisions:
+        file_revisions, clean = get_file_revisions(branch, check=check_for_clean)
 
     if check_for_clean:
-        clean, message = is_clean(branch)
         if clean:
             info['clean'] = True
         else:
@@ -187,7 +244,29 @@ def generate_python_version(branch, to_file,
     to_file.write('version_info =')
     to_file.write(info_str)
     to_file.write('\n')
+
+    if include_revision_history:
+        revs = branch.revision_history()
+        for rev_id in revs:
+            rev = branch.get_revision(rev_id)
+            revisions.append((rev_id, rev.message))
+        revision_str = pprint.pformat(revisions)
+        to_file.write('revisions = ')
+        to_file.write(revision_str)
+        to_file.write('\n')
+    else:
+        to_file.write('revisions = {}\n\n')
+
+    if include_file_revisions:
+        file_rev_str = pprint.pformat(file_revisions)
+        to_file.write('file_revisions = ')
+        to_file.write(file_rev_str)
+        to_file.write('\n')
+    else:
+        to_file.write('file_revisions = {}\n\n')
+
     to_file.write(_py_version_footer)
+
 
 version_formats['python'] = generate_python_version
 

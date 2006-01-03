@@ -61,6 +61,7 @@ class TestVersionInfo(TestCaseInTempDir):
         revisions = self.get_revisions()
         txt = regen()
         self.assertContainsRe(txt, 'date:')
+        self.assertContainsRe(txt, 'build-date:')
         self.assertContainsRe(txt, 'revno: 2')
         self.assertContainsRe(txt, 'revision_id: ' + revisions[-1])
 
@@ -74,6 +75,9 @@ class TestVersionInfo(TestCaseInTempDir):
             self.assertContainsRe(txt, 'id: ' + rev_id)
         self.assertContainsRe(txt, 'message: adding a')
         self.assertContainsRe(txt, 'message: adding b')
+        self.assertContainsRe(txt, 'file-revisions:')
+        self.assertContainsRe(txt, 'path: a')
+        self.assertContainsRe(txt, 'path: b')
 
         txt = regen('--check-clean')
         self.assertContainsRe(txt, 'clean: True')
@@ -81,6 +85,10 @@ class TestVersionInfo(TestCaseInTempDir):
         open('branch/c', 'wb').write('now unclean\n')
         txt = regen('--check-clean')
         self.assertContainsRe(txt, 'clean: False')
+
+        txt = regen('--check-clean', '--include-file-revisions')
+        self.assertContainsRe(txt, 'revision: unversioned')
+
         os.remove('branch/c')
 
         # Make sure it works without a directory
@@ -123,10 +131,24 @@ class TestVersionInfo(TestCaseInTempDir):
         self.assertEqual(tvi.version_info['revno'], 2)
         self.failUnless(tvi.version_info.has_key('date'))
         self.assertEqual(revisions[-1], tvi.version_info['revision_id'])
+        self.assertEqual({}, tvi.revisions)
+        self.assertEqual({}, tvi.file_revisions)
 
         tvi = regen('--all')
         self.assertEqual([(revisions[0], 'adding a'),
                           (revisions[1], 'adding b')],
-                         tvi.version_info['revisions'])
+                         tvi.revisions)
         self.assertEqual(True, tvi.version_info['clean'])
+        file_revisions = []
+        for path in sorted(tvi.file_revisions.keys()):
+            file_revisions.append((path, tvi.file_revisions[path]))
+        self.assertEqual([('a', revisions[0]), ('b', revisions[1])],
+            file_revisions)
+
+        open('branch/c', 'wb').write('now unclean\n')
+        tvi = regen('--check-clean', '--include-file-revisions')
+        self.assertEqual(False, tvi.version_info['clean'])
+        self.assertEqual('unversioned', tvi.file_revisions['c'])
+        os.remove('branch/c')
+
 

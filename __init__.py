@@ -49,13 +49,15 @@ class cmd_version_info(Command):
                      Option('all', help='include all possible information'),
                      Option('check-clean', help='check if tree is clean'),
                      Option('include-history', 
-                             help='Include the revision-history')
+                            help='Include the revision-history'),
+                     Option('include-file-revisions',
+                            help='Include the last revision for each file')
                      ]
     takes_args = ['location?']
 
     def run(self, location=None, format=None,
             all=False, check_clean=False, include_history=False,
-            verbose=False):
+            include_file_revisions=False):
 
         if location is None:
             location = u'.'
@@ -70,10 +72,12 @@ class cmd_version_info(Command):
         if all:
             include_history = True
             check_clean = True
+            include_file_revisions=True
 
         format(b, to_file=outf,
                 check_for_clean=check_clean,
-                include_revision_history=include_history)
+                include_revision_history=include_history,
+                include_file_revisions=include_file_revisions)
 
 
 register_command(cmd_version_info)
