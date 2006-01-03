@@ -135,9 +135,11 @@ class TestVersionInfo(TestCaseInTempDir):
         self.assertEqual({}, tvi.file_revisions)
 
         tvi = regen('--all')
+        rev_info = [(rev, message) for rev, message, timestamp, timezone 
+                                   in tvi.revisions] 
         self.assertEqual([(revisions[0], 'adding a'),
                           (revisions[1], 'adding b')],
-                         tvi.revisions)
+                         rev_info)
         self.assertEqual(True, tvi.version_info['clean'])
         file_revisions = []
         for path in sorted(tvi.file_revisions.keys()):

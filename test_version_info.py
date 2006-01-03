@@ -187,6 +187,7 @@ class TestVersionInfo(TestCaseInTempDir):
         revision_stanza = get_one_stanza(stanza, 'revisions')
         self.assertEqual(['r1', 'r2', 'r3'], revision_stanza.get_all('id'))
         self.assertEqual(['a', 'b', 'a2'], revision_stanza.get_all('message'))
+        self.assertEqual(3, len(revision_stanza.get_all('date')))
 
         open('branch/a', 'ab').write('adding some more stuff\n')
         open('branch/c', 'wb').write('new file c\n')
@@ -252,8 +253,10 @@ class TestVersionInfo(TestCaseInTempDir):
         os.remove('branch/c')
 
         tvi = regen(include_revision_history=True)
-        self.assertEqual([('r1', 'a'), ('r2', 'b'), ('r3', 'a2')],
-                         tvi.revisions)
+
+        rev_info = [(rev, message) for rev, message, timestamp, timezone 
+                                   in tvi.revisions] 
+        self.assertEqual([('r1', 'a'), ('r2', 'b'), ('r3', 'a2')], rev_info)
 
         open('branch/a', 'ab').write('adding some more stuff\n')
         open('branch/c', 'wb').write('new file c\n')

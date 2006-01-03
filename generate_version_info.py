@@ -151,6 +151,7 @@ def generate_rio_version(branch, to_file,
             rev = branch.get_revision(rev_id)
             log.add('id', rev_id)
             log.add('message', rev.message)
+            log.add('date', create_date_str(rev.timestamp, rev.timezone))
         sio = StringIO()
         log_writer = RioWriter(to_file=sio)
         log_writer.write_stanza(log)
@@ -249,7 +250,7 @@ def generate_python_version(branch, to_file,
         revs = branch.revision_history()
         for rev_id in revs:
             rev = branch.get_revision(rev_id)
-            revisions.append((rev_id, rev.message))
+            revisions.append((rev_id, rev.message, rev.timestamp, rev.timezone))
         revision_str = pprint.pformat(revisions)
         to_file.write('revisions = ')
         to_file.write(revision_str)
