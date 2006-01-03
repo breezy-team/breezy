@@ -74,7 +74,7 @@ def find_touching_revisions(branch, file_id):
     last_path = None
     revno = 1
     for revision_id in branch.revision_history():
-        this_inv = branch.storage.get_revision_inventory(revision_id)
+        this_inv = branch.repository.get_revision_inventory(revision_id)
         if file_id in this_inv:
             this_ie = this_inv[file_id]
             this_path = this_inv.id2path(file_id)
@@ -223,7 +223,7 @@ def _show_log(branch,
             # although we calculated it, throw it away without display
             delta = None
 
-        rev = branch.storage.get_revision(rev_id)
+        rev = branch.repository.get_revision(rev_id)
 
         if searchRE:
             if not searchRE.search(rev.message):
@@ -235,8 +235,8 @@ def _show_log(branch,
                 excludes = set()
             else:
                 # revno is 1 based, so -2 to get back 1 less.
-                storage = branch.storage
-                excludes = storage.get_ancestry(revision_history[revno - 2])
+                repository = branch.repository
+                excludes = repository.get_ancestry(revision_history[revno - 2])
                 excludes = set(excludes)
             pending = list(rev.parent_ids)
             while pending:
@@ -246,7 +246,7 @@ def _show_log(branch,
                 # prevent showing merged revs twice if they multi-path.
                 excludes.add(rev_id)
                 try:
-                    rev = branch.storage.get_revision(rev_id)
+                    rev = branch.repository.get_revision(rev_id)
                 except errors.NoSuchRevision:
                     continue
                 pending.extend(rev.parent_ids)
@@ -512,7 +512,7 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='lon
         to_file.write('*'*60)
         to_file.write('\nRemoved Revisions:\n')
         for i in range(base_idx, len(old_rh)):
-            rev = branch.storage.get_revision(old_rh[i])
+            rev = branch.repository.get_revision(old_rh[i])
             lf.show(i+1, rev, None)
         to_file.write('*'*60)
         to_file.write('\n\n')

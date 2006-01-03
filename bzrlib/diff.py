@@ -164,7 +164,7 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
         else:
             old_tree = b.working_tree()
     else:
-        old_tree = b.storage.revision_tree(from_spec.in_history(b).rev_id)
+        old_tree = b.repository.revision_tree(from_spec.in_history(b).rev_id)
 
     if revision2 is None:
         if b2 is None:
@@ -172,7 +172,7 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
         else:
             new_tree = b2.working_tree()
     else:
-        new_tree = b.storage.revision_tree(revision2.in_history(b).rev_id)
+        new_tree = b.repository.revision_tree(revision2.in_history(b).rev_id)
 
     return show_diff_trees(old_tree, new_tree, output, specific_files,
                            external_diff_options)

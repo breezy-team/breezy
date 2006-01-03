@@ -30,7 +30,7 @@ from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 
 def has_revision(branch, revision_id):
     try:
-        branch.storage.get_revision_xml_file(revision_id)
+        branch.repository.get_revision_xml_file(revision_id)
         return True
     except bzrlib.errors.NoSuchRevision:
         return False
@@ -137,10 +137,10 @@ class TestMergeFetch(TestCaseInTempDir):
 
     def _check_revs_present(self, br2):
         for rev_id in '1-1', '1-2', '2-1':
-            self.assertTrue(br2.storage.has_revision(rev_id))
-            rev = br2.storage.get_revision(rev_id)
+            self.assertTrue(br2.repository.has_revision(rev_id))
+            rev = br2.repository.get_revision(rev_id)
             self.assertEqual(rev.revision_id, rev_id)
-            self.assertTrue(br2.storage.get_inventory(rev_id))
+            self.assertTrue(br2.repository.get_inventory(rev_id))
 
 
 
@@ -173,7 +173,7 @@ class TestMergeFileHistory(TestCaseInTempDir):
                              ('2-1', 'contents in 2\n'),
                              ('2-2', 'agreement\n')]:
             self.assertEqualDiff(
-                br2.storage.revision_tree(
+                br2.repository.revision_tree(
                     rev_id).get_file_text('this-file-id'), text)
 
 

@@ -2,6 +2,8 @@ all:
 
 check:
 	./bzr selftest $(tests)
+	@echo "Running all tests with no locale."
+	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest $(tests)
 
 check-msgeditor:
 	./bzr --no-plugins selftest -v msgeditor

@@ -41,7 +41,7 @@ class Check(object):
 
     def __init__(self, branch):
         self.branch = branch
-        self.storage = branch.storage
+        self.repository = branch.repository
         self.checked_text_cnt = 0
         self.checked_rev_cnt = 0
         self.ghosts = []
@@ -59,7 +59,7 @@ class Check(object):
             self.progress.update('retrieving inventory', 0, 0)
             # do not put in init, as it should be done with progess,
             # and inside the lock.
-            self.inventory_weave = self.branch.storage.get_inventory_weave()
+            self.inventory_weave = self.branch.repository.get_inventory_weave()
             self.history = self.branch.revision_history()
             if not len(self.history):
                 # nothing to see here
@@ -77,8 +77,9 @@ class Check(object):
             self.branch.unlock()
 
     def plan_revisions(self):
-        if not self.branch.storage.revision_store.listable():
-            self.planned_revisions = self.branch.storage.get_ancestry(self.history[-1])
+        repository = self.branch.repository
+        if not repository.revision_store.listable():
+            self.planned_revisions = repository.get_ancestry(self.history[-1])
             self.planned_revisions.remove(None)
             # FIXME progress bars should support this more nicely.
             self.progress.clear()
@@ -86,7 +87,7 @@ class Check(object):
                    " for a complete check use a local branch.")
             return
         
-        self.planned_revisions = set(self.branch.storage.revision_store)
+        self.planned_revisions = set(repository.revision_store)
         inventoried = set(self.inventory_weave.names())
         awol = self.planned_revisions - inventoried
         if len(awol) > 0:
@@ -138,11 +139,11 @@ class Check(object):
             rev_history_position = None
         last_rev_id = None
         if rev_history_position:
-            rev = branch.storage.get_revision(rev_id)
+            rev = branch.repository.get_revision(rev_id)
             if rev_history_position > 0:
                 last_rev_id = self.history[rev_history_position - 1]
         else:
-            rev = branch.storage.get_revision(rev_id)
+            rev = branch.repository.get_revision(rev_id)
                 
         if rev.revision_id != rev_id:
             raise BzrCheckError('wrong internal revision id in revision {%s}'
@@ -166,7 +167,7 @@ class Check(object):
                     # list based so somewhat slow,
                     # TODO have a planned_revisions list and set.
                     if self.branch.has_revision(parent):
-                        missing_ancestry = self.storage.get_ancestry(parent)
+                        missing_ancestry = self.repository.get_ancestry(parent)
                         for missing in missing_ancestry:
                             if (missing is not None 
                                 and missing not in self.planned_revisions):
@@ -179,7 +180,7 @@ class Check(object):
                                 % (rev_id, last_rev_id))
 
         if rev.inventory_sha1:
-            inv_sha1 = branch.storage.get_inventory_sha1(rev_id)
+            inv_sha1 = branch.repository.get_inventory_sha1(rev_id)
             if inv_sha1 != rev.inventory_sha1:
                 raise BzrCheckError('Inventory sha1 hash doesn\'t match'
                     ' value in revision {%s}' % rev_id)
@@ -190,7 +191,7 @@ class Check(object):
         self.checked_rev_cnt += 1
 
     def _check_revision_tree(self, rev_id):
-        tree = self.branch.storage.revision_tree(rev_id)
+        tree = self.branch.repository.revision_tree(rev_id)
         inv = tree.inventory
         seen_ids = {}
         for file_id in inv:

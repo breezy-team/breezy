@@ -1,8 +1,9 @@
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.errors import LockError
+from bzrlib.errors import LockError, ReadOnlyError
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
+from osutils import file_iterator
 
 class LockableFiles(object):
     """Object representing a set of lockable files
@@ -22,9 +23,10 @@ class LockableFiles(object):
     _lock_count = None
     _lock = None
 
-    def __init__(self, transport, lock_name):
+    def __init__(self, transport, base, lock_name):
         object.__init__(self)
         self._transport = transport
+        self.base = base
         self.lock_name = lock_name
         self._transaction = None
 
@@ -32,6 +34,7 @@ class LockableFiles(object):
         if self._lock_mode or self._lock:
             # XXX: This should show something every time, and be suitable for
             # headless operation and embedding
+            from warnings import warn
             warn("file group %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
@@ -39,8 +42,9 @@ class LockableFiles(object):
         if not isinstance(file_or_path, basestring):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
-            return unicode(bzrlib.BZRDIR)
-        return bzrlib.transport.urlescape(unicode(bzrlib.BZRDIR + '/' + file_or_path))
+            return unicode(self.base)
+        return bzrlib.transport.urlescape(unicode(self.base + '/' + 
+                                                  file_or_path))
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
@@ -84,6 +88,8 @@ class LockableFiles(object):
                      directory
         :param f: A file-like or string object whose contents should be copied.
         """
+        if not self._lock_mode == 'w':
+            raise ReadOnlyError()
         self._transport.put(self._rel_controlfilename(path), file)
 
     def put_utf8(self, path, file):
@@ -94,12 +100,17 @@ class LockableFiles(object):
         :param f: A file-like or string object whose contents should be copied.
         """
         import codecs
+        from iterablefile import IterableFile
         ctrl_files = []
-        if isinstance(file, basestring):
-            file = file.encode('utf-8', 'replace')
+        if hasattr(file, 'read'):
+            iterator = file_iterator(file)
         else:
-            file = codecs.getwriter('utf-8')(file, errors='replace')
-        self.put(path, file)
+            iterator = file
+        # IterableFile would not be needed if Transport.put took iterables
+        # instead of files.  ADHB 2005-12-25
+        encoded_file = IterableFile(b.encode('utf-8', 'replace') for b in 
+                                    iterator)
+        self.put(path, encoded_file)
 
     def lock_write(self):
         mutter("lock write: %s (%s)", self, self._lock_count)
@@ -125,7 +136,7 @@ class LockableFiles(object):
             self._lock_count += 1
         else:
             self._lock = self._transport.lock_read(
-                    self._rel_controlfilename('branch-lock'))
+                    self._rel_controlfilename(self.lock_name))
             self._lock_mode = 'r'
             self._lock_count = 1
             self._set_transaction(transactions.ReadOnlyTransaction())
@@ -144,9 +155,6 @@ class LockableFiles(object):
             self._lock.unlock()
             self._lock = None
             self._lock_mode = self._lock_count = None
-
-    def make_transport(self, relpath):
-        return self._transport.clone(relpath)
 
     def get_transaction(self):
         """Return the current active transaction.

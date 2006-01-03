@@ -14,10 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""builtin bzr commands"""
+
 # DO NOT change this to cStringIO - it results in control files 
 # written as UCS4
 # FIXIT! (Only deal with byte streams OR unicode at any one layer.)
 # RBC 20051018
+
 from StringIO import StringIO
 import sys
 import os
@@ -36,6 +39,7 @@ from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
 from bzrlib.workingtree import WorkingTree
+from bzrlib.log import show_one_log
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -144,13 +148,13 @@ class cmd_cat_revision(Command):
             raise BzrCommandError('You must supply either --revision or a revision_id')
         b = WorkingTree.open_containing(u'.')[0].branch
         if revision_id is not None:
-            sys.stdout.write(b.storage.get_revision_xml(revision_id))
+            sys.stdout.write(b.repository.get_revision_xml(revision_id))
         elif revision is not None:
             for rev in revision:
                 if rev is None:
                     raise BzrCommandError('You cannot specify a NULL revision.')
                 revno, rev_id = rev.in_history(b)
-                sys.stdout.write(b.storage.get_revision_xml(rev_id))
+                sys.stdout.write(b.repository.get_revision_xml(rev_id))
     
 
 class cmd_revno(Command):
@@ -213,17 +217,40 @@ class cmd_add(Command):
     implicitly add the parent, and so on up to the root. This means
     you should never need to explictly add a directory, they'll just
     get added when you add a file in the directory.
+
+    --dry-run will show which files would be added, but not actually 
+    add them.
     """
     takes_args = ['file*']
-    takes_options = ['no-recurse']
-    
-    def run(self, file_list, no_recurse=False):
-        from bzrlib.add import smart_add, add_reporter_print, add_reporter_null
-        if is_quiet():
-            reporter = add_reporter_null
+    takes_options = ['no-recurse', 'dry-run', 'verbose']
+
+    def run(self, file_list, no_recurse=False, dry_run=False, verbose=False):
+        import bzrlib.add
+
+        if dry_run:
+            if is_quiet():
+                # This is pointless, but I'd rather not raise an error
+                action = bzrlib.add.add_action_null
+            else:
+                action = bzrlib.add.add_action_print
+        elif is_quiet():
+            action = bzrlib.add.add_action_add
         else:
-            reporter = add_reporter_print
-        smart_add(file_list, not no_recurse, reporter)
+            action = bzrlib.add.add_action_add_and_print
+
+        added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
+                                              action)
+        if len(ignored) > 0:
+            for glob in sorted(ignored.keys()):
+                match_len = len(ignored[glob])
+                if verbose:
+                    for path in ignored[glob]:
+                        print "ignored %s matching \"%s\"" % (path, glob)
+                else:
+                    print "ignored %d file(s) matching \"%s\"" % (match_len,
+                                                              glob)
+            print "If you wish to add some of these files, please add them"\
+                " by name."
 
 
 class cmd_mkdir(Command):
@@ -271,7 +298,7 @@ class cmd_inventory(Command):
             if len(revision) > 1:
                 raise BzrCommandError('bzr inventory --revision takes'
                     ' exactly one revision identifier')
-            inv = tree.branch.storage.get_revision_inventory(
+            inv = tree.branch.repository.get_revision_inventory(
                 revision[0].in_history(tree.branch).rev_id)
 
         for path, entry in inv.entries():
@@ -384,16 +411,13 @@ class cmd_pull(Command):
             else:
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
+
         br_from = Branch.open(location)
         br_to = tree_to.branch
-        try:
-            old_rh = br_to.revision_history()
-            count = tree_to.pull(br_from, overwrite)
-        except DivergedBranches:
-            # FIXME: Just make DivergedBranches display the right message
-            # itself.
-            raise BzrCommandError("These branches have diverged."
-                                  "  Try merge.")
+
+        old_rh = br_to.revision_history()
+        count = tree_to.pull(br_from, overwrite)
+
         if br_to.get_parent() is None or remember:
             br_to.set_parent(location)
         note('%d revision(s) pulled.' % (count,))
@@ -578,7 +602,12 @@ class cmd_branch(Command):
             branch = Branch.open(to_location)
             if name:
                 name = StringIO(name)
-                branch.control_files.put_utf8('branch-name', name)
+                branch.lock_write()
+                try:
+                    branch.control_files.put_utf8('branch-name', name)
+                finally:
+                    branch.unlock()
+                    
             note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
@@ -867,12 +896,11 @@ class cmd_log(Command):
                             help='show from oldest to newest'),
                      'timezone', 'verbose', 
                      'show-ids', 'revision',
-                     Option('line', help='format with one line per revision'),
-                     'long', 
+                     'line', 'long', 
                      Option('message',
                             help='show revisions whose message matches this regexp',
                             type=str),
-                     Option('short', help='use moderately short format'),
+                     'short',
                      ]
     @display_command
     def run(self, filename=None, timezone='original',
@@ -903,7 +931,7 @@ class cmd_log(Command):
             if tree is None:
                 b, fp = Branch.open_containing(filename)
                 if fp != '':
-                    inv = b.storage.get_inventory(b.last_revision())
+                    inv = b.repository.get_inventory(b.last_revision())
             if fp != '':
                 file_id = inv.path2id(fp)
             else:
@@ -936,11 +964,7 @@ class cmd_log(Command):
         # in e.g. the default C locale.
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
-        log_format = 'long'
-        if short:
-            log_format = 'short'
-        if line:
-            log_format = 'line'
+        log_format = get_log_format(long=long, short=short, line=line)
         lf = log_formatter(log_format,
                            show_ids=show_ids,
                            to_file=outf,
@@ -955,6 +979,15 @@ class cmd_log(Command):
                  end_revision=rev2,
                  search=message)
 
+def get_log_format(long=False, short=False, line=False, default='long'):
+    log_format = default
+    if long:
+        log_format = 'long'
+    if short:
+        log_format = 'short'
+    if line:
+        log_format = 'line'
+    return log_format
 
 
 class cmd_touching_revisions(Command):
@@ -1007,7 +1040,7 @@ class cmd_ls(Command):
         elif relpath:
             relpath += '/'
         if revision is not None:
-            tree = tree.branch.storage.revision_tree(
+            tree = tree.branch.repository.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
         for fp, fc, kind, fid, entry in tree.list_files():
             if fp.startswith(relpath):
@@ -1165,7 +1198,7 @@ class cmd_export(Command):
             if len(revision) != 1:
                 raise BzrError('bzr export --revision takes exactly 1 argument')
             rev_id = revision[0].in_history(b).rev_id
-        t = b.storage.revision_tree(rev_id)
+        t = b.repository.revision_tree(rev_id)
         try:
             export(t, dest, format, root)
         except errors.NoSuchExportFormat, e:
@@ -1603,11 +1636,11 @@ class cmd_remerge(Command):
                 raise BzrCommandError("Sorry, remerge only works after normal"
                                       + " merges.  Not cherrypicking or"
                                       + "multi-merges.")
+            repository = tree.branch.repository
             base_revision = common_ancestor(tree.branch.last_revision(), 
-                                            pending_merges[0],
-                                            tree.branch.storage)
-            base_tree = tree.branch.storage.revision_tree(base_revision)
-            other_tree = tree.branch.storage.revision_tree(pending_merges[0])
+                                            pending_merges[0], repository)
+            base_tree = repository.revision_tree(base_revision)
+            other_tree = repository.revision_tree(pending_merges[0])
             interesting_ids = None
             if file_list is not None:
                 interesting_ids = set()
@@ -1671,7 +1704,7 @@ class cmd_revert(Command):
         else:
             tree, file_list = tree_files(file_list)
             rev_id = revision[0].in_history(tree.branch).rev_id
-        tree.revert(file_list, tree.branch.storage.revision_tree(rev_id),
+        tree.revert(file_list, tree.branch.repository.revision_tree(rev_id),
                     not no_backup)
 
 
@@ -1735,39 +1768,66 @@ class cmd_fetch(Command):
 
 
 class cmd_missing(Command):
-    """What is missing in this branch relative to other branch.
-    """
-    # TODO: rewrite this in terms of ancestry so that it shows only
-    # unmerged things
-    
-    takes_args = ['remote?']
-    aliases = ['mis', 'miss']
-    takes_options = ['verbose']
+    """Show unmerged/unpulled revisions between two branches.
 
-    @display_command
-    def run(self, remote=None, verbose=False):
-        from bzrlib.errors import BzrCommandError
-        from bzrlib.missing import show_missing
+    OTHER_BRANCH may be local or remote."""
+    takes_args = ['other_branch?']
+    takes_options = [Option('reverse', 'Reverse the order of revisions'),
+                     Option('mine-only', 
+                            'Display changes in the local branch only'),
+                     Option('theirs-only', 
+                            'Display changes in the remote branch only'), 
+                     'line',
+                     'long', 
+                     'short',
+                     'show-ids',
+                     'verbose'
+                     ]
 
-        if verbose and is_quiet():
-            raise BzrCommandError('Cannot pass both quiet and verbose')
-
-        tree = WorkingTree.open_containing(u'.')[0]
-        parent = tree.branch.get_parent()
-        if remote is None:
-            if parent is None:
+    def run(self, other_branch=None, reverse=False, mine_only=False,
+            theirs_only=False, long=True, short=False, line=False, 
+            show_ids=False, verbose=False):
+        from bzrlib.missing import find_unmerged, iter_log_data
+        from bzrlib.log import log_formatter
+        local_branch = bzrlib.branch.Branch.open_containing(u".")[0]
+        parent = local_branch.get_parent()
+        if other_branch is None:
+            other_branch = parent
+            if other_branch is None:
                 raise BzrCommandError("No missing location known or specified.")
-            else:
-                if not is_quiet():
-                    print "Using last location: %s" % parent
-                remote = parent
-        elif parent is None:
-            # We only update parent if it did not exist, missing
-            # should not change the parent
-            tree.branch.set_parent(remote)
-        br_remote = Branch.open_containing(remote)[0]
-        return show_missing(tree.branch, br_remote, verbose=verbose, 
-                            quiet=is_quiet())
+            print "Using last location: " + local_branch.get_parent()
+        remote_branch = bzrlib.branch.Branch.open(other_branch)
+        local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
+        log_format = get_log_format(long=long, short=short, line=line)
+        lf = log_formatter(log_format, sys.stdout,
+                           show_ids=show_ids,
+                           show_timezone='original')
+        if reverse is False:
+            local_extra.reverse()
+            remote_extra.reverse()
+        if local_extra and not theirs_only:
+            print "You have %d extra revision(s):" % len(local_extra)
+            for data in iter_log_data(local_extra, local_branch.repository,
+                                      verbose):
+                lf.show(*data)
+            printed_local = True
+        else:
+            printed_local = False
+        if remote_extra and not mine_only:
+            if printed_local is True:
+                print "\n\n"
+            print "You are missing %d revision(s):" % len(remote_extra)
+            for data in iter_log_data(remote_extra, remote_branch.repository, 
+                                      verbose):
+                lf.show(*data)
+        if not remote_extra and not local_extra:
+            status_code = 0
+            print "Branches are up to date."
+        else:
+            status_code = 1
+        if parent is None and other_branch is not None:
+            local_branch.set_parent(other_branch)
+        return status_code
 
 
 class cmd_plugins(Command):
@@ -1804,7 +1864,7 @@ class cmd_testament(Command):
                 rev_id = b.last_revision()
             else:
                 rev_id = revision[0].in_history(b).rev_id
-            t = Testament.from_revision(b.storage, rev_id)
+            t = Testament.from_revision(b.repository, rev_id)
             if long:
                 sys.stdout.writelines(t.as_text_lines())
             else:
@@ -1840,7 +1900,7 @@ class cmd_annotate(Command):
         branch.lock_read()
         try:
             file_id = tree.inventory.path2id(relpath)
-            tree = branch.storage.revision_tree(branch.last_revision())
+            tree = branch.repository.revision_tree(branch.last_revision())
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, sys.stdout)
         finally:
@@ -1865,11 +1925,11 @@ class cmd_re_sign(Command):
         b = WorkingTree.open_containing(u'.')[0].branch
         gpg_strategy = gpg.GPGStrategy(config.BranchConfig(b))
         if revision_id is not None:
-            b.storage.sign_revision(revision_id, gpg_strategy)
+            b.repository.sign_revision(revision_id, gpg_strategy)
         elif revision is not None:
             if len(revision) == 1:
                 revno, rev_id = revision[0].in_history(b)
-                b.storage.sign_revision(rev_id, gpg_strategy)
+                b.repository.sign_revision(rev_id, gpg_strategy)
             elif len(revision) == 2:
                 # are they both on rh- if so we can walk between them
                 # might be nice to have a range helper for arbitrary
@@ -1881,7 +1941,8 @@ class cmd_re_sign(Command):
                 if from_revno is None or to_revno is None:
                     raise BzrCommandError('Cannot sign a range of non-revision-history revisions')
                 for revno in range(from_revno, to_revno + 1):
-                    b.storage.sign_revision(b.get_rev_id(revno), gpg_strategy)
+                    b.repository.sign_revision(b.get_rev_id(revno), 
+                                               gpg_strategy)
             else:
                 raise BzrCommandError('Please supply either one revision, or a range.')
 
@@ -1929,7 +1990,7 @@ class cmd_uncommit(bzrlib.commands.Command):
         for r in range(revno, b.revno()+1):
             rev_id = b.get_rev_id(r)
             lf = log_formatter('short', to_file=sys.stdout,show_timezone='original')
-            lf.show(r, b.storage.get_revision(rev_id), None)
+            lf.show(r, b.repository.get_revision(rev_id), None)
 
         if dry_run:
             print 'Dry-run, pretending to remove the above revisions.'

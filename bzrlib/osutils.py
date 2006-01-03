@@ -248,6 +248,14 @@ def pumpfile(fromfile, tofile):
         tofile.write(b)
 
 
+def file_iterator(input_file, readsize=32768):
+    while True:
+        b = input_file.read(readsize)
+        if len(b) == 0:
+            break
+        yield b
+
+
 def sha_file(f):
     if hasattr(f, 'tell'):
         assert f.tell() == 0

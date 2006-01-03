@@ -242,7 +242,7 @@ class Branch(object):
         >>> commit(br1, "lala!", rev_id="REVISION-ID-2B")
         >>> br1.missing_revisions(br2)
         Traceback (most recent call last):
-        DivergedBranches: These branches have diverged.
+        DivergedBranches: These branches have diverged.  Try merge.
         """
         self_history = self.revision_history()
         self_len = len(self_history)
@@ -301,7 +301,7 @@ class Branch(object):
 
         If there are no revisions yet, return an `EmptyTree`.
         """
-        return self.storage.revision_tree(self.last_revision())
+        return self.repository.revision_tree(self.last_revision())
 
     def rename_one(self, from_rel, to_rel):
         """Rename one file.
@@ -468,11 +468,11 @@ class BzrBranch(Branch):
         """
         assert isinstance(transport, Transport), \
             "%r is not a Transport" % transport
-        self.control_files = LockableFiles(transport, 'branch-lock')
+        self.control_files = LockableFiles(transport, bzrlib.BZRDIR, 'branch-lock')
         if init:
             self._make_control()
         self._check_format(relax_version_check)
-        self.storage = Repository(transport, self._branch_format)
+        self.repository = Repository(transport, self._branch_format)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)
@@ -558,9 +558,13 @@ class BzrBranch(Branch):
         ]
         cfn = self.control_files._rel_controlfilename
         self.control_files._transport.mkdir_multi([cfn(d) for d in dirs])
-        for file, content in files:
-            self.control_files.put_utf8(file, content)
-        mutter('created control directory in ' + self.base)
+        self.control_files.lock_write()
+        try:
+            for file, content in files:
+                self.control_files.put_utf8(file, content)
+            mutter('created control directory in ' + self.base)
+        finally:
+            self.control_files.unlock()
 
     def _check_format(self, relax_version_check):
         """Check this branch format is supported.
@@ -594,28 +598,28 @@ class BzrBranch(Branch):
     @needs_read_lock
     def get_root_id(self):
         """See Branch.get_root_id."""
-        inv = self.storage.get_inventory(self.last_revision())
+        inv = self.repository.get_inventory(self.last_revision())
         return inv.root.file_id
 
     def lock_write(self):
         # TODO: test for failed two phase locks. This is known broken.
         self.control_files.lock_write()
-        self.storage.lock_write()
+        self.repository.lock_write()
 
     def lock_read(self):
         # TODO: test for failed two phase locks. This is known broken.
         self.control_files.lock_read()
-        self.storage.lock_read()
+        self.repository.lock_read()
 
     def unlock(self):
         # TODO: test for failed two phase locks. This is known broken.
-        self.storage.unlock()
+        self.repository.unlock()
         self.control_files.unlock()
 
     @needs_read_lock
     def print_file(self, file, revision_id):
         """See Branch.print_file."""
-        return self.storage.print_file(file, revision_id)
+        return self.repository.print_file(file, revision_id)
 
     @needs_write_lock
     def append_revision(self, *revision_ids):
@@ -655,11 +659,11 @@ class BzrBranch(Branch):
 
         # revno is 1-based; list is 0-based
 
-        new_tree = self.storage.revision_tree(rh[revno-1])
+        new_tree = self.repository.revision_tree(rh[revno-1])
         if revno == 1:
             old_tree = EmptyTree()
         else:
-            old_tree = self.storage.revision_tree(rh[revno-2])
+            old_tree = self.repository.revision_tree(rh[revno-2])
         return compare_trees(old_tree, new_tree)
 
     @needs_read_lock
@@ -703,7 +707,7 @@ class BzrBranch(Branch):
             try:
                 pullable_revs = get_intervening_revisions(self.last_revision(),
                                                           stop_revision, 
-                                                          self.storage)
+                                                          self.repository)
                 assert self.last_revision() not in pullable_revs
                 return pullable_revs
             except bzrlib.errors.NotAncestor:
@@ -722,9 +726,9 @@ class BzrBranch(Branch):
             # that for a working tree. RBC 20051207
             xml = self.working_tree().read_basis_inventory(revision_id)
             inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
-            return RevisionTree(self.storage.weave_store, inv, revision_id)
+            return RevisionTree(self.repository.weave_store, inv, revision_id)
         except (IndexError, NoSuchFile, NoWorkingTree), e:
-            return self.storage.revision_tree(self.last_revision())
+            return self.repository.revision_tree(self.last_revision())
 
     def working_tree(self):
         """See Branch.working_tree."""
@@ -811,7 +815,7 @@ class BzrBranch(Branch):
         mutter("copy branch from %s to %s", self, branch_to)
         branch_to.working_tree().set_root_id(self.get_root_id())
 
-        self.storage.copy(branch_to.storage)
+        self.repository.copy(branch_to.repository)
         
         # must be done *after* history is copied across
         # FIXME duplicate code with base .clone().
@@ -829,8 +833,8 @@ class BzrBranch(Branch):
             to_branch_type = BzrBranch
 
         if to_branch_type == BzrBranch \
-            and self.storage.weave_store.listable() \
-            and self.storage.revision_store.listable():
+            and self.repository.weave_store.listable() \
+            and self.repository.revision_store.listable():
             return self._clone_weave(to_location, revision, basis_branch)
 
         return Branch.clone(self, to_location, revision, basis_branch, to_branch_type)

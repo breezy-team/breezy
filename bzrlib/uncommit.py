@@ -32,11 +32,11 @@ def uncommit(branch, remove_files=False,
         rev_id = rh.pop()
         if verbose:
             print 'Removing revno %d: %s' % (len(rh)+1, rev_id)
-        rev = branch.storage.get_revision(rev_id)
-        inv = branch.storage.get_revision_inventory(rev_id)
+        rev = branch.repository.get_revision(rev_id)
+        inv = branch.repository.get_revision_inventory(rev_id)
         inv_prev = []
         for p in rev.parent_ids:
-            inv_prev.append(branch.storage.get_revision_inventory(p))
+            inv_prev.append(branch.repository.get_revision_inventory(p))
 
         if remove_files:
             # Figure out what text-store entries are new

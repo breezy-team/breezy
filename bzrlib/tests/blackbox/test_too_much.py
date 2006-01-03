@@ -15,6 +15,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# Mr. Smoketoomuch: I'm sorry?
+# Mr. Bounder: You'd better cut down a little then.
+# Mr. Smoketoomuch: Oh, I see! Smoke too much so I'd better cut down a little
+#                   then!
 
 """Black-box tests for bzr.
 
@@ -430,7 +434,7 @@ class TestCommands(ExternalBase):
         # Merging a branch pulls its revision into the tree
         a = Branch.open('.')
         b = Branch.open('../b')
-        a.storage.get_revision_xml(b.last_revision())
+        a.repository.get_revision_xml(b.last_revision())
         self.log('pending merges: %s', a.working_tree().pending_merges())
         self.assertEquals(a.working_tree().pending_merges(),
                           [b.last_revision()])
@@ -669,13 +673,22 @@ class TestCommands(ExternalBase):
     def test_add_reports(self):
         """add command prints the names of added files."""
         b = Branch.initialize('.')
-        self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
+        self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
         out = self.run_bzr_captured(['add'], retcode=0)[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['added dir',
+        self.assertEquals(['If you wish to add some of these files, please'\
+                           ' add them by name.',
+                           'added dir',
                            'added dir'+os.sep+'sub.txt',
-                           'added top.txt',],
+                           'added top.txt',
+                           'ignored 1 file(s) matching "CVS"'],
+                          results)
+        out = self.run_bzr_captured(['add', '-v'], retcode=0)[0]
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEquals(['If you wish to add some of these files, please'\
+                           ' add them by name.',
+                           'ignored CVS matching "CVS"'],
                           results)
 
     def test_add_quiet_is(self):
@@ -870,9 +883,9 @@ class TestCommands(ExternalBase):
             from bzrlib.testament import Testament
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
             self.runbzr('re-sign -r revid:A')
-            self.assertEqual(Testament.from_revision(branch.storage,
+            self.assertEqual(Testament.from_revision(branch.repository,
                              'A').as_short_text(),
-                             branch.storage.revision_store.get('A', 
+                             branch.repository.revision_store.get('A', 
                              'sig').read())
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
@@ -890,14 +903,14 @@ class TestCommands(ExternalBase):
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
             self.runbzr('re-sign -r 1..')
             self.assertEqual(
-                Testament.from_revision(branch.storage,'A').as_short_text(),
-                branch.storage.revision_store.get('A', 'sig').read())
+                Testament.from_revision(branch.repository,'A').as_short_text(),
+                branch.repository.revision_store.get('A', 'sig').read())
             self.assertEqual(
-                Testament.from_revision(branch.storage,'B').as_short_text(),
-                branch.storage.revision_store.get('B', 'sig').read())
-            self.assertEqual(Testament.from_revision(branch.storage,
+                Testament.from_revision(branch.repository,'B').as_short_text(),
+                branch.repository.revision_store.get('B', 'sig').read())
+            self.assertEqual(Testament.from_revision(branch.repository,
                              'C').as_short_text(),
-                             branch.storage.revision_store.get('C', 
+                             branch.repository.revision_store.get('C', 
                              'sig').read())
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
