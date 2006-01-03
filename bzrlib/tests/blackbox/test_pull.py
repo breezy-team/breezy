@@ -110,10 +110,10 @@ class TestPull(ExternalBase):
         self.runbzr('pull -r 2')
         a = Branch.open('../a')
         b = Branch.open('.')
-	self.assertEquals(a.revno(),4)
-	self.assertEquals(b.revno(),2)
+        self.assertEquals(a.revno(),4)
+        self.assertEquals(b.revno(),2)
         self.runbzr('pull -r 3')
-	self.assertEquals(b.revno(),3)
+        self.assertEquals(b.revno(),3)
         self.runbzr('pull -r 4')
         self.assertEquals(a.revision_history(), b.revision_history())
 

@@ -415,12 +415,12 @@ class cmd_pull(Command):
         br_from = Branch.open(location)
         br_to = tree_to.branch
 
-	if revision is None:
-	    rev_id = None
+        if revision is None:
+            rev_id = None
         elif len(revision) == 1:
-	    rev_id = revision[0]._match_on(br_from,br_from.revision_history()).rev_id
-	else:
-	    raise BzrCommandError('bzr pull --revision takes one value.')
+            rev_id = revision[0]._match_on(br_from,br_from.revision_history()).rev_id
+        else:
+            raise BzrCommandError('bzr pull --revision takes one value.')
 
         old_rh = br_to.revision_history()
         count = tree_to.pull(br_from, overwrite, rev_id)
