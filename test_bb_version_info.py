@@ -63,12 +63,12 @@ class TestVersionInfo(TestCaseInTempDir):
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'build-date:')
         self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision_id: ' + revisions[-1])
+        self.assertContainsRe(txt, 'revision-id: ' + revisions[-1])
 
         txt = regen('--all')
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision_id: ' + revisions[-1])
+        self.assertContainsRe(txt, 'revision-id: ' + revisions[-1])
         self.assertContainsRe(txt, 'clean: True')
         self.assertContainsRe(txt, 'revisions:')
         for rev_id in revisions:

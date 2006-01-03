@@ -126,12 +126,12 @@ def generate_rio_version(branch, to_file,
 
     last_rev_id = branch.last_revision()
     if last_rev_id is not None:
-        info.add('revision_id', last_rev_id)
+        info.add('revision-id', last_rev_id)
         rev = branch.get_revision(last_rev_id)
         info.add('date', create_date_str(rev.timestamp, rev.timezone))
 
     if branch.nick is not None:
-        info.add('branch_nick', branch.nick)
+        info.add('branch-nick', branch.nick)
 
     file_revisions = {}
     clean = True
@@ -214,7 +214,7 @@ def generate_python_version(branch, to_file,
     """
     # TODO: jam 20051228 The python output doesn't actually need to be
     #       encoded, because it should only generate ascii safe output.
-    info = {'build-date':create_date_str()
+    info = {'build_date':create_date_str()
               , 'revno':branch.revno()
               , 'revision_id':None
               , 'branch_nick':branch.nick

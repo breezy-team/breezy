@@ -130,7 +130,7 @@ class TestVersionInfo(TestCaseInTempDir):
         self.assertContainsRe(val, 'build-date:')
         self.assertContainsRe(val, 'date:')
         self.assertContainsRe(val, 'revno: 3')
-        self.assertContainsRe(val, 'revision_id: r3')
+        self.assertContainsRe(val, 'revision-id: r3')
 
         val = regen(check_for_clean=True)
         self.assertContainsRe(val, 'clean: True')
@@ -168,7 +168,7 @@ class TestVersionInfo(TestCaseInTempDir):
         self.failUnless('date' in stanza)
         self.failUnless('build-date' in stanza)
         self.assertEqual(['3'], stanza.get_all('revno'))
-        self.assertEqual(['r3'], stanza.get_all('revision_id'))
+        self.assertEqual(['r3'], stanza.get_all('revision-id'))
 
         stanza = regen(check_for_clean=True)
         self.assertEqual(['True'], stanza.get_all('clean'))
