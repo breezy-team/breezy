@@ -10,7 +10,8 @@ check-msgeditor:
 
 clean: 
 	./setup.py clean
-	find . -name "*.pyc" | xargs rm
+	-find . -name "*.pyc" | xargs rm
+	-find . -name "*.pyo" | xargs rm
 	rm -rf test????.tmp
 
 .PHONY: all
