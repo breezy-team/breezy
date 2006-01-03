@@ -422,10 +422,6 @@ class BzrBranch(Branch):
     # filesystem access, so that in a later step, we can extricate them to
     # a separarte ("storage") class.
     _inventory_weave = None
-    # If set to False (by a plugin, etc) BzrBranch will not set the
-    # mode on created files or directories
-    _set_file_mode = True
-    _set_dir_mode = True
     
     # Map some sort of prefix into a namespace
     # stuff like "revno:10", "revid:", etc.
@@ -472,14 +468,15 @@ class BzrBranch(Branch):
         """
         assert isinstance(transport, Transport), \
             "%r is not a Transport" % transport
-        self.control_files = LockableFiles(transport, bzrlib.BZRDIR, 'branch-lock')
+        # TODO: jam 20060103 We create a clone of this transport at .bzr/
+        #       and then we forget about it, should we keep a handle to it?
+        self._base = transport.base
+        self.control_files = LockableFiles(transport.clone(bzrlib.BZRDIR),
+                                           'branch-lock')
         if init:
             self._make_control()
         self._check_format(relax_version_check)
-        self._find_modes()
-        self.repository = Repository(transport, self._branch_format,
-                                     dir_mode=self._dir_mode,
-                                     file_mode=self._file_mode)
+        self.repository = Repository(transport, self._branch_format)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)
@@ -501,9 +498,7 @@ class BzrBranch(Branch):
             self.cache_root = None
 
     def _get_base(self):
-        if self.control_files._transport:
-            return self.control_files._transport.base
-        return None
+        return self._base
 
     base = property(_get_base, doc="The URL for the root of this branch.")
 
@@ -534,26 +529,6 @@ class BzrBranch(Branch):
         """See Branch.abspath."""
         return self.control_files._transport.abspath(name)
 
-    def _find_modes(self, path=None):
-        """Determine the appropriate modes for files and directories."""
-        # RBC 20060103 FIXME where does this belong ?
-        try:
-            if path is None:
-                path = ''
-                #self.control_files._rel_controlfilename('')
-            st = self.control_files._transport.stat(path)
-        except errors.TransportNotPossible:
-            self._dir_mode = 0755
-            self._file_mode = 0644
-        else:
-            self._dir_mode = st.st_mode & 07777
-            # Remove the sticky and execute bits for files
-            self._file_mode = self._dir_mode & ~07111
-        if not self._set_dir_mode:
-            self._dir_mode = None
-        if not self._set_file_mode:
-            self._file_mode = None
-
     def _make_control(self):
         from bzrlib.inventory import Inventory
         from bzrlib.weavefile import write_weave_v5
@@ -570,10 +545,6 @@ class BzrBranch(Branch):
         bzrlib.weavefile.write_weave_v5(Weave(), sio)
         empty_weave = sio.getvalue()
 
-        # Since we don't have a .bzr directory, inherit the
-        # mode from the root directory
-        self._find_modes('.')
-
         dirs = ['', 'revision-store', 'weaves']
         files = [('README', 
             "This is a Bazaar-NG control directory.\n"
@@ -587,9 +558,9 @@ class BzrBranch(Branch):
             ('inventory.weave', empty_weave),
             ('ancestry.weave', empty_weave)
         ]
-        cfn = self.control_files._rel_controlfilename
-        self.control_files._transport.mkdir_multi([cfn(d) for d in dirs],
-                                                  mode=self._dir_mode)
+        cfe = self.control_files._escape
+        self.control_files._transport.mkdir_multi([cfe(d) for d in dirs],
+                mode=self.control_files._dir_mode)
         self.control_files.lock_write()
         try:
             for file, content in files:
@@ -870,6 +841,7 @@ class BzrBranch(Branch):
 
         return Branch.clone(self, to_location, revision, basis_branch, to_branch_type)
 
+
 class ScratchBranch(BzrBranch):
     """Special test class: a branch that cleans up after itself.
 
@@ -877,7 +849,7 @@ class ScratchBranch(BzrBranch):
     >>> isdir(b.base)
     True
     >>> bd = b.base
-    >>> b.control_files._transport.__del__()
+    >>> b._transport.__del__()
     >>> isdir(bd)
     False
     """
@@ -895,15 +867,23 @@ class ScratchBranch(BzrBranch):
         else:
             super(ScratchBranch, self).__init__(transport)
 
+        # BzrBranch creates a clone to .bzr and then forgets about the
+        # original transport. A ScratchTransport() deletes itself and
+        # everything underneath it when it goes away, so we need to
+        # grab a local copy to prevent that from happening
+        self._transport = transport
+
         for d in dirs:
-            self.control_files._transport.mkdir(d)
+            self._transport.mkdir(d)
             
         for f in files:
-            self.control_files._transport.put(f, 'content of %s' % f)
+            self._transport.put(f, 'content of %s' % f)
 
     def clone(self):
         """
         >>> orig = ScratchBranch(files=["file1", "file2"])
+        >>> os.listdir(orig.base)
+        [u'.bzr', u'file1', u'file2']
         >>> clone = orig.clone()
         >>> if os.name != 'nt':
         ...   os.path.samefile(orig.base, clone.base)
@@ -911,8 +891,8 @@ class ScratchBranch(BzrBranch):
         ...   orig.base == clone.base
         ...
         False
-        >>> os.path.isfile(pathjoin(clone.base, "file1"))
-        True
+        >>> os.listdir(clone.base)
+        [u'.bzr', u'file1', u'file2']
         """
         from shutil import copytree
         from bzrlib.osutils import mkdtemp

@@ -22,13 +22,17 @@ class LockableFiles(object):
     _lock_mode = None
     _lock_count = None
     _lock = None
+    # If set to False (by a plugin, etc) BzrBranch will not set the
+    # mode on created files or directories
+    _set_file_mode = True
+    _set_dir_mode = True
 
-    def __init__(self, transport, base, lock_name):
+    def __init__(self, transport, lock_name):
         object.__init__(self)
         self._transport = transport
-        self.base = base
         self.lock_name = lock_name
         self._transaction = None
+        self._find_modes()
 
     def __del__(self):
         if self._lock_mode or self._lock:
@@ -38,17 +42,39 @@ class LockableFiles(object):
             warn("file group %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
-    def _rel_controlfilename(self, file_or_path):
+    def _escape(self, file_or_path):
         if not isinstance(file_or_path, basestring):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
-            return unicode(self.base)
-        return bzrlib.transport.urlescape(unicode(self.base + '/' + 
-                                                  file_or_path))
+            return u''
+        return bzrlib.transport.urlescape(unicode(file_or_path))
+
+    def _find_modes(self):
+        """Determine the appropriate modes for files and directories."""
+        try:
+            try:
+                st = self._transport.stat(u'.')
+            except errors.NoSuchFile:
+                # The .bzr/ directory doesn't exist, try to
+                # inherit the permissions from the parent directory
+                # but only try 1 level up
+                temp_transport = self._transport.clone('..')
+                st = temp_transport.stat(u'.')
+        except (errors.TransportNotPossible, errors.NoSuchFile):
+            self._dir_mode = 0755
+            self._file_mode = 0644
+        else:
+            self._dir_mode = st.st_mode & 07777
+            # Remove the sticky and execute bits for files
+            self._file_mode = self._dir_mode & ~07111
+        if not self._set_dir_mode:
+            self._dir_mode = None
+        if not self._set_file_mode:
+            self._file_mode = None
 
     def controlfilename(self, file_or_path):
         """Return location relative to branch."""
-        return self._transport.abspath(self._rel_controlfilename(file_or_path))
+        return self._transport.abspath(self._escape(file_or_path))
 
     def controlfile(self, file_or_path, mode='r'):
         """Open a control file for this branch.
@@ -63,7 +89,7 @@ class LockableFiles(object):
         """
         import codecs
 
-        relpath = self._rel_controlfilename(file_or_path)
+        relpath = self._escape(file_or_path)
         #TODO: codecs.open() buffers linewise, so it was overloaded with
         # a much larger buffer, do we need to do the same for getreader/getwriter?
         if mode == 'rb': 
@@ -90,7 +116,7 @@ class LockableFiles(object):
         """
         if not self._lock_mode == 'w':
             raise ReadOnlyError()
-        self._transport.put(self._rel_controlfilename(path), file)
+        self._transport.put(self._escape(path), file, mode=self._file_mode)
 
     def put_utf8(self, path, file, mode=None):
         """Write a file, encoding as utf-8.
@@ -110,7 +136,9 @@ class LockableFiles(object):
         # instead of files.  ADHB 2005-12-25
         # RBC 20060103 surely its not needed anyway, with codecs transcode
         # file support ?
-        encoded_file = IterableFile(b.encode('utf-8', 'replace') for b in 
+        # JAM 20060103 We definitely don't want encode(..., 'replace')
+        # these are valuable files which should have exact contents.
+        encoded_file = IterableFile(b.encode('utf-8') for b in 
                                     iterator)
         self.put(path, encoded_file)
 
@@ -125,7 +153,7 @@ class LockableFiles(object):
             self._lock_count += 1
         else:
             self._lock = self._transport.lock_write(
-                    self._rel_controlfilename(self.lock_name))
+                    self._escape(self.lock_name))
             self._lock_mode = 'w'
             self._lock_count = 1
             self._set_transaction(transactions.PassThroughTransaction())
@@ -138,7 +166,7 @@ class LockableFiles(object):
             self._lock_count += 1
         else:
             self._lock = self._transport.lock_read(
-                    self._rel_controlfilename(self.lock_name))
+                    self._escape(self.lock_name))
             self._lock_mode = 'r'
             self._lock_count = 1
             self._set_transaction(transactions.ReadOnlyTransaction())

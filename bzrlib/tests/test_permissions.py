@@ -98,8 +98,8 @@ class TestPermissions(TestCaseInTempDir):
 
         b = Branch.open('.')
         t = b.working_tree()
-        assertEqualMode(self, 0755, b._dir_mode)
-        assertEqualMode(self, 0644, b._file_mode)
+        assertEqualMode(self, 0755, b.control_files._dir_mode)
+        assertEqualMode(self, 0644, b.control_files._file_mode)
 
         # Modifying a file shouldn't break the permissions
         open('a', 'wb').write('foo2\n')
@@ -119,8 +119,8 @@ class TestPermissions(TestCaseInTempDir):
         check_mode_r(self, '.bzr', 0664, 0775)
         b = Branch.open('.')
         t = b.working_tree()
-        assertEqualMode(self, 0775, b._dir_mode)
-        assertEqualMode(self, 0664, b._file_mode)
+        assertEqualMode(self, 0775, b.control_files._dir_mode)
+        assertEqualMode(self, 0664, b.control_files._file_mode)
 
         open('a', 'wb').write('foo3\n')
         t.commit('foo3')
@@ -138,8 +138,8 @@ class TestPermissions(TestCaseInTempDir):
         check_mode_r(self, '.bzr', 0664, 02775)
         b = Branch.open('.')
         t = b.working_tree()
-        assertEqualMode(self, 02775, b._dir_mode)
-        assertEqualMode(self, 0664, b._file_mode)
+        assertEqualMode(self, 02775, b.control_files._dir_mode)
+        assertEqualMode(self, 0664, b.control_files._file_mode)
 
         open('a', 'wb').write('foo4\n')
         t.commit('foo4')
@@ -153,34 +153,34 @@ class TestPermissions(TestCaseInTempDir):
     def test_disable_set_mode(self):
         # TODO: jam 20051215 Ultimately, this test should probably test that
         #                    extra chmod calls aren't being made
-        import bzrlib.branch
+        import bzrlib.lockable_files
         try:
             b = Branch.initialize(u'.')
-            self.assertNotEqual(None, b._dir_mode)
-            self.assertNotEqual(None, b._file_mode)
+            self.assertNotEqual(None, b.control_files._dir_mode)
+            self.assertNotEqual(None, b.control_files._file_mode)
 
-            bzrlib.branch.BzrBranch._set_dir_mode = False
+            bzrlib.lockable_files.LockableFiles._set_dir_mode = False
             b = Branch.open(u'.')
-            self.assertEqual(None, b._dir_mode)
-            self.assertNotEqual(None, b._file_mode)
+            self.assertEqual(None, b.control_files._dir_mode)
+            self.assertNotEqual(None, b.control_files._file_mode)
 
-            bzrlib.branch.BzrBranch._set_file_mode = False
+            bzrlib.lockable_files.LockableFiles._set_file_mode = False
             b = Branch.open(u'.')
-            self.assertEqual(None, b._dir_mode)
-            self.assertEqual(None, b._file_mode)
+            self.assertEqual(None, b.control_files._dir_mode)
+            self.assertEqual(None, b.control_files._file_mode)
 
-            bzrlib.branch.BzrBranch._set_dir_mode = True
+            bzrlib.lockable_files.LockableFiles._set_dir_mode = True
             b = Branch.open(u'.')
-            self.assertNotEqual(None, b._dir_mode)
-            self.assertEqual(None, b._file_mode)
+            self.assertNotEqual(None, b.control_files._dir_mode)
+            self.assertEqual(None, b.control_files._file_mode)
 
-            bzrlib.branch.BzrBranch._set_file_mode = True
+            bzrlib.lockable_files.LockableFiles._set_file_mode = True
             b = Branch.open(u'.')
-            self.assertNotEqual(None, b._dir_mode)
-            self.assertNotEqual(None, b._file_mode)
+            self.assertNotEqual(None, b.control_files._dir_mode)
+            self.assertNotEqual(None, b.control_files._file_mode)
         finally:
-            bzrlib.branch.BzrBranch._set_dir_mode = True
-            bzrlib.branch.BzrBranch._set_file_mode = True
+            bzrlib.lockable_files.LockableFiles._set_dir_mode = True
+            bzrlib.lockable_files.LockableFiles._set_file_mode = True
 
     def test_new_branch(self):
         if sys.platform == 'win32':
@@ -189,28 +189,28 @@ class TestPermissions(TestCaseInTempDir):
         os.mkdir('a')
         mode = stat.S_IMODE(os.stat('a').st_mode)
         b = Branch.initialize('a')
-        assertEqualMode(self, mode, b._dir_mode)
-        assertEqualMode(self, mode & ~07111, b._file_mode)
+        assertEqualMode(self, mode, b.control_files._dir_mode)
+        assertEqualMode(self, mode & ~07111, b.control_files._file_mode)
 
         os.mkdir('b')
         os.chmod('b', 02777)
         b = Branch.initialize('b')
-        assertEqualMode(self, 02777, b._dir_mode)
-        assertEqualMode(self, 00666, b._file_mode)
+        assertEqualMode(self, 02777, b.control_files._dir_mode)
+        assertEqualMode(self, 00666, b.control_files._file_mode)
         check_mode_r(self, 'b/.bzr', 00666, 02777)
 
         os.mkdir('c')
         os.chmod('c', 02750)
         b = Branch.initialize('c')
-        assertEqualMode(self, 02750, b._dir_mode)
-        assertEqualMode(self, 00640, b._file_mode)
+        assertEqualMode(self, 02750, b.control_files._dir_mode)
+        assertEqualMode(self, 00640, b.control_files._file_mode)
         check_mode_r(self, 'c/.bzr', 00640, 02750)
 
         os.mkdir('d')
         os.chmod('d', 0700)
         b = Branch.initialize('d')
-        assertEqualMode(self, 0700, b._dir_mode)
-        assertEqualMode(self, 0600, b._file_mode)
+        assertEqualMode(self, 0700, b.control_files._dir_mode)
+        assertEqualMode(self, 0600, b.control_files._file_mode)
         check_mode_r(self, 'd/.bzr', 00600, 0700)
 
 
@@ -244,8 +244,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
 
         b_local = Branch.open(u'local')
         t_local = b_local.working_tree()
-        assertEqualMode(self, 0755, b_local._dir_mode)
-        assertEqualMode(self, 0644, b_local._file_mode)
+        assertEqualMode(self, 0755, b_local.control_files._dir_mode)
+        assertEqualMode(self, 0644, b_local.control_files._file_mode)
 
         os.mkdir('sftp')
         # Why does self._sftp_url end with a slash????
@@ -258,8 +258,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         check_mode_r(self, 'sftp/.bzr', 0644, 0755)
 
         b_sftp = Branch.open(sftp_url)
-        assertEqualMode(self, 0755, b_sftp._dir_mode)
-        assertEqualMode(self, 0644, b_sftp._file_mode)
+        assertEqualMode(self, 0755, b_sftp.control_files._dir_mode)
+        assertEqualMode(self, 0644, b_sftp.control_files._file_mode)
 
         open('local/a', 'wb').write('foo2\n')
         t_local.commit('foo2')
@@ -279,8 +279,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         check_mode_r(self, 'sftp/.bzr', 0664, 0775)
 
         b_sftp = Branch.open(sftp_url)
-        assertEqualMode(self, 0775, b_sftp._dir_mode)
-        assertEqualMode(self, 0664, b_sftp._file_mode)
+        assertEqualMode(self, 0775, b_sftp.control_files._dir_mode)
+        assertEqualMode(self, 0664, b_sftp.control_files._file_mode)
 
         open('local/a', 'wb').write('foo3\n')
         t_local.commit('foo3')

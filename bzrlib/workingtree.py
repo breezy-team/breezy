@@ -411,17 +411,19 @@ class WorkingTree(bzrlib.tree.Tree):
         if updated:
             self.set_pending_merges(p)
 
+    @needs_read_lock
     def pending_merges(self):
         """Return a list of pending merges.
 
         These are revisions that have been merged into the working
         directory but not yet committed.
         """
-        cfn = self.branch.control_files._rel_controlfilename('pending-merges')
-        if not self.branch.control_files._transport.has(cfn):
+        try:
+            f = self.branch.control_files.controlfile('pending-merges', 'r')
+        except NoSuchFile:
             return []
         p = []
-        for l in self.branch.control_files.controlfile('pending-merges', 'r').readlines():
+        for l in f.readlines():
             p.append(l.rstrip('\n'))
         return p
 
@@ -793,7 +795,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if old_revision is not None:
             try:
                 path = self._basis_inventory_name(old_revision)
-                path = self.branch.control_files._rel_controlfilename(path)
+                path = self.branch.control_files._escape(path)
                 self.branch.control_files._transport.delete(path)
             except NoSuchFile:
                 pass
