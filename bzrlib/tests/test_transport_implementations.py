@@ -25,7 +25,7 @@ from cStringIO import StringIO
 
 from bzrlib.errors import (NoSuchFile, FileExists,
                            TransportNotPossible, ConnectionError)
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.transport import memory, urlescape
 import bzrlib.transport
 
@@ -541,9 +541,12 @@ class TestTransportImplementation(TestCaseInTempDir):
 
     def test_connection_error(self):
         """ConnectionError is raised when connection is impossible"""
-        if not hasattr(self, "get_bogus_transport"):
-            return
-        t = self.get_bogus_transport()
+        try:
+            url = self._server.get_bogus_url()
+        except NotImplementedError:
+            raise TestSkipped("Transport %s has no bogus URL support." %
+                              self._server.__class__)
+        t = bzrlib.transport.get_transport(url)
         try:
             t.get('.bzr/branch')
         except (ConnectionError, NoSuchFile), e:
@@ -670,14 +673,6 @@ class TestTransportImplementation(TestCaseInTempDir):
         transport = self.get_transport()
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
-
-###class HttpTransportTest(TestCaseWithWebserver):
-###
-###    readonly = True
-###
-###    def get_bogus_transport(self):
-###        from bzrlib.transport.http import HttpTransport
-###        return HttpTransport('http://jasldkjsalkdjalksjdkljasd')
 
     def test_iter_files_recursive(self):
         transport = self.get_transport()

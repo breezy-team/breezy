@@ -455,6 +455,10 @@ class Server(object):
         """
         raise NotImplementedError
 
+    def get_bogus_url(self):
+        """Return a url for this protocol, that will fail to connect."""
+        raise NotImplementedError
+
 
 class TransportTestProviderAdapter(object):
     """A class which can setup transport interface tests."""

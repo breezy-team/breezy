@@ -800,20 +800,6 @@ class TestTransportMixIn(object):
         self.failUnless(t2.has('d'))
         self.failUnless(t3.has('b/d'))
 
-        
-class HttpTransportTest(TestCaseWithWebserver, TestTransportMixIn):
-
-    readonly = True
-
-    def get_transport(self):
-        from bzrlib.transport.http import HttpTransport
-        url = self.get_remote_url(u'.')
-        return HttpTransport(url)
-
-    def get_bogus_transport(self):
-        from bzrlib.transport.http import HttpTransport
-        return HttpTransport('http://jasldkjsalkdjalksjdkljasd')
-
 
 class MemoryTransportTest(TestCase):
     """Memory transport specific tests."""

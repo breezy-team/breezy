@@ -420,3 +420,8 @@ class HttpServer(Server):
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
         return self._get_remote_url(self._home_dir)
+        
+    def get_bogus_url(self):
+        """See bzrlib.transport.Server.get_bogus_url."""
+        return 'http://jasldkjsalkdjalksjdkljasd'
+
