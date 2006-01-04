@@ -177,7 +177,7 @@ class FtpTransport(Transport):
             ret.seek(0)
             return ret
         except ftplib.error_perm, e:
-            raise NoSuchFile(self.abspath(relpath), extra=extra)
+            raise NoSuchFile(self.abspath(relpath), extra=str(e))
 
     def put(self, relpath, fp, mode=None):
         """Copy the file-like or string object into the location.
