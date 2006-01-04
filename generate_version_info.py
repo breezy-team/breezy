@@ -24,7 +24,6 @@ import pprint
 from StringIO import StringIO
 
 from bzrlib.errors import NoWorkingTree
-from bzrlib.log import show_log, log_formatter
 from bzrlib.rio import RioReader, RioWriter, Stanza
 from bzrlib.osutils import local_time_offset, format_date
 
