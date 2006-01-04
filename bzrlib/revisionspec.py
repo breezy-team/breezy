@@ -204,7 +204,7 @@ class RevisionSpec_revid(RevisionSpec):
         try:
             return RevisionInfo(branch, revs.index(self.spec) + 1, self.spec)
         except ValueError:
-            return RevisionInfo(branch, None)
+            return RevisionInfo(branch, None, self.spec)
 
 SPEC_TYPES.append(RevisionSpec_revid)
 

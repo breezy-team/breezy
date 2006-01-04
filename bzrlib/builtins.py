@@ -1465,12 +1465,31 @@ class cmd_selftest(Command):
             bzrlib.ui.ui_factory = save_ui
 
 
+def _get_bzr_branch():
+    """If bzr is run from a branch, return Branch or None"""
+    import bzrlib.errors
+    from bzrlib.branch import Branch
+    from bzrlib.osutils import abspath
+    from os.path import dirname
+    
+    try:
+        branch = Branch.open(dirname(abspath(dirname(__file__))))
+        return branch
+    except bzrlib.errors.BzrError:
+        return None
+    
+
 def show_version():
     print "bzr (bazaar-ng) %s" % bzrlib.__version__
     # is bzrlib itself in a branch?
-    bzrrev = bzrlib.get_bzr_revision()
-    if bzrrev:
-        print "  (bzr checkout, revision %d {%s})" % bzrrev
+    branch = _get_bzr_branch()
+    if branch:
+        rh = branch.revision_history()
+        revno = len(rh)
+        print "  bzr checkout, revision %d" % (revno,)
+        print "  nick: %s" % (branch.nick,)
+        if rh:
+            print "  revid: %s" % (rh[-1],)
     print bzrlib.__copyright__
     print "http://bazaar-ng.org/"
     print

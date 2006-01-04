@@ -142,7 +142,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
         # function raises an IOError with errno == None when a rename fails.
         # This then gets caught here.
-        if e.errno is not None:
+        if e.errno not in (None, errno.ENOENT, errno.ENOTDIR):
             raise
     except Exception, e:
         if (not hasattr(e, 'errno') 
