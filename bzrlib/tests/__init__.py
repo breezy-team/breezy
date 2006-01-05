@@ -729,6 +729,7 @@ def test_suite():
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
+                   'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
