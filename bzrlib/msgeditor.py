@@ -87,7 +87,7 @@ def edit_commit_message(infotext, ignoreline=None):
             hasinfo = True
             msgfile = file(msgfilename, "w")
             msgfile.write("\n\n%s\n\n%s" % (ignoreline,
-                                        infotext.encode(bzrlib.user_encoding)))
+                infotext.encode(bzrlib.user_encoding, 'replace')))
             msgfile.close()
         else:
             hasinfo = False
@@ -129,6 +129,7 @@ def edit_commit_message(infotext, ignoreline=None):
         # delete the msg file in any case
         try: os.unlink(msgfilename)
         except IOError: pass
+        except OSError: pass    # avoid win32 'Permission denied'
 
 
 def make_commit_message_template(working_tree, specific_files):
