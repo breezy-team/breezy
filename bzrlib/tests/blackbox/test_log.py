@@ -19,49 +19,74 @@
 """Black-box tests for bzr log.
 """
 
+import bzrlib
+import sys
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 
 class TestLog(TestCaseInTempDir):
 
-    def test_log_uses_stdout_encoding(self):
-        # bzr log should be able to handle non-ascii characters
-        # The trick is that the greek letter mu (µ)
-        # exists in latin-1, as well as utf-8. 
-        # So probably most encodings can handle it, 
-        # but ascii would not be able to handle it
-        import sys
-        import bzrlib
+    _mu = u'\xb5'
+    _message = u'Message with \xb5'
 
+    # Encodings which can encode mu
+    good_encodings = [
+        'utf-8',
+        'latin-1',
+        'iso-8859-1',
+        'cp437', # Common windows encoding
+        'cp1258', # Common windows encoding
+    ]
+    # Encodings which cannot encode mu
+    bad_encodings = [
+        'ascii',
+        'iso-8859-2',
+        'koi8_r',
+    ]
+
+    def create_branch(self):
         bzr = self.run_bzr
+        bzr('init')
+        open('a', 'wb').write('some stuff\n')
+        bzr('add', 'a')
+        bzr('commit', '-m', self._message)
 
-        mu = u'\xb5'
-        encoding = getattr(sys.stdout, 'encoding', None)
-        if not encoding:
-            raise TestSkipped('sys.stdout must have a valid encoding'
-                              'to test that it is used')
-
-        try:
-            encoded_mu = mu.encode(encoding)
-        except UnicodeEncodeError:
-            raise TestSkipped('encoding %r cannot encode greek letter mu' 
-                              % encoding)
+    def try_encoding(self, encoding, fail=False):
+        bzr = self.run_bzr
+        if fail:
+            self.assertRaises(UnicodeEncodeError,
+                self._mu.encode, encoding)
+            encoded_msg = self._message.encode(encoding, 'replace')
+        else:
+            encoded_msg = self._message.encode(encoding)
 
         old_encoding = bzrlib.user_encoding
-
         # This test requires that 'run_bzr' uses the current
         # bzrlib, because we override user_encoding, and expect
         # it to be used
         try:
-            bzr('init')
-            open('a', 'wb').write('some stuff\n')
-            bzr('add', 'a')
-            bzr('commit', '-m', u'Message with ' + mu)
-
             bzrlib.user_encoding = 'ascii'
-            # Log should not fail, even though we have a log message
-            # with an invalid character. In fact, it should use sys.
-            out, err = bzr('log')
-            self.assertNotEqual(-1, out.find(encoded_mu))
+            # We should be able to handle any encoding
+            out, err = bzr('log', encoding=encoding)
+            if not fail:
+                # Make sure we wrote mu as we expected it to exist
+                self.assertNotEqual(-1, out.find(encoded_msg))
+                out_unicode = out.decode(encoding)
+                self.assertNotEqual(-1, out_unicode.find(self._message))
+            else:
+                self.assertNotEqual(-1, out.find('Message with ?'))
         finally:
             bzrlib.user_encoding = old_encoding
+
+    def test_log_handles_encoding(self):
+        self.create_branch()
+
+        for encoding in self.good_encodings:
+            self.try_encoding(encoding)
+
+    def test_log_handles_bad_encoding(self):
+        self.create_branch()
+
+        for encoding in self.bad_encodings:
+            self.try_encoding(encoding, fail=True)
+
 

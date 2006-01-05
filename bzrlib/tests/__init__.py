@@ -200,6 +200,33 @@ class TestSkipped(Exception):
 class CommandFailed(Exception):
     pass
 
+
+class StringIOWrapper(object):
+    """A wrapper around cStringIO which just adds an encoding attribute.
+    
+    Internally we can check sys.stdout to see what the output encoding
+    should be. However, cStringIO has no encoding attribute that we can
+    set. So we wrap it instead.
+    """
+    encoding='ascii'
+    _cstring = None
+
+    def __init__(self, s=None):
+        if s is not None:
+            self.__dict__['_cstring'] = StringIO(s)
+        else:
+            self.__dict__['_cstring'] = StringIO()
+
+    def __getattr__(self, name, getattr=getattr):
+        return getattr(self.__dict__['_cstring'], name)
+
+    def __setattr__(self, name, val):
+        if name == 'encoding':
+            self.__dict__['encoding'] = val
+        else:
+            return setattr(self._cstring, name, val)
+
+
 class TestCase(unittest.TestCase):
     """Base class for bzr unit tests.
     
@@ -379,7 +406,7 @@ class TestCase(unittest.TestCase):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
 
-    def run_bzr_captured(self, argv, retcode=0):
+    def run_bzr_captured(self, argv, retcode=0, encoding=None):
         """Invoke bzr and return (stdout, stderr).
 
         Useful for code that wants to check the contents of the
@@ -396,11 +423,17 @@ class TestCase(unittest.TestCase):
         errors, and with logging set to something approximating the
         default, so that error reporting can be checked.
 
-        argv -- arguments to invoke bzr
-        retcode -- expected return code, or None for don't-care.
+        :param argv: arguments to invoke bzr
+        :param retcode: expected return code, or None for don't-care.
+        :param encoding: encoding for sys.stdout and sys.stderr
         """
-        stdout = StringIO()
-        stderr = StringIO()
+        if encoding is None:
+            encoding = bzrlib.user_encoding
+        stdout = StringIOWrapper()
+        stderr = StringIOWrapper()
+        stdout.encoding = encoding
+        stderr.encoding = encoding
+
         self.log('run bzr: %s', ' '.join(argv))
         # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
@@ -414,6 +447,10 @@ class TestCase(unittest.TestCase):
                                            argv)
         finally:
             logger.removeHandler(handler)
+        # TODO: jam 20060105 Because we theoretically know the encoding
+        #       of stdout and stderr, we could decode them at this time
+        #       but for now, we will assume that the output of all
+        #       functions
         out = stdout.getvalue()
         err = stderr.getvalue()
         if out:
@@ -435,7 +472,8 @@ class TestCase(unittest.TestCase):
         where it may be useful for debugging.  See also run_captured.
         """
         retcode = kwargs.pop('retcode', 0)
-        return self.run_bzr_captured(args, retcode)
+        encoding = kwargs.pop('encoding', None)
+        return self.run_bzr_captured(args, retcode=retcode, encoding=encoding)
 
     def check_inventory_shape(self, inv, shape):
         """Compare an inventory to a list of expected names.
