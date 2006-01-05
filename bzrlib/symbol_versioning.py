@@ -55,7 +55,7 @@ def deprecated_function(deprecation_version):
                                 )
             warn(deprecation_version % symbol, DeprecationWarning)
             return callable(*args, **kwargs)
-        _decorate_docstring(callable, deprecation_version, "function",
+        _populate_decorated(callable, deprecation_version, "function",
                             decorated_function)
         return decorated_function
     return function_decorator
@@ -78,7 +78,7 @@ def deprecated_method(deprecation_version):
                                    )
             warn(deprecation_version % symbol, DeprecationWarning)
             return callable(self, *args, **kwargs)
-        _decorate_docstring(callable, deprecation_version, "method",
+        _populate_decorated(callable, deprecation_version, "method",
                             decorated_method)
         return decorated_method
     return method_decorator
@@ -102,3 +102,12 @@ def _decorate_docstring(callable, deprecation_version, label,
         new_doc += deprecation_version % ("This " + label)
         new_doc += "\n" + " " * spaces
         decorated_callable.__doc__ = new_doc
+
+
+def _populate_decorated(callable, deprecation_version, label,
+                        decorated_callable):
+    """Populate attributes like __name__ and __doc__ on the decorated callable.
+    """
+    _decorate_docstring(callable, deprecation_version, label,
+                        decorated_callable)
+    decorated_callable.__name__ = callable.__name__

@@ -56,6 +56,7 @@ class TestDeprecationWarnings(TestCase):
                               '        This method was deprecated in version 0.7.\n'
                               '        ')
         self.check_deprecated_callable(expected_warning, expected_docstring,
+                                       "deprecated_method",
                                        self.deprecated_method)
 
     def test_deprecated_function(self):
@@ -67,9 +68,11 @@ class TestDeprecationWarnings(TestCase):
                               'This function was deprecated in version 0.7.\n'
                               )
         self.check_deprecated_callable(expected_warning, expected_docstring,
+                                       "deprecated_function",
                                        deprecated_function)
 
     def check_deprecated_callable(self, expected_warning, expected_docstring,
+                                  expected_name,
                                   deprecated_callable):
         old_warning_method = symbol_versioning.warn
         try:
@@ -80,5 +83,6 @@ class TestDeprecationWarnings(TestCase):
             self.assertEqual([expected_warning, expected_warning],
                              self._warnings)
             self.assertEqualDiff(expected_docstring, deprecated_callable.__doc__)
+            self.assertEqualDiff(expected_name, deprecated_callable.__name__)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
