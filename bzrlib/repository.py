@@ -52,12 +52,19 @@ def needs_write_lock(unbound):
 
 class Repository(object):
 
-    def __init__(self, transport, branch_format, 
-                 dir_mode=None, file_mode=None):
+    def __init__(self, transport, branch_format):
         object.__init__(self)
-        self.control_files = LockableFiles(transport, bzrlib.BZRDIR, 'README')
+        self.control_files = LockableFiles(transport.clone(bzrlib.BZRDIR), 'README')
+
+        dir_mode = self.control_files._dir_mode
+        file_mode = self.control_files._file_mode
+
         def get_weave(name, prefixed=False):
-            relpath = self.control_files._rel_controlfilename(unicode(name))
+            if name:
+                name = bzrlib.BZRDIR + '/' + unicode(name)
+            else:
+                name = bzrlib.BZRDIR
+            relpath = self.control_files._escape(name)
             weave_transport = transport.clone(relpath)
             ws = WeaveStore(weave_transport, prefixed=prefixed,
                             dir_mode=dir_mode,
@@ -71,8 +78,11 @@ class Repository(object):
             # or entirely uncompressed is tidy, but breaks upgrade from 
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
-            name = unicode(name)
-            relpath = self.control_files._rel_controlfilename(name)
+            if name:
+                name = bzrlib.BZRDIR + '/' + unicode(name)
+            else:
+                name = bzrlib.BZRDIR
+            relpath = self.control_files._escape(name)
             store = TextStore(transport.clone(relpath),
                               prefixed=prefixed, compressed=compressed,
                               dir_mode=dir_mode,

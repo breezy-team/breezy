@@ -190,13 +190,13 @@ class TestBranch(TestCaseInTempDir):
                          branch.repository.revision_store.get('A', 
                          'sig').read())
 
-    def test__relcontrolfilename(self):
+    def test__escape(self):
         branch = Branch.initialize('.')
-        self.assertEqual('.bzr/%25', branch.control_files._rel_controlfilename('%'))
+        self.assertEqual('.bzr/%25', branch.control_files._escape('%'))
         
-    def test__relcontrolfilename_empty(self):
+    def test__escape_empty(self):
         branch = Branch.initialize('.')
-        self.assertEqual('.bzr', branch.control_files._rel_controlfilename(''))
+        self.assertEqual('', branch.control_files._escape(''))
 
     def test_nicks(self):
         """Branch nicknames"""
