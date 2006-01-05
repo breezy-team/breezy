@@ -77,6 +77,17 @@ not required. Minimally though, please try to rename things so that
 callers will at least get an AttributeError rather than weird results.
 
 
+Standard parameter types
+------------------------
+
+There are some common requirements in the library: some parameters need to be
+unicode safe, some need byte strings, and so on. At the moment we have
+only codified one specific pattern: Parameters that need to be unicode
+should be check via 'bzrlib.osutils.safe_unicode'. This will coerce the
+input into unicode in a consistent fashion, allowing trivial strings to be
+used for programmer convenience, but not performing unpredictably in the
+presence of different locales.
+
 Documentation
 =============
 

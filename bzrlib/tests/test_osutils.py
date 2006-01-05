@@ -21,8 +21,9 @@ import os
 import sys
 
 import bzrlib
+from bzrlib.errors import BzrBadParameter
 import bzrlib.osutils as osutils
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir, TestCase
 
 
 class TestOSUtils(TestCaseInTempDir):
@@ -61,3 +62,17 @@ class TestOSUtils(TestCaseInTempDir):
 
     # TODO: test fancy_rename using a MemoryTransport
 
+
+class TestSafeUnicode(TestCase):
+
+    def test_from_ascii_string(self):
+        self.assertEqual(u'foobar', osutils.safe_unicode('foobar'))
+
+    def test_from_unicode_string(self):
+        self.assertEqual(u'bargam', osutils.safe_unicode(u'bargam'))
+
+    def test_from_utf8_string(self):
+        self.assertEqual(u'foo\xae', osutils.safe_unicode('foo\xc2\xae'))
+
+    def test_bad_utf8_string(self):
+        self.assertRaises(BzrBadParameter, osutils.safe_unicode, '\xbb\xbb')
