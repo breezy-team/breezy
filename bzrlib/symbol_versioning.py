@@ -25,7 +25,7 @@ __all__ = ['warn', 'set_warning_method', 'zero_seven']
 from warnings import warn
 
 
-zero_seven = "%s was deprecated in version 0.7"
+zero_seven = "%s was deprecated in version 0.7."
 
 
 def set_warning_method(method):
@@ -49,12 +49,14 @@ def deprecated_function(deprecation_version):
         """This is the function python calls to perform the decoration."""
         
         def decorated_function(*args, **kwargs):
-            """This is the decorated method."""
+            """This is the decorated function."""
             symbol = "%s.%s" % (callable.__module__, 
                                 callable.__name__
                                 )
             warn(deprecation_version % symbol, DeprecationWarning)
             return callable(*args, **kwargs)
+        _decorate_docstring(callable, deprecation_version, "function",
+                            decorated_function)
         return decorated_function
     return function_decorator
 
@@ -76,5 +78,27 @@ def deprecated_method(deprecation_version):
                                    )
             warn(deprecation_version % symbol, DeprecationWarning)
             return callable(self, *args, **kwargs)
+        _decorate_docstring(callable, deprecation_version, "method",
+                            decorated_method)
         return decorated_method
     return method_decorator
+
+
+def _decorate_docstring(callable, deprecation_version, label,
+                        decorated_callable):
+    docstring_lines = callable.__doc__.split('\n')
+    if len(docstring_lines) == 0:
+        decorated_callable.__doc__ = deprecation_version % ("This " + label)
+    elif len(docstring_lines) == 1:
+        decorated_callable.__doc__ = (callable.__doc__ 
+                                    + "\n"
+                                    + "\n"
+                                    + deprecation_version % ("This " + label)
+                                    + "\n")
+    else:
+        spaces = len(docstring_lines[-1])
+        new_doc = callable.__doc__
+        new_doc += "\n" + " " * spaces
+        new_doc += deprecation_version % ("This " + label)
+        new_doc += "\n" + " " * spaces
+        decorated_callable.__doc__ = new_doc

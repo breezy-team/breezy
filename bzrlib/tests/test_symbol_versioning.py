@@ -23,6 +23,7 @@ from bzrlib.tests import TestCase
 
 @symbol_versioning.deprecated_function(symbol_versioning.zero_seven)
 def deprecated_function():
+    """Deprecated function docstring."""
     return 1
 
 
@@ -37,24 +38,39 @@ class TestDeprecationWarnings(TestCase):
     
     @symbol_versioning.deprecated_method(symbol_versioning.zero_seven)
     def deprecated_method(self):
+        """Deprecated method docstring.
+        
+        This might explain stuff.
+        """
         return 1
 
     def test_deprecated_method(self):
         expected_warning = (
             "bzrlib.tests.test_symbol_versioning."
             "TestDeprecationWarnings.deprecated_method "
-            "was deprecated in version 0.7", DeprecationWarning)
-        self.check_deprecated_callable(expected_warning,
+            "was deprecated in version 0.7.", DeprecationWarning)
+        expected_docstring = ('Deprecated method docstring.\n'
+                              '        \n'
+                              '        This might explain stuff.\n'
+                              '        \n'
+                              '        This method was deprecated in version 0.7.\n'
+                              '        ')
+        self.check_deprecated_callable(expected_warning, expected_docstring,
                                        self.deprecated_method)
 
     def test_deprecated_function(self):
         expected_warning = (
             "bzrlib.tests.test_symbol_versioning.deprecated_function "
-            "was deprecated in version 0.7", DeprecationWarning)
-        self.check_deprecated_callable(expected_warning,
+            "was deprecated in version 0.7.", DeprecationWarning)
+        expected_docstring = ('Deprecated function docstring.\n'
+                              '\n'
+                              'This function was deprecated in version 0.7.\n'
+                              )
+        self.check_deprecated_callable(expected_warning, expected_docstring,
                                        deprecated_function)
 
-    def check_deprecated_callable(self, expected_warning, deprecated_callable):
+    def check_deprecated_callable(self, expected_warning, expected_docstring,
+                                  deprecated_callable):
         old_warning_method = symbol_versioning.warn
         try:
             symbol_versioning.set_warning_method(self.capture_warning)
@@ -63,5 +79,6 @@ class TestDeprecationWarnings(TestCase):
             deprecated_callable()
             self.assertEqual([expected_warning, expected_warning],
                              self._warnings)
+            self.assertEqualDiff(expected_docstring, deprecated_callable.__doc__)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
