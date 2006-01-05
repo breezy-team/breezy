@@ -9,7 +9,7 @@ class TestTreeTransform(TestCaseInTempDir):
         transform = TreeTransform(wt)
         try:
             root = transform.get_id_tree(wt.get_root_id())
-            trans_id = transform.create_path('name', transform.root)
+            trans_id = transform.create_path('name', root)
             transform.create_file('contents', trans_id)
             transform.version_file('my_pretties', trans_id)
             transform.apply()
@@ -25,7 +25,8 @@ class TestTreeTransform(TestCaseInTempDir):
         wt = branch.working_tree()
         transform = TreeTransform(wt)
         try:
-            trans_id = transform.new_file('name', transform.root, 'contents', 
+            root = transform.get_id_tree(wt.get_root_id())
+            trans_id = transform.new_file('name', root, 'contents', 
                                           'my_pretties')
             transform.apply()
             self.assertEqual('contents', file('name').read())

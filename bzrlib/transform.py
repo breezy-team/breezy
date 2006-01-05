@@ -19,7 +19,7 @@ class TreeTransform(object):
         self._new_parent = {}
         self._new_file = {}
         self._new_id = {}
-        self.root = "root"
+        self._new_root = self.get_id_tree(tree.get_root_id())
 
     def finalize(self):
         if self._tree is None:
@@ -63,7 +63,7 @@ class TreeTransform(object):
 
     def new_paths(self):
         new_ids = set()
-        fp = FinalPaths(self.root, self._new_name, self._new_parent)
+        fp = FinalPaths(self._new_root, self._new_name, self._new_parent)
         for id_set in (self._new_name, self._new_parent, self._new_file,
                        self._new_id):
             new_ids.update(id_set)
