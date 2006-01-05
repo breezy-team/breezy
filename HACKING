@@ -53,15 +53,29 @@ Overall
 Evolving interfaces
 -------------------
 
-If you change the behaviour of an API in an incompatible way, please
-be sure to change its name as well. For instance, if I add a keyword
-parameter to branch.commit - that's fine. On the other hand, if I add
-a keyword parameter to branch.commit which is a *required* transaction
-object, I should rename the API - i.e. to 'branch.commit_transaction'.
+We have a commitment to 6 months API stability - any supported symbol in a
+release of bzr MUST NOT be altered in any way that would result in
+breaking existing code that uses it. That means that method names,
+parameter ordering, parameter names, variable and attribute names etc must
+not be changed without leaving a 'deprecated forwarder' behind. This even
+applies to modules and classes.
 
-This will prevent users of the old API getting surprising results. 
-Instead, they will get an Attribute error as the API is missing, and
-will know to update their code. If in doubt, just ask on #bzr.
+If you wish to change the behaviour of a supported API in an incompatible
+way, you need to change its name as well. For instance, if I add a optional keyword
+parameter to branch.commit - that's fine. On the other hand, if I add a
+keyword parameter to branch.commit which is a *required* transaction
+object, I should rename the API - i.e. to 'branch.commit_transaction'. 
+
+When renaming such supported API's, be sure to leave a deprecated_method (or
+_function or ...) behind which forwards to the new API. See the
+bzrlib.symbol_versioning module for decorators that take care of the
+details for you - such as updating the docstring, and issuing a warning
+when the old api is used.
+
+For unsupported API's, it does not hurt to follow this discipline, but its
+not required. Minimally though, please try to rename things so that
+callers will at least get an AttributeError rather than weird results.
+
 
 Documentation
 =============
