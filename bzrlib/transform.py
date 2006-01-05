@@ -88,6 +88,14 @@ class TreeTransform(object):
                 inv.add_path(path, kind, self._new_id[trans_id])
         self._tree._write_inventory(inv)
 
+    def new_file(self, name, parent_id, contents, file_id=None):
+        """Convenience method to create files""" 
+        trans_id = self.create_path(name, parent_id)
+        self.create_file(contents, trans_id)
+        if file_id is not None:
+            self.version_file(file_id, trans_id)
+        return trans_id
+
 
 class FinalPaths(object):
     def __init__(self, root, names, parents):

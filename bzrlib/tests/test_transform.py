@@ -19,3 +19,16 @@ class TestTreeTransform(TestCaseInTempDir):
             transform.finalize()
         # is it safe to finalize repeatedly?
         transform.finalize()
+
+    def test_convenience(self):
+        branch = Branch.initialize('.')
+        wt = branch.working_tree()
+        transform = TreeTransform(wt)
+        try:
+            trans_id = transform.new_file('name', transform.root, 'contents', 
+                                          'my_pretties')
+            transform.apply()
+            self.assertEqual('contents', file('name').read())
+            self.assertEqual(wt.path2id('name'), 'my_pretties')
+        finally:
+            transform.finalize()
