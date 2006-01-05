@@ -28,7 +28,7 @@ class EmailSender(object):
     def __init__(self, branch, revision_id, config):
         self.config = config
         self.branch = branch
-        self.revision = self.branch.get_revision(revision_id)
+        self.revision = self.branch.repository.get_revision(revision_id)
         self.revno = self.branch.revision_id_to_revno(revision_id)
 
     def body(self):
