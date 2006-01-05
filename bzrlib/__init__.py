@@ -94,11 +94,11 @@ __version__ = version_string = '0.7pre'
 version_info = (0, 7, 0, 'pre', 0)
 
 
-def get_bzr_revision():
-    """If bzr is run from a branch, return (revno,revid) or None
+from bzrlib.symbol_versioning import deprecated_function, zero_seven
 
-    deprecated in bzr 0.7
-    """
+@deprecated_function(zero_seven)
+def get_bzr_revision():
+    """If bzr is run from a branch, return (revno,revid) or None."""
     import bzrlib.errors
     from bzrlib.branch import Branch
     

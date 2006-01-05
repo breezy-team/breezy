@@ -253,7 +253,11 @@ UNRELEASED CHANGES
     * Simplify handling of DivergedBranches in cmd_pull().
       (Michael Ellerman)
 		   
-   
+    * Deprecated functions and methods can now be marked as such using the 
+      bzrlib.symbol_versioning module. Marked method have their docstring
+      updated and will issue a DeprecationWarning using the warnings module
+      when they are used. (Robert Collins)
+
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:
