@@ -192,7 +192,7 @@ class TestBranch(TestCaseInTempDir):
 
     def test__escape(self):
         branch = Branch.initialize('.')
-        self.assertEqual('.bzr/%25', branch.control_files._escape('%'))
+        self.assertEqual('%25', branch.control_files._escape('%'))
         
     def test__escape_empty(self):
         branch = Branch.initialize('.')
