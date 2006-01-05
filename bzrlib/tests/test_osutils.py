@@ -68,8 +68,11 @@ class TestSafeUnicode(TestCase):
     def test_from_ascii_string(self):
         self.assertEqual(u'foobar', osutils.safe_unicode('foobar'))
 
-    def test_from_unicode_string(self):
+    def test_from_unicode_string_ascii_contents(self):
         self.assertEqual(u'bargam', osutils.safe_unicode(u'bargam'))
+
+    def test_from_unicode_string_unicode_contents(self):
+        self.assertEqual(u'bargam\xae', osutils.safe_unicode(u'bargam\xae'))
 
     def test_from_utf8_string(self):
         self.assertEqual(u'foo\xae', osutils.safe_unicode('foo\xc2\xae'))
