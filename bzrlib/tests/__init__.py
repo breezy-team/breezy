@@ -695,6 +695,7 @@ def test_suite():
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
+                   'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_ui',
