@@ -1,3 +1,6 @@
 # This file is for listing TODOs for branches that are being worked on.
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
+ * Update the tests - all tests that were for branch and now check 
+   branch.control_files.something, should be made into tests for
+   lockable files.
