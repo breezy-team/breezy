@@ -17,7 +17,7 @@ class TreeTransform(object):
         self._id_number = 0
         self._new_name = {}
         self._new_parent = {}
-        self._new_file = {}
+        self._new_contents = {}
         self._new_id = {}
         self._new_root = self.get_id_tree(tree.get_root_id())
 
@@ -56,7 +56,7 @@ class TreeTransform(object):
         Contents is an iterator of strings, all of which will be written
         to the target destination
         """
-        unique_add(self._new_file, trans_id, contents)
+        unique_add(self._new_contents, trans_id, ('file', contents))
 
     def version_file(self, file_id, trans_id):
         unique_add(self._new_id, trans_id, file_id)
@@ -64,7 +64,7 @@ class TreeTransform(object):
     def new_paths(self):
         new_ids = set()
         fp = FinalPaths(self._new_root, self._new_name, self._new_parent)
-        for id_set in (self._new_name, self._new_parent, self._new_file,
+        for id_set in (self._new_name, self._new_parent, self._new_contents,
                        self._new_id):
             new_ids.update(id_set)
         new_paths = [(fp.get_path(t), t) for t in new_ids]
@@ -74,13 +74,15 @@ class TreeTransform(object):
     def apply(self):
         inv = self._tree.inventory
         for path, trans_id in self.new_paths():
-            kind = None
-            if trans_id in self._new_file:
+            try:
+                kind, contents = self._new_contents[trans_id]
+            except KeyError:
+                kind = contents = None
+            if kind == 'file':
                 f = file(self._tree.abspath(path), 'wb')
-                for segment in self._new_file[trans_id]:
+                for segment in contents:
                     f.write(segment)
                 f.close()
-                kind = "file"
 
             if trans_id in self._new_id:
                 if kind is None:
