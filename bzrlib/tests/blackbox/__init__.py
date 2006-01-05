@@ -32,6 +32,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_export',
                      'bzrlib.tests.blackbox.test_log',
                      'bzrlib.tests.blackbox.test_missing',
+                     'bzrlib.tests.blackbox.test_non_ascii',
                      'bzrlib.tests.blackbox.test_pull',
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_info',
