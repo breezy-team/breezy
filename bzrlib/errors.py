@@ -466,3 +466,6 @@ class MissingText(BzrNewError):
         self.base = branch.base
         self.text_revision = text_revision
         self.file_id = file_id
+
+class DuplicateKey(BzrNewError):
+    """Key %(key)s is already present in map"""

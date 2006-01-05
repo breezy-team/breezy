@@ -1,7 +1,8 @@
 import os
+from bzrlib.errors import DuplicateKey
 def unique_add(map, key, value):
     if key in map:
-        raise Exception("Key %s already present in map")
+        raise DuplicateKey(key=key)
     map[key] = value
 
 class TreeTransform(object):
