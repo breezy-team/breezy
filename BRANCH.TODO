@@ -3,4 +3,10 @@
 # 
  * Update the tests - all tests that were for branch and now check 
    branch.control_files.something, should be made into tests for
-   lockable files.
+   lockable files. mostly Done, grep for FIXME in the diff.
+ * Clarify what should happen with transactions - there are two issues
+   - the tests for branch transactions are no longer branch api level, rather they
+     are bzrbranch -which has a control_files attribute- specific.
+   - audit the new code to ensure correct unlocking in failures where
+     we are holding two locks at once. (i.e. branch lock and repo lock).
+ * test_working_tree tests should not peek in branch.control_files.

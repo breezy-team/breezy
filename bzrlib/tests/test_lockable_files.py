@@ -21,9 +21,11 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.errors import NoSuchFile, ReadOnlyError
 from StringIO import StringIO
 
+
 class TestLockableFiles(TestCaseInTempDir):
+
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(TestLockableFiles, self).setUp()
         transport = get_transport('.')
         transport.mkdir('.bzr')
         transport.put('.bzr/my-lock', StringIO(''))
@@ -73,3 +75,11 @@ class TestLockableFiles(TestCaseInTempDir):
         self.assertIs(self.lockable.get_transaction().__class__,
                       PassThroughTransaction)
         self.lockable.unlock()
+
+    def test__escape(self):
+        self.assertEqual('%25', self.lockable._escape('%'))
+        
+    def test__escape_empty(self):
+        branch = Branch.initialize('.')
+        self.assertEqual('', self.lockable._escape(''))
+

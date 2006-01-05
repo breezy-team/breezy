@@ -35,6 +35,7 @@ import sys
 import stat
 
 from bzrlib.branch import Branch
+from bzrlib.lockable_files import LockableFiles
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.test_transport import check_mode
@@ -153,39 +154,46 @@ class TestPermissions(TestCaseInTempDir):
     def test_disable_set_mode(self):
         # TODO: jam 20051215 Ultimately, this test should probably test that
         #                    extra chmod calls aren't being made
-        import bzrlib.lockable_files
         try:
-            b = Branch.initialize(u'.')
-            self.assertNotEqual(None, b.control_files._dir_mode)
-            self.assertNotEqual(None, b.control_files._file_mode)
+            transport = get_transport('.')
+            transport.put('my-lock', StringIO(''))
+            lockable = LockableFiles(transport, 'my-lock')
+            self.assertNotEqual(None, lockable._dir_mode)
+            self.assertNotEqual(None, lockable._file_mode)
 
-            bzrlib.lockable_files.LockableFiles._set_dir_mode = False
-            b = Branch.open(u'.')
-            self.assertEqual(None, b.control_files._dir_mode)
-            self.assertNotEqual(None, b.control_files._file_mode)
+            LockableFiles._set_dir_mode = False
+            transport = get_transport('.')
+            lockable = LockableFiles(transport, 'my-lock')
+            self.assertEqual(None, lockable._dir_mode)
+            self.assertNotEqual(None, lockable._file_mode)
 
-            bzrlib.lockable_files.LockableFiles._set_file_mode = False
-            b = Branch.open(u'.')
-            self.assertEqual(None, b.control_files._dir_mode)
-            self.assertEqual(None, b.control_files._file_mode)
+            LockableFiles._set_file_mode = False
+            transport = get_transport('.')
+            lockable = LockableFiles(transport, 'my-lock')
+            self.assertEqual(None, lockable._dir_mode)
+            self.assertEqual(None, lockable._file_mode)
 
-            bzrlib.lockable_files.LockableFiles._set_dir_mode = True
-            b = Branch.open(u'.')
-            self.assertNotEqual(None, b.control_files._dir_mode)
-            self.assertEqual(None, b.control_files._file_mode)
+            LockableFiles._set_dir_mode = True
+            transport = get_transport('.')
+            lockable = LockableFiles(transport, 'my-lock')
+            self.assertNotEqual(None, lockable._dir_mode)
+            self.assertEqual(None, lockable._file_mode)
 
-            bzrlib.lockable_files.LockableFiles._set_file_mode = True
-            b = Branch.open(u'.')
-            self.assertNotEqual(None, b.control_files._dir_mode)
-            self.assertNotEqual(None, b.control_files._file_mode)
+            LockableFiles._set_file_mode = True
+            transport = get_transport('.')
+            lockable = LockableFiles(transport, 'my-lock')
+            self.assertNotEqual(None, lockable._dir_mode)
+            self.assertNotEqual(None, lockable._file_mode)
         finally:
-            bzrlib.lockable_files.LockableFiles._set_dir_mode = True
-            bzrlib.lockable_files.LockableFiles._set_file_mode = True
+            LockableFiles._set_dir_mode = True
+            LockableFiles._set_file_mode = True
 
     def test_new_branch(self):
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
-
+        #FIXME RBC 20060105 should test branch and repository 
+        # permissions ? 
+        # also, these are BzrBranch format specific things..
         os.mkdir('a')
         mode = stat.S_IMODE(os.stat('a').st_mode)
         b = Branch.initialize('a')

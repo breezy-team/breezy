@@ -99,6 +99,9 @@ class TestWorkingTree(TestCaseInTempDir):
                          tree.relpath(pathjoin(getcwd(), 'child')))
 
     def test_lock_locks_branch(self):
+        # FIXME RBC 20060105 this should test that the branch
+        # is locked without peeking at control files.
+        # ie. via a mock branch.
         branch = Branch.initialize(u'.')
         tree = WorkingTree(branch.base)
         tree.lock_read()

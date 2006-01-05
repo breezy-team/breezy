@@ -190,14 +190,6 @@ class TestBranch(TestCaseInTempDir):
                          branch.repository.revision_store.get('A', 
                          'sig').read())
 
-    def test__escape(self):
-        branch = Branch.initialize('.')
-        self.assertEqual('%25', branch.control_files._escape('%'))
-        
-    def test__escape_empty(self):
-        branch = Branch.initialize('.')
-        self.assertEqual('', branch.control_files._escape(''))
-
     def test_nicks(self):
         """Branch nicknames"""
         os.mkdir('bzr.dev')
@@ -326,7 +318,7 @@ class TestBranchTransaction(TestCaseInTempDir):
 
     def setUp(self):
         super(TestBranchTransaction, self).setUp()
-        self.branch = Branch.initialize(u'.')
+        self.branch = Branch.initialize('.')
         
     def test_default_get_transaction(self):
         """branch.get_transaction on a new branch should give a PassThrough."""
