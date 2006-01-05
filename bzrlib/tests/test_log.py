@@ -59,8 +59,8 @@ class SimpleLogTest(TestCaseInTempDir):
             expected = kw.get(n, [])
 
             # tests are written with unix paths; fix them up for windows
-            if os.sep != '/':
-                expected = [x.replace('/', os.sep) for x in expected]
+            #if os.sep != '/':
+            #    expected = [x.replace('/', os.sep) for x in expected]
 
             # strip out only the path components
             got = [x[0] for x in getattr(delta, n)]

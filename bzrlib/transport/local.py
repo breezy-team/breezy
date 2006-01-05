@@ -26,7 +26,7 @@ import urllib
 
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
-from bzrlib.osutils import abspath
+from bzrlib.osutils import abspath, realpath, normpath, pathjoin, rename
 
 
 class LocalTransport(Transport):
@@ -38,8 +38,7 @@ class LocalTransport(Transport):
             base = base[7:]
         # realpath is incompatible with symlinks. When we traverse
         # up we might be able to normpath stuff. RBC 20051003
-        super(LocalTransport, self).__init__(
-            os.path.normpath(abspath(base)))
+        super(LocalTransport, self).__init__(normpath(abspath(base)))
 
     def should_cache(self):
         return False
@@ -59,7 +58,7 @@ class LocalTransport(Transport):
         This can be supplied with a string or a list
         """
         assert isinstance(relpath, basestring), (type(relpath), relpath)
-        return os.path.join(self.base, urllib.unquote(relpath))
+        return pathjoin(self.base, urllib.unquote(relpath))
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
@@ -83,7 +82,7 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
-    def put(self, relpath, f):
+    def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
@@ -94,7 +93,7 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self.abspath(relpath)
-            fp = AtomicFile(path, 'wb')
+            fp = AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
         try:
@@ -115,12 +114,14 @@ class LocalTransport(Transport):
             else:
                 yield relpath
 
-    def mkdir(self, relpath):
+    def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         path = relpath
         try:
             path = self.abspath(relpath)
             os.mkdir(path)
+            if mode is not None:
+                os.chmod(path, mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
@@ -148,7 +149,7 @@ class LocalTransport(Transport):
         path_to = self.abspath(rel_to)
 
         try:
-            os.rename(path_from, path_to)
+            rename(path_from, path_to)
         except (IOError, OSError),e:
             # TODO: What about path_to?
             self._translate_error(e, path_from)
@@ -163,7 +164,7 @@ class LocalTransport(Transport):
             # TODO: What about path_to?
             self._translate_error(e, path)
 
-    def copy_to(self, relpaths, other, pb=None):
+    def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
 
         :param relpaths: A list/generator of entries to be copied.
@@ -179,13 +180,17 @@ class LocalTransport(Transport):
             for path in relpaths:
                 self._update_pb(pb, 'copy-to', count, total)
                 try:
-                    shutil.copy(self.abspath(path), other.abspath(path))
+                    mypath = self.abspath(path)
+                    otherpath = other.abspath(path)
+                    shutil.copy(mypath, otherpath)
+                    if mode is not None:
+                        os.chmod(otherpath, mode)
                 except (IOError, OSError),e:
                     self._translate_error(e, path)
                 count += 1
             return count
         else:
-            return super(LocalTransport, self).copy_to(relpaths, other, pb=pb)
+            return super(LocalTransport, self).copy_to(relpaths, other, mode=mode, pb=pb)
 
     def listable(self):
         """See Transport.listable."""
