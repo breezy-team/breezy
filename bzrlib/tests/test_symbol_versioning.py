@@ -21,6 +21,10 @@ import bzrlib.symbol_versioning as symbol_versioning
 from bzrlib.tests import TestCase
 
 
+@symbol_versioning.deprecated_function(symbol_versioning.zero_seven)
+def deprecated_function():
+    return 1
+
 
 class TestDeprecationWarnings(TestCase):
 
@@ -33,18 +37,30 @@ class TestDeprecationWarnings(TestCase):
     
     @symbol_versioning.deprecated_method(symbol_versioning.zero_seven)
     def deprecated_method(self):
-        return
+        return 1
 
     def test_deprecated_method(self):
-        old_warning_method = symbol_versioning.warn
         expected_warning = (
-            "bzrlib.tests.test_symbol_versioning.TestDeprecationWarnings.deprecated_method "
+            "bzrlib.tests.test_symbol_versioning."
+            "TestDeprecationWarnings.deprecated_method "
             "was deprecated in version 0.7", DeprecationWarning)
+        self.check_deprecated_callable(expected_warning,
+                                       self.deprecated_method)
+
+    def test_deprecated_function(self):
+        expected_warning = (
+            "bzrlib.tests.test_symbol_versioning.deprecated_function "
+            "was deprecated in version 0.7", DeprecationWarning)
+        self.check_deprecated_callable(expected_warning,
+                                       deprecated_function)
+
+    def check_deprecated_callable(self, expected_warning, deprecated_callable):
+        old_warning_method = symbol_versioning.warn
         try:
             symbol_versioning.set_warning_method(self.capture_warning)
-            self.deprecated_method()
+            self.assertEqual(1, deprecated_callable())
             self.assertEqual([expected_warning], self._warnings)
-            self.deprecated_method()
+            deprecated_callable()
             self.assertEqual([expected_warning, expected_warning],
                              self._warnings)
         finally:

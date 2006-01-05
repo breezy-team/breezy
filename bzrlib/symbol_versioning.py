@@ -37,6 +37,28 @@ def set_warning_method(method):
     warn = method
 
 
+# TODO - maybe this would be easier to use as one 'smart' method that
+# guess if it is a method or a class or an attribute ? If so, we can
+# add that on top of the primitives, once we have all three written
+# - RBC 20050105
+
+def deprecated_function(deprecation_version):
+    """Decorate a function so that use of it will trigger a warning."""
+
+    def function_decorator(callable):
+        """This is the function python calls to perform the decoration."""
+        
+        def decorated_function(*args, **kwargs):
+            """This is the decorated method."""
+            symbol = "%s.%s" % (callable.__module__, 
+                                callable.__name__
+                                )
+            warn(deprecation_version % symbol, DeprecationWarning)
+            return callable(*args, **kwargs)
+        return decorated_function
+    return function_decorator
+
+
 def deprecated_method(deprecation_version):
     """Decorate a method so that use of it will trigger a warning.
     
