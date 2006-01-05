@@ -469,3 +469,6 @@ class MissingText(BzrNewError):
 
 class DuplicateKey(BzrNewError):
     """Key %(key)s is already present in map"""
+
+class MalformedTransform(BzrNewError):
+    """Tree transform is malformed"""

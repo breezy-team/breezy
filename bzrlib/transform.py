@@ -1,5 +1,5 @@
 import os
-from bzrlib.errors import DuplicateKey
+from bzrlib.errors import DuplicateKey, MalformedTransform
 def unique_add(map, key, value):
     if key in map:
         raise DuplicateKey(key=key)
@@ -41,6 +41,10 @@ class TreeTransform(object):
         unique_add(self._new_parent, trans_id, parent)
         return trans_id
 
+    def adjust_path(self, name, parent, trans_id):
+        self._new_name[trans_id] = name
+        self._new_parent[trans_id] = parent
+
     def get_id_tree(self, inventory_id):
         """Determine the transaction id of a working tree file.
         
@@ -71,8 +75,32 @@ class TreeTransform(object):
         new_paths = [(fp.get_path(t), t) for t in new_ids]
         new_paths.sort()
         return new_paths
+
+    def find_conflicts(self):
+        """Find any violations of inventory of filesystem invariants"""
+        # No directory may have two entries with the same name
+        by_parent = {}
+        conflicts = []
+        for trans_id, parent_id in self._new_parent.iteritems():
+            if parent_id not in by_parent:
+                by_parent[parent_id] = set()
+            by_parent[parent_id].add(trans_id)
+        for children in by_parent.itervalues():
+            name_ids = [(self._new_name[t], t) for t in children]
+            name_ids.sort()
+            last_name = None
+            last_trans_id = None
+            for name, trans_id in name_ids:
+                if name == last_name:
+                    conflicts.append(('duplicate', last_trans_id, trans_id))
+                last_name = name
+                last_trans_id = trans_id
+        return conflicts
+            
             
     def apply(self):
+        if len(self.find_conflicts()) != 0:
+            raise MalformedTransform()
         inv = self._tree.inventory
         for path, trans_id in self.new_paths():
             try:
