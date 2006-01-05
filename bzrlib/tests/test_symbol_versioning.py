@@ -57,6 +57,7 @@ class TestDeprecationWarnings(TestCase):
                               '        ')
         self.check_deprecated_callable(expected_warning, expected_docstring,
                                        "deprecated_method",
+                                       "bzrlib.tests.test_symbol_versioning",
                                        self.deprecated_method)
 
     def test_deprecated_function(self):
@@ -69,10 +70,11 @@ class TestDeprecationWarnings(TestCase):
                               )
         self.check_deprecated_callable(expected_warning, expected_docstring,
                                        "deprecated_function",
+                                       "bzrlib.tests.test_symbol_versioning",
                                        deprecated_function)
 
     def check_deprecated_callable(self, expected_warning, expected_docstring,
-                                  expected_name,
+                                  expected_name, expected_module,
                                   deprecated_callable):
         old_warning_method = symbol_versioning.warn
         try:
@@ -84,5 +86,6 @@ class TestDeprecationWarnings(TestCase):
                              self._warnings)
             self.assertEqualDiff(expected_docstring, deprecated_callable.__doc__)
             self.assertEqualDiff(expected_name, deprecated_callable.__name__)
+            self.assertEqualDiff(expected_module, deprecated_callable.__module__)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)

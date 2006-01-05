@@ -110,4 +110,5 @@ def _populate_decorated(callable, deprecation_version, label,
     """
     _decorate_docstring(callable, deprecation_version, label,
                         decorated_callable)
+    decorated_callable.__module__ = callable.__module__
     decorated_callable.__name__ = callable.__name__
