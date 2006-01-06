@@ -1547,24 +1547,15 @@ class ConfigObj(Section):
         if (return_list) or (self.filename is None):
             return out
         #
-        txt = '\n'.join(out)
         if isinstance(self.filename, StringTypes):
             h = open(self.filename, 'w')
-            if isinstance(txt, unicode):
-                h.write(BOM_UTF8)
-                h.write(txt.encode('utf-8'))
-            else:
-                h.write(self.BOM or '')
-                h.write(txt)
+            h.write(self.BOM or '')
+            h.write('\n'.join(out))
             h.close()
         else:
             self.filename.seek(0)
-            if isinstance(txt, unicode):
-                self.filename.write(BOM_UTF8)
-                self.filename.write(txt.encode('utf-8'))
-            else:
-                self.filename.write(self.BOM or '')
-                self.filename.write(txt)
+            self.filename.write(self.BOM or '')
+            self.filename.write('\n'.join(out))
             # if we have a stored file object (or StringIO)
             # we *don't* close it
 
