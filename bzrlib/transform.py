@@ -20,6 +20,7 @@ class TreeTransform(object):
         self._new_parent = {}
         self._new_contents = {}
         self._new_id = {}
+        self._tree_path_ids = {}
         self._new_root = self.get_id_tree(tree.get_root_id())
 
     def finalize(self):
@@ -51,9 +52,14 @@ class TreeTransform(object):
         This reflects only files that already exist, not ones that will be
         added by transactions.
         """
-        if inventory_id not in self._tree:
-            raise Exception('ID not in tree')
-        return 'tree-%s' % inventory_id
+        return self.get_tree_path_id(self._tree.id2path(inventory_id))
+
+    def get_tree_path_id(self, path):
+        """Determine (and maybe set) the transaction ID for a tree path."""
+        path = os.path.realpath(path)
+        if path not in self._tree_path_ids:
+            self._tree_path_ids[path] = self._assign_id()
+        return self._tree_path_ids[path]
 
     def create_file(self, contents, trans_id):
         """Create a new, possibly versioned, file.
@@ -96,7 +102,6 @@ class TreeTransform(object):
                 last_name = name
                 last_trans_id = trans_id
         return conflicts
-            
             
     def apply(self):
         if len(self.find_conflicts()) != 0:
