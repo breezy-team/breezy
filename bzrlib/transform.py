@@ -126,6 +126,16 @@ class TreeTransform(object):
                     conflicts.append(('duplicate', last_trans_id, trans_id))
                 last_name = name
                 last_trans_id = trans_id
+        for parent_id in by_parent.iterkeys():
+            try:
+                kind = self.final_kind(parent_id)
+            except NoSuchFile:
+                kind = None
+            if kind is None:
+                conflicts.append(('missing parent', parent_id))
+            elif kind != "directory":
+                conflicts.append(('non-directory parent', parent_id))
+                
         return conflicts
             
     def apply(self):

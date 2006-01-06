@@ -56,6 +56,19 @@ class TestTreeTransform(TestCaseInTempDir):
             self.assertEqual(transform.find_conflicts(), 
                              [('duplicate', trans_id, trans_id2)])
             self.assertRaises(MalformedTransform, transform.apply)
+            transform.adjust_path('name', trans_id, trans_id2)
+            self.assertEqual(transform.find_conflicts(), 
+                             [('non-directory parent', trans_id)])
+            tinman_id = transform.get_tree_path_id('tinman')
+            transform.adjust_path('name', tinman_id, trans_id2)
+            self.assertEqual(transform.find_conflicts(), 
+                             [('missing parent', tinman_id)])
+            lion_id = transform.create_path('lion', root)
+            self.assertEqual(transform.find_conflicts(), 
+                             [('missing parent', tinman_id)])
+            transform.adjust_path('name', lion_id, trans_id2)
+            self.assertEqual(transform.find_conflicts(), 
+                             [('missing parent', lion_id)])
             transform.adjust_path('name2', root, trans_id2)
             transform.apply()
             self.assertEqual('contents', file('name').read())
