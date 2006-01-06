@@ -109,13 +109,20 @@ class TreeTransform(object):
 
     def find_conflicts(self):
         """Find any violations of inventory of filesystem invariants"""
-        # No directory may have two entries with the same name
         by_parent = {}
         conflicts = []
         for trans_id, parent_id in self._new_parent.iteritems():
             if parent_id not in by_parent:
                 by_parent[parent_id] = set()
             by_parent[parent_id].add(trans_id)
+
+        conflicts.extend(self._duplicate_entries(by_parent))
+        conflicts.extend(self._parent_type_conflicts(by_parent))
+        return conflicts
+
+    def _duplicate_entries(self, by_parent):
+        """No directory may have two entries with the same name."""
+        conflicts = []
         for children in by_parent.itervalues():
             name_ids = [(self._new_name[t], t) for t in children]
             name_ids.sort()
@@ -126,6 +133,11 @@ class TreeTransform(object):
                     conflicts.append(('duplicate', last_trans_id, trans_id))
                 last_name = name
                 last_trans_id = trans_id
+        return conflicts
+
+    def _parent_type_conflicts(self, by_parent):
+        """parents must have directory 'contents'."""
+        conflicts = []
         for parent_id in by_parent.iterkeys():
             try:
                 kind = self.final_kind(parent_id)
@@ -135,7 +147,6 @@ class TreeTransform(object):
                 conflicts.append(('missing parent', parent_id))
             elif kind != "directory":
                 conflicts.append(('non-directory parent', parent_id))
-                
         return conflicts
             
     def apply(self):
