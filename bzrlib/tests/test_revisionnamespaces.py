@@ -80,6 +80,10 @@ class TestRevisionNamespaces(TestCaseInTempDir):
         self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
                           'b@r-0-4')
 
+        # This should be in the revision store, but not in revision-history
+        self.assertEquals((None, 'b@r-0-4'),
+                RevisionSpec('revid:b@r-0-4').in_history(b))
+
     def test_branch_namespace(self):
         """Ensure that the branch namespace pulls in the requisite content."""
         self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
