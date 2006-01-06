@@ -196,6 +196,9 @@ class IniBasedConfig(Config):
             input = file
         try:
             self._parser = ConfigObj(input)
+            dec = getattr(self._parser, 'decode', None)
+            if dec is not None:
+                dec('UTF-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
         return self._parser
@@ -361,6 +364,9 @@ class LocationConfig(IniBasedConfig):
         elif location + '/' in self._get_parser():
             location = location + '/'
         self._get_parser()[location][option]=value
+        enc = getattr(self._get_parser(), 'encode', None)
+        if enc is not None:
+            enc('UTF-8')
         self._get_parser().write()
 
 
@@ -512,6 +518,7 @@ def extract_email_address(e):
         raise errors.BzrError("%r doesn't seem to contain "
                               "a reasonable email address" % e)
     return m.group(0)
+
 
 class TreeConfig(object):
     """Branch configuration data associated with its contents, not location"""
