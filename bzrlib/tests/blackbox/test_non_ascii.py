@@ -75,8 +75,7 @@ class TestNonAscii(TestCaseInTempDir):
         super(TestNonAscii, self).tearDown()
 
     def bzr(self, *args, **kwargs):
-        kwargs['encoding'] = 'utf-8'
-        return self.run_bzr(*args, **kwargs)[0].decode('utf-8')
+        return self.run_bzr(*args, **kwargs)[0].decode(bzrlib.user_encoding)
 
     def test_log(self):
         txt = self.bzr('log')
@@ -102,3 +101,10 @@ class TestNonAscii(TestCaseInTempDir):
 
         txt = self.run_bzr('cat', _juju + '.txt')[0]
         self.assertEqual('arabic filename\n', txt)
+
+    def test_cat_revision(self):
+        txt = self.bzr('cat-revision', '-r', '1')
+        self.assertNotEqual(-1, txt.find(_erik))
+
+        txt = self.bzr('cat-revision', '-r', '2')
+        self.assertNotEqual(-1, txt.find(_shrimp_sandwich))
