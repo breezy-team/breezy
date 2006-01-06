@@ -718,23 +718,26 @@ class cmd_file_path(Command):
 class cmd_revision_history(Command):
     """Display list of revision ids on this branch."""
     hidden = True
+
     @display_command
     def run(self):
         branch = WorkingTree.open_containing(u'.')[0].branch
         for patchid in branch.revision_history():
-            print patchid
+            self.outf.write(patchid)
+            self.outf.write('\n')
 
 
 class cmd_ancestry(Command):
     """List all revisions merged into this branch."""
     hidden = True
+
     @display_command
     def run(self):
         tree = WorkingTree.open_containing(u'.')[0]
         b = tree.branch
         # FIXME. should be tree.last_revision
         for revision_id in b.get_ancestry(b.last_revision()):
-            print revision_id
+            print >>to_file, revision_id
 
 
 class cmd_init(Command):
@@ -794,6 +797,7 @@ class cmd_diff(Command):
     takes_args = ['file*']
     takes_options = ['revision', 'diff-options']
     aliases = ['di', 'dif']
+    encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None):

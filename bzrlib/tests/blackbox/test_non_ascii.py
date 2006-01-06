@@ -316,3 +316,21 @@ class TestNonAscii(TestCaseInTempDir):
         #       This *should* be retcode=3
         txt = bzr('file-path', path, encoding='ascii')
 
+    def test_revision_history(self):
+        bzr = self.run_bzr_decode
+
+        # TODO: jam 20060106 We don't support non-ascii revision ids yet, 
+        #       so there is nothing which would fail in ascii encoding
+        txt = bzr('revision-history')
+
+    def test_ancestry(self):
+        bzr = self.run_bzr_decode
+
+        # TODO: jam 20060106 We don't support non-ascii revision ids yet, 
+        #       so there is nothing which would fail in ascii encoding
+        txt = bzr('ancestry')
+
+    def test_diff(self):
+        # TODO: jam 20060106 diff is a difficult one to test, because it 
+        #       shouldn't encode the file contents, but it needs some sort
+        #       of encoding for the paths, etc which are displayed.
