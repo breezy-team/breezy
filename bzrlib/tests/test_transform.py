@@ -65,14 +65,24 @@ class TestTreeTransform(TestCaseInTempDir):
             tinman_id = transform.get_tree_path_id('tinman')
             transform.adjust_path('name', tinman_id, trans_id2)
             self.assertEqual(transform.find_conflicts(), 
-                             [('missing parent', tinman_id)])
+                             [('unversioned parent', tinman_id), 
+                              ('missing parent', tinman_id)])
             lion_id = transform.create_path('lion', root)
             self.assertEqual(transform.find_conflicts(), 
-                             [('missing parent', tinman_id)])
+                             [('unversioned parent', tinman_id), 
+                              ('missing parent', tinman_id)])
             transform.adjust_path('name', lion_id, trans_id2)
             self.assertEqual(transform.find_conflicts(), 
-                             [('missing parent', lion_id)])
+                             [('unversioned parent', lion_id),
+                              ('missing parent', lion_id)])
+            transform.version_file("Courage", lion_id)
+            self.assertEqual(transform.find_conflicts(), 
+                             [('missing parent', lion_id), 
+                              ('versioning no contents', lion_id)])
             transform.adjust_path('name2', root, trans_id2)
+            self.assertEqual(transform.find_conflicts(), 
+                             [('versioning no contents', lion_id)])
+            transform.create_file('Contents, okay?', lion_id)
             transform.apply()
             self.assertEqual('contents', file('name').read())
             self.assertEqual(wt.path2id('name'), 'my_pretties')

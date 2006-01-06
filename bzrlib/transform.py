@@ -1,6 +1,7 @@
 import os
 from bzrlib.errors import DuplicateKey, MalformedTransform, NoSuchFile
 from bzrlib.osutils import file_kind
+from bzrlib.inventory import InventoryEntry
 import errno
 def unique_add(map, key, value):
     if key in map:
@@ -137,8 +138,38 @@ class TreeTransform(object):
                 by_parent[parent_id] = set()
             by_parent[parent_id].add(trans_id)
 
+        conflicts.extend(self._unversioned_parents(by_parent))
         conflicts.extend(self._duplicate_entries(by_parent))
         conflicts.extend(self._parent_type_conflicts(by_parent))
+        conflicts.extend(self._improper_versioning())
+        return conflicts
+
+    def _unversioned_parents(self, by_parent):
+        """If parent directories are versioned, children must be versioned."""
+        conflicts = []
+        for parent_id, children in by_parent.iteritems():
+            if self.final_file_id(parent_id) is not None:
+                continue
+            for child_id in children:
+                if self.final_file_id(child_id) is not None:
+                    conflicts.append(('unversioned parent', parent_id))
+                    break;
+        return conflicts
+
+    def _improper_versioning(self):
+        """Cannot version a file with no contents, or a bad type.
+        
+        However, existing entries with no contents are okay.
+        """
+        conflicts = []
+        for trans_id in self._new_id.iterkeys():
+            try:
+                kind = self.final_kind(trans_id)
+            except NoSuchFile:
+                conflicts.append(('versioning no contents', trans_id))
+                continue
+            if not InventoryEntry.versionable_kind(kind):
+                conflicts.append(('versioning bad kind', trans_id))
         return conflicts
 
     def _duplicate_entries(self, by_parent):
