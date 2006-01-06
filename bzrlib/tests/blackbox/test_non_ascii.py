@@ -95,7 +95,15 @@ class TestNonAscii(TestCaseInTempDir):
         self.assertNotEqual(-1, txt.find(_juju.encode('ascii', 'replace')))
 
     def test_ls(self):
-        txt = self.bzr('ls')[0]
+        txt = self.bzr('ls')
+        self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt'],
+                         txt.splitlines())
+        txt = self.bzr('ls', '--null')
+        self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt', ''],
+                         txt.split('\0'))
+
+        txt = self.bzr('ls', encoding='ascii', retcode=3)
+        txt = self.bzr('ls', '--null', encoding='ascii', retcode=3)
 
     def test_status(self):
         open(_juju + '.txt', 'ab').write('added something\n')

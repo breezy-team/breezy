@@ -1056,7 +1056,8 @@ class cmd_ls(Command):
             tree = tree.branch.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
 
-        outf = _get_encoded_stdout()
+        # jam: I don't want to return inexact paths
+        outf = _get_encoded_stdout(errors='strict')
         for fp, fc, kind, fid, entry in tree.list_files():
             if fp.startswith(relpath):
                 fp = fp[len(relpath):]
