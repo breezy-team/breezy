@@ -200,4 +200,37 @@ class TestNonAscii(TestCaseInTempDir):
         self.failUnlessExists('a')
         self.assertEqual('r?ksm?rg?s/????2.txt => a\n', txt)
 
+    def test_branch(self):
+        # We should be able to branch into a directory that
+        # has a unicode name, even if we can't display the name
+        bzr = self.run_bzr_decode
 
+        bzr('branch', u'.', _shrimp_sandwich)
+
+        bzr('branch', u'.', _shrimp_sandwich + '2', encoding='ascii')
+
+    def test_pull(self):
+        # Make sure we can pull from paths that can't be encoded
+        bzr = self.run_bzr_decode
+
+        bzr('branch', '.', _shrimp_sandwich)
+        bzr('branch', _shrimp_sandwich, _shrimp_sandwich + '2')
+
+        os.chdir(_shrimp_sandwich)
+        open('a', 'ab').write('more text\n')
+        bzr('commit', '-m', 'mod a')
+
+        pwd = os.getcwdu()
+
+        os.chdir('../' + _shrimp_sandwich + '2')
+        txt = bzr('pull')
+
+        self.assertEqual(u'Using saved location: %s\n' % (pwd,), txt)
+
+        os.chdir('../' + _shrimp_sandwich)
+        open('a', 'ab').write('and yet more\n')
+        bzr('commit', '-m', 'modifying a by ' + _erik)
+
+        os.chdir('../' + _shrimp_sandwich + '2')
+        # We should be able to pull, even if our encoding is bad
+        bzr('pull', '--verbose', encoding='ascii')

@@ -411,6 +411,7 @@ class cmd_pull(Command):
     """
     takes_options = ['remember', 'overwrite', 'verbose']
     takes_args = ['location?']
+    encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False, verbose=False):
         from bzrlib.merge import merge
@@ -423,7 +424,7 @@ class cmd_pull(Command):
             if stored_loc is None:
                 raise BzrCommandError("No pull location known or specified.")
             else:
-                print "Using saved location: %s" % stored_loc
+                self.outf.write("Using saved location: %s\n" % stored_loc)
                 location = stored_loc
 
         br_from = Branch.open(location)
@@ -441,7 +442,8 @@ class cmd_pull(Command):
             if old_rh != new_rh:
                 # Something changed
                 from bzrlib.log import show_changed_revisions
-                show_changed_revisions(tree_to.branch, old_rh, new_rh)
+                show_changed_revisions(tree_to.branch, old_rh, new_rh,
+                                       to_file=self.outf)
 
 
 class cmd_push(Command):
@@ -616,7 +618,7 @@ class cmd_branch(Command):
                 raise BzrCommandError(msg)
             branch = Branch.open(to_location)
             if name:
-                name = StringIO(name)
+                # Don't use StringIO here, because we can't encode it
                 branch.put_controlfile('branch-name', name)
             note('Branched %d revision(s).' % branch.revno())
         finally:

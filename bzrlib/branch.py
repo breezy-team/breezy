@@ -1094,7 +1094,7 @@ class BzrBranch(Branch):
         """See Branch.set_parent."""
         # TODO: Maybe delete old location files?
         from bzrlib.atomicfile import AtomicFile
-        f = AtomicFile(self.controlfilename('parent'))
+        f = AtomicFile(self.controlfilename('parent'), encoding='utf-8')
         try:
             f.write(url + '\n')
             f.commit()
