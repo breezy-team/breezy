@@ -293,8 +293,26 @@ class TestNonAscii(TestCaseInTempDir):
         fname = _juju + '.txt'
         txt = bzr('file-id', fname)
 
-        raise TestSkipped("We don't support unicode file ids yet")
+        # TODO: jam 20060106 We don't support non-ascii file ids yet, 
+        #       so there is nothing which would fail in ascii encoding
+        #       This *should* be retcode=3
         txt = bzr('file-id', fname, encoding='ascii')
 
-        self.failUnless(txt.startswith(fname))
+    def test_file_path(self):
+        bzr = self.run_bzr_decode
+
+        # Create a directory structure
+        fname = _juju + '.txt'
+        bzr('mkdir', 'base')
+        bzr('mkdir', 'base/' + _shrimp_sandwich)
+        path = '/'.join(['base', _shrimp_sandwich, fname])
+        bzr('mv', fname, path)
+        bzr('commit', '-m', 'moving things around')
+
+        txt = bzr('file-path', path)
+
+        # TODO: jam 20060106 We don't support non-ascii file ids yet, 
+        #       so there is nothing which would fail in ascii encoding
+        #       This *should* be retcode=3
+        txt = bzr('file-path', path, encoding='ascii')
 

@@ -682,6 +682,7 @@ class cmd_file_id(Command):
     """
     hidden = True
     takes_args = ['filename']
+
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
@@ -697,9 +698,11 @@ class cmd_file_path(Command):
     """Print path of file_ids to a file or directory.
 
     This prints one line for each directory down to the target,
-    starting at the branch root."""
+    starting at the branch root.
+    """
     hidden = True
     takes_args = ['filename']
+
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
@@ -708,7 +711,8 @@ class cmd_file_path(Command):
         if fid == None:
             raise BzrError("%r is not a versioned file" % filename)
         for fip in inv.get_idpath(fid):
-            print fip
+            self.outf.write(i)
+            self.outf.write('\n')
 
 
 class cmd_revision_history(Command):
