@@ -1,6 +1,7 @@
 import os
 from bzrlib.errors import DuplicateKey, MalformedTransform, NoSuchFile
-from osutils import file_kind
+from bzrlib.osutils import file_kind
+import errno
 def unique_add(map, key, value):
     if key in map:
         raise DuplicateKey(key=key)
