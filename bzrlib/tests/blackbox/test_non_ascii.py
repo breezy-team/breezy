@@ -144,3 +144,10 @@ class TestNonAscii(TestCaseInTempDir):
         self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt'],
                          txt.splitlines())
 
+        # inventory should fail if unable to encode
+        self.bzr('inventory', encoding='ascii', retcode=3)
+
+        # We don't really care about the ids themselves,
+        # but the command shouldn't fail
+        txt = self.bzr('inventory', '--show-ids')
+
