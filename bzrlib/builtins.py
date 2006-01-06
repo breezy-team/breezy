@@ -689,7 +689,8 @@ class cmd_file_id(Command):
         if i == None:
             raise BzrError("%r is not a versioned file" % filename)
         else:
-            print i
+            self.outf.write(i)
+            self.outf.write('\n')
 
 
 class cmd_file_path(Command):

@@ -287,3 +287,14 @@ class TestNonAscii(TestCaseInTempDir):
         fname = _juju + '.txt'
         txt = bzr('remove', '--verbose', fname, encoding='ascii')
 
+    def test_file_id(self):
+        bzr = self.run_bzr_decode
+
+        fname = _juju + '.txt'
+        txt = bzr('file-id', fname)
+
+        raise TestSkipped("We don't support unicode file ids yet")
+        txt = bzr('file-id', fname, encoding='ascii')
+
+        self.failUnless(txt.startswith(fname))
+
