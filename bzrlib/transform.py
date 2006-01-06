@@ -114,6 +114,20 @@ class TreeTransform(object):
                 else:
                     raise NoSuchFile(path)
 
+    def final_file_id(self, trans_id):
+        """Determine the file id currently assigned, or None."""
+        try:
+            # there is a new id for this file
+            return self._new_id[trans_id]
+        except KeyError:
+            try:
+                path = self._tree_id_paths[trans_id]
+            except KeyError:
+                # the file is a new, unversioned file, or invalid trans_id
+                return None
+            # the file is old; the old id is still valid
+            return self._tree.path2id(path)
+
     def find_conflicts(self):
         """Find any violations of inventory of filesystem invariants"""
         by_parent = {}

@@ -11,7 +11,9 @@ class TestTreeTransform(TestCaseInTempDir):
         try:
             root = transform.get_id_tree(wt.get_root_id())
             self.assertEqual(transform.final_kind(root), 'directory')
+            self.assertEqual(transform.final_file_id(root), wt.get_root_id())
             trans_id = transform.create_path('name', root)
+            self.assertIs(transform.final_file_id(trans_id), None)
             self.assertRaises(NoSuchFile, transform.final_kind, trans_id)
             transform.create_file('contents', trans_id)
             self.assertEqual(transform.final_kind(trans_id), 'file')
@@ -20,6 +22,7 @@ class TestTreeTransform(TestCaseInTempDir):
             transform.version_file('my_pretties', trans_id)
             self.assertRaises(DuplicateKey, transform.version_file,
                               'my_pretties', trans_id)
+            self.assertEqual(transform.final_file_id(trans_id), 'my_pretties')
             transform.apply()
             self.assertEqual('contents', file('name').read())
             self.assertEqual(wt.path2id('name'), 'my_pretties')
