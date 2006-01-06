@@ -69,7 +69,7 @@ def internal_tree_files(file_list, default_branch=u'.'):
     return tree, new_list
 
 
-def _get_encoded_stdout_file():
+def _get_encoded_stdout(errors='replace'):
     """Return a file linked to stdout, which has proper encoding."""
     output_encoding = getattr(sys.stdout, 'encoding', None)
     if not output_encoding:
@@ -80,7 +80,7 @@ def _get_encoded_stdout_file():
 
     # use 'replace' so that we don't abort if trying to write out
     # in e.g. the default C locale.
-    return codecs.getwriter(output_encoding)(sys.stdout, errors='replace')
+    return codecs.getwriter(output_encoding)(sys.stdout, errors=errors)
 
 
 
@@ -142,7 +142,7 @@ class cmd_status(Command):
 
         tree, file_list = tree_files(file_list)
             
-        outf = _get_encoded_stdout_file()
+        outf = _get_encoded_stdout()
         show_status(tree.branch, show_unchanged=all, show_ids=show_ids,
                     specific_files=file_list, revision=revision,
                     to_file=outf)
@@ -247,7 +247,7 @@ class cmd_add(Command):
     def run(self, file_list, no_recurse=False, dry_run=False, verbose=False):
         import bzrlib.add
 
-        to_file = _get_encoded_stdout_file()
+        to_file = _get_encoded_stdout()
         action = bzrlib.add.AddAction(to_file=to_file,
             should_add=(not dry_run), should_print=(not is_quiet()))
 
@@ -275,11 +275,14 @@ class cmd_mkdir(Command):
     takes_args = ['dir+']
 
     def run(self, dir_list):
+        outf = _get_encoded_stdout()
         for d in dir_list:
             os.mkdir(d)
             wt, dd = WorkingTree.open_containing(d)
             wt.add([dd])
-            print 'added', d
+            outf.write('added ')
+            outf.write(d)
+            outf.write('\n')
 
 
 class cmd_relpath(Command):
@@ -967,7 +970,7 @@ class cmd_log(Command):
         if rev1 > rev2:
             (rev2, rev1) = (rev1, rev2)
 
-        outf = _get_encoded_stdout_file()
+        outf = _get_encoded_stdout()
 
         log_format = get_log_format(long=long, short=short, line=line)
         lf = log_formatter(log_format,
@@ -1049,7 +1052,7 @@ class cmd_ls(Command):
             tree = tree.branch.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
 
-        outf = _get_encoded_stdout_file()
+        outf = _get_encoded_stdout()
         for fp, fc, kind, fid, entry in tree.list_files():
             if fp.startswith(relpath):
                 fp = fp[len(relpath):]

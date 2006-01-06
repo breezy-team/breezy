@@ -75,7 +75,11 @@ class TestNonAscii(TestCaseInTempDir):
         super(TestNonAscii, self).tearDown()
 
     def bzr(self, *args, **kwargs):
-        return self.run_bzr(*args, **kwargs)[0].decode(bzrlib.user_encoding)
+        if kwargs.has_key('encoding'):
+            encoding = kwargs['encoding']
+        else:
+            encoding = bzrlib.user_encoding
+        return self.run_bzr(*args, **kwargs)[0].decode(encoding)
 
     def test_log(self):
         txt = self.bzr('log')
@@ -84,6 +88,11 @@ class TestNonAscii(TestCaseInTempDir):
 
         txt = self.bzr('log', '--verbose')
         self.assertNotEqual(-1, txt.find(_juju))
+
+        # Make sure log doesn't fail even if we can't write out
+        txt = self.bzr('log', '--verbose', encoding='ascii')
+        self.assertEqual(-1, txt.find(_juju))
+        self.assertNotEqual(-1, txt.find(_juju.encode('ascii', 'replace')))
 
     def test_ls(self):
         txt = self.bzr('ls')[0]
@@ -108,3 +117,7 @@ class TestNonAscii(TestCaseInTempDir):
 
         txt = self.bzr('cat-revision', '-r', '2')
         self.assertNotEqual(-1, txt.find(_shrimp_sandwich))
+
+    def test_mkdir(self):
+        txt = self.bzr('mkdir', _shrimp_sandwich)
+        self.assertEqual('added ' + _shrimp_sandwich + '\n', txt)
