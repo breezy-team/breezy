@@ -469,11 +469,12 @@ class cmd_push(Command):
     do a merge (see bzr help merge) from the other branch, and commit that
     before doing a 'push --overwrite'.
     """
-    takes_options = ['remember', 'overwrite', 
+    takes_options = ['remember', 'overwrite', 'verbose',
                      Option('create-prefix', 
                             help='Create the path leading up to the branch '
                                  'if it does not already exist')]
     takes_args = ['location?']
+    encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
             create_prefix=False, verbose=False):
@@ -490,7 +491,7 @@ class cmd_push(Command):
             if stored_loc is None:
                 raise BzrCommandError("No push location known or specified.")
             else:
-                print "Using saved location: %s" % stored_loc
+                self.outf.write("Using saved location: %s" % stored_loc)
                 location = stored_loc
         try:
             br_to = Branch.open(location)
@@ -543,7 +544,8 @@ class cmd_push(Command):
             if old_rh != new_rh:
                 # Something changed
                 from bzrlib.log import show_changed_revisions
-                show_changed_revisions(br_to, old_rh, new_rh)
+                show_changed_revisions(br_to, old_rh, new_rh,
+                                       to_file=self.outf)
 
 
 class cmd_branch(Command):

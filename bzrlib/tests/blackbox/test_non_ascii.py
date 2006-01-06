@@ -27,6 +27,7 @@ from bzrlib.tests import TestCaseInTempDir, TestSkipped
 _mu = u'\xb5'
 # Swedish?
 _erik = u'Erik B\xe5gfors'
+# Swedish 'räksmörgås' means shrimp sandwich
 _shrimp_sandwich = u'r\xe4ksm\xf6rg\xe5s'
 # TODO: jam 20060105 Is there a way we can decode punycode for people
 #       who have non-ascii email addresses? Does it matter to us, we
@@ -234,3 +235,32 @@ class TestNonAscii(TestCaseInTempDir):
         os.chdir('../' + _shrimp_sandwich + '2')
         # We should be able to pull, even if our encoding is bad
         bzr('pull', '--verbose', encoding='ascii')
+
+    def test_push(self):
+        # TODO: Test push to an SFTP location
+        # Make sure we can pull from paths that can't be encoded
+        bzr = self.run_bzr_decode
+
+        # ConfigObj has to be modified to make it allow unicode
+        # strings. It seems to have the functionality, but doesn't
+        # like to use it.
+        bzr('push', _shrimp_sandwich)
+
+        open('a', 'ab').write('adding more text\n')
+        bzr('commit', '-m', 'added some stuff')
+
+        bzr('push')
+
+        f = open('a', 'ab')
+        f.write('and a bit more: ')
+        f.write(_shrimp_sandwich.encode('utf-8'))
+        f.write('\n')
+        f.close()
+        bzr('commit', '-m', u'Added some ' + _shrimp_sandwich)
+        bzr('push', '--verbose', encoding='ascii')
+
+        bzr('push', '--verbose', _shrimp_sandwich + '2')
+
+        bzr('push', '--verbose', _shrimp_sandwich + '3',
+            encoding='ascii')
+
