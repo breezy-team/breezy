@@ -78,7 +78,7 @@ class TestNonAscii(TestCaseInTempDir):
         bzr = self.run_bzr
         txt = bzr('log')[0]
 
-    #def test_ls(self):
-    #    bzr = self.run_bzr
-    #    txt = bzr('ls')[0]
+    def test_ls(self):
+        bzr = self.run_bzr
+        txt = bzr('ls')[0]
 

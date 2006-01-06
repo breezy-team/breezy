@@ -1045,6 +1045,8 @@ class cmd_ls(Command):
         if revision is not None:
             tree = tree.branch.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
+
+        outf = _get_encoded_stdout_file()
         for fp, fc, kind, fid, entry in tree.list_files():
             if fp.startswith(relpath):
                 fp = fp[len(relpath):]
@@ -1054,13 +1056,14 @@ class cmd_ls(Command):
                     continue
                 if verbose:
                     kindch = entry.kind_character()
-                    print '%-8s %s%s' % (fc, fp, kindch)
+                    outf.write('%-8s %s%s\n' % (fc, fp, kindch))
                 elif null:
-                    sys.stdout.write(fp)
-                    sys.stdout.write('\0')
-                    sys.stdout.flush()
+                    outf.write(fp)
+                    outf.write('\0')
+                    outf.flush()
                 else:
-                    print fp
+                    outf.write(fp)
+                    outf.write('\n')
 
 
 class cmd_unknowns(Command):
