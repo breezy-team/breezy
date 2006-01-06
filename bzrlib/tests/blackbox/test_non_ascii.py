@@ -172,3 +172,13 @@ class TestNonAscii(TestCaseInTempDir):
 
         # TODO: jam 20060105 We have no revisions with non-ascii characters.
         bzr('revision-info', '-r', '1', encoding='ascii')
+
+
+    def test_mv(self):
+        bzr = self.run_bzr_decode
+
+        txt = bzr('mv', 'a', _juju + '2.txt')
+        self.assertEqual(u'a => ' + _juju + '2.txt\n', txt)
+
+        bzr('commit', '-m', 'renamed to non-ascii')
+
