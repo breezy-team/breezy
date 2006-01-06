@@ -187,7 +187,7 @@ class TreeTransform(object):
 
             if trans_id in self._new_id:
                 if kind is None:
-                    kind = file_kind()
+                    kind = file_kind(self._tree.abspath(path))
                 inv.add_path(path, kind, self._new_id[trans_id])
         self._tree._write_inventory(inv)
 
