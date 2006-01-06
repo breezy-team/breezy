@@ -57,9 +57,16 @@ class TreeTransform(object):
         """
         return self.get_tree_path_id(self._tree.id2path(inventory_id))
 
+    def canonical_path(self, path):
+        """Get the canonical tree-relative path"""
+        # don't follow final symlinks
+        dirname, basename = os.path.split(self._tree.abspath(path))
+        dirname = os.path.realpath(dirname)
+        return self._tree.relpath(os.path.join(dirname, basename))
+
     def get_tree_path_id(self, path):
         """Determine (and maybe set) the transaction ID for a tree path."""
-        path = os.path.realpath(path)
+        path = self.canonical_path(path)
         if path not in self._tree_path_ids:
             self._tree_path_ids[path] = self._assign_id()
             self._tree_id_paths[self._tree_path_ids[path]] = path
@@ -100,7 +107,7 @@ class TreeTransform(object):
             if path is None:
                 raise NoSuchFile(None)
             try:
-                return file_kind(path)
+                return file_kind(self._tree.abspath(path))
             except OSError, e:
                 if e.errno != errno.ENOENT:
                     raise
