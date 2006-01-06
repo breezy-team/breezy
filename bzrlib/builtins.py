@@ -372,6 +372,8 @@ class cmd_mv(Command):
     Files cannot be moved between branches.
     """
     takes_args = ['names*']
+    encoding_type = 'replace'
+
     def run(self, names_list):
         if len(names_list) < 2:
             raise BzrCommandError("missing file argument")

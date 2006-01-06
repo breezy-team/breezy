@@ -173,12 +173,31 @@ class TestNonAscii(TestCaseInTempDir):
         # TODO: jam 20060105 We have no revisions with non-ascii characters.
         bzr('revision-info', '-r', '1', encoding='ascii')
 
-
     def test_mv(self):
         bzr = self.run_bzr_decode
 
-        txt = bzr('mv', 'a', _juju + '2.txt')
-        self.assertEqual(u'a => ' + _juju + '2.txt\n', txt)
+        fname1 = _juju + '.txt'
+        fname2 = _juju + '2.txt'
+
+        bzr('mv', 'a', fname1, retcode=3)
+
+        txt = bzr('mv', 'a', fname2)
+        self.assertEqual(u'a => ' + fname2 + '\n', txt)
+        self.failIfExists('a')
+        self.failUnlessExists(fname2)
 
         bzr('commit', '-m', 'renamed to non-ascii')
+
+        bzr('mkdir', _shrimp_sandwich)
+        txt = bzr('mv', fname1, fname2, _shrimp_sandwich)
+        self.assertEqual([fname1 + ' => ' + _shrimp_sandwich + '/' + fname1,
+                          fname2 + ' => ' + _shrimp_sandwich + '/' + fname2]
+                         , txt.splitlines())
+
+        # The rename should still succeed
+        txt = bzr('mv', _shrimp_sandwich + '/' + fname2, 'a',
+            encoding='ascii')
+        self.failUnlessExists('a')
+        self.assertEqual('r?ksm?rg?s/????2.txt => a\n', txt)
+
 
