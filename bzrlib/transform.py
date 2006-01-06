@@ -1,5 +1,6 @@
 import os
-from bzrlib.errors import DuplicateKey, MalformedTransform
+from bzrlib.errors import DuplicateKey, MalformedTransform, NoSuchFile
+from osutils import file_kind
 def unique_add(map, key, value):
     if key in map:
         raise DuplicateKey(key=key)
@@ -21,6 +22,7 @@ class TreeTransform(object):
         self._new_contents = {}
         self._new_id = {}
         self._tree_path_ids = {}
+        self._tree_id_paths = {}
         self._new_root = self.get_id_tree(tree.get_root_id())
 
     def finalize(self):
@@ -59,6 +61,7 @@ class TreeTransform(object):
         path = os.path.realpath(path)
         if path not in self._tree_path_ids:
             self._tree_path_ids[path] = self._assign_id()
+            self._tree_id_paths[self._tree_path_ids[path]] = path
         return self._tree_path_ids[path]
 
     def create_file(self, contents, trans_id):
@@ -81,6 +84,27 @@ class TreeTransform(object):
         new_paths = [(fp.get_path(t), t) for t in new_ids]
         new_paths.sort()
         return new_paths
+
+    def final_kind(self, trans_id):
+        """Determine the final file kind, after any changes applied.
+        
+        Raises NoSuchFile if the file does not exist/has no contents.
+        (It is conceivable that a path would be created without the
+        corresponding contents insertion command)
+        """
+        if trans_id in self._new_contents:
+            return self._new_contents[trans_id][0]
+        else:
+            path = self._tree_id_paths.get(trans_id)
+            if path is None:
+                raise NoSuchFile(None)
+            try:
+                return file_kind(path)
+            except OSError, e:
+                if e.errno != errno.ENOENT:
+                    raise
+                else:
+                    raise NoSuchFile(path)
 
     def find_conflicts(self):
         """Find any violations of inventory of filesystem invariants"""

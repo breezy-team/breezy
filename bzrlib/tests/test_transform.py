@@ -1,7 +1,7 @@
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.transform import TreeTransform
-from bzrlib.errors import DuplicateKey, MalformedTransform
+from bzrlib.errors import DuplicateKey, MalformedTransform, NoSuchFile
 
 class TestTreeTransform(TestCaseInTempDir):
     def test_build(self):
@@ -10,8 +10,11 @@ class TestTreeTransform(TestCaseInTempDir):
         transform = TreeTransform(wt)
         try:
             root = transform.get_id_tree(wt.get_root_id())
+            self.assertEqual(transform.final_kind(root), 'directory')
             trans_id = transform.create_path('name', root)
+            self.assertRaises(NoSuchFile, transform.final_kind, trans_id)
             transform.create_file('contents', trans_id)
+            self.assertEqual(transform.final_kind(trans_id), 'file')
             self.assertRaises(DuplicateKey, transform.create_file, 'contents', 
                               trans_id)
             transform.version_file('my_pretties', trans_id)
