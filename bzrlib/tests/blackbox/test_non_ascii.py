@@ -274,3 +274,16 @@ class TestNonAscii(TestCaseInTempDir):
 
         bzr('renames', retcode=3, encoding='ascii')
 
+    def test_remove(self):
+        bzr = self.run_bzr_decode
+
+        fname = _juju + '.txt'
+        txt = bzr('remove', fname, encoding='ascii')
+
+    def test_remove_verbose(self):
+        bzr = self.run_bzr_decode
+
+        raise TestSkipped('bzr remove --verbose uses tree.remove, which calls print directly.')
+        fname = _juju + '.txt'
+        txt = bzr('remove', '--verbose', fname, encoding='ascii')
+
