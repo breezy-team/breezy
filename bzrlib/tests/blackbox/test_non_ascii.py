@@ -264,3 +264,13 @@ class TestNonAscii(TestCaseInTempDir):
         bzr('push', '--verbose', _shrimp_sandwich + '3',
             encoding='ascii')
 
+    def test_renames(self):
+        bzr = self.run_bzr_decode
+
+        fname = _juju + '2.txt'
+        bzr('mv', 'a', fname)
+        txt = bzr('renames')
+        self.assertEqual('a => ' + fname + '\n', txt)
+
+        bzr('renames', retcode=3, encoding='ascii')
+

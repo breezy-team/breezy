@@ -644,7 +644,7 @@ class cmd_renames(Command):
         renames = list(bzrlib.tree.find_renames(old_inv, new_inv))
         renames.sort()
         for old_name, new_name in renames:
-            print "%s => %s" % (old_name, new_name)        
+            self.outf.write("%s => %s\n" % (old_name, new_name))
 
 
 class cmd_info(Command):
