@@ -121,3 +121,8 @@ class TestNonAscii(TestCaseInTempDir):
     def test_mkdir(self):
         txt = self.bzr('mkdir', _shrimp_sandwich)
         self.assertEqual('added ' + _shrimp_sandwich + '\n', txt)
+
+    def test_relpath(self):
+        txt = self.bzr('relpath', _shrimp_sandwich)
+        self.assertEqual(_shrimp_sandwich + '\n', txt)
+

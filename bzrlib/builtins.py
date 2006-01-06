@@ -292,8 +292,12 @@ class cmd_relpath(Command):
     
     @display_command
     def run(self, filename):
+        # TODO: jam 20050106 Can relpath return a munged path if
+        #       sys.stdout encoding cannot represent it?
+        outf = _get_encoded_stdout(errors='strict')
         tree, relpath = WorkingTree.open_containing(filename)
-        print relpath
+        outf.write(relpath)
+        outf.write('\n')
 
 
 class cmd_inventory(Command):
