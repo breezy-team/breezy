@@ -133,6 +133,5 @@ if len(sys.argv) == 2:
         else:
             os.environ['BZR_EDITOR'] = 'rm'
 
-        self.assertRaises(IOError,
-            bzrlib.msgeditor.edit_commit_message(''))
+        self.assertRaises(IOError, bzrlib.msgeditor.edit_commit_message, '')
 
