@@ -138,11 +138,14 @@ class cmd_status(Command):
     
     @display_command
     def run(self, all=False, show_ids=False, file_list=None, revision=None):
+        from bzrlib.status import show_status
+
         tree, file_list = tree_files(file_list)
             
-        from bzrlib.status import show_status
+        outf = _get_encoded_stdout_file()
         show_status(tree.branch, show_unchanged=all, show_ids=show_ids,
-                    specific_files=file_list, revision=revision)
+                    specific_files=file_list, revision=revision,
+                    to_file=outf)
 
 
 class cmd_cat_revision(Command):

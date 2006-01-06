@@ -74,11 +74,31 @@ class TestNonAscii(TestCaseInTempDir):
                 del os.environ['BZREMAIL']
         super(TestNonAscii, self).tearDown()
 
+    def bzr(self, *args, **kwargs):
+        kwargs['encoding'] = 'utf-8'
+        return self.run_bzr(*args, **kwargs)[0].decode('utf-8')
+
     def test_log(self):
-        bzr = self.run_bzr
-        txt = bzr('log')[0]
+        txt = self.bzr('log')
+        self.assertNotEqual(-1, txt.find(_erik))
+        self.assertNotEqual(-1, txt.find(_shrimp_sandwich))
+
+        txt = self.bzr('log', '--verbose')
+        self.assertNotEqual(-1, txt.find(_juju))
 
     def test_ls(self):
-        bzr = self.run_bzr
-        txt = bzr('ls')[0]
+        txt = self.bzr('ls')[0]
 
+    def test_status(self):
+        open(_juju + '.txt', 'ab').write('added something\n')
+        txt = self.bzr('status')
+        self.assertEqual(u'modified:\n  \u062c\u0648\u062c\u0648.txt\n' , txt)
+
+    def test_cat(self):
+        # bzr cat shouldn't change the contents
+        # using run_bzr since that doesn't decode
+        txt = self.run_bzr('cat', 'b')[0]
+        self.assertEqual(_shrimp_sandwich.encode('utf-8') + '\n', txt)
+
+        txt = self.run_bzr('cat', _juju + '.txt')[0]
+        self.assertEqual('arabic filename\n', txt)
