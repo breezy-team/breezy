@@ -24,6 +24,7 @@
 from StringIO import StringIO
 import sys
 import os
+import codecs
 
 import bzrlib
 from bzrlib import BZRDIR
@@ -49,6 +50,7 @@ def tree_files(file_list, default_branch=u'.'):
         raise BzrCommandError("%s is not in the same branch as %s" %
                              (e.path, file_list[0]))
 
+
 def internal_tree_files(file_list, default_branch=u'.'):
     """\
     Return a branch and list of branch-relative paths.
@@ -65,6 +67,21 @@ def internal_tree_files(file_list, default_branch=u'.'):
         except errors.PathNotChild:
             raise FileInWrongBranch(tree.branch, filename)
     return tree, new_list
+
+
+def _get_encoded_stdout_file():
+    """Return a file linked to stdout, which has proper encoding."""
+    output_encoding = getattr(sys.stdout, 'encoding', None)
+    if not output_encoding:
+        output_encoding = bzrlib.user_encoding
+        mutter('encoding log as bzrlib.user_encoding %r', output_encoding)
+    else:
+        mutter('encoding log as sys.stdout encoding %r', output_encoding)
+
+    # use 'replace' so that we don't abort if trying to write out
+    # in e.g. the default C locale.
+    return codecs.getwriter(output_encoding)(sys.stdout, errors='replace')
+
 
 
 # TODO: Make sure no commands unconditionally use the working directory as a
@@ -227,30 +244,24 @@ class cmd_add(Command):
     def run(self, file_list, no_recurse=False, dry_run=False, verbose=False):
         import bzrlib.add
 
-        if dry_run:
-            if is_quiet():
-                # This is pointless, but I'd rather not raise an error
-                action = bzrlib.add.add_action_null
-            else:
-                action = bzrlib.add.add_action_print
-        elif is_quiet():
-            action = bzrlib.add.add_action_add
-        else:
-            action = bzrlib.add.add_action_add_and_print
+        to_file = _get_encoded_stdout_file()
+        action = bzrlib.add.AddAction(to_file=to_file,
+            should_add=(not dry_run), should_print=(not is_quiet()))
 
         added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
-                                              action)
+                                              action=action)
         if len(ignored) > 0:
             for glob in sorted(ignored.keys()):
                 match_len = len(ignored[glob])
                 if verbose:
                     for path in ignored[glob]:
-                        print "ignored %s matching \"%s\"" % (path, glob)
+                        to_file.write("ignored %s matching \"%s\"\n" 
+                                      % (path, glob))
                 else:
-                    print "ignored %d file(s) matching \"%s\"" % (match_len,
-                                                              glob)
-            print "If you wish to add some of these files, please add them"\
-                " by name."
+                    to_file.write("ignored %d file(s) matching \"%s\"\n"
+                                  % (match_len, glob))
+            to_file.write("If you wish to add some of these files,"
+                          " please add them by name.\n")
 
 
 class cmd_mkdir(Command):
@@ -909,7 +920,6 @@ class cmd_log(Command):
             short=False,
             line=False):
         from bzrlib.log import log_formatter, show_log
-        import codecs
         assert message is None or isinstance(message, basestring), \
             "invalid message argument %r" % message
         direction = (forward and 'forward') or 'reverse'
@@ -954,16 +964,7 @@ class cmd_log(Command):
         if rev1 > rev2:
             (rev2, rev1) = (rev1, rev2)
 
-        output_encoding = getattr(sys.stdout, 'encoding', None)
-        if not output_encoding:
-            output_encoding = bzrlib.user_encoding
-            mutter('encoding log as bzrlib.user_encoding %r', output_encoding)
-        else:
-            mutter('encoding log as sys.stdout encoding %r', output_encoding)
-
-        # use 'replace' so that we don't abort if trying to write out
-        # in e.g. the default C locale.
-        outf = codecs.getwriter(output_encoding)(sys.stdout, errors='replace')
+        outf = _get_encoded_stdout_file()
 
         log_format = get_log_format(long=long, short=short, line=line)
         lf = log_formatter(log_format,
@@ -1285,7 +1286,6 @@ class cmd_commit(Command):
                 make_commit_message_template
         from bzrlib.status import show_status
         from tempfile import TemporaryFile
-        import codecs
 
         # TODO: Need a blackbox test for invoking the external editor; may be
         # slightly problematic to run this cross-platform.
@@ -1306,7 +1306,6 @@ class cmd_commit(Command):
             raise BzrCommandError("please specify either --message or --file")
         
         if file:
-            import codecs
             message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
         if message == "":

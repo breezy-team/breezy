@@ -72,9 +72,13 @@ class TestNonAscii(TestCaseInTempDir):
         else:
             if os.environ.get('BZREMAIL', None) is not None:
                 del os.environ['BZREMAIL']
-        super(TestEmail, self).tearDown()
+        super(TestNonAscii, self).tearDown()
 
     def test_log(self):
         bzr = self.run_bzr
         txt = bzr('log')[0]
+
+    #def test_ls(self):
+    #    bzr = self.run_bzr
+    #    txt = bzr('ls')[0]
 
