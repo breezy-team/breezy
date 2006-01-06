@@ -124,3 +124,15 @@ if len(sys.argv) == 2:
         mutter('edit_commit_message with unicode infotext')
         self.assertEqual('test message from fed\n',
                          bzrlib.msgeditor.edit_commit_message(u'\u1234'))
+
+    def test_deleted_commit_message(self):
+        working_tree = self.make_uncommitted_tree()
+
+        if sys.platform == 'win32':
+            os.environ['BZR_EDITOR'] = 'del'
+        else:
+            os.environ['BZR_EDITOR'] = 'rm'
+
+        self.assertRaises(IOError,
+            bzrlib.msgeditor.edit_commit_message(''))
+
