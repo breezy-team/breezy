@@ -126,3 +126,7 @@ class TestNonAscii(TestCaseInTempDir):
         txt = self.bzr('relpath', _shrimp_sandwich)
         self.assertEqual(_shrimp_sandwich + '\n', txt)
 
+        # TODO: jam 20050106 if relpath can return a munged string
+        #       this text needs to be fixed
+        self.bzr('relpath', _shrimp_sandwich, encoding='ascii',
+                 retcode=3)
