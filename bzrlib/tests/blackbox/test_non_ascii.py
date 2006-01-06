@@ -138,3 +138,9 @@ class TestNonAscii(TestCaseInTempDir):
         #       this text needs to be fixed
         self.bzr('relpath', _shrimp_sandwich, encoding='ascii',
                  retcode=3)
+
+    def test_inventory(self):
+        txt = self.bzr('inventory')
+        self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt'],
+                         txt.splitlines())
+

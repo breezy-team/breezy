@@ -69,21 +69,6 @@ def internal_tree_files(file_list, default_branch=u'.'):
     return tree, new_list
 
 
-def _get_encoded_stdout(errors='replace'):
-    """Return a file linked to stdout, which has proper encoding."""
-    output_encoding = getattr(sys.stdout, 'encoding', None)
-    if not output_encoding:
-        output_encoding = bzrlib.user_encoding
-        mutter('encoding log as bzrlib.user_encoding %r', output_encoding)
-    else:
-        mutter('encoding log as sys.stdout encoding %r', output_encoding)
-
-    # use 'replace' so that we don't abort if trying to write out
-    # in e.g. the default C locale.
-    return codecs.getwriter(output_encoding)(sys.stdout, errors=errors)
-
-
-
 # TODO: Make sure no commands unconditionally use the working directory as a
 # branch.  If a filename argument is used, the first of them should be used to
 # specify the branch.  (Perhaps this can be factored out into some kind of
@@ -135,6 +120,8 @@ class cmd_status(Command):
     takes_args = ['file*']
     takes_options = ['all', 'show-ids', 'revision']
     aliases = ['st', 'stat']
+
+    encoding_type = 'replace'
     
     @display_command
     def run(self, all=False, show_ids=False, file_list=None, revision=None):
@@ -142,10 +129,9 @@ class cmd_status(Command):
 
         tree, file_list = tree_files(file_list)
             
-        outf = _get_encoded_stdout()
         show_status(tree.branch, show_unchanged=all, show_ids=show_ids,
                     specific_files=file_list, revision=revision,
-                    to_file=outf)
+                    to_file=self.outf)
 
 
 class cmd_cat_revision(Command):
@@ -243,12 +229,12 @@ class cmd_add(Command):
     """
     takes_args = ['file*']
     takes_options = ['no-recurse', 'dry-run', 'verbose']
+    encoding_type = 'replace'
 
     def run(self, file_list, no_recurse=False, dry_run=False, verbose=False):
         import bzrlib.add
 
-        to_file = _get_encoded_stdout()
-        action = bzrlib.add.AddAction(to_file=to_file,
+        action = bzrlib.add.AddAction(to_file=self.outf,
             should_add=(not dry_run), should_print=(not is_quiet()))
 
         added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
@@ -258,13 +244,13 @@ class cmd_add(Command):
                 match_len = len(ignored[glob])
                 if verbose:
                     for path in ignored[glob]:
-                        to_file.write("ignored %s matching \"%s\"\n" 
-                                      % (path, glob))
+                        self.outf.write("ignored %s matching \"%s\"\n" 
+                                        % (path, glob))
                 else:
-                    to_file.write("ignored %d file(s) matching \"%s\"\n"
-                                  % (match_len, glob))
-            to_file.write("If you wish to add some of these files,"
-                          " please add them by name.\n")
+                    self.outf.write("ignored %d file(s) matching \"%s\"\n"
+                                    % (match_len, glob))
+            self.outf.write("If you wish to add some of these files,"
+                            " please add them by name.\n")
 
 
 class cmd_mkdir(Command):
@@ -273,16 +259,16 @@ class cmd_mkdir(Command):
     This is equivalent to creating the directory and then adding it.
     """
     takes_args = ['dir+']
+    encoding_type = 'replace'
 
     def run(self, dir_list):
-        outf = _get_encoded_stdout()
         for d in dir_list:
             os.mkdir(d)
             wt, dd = WorkingTree.open_containing(d)
             wt.add([dd])
-            outf.write('added ')
-            outf.write(d)
-            outf.write('\n')
+            self.outf.write('added ')
+            self.outf.write(d)
+            self.outf.write('\n')
 
 
 class cmd_relpath(Command):
@@ -294,10 +280,9 @@ class cmd_relpath(Command):
     def run(self, filename):
         # TODO: jam 20050106 Can relpath return a munged path if
         #       sys.stdout encoding cannot represent it?
-        outf = _get_encoded_stdout(errors='strict')
         tree, relpath = WorkingTree.open_containing(filename)
-        outf.write(relpath)
-        outf.write('\n')
+        self.outf.write(relpath)
+        self.outf.write('\n')
 
 
 class cmd_inventory(Command):
@@ -326,9 +311,10 @@ class cmd_inventory(Command):
             if kind and kind != entry.kind:
                 continue
             if show_ids:
-                print '%-50s %s' % (path, entry.file_id)
+                self.outf.write('%-50s %s\n' % (path, entry.file_id))
             else:
-                print path
+                self.outf.write(path)
+                self.outf.write('\n')
 
 
 class cmd_move(Command):
@@ -919,6 +905,8 @@ class cmd_log(Command):
                             type=str),
                      'short',
                      ]
+    encoding_type = 'replace'
+
     @display_command
     def run(self, filename=None, timezone='original',
             verbose=False,
@@ -974,12 +962,10 @@ class cmd_log(Command):
         if rev1 > rev2:
             (rev2, rev1) = (rev1, rev2)
 
-        outf = _get_encoded_stdout()
-
         log_format = get_log_format(long=long, short=short, line=line)
         lf = log_formatter(log_format,
                            show_ids=show_ids,
-                           to_file=outf,
+                           to_file=self.outf,
                            show_timezone=timezone)
 
         show_log(b,
@@ -1056,8 +1042,6 @@ class cmd_ls(Command):
             tree = tree.branch.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
 
-        # jam: I don't want to return inexact paths
-        outf = _get_encoded_stdout(errors='strict')
         for fp, fc, kind, fid, entry in tree.list_files():
             if fp.startswith(relpath):
                 fp = fp[len(relpath):]
@@ -1067,14 +1051,14 @@ class cmd_ls(Command):
                     continue
                 if verbose:
                     kindch = entry.kind_character()
-                    outf.write('%-8s %s%s\n' % (fc, fp, kindch))
+                    self.outf.write('%-8s %s%s\n' % (fc, fp, kindch))
                 elif null:
-                    outf.write(fp)
-                    outf.write('\0')
-                    outf.flush()
+                    self.outf.write(fp)
+                    self.outf.write('\0')
+                    self.outf.flush()
                 else:
-                    outf.write(fp)
-                    outf.write('\n')
+                    self.outf.write(fp)
+                    self.outf.write('\n')
 
 
 class cmd_unknowns(Command):

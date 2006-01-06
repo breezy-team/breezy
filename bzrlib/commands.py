@@ -32,6 +32,7 @@ import os
 from warnings import warn
 from inspect import getdoc
 import errno
+import codecs
 
 import bzrlib
 import bzrlib.trace
@@ -184,10 +185,21 @@ class Command(object):
     hidden
         If true, this command isn't advertised.  This is typically
         for commands intended for expert users.
+
+    encoding_type
+        Command objects will get a 'outf' attribute, which has been
+        setup to properly handle encoding of unicode strings.
+        encoding_type determines what will happen when characters cannot
+        be encoded
+            strict - abort if we cannot decode
+            replace - put in a bogus character (typically '?')
+            exact - do not encode sys.stdout
+
     """
     aliases = []
     takes_args = []
     takes_options = []
+    encoding_type = 'strict'
 
     hidden = False
     
@@ -207,6 +219,27 @@ class Command(object):
                 o = Option.OPTIONS[o]
             r[o.name] = o
         return r
+
+    def _setup_stdout(self):
+        """Return a file linked to stdout, which has proper encoding."""
+        assert self.encoding_type in ['strict', 'exact', 'replace']
+
+        # Originally I was using self.stdout, but that looks
+        # *way* too much like sys.stdout
+        if self.encoding_type == 'exact':
+            self.outf = sys.stdout
+            return
+
+        output_encoding = getattr(sys.stdout, 'encoding', None)
+        if not output_encoding:
+            output_encoding = bzrlib.user_encoding
+            mutter('encoding stdout bzrlib.user_encoding %r', output_encoding)
+        else:
+            mutter('encoding stdout log as sys.stdout encoding %r', output_encoding)
+
+        # use 'replace' so that we don't abort if trying to write out
+        # in e.g. the default C locale.
+        self.outf = codecs.getwriter(output_encoding)(sys.stdout, errors=self.encoding_type)
 
     def run_argv(self, argv):
         """Parse command line and run."""
@@ -229,6 +262,8 @@ class Command(object):
 
         all_cmd_args = cmdargs.copy()
         all_cmd_args.update(cmdopts)
+
+        self._setup_stdout()
 
         return self.run(**all_cmd_args)
     
