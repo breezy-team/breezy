@@ -475,6 +475,13 @@ class TestCase(unittest.TestCase):
         encoding = kwargs.pop('encoding', None)
         return self.run_bzr_captured(args, retcode=retcode, encoding=encoding)
 
+    def run_bzr_decode(self, *args, **kwargs):
+        if kwargs.has_key('encoding'):
+            encoding = kwargs['encoding']
+        else:
+            encoding = bzrlib.user_encoding
+        return self.run_bzr(*args, **kwargs)[0].decode(encoding)
+
     def check_inventory_shape(self, inv, shape):
         """Compare an inventory to a list of expected names.
 

@@ -23,12 +23,13 @@ command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
-from bzrlib.tests import TestLoader
+from bzrlib.tests import TestLoader, TestSuite, _load_module_by_name
 from bzrlib.tests import TestCaseInTempDir, BzrTestBase
 
 def test_suite():
     testmod_names = [
                      'bzrlib.tests.blackbox.test_cat',
+                     'bzrlib.tests.blackbox.test_command_encoding',
                      'bzrlib.tests.blackbox.test_export',
                      'bzrlib.tests.blackbox.test_log',
                      'bzrlib.tests.blackbox.test_missing',
@@ -39,7 +40,12 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_too_much',
                      'bzrlib.tests.blackbox.test_versioning',
                      ]
-    return TestLoader().loadTestsFromNames(testmod_names)
+    suite = TestSuite()
+    loader = TestLoader()
+    for mod_name in testmod_names:
+        mod = _load_module_by_name(mod_name)
+        suite.addTest(loader.loadTestsFromModule(mod))
+    return suite
 
 
 class ExternalBase(TestCaseInTempDir):

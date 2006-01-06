@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2006 by Canonical Ltd
 # -*- coding: utf-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
@@ -57,7 +57,7 @@ class TestNonAscii(TestCaseInTempDir):
         open('b', 'wb').write(_shrimp_sandwich.encode('utf-8') + '\n')
         bzr('add', 'b')
         bzr('commit', '-m', u'Creating a ' + _shrimp_sandwich)
-        # TODO: jam 20050105 Handle the case where we can't create a
+        # TODO: jam 20060105 Handle the case where we can't create a
         #       unicode filename on the current filesytem. I don't know
         #       what exception would be raised, because all of my
         #       filesystems support it. :)
@@ -74,40 +74,39 @@ class TestNonAscii(TestCaseInTempDir):
                 del os.environ['BZREMAIL']
         super(TestNonAscii, self).tearDown()
 
-    def bzr(self, *args, **kwargs):
-        if kwargs.has_key('encoding'):
-            encoding = kwargs['encoding']
-        else:
-            encoding = bzrlib.user_encoding
-        return self.run_bzr(*args, **kwargs)[0].decode(encoding)
-
     def test_log(self):
-        txt = self.bzr('log')
+        bzr = self.run_bzr_decode
+
+        txt = bzr('log')
         self.assertNotEqual(-1, txt.find(_erik))
         self.assertNotEqual(-1, txt.find(_shrimp_sandwich))
 
-        txt = self.bzr('log', '--verbose')
+        txt = bzr('log', '--verbose')
         self.assertNotEqual(-1, txt.find(_juju))
 
         # Make sure log doesn't fail even if we can't write out
-        txt = self.bzr('log', '--verbose', encoding='ascii')
+        txt = bzr('log', '--verbose', encoding='ascii')
         self.assertEqual(-1, txt.find(_juju))
         self.assertNotEqual(-1, txt.find(_juju.encode('ascii', 'replace')))
 
     def test_ls(self):
-        txt = self.bzr('ls')
+        bzr = self.run_bzr_decode
+
+        txt = bzr('ls')
         self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt'],
                          txt.splitlines())
-        txt = self.bzr('ls', '--null')
+        txt = bzr('ls', '--null')
         self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt', ''],
                          txt.split('\0'))
 
-        txt = self.bzr('ls', encoding='ascii', retcode=3)
-        txt = self.bzr('ls', '--null', encoding='ascii', retcode=3)
+        txt = bzr('ls', encoding='ascii', retcode=3)
+        txt = bzr('ls', '--null', encoding='ascii', retcode=3)
 
     def test_status(self):
+        bzr = self.run_bzr_decode
+
         open(_juju + '.txt', 'ab').write('added something\n')
-        txt = self.bzr('status')
+        txt = bzr('status')
         self.assertEqual(u'modified:\n  \u062c\u0648\u062c\u0648.txt\n' , txt)
 
     def test_cat(self):
@@ -120,34 +119,56 @@ class TestNonAscii(TestCaseInTempDir):
         self.assertEqual('arabic filename\n', txt)
 
     def test_cat_revision(self):
-        txt = self.bzr('cat-revision', '-r', '1')
+        bzr = self.run_bzr_decode
+
+        txt = bzr('cat-revision', '-r', '1')
         self.assertNotEqual(-1, txt.find(_erik))
 
-        txt = self.bzr('cat-revision', '-r', '2')
+        txt = bzr('cat-revision', '-r', '2')
         self.assertNotEqual(-1, txt.find(_shrimp_sandwich))
 
     def test_mkdir(self):
-        txt = self.bzr('mkdir', _shrimp_sandwich)
+        bzr = self.run_bzr_decode
+
+        txt = bzr('mkdir', _shrimp_sandwich)
         self.assertEqual('added ' + _shrimp_sandwich + '\n', txt)
 
     def test_relpath(self):
-        txt = self.bzr('relpath', _shrimp_sandwich)
+        bzr = self.run_bzr_decode
+
+        txt = bzr('relpath', _shrimp_sandwich)
         self.assertEqual(_shrimp_sandwich + '\n', txt)
 
-        # TODO: jam 20050106 if relpath can return a munged string
+        # TODO: jam 20060106 if relpath can return a munged string
         #       this text needs to be fixed
-        self.bzr('relpath', _shrimp_sandwich, encoding='ascii',
+        bzr('relpath', _shrimp_sandwich, encoding='ascii',
                  retcode=3)
 
     def test_inventory(self):
-        txt = self.bzr('inventory')
+        bzr = self.run_bzr_decode
+
+        txt = bzr('inventory')
         self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt'],
                          txt.splitlines())
 
         # inventory should fail if unable to encode
-        self.bzr('inventory', encoding='ascii', retcode=3)
+        bzr('inventory', encoding='ascii', retcode=3)
 
         # We don't really care about the ids themselves,
         # but the command shouldn't fail
-        txt = self.bzr('inventory', '--show-ids')
+        txt = bzr('inventory', '--show-ids')
 
+    def test_revno(self):
+        # There isn't a lot to test here, since revno should always
+        # be an integer
+        bzr = self.run_bzr_decode
+
+        self.assertEqual('3\n', bzr('revno'))
+
+    def test_revision_info(self):
+        bzr = self.run_bzr_decode
+
+        bzr('revision-info', '-r', '1')
+
+        # TODO: jam 20060105 We have no revisions with non-ascii characters.
+        bzr('revision-info', '-r', '1', encoding='ascii')

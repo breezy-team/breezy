@@ -166,11 +166,15 @@ class cmd_cat_revision(Command):
 class cmd_revno(Command):
     """Show current revision number.
 
-    This is equal to the number of revisions on this branch."""
+    This is equal to the number of revisions on this branch.
+    """
+
     takes_args = ['location?']
+
     @display_command
     def run(self, location=u'.'):
-        print Branch.open_containing(location)[0].revno()
+        self.outf.write(str(Branch.open_containing(location)[0].revno()))
+        self.outf.write('\n')
 
 
 class cmd_revision_info(Command):
@@ -179,6 +183,7 @@ class cmd_revision_info(Command):
     hidden = True
     takes_args = ['revision_info*']
     takes_options = ['revision']
+
     @display_command
     def run(self, revision=None, revision_info_list=[]):
 
