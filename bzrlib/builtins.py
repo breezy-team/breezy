@@ -737,7 +737,10 @@ class cmd_ancestry(Command):
         b = tree.branch
         # FIXME. should be tree.last_revision
         for revision_id in b.get_ancestry(b.last_revision()):
-            print >>to_file, revision_id
+            if revision_id is None:
+                continue
+            self.outf.write(revision_id)
+            self.outf.write('\n')
 
 
 class cmd_init(Command):
