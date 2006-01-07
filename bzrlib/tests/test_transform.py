@@ -26,6 +26,8 @@ class TestTreeTransform(TestCaseInTempDir):
             self.assertRaises(DuplicateKey, transform.version_file,
                               'my_pretties', trans_id)
             self.assertEqual(transform.final_file_id(trans_id), 'my_pretties')
+            self.assertEqual(transform.final_parent(trans_id), root)
+            self.assertIs(transform.final_parent(root), None)
             transform.apply()
             self.assertEqual('contents', file('name').read())
             self.assertEqual(wt.path2id('name'), 'my_pretties')

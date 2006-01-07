@@ -136,6 +136,12 @@ class TreeTransform(object):
             # the file is old; the old id is still valid
             return self._tree.path2id(path)
 
+    def final_parent(self, trans_id):
+        try:
+            return self._new_parent[trans_id]
+        except KeyError:
+            return self.get_tree_parent(trans_id)
+
     def find_conflicts(self):
         """Find any violations of inventory of filesystem invariants"""
         by_parent = {}
