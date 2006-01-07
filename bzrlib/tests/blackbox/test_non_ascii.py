@@ -392,3 +392,18 @@ class TestNonAscii(TestCaseInTempDir):
         # which might be used by a front end
         bzr('modified', encoding='ascii', retcode=3)
 
+    def test_added(self):
+        bzr = self.run_bzr_decode
+
+        fname = self.juju + '2.txt'
+        open(fname, 'wb').write('added\n')
+        bzr('add', fname)
+
+        txt = bzr('added')
+        self.assertEqual(fname+'\n', txt)
+
+        # added should fail if cannot decode
+        # Because it is giving the exact paths
+        # which might be used by a front end
+        bzr('added', encoding='ascii', retcode=3)
+

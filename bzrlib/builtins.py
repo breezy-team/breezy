@@ -891,11 +891,11 @@ class cmd_added(Command):
             if file_id in basis_inv:
                 continue
             path = inv.id2path(file_id)
-            if not os.access(b.abspath(path), os.F_OK):
+            if not os.access(wt.abspath(path), os.F_OK):
                 continue
-            print path
+            self.outf.write(path)
+            self.outf.write('\n')
                 
-        
 
 class cmd_root(Command):
     """Show the tree root directory.
