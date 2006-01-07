@@ -102,21 +102,14 @@ class TestLogEncodings(TestCaseInTempDir):
         TestCaseInTempDir.tearDown(self)
 
     def test_stdout_encoding(self):
-        import codecs
-        from cStringIO import StringIO
-        from bzrlib.branch import Branch
-
+        bzr = self.run_bzr
         bzrlib.user_encoding = "cp1251"
 
-        b = Branch.initialize(u'.')
-        b.nick='test'
-        b.working_tree().commit(u'\u0422\u0435\u0441\u0442',    # 'Test' in russian
-                                rev_id='a1',
-                                timestamp=1132586655.459960938,
-                                timezone=-6*3600,
-                                committer='Joe Foo <joe@foo.com>')
-
-        stdout, stderr = self.run_bzr_captured(["--no-plugins", "log"])
+        bzr('init')
+        self.build_tree(['a'])
+        bzr('add', 'a')
+        bzr('commit', '-m', u'\u0422\u0435\u0441\u0442')
+        stdout, stderr = self.run_bzr('log', encoding='cp866')
 
         message = stdout.splitlines()[-1]
 
@@ -126,7 +119,10 @@ class TestLogEncodings(TestCaseInTempDir):
         # in cp1251 encoding this is string '\xd2\xe5\xf1\xf2'
         # This test should check that output of log command
         # encoded to sys.stdout.encoding
-        test_in_cp866 = '  \x92\xa5\xe1\xe2'
-        test_in_cp1251 = '  \xd2\xe5\xf1\xf2'
-        self.assertEquals(test_in_cp866, message)
+        test_in_cp866 = '\x92\xa5\xe1\xe2'
+        test_in_cp1251 = '\xd2\xe5\xf1\xf2'
+        # Make sure the log string is encoded in cp866
+        self.assertEquals(test_in_cp866, message[2:])
+        # Make sure the cp1251 string is not found anywhere
+        self.assertEquals(-1, stdout.find(test_in_cp1251))
 
