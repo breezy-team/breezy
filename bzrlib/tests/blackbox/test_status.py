@@ -18,17 +18,16 @@
 """\
 Black-box tests for encoding of bzr status.
 
-Status command usually prints their output (possible unicode) to sys.stdout.
-When status output redirected to file or to pipe or encoding of sys.stdout
-does not match needed encoding to show non-ascii filenames then status
-fails because of UnicodeEncode error:
+Status command usually prints output (possible unicode) to sys.stdout.
+When status output is redirected to a file or pipe, or the encoding of sys.stdout
+is not able to encode non-ascii filenames then status
+used to fail because of UnicodeEncode error:
 bzr: ERROR: exceptions.UnicodeEncodeError: 'ascii' codec can't encode characters: ordinal not in range(128)
 
-In case when sys.stdout.encoding is None or ascii
-bzr should use bzrlib.user_encoding for print output.
-
-In case when sys.stdout.encoding doesn't match of filename encoding
-bzr should use `replace` error handling scheme for unicode.encode() method
+In case when sys.stdout.encoding is None
+bzr should use bzrlib.user_encoding for output.
+bzr should also use `replace` error handling scheme, to allow
+status to run even if the exact filenames cannot be displayed.
 """
 
 from cStringIO import StringIO
@@ -70,7 +69,7 @@ class TestStatusEncodings(TestCaseInTempDir):
         sys.stdout = StringIO()
         bzrlib.user_encoding = 'ascii'
         working_tree = self.make_uncommitted_tree()
-        stdout, stderr = self.run_bzr_captured(["--no-plugins", "status"])
+        stdout, stderr = self.run_bzr("status")
 
         self.assertEquals(stdout, """\
 added:
@@ -81,9 +80,10 @@ added:
         sys.stdout = StringIO()
         bzrlib.user_encoding = 'latin-1'
         working_tree = self.make_uncommitted_tree()
-        stdout, stderr = self.run_bzr_captured(["--no-plugins", "status"])
+        stdout, stderr = self.run_bzr('status')
 
         self.assertEquals(stdout, u"""\
 added:
   hell\u00d8
 """.encode('latin-1'))
+
