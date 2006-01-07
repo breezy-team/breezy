@@ -373,3 +373,12 @@ class TestNonAscii(TestCaseInTempDir):
         txt = bzr('deleted', '--show-ids')
         self.failUnless(txt.startswith(fname))
 
+    def test_modified(self):
+        bzr = self.run_bzr_decode
+
+        fname = self.juju + '.txt'
+        open(fname, 'ab').write('modified\n')
+
+        txt = bzr('modified')
+        self.assertEqual(fname+'\n', txt)
+

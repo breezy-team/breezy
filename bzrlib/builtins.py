@@ -875,8 +875,8 @@ class cmd_modified(Command):
         td = compare_trees(tree.branch.basis_tree(), tree)
 
         for path, id, kind, text_modified, meta_modified in td.modified:
-            print path
-
+            self.outf.write(path)
+            self.outf.write('\n')
 
 
 class cmd_added(Command):
