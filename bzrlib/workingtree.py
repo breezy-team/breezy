@@ -769,6 +769,10 @@ class WorkingTree(bzrlib.tree.Tree):
         # treat dotfiles correctly and allows * to match /.
         # Eventually it should be replaced with something more
         # accurate.
+
+        # FIXME: fnmatch also won't match unicode exact path filenames.
+        #        it does seem to handle wildcard, as long as the non-wildcard
+        #        characters are ascii.
         
         for pat in self.get_ignore_list():
             if '/' in pat or '\\' in pat:

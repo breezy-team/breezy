@@ -458,19 +458,44 @@ class TestNonAscii(TestCaseInTempDir):
 
         bzr('ignore', './' + fname2)
         txt = bzr('unknowns')
-        # This is the correct output
+        # TODO: jam 20060107 This is the correct output
         # self.assertEqual('', txt)
         # This is the incorrect output
         self.assertEqual(u'"%s"\n' % (fname2,), txt)
-        raise TestSkipped("WorkingTree.is_ignored doesn't match unicode filenames (yet)")
 
         fname3 = self.juju + '3.txt'
+        open(fname3, 'wb').write('unknown 3\n')
         txt = bzr('unknowns')
-        self.assertEqual(u'"%s"\n' % (fname3,), txt)
+        # TODO: jam 20060107 This is the correct output
+        # self.assertEqual(u'"%s"\n' % (fname3,), txt)
+        # This is the incorrect output
+        self.assertEqual(u'"%s"\n"%s"\n' % (fname2,fname3,), txt)
 
         # Ignore should not care what the encoding is
         # (right now it doesn't print anything)
         bzr('ignore', fname3, encoding='ascii')
         txt = bzr('unknowns')
+        # TODO: jam 20060107 This is the correct output
+        # self.assertEqual('', txt)
+        # This is the incorrect output
+        self.assertEqual(u'"%s"\n"%s"\n' % (fname2, fname3), txt)
+
+        # Now try a wildcard match
+        fname4 = self.juju + '4.txt'
+        bzr('ignore', '*.txt')
+        txt = bzr('unknowns')
         self.assertEqual('', txt)
+
+        os.remove('.bzrignore')
+        bzr('ignore', self.juju + '*')
+        txt = bzr('unknowns')
+        # TODO: jam 20060107 This is the correct output
+        # self.assertEqual('', txt)
+        # This is the incorrect output
+        self.assertEqual(u'"%s"\n"%s"\n' % (fname2, fname3), txt)
+
+        # TODO: jam 20060107 The best error we have right now is TestSkipped
+        #       to indicate that this test is known to fail
+        raise TestSkipped("WorkingTree.is_ignored doesn't match unicode filenames (yet)")
+
 
