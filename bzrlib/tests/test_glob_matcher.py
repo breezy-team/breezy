@@ -47,9 +47,9 @@ class GlobToRe(TestCase):
 
     def test_sequence(self):
         self.assertEqual('a[abcd]$', glob_to_re('a[abcd]'))
-        self.assertEqual('a[^abcd]$', glob_to_re('a[!abcd]'))
+        self.assertEqual('a[^abcd/\\\\]$', glob_to_re('a[!abcd]'))
         self.assertEqual('a[\\^b]$' , glob_to_re('a[^b]'))
-        self.assertEqual('a[^^]$', glob_to_re('a[!^]'))
+        self.assertEqual('a[^^/\\\\]$', glob_to_re('a[!^]'))
 
 
 class GlobMatching(TestCase):
@@ -68,19 +68,31 @@ class GlobMatching(TestCase):
             self.failIf(matcher(fname), 'glob %s should not match %s' % (glob, fname))
 
     def test_no_globs(self):
-        self.assertMatching('a', ['a'], ['b', 'a ', ' a'])
-        self.assertMatching('foo[', ['foo['], ['[', 'foo', '[foo'])
+        check = self.assertMatching
+        check('a', ['a'], ['b', 'a ', ' a'])
+        check('foo[', ['foo['], ['[', 'foo', '[foo'])
 
     def test_star(self):
-        self.assertMatching('a*', ['a', 'ab', 'abc', 'a.txt'],
-                                  ['a/', 'a/a', 'foo/a', 'a\\'])
+        check = self.assertMatching
+        check('a*', ['a', 'ab', 'abc', 'a.txt'],
+                    ['a/', 'a/a', 'foo/a', 'a\\'])
         # TODO jam 20060107 Some would say '*a' should not match .a
-        self.assertMatching('*a', ['a', 'ba', 'bca', '.a', 'c.a'],
-                                  ['/a', 'a/a', 'foo/a', '\\a', 'a\\a'])
+        check('*a', ['a', 'ba', 'bca', '.a', 'c.a'],
+                    ['/a', 'a/a', 'foo/a', '\\a', 'a\\a'])
 
     def test_starstar(self):
-        self.assertMatching('a**', ['a', 'ab', 'abc', 'a/', 'a/a', 'a\\'],
-                                   ['foo/a', 'b/a'])
-        self.assertMatching('**a', ['a', 'ba', 'bca', '/a', '.a', './.a'],
-                                   ['booty/ab', 'bca/b'])
+        check = self.assertMatching
+        check('a**', ['a', 'ab', 'abc', 'a/', 'a/a', 'a\\'],
+                     ['foo/a', 'b/a'])
+        check('**a', ['a', 'ba', 'bca', '/a', '.a', './.a'],
+                     ['booty/ab', 'bca/b'])
+
+    def test_sequence(self):
+        check = self.assertMatching
+        check('a[abcd]', ['aa', 'ab', 'ac', 'ad'],
+                         ['a', 'baa', 'ae', 'a/', 'abc', 'aab'])
+        check('a[!abcd]', ['ae', 'af', 'aq'],
+                          ['a', 'a/', 'ab', 'ac', 'ad', 'abc'])
+        check('a[^b]', ['ab', 'a^'], ['a', 'ac'])
+        check('a[!^]', ['ab', 'ac'], ['a', 'a^', 'a/'])
 

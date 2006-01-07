@@ -60,7 +60,7 @@ def glob_to_re(pat):
                 stuff = pat[i:j].replace('\\','\\\\')
                 i = j+1
                 if stuff[0] == '!':
-                    stuff = '^' + stuff[1:]
+                    stuff = '^' + stuff[1:] + '/\\\\'
                 elif stuff[0] == '^':
                     stuff = '\\' + stuff
                 res = '%s[%s]' % (res, stuff)
