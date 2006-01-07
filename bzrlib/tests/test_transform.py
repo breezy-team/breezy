@@ -10,6 +10,9 @@ class TestTreeTransform(TestCaseInTempDir):
         transform = TreeTransform(wt)
         try:
             root = transform.get_id_tree(wt.get_root_id())
+            self.assertIs(transform.get_tree_parent(root), None)
+            imaginary_id = transform.get_tree_path_id('imaginary')
+            self.assertEqual(transform.get_tree_parent(imaginary_id), root)
             self.assertEqual(transform.final_kind(root), 'directory')
             self.assertEqual(transform.final_file_id(root), wt.get_root_id())
             trans_id = transform.create_path('name', root)
@@ -79,6 +82,7 @@ class TestTreeTransform(TestCaseInTempDir):
             self.assertEqual(transform.find_conflicts(), 
                              [('missing parent', lion_id), 
                               ('versioning no contents', lion_id)])
+            transform.adjust_path('name2', trans_id2, trans_id2)
             transform.adjust_path('name2', root, trans_id2)
             self.assertEqual(transform.find_conflicts(), 
                              [('versioning no contents', lion_id)])

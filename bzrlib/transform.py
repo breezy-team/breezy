@@ -73,6 +73,13 @@ class TreeTransform(object):
             self._tree_id_paths[self._tree_path_ids[path]] = path
         return self._tree_path_ids[path]
 
+    def get_tree_parent(self, trans_id):
+        """Determine id of the parent in the tree, or None for tree root."""
+        path = self._tree_id_paths[trans_id]
+        if path == "":
+            return None
+        return self.get_tree_path_id(os.path.dirname(path))
+
     def create_file(self, contents, trans_id):
         """Create a new, possibly versioned, file.
         
