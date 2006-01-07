@@ -39,6 +39,8 @@ _punycode_erik = 'Bgfors-iua'
 _juju = u'\u062c\u0648\u062c\u0648'
 # Alternative for arabic
 _juju_alt = u'j\xfbj\xfa'
+# Russian
+_alexander = u'\u0410\u043b\u0435\u043a\u0441\u0430\u043d\u0434\u0440'
 
 
 class TestNonAscii(TestCaseInTempDir):
