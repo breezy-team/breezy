@@ -373,6 +373,11 @@ class TestNonAscii(TestCaseInTempDir):
         txt = bzr('deleted', '--show-ids')
         self.failUnless(txt.startswith(fname))
 
+        # Deleted should fail if cannot decode
+        # Because it is giving the exact paths
+        # which might be used by a front end
+        bzr('deleted', encoding='ascii', retcode=3)
+
     def test_modified(self):
         bzr = self.run_bzr_decode
 
@@ -381,4 +386,9 @@ class TestNonAscii(TestCaseInTempDir):
 
         txt = bzr('modified')
         self.assertEqual(fname+'\n', txt)
+
+        # Modifed should fail if cannot decode
+        # Because it is giving the exact paths
+        # which might be used by a front end
+        bzr('modified', encoding='ascii', retcode=3)
 
