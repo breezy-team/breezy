@@ -34,6 +34,7 @@ class TestLog(TestCaseInTempDir):
         'latin-1',
         'iso-8859-1',
         'cp437', # Common windows encoding
+        'cp1251', # Alexander Belchenko's windows encoding
         'cp1258', # Common windows encoding
     ]
     # Encodings which cannot encode mu
@@ -41,7 +42,6 @@ class TestLog(TestCaseInTempDir):
         'ascii',
         'iso-8859-2',
         'koi8_r',
-        'cp1251', # Alexander Belchenko's windows encoding
     ]
 
     def create_branch(self):
