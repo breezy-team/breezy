@@ -30,6 +30,7 @@ from bzrlib.glob_matcher import (glob_to_re, glob_to_matcher,
 
 
 class GlobToRe(TestCase):
+    """This tests the direct conversion."""
 
     def test_no_globs(self):
         self.assertEqual('a$', glob_to_re('a'))
@@ -44,6 +45,7 @@ class GlobToRe(TestCase):
     def test_starstar(self):
         self.assertEqual('a.*$', glob_to_re('a**'))
         self.assertEqual('.*a$', glob_to_re('**a'))
+        self.assertEqual(r'.*\/a\/[^/\\]*b$', glob_to_re('**/a/*b'))
 
     def test_sequence(self):
         self.assertEqual('a[abcd]$', glob_to_re('a[abcd]'))
@@ -51,8 +53,12 @@ class GlobToRe(TestCase):
         self.assertEqual('a[\\^b]$' , glob_to_re('a[^b]'))
         self.assertEqual('a[^^/\\\\]$', glob_to_re('a[!^]'))
 
+    def test_unicode(self):
+        self.assertEqual(u'a\\\xb5$', glob_to_re(u'a\xb5'))
+
 
 class GlobMatching(TestCase):
+    """More of a functional test, making sure globs match what we want."""
 
     def assertMatching(self, glob, matching, not_matching):
         """Make sure glob matches matching, but not not_matching.
@@ -69,7 +75,7 @@ class GlobMatching(TestCase):
 
     def test_no_globs(self):
         check = self.assertMatching
-        check('a', ['a'], ['b', 'a ', ' a'])
+        check('a', ['a'], ['b', 'a ', ' a', 'ba'])
         check('foo[', ['foo['], ['[', 'foo', '[foo'])
 
     def test_star(self):
@@ -86,13 +92,24 @@ class GlobMatching(TestCase):
                      ['foo/a', 'b/a'])
         check('**a', ['a', 'ba', 'bca', '/a', '.a', './.a'],
                      ['booty/ab', 'bca/b'])
+        #check('**/a/*b'
 
     def test_sequence(self):
         check = self.assertMatching
         check('a[abcd]', ['aa', 'ab', 'ac', 'ad'],
-                         ['a', 'baa', 'ae', 'a/', 'abc', 'aab'])
+                         ['a', 'ba', 'baa', 'ae', 'a/', 'abc', 'aab'])
         check('a[!abcd]', ['ae', 'af', 'aq'],
                           ['a', 'a/', 'ab', 'ac', 'ad', 'abc'])
         check('a[^b]', ['ab', 'a^'], ['a', 'ac'])
         check('a[!^]', ['ab', 'ac'], ['a', 'a^', 'a/'])
+
+    def test_unicode(self):
+        check = self.assertMatching
+        check(u'a\xb5', [u'a\xb5'], ['a', 'au', 'a/'])
+        check(u'a\xb5*.txt', [u'a\xb5.txt', u'a\xb5txt.txt', u'a\xb5\xb5.txt'],
+                             [u'a.txt', u'a/a\xb5.txt'])
+        check('a*', ['a', u'a\xb5\xb5'], [u'a/\xb5'])
+        check('**a', ['a', u'\xb5/a', u'\xb5/\xb5a'],
+                     ['ab', u'\xb5/ab'])
+
 

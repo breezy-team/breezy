@@ -43,9 +43,9 @@ def glob_to_re(pat):
                 res = res + '.*'
                 i += 1
             else: # pattern '*'
-                res = res + '[^/\\\\]*'
+                res = res + r'[^/\\]*'
         elif c == '?':
-            res = res + '[^/\\\\]'
+            res = res + r'[^/\\]'
         elif c == '[':
             j = i
             if j < n and pat[j] == '!':
@@ -60,12 +60,15 @@ def glob_to_re(pat):
                 stuff = pat[i:j].replace('\\','\\\\')
                 i = j+1
                 if stuff[0] == '!':
-                    stuff = '^' + stuff[1:] + '/\\\\'
+                    stuff = '^' + stuff[1:] + r'/\\'
                 elif stuff[0] == '^':
                     stuff = '\\' + stuff
                 res = '%s[%s]' % (res, stuff)
         else:
             res = res + re.escape(c)
+    # Without a final $, re.match() will match if just the beginning
+    # matches. I did not expect that. I thought re.match() had to match
+    # the entire string.
     return res + "$"
 
 
