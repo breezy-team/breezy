@@ -711,7 +711,7 @@ class cmd_file_path(Command):
         if fid == None:
             raise BzrError("%r is not a versioned file" % filename)
         for fip in inv.get_idpath(fid):
-            self.outf.write(i)
+            self.outf.write(fip)
             self.outf.write('\n')
 
 
