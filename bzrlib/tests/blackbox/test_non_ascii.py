@@ -103,12 +103,12 @@ class TestNonAscii(TestCaseInTempDir):
         self.assertNotEqual(-1, txt.find(_shrimp_sandwich))
 
         txt = bzr('log', '--verbose')
-        self.assertNotEqual(-1, txt.find(_juju))
+        self.assertNotEqual(-1, txt.find(self.juju))
 
         # Make sure log doesn't fail even if we can't write out
         txt = bzr('log', '--verbose', encoding='ascii')
-        self.assertEqual(-1, txt.find(_juju))
-        self.assertNotEqual(-1, txt.find(_juju.encode('ascii', 'replace')))
+        self.assertEqual(-1, txt.find(self.juju))
+        self.assertNotEqual(-1, txt.find(self.juju.encode('ascii', 'replace')))
 
     def test_ls(self):
         bzr = self.run_bzr_decode
@@ -126,7 +126,7 @@ class TestNonAscii(TestCaseInTempDir):
     def test_status(self):
         bzr = self.run_bzr_decode
 
-        open(_juju + '.txt', 'ab').write('added something\n')
+        open(self.juju + '.txt', 'ab').write('added something\n')
         txt = bzr('status')
         self.assertEqual(u'modified:\n  \u062c\u0648\u062c\u0648.txt\n' , txt)
 
@@ -136,7 +136,7 @@ class TestNonAscii(TestCaseInTempDir):
         txt = self.run_bzr('cat', 'b')[0]
         self.assertEqual(_shrimp_sandwich.encode('utf-8') + '\n', txt)
 
-        txt = self.run_bzr('cat', _juju + '.txt')[0]
+        txt = self.run_bzr('cat', self.juju + '.txt')[0]
         self.assertEqual('unicode filename\n', txt)
 
     def test_cat_revision(self):
@@ -197,8 +197,8 @@ class TestNonAscii(TestCaseInTempDir):
     def test_mv(self):
         bzr = self.run_bzr_decode
 
-        fname1 = _juju + '.txt'
-        fname2 = _juju + '2.txt'
+        fname1 = self.juju + '.txt'
+        fname2 = self.juju + '2.txt'
 
         bzr('mv', 'a', fname1, retcode=3)
 
@@ -291,7 +291,7 @@ class TestNonAscii(TestCaseInTempDir):
     def test_renames(self):
         bzr = self.run_bzr_decode
 
-        fname = _juju + '2.txt'
+        fname = self.juju + '2.txt'
         bzr('mv', 'a', fname)
         txt = bzr('renames')
         self.assertEqual('a => ' + fname + '\n', txt)
@@ -301,20 +301,20 @@ class TestNonAscii(TestCaseInTempDir):
     def test_remove(self):
         bzr = self.run_bzr_decode
 
-        fname = _juju + '.txt'
+        fname = self.juju + '.txt'
         txt = bzr('remove', fname, encoding='ascii')
 
     def test_remove_verbose(self):
         bzr = self.run_bzr_decode
 
         raise TestSkipped('bzr remove --verbose uses tree.remove, which calls print directly.')
-        fname = _juju + '.txt'
+        fname = self.juju + '.txt'
         txt = bzr('remove', '--verbose', fname, encoding='ascii')
 
     def test_file_id(self):
         bzr = self.run_bzr_decode
 
-        fname = _juju + '.txt'
+        fname = self.juju + '.txt'
         txt = bzr('file-id', fname)
 
         # TODO: jam 20060106 We don't support non-ascii file ids yet, 
@@ -326,7 +326,7 @@ class TestNonAscii(TestCaseInTempDir):
         bzr = self.run_bzr_decode
 
         # Create a directory structure
-        fname = _juju + '.txt'
+        fname = self.juju + '.txt'
         bzr('mkdir', 'base')
         bzr('mkdir', 'base/' + _shrimp_sandwich)
         path = '/'.join(['base', _shrimp_sandwich, fname])
@@ -359,4 +359,17 @@ class TestNonAscii(TestCaseInTempDir):
         #       shouldn't encode the file contents, but it needs some sort
         #       of encoding for the paths, etc which are displayed.
         pass
+
+    def test_deleted(self):
+        bzr = self.run_bzr_decode
+
+        fname = self.juju + '.txt'
+        os.remove(fname)
+        bzr('rm', fname)
+
+        txt = bzr('deleted')
+        self.assertEqual(fname+'\n', txt)
+
+        txt = bzr('deleted', '--show-ids')
+        self.failUnless(txt.startswith(fname))
 

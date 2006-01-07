@@ -849,16 +849,19 @@ class cmd_deleted(Command):
     # directories with readdir, rather than stating each one.  Same
     # level of effort but possibly much less IO.  (Or possibly not,
     # if the directories are very large...)
+    takes_options = ['show-ids']
+
     @display_command
     def run(self, show_ids=False):
         tree = WorkingTree.open_containing(u'.')[0]
         old = tree.branch.basis_tree()
         for path, ie in old.inventory.iter_entries():
             if not tree.has_id(ie.file_id):
+                self.outf.write(path)
                 if show_ids:
-                    print '%-50s %s' % (path, ie.file_id)
-                else:
-                    print path
+                    self.outf.write(' ')
+                    self.outf.write(ie.file_id)
+                self.outf.write('\n')
 
 
 class cmd_modified(Command):
