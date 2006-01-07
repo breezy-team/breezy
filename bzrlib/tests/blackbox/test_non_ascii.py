@@ -95,19 +95,6 @@ class TestNonAscii(TestCaseInTempDir):
                 del os.environ['BZREMAIL']
         super(TestNonAscii, self).tearDown()
 
-    def test_ls(self):
-        bzr = self.run_bzr_decode
-
-        txt = bzr('ls')
-        self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt'],
-                         txt.splitlines())
-        txt = bzr('ls', '--null')
-        self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt', ''],
-                         txt.split('\0'))
-
-        txt = bzr('ls', encoding='ascii', retcode=3)
-        txt = bzr('ls', '--null', encoding='ascii', retcode=3)
-
     def test_status(self):
         bzr = self.run_bzr_decode
 
@@ -435,5 +422,18 @@ class TestNonAscii(TestCaseInTempDir):
         txt = bzr('touching-revisions', fname_new, encoding='ascii')
         expected_ascii = expected_txt.encode('ascii', 'replace')
         self.assertEqual(expected_ascii, txt)
+
+    def test_ls(self):
+        bzr = self.run_bzr_decode
+
+        txt = bzr('ls')
+        self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt'],
+                         txt.splitlines())
+        txt = bzr('ls', '--null')
+        self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt', ''],
+                         txt.split('\0'))
+
+        txt = bzr('ls', encoding='ascii', retcode=3)
+        txt = bzr('ls', '--null', encoding='ascii', retcode=3)
 
 
