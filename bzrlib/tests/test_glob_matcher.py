@@ -164,4 +164,16 @@ class GlobsMatching(TestCase):
         not_matches = ['foo.py', 'test/foo.py', 'foo/test.pyc']
         self.assertMatching(bzrlib.DEFAULT_IGNORE, matches, not_matches)
 
+    def test_extended_bzrignore(self):
+        # Is it safe to assume that all paths will have at least
+        # ./ at the beginning?
+        matches = ['./.foo.swp', './test.pyc', './foo/test.pyc']
+        not_matches = ['./foo.py', './test/foo.py']
+        patterns = []
+        for pat in bzrlib.DEFAULT_IGNORE:
+            if '/' not in pat:
+                patterns.append('**/' + pat)
+            else:
+                patterns.append(pat)
+        self.assertMatching(patterns, matches, not_matches)
 
