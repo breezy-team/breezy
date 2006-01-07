@@ -88,6 +88,9 @@ class TreeTransform(object):
         """
         unique_add(self._new_contents, trans_id, ('file', contents))
 
+    def create_directory(self, trans_id):
+        unique_add(self._new_contents, trans_id, ('directory',))
+
     def version_file(self, file_id, trans_id):
         unique_add(self._new_id, trans_id, file_id)
 
@@ -198,7 +201,7 @@ class TreeTransform(object):
                 conflicts.append(('versioning no contents', trans_id))
                 continue
             if not InventoryEntry.versionable_kind(kind):
-                conflicts.append(('versioning bad kind', trans_id))
+                conflicts.append(('versioning bad kind', trans_id, kind))
         return conflicts
 
     def _duplicate_entries(self, by_parent):
@@ -236,14 +239,17 @@ class TreeTransform(object):
         inv = self._tree.inventory
         for path, trans_id in self.new_paths():
             try:
-                kind, contents = self._new_contents[trans_id]
+                kind = self._new_contents[trans_id][0]
             except KeyError:
                 kind = contents = None
             if kind == 'file':
+                contents = self._new_contents[trans_id][1]
                 f = file(self._tree.abspath(path), 'wb')
                 for segment in contents:
                     f.write(segment)
                 f.close()
+            elif kind == 'directory':
+                os.mkdir(self._tree.abspath(path))
 
             if trans_id in self._new_id:
                 if kind is None:
@@ -251,13 +257,22 @@ class TreeTransform(object):
                 inv.add_path(path, kind, self._new_id[trans_id])
         self._tree._write_inventory(inv)
 
-    def new_file(self, name, parent_id, contents, file_id=None):
-        """Convenience method to create files""" 
+    def new_entry(self, name, parent_id, file_id):
         trans_id = self.create_path(name, parent_id)
-        self.create_file(contents, trans_id)
         if file_id is not None:
             self.version_file(file_id, trans_id)
         return trans_id
+
+    def new_file(self, name, parent_id, contents, file_id=None):
+        """Convenience method to create files"""
+        trans_id = self.new_entry(name, parent_id, file_id)
+        self.create_file(contents, trans_id)
+        return trans_id
+
+    def new_directory(self, name, parent_id, file_id=None):
+        trans_id = self.new_entry(name, parent_id, file_id)
+        self.create_directory(trans_id)
+        return trans_id 
 
 
 class FinalPaths(object):

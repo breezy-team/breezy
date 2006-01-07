@@ -2,6 +2,7 @@ from bzrlib.tests import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.transform import TreeTransform
 from bzrlib.errors import DuplicateKey, MalformedTransform, NoSuchFile
+from bzrlib.osutils import file_kind
 
 class TestTreeTransform(TestCaseInTempDir):
     def test_build(self):
@@ -28,9 +29,13 @@ class TestTreeTransform(TestCaseInTempDir):
             self.assertEqual(transform.final_file_id(trans_id), 'my_pretties')
             self.assertEqual(transform.final_parent(trans_id), root)
             self.assertIs(transform.final_parent(root), None)
+            oz_id = transform.create_path('oz', root)
+            transform.create_directory(oz_id)
+            transform.version_file('ozzie', oz_id)
             transform.apply()
             self.assertEqual('contents', file('name').read())
             self.assertEqual(wt.path2id('name'), 'my_pretties')
+            self.assertEqual('directory', file_kind('oz'))
         finally:
             transform.finalize()
         # is it safe to finalize repeatedly?
@@ -44,10 +49,18 @@ class TestTreeTransform(TestCaseInTempDir):
             root = transform.get_id_tree(wt.get_root_id())
             trans_id = transform.new_file('name', root, 'contents', 
                                           'my_pretties')
+            oz = transform.new_directory('oz', root, 'oz-id')
+            dorothy = transform.new_directory('dorothy', oz, 'dorothy-id')
+            toto = transform.new_file('toto', dorothy, 'toto-contents', 
+                                      'toto-id')
             transform.apply()
             self.assertEqual(len(transform.find_conflicts()), 0)
             self.assertEqual('contents', file('name').read())
             self.assertEqual(wt.path2id('name'), 'my_pretties')
+            self.assertEqual(wt.path2id('oz'), 'oz-id')
+            self.assertEqual(wt.path2id('oz/dorothy'), 'dorothy-id')
+            self.assertEqual(wt.path2id('oz/dorothy/toto'), 'toto-id')
+            self.assertEqual('toto-contents', file('oz/dorothy/toto').read())
         finally:
             transform.finalize()
 
