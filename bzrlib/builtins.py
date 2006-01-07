@@ -895,7 +895,7 @@ class cmd_added(Command):
                 continue
             self.outf.write(path)
             self.outf.write('\n')
-                
+
 
 class cmd_root(Command):
     """Show the tree root directory.
@@ -907,7 +907,8 @@ class cmd_root(Command):
     def run(self, filename=None):
         """Print the branch root."""
         tree = WorkingTree.open_containing(filename)[0]
-        print tree.basedir
+        self.outf.write(tree.basedir)
+        self.outf.write('\n')
 
 
 class cmd_log(Command):

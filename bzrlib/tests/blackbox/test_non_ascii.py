@@ -387,9 +387,6 @@ class TestNonAscii(TestCaseInTempDir):
         txt = bzr('modified')
         self.assertEqual(fname+'\n', txt)
 
-        # Modifed should fail if cannot decode
-        # Because it is giving the exact paths
-        # which might be used by a front end
         bzr('modified', encoding='ascii', retcode=3)
 
     def test_added(self):
@@ -402,8 +399,20 @@ class TestNonAscii(TestCaseInTempDir):
         txt = bzr('added')
         self.assertEqual(fname+'\n', txt)
 
-        # added should fail if cannot decode
-        # Because it is giving the exact paths
-        # which might be used by a front end
         bzr('added', encoding='ascii', retcode=3)
+
+    def test_root(self):
+        bzr = self.run_bzr_decode
+
+        bzr('root')
+
+        bzr('branch', u'.', _shrimp_sandwich)
+
+        os.chdir(_shrimp_sandwich)
+
+        txt = bzr('root')
+        self.failUnless(txt.endswith(_shrimp_sandwich+'\n'))
+
+        txt = bzr('root', encoding='ascii', retcode=3)
+
 
