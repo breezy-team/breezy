@@ -93,7 +93,7 @@ class TreeTransform(object):
 
     def new_paths(self):
         new_ids = set()
-        fp = FinalPaths(self._new_root, self._new_name, self._new_parent)
+        fp = FinalPaths(self._new_root, self._new_name, self)
         for id_set in (self._new_name, self._new_parent, self._new_contents,
                        self._new_id):
             new_ids.update(id_set)
@@ -245,18 +245,18 @@ class TreeTransform(object):
 
 
 class FinalPaths(object):
-    def __init__(self, root, names, parents):
+    def __init__(self, root, names, tree):
         object.__init__(self)
         self.root = root
         self._new_name = names
-        self._new_parent = parents
         self._known_paths = {}
+        self.tree = tree
 
     def _determine_path(self, trans_id):
         if trans_id == self.root:
             return ""
         name = self._new_name[trans_id]
-        parent_id = self._new_parent[trans_id]
+        parent_id = self.tree.final_parent(trans_id)
         if parent_id == self.root:
             return name
         else:
