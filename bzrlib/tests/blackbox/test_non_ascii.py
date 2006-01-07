@@ -41,6 +41,15 @@ _juju = u'\u062c\u0648\u062c\u0648'
 _juju_alt = u'j\xfbj\xfa'
 # Russian
 _alexander = u'\u0410\u043b\u0435\u043a\u0441\u0430\u043d\u0434\u0440'
+# Kanji
+_nihonjin = u'\u65e5\u672c\u4eba'
+# It is a kanji sequence for nihonjin, or Japanese in English.
+# 
+# '\u4eba' being person, 'u\65e5' sun and '\u672c' origin. Ie,
+# sun-origin-person, 'native from the land where the sun rises'. Note, I'm
+# not a fluent speaker, so this is just my crude breakdown.
+# 
+# Wouter van Heyst
 
 
 class TestNonAscii(TestCaseInTempDir):
@@ -94,6 +103,30 @@ class TestNonAscii(TestCaseInTempDir):
             if os.environ.get('BZREMAIL', None) is not None:
                 del os.environ['BZREMAIL']
         super(TestNonAscii, self).tearDown()
+
+    def try_character_set(self, charset, filename):
+        """Try to create a file in a given character set."""
+        try:
+            open(filename, 'wb').write('adding %s\n' % (charset,))
+        except UnicodeEncodeError:
+            raise TestSkipped('Cannot create %s filename.' % (charset,))
+
+        bzr = self.run_bzr_decode
+        bzr('add', filename)
+
+        txt = bzr('added')
+        self.assertEqual(filename+'\n', txt)
+
+        bzr('commit', '-m', u'adding ' + filename)
+
+        txt = bzr('log')
+        self.assertNotEqual(-1, txt.find(filename))
+
+    def test_russian(self):
+        self.try_character_set('russian', _alexander)
+
+    def test_kanji(self):
+        self.try_character_set('kanji', _nihonjin)
 
     def test_status(self):
         bzr = self.run_bzr_decode
