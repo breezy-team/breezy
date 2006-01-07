@@ -24,6 +24,7 @@ patterns like **.
 
 import re
 
+import bzrlib
 from bzrlib.tests import TestCase
 from bzrlib.glob_matcher import (glob_to_re, glob_to_matcher,
                                  globs_to_re, globs_to_matcher)
@@ -77,6 +78,7 @@ class GlobMatching(TestCase):
         check = self.assertMatching
         check('a', ['a'], ['b', 'a ', ' a', 'ba'])
         check('foo[', ['foo['], ['[', 'foo', '[foo'])
+        check('a(b)', ['a(b)'], ['ab', 'ba', 'a(b'])
 
     def test_star(self):
         check = self.assertMatching
@@ -90,7 +92,7 @@ class GlobMatching(TestCase):
         check = self.assertMatching
         check('a**', ['a', 'ab', 'abc', 'a/', 'a/a', 'a\\'],
                      ['foo/a', 'b/a'])
-        check('**a', ['a', 'ba', 'bca', '/a', '.a', './.a'],
+        check('**a', ['a', 'ba', 'bca', '/a', '.a', './.a', '(foo)/a'],
                      ['booty/ab', 'bca/b'])
         #check('**/a/*b'
 
@@ -111,5 +113,55 @@ class GlobMatching(TestCase):
         check('a*', ['a', u'a\xb5\xb5'], [u'a/\xb5'])
         check('**a', ['a', u'\xb5/a', u'\xb5/\xb5a'],
                      ['ab', u'\xb5/ab'])
+
+        check(u'a[\xb5b]', ['ab', u'a\xb5'], ['a/', 'a\\', u'ba\xb5'])
+
+
+class GlobsToRe(TestCase):
+    """Test that we can use multiple patterns at once"""
+
+    def test_basic(self):
+        self.assertEqual('(a)$', globs_to_re(['a']))
+        self.assertEqual('(a|b)$', globs_to_re(['a', 'b']))
+
+
+class GlobsMatching(TestCase):
+    """Functional test that multiple patterns match correctly"""
+
+    def assertMatching(self, globs, matching, not_matching):
+        """Make sure globs match matching, but not not_matching.
+
+        :param globs: A list of filename globs
+        :param matching: List of matching filenames
+        :param not_matching: List on non-matching filenames
+        """
+        matcher = globs_to_matcher(globs)
+        for fname in matching:
+            self.failUnless(matcher(fname), 'globs %s did not match %s' % (globs, fname))
+        for fname in not_matching:
+            self.failIf(matcher(fname), 'globs %s should not match %s' % (globs, fname))
+
+    def test_basic(self):
+        check = self.assertMatching
+        check(['a'], ['a'], ['ab', 'b'])
+        check(['a', 'b'], ['a', 'b'], ['ab', 'ba'])
+
+    def test_star(self):
+        check = self.assertMatching
+        check(['a*', 'b*'], ['a', 'b', 'ab', 'ba', 'a(b)'],
+                            ['ca', 'cb', 'a/', 'b/'])
+
+        check(['a', 'b', 'ab*'], ['a', 'b', 'ab', 'abc'],
+                                 ['ac', 'acb', 'a/', 'ab/'])
+
+    def test_starstar(self):
+        check = self.assertMatching
+        check(['a*', 'b**'], ['a', 'ab', 'abc', 'b/a', 'baa', 'b/ab'],
+                             ['a/', 'a/b'])
+
+    def test_bzrignore(self):
+        matches = ['.foo.swp', 'test.pyc']
+        not_matches = ['foo.py', 'test/foo.py', 'foo/test.pyc']
+        self.assertMatching(bzrlib.DEFAULT_IGNORE, matches, not_matches)
 
 

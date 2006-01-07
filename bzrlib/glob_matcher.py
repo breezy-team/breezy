@@ -103,15 +103,28 @@ def globs_to_re(patterns):
     for pat in patterns:
         pat_re = glob_to_re(pat)
         assert pat_re[-1] == '$'
-        final_re.append('(' + pat_re[:-1] + ')')
+        # TODO: jam 20060107 It seems to be enough to do:
+        #       (pat1|pat2|pat3|pat4)$
+        #       Is there a circumstance where we need to do
+        #       ((pat1)|(pat2)|(pat3))$
+        
+        # TODO: jam 20060107 Is it more efficient to do:
+        #       (pat1|pat2|pat3)$
+        #       Or to do:
+        #       (pat1$)|(pat2$)|(pat3$)
+        # I thought it would be more efficent to only have to
+        # match the end of the pattern once
+
+        #final_re.append('(' + pat_re[:-1] + ')')
+        final_re.append(pat_re[:-1])
     # All patterns end in $, we don't need to specify it
     # for every pattern.
     # Just put one at the end
-    return '|'.join(final_re) + '$'
+    return '(' + '|'.join(final_re) + ')$'
 
 
 def globs_to_matcher(patterns):
     """Return a callable which will match filenames versus the globs."""
-    return _GlobMatcher(globs_to_re(glob))
+    return _GlobMatcher(globs_to_re(patterns))
 
 
