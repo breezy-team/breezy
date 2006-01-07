@@ -39,6 +39,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_revision_info',
                      'bzrlib.tests.blackbox.test_too_much',
                      'bzrlib.tests.blackbox.test_versioning',
+                     'bzrlib.tests.blackbox.test_status',
                      ]
     suite = TestSuite()
     loader = TestLoader()
