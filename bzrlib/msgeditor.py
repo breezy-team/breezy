@@ -131,7 +131,8 @@ def edit_commit_message(infotext, ignoreline=None):
         try: os.unlink(msgfilename)
         except (IOError, OSError), e:
             if (not hasattr(e, 'errno')
-                or e.errno not in (errno.ENOENT, errno.ENOTDIR, errno.EPERM)):
+                or e.errno not in (errno.ENOENT, errno.ENOTDIR,
+                                   errno.EPERM, errno.EACCES)):
                 raise
 
 
