@@ -41,6 +41,7 @@ class TestLog(TestCaseInTempDir):
         'ascii',
         'iso-8859-2',
         'koi8_r',
+        'cp1251', # Alexander Belchenko's windows encoding
     ]
 
     def create_branch(self):
