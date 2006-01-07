@@ -23,6 +23,7 @@ import sys
 import os
 import bzrlib
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
+from bzrlib.trace import mutter, note
 
 _mu = u'\xb5'
 # Swedish?
@@ -36,6 +37,8 @@ _shrimp_sandwich = u'r\xe4ksm\xf6rg\xe5s'
 _punycode_erik = 'Bgfors-iua'
 # Arabic, probably only Unicode encodings can handle this one
 _juju = u'\u062c\u0648\u062c\u0648'
+# Alternative for arabic
+_juju_alt = u'j\xfbj\xfa'
 
 
 class TestNonAscii(TestCaseInTempDir):
@@ -47,8 +50,13 @@ class TestNonAscii(TestCaseInTempDir):
         try:
             os.environ['BZREMAIL'] = email.encode(bzrlib.user_encoding)
         except UnicodeEncodeError:
-            raise TestSkipped('Cannot encode Erik B?gfors in encoding %s' 
-                              % bzrlib.user_encoding)
+            note('Unable to test unicode in BZREMAIL')
+            # Do the rest of the tests, just don't expect
+            # _erik to exist in the email
+            os.environ['BZREMAIL'] = 'Erik Bagfors <joe@foo.com>'
+            self.email_name = 'Erik Bagfors'
+        else:
+            self.email_name = _erik
 
         bzr = self.run_bzr
         bzr('init')
@@ -58,14 +66,24 @@ class TestNonAscii(TestCaseInTempDir):
         open('b', 'wb').write(_shrimp_sandwich.encode('utf-8') + '\n')
         bzr('add', 'b')
         bzr('commit', '-m', u'Creating a ' + _shrimp_sandwich)
-        # TODO: jam 20060105 Handle the case where we can't create a
-        #       unicode filename on the current filesytem. I don't know
-        #       what exception would be raised, because all of my
-        #       filesystems support it. :)
         fname = _juju + '.txt'
-        open(fname, 'wb').write('arabic filename\n')
+        try:
+            open(fname, 'wb').write('unicode filename\n')
+        except UnicodeEncodeError:
+            note('Unable to create an arabic filename')
+            fname = _juju_alt + '.txt'
+            try:
+                open(fname, 'wb').write('unicode filename\n')
+            except UnicodeEncodeError:
+                raise TestSkipped("can't create an arabic or european filename"
+                    " in filesystem encoding %s" % sys.getfilesystemencoding())
+            else:
+                self.juju = _juju_alt
+        else:
+            self.juju = _juju
+
         bzr('add', fname)
-        bzr('commit', '-m', u'And an arabic file\n')
+        bzr('commit', '-m', u'And an unicode file\n')
     
     def tearDown(self):
         if self._orig_email is not None:
@@ -79,7 +97,7 @@ class TestNonAscii(TestCaseInTempDir):
         bzr = self.run_bzr_decode
 
         txt = bzr('log')
-        self.assertNotEqual(-1, txt.find(_erik))
+        self.assertNotEqual(-1, txt.find(self.email_name))
         self.assertNotEqual(-1, txt.find(_shrimp_sandwich))
 
         txt = bzr('log', '--verbose')
@@ -117,13 +135,13 @@ class TestNonAscii(TestCaseInTempDir):
         self.assertEqual(_shrimp_sandwich.encode('utf-8') + '\n', txt)
 
         txt = self.run_bzr('cat', _juju + '.txt')[0]
-        self.assertEqual('arabic filename\n', txt)
+        self.assertEqual('unicode filename\n', txt)
 
     def test_cat_revision(self):
         bzr = self.run_bzr_decode
 
         txt = bzr('cat-revision', '-r', '1')
-        self.assertNotEqual(-1, txt.find(_erik))
+        self.assertNotEqual(-1, txt.find(self.email_name))
 
         txt = bzr('cat-revision', '-r', '2')
         self.assertNotEqual(-1, txt.find(_shrimp_sandwich))
@@ -230,6 +248,10 @@ class TestNonAscii(TestCaseInTempDir):
 
         os.chdir('../' + _shrimp_sandwich)
         open('a', 'ab').write('and yet more\n')
+        # here we cheat. If self.erik is not _erik, then technically
+        # we would not be able to supply the argument, since sys.argv
+        # could not be decoded to those characters.
+        # but self.run_bzr takes the decoded string directly
         bzr('commit', '-m', 'modifying a by ' + _erik)
 
         os.chdir('../' + _shrimp_sandwich + '2')
@@ -334,3 +356,5 @@ class TestNonAscii(TestCaseInTempDir):
         # TODO: jam 20060106 diff is a difficult one to test, because it 
         #       shouldn't encode the file contents, but it needs some sort
         #       of encoding for the paths, etc which are displayed.
+        pass
+
