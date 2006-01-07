@@ -1022,6 +1022,8 @@ class cmd_touching_revisions(Command):
     A more user-friendly interface is "bzr log FILE"."""
     hidden = True
     takes_args = ["filename"]
+    encoding_type = 'replace'
+
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
@@ -1029,7 +1031,7 @@ class cmd_touching_revisions(Command):
         inv = tree.read_working_inventory()
         file_id = inv.path2id(relpath)
         for revno, revision_id, what in bzrlib.log.find_touching_revisions(b, file_id):
-            print "%6d %s" % (revno, what)
+            self.outf.write("%6d %s\n" % (revno, what))
 
 
 class cmd_ls(Command):

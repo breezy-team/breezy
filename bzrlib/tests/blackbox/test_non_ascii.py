@@ -415,4 +415,25 @@ class TestNonAscii(TestCaseInTempDir):
         self.assertEqual(-1, txt.find(self.juju))
         self.assertNotEqual(-1, txt.find(self.juju.encode('ascii', 'replace')))
 
+    def test_touching_revisions(self):
+        bzr = self.run_bzr_decode
+
+        fname = self.juju + '.txt'
+        txt = bzr('touching-revisions', fname)
+        self.assertEqual(u'     3 added %s\n' % (fname,), txt)
+
+        fname_new = _shrimp_sandwich + '.txt'
+        bzr('mv', fname, fname_new)
+        bzr('commit', '-m', u'Renamed %s => %s' % (fname, fname_new))
+
+        txt = bzr('touching-revisions', fname_new)
+        expected_txt = (u'     3 added %s\n' 
+                        u'     4 renamed %s => %s\n'
+                        % (fname, fname, fname_new))
+        self.assertEqual(expected_txt, txt)
+
+        txt = bzr('touching-revisions', fname_new, encoding='ascii')
+        expected_ascii = expected_txt.encode('ascii', 'replace')
+        self.assertEqual(expected_ascii, txt)
+
 
