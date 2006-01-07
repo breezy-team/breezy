@@ -447,4 +447,30 @@ class TestNonAscii(TestCaseInTempDir):
 
         bzr('unknowns', encoding='ascii', retcode=3)
 
+    def test_ignore(self):
+        bzr = self.run_bzr_decode
+
+        fname2 = self.juju + '2.txt'
+        open(fname2, 'wb').write('ignored\n')
+
+        txt = bzr('unknowns')
+        self.assertEqual(u'"%s"\n' % (fname2,), txt)
+
+        bzr('ignore', './' + fname2)
+        txt = bzr('unknowns')
+        # This is the correct output
+        # self.assertEqual('', txt)
+        # This is the incorrect output
+        self.assertEqual(u'"%s"\n' % (fname2,), txt)
+        raise TestSkipped("WorkingTree.is_ignored doesn't match unicode filenames (yet)")
+
+        fname3 = self.juju + '3.txt'
+        txt = bzr('unknowns')
+        self.assertEqual(u'"%s"\n' % (fname3,), txt)
+
+        # Ignore should not care what the encoding is
+        # (right now it doesn't print anything)
+        bzr('ignore', fname3, encoding='ascii')
+        txt = bzr('unknowns')
+        self.assertEqual('', txt)
 
