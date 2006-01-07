@@ -1096,7 +1096,8 @@ class cmd_unknowns(Command):
     def run(self):
         from bzrlib.osutils import quotefn
         for f in WorkingTree.open_containing(u'.')[0].unknowns():
-            print quotefn(f)
+            self.outf.write(quotefn(f))
+            self.outf.write('\n')
 
 
 class cmd_ignore(Command):

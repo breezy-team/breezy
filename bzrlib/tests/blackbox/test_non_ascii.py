@@ -436,4 +436,15 @@ class TestNonAscii(TestCaseInTempDir):
         txt = bzr('ls', encoding='ascii', retcode=3)
         txt = bzr('ls', '--null', encoding='ascii', retcode=3)
 
+    def test_unknowns(self):
+        bzr = self.run_bzr_decode
+
+        fname = self.juju + '2.txt'
+        open(fname, 'wb').write('unknown\n')
+
+        txt = bzr('unknowns')
+        self.assertEqual(u'"%s"\n' % (fname,), txt)
+
+        bzr('unknowns', encoding='ascii', retcode=3)
+
 
