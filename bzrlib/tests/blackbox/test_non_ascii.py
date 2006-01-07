@@ -128,6 +128,9 @@ class TestNonAscii(TestCaseInTempDir):
     def test_kanji(self):
         self.try_character_set('kanji', _nihonjin)
 
+    def test_swedish(self):
+        self.try_character_set('swedish', _shrimp_sandwich)
+
     def test_status(self):
         bzr = self.run_bzr_decode
 
