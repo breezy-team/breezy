@@ -152,9 +152,25 @@ class TreeTransform(object):
             by_parent[parent_id].add(trans_id)
 
         conflicts.extend(self._unversioned_parents(by_parent))
+        conflicts.extend(self._parent_loops())
         conflicts.extend(self._duplicate_entries(by_parent))
         conflicts.extend(self._parent_type_conflicts(by_parent))
         conflicts.extend(self._improper_versioning())
+        return conflicts
+
+    def _parent_loops(self):
+        """No entry should be its own ancestor"""
+        conflicts = []
+        for trans_id in self._new_parent:
+            seen = set()
+            parent_id = trans_id
+            while parent_id is not None:
+                seen.add(parent_id)
+                parent_id = self.final_parent(parent_id)
+                if parent_id == trans_id:
+                    conflicts.append(('parent loop', trans_id))
+                if parent_id in seen:
+                    break
         return conflicts
 
     def _unversioned_parents(self, by_parent):

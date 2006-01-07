@@ -84,11 +84,15 @@ class TestTreeTransform(TestCaseInTempDir):
             self.assertEqual(transform.find_conflicts(), 
                              [('missing parent', lion_id), 
                               ('versioning no contents', lion_id)])
-            transform.adjust_path('name2', trans_id2, trans_id2)
             transform.adjust_path('name2', root, trans_id2)
             self.assertEqual(transform.find_conflicts(), 
                              [('versioning no contents', lion_id)])
             transform.create_file('Contents, okay?', lion_id)
+            transform.adjust_path('name2', trans_id2, trans_id2)
+            self.assertEqual(transform.find_conflicts(), 
+                             [('parent loop', trans_id2), 
+                              ('non-directory parent', trans_id2)])
+            transform.adjust_path('name2', root, trans_id2)
             transform.apply()
             self.assertEqual('contents', file('name').read())
             self.assertEqual(wt.path2id('name'), 'my_pretties')
