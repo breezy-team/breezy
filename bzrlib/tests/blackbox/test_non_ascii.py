@@ -95,21 +95,6 @@ class TestNonAscii(TestCaseInTempDir):
                 del os.environ['BZREMAIL']
         super(TestNonAscii, self).tearDown()
 
-    def test_log(self):
-        bzr = self.run_bzr_decode
-
-        txt = bzr('log')
-        self.assertNotEqual(-1, txt.find(self.email_name))
-        self.assertNotEqual(-1, txt.find(_shrimp_sandwich))
-
-        txt = bzr('log', '--verbose')
-        self.assertNotEqual(-1, txt.find(self.juju))
-
-        # Make sure log doesn't fail even if we can't write out
-        txt = bzr('log', '--verbose', encoding='ascii')
-        self.assertEqual(-1, txt.find(self.juju))
-        self.assertNotEqual(-1, txt.find(self.juju.encode('ascii', 'replace')))
-
     def test_ls(self):
         bzr = self.run_bzr_decode
 
@@ -414,5 +399,20 @@ class TestNonAscii(TestCaseInTempDir):
         self.failUnless(txt.endswith(_shrimp_sandwich+'\n'))
 
         txt = bzr('root', encoding='ascii', retcode=3)
+
+    def test_log(self):
+        bzr = self.run_bzr_decode
+
+        txt = bzr('log')
+        self.assertNotEqual(-1, txt.find(self.email_name))
+        self.assertNotEqual(-1, txt.find(_shrimp_sandwich))
+
+        txt = bzr('log', '--verbose')
+        self.assertNotEqual(-1, txt.find(self.juju))
+
+        # Make sure log doesn't fail even if we can't write out
+        txt = bzr('log', '--verbose', encoding='ascii')
+        self.assertEqual(-1, txt.find(self.juju))
+        self.assertNotEqual(-1, txt.find(self.juju.encode('ascii', 'replace')))
 
 
