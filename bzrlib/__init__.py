@@ -37,10 +37,11 @@ DEFAULT_IGNORE = [
                   '*.py[oc]',
                   '*.so',
                   '*.tmp',
+                  '.*.tmp',
                   '*~',
                   '.#*',
                   '.*.sw[nop]',
-                  '.*.tmp',
+                  '.sw[nop]',    # vim editing nameless file
                   '.DS_Store',
                   '.arch-ids',
                   '.arch-inventory',

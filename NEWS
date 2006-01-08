@@ -42,6 +42,9 @@ UNRELEASED CHANGES
     * configure.in and config.guess are no longer in the builtin default 
       ignore list.
 
+    * '.sw[nop]' pattern ignored, to ignore vim swap files for nameless
+      files.  (John Arbash Meinel, Martin Pool)
+
   IMPROVEMENTS:
 
     * "bzr INIT dir" now initializes the specified directory, and creates 
