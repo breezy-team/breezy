@@ -56,7 +56,6 @@ DEFAULT_IGNORE = [
                   'BitKeeper',
                   'CVS',
                   'CVS.adm',
-                  'Makefile.in',
                   'RCS',
                   'SCCS',
                   'TAGS',
