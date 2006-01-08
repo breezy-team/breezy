@@ -295,7 +295,7 @@ class TreeTransform(object):
                 inv.add_path(path, kind, self._new_id[trans_id])
         self._tree._write_inventory(inv)
 
-    def new_entry(self, name, parent_id, file_id):
+    def _new_entry(self, name, parent_id, file_id):
         """Helper function to create a new filesystem entry."""
         trans_id = self.create_path(name, parent_id)
         if file_id is not None:
@@ -312,7 +312,7 @@ class TreeTransform(object):
         the file.
         file_id is the inventory ID of the file, if it is to be versioned.
         """
-        trans_id = self.new_entry(name, parent_id, file_id)
+        trans_id = self._new_entry(name, parent_id, file_id)
         self.create_file(contents, trans_id)
         return trans_id
 
@@ -325,7 +325,7 @@ class TreeTransform(object):
         directory.
         file_id is the inventory ID of the directory, if it is to be versioned.
         """
-        trans_id = self.new_entry(name, parent_id, file_id)
+        trans_id = self._new_entry(name, parent_id, file_id)
         self.create_directory(trans_id)
         return trans_id 
 
@@ -338,7 +338,7 @@ class TreeTransform(object):
         target is a bytestring of the target of the symlink.
         file_id is the inventory ID of the file, if it is to be versioned.
         """
-        trans_id = self.new_entry(name, parent_id, file_id)
+        trans_id = self._new_entry(name, parent_id, file_id)
         self.create_symlink(target, trans_id)
         return trans_id
 
