@@ -98,6 +98,14 @@ class TreeTransform(object):
         """
         unique_add(self._new_contents, trans_id, ('directory',))
 
+    def create_symlink(self, target, trans_id):
+        """Schedule creation of a new symbolic link.
+
+        target is a bytestring.
+        See also new_symlink.
+        """
+        unique_add(self._new_contents, trans_id, ('symlink', target))
+
     def version_file(self, file_id, trans_id):
         """Schedule a file to become versioned."""
         unique_add(self._new_id, trans_id, file_id)
@@ -277,6 +285,9 @@ class TreeTransform(object):
                 f.close()
             elif kind == 'directory':
                 os.mkdir(self._tree.abspath(path))
+            elif kind == 'symlink':
+                target = self._new_contents[trans_id][1]
+                os.symlink(target, path)
 
             if trans_id in self._new_id:
                 if kind is None:
@@ -317,6 +328,19 @@ class TreeTransform(object):
         trans_id = self.new_entry(name, parent_id, file_id)
         self.create_directory(trans_id)
         return trans_id 
+
+    def new_symlink(self, name, parent_id, target, file_id=None):
+        """\
+        Convenience method to create symbolic link.
+        
+        name is the name of the symlink to create.
+        parent_id is the transaction id of the parent directory of the symlink.
+        target is a bytestring of the target of the symlink.
+        file_id is the inventory ID of the file, if it is to be versioned.
+        """
+        trans_id = self.new_entry(name, parent_id, file_id)
+        self.create_symlink(target, trans_id)
+        return trans_id
 
 
 class FinalPaths(object):

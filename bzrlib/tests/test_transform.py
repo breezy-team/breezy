@@ -3,6 +3,7 @@ from bzrlib.branch import Branch
 from bzrlib.transform import TreeTransform
 from bzrlib.errors import DuplicateKey, MalformedTransform, NoSuchFile
 from bzrlib.osutils import file_kind
+import os
 
 class TestTreeTransform(TestCaseInTempDir):
     def test_build(self):
@@ -32,10 +33,15 @@ class TestTreeTransform(TestCaseInTempDir):
             oz_id = transform.create_path('oz', root)
             transform.create_directory(oz_id)
             transform.version_file('ozzie', oz_id)
+            wiz_id = transform.create_path('wizard', oz_id)
+            transform.create_symlink('behind_curtain', wiz_id)
+            transform.version_file('wiz-id', wiz_id)
             transform.apply()
             self.assertEqual('contents', file('name').read())
             self.assertEqual(wt.path2id('name'), 'my_pretties')
             self.assertEqual('directory', file_kind('oz'))
+            self.assertEqual(file_kind('oz/wizard'), 'symlink')
+            self.assertEqual(os.readlink('oz/wizard'), 'behind_curtain')
         finally:
             transform.finalize()
         # is it safe to finalize repeatedly?
@@ -53,6 +59,8 @@ class TestTreeTransform(TestCaseInTempDir):
             dorothy = transform.new_directory('dorothy', oz, 'dorothy-id')
             toto = transform.new_file('toto', dorothy, 'toto-contents', 
                                       'toto-id')
+            wizard = transform.new_symlink('wizard', oz, 'wizard-target', 
+                                           'wizard-id')
             transform.apply()
             self.assertEqual(len(transform.find_conflicts()), 0)
             self.assertEqual('contents', file('name').read())
@@ -60,7 +68,9 @@ class TestTreeTransform(TestCaseInTempDir):
             self.assertEqual(wt.path2id('oz'), 'oz-id')
             self.assertEqual(wt.path2id('oz/dorothy'), 'dorothy-id')
             self.assertEqual(wt.path2id('oz/dorothy/toto'), 'toto-id')
+            self.assertEqual(wt.path2id('oz/wizard'), 'wizard-id')
             self.assertEqual('toto-contents', file('oz/dorothy/toto').read())
+            self.assertEqual(os.readlink('oz/wizard'), 'wizard-target')
         finally:
             transform.finalize()
 
