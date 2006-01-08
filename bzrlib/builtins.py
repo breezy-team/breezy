@@ -1971,6 +1971,11 @@ class cmd_uncommit(bzrlib.commands.Command):
     
     In the future, uncommit will create a changeset, which can then
     be re-applied.
+
+    TODO: jam 20060108 Add an option to allow uncommit to remove unreferenced
+              information in 'branch-as-repostory' branches.
+    TODO: jam 20060108 Add the ability for uncommit to remove unreferenced
+              information in shared branches as well.
     """
     takes_options = ['verbose', 'revision',
                     Option('dry-run', help='Don\'t actually make changes'),
