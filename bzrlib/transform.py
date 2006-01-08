@@ -47,6 +47,7 @@ class TreeTransform(object):
         return trans_id
 
     def adjust_path(self, name, parent, trans_id):
+        """Change the path that is assigned to a transaction id."""
         self._new_name[trans_id] = name
         self._new_parent[trans_id] = parent
 
@@ -81,20 +82,28 @@ class TreeTransform(object):
         return self.get_tree_path_id(os.path.dirname(path))
 
     def create_file(self, contents, trans_id):
-        """Create a new, possibly versioned, file.
+        """Schedule creation of a new file.
+
+        See also new_file.
         
         Contents is an iterator of strings, all of which will be written
-        to the target destination
+        to the target destination.
         """
         unique_add(self._new_contents, trans_id, ('file', contents))
 
     def create_directory(self, trans_id):
+        """Schedule creation of a new directory.
+        
+        See also new_directory.
+        """
         unique_add(self._new_contents, trans_id, ('directory',))
 
     def version_file(self, file_id, trans_id):
+        """Schedule a file to become versioned."""
         unique_add(self._new_id, trans_id, file_id)
 
     def new_paths(self):
+        """Determine the paths of all new and changed files"""
         new_ids = set()
         fp = FinalPaths(self._new_root, self._new_name, self)
         for id_set in (self._new_name, self._new_parent, self._new_contents,
@@ -105,7 +114,8 @@ class TreeTransform(object):
         return new_paths
 
     def final_kind(self, trans_id):
-        """Determine the final file kind, after any changes applied.
+        """\
+        Determine the final file kind, after any changes applied.
         
         Raises NoSuchFile if the file does not exist/has no contents.
         (It is conceivable that a path would be created without the
@@ -126,7 +136,12 @@ class TreeTransform(object):
                     raise NoSuchFile(path)
 
     def final_file_id(self, trans_id):
-        """Determine the file id currently assigned, or None."""
+        """\
+        Determine the file id after any changes are applied, or None.
+        
+        None indicates that the file will not be versioned after changes are
+        applied.
+        """
         try:
             # there is a new id for this file
             return self._new_id[trans_id]
@@ -140,6 +155,11 @@ class TreeTransform(object):
             return self._tree.path2id(path)
 
     def final_parent(self, trans_id):
+        """\
+        Determine the parent file_id, after any changes are applied.
+
+        None is returned for the tree root.
+        """
         try:
             return self._new_parent[trans_id]
         except KeyError:
@@ -189,7 +209,8 @@ class TreeTransform(object):
         return conflicts
 
     def _improper_versioning(self):
-        """Cannot version a file with no contents, or a bad type.
+        """\
+        Cannot version a file with no contents, or a bad type.
         
         However, existing entries with no contents are okay.
         """
@@ -234,6 +255,12 @@ class TreeTransform(object):
         return conflicts
             
     def apply(self):
+        """\
+        Apply all changes to the inventory and filesystem.
+        
+        If filesystem or inventory conflicts are present, MalformedTransform
+        will be thrown.
+        """
         if len(self.find_conflicts()) != 0:
             raise MalformedTransform()
         inv = self._tree.inventory
@@ -258,24 +285,47 @@ class TreeTransform(object):
         self._tree._write_inventory(inv)
 
     def new_entry(self, name, parent_id, file_id):
+        """Helper function to create a new filesystem entry."""
         trans_id = self.create_path(name, parent_id)
         if file_id is not None:
             self.version_file(file_id, trans_id)
         return trans_id
 
     def new_file(self, name, parent_id, contents, file_id=None):
-        """Convenience method to create files"""
+        """\
+        Convenience method to create files.
+        
+        name is the name of the file to create.
+        parent_id is the transaction id of the parent directory of the file.
+        contents is an iterator of bytestrings, which will be used to produce
+        the file.
+        file_id is the inventory ID of the file, if it is to be versioned.
+        """
         trans_id = self.new_entry(name, parent_id, file_id)
         self.create_file(contents, trans_id)
         return trans_id
 
     def new_directory(self, name, parent_id, file_id=None):
+        """\
+        Convenience method to create directories.
+
+        name is the name of the directory to create.
+        parent_id is the transaction id of the parent directory of the
+        directory.
+        file_id is the inventory ID of the directory, if it is to be versioned.
+        """
         trans_id = self.new_entry(name, parent_id, file_id)
         self.create_directory(trans_id)
         return trans_id 
 
 
 class FinalPaths(object):
+    """\
+    Make path calculation cheap by memoizing paths.
+
+    The underlying tree must not be manipulated between calls, or else
+    the results will likely be incorrect.
+    """
     def __init__(self, root, names, tree):
         object.__init__(self)
         self.root = root
