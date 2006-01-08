@@ -1971,14 +1971,19 @@ class cmd_uncommit(bzrlib.commands.Command):
     
     In the future, uncommit will create a changeset, which can then
     be re-applied.
+
+    TODO: jam 20060108 Add an option to allow uncommit to remove unreferenced
+              information in 'branch-as-repostory' branches.
+    TODO: jam 20060108 Add the ability for uncommit to remove unreferenced
+              information in shared branches as well.
     """
-    takes_options = ['all', 'verbose', 'revision',
+    takes_options = ['verbose', 'revision',
                     Option('dry-run', help='Don\'t actually make changes'),
                     Option('force', help='Say yes to all questions.')]
     takes_args = ['location?']
     aliases = []
 
-    def run(self, location=None, all=False,
+    def run(self, location=None, 
             dry_run=False, verbose=False,
             revision=None, force=False):
         from bzrlib.branch import Branch
@@ -2015,8 +2020,7 @@ class cmd_uncommit(bzrlib.commands.Command):
                     print 'Canceled'
                     return 0
 
-        uncommit(b, remove_files=all,
-                dry_run=dry_run, verbose=verbose,
+        uncommit(b, dry_run=dry_run, verbose=verbose,
                 revno=revno)
 
 

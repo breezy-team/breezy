@@ -807,7 +807,6 @@ class BzrBranch(Branch):
             ('pending-merges', ''),
             ('inventory', empty_inv),
             ('inventory.weave', empty_weave),
-            ('ancestry.weave', empty_weave)
         ]
         self._transport.mkdir_multi([cfn(d) for d in dirs], mode=self._dir_mode)
         self.put_controlfiles(files)
