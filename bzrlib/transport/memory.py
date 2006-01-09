@@ -67,12 +67,12 @@ class MemoryTransport(Transport):
             raise NoSuchFile(relpath)
         return StringIO(self._files[relpath])
 
-    def put(self, relpath, f):
+    def put(self, relpath, f, mode=None):
         """See Transport.put()."""
         self._check_parent(relpath)
         self._files[relpath] = f.read()
 
-    def mkdir(self, relpath):
+    def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
         self._check_parent(relpath)
         if relpath in self._dirs:

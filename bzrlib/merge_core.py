@@ -2,15 +2,18 @@ import os.path
 
 import changeset
 from changeset import Inventory, apply_changeset, invert_dict
-from bzrlib.osutils import backup_file, rename
+from bzrlib.osutils import backup_file, rename, pathjoin
 from bzrlib.merge3 import Merge3
 import bzrlib
 from bzrlib.atomicfile import AtomicFile
 from changeset import get_contents
 
+
 class ApplyMerge3:
-    history_based = False
     """Contents-change wrapper around merge3.Merge3"""
+
+    history_based = False
+
     def __init__(self, file_id, base, other, show_base=False, reprocess=False):
         self.file_id = file_id
         self.base = base
@@ -71,9 +74,12 @@ class ApplyMerge3:
             conflict_handler.merge_conflict(new_file, filename, base_lines,
                                             other_lines)
 
+
 class WeaveMerge:
     """Contents-change wrapper around weave merge"""
+
     history_based = True
+
     def __init__(self, weave, this_revision_id, other_revision_id):
         self.weave = weave
         self.this_revision_id = this_revision_id
@@ -112,8 +118,10 @@ class WeaveMerge:
         else:
             out_file.commit()
 
+
 class BackupBeforeChange:
     """Contents-change wrapper to back up file first"""
+
     def __init__(self, contents_change):
         self.contents_change = contents_change
 
@@ -177,6 +185,7 @@ def make_merge_changeset(cset, this, base, other,
 
     return new_cset
 
+
 class ThreeWayConflict(Exception):
     def __init__(self, this, base, other):
         self.this = this
@@ -184,6 +193,7 @@ class ThreeWayConflict(Exception):
         self.other = other
         msg = "Conflict merging %s %s and %s" % (this, base, other)
         Exception.__init__(self, msg)
+
 
 def threeway_select(this, base, other):
     """Returns a value selected by the three-way algorithm.
@@ -235,7 +245,7 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
             parent_dir = {this_parent: this_dir, other_parent: other_dir, 
                           base_parent: base_dir}
             directory = parent_dir[parent]
-            return os.path.join(directory, name)
+            return pathjoin(directory, name)
         else:
             assert parent is None
             return None
@@ -348,4 +358,5 @@ class ExecFlagMerge(object):
             else:
                 to_mode = current_mode & ~0111
             os.chmod(filename, to_mode)
+
 

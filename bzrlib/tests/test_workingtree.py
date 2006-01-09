@@ -20,6 +20,7 @@ from bzrlib.branch import Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
+from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
 
@@ -53,12 +54,14 @@ class TestWorkingTree(TestCaseInTempDir):
         branch = Branch.initialize(u'.')
         os.mkdir('dir')
         print >> open('file', 'w'), "content"
-        os.symlink('target', 'symlink')
+        if has_symlinks():
+            os.symlink('target', 'symlink')
         tree = branch.working_tree()
         files = list(tree.list_files())
         self.assertEqual(files[0], ('dir', '?', 'directory', None, TreeDirectory()))
         self.assertEqual(files[1], ('file', '?', 'file', None, TreeFile()))
-        self.assertEqual(files[2], ('symlink', '?', 'symlink', None, TreeLink()))
+        if has_symlinks():
+            self.assertEqual(files[2], ('symlink', '?', 'symlink', None, TreeLink()))
 
     def test_open_containing(self):
         branch = Branch.initialize(u'.')
@@ -74,7 +77,7 @@ class TestWorkingTree(TestCaseInTempDir):
         # paths that are urls are just plain wrong for working trees.
         self.assertRaises(NotBranchError,
                           WorkingTree.open_containing, 
-                          'file:///' + os.getcwdu())
+                          'file:///' + getcwd())
 
     def test_construct_with_branch(self):
         branch = Branch.initialize(u'.')
@@ -93,7 +96,7 @@ class TestWorkingTree(TestCaseInTempDir):
         branch = Branch.initialize(u'.')
         tree = WorkingTree(branch.base)
         self.assertEqual('child',
-                         tree.relpath(os.path.join(os.getcwd(), 'child')))
+                         tree.relpath(pathjoin(getcwd(), 'child')))
 
     def test_lock_locks_branch(self):
         branch = Branch.initialize(u'.')
@@ -168,3 +171,17 @@ class TestWorkingTree(TestCaseInTempDir):
         self.assertEquals(list(tree.unknowns()),
                           ['hello.txt'])
 
+    def test_hashcache(self):
+        from bzrlib.tests.test_hashcache import pause
+        b = Branch.initialize(u'.')
+        tree = WorkingTree(u'.', b)
+        self.build_tree(['hello.txt',
+                         'hello.txt~'])
+        tree.add('hello.txt')
+        pause()
+        sha = tree.get_file_sha1(tree.path2id('hello.txt'))
+        self.assertEqual(1, tree._hashcache.miss_count)
+        tree2 = WorkingTree(u'.', b)
+        sha2 = tree2.get_file_sha1(tree2.path2id('hello.txt'))
+        self.assertEqual(0, tree2._hashcache.miss_count)
+        self.assertEqual(1, tree2._hashcache.hit_count)
