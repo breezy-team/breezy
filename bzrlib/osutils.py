@@ -610,3 +610,6 @@ def terminal_width():
         return int(os.environ['COLUMNS'])
     except (IndexError, KeyError, ValueError):
         return 80
+
+def supports_executable():
+    return os.name != "nt"

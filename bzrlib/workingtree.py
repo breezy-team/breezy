@@ -72,7 +72,9 @@ from bzrlib.osutils import (appendpath,
                             normpath,
                             realpath,
                             relpath,
-                            rename)
+                            rename,
+                            supports_executable,
+                            )
 from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.trace import mutter
@@ -324,7 +326,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return self._hashcache.get_sha1(path)
 
     def is_executable(self, file_id):
-        if os.name == "nt":
+        if not supports_executable():
             return self._inventory[file_id].executable
         else:
             path = self._inventory.id2path(file_id)

@@ -1,6 +1,6 @@
 import os
 from bzrlib.errors import DuplicateKey, MalformedTransform, NoSuchFile
-from bzrlib.osutils import file_kind
+from bzrlib.osutils import file_kind, supports_executable
 from bzrlib.inventory import InventoryEntry
 import errno
 def unique_add(map, key, value):
@@ -22,6 +22,7 @@ class TreeTransform(object):
         self._new_name = {}
         self._new_parent = {}
         self._new_contents = {}
+        self._new_executability = {}
         self._new_id = {}
         self._tree_path_ids = {}
         self._tree_id_paths = {}
@@ -106,6 +107,10 @@ class TreeTransform(object):
         """
         unique_add(self._new_contents, trans_id, ('symlink', target))
 
+    def set_executability(self, executability, trans_id):
+        """Schedule setting of the 'execute' bit"""
+        unique_add(self._new_executability, trans_id, executability)
+
     def version_file(self, file_id, trans_id):
         """Schedule a file to become versioned."""
         unique_add(self._new_id, trans_id, file_id)
@@ -115,7 +120,7 @@ class TreeTransform(object):
         new_ids = set()
         fp = FinalPaths(self._new_root, self._new_name, self)
         for id_set in (self._new_name, self._new_parent, self._new_contents,
-                       self._new_id):
+                       self._new_id, self._new_executability):
             new_ids.update(id_set)
         new_paths = [(fp.get_path(t), t) for t in new_ids]
         new_paths.sort()
@@ -293,7 +298,31 @@ class TreeTransform(object):
                 if kind is None:
                     kind = file_kind(self._tree.abspath(path))
                 inv.add_path(path, kind, self._new_id[trans_id])
+            # requires files and inventory entries to be in place
+            if trans_id in self._new_executability:
+                self._set_executability(path, inv, trans_id)
+
         self._tree._write_inventory(inv)
+
+    def _set_executability(self, path, inv, trans_id):
+        file_id = inv.path2id(path)
+        new_executability = self._new_executability[trans_id]
+        inv[file_id].executable = new_executability
+        if supports_executable():
+            abspath = self._tree.abspath(path)
+            current_mode = os.stat(abspath).st_mode
+            if new_executability:
+                umask = os.umask(0)
+                os.umask(umask)
+                to_mode = current_mode | (0100 & ~umask)
+                # Enable x-bit for others only if they can read it.
+                if current_mode & 0004:
+                    to_mode |= 0001 & ~umask
+                if current_mode & 0040:
+                    to_mode |= 0010 & ~umask
+            else:
+                to_mode = current_mode & ~0111
+            os.chmod(abspath, to_mode)
 
     def _new_entry(self, name, parent_id, file_id):
         """Helper function to create a new filesystem entry."""
