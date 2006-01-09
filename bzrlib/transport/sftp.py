@@ -19,14 +19,14 @@
 import errno
 import getpass
 import os
+import random
 import re
 import stat
+import subprocess
 import sys
+import time
 import urllib
 import urlparse
-import time
-import random
-import subprocess
 import weakref
 
 from bzrlib.errors import (FileExists, 
@@ -52,7 +52,8 @@ else:
     from paramiko.sftp_file import SFTPFile
     from paramiko.sftp_client import SFTPClient
 
-if 'sftp' not in urlparse.uses_netloc: urlparse.uses_netloc.append('sftp')
+if 'sftp' not in urlparse.uses_netloc:
+    urlparse.uses_netloc.append('sftp')
 
 
 _close_fds = True
@@ -61,6 +62,10 @@ if sys.platform == 'win32':
     _close_fds = False
 
 _ssh_vendor = None
+if 'BZR_USE_PARAMIKO' in os.environ:
+    # allow forcing the use of paramiko for debugging
+    _ssh_vendor = 'none'
+
 def _get_ssh_vendor():
     """Find out what version of SSH is on the system."""
     global _ssh_vendor
@@ -221,11 +226,15 @@ class SFTPLock(object):
             # What specific errors should we catch here?
             pass
 
+
 class SFTPTransport (Transport):
     """
     Transport implementation for SFTP access.
     """
-    _do_prefetch = False # Right now Paramiko's prefetch support causes things to hang
+    # don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
+    _do_prefetch = False
+    if hasattr(paramiko, '__version_info__') and (paramiko.__version_info__ >= (1, 5, 2)):
+        _do_prefetch = True
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
