@@ -344,7 +344,8 @@ class TreeTransform(object):
             self.version_file(file_id, trans_id)
         return trans_id
 
-    def new_file(self, name, parent_id, contents, file_id=None):
+    def new_file(self, name, parent_id, contents, file_id=None, 
+                 executable=None):
         """\
         Convenience method to create files.
         
@@ -356,6 +357,8 @@ class TreeTransform(object):
         """
         trans_id = self._new_entry(name, parent_id, file_id)
         self.create_file(contents, trans_id)
+        if executable is not None:
+            self.set_executability(executable, trans_id)
         return trans_id
 
     def new_directory(self, name, parent_id, file_id=None):

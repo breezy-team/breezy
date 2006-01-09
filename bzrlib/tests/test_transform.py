@@ -58,22 +58,24 @@ class TestTreeTransform(TestCaseInTempDir):
         try:
             root = transform.get_id_tree(wt.get_root_id())
             trans_id = transform.new_file('name', root, 'contents', 
-                                          'my_pretties')
+                                          'my_pretties', True)
             oz = transform.new_directory('oz', root, 'oz-id')
             dorothy = transform.new_directory('dorothy', oz, 'dorothy-id')
             toto = transform.new_file('toto', dorothy, 'toto-contents', 
-                                      'toto-id')
+                                      'toto-id', False)
             wizard = transform.new_symlink('wizard', oz, 'wizard-target', 
                                            'wizard-id')
             transform.apply()
             self.assertEqual(len(transform.find_conflicts()), 0)
             self.assertEqual('contents', file('name').read())
             self.assertEqual(wt.path2id('name'), 'my_pretties')
+            self.assertIs(wt.is_executable('my_pretties'), True)
             self.assertEqual(wt.path2id('oz'), 'oz-id')
             self.assertEqual(wt.path2id('oz/dorothy'), 'dorothy-id')
             self.assertEqual(wt.path2id('oz/dorothy/toto'), 'toto-id')
             self.assertEqual(wt.path2id('oz/wizard'), 'wizard-id')
             self.assertEqual('toto-contents', file('oz/dorothy/toto').read())
+            self.assertIs(wt.is_executable('toto-id'), False)
             self.assertEqual(os.readlink('oz/wizard'), 'wizard-target')
         finally:
             transform.finalize()
