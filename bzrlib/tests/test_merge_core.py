@@ -1,7 +1,5 @@
 import os
 import shutil
-import tempfile
-import unittest
 import stat
 import sys
 
@@ -11,7 +9,7 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError)
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
-from bzrlib.osutils import file_kind, rename, sha_file
+from bzrlib.osutils import file_kind, rename, sha_file, pathjoin, mkdtemp
 from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
                                BackupBeforeChange, ExecFlagMerge, WeaveMerge)
@@ -64,7 +62,7 @@ class MergeTree(object):
         self.inventory = FalseTree(self)
     
     def child_path(self, parent, name):
-        return os.path.join(self.inventory_dict[parent], name)
+        return pathjoin(self.inventory_dict[parent], name)
 
     def add_file(self, id, parent, name, contents, mode):
         path = self.child_path(parent, name)
@@ -94,7 +92,7 @@ class MergeTree(object):
         self.inventory_dict[id] = path
 
     def abs_path(self, path):
-        return os.path.join(self.dir, path)
+        return pathjoin(self.dir, path)
 
     def full_path(self, id):
         try:
@@ -123,7 +121,7 @@ class MergeTree(object):
         return self.full_path(id)
 
     def change_path(self, id, path):
-        old_path = os.path.join(self.dir, self.inventory_dict[id])
+        old_path = pathjoin(self.dir, self.inventory_dict[id])
         rename(old_path, self.abs_path(path))
         self.inventory_dict[id] = path
 
@@ -140,21 +138,23 @@ class MergeTree(object):
     def get_file_sha1(self, file_id):
         return sha_file(file(self.full_path(file_id), "rb"))
 
+
 class MergeBuilder(object):
     def __init__(self):
-        self.dir = tempfile.mkdtemp(prefix="BaZing")
-        self.base = MergeTree(os.path.join(self.dir, "base"))
-        self.this = MergeTree(os.path.join(self.dir, "this"))
-        self.other = MergeTree(os.path.join(self.dir, "other"))
+        self.dir = mkdtemp(prefix="BaZing")
+        self.base = MergeTree(pathjoin(self.dir, "base"))
+        self.this = MergeTree(pathjoin(self.dir, "this"))
+        self.other = MergeTree(pathjoin(self.dir, "other"))
         
         self.cset = changeset.Changeset()
         self.cset.add_entry(changeset.ChangesetEntry("0", 
                                                      changeset.NULL_ID, "./."))
+
     def get_cset_path(self, parent, name):
         if name is None:
             assert (parent is None)
             return None
-        return os.path.join(self.cset.entries[parent].path, name)
+        return pathjoin(self.cset.entries[parent].path, name)
 
     def add_file(self, id, parent, name, contents, mode):
         self.base.add_file(id, parent, name, contents, mode)
@@ -328,7 +328,7 @@ class MergeBuilder(object):
                 if parent is None:
                     return orig_inventory[file_id]
                 dirname = new_path(parent)
-                return os.path.join(dirname, os.path.basename(orig_inventory[file_id]))
+                return pathjoin(dirname, os.path.basename(orig_inventory[file_id]))
 
         new_inventory = {}
         for file_id in orig_inventory.iterkeys():
@@ -343,11 +343,11 @@ class MergeBuilder(object):
             new_inventory[file_id] = path
         return new_inventory
 
-    def apply_changeset(self, cset, conflict_handler=None, reverse=False):
+    def apply_changeset(self, cset, conflict_handler=None):
         inventory_change = changeset.apply_changeset(cset,
                                                      self.this.inventory_dict,
                                                      self.this.dir,
-                                                     conflict_handler, reverse)
+                                                     conflict_handler)
         self.this.inventory_dict =  self.apply_inv_change(inventory_change, 
                                                      self.this.inventory_dict)
 
@@ -355,7 +355,7 @@ class MergeBuilder(object):
         shutil.rmtree(self.dir)
 
 
-class MergeTest(unittest.TestCase):
+class MergeTest(TestCase):
     def test_change_name(self):
         """Test renames"""
         builder = MergeBuilder()
@@ -366,18 +366,18 @@ class MergeTest(unittest.TestCase):
         builder.add_file("3", "0", "name5", "hello3", 0755)
         builder.change_name("3", this="name6")
         cset = builder.merge_changeset(ApplyMerge3)
-        self.assert_(cset.entries["2"].is_boring())
-        self.assert_(cset.entries["1"].name == "name1")
-        self.assert_(cset.entries["1"].new_name == "name2")
-        self.assert_(cset.entries["3"].is_boring())
+        self.failUnless(cset.entries["2"].is_boring())
+        self.assertEqual(cset.entries["1"].name, "name1")
+        self.assertEqual(cset.entries["1"].new_name, "name2")
+        self.failUnless(cset.entries["3"].is_boring())
         for tree in (builder.this, builder.other, builder.base):
-            self.assert_(tree.dir != builder.dir and 
-                   tree.dir.startswith(builder.dir))
+            self.assertNotEqual(tree.dir, builder.dir)
+            self.assertStartsWith(tree.dir, builder.dir)
             for path in tree.inventory_dict.itervalues():
                 fullpath = tree.abs_path(path)
-                self.assert_(fullpath.startswith(tree.dir))
-                self.assert_(not path.startswith(tree.dir))
-                self.assert_(os.path.exists(fullpath))
+                self.assertStartsWith(fullpath, tree.dir)
+                self.failIf(path.startswith(tree.dir))
+                self.failUnless(os.path.lexists(fullpath))
         builder.apply_changeset(cset)
         builder.cleanup()
         builder = MergeBuilder()
@@ -835,3 +835,4 @@ class FunctionalMergeTest(TestCaseInTempDir):
         b_wt.rename_one('bar', 'foo')
         b_wt.commit('deleted foo, renamed bar to foo')
         merge(['b', -1],['b', 1],this_dir='a')
+
