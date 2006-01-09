@@ -109,7 +109,10 @@ class TreeTransform(object):
 
     def set_executability(self, executability, trans_id):
         """Schedule setting of the 'execute' bit"""
-        unique_add(self._new_executability, trans_id, executability)
+        if executability is None:
+            del self._new_executability[trans_id]
+        else:
+            unique_add(self._new_executability, trans_id, executability)
 
     def version_file(self, file_id, trans_id):
         """Schedule a file to become versioned."""
@@ -192,6 +195,7 @@ class TreeTransform(object):
         conflicts.extend(self._duplicate_entries(by_parent))
         conflicts.extend(self._parent_type_conflicts(by_parent))
         conflicts.extend(self._improper_versioning())
+        conflicts.extend(self._executability_conflicts())
         return conflicts
 
     def _parent_loops(self):
@@ -236,6 +240,15 @@ class TreeTransform(object):
                 continue
             if not InventoryEntry.versionable_kind(kind):
                 conflicts.append(('versioning bad kind', trans_id, kind))
+        return conflicts
+
+    def _executability_conflicts(self):
+        conflicts = []
+        for trans_id in self._new_executability:
+            if self.final_file_id(trans_id) is None:
+                conflicts.append(('unversioned executability', trans_id))
+            elif self.final_kind(trans_id) != "file":
+                conflicts.append(('non-file executability', trans_id))
         return conflicts
 
     def _duplicate_entries(self, by_parent):

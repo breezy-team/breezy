@@ -120,6 +120,19 @@ class TestTreeTransform(TestCaseInTempDir):
                              [('parent loop', trans_id2), 
                               ('non-directory parent', trans_id2)])
             transform.adjust_path('name2', root, trans_id2)
+            oz_id = transform.new_directory('oz', root)
+            transform.set_executability(True, oz_id)
+            self.assertEqual(transform.find_conflicts(), 
+                             [('unversioned executability', oz_id)])
+            transform.version_file('oz-id', oz_id)
+            self.assertEqual(transform.find_conflicts(), 
+                             [('non-file executability', oz_id)])
+            transform.set_executability(None, oz_id)
+            tip_id = transform.new_symlink('tip', oz_id, 'ozma', 'tip-id')
+            transform.set_executability(True, tip_id)
+            self.assertEqual(transform.find_conflicts(), 
+                             [('non-file executability', tip_id)])
+            transform.set_executability(None, tip_id)
             transform.apply()
             self.assertEqual('contents', file('name').read())
             self.assertEqual(wt.path2id('name'), 'my_pretties')
