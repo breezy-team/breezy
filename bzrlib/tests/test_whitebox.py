@@ -4,6 +4,7 @@ import unittest
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.errors import PathNotChild
+from bzrlib.osutils import relpath, pathjoin, abspath, realpath
 
 
 class TestBranch(TestCaseInTempDir):
@@ -76,20 +77,19 @@ class MoreTests(TestCaseInTempDir):
         job: given a path (either relative to cwd or absolute), work out
         if it is inside a branch and return the path relative to the base.
         """
-        from bzrlib.osutils import relpath
         import tempfile, shutil
         
         savedir = os.getcwdu()
         dtmp = tempfile.mkdtemp()
         # On Mac OSX, /tmp actually expands to /private/tmp
-        dtmp = os.path.realpath(dtmp)
+        dtmp = realpath(dtmp)
 
         def rp(p):
             return relpath(dtmp, p)
         
         try:
             # check paths inside dtmp while standing outside it
-            self.assertEqual(rp(os.path.join(dtmp, 'foo')), 'foo')
+            self.assertEqual(rp(pathjoin(dtmp, 'foo')), 'foo')
 
             # root = nothing
             self.assertEqual(rp(dtmp), '')
@@ -112,14 +112,13 @@ class MoreTests(TestCaseInTempDir):
             # directory, or nearby
             os.chdir(dtmp)
 
-            FOO_BAR_QUUX = os.path.join('foo', 'bar', 'quux')
-            self.assertEqual(rp('foo/bar/quux'), FOO_BAR_QUUX)
+            self.assertEqual(rp('foo/bar/quux'), 'foo/bar/quux')
 
             self.assertEqual(rp('foo'), 'foo')
 
             self.assertEqual(rp('./foo'), 'foo')
 
-            self.assertEqual(rp(os.path.abspath('foo')), 'foo')
+            self.assertEqual(rp(abspath('foo')), 'foo')
 
             self.assertRaises(PathNotChild,
                               rp, '../foo')

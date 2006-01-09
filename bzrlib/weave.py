@@ -67,12 +67,14 @@
 # the possible relationships.
 
 
+import os
 import sha
 from difflib import SequenceMatcher
 
 from bzrlib.trace import mutter
-from bzrlib.errors import WeaveError, WeaveFormatError, WeaveParentMismatch, \
-        WeaveRevisionNotPresent, WeaveRevisionAlreadyPresent
+from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
+        WeaveRevisionNotPresent, WeaveRevisionAlreadyPresent)
+import bzrlib.errors as errors
 from bzrlib.tsort import topo_sort
 
 
@@ -483,7 +485,12 @@ class Weave(object):
                 yield lineno, istack[-1], dset, l
             lineno += 1
 
-
+        if istack:
+            raise WeaveFormatError("unclosed insertion blocks "
+                    "at end of weave: %s" % istack)
+        if dset:
+            raise WeaveFormatError("unclosed deletion blocks at end of weave: %s"
+                                   % dset)
 
     def _extract(self, versions):
         """Yield annotation of lines in included set.
@@ -548,8 +555,24 @@ class Weave(object):
     def get_iter(self, name_or_index):
         """Yield lines for the specified version."""
         incls = [self.maybe_lookup(name_or_index)]
+        if len(incls) == 1:
+            index = incls[0]
+            cur_sha = sha.new()
+        else:
+            # We don't have sha1 sums for multiple entries
+            cur_sha = None
         for origin, lineno, line in self._extract(incls):
+            if cur_sha:
+                cur_sha.update(line)
             yield line
+        if cur_sha:
+            expected_sha1 = self._sha1s[index]
+            measured_sha1 = cur_sha.hexdigest() 
+            if measured_sha1 != expected_sha1:
+                raise errors.WeaveInvalidChecksum(
+                        'file %s, revision %s, expected: %s, measured %s' 
+                        % (self._weave_name, self._names[index],
+                           expected_sha1, measured_sha1))
 
 
     def get_text(self, name_or_index):
@@ -563,6 +586,13 @@ class Weave(object):
 
     get = get_lines
 
+
+    def get_sha1(self, name):
+        """Get the stored sha1 sum for the given revision.
+        
+        :param name: The name of the version to lookup
+        """
+        return self._sha1s[self.lookup(name)]
 
     def mash_iter(self, included):
         """Return composed version of multiple included versions."""
@@ -589,7 +619,6 @@ class Weave(object):
     def __len__(self):
         return self.numversions()
 
-
     def check(self, progress_bar=None):
         # check no circular inclusions
         for version in range(self.numversions()):
@@ -600,26 +629,52 @@ class Weave(object):
                     raise WeaveFormatError("invalid included version %d for index %d"
                                            % (inclusions[-1], version))
 
-        # try extracting all versions; this is a bit slow and parallel
-        # extraction could be used
+        # try extracting all versions; parallel extraction is used
         nv = self.numversions()
-        for version in range(nv):
+        sha1s = [sha.new() for i in range(nv)]
+        texts = [[] for i in range(nv)]
+        inclusions = []
+        for i in range(nv):
+            # For creating the ancestry, IntSet is much faster (3.7s vs 0.17s)
+            # The problem is that set membership is much more expensive
+            new_inc = set([i])
+            for p in self._parents[i]:
+                new_inc.update(inclusions[p])
+
+            #assert set(new_inc) == self.inclusions([i]), 'failed %s != %s' % (new_inc, self.inclusions([i]))
+            inclusions.append(new_inc)
+
+        nlines = len(self._weave)
+
+        update_text = 'checking weave'
+        if self._weave_name:
+            short_name = os.path.basename(self._weave_name)
+            update_text = 'checking %s' % (short_name,)
+            update_text = update_text[:25]
+
+        for lineno, insert, deleteset, line in self._walk():
             if progress_bar:
-                progress_bar.update('checking text', version, nv)
-            s = sha.new()
-            for l in self.get_iter(version):
-                s.update(l)
-            hd = s.hexdigest()
+                progress_bar.update(update_text, lineno, nlines)
+
+            for j, j_inc in enumerate(inclusions):
+                # The active inclusion must be an ancestor,
+                # and no ancestors must have deleted this line,
+                # because we don't support resurrection.
+                if (insert in j_inc) and not (deleteset & j_inc):
+                    sha1s[j].update(line)
+
+        for version in range(nv):
+            hd = sha1s[version].hexdigest()
             expected = self._sha1s[version]
             if hd != expected:
-                raise WeaveError("mismatched sha1 for version %d; "
-                                 "got %s, expected %s"
-                                 % (version, hd, expected))
+                raise errors.WeaveInvalidChecksum(
+                        "mismatched sha1 for version %s: "
+                        "got %s, expected %s"
+                        % (self._names[version], hd, expected))
 
         # TODO: check insertions are properly nested, that there are
         # no lines outside of insertion blocks, that deletions are
         # properly paired, etc.
-
 
     def _delta(self, included, lines):
         """Return changes from basis to new revision.
@@ -695,7 +750,11 @@ class Weave(object):
         lines_a = []
         lines_b = []
         ch_a = ch_b = False
-
+        # TODO: Return a structured form of the conflicts (e.g. 2-tuples for
+        # conflicted regions), rather than just inserting the markers.
+        # 
+        # TODO: Show some version information (e.g. author, date) on 
+        # conflicted regions.
         for state, line in plan:
             if state == 'unchanged' or state == 'killed-both':
                 # resync and flush queued conflicts changes if any
@@ -739,8 +798,9 @@ class Weave(object):
                                  'killed-both'), \
                        state
 
-                
+
     def join(self, other):
+        import sys, time
         """Integrate versions from other into this weave.
 
         The resulting weave contains all the history of both weaves; 
@@ -756,18 +816,37 @@ class Weave(object):
         # will be ok
         # work through in index order to make sure we get all dependencies
         for other_idx, name in enumerate(other._names):
-            if self._check_version_consistent(other, other_idx, name):
-                continue
+            self._check_version_consistent(other, other_idx, name)
+
+        merged = 0
+        processed = 0
+        time0 = time.time( )
         for other_idx, name in enumerate(other._names):
-            # TODO: If all the parents of the other version are already 
+            # TODO: If all the parents of the other version are already
             # present then we can avoid some work by just taking the delta
             # and adjusting the offsets.
             new_parents = self._imported_parents(other, other_idx)
-            lines = other.get_lines(other_idx)
             sha1 = other._sha1s[other_idx]
+
+            processed += 1
+           
+            if name in self._names:
+                idx = self.lookup(name)
+                n1 = map(other.idx_to_name, other._parents[other_idx] )
+                n2 = map(self.idx_to_name, self._parents[other_idx] )
+                if sha1 ==  self._sha1s[idx] and n1 == n2:
+                        continue
+
+            merged += 1
+            lines = other.get_lines(other_idx)
             self.add(name, new_parents, lines, sha1)
 
+        mutter("merged = %d, processed = %d, file_id=%s; deltat=%d"%(
+                merged,processed,self._weave_name, time.time( )-time0))
 
+
+
+ 
     def _imported_parents(self, other, other_idx):
         """Return list of parents in self corresponding to indexes in other."""
         new_parents = []

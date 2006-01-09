@@ -60,6 +60,8 @@ import re
 
 import bzrlib
 import bzrlib.errors as errors
+from bzrlib.osutils import pathjoin
+from bzrlib.trace import mutter
 import bzrlib.util.configobj.configobj as configobj
 from StringIO import StringIO
 
@@ -348,8 +350,8 @@ class LocationConfig(IniBasedConfig):
         """Save option and its value in the configuration."""
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on branches.conf.
-        if not os.path.isdir(os.path.dirname(self._get_filename())):
-            os.mkdir(os.path.dirname(self._get_filename()))
+        conf_dir = os.path.dirname(self._get_filename())
+        ensure_config_dir_exists(conf_dir)
         location = self.location
         if location.endswith('/'):
             location = location[:-1]
@@ -408,6 +410,24 @@ class BranchConfig(Config):
         return self._get_location_config()._post_commit()
 
 
+def ensure_config_dir_exists(path=None):
+    """Make sure a configuration directory exists.
+    This makes sure that the directory exists.
+    On windows, since configuration directories are 2 levels deep,
+    it makes sure both the directory and the parent directory exists.
+    """
+    if path is None:
+        path = config_dir()
+    if not os.path.isdir(path):
+        if sys.platform == 'win32':
+            parent_dir = os.path.dirname(path)
+            if not os.path.isdir(parent_dir):
+                mutter('creating config parent directory: %r', parent_dir)
+            os.mkdir(parent_dir)
+        mutter('creating config directory: %r', path)
+        os.mkdir(path)
+
+
 def config_dir():
     """Return per-user configuration directory.
 
@@ -423,22 +443,22 @@ def config_dir():
             base = os.environ.get('HOME', None)
         if base is None:
             raise BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
-        return os.path.join(base, 'bazaar', '2.0')
+        return pathjoin(base, 'bazaar', '2.0')
     else:
         # cygwin, linux, and darwin all have a $HOME directory
         if base is None:
             base = os.path.expanduser("~")
-        return os.path.join(base, ".bazaar")
+        return pathjoin(base, ".bazaar")
 
 
 def config_filename():
     """Return per-user configuration ini file filename."""
-    return os.path.join(config_dir(), 'bazaar.conf')
+    return pathjoin(config_dir(), 'bazaar.conf')
 
 
 def branches_config_filename():
     """Return per-user configuration ini file filename."""
-    return os.path.join(config_dir(), 'branches.conf')
+    return pathjoin(config_dir(), 'branches.conf')
 
 
 def _auto_user_id():

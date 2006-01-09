@@ -222,9 +222,9 @@ class cmd_add(Command):
     add them.
     """
     takes_args = ['file*']
-    takes_options = ['no-recurse', 'dry-run']
+    takes_options = ['no-recurse', 'dry-run', 'verbose']
 
-    def run(self, file_list, no_recurse=False, dry_run=False):
+    def run(self, file_list, no_recurse=False, dry_run=False, verbose=False):
         import bzrlib.add
 
         if dry_run:
@@ -238,7 +238,19 @@ class cmd_add(Command):
         else:
             action = bzrlib.add.add_action_add_and_print
 
-        bzrlib.add.smart_add(file_list, not no_recurse, action)
+        added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
+                                              action)
+        if len(ignored) > 0:
+            for glob in sorted(ignored.keys()):
+                match_len = len(ignored[glob])
+                if verbose:
+                    for path in ignored[glob]:
+                        print "ignored %s matching \"%s\"" % (path, glob)
+                else:
+                    print "ignored %d file(s) matching \"%s\"" % (match_len,
+                                                              glob)
+            print "If you wish to add some of these files, please add them"\
+                " by name."
 
 
 class cmd_mkdir(Command):
@@ -399,16 +411,13 @@ class cmd_pull(Command):
             else:
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
+
         br_from = Branch.open(location)
         br_to = tree_to.branch
-        try:
-            old_rh = br_to.revision_history()
-            count = tree_to.pull(br_from, overwrite)
-        except DivergedBranches:
-            # FIXME: Just make DivergedBranches display the right message
-            # itself.
-            raise BzrCommandError("These branches have diverged."
-                                  "  Try merge.")
+
+        old_rh = br_to.revision_history()
+        count = tree_to.pull(br_from, overwrite)
+
         if br_to.get_parent() is None or remember:
             br_to.set_parent(location)
         note('%d revision(s) pulled.' % (count,))
@@ -1452,12 +1461,31 @@ class cmd_selftest(Command):
             bzrlib.ui.ui_factory = save_ui
 
 
+def _get_bzr_branch():
+    """If bzr is run from a branch, return Branch or None"""
+    import bzrlib.errors
+    from bzrlib.branch import Branch
+    from bzrlib.osutils import abspath
+    from os.path import dirname
+    
+    try:
+        branch = Branch.open(dirname(abspath(dirname(__file__))))
+        return branch
+    except bzrlib.errors.BzrError:
+        return None
+    
+
 def show_version():
     print "bzr (bazaar-ng) %s" % bzrlib.__version__
     # is bzrlib itself in a branch?
-    bzrrev = bzrlib.get_bzr_revision()
-    if bzrrev:
-        print "  (bzr checkout, revision %d {%s})" % bzrrev
+    branch = _get_bzr_branch()
+    if branch:
+        rh = branch.revision_history()
+        revno = len(rh)
+        print "  bzr checkout, revision %d" % (revno,)
+        print "  nick: %s" % (branch.nick,)
+        if rh:
+            print "  revid: %s" % (rh[-1],)
     print bzrlib.__copyright__
     print "http://bazaar-ng.org/"
     print
@@ -1775,7 +1803,7 @@ class cmd_missing(Command):
             show_ids=False, verbose=False):
         from bzrlib.missing import find_unmerged, iter_log_data
         from bzrlib.log import log_formatter
-        local_branch = bzrlib.branch.Branch.open_containing(".")[0]
+        local_branch = bzrlib.branch.Branch.open_containing(u".")[0]
         parent = local_branch.get_parent()
         if other_branch is None:
             other_branch = parent

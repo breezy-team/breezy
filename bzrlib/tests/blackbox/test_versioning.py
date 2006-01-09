@@ -25,6 +25,7 @@ import os
 from bzrlib.tests import BzrTestBase, TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
+from bzrlib.osutils import pathjoin
 
 
 class TestVersioning(TestCaseInTempDir):
@@ -73,7 +74,7 @@ class TestVersioning(TestCaseInTempDir):
 
         self.assertEquals(len(delta.added), 2)
         self.assertEquals(delta.added[0][0], 'dir')
-        self.assertEquals(delta.added[1][0], os.path.join('dir','subdir'))
+        self.assertEquals(delta.added[1][0], pathjoin('dir','subdir'))
         self.failIf(delta.modified)
 
     def test_mkdir_w_nested_trees(self):
