@@ -424,7 +424,11 @@ def build_tree(branch, tree):
     tt = TreeTransform(wt)
     try:
         file_trans_id[wt.get_root_id()] = tt.get_id_tree(wt.get_root_id())
-        for file_id in tree:
+        file_ids = list(tree)
+        def sort_key(file_id):
+            return len(tree.id2path(file_id))
+        file_ids.sort(key=sort_key)
+        for file_id in file_ids:
             entry = tree.inventory[file_id]
             if entry.parent_id is None:
                 continue
