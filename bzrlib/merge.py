@@ -267,8 +267,9 @@ def build_working_dir(to_dir):
     """
     # RBC 20051019 is this not just 'export' ?
     # AB Well, export doesn't take care of inventory...
+    from transform import build_tree
     this_branch = Branch.open_containing(to_dir)[0]
-    transform_tree(this_branch.working_tree(), this_branch.basis_tree())
+    build_tree(this_branch, this_branch.basis_tree())
 
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):

@@ -416,3 +416,35 @@ class FinalPaths(object):
         if trans_id not in self._known_paths:
             self._known_paths[trans_id] = self._determine_path(trans_id)
         return self._known_paths[trans_id]
+
+
+def build_tree(branch, tree):
+    file_trans_id = {}
+    wt = branch.working_tree()
+    tt = TreeTransform(wt)
+    try:
+        file_trans_id[wt.get_root_id()] = tt.get_id_tree(wt.get_root_id())
+        for file_id in tree:
+            entry = tree.inventory[file_id]
+            if entry.parent_id is None:
+                continue
+            if entry.parent_id not in file_trans_id:
+                raise repr(entry.parent_id)
+            parent_id = file_trans_id[entry.parent_id]
+            name = entry.name
+            kind = entry.kind
+            if kind == 'file':
+                contents = tree.get_file_lines(file_id)
+                executable = tree.is_executable(file_id)
+                file_trans_id[file_id] = tt.new_file(name, parent_id, contents,
+                                                     file_id, executable)
+            elif kind == 'directory':
+                file_trans_id[file_id] = tt.new_directory(name, parent_id, 
+                                                          file_id)
+            elif kind == 'symlink':
+                target = entry.get_symlink_target(file_id)
+                file_trans_id[file_id] = tt.new_symlink(name, parent_id,
+                                                        target, file_id)
+        tt.apply()
+    finally:
+        tt.finalize()
