@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 """Transport is an abstraction layer to handle file access.
 
 The abstraction is to allow access from the local filesystem, as well
@@ -82,7 +83,7 @@ class Transport(object):
         using a subdirectory or parent directory. This allows connections 
         to be pooled, rather than a new one needed for each subdir.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.clone)
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -147,7 +148,7 @@ class Transport(object):
         XXX: Robert Collins 20051016 - is this really needed in the public
              interface ?
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.abspath)
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
@@ -171,7 +172,7 @@ class Transport(object):
         Note that some transports MAY allow querying on directories, but this
         is not part of the protocol.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.has)
 
     def has_multi(self, relpaths, pb=None):
         """Return True/False for each entry in relpaths"""
@@ -195,14 +196,14 @@ class Transport(object):
         As with other listing functions, only some transports implement this,.
         you may check via is_listable to determine if it will.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.iter_files_recursive)
 
     def get(self, relpath):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.get)
 
     def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
@@ -229,7 +230,7 @@ class Transport(object):
         :param mode: The mode for the newly created file, 
                      None means just use the default
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.put)
 
     def put_multi(self, files, mode=None, pb=None):
         """Put a set of files or strings into the location.
@@ -245,7 +246,7 @@ class Transport(object):
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
-        raise NotImplementedError
+        raise NotImplementedError(self.mkdir)
 
     def mkdir_multi(self, relpaths, mode=None, pb=None):
         """Create a group of directories"""
@@ -257,7 +258,7 @@ class Transport(object):
         """Append the text in the file-like or string object to 
         the supplied location.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.append)
 
     def append_multi(self, files, pb=None):
         """Append the text in each file-like or string object to
@@ -270,7 +271,7 @@ class Transport(object):
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
-        raise NotImplementedError
+        raise NotImplementedError(self.copy)
 
     def copy_multi(self, relpaths, pb=None):
         """Copy a bunch of entries.
@@ -298,7 +299,7 @@ class Transport(object):
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
-        raise NotImplementedError
+        raise NotImplementedError(self.move)
 
     def move_multi(self, relpaths, pb=None):
         """Move a bunch of entries.
@@ -317,11 +318,11 @@ class Transport(object):
         """
         # This is not implemented, because you need to do special tricks to
         # extract the basename, and add it to rel_to
-        raise NotImplementedError
+        raise NotImplementedError(self.move_multi_to)
 
     def delete(self, relpath):
         """Delete the item at relpath"""
-        raise NotImplementedError
+        raise NotImplementedError(self.delete)
 
     def delete_multi(self, relpaths, pb=None):
         """Queue up a bunch of deletes to be done.
@@ -338,7 +339,7 @@ class Transport(object):
         ALSO NOTE: Stats of directories may not be supported on some 
         transports.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.stat)
 
     def stat_multi(self, relpaths, pb=None):
         """Stat multiple files and return the information.
@@ -354,7 +355,7 @@ class Transport(object):
 
     def listable(self):
         """Return True if this store supports listing."""
-        raise NotImplementedError
+        raise NotImplementedError(self.listable)
 
     def list_dir(self, relpath):
         """Return a list of all files at the given location.
@@ -370,7 +371,7 @@ class Transport(object):
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.lock_read)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
@@ -378,7 +379,7 @@ class Transport(object):
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.lock_write)
 
 
 def get_transport(base):
@@ -419,7 +420,9 @@ def urlescape(relpath):
 register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
-register_lazy_transport('http://', 'bzrlib.transport.http', 'HttpTransport')
-register_lazy_transport('https://', 'bzrlib.transport.http', 'HttpTransport')
+## register_lazy_transport('http://', 'bzrlib.transport.http', 'HttpTransport')
+## register_lazy_transport('https://', 'bzrlib.transport.http', 'HttpTransport')
+register_lazy_transport('http://', 'bzrlib.transport.pycurlhttp', 'PyCurlTransport')
+register_lazy_transport('https://', 'bzrlib.transport.pycurlhttp', 'PyCurlTransport')
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')

@@ -60,47 +60,18 @@ def extract_auth(url, password_manager):
     url = scheme + '//' + host + port + path
     return url
     
-def get_url(url):
-    import urllib2
-    mutter("get_url %s" % url)
-    manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
-    url = extract_auth(url, manager)
-    auth_handler = urllib2.HTTPBasicAuthHandler(manager)
-    opener = urllib2.build_opener(auth_handler)
-    url_f = opener.open(url)
-    return url_f
 
-class HttpTransport(Transport):
-    """This is the transport agent for http:// access.
-    
-    TODO: Implement pipelined versions of all of the *_multi() functions.
-    """
+class HttpTransportBase(Transport):
+    """Base class for http implementations.
 
+    Does URL parsing, etc, but not any network IO."""
     def __init__(self, base):
         """Set the base path where files will be stored."""
         assert base.startswith('http://') or base.startswith('https://')
-        super(HttpTransport, self).__init__(base)
-        # In the future we might actually connect to the remote host
-        # rather than using get_url
-        # self._connection = None
+        super(HttpTransportBase, self).__init__(base)
         (self._proto, self._host,
             self._path, self._parameters,
             self._query, self._fragment) = urlparse.urlparse(self.base)
-
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
-        """
-        return True
-
-    def clone(self, offset=None):
-        """Return a new HttpTransport with root at self.base + offset
-        For now HttpTransport does not actually connect, so just return
-        a new HttpTransport object.
-        """
-        if offset is None:
-            return HttpTransport(self.base)
-        else:
-            return HttpTransport(self.abspath(offset))
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -140,6 +111,72 @@ class HttpTransport(Transport):
         return urlparse.urlunparse((self._proto,
                 self._host, path, '', '', ''))
 
+    def stat(self, relpath):
+        """Return the stat information for a file.
+        """
+        raise TransportNotPossible('http does not support stat()')
+
+    def lock_read(self, relpath):
+        """Lock the given file for shared (read) access.
+        :return: A lock object, which should be passed to Transport.unlock()
+        """
+        # The old RemoteBranch ignore lock for reading, so we will
+        # continue that tradition and return a bogus lock object.
+        class BogusLock(object):
+            def __init__(self, path):
+                self.path = path
+            def unlock(self):
+                pass
+        return BogusLock(relpath)
+
+    def lock_write(self, relpath):
+        """Lock the given file for exclusive (write) access.
+        WARNING: many transports do not support this, so trying avoid using it
+
+        :return: A lock object, which should be passed to Transport.unlock()
+        """
+        raise TransportNotPossible('http does not support lock_write()')
+
+    def clone(self, offset=None):
+        """Return a new HttpTransport with root at self.base + offset
+        For now HttpTransport does not actually connect, so just return
+        a new HttpTransport object.
+        """
+        if offset is None:
+            return self.__class__(self.base)
+        else:
+            return self.__class__(self.abspath(offset))
+
+    def listable(self):
+        """Returns false - http has no reliable way to list directories."""
+        # well, we could try DAV...
+        return False
+
+
+class HttpTransport(HttpTransportBase):
+    """Python urllib transport for http and https.
+    
+    TODO: Implement pipelined versions of all of the *_multi() functions.
+    """
+
+    def __init__(self, base):
+        """Set the base path where files will be stored."""
+        super(HttpTransport, self).__init__(base)
+
+    def _get_url(self, url):
+        mutter("get_url %s" % url)
+        manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        url = extract_auth(url, manager)
+        auth_handler = urllib2.HTTPBasicAuthHandler(manager)
+        opener = urllib2.build_opener(auth_handler)
+        url_f = opener.open(url)
+        return url_f
+
+    def should_cache(self):
+        """Return True if the data pulled across should be cached locally.
+        """
+        return True
+
     def has(self, relpath):
         """Does the target location exist?
 
@@ -154,7 +191,7 @@ class HttpTransport(Transport):
         path = relpath
         try:
             path = self.abspath(relpath)
-            f = get_url(path)
+            f = self._get_url(path)
             # Without the read and then close()
             # we tend to have busy sockets.
             f.read()
@@ -180,7 +217,7 @@ class HttpTransport(Transport):
         path = relpath
         try:
             path = self.abspath(relpath)
-            return get_url(path)
+            return self._get_url(path)
         except urllib2.HTTPError, e:
             mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
@@ -242,32 +279,3 @@ class HttpTransport(Transport):
         """Delete the item at relpath"""
         raise TransportNotPossible('http does not support delete()')
 
-    def listable(self):
-        """See Transport.listable."""
-        return False
-
-    def stat(self, relpath):
-        """Return the stat information for a file.
-        """
-        raise TransportNotPossible('http does not support stat()')
-
-    def lock_read(self, relpath):
-        """Lock the given file for shared (read) access.
-        :return: A lock object, which should be passed to Transport.unlock()
-        """
-        # The old RemoteBranch ignore lock for reading, so we will
-        # continue that tradition and return a bogus lock object.
-        class BogusLock(object):
-            def __init__(self, path):
-                self.path = path
-            def unlock(self):
-                pass
-        return BogusLock(relpath)
-
-    def lock_write(self, relpath):
-        """Lock the given file for exclusive (write) access.
-        WARNING: many transports do not support this, so trying avoid using it
-
-        :return: A lock object, which should be passed to Transport.unlock()
-        """
-        raise TransportNotPossible('http does not support lock_write()')
