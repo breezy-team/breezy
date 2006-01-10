@@ -1,6 +1,6 @@
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.branch import Branch
-from bzrlib.transform import TreeTransform
+from bzrlib.transform import TreeTransform, ROOT_PARENT
 from bzrlib.errors import DuplicateKey, MalformedTransform, NoSuchFile
 from bzrlib.osutils import file_kind
 import os
@@ -12,7 +12,7 @@ class TestTreeTransform(TestCaseInTempDir):
         transform = TreeTransform(wt)
         try:
             root = transform.get_id_tree(wt.get_root_id())
-            self.assertIs(transform.get_tree_parent(root), None)
+            self.assertIs(transform.get_tree_parent(root), ROOT_PARENT)
             imaginary_id = transform.get_tree_path_id('imaginary')
             self.assertEqual(transform.get_tree_parent(imaginary_id), root)
             self.assertEqual(transform.final_kind(root), 'directory')
@@ -27,7 +27,8 @@ class TestTreeTransform(TestCaseInTempDir):
                               'my_pretties', trans_id)
             self.assertEqual(transform.final_file_id(trans_id), 'my_pretties')
             self.assertEqual(transform.final_parent(trans_id), root)
-            self.assertIs(transform.final_parent(root), None)
+            self.assertIs(transform.final_parent(root), ROOT_PARENT)
+            self.assertIs(transform.get_tree_parent(root), ROOT_PARENT)
             oz_id = transform.create_path('oz', root)
             transform.create_directory(oz_id)
             transform.version_file('ozzie', oz_id)

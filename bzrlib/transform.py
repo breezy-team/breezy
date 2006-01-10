@@ -3,6 +3,9 @@ from bzrlib.errors import DuplicateKey, MalformedTransform, NoSuchFile
 from bzrlib.osutils import file_kind, supports_executable
 from bzrlib.inventory import InventoryEntry
 import errno
+
+ROOT_PARENT = "root-parent"
+
 def unique_add(map, key, value):
     if key in map:
         raise DuplicateKey(key=key)
@@ -76,10 +79,10 @@ class TreeTransform(object):
         return self._tree_path_ids[path]
 
     def get_tree_parent(self, trans_id):
-        """Determine id of the parent in the tree, or None for tree root."""
+        """Determine id of the parent in the tree."""
         path = self._tree_id_paths[trans_id]
         if path == "":
-            return None
+            return ROOT_PARENT
         return self.get_tree_path_id(os.path.dirname(path))
 
     def create_file(self, contents, trans_id):
@@ -174,7 +177,7 @@ class TreeTransform(object):
         """\
         Determine the parent file_id, after any changes are applied.
 
-        None is returned for the tree root.
+        ROOT_PARENT is returned for the tree root.
         """
         try:
             return self._new_parent[trans_id]
@@ -204,7 +207,7 @@ class TreeTransform(object):
         for trans_id in self._new_parent:
             seen = set()
             parent_id = trans_id
-            while parent_id is not None:
+            while parent_id is not ROOT_PARENT:
                 seen.add(parent_id)
                 parent_id = self.final_parent(parent_id)
                 if parent_id == trans_id:
