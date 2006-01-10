@@ -31,11 +31,6 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None):
         rev_id = rh.pop()
         if verbose:
             print 'Removing revno %d: %s' % (len(rh)+1, rev_id)
-        rev = branch.get_revision(rev_id)
-        inv = branch.get_revision_inventory(rev_id)
-        inv_prev = []
-        for p in rev.parent_ids:
-            inv_prev.append(branch.get_revision_inventory(p))
 
     new_rev_history.write('\n'.join(rh))
 
