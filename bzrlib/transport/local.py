@@ -283,3 +283,11 @@ class LocalURLServer(Server):
         """See Transport.Server.get_url."""
         # FIXME: \ to / on windows
         return "file://%s" % os.path.abspath("")
+
+
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    return [(LocalTransport, LocalRelpathServer),
+            (LocalTransport, LocalAbspathServer),
+            (LocalTransport, LocalURLServer),
+            ]

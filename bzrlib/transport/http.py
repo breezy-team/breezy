@@ -20,6 +20,7 @@ import os, errno
 from cStringIO import StringIO
 import urllib, urllib2
 import urlparse
+from warnings import warn
 
 from bzrlib.transport import Transport, Server
 from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
@@ -425,3 +426,9 @@ class HttpServer(Server):
         """See bzrlib.transport.Server.get_bogus_url."""
         return 'http://jasldkjsalkdjalksjdkljasd'
 
+
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    warn("There are no HTTPS transport provider tests yet.")
+    return [(HttpTransport, HttpServer),
+            ]

@@ -24,7 +24,12 @@ from bzrlib.errors import (NoSuchFile, FileExists,
                            TransportNotPossible, ConnectionError)
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
-from bzrlib.transport import memory, urlescape
+from bzrlib.transport import (_get_protocol_handlers,
+                              _get_transport_modules,
+                              register_lazy_transport,
+                              _set_protocol_handlers,
+                              urlescape,
+                              )
 from bzrlib.osutils import pathjoin
 
 
@@ -57,6 +62,29 @@ class TestTransport(TestCase):
     def test_urlescape(self):
         self.assertEqual('%25', urlescape('%'))
 
+    def test__get_set_protocol_handlers(self):
+        handlers = _get_protocol_handlers()
+        self.assertNotEqual({}, handlers)
+        try:
+            _set_protocol_handlers({})
+            self.assertEqual({}, _get_protocol_handlers())
+        finally:
+            _set_protocol_handlers(handlers)
+
+    def test_get_transport_modules(self):
+        handlers = _get_protocol_handlers()
+        class SampleHandler(object):
+            """I exist, isnt that enough?"""
+        try:
+            my_handlers = {}
+            _set_protocol_handlers(my_handlers)
+            register_lazy_transport('foo', 'bzrlib.tests.test_transport', 'TestTransport.SampleHandler')
+            register_lazy_transport('bar', 'bzrlib.tests.test_transport', 'TestTransport.SampleHandler')
+            self.assertEqual([SampleHandler.__module__],
+                             _get_transport_modules())
+        finally:
+            _set_protocol_handlers(handlers)
+            
 
 class TestTransportMixIn(object):
     """Subclass this, and it will provide a series of tests for a Transport.

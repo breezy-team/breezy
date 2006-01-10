@@ -77,6 +77,32 @@ class TestSkippedTest(TestCase):
 
 class TestTransportProviderAdapter(TestCase):
 
+    def test_get_transport_permutations(self):
+        class MockModule(object):
+            def get_test_permutations(self):
+                return sample_permutation
+        sample_permutation = [(1,2), (3,4)]
+        from bzrlib.transport import TransportTestProviderAdapter
+        adapter = TransportTestProviderAdapter()
+        self.assertEqual(sample_permutation,
+                         adapter.get_transport_test_permutations(MockModule()))
+
+    def test_adapter_checks_all_modules(self):
+        from bzrlib.transport import (TransportTestProviderAdapter,
+                                      _get_transport_modules
+                                      )
+        modules = _get_transport_modules()
+        permutation_count = 0
+        for module in modules:
+            permutation_count += len(reduce(getattr, 
+                (module + ".get_test_permutations").split('.')[1:],
+                 __import__(module))())
+        input_test = TestTransportProviderAdapter(
+            "test_adapter_sets_transport_class")
+        adapter = TransportTestProviderAdapter()
+        self.assertEqual(permutation_count,
+                         len(list(iter(adapter.adapt(input_test)))))
+
     def test_adapter_sets_transport_class(self):
         from bzrlib.transport.local import (LocalTransport,
                                             LocalRelpathServer,
@@ -109,19 +135,17 @@ class TestTransportProviderAdapter(TestCase):
         # HTTPTransport https-factory
         # etc, but we are currently lacking in this, so print out that
         # this should be fixed.
-        print "TODO: test servers for all local permutations."
-        print "Currently missing: FTP, HTTPS."
         input_test = TestTransportProviderAdapter(
             "test_adapter_sets_transport_class")
         suite = TransportTestProviderAdapter().adapt(input_test)
         test_iter = iter(suite)
+        http_test = test_iter.next()
         local_relpath_test = test_iter.next()
         local_abspath_test = test_iter.next()
         local_urlpath_test = test_iter.next()
         sftp_abs_test = test_iter.next()
         sftp_homedir_test = test_iter.next()
         sftp_sibling_abs_test = test_iter.next()
-        http_test = test_iter.next()
         memory_test = test_iter.next()
         # ftp_test = test_iter.next()
         self.assertRaises(StopIteration, test_iter.next)

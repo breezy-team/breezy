@@ -43,6 +43,33 @@ def register_transport(prefix, klass, override=True):
         _protocol_handlers[prefix] = klass
 
 
+def _get_protocol_handlers():
+    """Return a dictionary of prefix:transport-factories."""
+    return _protocol_handlers
+
+
+def _set_protocol_handlers(new_handlers):
+    """Replace the current protocol handlers dictionary.
+
+    WARNING this will remove all build in protocols. Use with care.
+    """
+    global _protocol_handlers
+    _protocol_handlers = new_handlers
+
+
+def _get_transport_modules():
+    """Return a list of the modules providing transports."""
+    modules = set()
+    for prefix, factory in _protocol_handlers.items():
+        if factory.__module__ == "bzrlib.transport":
+            # this is a lazy load transport, because no real ones
+            # are directlry in bzrlib.transport
+            modules.add(factory.module)
+        else:
+            modules.add(factory.__module__)
+    return list(modules)
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -425,6 +452,7 @@ def register_lazy_transport(scheme, module, classname):
         mod = __import__(module, globals(), locals(), [classname])
         klass = getattr(mod, classname)
         return klass(base)
+    _loader.module = module
     register_transport(scheme, _loader)
 
 
@@ -476,34 +504,18 @@ class TransportTestProviderAdapter(object):
             result.addTest(new_test)
         return result
 
+    def get_transport_test_permutations(self, module):
+        """Get the permutations module wants to have tested."""
+        return module.get_test_permutations()
+
     def _test_permutations(self):
         """Return a list of the klass, server_factory pairs to test."""
-        from bzrlib.transport.local import (LocalTransport,
-                                            LocalRelpathServer,
-                                            LocalAbspathServer,
-                                            LocalURLServer
-                                            )
-        from bzrlib.transport.sftp import (SFTPTransport,
-                                           SFTPAbsoluteServer,
-                                           SFTPHomeDirServer,
-                                           SFTPSiblingAbsoluteServer,
-                                           )
-        from bzrlib.transport.http import (HttpTransport,
-                                           HttpServer
-                                           )
-        from bzrlib.transport.ftp import FtpTransport
-        from bzrlib.transport.memory import (MemoryTransport,
-                                             MemoryServer
-                                             )
-        return [(LocalTransport, LocalRelpathServer),
-                (LocalTransport, LocalAbspathServer),
-                (LocalTransport, LocalURLServer),
-                (SFTPTransport, SFTPAbsoluteServer),
-                (SFTPTransport, SFTPHomeDirServer),
-                (SFTPTransport, SFTPSiblingAbsoluteServer),
-                (HttpTransport, HttpServer),
-                (MemoryTransport, MemoryServer),
-                ]
+        result = []
+        for module in _get_transport_modules():
+            result.extend(self.get_transport_test_permutations(reduce(getattr, 
+                (module).split('.')[1:],
+                 __import__(module))))
+        return result
         
 
 # None is the default transport, for things with no url scheme
@@ -514,3 +526,4 @@ register_lazy_transport('http://', 'bzrlib.transport.http', 'HttpTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http', 'HttpTransport')
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
+register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')

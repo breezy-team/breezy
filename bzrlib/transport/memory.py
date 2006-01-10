@@ -188,3 +188,9 @@ class MemoryServer(Server):
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
         return self._scheme
+
+
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    return [(MemoryTransport, MemoryServer),
+            ]

@@ -960,3 +960,11 @@ class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
     def setUp(self):
         self._server_homedir = '/dev/noone/runs/tests/here'
         super(SFTPSiblingAbsoluteServer, self).setUp()
+
+
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    return [(SFTPTransport, SFTPAbsoluteServer),
+            (SFTPTransport, SFTPHomeDirServer),
+            (SFTPTransport, SFTPSiblingAbsoluteServer),
+            ]
