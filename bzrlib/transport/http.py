@@ -394,6 +394,7 @@ class HttpServer(Server):
 
     def log(self, *args, **kwargs):
         """Capture Server log output."""
+        self.logs.append(args[3])
 
     def setUp(self):
         """See bzrlib.transport.Server.setUp."""
@@ -409,6 +410,7 @@ class HttpServer(Server):
         self._http_proxy = os.environ.get("http_proxy")
         if self._http_proxy is not None:
             del os.environ["http_proxy"]
+        self.logs = []
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
