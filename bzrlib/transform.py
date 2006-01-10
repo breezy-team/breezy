@@ -417,6 +417,10 @@ class FinalPaths(object):
             self._known_paths[trans_id] = self._determine_path(trans_id)
         return self._known_paths[trans_id]
 
+def topology_sorted_ids(tree):
+    file_ids = list(tree)
+    file_ids.sort(key=tree.id2path)
+    return file_ids
 
 def build_tree(branch, tree):
     file_trans_id = {}
@@ -424,10 +428,7 @@ def build_tree(branch, tree):
     tt = TreeTransform(wt)
     try:
         file_trans_id[wt.get_root_id()] = tt.get_id_tree(wt.get_root_id())
-        file_ids = list(tree)
-        def sort_key(file_id):
-            return len(tree.id2path(file_id))
-        file_ids.sort(key=sort_key)
+        file_ids = topology_sorted_ids(tree)
         for file_id in file_ids:
             entry = tree.inventory[file_id]
             if entry.parent_id is None:
