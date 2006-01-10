@@ -48,7 +48,7 @@ class MemoryTransport(Transport):
             url = url + '/'
         super(MemoryTransport, self).__init__(url)
         self._cwd = url[url.find(':') + 1:]
-        self._dirs = set()
+        self._dirs = {}
         self._files = {}
 
     def clone(self, offset=None):
@@ -120,7 +120,7 @@ class MemoryTransport(Transport):
         self._check_parent(_abspath)
         if _abspath in self._dirs:
             raise FileExists(relpath)
-        self._dirs.add(_abspath)
+        self._dirs[_abspath]=mode
 
     def listable(self):
         """See Transport.listable."""
@@ -155,8 +155,10 @@ class MemoryTransport(Transport):
         if _abspath in self._files:
             return MemoryStat(len(self._files[_abspath][0]), False, 
                               self._files[_abspath][1])
-        elif _abspath in self._dirs or _abspath == '':
+        elif _abspath == '':
             return MemoryStat(0, True, None)
+        elif _abspath in self._dirs:
+            return MemoryStat(0, True, self._dirs[_abspath])
         else:
             raise NoSuchFile(relpath)
 

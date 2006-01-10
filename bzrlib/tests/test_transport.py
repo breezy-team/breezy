@@ -22,24 +22,13 @@ from cStringIO import StringIO
 
 from bzrlib.errors import (NoSuchFile, FileExists,
                            TransportNotPossible, ConnectionError)
-from bzrlib.tests import TestCase, TestCaseInTempDir
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.tests import TestCase
 from bzrlib.transport import (_get_protocol_handlers,
                               _get_transport_modules,
                               register_lazy_transport,
                               _set_protocol_handlers,
                               urlescape,
                               )
-from bzrlib.osutils import pathjoin
-
-
-def _append(fn, txt):
-    """Append the given text (file-like object) to the supplied filename."""
-    f = open(fn, 'ab')
-    f.write(txt)
-    f.flush()
-    f.close()
-    del f
 
 
 if sys.platform != 'win32':
@@ -85,56 +74,6 @@ class TestTransport(TestCase):
         finally:
             _set_protocol_handlers(handlers)
             
-
-class TestTransportMixIn(object):
-    """Subclass this, and it will provide a series of tests for a Transport.
-    It assumes that the Transport object is connected to the 
-    current working directory.  So that whatever is done 
-    through the transport, should show up in the working 
-    directory, and vice-versa.
-
-    This also tests to make sure that the functions work with both
-    generators and lists (assuming iter(list) is effectively a generator)
-    """
-    readonly = False
-    def get_transport(self):
-        """Children should override this to return the Transport object.
-        """
-        raise NotImplementedError
-
-    def test_mkdir(self):
-        t = self.get_transport()
-
-        if not self.readonly:
-            # Test mkdir with a mode
-            t.mkdir('dmode755', mode=0755)
-            check_mode(self, 'dmode755', 0755)
-
-            t.mkdir('dmode555', mode=0555)
-            check_mode(self, 'dmode555', 0555)
-
-            t.mkdir('dmode777', mode=0777)
-            check_mode(self, 'dmode777', 0777)
-
-            t.mkdir('dmode700', mode=0700)
-            check_mode(self, 'dmode700', 0700)
-
-            # TODO: jam 20051215 test mkdir_multi with a mode
-            t.mkdir_multi(['mdmode755'], mode=0755)
-            check_mode(self, 'mdmode755', 0755)
-
-    def test_copy_to(self):
-        import tempfile
-        from bzrlib.transport.local import LocalTransport
-
-        t = self.get_transport()
-        for mode in (0666, 0644, 0600, 0400):
-            dtmp_base, local_t = get_temp_local()
-            t.copy_to(files, local_t, mode=mode)
-            for f in files:
-                check_mode(self, os.path.join(dtmp_base, f), mode)
-
-
 
 class MemoryTransportTest(TestCase):
     """Memory transport specific tests."""

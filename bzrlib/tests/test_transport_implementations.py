@@ -198,7 +198,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.check_mode(t, 'mode400', 0400)
         t.put_multi([('mmode644', StringIO('text\n'))], mode=0644)
         self.check_mode(t, 'mmode644', 0644)
-
+        
     def test_mkdir(self):
         t = self.get_transport()
 
@@ -247,10 +247,25 @@ class TestTransportImplementation(TestCaseInTempDir):
         # mkdir of a dir with an absent parent
         self.assertRaises(NoSuchFile, t.mkdir, 'missing/dir')
 
-    def test_copy_to(self):
-        import tempfile
-        from bzrlib.transport.memory import MemoryTransport
+    def test_mkdir_permissions(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        # Test mkdir with a mode
+        t.mkdir('dmode755', mode=0755)
+        self.check_mode(t, 'dmode755', 0755)
+        t.mkdir('dmode555', mode=0555)
+        self.check_mode(t, 'dmode555', 0555)
+        t.mkdir('dmode777', mode=0777)
+        self.check_mode(t, 'dmode777', 0777)
+        t.mkdir('dmode700', mode=0700)
+        self.check_mode(t, 'dmode700', 0700)
+        # TODO: jam 20051215 test mkdir_multi with a mode
+        t.mkdir_multi(['mdmode755'], mode=0755)
+        self.check_mode(t, 'mdmode755', 0755)
 
+    def test_copy_to(self):
+        from bzrlib.transport.memory import MemoryTransport
         t = self.get_transport()
 
         files = ['a', 'b', 'c', 'd']
@@ -284,6 +299,12 @@ class TestTransportImplementation(TestCaseInTempDir):
             self.check_transport_contents(temp_transport.get(f).read(),
                                           t, f)
         del temp_transport
+
+        for mode in (0666, 0644, 0600, 0400):
+            temp_transport = MemoryTransport("memory:/")
+            t.copy_to(files, temp_transport, mode=mode)
+            for f in files:
+                self.check_mode(temp_transport, f, mode)
 
     def test_append(self):
         t = self.get_transport()
