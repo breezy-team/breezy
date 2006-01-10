@@ -76,16 +76,6 @@ class TestTransportImplementation(TestCaseInTempDir):
         """Check that transport.get(relpath).read() == content."""
         self.assertEqual(content, transport.get(relpath).read())
 
-    def check_mode(self, transport, path, mode):
-        """Check that a particular path has mode mode."""
-        if sys.platform == 'win32':
-            #win32 has no chmod
-            return
-        path_stat = transport.stat(path)
-        actual_mode = stat.S_IMODE(path_stat.st_mode)
-        self.assertEqual(mode, actual_mode,
-            'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
-
     def get_transport(self):
         """Return a connected transport to the local directory."""
         t = bzrlib.transport.get_transport(self._server.get_url())
@@ -188,16 +178,16 @@ class TestTransportImplementation(TestCaseInTempDir):
         if t.is_readonly():
             return
         t.put('mode644', StringIO('test text\n'), mode=0644)
-        self.check_mode(t, 'mode644', 0644)
+        self.assertMode(t, 'mode644', 0644)
         t.put('mode666', StringIO('test text\n'), mode=0666)
-        self.check_mode(t, 'mode666', 0666)
+        self.assertMode(t, 'mode666', 0666)
         t.put('mode600', StringIO('test text\n'), mode=0600)
-        self.check_mode(t, 'mode600', 0600)
+        self.assertMode(t, 'mode600', 0600)
         # Yes, you can put a file such that it becomes readonly
         t.put('mode400', StringIO('test text\n'), mode=0400)
-        self.check_mode(t, 'mode400', 0400)
+        self.assertMode(t, 'mode400', 0400)
         t.put_multi([('mmode644', StringIO('text\n'))], mode=0644)
-        self.check_mode(t, 'mmode644', 0644)
+        self.assertMode(t, 'mmode644', 0644)
         
     def test_mkdir(self):
         t = self.get_transport()
@@ -253,16 +243,16 @@ class TestTransportImplementation(TestCaseInTempDir):
             return
         # Test mkdir with a mode
         t.mkdir('dmode755', mode=0755)
-        self.check_mode(t, 'dmode755', 0755)
+        self.assertMode(t, 'dmode755', 0755)
         t.mkdir('dmode555', mode=0555)
-        self.check_mode(t, 'dmode555', 0555)
+        self.assertMode(t, 'dmode555', 0555)
         t.mkdir('dmode777', mode=0777)
-        self.check_mode(t, 'dmode777', 0777)
+        self.assertMode(t, 'dmode777', 0777)
         t.mkdir('dmode700', mode=0700)
-        self.check_mode(t, 'dmode700', 0700)
+        self.assertMode(t, 'dmode700', 0700)
         # TODO: jam 20051215 test mkdir_multi with a mode
         t.mkdir_multi(['mdmode755'], mode=0755)
-        self.check_mode(t, 'mdmode755', 0755)
+        self.assertMode(t, 'mdmode755', 0755)
 
     def test_copy_to(self):
         from bzrlib.transport.memory import MemoryTransport
@@ -304,7 +294,7 @@ class TestTransportImplementation(TestCaseInTempDir):
             temp_transport = MemoryTransport("memory:/")
             t.copy_to(files, temp_transport, mode=mode)
             for f in files:
-                self.check_mode(temp_transport, f, mode)
+                self.assertMode(temp_transport, f, mode)
 
     def test_append(self):
         t = self.get_transport()

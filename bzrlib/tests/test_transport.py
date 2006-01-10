@@ -31,20 +31,6 @@ from bzrlib.transport import (_get_protocol_handlers,
                               )
 
 
-if sys.platform != 'win32':
-    def check_mode(test, path, mode):
-        """Check that a particular path has the correct mode."""
-        actual_mode = stat.S_IMODE(os.stat(path).st_mode)
-        test.assertEqual(mode, actual_mode,
-            'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
-else:
-    def check_mode(test, path, mode):
-        """On win32 chmod doesn't have any effect, 
-        so don't actually check anything
-        """
-        return
-
-
 class TestTransport(TestCase):
     """Test the non transport-concrete class functionality."""
 

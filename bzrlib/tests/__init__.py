@@ -28,6 +28,7 @@ import logging
 import os
 import re
 import shutil
+import stat
 import sys
 import tempfile
 import unittest
@@ -289,6 +290,18 @@ class TestCase(unittest.TestCase):
         if len(missing) > 0:
             raise AssertionError("value(s) %r not present in container %r" % 
                                  (missing, superlist))
+
+    def assertMode(self, transport, path, mode):
+        """Fail if a path does not have mode mode.
+        
+        If modes are not supported on this platform, the test is skipped.
+        """
+        if sys.platform == 'win32':
+            return
+        path_stat = transport.stat(path)
+        actual_mode = stat.S_IMODE(path_stat.st_mode)
+        self.assertEqual(mode, actual_mode,
+            'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
 
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
