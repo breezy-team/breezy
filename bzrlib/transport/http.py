@@ -18,10 +18,10 @@
 
 from bzrlib.transport import Transport, register_transport
 from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
-                           NonRelativePath, TransportError, ConnectionError)
+                           TransportError, ConnectionError)
 import os, errno
 from cStringIO import StringIO
-import urllib2
+import urllib, urllib2
 import urlparse
 
 from bzrlib.errors import BzrError, BzrCheckError
@@ -29,14 +29,46 @@ from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 
 
+def extract_auth(url, password_manager):
+    """
+    Extract auth parameters from am HTTP/HTTPS url and add them to the given
+    password manager.  Return the url, minus those auth parameters (which
+    confuse urllib2).
+    """
+    assert url.startswith('http://') or url.startswith('https://')
+    scheme, host = url.split('//', 1)
+    if '/' in host:
+        host, path = host.split('/', 1)
+        path = '/' + path
+    else:
+        path = ''
+    port = ''
+    if '@' in host:
+        auth, host = host.split('@', 1)
+        if ':' in auth:
+            username, password = auth.split(':', 1)
+        else:
+            username, password = auth, None
+        if ':' in host:
+            host, port = host.split(':', 1)
+            port = ':' + port
+        # FIXME: if password isn't given, should we ask for it?
+        if password is not None:
+            username = urllib.unquote(username)
+            password = urllib.unquote(password)
+            password_manager.add_password(None, host, username, password)
+    url = scheme + '//' + host + port + path
+    return url
+    
 def get_url(url):
     import urllib2
     mutter("get_url %s" % url)
-    url_f = urllib2.urlopen(url)
+    manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
+    url = extract_auth(url, manager)
+    auth_handler = urllib2.HTTPBasicAuthHandler(manager)
+    opener = urllib2.build_opener(auth_handler)
+    url_f = opener.open(url)
     return url_f
-
-class HttpTransportError(TransportError):
-    pass
 
 class HttpTransport(Transport):
     """This is the transport agent for http:// access.
@@ -119,41 +151,52 @@ class HttpTransport(Transport):
         cleaner if we just do an http HEAD request, and parse
         the return code.
         """
+        path = relpath
         try:
-            f = get_url(self.abspath(relpath))
+            path = self.abspath(relpath)
+            f = get_url(path)
             # Without the read and then close()
             # we tend to have busy sockets.
             f.read()
             f.close()
             return True
         except urllib2.URLError, e:
+            mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
                 return False
             raise
         except IOError, e:
+            mutter('io error: %s %s for has url: %r', 
+                e.errno, errno.errorcode.get(e.errno), path)
             if e.errno == errno.ENOENT:
                 return False
-            raise HttpTransportError(orig_error=e)
+            raise TransportError(orig_error=e)
 
     def get(self, relpath, decode=False):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
         """
+        path = relpath
         try:
-            return get_url(self.abspath(relpath))
+            path = self.abspath(relpath)
+            return get_url(path)
         except urllib2.HTTPError, e:
+            mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
-                raise NoSuchFile(msg = "Error retrieving %s: %s" 
-                                 % (self.abspath(relpath), str(e)),
-                                 orig_error=e)
+                raise NoSuchFile(path, extra=e)
             raise
         except (BzrError, IOError), e:
+            if hasattr(e, 'errno'):
+                mutter('io error: %s %s for has url: %r', 
+                    e.errno, errno.errorcode.get(e.errno), path)
+                if e.errno == errno.ENOENT:
+                    raise NoSuchFile(path, extra=e)
             raise ConnectionError(msg = "Error retrieving %s: %s" 
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
 
-    def put(self, relpath, f):
+    def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
@@ -161,7 +204,7 @@ class HttpTransport(Transport):
         """
         raise TransportNotPossible('http PUT not supported')
 
-    def mkdir(self, relpath):
+    def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         raise TransportNotPossible('http does not support mkdir()')
 
@@ -175,7 +218,7 @@ class HttpTransport(Transport):
         """Copy the item at rel_from to the location at rel_to"""
         raise TransportNotPossible('http does not support copy()')
 
-    def copy_to(self, relpaths, other, pb=None):
+    def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
 
         :param relpaths: A list/generator of entries to be copied.
@@ -189,7 +232,7 @@ class HttpTransport(Transport):
         if isinstance(other, HttpTransport):
             raise TransportNotPossible('http cannot be the target of copy_to()')
         else:
-            return super(HttpTransport, self).copy_to(relpaths, other, pb=pb)
+            return super(HttpTransport, self).copy_to(relpaths, other, mode=mode, pb=pb)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""

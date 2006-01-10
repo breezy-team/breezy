@@ -55,6 +55,7 @@ from bzrlib.branch import (Branch,
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
                            DivergedBranches,
+                           WeaveRevisionNotPresent,
                            NotBranchError,
                            NotVersionedError)
 from bzrlib.inventory import InventoryEntry
@@ -62,12 +63,17 @@ from bzrlib.osutils import (appendpath,
                             compact_date,
                             file_kind,
                             isdir,
+                            getcwd,
+                            pathjoin,
                             pumpfile,
                             splitpath,
                             rand_bytes,
+                            abspath,
+                            normpath,
                             realpath,
                             relpath,
                             rename)
+from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.trace import mutter
 import bzrlib.xml5
@@ -172,7 +178,7 @@ class WorkingTree(bzrlib.tree.Tree):
     not listed in the Inventory and vice versa.
     """
 
-    def __init__(self, basedir='.', branch=None):
+    def __init__(self, basedir=u'.', branch=None):
         """Construct a WorkingTree for basedir.
 
         If the branch is not supplied, it is opened automatically.
@@ -191,8 +197,6 @@ class WorkingTree(bzrlib.tree.Tree):
         self.branch = branch
         self.basedir = realpath(basedir)
 
-        self._set_inventory(self.read_working_inventory())
-
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
         # two possible ways offer themselves : in self._unlock, write the cache
@@ -206,6 +210,8 @@ class WorkingTree(bzrlib.tree.Tree):
         if hc.needs_write:
             mutter("write hc")
             hc.write()
+
+        self._set_inventory(self.read_working_inventory())
 
     def _set_inventory(self, inv):
         self._inventory = inv
@@ -223,25 +229,25 @@ class WorkingTree(bzrlib.tree.Tree):
         If there is one, it is returned, along with the unused portion of path.
         """
         if path is None:
-            path = os.getcwdu()
+            path = getcwd()
         else:
             # sanity check.
             if path.find('://') != -1:
                 raise NotBranchError(path=path)
-        path = os.path.abspath(path)
-        tail = ''
+        path = abspath(path)
+        tail = u''
         while True:
             try:
                 return WorkingTree(path), tail
             except NotBranchError:
                 pass
             if tail:
-                tail = os.path.join(os.path.basename(path), tail)
+                tail = pathjoin(os.path.basename(path), tail)
             else:
                 tail = os.path.basename(path)
+            lastpath = path
             path = os.path.dirname(path)
-            # FIXME: top in windows is indicated how ???
-            if path == os.path.sep:
+            if lastpath == path:
                 # reached the root, whatever that may be
                 raise NotBranchError(path=path)
 
@@ -261,11 +267,11 @@ class WorkingTree(bzrlib.tree.Tree):
                                getattr(self, 'basedir', None))
 
     def abspath(self, filename):
-        return os.path.join(self.basedir, filename)
+        return pathjoin(self.basedir, filename)
 
-    def relpath(self, abspath):
+    def relpath(self, abs):
         """Return the local path portion from a given absolute path."""
-        return relpath(self.basedir, abspath)
+        return relpath(self.basedir, abs)
 
     def has_filename(self, filename):
         return bzrlib.osutils.lexists(self.abspath(filename))
@@ -312,6 +318,7 @@ class WorkingTree(bzrlib.tree.Tree):
     def get_file_size(self, file_id):
         return os.path.getsize(self.id2abspath(file_id))
 
+    @needs_read_lock
     def get_file_sha1(self, file_id):
         path = self._inventory.id2path(file_id)
         return self._hashcache.get_sha1(path)
@@ -370,7 +377,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if len(fp) == 0:
                 raise BzrError("cannot add top-level %r" % f)
 
-            fullpath = os.path.normpath(self.abspath(f))
+            fullpath = normpath(self.abspath(f))
 
             try:
                 kind = file_kind(fullpath)
@@ -502,7 +509,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 for ff in descend(fp, f_ie.file_id, fap):
                     yield ff
 
-        for f in descend('', inv.root.file_id, self.basedir):
+        for f in descend(u'', inv.root.file_id, self.basedir):
             yield f
 
     @needs_write_lock
@@ -661,7 +668,7 @@ class WorkingTree(bzrlib.tree.Tree):
         source.lock_read()
         try:
             old_revision_history = self.branch.revision_history()
-            self.branch.pull(source, overwrite)
+            count = self.branch.pull(source, overwrite)
             new_revision_history = self.branch.revision_history()
             if new_revision_history != old_revision_history:
                 if len(old_revision_history):
@@ -671,6 +678,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 merge_inner(self.branch,
                             self.branch.basis_tree(), 
                             self.branch.revision_tree(other_revision))
+            return count
         finally:
             source.unlock()
 
@@ -776,6 +784,29 @@ class WorkingTree(bzrlib.tree.Tree):
         """See Branch.lock_write, and WorkingTree.unlock."""
         return self.branch.lock_write()
 
+    def _basis_inventory_name(self, revision_id):
+        return 'basis-inventory.%s' % revision_id
+
+    def set_last_revision(self, new_revision, old_revision=None):
+        if old_revision:
+            try:
+                path = self._basis_inventory_name(old_revision)
+                path = self.branch._rel_controlfilename(path)
+                self.branch._transport.delete(path)
+            except:
+                pass
+        try:
+            xml = self.branch.get_inventory_xml(new_revision)
+            path = self._basis_inventory_name(new_revision)
+            self.branch.put_controlfile(path, xml)
+        except WeaveRevisionNotPresent:
+            pass
+
+    def read_basis_inventory(self, revision_id):
+        """Read the cached basis inventory."""
+        path = self._basis_inventory_name(revision_id)
+        return self.branch.controlfile(path, 'r').read()
+        
     @needs_read_lock
     def read_working_inventory(self):
         """Read the working inventory."""
@@ -883,6 +914,8 @@ class WorkingTree(bzrlib.tree.Tree):
         between multiple working trees, i.e. via shared storage, then we 
         would probably want to lock both the local tree, and the branch.
         """
+        if self._hashcache.needs_write:
+            self._hashcache.write()
         return self.branch.unlock()
 
     @needs_write_lock

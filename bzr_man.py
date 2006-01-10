@@ -202,7 +202,11 @@ environment variable. Example content:
 .BR http://www.bazaar-ng.org/doc/
 """
 
-def main():
+def main(args=[]):
+    """ main function
+    :param  args:   command-line arguments (sys.argv[1:])
+    :type   args:   list
+    """
     t = time.time()
     tt = time.gmtime(t)
     params = \
@@ -217,8 +221,8 @@ def main():
     clp.end_parse()
 
     filename = "bzr.1"
-    if len(sys.argv) == 2:
-        filename = sys.argv[1]
+    if len(args) == 1:
+        filename = args[0]
     if filename == "-":
         outfile = sys.stdout
     else:
@@ -238,7 +242,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
 
 
 #>>> code by HUN

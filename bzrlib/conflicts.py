@@ -30,6 +30,7 @@ from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError, NotConflicted
 from bzrlib.commands import register_command
 from bzrlib.workingtree import CONFLICT_SUFFIXES
+from bzrlib.osutils import rename
 
 class cmd_conflicts(bzrlib.commands.Command):
     """List files with conflicts.
@@ -37,7 +38,7 @@ class cmd_conflicts(bzrlib.commands.Command):
     files.)
     """
     def run(self):
-        for path in Branch.open_containing('.')[0].working_tree().iter_conflicts():
+        for path in Branch.open_containing(u'.')[0].working_tree().iter_conflicts():
             print path
 
 class cmd_resolve(bzrlib.commands.Command):
@@ -51,7 +52,7 @@ class cmd_resolve(bzrlib.commands.Command):
             if not all:
                 raise BzrCommandError(
                     "command 'resolve' needs one or more FILE, or --all")
-            tree = Branch.open_containing('.')[0].working_tree()
+            tree = Branch.open_containing(u'.')[0].working_tree()
             file_list = list(tree.abspath(f) for f in tree.iter_conflicts())
         else:
             if all:
@@ -80,7 +81,7 @@ def restore(filename):
     """
     conflicted = False
     try:
-        os.rename(filename + ".THIS", filename)
+        rename(filename + ".THIS", filename)
         conflicted = True
     except OSError, e:
         if e.errno != errno.ENOENT:

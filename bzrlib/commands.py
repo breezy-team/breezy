@@ -35,7 +35,7 @@ import errno
 
 import bzrlib
 import bzrlib.trace
-from bzrlib.trace import mutter, note, log_error, warning
+from bzrlib.trace import mutter, note, log_error, warning, be_quiet
 from bzrlib.errors import (BzrError, 
                            BzrCheckError,
                            BzrCommandError,
@@ -447,6 +447,13 @@ def apply_profiled(the_callable, *args, **kwargs):
         os.remove(pfname)
 
 
+def apply_lsprofiled(the_callable, *args, **kwargs):
+    from bzrlib.lsprof import profile
+    ret,stats = profile(the_callable,*args,**kwargs)
+    stats.sort()
+    stats.pprint()
+    return ret
+
 def run_bzr(argv):
     """Execute a command.
 
@@ -469,11 +476,14 @@ def run_bzr(argv):
         other behaviour.)
 
     --profile
-        Run under the Python profiler.
+        Run under the Python hotshot profiler.
+
+    --lsprof
+        Run under the Python lsprof profiler.
     """
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
 
-    opt_profile = opt_no_plugins = opt_builtin = False
+    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = False
 
     # --no-plugins is handled specially at a very early stage. We need
     # to load plugins before doing other command parsing so that they
@@ -482,12 +492,16 @@ def run_bzr(argv):
     for a in argv:
         if a == '--profile':
             opt_profile = True
+        elif a == '--lsprof':
+            opt_lsprof = True
         elif a == '--no-plugins':
             opt_no_plugins = True
         elif a == '--builtin':
             opt_builtin = True
+        elif a in ('--quiet', '-q'):
+            be_quiet()
         else:
-            break
+            continue
         argv.remove(a)
 
     if (not argv) or (argv[0] == '--help'):
@@ -511,11 +525,17 @@ def run_bzr(argv):
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
 
-    if opt_profile:
-        ret = apply_profiled(cmd_obj.run_argv, argv)
-    else:
-        ret = cmd_obj.run_argv(argv)
-    return ret or 0
+    try:
+        if opt_lsprof:
+            ret = apply_lsprofiled(cmd_obj.run_argv, argv)
+        elif opt_profile:
+            ret = apply_profiled(cmd_obj.run_argv, argv)
+        else:
+            ret = cmd_obj.run_argv(argv)
+        return ret or 0
+    finally:
+        # reset, in case we may do other commands later within the same process
+        be_quiet(False)
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""
@@ -534,12 +554,16 @@ def display_command(func):
             pass
     return ignore_pipe
 
+
 def main(argv):
     import bzrlib.ui
+    from bzrlib.ui.text import TextUIFactory
+    ## bzrlib.trace.enable_default_logging()
     bzrlib.trace.log_startup(argv)
-    bzrlib.ui.ui_factory = bzrlib.ui.TextUIFactory()
-
-    return run_bzr_catch_errors(argv[1:])
+    bzrlib.ui.ui_factory = TextUIFactory()
+    ret = run_bzr_catch_errors(argv[1:])
+    mutter("return code %d", ret)
+    return ret
 
 
 def run_bzr_catch_errors(argv):

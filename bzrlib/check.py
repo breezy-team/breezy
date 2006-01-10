@@ -41,7 +41,6 @@ class Check(object):
 
     def __init__(self, branch):
         self.branch = branch
-        self.inventory_weave = branch._get_inventory_weave()
         self.checked_text_cnt = 0
         self.checked_rev_cnt = 0
         self.ghosts = []
@@ -51,31 +50,50 @@ class Check(object):
         self.missing_revision_cnt = 0
         # maps (file-id, version) -> sha1
         self.checked_texts = {}
+        self.checked_weaves = {}
 
     def check(self):
         self.branch.lock_read()
         self.progress = bzrlib.ui.ui_factory.progress_bar()
         try:
+            self.progress.update('retrieving inventory', 0, 0)
+            # do not put in init, as it should be done with progess,
+            # and inside the lock.
+            self.inventory_weave = self.branch._get_inventory_weave()
             self.history = self.branch.revision_history()
             if not len(self.history):
                 # nothing to see here
                 return
-            if not self.branch.revision_store.listable():
-                raise BzrCheckError("Branch must be local")
-            self.planned_revisions = set(self.branch.revision_store)
-            inventoried = set(self.inventory_weave.names())
-            awol = self.planned_revisions - inventoried
-            if len(awol) > 0:
-                raise BzrCheckError('Stored revisions missing from inventory'
-                    '{%s}' % ','.join([f for f in awol]))
-    
-            for revno, rev_id in enumerate(self.planned_revisions):
-                self.progress.update('checking revision', revno+1,
+            self.plan_revisions()
+            revno = 0
+            self.check_weaves()
+            while revno < len(self.planned_revisions):
+                rev_id = self.planned_revisions[revno]
+                self.progress.update('checking revision', revno,
                                      len(self.planned_revisions))
+                revno += 1
                 self.check_one_rev(rev_id)
         finally:
             self.progress.clear()
             self.branch.unlock()
+
+    def plan_revisions(self):
+        if not self.branch.revision_store.listable():
+            self.planned_revisions = self.branch.get_ancestry(self.history[-1])
+            self.planned_revisions.remove(None)
+            # FIXME progress bars should support this more nicely.
+            self.progress.clear()
+            print ("Checking reachable history -"
+                   " for a complete check use a local branch.")
+            return
+        
+        self.planned_revisions = set(self.branch.revision_store)
+        inventoried = set(self.inventory_weave.names())
+        awol = self.planned_revisions - inventoried
+        if len(awol) > 0:
+            raise BzrCheckError('Stored revisions missing from inventory'
+                '{%s}' % ','.join([f for f in awol]))
+        self.planned_revisions = list(self.planned_revisions)
 
     def report_results(self, verbose):
         note('checked branch %s format %d',
@@ -85,6 +103,7 @@ class Check(object):
         note('%6d revisions', self.checked_rev_cnt)
         note('%6d unique file texts', self.checked_text_cnt)
         note('%6d repeated file texts', self.repeated_text_cnt)
+        note('%6d weaves', len(self.checked_weaves))
         if self.missing_inventory_sha_cnt:
             note('%6d revisions are missing inventory_sha1',
                  self.missing_inventory_sha_cnt)
@@ -146,7 +165,8 @@ class Check(object):
                     missing_links = self.missing_parent_links.get(parent, [])
                     missing_links.append(rev_id)
                     self.missing_parent_links[parent] = missing_links
-                    # list based so slow, TODO have a planned_revisions list and set.
+                    # list based so somewhat slow,
+                    # TODO have a planned_revisions list and set.
                     if self.branch.has_revision(parent):
                         missing_ancestry = self.branch.get_ancestry(parent)
                         for missing in missing_ancestry:
@@ -170,6 +190,24 @@ class Check(object):
             mutter("no inventory_sha1 on revision {%s}", rev_id)
         self._check_revision_tree(rev_id)
         self.checked_rev_cnt += 1
+
+    def check_weaves(self):
+        """Check all the weaves we can get our hands on.
+        """
+        n_weaves = 1
+        weave_ids = []
+        if self.branch.weave_store.listable():
+            weave_ids = list(self.branch.weave_store)
+            n_weaves = len(weave_ids)
+        self.progress.update('checking weave', 0, n_weaves)
+        self.inventory_weave.check(progress_bar=self.progress)
+        for i, weave_id in enumerate(weave_ids):
+            self.progress.update('checking weave', i, n_weaves)
+            w = self.branch.weave_store.get_weave(weave_id,
+                    self.branch.get_transaction())
+            # No progress here, because it looks ugly.
+            w.check()
+            self.checked_weaves[weave_id] = True
 
     def _check_revision_tree(self, rev_id):
         tree = self.branch.revision_tree(rev_id)

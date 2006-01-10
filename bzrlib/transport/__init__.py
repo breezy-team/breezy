@@ -20,10 +20,9 @@ as remote (such as http or sftp).
 """
 
 from bzrlib.trace import mutter
-from bzrlib.errors import (BzrError, 
-    TransportError, TransportNotPossible, NonRelativePath,
-    NoSuchFile, FileExists, PermissionDenied,
-    ConnectionReset)
+import bzrlib.errors as errors
+import errno
+import sys
 
 _protocol_handlers = {
 }
@@ -56,6 +55,27 @@ class Transport(object):
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
+
+    def _translate_error(self, e, path, raise_generic=True):
+        """Translate an IOError or OSError into an appropriate bzr error.
+
+        This handles things like ENOENT, ENOTDIR, EEXIST, and EACCESS
+        """
+        if hasattr(e, 'errno'):
+            if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                raise errors.NoSuchFile(path, extra=e)
+            # I would rather use errno.EFOO, but there doesn't seem to be
+            # any matching for 267
+            # This is the error when doing a listdir on a file:
+            # WindowsError: [Errno 267] The directory name is invalid
+            if sys.platform == 'win32' and e.errno in (errno.ESRCH, 267):
+                raise errors.NoSuchFile(path, extra=e)
+            if e.errno == errno.EEXIST:
+                raise errors.FileExists(path, extra=e)
+            if e.errno == errno.EACCES:
+                raise errors.PermissionDenied(path, extra=e)
+        if raise_generic:
+            raise errors.TransportError(orig_error=e)
 
     def clone(self, offset=None):
         """Return a new Transport object, cloned from the current location,
@@ -137,9 +157,10 @@ class Transport(object):
         start with our base, but still be a relpath once aliasing is 
         resolved.
         """
+        # TODO: This might want to use bzrlib.osutils.relpath
+        #       but we have to watch out because of the prefix issues
         if not abspath.startswith(self.base):
-            raise NonRelativePath('path %r is not under base URL %r'
-                           % (abspath, self.base))
+            raise errors.PathNotChild(abspath, self.base)
         pl = len(self.base)
         return abspath[pl:].lstrip('/')
 
@@ -200,30 +221,37 @@ class Transport(object):
             yield self.get(relpath)
             count += 1
 
-    def put(self, relpath, f):
+    def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
+        :param mode: The mode for the newly created file, 
+                     None means just use the default
         """
         raise NotImplementedError
 
-    def put_multi(self, files, pb=None):
+    def put_multi(self, files, mode=None, pb=None):
         """Put a set of files or strings into the location.
 
         :param files: A list of tuples of relpath, file object [(path1, file1), (path2, file2),...]
         :param pb:  An optional ProgressBar for indicating percent done.
+        :param mode: The mode for the newly created files
         :return: The number of files copied.
         """
-        return self._iterate_over(files, self.put, pb, 'put', expand=True)
+        def put(path, f):
+            self.put(path, f, mode=mode)
+        return self._iterate_over(files, put, pb, 'put', expand=True)
 
-    def mkdir(self, relpath):
+    def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         raise NotImplementedError
 
-    def mkdir_multi(self, relpaths, pb=None):
+    def mkdir_multi(self, relpaths, mode=None, pb=None):
         """Create a group of directories"""
-        return self._iterate_over(relpaths, self.mkdir, pb, 'mkdir', expand=False)
+        def mkdir(path):
+            self.mkdir(path, mode=mode)
+        return self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False)
 
     def append(self, relpath, f):
         """Append the text in the file-like or string object to 
@@ -253,16 +281,17 @@ class Transport(object):
         # implementors don't have to implement everything.
         return self._iterate_over(relpaths, self.copy, pb, 'copy', expand=True)
 
-    def copy_to(self, relpaths, other, pb=None):
+    def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
 
         :param relpaths: A list/generator of entries to be copied.
+        :param mode: This is the target mode for the newly created files
         TODO: This interface needs to be updated so that the target location
               can be different from the source location.
         """
         # The dummy implementation just does a simple get + put
         def copy_entry(path):
-            other.put(path, self.get(path))
+            other.put(path, self.get(path), mode=mode)
 
         return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
 
@@ -332,8 +361,8 @@ class Transport(object):
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
-        raise TransportNotPossible("This transport has not "
-                                   "implemented list_dir.")
+        raise errors.TransportNotPossible("This transport has not "
+                                          "implemented list_dir.")
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
@@ -355,7 +384,9 @@ class Transport(object):
 def get_transport(base):
     global _protocol_handlers
     if base is None:
-        base = '.'
+        base = u'.'
+    else:
+        base = unicode(base)
     for proto, klass in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
             return klass(base)

@@ -272,8 +272,8 @@ class Commit(object):
 
             self._record_inventory()
             self._make_revision()
-            self.branch.append_revision(self.rev_id)
             self.work_tree.set_pending_merges([])
+            self.branch.append_revision(self.rev_id)
             self.reporter.completed(self.branch.revno()+1, self.rev_id)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
@@ -391,7 +391,7 @@ class Commit(object):
         for path, ie in self.new_inv.iter_entries():
             previous_entries = ie.find_previous_heads(
                 self.parent_invs, 
-                self.weave_store.get_weave_or_empty(ie.file_id,
+                self.weave_store.get_weave_prelude_or_empty(ie.file_id,
                     self.branch.get_transaction()))
             if ie.revision is None:
                 change = ie.snapshot(self.rev_id, path, previous_entries,
