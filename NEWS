@@ -105,8 +105,12 @@ bzr 0.7rc1 2006-01-09
     * 'bzr add' now takes a --dry-run parameter which shows you what would be
       added, but doesn't actually add anything. (Michael Ellerman)
 
-    * bzr add now lists how many files were ignored per glob.  add --verbose
+    * 'bzr add' now lists how many files were ignored per glob.  add --verbose
       lists the specific files.  (Aaron Bentley)
+
+    * 'bzr missing' now supports displaying changes in diverged trees and can
+      be limited to show what either end of the comparison is missing.
+      (Aaron Bently, with a little prompting from Daniel Silverstone)
 
   BUG FIXES:
 
