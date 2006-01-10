@@ -67,7 +67,9 @@ def _get_transport_modules():
             modules.add(factory.module)
         else:
             modules.add(factory.__module__)
-    return list(modules)
+    result = list(modules)
+    result.sort()
+    return result
 
 
 class Transport(object):
