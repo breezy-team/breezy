@@ -31,7 +31,11 @@ import types
 import tempfile
 
 import bzrlib
-from bzrlib.errors import BzrError, PathNotChild, NoSuchFile
+from bzrlib.errors import (BzrError,
+                           BzrBadParameter,
+                           NoSuchFile,
+                           PathNotChild,
+                           )
 from bzrlib.trace import mutter
 
 
@@ -142,7 +146,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
         # function raises an IOError with errno == None when a rename fails.
         # This then gets caught here.
-        if e.errno is not None:
+        if e.errno not in (None, errno.ENOENT, errno.ENOTDIR):
             raise
     except Exception, e:
         if (not hasattr(e, 'errno') 
@@ -576,6 +580,22 @@ def relpath(base, path):
         return pathjoin(*s)
     else:
         return ''
+
+
+def safe_unicode(unicode_or_utf8_string):
+    """Coerce unicode_or_utf8_string into unicode.
+
+    If it is unicode, it is returned.
+    Otherwise it is decoded from utf-8. If a decoding error
+    occurs, it is wrapped as a If the decoding fails, the exception is wrapped 
+    as a BzrBadParameter exception.
+    """
+    if isinstance(unicode_or_utf8_string, unicode):
+        return unicode_or_utf8_string
+    try:
+        return unicode_or_utf8_string.decode('utf8')
+    except UnicodeDecodeError:
+        raise BzrBadParameter(unicode_or_utf8_string)
 
 
 def terminal_width():

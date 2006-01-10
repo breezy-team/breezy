@@ -34,8 +34,9 @@ This means that exceptions can used like this:
 ... except:
 ...   print sys.exc_type
 ...   print sys.exc_value
-...   if hasattr(sys.exc_value, 'path'):
-...     print sys.exc_value.path
+...   path = getattr(sys.exc_value, 'path')
+...   if path is not None:
+...     print path
 bzrlib.errors.NotBranchError
 Not a branch: /foo/bar
 /foo/bar
@@ -447,11 +448,14 @@ class GraphCycleError(BzrNewError):
         BzrNewError.__init__(self)
         self.graph = graph
 
+
 class NotConflicted(BzrNewError):
     """File %(filename)s is not conflicted."""
+
     def __init__(self, filename):
         BzrNewError.__init__(self)
         self.filename = filename
+
 
 class MustUseDecorated(Exception):
     """A decorating function has requested its original command be used.
@@ -461,8 +465,18 @@ class MustUseDecorated(Exception):
 
 class MissingText(BzrNewError):
     """Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"""
+
     def __init__(self, branch, text_revision, file_id):
+        BzrNewError.__init__(self)
         self.branch = branch
         self.base = branch.base
         self.text_revision = text_revision
         self.file_id = file_id
+
+
+class BzrBadParameter(BzrNewError):
+    """Parameter %(param)s is neither unicode nor utf8."""
+    
+    def __init__(self, param):
+        BzrNewError.__init__(self)
+        self.param = param
