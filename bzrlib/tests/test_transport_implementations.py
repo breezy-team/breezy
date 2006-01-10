@@ -22,6 +22,8 @@ TransportTestProviderAdapter.
 
 import os
 from cStringIO import StringIO
+import stat
+import sys
 
 from bzrlib.errors import (NoSuchFile, FileExists,
                            TransportNotPossible, ConnectionError)
@@ -72,7 +74,17 @@ class TestTransportImplementation(TestCaseInTempDir):
         
     def check_transport_contents(self, content, transport, relpath):
         """Check that transport.get(relpath).read() == content."""
-        self.assertEqual( content, transport.get(relpath).read())
+        self.assertEqual(content, transport.get(relpath).read())
+
+    def check_mode(self, transport, path, mode):
+        """Check that a particular path has mode mode."""
+        if sys.platform == 'win32':
+            #win32 has no chmod
+            return
+        path_stat = transport.stat(path)
+        actual_mode = stat.S_IMODE(path_stat.st_mode)
+        self.assertEqual(mode, actual_mode,
+            'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
 
     def get_transport(self):
         """Return a connected transport to the local directory."""
@@ -169,6 +181,23 @@ class TestTransportImplementation(TestCaseInTempDir):
 
         self.assertRaises(NoSuchFile,
                           t.put, 'path/doesnt/exist/c', 'contents')
+
+    def test_put_permissions(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            return
+        t.put('mode644', StringIO('test text\n'), mode=0644)
+        self.check_mode(t, 'mode644', 0644)
+        t.put('mode666', StringIO('test text\n'), mode=0666)
+        self.check_mode(t, 'mode666', 0666)
+        t.put('mode600', StringIO('test text\n'), mode=0600)
+        self.check_mode(t, 'mode600', 0600)
+        # Yes, you can put a file such that it becomes readonly
+        t.put('mode400', StringIO('test text\n'), mode=0400)
+        self.check_mode(t, 'mode400', 0400)
+        t.put_multi([('mmode644', StringIO('text\n'))], mode=0644)
+        self.check_mode(t, 'mmode644', 0644)
 
     def test_mkdir(self):
         t = self.get_transport()

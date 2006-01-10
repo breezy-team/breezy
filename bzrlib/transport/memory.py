@@ -27,12 +27,14 @@ from bzrlib.transport import Transport, register_transport, Server
 
 class MemoryStat(object):
 
-    def __init__(self, size, is_dir):
+    def __init__(self, size, is_dir, perms):
         self.st_size = size
+        if perms is None:
+            perms = 0644
         if not is_dir:
-            self.st_mode = S_IFREG
+            self.st_mode = S_IFREG | perms
         else:
-            self.st_mode = S_IFDIR
+            self.st_mode = S_IFDIR | perms
 
 
 class MemoryTransport(Transport):
@@ -78,7 +80,8 @@ class MemoryTransport(Transport):
         """See Transport.append()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
-        self._files[_abspath] = self._files.get(_abspath, "") + f.read()
+        orig_content, orig_mode = self._files.get(_abspath, ("", None))
+        self._files[_abspath] = (orig_content + f.read(), orig_mode)
 
     def _check_parent(self, _abspath):
         dir = os.path.dirname(_abspath)
@@ -103,13 +106,13 @@ class MemoryTransport(Transport):
         _abspath = self._abspath(relpath)
         if not _abspath in self._files:
             raise NoSuchFile(relpath)
-        return StringIO(self._files[_abspath])
+        return StringIO(self._files[_abspath][0])
 
     def put(self, relpath, f, mode=None):
         """See Transport.put()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
-        self._files[_abspath] = f.read()
+        self._files[_abspath] = (f.read(), mode)
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
@@ -150,9 +153,10 @@ class MemoryTransport(Transport):
         """See Transport.stat()."""
         _abspath = self._abspath(relpath)
         if _abspath in self._files:
-            return MemoryStat(len(self._files[_abspath]), False)
+            return MemoryStat(len(self._files[_abspath][0]), False, 
+                              self._files[_abspath][1])
         elif _abspath in self._dirs or _abspath == '':
-            return MemoryStat(0, True)
+            return MemoryStat(0, True, None)
         else:
             raise NoSuchFile(relpath)
 

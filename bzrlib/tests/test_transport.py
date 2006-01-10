@@ -102,30 +102,6 @@ class TestTransportMixIn(object):
         """
         raise NotImplementedError
 
-    def test_put(self):
-        t = self.get_transport()
-
-        if not self.readonly:
-            t.put('mode644', 'test text\n', mode=0644)
-            check_mode(self, 'mode644', 0644)
-
-            t.put('mode666', 'test text\n', mode=0666)
-            check_mode(self, 'mode666', 0666)
-
-            t.put('mode600', 'test text\n', mode=0600)
-            check_mode(self, 'mode600', 0600)
-
-            # Yes, you can put a file such that it becomes readonly
-            t.put('mode400', 'test text\n', mode=0400)
-            check_mode(self, 'mode400', 0400)
-
-            t.put_multi([('mmode644', 'text\n')], mode=0644)
-            check_mode(self, 'mmode644', 0644)
-
-        # TODO: jam 20051215 test put_multi with a mode. I didn't bother because
-        #                    it seems most people don't like the _multi functions
-
-
     def test_mkdir(self):
         t = self.get_transport()
 
