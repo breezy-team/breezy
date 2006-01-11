@@ -55,6 +55,12 @@ else:
 if 'sftp' not in urlparse.uses_netloc:
     urlparse.uses_netloc.append('sftp')
 
+# don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
+_default_do_prefetch = False
+_paramiko_version = getattr(paramiko, '__version_info__', None)
+if (_paramiko_version is not None) and (_paramiko_version >= (1, 5, 2)):
+    _default_do_prefetch = True
+
 
 _close_fds = True
 if sys.platform == 'win32':
@@ -62,9 +68,6 @@ if sys.platform == 'win32':
     _close_fds = False
 
 _ssh_vendor = None
-if 'BZR_USE_PARAMIKO' in os.environ:
-    # allow forcing the use of paramiko for debugging
-    _ssh_vendor = 'none'
 
 def _get_ssh_vendor():
     """Find out what version of SSH is on the system."""
@@ -73,6 +76,12 @@ def _get_ssh_vendor():
         return _ssh_vendor
 
     _ssh_vendor = 'none'
+
+    if 'BZR_SSH' in os.environ:
+        _ssh_vendor = os.environ['BZR_SSH']
+        if _ssh_vendor == 'paramiko':
+            _ssh_vendor = 'none'
+        return _ssh_vendor
 
     try:
         p = subprocess.Popen(['ssh', '-V'],
@@ -231,10 +240,7 @@ class SFTPTransport (Transport):
     """
     Transport implementation for SFTP access.
     """
-    # don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
-    _do_prefetch = False
-    if hasattr(paramiko, '__version_info__') and (paramiko.__version_info__ >= (1, 5, 2)):
-        _do_prefetch = True
+    _do_prefetch = _default_do_prefetch
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
@@ -335,7 +341,7 @@ class SFTPTransport (Transport):
         try:
             path = self._abspath(relpath)
             f = self._sftp.file(path, mode='rb')
-            if self._do_prefetch and hasattr(f, 'prefetch'):
+            if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
                 f.prefetch()
             return f
         except (IOError, paramiko.SSHException), e:
