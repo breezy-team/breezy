@@ -182,6 +182,16 @@ class TreeTransform(object):
         else:
             return self.tree_kind(trans_id)
 
+    def get_tree_file_id(self, trans_id):
+        """Determine the file id associated with the trans_id in the tree"""
+        try:
+            path = self._tree_id_paths[trans_id]
+        except KeyError:
+            # the file is a new, unversioned file, or invalid trans_id
+            return None
+        # the file is old; the old id is still valid
+        return self._tree.path2id(path)
+
     def final_file_id(self, trans_id):
         """\
         Determine the file id after any changes are applied, or None.
@@ -195,13 +205,7 @@ class TreeTransform(object):
         except KeyError:
             if trans_id in self._removed_id:
                 return None
-            try:
-                path = self._tree_id_paths[trans_id]
-            except KeyError:
-                # the file is a new, unversioned file, or invalid trans_id
-                return None
-            # the file is old; the old id is still valid
-            return self._tree.path2id(path)
+        return self.get_tree_file_id(trans_id)
 
     def final_parent(self, trans_id):
         """\
@@ -406,15 +410,16 @@ class TreeTransform(object):
         if len(self.find_conflicts()) != 0:
             raise MalformedTransform()
         os.mkdir(self._tree.branch.controlfilename('limbo'))
+        limbo_inv = {}
         inv = self._tree.inventory
-        self._apply_removals(inv)
-        self._apply_insertions(inv)
-
+        self._apply_removals(inv, limbo_inv)
+        self._apply_insertions(inv, limbo_inv)
+        self.limbo_inv = limbo_inv
         os.rmdir(self._tree.branch.controlfilename('limbo'))
         self._tree._write_inventory(inv)
         self.__done = True
 
-    def _apply_removals(self, inv):
+    def _apply_removals(self, inv, limbo_inv):
         """Perform tree operations that remove directory/inventory names.
         
         That is, delete files that are to be deleted, and put any files that
@@ -435,11 +440,13 @@ class TreeTransform(object):
             elif trans_id in self._new_name or trans_id in self._new_parent:
                 os.rename(path, os.path.join(limbo, trans_id))
             if trans_id in self._removed_id:
-                path = self._tree_id_paths[trans_id]
-                file_id = self._tree.path2id(path)
+                del inv[self.get_tree_file_id(trans_id)]
+            elif trans_id in self._new_name or trans_id in self._new_parent:
+                file_id = self.get_tree_file_id(trans_id)
+                limbo_inv[trans_id] = inv[file_id]
                 del inv[file_id]
 
-    def _apply_insertions(self, inv):
+    def _apply_insertions(self, inv, limbo_inv):
         """Perform tree operations that insert directory/inventory names.
         
         That is, create any files that need to be created, and restore from
@@ -472,9 +479,24 @@ class TreeTransform(object):
                 if kind is None:
                     kind = file_kind(self._tree.abspath(path))
                 inv.add_path(path, kind, self._new_id[trans_id])
+            elif trans_id in self._new_name or trans_id in self._new_parent:
+                entry = limbo_inv[trans_id]
+                entry.name = self.final_name(trans_id)
+                parent_trans_id = self.final_parent(trans_id)
+                entry.parent_id = self.final_file_id(parent_trans_id)
+                if entry.file_id is None:
+                    continue
+                inv.add(entry)
+                assert entry.file_id in inv
+
             # requires files and inventory entries to be in place
             if trans_id in self._new_executability:
                 self._set_executability(path, inv, trans_id)
+        for trans_id in limbo_inv:
+            file_id = self.final_file_id(trans_id)
+            if file_id is None:
+                continue
+            assert self.final_file_id(trans_id) in inv
 
     def _set_executability(self, path, inv, trans_id):
         """Set the executability of versioned files """
