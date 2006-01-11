@@ -127,19 +127,23 @@ class TestHashCache(TestCaseInTempDir):
         os.mkdir('.bzr')
         hc = HashCache(u'.')
         ok = False
+        # make a best effort to create a weird kind of file
         try:
             os.mkfifo('a')
             ok=True
-        except:
+        except OSError:
             try:
                 os.mknod('a')
                 ok=True
-            except:
+            except OSError:
                 try:
                     os.mkdev('a')
                     ok=True
-                except:
+                except OSError:
                     pass
+        
+        from bzrlib.errors import BzrError
         if ok:
-            from bzrlib.errors import BzrError
             self.assertRaises(BzrError, hc.get_sha1, 'a')
+        else:
+            raise BzrError("no weird file type could be created: extend this test case for your os")
