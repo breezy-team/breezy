@@ -1,7 +1,9 @@
 import os
-from bzrlib.errors import DuplicateKey, MalformedTransform, NoSuchFile
+from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
+                           ReusingTransform)
 from bzrlib.osutils import file_kind, supports_executable
 from bzrlib.inventory import InventoryEntry
+from bzrlib import BZRDIR
 import errno
 
 ROOT_PARENT = "root-parent"
@@ -30,6 +32,7 @@ class TreeTransform(object):
         self._tree_path_ids = {}
         self._tree_id_paths = {}
         self._new_root = self.get_id_tree(tree.get_root_id())
+        self.__done = False
 
     def finalize(self):
         if self._tree is None:
@@ -184,15 +187,31 @@ class TreeTransform(object):
         except KeyError:
             return self.get_tree_parent(trans_id)
 
-    def find_conflicts(self):
-        """Find any violations of inventory of filesystem invariants"""
+    def final_name(self, trans_id):
+        try:
+            return self._new_name[trans_id]
+        except KeyError:
+            return os.path.basename(self._tree_id_paths[trans_id])
+
+    def _by_parent(self):
         by_parent = {}
-        conflicts = []
-        for trans_id, parent_id in self._new_parent.iteritems():
+        items = list(self._new_parent.iteritems())
+        items.extend((t, self.final_parent(t)) for t in self._tree_id_paths)
+        for trans_id, parent_id in items:
             if parent_id not in by_parent:
                 by_parent[parent_id] = set()
             by_parent[parent_id].add(trans_id)
+        return by_parent
 
+    def find_conflicts(self):
+        """Find any violations of inventory of filesystem invariants"""
+        if self.__done is True:
+            raise ReusingTransform()
+        conflicts = []
+        # ensure all children of all existent parents are known
+        # all children of non-existent parents are known, by definition.
+        self._add_tree_children()
+        by_parent = self._by_parent()
         conflicts.extend(self._unversioned_parents(by_parent))
         conflicts.extend(self._parent_loops())
         conflicts.extend(self._duplicate_entries(by_parent))
@@ -200,6 +219,26 @@ class TreeTransform(object):
         conflicts.extend(self._improper_versioning())
         conflicts.extend(self._executability_conflicts())
         return conflicts
+
+    def _add_tree_children(self):
+        parents = self._by_parent()
+        for parent_id in parents:
+            try:
+                path = self._tree_id_paths[parent_id]
+            except KeyError:
+                continue
+            try:
+                children = os.listdir(self._tree.abspath(path))
+            except OSError, e:
+                if e.errno != errno.ENOENT:
+                    raise
+                continue
+                
+            for child in children:
+                childpath = joinpath(path, child)
+                if childpath == BZRDIR:
+                    continue
+                self.get_tree_path_id(childpath)
 
     def _parent_loops(self):
         """No entry should be its own ancestor"""
@@ -220,6 +259,8 @@ class TreeTransform(object):
         """If parent directories are versioned, children must be versioned."""
         conflicts = []
         for parent_id, children in by_parent.iteritems():
+            if parent_id is ROOT_PARENT:
+                continue
             if self.final_file_id(parent_id) is not None:
                 continue
             for child_id in children:
@@ -258,13 +299,14 @@ class TreeTransform(object):
         """No directory may have two entries with the same name."""
         conflicts = []
         for children in by_parent.itervalues():
-            name_ids = [(self._new_name[t], t) for t in children]
+            name_ids = [(self.final_name(t), t) for t in children]
             name_ids.sort()
             last_name = None
             last_trans_id = None
             for name, trans_id in name_ids:
                 if name == last_name:
-                    conflicts.append(('duplicate', last_trans_id, trans_id))
+                    conflicts.append(('duplicate', last_trans_id, trans_id,
+                    name))
                 last_name = name
                 last_trans_id = trans_id
         return conflicts
@@ -273,6 +315,8 @@ class TreeTransform(object):
         """parents must have directory 'contents'."""
         conflicts = []
         for parent_id in by_parent.iterkeys():
+            if parent_id is ROOT_PARENT:
+                continue
             try:
                 kind = self.final_kind(parent_id)
             except NoSuchFile:
@@ -319,6 +363,7 @@ class TreeTransform(object):
                 self._set_executability(path, inv, trans_id)
 
         self._tree._write_inventory(inv)
+        self.__done = True
 
     def _set_executability(self, path, inv, trans_id):
         file_id = inv.path2id(path)
@@ -390,6 +435,11 @@ class TreeTransform(object):
         self.create_symlink(target, trans_id)
         return trans_id
 
+def joinpath(parent, child):
+    if parent is None or parent == "":
+        return child
+    else:
+        return os.path.join(parent, child)
 
 class FinalPaths(object):
     """\
@@ -408,7 +458,7 @@ class FinalPaths(object):
     def _determine_path(self, trans_id):
         if trans_id == self.root:
             return ""
-        name = self._new_name[trans_id]
+        name = self.tree.final_name(trans_id)
         parent_id = self.tree.final_parent(trans_id)
         if parent_id == self.root:
             return name

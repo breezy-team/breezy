@@ -486,3 +486,6 @@ class BzrBadParameter(BzrNewError):
     def __init__(self, param):
         BzrNewError.__init__(self)
         self.param = param
+
+class ReusingTransform(BzrNewError):
+    """Attempt to reuse a transform that has already been applied."""

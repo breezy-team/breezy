@@ -1,7 +1,8 @@
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.branch import Branch
-from bzrlib.transform import TreeTransform, ROOT_PARENT
-from bzrlib.errors import DuplicateKey, MalformedTransform, NoSuchFile
+from bzrlib.transform import TreeTransform, ROOT_PARENT, FinalPaths
+from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
+                           ReusingTransform)
 from bzrlib.osutils import file_kind
 import os
 
@@ -66,8 +67,9 @@ class TestTreeTransform(TestCaseInTempDir):
                                       'toto-id', False)
             wizard = transform.new_symlink('wizard', oz, 'wizard-target', 
                                            'wizard-id')
-            transform.apply()
             self.assertEqual(len(transform.find_conflicts()), 0)
+            transform.apply()
+            self.assertRaises(ReusingTransform, transform.find_conflicts)
             self.assertEqual('contents', file('name').read())
             self.assertEqual(wt.path2id('name'), 'my_pretties')
             self.assertIs(wt.is_executable('my_pretties'), True)
@@ -92,7 +94,7 @@ class TestTreeTransform(TestCaseInTempDir):
             self.assertEqual(len(transform.find_conflicts()), 0)
             trans_id2 = transform.new_file('name', root, 'Crontents', 'toto')
             self.assertEqual(transform.find_conflicts(), 
-                             [('duplicate', trans_id, trans_id2)])
+                             [('duplicate', trans_id, trans_id2, 'name')])
             self.assertRaises(MalformedTransform, transform.apply)
             transform.adjust_path('name', trans_id, trans_id2)
             self.assertEqual(transform.find_conflicts(), 
@@ -137,7 +139,21 @@ class TestTreeTransform(TestCaseInTempDir):
                              [('non-file executability', tip_id)])
             transform.set_executability(None, tip_id)
             transform.apply()
-            self.assertEqual('contents', file('name').read())
-            self.assertEqual(wt.path2id('name'), 'my_pretties')
         finally:
             transform.finalize()
+            self.assertEqual('contents', file('name').read())
+            self.assertEqual(wt.path2id('name'), 'my_pretties')
+            transform2 = TreeTransform(wt)
+        try:
+            oz_id = transform2.get_id_tree('oz-id')
+            newtip = transform2.new_file('tip', oz_id, 'other', 'tip-id')
+            result = transform2.find_conflicts()
+            fp = FinalPaths(transform2._new_root, transform2._new_name, 
+                            transform2)
+            self.assert_('oz/tip' in transform2._tree_path_ids)
+            self.assertEqual(fp.get_path(newtip), 'oz/tip')
+            self.assertEqual(len(result), 1)
+            self.assertEqual((result[0][0], result[0][1]), 
+                             ('duplicate', newtip))
+        finally:
+            transform2.finalize()
