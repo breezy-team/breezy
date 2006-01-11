@@ -118,3 +118,30 @@ class TestHashCache(TestCaseInTempDir):
         self.assertEquals(hc.hit_count, 1)
         self.assertEquals(hc.miss_count, 0)
         self.assertEquals(hc.get_sha1('foo2'), sha1('new content'))
+
+    def test_hashcache_raise(self):
+        """check that hashcache can raise BzrError"""
+        from bzrlib.hashcache import HashCache
+        import os
+
+        os.mkdir('.bzr')
+        hc = HashCache(u'.')
+        ok = False
+        try:
+            os.mkfifo('a')
+            ok=True
+        except:
+            try:
+                os.mknod('a')
+                ok=True
+            except:
+                try:
+                    os.mkdev('a')
+                    ok=True
+                except:
+                    pass
+        if ok:
+            from bzrlib.errors import BzrError
+            def check():
+                return hc.get_sha1('a')
+            self.assertRaises(BzrError, check)
