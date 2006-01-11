@@ -168,3 +168,29 @@ class TestTreeTransform(TestCaseInTempDir):
             transform3.apply()
         finally:
             transform3.finalize()
+
+    def test_name_invariants(self):
+        branch = Branch.initialize('.')
+        wt = branch.working_tree()
+        create_tree = TreeTransform(wt)
+        try:
+            # prepare tree
+            root = create_tree.get_id_tree('TREE_ROOT')
+            create_tree.new_file('name1', root, 'hello1', 'name1')
+            create_tree.new_file('name2', root, 'hello2', 'name2')
+            create_tree.apply()
+        finally:
+            create_tree.finalize()
+        mangle_tree = TreeTransform(wt)
+        try:
+            #swap names
+            root = mangle_tree.get_id_tree('TREE_ROOT')
+            name1 = mangle_tree.get_id_tree('name1')
+            name2 = mangle_tree.get_id_tree('name2')
+            mangle_tree.adjust_path('name2', root, name1)
+            mangle_tree.adjust_path('name1', root, name2)
+            mangle_tree.apply()
+        finally:
+            mangle_tree.finalize()
+        self.assertEqual(file(wt.abspath('name1')).read(), 'hello2')
+        self.assertEqual(file(wt.abspath('name2')).read(), 'hello1')

@@ -363,6 +363,12 @@ class TreeTransform(object):
         self.__done = True
 
     def _apply_removals(self, inv):
+        """Perform tree operations that remove directory/inventory names.
+        
+        That is, delete files that are to be deleted, and put any files that
+        need renaming into limbo.  This must be done in strict child-to-parent
+        order.
+        """
         limbo = self._tree.branch.controlfilename('limbo')
         tree_paths = list(self._tree_path_ids.iteritems())
         tree_paths.sort(reverse=True)
@@ -378,6 +384,12 @@ class TreeTransform(object):
                 os.rename(path, os.path.join(limbo, trans_id))
 
     def _apply_insertions(self, inv):
+        """Perform tree operations that insert directory/inventory names.
+        
+        That is, create any files that need to be created, and restore from
+        limbo any files that needed renaming.  This must be done in strict
+        parent-to-child order.
+        """
         limbo = self._tree.branch.controlfilename('limbo')
         for path, trans_id in self.new_paths():
             try:
