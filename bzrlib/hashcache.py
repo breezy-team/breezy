@@ -169,7 +169,6 @@ class HashCache(object):
         if stat.S_ISREG(mode):
             digest = sha_file(file(abspath, 'rb', buffering=65000))
         elif stat.S_ISLNK(mode):
-            link_target = os.readlink(abspath)
             digest = sha.new(os.readlink(abspath)).hexdigest()
         else:
             raise BzrError("file %r: unknown file stat mode: %o"%(abspath,mode))
