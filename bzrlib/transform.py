@@ -37,6 +37,7 @@ class TreeTransform(object):
         self.__done = False
 
     def finalize(self):
+        """Release the working tree lock, if held."""
         if self._tree is None:
             return
         self._tree.unlock()
@@ -151,6 +152,10 @@ class TreeTransform(object):
         return new_paths
 
     def tree_kind(self, trans_id):
+        """Determine the file kind in the working tree.
+
+        Raises NoSuchFile if the file does not exist
+        """
         path = self._tree_id_paths.get(trans_id)
         if path is None:
             raise NoSuchFile(None)
@@ -210,12 +215,17 @@ class TreeTransform(object):
             return self.get_tree_parent(trans_id)
 
     def final_name(self, trans_id):
+        """Determine the final filename, after all changes are applied."""
         try:
             return self._new_name[trans_id]
         except KeyError:
             return os.path.basename(self._tree_id_paths[trans_id])
 
     def _by_parent(self):
+        """Return a map of parent: children for known parents.
+        
+        Only new paths and parents of tree files with assigned ids are used.
+        """
         by_parent = {}
         items = list(self._new_parent.iteritems())
         items.extend((t, self.final_parent(t)) for t in self._tree_id_paths)
@@ -226,7 +236,7 @@ class TreeTransform(object):
         return by_parent
 
     def find_conflicts(self):
-        """Find any violations of inventory of filesystem invariants"""
+        """Find any violations of inventory or filesystem invariants"""
         if self.__done is True:
             raise ReusingTransform()
         conflicts = []
@@ -243,6 +253,12 @@ class TreeTransform(object):
         return conflicts
 
     def _add_tree_children(self):
+        """\
+        Add all the children of all active parents to the known paths.
+
+        Active parents are those which gain children, and those which are
+        removed.  This is a necessary first step in detecting conflicts.
+        """
         parents = self._by_parent().keys()
         parents.extend([t for t in self._removed_contents if 
                         self.tree_kind(t) == 'directory'])
@@ -311,6 +327,13 @@ class TreeTransform(object):
         return conflicts
 
     def _executability_conflicts(self):
+        """Check for bad executability changes.
+        
+        Only versioned files may have their executability set, because
+        1. only versioned entries can have executability under windows
+        2. only files can be executable.  (The execute bit on a directory
+           does not indicate searchability)
+        """
         conflicts = []
         for trans_id in self._new_executability:
             if self.final_file_id(trans_id) is None:
@@ -452,7 +475,9 @@ class TreeTransform(object):
             # requires files and inventory entries to be in place
             if trans_id in self._new_executability:
                 self._set_executability(path, inv, trans_id)
+
     def _set_executability(self, path, inv, trans_id):
+        """Set the executability of versioned files """
         file_id = inv.path2id(path)
         new_executability = self._new_executability[trans_id]
         inv[file_id].executable = new_executability
@@ -523,6 +548,7 @@ class TreeTransform(object):
         return trans_id
 
 def joinpath(parent, child):
+    """Join tree-relative paths, handling the tree root specially"""
     if parent is None or parent == "":
         return child
     else:
@@ -557,11 +583,13 @@ class FinalPaths(object):
         return self._known_paths[trans_id]
 
 def topology_sorted_ids(tree):
+    """Determine the topological order of the ids in a tree"""
     file_ids = list(tree)
     file_ids.sort(key=tree.id2path)
     return file_ids
 
 def build_tree(branch, tree):
+    """Create working tree for a branch, using a Transaction."""
     file_trans_id = {}
     wt = branch.working_tree()
     tt = TreeTransform(wt)
