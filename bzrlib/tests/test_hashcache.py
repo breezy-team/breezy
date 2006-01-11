@@ -142,6 +142,4 @@ class TestHashCache(TestCaseInTempDir):
                     pass
         if ok:
             from bzrlib.errors import BzrError
-            def check():
-                return hc.get_sha1('a')
-            self.assertRaises(BzrError, check)
+            self.assertRaises(BzrError, hc.get_sha1, 'a')
