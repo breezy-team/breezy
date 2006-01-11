@@ -164,5 +164,7 @@ class TestTreeTransform(TestCaseInTempDir):
                              [('missing parent', oz_id)])
             root_id = transform3.get_id_tree('TREE_ROOT')
             tip_id = transform3.get_id_tree('tip-id')
+            transform3.adjust_path('tip', root_id, tip_id)
+            transform3.apply()
         finally:
             transform3.finalize()

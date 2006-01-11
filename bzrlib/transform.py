@@ -353,17 +353,32 @@ class TreeTransform(object):
         """
         if len(self.find_conflicts()) != 0:
             raise MalformedTransform()
+        os.mkdir(self._tree.branch.controlfilename('limbo'))
         inv = self._tree.inventory
-        for trans_id in self._removed_contents:
+        self._apply_removals(inv)
+        self._apply_insertions(inv)
+
+        os.rmdir(self._tree.branch.controlfilename('limbo'))
+        self._tree._write_inventory(inv)
+        self.__done = True
+
+    def _apply_removals(self, inv):
+        limbo = self._tree.branch.controlfilename('limbo')
+        tree_paths = list(self._tree_path_ids.iteritems())
+        tree_paths.sort(reverse=True)
+        for path, trans_id in tree_paths:
             if trans_id in self._removed_contents:
-                path = self._tree_id_paths[trans_id]
                 try:
                     os.unlink(path)
                 except OSError, e:
                     if e.errno != errno.EISDIR:
                         raise
                     os.rmdir(path)
+            elif trans_id in self._new_name or trans_id in self._new_parent:
+                os.rename(path, os.path.join(limbo, trans_id))
 
+    def _apply_insertions(self, inv):
+        limbo = self._tree.branch.controlfilename('limbo')
         for path, trans_id in self.new_paths():
             try:
                 kind = self._new_contents[trans_id][0]
@@ -380,6 +395,10 @@ class TreeTransform(object):
             elif kind == 'symlink':
                 target = self._new_contents[trans_id][1]
                 os.symlink(target, path)
+            elif kind is None and (trans_id in self._new_name or
+                                   trans_id in self._new_parent):
+                os.rename(os.path.join(limbo, trans_id), path)
+
 
             if trans_id in self._new_id:
                 if kind is None:
@@ -388,10 +407,6 @@ class TreeTransform(object):
             # requires files and inventory entries to be in place
             if trans_id in self._new_executability:
                 self._set_executability(path, inv, trans_id)
-
-        self._tree._write_inventory(inv)
-        self.__done = True
-
     def _set_executability(self, path, inv, trans_id):
         file_id = inv.path2id(path)
         new_executability = self._new_executability[trans_id]
