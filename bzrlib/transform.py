@@ -27,6 +27,7 @@ class TreeTransform(object):
         self._new_name = {}
         self._new_parent = {}
         self._new_contents = {}
+        self._removed_contents = set()
         self._new_executability = {}
         self._new_id = {}
         self._tree_path_ids = {}
@@ -113,6 +114,10 @@ class TreeTransform(object):
         """
         unique_add(self._new_contents, trans_id, ('symlink', target))
 
+    def delete_contents(self, trans_id):
+        """Schedule the contents of a path entry for deletion"""
+        self._removed_contents.add(trans_id)
+
     def set_executability(self, executability, trans_id):
         """Schedule setting of the 'execute' bit"""
         if executability is None:
@@ -135,6 +140,18 @@ class TreeTransform(object):
         new_paths.sort()
         return new_paths
 
+    def tree_kind(self, trans_id):
+        path = self._tree_id_paths.get(trans_id)
+        if path is None:
+            raise NoSuchFile(None)
+        try:
+            return file_kind(self._tree.abspath(path))
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
+            else:
+                raise NoSuchFile(path)
+
     def final_kind(self, trans_id):
         """\
         Determine the final file kind, after any changes applied.
@@ -145,17 +162,10 @@ class TreeTransform(object):
         """
         if trans_id in self._new_contents:
             return self._new_contents[trans_id][0]
+        elif trans_id in self._removed_contents:
+            raise NoSuchFile(None)
         else:
-            path = self._tree_id_paths.get(trans_id)
-            if path is None:
-                raise NoSuchFile(None)
-            try:
-                return file_kind(self._tree.abspath(path))
-            except OSError, e:
-                if e.errno != errno.ENOENT:
-                    raise
-                else:
-                    raise NoSuchFile(path)
+            return self.tree_kind(trans_id)
 
     def final_file_id(self, trans_id):
         """\
@@ -221,7 +231,9 @@ class TreeTransform(object):
         return conflicts
 
     def _add_tree_children(self):
-        parents = self._by_parent()
+        parents = self._by_parent().keys()
+        parents.extend([t for t in self._removed_contents if 
+                        self.tree_kind(t) == 'directory'])
         for parent_id in parents:
             try:
                 path = self._tree_id_paths[parent_id]
@@ -291,8 +303,13 @@ class TreeTransform(object):
         for trans_id in self._new_executability:
             if self.final_file_id(trans_id) is None:
                 conflicts.append(('unversioned executability', trans_id))
-            elif self.final_kind(trans_id) != "file":
-                conflicts.append(('non-file executability', trans_id))
+            else:
+                try:
+                    non_file = self.final_kind(trans_id) != "file"
+                except NoSuchFile:
+                    non_file = True
+                if non_file is True:
+                    conflicts.append(('non-file executability', trans_id))
         return conflicts
 
     def _duplicate_entries(self, by_parent):
@@ -337,6 +354,16 @@ class TreeTransform(object):
         if len(self.find_conflicts()) != 0:
             raise MalformedTransform()
         inv = self._tree.inventory
+        for trans_id in self._removed_contents:
+            if trans_id in self._removed_contents:
+                path = self._tree_id_paths[trans_id]
+                try:
+                    os.unlink(path)
+                except OSError, e:
+                    if e.errno != errno.EISDIR:
+                        raise
+                    os.rmdir(path)
+
         for path, trans_id in self.new_paths():
             try:
                 kind = self._new_contents[trans_id][0]

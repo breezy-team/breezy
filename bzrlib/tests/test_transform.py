@@ -143,7 +143,7 @@ class TestTreeTransform(TestCaseInTempDir):
             transform.finalize()
             self.assertEqual('contents', file('name').read())
             self.assertEqual(wt.path2id('name'), 'my_pretties')
-            transform2 = TreeTransform(wt)
+        transform2 = TreeTransform(wt)
         try:
             oz_id = transform2.get_id_tree('oz-id')
             newtip = transform2.new_file('tip', oz_id, 'other', 'tip-id')
@@ -156,3 +156,13 @@ class TestTreeTransform(TestCaseInTempDir):
                              ('duplicate', newtip))
         finally:
             transform2.finalize()
+        transform3 = TreeTransform(wt)
+        try:
+            oz_id = transform3.get_id_tree('oz-id')
+            transform3.delete_contents(oz_id)
+            self.assertEqual(transform3.find_conflicts(), 
+                             [('missing parent', oz_id)])
+            root_id = transform3.get_id_tree('TREE_ROOT')
+            tip_id = transform3.get_id_tree('tip-id')
+        finally:
+            transform3.finalize()
