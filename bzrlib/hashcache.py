@@ -32,10 +32,9 @@ CACHE_HEADER = "### bzr hashcache v5\n"
 import os, stat, time
 import sha
 
-from bzrlib.osutils import sha_file
+from bzrlib.osutils import sha_file, pathjoin
 from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
-from bzrlib.osutils import pathjoin
 
 
 FP_MODE_COLUMN = 5
