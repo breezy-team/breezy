@@ -35,6 +35,7 @@ import sha
 from bzrlib.osutils import sha_file, pathjoin
 from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
+from bzrlib.errors import BzrError
 
 
 FP_MODE_COLUMN = 5
