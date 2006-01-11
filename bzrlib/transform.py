@@ -127,7 +127,7 @@ class TreeTransform(object):
     def new_paths(self):
         """Determine the paths of all new and changed files"""
         new_ids = set()
-        fp = FinalPaths(self._new_root, self._new_name, self)
+        fp = FinalPaths(self._new_root, self)
         for id_set in (self._new_name, self._new_parent, self._new_contents,
                        self._new_id, self._new_executability):
             new_ids.update(id_set)
@@ -448,18 +448,17 @@ class FinalPaths(object):
     The underlying tree must not be manipulated between calls, or else
     the results will likely be incorrect.
     """
-    def __init__(self, root, names, tree):
+    def __init__(self, root, transform):
         object.__init__(self)
         self.root = root
-        self._new_name = names
         self._known_paths = {}
-        self.tree = tree
+        self.transform = transform
 
     def _determine_path(self, trans_id):
         if trans_id == self.root:
             return ""
-        name = self.tree.final_name(trans_id)
-        parent_id = self.tree.final_parent(trans_id)
+        name = self.transform.final_name(trans_id)
+        parent_id = self.transform.final_parent(trans_id)
         if parent_id == self.root:
             return name
         else:
