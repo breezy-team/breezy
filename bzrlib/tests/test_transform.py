@@ -198,7 +198,8 @@ class TestTreeTransform(TestCaseInTempDir):
             ddir = mangle_tree.get_id_tree('ddir')
             mangle_tree.delete_contents(ddir)
             dfile = mangle_tree.get_id_tree('dfile')
-            mangle_tree.delete_contents(dfile)
+            mangle_tree.delete_versioned(dfile)
+            mangle_tree.unversion_file(dfile)
             mfile = mangle_tree.get_id_tree('mfile')
             mangle_tree.adjust_path('mfile', root, mfile)
 
@@ -206,7 +207,7 @@ class TestTreeTransform(TestCaseInTempDir):
             newdir = mangle_tree.new_directory('new_directory', root, 'newdir')
             mfile2 = mangle_tree.get_id_tree('mfile2')
             mangle_tree.adjust_path('mfile2', newdir, mfile2)
-            mangle_tree.new_file('newfile', newdir, 'hello3', 'nfile')
+            mangle_tree.new_file('newfile', newdir, 'hello3', 'dfile')
             mangle_tree.apply()
         finally:
             mangle_tree.finalize()
@@ -216,3 +217,5 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertEqual(file(mfile2_path).read(), 'later2')
         newfile_path = wt.abspath(os.path.join('new_directory','newfile'))
         self.assertEqual(file(newfile_path).read(), 'hello3')
+        self.assertEqual(wt.path2id('dying_directory'), 'ddir')
+        self.assertIs(wt.path2id('dying_directory/dying_file'), None)

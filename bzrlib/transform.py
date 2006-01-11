@@ -30,6 +30,7 @@ class TreeTransform(object):
         self._removed_contents = set()
         self._new_executability = {}
         self._new_id = {}
+        self._removed_id = set()
         self._tree_path_ids = {}
         self._tree_id_paths = {}
         self._new_root = self.get_id_tree(tree.get_root_id())
@@ -118,6 +119,15 @@ class TreeTransform(object):
         """Schedule the contents of a path entry for deletion"""
         self._removed_contents.add(trans_id)
 
+    def unversion_file(self, trans_id):
+        """Schedule a path entry to become unversioned"""
+        self._removed_id.add(trans_id)
+
+    def delete_versioned(self, trans_id):
+        """Delete and unversion a versioned file"""
+        self.delete_contents(trans_id)
+        self.unversion_file(trans_id)
+
     def set_executability(self, executability, trans_id):
         """Schedule setting of the 'execute' bit"""
         if executability is None:
@@ -178,6 +188,8 @@ class TreeTransform(object):
             # there is a new id for this file
             return self._new_id[trans_id]
         except KeyError:
+            if trans_id in self._removed_id:
+                return None
             try:
                 path = self._tree_id_paths[trans_id]
             except KeyError:
@@ -399,6 +411,10 @@ class TreeTransform(object):
                     os.rmdir(path)
             elif trans_id in self._new_name or trans_id in self._new_parent:
                 os.rename(path, os.path.join(limbo, trans_id))
+            if trans_id in self._removed_id:
+                path = self._tree_id_paths[trans_id]
+                file_id = self._tree.path2id(path)
+                del inv[file_id]
 
     def _apply_insertions(self, inv):
         """Perform tree operations that insert directory/inventory names.
