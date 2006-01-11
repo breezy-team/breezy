@@ -226,4 +226,3 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertEqual(wt.path2id('dying_directory'), 'ddir')
         self.assertIs(wt.path2id('dying_directory/dying_file'), None)
         mfile2_path = wt.abspath(os.path.join('new_directory','mfile2'))
-

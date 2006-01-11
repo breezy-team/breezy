@@ -414,7 +414,6 @@ class TreeTransform(object):
         inv = self._tree.inventory
         self._apply_removals(inv, limbo_inv)
         self._apply_insertions(inv, limbo_inv)
-        self.limbo_inv = limbo_inv
         os.rmdir(self._tree.branch.controlfilename('limbo'))
         self._tree._write_inventory(inv)
         self.__done = True
@@ -484,19 +483,11 @@ class TreeTransform(object):
                 entry.name = self.final_name(trans_id)
                 parent_trans_id = self.final_parent(trans_id)
                 entry.parent_id = self.final_file_id(parent_trans_id)
-                if entry.file_id is None:
-                    continue
                 inv.add(entry)
-                assert entry.file_id in inv
 
             # requires files and inventory entries to be in place
             if trans_id in self._new_executability:
                 self._set_executability(path, inv, trans_id)
-        for trans_id in limbo_inv:
-            file_id = self.final_file_id(trans_id)
-            if file_id is None:
-                continue
-            assert self.final_file_id(trans_id) in inv
 
     def _set_executability(self, path, inv, trans_id):
         """Set the executability of versioned files """
