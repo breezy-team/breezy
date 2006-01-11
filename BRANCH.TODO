@@ -10,3 +10,5 @@
    - audit the new code to ensure correct unlocking in failures where
      we are holding two locks at once. (i.e. branch lock and repo lock).
  * test_working_tree tests should not peek in branch.control_files.
+ * The needs_read_lock decorators have been duplicated I think, unduplicate
+   them again.
