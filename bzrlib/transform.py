@@ -331,9 +331,16 @@ class TreeTransform(object):
     def _parent_type_conflicts(self, by_parent):
         """parents must have directory 'contents'."""
         conflicts = []
-        for parent_id in by_parent.iterkeys():
+        for parent_id, children in by_parent.iteritems():
             if parent_id is ROOT_PARENT:
                 continue
+            if not self._any_contents(children):
+                continue
+            for child in children:
+                try:
+                    self.final_kind(child)
+                except NoSuchFile:
+                    continue
             try:
                 kind = self.final_kind(parent_id)
             except NoSuchFile:
@@ -343,6 +350,16 @@ class TreeTransform(object):
             elif kind != "directory":
                 conflicts.append(('non-directory parent', parent_id))
         return conflicts
+
+    def _any_contents(self, trans_ids):
+        """Return true if any of the trans_ids, will have contents."""
+        for trans_id in trans_ids:
+            try:
+                kind = self.final_kind(trans_id)
+            except NoSuchFile:
+                continue
+            return True
+        return False
             
     def apply(self):
         """\

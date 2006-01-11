@@ -178,17 +178,28 @@ class TestTreeTransform(TestCaseInTempDir):
             root = create_tree.get_id_tree('TREE_ROOT')
             create_tree.new_file('name1', root, 'hello1', 'name1')
             create_tree.new_file('name2', root, 'hello2', 'name2')
+            ddir = create_tree.new_directory('dying_directory', root, 'ddir')
+            create_tree.new_file('dying_file', ddir, 'goodbye1', 'dfile')
+            create_tree.new_file('moving_file', ddir, 'later1', 'mfile')
             create_tree.apply()
         finally:
             create_tree.finalize()
         mangle_tree = TreeTransform(wt)
         try:
-            #swap names
             root = mangle_tree.get_id_tree('TREE_ROOT')
+            #swap names
             name1 = mangle_tree.get_id_tree('name1')
             name2 = mangle_tree.get_id_tree('name2')
             mangle_tree.adjust_path('name2', root, name1)
             mangle_tree.adjust_path('name1', root, name2)
+
+            #tests for deleting parent directories 
+            ddir = mangle_tree.get_id_tree('ddir')
+            mangle_tree.delete_contents(ddir)
+            dfile = mangle_tree.get_id_tree('dfile')
+            mangle_tree.delete_contents(dfile)
+            mfile = mangle_tree.get_id_tree('mfile')
+            mangle_tree.adjust_path('mfile', root, mfile)
             mangle_tree.apply()
         finally:
             mangle_tree.finalize()
