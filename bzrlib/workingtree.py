@@ -863,7 +863,7 @@ class WorkingTree(bzrlib.tree.Tree):
         from transform import revert
         if old_tree is None:
             old_tree = self.branch.basis_tree()
-        revert(self, old_tree, filenames)
+        revert(self, old_tree, filenames, backups)
         if not len(filenames):
             self.set_pending_merges([])
 

@@ -512,11 +512,12 @@ class TreeTransform(object):
                     kind = file_kind(self._tree.abspath(path))
                 inv.add_path(path, kind, self._new_id[trans_id])
             elif trans_id in self._new_name or trans_id in self._new_parent:
-                entry = limbo_inv[trans_id]
-                entry.name = self.final_name(trans_id)
-                parent_trans_id = self.final_parent(trans_id)
-                entry.parent_id = self.final_file_id(parent_trans_id)
-                inv.add(entry)
+                entry = limbo_inv.get(trans_id)
+                if entry is not None:
+                    entry.name = self.final_name(trans_id)
+                    parent_trans_id = self.final_parent(trans_id)
+                    entry.parent_id = self.final_file_id(parent_trans_id)
+                    inv.add(entry)
 
             # requires files and inventory entries to be in place
             if trans_id in self._new_executability:
@@ -696,14 +697,23 @@ def find_interesting(working_tree, target_tree, filenames):
     return interesting_ids
 
 
-def change_entry(tt, file_id, working_tree, target_tree, get_trans_id):
+def change_entry(tt, file_id, working_tree, target_tree, 
+                 get_trans_id, backups, trans_id):
     e_trans_id = get_trans_id(file_id)
     entry = target_tree.inventory[file_id]
     has_contents, contents_mod, meta_mod, = _entry_changes(file_id, entry, 
                                                            working_tree)
     if contents_mod:
         if has_contents:
-            tt.delete_contents(e_trans_id)
+            if not backups:
+                tt.delete_contents(e_trans_id)
+            else:
+                parent_trans_id = get_trans_id(entry.parent_id)
+                tt.adjust_path(entry.name+"~", parent_trans_id, e_trans_id)
+                tt.unversion_file(e_trans_id)
+                e_trans_id = tt.create_path(entry.name, parent_trans_id)
+                tt.version_file(file_id, e_trans_id)
+                trans_id[file_id] = e_trans_id
         create_by_entry(tt, entry, target_tree, e_trans_id)
     elif meta_mod:
         tt.set_executability(entry.executable)
@@ -717,8 +727,8 @@ def change_entry(tt, file_id, working_tree, target_tree, get_trans_id):
         else:
             adjust_path = False
     if adjust_path:
-        parent_file_id = get_trans_id(entry.parent_id)
-        tt.adjust_path(entry.name, parent_file_id, e_trans_id)
+        parent_trans_id = get_trans_id(entry.parent_id)
+        tt.adjust_path(entry.name, parent_trans_id, e_trans_id)
 
 
 def _entry_changes(file_id, entry, working_tree):
@@ -752,7 +762,8 @@ def _entry_changes(file_id, entry, working_tree):
             contents_mod, meta_mod = entry.detect_changes(cur_entry)
     return has_contents, contents_mod, meta_mod
 
-def revert(working_tree, target_tree, filenames):
+
+def revert(working_tree, target_tree, filenames, backups=False):
     interesting_ids = find_interesting(working_tree, target_tree, filenames)
     def interesting(file_id):
         return interesting_ids is None or file_id in interesting_ids
@@ -776,7 +787,7 @@ def revert(working_tree, target_tree, filenames):
                 trans_id[file_id] = e_trans_id
             else:
                 change_entry(tt, file_id, working_tree, target_tree, 
-                             get_trans_id)
+                             get_trans_id, backups, trans_id)
         for file_id in working_tree:
             if not interesting(file_id):
                 continue
