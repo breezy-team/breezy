@@ -477,7 +477,7 @@ class DuplicateKey(BzrNewError):
     """Key %(key)s is already present in map"""
 
 class MalformedTransform(BzrNewError):
-    """Tree transform is malformed"""
+    """Tree transform is malformed %(conflicts)r"""
 
 
 class BzrBadParameter(BzrNewError):

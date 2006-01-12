@@ -410,8 +410,9 @@ class TreeTransform(object):
         If filesystem or inventory conflicts are present, MalformedTransform
         will be thrown.
         """
-        if len(self.find_conflicts()) != 0:
-            raise MalformedTransform()
+        conflicts = self.find_conflicts()
+        if len(conflicts) != 0:
+            raise MalformedTransform(conflicts=conflicts)
         os.mkdir(self._tree.branch.controlfilename('limbo'))
         limbo_inv = {}
         inv = self._tree.inventory
