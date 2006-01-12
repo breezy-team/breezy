@@ -144,9 +144,11 @@ class TestTreeTransform(TestCaseInTempDir):
             fp = FinalPaths(transform2._new_root, transform2)
             self.assert_('oz/tip' in transform2._tree_path_ids)
             self.assertEqual(fp.get_path(newtip), 'oz/tip')
-            self.assertEqual(len(result), 1)
+            self.assertEqual(len(result), 2)
             self.assertEqual((result[0][0], result[0][1]), 
                              ('duplicate', newtip))
+            self.assertEqual((result[1][0], result[1][2]), 
+                             ('duplicate id', newtip))
         finally:
             transform2.finalize()
         transform3 = TreeTransform(wt)
@@ -271,6 +273,34 @@ class TestTreeTransform(TestCaseInTempDir):
         finally:
             move_id.finalize()
         
+    def test_replace_dangling_ie(self):
+        branch = Branch.initialize('.')
+        wt = branch.working_tree()
+        create_tree = TreeTransform(wt)
+        try:
+            # prepare tree
+            root = create_tree.get_id_tree('TREE_ROOT')
+            create_tree.new_file('name1', root, 'hello1', 'name1')
+            create_tree.apply()
+        finally:
+            create_tree.finalize()
+        delete_contents = TreeTransform(wt)
+        try:
+            file = delete_contents.get_id_tree('name1')
+            delete_contents.delete_contents(file)
+            delete_contents.apply()
+        finally:
+            delete_contents.finalize()
+        replace = TreeTransform(wt)
+        try:
+            name2 = replace.new_file('name2', root, 'hello2', 'name1')
+            conflicts = replace.find_conflicts()
+            name1 = replace.get_id_tree('name1')
+            self.assertEqual(conflicts, [('duplicate id', name1, name2)])
+            replace.unversion_file(name1)
+            replace.apply()
+        finally:
+            replace.finalize()
 
     def test_symlinks(self):
         if not has_symlinks():

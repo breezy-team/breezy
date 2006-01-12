@@ -252,6 +252,7 @@ class TreeTransform(object):
         conflicts.extend(self._unversioned_parents(by_parent))
         conflicts.extend(self._parent_loops())
         conflicts.extend(self._duplicate_entries(by_parent))
+        conflicts.extend(self._duplicate_ids())
         conflicts.extend(self._parent_type_conflicts(by_parent))
         conflicts.extend(self._improper_versioning())
         conflicts.extend(self._executability_conflicts())
@@ -267,8 +268,11 @@ class TreeTransform(object):
         parents = self._by_parent().keys()
         parents.extend([t for t in self._removed_contents if 
                         self.tree_kind(t) == 'directory'])
-        parents.extend([t for t in self._removed_id if 
-                        self.tree_kind(t) == 'directory'])
+        for trans_id in self._removed_id:
+            file_id = self.get_tree_file_id(trans_id)
+            if self._tree.inventory[file_id].kind == 'directory':
+                parents.append(trans_id)
+
         for parent_id in parents:
             try:
                 path = self._tree_id_paths[parent_id]
@@ -368,6 +372,19 @@ class TreeTransform(object):
                     name))
                 last_name = name
                 last_trans_id = trans_id
+        return conflicts
+
+    def _duplicate_ids(self):
+        """Each inventory id may only be used once"""
+        conflicts = []
+        removed_tree_ids = set((self.get_tree_file_id(trans_id) for trans_id in
+                                self._removed_id))
+        active_tree_ids = set((f for f in self._tree.inventory if
+                               f not in removed_tree_ids))
+        for trans_id, file_id in self._new_id.iteritems():
+            if file_id in active_tree_ids:
+                old_trans_id = self.get_id_tree(file_id)
+                conflicts.append(('duplicate id', old_trans_id, trans_id))
         return conflicts
 
     def _parent_type_conflicts(self, by_parent):
