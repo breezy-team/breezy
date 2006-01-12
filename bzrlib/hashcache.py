@@ -37,7 +37,6 @@ from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.osutils import pathjoin
 
-
 FP_MODE_COLUMN = 5
 
 def _fingerprint(abspath):
