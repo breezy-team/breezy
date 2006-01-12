@@ -19,10 +19,13 @@ The abstraction is to allow access from the local filesystem, as well
 as remote (such as http or sftp).
 """
 
+import errno
+from copy import deepcopy
+import sys
+from unittest import TestSuite
+
 from bzrlib.trace import mutter
 import bzrlib.errors as errors
-import errno
-import sys
 
 _protocol_handlers = {
 }
@@ -38,6 +41,35 @@ def register_transport(prefix, klass, override=True):
     else:
         ## mutter('registering transport: %s => %s' % (prefix, klass.__name__))
         _protocol_handlers[prefix] = klass
+
+
+def _get_protocol_handlers():
+    """Return a dictionary of prefix:transport-factories."""
+    return _protocol_handlers
+
+
+def _set_protocol_handlers(new_handlers):
+    """Replace the current protocol handlers dictionary.
+
+    WARNING this will remove all build in protocols. Use with care.
+    """
+    global _protocol_handlers
+    _protocol_handlers = new_handlers
+
+
+def _get_transport_modules():
+    """Return a list of the modules providing transports."""
+    modules = set()
+    for prefix, factory in _protocol_handlers.items():
+        if factory.__module__ == "bzrlib.transport":
+            # this is a lazy load transport, because no real ones
+            # are directlry in bzrlib.transport
+            modules.add(factory.module)
+        else:
+            modules.add(factory.__module__)
+    result = list(modules)
+    result.sort()
+    return result
 
 
 class Transport(object):
@@ -159,11 +191,10 @@ class Transport(object):
         """
         # TODO: This might want to use bzrlib.osutils.relpath
         #       but we have to watch out because of the prefix issues
-        if not abspath.startswith(self.base):
+        if not (abspath == self.base[:-1] or abspath.startswith(self.base)):
             raise errors.PathNotChild(abspath, self.base)
         pl = len(self.base)
-        return abspath[pl:].lstrip('/')
-
+        return abspath[pl:].strip('/')
 
     def has(self, relpath):
         """Does the file relpath exist?
@@ -195,7 +226,10 @@ class Transport(object):
         As with other listing functions, only some transports implement this,.
         you may check via is_listable to determine if it will.
         """
-        raise NotImplementedError
+        raise errors.TransportNotPossible("This transport has not "
+                                          "implemented iter_files_recursive "
+                                          "(but must claim to be listable "
+                                          "to trigger this error).")
 
     def get(self, relpath):
         """Get the file at the given relative path.
@@ -232,7 +266,7 @@ class Transport(object):
         raise NotImplementedError
 
     def put_multi(self, files, mode=None, pb=None):
-        """Put a set of files or strings into the location.
+        """Put a set of files into the location.
 
         :param files: A list of tuples of relpath, file object [(path1, file1), (path2, file2),...]
         :param pb:  An optional ProgressBar for indicating percent done.
@@ -269,8 +303,12 @@ class Transport(object):
         return self._iterate_over(files, self.append, pb, 'append', expand=True)
 
     def copy(self, rel_from, rel_to):
-        """Copy the item at rel_from to the location at rel_to"""
-        raise NotImplementedError
+        """Copy the item at rel_from to the location at rel_to.
+        
+        Override this for efficiency if a specific transport can do it 
+        faster than this default implementation.
+        """
+        self.put(rel_to, self.get(rel_from))
 
     def copy_multi(self, relpaths, pb=None):
         """Copy a bunch of entries.
@@ -297,8 +335,13 @@ class Transport(object):
 
 
     def move(self, rel_from, rel_to):
-        """Move the item at rel_from to the location at rel_to"""
-        raise NotImplementedError
+        """Move the item at rel_from to the location at rel_to.
+        
+        If a transport can directly implement this it is suggested that
+        it do so for efficiency.
+        """
+        self.copy(rel_from, rel_to)
+        self.delete(rel_from)
 
     def move_multi(self, relpaths, pb=None):
         """Move a bunch of entries.
@@ -362,7 +405,9 @@ class Transport(object):
         it if at all possible.
         """
         raise errors.TransportNotPossible("This transport has not "
-                                          "implemented list_dir.")
+                                          "implemented list_dir "
+                                          "(but must claim to be listable "
+                                          "to trigger this error).")
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
@@ -379,6 +424,10 @@ class Transport(object):
         :return: A lock object, which should contain an unlock() function.
         """
         raise NotImplementedError
+
+    def is_readonly(self):
+        """Return true if this connection cannot be written to."""
+        return False
 
 
 def get_transport(base):
@@ -405,6 +454,7 @@ def register_lazy_transport(scheme, module, classname):
         mod = __import__(module, globals(), locals(), [classname])
         klass = getattr(mod, classname)
         return klass(base)
+    _loader.module = module
     register_transport(scheme, _loader)
 
 
@@ -415,6 +465,77 @@ def urlescape(relpath):
     return urllib.quote(relpath)
 
 
+class Server(object):
+    """A Transport Server.
+    
+    The Server interface provides a server for a given transport. We use
+    these servers as loopback testing tools. For any given transport the
+    Servers it provides must either allow writing, or serve the contents
+    of os.getcwdu() at the time setUp is called.
+    
+    Note that these are real servers - they must implement all the things
+    that we want bzr transports to take advantage of.
+    """
+
+    def setUp(self):
+        """Setup the server to service requests."""
+
+    def tearDown(self):
+        """Remove the server and cleanup any resources it owns."""
+
+    def get_url(self):
+        """Return a url for this server.
+        
+        If the transport does not represent a disk directory (i.e. it is 
+        a database like svn, or a memory only transport, it should return
+        a connection to a newly established resource for this Server.
+        Otherwise it should return a url that will provide access to the path
+        that was os.getcwdu() when setUp() was called.
+        
+        Subsequent calls will return the same resource.
+        """
+        raise NotImplementedError
+
+    def get_bogus_url(self):
+        """Return a url for this protocol, that will fail to connect."""
+        raise NotImplementedError
+
+
+class TransportTestProviderAdapter(object):
+    """A tool to generate a suite testing all transports for a single test.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_class and transport_server classes into each copy. Each copy
+    is also given a new id() to make it easy to identify.
+    """
+
+    def adapt(self, test):
+        result = TestSuite()
+        for klass, server_factory in self._test_permutations():
+            new_test = deepcopy(test)
+            new_test.transport_class = klass
+            new_test.transport_server = server_factory
+            def make_new_test_id():
+                new_id = "%s(%s)" % (new_test.id(), server_factory.__name__)
+                return lambda: new_id
+            new_test.id = make_new_test_id()
+            result.addTest(new_test)
+        return result
+
+    def get_transport_test_permutations(self, module):
+        """Get the permutations module wants to have tested."""
+        return module.get_test_permutations()
+
+    def _test_permutations(self):
+        """Return a list of the klass, server_factory pairs to test."""
+        result = []
+        for module in _get_transport_modules():
+            result.extend(self.get_transport_test_permutations(reduce(getattr, 
+                (module).split('.')[1:],
+                 __import__(module))))
+        return result
+        
+
 # None is the default transport, for things with no url scheme
 register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
@@ -423,3 +544,4 @@ register_lazy_transport('http://', 'bzrlib.transport.http', 'HttpTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http', 'HttpTransport')
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
+register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
