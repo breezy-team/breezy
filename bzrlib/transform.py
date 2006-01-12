@@ -240,6 +240,9 @@ class TreeTransform(object):
             by_parent[parent_id].add(trans_id)
         return by_parent
 
+    def path_changed(self, trans_id):
+        return trans_id in self._new_name or trans_id in self._new_parent
+
     def find_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
         if self.__done is True:
@@ -470,8 +473,9 @@ class TreeTransform(object):
                 del inv[self.get_tree_file_id(trans_id)]
             elif trans_id in self._new_name or trans_id in self._new_parent:
                 file_id = self.get_tree_file_id(trans_id)
-                limbo_inv[trans_id] = inv[file_id]
-                del inv[file_id]
+                if file_id is not None:
+                    limbo_inv[trans_id] = inv[file_id]
+                    del inv[file_id]
 
     def _apply_insertions(self, inv, limbo_inv):
         """Perform tree operations that insert directory/inventory names.
@@ -798,7 +802,26 @@ def revert(working_tree, target_tree, filenames, backups=False):
     finally:
         tt.finalize()
 
+
 def resolve_conflicts(tt):
-    for conflict in tt.find_conflicts():
+    """Make many conflict-resolution attempts, but die if they fail"""
+    for n in range(10):
+        conflicts = tt.find_conflicts()
+        if len(conflicts) == 0:
+            return
+        conflict_pass(tt, conflicts)
+    raise MalformedTransaction(conflicts)
+
+
+def conflict_pass(tt, conflicts):
+    for conflict in conflicts:
         if conflict[0] == 'duplicate id':
             tt.unversion_file(conflict[1])
+        if conflict[0] == 'duplicate':
+            # files that were renamed take precedence
+            new_name = tt.final_name(conflict[1])+'.moved'
+            final_parent = tt.final_parent(conflict[1])
+            if tt.path_changed(conflict[1]):
+                tt.adjust_path(new_name, final_parent, conflict[2])
+            else:
+                tt.adjust_path(new_name, final_parent, conflict[1])
