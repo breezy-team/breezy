@@ -944,7 +944,11 @@ class cmd_log(Command):
             rev1 = rev2 = revision[0].in_history(b).revno
         elif len(revision) == 2:
             rev1 = revision[0].in_history(b).revno
-            rev2 = revision[1].in_history(b).revno
+            if revision[1].spec is None:
+                # missing end-range means last known revision
+                rev2 = b.revno()
+            else:
+                rev2 = revision[1].in_history(b).revno
         else:
             raise BzrCommandError('bzr log --revision takes one or two values.')
 
