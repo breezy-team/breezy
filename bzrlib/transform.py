@@ -4,6 +4,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
 from bzrlib.osutils import file_kind, supports_executable
 from bzrlib.inventory import InventoryEntry
 from bzrlib import BZRDIR
+from bzrlib.delta import compare_trees
 import errno
 
 ROOT_PARENT = "root-parent"
@@ -620,20 +621,70 @@ def build_tree(branch, tree):
             if entry.parent_id not in file_trans_id:
                 raise repr(entry.parent_id)
             parent_id = file_trans_id[entry.parent_id]
-            name = entry.name
-            kind = entry.kind
-            if kind == 'file':
-                contents = tree.get_file_lines(file_id)
-                executable = tree.is_executable(file_id)
-                file_trans_id[file_id] = tt.new_file(name, parent_id, contents,
-                                                     file_id, executable)
-            elif kind == 'directory':
-                file_trans_id[file_id] = tt.new_directory(name, parent_id, 
-                                                          file_id)
-            elif kind == 'symlink':
-                target = entry.get_symlink_target(file_id)
-                file_trans_id[file_id] = tt.new_symlink(name, parent_id,
-                                                        target, file_id)
+            file_trans_id[file_id] = new_by_entry(tt, entry, parent_id, tree)
+        tt.apply()
+    finally:
+        tt.finalize()
+
+def new_by_entry(tt, entry, parent_id, tree):
+    name = entry.name
+    kind = entry.kind
+    if kind == 'file':
+        contents = tree.get_file_lines(entry.file_id)
+        executable = tree.is_executable(entry.file_id)
+        return tt.new_file(name, parent_id, contents, entry.file_id, 
+                           executable)
+    elif kind == 'directory':
+        return tt.new_directory(name, parent_id, file_id)
+    elif kind == 'symlink':
+        target = entry.get_symlink_target(file_id)
+        return tt.new_symlink(name, parent_id, target, file_id)
+
+def create_by_entry(tt, entry, tree, trans_id):
+    if entry.kind == "file":
+        tt.create_file(tree.get_file_lines(entry.file_id), trans_id)
+        tt.set_executability(entry.executable, trans_id)
+    elif entry.kind == "symlink":
+        tt.create_symlink(entry.target, trans_id)
+    elif entry.kind == "directory":
+        tt.create_directory()
+
+
+def revert(working_tree, target_tree):
+    tt = TreeTransform(working_tree)
+    try:
+        delta = compare_trees(target_tree, working_tree)
+        new_ids = {}
+        for path, file_id, kind in delta.added:
+            trans_id = tt.get_tree_path_id(path)
+            tt.unversion_file(trans_id)
+
+        for path, file_id, kind in delta.removed:
+            entry = target_tree.inventory[file_id]
+            try:
+                parent_id = new_ids[entry.parent_id]
+            except KeyError:
+                parent_id = tt.get_id_tree(entry.parent_id)
+            trans_id = tt.get_id_tree(file_id)
+            if trans_id is None:
+                new_ids[entry.file_id] = new_by_entry(tt, entry, parent_id, 
+                                                      target_tree)
+            else:
+                create_by_entry(tt, entry, target_tree, trans_id)
+                if tt.final_parent(trans_id) != parent_id or\
+                    tt.final_name(trans_id) != entry.name:
+                    tt.adjust_path(entry.name, parent_id, trans_id)
+
+        for path, file_id, kind, text_modified, meta_modified in delta.modified:
+            trans_id = tt.get_id_tree(file_id)
+            if text_modified is True:
+                tt.delete_contents(trans_id)
+                entry = target_tree.inventory[file_id]
+                create_by_entry(tt, entry, target_tree, trans_id)
+            elif meta_modified is True:
+                if kind == "file":
+                    entry = target_tree.inventory[file_id]
+                    tt.set_executability(entry.executable, trans_id)
         tt.apply()
     finally:
         tt.finalize()

@@ -860,13 +860,10 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_write_lock
     def revert(self, filenames, old_tree=None, backups=True):
-        from bzrlib.merge import merge_inner
+        from transform import revert
         if old_tree is None:
             old_tree = self.branch.basis_tree()
-        merge_inner(self.branch, old_tree,
-                    self, ignore_zero=True,
-                    backup_files=backups, 
-                    interesting_files=filenames)
+        revert(self, old_tree)
         if not len(filenames):
             self.set_pending_merges([])
 
