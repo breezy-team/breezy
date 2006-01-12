@@ -1,6 +1,7 @@
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.branch import Branch
-from bzrlib.transform import TreeTransform, ROOT_PARENT, FinalPaths
+from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
+                              resolve_conflicts)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform)
 from bzrlib.osutils import file_kind, has_symlinks
@@ -297,7 +298,7 @@ class TestTreeTransform(TestCaseInTempDir):
             conflicts = replace.find_conflicts()
             name1 = replace.get_id_tree('name1')
             self.assertEqual(conflicts, [('duplicate id', name1, name2)])
-            replace.unversion_file(name1)
+            resolve_conflicts(replace)
             replace.apply()
         finally:
             replace.finalize()

@@ -674,44 +674,63 @@ def create_by_entry(tt, entry, tree, trans_id):
     elif entry.kind == "symlink":
         tt.create_symlink(entry.target, trans_id)
     elif entry.kind == "directory":
-        tt.create_directory()
+        tt.create_directory(trans_id)
 
 
 def revert(working_tree, target_tree):
     tt = TreeTransform(working_tree)
     try:
-        delta = compare_trees(target_tree, working_tree)
-        new_ids = {}
-        for path, file_id, kind in delta.added:
-            trans_id = tt.get_tree_path_id(path)
-            tt.unversion_file(trans_id)
-
-        for path, file_id, kind in delta.removed:
-            entry = target_tree.inventory[file_id]
+        trans_id = {}
+        def get_trans_id(file_id):
             try:
-                parent_id = new_ids[entry.parent_id]
+                return trans_id[file_id]
             except KeyError:
-                parent_id = tt.get_id_tree(entry.parent_id)
-            trans_id = tt.get_id_tree(file_id)
-            if trans_id is None:
-                new_ids[entry.file_id] = new_by_entry(tt, entry, parent_id, 
-                                                      target_tree)
-            else:
-                create_by_entry(tt, entry, target_tree, trans_id)
-                if tt.final_parent(trans_id) != parent_id or\
-                    tt.final_name(trans_id) != entry.name:
-                    tt.adjust_path(entry.name, parent_id, trans_id)
+                return tt.get_id_tree(file_id)
 
-        for path, file_id, kind, text_modified, meta_modified in delta.modified:
-            trans_id = tt.get_id_tree(file_id)
-            if text_modified is True:
-                tt.delete_contents(trans_id)
+        for file_id in topology_sorted_ids(target_tree):
+            if file_id == target_tree.inventory.root:
+                continue
+            if file_id not in working_tree:
                 entry = target_tree.inventory[file_id]
-                create_by_entry(tt, entry, target_tree, trans_id)
-            elif meta_modified is True:
-                if kind == "file":
-                    entry = target_tree.inventory[file_id]
-                    tt.set_executability(entry.executable, trans_id)
+                parent_id = get_trans_id(entry.parent_id)
+                e_trans_id = new_by_entry(tt, entry, parent_id, target_tree)
+                trans_id[file_id] = e_trans_id
+            else:
+                e_trans_id = get_trans_id(file_id)
+                entry = target_tree.inventory[file_id]
+                if tt.final_name(e_trans_id) != entry.name:
+                    adjust_path  = True
+                else:
+                    parent_id = tt.final_parent(e_trans_id)
+                    parent_file_id = tt.final_file_id(parent_id)
+                    if parent_file_id != entry.parent_id:
+                        adjust_path = True
+                    else:
+                        adjust_path = False
+                if adjust_path:
+                    parent_file_id = get_trans_id(entry.parent_id)
+                    tt.adjust_path(entry.name, parent_file_id, e_trans_id)
+                cur_entry = working_tree.inventory[file_id]
+                cur_entry._read_tree_state(working_tree.id2path(file_id),
+                                           working_tree)
+                if entry.kind != cur_entry.kind:
+                    contents_mod, meta_mod = (True, False)
+                else:
+                    contents_mod, meta_mod = entry.detect_changes(cur_entry)
+                if contents_mod:
+                    tt.delete_contents(e_trans_id)
+                    create_by_entry(tt, entry, target_tree, e_trans_id)
+                elif meta_mod:
+                    tt.set_executability(entry.executable)
+        for file_id in working_tree:
+            if file_id not in target_tree and file_id != target_tree.inventory.root:
+                tt.unversion(tt.get_id_tree(file_id))
+        resolve_conflicts(tt)
         tt.apply()
     finally:
         tt.finalize()
+
+def resolve_conflicts(tt):
+    for conflict in tt.find_conflicts():
+        if conflict[0] == 'duplicate id':
+            tt.unversion_file(conflict[1])
