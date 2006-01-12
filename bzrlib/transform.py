@@ -1,6 +1,6 @@
 import os
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform)
+                           ReusingTransform, NotVersionedError)
 from bzrlib.osutils import file_kind, supports_executable
 from bzrlib.inventory import InventoryEntry
 from bzrlib import BZRDIR
@@ -270,7 +270,8 @@ class TreeTransform(object):
                         self.tree_kind(t) == 'directory'])
         for trans_id in self._removed_id:
             file_id = self.get_tree_file_id(trans_id)
-            if self._tree.inventory[file_id].kind == 'directory':
+            if self._tree.inventory[file_id].kind in ('directory', 
+                                                      'root_directory'):
                 parents.append(trans_id)
 
         for parent_id in parents:
@@ -672,12 +673,90 @@ def create_by_entry(tt, entry, tree, trans_id):
         tt.create_file(tree.get_file_lines(entry.file_id), trans_id)
         tt.set_executability(entry.executable, trans_id)
     elif entry.kind == "symlink":
-        tt.create_symlink(entry.target, trans_id)
+        tt.create_symlink(entry.symlink_target, trans_id)
     elif entry.kind == "directory":
         tt.create_directory(trans_id)
 
 
-def revert(working_tree, target_tree):
+def find_interesting(working_tree, target_tree, filenames):
+    if not filenames:
+        interesting_ids = None
+    else:
+        interesting_ids = set()
+        for filename in filenames:
+            tree_path = working_tree.relpath(filename)
+            for tree in (working_tree, target_tree):
+                not_found = True
+                file_id = tree.inventory.path2id(tree_path)
+                if file_id is not None:
+                    interesting_ids.add(file_id)
+                    not_found = False
+                if not_found:
+                    raise NotVersionedError(path=filename)
+    return interesting_ids
+
+
+def change_entry(tt, file_id, working_tree, target_tree, get_trans_id):
+    e_trans_id = get_trans_id(file_id)
+    entry = target_tree.inventory[file_id]
+    has_contents, contents_mod, meta_mod, = _entry_changes(file_id, entry, 
+                                                           working_tree)
+    if contents_mod:
+        if has_contents:
+            tt.delete_contents(e_trans_id)
+        create_by_entry(tt, entry, target_tree, e_trans_id)
+    elif meta_mod:
+        tt.set_executability(entry.executable)
+    if tt.final_name(e_trans_id) != entry.name:
+        adjust_path  = True
+    else:
+        parent_id = tt.final_parent(e_trans_id)
+        parent_file_id = tt.final_file_id(parent_id)
+        if parent_file_id != entry.parent_id:
+            adjust_path = True
+        else:
+            adjust_path = False
+    if adjust_path:
+        parent_file_id = get_trans_id(entry.parent_id)
+        tt.adjust_path(entry.name, parent_file_id, e_trans_id)
+
+
+def _entry_changes(file_id, entry, working_tree):
+    """\
+    Determine in which ways the inventory entry has changed.
+
+    Returns booleans: has_contents, content_mod, meta_mod
+    has_contents means there are currently contents, but they differ
+    contents_mod means contents need to be modified
+    meta_mod means the metadata needs to be modified
+    """
+    cur_entry = working_tree.inventory[file_id]
+    try:
+        working_kind = working_tree.kind(file_id)
+        has_contents = True
+    except OSError, e:
+        if e.errno != errno.ENOENT:
+            raise
+        has_contents = False
+        contents_mod = True
+        meta_mod = False
+    if has_contents is True:
+        real_e_kind = entry.kind
+        if real_e_kind == 'root_directory':
+            real_e_kind = 'directory'
+        if real_e_kind != working_kind:
+            contents_mod, meta_mod = True, False
+        else:
+            cur_entry._read_tree_state(working_tree.id2path(file_id), 
+                                       working_tree)
+            contents_mod, meta_mod = entry.detect_changes(cur_entry)
+    return has_contents, contents_mod, meta_mod
+
+def revert(working_tree, target_tree, filenames):
+    interesting_ids = find_interesting(working_tree, target_tree, filenames)
+    def interesting(file_id):
+        return interesting_ids is None or file_id in interesting_ids
+
     tt = TreeTransform(working_tree)
     try:
         trans_id = {}
@@ -688,7 +767,7 @@ def revert(working_tree, target_tree):
                 return tt.get_id_tree(file_id)
 
         for file_id in topology_sorted_ids(target_tree):
-            if file_id == target_tree.inventory.root:
+            if not interesting(file_id):
                 continue
             if file_id not in working_tree.inventory:
                 entry = target_tree.inventory[file_id]
@@ -696,46 +775,12 @@ def revert(working_tree, target_tree):
                 e_trans_id = new_by_entry(tt, entry, parent_id, target_tree)
                 trans_id[file_id] = e_trans_id
             else:
-                e_trans_id = get_trans_id(file_id)
-                entry = target_tree.inventory[file_id]
-                if tt.final_name(e_trans_id) != entry.name:
-                    adjust_path  = True
-                else:
-                    parent_id = tt.final_parent(e_trans_id)
-                    parent_file_id = tt.final_file_id(parent_id)
-                    if parent_file_id != entry.parent_id:
-                        adjust_path = True
-                    else:
-                        adjust_path = False
-                if adjust_path:
-                    parent_file_id = get_trans_id(entry.parent_id)
-                    tt.adjust_path(entry.name, parent_file_id, e_trans_id)
-                cur_entry = working_tree.inventory[file_id]
-                try:
-                    cur_entry._read_tree_state(working_tree.id2path(file_id),
-                                               working_tree)
-                    has_contents = True
-                except OSError, e:
-                    if e.errno != errno.ENOENT:
-                        raise
-                    has_contents = False
-                    contents_mod = True
-                    meta_mod = False
-                real_e_kind = entry.kind
-                if real_e_kind == 'root_directory':
-                    real_e_kind = 'directory'
-                if has_contents and real_e_kind != working_tree.kind(file_id):
-                    contents_mod, meta_mod = (True, False)
-                elif has_contents:
-                    contents_mod, meta_mod = entry.detect_changes(cur_entry)
-                if contents_mod:
-                    if has_contents:
-                        tt.delete_contents(e_trans_id)
-                    create_by_entry(tt, entry, target_tree, e_trans_id)
-                elif meta_mod:
-                    tt.set_executability(entry.executable)
+                change_entry(tt, file_id, working_tree, target_tree, 
+                             get_trans_id)
         for file_id in working_tree:
-            if file_id not in target_tree and file_id != target_tree.inventory.root:
+            if not interesting(file_id):
+                continue
+            if file_id not in target_tree:
                 tt.unversion_file(tt.get_id_tree(file_id))
         resolve_conflicts(tt)
         tt.apply()
