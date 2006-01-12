@@ -662,7 +662,7 @@ def new_by_entry(tt, entry, parent_id, tree):
         return tt.new_file(name, parent_id, contents, entry.file_id, 
                            executable)
     elif kind == 'directory':
-        return tt.new_directory(name, parent_id, file_id)
+        return tt.new_directory(name, parent_id, entry.file_id)
     elif kind == 'symlink':
         target = entry.get_symlink_target(file_id)
         return tt.new_symlink(name, parent_id, target, file_id)
