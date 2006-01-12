@@ -1,4 +1,4 @@
-UNRELEASED CHANGES
+bzr 0.7rc1 2006-01-09
 
   CHANGES:
 
@@ -41,6 +41,9 @@ UNRELEASED CHANGES
 
     * configure.in and config.guess are no longer in the builtin default 
       ignore list.
+
+    * '.sw[nop]' pattern ignored, to ignore vim swap files for nameless
+      files.  (John Arbash Meinel, Martin Pool)
 
   IMPROVEMENTS:
 
@@ -150,6 +153,9 @@ UNRELEASED CHANGES
     * Fix bugs in bzr status display of non-ascii characters.  (Martin 
       Pool)
 
+    * Remove Makefile.in from default ignore list.  (#6413, Tollef Fog 
+      Heen, Martin Pool)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
@@ -189,6 +195,21 @@ UNRELEASED CHANGES
     * Tests can now run TestSkipped if they can't execute for any reason.
       (Martin Pool) (NB: TestSkipped should only be raised for correctable
       reasons - see the wiki spec ImprovingBzrTestSuite).
+
+    * Test sftp with relative, absolute-in-homedir and absolute-not-in-homedir
+      paths for the transport tests. Introduce blackbox remote sftp tests that
+      test the same permutations. (Robert Collins, Robey Pointer)
+
+    * Transport implementation tests are now independent of the local file
+      system, which allows tests for esoteric transports, and for features
+      not available in the local file system. They also repeat for variations
+      on the URL scheme that can introduce issues in the transport code,
+      see bzrlib.transport.TransportTestProviderAdapter() for this.
+      (Robert Collins).
+
+    * TestCase.build_tree uses the transport interface to build trees, pass
+      in a transport parameter to give it an existing connection.
+      (Robert Collins).
 
   INTERNALS:
 

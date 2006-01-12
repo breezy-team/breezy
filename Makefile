@@ -21,3 +21,6 @@ clean:
 tag_files=./bzr ./bzrlib/*py ./bzrlib/selftest/*.py
 TAGS: $(tag_files)
 	ctags-exuberant -e $(tag_files)
+
+tutorial.html: tutorial.txt
+	rest2html tutorial.txt > tutorial.html
