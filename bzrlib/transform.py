@@ -429,15 +429,16 @@ class TreeTransform(object):
         tree_paths = list(self._tree_path_ids.iteritems())
         tree_paths.sort(reverse=True)
         for path, trans_id in tree_paths:
+            full_path = self._tree.abspath(path)
             if trans_id in self._removed_contents:
                 try:
-                    os.unlink(path)
+                    os.unlink(full_path)
                 except OSError, e:
-                    if e.errno != errno.EISDIR:
+                    if e.errno != errno.EISDIR and e.errno != errno.EACCES:
                         raise
-                    os.rmdir(path)
+                    os.rmdir(full_path)
             elif trans_id in self._new_name or trans_id in self._new_parent:
-                os.rename(path, os.path.join(limbo, trans_id))
+                os.rename(full_path, os.path.join(limbo, trans_id))
             if trans_id in self._removed_id:
                 del inv[self.get_tree_file_id(trans_id)]
             elif trans_id in self._new_name or trans_id in self._new_parent:
@@ -468,10 +469,11 @@ class TreeTransform(object):
                 os.mkdir(self._tree.abspath(path))
             elif kind == 'symlink':
                 target = self._new_contents[trans_id][1]
-                os.symlink(target, path)
+                os.symlink(target, self._tree.abspath(path))
             elif kind is None and (trans_id in self._new_name or
                                    trans_id in self._new_parent):
-                os.rename(os.path.join(limbo, trans_id), path)
+                os.rename(os.path.join(limbo, trans_id), 
+                                       self._tree.abspath(path))
 
 
             if trans_id in self._new_id:

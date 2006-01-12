@@ -33,9 +33,6 @@ class TestTreeTransform(TestCaseInTempDir):
             oz_id = transform.create_path('oz', root)
             transform.create_directory(oz_id)
             transform.version_file('ozzie', oz_id)
-            wiz_id = transform.create_path('wizard', oz_id)
-            transform.create_symlink('behind_curtain', wiz_id)
-            transform.version_file('wiz-id', wiz_id)
             trans_id2 = transform.create_path('name2', root)
             transform.create_file('contents', trans_id2)
             transform.set_executability(False, trans_id2)
@@ -46,8 +43,6 @@ class TestTreeTransform(TestCaseInTempDir):
             self.assertIs(wt.is_executable('my_pretties'), True)
             self.assertIs(wt.is_executable('my_pretties2'), False)
             self.assertEqual('directory', file_kind('oz'))
-            self.assertEqual(file_kind('oz/wizard'), 'symlink')
-            self.assertEqual(os.readlink('oz/wizard'), 'behind_curtain')
         finally:
             transform.finalize()
         # is it safe to finalize repeatedly?
@@ -65,8 +60,7 @@ class TestTreeTransform(TestCaseInTempDir):
             dorothy = transform.new_directory('dorothy', oz, 'dorothy-id')
             toto = transform.new_file('toto', dorothy, 'toto-contents', 
                                       'toto-id', False)
-            wizard = transform.new_symlink('wizard', oz, 'wizard-target', 
-                                           'wizard-id')
+
             self.assertEqual(len(transform.find_conflicts()), 0)
             transform.apply()
             self.assertRaises(ReusingTransform, transform.find_conflicts)
@@ -76,10 +70,9 @@ class TestTreeTransform(TestCaseInTempDir):
             self.assertEqual(wt.path2id('oz'), 'oz-id')
             self.assertEqual(wt.path2id('oz/dorothy'), 'dorothy-id')
             self.assertEqual(wt.path2id('oz/dorothy/toto'), 'toto-id')
-            self.assertEqual(wt.path2id('oz/wizard'), 'wizard-id')
+
             self.assertEqual('toto-contents', file('oz/dorothy/toto').read())
             self.assertIs(wt.is_executable('toto-id'), False)
-            self.assertEqual(os.readlink('oz/wizard'), 'wizard-target')
         finally:
             transform.finalize()
 
@@ -141,8 +134,8 @@ class TestTreeTransform(TestCaseInTempDir):
             transform.apply()
         finally:
             transform.finalize()
-            self.assertEqual('contents', file('name').read())
             self.assertEqual(wt.path2id('name'), 'my_pretties')
+            self.assertEqual('contents', file(wt.abspath('name')).read())
         transform2 = TreeTransform(wt)
         try:
             oz_id = transform2.get_id_tree('oz-id')
@@ -226,3 +219,25 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertEqual(wt.path2id('dying_directory'), 'ddir')
         self.assertIs(wt.path2id('dying_directory/dying_file'), None)
         mfile2_path = wt.abspath(os.path.join('new_directory','mfile2'))
+
+    def test_symlinks(self):
+        if not getattr(os, 'symlink', False):
+            return
+        branch = Branch.initialize('.')
+        wt = branch.working_tree()
+        transform = TreeTransform(wt)
+        try:
+            root = transform.get_id_tree(wt.get_root_id())
+            oz_id = transform.new_directory('oz', root)
+            wizard = transform.new_symlink('wizard', oz, 'wizard-target', 
+                                           'wizard-id')
+            wiz_id = transform.create_path('wizard2', oz_id)
+            transform.create_symlink('behind_curtain', wiz_id)
+            transform.version_file('wiz-id2', wiz_id)            
+            self.assertEqual(wt.path2id('oz/wizard'), 'wizard-id')
+            transform.apply()
+            self.assertEqual(file_kind('oz/wizard'), 'symlink')
+            self.assertEqual(os.readlink('oz/wizard'), 'behind_curtain')
+            self.assertEqual(os.readlink('oz/wizard2'), 'wizard-target')
+        finally:
+            transform.finalize()
