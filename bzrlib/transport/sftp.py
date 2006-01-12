@@ -57,8 +57,7 @@ if 'sftp' not in urlparse.uses_netloc:
 
 # don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
 _default_do_prefetch = False
-_paramiko_version = getattr(paramiko, '__version_info__', None)
-if (_paramiko_version is not None) and (_paramiko_version >= (1, 5, 2)):
+if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 2):
     _default_do_prefetch = True
 
 
