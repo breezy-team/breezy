@@ -228,16 +228,16 @@ class TestTreeTransform(TestCaseInTempDir):
         transform = TreeTransform(wt)
         try:
             root = transform.get_id_tree(wt.get_root_id())
-            oz_id = transform.new_directory('oz', root)
-            wizard = transform.new_symlink('wizard', oz, 'wizard-target', 
+            oz_id = transform.new_directory('oz', root, 'oz-id')
+            wizard = transform.new_symlink('wizard', oz_id, 'wizard-target', 
                                            'wizard-id')
             wiz_id = transform.create_path('wizard2', oz_id)
             transform.create_symlink('behind_curtain', wiz_id)
             transform.version_file('wiz-id2', wiz_id)            
-            self.assertEqual(wt.path2id('oz/wizard'), 'wizard-id')
             transform.apply()
+            self.assertEqual(wt.path2id('oz/wizard'), 'wizard-id')
             self.assertEqual(file_kind('oz/wizard'), 'symlink')
-            self.assertEqual(os.readlink('oz/wizard'), 'behind_curtain')
-            self.assertEqual(os.readlink('oz/wizard2'), 'wizard-target')
+            self.assertEqual(os.readlink('oz/wizard2'), 'behind_curtain')
+            self.assertEqual(os.readlink('oz/wizard'), 'wizard-target')
         finally:
             transform.finalize()
