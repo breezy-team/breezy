@@ -37,10 +37,11 @@ DEFAULT_IGNORE = [
                   '*.py[oc]',
                   '*.so',
                   '*.tmp',
+                  '.*.tmp',
                   '*~',
                   '.#*',
                   '.*.sw[nop]',
-                  '.*.tmp',
+                  '.sw[nop]',    # vim editing nameless file
                   '.DS_Store',
                   '.arch-ids',
                   '.arch-inventory',
@@ -56,20 +57,17 @@ DEFAULT_IGNORE = [
                   'BitKeeper',
                   'CVS',
                   'CVS.adm',
-                  'Makefile.in',
                   'RCS',
                   'SCCS',
                   'TAGS',
                   '_darcs',
                   'aclocal.m4',
                   'autom4te*',
-                  'config.guess',
                   'config.h',
                   'config.h.in',
                   'config.log',
                   'config.status',
                   'config.sub',
-                  'configure.in',
                   'stamp-h',
                   'stamp-h.in',
                   'stamp-h1',
@@ -90,14 +88,17 @@ else:
 user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
-__copyright__ = "Copyright 2005 Canonical Development Ltd."
-__version__ = version_string = '0.7pre'
+__copyright__ = "Copyright 2005,06 Canonical Development Ltd."
+__version__ = version_string = '0.7rc1'
 # same format as sys.version_info
-version_info = (0, 7, 0, 'pre', 0)
+version_info = (0, 7, 0, 'rc', 1)
 
 
+from bzrlib.symbol_versioning import deprecated_function, zero_seven
+
+@deprecated_function(zero_seven)
 def get_bzr_revision():
-    """If bzr is run from a branch, return (revno,revid) or None"""
+    """If bzr is run from a branch, return (revno,revid) or None."""
     import bzrlib.errors
     from bzrlib.branch import Branch
     

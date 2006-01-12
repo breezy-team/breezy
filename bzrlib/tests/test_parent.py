@@ -19,6 +19,7 @@ import os
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
+from bzrlib.osutils import abspath, realpath
 
 
 """Tests for Branch parent URL"""
@@ -52,7 +53,4 @@ class TestParent(TestCaseInTempDir):
         copy_branch(branch_from, 'to', None)
 
         branch_to = Branch.open('to')
-        abspath = os.path.abspath('from')
-        self.assertEquals(branch_to.get_parent(), abspath)
-        
-
+        self.assertEquals(branch_to.get_parent(), branch_from.base)
