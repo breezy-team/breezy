@@ -41,7 +41,7 @@ from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.transport import get_transport
 
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.tests.test_transport import check_mode
+from bzrlib.transport import get_transport
 
 
 def chmod_r(base, file_mode, dir_mode):
@@ -67,15 +67,16 @@ def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
     :param include_base: If false, only check the subdirectories
     """
     assert os.path.isdir(base)
+    t = get_transport(".")
     if include_base:
-        check_mode(test, base, dir_mode)
+        test.assertTransportMode(t, base, dir_mode)
     for root, dirs, files in os.walk(base):
         for d in dirs:
             p = os.path.join(root, d)
-            check_mode(test, p, dir_mode)
+            test.assertTransportMode(t, p, dir_mode)
         for f in files:
             p = os.path.join(root, f)
-            check_mode(test, p, file_mode)
+            test.assertTransportMode(t, p, file_mode)
 
 
 def assertEqualMode(test, mode, mode_test):
@@ -238,7 +239,6 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         # We don't actually use it directly, we just want to
         # keep the connection open, since StubSFTPServer only
         # allows 1 connection
-        self.delayed_setup()
         _transport = SFTPTransport(self._sftp_url)
 
         os.mkdir('local')
@@ -259,8 +259,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         assertEqualMode(self, 0644, b_local.control_files._file_mode)
 
         os.mkdir('sftp')
-        # Why does self._sftp_url end with a slash????
-        sftp_url = self._sftp_url + 'sftp'
+        sftp_url = self.get_remote_url('sftp')
         b_sftp = Branch.initialize(sftp_url)
 
         b_sftp.pull(b_local)
@@ -313,21 +312,20 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
 
         try:
             from bzrlib.transport.sftp import SFTPTransport
-            self.delayed_setup()
             t = SFTPTransport(self._sftp_url)
             # Direct access should be masked by umask
             t._sftp_open_exclusive('a', mode=0666).write('foo\n')
-            check_mode(self, 'a', 0666 &~umask)
+            self.assertTransportMode(t, 'a', 0666 &~umask)
 
             # but Transport overrides umask
             t.put('b', 'txt', mode=0666)
-            check_mode(self, 'b', 0666)
+            self.assertTransportMode(t, 'b', 0666)
 
             t._sftp.mkdir('c', mode=0777)
-            check_mode(self, 'c', 0777 &~umask)
+            self.assertTransportMode(t, 'c', 0777 &~umask)
 
             t.mkdir('d', mode=0777)
-            check_mode(self, 'd', 0777)
+            self.assertTransportMode(t, 'd', 0777)
         finally:
             os.umask(original_umask)
 

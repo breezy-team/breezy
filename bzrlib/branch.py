@@ -137,7 +137,7 @@ class Branch(object):
 
     def _get_nick(self):
         cfg = self.tree_config()
-        return cfg.get_option(u"nickname", default=self.base.split('/')[-1])
+        return cfg.get_option(u"nickname", default=self.base.split('/')[-2])
 
     def _set_nick(self, nick):
         cfg = self.tree_config()
