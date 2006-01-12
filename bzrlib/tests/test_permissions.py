@@ -23,20 +23,23 @@ So if the directory is group writable, the files and subdirs should be as well.
 
 In the future, when we have Repository/Branch/Checkout information, the
 permissions should be inherited individually, rather than all be the same.
-
-TODO: jam 20051215 There are no tests for ftp yet, because we have no ftp server
-TODO: jam 20051215 Currently the default behavior for 'bzr branch' is just 
-                   defined by the local umask. This isn't terrible, is it
-                   the truly desired behavior?
 """
 
+# TODO: jam 20051215 There are no tests for ftp yet, because we have no ftp server
+# TODO: jam 20051215 Currently the default behavior for 'bzr branch' is just 
+#                    defined by the local umask. This isn't terrible, is it
+#                    the truly desired behavior?
+ 
 import os
 import sys
 import stat
+from StringIO import StringIO
 
 from bzrlib.branch import Branch
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
+from bzrlib.transport import get_transport
+
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.test_transport import check_mode
 

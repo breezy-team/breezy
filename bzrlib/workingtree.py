@@ -49,8 +49,6 @@ import fnmatch
  
 from bzrlib.branch import (Branch,
                            is_control_file,
-                           needs_read_lock,
-                           needs_write_lock,
                            quotefn)
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
@@ -78,6 +76,7 @@ from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.trace import mutter
 import bzrlib.xml5
+from bzrlib.decorators import needs_read_lock, needs_write_lock
 
 
 def gen_file_id(name):
@@ -918,7 +917,12 @@ class WorkingTree(bzrlib.tree.Tree):
         between multiple working trees, i.e. via shared storage, then we 
         would probably want to lock both the local tree, and the branch.
         """
-        if self._hashcache.needs_write and self.branch._lock_count==1:
+        # FIXME: We want to write out the hashcache only when the last lock on
+        # this working copy is released.  Peeking at the lock count is a bit
+        # of a nasty hack; probably it's better to have a transaction object,
+        # which can do some finalization when it's either successfully or
+        # unsuccessfully completed.  (Denys's original patch did that.)
+        if self._hashcache.needs_write and self.branch.control_files._lock_count==1:
             self._hashcache.write()
         return self.branch.unlock()
 

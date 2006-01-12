@@ -99,21 +99,16 @@ class TestWorkingTree(TestCaseInTempDir):
                          tree.relpath(pathjoin(getcwd(), 'child')))
 
     def test_lock_locks_branch(self):
-        # FIXME RBC 20060105 this should test that the branch
-        # is locked without peeking at control files.
-        # ie. via a mock branch.
         branch = Branch.initialize(u'.')
         tree = WorkingTree(branch.base)
         tree.lock_read()
-        self.assertEqual(1, tree.branch.control_files._lock_count)
-        self.assertEqual('r', tree.branch.control_files._lock_mode)
+        self.assertEqual('r', tree.branch.peek_lock_mode())
         tree.unlock()
-        self.assertEqual(None, tree.branch.control_files._lock_count)
+        self.assertEqual(None, tree.branch.peek_lock_mode())
         tree.lock_write()
-        self.assertEqual(1, tree.branch.control_files._lock_count)
-        self.assertEqual('w', tree.branch.control_files._lock_mode)
+        self.assertEqual('w', tree.branch.peek_lock_mode())
         tree.unlock()
-        self.assertEqual(None, tree.branch.control_files._lock_count)
+        self.assertEqual(None, tree.branch.peek_lock_mode())
  
     def get_pullable_branches(self):
         self.build_tree(['from/', 'from/file', 'to/'])

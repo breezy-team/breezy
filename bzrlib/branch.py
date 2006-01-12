@@ -48,45 +48,30 @@ from bzrlib.transport import Transport, get_transport
 from bzrlib.tree import EmptyTree, RevisionTree
 import bzrlib.ui
 import bzrlib.xml5
+from bzrlib.decorators import needs_read_lock, needs_write_lock
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
 BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
 BZR_BRANCH_FORMAT_6 = "Bazaar-NG branch, format 6\n"
-## TODO: Maybe include checks for common corruption of newlines, etc?
 
+
+# TODO: Maybe include checks for common corruption of newlines, etc?
 
 # TODO: Some operations like log might retrieve the same revisions
 # repeatedly to calculate deltas.  We could perhaps have a weakref
 # cache in memory to make this faster.  In general anything can be
 # cached in memory between lock and unlock operations.
 
+# FIXME: At the moment locking the Branch locks both the repository and the
+# control files, representing the two aspects currently controlled by one
+# object.  However, they currently both map to the same lockfile. 
+
 def find_branch(*ignored, **ignored_too):
     # XXX: leave this here for about one release, then remove it
     raise NotImplementedError('find_branch() is not supported anymore, '
                               'please use one of the new branch constructors')
 
-
-def needs_read_lock(unbound):
-    """Decorate unbound to take out and release a read lock."""
-    def decorated(self, *args, **kwargs):
-        self.lock_read()
-        try:
-            return unbound(self, *args, **kwargs)
-        finally:
-            self.unlock()
-    return decorated
-
-
-def needs_write_lock(unbound):
-    """Decorate unbound to take out and release a write lock."""
-    def decorated(self, *args, **kwargs):
-        self.lock_write()
-        try:
-            return unbound(self, *args, **kwargs)
-        finally:
-            self.unlock()
-    return decorated
 
 ######################################################################
 # branch objects
@@ -173,6 +158,10 @@ class Branch(object):
 
     def unlock(self):
         raise NotImplementedError('unlock is abstract')
+
+    def peek_lock_mode(self):
+        """Return lock mode for the Branch: 'r', 'w' or None"""
+        raise NotImplementedError(self.is_locked)
 
     def abspath(self, name):
         """Return absolute filename for something in the branch
@@ -618,6 +607,12 @@ class BzrBranch(Branch):
         # TODO: test for failed two phase locks. This is known broken.
         self.repository.unlock()
         self.control_files.unlock()
+
+    def peek_lock_mode(self):
+        if self.control_files._lock_count == 0:
+            return None
+        else:
+            return self.control_files._lock_mode
 
     @needs_read_lock
     def print_file(self, file, revision_id):
