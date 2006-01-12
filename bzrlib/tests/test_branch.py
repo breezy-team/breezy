@@ -17,7 +17,7 @@
 import os
 import sys
 
-from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
+from bzrlib.branch import Branch, needs_read_lock, needs_write_lock, BzrBranch
 from bzrlib.clone import copy_branch
 from bzrlib.commit import commit
 import bzrlib.errors as errors
@@ -397,3 +397,20 @@ class TestBranchPushLocations(TestCaseInTempDir):
 
     # TODO RBC 20051029 test getting a push location from a branch in a 
     # recursive section - that is, it appends the branch name.
+
+
+class TestDefaultFormat(TestCase):
+
+    def test_get_set_default_initializer(self):
+        old_initializer = Branch.get_default_initializer()
+        # default is BzrBranch._initialize
+        self.assertEqual(BzrBranch._initialize, old_initializer)
+        def recorder(url):
+            return "a branch %s" % url
+        Branch.set_default_initializer(recorder)
+        try:
+            b = Branch.initialize("memory:/")
+            self.assertEqual("a branch memory:/", b)
+        finally:
+            Branch.set_default_initializer(old_initializer)
+        self.assertEqual(old_initializer, Branch.get_default_initializer())

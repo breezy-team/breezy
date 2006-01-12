@@ -28,7 +28,9 @@ import bzrlib.inventory as inventory
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn,
                             rename, splitpath, sha_file,
-                            file_kind, abspath, normpath, pathjoin)
+                            file_kind, abspath, normpath, pathjoin,
+                            safe_unicode,
+                            )
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
@@ -100,7 +102,12 @@ class Branch(object):
     base
         Base directory/url of the branch.
     """
+    # this is really an instance variable - FIXME move it there
+    # - RBC 20060112
     base = None
+
+    _default_initializer = None
+    """The default initializer for making new branches."""
 
     def __init__(self, *ignored, **ignored_too):
         raise NotImplementedError('The Branch class is abstract')
@@ -143,9 +150,22 @@ class Branch(object):
 
     @staticmethod
     def initialize(base):
-        """Create a new branch, rooted at 'base' (url)"""
-        t = get_transport(base)
-        return BzrBranch(t, init=True)
+        """Create a new branch, rooted at 'base' (url)
+        
+        This will call the current default initializer with base
+        as the only parameter.
+        """
+        return Branch._default_initializer(safe_unicode(base))
+
+    @staticmethod
+    def get_default_initializer():
+        """Return the initializer being used for new branches."""
+        return Branch._default_initializer
+
+    @staticmethod
+    def set_default_initializer(initializer):
+        """Set the initializer to be used for new branches."""
+        Branch._default_initializer = staticmethod(initializer)
 
     def setup_caching(self, cache_root):
         """Subclasses that care about caching should override this, and set
@@ -487,6 +507,7 @@ class Branch(object):
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError('store_revision_signature is abstract')
 
+
 class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
 
@@ -602,6 +623,12 @@ class BzrBranch(Branch):
                                             prefixed=True)
         self.revision_store.register_suffix('sig')
         self._transaction = None
+
+    @staticmethod
+    def _initialize(base):
+        """Create a bzr branch in the latest format."""
+        t = get_transport(base)
+        return BzrBranch(t, init=True)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self._transport.base)
@@ -1114,6 +1141,9 @@ class BzrBranch(Branch):
         """See Branch.store_revision_signature."""
         self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
                                 revision_id, "sig")
+
+
+Branch.set_default_initializer(BzrBranch._initialize)
 
 
 class ScratchBranch(BzrBranch):
