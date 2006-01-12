@@ -918,7 +918,7 @@ class WorkingTree(bzrlib.tree.Tree):
         between multiple working trees, i.e. via shared storage, then we 
         would probably want to lock both the local tree, and the branch.
         """
-        if self._hashcache.needs_write:
+        if self._hashcache.needs_write and self.branch._lock_count==1:
             self._hashcache.write()
         return self.branch.unlock()
 

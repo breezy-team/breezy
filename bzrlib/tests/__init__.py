@@ -15,6 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+# TODO: Perhaps there should be an API to find out if bzr running under the
+# test suite -- some plugins might want to avoid making intrusive changes if
+# this is the case.  However, we want behaviour under to test to diverge as
+# little as possible, so this should be used rarely if it's added at all.
+# (Suggestion from j-a-meinel, 2005-11-24)
+
 from cStringIO import StringIO
 import difflib
 import errno
@@ -367,6 +373,8 @@ class TestCase(unittest.TestCase):
 
         This should only be called from TestCase.tearDown.
         """
+        # TODO: Perhaps this should keep running cleanups even if 
+        # one of them fails?
         for cleanup_fn in reversed(self._cleanups):
             cleanup_fn()
 
@@ -698,6 +706,7 @@ def test_suite():
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
+                   'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
