@@ -437,11 +437,16 @@ class TreeTransform(object):
                 try:
                     os.unlink(full_path)
                 except OSError, e:
+                # We may be renaming a dangling inventory id
                     if e.errno != errno.EISDIR and e.errno != errno.EACCES:
                         raise
                     os.rmdir(full_path)
             elif trans_id in self._new_name or trans_id in self._new_parent:
-                os.rename(full_path, os.path.join(limbo, trans_id))
+                try:
+                    os.rename(full_path, os.path.join(limbo, trans_id))
+                except OSError, e:
+                    if e.errno != errno.ENOENT:
+                        raise
             if trans_id in self._removed_id:
                 del inv[self.get_tree_file_id(trans_id)]
             elif trans_id in self._new_name or trans_id in self._new_parent:
@@ -475,9 +480,13 @@ class TreeTransform(object):
                 os.symlink(target, self._tree.abspath(path))
             elif kind is None and (trans_id in self._new_name or
                                    trans_id in self._new_parent):
-                os.rename(os.path.join(limbo, trans_id), 
-                                       self._tree.abspath(path))
-
+                full_path = self._tree.abspath(path)
+                try:
+                    os.rename(os.path.join(limbo, trans_id), full_path)
+                except OSError, e:
+                    # We may be renaming a dangling inventory id
+                    if e.errno != errno.ENOENT:
+                        raise
 
             if trans_id in self._new_id:
                 if kind is None:

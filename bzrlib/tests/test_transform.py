@@ -243,6 +243,35 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertIs(wt.path2id('dying_directory/dying_file'), None)
         mfile2_path = wt.abspath(os.path.join('new_directory','mfile2'))
 
+    def test_move_dangling_ie(self):
+        branch = Branch.initialize('.')
+        wt = branch.working_tree()
+        create_tree = TreeTransform(wt)
+        try:
+            # prepare tree
+            root = create_tree.get_id_tree('TREE_ROOT')
+            create_tree.new_file('name1', root, 'hello1', 'name1')
+            create_tree.apply()
+        finally:
+            create_tree.finalize()
+        delete_contents = TreeTransform(wt)
+        try:
+            file = delete_contents.get_id_tree('name1')
+            delete_contents.delete_contents(file)
+            delete_contents.apply()
+        finally:
+            delete_contents.finalize()
+        move_id = TreeTransform(wt)
+        try:
+            name1 = move_id.get_id_tree('name1')
+            root = move_id.get_id_tree('TREE_ROOT')
+            newdir = move_id.new_directory('dir', root, 'newdir')
+            move_id.adjust_path('name2', newdir, name1)
+            move_id.apply()
+        finally:
+            move_id.finalize()
+        
+
     def test_symlinks(self):
         if not has_symlinks():
             raise TestSkipped('Symlinks are not supported on this platform')
