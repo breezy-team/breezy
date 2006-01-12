@@ -108,9 +108,6 @@ class Tree(object):
     def lock_read(self):
         pass
 
-    def lock_write(self):
-        pass
-
     def unlock(self):
         pass
         
@@ -183,9 +180,6 @@ class RevisionTree(Tree):
 
     def lock_read(self):
         self._branch.lock_read()
-
-    def lock_write(self):
-        self._branch.lock_write()
 
     def unlock(self):
         self._branch.unlock()
