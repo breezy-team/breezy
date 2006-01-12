@@ -137,7 +137,7 @@ class TestHashCache(TestCaseInTempDir):
         for func in funcs:
             try:
                 func('a')
-                ok=True
+                ok = True
                 break
             except FixThisError:
                 pass
