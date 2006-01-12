@@ -267,6 +267,9 @@ bzr 0.7rc1 2006-01-09
     * bzrlib.osutils.safe_unicode now exists to provide parameter coercion
       for functions that need unicode strings. (Robert Collins)
 
+    * Remove obsolete (and no-op) `decode` parameter to `Transport.get`.  
+      (Martin Pool)
+
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:

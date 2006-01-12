@@ -209,7 +209,7 @@ class HttpTransport(HttpTransportBase):
                 return False
             raise TransportError(orig_error=e)
 
-    def get(self, relpath, decode=False):
+    def get(self, relpath):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file

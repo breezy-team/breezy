@@ -317,7 +317,7 @@ class SFTPTransport (Transport):
         except IOError:
             return False
 
-    def get(self, relpath, decode=False):
+    def get(self, relpath):
         """
         Get the file at the given relative path.
 

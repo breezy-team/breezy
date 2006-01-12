@@ -32,9 +32,7 @@ class PyCurlTransport(HttpTransportBase):
         self.curl = pycurl.Curl()
         mutter('imported pycurl %s' % pycurl.version)
 
-    def get(self, relpath, decode=False):
-        if decode:
-            raise NotImplementedError
+    def get(self, relpath):
         return self._get_url(self.abspath(relpath))
 
     def _get_url(self, abspath):
