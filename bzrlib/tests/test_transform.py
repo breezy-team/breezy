@@ -162,6 +162,29 @@ class TestTreeTransform(TestCaseInTempDir):
         finally:
             transform3.finalize()
 
+    def test_unversioning(self):
+        branch = Branch.initialize('.')
+        wt = branch.working_tree()
+        create_tree = TreeTransform(wt)
+        try:
+            root = create_tree.get_id_tree('TREE_ROOT')
+            parent_id = create_tree.new_directory('parent', root, 'parent-id')
+            create_tree.new_file('child', parent_id, 'child', 'child-id')
+            create_tree.apply()
+        finally:
+            create_tree.finalize()
+        unversion = TreeTransform(wt)
+        try:
+            parent = unversion.get_tree_path_id('parent')
+            unversion.unversion_file(parent)
+            self.assertEqual(unversion.find_conflicts(), 
+                             [('unversioned parent', parent_id)])
+            file_id = unversion.get_id_tree('child-id')
+            unversion.unversion_file(file_id)
+            unversion.apply()
+        finally:
+            unversion.finalize()
+
     def test_name_invariants(self):
         branch = Branch.initialize('.')
         wt = branch.working_tree()

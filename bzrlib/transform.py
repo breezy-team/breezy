@@ -266,6 +266,8 @@ class TreeTransform(object):
         parents = self._by_parent().keys()
         parents.extend([t for t in self._removed_contents if 
                         self.tree_kind(t) == 'directory'])
+        parents.extend([t for t in self._removed_id if 
+                        self.tree_kind(t) == 'directory'])
         for parent_id in parents:
             try:
                 path = self._tree_id_paths[parent_id]
