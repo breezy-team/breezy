@@ -1,9 +1,9 @@
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.branch import Branch
 from bzrlib.transform import TreeTransform, ROOT_PARENT, FinalPaths
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform)
-from bzrlib.osutils import file_kind
+from bzrlib.osutils import file_kind, has_symlinks
 import os
 
 class TestTreeTransform(TestCaseInTempDir):
@@ -221,8 +221,8 @@ class TestTreeTransform(TestCaseInTempDir):
         mfile2_path = wt.abspath(os.path.join('new_directory','mfile2'))
 
     def test_symlinks(self):
-        if not getattr(os, 'symlink', False):
-            return
+        if not has_symlinks():
+            raise TestSkipped('Symlinks are not supported on this platform')
         branch = Branch.initialize('.')
         wt = branch.working_tree()
         transform = TreeTransform(wt)
