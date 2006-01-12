@@ -690,7 +690,7 @@ def revert(working_tree, target_tree):
         for file_id in topology_sorted_ids(target_tree):
             if file_id == target_tree.inventory.root:
                 continue
-            if file_id not in working_tree:
+            if file_id not in working_tree.inventory:
                 entry = target_tree.inventory[file_id]
                 parent_id = get_trans_id(entry.parent_id)
                 e_trans_id = new_by_entry(tt, entry, parent_id, target_tree)
@@ -711,20 +711,32 @@ def revert(working_tree, target_tree):
                     parent_file_id = get_trans_id(entry.parent_id)
                     tt.adjust_path(entry.name, parent_file_id, e_trans_id)
                 cur_entry = working_tree.inventory[file_id]
-                cur_entry._read_tree_state(working_tree.id2path(file_id),
-                                           working_tree)
-                if entry.kind != cur_entry.kind:
+                try:
+                    cur_entry._read_tree_state(working_tree.id2path(file_id),
+                                               working_tree)
+                    has_contents = True
+                except OSError, e:
+                    if e.errno != errno.ENOENT:
+                        raise
+                    has_contents = False
+                    contents_mod = True
+                    meta_mod = False
+                real_e_kind = entry.kind
+                if real_e_kind == 'root_directory':
+                    real_e_kind = 'directory'
+                if has_contents and real_e_kind != working_tree.kind(file_id):
                     contents_mod, meta_mod = (True, False)
-                else:
+                elif has_contents:
                     contents_mod, meta_mod = entry.detect_changes(cur_entry)
                 if contents_mod:
-                    tt.delete_contents(e_trans_id)
+                    if has_contents:
+                        tt.delete_contents(e_trans_id)
                     create_by_entry(tt, entry, target_tree, e_trans_id)
                 elif meta_mod:
                     tt.set_executability(entry.executable)
         for file_id in working_tree:
             if file_id not in target_tree and file_id != target_tree.inventory.root:
-                tt.unversion(tt.get_id_tree(file_id))
+                tt.unversion_file(tt.get_id_tree(file_id))
         resolve_conflicts(tt)
         tt.apply()
     finally:
