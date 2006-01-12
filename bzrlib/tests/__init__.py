@@ -291,7 +291,7 @@ class TestCase(unittest.TestCase):
             raise AssertionError("value(s) %r not present in container %r" % 
                                  (missing, superlist))
 
-    def assertMode(self, transport, path, mode):
+    def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
         
         If modes are not supported on this platform, the test is skipped.

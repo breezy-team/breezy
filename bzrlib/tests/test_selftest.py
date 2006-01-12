@@ -76,8 +76,15 @@ class TestSkippedTest(TestCase):
 
 
 class TestTransportProviderAdapter(TestCase):
+    """A group of tests that test the transport implementation adaption core.
+
+    This will be generalised in the future which is why it is in this 
+    test file even though it is specific to transport tests at the moment.
+    """
 
     def test_get_transport_permutations(self):
+        # this checks that we the module get_test_permutations call
+        # is made by the adapter get_transport_test_permitations method.
         class MockModule(object):
             def get_test_permutations(self):
                 return sample_permutation
@@ -88,6 +95,11 @@ class TestTransportProviderAdapter(TestCase):
                          adapter.get_transport_test_permutations(MockModule()))
 
     def test_adapter_checks_all_modules(self):
+        # this checks that the adapter returns as many permurtations as
+        # there are in all the registered# transport modules for there
+        # - we assume if this matches its probably doing the right thing
+        # especially in combination with the tests for setting the right
+        # classes below.
         from bzrlib.transport import (TransportTestProviderAdapter,
                                       _get_transport_modules
                                       )
@@ -104,6 +116,12 @@ class TestTransportProviderAdapter(TestCase):
                          len(list(iter(adapter.adapt(input_test)))))
 
     def test_adapter_sets_transport_class(self):
+        # when the adapter adapts a test it needs to 
+        # place one of the permutations from the transport
+        # providers in each test case copy. This checks
+        # that it does not just use the same one all the time.
+        # and that the id is set correctly so that debugging is
+        # easy.
         from bzrlib.transport.local import (LocalTransport,
                                             LocalRelpathServer,
                                             LocalAbspathServer,

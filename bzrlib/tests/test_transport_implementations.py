@@ -35,10 +35,10 @@ import bzrlib.transport
 def _append(fn, txt):
     """Append the given text (file-like object) to the supplied filename."""
     f = open(fn, 'ab')
-    f.write(txt.read())
-    f.flush()
-    f.close()
-    del f
+    try:
+        f.write(txt.read())
+    finally:
+        f.close()
 
 
 class TestTransportImplementation(TestCaseInTempDir):
@@ -74,7 +74,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         
     def check_transport_contents(self, content, transport, relpath):
         """Check that transport.get(relpath).read() == content."""
-        self.assertEqual(content, transport.get(relpath).read())
+        self.assertEqualDiff(content, transport.get(relpath).read())
 
     def get_transport(self):
         """Return a connected transport to the local directory."""
@@ -86,7 +86,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         return t
 
     def assertListRaises(self, excClass, func, *args, **kwargs):
-        """Many transport functions can return generators this makes sure
+        """Fail unless excClass is raised when the iterator from func is used.
+        
+        Many transport functions can return generators this makes sure
         to wrap them in a list() call to make sure the whole generator
         is run, and that the proper exception is raised.
         """
@@ -178,16 +180,16 @@ class TestTransportImplementation(TestCaseInTempDir):
         if t.is_readonly():
             return
         t.put('mode644', StringIO('test text\n'), mode=0644)
-        self.assertMode(t, 'mode644', 0644)
+        self.assertTransportMode(t, 'mode644', 0644)
         t.put('mode666', StringIO('test text\n'), mode=0666)
-        self.assertMode(t, 'mode666', 0666)
+        self.assertTransportMode(t, 'mode666', 0666)
         t.put('mode600', StringIO('test text\n'), mode=0600)
-        self.assertMode(t, 'mode600', 0600)
+        self.assertTransportMode(t, 'mode600', 0600)
         # Yes, you can put a file such that it becomes readonly
         t.put('mode400', StringIO('test text\n'), mode=0400)
-        self.assertMode(t, 'mode400', 0400)
+        self.assertTransportMode(t, 'mode400', 0400)
         t.put_multi([('mmode644', StringIO('text\n'))], mode=0644)
-        self.assertMode(t, 'mmode644', 0644)
+        self.assertTransportMode(t, 'mmode644', 0644)
         
     def test_mkdir(self):
         t = self.get_transport()
@@ -243,16 +245,16 @@ class TestTransportImplementation(TestCaseInTempDir):
             return
         # Test mkdir with a mode
         t.mkdir('dmode755', mode=0755)
-        self.assertMode(t, 'dmode755', 0755)
+        self.assertTransportMode(t, 'dmode755', 0755)
         t.mkdir('dmode555', mode=0555)
-        self.assertMode(t, 'dmode555', 0555)
+        self.assertTransportMode(t, 'dmode555', 0555)
         t.mkdir('dmode777', mode=0777)
-        self.assertMode(t, 'dmode777', 0777)
+        self.assertTransportMode(t, 'dmode777', 0777)
         t.mkdir('dmode700', mode=0700)
-        self.assertMode(t, 'dmode700', 0700)
+        self.assertTransportMode(t, 'dmode700', 0700)
         # TODO: jam 20051215 test mkdir_multi with a mode
         t.mkdir_multi(['mdmode755'], mode=0755)
-        self.assertMode(t, 'mdmode755', 0755)
+        self.assertTransportMode(t, 'mdmode755', 0755)
 
     def test_copy_to(self):
         from bzrlib.transport.memory import MemoryTransport
@@ -271,8 +273,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         # Test that copying into a missing directory raises
         # NoSuchFile
         if t.is_readonly():
-            os.mkdir('e')
-            open('e/f', 'wb').write('contents of e')
+            self.build_tree(['e/', 'e/f'])
         else:
             t.mkdir('e')
             t.put('e/f', StringIO('contents of e'))
@@ -294,7 +295,7 @@ class TestTransportImplementation(TestCaseInTempDir):
             temp_transport = MemoryTransport("memory:/")
             t.copy_to(files, temp_transport, mode=mode)
             for f in files:
-                self.assertMode(temp_transport, f, mode)
+                self.assertTransportMode(temp_transport, f, mode)
 
     def test_append(self):
         t = self.get_transport()

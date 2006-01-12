@@ -65,14 +65,14 @@ def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
     assert os.path.isdir(base)
     t = get_transport(".")
     if include_base:
-        test.assertMode(t, base, dir_mode)
+        test.assertTransportMode(t, base, dir_mode)
     for root, dirs, files in os.walk(base):
         for d in dirs:
             p = os.path.join(root, d)
-            test.assertMode(t, p, dir_mode)
+            test.assertTransportMode(t, p, dir_mode)
         for f in files:
             p = os.path.join(root, f)
-            test.assertMode(t, p, file_mode)
+            test.assertTransportMode(t, p, file_mode)
 
 
 def assertEqualMode(test, mode, mode_test):
@@ -304,17 +304,17 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
             t = SFTPTransport(self._sftp_url)
             # Direct access should be masked by umask
             t._sftp_open_exclusive('a', mode=0666).write('foo\n')
-            self.assertMode(t, 'a', 0666 &~umask)
+            self.assertTransportMode(t, 'a', 0666 &~umask)
 
             # but Transport overrides umask
             t.put('b', 'txt', mode=0666)
-            self.assertMode(t, 'b', 0666)
+            self.assertTransportMode(t, 'b', 0666)
 
             t._sftp.mkdir('c', mode=0777)
-            self.assertMode(t, 'c', 0777 &~umask)
+            self.assertTransportMode(t, 'c', 0777 &~umask)
 
             t.mkdir('d', mode=0777)
-            self.assertMode(t, 'd', 0777)
+            self.assertTransportMode(t, 'd', 0777)
         finally:
             os.umask(original_umask)
 

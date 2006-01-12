@@ -41,9 +41,4 @@ class TestCaseWithWebserver(TestCaseInTempDir):
         super(TestCaseWithWebserver, self).setUp()
         self.server = HttpServer()
         self.server.setUp()
-
-    def tearDown(self):
-        try:
-            self.server.tearDown()
-        finally:
-            super(TestCaseWithWebserver, self).tearDown()
+        self.addCleanup(self.server.tearDown)

@@ -46,6 +46,7 @@ class TestCaseWithSFTPServer(TestCaseInTempDir):
         else:
             self.server = SFTPHomeDirServer()
         self.server.setUp()
+        self.addCleanup(self.server.tearDown)
         self._sftp_url = self.server.get_url()
         self._root = self.test_dir
         # Set to a string in setUp to give sftp server a new homedir.
@@ -56,12 +57,6 @@ class TestCaseWithSFTPServer(TestCaseInTempDir):
     def get_remote_url(self, relpath_to_test_root):
         # FIXME use urljoin ?
         return self._sftp_url + '/' + relpath_to_test_root
-
-    def tearDown(self):
-        try:
-            self.server.tearDown()
-        finally:
-            TestCaseInTempDir.tearDown(self)
 
     def get_transport(self, path=None):
         """Return a transport relative to self._test_root."""

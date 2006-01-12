@@ -227,7 +227,7 @@ class Transport(object):
         you may check via is_listable to determine if it will.
         """
         raise errors.TransportNotPossible("This transport has not "
-                                          "implemented iter_files_recursive."
+                                          "implemented iter_files_recursive "
                                           "(but must claim to be listable "
                                           "to trigger this error).")
 
@@ -405,7 +405,7 @@ class Transport(object):
         it if at all possible.
         """
         raise errors.TransportNotPossible("This transport has not "
-                                          "implemented list_dir."
+                                          "implemented list_dir "
                                           "(but must claim to be listable "
                                           "to trigger this error).")
 
@@ -466,7 +466,16 @@ def urlescape(relpath):
 
 
 class Server(object):
-    """Basic server API for paths."""
+    """A Transport Server.
+    
+    The Server interface provides a server for a given transport. We use
+    these servers as loopback testing tools. For any given transport the
+    Servers it provides must either allow writing, or serve the contents
+    of os.getcwdu() at the time setUp is called.
+    
+    Note that these are real servers - they must implement all the things
+    that we want bzr transports to take advantage of.
+    """
 
     def setUp(self):
         """Setup the server to service requests."""
@@ -475,11 +484,13 @@ class Server(object):
         """Remove the server and cleanup any resources it owns."""
 
     def get_url(self):
-        """Return a url for this server to os.getcwdu.
+        """Return a url for this server.
         
         If the transport does not represent a disk directory (i.e. it is 
-        a databse like svn, or a memory only transport, it should return
+        a database like svn, or a memory only transport, it should return
         a connection to a newly established resource for this Server.
+        Otherwise it should return a url that will provide access to the path
+        that was os.getcwdu() when setUp() was called.
         
         Subsequent calls will return the same resource.
         """
@@ -491,7 +502,12 @@ class Server(object):
 
 
 class TransportTestProviderAdapter(object):
-    """A class which can setup transport interface tests."""
+    """A tool to generate a suite testing all transports for a single test.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_class and transport_server classes into each copy. Each copy
+    is also given a new id() to make it easy to identify.
+    """
 
     def adapt(self, test):
         result = TestSuite()
