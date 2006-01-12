@@ -36,6 +36,10 @@ def pause():
     start = int(time.time())
     while int(time.time()) == start:
         time.sleep(0.2)
+
+
+class FixThisError(Exception):
+    pass
     
 
 class TestHashCache(TestCaseInTempDir):
@@ -127,21 +131,17 @@ class TestHashCache(TestCaseInTempDir):
         os.mkdir('.bzr')
         hc = HashCache(u'.')
         ok = False
+
         # make a best effort to create a weird kind of file
-        try:
-            os.mkfifo('a')
-            ok=True
-        except OSError:
+        funcs = (os.mkfifo, os.mknod)
+        for func in funcs:
             try:
-                os.mknod('a')
+                func('a')
                 ok=True
-            except OSError:
-                try:
-                    os.mkdev('a')
-                    ok=True
-                except OSError:
-                    pass
-        
+                break
+            except FixThisError:
+                pass
+
         from bzrlib.errors import BzrError
         if ok:
             self.assertRaises(BzrError, hc.get_sha1, 'a')
