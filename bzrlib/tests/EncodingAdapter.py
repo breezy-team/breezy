@@ -73,24 +73,24 @@ class EncodingTestAdapter(object):
 
     _encodings = [
         # Permutation 1 of utf-8
-        ('utf-8', {'committer':_erik
+        ('utf-8', 1, {'committer':_erik
                   , 'message':_yellow_horse
                   , 'filename':_shrimp_sandwich
                   , 'directory':_nihonjin}),
         # Permutation 2 of utf-8
-        ('utf-8', {'committer':_alexander
+        ('utf-8', 2, {'committer':_alexander
                   , 'message':u'Testing ' + _mu
                   , 'filename':_juju
                   , 'directory':_juju_alt}),
-        ('iso-8859-1', {'committer':_erik
+        ('iso-8859-1', 0, {'committer':_erik
                   , 'message':u'Testing ' + _mu
                   , 'filename':_juju_alt
                   , 'directory':_shrimp_sandwich}),
-        ('iso-8859-2', {'committer':'TODO-iso8859-2-committer'
+        ('iso-8859-2', 0, {'committer':'TODO-iso8859-2-committer'
                   , 'message':_yellow_horse
                   , 'filename':'TODO-iso8859-2-filename'
                   , 'directory':'TODO-iso8859-2-dir'}),
-        ('cp1251', {'committer':_alexander
+        ('cp1251', 0, {'committer':_alexander
                   , 'message':u'Testing ' + _mu
                   , 'filename':'TODO-cp1251-filename'
                   , 'directory':'TODO-cp1251-dir'}),
@@ -98,12 +98,15 @@ class EncodingTestAdapter(object):
 
     def adapt(self, test):
         result = TestSuite()
-        for encoding, info in self._encodings:
+        for encoding, count, info in self._encodings:
             new_test = deepcopy(test)
             new_test.encoding = encoding
             new_test.info = info
             def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), encoding)
+                if count:
+                    new_id = "%s(%s,%s)" % (new_test.id(), encoding, count)
+                else:
+                    new_id = "%s(%s)" % (new_test.id(), encoding)
                 return lambda: new_id
             new_test.id = make_new_test_id()
             result.addTest(new_test)
