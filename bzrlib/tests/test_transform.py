@@ -311,6 +311,12 @@ class TestTreeTransform(TestCaseInTempDir):
         cyclone.apply()
 
     def test_moving_root(self):
+        create, root = self.get_transform()
+        fun = create.new_directory('fun', root, 'fun-id')
+        create.new_directory('sun', root, 'sun-id')
+        create.new_directory('moon', root, 'moon')
+        create.apply()
         transform, root = self.get_transform()
-        fun = transform.new_directory('fun', root, 'fun-id')
-        self.assertRaises(CantMoveRoot, transform.adjust_path, '', fun, root)
+        transform.adjust_root_path('oldroot', fun)
+        transform.version_file('new-root', root)
+        transform.apply()

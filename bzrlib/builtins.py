@@ -342,8 +342,24 @@ class cmd_rename(Command):
     takes_args = ['from_name', 'to_name']
     
     def run(self, from_name, to_name):
+        from transform import TreeTransform
+        from workingtree import gen_file_id
         tree, (from_name, to_name) = tree_files((from_name, to_name))
-        tree.rename_one(from_name, to_name)
+        transform = TreeTransform(tree)
+        try:
+            to_dir, to_filename = os.path.split(to_name)
+            to_parent = transform.get_tree_path_id(to_dir)
+            if from_name == "":
+                from_id = transform.get_tree_path_id(from_name)
+                transform.adjust_root_path(to_filename, to_parent)
+                new_root = transform.get_tree_path_id('')
+                transform.version_file(gen_file_id(to_filename), from_id)
+            else:
+                from_id = transform.get_tree_path_id(from_name)
+                transform.adjust_path(to_filename, to_parent, from_id)
+            transform.apply()
+        finally:
+            transform.finalize()
 
 
 class cmd_mv(Command):

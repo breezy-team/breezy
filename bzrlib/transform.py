@@ -64,6 +64,33 @@ class TreeTransform(object):
         self._new_name[trans_id] = name
         self._new_parent[trans_id] = parent
 
+    def adjust_root_path(self, name, parent):
+        """Emulate moving the root by moving all children, instead.
+        
+        We do this by undoing the association of root's transaction id with the
+        current tree.  This allows us to create a new directory with that
+        transaction id.  We unversion the root directory, and hope someone
+        versions it later.
+        """
+        old_root = self._new_root
+        old_root_file_id = self.final_file_id(old_root)
+        # force moving all children of root
+        for child_id in self.iter_tree_children(old_root):
+            if child_id != parent:
+                self.adjust_path(self.final_name(child_id), 
+                                 self.final_parent(child_id), child_id)
+        
+        # the physical root needs a new transaction id
+        self._tree_path_ids.pop("")
+        self._tree_id_paths.pop(old_root)
+        self._new_root = self.get_id_tree(self._tree.get_root_id())
+        if parent == old_root:
+            parent = self._new_root
+        self.adjust_path(name, parent, old_root)
+        self.create_directory(old_root)
+        #self.version_file(old_root_file_id, old_root)
+        #self.unversion_file(self._new_root)
+
     def get_id_tree(self, inventory_id):
         """Determine the transaction id of a working tree file.
         
@@ -197,6 +224,8 @@ class TreeTransform(object):
             # the file is a new, unversioned file, or invalid trans_id
             return None
         # the file is old; the old id is still valid
+        if self._new_root == trans_id:
+            return self._tree.inventory.root.file_id
         return self._tree.path2id(path)
 
     def final_file_id(self, trans_id):
