@@ -155,7 +155,7 @@ class Branch(object):
 
     def _get_nick(self):
         cfg = self.tree_config()
-        return cfg.get_option(u"nickname", default=self.base.split('/')[-1])
+        return cfg.get_option(u"nickname", default=self.base.split('/')[-2])
 
     def _set_nick(self, nick):
         cfg = self.tree_config()
@@ -807,7 +807,6 @@ class BzrBranch(Branch):
             ('pending-merges', ''),
             ('inventory', empty_inv),
             ('inventory.weave', empty_weave),
-            ('ancestry.weave', empty_weave)
         ]
         self._transport.mkdir_multi([cfn(d) for d in dirs], mode=self._dir_mode)
         self.put_controlfiles(files)
