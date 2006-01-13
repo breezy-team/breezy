@@ -284,22 +284,27 @@ class TreeTransform(object):
                 parents.append(trans_id)
 
         for parent_id in parents:
-            try:
-                path = self._tree_id_paths[parent_id]
-            except KeyError:
+            # ensure that all children are registered with the transaction
+            list(self.iter_tree_children(parent_id))
+
+    def iter_tree_children(self, parent_id):
+        """Iterate through the entry's tree children, if any"""
+        try:
+            path = self._tree_id_paths[parent_id]
+        except KeyError:
+            return
+        try:
+            children = os.listdir(self._tree.abspath(path))
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
+            return
+            
+        for child in children:
+            childpath = joinpath(path, child)
+            if childpath == BZRDIR:
                 continue
-            try:
-                children = os.listdir(self._tree.abspath(path))
-            except OSError, e:
-                if e.errno != errno.ENOENT:
-                    raise
-                continue
-                
-            for child in children:
-                childpath = joinpath(path, child)
-                if childpath == BZRDIR:
-                    continue
-                self.get_tree_path_id(childpath)
+            yield self.get_tree_path_id(childpath)
 
     def _parent_loops(self):
         """No entry should be its own ancestor"""
