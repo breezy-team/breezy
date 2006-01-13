@@ -25,136 +25,104 @@ import bzrlib
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter, note
 
+
 class TestNonAscii(TestCaseInTempDir):
     """Test that bzr handles files/committers/etc which are non-ascii."""
-
-    # This will be the tested encoding
-    _encoding = 'utf-8'
 
     def setUp(self):
         super(TestNonAscii, self).setUp()
         self._orig_email = os.environ.get('BZREMAIL', None)
-        email = _erik + u' <joe@foo.com>'
-        try:
-            os.environ['BZREMAIL'] = email.encode(bzrlib.user_encoding)
-        except UnicodeEncodeError:
-            note('Unable to test unicode in BZREMAIL')
-            # Do the rest of the tests, just don't expect
-            # _erik to exist in the email
-            os.environ['BZREMAIL'] = 'Erik Bagfors <joe@foo.com>'
-            self.email_name = 'Erik Bagfors'
-        else:
-            self.email_name = _erik
+        self._orig_encoding = bzrlib.user_encoding
 
-        bzr = self.run_bzr
-        bzr('init')
-        open('a', 'wb').write('foo\n')
-        bzr('add', 'a')
-        bzr('commit', '-m', 'adding a')
-        open('b', 'wb').write(_shrimp_sandwich.encode('utf-8') + '\n')
-        bzr('add', 'b')
-        bzr('commit', '-m', u'Creating a ' + _shrimp_sandwich)
-        fname = _juju + '.txt'
-        try:
-            open(fname, 'wb').write('unicode filename\n')
-        except UnicodeEncodeError:
-            note('Unable to create an arabic filename')
-            fname = _juju_alt + '.txt'
-            try:
-                open(fname, 'wb').write('unicode filename\n')
-            except UnicodeEncodeError:
-                raise TestSkipped("can't create an arabic or european filename"
-                    " in filesystem encoding %s" % sys.getfilesystemencoding())
-            else:
-                self.juju = _juju_alt
-        else:
-            self.juju = _juju
+        bzrlib.user_encoding = self.encoding
+        email = self.info['committer'] + ' <joe@foo.com>'
+        os.environ['BZREMAIL'] = email.encode(bzrlib.user_encoding)
+        self.create_base()
 
-        bzr('add', fname)
-        bzr('commit', '-m', u'And an unicode file\n')
-    
     def tearDown(self):
         if self._orig_email is not None:
             os.environ['BZREMAIL'] = self._orig_email
         else:
             if os.environ.get('BZREMAIL', None) is not None:
                 del os.environ['BZREMAIL']
+        bzrlib.user_encoding = self._orig_encoding
         super(TestNonAscii, self).tearDown()
 
-    def try_character_set(self, charset, filename):
-        """Try to create a file in a given character set."""
+    def create_base(self):
+        bzr = self.run_bzr
+
+        bzr('init')
+        open('a', 'wb').write('foo\n')
+        bzr('add', 'a')
+        bzr('commit', '-m', 'adding a')
+
+        open('b', 'wb').write('non-ascii \xFF\xFF\xFC\xFB\x00 in b\n')
+        bzr('add', 'b')
+        bzr('commit', '-m', self.info['message'])
+
+        fname = self.info['filename']
         try:
-            open(filename, 'wb').write('adding %s\n' % (charset,))
+            open(fname, 'wb').write('unicode filename\n')
         except UnicodeEncodeError:
-            raise TestSkipped('Cannot create %s filename.' % (charset,))
+            raise TestSkipped(('Unable to represent filename %r'
+                               ' in filesystem encoding %s')
+                                % (fname, sys.getfilesystemencoding()))
 
-        bzr = self.run_bzr_decode
-        bzr('add', filename)
-
-        txt = bzr('added')
-        self.assertEqual(filename+'\n', txt)
-
-        bzr('commit', '-m', u'adding ' + filename)
-
-        txt = bzr('log')
-        self.assertNotEqual(-1, txt.find(filename))
-
-    def test_russian(self):
-        self.try_character_set('russian', _alexander)
-
-    def test_kanji(self):
-        self.try_character_set('kanji', _nihonjin)
-
-    def test_swedish(self):
-        self.try_character_set('swedish', _shrimp_sandwich)
+        bzr('add', fname)
+        bzr('commit', '-m', u'And an unicode file\n')
 
     def test_status(self):
         bzr = self.run_bzr_decode
 
-        open(self.juju + '.txt', 'ab').write('added something\n')
+        open(self.info['filename'], 'ab').write('added something\n')
         txt = bzr('status')
-        self.assertEqual(u'modified:\n  \u062c\u0648\u062c\u0648.txt\n' , txt)
+        self.assertEqual(u'modified:\n  %s\n' % (self.info['filename'],), txt)
 
     def test_cat(self):
         # bzr cat shouldn't change the contents
         # using run_bzr since that doesn't decode
         txt = self.run_bzr('cat', 'b')[0]
-        self.assertEqual(_shrimp_sandwich.encode('utf-8') + '\n', txt)
+        self.assertEqual('non-ascii \xFF\xFF\xFC\xFB\x00 in b\n', txt)
 
-        txt = self.run_bzr('cat', self.juju + '.txt')[0]
+        txt = self.run_bzr('cat', self.info['filename'])[0]
         self.assertEqual('unicode filename\n', txt)
 
     def test_cat_revision(self):
         bzr = self.run_bzr_decode
 
         txt = bzr('cat-revision', '-r', '1')
-        self.assertNotEqual(-1, txt.find(self.email_name))
+        self.assertNotEqual(-1, txt.find(self.info['committer']))
 
         txt = bzr('cat-revision', '-r', '2')
-        self.assertNotEqual(-1, txt.find(_shrimp_sandwich))
+        self.assertNotEqual(-1, txt.find(self.info['message']))
 
     def test_mkdir(self):
         bzr = self.run_bzr_decode
 
-        txt = bzr('mkdir', _shrimp_sandwich)
-        self.assertEqual('added ' + _shrimp_sandwich + '\n', txt)
+        txt = bzr('mkdir', self.info['directory'])
+        self.assertEqual(u'added %s\n' % self.info['directory'], txt)
+
+        # The text should be garbled, but the command should succeed
+        txt = bzr('mkdir', self.info['directory'] + '2', encoding='ascii')
+        expected = u'added %s2\n' % (self.info['directory'],)
+        expected = expected.encode('ascii', 'replace')
+        self.assertEqual(expected, txt)
 
     def test_relpath(self):
         bzr = self.run_bzr_decode
 
-        txt = bzr('relpath', _shrimp_sandwich)
-        self.assertEqual(_shrimp_sandwich + '\n', txt)
+        txt = bzr('relpath', self.info['filename'])
+        self.assertEqual(self.info['filename'] + '\n', txt)
 
         # TODO: jam 20060106 if relpath can return a munged string
         #       this text needs to be fixed
-        bzr('relpath', _shrimp_sandwich, encoding='ascii',
-                 retcode=3)
+        bzr('relpath', self.info['filename'], encoding='ascii', retcode=3)
 
     def test_inventory(self):
         bzr = self.run_bzr_decode
 
         txt = bzr('inventory')
-        self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt'],
+        self.assertEqual(['a', 'b', self.info['filename']],
                          txt.splitlines())
 
         # inventory should fail if unable to encode
@@ -170,6 +138,7 @@ class TestNonAscii(TestCaseInTempDir):
         bzr = self.run_bzr_decode
 
         self.assertEqual('3\n', bzr('revno'))
+        self.assertEqual('3\n', bzr('revno', encoding='ascii'))
 
     def test_revision_info(self):
         bzr = self.run_bzr_decode
@@ -182,66 +151,65 @@ class TestNonAscii(TestCaseInTempDir):
     def test_mv(self):
         bzr = self.run_bzr_decode
 
-        fname1 = self.juju + '.txt'
-        fname2 = self.juju + '2.txt'
+        fname1 = self.info['filename']
+        fname2 = self.info['filename'] + '2'
+        dirname = self.info['directory']
 
         bzr('mv', 'a', fname1, retcode=3)
 
         txt = bzr('mv', 'a', fname2)
-        self.assertEqual(u'a => ' + fname2 + '\n', txt)
+        self.assertEqual(u'a => %s\n' % fname2, txt)
         self.failIfExists('a')
         self.failUnlessExists(fname2)
 
         bzr('commit', '-m', 'renamed to non-ascii')
 
-        bzr('mkdir', _shrimp_sandwich)
-        txt = bzr('mv', fname1, fname2, _shrimp_sandwich)
-        self.assertEqual([fname1 + ' => ' + _shrimp_sandwich + '/' + fname1,
-                          fname2 + ' => ' + _shrimp_sandwich + '/' + fname2]
+        bzr('mkdir', dirname)
+        txt = bzr('mv', fname1, fname2, dirname)
+        self.assertEqual([u'%s => %s/%s' % (fname1, dirname, fname1),
+                          u'%s => %s/%s' % (fname2, dirname, fname2)]
                          , txt.splitlines())
 
         # The rename should still succeed
-        txt = bzr('mv', _shrimp_sandwich + '/' + fname2, 'a',
-            encoding='ascii')
+        newpath = u'%s/%s' % (dirname, fname2)
+        txt = bzr('mv', newpath, 'a', encoding='ascii')
         self.failUnlessExists('a')
-        self.assertEqual('r?ksm?rg?s/????2.txt => a\n', txt)
+        self.assertEqual(newpath.encode('ascii', 'replace'), txt)
 
     def test_branch(self):
         # We should be able to branch into a directory that
         # has a unicode name, even if we can't display the name
         bzr = self.run_bzr_decode
 
-        bzr('branch', u'.', _shrimp_sandwich)
+        bzr('branch', u'.', self.info['directory'])
 
-        bzr('branch', u'.', _shrimp_sandwich + '2', encoding='ascii')
+        bzr('branch', u'.', self.info['directory'] + '2', encoding='ascii')
 
     def test_pull(self):
         # Make sure we can pull from paths that can't be encoded
         bzr = self.run_bzr_decode
 
-        bzr('branch', '.', _shrimp_sandwich)
-        bzr('branch', _shrimp_sandwich, _shrimp_sandwich + '2')
+        dirname1 = self.info['directory']
+        dirname2 = self.info['directory'] + '2'
+        bzr('branch', '.', dirname1)
+        bzr('branch', dirname1, dirname2)
 
-        os.chdir(_shrimp_sandwich)
+        os.chdir(dirname1)
         open('a', 'ab').write('more text\n')
         bzr('commit', '-m', 'mod a')
 
         pwd = os.getcwdu()
 
-        os.chdir('../' + _shrimp_sandwich + '2')
+        os.chdir(u'../' + dirname2)
         txt = bzr('pull')
 
         self.assertEqual(u'Using saved location: %s\n' % (pwd,), txt)
 
-        os.chdir('../' + _shrimp_sandwich)
+        os.chdir('../' + dirname1)
         open('a', 'ab').write('and yet more\n')
-        # here we cheat. If self.erik is not _erik, then technically
-        # we would not be able to supply the argument, since sys.argv
-        # could not be decoded to those characters.
-        # but self.run_bzr takes the decoded string directly
-        bzr('commit', '-m', 'modifying a by ' + _erik)
+        bzr('commit', '-m', 'modifying a by ' + self.info['committer'])
 
-        os.chdir('../' + _shrimp_sandwich + '2')
+        os.chdir('../' + dirname2)
         # We should be able to pull, even if our encoding is bad
         bzr('pull', '--verbose', encoding='ascii')
 
@@ -250,10 +218,8 @@ class TestNonAscii(TestCaseInTempDir):
         # Make sure we can pull from paths that can't be encoded
         bzr = self.run_bzr_decode
 
-        # ConfigObj has to be modified to make it allow unicode
-        # strings. It seems to have the functionality, but doesn't
-        # like to use it.
-        bzr('push', _shrimp_sandwich)
+        dirname = self.info['directory']
+        bzr('push', dirname)
 
         open('a', 'ab').write('adding more text\n')
         bzr('commit', '-m', 'added some stuff')
@@ -262,44 +228,44 @@ class TestNonAscii(TestCaseInTempDir):
 
         f = open('a', 'ab')
         f.write('and a bit more: ')
-        f.write(_shrimp_sandwich.encode('utf-8'))
+        f.write(dirname.encode('utf-8'))
         f.write('\n')
         f.close()
-        bzr('commit', '-m', u'Added some ' + _shrimp_sandwich)
+
+        bzr('commit', '-m', u'Added some ' + dirname)
         bzr('push', '--verbose', encoding='ascii')
 
-        bzr('push', '--verbose', _shrimp_sandwich + '2')
+        bzr('push', '--verbose', dirname + '2')
 
-        bzr('push', '--verbose', _shrimp_sandwich + '3',
-            encoding='ascii')
+        bzr('push', '--verbose', dirname + '3', encoding='ascii')
 
     def test_renames(self):
         bzr = self.run_bzr_decode
 
-        fname = self.juju + '2.txt'
+        fname = self.info['filename'] + '2'
         bzr('mv', 'a', fname)
         txt = bzr('renames')
-        self.assertEqual('a => ' + fname + '\n', txt)
+        self.assertEqual(u'a => %s\n' % fname, txt)
 
         bzr('renames', retcode=3, encoding='ascii')
 
     def test_remove(self):
         bzr = self.run_bzr_decode
 
-        fname = self.juju + '.txt'
+        fname = self.info['filename']
         txt = bzr('remove', fname, encoding='ascii')
 
     def test_remove_verbose(self):
         bzr = self.run_bzr_decode
 
         raise TestSkipped('bzr remove --verbose uses tree.remove, which calls print directly.')
-        fname = self.juju + '.txt'
+        fname = self.info['filename']
         txt = bzr('remove', '--verbose', fname, encoding='ascii')
 
     def test_file_id(self):
         bzr = self.run_bzr_decode
 
-        fname = self.juju + '.txt'
+        fname = self.info['filename']
         txt = bzr('file-id', fname)
 
         # TODO: jam 20060106 We don't support non-ascii file ids yet, 
@@ -311,10 +277,10 @@ class TestNonAscii(TestCaseInTempDir):
         bzr = self.run_bzr_decode
 
         # Create a directory structure
-        fname = self.juju + '.txt'
+        fname = self.info['filename']
         bzr('mkdir', 'base')
-        bzr('mkdir', 'base/' + _shrimp_sandwich)
-        path = '/'.join(['base', _shrimp_sandwich, fname])
+        bzr('mkdir', 'base/' + self.info['dirname'])
+        path = '/'.join(['base', self.info['dirname'], fname])
         bzr('mv', fname, path)
         bzr('commit', '-m', 'moving things around')
 
@@ -348,7 +314,7 @@ class TestNonAscii(TestCaseInTempDir):
     def test_deleted(self):
         bzr = self.run_bzr_decode
 
-        fname = self.juju + '.txt'
+        fname = self.info['filename']
         os.remove(fname)
         bzr('rm', fname)
 
@@ -366,7 +332,7 @@ class TestNonAscii(TestCaseInTempDir):
     def test_modified(self):
         bzr = self.run_bzr_decode
 
-        fname = self.juju + '.txt'
+        fname = self.info['filename']
         open(fname, 'ab').write('modified\n')
 
         txt = bzr('modified')
@@ -377,7 +343,7 @@ class TestNonAscii(TestCaseInTempDir):
     def test_added(self):
         bzr = self.run_bzr_decode
 
-        fname = self.juju + '2.txt'
+        fname = self.info['filename'] + '2'
         open(fname, 'wb').write('added\n')
         bzr('add', fname)
 
@@ -389,50 +355,53 @@ class TestNonAscii(TestCaseInTempDir):
     def test_root(self):
         bzr = self.run_bzr_decode
 
+        dirname = self.info['directory']
         bzr('root')
 
-        bzr('branch', u'.', _shrimp_sandwich)
+        bzr('branch', u'.', dirname)
 
-        os.chdir(_shrimp_sandwich)
+        os.chdir(dirname)
 
         txt = bzr('root')
-        self.failUnless(txt.endswith(_shrimp_sandwich+'\n'))
+        self.failUnless(txt.endswith(dirname+'\n'))
 
         txt = bzr('root', encoding='ascii', retcode=3)
 
     def test_log(self):
         bzr = self.run_bzr_decode
 
+        fname = self.info['filename']
+
         txt = bzr('log')
-        self.assertNotEqual(-1, txt.find(self.email_name))
-        self.assertNotEqual(-1, txt.find(_shrimp_sandwich))
+        self.assertNotEqual(-1, txt.find(self.info['committer']))
+        self.assertNotEqual(-1, txt.find(self.info['message']))
 
         txt = bzr('log', '--verbose')
-        self.assertNotEqual(-1, txt.find(self.juju))
+        self.assertNotEqual(-1, txt.find(fname))
 
         # Make sure log doesn't fail even if we can't write out
         txt = bzr('log', '--verbose', encoding='ascii')
-        self.assertEqual(-1, txt.find(self.juju))
-        self.assertNotEqual(-1, txt.find(self.juju.encode('ascii', 'replace')))
+        self.assertEqual(-1, txt.find(fname))
+        self.assertNotEqual(-1, txt.find(fname.encode('ascii', 'replace')))
 
     def test_touching_revisions(self):
         bzr = self.run_bzr_decode
 
-        fname = self.juju + '.txt'
+        fname = self.info['filename']
         txt = bzr('touching-revisions', fname)
         self.assertEqual(u'     3 added %s\n' % (fname,), txt)
 
-        fname_new = _shrimp_sandwich + '.txt'
-        bzr('mv', fname, fname_new)
-        bzr('commit', '-m', u'Renamed %s => %s' % (fname, fname_new))
+        fname2 = self.info['filename'] + '2'
+        bzr('mv', fname, fname2)
+        bzr('commit', '-m', u'Renamed %s => %s' % (fname, fname2))
 
-        txt = bzr('touching-revisions', fname_new)
+        txt = bzr('touching-revisions', fname2)
         expected_txt = (u'     3 added %s\n' 
                         u'     4 renamed %s => %s\n'
-                        % (fname, fname, fname_new))
+                        % (fname, fname, fname2))
         self.assertEqual(expected_txt, txt)
 
-        txt = bzr('touching-revisions', fname_new, encoding='ascii')
+        txt = bzr('touching-revisions', fname2, encoding='ascii')
         expected_ascii = expected_txt.encode('ascii', 'replace')
         self.assertEqual(expected_ascii, txt)
 
@@ -440,10 +409,10 @@ class TestNonAscii(TestCaseInTempDir):
         bzr = self.run_bzr_decode
 
         txt = bzr('ls')
-        self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt'],
+        self.assertEqual(['a', 'b', self.info['filename']],
                          txt.splitlines())
         txt = bzr('ls', '--null')
-        self.assertEqual(['a', 'b', u'\u062c\u0648\u062c\u0648.txt', ''],
+        self.assertEqual(['a', 'b', self.info['filename'], ''],
                          txt.split('\0'))
 
         txt = bzr('ls', encoding='ascii', retcode=3)
@@ -452,9 +421,11 @@ class TestNonAscii(TestCaseInTempDir):
     def test_unknowns(self):
         bzr = self.run_bzr_decode
 
-        fname = self.juju + '2.txt'
+        fname = self.info['filename'] + '2'
         open(fname, 'wb').write('unknown\n')
 
+        # TODO: jam 20060112 bzr unknowns is the only one which 
+        #       quotes paths do we really want it to?
         txt = bzr('unknowns')
         self.assertEqual(u'"%s"\n' % (fname,), txt)
 
@@ -463,7 +434,7 @@ class TestNonAscii(TestCaseInTempDir):
     def test_ignore(self):
         bzr = self.run_bzr_decode
 
-        fname2 = self.juju + '2.txt'
+        fname2 = self.info['filename'] + '2.txt'
         open(fname2, 'wb').write('ignored\n')
 
         txt = bzr('unknowns')
@@ -476,13 +447,13 @@ class TestNonAscii(TestCaseInTempDir):
         # This is the incorrect output
         self.assertEqual(u'"%s"\n' % (fname2,), txt)
 
-        fname3 = self.juju + '3.txt'
+        fname3 = self.info['filename'] + '3.txt'
         open(fname3, 'wb').write('unknown 3\n')
         txt = bzr('unknowns')
         # TODO: jam 20060107 This is the correct output
         # self.assertEqual(u'"%s"\n' % (fname3,), txt)
         # This is the incorrect output
-        self.assertEqual(u'"%s"\n"%s"\n' % (fname2,fname3,), txt)
+        self.assertEqual(u'"%s"\n"%s"\n' % (fname2, fname3,), txt)
 
         # Ignore should not care what the encoding is
         # (right now it doesn't print anything)
@@ -494,18 +465,19 @@ class TestNonAscii(TestCaseInTempDir):
         self.assertEqual(u'"%s"\n"%s"\n' % (fname2, fname3), txt)
 
         # Now try a wildcard match
-        fname4 = self.juju + '4.txt'
+        fname4 = self.info['filename'] + '4.txt'
+        open(fname4, 'wb').write('unknown 4\n')
         bzr('ignore', '*.txt')
         txt = bzr('unknowns')
         self.assertEqual('', txt)
 
         os.remove('.bzrignore')
-        bzr('ignore', self.juju + '*')
+        bzr('ignore', self.info['filename'] + '*')
         txt = bzr('unknowns')
         # TODO: jam 20060107 This is the correct output
         # self.assertEqual('', txt)
         # This is the incorrect output
-        self.assertEqual(u'"%s"\n"%s"\n' % (fname2, fname3), txt)
+        self.assertEqual(u'"%s"\n"%s"\n"%s"\n' % (fname2, fname3, fname4), txt)
 
         # TODO: jam 20060107 The best error we have right now is TestSkipped
         #       to indicate that this test is known to fail

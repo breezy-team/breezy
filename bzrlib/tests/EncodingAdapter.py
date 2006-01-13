@@ -71,49 +71,42 @@ class EncodingTestAdapter(object):
     Each copy is also given a new id() to make it easy to identify.
     """
 
+    _encodings = [
+        # Permutation 1 of utf-8
+        ('utf-8', {'committer':_erik
+                  , 'message':_yellow_horse
+                  , 'filename':_shrimp_sandwich
+                  , 'directory':_nihonjin}),
+        # Permutation 2 of utf-8
+        ('utf-8', {'committer':_alexander
+                  , 'message':u'Testing ' + _mu
+                  , 'filename':_juju
+                  , 'directory':_juju_alt}),
+        ('iso-8859-1', {'committer':_erik
+                  , 'message':u'Testing ' + _mu
+                  , 'filename':_juju_alt
+                  , 'directory':_shrimp_sandwich}),
+        ('iso-8859-2', {'committer':'TODO-iso8859-2-committer'
+                  , 'message':_yellow_horse
+                  , 'filename':'TODO-iso8859-2-filename'
+                  , 'directory':'TODO-iso8859-2-dir'}),
+        ('cp1251', {'committer':_alexander
+                  , 'message':u'Testing ' + _mu
+                  , 'filename':'TODO-cp1251-filename'
+                  , 'directory':'TODO-cp1251-dir'}),
+    ]
+
     def adapt(self, test):
         result = TestSuite()
-        for encoding, info in self._test_permutations():
+        for encoding, info in self._encodings:
             new_test = deepcopy(test)
             new_test.encoding = encoding
             new_test.info = info
-            def new_test_id():
-                return '%s(%s)' % (new_test.id(), encoding)
-            new_test.id = new_test_id
+            def make_new_test_id():
+                new_id = "%s(%s)" % (new_test.id(), encoding)
+                return lambda: new_id
+            new_test.id = make_new_test_id()
             result.addTest(new_test)
         return result
-
-    def _test_permutations(self):
-        """Return a list of encoding/info pairs to test.
-
-        encoding should be a string such as 'utf-8'
-        info is a dictionary containing 'committer', 'filename', 'message',
-             'directory'
-        """
-        return [
-            # Permutation 1 of utf-8
-            ('utf-8', {'committer':_erik
-                      , 'message':_yellow_horse
-                      , 'filename':_shrimp_sandwich
-                      , 'directory':_nihonjin}),
-            # Permutation 2 of utf-8
-            ('utf-8', {'committer':_alexander
-                      , 'message':u'Testing ' + _mu
-                      , 'filename':_juju,
-                      , 'directory':_juju_alt}),
-            ('iso-8859-1', {'committer':_erik
-                      , 'message':u'Testing ' + _mu
-                      , 'filename':_juju_alt
-                      , 'directory':_shrimp_sandwich}),
-            ('iso-8859-2', {'committer':'TODO-iso8859-2-committer'
-                      , 'message':_yellow_horse
-                      , 'filename':'TODO-iso8859-2-filename'
-                      , 'directory':'TODO-iso8859-2-dir'}),
-            ('cp1251', {'committer':_alexander
-                      , 'message':u'Testing ' + _mu
-                      , 'filename':'TODO-cp1251-filename'
-                      , 'directory':'TODO-cp1251-dir'}),
-        ]
-
 
 
