@@ -272,3 +272,17 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertEqual(file_kind('oz/wizard'), 'symlink')
         self.assertEqual(os.readlink('oz/wizard2'), 'behind_curtain')
         self.assertEqual(os.readlink('oz/wizard'), 'wizard-target')
+
+    def test_conflict_resolution(self):
+        create,root = self.get_transform()
+        create.new_file('dorothy', root, 'dorothy', 'dorothy-id')
+        create.apply()
+        conflicts,root = self.get_transform()
+        new_dorothy = conflicts.new_file('dorothy', root, 'dorothy', 
+                                         'dorothy-id')
+        old_dorothy = conflicts.get_id_tree('dorothy-id')
+        resolve_conflicts(conflicts)
+        self.assertEqual(conflicts.final_name(old_dorothy), 'dorothy.moved')
+        self.assertIs(conflicts.final_file_id(old_dorothy), None)
+        self.assertEqual(conflicts.final_name(new_dorothy), 'dorothy')
+        self.assertIs(conflicts.final_file_id(new_dorothy), 'dorothy-id')
