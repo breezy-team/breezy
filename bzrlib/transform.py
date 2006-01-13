@@ -121,6 +121,10 @@ class TreeTransform(object):
         """Schedule the contents of a path entry for deletion"""
         self._removed_contents.add(trans_id)
 
+    def cancel_deletion(self, trans_id):
+        """Cancel a scheduled deletion"""
+        self._removed_contents.remove(trans_id)
+
     def unversion_file(self, trans_id):
         """Schedule a path entry to become unversioned"""
         self._removed_id.add(trans_id)
@@ -811,14 +815,14 @@ def resolve_conflicts(tt):
         if len(conflicts) == 0:
             return
         conflict_pass(tt, conflicts)
-    raise MalformedTransaction(conflicts)
+    raise MalformedTransform(conflicts=conflicts)
 
 
 def conflict_pass(tt, conflicts):
-    for conflict in conflicts:
-        if conflict[0] == 'duplicate id':
+    for c_type, conflict in ((c[0], c) for c in conflicts):
+        if c_type == 'duplicate id':
             tt.unversion_file(conflict[1])
-        if conflict[0] == 'duplicate':
+        elif c_type == 'duplicate':
             # files that were renamed take precedence
             new_name = tt.final_name(conflict[1])+'.moved'
             final_parent = tt.final_parent(conflict[1])
@@ -826,3 +830,13 @@ def conflict_pass(tt, conflicts):
                 tt.adjust_path(new_name, final_parent, conflict[2])
             else:
                 tt.adjust_path(new_name, final_parent, conflict[1])
+        elif c_type == 'parent loop':
+            # break the loop by undoing one of the ops that caused the loop
+            cur = conflict[1]
+            while not tt.path_changed(cur):
+                cur = tt.final_parent(cur)
+            tt.adjust_path(tt.final_name(cur), tt.get_tree_parent(cur), cur)
+        elif c_type == 'missing parent':
+            tt.cancel_deletion(conflict[1])
+        elif c_type == 'unversioned parent':
+            tt.version_file(tt.get_tree_file_id(conflict[1]), conflict[1])

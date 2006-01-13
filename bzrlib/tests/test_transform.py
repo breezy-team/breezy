@@ -276,11 +276,17 @@ class TestTreeTransform(TestCaseInTempDir):
     def test_conflict_resolution(self):
         create,root = self.get_transform()
         create.new_file('dorothy', root, 'dorothy', 'dorothy-id')
+        oz = create.new_directory('oz', root, 'oz-id')
+        create.new_directory('emeraldcity', oz, 'emerald-id')
         create.apply()
         conflicts,root = self.get_transform()
         new_dorothy = conflicts.new_file('dorothy', root, 'dorothy', 
                                          'dorothy-id')
         old_dorothy = conflicts.get_id_tree('dorothy-id')
+        oz = conflicts.get_id_tree('oz-id')
+        emerald = conflicts.get_id_tree('emerald-id')
+        conflicts.adjust_path('emeraldcity', emerald, emerald)
+        conflicts.delete_versioned(oz)
         resolve_conflicts(conflicts)
         self.assertEqual(conflicts.final_name(old_dorothy), 'dorothy.moved')
         self.assertIs(conflicts.final_file_id(old_dorothy), None)
