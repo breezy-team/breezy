@@ -720,7 +720,7 @@ def change_entry(tt, file_id, working_tree, target_tree,
                 trans_id[file_id] = e_trans_id
         create_by_entry(tt, entry, target_tree, e_trans_id)
     elif meta_mod:
-        tt.set_executability(entry.executable)
+        tt.set_executability(entry.executable, e_trans_id)
     if tt.final_name(e_trans_id) != entry.name:
         adjust_path  = True
     else:
