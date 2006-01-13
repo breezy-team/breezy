@@ -807,18 +807,34 @@ class LocalTransportTest(TestCaseInTempDir, TestTransportMixIn):
         return LocalTransport(u'.')
 
 
-class HttpTransportTest(TestCaseWithWebserver, TestTransportMixIn):
+class UrllibHttpTransportTest(TestCaseWithWebserver, TestTransportMixIn):
+    """Test urllib client against webserver"""
 
     readonly = True
 
     def get_transport(self):
-        from bzrlib.transport.http import HttpTransport
+        from bzrlib.transport.http._urllib import HttpTransport
         url = self.get_remote_url(u'.')
         return HttpTransport(url)
 
     def get_bogus_transport(self):
-        from bzrlib.transport.http import HttpTransport
+        from bzrlib.transport.http._urllib import HttpTransport
         return HttpTransport('http://jasldkjsalkdjalksjdkljasd')
+
+
+class PyCurlTransportTest(TestCaseWithWebserver, TestTransportMixIn):
+    """Test pycurl client against webserver"""
+
+    readonly = True
+
+    def get_transport(self):
+        from bzrlib.transport.http._pycurl import PyCurlTransport
+        url = self.get_remote_url(u'.')
+        return PyCurlTransport(url)
+
+    def get_bogus_transport(self):
+        from bzrlib.transport.http._pycurl import PyCurlTransport
+        return PyCurlTransport('http://jasldkjsalkdjalksjdkljasd')
 
 
 class TestMemoryTransport(TestCase):

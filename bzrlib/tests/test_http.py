@@ -1,7 +1,11 @@
 # (C) 2005 Canonical
 
+# FIXME: This test should be repeated for each available http client
+# implementation; at the moment we have urllib and pycurl.
+
 from bzrlib.tests import TestCase
-from bzrlib.transport.http import HttpTransport, extract_auth
+from bzrlib.transport.http import extract_auth
+from bzrlib.transport.http._urllib import HttpTransport
 
 class FakeManager (object):
     def __init__(self):
