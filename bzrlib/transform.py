@@ -69,8 +69,9 @@ class TreeTransform(object):
         
         We do this by undoing the association of root's transaction id with the
         current tree.  This allows us to create a new directory with that
-        transaction id.  We unversion the root directory, and hope someone
-        versions it later.
+        transaction id.  We unversion the root directory and version the 
+        physically new directory, and hope someone versions the tree root
+        later.
         """
         old_root = self._new_root
         old_root_file_id = self.final_file_id(old_root)
@@ -79,6 +80,10 @@ class TreeTransform(object):
             if child_id != parent:
                 self.adjust_path(self.final_name(child_id), 
                                  self.final_parent(child_id), child_id)
+            file_id = self.final_file_id(child_id)
+            if file_id is not None:
+                self.unversion_file(child_id)
+            self.version_file(file_id, child_id)
         
         # the physical root needs a new transaction id
         self._tree_path_ids.pop("")
@@ -88,8 +93,8 @@ class TreeTransform(object):
             parent = self._new_root
         self.adjust_path(name, parent, old_root)
         self.create_directory(old_root)
-        #self.version_file(old_root_file_id, old_root)
-        #self.unversion_file(self._new_root)
+        self.version_file(old_root_file_id, old_root)
+        self.unversion_file(self._new_root)
 
     def get_id_tree(self, inventory_id):
         """Determine the transaction id of a working tree file.
@@ -511,7 +516,11 @@ class TreeTransform(object):
                     if e.errno != errno.ENOENT:
                         raise
             if trans_id in self._removed_id:
-                del inv[self.get_tree_file_id(trans_id)]
+                if trans_id == self._new_root:
+                    file_id = self._tree.inventory.root.file_id
+                else:
+                    file_id = self.get_tree_file_id(trans_id)
+                del inv[file_id]
             elif trans_id in self._new_name or trans_id in self._new_parent:
                 file_id = self.get_tree_file_id(trans_id)
                 if file_id is not None:
@@ -555,7 +564,10 @@ class TreeTransform(object):
             if trans_id in self._new_id:
                 if kind is None:
                     kind = file_kind(self._tree.abspath(path))
-                inv.add_path(path, kind, self._new_id[trans_id])
+                try:
+                    inv.add_path(path, kind, self._new_id[trans_id])
+                except:
+                    raise repr((path, kind, self._new_id[trans_id]))
             elif trans_id in self._new_name or trans_id in self._new_parent:
                 entry = limbo_inv.get(trans_id)
                 if entry is not None:

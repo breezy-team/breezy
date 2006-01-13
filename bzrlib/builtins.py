@@ -353,7 +353,7 @@ class cmd_rename(Command):
                 from_id = transform.get_tree_path_id(from_name)
                 transform.adjust_root_path(to_filename, to_parent)
                 new_root = transform.get_tree_path_id('')
-                transform.version_file(gen_file_id(to_filename), from_id)
+                transform.version_file(gen_file_id(to_filename), new_root)
             else:
                 from_id = transform.get_tree_path_id(from_name)
                 transform.adjust_path(to_filename, to_parent, from_id)

@@ -893,16 +893,19 @@ class Inventory(object):
         from bzrlib.workingtree import gen_file_id
         
         parts = bzrlib.osutils.splitpath(relpath)
-        if len(parts) == 0:
-            raise BzrError("cannot re-add root of inventory")
 
         if file_id == None:
             file_id = gen_file_id(relpath)
 
-        parent_path = parts[:-1]
-        parent_id = self.path2id(parent_path)
-        if parent_id == None:
-            raise NotVersionedError(path=parent_path)
+        if len(parts) == 0:
+            self.root = RootEntry(file_id)
+            self._byid = {self.root.file_id: self.root}
+            return
+        else:
+            parent_path = parts[:-1]
+            parent_id = self.path2id(parent_path)
+            if parent_id == None:
+                raise NotVersionedError(path=parent_path)
         if kind == 'directory':
             ie = InventoryDirectory(file_id, parts[-1], parent_id)
         elif kind == 'file':
@@ -928,10 +931,12 @@ class Inventory(object):
         """
         ie = self[file_id]
 
-        assert self[ie.parent_id].children[ie.name] == ie
+        assert ie.parent_id is None or \
+            self[ie.parent_id].children[ie.name] == ie
         
         del self._byid[file_id]
-        del self[ie.parent_id].children[ie.name]
+        if ie.parent_id is not None:
+            del self[ie.parent_id].children[ie.name]
 
 
     def __eq__(self, other):

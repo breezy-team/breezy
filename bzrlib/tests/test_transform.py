@@ -318,5 +318,6 @@ class TestTreeTransform(TestCaseInTempDir):
         create.apply()
         transform, root = self.get_transform()
         transform.adjust_root_path('oldroot', fun)
-        transform.version_file('new-root', root)
+        new_root=transform.get_tree_path_id('')
+        transform.version_file('new-root', new_root)
         transform.apply()
