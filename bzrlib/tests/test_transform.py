@@ -292,6 +292,7 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertIs(conflicts.final_file_id(old_dorothy), None)
         self.assertEqual(conflicts.final_name(new_dorothy), 'dorothy')
         self.assertIs(conflicts.final_file_id(new_dorothy), 'dorothy-id')
+        self.assertEqual(conflicts.final_parent(emerald), oz)
         conflicts.apply()
 
     def test_moving_versioned_directories(self):
