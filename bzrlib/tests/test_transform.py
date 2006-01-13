@@ -280,13 +280,16 @@ class TestTreeTransform(TestCaseInTempDir):
         create.new_directory('emeraldcity', oz, 'emerald-id')
         create.apply()
         conflicts,root = self.get_transform()
+        # set up duplicate entry, duplicate id
         new_dorothy = conflicts.new_file('dorothy', root, 'dorothy', 
                                          'dorothy-id')
         old_dorothy = conflicts.get_id_tree('dorothy-id')
         oz = conflicts.get_id_tree('oz-id')
-        emerald = conflicts.get_id_tree('emerald-id')
-        conflicts.adjust_path('emeraldcity', emerald, emerald)
+        # set up missing, unversioned parent
         conflicts.delete_versioned(oz)
+        emerald = conflicts.get_id_tree('emerald-id')
+        # set up parent loop
+        conflicts.adjust_path('emeraldcity', emerald, emerald)
         resolve_conflicts(conflicts)
         self.assertEqual(conflicts.final_name(old_dorothy), 'dorothy.moved')
         self.assertIs(conflicts.final_file_id(old_dorothy), None)
