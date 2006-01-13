@@ -930,13 +930,6 @@ class Inventory(object):
 
         assert self[ie.parent_id].children[ie.name] == ie
         
-        # TODO: Test deleting all children; maybe hoist to a separate
-        # deltree method?
-        if ie.kind == 'directory':
-            for cie in ie.children.values():
-                del self[cie.file_id]
-            del ie.children
-
         del self._byid[file_id]
         del self[ie.parent_id].children[ie.name]
 

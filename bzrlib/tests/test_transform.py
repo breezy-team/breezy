@@ -292,3 +292,15 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertIs(conflicts.final_file_id(old_dorothy), None)
         self.assertEqual(conflicts.final_name(new_dorothy), 'dorothy')
         self.assertIs(conflicts.final_file_id(new_dorothy), 'dorothy-id')
+
+    def test_moving_versioned_directories(self):
+        create, root = self.get_transform()
+        kansas = create.new_directory('kansas', root, 'kansas-id')
+        create.new_directory('house', kansas, 'house-id')
+        create.new_directory('oz', root, 'oz-id')
+        create.apply()
+        cyclone, root = self.get_transform()
+        oz = cyclone.get_id_tree('oz-id')
+        house = cyclone.get_id_tree('house-id')
+        cyclone.adjust_path('house', oz, house)
+        cyclone.apply()
