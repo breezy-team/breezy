@@ -52,7 +52,21 @@ _nihonjin = u'\u65e5\u672c\u4eba'
 # Wouter van Heyst
 
 
+class EncodingTestAdapter(object):
+    """A tool to generate a suite, testing multiple encodings for a single test.
+    
+    This is similar to bzrlib.transport.TransportTestProviderAdapter.
+    It is done by copying the test once for each encoding, and injecting
+    the encoding name, and the list of valid strings for that encoding.
+    Each copy is also given a new id() to make it easy to identify.
+    """
+
+
 class TestNonAscii(TestCaseInTempDir):
+    """Test that bzr handles files/committers/etc which are non-ascii."""
+
+    # This will be the tested encoding
+    _encoding = 'utf-8'
 
     def setUp(self):
         super(TestNonAscii, self).setUp()
