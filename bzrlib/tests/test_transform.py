@@ -3,7 +3,7 @@ from bzrlib.branch import Branch
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform)
+                           ReusingTransform, CantMoveRoot)
 from bzrlib.osutils import file_kind, has_symlinks
 import os
 
@@ -309,3 +309,8 @@ class TestTreeTransform(TestCaseInTempDir):
         house = cyclone.get_id_tree('house-id')
         cyclone.adjust_path('house', oz, house)
         cyclone.apply()
+
+    def test_moving_root(self):
+        transform, root = self.get_transform()
+        fun = transform.new_directory('fun', root, 'fun-id')
+        self.assertRaises(CantMoveRoot, transform.adjust_path, '', fun, root)

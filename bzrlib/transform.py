@@ -1,6 +1,6 @@
 import os
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform, NotVersionedError)
+                           ReusingTransform, NotVersionedError, CantMoveRoot)
 from bzrlib.osutils import file_kind, supports_executable
 from bzrlib.inventory import InventoryEntry
 from bzrlib import BZRDIR
@@ -59,6 +59,8 @@ class TreeTransform(object):
 
     def adjust_path(self, name, parent, trans_id):
         """Change the path that is assigned to a transaction id."""
+        if trans_id == self._new_root:
+            raise CantMoveRoot
         self._new_name[trans_id] = name
         self._new_parent[trans_id] = parent
 

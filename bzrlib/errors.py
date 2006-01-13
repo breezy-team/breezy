@@ -489,3 +489,6 @@ class BzrBadParameter(BzrNewError):
 
 class ReusingTransform(BzrNewError):
     """Attempt to reuse a transform that has already been applied."""
+
+class CantMoveRoot(BzrNewError):
+    """Moving the root directory is not supported at this time"""
