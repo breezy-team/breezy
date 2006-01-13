@@ -454,7 +454,7 @@ class TestCase(unittest.TestCase):
         stdout.encoding = encoding
         stderr.encoding = encoding
 
-        self.log('run bzr: %s', ' '.join(argv))
+        self.log('run bzr: %r', argv)
         # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
         handler.setFormatter(bzrlib.trace.QuietFormatter())
@@ -474,9 +474,9 @@ class TestCase(unittest.TestCase):
         out = stdout.getvalue()
         err = stderr.getvalue()
         if out:
-            self.log('output:\n%s', out)
+            self.log('output:\n%r', out)
         if err:
-            self.log('errors:\n%s', err)
+            self.log('errors:\n%r', err)
         if retcode is not None:
             self.assertEquals(result, retcode)
         return out, err

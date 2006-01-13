@@ -40,6 +40,8 @@ _juju_alt = u'j\xfbj\xfa'
 
 # Russian, 'Alexander' in russian
 _alexander = u'\u0410\u043b\u0435\u043a\u0441\u0430\u043d\u0434\u0440'
+# No idea if this means anything, but we need another string
+_alex = u'\u0410\u043b\u0435\u043a'
 
 # Kanji
 # It is a kanji sequence for nihonjin, or Japanese in English.
@@ -60,6 +62,9 @@ _nihonjin = u'\u65e5\u672c\u4eba'
 # the sentece to check whether one has properly set encoding.
 _yellow_horse = (u'\u017dlu\u0165ou\u010dk\xfd k\u016f\u0148'
                  u' \xfap\u011bl \u010f\xe1belsk\xe9 k\xf3dy')
+_yellow = u'\u017dlu\u0165ou\u010dk\xfd'
+_someone = u'Some\u016f\u0148\u011b'
+_something = u'\u0165ou\u010dk\xfd'
 
 
 class EncodingTestAdapter(object):
@@ -86,14 +91,14 @@ class EncodingTestAdapter(object):
                   , 'message':u'Testing ' + _mu
                   , 'filename':_juju_alt
                   , 'directory':_shrimp_sandwich}),
-        ('iso-8859-2', 0, {'committer':'TODO-iso8859-2-committer'
+        ('iso-8859-2', 0, {'committer':_someone
                   , 'message':_yellow_horse
-                  , 'filename':'TODO-iso8859-2-filename'
-                  , 'directory':'TODO-iso8859-2-dir'}),
+                  , 'filename':_yellow
+                  , 'directory':_something}),
         ('cp1251', 0, {'committer':_alexander
                   , 'message':u'Testing ' + _mu
-                  , 'filename':'TODO-cp1251-filename'
-                  , 'directory':'TODO-cp1251-dir'}),
+                  , 'filename':_alex
+                  , 'directory':_alex + 'dir'}),
     ]
 
     def adapt(self, test):

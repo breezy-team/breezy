@@ -90,11 +90,15 @@ class TestNonAscii(TestCaseInTempDir):
     def test_cat_revision(self):
         bzr = self.run_bzr_decode
 
+        # TODO: jam 20060112 should cat-revision always output utf-8?
+        committer = self.info['committer']
         txt = bzr('cat-revision', '-r', '1')
-        self.assertNotEqual(-1, txt.find(self.info['committer']))
+        self.failUnless(committer in txt,
+                        'failed to find %r in %r' % (committer, txt))
 
+        msg = self.info['message']
         txt = bzr('cat-revision', '-r', '2')
-        self.assertNotEqual(-1, txt.find(self.info['message']))
+        self.failUnless(msg in txt, 'failed to find %r in %r' % (msg, txt))
 
     def test_mkdir(self):
         bzr = self.run_bzr_decode
@@ -278,9 +282,10 @@ class TestNonAscii(TestCaseInTempDir):
 
         # Create a directory structure
         fname = self.info['filename']
+        dirname = self.info['directory']
         bzr('mkdir', 'base')
-        bzr('mkdir', 'base/' + self.info['dirname'])
-        path = '/'.join(['base', self.info['dirname'], fname])
+        bzr('mkdir', 'base/' + dirname)
+        path = '/'.join(['base', dirname, fname])
         bzr('mv', fname, path)
         bzr('commit', '-m', 'moving things around')
 

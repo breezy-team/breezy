@@ -153,14 +153,16 @@ class cmd_cat_revision(Command):
         if revision_id is None and revision is None:
             raise BzrCommandError('You must supply either --revision or a revision_id')
         b = WorkingTree.open_containing(u'.')[0].branch
+
+        # TODO: jam 20060112 should cat-revision always output utf-8?
         if revision_id is not None:
-            sys.stdout.write(b.get_revision_xml(revision_id))
+            self.outf.write(b.get_revision_xml(revision_id).decode('utf-8'))
         elif revision is not None:
             for rev in revision:
                 if rev is None:
                     raise BzrCommandError('You cannot specify a NULL revision.')
                 revno, rev_id = rev.in_history(b)
-                sys.stdout.write(b.get_revision_xml(rev_id))
+                self.outf.write(b.get_revision_xml(rev_id).decode('utf-8'))
     
 
 class cmd_revno(Command):
