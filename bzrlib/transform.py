@@ -442,6 +442,7 @@ class TreeTransform(object):
         os.rmdir(self._tree.branch.controlfilename('limbo'))
         self._tree._write_inventory(inv)
         self.__done = True
+        self.finalize()
 
     def _apply_removals(self, inv, limbo_inv):
         """Perform tree operations that remove directory/inventory names.
