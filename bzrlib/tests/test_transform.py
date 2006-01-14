@@ -123,11 +123,7 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertEqual(transform.find_conflicts(), 
                          [('non-file executability', oz_id)])
         transform.set_executability(None, oz_id)
-        tip_id = transform.new_symlink('tip', oz_id, 'ozma', 'tip-id')
-        transform.set_executability(True, tip_id)
-        self.assertEqual(transform.find_conflicts(), 
-                         [('non-file executability', tip_id)])
-        transform.set_executability(None, tip_id)
+        tip_id = transform.new_file('tip', oz_id, 'ozma', 'tip-id')
         transform.apply()
         self.assertEqual(self.wt.path2id('name'), 'my_pretties')
         self.assertEqual('contents', file(self.wt.abspath('name')).read())
@@ -137,7 +133,7 @@ class TestTreeTransform(TestCaseInTempDir):
         result = transform2.find_conflicts()
         fp = FinalPaths(transform2._new_root, transform2)
         self.assert_('oz/tip' in transform2._tree_path_ids)
-        self.assertEqual(fp.get_path(newtip), 'oz/tip')
+        self.assertEqual(fp.get_path(newtip), os.path.join('oz', 'tip'))
         self.assertEqual(len(result), 2)
         self.assertEqual((result[0][0], result[0][1]), 
                          ('duplicate', newtip))
@@ -267,6 +263,10 @@ class TestTreeTransform(TestCaseInTempDir):
         wiz_id = transform.create_path('wizard2', oz_id)
         transform.create_symlink('behind_curtain', wiz_id)
         transform.version_file('wiz-id2', wiz_id)            
+        transform.set_executability(True, wiz_id)
+        self.assertEqual(transform.find_conflicts(), 
+                         [('non-file executability', wiz_id)])
+        transform.set_executability(None, wiz_id)
         transform.apply()
         self.assertEqual(self.wt.path2id('oz/wizard'), 'wizard-id')
         self.assertEqual(file_kind('oz/wizard'), 'symlink')
