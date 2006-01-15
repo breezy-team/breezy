@@ -89,3 +89,11 @@ class TestDeprecationWarnings(TestCase):
             self.assertEqualDiff(expected_module, deprecated_callable.__module__)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
+    
+    def test_deprecated_passed(self):
+        self.assertEqual(True, symbol_versioning.deprecated_passed(None))
+        self.assertEqual(True, symbol_versioning.deprecated_passed(True))
+        self.assertEqual(True, symbol_versioning.deprecated_passed(False))
+        self.assertEqual(False,
+                         symbol_versioning.deprecated_passed(
+                            symbol_versioning.deprecated_nonce))

@@ -15,35 +15,35 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+from cStringIO import StringIO
+import errno
+import os
 import shutil
 import sys
-import os
-import errno
 from warnings import warn
-from cStringIO import StringIO
 
 
 import bzrlib
-import bzrlib.inventory as inventory
-from bzrlib.trace import mutter, note
-from bzrlib.osutils import (isdir, quotefn,
-                            rename, splitpath, sha_file,
-                            file_kind, abspath, normpath, pathjoin,
-                            safe_unicode,
-                            )
+from bzrlib.config import TreeConfig
+from bzrlib.delta import compare_trees
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
                            DivergedBranches, LockError, UnlistableStore,
                            UnlistableBranch, NoSuchFile, NotVersionedError,
                            NoWorkingTree)
+import bzrlib.inventory as inventory
+from bzrlib.inventory import Inventory
+from bzrlib.osutils import (isdir, quotefn,
+                            rename, splitpath, sha_file,
+                            file_kind, abspath, normpath, pathjoin,
+                            safe_unicode,
+                            )
 from bzrlib.textui import show_status
+from bzrlib.trace import mutter, note
+from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions,
                              NULL_REVISION)
-
-from bzrlib.delta import compare_trees
-from bzrlib.tree import EmptyTree, RevisionTree
-from bzrlib.inventory import Inventory
 from bzrlib.store import copy_all
 from bzrlib.store.text import TextStore
 from bzrlib.store.weave import WeaveStore
@@ -52,7 +52,6 @@ import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 import bzrlib.xml5
 import bzrlib.ui
-from config import TreeConfig
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -508,6 +507,163 @@ class Branch(object):
         raise NotImplementedError('store_revision_signature is abstract')
 
 
+class BzrBranchFormat(object):
+    """An encapsulation of the initialization and open routines for a format.
+
+    Formats provide three things:
+     * An initialization routine,
+     * a format string,
+     * an open routine.
+
+    Formats are placed in an dict by their format string for reference 
+    during branch opening. Its not required that these be instances, they
+    can be classes themselves with class methods - it simply depends on 
+    whether state is needed for a given format or not.
+
+    Once a format is deprecated, just deprecate the initialize and open
+    methods on the format class. Do not deprecate the object, as the 
+    object will be created every time regardless.
+    """
+
+    _formats = {}
+    """The known formats."""
+
+    @classmethod
+    def find_format(klass, url):
+        """Return the format registered for URL."""
+        t = get_transport(url)
+        return klass._formats[t.get(".bzr/branch-format").read()]
+
+    def get_format_string(self):
+        """Return the ASCII format string that identifies this format."""
+        raise NotImplementedError(self.get_format_string)
+
+    def _find_modes(self, t):
+        """Determine the appropriate modes for files and directories.
+        
+        FIXME: When this merges into, or from storage,
+        this code becomes delgatable to a LockableFiles instance.
+
+        For now its cribbed and returns (dir_mode, file_mode)
+        """
+        try:
+            st = t.stat('.')
+        except errors.TransportNotPossible:
+            dir_mode = 0755
+            file_mode = 0644
+        else:
+            dir_mode = st.st_mode & 07777
+            # Remove the sticky and execute bits for files
+            file_mode = dir_mode & ~07111
+        if not BzrBranch._set_dir_mode:
+            dir_mode = None
+        if not BzrBranch._set_file_mode:
+            file_mode = None
+        return dir_mode, file_mode
+
+    def initialize(self, url):
+        """Create a branch of this format at url and return an open branch."""
+        t = get_transport(url)
+        from bzrlib.inventory import Inventory
+        from bzrlib.weavefile import write_weave_v5
+        from bzrlib.weave import Weave
+        
+        # Create an empty inventory
+        sio = StringIO()
+        # if we want per-tree root ids then this is the place to set
+        # them; they're not needed for now and so ommitted for
+        # simplicity.
+        bzrlib.xml5.serializer_v5.write_inventory(Inventory(), sio)
+        empty_inv = sio.getvalue()
+        sio = StringIO()
+        bzrlib.weavefile.write_weave_v5(Weave(), sio)
+        empty_weave = sio.getvalue()
+
+        # Since we don't have a .bzr directory, inherit the
+        # mode from the root directory
+        dir_mode, file_mode = self._find_modes(t)
+
+        t.mkdir('.bzr', mode=dir_mode)
+        control = t.clone('.bzr')
+        dirs = ['revision-store', 'weaves']
+        files = [('README', 
+            StringIO("This is a Bazaar-NG control directory.\n"
+            "Do not change any files in this directory.\n")),
+            ('branch-format', StringIO(self.get_format_string())),
+            ('revision-history', StringIO('')),
+            ('branch-name', StringIO('')),
+            ('branch-lock', StringIO('')),
+            ('pending-merges', StringIO('')),
+            ('inventory', StringIO(empty_inv)),
+            ('inventory.weave', StringIO(empty_weave)),
+            ('ancestry.weave', StringIO(empty_weave))
+        ]
+        control.mkdir_multi(dirs, mode=dir_mode)
+        control.put_multi(files, mode=file_mode)
+        mutter('created control directory in ' + t.base)
+        return BzrBranch(t)
+
+    def open(self, url, branch):
+        """Fill out the data in branch for the branch at url."""
+        raise NotImplementedError(self.open)
+
+    @classmethod
+    def register_format(klass, format):
+        klass._formats[format.get_format_string()] = format
+
+
+class BzrBranchFormat4(BzrBranchFormat):
+    """Bzr branch format 4.
+
+    This format has:
+     - flat stores
+     - TextStores for texts, inventories,revisions.
+
+    This format is deprecated: it indexes texts using a text it which is
+    removed in format 5; write support for this format has been removed.
+    """
+
+    def get_format_string(self):
+        """See BzrBranchFormat.get_format_string()."""
+        return BZR_BRANCH_FORMAT_4
+
+    def initialize(self, url):
+        """Format 4 branches cannot be created."""
+        raise NotImplementedError(self.initialize)
+
+
+class BzrBranchFormat5(BzrBranchFormat):
+    """Bzr branch format 5.
+
+    This format has:
+     - weaves for file texts and inventory
+     - flat stores
+     - TextStores for revisions and signatures.
+    """
+
+    def get_format_string(self):
+        """See BzrBranchFormat.get_format_string()."""
+        return BZR_BRANCH_FORMAT_5
+
+
+class BzrBranchFormat6(BzrBranchFormat):
+    """Bzr branch format 6.
+
+    This format has:
+     - weaves for file texts and inventory
+     - hash subdirectory based stores.
+     - TextStores for revisions and signatures.
+    """
+
+    def get_format_string(self):
+        """See BzrBranchFormat.get_format_string()."""
+        return BZR_BRANCH_FORMAT_6
+
+
+BzrBranchFormat.register_format(BzrBranchFormat4())
+BzrBranchFormat.register_format(BzrBranchFormat5())
+BzrBranchFormat.register_format(BzrBranchFormat6())
+
 class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
 
@@ -563,7 +719,7 @@ class BzrBranch(Branch):
         except UnlistableStore:
             raise UnlistableBranch(from_store)
 
-    def __init__(self, transport, init=False,
+    def __init__(self, transport, init=deprecated_nonce,
                  relax_version_check=False):
         """Create new branch object at a particular location.
 
@@ -584,13 +740,19 @@ class BzrBranch(Branch):
         assert isinstance(transport, Transport), \
             "%r is not a Transport" % transport
         self._transport = transport
-        if init:
-            self._make_control()
+        if deprecated_passed(init):
+            warn("BzrBranch.__init__(..., init=XXX): The init parameter is "
+                 "deprecated as of bzr 0.8. Please use Branch.initialize().",
+                 DeprecationWarning)
+            if init:
+                # this is slower than before deprecation, oh well never mind.
+                # -> its deprecated.
+                self._initialize(transport.base)
         self._check_format(relax_version_check)
         self._find_modes()
 
         def get_store(name, compressed=True, prefixed=False):
-            relpath = self._rel_controlfilename(unicode(name))
+            relpath = self._rel_controlfilename(safe_unicode(name))
             store = TextStore(self._transport.clone(relpath),
                               dir_mode=self._dir_mode,
                               file_mode=self._file_mode,
@@ -627,8 +789,7 @@ class BzrBranch(Branch):
     @staticmethod
     def _initialize(base):
         """Create a bzr branch in the latest format."""
-        t = get_transport(base)
-        return BzrBranch(t, init=True)
+        return BzrBranchFormat6().initialize(base)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self._transport.base)
@@ -801,44 +962,6 @@ class BzrBranch(Branch):
             self._dir_mode = None
         if not self._set_file_mode:
             self._file_mode = None
-
-    def _make_control(self):
-        from bzrlib.inventory import Inventory
-        from bzrlib.weavefile import write_weave_v5
-        from bzrlib.weave import Weave
-        
-        # Create an empty inventory
-        sio = StringIO()
-        # if we want per-tree root ids then this is the place to set
-        # them; they're not needed for now and so ommitted for
-        # simplicity.
-        bzrlib.xml5.serializer_v5.write_inventory(Inventory(), sio)
-        empty_inv = sio.getvalue()
-        sio = StringIO()
-        bzrlib.weavefile.write_weave_v5(Weave(), sio)
-        empty_weave = sio.getvalue()
-
-        cfn = self._rel_controlfilename
-        # Since we don't have a .bzr directory, inherit the
-        # mode from the root directory
-        self._find_modes(u'.')
-
-        dirs = ['', 'revision-store', 'weaves']
-        files = [('README', 
-            "This is a Bazaar-NG control directory.\n"
-            "Do not change any files in this directory.\n"),
-            ('branch-format', BZR_BRANCH_FORMAT_6),
-            ('revision-history', ''),
-            ('branch-name', ''),
-            ('branch-lock', ''),
-            ('pending-merges', ''),
-            ('inventory', empty_inv),
-            ('inventory.weave', empty_weave),
-            ('ancestry.weave', empty_weave)
-        ]
-        self._transport.mkdir_multi([cfn(d) for d in dirs], mode=self._dir_mode)
-        self.put_controlfiles(files)
-        mutter('created control directory in ' + self._transport.base)
 
     def _check_format(self, relax_version_check):
         """Check this branch format is supported.

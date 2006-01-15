@@ -20,11 +20,17 @@
 The methods here allow for api symbol versioning.
 """
 
-__all__ = ['warn', 'set_warning_method', 'zero_seven']
+__all__ = ['deprecated_function',
+           'deprecated_method',
+           'deprecated_nonce',
+           'deprecated_passed',
+           'warn', 'set_warning_method', 'zero_seven',
+           ]
 
 from warnings import warn
 
 
+deprecated_nonce = "A deprecated parameter marker."
 zero_seven = "%s was deprecated in version 0.7."
 
 
@@ -82,6 +88,25 @@ def deprecated_method(deprecation_version):
                             decorated_method)
         return decorated_method
     return method_decorator
+
+
+def deprecated_passed(parameter_value):
+    """Return True if parameter_value was used."""
+    # FIXME: it might be nice to have a parameter deprecation decorator. 
+    # it would need to handle positional and *args and **kwargs parameters,
+    # which means some mechanism to describe how the parameter was being
+    # passed before deprecation, and some way to deprecate parameters that
+    # were not at the end of the arg list. Thats needed for __init__ where
+    # we cannot just forward to a new method name.I.e. in the following
+    # examples we would want to have callers that pass any value to 'bad' be
+    # given a warning - because we have applied:
+    # @deprecated_parameter('bad', zero_seven)
+    #
+    # def __init__(self, bad=None)
+    # def __init__(self, bad, other)
+    # def __init__(self, **kwargs)
+    # RBC 20060116
+    return not parameter_value is deprecated_nonce
 
 
 def _decorate_docstring(callable, deprecation_version, label,
