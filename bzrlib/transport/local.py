@@ -61,7 +61,7 @@ class LocalTransport(Transport):
         This can be supplied with a string or a list
         """
         assert isinstance(relpath, basestring), (type(relpath), relpath)
-        return pathjoin(self.base, urllib.unquote(relpath))
+        return pathjoin(self.base, urllib.unquote(relpath).decode('utf-8'))
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
