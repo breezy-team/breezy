@@ -24,6 +24,7 @@ also see this file.
 
 
 import bzrlib.branch as branch
+from bzrlib.errors import NotBranchError
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import get_transport
 
@@ -59,6 +60,8 @@ class TestBzrBranchFormat(TestCaseInTempDir):
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(branch.BzrBranchFormat5(), "foo")
         check_format(branch.BzrBranchFormat6(), "bar")
-
-    def test_initialize_returns_branch(self):
-        self.failUnless(isinstance(branch.BzrBranchFormat5().initialize("."), branch.Branch))
+        
+    def test_find_format_not_branch(self):
+        self.assertRaises(NotBranchError,
+                          branch.BzrBranchFormat.find_format,
+                          get_transport('.'))

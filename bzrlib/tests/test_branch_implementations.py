@@ -25,8 +25,8 @@ from bzrlib.clone import copy_branch
 from bzrlib.commit import commit
 import bzrlib.errors as errors
 from bzrlib.errors import (NoSuchRevision,
+                           NoSuchFile,
                            UninitializableFormat,
-                           UnlistableBranch,
                            NotBranchError,
                            )
 import bzrlib.gpg
@@ -428,8 +428,15 @@ class TestFormat(TestCaseWithBranch):
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
         made_branch = self.make_branch('.')
+        self.failUnless(isinstance(made_branch, branch.Branch))
         t = get_transport('.')
         self.assertEqual(self.branch_format,
                          branch.BzrBranchFormat.find_format(t))
-        opened_branch = branch.Branch.open('.')
+        opened_branch = self.branch_format.open(t)
         self.assertEqual(made_branch._branch_format, opened_branch._branch_format)
+        self.failUnless(isinstance(opened_branch, branch.Branch))
+
+    def test_open_not_branch(self):
+        self.assertRaises(NoSuchFile,
+                          self.branch_format.open,
+                          get_transport('.'))

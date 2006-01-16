@@ -128,7 +128,8 @@ class Branch(object):
         """Open an existing branch, rooted at 'base' (url)"""
         t = get_transport(base)
         mutter("trying to open %r with transport %r", base, t)
-        return BzrBranch(t)
+        format = BzrBranchFormat.find_format(t)
+        return format.open(t)
 
     @staticmethod
     def open_containing(url):
@@ -143,7 +144,10 @@ class Branch(object):
         t = get_transport(url)
         while True:
             try:
-                return BzrBranch(t), t.relpath(url)
+                format = BzrBranchFormat.find_format(t)
+                return format.open(t), t.relpath(url)
+            # TODO FIXME, distinguish between formats that cannot be
+            # identified, and a lack of format.
             except NotBranchError, e:
                 mutter('not a branch in: %r %s', t.base, e)
             new_t = t.clone('..')
@@ -536,7 +540,10 @@ class BzrBranchFormat(object):
     @classmethod
     def find_format(klass, transport):
         """Return the format registered for URL."""
-        return klass._formats[transport.get(".bzr/branch-format").read()]
+        try:
+            return klass._formats[transport.get(".bzr/branch-format").read()]
+        except NoSuchFile:
+            raise NotBranchError(path=transport.base)
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
@@ -605,11 +612,11 @@ class BzrBranchFormat(object):
         control.mkdir_multi(dirs, mode=dir_mode)
         control.put_multi(files, mode=file_mode)
         mutter('created control directory in ' + t.base)
-        return BzrBranch(t)
+        return BzrBranch(t, format=self)
 
-    def open(self, url, branch):
+    def open(self, transport):
         """Fill out the data in branch for the branch at url."""
-        raise NotImplementedError(self.open)
+        return BzrBranch(transport, format=self)
 
     @classmethod
     def register_format(klass, format):
@@ -668,6 +675,7 @@ BzrBranchFormat.register_format(BzrBranchFormat4())
 BzrBranchFormat.register_format(BzrBranchFormat5())
 BzrBranchFormat.register_format(BzrBranchFormat6())
 
+
 class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
 
@@ -724,7 +732,7 @@ class BzrBranch(Branch):
             raise UnlistableBranch(from_store)
 
     def __init__(self, transport, init=deprecated_nonce,
-                 relax_version_check=False):
+                 relax_version_check=False, format=None):
         """Create new branch object at a particular location.
 
         transport -- A Transport object, defining how to access files.
@@ -752,8 +760,8 @@ class BzrBranch(Branch):
                 # this is slower than before deprecation, oh well never mind.
                 # -> its deprecated.
                 self._initialize(transport.base)
-        self._check_format(relax_version_check)
         self._find_modes()
+        self._check_format(relax_version_check, format)
 
         def get_store(name, compressed=True, prefixed=False):
             relpath = self._rel_controlfilename(safe_unicode(name))
@@ -967,7 +975,7 @@ class BzrBranch(Branch):
         if not self._set_file_mode:
             self._file_mode = None
 
-    def _check_format(self, relax_version_check):
+    def _check_format(self, relax_version_check, format):
         """Check this branch format is supported.
 
         The format level is stored, as an integer, in
@@ -975,11 +983,13 @@ class BzrBranch(Branch):
 
         In the future, we might need different in-memory Branch
         classes to support downlevel branches.  But not yet.
+
+        The format parameter is either None or the branch format class
+        used to open this branch.
         """
-        try:
-            fmt = self.controlfile('branch-format', 'r').read()
-        except NoSuchFile:
-            raise NotBranchError(path=self.base)
+        if format is None:
+            format = BzrBranchFormat.find_format(self._transport)
+        fmt = format.get_format_string()
         mutter("got branch format %r", fmt)
         if fmt == BZR_BRANCH_FORMAT_6:
             self._branch_format = 6

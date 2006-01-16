@@ -36,6 +36,7 @@ def has_revision(branch, revision_id):
     except bzrlib.errors.NoSuchRevision:
         return False
 
+
 def fetch_steps(self, br_a, br_b, writable_a):
     """A foreign test method for testing fetch locally and remotely."""
     def new_branch(name):
