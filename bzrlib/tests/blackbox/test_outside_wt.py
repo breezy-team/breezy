@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2006 by Canonical Ltd
 # -*- coding: utf-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
@@ -16,14 +16,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""\
-Black-box tests for running bzr outside of a working tree.
-"""
+"""Black-box tests for running bzr outside of a working tree."""
 
 import os
-import sys
 
-from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseInTempDir
 
 
