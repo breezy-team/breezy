@@ -1,3 +1,7 @@
 # This file is for listing TODOs for branches that are being worked on.
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
+
+ * add news - fixed --one with testskipped
+   branch formats are now tested uniformly, preventing regressions as new
+   formats come online.

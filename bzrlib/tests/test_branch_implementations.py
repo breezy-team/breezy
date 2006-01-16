@@ -35,6 +35,7 @@ from bzrlib.tests import TestCase, TestCaseInTempDir, TestSkipped
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
+from bzrlib.transport import get_transport
 from bzrlib.revision import NULL_REVISION
 
 # TODO: Make a branch using basis branch, and check that it 
@@ -427,7 +428,8 @@ class TestFormat(TestCaseWithBranch):
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
         made_branch = self.make_branch('.')
+        t = get_transport('.')
         self.assertEqual(self.branch_format,
-                         branch.BzrBranchFormat.find_format('.'))
+                         branch.BzrBranchFormat.find_format(t))
         opened_branch = branch.Branch.open('.')
         self.assertEqual(made_branch._branch_format, opened_branch._branch_format)

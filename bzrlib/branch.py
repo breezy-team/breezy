@@ -534,10 +534,9 @@ class BzrBranchFormat(object):
     """The known formats."""
 
     @classmethod
-    def find_format(klass, url):
+    def find_format(klass, transport):
         """Return the format registered for URL."""
-        t = get_transport(url)
-        return klass._formats[t.get(".bzr/branch-format").read()]
+        return klass._formats[transport.get(".bzr/branch-format").read()]
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""

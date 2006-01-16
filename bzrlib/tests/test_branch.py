@@ -25,12 +25,12 @@ also see this file.
 
 import bzrlib.branch as branch
 from bzrlib.tests import TestCase, TestCaseInTempDir
-
+from bzrlib.transport import get_transport
 
 class TestDefaultFormat(TestCase):
 
     def test_get_set_default_initializer(self):
-        old_initializer = Branch.get_default_initializer()
+        old_initializer = branch.Branch.get_default_initializer()
         # default is BzrBranch._initialize
         self.assertEqual(branch.BzrBranch._initialize, old_initializer)
         def recorder(url):
@@ -54,7 +54,8 @@ class TestBzrBranchFormat(TestCaseInTempDir):
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
             format.initialize(url)
-            found_format = branch.BzrBranchFormat.find_format(url)
+            t = get_transport(url)
+            found_format = branch.BzrBranchFormat.find_format(t)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(branch.BzrBranchFormat5(), "foo")
         check_format(branch.BzrBranchFormat6(), "bar")
