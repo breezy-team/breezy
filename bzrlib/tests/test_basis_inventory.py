@@ -15,14 +15,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.xml5 import serializer_v5
 
+
 class TestBasisInventory(TestCaseInTempDir):
 
     def test_create(self):
-
         # Make sure the basis file is created by a commit
         b = Branch.initialize(u'.')
         t = b.working_tree()

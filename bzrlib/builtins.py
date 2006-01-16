@@ -792,7 +792,7 @@ class cmd_diff(Command):
         if revision is not None:
             if b2 is not None:
                 raise BzrCommandError("Can't specify -r with two branches")
-            if len(revision) == 1:
+            if (len(revision) == 1) or (revision[1].spec is None):
                 return show_diff(tree.branch, revision[0], specific_files=file_list,
                                  external_diff_options=diff_options)
             elif len(revision) == 2:

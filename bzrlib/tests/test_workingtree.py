@@ -67,13 +67,13 @@ class TestWorkingTree(TestCaseInTempDir):
         branch = Branch.initialize(u'.')
         wt, relpath = WorkingTree.open_containing()
         self.assertEqual('', relpath)
-        self.assertEqual(wt.basedir, branch.base)
+        self.assertEqual(wt.basedir + '/', branch.base)
         wt, relpath = WorkingTree.open_containing(u'.')
         self.assertEqual('', relpath)
-        self.assertEqual(wt.basedir, branch.base)
+        self.assertEqual(wt.basedir + '/', branch.base)
         wt, relpath = WorkingTree.open_containing('./foo')
         self.assertEqual('foo', relpath)
-        self.assertEqual(wt.basedir, branch.base)
+        self.assertEqual(wt.basedir + '/', branch.base)
         # paths that are urls are just plain wrong for working trees.
         self.assertRaises(NotBranchError,
                           WorkingTree.open_containing, 
@@ -83,13 +83,13 @@ class TestWorkingTree(TestCaseInTempDir):
         branch = Branch.initialize(u'.')
         tree = WorkingTree(branch.base, branch)
         self.assertEqual(branch, tree.branch)
-        self.assertEqual(branch.base, tree.basedir)
+        self.assertEqual(branch.base, tree.basedir + '/')
     
     def test_construct_without_branch(self):
         branch = Branch.initialize(u'.')
         tree = WorkingTree(branch.base)
         self.assertEqual(branch.base, tree.branch.base)
-        self.assertEqual(branch.base, tree.basedir)
+        self.assertEqual(branch.base, tree.basedir + '/')
 
     def test_basic_relpath(self):
         # for comprehensive relpath tests, see whitebox.py.
@@ -171,3 +171,17 @@ class TestWorkingTree(TestCaseInTempDir):
         self.assertEquals(list(tree.unknowns()),
                           ['hello.txt'])
 
+    def test_hashcache(self):
+        from bzrlib.tests.test_hashcache import pause
+        b = Branch.initialize(u'.')
+        tree = WorkingTree(u'.', b)
+        self.build_tree(['hello.txt',
+                         'hello.txt~'])
+        tree.add('hello.txt')
+        pause()
+        sha = tree.get_file_sha1(tree.path2id('hello.txt'))
+        self.assertEqual(1, tree._hashcache.miss_count)
+        tree2 = WorkingTree(u'.', b)
+        sha2 = tree2.get_file_sha1(tree2.path2id('hello.txt'))
+        self.assertEqual(0, tree2._hashcache.miss_count)
+        self.assertEqual(1, tree2._hashcache.hit_count)

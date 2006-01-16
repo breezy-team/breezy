@@ -427,6 +427,7 @@ def ensure_config_dir_exists(path=None):
         mutter('creating config directory: %r', path)
         os.mkdir(path)
 
+
 def config_dir():
     """Return per-user configuration directory.
 

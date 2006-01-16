@@ -197,8 +197,6 @@ class WorkingTree(bzrlib.tree.Tree):
         self.branch = branch
         self.basedir = realpath(basedir)
 
-        self._set_inventory(self.read_working_inventory())
-
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
         # two possible ways offer themselves : in self._unlock, write the cache
@@ -212,6 +210,8 @@ class WorkingTree(bzrlib.tree.Tree):
         if hc.needs_write:
             mutter("write hc")
             hc.write()
+
+        self._set_inventory(self.read_working_inventory())
 
     def _set_inventory(self, inv):
         self._inventory = inv
@@ -318,6 +318,7 @@ class WorkingTree(bzrlib.tree.Tree):
     def get_file_size(self, file_id):
         return os.path.getsize(self.id2abspath(file_id))
 
+    @needs_read_lock
     def get_file_sha1(self, file_id):
         path = self._inventory.id2path(file_id)
         return self._hashcache.get_sha1(path)
@@ -913,6 +914,8 @@ class WorkingTree(bzrlib.tree.Tree):
         between multiple working trees, i.e. via shared storage, then we 
         would probably want to lock both the local tree, and the branch.
         """
+        if self._hashcache.needs_write and self.branch._lock_count==1:
+            self._hashcache.write()
         return self.branch.unlock()
 
     @needs_write_lock

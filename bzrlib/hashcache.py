@@ -32,10 +32,10 @@ CACHE_HEADER = "### bzr hashcache v5\n"
 import os, stat, time
 import sha
 
-from bzrlib.osutils import sha_file
+from bzrlib.osutils import sha_file, pathjoin
 from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
-from bzrlib.osutils import pathjoin
+from bzrlib.errors import BzrError
 
 
 FP_MODE_COLUMN = 5
@@ -170,7 +170,6 @@ class HashCache(object):
         if stat.S_ISREG(mode):
             digest = sha_file(file(abspath, 'rb', buffering=65000))
         elif stat.S_ISLNK(mode):
-            link_target = os.readlink(abspath)
             digest = sha.new(os.readlink(abspath)).hexdigest()
         else:
             raise BzrError("file %r: unknown file stat mode: %o"%(abspath,mode))
