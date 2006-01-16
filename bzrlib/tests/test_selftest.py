@@ -200,3 +200,27 @@ class TestTransportProviderAdapter(TestCase):
                          "TestTransportProviderAdapter."
                          "test_adapter_sets_transport_class(LocalRelpathServer)",
                          local_relpath_test.id())
+
+
+class TestBranchProviderAdapter(TestCase):
+    """A group of tests that test the branch implementation test adapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        from bzrlib.branch import BranchTestProviderAdapter
+        input_test = TestBranchProviderAdapter(
+            "test_adapted_tests")
+        server1 = "a"
+        server2 = "b"
+        formats = ["c", "d"]
+        adapter = BranchTestProviderAdapter(server1, server2, formats)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].branch_format, formats[0])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].branch_format, formats[1])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)

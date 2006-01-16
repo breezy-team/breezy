@@ -15,11 +15,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+from copy import deepcopy
 from cStringIO import StringIO
 import errno
 import os
 import shutil
 import sys
+from unittest import TestSuite
 from warnings import warn
 
 
@@ -29,7 +31,9 @@ from bzrlib.delta import compare_trees
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
-                           DivergedBranches, LockError, UnlistableStore,
+                           DivergedBranches, LockError, 
+                           UninitializableFormat,
+                           UnlistableStore,
                            UnlistableBranch, NoSuchFile, NotVersionedError,
                            NoWorkingTree)
 import bzrlib.inventory as inventory
@@ -47,6 +51,7 @@ from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions,
 from bzrlib.store import copy_all
 from bzrlib.store.text import TextStore
 from bzrlib.store.weave import WeaveStore
+from bzrlib.symbol_versioning import deprecated_nonce, deprecated_passed
 from bzrlib.testament import Testament
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
@@ -629,7 +634,7 @@ class BzrBranchFormat4(BzrBranchFormat):
 
     def initialize(self, url):
         """Format 4 branches cannot be created."""
-        raise NotImplementedError(self.initialize)
+        raise UninitializableFormat(self)
 
 
 class BzrBranchFormat5(BzrBranchFormat):
@@ -1267,6 +1272,35 @@ class BzrBranch(Branch):
 
 
 Branch.set_default_initializer(BzrBranch._initialize)
+
+
+class BranchTestProviderAdapter(object):
+    """A tool to generate a suite testing multiple branch formats at once.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_server, transport_readonly_server, and branch_format
+    classes into each copy. Each copy is also given a new id() to make it
+    easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, formats):
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self._formats = formats
+    
+    def adapt(self, test):
+        result = TestSuite()
+        for format in self._formats:
+            new_test = deepcopy(test)
+            new_test.transport_server = self._transport_server
+            new_test.transport_readonly_server = self._transport_readonly_server
+            new_test.branch_format = format
+            def make_new_test_id():
+                new_id = "%s(%s)" % (new_test.id(), format.__class__.__name__)
+                return lambda: new_id
+            new_test.id = make_new_test_id()
+            result.addTest(new_test)
+        return result
 
 
 class ScratchBranch(BzrBranch):

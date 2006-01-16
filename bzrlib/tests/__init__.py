@@ -46,6 +46,7 @@ import bzrlib.plugin
 import bzrlib.store
 import bzrlib.trace
 from bzrlib.transport import urlescape
+import bzrlib.transport
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.tests.treeshape import build_tree_contents
@@ -74,6 +75,9 @@ class EarlyStoppingTestResultAdapter(object):
         self._result = result
 
     def addError(self, test, err):
+        if (isinstance(err[1], TestSkipped) and 
+            getattr(self, "addSkipped", None) is not None):
+            return self.addSkipped(test, err)    
         self._result.addError(test, err)
         self._result.stop()
 
@@ -166,7 +170,7 @@ class _MyResult(unittest._TextTestResult):
         for test, err in errors:
             self.stream.writeln(self.separator1)
             self.stream.writeln("%s: %s" % (flavour, self.getDescription(test)))
-            if hasattr(test, '_get_log'):
+            if getattr(test, '_get_log', None) is not None:
                 print >>self.stream
                 print >>self.stream, \
                         ('vvvv[log from %s]' % test.id()).ljust(78,'-')
@@ -487,12 +491,12 @@ class TestCase(unittest.TestCase):
         if stdin is None:
             stdin = StringIO("")
         if stdout is None:
-            if hasattr(self, "_log_file"):
+            if getattr(self, "_log_file", None) is not None:
                 stdout = self._log_file
             else:
                 stdout = StringIO()
         if stderr is None:
-            if hasattr(self, "_log_file"):
+            if getattr(self, "_log_file", None is not None):
                 stderr = self._log_file
             else:
                 stderr = StringIO()
@@ -731,6 +735,8 @@ def test_suite():
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_xml',
                    ]
+    test_branch_implementations = [
+        'bzrlib.tests.test_branch_implementations']
     test_transport_implementations = [
         'bzrlib.tests.test_transport_implementations']
 
@@ -751,6 +757,15 @@ def test_suite():
         mod = _load_module_by_name(mod_name)
         for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
             suite.addTests(adapter.adapt(test))
+    from bzrlib.branch import BranchTestProviderAdapter
+    adapter = BranchTestProviderAdapter(
+        bzrlib.transport.local.LocalRelpathServer,
+        bzrlib.transport.local.LocalRelpathServer,
+        bzrlib.branch.BzrBranchFormat._formats.values())
+    for mod_name in test_branch_implementations:
+        mod = _load_module_by_name(mod_name)
+        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
+            suite.addTests(adapter.adapt(test))
     for mod_name in testmod_names:
         mod = _load_module_by_name(mod_name)
         suite.addTest(loader.loadTestsFromModule(mod))
@@ -761,7 +776,7 @@ def test_suite():
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
     for name, plugin in bzrlib.plugin.all_plugins().items():
-        if hasattr(plugin, 'test_suite'):
+        if getattr(plugin, 'test_suite', None) is not None:
             suite.addTest(plugin.test_suite())
     return suite
 

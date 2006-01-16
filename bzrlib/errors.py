@@ -480,3 +480,11 @@ class BzrBadParameter(BzrNewError):
     def __init__(self, param):
         BzrNewError.__init__(self)
         self.param = param
+
+
+class UninitializableFormat(BzrNewError):
+    """Format %(format)s cannot be initialised by this version of bzr."""
+
+    def __init__(self, format):
+        BzrNewError.__init__(self)
+        self.format = format
