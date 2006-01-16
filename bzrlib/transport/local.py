@@ -24,8 +24,9 @@ from stat import ST_MODE, S_ISDIR, ST_SIZE
 import tempfile
 import urllib
 
+import bzrlib.errors as errors
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport, Server
+from bzrlib.transport import Transport, Server, urlescape, urlunescape
 from bzrlib.osutils import abspath, realpath, normpath, pathjoin, rename
 
 
@@ -61,7 +62,7 @@ class LocalTransport(Transport):
         This can be supplied with a string or a list
         """
         assert isinstance(relpath, basestring), (type(relpath), relpath)
-        return pathjoin(self.base, urllib.unquote(relpath).decode('utf-8'))
+        return pathjoin(self.base, urlunescape(relpath))
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.

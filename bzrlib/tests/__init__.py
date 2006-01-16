@@ -649,7 +649,7 @@ class TestCaseInTempDir(TestCase):
                     end = os.linesep
                 else:
                     raise BzrError('Invalid line ending request %r' % (line_endings,))
-                content = "contents of %s%s" % (name, end)
+                content = "contents of %s%s" % (name.encode('utf-8'), end)
                 transport.put(urlescape(name), StringIO(content))
 
     def build_tree_contents(self, shape):

@@ -23,9 +23,9 @@ import urlparse
 from warnings import warn
 
 from bzrlib.transport import Transport, Server
+import bzrlib.errors as errors
 from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
                            TransportError, ConnectionError)
-from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 
@@ -110,6 +110,8 @@ class HttpTransport(Transport):
         This can be supplied with a string or a list
         """
         assert isinstance(relpath, basestring)
+        if isinstance(relpath, unicode):
+            raise errors.InvalidURL(relpath, 'paths must not be unicode.')
         if isinstance(relpath, basestring):
             relpath_parts = relpath.split('/')
         else:
@@ -189,7 +191,7 @@ class HttpTransport(Transport):
             if e.code == 404:
                 raise NoSuchFile(path, extra=e)
             raise
-        except (BzrError, IOError), e:
+        except IOError, e:
             if hasattr(e, 'errno'):
                 mutter('io error: %s %s for has url: %r', 
                     e.errno, errno.errorcode.get(e.errno), path)

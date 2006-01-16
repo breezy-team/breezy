@@ -22,6 +22,7 @@ as remote (such as http or sftp).
 import errno
 from copy import deepcopy
 import sys
+import urllib
 from unittest import TestSuite
 
 from bzrlib.trace import mutter
@@ -461,9 +462,18 @@ def register_lazy_transport(scheme, module, classname):
 def urlescape(relpath):
     """Escape relpath to be a valid url."""
     # TODO utf8 it first. utf8relpath = relpath.encode('utf8')
-    import urllib
     return urllib.quote(relpath.encode('utf8'))
 
+
+def urlunescape(url):
+    """Convert a url path back into a relative path."""
+    unquoted = urllib.unquote(url)
+    try:
+        unicode_path = unquoted.decode('utf-8')
+    except UnicodeError, e:
+        raise errors.InvalidURL(url, e)
+    return unicode_path
+    
 
 class Server(object):
     """A Transport Server.

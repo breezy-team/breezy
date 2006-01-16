@@ -184,6 +184,10 @@ class PermissionDenied(PathError):
     """Permission denied: %(path)r%(extra)s"""
 
 
+class InvalidURL(PathError):
+    """Invalid url supplied to transport: %(path)r%(extra)s"""
+
+
 class PathNotChild(BzrNewError):
     """Path %(path)r is not a child of path %(base)r%(extra)s"""
     def __init__(self, path, base, extra=None):

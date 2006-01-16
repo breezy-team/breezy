@@ -38,7 +38,7 @@ from bzrlib.errors import (ConnectionError,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename
 from bzrlib.trace import mutter, warning, error
-from bzrlib.transport import Transport, Server, urlescape
+from bzrlib.transport import Transport, Server, urlescape, urlunescape
 import bzrlib.ui
 
 try:
@@ -278,7 +278,7 @@ class SFTPTransport (Transport):
         """
         # FIXME: share the common code across transports
         assert isinstance(relpath, basestring)
-        relpath = urllib.unquote(relpath).split('/')
+        relpath = urlunescape(relpath).split('/')
         basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
