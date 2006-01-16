@@ -34,7 +34,7 @@ from bzrlib.errors import (ConnectionError,
                            FileExists, 
                            TransportNotPossible, NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError
+                           LockError, InvalidURL
                            )
 from bzrlib.osutils import pathjoin, fancy_rename
 from bzrlib.trace import mutter, warning, error
@@ -601,7 +601,7 @@ class SFTPTransport (Transport):
     def _unparse_url(self, path=None):
         if path is None:
             path = self._path
-        path = urllib.quote(path)
+        path = urlescape(path)
         if path.startswith('/'):
             path = '/%2F' + path[1:]
         else:
@@ -616,7 +616,9 @@ class SFTPTransport (Transport):
 
     def _split_url(self, url):
         if isinstance(url, unicode):
-            url = url.encode('utf-8')
+            # TODO: Disallow unicode urls
+            #raise InvalidURL(url, 'urls must not be unicode.')
+            url = url.encode('ascii')
         (scheme, netloc, path, params,
          query, fragment) = urlparse.urlparse(url, allow_fragments=False)
         assert scheme == 'sftp'
@@ -639,7 +641,7 @@ class SFTPTransport (Transport):
                 raise TransportError('%s: invalid port number' % port)
         host = urllib.unquote(host)
 
-        path = urllib.unquote(path)
+        path = urlunescape(path)
 
         # the initial slash should be removed from the path, and treated
         # as a homedir relative path (the path begins with a double slash
