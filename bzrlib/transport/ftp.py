@@ -24,19 +24,19 @@ NAT and other firewalls, so it's best to use it unless you explicitly want
 active, in which case aftp:// will be your friend.
 """
 
-from bzrlib.transport import Transport
+from cStringIO import StringIO
+import errno
+import ftplib
+import os
+import urllib
+import urlparse
+import stat
+from warnings import warn
 
+
+from bzrlib.transport import Transport
 from bzrlib.errors import (TransportNotPossible, TransportError,
                            NoSuchFile, FileExists)
-
-import os, errno
-from cStringIO import StringIO
-import ftplib
-import urlparse
-import urllib
-import stat
-
-from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 
 
@@ -304,3 +304,9 @@ class FtpTransport(Transport):
         :return: A lock object, which should be passed to Transport.unlock()
         """
         return self.lock_read(relpath)
+
+
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    warn("There are no FTP transport provider tests yet.")
+    return []

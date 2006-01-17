@@ -25,7 +25,7 @@ import tempfile
 import urllib
 
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport
+from bzrlib.transport import Transport, Server
 from bzrlib.osutils import abspath, realpath, normpath, pathjoin, rename
 
 
@@ -38,7 +38,10 @@ class LocalTransport(Transport):
             base = base[7:]
         # realpath is incompatible with symlinks. When we traverse
         # up we might be able to normpath stuff. RBC 20051003
-        super(LocalTransport, self).__init__(normpath(abspath(base)))
+        base = normpath(abspath(base))
+        if base[-1] != '/':
+            base = base + '/'
+        super(LocalTransport, self).__init__(base)
 
     def should_cache(self):
         return False
@@ -66,7 +69,9 @@ class LocalTransport(Transport):
         from bzrlib.osutils import relpath
         if abspath is None:
             abspath = u'.'
-        return relpath(self.base, abspath)
+        if abspath.endswith('/'):
+            abspath = abspath[:-1]
+        return relpath(self.base[:-1], abspath)
 
     def has(self, relpath):
         return os.access(self.abspath(relpath), os.F_OK)
@@ -129,7 +134,10 @@ class LocalTransport(Transport):
         """Append the text in the file-like object into the final
         location.
         """
-        fp = open(self.abspath(relpath), 'ab')
+        try:
+            fp = open(self.abspath(relpath), 'ab')
+        except (IOError, OSError),e:
+            self._translate_error(e, relpath)
         self._pump(f, fp)
 
     def copy(self, rel_from, rel_to):
@@ -250,3 +258,36 @@ class ScratchTransport(LocalTransport):
     def __del__(self):
         shutil.rmtree(self.base, ignore_errors=True)
         mutter("%r destroyed" % self)
+
+
+class LocalRelpathServer(Server):
+    """A pretend server for local transports, using relpaths."""
+
+    def get_url(self):
+        """See Transport.Server.get_url."""
+        return "."
+
+
+class LocalAbspathServer(Server):
+    """A pretend server for local transports, using absolute paths."""
+
+    def get_url(self):
+        """See Transport.Server.get_url."""
+        return os.path.abspath("")
+
+
+class LocalURLServer(Server):
+    """A pretend server for local transports, using file:// urls."""
+
+    def get_url(self):
+        """See Transport.Server.get_url."""
+        # FIXME: \ to / on windows
+        return "file://%s" % os.path.abspath("")
+
+
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    return [(LocalTransport, LocalRelpathServer),
+            (LocalTransport, LocalAbspathServer),
+            (LocalTransport, LocalURLServer),
+            ]
