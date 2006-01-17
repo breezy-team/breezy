@@ -539,7 +539,6 @@ class FunctionalMergeTest(TestCaseInTempDir):
         from bzrlib.add import smart_add_tree
         from bzrlib.clone import copy_branch
         from bzrlib.merge import merge
-        from transform import 
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
         branch = Branch.initialize("original")
