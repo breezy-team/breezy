@@ -1030,6 +1030,7 @@ class Merge3Merger(object):
         merge3_iterator = iter_merge3(retval)
         self.tt.create_file(merge3_iterator, trans_id)
         if retval["text_conflicts"] is True:
+            self.conflicts.append(('text conflict', (file_id)))
             file_group = [trans_id]
             file_group.append(self.conflict_file(trans_id, this_lines, "THIS"))
             file_group.append(self.conflict_file(trans_id, base_lines, "BASE"))

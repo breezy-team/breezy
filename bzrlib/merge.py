@@ -352,7 +352,7 @@ class Merger(object):
 
     def do_merge(self):
         merge = Merge3Merger(self.this_tree, self.base_tree, self.other_tree)
-        return merge.conflicts
+        return len(merge.conflicts)
 
     def regen_inventory(self, new_entries):
         old_entries = self.this_branch.working_tree().read_working_inventory()
