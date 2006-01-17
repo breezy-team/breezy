@@ -935,7 +935,10 @@ class Merge3Merger(object):
         self.tt = TreeTransform(working_tree)
         try:
             for file_id in all_ids:
-                self.merge_text(file_id)
+                trans_id = self.tt.get_trans_id(file_id)
+                file_status = self.merge_text(file_id, trans_id)
+                self.merge_executable(file_id, trans_id, file_status)
+                
             resolve_conflicts(self.tt)
             self.tt.apply()
         finally:
@@ -959,6 +962,12 @@ class Merge3Merger(object):
         return tree.get_file_sha1(file_id)
 
     @staticmethod
+    def executable(tree, file_id):
+        if file_id not in tree:
+            return None
+        return tree.is_executable(file_id)
+
+    @staticmethod
     def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):
         """Do a three-way test on a scalar.
         Return "this", "other" or "conflict", depending whether a value wins.
@@ -978,13 +987,12 @@ class Merge3Merger(object):
             assert key_this == key_base
             return "other"
 
-    def merge_text(self, file_id):
+    def merge_text(self, file_id, trans_id):
         winner = self.scalar_three_way(self.this_tree, self.base_tree, 
                                        self.other_tree, file_id, 
                                        self.contents_sha1)
         if winner == "this":
-            return
-        trans_id = self.tt.get_trans_id(file_id)
+            return "unmodified"
         if file_id in self.this_tree:
             self.tt.delete_contents(trans_id)
         else:
@@ -993,9 +1001,10 @@ class Merge3Merger(object):
             self.tt.adjust_path(entry.name, parent_id, trans_id)
         if winner == "other":
             self.tt.create_file(self.other_tree.get_file(file_id), trans_id)
-            return
+            return "modified"
         assert winner == "conflict"
         self.text_merge(file_id, trans_id)
+        return "modified" 
 
     def get_lines(self, tree, file_id):
         if file_id in tree:
@@ -1038,8 +1047,31 @@ class Merge3Merger(object):
             file_group.append(self.conflict_file(trans_id, base_lines, "BASE"))
             file_group.append(self.conflict_file(trans_id, other_lines,
                                                  "OTHER"))
-            
+
+           
     def conflict_file(self, trans_id, lines, suffix):
         name = self.tt.final_name(trans_id) + "." + suffix
         parent_id = self.tt.final_parent(trans_id)
         return self.tt.new_file(name, parent_id, lines)
+
+    def merge_executable(self, file_id, trans_id, file_status):
+        if file_status == "deleted":
+            return
+        winner = self.scalar_three_way(self.this_tree, self.base_tree, 
+                                       self.other_tree, file_id, 
+                                       self.executable)
+        if winner == "conflict":
+        # There must be a None in here, if we have a conflict, but we
+        # need executability since file status was not deleted.
+            if self.other_tree.is_executable(file_id) is None:
+                winner == "this"
+            else:
+                winner == "other"
+        if winner == "this":
+            if file_status == "modified":
+                executability = self.this_tree.is_executable(file_id)
+                self.tt.set_executability(executability, trans_id)
+        else:
+            assert winner == "other"
+            executability = self.other_tree.is_executable(file_id)    
+            self.tt.set_executability(executability, trans_id)
