@@ -744,7 +744,7 @@ def new_by_entry(tt, entry, parent_id, tree):
     name = entry.name
     kind = entry.kind
     if kind == 'file':
-        contents = tree.get_file_lines(entry.file_id)
+        contents = tree.get_file(entry.file_id).readlines()
         executable = tree.is_executable(entry.file_id)
         return tt.new_file(name, parent_id, contents, entry.file_id, 
                            executable)
@@ -756,7 +756,7 @@ def new_by_entry(tt, entry, parent_id, tree):
 
 def create_by_entry(tt, entry, tree, trans_id):
     if entry.kind == "file":
-        tt.create_file(tree.get_file_lines(entry.file_id), trans_id)
+        tt.create_file(tree.get_file(entry.file_id).readlines(), trans_id)
         tt.set_executability(entry.executable, trans_id)
     elif entry.kind == "symlink":
         tt.create_symlink(entry.symlink_target, trans_id)
@@ -997,7 +997,7 @@ class Merge3Merger(object):
 
     def get_lines(self, tree, file_id):
         if file_id in tree:
-            return tree.get_file_lines(file_id)
+            return tree.get_file(file_id).readlines()
         else:
             return []
 
