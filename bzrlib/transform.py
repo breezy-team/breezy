@@ -929,6 +929,7 @@ class Merge3Merger(object):
         self.base_tree = base_tree
         self.other_tree = other_tree
         self.conflicts = []
+        self.reprocess = reprocess
 
         all_ids = set(base_tree)
         all_ids.update(other_tree)
@@ -1055,7 +1056,7 @@ class Merge3Merger(object):
         return self.tt.new_file(name, parent_id, lines)
 
     def merge_executable(self, file_id, trans_id, file_status):
-        if file_status == "deleted":
+        if file_status == "deleted" or self.tt.final_kind(trans_id) != "file":
             return
         winner = self.scalar_three_way(self.this_tree, self.base_tree, 
                                        self.other_tree, file_id, 
