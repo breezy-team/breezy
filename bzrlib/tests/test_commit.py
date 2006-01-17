@@ -201,8 +201,7 @@ class TestCommit(TestCaseInTempDir):
         self.check_inventory_shape(b.get_revision_inventory(r3),
                                    ['a', 'a/hello', 'a/b'])
 
-        b.working_tree().move([os.sep.join(['a', 'hello'])],
-               os.sep.join(['a', 'b']))
+        b.working_tree().move(['a/hello'], 'a/b')
         r4 = 'test@rev-4'
         b.working_tree().commit('four', rev_id=r4, allow_pointless=False)
         self.check_inventory_shape(b.working_tree().read_working_inventory(),

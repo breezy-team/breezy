@@ -1,4 +1,4 @@
-UNRELEASED CHANGES
+bzr 0.7rc1 2006-01-09
 
   CHANGES:
 
@@ -35,8 +35,15 @@ UNRELEASED CHANGES
       or
       sftp://user:pass@host:port//absolute/path
 
+    * Permissions on files underneath .bzr/ are inherited from the .bzr 
+      directory. So for a shared repository, simply doing 'chmod -R g+w .bzr/'
+      will mean that future file will be created with group write permissions.
+
     * configure.in and config.guess are no longer in the builtin default 
       ignore list.
+
+    * '.sw[nop]' pattern ignored, to ignore vim swap files for nameless
+      files.  (John Arbash Meinel, Martin Pool)
 
   IMPROVEMENTS:
 
@@ -146,6 +153,9 @@ UNRELEASED CHANGES
     * Fix bugs in bzr status display of non-ascii characters.  (Martin 
       Pool)
 
+    * Remove Makefile.in from default ignore list.  (#6413, Tollef Fog 
+      Heen, Martin Pool)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
@@ -185,6 +195,21 @@ UNRELEASED CHANGES
     * Tests can now run TestSkipped if they can't execute for any reason.
       (Martin Pool) (NB: TestSkipped should only be raised for correctable
       reasons - see the wiki spec ImprovingBzrTestSuite).
+
+    * Test sftp with relative, absolute-in-homedir and absolute-not-in-homedir
+      paths for the transport tests. Introduce blackbox remote sftp tests that
+      test the same permutations. (Robert Collins, Robey Pointer)
+
+    * Transport implementation tests are now independent of the local file
+      system, which allows tests for esoteric transports, and for features
+      not available in the local file system. They also repeat for variations
+      on the URL scheme that can introduce issues in the transport code,
+      see bzrlib.transport.TransportTestProviderAdapter() for this.
+      (Robert Collins).
+
+    * TestCase.build_tree uses the transport interface to build trees, pass
+      in a transport parameter to give it an existing connection.
+      (Robert Collins).
 
   INTERNALS:
 
@@ -249,7 +274,14 @@ UNRELEASED CHANGES
     * Simplify handling of DivergedBranches in cmd_pull().
       (Michael Ellerman)
 		   
-   
+    * Deprecated functions and methods can now be marked as such using the 
+      bzrlib.symbol_versioning module. Marked method have their docstring
+      updated and will issue a DeprecationWarning using the warnings module
+      when they are used. (Robert Collins)
+
+    * bzrlib.osutils.safe_unicode now exists to provide parameter coercion
+      for functions that need unicode strings. (Robert Collins)
+
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:
