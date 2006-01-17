@@ -41,6 +41,7 @@ from bzrlib.revision import is_ancestor, NULL_REVISION
 from bzrlib.osutils import rename, pathjoin
 from bzrlib.revision import common_ancestor, MultipleRevisionSources
 from bzrlib.errors import NoSuchRevision
+from bzrlib.transform import Merge3Merger
 
 # TODO: Report back as changes are merged in
 
@@ -539,30 +540,8 @@ class Merger(object):
                                                 self.this_branch)
 
     def do_merge(self):
-        def get_inventory(tree):
-            return tree.inventory
-        
-        inv_changes = merge_flex(self.this_tree, self.base_tree, 
-                                 self.other_tree,
-                                 generate_changeset, get_inventory,
-                                 self.conflict_handler,
-                                 merge_factory=self.merge_factory, 
-                                 interesting_ids=self.interesting_ids)
-
-        adjust_ids = []
-        for id, path in inv_changes.iteritems():
-            if path is not None:
-                if path == u'.':
-                    path = u''
-                else:
-                    assert path.startswith('.' + '/') or path.startswith('.' + '\\'), "path is %s" % path
-                path = path[2:]
-            adjust_ids.append((path, id))
-        if len(adjust_ids) > 0:
-            self.this_branch.working_tree().set_inventory(self.regen_inventory(adjust_ids))
-        conflicts = self.conflict_handler.conflicts
-        self.conflict_handler.finalize()
-        return conflicts
+        merge = Merge3Merger(self.this_tree, self.base_tree, self.other_tree)
+        return merge.conflicts
 
     def regen_inventory(self, new_entries):
         old_entries = self.this_branch.working_tree().read_working_inventory()
