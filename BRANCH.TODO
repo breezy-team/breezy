@@ -1,14 +1,14 @@
 # This file is for listing TODOs for branches that are being worked on.
 # It should ALWAYS be empty in the mainline or in integration branches.
-# 
- * Update the tests - all tests that were for branch and now check 
-   branch.control_files.something, should be made into tests for
-   lockable files. mostly Done, grep for FIXME in the diff.
- * Clarify what should happen with transactions - there are two issues
-   - the tests for branch transactions are no longer branch api level, rather they
-     are bzrbranch -which has a control_files attribute- specific.
-   - audit the new code to ensure correct unlocking in failures where
-     we are holding two locks at once. (i.e. branch lock and repo lock).
- * test_working_tree tests should not peek in branch.control_files.
- * The needs_read_lock decorators have been duplicated I think, unduplicate
-   them again.
+
+The purpose of this branch is to separate the storage of history within a
+branch from the logical identity of the branch itself (being the tip
+pointer and revision-history).
+
+The major refactoring here is that historical data (revisions, file
+weaves, etc) are stored not in the Branch itself but in
+`branch.repository`, which is a `Repository` object.
+
+All the immediately accessible history for a Branch is stored in its
+repository, but the repository might hold information on multiple
+branches, to implement what's called "shared storage".

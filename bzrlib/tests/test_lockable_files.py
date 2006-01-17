@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.tests import TestCaseInTempDir
-from bzrlib.transport import get_transport
-from bzrlib.transactions import PassThroughTransaction, ReadOnlyTransaction
-from bzrlib.lockable_files import LockableFiles
-from bzrlib.errors import NoSuchFile, ReadOnlyError
 from StringIO import StringIO
 
+from bzrlib.branch import Branch
+from bzrlib.errors import NoSuchFile, ReadOnlyError
+from bzrlib.lockable_files import LockableFiles
+from bzrlib.tests import TestCaseInTempDir
+from bzrlib.transactions import PassThroughTransaction, ReadOnlyTransaction
+from bzrlib.transport import get_transport
 
 class TestLockableFiles(TestCaseInTempDir):
 
@@ -80,6 +81,5 @@ class TestLockableFiles(TestCaseInTempDir):
         self.assertEqual('%25', self.lockable._escape('%'))
         
     def test__escape_empty(self):
-        branch = Branch.initialize('.')
         self.assertEqual('', self.lockable._escape(''))
 

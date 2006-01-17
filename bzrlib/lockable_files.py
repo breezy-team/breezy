@@ -15,22 +15,24 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+from osutils import file_iterator
+
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import LockError, ReadOnlyError
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
-from osutils import file_iterator
 
 class LockableFiles(object):
-    """Object representing a set of lockable files
+    """Object representing a set of files locked within the same scope
 
     _lock_mode
         None, or 'r' or 'w'
 
     _lock_count
         If _lock_mode is true, a positive count of the number of times the
-        lock has been taken.
+        lock has been taken *by this process*.  Others may have compatible 
+        read locks.
 
     _lock
         Lock object from bzrlib.lock.

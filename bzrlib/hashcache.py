@@ -32,12 +32,14 @@ CACHE_HEADER = "### bzr hashcache v5\n"
 import os, stat, time
 import sha
 
-from bzrlib.osutils import sha_file
+from bzrlib.osutils import sha_file, pathjoin
 from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
-from bzrlib.osutils import pathjoin
+from bzrlib.errors import BzrError
 
 
+FP_MTIME_COLUMN = 1
+FP_CTIME_COLUMN = 2
 FP_MODE_COLUMN = 5
 
 def _fingerprint(abspath):
@@ -170,16 +172,23 @@ class HashCache(object):
         if stat.S_ISREG(mode):
             digest = sha_file(file(abspath, 'rb', buffering=65000))
         elif stat.S_ISLNK(mode):
-            link_target = os.readlink(abspath)
             digest = sha.new(os.readlink(abspath)).hexdigest()
         else:
             raise BzrError("file %r: unknown file stat mode: %o"%(abspath,mode))
 
         now = int(time.time())
-        if file_fp[1] >= now or file_fp[2] >= now:
+        if file_fp[FP_MTIME_COLUMN] >= now or file_fp[FP_CTIME_COLUMN] >= now:
             # changed too recently; can't be cached.  we can
             # return the result and it could possibly be cached
             # next time.
+            #
+            # the point is that we only want to cache when we are sure that any
+            # subsequent modifications of the file can be detected.  If a
+            # modification neither changes the inode, the device, the size, nor
+            # the mode, then we can only distinguish it by time; therefore we
+            # need to let sufficient time elapse before we may cache this entry
+            # again.  If we didn't do this, then, for example, a very quick 1
+            # byte replacement in the file might go undetected.
             self.danger_count += 1 
             if cache_fp:
                 self.removed_count += 1

@@ -26,31 +26,21 @@ import bzrlib.xml5
 from bzrlib.tree import RevisionTree
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.testament import Testament
+from bzrlib.decorators import needs_read_lock, needs_write_lock
 
-
-def needs_read_lock(unbound):
-    """Decorate unbound to take out and release a read lock."""
-    def decorated(self, *args, **kwargs):
-        self.control_files.lock_read()
-        try:
-            return unbound(self, *args, **kwargs)
-        finally:
-            self.control_files.unlock()
-    return decorated
-
-
-def needs_write_lock(unbound):
-    """Decorate unbound to take out and release a write lock."""
-    def decorated(self, *args, **kwargs):
-        self.control_files.lock_write()
-        try:
-            return unbound(self, *args, **kwargs)
-        finally:
-            self.control_files.unlock()
-    return decorated
 
 
 class Repository(object):
+    """Repository holding history for one or more branches.
+
+    The repository holds and retrieves historical information including
+    revisions and file history.  It's normally accessed only by the Branch,
+    which views a particular line of development through that history.
+
+    The Repository builds on top of Stores and a Transport, which respectively 
+    describe the disk data format and the way of accessing the (possibly 
+    remote) disk.
+    """
 
     def __init__(self, transport, branch_format):
         object.__init__(self)

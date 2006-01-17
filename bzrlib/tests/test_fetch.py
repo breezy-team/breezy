@@ -181,22 +181,11 @@ class TestMergeFileHistory(TestCaseInTempDir):
 
 class TestHttpFetch(TestCaseWithWebserver):
 
-    def setUp(self):
-        super(TestHttpFetch, self).setUp()
-        self.weblogs = []
-
     def test_fetch(self):
         #highest indices a: 5, b: 7
         br_a, br_b = make_branches(self)
         br_rem_a = Branch.open(self.get_remote_url(br_a.base))
         fetch_steps(self, br_rem_a, br_b, br_a)
-
-    def log(self, *args):
-        """Capture web server log messages for introspection."""
-        super(TestHttpFetch, self).log(*args)
-        # if this call indicates a url being fetched, save it specially
-        if args[0].startswith("webserver"):
-            self.weblogs.append(args[3])
 
     def test_weaves_are_retrieved_once(self):
         self.build_tree(("source/", "source/file", "target/"))
@@ -213,21 +202,22 @@ class TestHttpFetch(TestCaseWithWebserver):
         # path.
         weave_suffix = 'weaves/ce/id.weave HTTP/1.1" 200 -'
         self.assertEqual(1,
-            len([log for log in self.weblogs if log.endswith(weave_suffix)]))
+            len([log for log in self.server.logs if log.endswith(weave_suffix)]))
         inventory_weave_suffix = 'inventory.weave HTTP/1.1" 200 -'
         self.assertEqual(1,
-            len([log for log in self.weblogs if log.endswith(
+            len([log for log in self.server.logs if log.endswith(
                 inventory_weave_suffix)]))
         # this r-h check test will prevent regressions, but it currently already 
         # passes, before the patch to cache-rh is applied :[
         revision_history_suffix = 'revision-history HTTP/1.1" 200 -'
         self.assertEqual(1,
-            len([log for log in self.weblogs if log.endswith(
+            len([log for log in self.server.logs if log.endswith(
                 revision_history_suffix)]))
-        self.weblogs = []
+        # FIXME naughty poking in there.
+        self.server.logs = []
         # check there is nothing more to fetch
         source = Branch.open(self.get_remote_url("source/"))
         self.assertEqual(greedy_fetch(target, source), (0, []))
-        self.failUnless(self.weblogs[0].endswith('branch-format HTTP/1.1" 200 -'))
-        self.failUnless(self.weblogs[1].endswith('revision-history HTTP/1.1" 200 -'))
-        self.assertEqual(2, len(self.weblogs))
+        self.failUnless(self.server.logs[0].endswith('branch-format HTTP/1.1" 200 -'))
+        self.failUnless(self.server.logs[1].endswith('revision-history HTTP/1.1" 200 -'))
+        self.assertEqual(2, len(self.server.logs))
