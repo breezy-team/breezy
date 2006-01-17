@@ -36,11 +36,20 @@ class TreeTransform(object):
         self._tree_id_paths = {}
         self._new_root = self.get_id_tree(tree.get_root_id())
         self.__done = False
+        self._limbodir = self._tree.branch.controlfilename('limbo')
+        os.mkdir(self._limbodir)
 
     def finalize(self):
         """Release the working tree lock, if held."""
         if self._tree is None:
             return
+        for trans_id, kind in self._new_contents.iteritems():
+            path = self._limbo_name(trans_id)
+            if kind == "directory":
+                os.rmdir(path)
+            else:
+                os.unlink(path)
+        os.rmdir(self._limbodir)
         self._tree.unlock()
         self._tree = None
 
@@ -134,14 +143,19 @@ class TreeTransform(object):
         Contents is an iterator of strings, all of which will be written
         to the target destination.
         """
-        unique_add(self._new_contents, trans_id, ('file', contents))
+        f = file(self._limbo_name(trans_id), 'wb')
+        for segment in contents:
+            f.write(segment)
+        f.close()
+        unique_add(self._new_contents, trans_id, 'file')
 
     def create_directory(self, trans_id):
         """Schedule creation of a new directory.
         
         See also new_directory.
         """
-        unique_add(self._new_contents, trans_id, ('directory',))
+        os.mkdir(self._limbo_name(trans_id))
+        unique_add(self._new_contents, trans_id, 'directory')
 
     def create_symlink(self, target, trans_id):
         """Schedule creation of a new symbolic link.
@@ -149,7 +163,8 @@ class TreeTransform(object):
         target is a bytestring.
         See also new_symlink.
         """
-        unique_add(self._new_contents, trans_id, ('symlink', target))
+        os.symlink(target, self._limbo_name(trans_id))
+        unique_add(self._new_contents, trans_id, 'symlink')
 
     def delete_contents(self, trans_id):
         """Schedule the contents of a path entry for deletion"""
@@ -215,7 +230,7 @@ class TreeTransform(object):
         corresponding contents insertion command)
         """
         if trans_id in self._new_contents:
-            return self._new_contents[trans_id][0]
+            return self._new_contents[trans_id]
         elif trans_id in self._removed_contents:
             raise NoSuchFile(None)
         else:
@@ -479,13 +494,10 @@ class TreeTransform(object):
         conflicts = self.find_conflicts()
         if len(conflicts) != 0:
             raise MalformedTransform(conflicts=conflicts)
-        os.mkdir(self._tree.branch.controlfilename('limbo'))
         limbo_inv = {}
         inv = self._tree.inventory
-        self._gen_new_contents()
         self._apply_removals(inv, limbo_inv)
         self._apply_insertions(inv, limbo_inv)
-        os.rmdir(self._tree.branch.controlfilename('limbo'))
         self._tree._write_inventory(inv)
         self.__done = True
         self.finalize()
@@ -494,27 +506,6 @@ class TreeTransform(object):
         """Generate the limbo name of a file"""
         limbo = self._tree.branch.controlfilename('limbo')
         return os.path.join(limbo, trans_id)
-
-    def _gen_new_contents(self):
-        """\
-        Store new file contents in limbo.
-        This is to avoid problems when the working tree is also one of the
-        input trees.
-        """
-        for trans_id, content in self._new_contents.iteritems():
-            kind = content[0]
-            path = self._limbo_name(trans_id)
-            if kind == 'file':
-                f = file(path, 'wb')
-                for segment in content[1]:
-                    f.write(segment)
-                f.close()
-            elif kind == 'directory':
-                os.mkdir(self._tree.abspath(path))
-            elif kind == 'symlink':
-                target = self._new_contents[trans_id][1]
-                os.symlink(target, self._tree.abspath(path))
-        
 
     def _apply_removals(self, inv, limbo_inv):
         """Perform tree operations that remove directory/inventory names.
@@ -564,7 +555,7 @@ class TreeTransform(object):
         limbo = self._tree.branch.controlfilename('limbo')
         for path, trans_id in self.new_paths():
             try:
-                kind = self._new_contents[trans_id][0]
+                kind = self._new_contents[trans_id]
             except KeyError:
                 kind = contents = None
             if trans_id in self._new_contents or self.path_changed(trans_id):
@@ -575,6 +566,8 @@ class TreeTransform(object):
                     # We may be renaming a dangling inventory id
                     if e.errno != errno.ENOENT:
                         raise
+                if trans_id in self._new_contents:
+                    del self._new_contents[trans_id]
 
             if trans_id in self._new_id:
                 if kind is None:

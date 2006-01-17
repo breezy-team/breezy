@@ -139,6 +139,7 @@ class TestTreeTransform(TestCaseInTempDir):
                          ('duplicate', newtip))
         self.assertEqual((result[1][0], result[1][2]), 
                          ('duplicate id', newtip))
+        transform2.finalize()
         transform3 = TreeTransform(self.wt)
         self.addCleanup(transform3.finalize)
         oz_id = transform3.get_id_tree('oz-id')
