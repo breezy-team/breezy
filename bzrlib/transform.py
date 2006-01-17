@@ -482,12 +482,39 @@ class TreeTransform(object):
         os.mkdir(self._tree.branch.controlfilename('limbo'))
         limbo_inv = {}
         inv = self._tree.inventory
+        self._gen_new_contents()
         self._apply_removals(inv, limbo_inv)
         self._apply_insertions(inv, limbo_inv)
         os.rmdir(self._tree.branch.controlfilename('limbo'))
         self._tree._write_inventory(inv)
         self.__done = True
         self.finalize()
+
+    def _limbo_name(self, trans_id):
+        """Generate the limbo name of a file"""
+        limbo = self._tree.branch.controlfilename('limbo')
+        return os.path.join(limbo, trans_id)
+
+    def _gen_new_contents(self):
+        """\
+        Store new file contents in limbo.
+        This is to avoid problems when the working tree is also one of the
+        input trees.
+        """
+        for trans_id, content in self._new_contents.iteritems():
+            kind = content[0]
+            path = self._limbo_name(trans_id)
+            if kind == 'file':
+                f = file(path, 'wb')
+                for segment in content[1]:
+                    f.write(segment)
+                f.close()
+            elif kind == 'directory':
+                os.mkdir(self._tree.abspath(path))
+            elif kind == 'symlink':
+                target = self._new_contents[trans_id][1]
+                os.symlink(target, self._tree.abspath(path))
+        
 
     def _apply_removals(self, inv, limbo_inv):
         """Perform tree operations that remove directory/inventory names.
@@ -540,22 +567,10 @@ class TreeTransform(object):
                 kind = self._new_contents[trans_id][0]
             except KeyError:
                 kind = contents = None
-            if kind == 'file':
-                contents = self._new_contents[trans_id][1]
-                f = file(self._tree.abspath(path), 'wb')
-                for segment in contents:
-                    f.write(segment)
-                f.close()
-            elif kind == 'directory':
-                os.mkdir(self._tree.abspath(path))
-            elif kind == 'symlink':
-                target = self._new_contents[trans_id][1]
-                os.symlink(target, self._tree.abspath(path))
-            elif kind is None and (trans_id in self._new_name or
-                                   trans_id in self._new_parent):
+            if trans_id in self._new_contents or self.path_changed(trans_id):
                 full_path = self._tree.abspath(path)
                 try:
-                    os.rename(os.path.join(limbo, trans_id), full_path)
+                    os.rename(self._limbo_name(trans_id), full_path)
                 except OSError, e:
                     # We may be renaming a dangling inventory id
                     if e.errno != errno.ENOENT:
