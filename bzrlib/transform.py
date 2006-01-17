@@ -896,3 +896,54 @@ def conflict_pass(tt, conflicts):
             tt.cancel_deletion(conflict[1])
         elif c_type == 'unversioned parent':
             tt.version_file(tt.get_tree_file_id(conflict[1]), conflict[1])
+
+def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):
+    """Do a three-way test on a scalar.
+    Return "this", "other" or "conflict", depending whether a value wins.
+    """
+    key_base = key(base_tree)
+    key_other = key(other_tree)
+    #if base == other, either they all agree, or only THIS has changed.
+    if key_base == key_other:
+        return "this"
+    key_this = key(this)
+    if key_this not in (key_base, key_other):
+        return "conflict"
+    # "Ambiguous clean merge"
+    elif key_this == key_other:
+        return "this"
+    else
+        assert key_this == key_base:
+        return "other"
+
+
+def three_way_merge(working_tree, base_tree, other_tree):
+    """Apply a three-way merge to a tree using a TreeTransform.
+    """
+    def parent(entry, file_id):
+        return entry.parent
+    def name(entry, file_id):
+        return entry.name
+    def contents_sha1(tree, file_id):
+        return tree.get_file_sha1(file_id)
+
+    all_ids = set(base_tree)
+    all_ids.update(other_tree)
+    tt = TreeTransform(working_tree):
+    try:
+        for inventory_id in all_ids:
+            
+            if file_id in working_tree.inventory:
+                trans_id = get_id_tree()
+                new_file = False
+            else:
+                trans_id = 
+                
+            sha1 = three_way_attr(working_tree, base_tree, other_tree,
+                                  file_id, contents_sha1)
+            if sha1 == "this":
+                pass
+            elif sha1 == "other":
+                other_tree
+    finally:
+        tt.finalize()
