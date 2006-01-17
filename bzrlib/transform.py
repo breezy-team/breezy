@@ -31,6 +31,7 @@ class TreeTransform(object):
         self._removed_contents = set()
         self._new_executability = {}
         self._new_id = {}
+        self._r_new_id = {}
         self._removed_id = set()
         self._tree_path_ids = {}
         self._tree_id_paths = {}
@@ -113,6 +114,22 @@ class TreeTransform(object):
         """
         return self.get_tree_path_id(self._tree.id2path(inventory_id))
 
+    def get_trans_id(self, file_id):
+        """\
+        Determine or set the transaction id associated with a file ID.
+        A new id is only created for file_ids that were never present.  If
+        a transaction has been unversioned, it is deliberately still returned.
+        (this will likely lead to an unversioned parent conflict.)
+        """
+        if file_id in self._r_new_id and self._r_new_id[file_id] is not None:
+            return self._r_new_id[file_id]
+        elif file_id in self._tree.inventory:
+            return self.get_id_tree(file_id)
+        else:
+            trans_id = self._assign_id()
+            self.version_file(file_id, trans_id)
+            return trans_id
+
     def canonical_path(self, path):
         """Get the canonical tree-relative path"""
         # don't follow final symlinks
@@ -193,6 +210,7 @@ class TreeTransform(object):
     def version_file(self, file_id, trans_id):
         """Schedule a file to become versioned."""
         unique_add(self._new_id, trans_id, file_id)
+        unique_add(self._r_new_id, file_id, trans_id)
 
     def new_paths(self):
         """Determine the paths of all new and changed files"""
