@@ -6,6 +6,7 @@ from bzrlib.inventory import InventoryEntry
 from bzrlib import BZRDIR
 from bzrlib.delta import compare_trees
 import errno
+from merge3 import Merge3
 
 ROOT_PARENT = "root-parent"
 
@@ -916,53 +917,129 @@ def conflict_pass(tt, conflicts):
         elif c_type == 'unversioned parent':
             tt.version_file(tt.get_tree_file_id(conflict[1]), conflict[1])
 
-def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):
-    """Do a three-way test on a scalar.
-    Return "this", "other" or "conflict", depending whether a value wins.
-    """
-    key_base = key(base_tree)
-    key_other = key(other_tree)
-    #if base == other, either they all agree, or only THIS has changed.
-    if key_base == key_other:
-        return "this"
-    key_this = key(this)
-    if key_this not in (key_base, key_other):
-        return "conflict"
-    # "Ambiguous clean merge"
-    elif key_this == key_other:
-        return "this"
-    else
-        assert key_this == key_base:
-        return "other"
 
+class Merge3Merger(object):
+    requires_base = True
+    supports_reprocess = True
+    def __init__(self, working_tree, base_tree, other_tree):
+        object.__init__(self)
+        self.working_tree = working_tree
+        self.base_tree = base_tree
+        self.other_tree = other_tree
+        self.conflicts = []
 
-def three_way_merge(working_tree, base_tree, other_tree):
-    """Apply a three-way merge to a tree using a TreeTransform.
-    """
+        all_ids = set(base_tree)
+        all_ids.update(other_tree)
+        self.tt = TreeTransform(working_tree)
+        try:
+            for file_id in all_ids:
+                self.merge_text(file_id)
+            resolve_conflicts(self.tt)
+            self.tt.apply()
+        finally:
+            try:
+                self.tt.finalize()
+            except:
+                pass
+       
+    @staticmethod
     def parent(entry, file_id):
         return entry.parent
+
+    @staticmethod
     def name(entry, file_id):
         return entry.name
+    
+    @staticmethod
     def contents_sha1(tree, file_id):
+        if file_id not in tree:
+            return None
         return tree.get_file_sha1(file_id)
 
-    all_ids = set(base_tree)
-    all_ids.update(other_tree)
-    tt = TreeTransform(working_tree):
-    try:
-        for inventory_id in all_ids:
+    @staticmethod
+    def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):
+        """Do a three-way test on a scalar.
+        Return "this", "other" or "conflict", depending whether a value wins.
+        """
+        key_base = key(base_tree, file_id)
+        key_other = key(other_tree, file_id)
+        #if base == other, either they all agree, or only THIS has changed.
+        if key_base == key_other:
+            return "this"
+        key_this = key(this_tree, file_id)
+        if key_this not in (key_base, key_other):
+            return "conflict"
+        # "Ambiguous clean merge"
+        elif key_this == key_other:
+            return "this"
+        else:
+            assert key_this == key_base
+            return "other"
+
+    def merge_text(self, file_id):
+        winner = self.scalar_three_way(self.working_tree, self.base_tree, 
+                                       self.other_tree, file_id, 
+                                       self.contents_sha1)
+        if winner == "this":
+            return
+        trans_id = self.tt.get_trans_id(file_id)
+        if file_id in self.working_tree:
+            self.tt.delete_contents(trans_id)
+        else:
+            entry = self.other_tree.inventory[file_id]
+            parent_id = self.tt.get_trans_id(entry.parent_id)
+            self.tt.adjust_path(entry.name, parent_id, trans_id)
+        if winner == "other":
+            self.tt.create_file(self.other_tree.get_file(file_id), trans_id)
+            return
+        assert winner == "conflict"
+        self.text_merge(file_id, trans_id)
+
+    def get_lines(self, tree, file_id):
+        if file_id in tree:
+            return tree.get_file_lines(file_id)
+        else:
+            return []
+
+    def text_merge(self, file_id, trans_id):
+        """Perform a three-way text merge on a file_id"""
+        base_lines = self.get_lines(self.base_tree, file_id)
+        other_lines = self.get_lines(self.other_tree, file_id)
+        this_lines = self.get_lines(self.working_tree, file_id)
+        m3 = Merge3(base_lines, this_lines, other_lines)
+        start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
+        if False is True:
+            base_marker = '|' * 7
+        else:
+            base_marker = None
+
+        def iter_merge3(retval):
+            retval["text_conflicts"] = False
+            for line in m3.merge_lines(name_a = "TREE", 
+                                       name_b = "MERGE-SOURCE", 
+                                       name_base = "BASE-REVISION",
+                                       start_marker=start_marker, 
+                                       base_marker=base_marker,
+                                       reprocess = False):
+                if line.startswith(start_marker):
+                    retval["text_conflicts"] = True
+                    yield line.replace(start_marker, '<' * 7)
+                else:
+                    yield line
+        retval = {}
+        merge3_iterator = iter_merge3(retval)
+        self.tt.create_file(merge3_iterator, trans_id)
+        if retval["text_conflicts"] is True:
+            file_group = [trans_id]
+            file_group.append(self.conflict_file(trans_id, this_lines, "THIS",
+                                                 self.working_tree))
+            file_group.append(self.conflict_file(trans_id, base_lines, "BASE",
+                                                 self.base_tree))
+            file_group.append(self.conflict_file(trans_id, other_lines,
+                                                 "OTHER", self.other_tree))
             
-            if file_id in working_tree.inventory:
-                trans_id = get_id_tree()
-                new_file = False
-            else:
-                trans_id = 
-                
-            sha1 = three_way_attr(working_tree, base_tree, other_tree,
-                                  file_id, contents_sha1)
-            if sha1 == "this":
-                pass
-            elif sha1 == "other":
-                other_tree
-    finally:
-        tt.finalize()
+    def conflict_file(self, trans_id, lines, suffix, tree):
+        name = self.tt.final_name(trans_id) + "." + suffix
+        parent_id = self.tt.final_parent(trans_id)
+        executable = tree.is_executable(self.tt.final_file_id(trans_id))
+        return self.tt.new_file(name, parent_id, lines, executable=executable)
