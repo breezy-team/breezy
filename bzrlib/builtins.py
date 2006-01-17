@@ -1599,7 +1599,7 @@ class cmd_merge(Command):
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False):
         from bzrlib.merge import merge
-        from bzrlib._merge_core import ApplyMerge3
+        from bzrlib.transform import Merge3Merger as ApplyMerge3
         if merge_type is None:
             merge_type = ApplyMerge3
         if branch is None:
@@ -1656,7 +1656,7 @@ class cmd_remerge(Command):
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
         from bzrlib.merge import merge_inner, transform_tree
-        from bzrlib._merge_core import ApplyMerge3
+        from bzrlib.transform import Merge3Merger as ApplyMerge3
         if merge_type is None:
             merge_type = ApplyMerge3
         tree, file_list = tree_files(file_list)

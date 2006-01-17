@@ -21,7 +21,7 @@ from bzrlib._changeset import generate_changeset
 from bzrlib._changeset import Inventory, Diff3Merge
 from bzrlib._merge import MergeConflictHandler
 from bzrlib._merge_core import WeaveMerge
-from bzrlib._merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
+from bzrlib._merge_core import merge_flex, BackupBeforeChange
 from bzrlib.branch import Branch
 from bzrlib.delta import compare_trees
 from bzrlib.errors import (BzrCommandError,
@@ -35,7 +35,7 @@ from bzrlib.fetch import greedy_fetch, fetch
 from bzrlib.osutils import pathjoin
 from bzrlib.revision import common_ancestor, MultipleRevisionSources
 from bzrlib.revision import is_ancestor, NULL_REVISION
-from bzrlib.transform import Merge3Merger
+from bzrlib.transform import Merge3Merger as ApplyMerge3
 from bzrlib.trace import mutter, note
 
 def get_tree(treespec, local_branch=None):
@@ -351,8 +351,17 @@ class Merger(object):
                                                 self.this_branch)
 
     def do_merge(self):
-        merge = Merge3Merger(self.this_tree, self.this_tree, self.base_tree,
-                             self.other_tree)
+        kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree, 
+                  'other_tree': self.other_tree}
+        if self.merge_type.requires_base:
+            kwargs['base_tree'] = self.base_tree
+        if self.reprocess and not self.merge_type.supports_reprocess:
+            raise BzrCommandError("Reprocess is not supported for this merge"
+                                  " type. %s" % merge_type)
+        else:
+            kwargs['reprocess'] = self.reprocess
+
+        merge = self.merge_type(**kwargs)
         return len(merge.conflicts)
 
     def regen_inventory(self, new_entries):

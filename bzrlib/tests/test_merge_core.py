@@ -539,6 +539,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         from bzrlib.add import smart_add_tree
         from bzrlib.clone import copy_branch
         from bzrlib.merge import merge
+        from transform import 
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
         branch = Branch.initialize("original")
@@ -560,7 +561,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         file.close()
         mary_branch.working_tree().commit("change file2")
         # john should be able to merge with no conflicts.
-        merge_type = ApplyMerge3
+        merge_type = Merge3Merger
         base = [None, None]
         other = ("mary", -1)
         self.assertRaises(BzrCommandError, merge, other, base, check_clean=True,
