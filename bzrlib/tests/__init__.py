@@ -59,6 +59,7 @@ MODULES_TO_DOCTEST = [
                       bzrlib.merge3,
                       bzrlib.osutils,
                       bzrlib.store,
+                      bzrlib.option
                       ]
 def packages_to_test():
     import bzrlib.tests.blackbox
