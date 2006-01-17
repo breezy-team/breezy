@@ -306,7 +306,8 @@ class TreeTransform(object):
         """
         by_parent = {}
         items = list(self._new_parent.iteritems())
-        items.extend((t, self.final_parent(t)) for t in self._tree_id_paths)
+        items.extend((t, self.final_parent(t)) for t in 
+                      self._tree_id_paths.keys())
         for trans_id, parent_id in items:
             if parent_id not in by_parent:
                 by_parent[parent_id] = set()
