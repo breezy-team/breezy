@@ -921,9 +921,9 @@ def conflict_pass(tt, conflicts):
 class Merge3Merger(object):
     requires_base = True
     supports_reprocess = True
-    def __init__(self, working_tree, base_tree, other_tree):
+    def __init__(self, working_tree, this_tree, base_tree, other_tree):
         object.__init__(self)
-        self.working_tree = working_tree
+        self.this_tree = working_tree
         self.base_tree = base_tree
         self.other_tree = other_tree
         self.conflicts = []
@@ -977,13 +977,13 @@ class Merge3Merger(object):
             return "other"
 
     def merge_text(self, file_id):
-        winner = self.scalar_three_way(self.working_tree, self.base_tree, 
+        winner = self.scalar_three_way(self.this_tree, self.base_tree, 
                                        self.other_tree, file_id, 
                                        self.contents_sha1)
         if winner == "this":
             return
         trans_id = self.tt.get_trans_id(file_id)
-        if file_id in self.working_tree:
+        if file_id in self.this_tree:
             self.tt.delete_contents(trans_id)
         else:
             entry = self.other_tree.inventory[file_id]
@@ -1005,7 +1005,7 @@ class Merge3Merger(object):
         """Perform a three-way text merge on a file_id"""
         base_lines = self.get_lines(self.base_tree, file_id)
         other_lines = self.get_lines(self.other_tree, file_id)
-        this_lines = self.get_lines(self.working_tree, file_id)
+        this_lines = self.get_lines(self.this_tree, file_id)
         m3 = Merge3(base_lines, this_lines, other_lines)
         start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
         if False is True:
