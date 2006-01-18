@@ -39,6 +39,7 @@ from bzrlib.revision import common_ancestor, MultipleRevisionSources
 from bzrlib.revision import is_ancestor, NULL_REVISION
 from bzrlib.trace import mutter, note
 
+
 def _get_tree(treespec, local_branch=None):
     location, revno = treespec
     branch = Branch.open_containing(location)[0]
@@ -51,6 +52,7 @@ def _get_tree(treespec, local_branch=None):
         if revision is None:
             revision = NULL_REVISION
     return branch, _get_revid_tree(branch, revision, local_branch)
+
 
 def _get_revid_tree(branch, revision, local_branch):
     if revision is None:
@@ -146,6 +148,7 @@ def merge(other_revision, base_revision,
     merger.set_pending()
     return conflicts
 
+
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 backup_files=False, 
                 merge_type=ApplyMerge3, 
@@ -206,7 +209,6 @@ class Merger(object):
                 self.this_basis)
             if self.this_basis == self.this_rev_id:
                 self.this_revision_tree = self.this_basis_tree
-
 
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
@@ -431,8 +433,8 @@ class Merger(object):
         new_inventory_list.sort()
         return new_inventory_list
 
+
 merge_types = {     "merge3": (ApplyMerge3, "Native diff3-style merge"), 
                      "diff3": (Diff3Merge,  "Merge using external diff3"),
                      'weave': (WeaveMerge, "Weave-based merge")
               }
-
