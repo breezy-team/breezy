@@ -65,7 +65,7 @@ class SimpleLogTest(TestCaseInTempDir):
             self.assertEquals(expected, got)
 
     def test_cur_revno(self):
-        b = Branch(u'.', init=True)
+        b = Branch.initialize('.')
 
         lf = LogCatcher()
         b.working_tree().commit('empty commit')
@@ -84,7 +84,7 @@ class SimpleLogTest(TestCaseInTempDir):
                           start_revision=1, end_revision=-1) 
 
     def test_cur_revno(self):
-        b = Branch.initialize(u'.')
+        b = Branch.initialize('.')
 
         lf = LogCatcher()
         b.working_tree().commit('empty commit')
@@ -105,7 +105,7 @@ class SimpleLogTest(TestCaseInTempDir):
     def test_simple_log(self):
         eq = self.assertEquals
         
-        b = Branch.initialize(u'.')
+        b = Branch.initialize('.')
 
         lf = LogCatcher()
         show_log(b, lf)
@@ -175,7 +175,7 @@ class SimpleLogTest(TestCaseInTempDir):
         self.assert_(msg == committed_msg)
 
     def test_trailing_newlines(self):
-        b = Branch.initialize(u'.')
+        b = Branch.initialize('.')
         b.nick='test'
         wt = b.working_tree()
         open('a', 'wb').write('hello moto\n')
@@ -246,7 +246,7 @@ message:
         
         bug #4676
         """
-        b = Branch.initialize(u'.')
+        b = Branch.initialize('.')
         self.build_tree(['a'])
         wt = b.working_tree()
         wt.add('a')

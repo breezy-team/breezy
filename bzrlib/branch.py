@@ -1333,7 +1333,8 @@ class ScratchBranch(BzrBranch):
         """
         if transport is None:
             transport = bzrlib.transport.local.ScratchTransport()
-            super(ScratchBranch, self).__init__(transport, init=True)
+            Branch.initialize(transport.base)
+            super(ScratchBranch, self).__init__(transport)
         else:
             super(ScratchBranch, self).__init__(transport)
 
