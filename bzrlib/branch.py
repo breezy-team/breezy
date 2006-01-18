@@ -487,6 +487,27 @@ class Branch(object):
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError('store_revision_signature is abstract')
 
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """ This function returns the file_id(s) involved in the
+            changes between the from_revid revision and the to_revid
+            revision
+        """
+        raise NotImplementedError('fileid_involved_between_revs is abstract')
+
+    def fileid_involved(self, last_revid=None):
+        """ This function returns the file_id(s) involved in the
+            changes up to the revision last_revid
+            If no parametr is passed, then all file_id[s] present in the
+            repository are returned
+        """
+        raise NotImplementedError('fileid_involved is abstract')
+
+    def fileid_involved_by_set(self, changes):
+        """ This function returns the file_id(s) involved in the
+            changes present in the set 'changes'
+        """
+        raise NotImplementedError('fileid_involved_by_set is abstract')
+
 class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
 
@@ -1114,6 +1135,67 @@ class BzrBranch(Branch):
         """See Branch.store_revision_signature."""
         self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
                                 revision_id, "sig")
+
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """ This function returns the file_id(s) involved in the
+            changes between the from_revid revision and the to_revid
+            revision
+        """
+        w = self._get_inventory_weave( )
+        from_set = set(w.inclusions([w.lookup(from_revid)]))
+        to_set = set(w.inclusions([w.lookup(to_revid)]))
+        included = to_set.difference(from_set)
+        changed = map(w.idx_to_name,included)
+        return self._fileid_involved_by_set(changed)
+
+    def fileid_involved(self, last_revid=None):
+        """ This function returns the file_id(s) involved in the
+            changes up to the revision last_revid
+            If no parametr is passed, then all file_id[s] present in the
+            repository are returned
+        """
+        w = self._get_inventory_weave( )
+        if not last_revid:
+            changed = set(w._names)
+        else:
+            included = w.inclusions([w.lookup(last_revid)])
+            changed = map(w.idx_to_name, included)
+        return self._fileid_involved_by_set(changed)
+
+    def fileid_involved_by_set(self, changes):
+        """ This function returns the file_id(s) involved in the
+            changese present in the set changes
+        """
+        w = self._get_inventory_weave( )
+        return self._fileid_involved_by_set(changes)
+
+    def _fileid_involved_by_set(self, changes):
+        w = self._get_inventory_weave( )
+        file_ids = set( )
+        for line in w._weave:
+
+            # it is ugly, but it is due to the weave structure
+            if not isinstance(line,basestring): continue
+
+            start = line.find('file_id="')+9
+            if start < 9: continue
+            end = line.find('"',start)
+            assert end>= 0
+            file_id = line[start:end]
+
+            # check if file_id is already present
+            if file_id in file_ids: continue
+
+            start = line.find('revision="')+10
+            if start < 10: continue
+            end = line.find('"',start)
+            assert end>= 0
+            revision_id = line[start:end]
+
+            if revision_id in changes:
+                file_ids.add(file_id)
+
+        return file_ids
 
 
 class ScratchBranch(BzrBranch):
