@@ -190,6 +190,21 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         If set, use an external GNU diff and pass these options.
     """
 
+    old_tree.lock_read()
+    try:
+        new_tree.lock_read()
+        try:
+            return _show_diff_trees(old_tree, new_tree, to_file,
+                                    specific_files, external_diff_options)
+        finally:
+            new_tree.unlock()
+    finally:
+        old_tree.unlock()
+
+
+def _show_diff_trees(old_tree, new_tree, to_file,
+                     specific_files, external_diff_options):
+
     # TODO: Options to control putting on a prefix or suffix, perhaps as a format string
     old_label = ''
     new_label = ''
