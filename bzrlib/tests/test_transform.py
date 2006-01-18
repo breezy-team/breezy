@@ -12,6 +12,7 @@ class TestTreeTransform(TestCaseInTempDir):
         super(TestTreeTransform, self).setUp()
         self.branch = Branch.initialize('.')
         self.wt = self.branch.working_tree()
+        os.chdir('..')
 
     def get_transform(self):
         transform = TreeTransform(self.wt)

@@ -757,12 +757,14 @@ def new_by_entry(tt, entry, parent_id, tree):
 def create_by_entry(tt, entry, tree, trans_id):
     if entry.kind == "file":
         tt.create_file(tree.get_file(entry.file_id).readlines(), trans_id)
-        tt.set_executability(entry.executable, trans_id)
     elif entry.kind == "symlink":
         tt.create_symlink(entry.symlink_target, trans_id)
     elif entry.kind == "directory":
         tt.create_directory(trans_id)
 
+def create_entry_executability(tt, entry, trans_id):
+    if entry.kind == "file":
+        tt.set_executability(entry.executable, trans_id)
 
 def find_interesting(working_tree, target_tree, filenames):
     if not filenames:
@@ -800,6 +802,8 @@ def change_entry(tt, file_id, working_tree, target_tree,
                 tt.version_file(file_id, e_trans_id)
                 trans_id[file_id] = e_trans_id
         create_by_entry(tt, entry, target_tree, e_trans_id)
+        create_entry_executability(tt, entry, e_trans_id)
+
     elif meta_mod:
         tt.set_executability(entry.executable, e_trans_id)
     if tt.final_name(e_trans_id) != entry.name:
@@ -936,7 +940,7 @@ class Merge3Merger(object):
         self.tt = TreeTransform(working_tree)
         try:
             for file_id in all_ids:
-                file_status = self.merge_text(file_id)
+                file_status = self.merge_contents(file_id)
                 self.merge_executable(file_id, file_status)
                 
             resolve_conflicts(self.tt)
@@ -968,6 +972,12 @@ class Merge3Merger(object):
         return tree.is_executable(file_id)
 
     @staticmethod
+    def kind(tree, file_id):
+        if file_id not in tree:
+            return None
+        return tree.kind(file_id)
+
+    @staticmethod
     def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):
         """Do a three-way test on a scalar.
         Return "this", "other" or "conflict", depending whether a value wins.
@@ -987,25 +997,48 @@ class Merge3Merger(object):
             assert key_this == key_base
             return "other"
 
-    def merge_text(self, file_id):
-        winner = self.scalar_three_way(self.this_tree, self.base_tree, 
-                                       self.other_tree, file_id, 
-                                       self.contents_sha1)
-        if winner == "this":
+    def merge_contents(self, file_id):
+        def contents_pair(tree):
+            if file_id not in tree:
+                return (None, None)
+            kind = tree.kind(file_id)
+            if kind == "file":
+                contents = tree.get_file_sha1(file_id)
+            elif kind == "symlink":
+                contents = tree.get_symlink_target(file_id)
+            else:
+                contents = None
+            return kind, contents
+        # See SPOT run.  run, SPOT, run.
+        # So we're not QUITE repeating ourselves; we do tricky things with
+        # file kind...
+        base_pair = contents_pair(self.base_tree)
+        other_pair = contents_pair(self.other_tree)
+        if base_pair == other_pair:
             return "unmodified"
-        trans_id = self.tt.get_trans_id(file_id)
-        if file_id in self.this_tree:
-            self.tt.delete_contents(trans_id)
-        else:
-            entry = self.other_tree.inventory[file_id]
-            parent_id = self.tt.get_trans_id(entry.parent_id)
-            self.tt.adjust_path(entry.name, parent_id, trans_id)
-        if winner == "other":
-            self.tt.create_file(self.other_tree.get_file(file_id), trans_id)
+        this_pair = contents_pair(self.this_tree)
+        if this_pair == other_pair:
+            return "unmodified"
+        elif this_pair == base_pair:
+            trans_id = self.tt.get_trans_id(file_id)
+            if file_id in self.this_tree:
+                self.tt.delete_contents(trans_id)
+            else:
+                entry = self.other_tree.inventory[file_id]
+                parent_id = self.tt.get_trans_id(entry.parent_id)
+                self.tt.adjust_path(entry.name, parent_id, trans_id)
+            create_by_entry(self.tt, self.other_tree.inventory[file_id], 
+                            self.other_tree, trans_id)
             return "modified"
-        assert winner == "conflict"
-        self.text_merge(file_id, trans_id)
-        return "modified" 
+        elif this_pair[0] == "file" and other_pair[0] == "file":
+            # If this and other are both files, either base is a file, or
+            # both converted to files, so at least we have agreement that
+            # output should be a file.
+            self.text_merge(file_id, trans_id)
+            return "modified"
+        else:
+            print file_id, this_pair, other_pair, base_pair
+            self.emit_conflicts(file_id, trans_id)
 
     def get_lines(self, tree, file_id):
         if file_id in tree:
