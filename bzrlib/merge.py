@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: build_working_dir can be built on something simpler than merge()
+
 import os
 
 import bzrlib
@@ -37,7 +39,7 @@ from bzrlib.revision import common_ancestor, MultipleRevisionSources
 from bzrlib.revision import is_ancestor, NULL_REVISION
 from bzrlib.trace import mutter, note
 
-def get_tree(treespec, local_branch=None):
+def _get_tree(treespec, local_branch=None):
     location, revno = treespec
     branch = Branch.open_containing(location)[0]
     if revno is None:
@@ -48,9 +50,9 @@ def get_tree(treespec, local_branch=None):
         revision = branch.get_rev_id(revno)
         if revision is None:
             revision = NULL_REVISION
-    return branch, get_revid_tree(branch, revision, local_branch)
+    return branch, _get_revid_tree(branch, revision, local_branch)
 
-def get_revid_tree(branch, revision, local_branch):
+def _get_revid_tree(branch, revision, local_branch):
     if revision is None:
         base_tree = branch.working_tree()
     else:
@@ -61,10 +63,6 @@ def get_revid_tree(branch, revision, local_branch):
             base_tree = branch.revision_tree(revision)
     return base_tree
 
-
-def file_exists(tree, file_id):
-    return tree.has_filename(tree.id2path(file_id))
-    
 
 def build_working_dir(to_dir):
     """Build a working directory in an empty directory.
@@ -218,7 +216,6 @@ class Merger(object):
             other_rev_id = other_basis
             self.other_tree = other_basis_tree
 
-
     def file_revisions(self, file_id):
         self.ensure_revision_trees()
         def get_id(tree, file_id):
@@ -305,8 +302,8 @@ class Merger(object):
         self.this_branch.working_tree().add_pending_merge(self.other_rev_id)
 
     def set_other(self, other_revision):
-        other_branch, self.other_tree = get_tree(other_revision, 
-                                                 self.this_branch)
+        other_branch, self.other_tree = _get_tree(other_revision, 
+                                                  self.this_branch)
         if other_revision[1] == -1:
             self.other_rev_id = other_branch.last_revision()
             if self.other_rev_id is None:
@@ -332,11 +329,11 @@ class Merger(object):
                                                    self.this_branch)
             except NoCommonAncestor:
                 raise UnrelatedBranches()
-            self.base_tree = get_revid_tree(self.this_branch, self.base_rev_id,
+            self.base_tree = _get_revid_tree(self.this_branch, self.base_rev_id,
                                             None)
             self.base_is_ancestor = True
         else:
-            base_branch, self.base_tree = get_tree(base_revision)
+            base_branch, self.base_tree = _get_tree(base_revision)
             if base_revision[1] == -1:
                 self.base_rev_id = base_branch.last_revision()
             elif base_revision[1] is None:

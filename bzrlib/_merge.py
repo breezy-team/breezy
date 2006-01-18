@@ -27,12 +27,6 @@ from bzrlib.osutils import rename, pathjoin
 
 # TODO: Report back as changes are merged in
 
-# TODO: build_working_dir can be built on something simpler than merge()
-
-# FIXME: merge() parameters seem oriented towards the command line
-# NOTABUG: merge is a helper for commandline functions.  merge_inner is the
-#          the core functionality.
-
 # comments from abentley on irc: merge happens in two stages, each
 # of which generates a changeset object
 
