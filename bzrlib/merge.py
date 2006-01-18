@@ -231,7 +231,6 @@ class Merger(object):
 
         trees = (self.this_basis_tree, self.other_tree)
         return [get_id(tree, file_id) for tree in trees]
-            
 
     def merge_factory(self, file_id, base, other):
         if self.merge_type.history_based:
