@@ -58,7 +58,7 @@ class TestBranch(TestCaseInTempDir):
         f = Fetcher(from_branch=b1, to_branch=b2)
         eq = self.assertEquals
         eq(f.count_copied, 1)
-        eq(f.last_revision, 'revision-1')
+        eq(f._last_revision, 'revision-1')
 
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')

@@ -90,12 +90,34 @@ class Fetcher(object):
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
         if to_branch == from_branch:
             raise Exception("can't fetch from a branch to itself")
+        
         self.to_branch = to_branch
-        self.to_repository = to_branch.repository
+        self.from_branch = from_branch
+        self._last_revision = last_revision
+        if pb is None:
+            self.pb = bzrlib.ui.ui_factory.progress_bar()
+        else:
+            self.pb = pb
+        self.from_branch.lock_read()
+        try:
+            self.to_branch.lock_write()
+            try:
+                self.__fetch()
+            finally:
+                self.to_branch.unlock()
+        finally:
+            self.from_branch.unlock()
+
+    def __fetch(self):
+        """Primary worker function.
+
+        This initialises all the needed variables, and then fetches the 
+        requested revisions, finally clearing the progress bar.
+        """
+        self.to_repository = self.to_branch.repository
         self.to_weaves = self.to_repository.weave_store
         self.to_control = self.to_repository.control_weaves
-        self.from_branch = from_branch
-        self.from_repository = from_branch.repository
+        self.from_repository = self.from_branch.repository
         self.from_weaves = self.from_repository.weave_store
         self.from_control = self.from_repository.control_weaves
         self.failed_revisions = []
@@ -104,47 +126,41 @@ class Fetcher(object):
         self.count_weaves = 0
         self.copied_file_ids = set()
         self.file_ids_names = {}
-        if pb is None:
-            self.pb = bzrlib.ui.ui_factory.progress_bar()
-        else:
-            self.pb = pb
-        self.from_branch.lock_read()
         try:
-            self._fetch_revisions(last_revision)
+            self._fetch_revisions()
         finally:
-            self.from_branch.unlock()
             self.pb.clear()
 
-    def _fetch_revisions(self, last_revision):
-        self.last_revision = self._find_last_revision(last_revision)
-        mutter('fetch up to rev {%s}', self.last_revision)
-        if (self.last_revision is not None and 
-            self.to_repository.has_revision(self.last_revision)):
+    def _fetch_revisions(self):
+        self._find_last_revision()
+        mutter('fetch up to rev {%s}', self._last_revision)
+        if (self._last_revision is not None and 
+            self.to_repository.has_revision(self._last_revision)):
             return
         try:
             revs_to_fetch = self._compare_ancestries()
         except WeaveError:
-            raise InstallFailed([self.last_revision])
+            raise InstallFailed([self._last_revision])
         self._copy_revisions(revs_to_fetch)
         self.new_ancestry = revs_to_fetch
 
-    def _find_last_revision(self, last_revision):
+    def _find_last_revision(self):
         """Find the limiting source revision.
 
         Every ancestor of that revision will be merged across.
 
         Returns the revision_id, or returns None if there's no history
         in the source branch."""
-        if last_revision:
-            return last_revision
+        if self._last_revision:
+            return
         self.pb.update('get source history')
         from_history = self.from_branch.revision_history()
         self.pb.update('get destination history')
         if from_history:
-            return from_history[-1]
+            self._last_revision = from_history[-1]
         else:
-            return None                 # no history in the source branch
-            
+            # no history in the source branch
+            self._last_revision = None
 
     def _compare_ancestries(self):
         """Get a list of revisions that must be copied.
@@ -153,7 +169,7 @@ class Fetcher(object):
         branch and not in the destination branch."""
         self.pb.update('get source ancestry')
         from_repository = self.from_branch.repository
-        self.from_ancestry = from_repository.get_ancestry(self.last_revision)
+        self.from_ancestry = from_repository.get_ancestry(self._last_revision)
 
         dest_last_rev = self.to_branch.last_revision()
         self.pb.update('get destination ancestry')

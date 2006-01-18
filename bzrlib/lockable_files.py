@@ -15,13 +15,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from osutils import file_iterator
 
 import bzrlib
+from bzrlib.decorators import *
 import bzrlib.errors as errors
 from bzrlib.errors import LockError, ReadOnlyError
+from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
+
 
 class LockableFiles(object):
     """Object representing a set of files locked within the same scope
@@ -66,19 +68,19 @@ class LockableFiles(object):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
             return u''
-        return bzrlib.transport.urlescape(unicode(file_or_path))
+        return bzrlib.transport.urlescape(safe_unicode(file_or_path))
 
     def _find_modes(self):
         """Determine the appropriate modes for files and directories."""
         try:
             try:
-                st = self._transport.stat(u'.')
+                st = self._transport.stat('.')
             except errors.NoSuchFile:
                 # The .bzr/ directory doesn't exist, try to
                 # inherit the permissions from the parent directory
                 # but only try 1 level up
                 temp_transport = self._transport.clone('..')
-                st = temp_transport.stat(u'.')
+                st = temp_transport.stat('.')
         except (errors.TransportNotPossible, errors.NoSuchFile):
             self._dir_mode = 0755
             self._file_mode = 0644
@@ -98,13 +100,14 @@ class LockableFiles(object):
     def controlfile(self, file_or_path, mode='r'):
         """Open a control file for this branch.
 
-        There are two classes of file in the control directory: text
+        There are two classes of file in a lockable directory: text
         and binary.  binary files are untranslated byte streams.  Text
         control files are stored with Unix newlines and in UTF-8, even
         if the platform or locale defaults are different.
 
-        Controlfiles should almost never be opened in write mode but
-        rather should be atomically copied and replaced using atomicfile.
+        Such files are not openable in write mode : they are managed via
+        put and put_utf8 which atomically replace old versions using
+        atomicfile.
         """
         import codecs
 
@@ -126,6 +129,7 @@ class LockableFiles(object):
         else:
             raise BzrError("invalid controlfile mode %r" % mode)
 
+    @needs_write_lock
     def put(self, path, file):
         """Write a file.
         
@@ -133,10 +137,9 @@ class LockableFiles(object):
                      directory
         :param f: A file-like or string object whose contents should be copied.
         """
-        if not self._lock_mode == 'w':
-            raise ReadOnlyError()
         self._transport.put(self._escape(path), file, mode=self._file_mode)
 
+    @needs_write_lock
     def put_utf8(self, path, file, mode=None):
         """Write a file, encoding as utf-8.
 
@@ -167,7 +170,7 @@ class LockableFiles(object):
         # and potentially a remote locking protocol
         if self._lock_mode:
             if self._lock_mode != 'w':
-                raise LockError("can't upgrade to a write lock from %r" %
+                raise ReadOnlyError("can't upgrade to a write lock from %r" %
                                 self._lock_mode)
             self._lock_count += 1
         else:

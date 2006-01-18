@@ -57,9 +57,11 @@ class TestLockableFiles(TestCaseInTempDir):
 
     def test_locks(self):
         self.lockable.lock_read()
-        self.lockable.unlock()
-        self.assertRaises(ReadOnlyError, self.lockable.put, 'foo', 
-                          StringIO('bar\u1234'))
+        try:
+            self.assertRaises(ReadOnlyError, self.lockable.put, 'foo', 
+                              StringIO('bar\u1234'))
+        finally:
+            self.lockable.unlock()
 
     def test_transactions(self):
         self.assertIs(self.lockable.get_transaction().__class__,

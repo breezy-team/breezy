@@ -36,6 +36,7 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoWorkingTree)
 from bzrlib.textui import show_status
 from bzrlib.config import TreeConfig
+from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.delta import compare_trees
 import bzrlib.inventory as inventory
 from bzrlib.inventory import Inventory
@@ -48,7 +49,6 @@ from bzrlib.transport import Transport, get_transport
 from bzrlib.tree import EmptyTree, RevisionTree
 import bzrlib.ui
 import bzrlib.xml5
-from bzrlib.decorators import needs_read_lock, needs_write_lock
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"

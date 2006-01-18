@@ -602,12 +602,8 @@ class cmd_branch(Command):
             branch = Branch.open(to_location)
             if name:
                 name = StringIO(name)
-                branch.lock_write()
-                try:
-                    branch.control_files.put_utf8('branch-name', name)
-                finally:
-                    branch.unlock()
-                    
+                branch.control_files.put_utf8('branch-name', name)
+
             note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
@@ -1775,15 +1771,7 @@ class cmd_fetch(Command):
         from bzrlib.branch import Branch
         from_b = Branch.open(from_branch)
         to_b = Branch.open(to_branch)
-        from_b.lock_read()
-        try:
-            to_b.lock_write()
-            try:
-                Fetcher(to_b, from_b)
-            finally:
-                to_b.unlock()
-        finally:
-            from_b.unlock()
+        Fetcher(to_b, from_b)
 
 
 class cmd_missing(Command):

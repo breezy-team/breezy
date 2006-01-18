@@ -107,11 +107,16 @@ class Repository(object):
     def unlock(self):
         self.control_files.unlock()
 
+    @needs_read_lock
     def copy(self, destination):
-        destination.control_weaves.copy_multi(self.control_weaves, 
+        destination.lock_write()
+        try:
+            destination.control_weaves.copy_multi(self.control_weaves, 
                 ['inventory'])
-        copy_all(self.weave_store, destination.weave_store)
-        copy_all(self.revision_store, destination.revision_store)
+            copy_all(self.weave_store, destination.weave_store)
+            copy_all(self.revision_store, destination.revision_store)
+        finally:
+            destination.unlock()
 
     def has_revision(self, revision_id):
         """True if this branch has a copy of the revision.
@@ -131,9 +136,11 @@ class Repository(object):
         except (IndexError, KeyError):
             raise bzrlib.errors.NoSuchRevision(self, revision_id)
 
+    @needs_read_lock
     def get_revision_xml(self, revision_id):
         return self.get_revision_xml_file(revision_id).read()
 
+    @needs_read_lock
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
         xml_file = self.get_revision_xml_file(revision_id)
@@ -148,6 +155,7 @@ class Repository(object):
         assert r.revision_id == revision_id
         return r
 
+    @needs_read_lock
     def get_revision_sha1(self, revision_id):
         """Hash the stored value of a revision, and return it."""
         # In the future, revision entries will be signed. At that
@@ -163,15 +171,18 @@ class Repository(object):
         self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
                                 revision_id, "sig")
 
+    @needs_read_lock
     def get_inventory_weave(self):
         return self.control_weaves.get_weave('inventory',
             self.get_transaction())
 
+    @needs_read_lock
     def get_inventory(self, revision_id):
         """Get Inventory object by hash."""
         xml = self.get_inventory_xml(revision_id)
         return bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
 
+    @needs_read_lock
     def get_inventory_xml(self, revision_id):
         """Get inventory XML as a file object."""
         try:
@@ -181,11 +192,13 @@ class Repository(object):
         except IndexError:
             raise bzrlib.errors.HistoryMissing(self, 'inventory', revision_id)
 
+    @needs_read_lock
     def get_inventory_sha1(self, revision_id):
         """Return the sha1 hash of the inventory entry
         """
         return self.get_revision(revision_id).inventory_sha1
 
+    @needs_read_lock
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""
         # TODO: Unify this with get_inventory()
@@ -201,6 +214,7 @@ class Repository(object):
         else:
             return self.get_inventory(revision_id)
 
+    @needs_read_lock
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
@@ -214,6 +228,7 @@ class Repository(object):
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
 
+    @needs_read_lock
     def get_ancestry(self, revision_id):
         """Return a list of revision-ids integrated by a revision.
         
@@ -248,6 +263,7 @@ class Repository(object):
     def get_transaction(self):
         return self.control_files.get_transaction()
 
+    @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
         plaintext = Testament.from_revision(self, revision_id).as_short_text()
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)

@@ -15,6 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+__all__ = ['needs_read_lock',
+           'needs_write_lock',
+           ]
+
 def needs_read_lock(unbound):
     """Decorate unbound to take out and release a read lock.
 
