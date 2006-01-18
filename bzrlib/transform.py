@@ -936,9 +936,8 @@ class Merge3Merger(object):
         self.tt = TreeTransform(working_tree)
         try:
             for file_id in all_ids:
-                trans_id = self.tt.get_trans_id(file_id)
-                file_status = self.merge_text(file_id, trans_id)
-                self.merge_executable(file_id, trans_id, file_status)
+                file_status = self.merge_text(file_id)
+                self.merge_executable(file_id, file_status)
                 
             resolve_conflicts(self.tt)
             self.tt.apply()
@@ -988,12 +987,13 @@ class Merge3Merger(object):
             assert key_this == key_base
             return "other"
 
-    def merge_text(self, file_id, trans_id):
+    def merge_text(self, file_id):
         winner = self.scalar_three_way(self.this_tree, self.base_tree, 
                                        self.other_tree, file_id, 
                                        self.contents_sha1)
         if winner == "this":
             return "unmodified"
+        trans_id = self.tt.get_trans_id(file_id)
         if file_id in self.this_tree:
             self.tt.delete_contents(trans_id)
         else:
@@ -1055,8 +1055,8 @@ class Merge3Merger(object):
         parent_id = self.tt.final_parent(trans_id)
         return self.tt.new_file(name, parent_id, lines)
 
-    def merge_executable(self, file_id, trans_id, file_status):
-        if file_status == "deleted" or self.tt.final_kind(trans_id) != "file":
+    def merge_executable(self, file_id, file_status):
+        if file_status == "deleted":
             return
         winner = self.scalar_three_way(self.this_tree, self.base_tree, 
                                        self.other_tree, file_id, 
@@ -1071,8 +1071,10 @@ class Merge3Merger(object):
         if winner == "this":
             if file_status == "modified":
                 executability = self.this_tree.is_executable(file_id)
+                trans_id = self.tt.get_trans_id(file_id)
                 self.tt.set_executability(executability, trans_id)
         else:
             assert winner == "other"
             executability = self.other_tree.is_executable(file_id)    
+            trans_id = self.tt.get_trans_id(file_id)
             self.tt.set_executability(executability, trans_id)
