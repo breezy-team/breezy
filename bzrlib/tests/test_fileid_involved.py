@@ -1,5 +1,18 @@
+# Copyright (C) 2005 by Canonical Ltd
 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.tests import TestCaseInTempDir
 import os
@@ -11,13 +24,13 @@ from bzrlib.merge import merge
 from bzrlib.workingtree import WorkingTree
 from bzrlib.delta import compare_trees
 
+
 class TestFileIdInvolved(TestCaseInTempDir):
 
     def touch(self,filename):
         f = file(filename,"a")
         f.write("appended line\n")
         f.close( )
-
 
     def merge( self, branch_from, force=False ):
         from bzrlib.merge_core import ApplyMerge3
@@ -139,7 +152,6 @@ class TestFileIdInvolved(TestCaseInTempDir):
         l = self.branch.fileid_involved_between_revs("rev-E","rev-G" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["a", "b","c","d"])
 
-
     def test_fileid_involved_sets(self):
 
         l = self.branch.fileid_involved_by_set(set(["rev-B"]))
@@ -183,4 +195,5 @@ class TestFileIdInvolved(TestCaseInTempDir):
                             delta.modified ]
 
                 self.assertEquals( l1, set(l2) )
+
 
