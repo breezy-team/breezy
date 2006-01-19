@@ -1049,7 +1049,12 @@ class Merge3Merger(object):
 
     def text_merge(self, file_id, trans_id):
         """Perform a three-way text merge on a file_id"""
-        base_lines = self.get_lines(self.base_tree, file_id)
+        # it's possible that we got here with base as a different type.
+        # if so, we just want two-way text conflicts.
+        if self.base_tree.kind(file_id) == "file":
+            base_lines = self.get_lines(self.base_tree, file_id)
+        else:
+            base_lines = []
         other_lines = self.get_lines(self.other_tree, file_id)
         this_lines = self.get_lines(self.this_tree, file_id)
         m3 = Merge3(base_lines, this_lines, other_lines)
