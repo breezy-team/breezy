@@ -1019,26 +1019,27 @@ class Merge3Merger(object):
         this_pair = contents_pair(self.this_tree)
         if this_pair == other_pair:
             return "unmodified"
-        elif this_pair == base_pair:
-            trans_id = self.tt.get_trans_id(file_id)
-            if file_id in self.this_tree:
-                self.tt.delete_contents(trans_id)
-            else:
-                entry = self.other_tree.inventory[file_id]
-                parent_id = self.tt.get_trans_id(entry.parent_id)
-                self.tt.adjust_path(entry.name, parent_id, trans_id)
-            create_by_entry(self.tt, self.other_tree.inventory[file_id], 
-                            self.other_tree, trans_id)
-            return "modified"
-        elif this_pair[0] == "file" and other_pair[0] == "file":
-            # If this and other are both files, either base is a file, or
-            # both converted to files, so at least we have agreement that
-            # output should be a file.
-            self.text_merge(file_id, trans_id)
-            return "modified"
         else:
-            print file_id, this_pair, other_pair, base_pair
-            self.emit_conflicts(file_id, trans_id)
+            trans_id = self.tt.get_trans_id(file_id)
+            if this_pair == base_pair:
+                if file_id in self.this_tree:
+                    self.tt.delete_contents(trans_id)
+                else:
+                    entry = self.other_tree.inventory[file_id]
+                    parent_id = self.tt.get_trans_id(entry.parent_id)
+                    self.tt.adjust_path(entry.name, parent_id, trans_id)
+                create_by_entry(self.tt, self.other_tree.inventory[file_id], 
+                                self.other_tree, trans_id)
+                return "modified"
+            elif this_pair[0] == "file" and other_pair[0] == "file":
+                # If this and other are both files, either base is a file, or
+                # both converted to files, so at least we have agreement that
+                # output should be a file.
+                self.text_merge(file_id, trans_id)
+                return "modified"
+            else:
+                print file_id, this_pair, other_pair, base_pair
+                self.emit_conflicts(file_id, trans_id)
 
     def get_lines(self, tree, file_id):
         if file_id in tree:
