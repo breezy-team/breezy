@@ -1,4 +1,4 @@
-bzr 0.7rc1 2006-01-09
+bzr 0.7
 
   CHANGES:
 
@@ -107,6 +107,10 @@ bzr 0.7rc1 2006-01-09
 
     * bzr add now lists how many files were ignored per glob.  add --verbose
       lists the specific files.  (Aaron Bentley)
+
+    * Reduced CPU usage for merge/fetch. (Goffredo Baroncelli)
+
+    * Faster diff and status commands.  (Denys Duchier)
 
   BUG FIXES:
 

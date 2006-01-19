@@ -10,7 +10,7 @@
 Bazaar-NG Tutorial
 ==================
 
-Current for bzr-0.7pre, 2006-01-06.
+Current for bzr-0.7, January 2006
 
 
 Introduction
