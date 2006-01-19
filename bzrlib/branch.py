@@ -1142,6 +1142,16 @@ class BzrBranch(Branch):
             changes between the from_revid revision and the to_revid
             revision
         """
+        # TODO: jam 20060119 This code assumes that w.inclusions will
+        #       always be correct. But because of the presence of ghosts
+        #       it is possible to be wrong.
+        #       One specific example from Robert Collins:
+        #       Two branches, with revisions ABC, and AD
+        #       C is a ghost merge of D.
+        #       Inclusions doesn't recognize D as an ancestor.
+        #       If D is ever merged in the future, the weave
+        #       won't be fixed, because AD never saw revision C
+        #       no cause a conflict which would force a reweave.
         w = self._get_inventory_weave( )
         from_set = set(w.inclusions([w.lookup(from_revid)]))
         to_set = set(w.inclusions([w.lookup(to_revid)]))
@@ -1171,6 +1181,9 @@ class BzrBranch(Branch):
         return self._fileid_involved_by_set(changes)
 
     def _fileid_involved_by_set(self, changes):
+        assert self._branch_format in (5,6), \
+            "fileid_involved only supported for branches which store inventory as xml"
+
         w = self._get_inventory_weave( )
         file_ids = set( )
         for line in w._weave:
