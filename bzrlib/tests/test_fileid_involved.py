@@ -41,8 +41,13 @@ class TestFileIdInvolved(TestCaseInTempDir):
         main_branch = Branch.initialize('.')
         self.build_tree(["a","b","c"])
 
-        smart_add('.')
-        commit(Branch.open("."), "Commit one", rev_id="rev-A")
+        b = Branch.open('.')
+        wt = b.working_tree()
+        wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
+                                 'b-file-id-2006-01-01-defg',
+                                 'c-funky<file-id> quiji%bo'])
+        commit(b, "Commit one", rev_id="rev-A")
+        del b, wt
         #-------- end A -----------
 
         copy_branch(main_branch,"../branch1")
@@ -88,7 +93,6 @@ class TestFileIdInvolved(TestCaseInTempDir):
         os.chdir("../branch2")
 
         self.touch("c")
-        smart_add('.')
         commit(Branch.open("."), "branch2, commit two", rev_id="rev-K")
 
         #-------- end K -----------
@@ -98,7 +102,8 @@ class TestFileIdInvolved(TestCaseInTempDir):
         self.touch("b")
         self.merge("../branch1",force=True)
 
-        commit(Branch.open("."), "merge branch1, rev-12", rev_id="rev-D")
+        # D gets some funky characters to make sure the unescaping works
+        commit(Branch.open("."), "merge branch1, rev-12", rev_id="rev-<D>")
 
         # end D
 
@@ -125,7 +130,7 @@ class TestFileIdInvolved(TestCaseInTempDir):
         l = self.branch.fileid_involved_between_revs("rev-B","rev-K" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["b","c"])
 
-        l = self.branch.fileid_involved_between_revs("rev-C","rev-D" )
+        l = self.branch.fileid_involved_between_revs("rev-C","rev-<D>" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["b","d"])
 
         l = self.branch.fileid_involved_between_revs("rev-C","rev-G" )
@@ -140,18 +145,18 @@ class TestFileIdInvolved(TestCaseInTempDir):
         l = self.branch.fileid_involved_by_set(set(["rev-B"]))
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["a"])
 
-        l = self.branch.fileid_involved_by_set(set(["rev-D"]))
+        l = self.branch.fileid_involved_by_set(set(["rev-<D>"]))
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["b"])
 
     def test_fileid_involved_compare(self):
 
-        l1 = self.branch.fileid_involved_between_revs("rev-E", "rev-D")
-        l2 = self.branch.fileid_involved_by_set(set(["rev-D","rev-F","rev-C","rev-B"]))
+        l1 = self.branch.fileid_involved_between_revs("rev-E", "rev-<D>")
+        l2 = self.branch.fileid_involved_by_set(set(["rev-<D>","rev-F","rev-C","rev-B"]))
         self.assertEquals( l1, l2 )
 
         l1 = self.branch.fileid_involved_between_revs("rev-C", "rev-G")
         l2 = self.branch.fileid_involved_by_set(
-            set(["rev-G","rev-D","rev-F","rev-K","rev-J"]))
+            set(["rev-G","rev-<D>","rev-F","rev-K","rev-J"]))
         self.assertEquals( l1, l2 )
 
     def test_fileid_involved_full_compare(self):

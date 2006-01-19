@@ -20,6 +20,7 @@ import sys
 import os
 import errno
 from warnings import warn
+import xml.sax.saxutils
 from cStringIO import StringIO
 
 
@@ -1181,7 +1182,7 @@ class BzrBranch(Branch):
             if start < 9: continue
             end = line.find('"',start)
             assert end>= 0
-            file_id = line[start:end]
+            file_id = xml.sax.saxutils.unescape(line[start:end])
 
             # check if file_id is already present
             if file_id in file_ids: continue
@@ -1190,7 +1191,7 @@ class BzrBranch(Branch):
             if start < 10: continue
             end = line.find('"',start)
             assert end>= 0
-            revision_id = line[start:end]
+            revision_id = xml.sax.saxutils.unescape(line[start:end])
 
             if revision_id in changes:
                 file_ids.add(file_id)
