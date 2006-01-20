@@ -22,9 +22,14 @@ For concrete class tests see this file, and for meta-branch tests
 also see this file.
 """
 
+from StringIO import StringIO
 
 import bzrlib.branch as branch
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import (NotBranchError,
+                           UnknownFormatError,
+                           UnsupportedFormatError,
+                           )
+
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import get_transport
 
@@ -43,6 +48,31 @@ class TestDefaultFormat(TestCase):
         finally:
             branch.Branch.set_default_initializer(old_initializer)
         self.assertEqual(old_initializer, branch.Branch.get_default_initializer())
+
+
+class SampleBranchFormat(branch.BzrBranchFormat):
+    """A sample format
+
+    this format is initializable, unsupported to aid in testing the 
+    open and open_downlevel routines.
+    """
+
+    def get_format_string(self):
+        """See BzrBranchFormat.get_format_string()."""
+        return "Sample branch format."
+
+    def initialize(self, url):
+        """Format 4 branches cannot be created."""
+        t = get_transport(url)
+        t.mkdir('.bzr')
+        t.put('.bzr/branch-format', StringIO(self.get_format_string()))
+        return 'A branch'
+
+    def is_supported(self):
+        return False
+
+    def open(self, transport):
+        return "opened branch."
 
 
 class TestBzrBranchFormat(TestCaseInTempDir):
@@ -65,3 +95,27 @@ class TestBzrBranchFormat(TestCaseInTempDir):
         self.assertRaises(NotBranchError,
                           branch.BzrBranchFormat.find_format,
                           get_transport('.'))
+
+    def test_find_format_unknown_format(self):
+        t = get_transport('.')
+        t.mkdir('.bzr')
+        t.put('.bzr/branch-format', StringIO())
+        self.assertRaises(UnknownFormatError,
+                          branch.BzrBranchFormat.find_format,
+                          get_transport('.'))
+
+    def test_register_unregister_format(self):
+        format = SampleBranchFormat()
+        # make a branch
+        format.initialize('.')
+        # register a format for it.
+        branch.BzrBranchFormat.register_format(format)
+        # which branch.Open will refuse (not supported)
+        self.assertRaises(UnsupportedFormatError, branch.Branch.open, '.')
+        # but open_downlevel will work
+        t = get_transport('.')
+        self.assertEqual(format.open(t), branch.Branch.open_downlevel('.'))
+        # unregister the format
+        branch.BzrBranchFormat.unregister_format(format)
+        # now open_downlevel should fail too.
+        self.assertRaises(UnknownFormatError, branch.Branch.open_downlevel, '.')

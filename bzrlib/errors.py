@@ -213,9 +213,15 @@ class FileInWrongBranch(BzrNewError):
 
 
 class UnsupportedFormatError(BzrError):
-    """Specified path is a bzr branch that we cannot read."""
+    """Specified path is a bzr branch that we recognize but cannot read."""
     def __str__(self):
         return 'unsupported branch format: %s' % self.args[0]
+
+
+class UnknownFormatError(BzrError):
+    """Specified path is a bzr branch whose format we do not recognize."""
+    def __str__(self):
+        return 'unknown branch format: %s' % self.args[0]
 
 
 class NotVersionedError(BzrNewError):

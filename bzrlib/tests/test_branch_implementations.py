@@ -427,13 +427,23 @@ class TestFormat(TestCaseWithBranch):
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
-        made_branch = self.make_branch('.')
-        self.failUnless(isinstance(made_branch, branch.Branch))
+        if not self.branch_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        # supported formats must be able to init and open
         t = get_transport('.')
+        made_branch = self.branch_format.initialize(t.base)
+        self.failUnless(isinstance(made_branch, branch.Branch))
         self.assertEqual(self.branch_format,
                          branch.BzrBranchFormat.find_format(t))
-        opened_branch = self.branch_format.open(t)
-        self.assertEqual(made_branch._branch_format, opened_branch._branch_format)
+        direct_opened_branch = self.branch_format.open(t)
+        opened_branch = branch.Branch.open(t.base)
+        self.assertEqual(made_branch._branch_format,
+                         opened_branch._branch_format)
+        self.assertEqual(direct_opened_branch._branch_format,
+                         opened_branch._branch_format)
         self.failUnless(isinstance(opened_branch, branch.Branch))
 
     def test_open_not_branch(self):

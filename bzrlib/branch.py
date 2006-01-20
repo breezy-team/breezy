@@ -118,17 +118,25 @@ class Branch(object):
 
     @staticmethod
     def open_downlevel(base):
-        """Open a branch which may be of an old format.
-        
-        Only local branches are supported."""
-        return BzrBranch(get_transport(base), relax_version_check=True)
+        """Open a branch which may be of an old format."""
+        return Branch.open(base, _unsupported=True)
         
     @staticmethod
-    def open(base):
-        """Open an existing branch, rooted at 'base' (url)"""
+    def open(base, _unsupported=False):
+        """Open an existing branch, rooted at 'base' (url)
+        
+        _unsupported is a private parameter to the Branch class.
+        """
         t = get_transport(base)
         mutter("trying to open %r with transport %r", base, t)
         format = BzrBranchFormat.find_format(t)
+        if not _unsupported and not format.is_supported():
+            # see open_downlevel to open legacy branches.
+            raise errors.UnsupportedFormatError(
+                    'sorry, branch format %s not supported' % format,
+                    ['use a different bzr version',
+                     'or remove the .bzr directory'
+                     ' and "bzr init" again'])
         return format.open(t)
 
     @staticmethod
@@ -541,9 +549,12 @@ class BzrBranchFormat(object):
     def find_format(klass, transport):
         """Return the format registered for URL."""
         try:
-            return klass._formats[transport.get(".bzr/branch-format").read()]
+            format_string = transport.get(".bzr/branch-format").read()
+            return klass._formats[format_string]
         except NoSuchFile:
             raise NotBranchError(path=transport.base)
+        except KeyError:
+            raise errors.UnknownFormatError(format_string)
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
@@ -614,6 +625,15 @@ class BzrBranchFormat(object):
         mutter('created control directory in ' + t.base)
         return BzrBranch(t, format=self)
 
+    def is_supported(self):
+        """Is this format supported?
+
+        Supported formats can be initialized and opened.
+        Unsupported formats may not support initialization or committing or 
+        some other features depending on the reason for not being supported.
+        """
+        return True
+
     def open(self, transport):
         """Fill out the data in branch for the branch at url."""
         return BzrBranch(transport, format=self)
@@ -621,6 +641,11 @@ class BzrBranchFormat(object):
     @classmethod
     def register_format(klass, format):
         klass._formats[format.get_format_string()] = format
+
+    @classmethod
+    def unregister_format(klass, format):
+        assert klass._formats[format.get_format_string()] is format
+        del klass._formats[format.get_format_string()]
 
 
 class BzrBranchFormat4(BzrBranchFormat):
@@ -641,6 +666,15 @@ class BzrBranchFormat4(BzrBranchFormat):
     def initialize(self, url):
         """Format 4 branches cannot be created."""
         raise UninitializableFormat(self)
+
+    def is_supported(self):
+        """Format 4 is not supported.
+
+        It is not supported because the model changed from 4 to 5 and the
+        conversion logic is expensive - so doing it on the fly was not 
+        feasible.
+        """
+        return False
 
 
 class BzrBranchFormat5(BzrBranchFormat):
@@ -732,7 +766,7 @@ class BzrBranch(Branch):
             raise UnlistableBranch(from_store)
 
     def __init__(self, transport, init=deprecated_nonce,
-                 relax_version_check=False, format=None):
+                 relax_version_check=deprecated_nonce, format=None):
         """Create new branch object at a particular location.
 
         transport -- A Transport object, defining how to access files.
@@ -761,7 +795,20 @@ class BzrBranch(Branch):
                 # -> its deprecated.
                 self._initialize(transport.base)
         self._find_modes()
-        self._check_format(relax_version_check, format)
+        self._check_format(format)
+        if deprecated_passed(relax_version_check):
+            warn("BzrBranch.__init__(..., relax_version_check=XXX_: The "
+                 "relax_version_check parameter is deprecated as of bzr 0.8. "
+                 "Please use Branch.open_downlevel, or a BzrBranchFormat's "
+                 "open() method.", DeprecationWarning)
+            if (not relax_version_check
+                and self._branch_format not in (5, 6)):
+                # and not self._branch_format.is_supported()
+                raise errors.UnsupportedFormatError(
+                        'sorry, branch format %r not supported' % fmt,
+                        ['use a different bzr version',
+                         'or remove the .bzr directory'
+                         ' and "bzr init" again'])
 
         def get_store(name, compressed=True, prefixed=False):
             relpath = self._rel_controlfilename(safe_unicode(name))
@@ -975,7 +1022,7 @@ class BzrBranch(Branch):
         if not self._set_file_mode:
             self._file_mode = None
 
-    def _check_format(self, relax_version_check, format):
+    def _check_format(self, format):
         """Check this branch format is supported.
 
         The format level is stored, as an integer, in
@@ -997,14 +1044,6 @@ class BzrBranch(Branch):
             self._branch_format = 5
         elif fmt == BZR_BRANCH_FORMAT_4:
             self._branch_format = 4
-
-        if (not relax_version_check
-            and self._branch_format not in (5, 6)):
-            raise errors.UnsupportedFormatError(
-                           'sorry, branch format %r not supported' % fmt,
-                           ['use a different bzr version',
-                            'or remove the .bzr directory'
-                            ' and "bzr init" again'])
 
     @needs_read_lock
     def get_root_id(self):
