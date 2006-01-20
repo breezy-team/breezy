@@ -20,6 +20,7 @@ import sys
 import os
 import errno
 from warnings import warn
+import xml.sax.saxutils
 from cStringIO import StringIO
 
 
@@ -1137,10 +1138,21 @@ class BzrBranch(Branch):
                                 revision_id, "sig")
 
     def fileid_involved_between_revs(self, from_revid, to_revid):
-        """ This function returns the file_id(s) involved in the
-            changes between the from_revid revision and the to_revid
-            revision
+        """Find file_id(s) which are involved in the changes between revisions.
+
+        This determines the set of revisions which are involved, and then
+        finds all file ids affected by those revisions.
         """
+        # TODO: jam 20060119 This code assumes that w.inclusions will
+        #       always be correct. But because of the presence of ghosts
+        #       it is possible to be wrong.
+        #       One specific example from Robert Collins:
+        #       Two branches, with revisions ABC, and AD
+        #       C is a ghost merge of D.
+        #       Inclusions doesn't recognize D as an ancestor.
+        #       If D is ever merged in the future, the weave
+        #       won't be fixed, because AD never saw revision C
+        #       to cause a conflict which would force a reweave.
         w = self._get_inventory_weave( )
         from_set = set(w.inclusions([w.lookup(from_revid)]))
         to_set = set(w.inclusions([w.lookup(to_revid)]))
@@ -1149,10 +1161,9 @@ class BzrBranch(Branch):
         return self._fileid_involved_by_set(changed)
 
     def fileid_involved(self, last_revid=None):
-        """ This function returns the file_id(s) involved in the
-            changes up to the revision last_revid
-            If no parametr is passed, then all file_id[s] present in the
-            repository are returned
+        """Find all file_ids modified in the ancestry of last_revid.
+
+        :param last_revid: If None, last_revision() will be used.
         """
         w = self._get_inventory_weave( )
         if not last_revid:
@@ -1163,13 +1174,33 @@ class BzrBranch(Branch):
         return self._fileid_involved_by_set(changed)
 
     def fileid_involved_by_set(self, changes):
-        """ This function returns the file_id(s) involved in the
-            changese present in the set changes
+        """Find all file_ids modified by the set of revisions passed in.
+
+        :param changes: A set() of revision ids
         """
+        # TODO: jam 20060119 This line does *nothing*, remove it.
+        #       or better yet, change _fileid_involved_by_set so
+        #       that it takes the inventory weave, rather than
+        #       pulling it out by itself.
         w = self._get_inventory_weave( )
         return self._fileid_involved_by_set(changes)
 
     def _fileid_involved_by_set(self, changes):
+        """Find the set of file-ids affected by the set of revisions.
+
+        :param changes: A set() of revision ids.
+        :return: A set() of file ids.
+        
+        This peaks at the Weave, interpreting each line, looking to
+        see if it mentions one of the revisions. And if so, includes
+        the file id mentioned.
+        This expects both the Weave format, and the serialization
+        to have a single line per file/directory, and to have
+        fileid="" and revision="" on that line.
+        """
+        assert self._branch_format in (5,6), \
+            "fileid_involved only supported for branches which store inventory as xml"
+
         w = self._get_inventory_weave( )
         file_ids = set( )
         for line in w._weave:
@@ -1181,7 +1212,7 @@ class BzrBranch(Branch):
             if start < 9: continue
             end = line.find('"',start)
             assert end>= 0
-            file_id = line[start:end]
+            file_id = xml.sax.saxutils.unescape(line[start:end])
 
             # check if file_id is already present
             if file_id in file_ids: continue
@@ -1190,7 +1221,7 @@ class BzrBranch(Branch):
             if start < 10: continue
             end = line.find('"',start)
             assert end>= 0
-            revision_id = line[start:end]
+            revision_id = xml.sax.saxutils.unescape(line[start:end])
 
             if revision_id in changes:
                 file_ids.add(file_id)
