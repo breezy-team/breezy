@@ -1,7 +1,7 @@
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.branch import Branch
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
-                              resolve_conflicts)
+                              resolve_conflicts, Merge3Merger)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot)
 from bzrlib.osutils import file_kind, has_symlinks
@@ -323,3 +323,27 @@ class TestTreeTransform(TestCaseInTempDir):
         new_root=transform.get_tree_path_id('')
         transform.version_file('new-root', new_root)
         transform.apply()
+
+
+class TransformGroup(object):
+    def __init__(self, dirname):
+        os.mkdir(dirname)
+        self.b = Branch.initialize(dirname)
+        self.wt = self.b.working_tree()
+        self.tt = TreeTransform(self.wt)
+        self.root = self.tt.get_id_tree(self.wt.get_root_id())
+
+
+class TestTransformMerge(TestCaseInTempDir):
+    def test_text_merge(self):
+        base = TransformGroup("base")
+        base.tt.new_file('a', base.root, 'a\nb\nc\nd\be\n', 'a')
+        base.tt.apply()
+        other = TransformGroup("other")
+        other.tt.new_file('a', other.root, 'y\nb\nc\nd\be\n', 'a')
+        other.tt.apply()
+        this = TransformGroup("this")
+        this.tt.new_file('a', this.root, 'a\nb\nc\nd\bz\n', 'a')
+        this.tt.apply()
+        Merge3Merger(this.wt, this.wt, base.wt, other.wt)
+        self.assertEqual(this.wt.get_file('a').read(), 'y\nb\nc\nd\bz\n')
