@@ -73,6 +73,7 @@ import shutil
 
 from bzrlib.branch import Branch, find_branch
 from bzrlib.branch import BZR_BRANCH_FORMAT_5, BZR_BRANCH_FORMAT_6
+from bzrlib.branch import BzrBranchFormat4, BzrBranchFormat5, BzrBranchFormat6
 import bzrlib.hashcache as hashcache
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave
@@ -100,11 +101,11 @@ class Convert(object):
         note('starting upgrade of %s', os.path.abspath(self.base))
         self._backup_control_dir()
         self.pb = ui_factory.progress_bar()
-        if self.old_format == 4:
+        if isinstance(self.old_format, BzrBranchFormat4):
             note('starting upgrade from format 4 to 5')
             self._convert_to_weaves()
             self._open_branch()
-        if self.old_format == 5:
+        if isinstance(self.old_format, BzrBranchFormat5):
             note('starting upgrade from format 5 to 6')
             self._convert_to_prefixed()
             self._open_branch()
@@ -112,7 +113,6 @@ class Convert(object):
         cache.clear()
         cache.write()
         note("finished")
-
 
     def _convert_to_prefixed(self):
         from bzrlib.store import hash_prefix
@@ -170,11 +170,12 @@ class Convert(object):
     def _open_branch(self):
         self.branch = Branch.open_downlevel(self.base)
         self.old_format = self.branch._branch_format
-        if self.old_format == 6:
-            note('this branch is in the most current format')
+        if isinstance(self.old_format, BzrBranchFormat6):
+            note('this branch is in the most current format (%s)', self.old_format)
             return False
-        if self.old_format not in (4, 5):
-            raise BzrError("cannot upgrade from branch format %r" %
+        if (not isinstance(self.old_format, BzrBranchFormat4) and
+            not isinstance(self.old_format, BzrBranchFormat5)):
+            raise BzrError("cannot upgrade from branch format %s" %
                            self.branch._branch_format)
         return True
 

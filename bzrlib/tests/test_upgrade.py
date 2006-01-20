@@ -23,9 +23,10 @@ import base64
 import os
 import sys
 
-from bzrlib.tests import TestCase, TestCaseInTempDir
+import bzrlib.branch as branch
 from bzrlib.branch import Branch
 from bzrlib.revision import is_ancestor
+from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.upgrade import upgrade
 
 
@@ -43,7 +44,8 @@ class TestUpgrade(TestCaseInTempDir):
         self.build_tree_contents(_upgrade1_template)
         upgrade(u'.')
         b = Branch.open(u'.')
-        eq(b._branch_format, 6)
+        # tsk, peeking under the covers.
+        self.failUnless(isinstance(b._branch_format, branch.BzrBranchFormat6))
         rh = b.revision_history()
         eq(rh,
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',

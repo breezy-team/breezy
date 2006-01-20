@@ -747,15 +747,16 @@ class BzrBranch(Branch):
 
     def push_stores(self, branch_to):
         """See Branch.push_stores."""
-        if (self._branch_format != branch_to._branch_format
-            or self._branch_format != 4):
+        if (not isinstance(self._branch_format, BzrBranchFormat4) or
+            self._branch_format != branch_to._branch_format):
             from bzrlib.fetch import greedy_fetch
-            mutter("falling back to fetch logic to push between %s(%s) and %s(%s)",
+            mutter("Using fetch logic to push between %s(%s) and %s(%s)",
                    self, self._branch_format, branch_to, branch_to._branch_format)
             greedy_fetch(to_branch=branch_to, from_branch=self,
                          revision=self.last_revision())
             return
 
+        # format 4 to format 4 logic only.
         store_pairs = ((self.text_store,      branch_to.text_store),
                        (self.inventory_store, branch_to.inventory_store),
                        (self.revision_store,  branch_to.revision_store))
@@ -802,8 +803,7 @@ class BzrBranch(Branch):
                  "Please use Branch.open_downlevel, or a BzrBranchFormat's "
                  "open() method.", DeprecationWarning)
             if (not relax_version_check
-                and self._branch_format not in (5, 6)):
-                # and not self._branch_format.is_supported()
+                and not self._branch_format.is_supported()):
                 raise errors.UnsupportedFormatError(
                         'sorry, branch format %r not supported' % fmt,
                         ['use a different bzr version',
@@ -829,15 +829,15 @@ class BzrBranch(Branch):
                 ws.enable_cache = True
             return ws
 
-        if self._branch_format == 4:
+        if isinstance(self._branch_format, BzrBranchFormat4):
             self.inventory_store = get_store('inventory-store')
             self.text_store = get_store('text-store')
             self.revision_store = get_store('revision-store')
-        elif self._branch_format == 5:
+        elif isinstance(self._branch_format, BzrBranchFormat5):
             self.control_weaves = get_weave(u'')
             self.weave_store = get_weave(u'weaves')
             self.revision_store = get_store(u'revision-store', compressed=False)
-        elif self._branch_format == 6:
+        elif isinstance(self._branch_format, BzrBranchFormat6):
             self.control_weaves = get_weave(u'')
             self.weave_store = get_weave(u'weaves', prefixed=True)
             self.revision_store = get_store(u'revision-store', compressed=False,
@@ -1023,27 +1023,18 @@ class BzrBranch(Branch):
             self._file_mode = None
 
     def _check_format(self, format):
-        """Check this branch format is supported.
+        """Identify the branch format if needed.
 
-        The format level is stored, as an integer, in
+        The format is stored as a reference to the format object in
         self._branch_format for code that needs to check it later.
-
-        In the future, we might need different in-memory Branch
-        classes to support downlevel branches.  But not yet.
 
         The format parameter is either None or the branch format class
         used to open this branch.
         """
         if format is None:
             format = BzrBranchFormat.find_format(self._transport)
-        fmt = format.get_format_string()
-        mutter("got branch format %r", fmt)
-        if fmt == BZR_BRANCH_FORMAT_6:
-            self._branch_format = 6
-        elif fmt == BZR_BRANCH_FORMAT_5:
-            self._branch_format = 5
-        elif fmt == BZR_BRANCH_FORMAT_4:
-            self._branch_format = 4
+        self._branch_format = format
+        mutter("got branch format %s", self._branch_format)
 
     @needs_read_lock
     def get_root_id(self):
