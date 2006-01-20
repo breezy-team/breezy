@@ -69,7 +69,6 @@
 import os
 import tempfile
 import sys
-import shutil
 from stat import *
 
 from bzrlib.atomicfile import AtomicFile
@@ -104,7 +103,7 @@ class Convert(object):
             raise UpgradeReadonly
         if not self._open_branch():
             return
-        note('starting upgrade of %s', os.path.abspath(self.base))
+        note('starting upgrade of %s', self.base)
         self._backup_control_dir()
         self.pb = ui_factory.progress_bar()
         if isinstance(self.old_format, BzrBranchFormat4):
@@ -137,7 +136,6 @@ class Convert(object):
                           pathjoin(prefix_dir, filename))
         self._set_new_format(BZR_BRANCH_FORMAT_6)
 
-
     def _convert_to_weaves(self):
         note('note: upgrade may be faster if all store files are ungzipped first')
         if not os.path.isdir(self.base + '/.bzr/weaves'):
@@ -163,15 +161,14 @@ class Convert(object):
             self.pb.update('converting revision', i, len(to_import))
             self._convert_one_rev(rev_id)
         self.pb.clear()
+        self._write_all_weaves()
+        self._write_all_revs()
         note('upgraded to weaves:')
         note('  %6d revisions and inventories' % len(self.revisions))
         note('  %6d revisions not present' % len(self.absent_revisions))
         note('  %6d texts' % self.text_count)
-        self._write_all_weaves()
-        self._write_all_revs()
-        self._cleanup_spare_files()
+        self._cleanup_spare_files_after_format4()
         self._set_new_format(BZR_BRANCH_FORMAT_5)
-
 
     def _open_branch(self):
         self.branch = Branch.open_downlevel(self.base)
@@ -185,20 +182,19 @@ class Convert(object):
                            self.branch._branch_format)
         return True
 
-
     def _set_new_format(self, format):
         self.branch.put_controlfile('branch-format', format)
 
-
-    def _cleanup_spare_files(self):
+    def _cleanup_spare_files_after_format4(self):
+        transport = self.transport.clone('.bzr')
         for n in 'merged-patches', 'pending-merged-patches':
-            p = self.branch.controlfilename(n)
-            if not os.path.exists(p):
-                continue
-            ## assert os.path.getsize(p) == 0
-            os.remove(p)
-        shutil.rmtree(self.base + '/.bzr/inventory-store')
-        shutil.rmtree(self.base + '/.bzr/text-store')
+            try:
+                ## assert os.path.getsize(p) == 0
+                transport.delete(n)
+            except NoSuchFile:
+                pass
+        transport.delete_tree('inventory-store')
+        transport.delete_tree('text-store')
 
     def _backup_control_dir(self):
         note('making backup of tree history')
@@ -245,8 +241,9 @@ class Convert(object):
 
     def _write_all_revs(self):
         """Write all revisions out in new form."""
-        shutil.rmtree(self.base + '/.bzr/revision-store')
-        os.mkdir(self.base + '/.bzr/revision-store')
+        transport = self.transport.clone('.bzr')
+        transport.delete_tree('revision-store')
+        transport.mkdir('revision-store')
         try:
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update('write revision', i, len(self.converted_revs))

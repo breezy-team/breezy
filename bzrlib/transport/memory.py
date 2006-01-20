@@ -145,10 +145,26 @@ class MemoryTransport(Transport):
         for path in self._dirs:
             if (path.startswith(_abspath) and 
                 path[len(_abspath) + 1:].find('/') == -1 and
-                len(path) > len(_abspath)):
+                len(path) > len(_abspath) and
+                path[len(_abspath)] == '/'):
                 result.append(path[len(_abspath) + 1:])
         return result
     
+    def rmdir(self, relpath):
+        """See Transport.rmdir."""
+        _abspath = self._abspath(relpath)
+        if _abspath in self._files:
+            self._translate_error(IOError(errno.ENOTDIR, relpath), relpath)
+        for path in self._files:
+            if path.startswith(_abspath):
+                self._translate_error(IOError(errno.EBUSY, relpath), relpath)
+        for path in self._dirs:
+            if path.startswith(_abspath) and path != _abspath:
+                self._translate_error(IOError(errno.EBUSY, relpath), relpath)
+        if not _abspath in self._dirs:
+            raise NoSuchFile(relpath)
+        del self._dirs[_abspath]
+
     def stat(self, relpath):
         """See Transport.stat()."""
         _abspath = self._abspath(relpath)
@@ -176,6 +192,8 @@ class MemoryTransport(Transport):
             return self._cwd[:-1]
         if relpath.endswith('/'):
             relpath = relpath[:-1]
+        if relpath.startswith('./'):
+            relpath = relpath[2:]
         return self._cwd + relpath
 
 

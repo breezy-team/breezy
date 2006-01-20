@@ -484,7 +484,6 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.check_transport_contents(t.get('f2').read(), t, 'c')
         self.check_transport_contents(t.get('f3').read(), t, 'd')
 
-
     def test_delete(self):
         # TODO: Test Transport.delete
         t = self.get_transport()
@@ -528,6 +527,50 @@ class TestTransportImplementation(TestCaseInTempDir):
         # working directory, so we can just do a
         # plain "listdir".
         # self.assertEqual([], os.listdir('.'))
+
+    def test_rmdir(self):
+        t = self.get_transport()
+        # Not much to do with a readonly transport
+        if t.is_readonly():
+            self.assertRaises(TransportNotPossible, t.rmdir, 'missing')
+            return
+        t.mkdir('adir')
+        t.mkdir('adir/bdir')
+        t.rmdir('adir/bdir')
+        self.assertRaises(NoSuchFile, t.stat, 'adir/bdir')
+        t.rmdir('adir')
+        self.assertRaises(NoSuchFile, t.stat, 'adir')
+
+    def test_delete_tree(self):
+        t = self.get_transport()
+
+        # Not much to do with a readonly transport
+        if t.is_readonly():
+            self.assertRaises(TransportNotPossible, t.delete_tree, 'missing')
+            return
+
+        # and does it like listing ?
+        t.mkdir('adir')
+        try:
+            t.delete_tree('adir')
+        except TransportNotPossible:
+            # ok, this transport does not support delete_tree
+            return
+        
+        # did it delete that trivial case?
+        self.assertRaises(NoSuchFile, t.stat, 'adir')
+
+        self.build_tree(['adir/',
+                         'adir/file', 
+                         'adir/subdir/', 
+                         'adir/subdir/file', 
+                         'adir/subdir2/',
+                         'adir/subdir2/file',
+                         ], transport=t)
+
+        t.delete_tree('adir')
+        # adir should be gone now.
+        self.assertRaises(NoSuchFile, t.stat, 'adir')
 
     def test_move(self):
         t = self.get_transport()
@@ -631,6 +674,9 @@ class TestTransportImplementation(TestCaseInTempDir):
 
         self.assertListRaises(NoSuchFile, t.stat_multi, ['a', 'c', 'd'])
         self.assertListRaises(NoSuchFile, t.stat_multi, iter(['a', 'c', 'd']))
+        self.build_tree(['subdir/', 'subdir/file'], transport=t)
+        subdir = t.clone('subdir')
+        subdir.stat('./file')
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
@@ -654,12 +700,14 @@ class TestTransportImplementation(TestCaseInTempDir):
         t = t.clone('wd')
 
         self.assertEqual([], sorted_list(u'.'))
+        # c2 is precisely one letter longer than c here to test that
+        # suffixing is not confused.
         if not t.is_readonly():
-            self.build_tree(['a', 'b', 'c/', 'c/d', 'c/e'], transport=t)
+            self.build_tree(['a', 'b', 'c/', 'c/d', 'c/e', 'c2/'], transport=t)
         else:
-            self.build_tree(['wd/a', 'wd/b', 'wd/c/', 'wd/c/d', 'wd/c/e'])
+            self.build_tree(['wd/a', 'wd/b', 'wd/c/', 'wd/c/d', 'wd/c/e', 'wd/c2/'])
 
-        self.assertEqual([u'a', u'b', u'c'], sorted_list(u'.'))
+        self.assertEqual([u'a', u'b', u'c', u'c2'], sorted_list(u'.'))
         self.assertEqual([u'd', u'e'], sorted_list(u'c'))
 
         if not t.is_readonly():
@@ -669,7 +717,7 @@ class TestTransportImplementation(TestCaseInTempDir):
             os.unlink('wd/c/d')
             os.unlink('wd/b')
             
-        self.assertEqual([u'a', u'c'], sorted_list('.'))
+        self.assertEqual([u'a', u'c', u'c2'], sorted_list('.'))
         self.assertEqual([u'e'], sorted_list(u'c'))
 
         self.assertListRaises(NoSuchFile, t.list_dir, 'q')

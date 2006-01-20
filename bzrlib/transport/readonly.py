@@ -62,6 +62,10 @@ class ReadonlyTransportDecorator(Transport):
         """See Transport.delete()."""
         raise TransportNotPossible('readonly transport')
 
+    def delete_tree(self, relpath):
+        """See Transport.delete_tree()."""
+        raise TransportNotPossible('readonly transport')
+
     def get(self, relpath):
         """See Transport.get()."""
         return self._decorated.get(relpath)
@@ -90,6 +94,10 @@ class ReadonlyTransportDecorator(Transport):
         """See Transport.list_dir()."""
         return self._decorated.list_dir(relpath)
     
+    def rmdir(self, relpath):
+        """See Transport.rmdir."""
+        raise TransportNotPossible('readonly transport')
+
     def should_cache(self):
         """See Transport.should_cache()."""
         return self._decorated.should_cache()

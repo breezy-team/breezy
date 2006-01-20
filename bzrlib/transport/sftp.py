@@ -563,6 +563,14 @@ class SFTPTransport (Transport):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
 
+    def rmdir(self, relpath):
+        """See Transport.rmdir."""
+        path = self._remote_path(relpath)
+        try:
+            return self._sftp.rmdir(path)
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, path, ': failed to rmdir')
+
     def stat(self, relpath):
         """Return the stat information for a file."""
         path = self._remote_path(relpath)

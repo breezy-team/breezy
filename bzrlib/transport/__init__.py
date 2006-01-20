@@ -21,6 +21,7 @@ as remote (such as http or sftp).
 
 import errno
 from copy import deepcopy
+from stat import *
 import sys
 from unittest import TestSuite
 
@@ -371,6 +372,29 @@ class Transport(object):
         """
         return self._iterate_over(relpaths, self.delete, pb, 'delete', expand=False)
 
+    def delete_tree(self, relpath):
+        """Delete an entire tree. This may require a listable transport."""
+        subtree = self.clone(relpath)
+        files = []
+        directories = ['.']
+        pending_rmdirs = []
+        while directories:
+            dir = directories.pop()
+            if dir != '.':
+                pending_rmdirs.append(dir)
+            for path in subtree.list_dir(dir):
+                path = dir + '/' + path
+                stat = subtree.stat(path)
+                if S_ISDIR(stat.st_mode):
+                    directories.append(path)
+                else:
+                    files.append(path)
+        subtree.delete_multi(files)
+        pending_rmdirs.reverse()
+        for dir in pending_rmdirs:
+            subtree.rmdir(dir)
+        self.rmdir(relpath)
+
     def stat(self, relpath):
         """Return the stat information for a file.
         WARNING: This may not be implementable for all protocols, so use
@@ -381,6 +405,10 @@ class Transport(object):
         ALSO NOTE: Stats of directories may not be supported on some 
         transports.
         """
+        raise NotImplementedError
+
+    def rmdir(self, relpath):
+        """Remove a directory at the given path."""
         raise NotImplementedError
 
     def stat_multi(self, relpaths, pb=None):
