@@ -491,6 +491,7 @@ class TestTransportImplementation(TestCaseInTempDir):
 
         # Not much to do with a readonly transport
         if t.is_readonly():
+            self.assertRaises(TransportNotPossible, t.delete, 'missing')
             return
 
         t.put('a', StringIO('a little bit of text\n'))
@@ -646,17 +647,28 @@ class TestTransportImplementation(TestCaseInTempDir):
 
         # SftpServer creates control files in the working directory
         # so lets move down a directory to avoid those.
-        t.mkdir('wd')
+        if not t.is_readonly():
+            t.mkdir('wd')
+        else:
+            os.mkdir('wd')
         t = t.clone('wd')
 
         self.assertEqual([], sorted_list(u'.'))
-        self.build_tree(['a', 'b', 'c/', 'c/d', 'c/e'], transport=t)
+        if not t.is_readonly():
+            self.build_tree(['a', 'b', 'c/', 'c/d', 'c/e'], transport=t)
+        else:
+            self.build_tree(['wd/a', 'wd/b', 'wd/c/', 'wd/c/d', 'wd/c/e'])
 
         self.assertEqual([u'a', u'b', u'c'], sorted_list(u'.'))
         self.assertEqual([u'd', u'e'], sorted_list(u'c'))
 
-        t.delete('c/d')
-        t.delete('b')
+        if not t.is_readonly():
+            t.delete('c/d')
+            t.delete('b')
+        else:
+            os.unlink('wd/c/d')
+            os.unlink('wd/b')
+            
         self.assertEqual([u'a', u'c'], sorted_list('.'))
         self.assertEqual([u'e'], sorted_list(u'c'))
 

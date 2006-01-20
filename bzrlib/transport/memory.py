@@ -38,7 +38,7 @@ class MemoryStat(object):
 
 
 class MemoryTransport(Transport):
-    """This is the transport agent for local filesystem access."""
+    """This is an in memory file system for transient data storage."""
 
     def __init__(self, url=""):
         """Set the 'base' path where files will be stored."""

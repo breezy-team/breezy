@@ -162,6 +162,7 @@ class TestTransportProviderAdapter(TestCase):
         local_abspath_test = test_iter.next()
         local_urlpath_test = test_iter.next()
         memory_test = test_iter.next()
+        readonly_test = test_iter.next()
         sftp_abs_test = test_iter.next()
         sftp_homedir_test = test_iter.next()
         sftp_sibling_abs_test = test_iter.next()
