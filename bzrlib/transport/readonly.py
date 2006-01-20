@@ -108,15 +108,25 @@ class ReadonlyTransportDecorator(Transport):
 class ReadonlyServer(Server):
     """Server for the ReadonlyTransportDecorator for testing with."""
 
-    def setUp(self):
-        """See bzrlib.transport.Server.setUp."""
-        from bzrlib.transport.local import LocalRelpathServer
-        self._server = LocalRelpathServer()
-        self._server.setUp()
+    def setUp(self, server=None):
+        """See bzrlib.transport.Server.setUp.
+
+        :server: decorate the urls given by server. If not provided a
+        LocalServer is created.
+        """
+        if server is not None:
+            self._made_server = False
+            self._server = server
+        else:
+            from bzrlib.transport.local import LocalRelpathServer
+            self._made_server = True
+            self._server = LocalRelpathServer()
+            self._server.setUp()
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        self._server.tearDown()
+        if self._made_server:
+            self._server.tearDown()
 
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""

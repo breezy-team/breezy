@@ -47,6 +47,7 @@ import bzrlib.store
 import bzrlib.trace
 from bzrlib.transport import urlescape
 import bzrlib.transport
+from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.tests.treeshape import build_tree_contents
@@ -237,9 +238,12 @@ class TestCase(unittest.TestCase):
     _log_file_name = None
     _log_contents = ''
 
+    def __init__(self, methodName='testMethod'):
+        super(TestCase, self).__init__(methodName)
+        self._cleanups = []
+
     def setUp(self):
         unittest.TestCase.setUp(self)
-        self._cleanups = []
         self._cleanEnvironment()
         bzrlib.trace.disable_default_logging()
         self._startLogFile()
@@ -628,6 +632,58 @@ class TestCaseInTempDir(TestCase):
         self.assertEqualDiff(content, open(path, 'r').read())
 
 
+class TestCaseWithTransport(TestCaseInTempDir):
+    """A test case that provides get_url and get_readonly_url facilities.
+
+    These back onto two transport servers, one for readonly access and one for
+    read write access.
+
+    If no explicit class is provided for readonly access, a
+    ReadonlyTransportDecorator is used instead which allows the use of non disk
+    based read write transports.
+
+    If an explicit class is provided for readonly access, that server and the 
+    readwrite one must both define get_url() as resolving to os.getcwd().
+    """
+
+    def __init__(self, methodName='testMethod'):
+        super(TestCaseWithTransport, self).__init__(methodName)
+        self.__readonly_server = None
+        self.__server = None
+
+    def get_readonly_url(self):
+        """Get a URL for the readonly transport.
+
+        This will either be backed by '.' or a decorator to the transport 
+        used by self.get_url()
+        """
+        if self.__readonly_server is None:
+            if self.transport_readonly_server is None:
+                # readonly decorator requested
+                # bring up the server
+                self.get_url()
+                self.__readonly_server = ReadonlyServer()
+                self.__readonly_server.setUp(self.__server)
+            else:
+                self.__readonly_server = self.transport_readonly_server()
+                self.__readonly_server.setUp()
+            self.addCleanup(self.__readonly_server.tearDown)
+        return self.__readonly_server.get_url()
+
+    def get_url(self):
+        """Get a URL for the readwrite transport.
+
+        This will either be backed by '.' or to an equivalent non-file based
+        facility.
+        """
+        if self.__server is None:
+            self.__server = self.transport_server()
+            self.__server.setUp()
+            self.addCleanup(self.__server.tearDown)
+        return self.__server.get_url()
+    
+
+
 def filter_suite_by_re(suite, pattern):
     result = TestSuite()
     filter_re = re.compile(pattern)
@@ -760,7 +816,9 @@ def test_suite():
     from bzrlib.branch import BranchTestProviderAdapter
     adapter = BranchTestProviderAdapter(
         bzrlib.transport.local.LocalRelpathServer,
-        bzrlib.transport.local.LocalRelpathServer,
+        # None here will cause a readonly decorator to be created
+        # by the TestCaseWithTransport.get_readonly_transport method.
+        None,
         bzrlib.branch.BzrBranchFormat._formats.values())
     for mod_name in test_branch_implementations:
         mod = _load_module_by_name(mod_name)

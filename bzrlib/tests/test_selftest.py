@@ -24,6 +24,7 @@ from bzrlib.tests import (
                           _load_module_by_name,
                           TestCase,
                           TestCaseInTempDir,
+                          TestCaseWithTransport,
                           TestSkipped,
                           TextTestRunner,
                           )
@@ -225,3 +226,30 @@ class TestBranchProviderAdapter(TestCase):
         self.assertEqual(tests[1].branch_format, formats[1])
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
+
+
+class TestTestCaseWithTransport(TestCaseWithTransport):
+    """Tests for the convenience functions TestCaseWithTransport introduces."""
+
+    def test_get_readonly_url_none(self):
+        from bzrlib.transport import get_transport
+        from bzrlib.transport.memory import MemoryServer
+        from bzrlib.transport.readonly import ReadonlyTransportDecorator
+        self.transport_server = MemoryServer
+        self.transport_readonly_server = None
+        # calling get_readonly_transport() constructs a decorator on the url
+        # for the server
+        url = self.get_readonly_url()
+        t = get_transport(url)
+        self.failUnless(isinstance(t, ReadonlyTransportDecorator))
+
+    def test_get_readonly_url_http(self):
+        from bzrlib.transport import get_transport
+        from bzrlib.transport.local import LocalRelpathServer
+        from bzrlib.transport.http import HttpServer, HttpTransport
+        self.transport_server = LocalRelpathServer
+        self.transport_readonly_server = HttpServer
+        # calling get_readonly_transport() gives us a HTTP server instance.
+        url = self.get_readonly_url()
+        t = get_transport(url)
+        self.failUnless(isinstance(t, HttpTransport))
