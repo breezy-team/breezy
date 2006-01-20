@@ -1366,16 +1366,14 @@ class cmd_upgrade(Command):
     """Upgrade branch storage to current format.
 
     The check command or bzr developers may sometimes advise you to run
-    this command.
-
-    This version of this command upgrades from the full-text storage
-    used by bzr 0.0.8 and earlier to the weave format (v5).
+    this command. When the default format has changed you may also be warned
+    during other operations to upgrade.
     """
-    takes_args = ['dir?']
+    takes_args = ['url?']
 
-    def run(self, dir=u'.'):
+    def run(self, url='.'):
         from bzrlib.upgrade import upgrade
-        upgrade(dir)
+        upgrade(url)
 
 
 class cmd_whoami(Command):

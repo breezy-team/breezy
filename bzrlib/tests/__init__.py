@@ -650,6 +650,8 @@ class TestCaseWithTransport(TestCaseInTempDir):
         super(TestCaseWithTransport, self).__init__(methodName)
         self.__readonly_server = None
         self.__server = None
+        self.transport_server = bzrlib.transport.local.LocalRelpathServer
+        self.transport_readonly_server = None
 
     def get_readonly_url(self, relpath=None):
         """Get a URL for the readonly transport.

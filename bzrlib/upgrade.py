@@ -71,31 +71,36 @@ import tempfile
 import sys
 import shutil
 
+from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import Branch, find_branch
 from bzrlib.branch import BZR_BRANCH_FORMAT_5, BZR_BRANCH_FORMAT_6
 from bzrlib.branch import BzrBranchFormat4, BzrBranchFormat5, BzrBranchFormat6
+from bzrlib.errors import UpgradeReadonly
 import bzrlib.hashcache as hashcache
+from bzrlib.osutils import sha_strings, sha_string, pathjoin, abspath
+from bzrlib.ui import ui_factory
+from bzrlib.trace import mutter, note, warning
+from bzrlib.transport import get_transport
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave
-from bzrlib.ui import ui_factory
-from bzrlib.atomicfile import AtomicFile
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
-from bzrlib.trace import mutter, note, warning
-from bzrlib.osutils import sha_strings, sha_string, pathjoin, abspath
 
 
 class Convert(object):
-    def __init__(self, base_dir):
-        self.base = base_dir
+
+    def __init__(self, transport):
+        self.base = transport.base
         self.converted_revs = set()
         self.absent_revisions = set()
         self.text_count = 0
         self.revisions = {}
+        self.transport = transport
         self.convert()
 
-
     def convert(self):
+        if self.transport.is_readonly():
+            raise UpgradeReadonly
         if not self._open_branch():
             return
         note('starting upgrade of %s', os.path.abspath(self.base))
@@ -403,5 +408,6 @@ def write_a_weave(weave, filename):
         inv_wf.close()
 
 
-def upgrade(base_dir):
-    Convert(base_dir)
+def upgrade(url):
+    t = get_transport(url)
+    Convert(t)
