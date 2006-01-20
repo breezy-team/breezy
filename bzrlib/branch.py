@@ -20,7 +20,6 @@ import sys
 import os
 import errno
 from warnings import warn
-import xml.sax.saxutils
 from cStringIO import StringIO
 
 
