@@ -52,7 +52,7 @@ class TestCaseWithBranch(TestCaseWithTransport):
 
     def get_branch(self):
         if self.branch is None:
-            self.branch = self.make_branch('.')
+            self.branch = self.make_branch(self.get_url())
         return self.branch
 
     def make_branch(self, relpath):
@@ -445,12 +445,13 @@ class TestFormat(TestCaseWithBranch):
             # they may not be initializable.
             return
         # supported formats must be able to init and open
-        t = get_transport('.')
+        t = get_transport(self.get_url())
+        readonly_t = get_transport(self.get_readonly_url())
         made_branch = self.branch_format.initialize(t.base)
         self.failUnless(isinstance(made_branch, branch.Branch))
         self.assertEqual(self.branch_format,
-                         branch.BzrBranchFormat.find_format(t))
-        direct_opened_branch = self.branch_format.open(t)
+                         branch.BzrBranchFormat.find_format(readonly_t))
+        direct_opened_branch = self.branch_format.open(readonly_t)
         opened_branch = branch.Branch.open(t.base)
         self.assertEqual(made_branch._branch_format,
                          opened_branch._branch_format)
@@ -461,4 +462,4 @@ class TestFormat(TestCaseWithBranch):
     def test_open_not_branch(self):
         self.assertRaises(NoSuchFile,
                           self.branch_format.open,
-                          get_transport('.'))
+                          get_transport(self.get_readonly_url()))
