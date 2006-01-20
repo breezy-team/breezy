@@ -605,15 +605,13 @@ class SFTPTransport (Transport):
         # that we have taken the lock.
         return SFTPLock(relpath, self)
 
-
     def _unparse_url(self, path=None):
         if path is None:
             path = self._path
         path = urllib.quote(path)
-        if path.startswith('/'):
-            path = '/%2F' + path[1:]
-        else:
-            path = '/' + path
+        # handle homedir paths
+        if not path.startswith('/'):
+            path = "/~/" + path
         netloc = urllib.quote(self._host)
         if self._username is not None:
             netloc = '%s@%s' % (urllib.quote(self._username), netloc)
@@ -653,9 +651,13 @@ class SFTPTransport (Transport):
         # as a homedir relative path (the path begins with a double slash
         # if it is absolute).
         # see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
-        if path.startswith('/'):
-            path = path[1:]
-
+        # RBC 20060118 we are not using this as its too user hostile. instead
+        # we are following lftp and using /~/foo to mean '~/foo'.
+        # handle homedir paths
+        if path.startswith('/~/'):
+            path = path[3:]
+        elif path == '/~':
+            path = ''
         return (username, password, host, port, path)
 
     def _parse_url(self, url):
@@ -950,8 +952,7 @@ class SFTPAbsoluteServer(SFTPServer):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url("%%2f%s" % 
-                urlescape(self._homedir[1:]))
+        return self._get_sftp_url(urlescape(self._homedir[1:]))
 
 
 class SFTPHomeDirServer(SFTPServer):
@@ -959,7 +960,7 @@ class SFTPHomeDirServer(SFTPServer):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url("")
+        return self._get_sftp_url("~/")
 
 
 class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):

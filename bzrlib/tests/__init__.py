@@ -389,6 +389,8 @@ class TestCase(unittest.TestCase):
 
         This should only be called from TestCase.tearDown.
         """
+        # TODO: Perhaps this should keep running cleanups even if 
+        # one of them fails?
         for cleanup_fn in reversed(self._cleanups):
             cleanup_fn()
 

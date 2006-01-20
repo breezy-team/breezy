@@ -104,6 +104,12 @@ class Tree(object):
         """Print file with id `file_id` to stdout."""
         import sys
         sys.stdout.write(self.get_file_text(file_id))
+
+    def lock_read(self):
+        pass
+
+    def unlock(self):
+        pass
         
         
 class RevisionTree(Tree):
@@ -171,6 +177,12 @@ class RevisionTree(Tree):
 
     def kind(self, file_id):
         return self._inventory[file_id].kind
+
+    def lock_read(self):
+        self._branch.lock_read()
+
+    def unlock(self):
+        self._branch.unlock()
 
 
 class EmptyTree(Tree):
