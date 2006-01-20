@@ -240,8 +240,12 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         # calling get_readonly_transport() constructs a decorator on the url
         # for the server
         url = self.get_readonly_url()
+        url2 = self.get_readonly_url('foo/bar')
         t = get_transport(url)
+        t2 = get_transport(url2)
         self.failUnless(isinstance(t, ReadonlyTransportDecorator))
+        self.failUnless(isinstance(t2, ReadonlyTransportDecorator))
+        self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
         from bzrlib.transport import get_transport
@@ -251,5 +255,9 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
         url = self.get_readonly_url()
+        url2 = self.get_readonly_url('foo/bar')
         t = get_transport(url)
+        t2 = get_transport(url2)
         self.failUnless(isinstance(t, HttpTransport))
+        self.failUnless(isinstance(t2, HttpTransport))
+        self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))

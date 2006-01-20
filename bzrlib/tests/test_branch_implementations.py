@@ -31,11 +31,12 @@ from bzrlib.errors import (NoSuchRevision,
                            )
 import bzrlib.gpg
 from bzrlib.osutils import getcwd
-from bzrlib.tests import TestCase, TestCaseInTempDir, TestSkipped
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
 from bzrlib.transport import get_transport
+from bzrlib.transport.http import HttpServer
+from bzrlib.transport.memory import MemoryServer
 from bzrlib.revision import NULL_REVISION
 
 # TODO: Make a branch using basis branch, and check that it 
@@ -43,7 +44,7 @@ from bzrlib.revision import NULL_REVISION
 # hooking into the Transport.
 
 
-class TestCaseWithBranch(TestCaseInTempDir):
+class TestCaseWithBranch(TestCaseWithTransport):
 
     def setUp(self):
         super(TestCaseWithBranch, self).setUp()
@@ -246,20 +247,31 @@ class TestBranch(TestCaseWithBranch):
                          "My happy branch")
 
 
-class TestRemote(TestCaseWithWebserver):
+class ChrootedTests(TestCaseWithBranch):
+    """A support class that provides readonly urls outside the local namespace.
+
+    This is done by checking if self.transport_server is a MemoryServer. if it
+    is then we are chrooted already, if it is not then an HttpServer is used
+    for readonly urls.
+    """
+
+    def setUp(self):
+        super(ChrootedTests, self).setUp()
+        if not isinstance(self.transport_server, MemoryServer):
+            self.transport_readonly_server = HttpServer
 
     def test_open_containing(self):
         self.assertRaises(NotBranchError, Branch.open_containing,
-                          self.get_remote_url(''))
+                          self.get_readonly_url(''))
         self.assertRaises(NotBranchError, Branch.open_containing,
-                          self.get_remote_url('g/p/q'))
+                          self.get_readonly_url('g/p/q'))
         try:
-            branch = self.branch_format.initialize('.')
+            branch = self.branch_format.initialize(self.get_url())
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
-        branch, relpath = Branch.open_containing(self.get_remote_url(''))
+        branch, relpath = Branch.open_containing(self.get_readonly_url(''))
         self.assertEqual('', relpath)
-        branch, relpath = Branch.open_containing(self.get_remote_url('g/p/q'))
+        branch, relpath = Branch.open_containing(self.get_readonly_url('g/p/q'))
         self.assertEqual('g/p/q', relpath)
         
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        

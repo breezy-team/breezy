@@ -150,6 +150,7 @@ class Branch(object):
         If there is one, it is returned, along with the unused portion of url.
         """
         t = get_transport(url)
+        url = t.base
         while True:
             try:
                 format = BzrBranchFormat.find_format(t)

@@ -651,11 +651,13 @@ class TestCaseWithTransport(TestCaseInTempDir):
         self.__readonly_server = None
         self.__server = None
 
-    def get_readonly_url(self):
+    def get_readonly_url(self, relpath=None):
         """Get a URL for the readonly transport.
 
         This will either be backed by '.' or a decorator to the transport 
         used by self.get_url()
+        relpath provides for clients to get a path relative to the base url.
+        These should only be downwards relative, not upwards.
         """
         if self.__readonly_server is None:
             if self.transport_readonly_server is None:
@@ -668,19 +670,32 @@ class TestCaseWithTransport(TestCaseInTempDir):
                 self.__readonly_server = self.transport_readonly_server()
                 self.__readonly_server.setUp()
             self.addCleanup(self.__readonly_server.tearDown)
-        return self.__readonly_server.get_url()
+        base = self.__readonly_server.get_url()
+        if relpath is not None:
+            if not base.endswith('/'):
+                base = base + '/'
+            base = base + relpath
+        return base
 
-    def get_url(self):
+    def get_url(self, relpath=None):
         """Get a URL for the readwrite transport.
 
         This will either be backed by '.' or to an equivalent non-file based
         facility.
+        relpath provides for clients to get a path relative to the base url.
+        These should only be downwards relative, not upwards.
         """
         if self.__server is None:
             self.__server = self.transport_server()
             self.__server.setUp()
             self.addCleanup(self.__server.tearDown)
-        return self.__server.get_url()
+        base = self.__server.get_url()
+        if relpath is not None:
+            if not base.endswith('/'):
+                base = base + '/'
+            base = base + relpath
+        return base
+
     
 
 
