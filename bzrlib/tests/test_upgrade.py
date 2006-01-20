@@ -27,6 +27,7 @@ import bzrlib.branch as branch
 from bzrlib.branch import Branch
 from bzrlib.revision import is_ancestor
 from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
 
 
@@ -55,6 +56,28 @@ class TestUpgrade(TestCaseInTempDir):
         eq(t.get_file_text(foo_id), 'initial contents\n')
         t = b.revision_tree(rh[1])
         eq(t.get_file_text(foo_id), 'new contents\n')
+        # check a backup was made:
+        transport = get_transport(b.base)
+        transport.stat('.bzr.backup')
+        transport.stat('.bzr.backup/README')
+        transport.stat('.bzr.backup/branch-format')
+        transport.stat('.bzr.backup/revision-history')
+        transport.stat('.bzr.backup/merged-patches')
+        transport.stat('.bzr.backup/pending-merged-patches')
+        transport.stat('.bzr.backup/pending-merges')
+        transport.stat('.bzr.backup/branch-name')
+        transport.stat('.bzr.backup/branch-lock')
+        transport.stat('.bzr.backup/inventory')
+        transport.stat('.bzr.backup/stat-cache')
+        transport.stat('.bzr.backup/text-store')
+        transport.stat('.bzr.backup/text-store/foo-20051004035611-1591048e9dc7c2d4.gz')
+        transport.stat('.bzr.backup/text-store/foo-20051004035756-4081373d897c3453.gz')
+        transport.stat('.bzr.backup/inventory-store/')
+        transport.stat('.bzr.backup/inventory-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
+        transport.stat('.bzr.backup/inventory-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
+        transport.stat('.bzr.backup/revision-store/')
+        transport.stat('.bzr.backup/revision-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
+        transport.stat('.bzr.backup/revision-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
 
     def test_upgrade_with_ghosts(self):
         """Upgrade v0.0.4 tree containing ghost references.

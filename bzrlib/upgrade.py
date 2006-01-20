@@ -70,6 +70,7 @@ import os
 import tempfile
 import sys
 import shutil
+from stat import *
 
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import Branch, find_branch
@@ -199,16 +200,28 @@ class Convert(object):
         shutil.rmtree(self.base + '/.bzr/inventory-store')
         shutil.rmtree(self.base + '/.bzr/text-store')
 
-
     def _backup_control_dir(self):
-        orig = self.base + '/.bzr'
-        backup = orig + '.backup'
         note('making backup of tree history')
-        shutil.copytree(orig, backup)
-        note('%s has been backed up to %s', orig, backup)
+        source = self.transport.clone('.bzr')
+        self.transport.mkdir('.bzr.backup')
+        backup = self.transport.clone('.bzr.backup')
+        files = []
+        directories = ['.']
+        while directories:
+            dir = directories.pop()
+            if dir != '.':
+                backup.mkdir(dir)
+            for path in source.list_dir(dir):
+                path = dir + '/' + path
+                stat = source.stat(path)
+                if S_ISDIR(stat.st_mode):
+                    directories.append(path)
+                else:
+                    files.append(path)
+        source.copy_to(files, backup)
+        note('%s has been backed up to %s', source.base, backup.base)
         note('if conversion fails, you can move this directory back to .bzr')
         note('if it succeeds, you can remove this directory if you wish')
-
 
     def _convert_working_inv(self):
         branch = self.branch
