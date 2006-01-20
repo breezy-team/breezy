@@ -333,17 +333,48 @@ class TransformGroup(object):
         self.tt = TreeTransform(self.wt)
         self.root = self.tt.get_id_tree(self.wt.get_root_id())
 
+def conflict_text(tree, merge):
+    template = '%s TREE\n%s%s\n%s%s MERGE-SOURCE\n'
+    return template % ('<' * 7, tree, '=' * 7, merge, '>' * 7)
+
 
 class TestTransformMerge(TestCaseInTempDir):
     def test_text_merge(self):
         base = TransformGroup("base")
         base.tt.new_file('a', base.root, 'a\nb\nc\nd\be\n', 'a')
+        base.tt.new_file('b', base.root, 'b1', 'b')
+        base.tt.new_file('c', base.root, 'c', 'c')
+        base.tt.new_file('d', base.root, 'd', 'd')
+        base.tt.new_file('e', base.root, 'e', 'e')
+        base.tt.new_file('f', base.root, 'f', 'f')
         base.tt.apply()
         other = TransformGroup("other")
         other.tt.new_file('a', other.root, 'y\nb\nc\nd\be\n', 'a')
+        other.tt.new_file('b', other.root, 'b2', 'b')
+        other.tt.new_file('c', other.root, 'c2', 'c')
+        other.tt.new_file('d', other.root, 'd', 'd')
+        other.tt.new_file('e', other.root, 'e2', 'e')
+        other.tt.new_file('f', other.root, 'f', 'f')
         other.tt.apply()
         this = TransformGroup("this")
         this.tt.new_file('a', this.root, 'a\nb\nc\nd\bz\n', 'a')
+        this.tt.new_file('b', this.root, 'b', 'b')
+        this.tt.new_file('c', this.root, 'c', 'c')
+        this.tt.new_file('d', this.root, 'd2', 'd')
+        this.tt.new_file('e', this.root, 'e2', 'e')
+        this.tt.new_file('f', this.root, 'f', 'f')
         this.tt.apply()
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
+        # textual merge
         self.assertEqual(this.wt.get_file('a').read(), 'y\nb\nc\nd\bz\n')
+        # three-way text conflict
+        self.assertEqual(this.wt.get_file('b').read(), 
+                         conflict_text('b', 'b2'))
+        # OTHER wins
+        self.assertEqual(this.wt.get_file('c').read(), 'c2')
+        # THIS wins
+        self.assertEqual(this.wt.get_file('d').read(), 'd2')
+        # Ambigious clean merge
+        self.assertEqual(this.wt.get_file('e').read(), 'e2')
+        # No change
+        self.assertEqual(this.wt.get_file('f').read(), 'f')
