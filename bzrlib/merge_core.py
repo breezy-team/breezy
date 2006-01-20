@@ -1,4 +1,6 @@
+from os import fdopen
 import os.path
+from tempfile import mkstemp
 
 import changeset
 from changeset import Inventory, apply_changeset, invert_dict
@@ -37,7 +39,9 @@ class ApplyMerge3:
         return not (self == other)
 
     def apply(self, filename, conflict_handler):
-        new_file = filename+".new" 
+        output_file, new_file = mkstemp(dir=os.path.dirname(filename),
+                                        prefix=os.path.basename(filename))
+        output_file = fdopen(output_file, 'wb')
         base = self.base
         other = self.other
         def get_lines(tree):
@@ -50,7 +54,6 @@ class ApplyMerge3:
         m3 = Merge3(base_lines, file(filename, "rb").readlines(), other_lines)
 
         new_conflicts = False
-        output_file = file(new_file, "wb")
         start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
         if self.show_base is True:
             base_marker = '|' * 7
