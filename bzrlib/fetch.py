@@ -111,9 +111,9 @@ class Fetcher(object):
             revs = self._revids_to_fetch(last_revision )
             # nothing to do
             if revs: 
-                self._fetch_revision_texts( revs )
                 self._fetch_weave_texts( revs )
                 self._fetch_inventory_weave( revs )
+                self._fetch_revision_texts( revs )
                 self.count_copied += len(revs)
         finally:
             self.from_branch.unlock()
