@@ -5,3 +5,8 @@
  * add news - fixed --one with testskipped
    branch formats are now tested uniformly, preventing regressions as new
    formats come online.
+ * add news upgrade on url works
+ * add testing news - branch_implementations
+ * add testing news - testcasewithtransport
+ * add upgrade test signatures are preserved
+ * add 'branch' test signatures are preserved
