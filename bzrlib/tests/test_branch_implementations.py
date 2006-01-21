@@ -246,6 +246,12 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual(committed.properties["branch-nick"], 
                          "My happy branch")
 
+    def test_no_ancestry_weave(self):
+        # We no longer need to create the ancestry.weave file
+        # since it is *never* used.
+        branch = Branch.initialize(u'.')
+        self.failIfExists('.bzr/ancestry.weave')
+
 
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.
