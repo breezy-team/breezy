@@ -347,6 +347,7 @@ class TestTransformMerge(TestCaseInTempDir):
         base.tt.new_file('d', base.root, 'd', 'd')
         base.tt.new_file('e', base.root, 'e', 'e')
         base.tt.new_file('f', base.root, 'f', 'f')
+        base.tt.new_directory('g', base.root, 'g')
         base.tt.apply()
         other = TransformGroup("other")
         other.tt.new_file('a', other.root, 'y\nb\nc\nd\be\n', 'a')
@@ -355,6 +356,7 @@ class TestTransformMerge(TestCaseInTempDir):
         other.tt.new_file('d', other.root, 'd', 'd')
         other.tt.new_file('e', other.root, 'e2', 'e')
         other.tt.new_file('f', other.root, 'f', 'f')
+        other.tt.new_file('g', other.root, 'g', 'g')
         other.tt.apply()
         this = TransformGroup("this")
         this.tt.new_file('a', this.root, 'a\nb\nc\nd\bz\n', 'a')
@@ -363,6 +365,7 @@ class TestTransformMerge(TestCaseInTempDir):
         this.tt.new_file('d', this.root, 'd2', 'd')
         this.tt.new_file('e', this.root, 'e2', 'e')
         this.tt.new_file('f', this.root, 'f', 'f')
+        this.tt.new_file('g', this.root, 'g', 'g')
         this.tt.apply()
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
         # textual merge
@@ -378,3 +381,5 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(this.wt.get_file('e').read(), 'e2')
         # No change
         self.assertEqual(this.wt.get_file('f').read(), 'f')
+        # 
+        self.assertEqual(this.wt.get_file('g').read(), 'g')
