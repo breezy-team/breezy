@@ -148,16 +148,17 @@ class Branch(object):
 
         Basically we keep looking up until we find the control directory or
         run into the root.  If there isn't one, raises NotBranchError.
+        If there is one and it is either an unrecognised format or an unsupported 
+        format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
         """
         t = get_transport(url)
+        # this gets the normalised url back. I.e. '.' -> the full path.
         url = t.base
         while True:
             try:
                 format = BzrBranchFormat.find_format(t)
                 return format.open(t), t.relpath(url)
-            # TODO FIXME, distinguish between formats that cannot be
-            # identified, and a lack of format.
             except NotBranchError, e:
                 mutter('not a branch in: %r %s', t.base, e)
             new_t = t.clone('..')
@@ -525,6 +526,47 @@ class Branch(object):
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError('store_revision_signature is abstract')
 
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """ This function returns the file_id(s) involved in the
+            changes between the from_revid revision and the to_revid
+            revision
+        """
+        raise NotImplementedError('fileid_involved_between_revs is abstract')
+
+    def fileid_involved(self, last_revid=None):
+        """ This function returns the file_id(s) involved in the
+            changes up to the revision last_revid
+            If no parametr is passed, then all file_id[s] present in the
+            repository are returned
+        """
+        raise NotImplementedError('fileid_involved is abstract')
+
+    def fileid_involved_by_set(self, changes):
+        """ This function returns the file_id(s) involved in the
+            changes present in the set 'changes'
+        """
+        raise NotImplementedError('fileid_involved_by_set is abstract')
+
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """ This function returns the file_id(s) involved in the
+            changes between the from_revid revision and the to_revid
+            revision
+        """
+        raise NotImplementedError('fileid_involved_between_revs is abstract')
+
+    def fileid_involved(self, last_revid=None):
+        """ This function returns the file_id(s) involved in the
+            changes up to the revision last_revid
+            If no parametr is passed, then all file_id[s] present in the
+            repository are returned
+        """
+        raise NotImplementedError('fileid_involved is abstract')
+
+    def fileid_involved_by_set(self, changes):
+        """ This function returns the file_id(s) involved in the
+            changes present in the set 'changes'
+        """
+        raise NotImplementedError('fileid_involved_by_set is abstract')
 
 class BzrBranchFormat(object):
     """An encapsulation of the initialization and open routines for a format.
@@ -690,48 +732,6 @@ class BzrBranchFormat5(BzrBranchFormat):
     def get_format_string(self):
         """See BzrBranchFormat.get_format_string()."""
         return BZR_BRANCH_FORMAT_5
-
-    def fileid_involved_between_revs(self, from_revid, to_revid):
-        """ This function returns the file_id(s) involved in the
-            changes between the from_revid revision and the to_revid
-            revision
-        """
-        raise NotImplementedError('fileid_involved_between_revs is abstract')
-
-    def fileid_involved(self, last_revid=None):
-        """ This function returns the file_id(s) involved in the
-            changes up to the revision last_revid
-            If no parametr is passed, then all file_id[s] present in the
-            repository are returned
-        """
-        raise NotImplementedError('fileid_involved is abstract')
-
-    def fileid_involved_by_set(self, changes):
-        """ This function returns the file_id(s) involved in the
-            changes present in the set 'changes'
-        """
-        raise NotImplementedError('fileid_involved_by_set is abstract')
-
-    def fileid_involved_between_revs(self, from_revid, to_revid):
-        """ This function returns the file_id(s) involved in the
-            changes between the from_revid revision and the to_revid
-            revision
-        """
-        raise NotImplementedError('fileid_involved_between_revs is abstract')
-
-    def fileid_involved(self, last_revid=None):
-        """ This function returns the file_id(s) involved in the
-            changes up to the revision last_revid
-            If no parametr is passed, then all file_id[s] present in the
-            repository are returned
-        """
-        raise NotImplementedError('fileid_involved is abstract')
-
-    def fileid_involved_by_set(self, changes):
-        """ This function returns the file_id(s) involved in the
-            changes present in the set 'changes'
-        """
-        raise NotImplementedError('fileid_involved_by_set is abstract')
 
 
 class BzrBranchFormat6(BzrBranchFormat):
