@@ -1084,16 +1084,21 @@ class Merge3Merger(object):
         self.tt.create_file(merge3_iterator, trans_id)
         if retval["text_conflicts"] is True:
             self.conflicts.append(('text conflict', (file_id)))
-            file_group = [trans_id]
-            file_group.append(self.conflict_file(trans_id, self.this_tree,
-                              file_id, this_lines, "THIS"))
-            file_group.append(self.conflict_file(trans_id, self.base_tree, 
-                              file_id, base_lines, "BASE"))
-            file_group.append(self.conflict_file(trans_id, self.other_tree,
-                              file_id, other_lines, "OTHER"))
+            file_group = self._dump_conflicts(trans_id, file_id, this_lines,
+                                              base_lines, other_lines)
+
+    def _dump_conflicts(self, trans_id, file_id, this_lines=None, 
+                        base_lines=None, other_lines=None):
+        file_group = [trans_id]
+        file_group.append(self._conflict_file(trans_id, self.this_tree,
+                          file_id, "THIS", this_lines))
+        file_group.append(self._conflict_file(trans_id, self.base_tree, 
+                          file_id, "BASE", base_lines))
+        file_group.append(self._conflict_file(trans_id, self.other_tree,
+                          file_id, "OTHER", other_lines))
 
            
-    def conflict_file(self, trans_id, tree, file_id, lines, suffix):
+    def _conflict_file(self, trans_id, tree, file_id, suffix, lines=None):
         name = self.tt.final_name(trans_id) + "." + suffix
         parent_id = self.tt.final_parent(trans_id)
         trans_id = self.tt.create_path(name, parent_id)
