@@ -257,18 +257,28 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertTransportMode(t, 'mdmode755', 0755)
 
     def test_copy_to(self):
+        # FIXME: test:   same server to same server (partly done)
+        # same protocol two servers
+        # and    different protocols (done for now except for MemoryTransport.
+        # - RBC 20060122
         from bzrlib.transport.memory import MemoryTransport
+
+        def simple_copy_files(transport_from, transport_to):
+            files = ['a', 'b', 'c', 'd']
+            self.build_tree(files, transport=transport_from)
+            transport_from.copy_to(files, transport_to)
+            for f in files:
+                self.check_transport_contents(transport_to.get(f).read(),
+                                              transport_from, f)
+
         t = self.get_transport()
-
-        files = ['a', 'b', 'c', 'd']
-        self.build_tree(files, transport=t)
-
         temp_transport = MemoryTransport('memory:/')
+        simple_copy_files(t, temp_transport)
+        if not t.is_readonly():
+            t.mkdir('copy_to_simple')
+            t2 = t.clone('copy_to_simple')
+            simple_copy_files(t, t2)
 
-        t.copy_to(files, temp_transport)
-        for f in files:
-            self.check_transport_contents(temp_transport.get(f).read(),
-                                          t, f)
 
         # Test that copying into a missing directory raises
         # NoSuchFile

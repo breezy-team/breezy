@@ -12,7 +12,4 @@
  * add 'branch' test signatures are preserved
  * cleanup remnans of check_format in the BzrBranch constructor.
  * fixup test_outside_wt.test_http_log
- * test copy_to (and all transport to transport ops) with:
-   same server to same server
-   same protocol two servers
-   different protocols
+ * upgrade from .bzr to a '.bzr-new', then do a bait and switch.
