@@ -754,9 +754,11 @@ def new_by_entry(tt, entry, parent_id, tree):
         target = entry.get_symlink_target(file_id)
         return tt.new_symlink(name, parent_id, target, file_id)
 
-def create_by_entry(tt, entry, tree, trans_id):
+def create_by_entry(tt, entry, tree, trans_id, lines=None):
     if entry.kind == "file":
-        tt.create_file(tree.get_file(entry.file_id).readlines(), trans_id)
+        if lines == None:
+            lines = tree.get_file(entry.file_id).readlines()
+        tt.create_file(lines, trans_id)
     elif entry.kind == "symlink":
         tt.create_symlink(entry.symlink_target, trans_id)
     elif entry.kind == "directory":
@@ -1083,16 +1085,21 @@ class Merge3Merger(object):
         if retval["text_conflicts"] is True:
             self.conflicts.append(('text conflict', (file_id)))
             file_group = [trans_id]
-            file_group.append(self.conflict_file(trans_id, this_lines, "THIS"))
-            file_group.append(self.conflict_file(trans_id, base_lines, "BASE"))
-            file_group.append(self.conflict_file(trans_id, other_lines,
-                                                 "OTHER"))
+            file_group.append(self.conflict_file(trans_id, self.this_tree,
+                              file_id, this_lines, "THIS"))
+            file_group.append(self.conflict_file(trans_id, self.base_tree, 
+                              file_id, base_lines, "BASE"))
+            file_group.append(self.conflict_file(trans_id, self.other_tree,
+                              file_id, other_lines, "OTHER"))
 
            
-    def conflict_file(self, trans_id, lines, suffix):
+    def conflict_file(self, trans_id, tree, file_id, lines, suffix):
         name = self.tt.final_name(trans_id) + "." + suffix
         parent_id = self.tt.final_parent(trans_id)
-        return self.tt.new_file(name, parent_id, lines)
+        trans_id = self.tt.create_path(name, parent_id)
+        entry = tree.inventory[file_id]
+        create_by_entry(self.tt, entry, tree, trans_id, lines)
+        return trans_id
 
     def merge_executable(self, file_id, file_status):
         if file_status == "deleted":

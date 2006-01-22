@@ -348,6 +348,7 @@ class TestTransformMerge(TestCaseInTempDir):
         base.tt.new_file('e', base.root, 'e', 'e')
         base.tt.new_file('f', base.root, 'f', 'f')
         base.tt.new_directory('g', base.root, 'g')
+        base.tt.new_directory('h', base.root, 'h')
         base.tt.apply()
         other = TransformGroup("other")
         other.tt.new_file('a', other.root, 'y\nb\nc\nd\be\n', 'a')
@@ -357,6 +358,7 @@ class TestTransformMerge(TestCaseInTempDir):
         other.tt.new_file('e', other.root, 'e2', 'e')
         other.tt.new_file('f', other.root, 'f', 'f')
         other.tt.new_file('g', other.root, 'g', 'g')
+        other.tt.new_file('h', other.root, 'h\ni\nj\nk\n', 'h')
         other.tt.apply()
         this = TransformGroup("this")
         this.tt.new_file('a', this.root, 'a\nb\nc\nd\bz\n', 'a')
@@ -366,6 +368,7 @@ class TestTransformMerge(TestCaseInTempDir):
         this.tt.new_file('e', this.root, 'e2', 'e')
         this.tt.new_file('f', this.root, 'f', 'f')
         this.tt.new_file('g', this.root, 'g', 'g')
+        this.tt.new_file('h', this.root, '1\n2\n3\n4\n', 'h')
         this.tt.apply()
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
         # textual merge
@@ -381,5 +384,14 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(this.wt.get_file('e').read(), 'e2')
         # No change
         self.assertEqual(this.wt.get_file('f').read(), 'f')
-        # 
+        # Correct correct results when THIS == OTHER 
         self.assertEqual(this.wt.get_file('g').read(), 'g')
+        # Text conflict when THIS & OTHER are text and BASE is dir
+        self.assertEqual(this.wt.get_file('h').read(), 
+                         conflict_text('1\n2\n3\n4\n', 'h\ni\nj\nk\n'))
+        self.assertEqual(this.wt.get_file_byname('h.THIS').read(),
+                         '1\n2\n3\n4\n')
+        self.assertEqual(this.wt.get_file_byname('h.OTHER').read(),
+                         'h\ni\nj\nk\n')
+        self.assertEqual(file_kind(this.wt.abspath('h.BASE')), 'directory')
+
