@@ -1,5 +1,18 @@
+# Copyright (C) 2005 by Canonical Ltd
 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.tests import TestCaseInTempDir
 import os
@@ -11,6 +24,7 @@ from bzrlib.merge import merge
 from bzrlib.workingtree import WorkingTree
 from bzrlib.delta import compare_trees
 
+
 class TestFileIdInvolved(TestCaseInTempDir):
 
     def touch(self,filename):
@@ -18,9 +32,8 @@ class TestFileIdInvolved(TestCaseInTempDir):
         f.write("appended line\n")
         f.close( )
 
-
     def merge( self, branch_from, force=False ):
-        from bzrlib.merge_core import ApplyMerge3
+        from bzrlib._merge_core import ApplyMerge3
 
         merge([branch_from,-1],[None,None], merge_type=ApplyMerge3,
             check_clean=(not force) )
@@ -41,8 +54,13 @@ class TestFileIdInvolved(TestCaseInTempDir):
         main_branch = Branch.initialize('.')
         self.build_tree(["a","b","c"])
 
-        smart_add('.')
-        commit(Branch.open("."), "Commit one", rev_id="rev-A")
+        b = Branch.open('.')
+        wt = b.working_tree()
+        wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
+                                 'b-file-id-2006-01-01-defg',
+                                 'c-funky<file-id> quiji%bo'])
+        commit(b, "Commit one", rev_id="rev-A")
+        del b, wt
         #-------- end A -----------
 
         copy_branch(main_branch,"../branch1")
@@ -88,7 +106,6 @@ class TestFileIdInvolved(TestCaseInTempDir):
         os.chdir("../branch2")
 
         self.touch("c")
-        smart_add('.')
         commit(Branch.open("."), "branch2, commit two", rev_id="rev-K")
 
         #-------- end K -----------
@@ -98,7 +115,8 @@ class TestFileIdInvolved(TestCaseInTempDir):
         self.touch("b")
         self.merge("../branch1",force=True)
 
-        commit(Branch.open("."), "merge branch1, rev-12", rev_id="rev-D")
+        # D gets some funky characters to make sure the unescaping works
+        commit(Branch.open("."), "merge branch1, rev-12", rev_id="rev-<D>")
 
         # end D
 
@@ -125,7 +143,7 @@ class TestFileIdInvolved(TestCaseInTempDir):
         l = self.branch.fileid_involved_between_revs("rev-B","rev-K" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["b","c"])
 
-        l = self.branch.fileid_involved_between_revs("rev-C","rev-D" )
+        l = self.branch.fileid_involved_between_revs("rev-C","rev-<D>" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["b","d"])
 
         l = self.branch.fileid_involved_between_revs("rev-C","rev-G" )
@@ -134,24 +152,23 @@ class TestFileIdInvolved(TestCaseInTempDir):
         l = self.branch.fileid_involved_between_revs("rev-E","rev-G" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["a", "b","c","d"])
 
-
     def test_fileid_involved_sets(self):
 
         l = self.branch.fileid_involved_by_set(set(["rev-B"]))
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["a"])
 
-        l = self.branch.fileid_involved_by_set(set(["rev-D"]))
+        l = self.branch.fileid_involved_by_set(set(["rev-<D>"]))
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["b"])
 
     def test_fileid_involved_compare(self):
 
-        l1 = self.branch.fileid_involved_between_revs("rev-E", "rev-D")
-        l2 = self.branch.fileid_involved_by_set(set(["rev-D","rev-F","rev-C","rev-B"]))
+        l1 = self.branch.fileid_involved_between_revs("rev-E", "rev-<D>")
+        l2 = self.branch.fileid_involved_by_set(set(["rev-<D>","rev-F","rev-C","rev-B"]))
         self.assertEquals( l1, l2 )
 
         l1 = self.branch.fileid_involved_between_revs("rev-C", "rev-G")
         l2 = self.branch.fileid_involved_by_set(
-            set(["rev-G","rev-D","rev-F","rev-K","rev-J"]))
+            set(["rev-G","rev-<D>","rev-F","rev-K","rev-J"]))
         self.assertEquals( l1, l2 )
 
     def test_fileid_involved_full_compare(self):
@@ -178,4 +195,5 @@ class TestFileIdInvolved(TestCaseInTempDir):
                             delta.modified ]
 
                 self.assertEquals( l1, set(l2) )
+
 

@@ -235,6 +235,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if path.find('://') != -1:
                 raise NotBranchError(path=path)
         path = abspath(path)
+        orig_path = path[:]
         tail = u''
         while True:
             try:
@@ -249,7 +250,7 @@ class WorkingTree(bzrlib.tree.Tree):
             path = os.path.dirname(path)
             if lastpath == path:
                 # reached the root, whatever that may be
-                raise NotBranchError(path=path)
+                raise NotBranchError(path=orig_path)
 
     def __iter__(self):
         """Iterate through file_ids for this tree.
