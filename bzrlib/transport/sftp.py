@@ -711,6 +711,7 @@ class SFTPTransport (Transport):
 
         try:
             t = paramiko.Transport((self._host, self._port or 22))
+            t.set_log_channel('bzr.paramiko')
             t.start_client()
         except paramiko.SSHException, e:
             raise ConnectionError('Unable to reach SSH host %s:%d' %
@@ -894,8 +895,8 @@ class SingleListener(threading.Thread):
         try:
             self._callback(s, self.stop_event)
         except Exception, x:
-            # probably a failed test, might be nice to log it somehow
-            pass
+            # probably a failed test
+            warn('Exception from within unit test server thread: %r' % x)
 
     def stop(self):
         self.stop_event.set()
