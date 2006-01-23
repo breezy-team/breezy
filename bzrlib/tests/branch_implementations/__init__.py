@@ -1,4 +1,5 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2006 by Canonical Ltd
+# Authors: Robert Collins <robert.collins@canonical.com>
 # -*- coding: utf-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
@@ -25,8 +26,8 @@ rather than in tests/branch_implementations/*.py.
 
 from bzrlib.branch import BranchTestProviderAdapter, BzrBranchFormat
 from bzrlib.tests import adapt_modules, TestLoader, TestSuite
-from bzrlib.tests import TestCaseInTempDir, BzrTestBase
 from bzrlib.transport.local import LocalRelpathServer
+
 
 def test_suite():
     result = TestSuite()
