@@ -156,11 +156,11 @@ class LoopbackSFTP(object):
     def recv(self, n):
         return self.__socket.recv(n)
 
-    def close(self):
-        self.__socket.close()
-
     def recv_ready(self):
         return True
+
+    def close(self):
+        self.__socket.close()
 
 
 SYSTEM_HOSTKEYS = {}
@@ -230,7 +230,7 @@ class SFTPLock(object):
     def __del__(self):
         """Should this warn, or actually try to cleanup?"""
         if self.lock_file:
-            warn("SFTPLock %r not explicitly unlocked" % (self.path,))
+            warning("SFTPLock %r not explicitly unlocked" % (self.path,))
             self.unlock()
 
     def unlock(self):
