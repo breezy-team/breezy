@@ -362,20 +362,10 @@ Medium things
   and a new commit will automatically be made against the
   predecessor.  This can be repeated.
 
-  It only makes sense to delete from the tail of history, not from the
-  end.
+  It only makes sense to delete from the tail of history.
 
-  The revision, its inventory and texts remain floating in the store.
-  We should perhaps add the revision to a list of removed-commits, so
-  that it can be restored or at least accounted for when checking
-  consistency.  This file would not be versioned, and probably should
-  not propagate when branched.
-
-  If we track merged revisions then we need to update this list too.
-  If the list is stored in a weave it's easy (implicit): the version
-  of the list can remain but it won't be referenced anymore.  It's
-  probably best to just store this list in a weave in the first place
-  and be done.
+  This has been implemented, but it does not remove the texts from
+  the store.
 
 
 Large things

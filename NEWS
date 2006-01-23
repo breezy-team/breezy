@@ -27,13 +27,11 @@ bzr 0.7rc1 2006-01-09
       This gives better integration with user settings such as ProxyCommand.
       (James Henstridge)
 
-    * Sftp paths can now be relative, or local, according to the IETF 
-      draft spec.  Paths now take the form:
-      sftp://user:pass@host:port/relative/path
+    * Sftp paths can now be relative, or local, according to the lftp
+      convention. Paths now take the form:
+      sftp://user:pass@host:port/~/relative/path
       or
-      sftp://user:pass@host:port/%2Fabsolute/path
-      or
-      sftp://user:pass@host:port//absolute/path
+      sftp://user:pass@host:port/absolute/path
 
     * Permissions on files underneath .bzr/ are inherited from the .bzr 
       directory. So for a shared repository, simply doing 'chmod -R g+w .bzr/'

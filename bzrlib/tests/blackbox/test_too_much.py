@@ -346,50 +346,6 @@ class TestCommands(ExternalBase):
         zf = ZipFile('../first-zip')
         self.assert_('first-zip/hello' in zf.namelist(), zf.namelist())
 
-    def test_diff(self):
-        self.example_branch()
-        file('hello', 'wt').write('hello world!')
-        self.runbzr('commit -m fixing hello')
-        output = self.runbzr('diff -r 2..3', backtick=1, retcode=1)
-        self.assert_('\n+hello world!' in output)
-        output = self.runbzr('diff -r last:3..last:1', backtick=1, retcode=1)
-        self.assert_('\n+baz' in output)
-        file('moo', 'wb').write('moo')
-        self.runbzr('add moo')
-        os.unlink('moo')
-        self.runbzr('diff')
-
-    def test_diff_branches(self):
-        self.build_tree(['branch1/', 'branch1/file', 'branch2/'], line_endings='binary')
-        branch = Branch.initialize('branch1')
-        branch.working_tree().add(['file'])
-        branch.working_tree().commit('add file')
-        copy_branch(branch, 'branch2')
-        print >> open('branch2/file', 'wb'), 'new content'
-        branch2 = Branch.open('branch2')
-        branch2.working_tree().commit('update file')
-        # should open branch1 and diff against branch2, 
-        output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 
-                                        'branch1'],
-                                       retcode=1)
-        self.assertEquals(("=== modified file 'file'\n"
-                           "--- file\t\n"
-                           "+++ file\t\n"
-                           "@@ -1,1 +1,1 @@\n"
-                           "-new content\n"
-                           "+contents of branch1/file\n"
-                           "\n", ''), output)
-        output = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
-                                       retcode=1)
-        self.assertEqualDiff(("=== modified file 'file'\n"
-                              "--- file\t\n"
-                              "+++ file\t\n"
-                              "@@ -1,1 +1,1 @@\n"
-                              "-new content\n"
-                              "+contents of branch1/file\n"
-                              "\n", ''), output)
-
-
     def test_branch(self):
         """Branch from one branch to another."""
         os.mkdir('a')

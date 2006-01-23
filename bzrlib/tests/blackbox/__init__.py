@@ -30,8 +30,10 @@ def test_suite():
     testmod_names = [
                      'bzrlib.tests.blackbox.test_added',
                      'bzrlib.tests.blackbox.test_cat',
+                     'bzrlib.tests.blackbox.test_diff',
                      'bzrlib.tests.blackbox.test_export',
                      'bzrlib.tests.blackbox.test_missing',
+                     'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pull',
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_info',
