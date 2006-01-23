@@ -36,6 +36,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_pull',
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_info',
+                     'bzrlib.tests.blackbox.test_selftest',
                      'bzrlib.tests.blackbox.test_too_much',
                      'bzrlib.tests.blackbox.test_upgrade',
                      'bzrlib.tests.blackbox.test_versioning',

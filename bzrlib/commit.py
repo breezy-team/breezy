@@ -90,11 +90,13 @@ from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.symbol_versioning import *
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.workingtree import WorkingTree
 
 
+@deprecated_function(zero_seven)
 def commit(*args, **kwargs):
     """Commit a new revision to a branch.
 
@@ -168,7 +170,7 @@ class Commit(object):
             self.config = None
         
     def commit(self,
-               branch, message,
+               branch=deprecated_nonce, message=None,
                timestamp=None,
                timezone=None,
                committer=None,
@@ -177,8 +179,14 @@ class Commit(object):
                allow_pointless=True,
                strict=False,
                verbose=False,
-               revprops=None):
+               revprops=None,
+               working_tree=None):
         """Commit working copy as a new revision.
+
+        branch -- the deprecated branch to commit to. New callers should pass in 
+                  working_tree instead
+
+        message -- the commit message, a mandatory parameter
 
         timestamp -- if not None, seconds-since-epoch for a
              postdated/predated commit.
@@ -201,15 +209,27 @@ class Commit(object):
         """
         mutter('preparing to commit')
 
-        self.branch = branch
-        self.weave_store = branch.weave_store
+        if deprecated_passed(branch):
+            warn("Commit.commit (branch, ...): The branch parameter is "
+                 "deprecated as of bzr 0.8. Please use working_tree= instead.",
+                 DeprecationWarning)
+            self.branch = branch
+            self.work_tree = WorkingTree(branch.base, branch)
+        elif working_tree is None:
+            raise BzrError("One of branch and working_tree must be passed into commit().")
+        else:
+            self.work_tree = working_tree
+            self.branch = self.work_tree.branch
+        if message is None:
+            raise BzrError("The message keyword parameter is required for commit().")
+
+        self.weave_store = self.branch.weave_store
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
-        self.revprops = {'branch-nick': branch.nick}
+        self.revprops = {'branch-nick': self.branch.nick}
         if revprops:
             self.revprops.update(revprops)
-        self.work_tree = WorkingTree(branch.base, branch)
 
         if strict:
             # raise an exception as soon as we find a single unknown.

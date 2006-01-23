@@ -25,8 +25,12 @@ rather than in tests/branch_implementations/*.py.
 """
 
 from bzrlib.branch import BranchTestProviderAdapter, BzrBranchFormat
-from bzrlib.tests import adapt_modules, TestLoader, TestSuite
-from bzrlib.transport.local import LocalRelpathServer
+from bzrlib.tests import (
+                          adapt_modules,
+                          default_transport,
+                          TestLoader,
+                          TestSuite,
+                          )
 
 
 def test_suite():
@@ -35,7 +39,7 @@ def test_suite():
         'bzrlib.tests.branch_implementations.test_branch',
         ]
     adapter = BranchTestProviderAdapter(
-        LocalRelpathServer,
+        default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,

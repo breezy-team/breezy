@@ -47,10 +47,13 @@ import bzrlib.store
 import bzrlib.trace
 from bzrlib.transport import urlescape
 import bzrlib.transport
+from bzrlib.transport.local import LocalRelpathServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.tests.treeshape import build_tree_contents
+
+default_transport = LocalRelpathServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
@@ -322,7 +325,7 @@ class TestCase(unittest.TestCase):
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
         encoder, decoder, stream_reader, stream_writer = codecs.lookup('UTF-8')
         self._log_file = stream_writer(os.fdopen(fileno, 'w+'))
-        bzrlib.trace.enable_test_log(self._log_file)
+        self._log_nonce = bzrlib.trace.enable_test_log(self._log_file)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
 
@@ -331,7 +334,7 @@ class TestCase(unittest.TestCase):
 
         Read contents into memory, close, and delete.
         """
-        bzrlib.trace.disable_test_log()
+        bzrlib.trace.disable_test_log(self._log_nonce)
         self._log_file.seek(0)
         self._log_contents = self._log_file.read()
         self._log_file.close()
@@ -703,8 +706,6 @@ class TestCaseWithTransport(TestCaseInTempDir):
             base = base + relpath
         return base
 
-    
-
 
 def filter_suite_by_re(suite, pattern):
     result = TestSuite()
@@ -716,7 +717,8 @@ def filter_suite_by_re(suite, pattern):
 
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
-              stop_on_failure=False, keep_output=False):
+              stop_on_failure=False, keep_output=False,
+              transport=None):
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
@@ -741,10 +743,19 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 
 
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,
-             keep_output=False):
+             keep_output=False,
+             transport=None):
     """Run the whole test suite under the enhanced runner"""
-    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern,
-                     stop_on_failure=stop_on_failure, keep_output=keep_output)
+    global default_transport
+    if transport is None:
+        transport = default_transport
+    old_transport = default_transport
+    default_transport = transport
+    suite = test_suite()
+    default_transport = old_transport
+    return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
+                     stop_on_failure=stop_on_failure, keep_output=keep_output,
+                     transport=transport)
 
 
 def test_suite():

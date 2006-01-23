@@ -168,13 +168,13 @@ class Command(object):
         List of argument forms, marked with whether they are optional,
         repeated, etc.
 
-		Examples:
+                Examples:
 
-		['to_location', 'from_branch?', 'file*']
+                ['to_location', 'from_branch?', 'file*']
 
-		'to_location' is required
-		'from_branch' is optional
-		'file' can be specified 0 or more times
+                'to_location' is required
+                'from_branch' is optional
+                'file' can be specified 0 or more times
 
     takes_options
         List of options that may be given for this command.  These can

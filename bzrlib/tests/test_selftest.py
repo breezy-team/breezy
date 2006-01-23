@@ -20,6 +20,7 @@ import os
 import sys
 import unittest
 
+import bzrlib
 from bzrlib.tests import (
                           _load_module_by_name,
                           TestCase,

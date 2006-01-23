@@ -31,13 +31,14 @@ from bzrlib.errors import (NoSuchRevision,
                            )
 import bzrlib.gpg
 from bzrlib.osutils import getcwd
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
-from bzrlib.revision import NULL_REVISION
+from bzrlib.workingtree import WorkingTree
 
 # TODO: Make a branch using basis branch, and check that it 
 # doesn't request any files that could have been avoided, by 
@@ -80,8 +81,9 @@ class TestBranch(TestCaseWithBranch):
         b1 = self.make_branch('b1')
         b2 = self.make_branch('b2')
         file('b1/foo', 'w').write('hello')
-        b1.working_tree().add(['foo'], ['foo-id'])
-        b1.working_tree().commit('lala!', rev_id='revision-1', allow_pointless=False)
+        wt = WorkingTree('b1', b1)
+        wt.add(['foo'], ['foo-id'])
+        wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
         mutter('start fetch')
         f = Fetcher(from_branch=b1, to_branch=b2)
@@ -95,7 +97,8 @@ class TestBranch(TestCaseWithBranch):
 
     def test_revision_tree(self):
         b1 = self.get_branch()
-        b1.working_tree().commit('lala!', rev_id='revision-1', allow_pointless=True)
+        wt = WorkingTree('.', b1)
+        wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = b1.revision_tree('revision-1')
         tree = b1.revision_tree(None)
         self.assertEqual(len(tree.list_files()), 0)
@@ -107,7 +110,7 @@ class TestBranch(TestCaseWithBranch):
         os.mkdir('a')
         br_a = self.make_branch('a')
         file('a/b', 'wb').write('b')
-        br_a.working_tree().add('b')
+        WorkingTree("a", br_a).add('b')
         commit(br_a, "silly commit", rev_id='A')
         os.mkdir('b')
         br_b = self.make_branch('b')
@@ -146,11 +149,12 @@ class TestBranch(TestCaseWithBranch):
         """Copy only part of the history of a branch."""
         self.build_tree(['a/', 'a/one'])
         br_a = self.make_branch('a')
-        br_a.working_tree().add(['one'])
-        br_a.working_tree().commit('commit one', rev_id='u@d-1')
+        wt = WorkingTree("a", br_a)
+        wt.add(['one'])
+        wt.commit('commit one', rev_id='u@d-1')
         self.build_tree(['a/two'])
-        br_a.working_tree().add(['two'])
-        br_a.working_tree().commit('commit two', rev_id='u@d-2')
+        wt.add(['two'])
+        wt.commit('commit two', rev_id='u@d-2')
         br_b = copy_branch(br_a, 'b', revision='u@d-1')
         self.assertEqual(br_b.last_revision(), 'u@d-1')
         self.assertTrue(os.path.exists('b/one'))
@@ -159,8 +163,9 @@ class TestBranch(TestCaseWithBranch):
     def test_record_initial_ghost_merge(self):
         """A pending merge with no revision present is still a merge."""
         branch = self.get_branch()
-        branch.working_tree().add_pending_merge('non:existent@rev--ision--0--2')
-        branch.working_tree().commit('pretend to merge nonexistent-revision', rev_id='first')
+        wt = WorkingTree(".", branch)
+        wt.add_pending_merge('non:existent@rev--ision--0--2')
+        wt.commit('pretend to merge nonexistent-revision', rev_id='first')
         rev = branch.get_revision(branch.last_revision())
         self.assertEqual(len(rev.parent_ids), 1)
         # parent_sha1s is not populated now, WTF. rbc 20051003
@@ -178,7 +183,7 @@ class TestBranch(TestCaseWithBranch):
     def test_pending_merges(self):
         """Tracking pending-merged revisions."""
         b = self.get_branch()
-        wt = b.working_tree()
+        wt = WorkingTree(".", b)
         self.assertEquals(wt.pending_merges(), [])
         wt.add_pending_merge('foo@azkhazan-123123-abcabc')
         self.assertEquals(wt.pending_merges(), ['foo@azkhazan-123123-abcabc'])
@@ -188,7 +193,7 @@ class TestBranch(TestCaseWithBranch):
         self.assertEquals(wt.pending_merges(),
                           ['foo@azkhazan-123123-abcabc',
                            'wibble@fofof--20050401--1928390812'])
-        b.working_tree().commit("commit from base with two merges")
+        wt.commit("commit from base with two merges")
         rev = b.get_revision(b.revision_history()[0])
         self.assertEquals(len(rev.parent_ids), 2)
         self.assertEquals(rev.parent_ids[0],
@@ -200,7 +205,8 @@ class TestBranch(TestCaseWithBranch):
 
     def test_sign_existing_revision(self):
         branch = self.get_branch()
-        branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
+        WorkingTree(".", branch).commit("base", allow_pointless=True,
+                                        rev_id='A')
         from bzrlib.testament import Testament
         branch.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
         self.assertEqual(Testament.from_revision(branch, 'A').as_short_text(),
@@ -241,7 +247,7 @@ class TestBranch(TestCaseWithBranch):
         os.mkdir('bzr.dev')
         branch = self.get_branch()
         branch.nick = "My happy branch"
-        branch.working_tree().commit('My commit respect da nick.')
+        WorkingTree('.', branch).commit('My commit respect da nick.')
         committed = branch.get_revision(branch.last_revision())
         self.assertEqual(committed.properties["branch-nick"], 
                          "My happy branch")
@@ -423,7 +429,7 @@ class TestBranchPushLocations(TestCaseWithBranch):
         fn = branches_config_filename()
         print >> open(fn, 'wt'), ("[%s]\n"
                                   "push_location=foo" %
-                                  getcwd())
+                                  self.get_branch().base[:-1])
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
@@ -433,7 +439,7 @@ class TestBranchPushLocations(TestCaseWithBranch):
         fn = branches_config_filename()
         self.get_branch().set_push_location('foo')
         self.assertFileEqual("[%s]\n"
-                             "push_location = foo" % getcwd(),
+                             "push_location = foo" % self.get_branch().base[:-1],
                              fn)
 
     # TODO RBC 20051029 test getting a push location from a branch in a 

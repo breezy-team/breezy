@@ -73,6 +73,7 @@ from bzrlib.osutils import (appendpath,
                             realpath,
                             relpath,
                             rename)
+from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.trace import mutter
@@ -293,9 +294,13 @@ class WorkingTree(bzrlib.tree.Tree):
         return self.abspath(self.id2path(file_id))
 
     @needs_write_lock
-    def commit(self, *args, **kw):
+    def commit(self, *args, **kwargs):
         from bzrlib.commit import Commit
-        Commit().commit(self.branch, *args, **kw)
+        # args for wt.commit start at message from the Commit.commit method,
+        # but with branch a kwarg now, passing in args as is results in the
+        #message being used for the branch
+        args = (deprecated_nonce, ) + args
+        Commit().commit(working_tree=self, *args, **kwargs)
         self._set_inventory(self.read_working_inventory())
 
     def id2abspath(self, file_id):

@@ -1393,6 +1393,7 @@ class cmd_whoami(Command):
         else:
             print config.username()
 
+
 class cmd_nick(Command):
     """\
     Print or set the branch nickname.  
@@ -1411,6 +1412,7 @@ class cmd_nick(Command):
     def printme(self, branch):
         print branch.nick 
 
+
 class cmd_selftest(Command):
     """Run internal test suite.
     
@@ -1423,16 +1425,32 @@ class cmd_selftest(Command):
     which tests should run.
     """
     # TODO: --list should give a list of all available tests
+
+    # NB: this is used from the class without creating an instance, which is
+    # why it does not have a self parameter.
+    def get_transport_type(typestring):
+        """Parse and return a transport specifier."""
+        if typestring == "sftp":
+            from bzrlib.transport.sftp import SFTPAbsoluteServer
+            return SFTPAbsoluteServer
+        msg = "No known transport type %s. Supported types are: sftp\n" %\
+            (typestring)
+        raise BzrCommandError(msg)
+
     hidden = True
     takes_args = ['testspecs*']
     takes_options = ['verbose', 
                      Option('one', help='stop when one test fails'),
                      Option('keep-output', 
-                            help='keep output directories when tests fail')
+                            help='keep output directories when tests fail'),
+                     Option('transport', 
+                            help='Use a different transport by default '
+                                 'throughout the test suite.',
+                            type=get_transport_type),
                     ]
 
     def run(self, testspecs_list=None, verbose=False, one=False,
-            keep_output=False):
+            keep_output=False, transport=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         # we don't want progress meters from the tests to go to the
@@ -1449,7 +1467,8 @@ class cmd_selftest(Command):
             result = selftest(verbose=verbose, 
                               pattern=pattern,
                               stop_on_failure=one, 
-                              keep_output=keep_output)
+                              keep_output=keep_output,
+                              transport=transport)
             if result:
                 bzrlib.trace.info('tests passed')
             else:
