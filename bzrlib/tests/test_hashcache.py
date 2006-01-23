@@ -36,6 +36,10 @@ def pause():
     start = int(time.time())
     while int(time.time()) == start:
         time.sleep(0.2)
+
+
+class FixThisError(Exception):
+    pass
     
 
 class TestHashCache(TestCaseInTempDir):
@@ -118,3 +122,28 @@ class TestHashCache(TestCaseInTempDir):
         self.assertEquals(hc.hit_count, 1)
         self.assertEquals(hc.miss_count, 0)
         self.assertEquals(hc.get_sha1('foo2'), sha1('new content'))
+
+    def test_hashcache_raise(self):
+        """check that hashcache can raise BzrError"""
+        from bzrlib.hashcache import HashCache
+        import os
+
+        os.mkdir('.bzr')
+        hc = HashCache(u'.')
+        ok = False
+
+        # make a best effort to create a weird kind of file
+        funcs = (os.mkfifo, os.mknod)
+        for func in funcs:
+            try:
+                func('a')
+                ok = True
+                break
+            except FixThisError:
+                pass
+
+        from bzrlib.errors import BzrError
+        if ok:
+            self.assertRaises(BzrError, hc.get_sha1, 'a')
+        else:
+            raise BzrError("no weird file type could be created: extend this test case for your os")

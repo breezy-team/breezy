@@ -509,6 +509,28 @@ class Branch(object):
         """
         raise NotImplementedError('fileid_involved_by_set is abstract')
 
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """ This function returns the file_id(s) involved in the
+            changes between the from_revid revision and the to_revid
+            revision
+        """
+        raise NotImplementedError('fileid_involved_between_revs is abstract')
+
+    def fileid_involved(self, last_revid=None):
+        """ This function returns the file_id(s) involved in the
+            changes up to the revision last_revid
+            If no parametr is passed, then all file_id[s] present in the
+            repository are returned
+        """
+        raise NotImplementedError('fileid_involved is abstract')
+
+    def fileid_involved_by_set(self, changes):
+        """ This function returns the file_id(s) involved in the
+            changes present in the set 'changes'
+        """
+        raise NotImplementedError('fileid_involved_by_set is abstract')
+
+
 class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
 
@@ -1152,11 +1174,11 @@ class BzrBranch(Branch):
         #       If D is ever merged in the future, the weave
         #       won't be fixed, because AD never saw revision C
         #       to cause a conflict which would force a reweave.
-        w = self._get_inventory_weave( )
+        w = self._get_inventory_weave()
         from_set = set(w.inclusions([w.lookup(from_revid)]))
         to_set = set(w.inclusions([w.lookup(to_revid)]))
         included = to_set.difference(from_set)
-        changed = map(w.idx_to_name,included)
+        changed = map(w.idx_to_name, included)
         return self._fileid_involved_by_set(changed)
 
     def fileid_involved(self, last_revid=None):
@@ -1164,7 +1186,7 @@ class BzrBranch(Branch):
 
         :param last_revid: If None, last_revision() will be used.
         """
-        w = self._get_inventory_weave( )
+        w = self._get_inventory_weave()
         if not last_revid:
             changed = set(w._names)
         else:
@@ -1181,7 +1203,7 @@ class BzrBranch(Branch):
         #       or better yet, change _fileid_involved_by_set so
         #       that it takes the inventory weave, rather than
         #       pulling it out by itself.
-        w = self._get_inventory_weave( )
+        w = self._get_inventory_weave()
         return self._fileid_involved_by_set(changes)
 
     def _fileid_involved_by_set(self, changes):
@@ -1197,19 +1219,19 @@ class BzrBranch(Branch):
         to have a single line per file/directory, and to have
         fileid="" and revision="" on that line.
         """
-        assert self._branch_format in (5,6), \
+        assert self._branch_format in (5, 6), \
             "fileid_involved only supported for branches which store inventory as xml"
 
-        w = self._get_inventory_weave( )
-        file_ids = set( )
+        w = self._get_inventory_weave()
+        file_ids = set()
         for line in w._weave:
 
             # it is ugly, but it is due to the weave structure
-            if not isinstance(line,basestring): continue
+            if not isinstance(line, basestring): continue
 
             start = line.find('file_id="')+9
             if start < 9: continue
-            end = line.find('"',start)
+            end = line.find('"', start)
             assert end>= 0
             file_id = xml.sax.saxutils.unescape(line[start:end])
 
@@ -1218,7 +1240,7 @@ class BzrBranch(Branch):
 
             start = line.find('revision="')+10
             if start < 10: continue
-            end = line.find('"',start)
+            end = line.find('"', start)
             assert end>= 0
             revision_id = xml.sax.saxutils.unescape(line[start:end])
 
@@ -1291,7 +1313,7 @@ def is_control_file(filename):
     filename = normpath(filename)
     while filename != '':
         head, tail = os.path.split(filename)
-        ## mutter('check %r for control file' % ((head, tail), ))
+        ## mutter('check %r for control file' % ((head, tail),))
         if tail == bzrlib.BZRDIR:
             return True
         if filename == head:

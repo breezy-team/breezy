@@ -151,15 +151,15 @@ class SFTPNonServerTest(TestCase):
 
     def test_parse_url(self):
         from bzrlib.transport.sftp import SFTPTransport
-        s = SFTPTransport('sftp://simple.example.com/%2fhome/source', clone_from=fake)
+        s = SFTPTransport('sftp://simple.example.com/home/source', clone_from=fake)
         self.assertEquals(s._host, 'simple.example.com')
         self.assertEquals(s._port, None)
         self.assertEquals(s._path, '/home/source')
         self.failUnless(s._password is None)
 
-        self.assertEquals(s.base, 'sftp://simple.example.com/%2Fhome/source/')
-        
-        s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/relative', clone_from=fake)
+        self.assertEquals(s.base, 'sftp://simple.example.com/home/source/')
+
+        s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/~/relative', clone_from=fake)
         self.assertEquals(s._host, 'example.com')
         self.assertEquals(s._port, 2222)
         self.assertEquals(s._username, 'robey')
@@ -167,36 +167,25 @@ class SFTPNonServerTest(TestCase):
         self.assertEquals(s._path, 'relative')
 
         # Base should not keep track of the password
-        self.assertEquals(s.base, 'sftp://robey@example.com:2222/relative/')
-
-        # Double slash should be accepted instead of using %2F
-        s = SFTPTransport('sftp://user@example.com:22//absolute/path/', clone_from=fake)
-        self.assertEquals(s._host, 'example.com')
-        self.assertEquals(s._port, 22)
-        self.assertEquals(s._username, 'user')
-        self.assertEquals(s._password, None)
-        self.assertEquals(s._path, '/absolute/path/')
-
-        # Also, don't show the port if it is the default 22
-        self.assertEquals(s.base, 'sftp://user@example.com:22/%2Fabsolute/path/')
+        self.assertEquals(s.base, 'sftp://robey@example.com:2222/~/relative/')
 
     def test_relpath(self):
         from bzrlib.transport.sftp import SFTPTransport
         from bzrlib.errors import PathNotChild
 
-        s = SFTPTransport('sftp://user@host.com//abs/path', clone_from=fake)
-        self.assertEquals(s.relpath('sftp://user@host.com//abs/path/sub'), 'sub')
+        s = SFTPTransport('sftp://user@host.com/abs/path', clone_from=fake)
+        self.assertEquals(s.relpath('sftp://user@host.com/abs/path/sub'), 'sub')
         # Can't test this one, because we actually get an AssertionError
         # TODO: Consider raising an exception rather than an assert
-        #self.assertRaises(PathNotChild, s.relpath, 'http://user@host.com//abs/path/sub')
-        self.assertRaises(PathNotChild, s.relpath, 'sftp://user2@host.com//abs/path/sub')
-        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@otherhost.com//abs/path/sub')
-        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@host.com:33//abs/path/sub')
-        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@host.com/abs/path/sub')
+        #self.assertRaises(PathNotChild, s.relpath, 'http://user@host.com/abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'sftp://user2@host.com/abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@otherhost.com/abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@host.com:33/abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@host.com/~/rel/path/sub')
 
         # Make sure it works when we don't supply a username
-        s = SFTPTransport('sftp://host.com//abs/path', clone_from=fake)
-        self.assertEquals(s.relpath('sftp://host.com//abs/path/sub'), 'sub')
+        s = SFTPTransport('sftp://host.com/abs/path', clone_from=fake)
+        self.assertEquals(s.relpath('sftp://host.com/abs/path/sub'), 'sub')
 
         # Make sure it works when parts of the path will be url encoded
         # TODO: These may be incorrect, we might need to urllib.urlencode() before
