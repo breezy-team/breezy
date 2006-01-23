@@ -16,7 +16,7 @@ from bzrlib._merge_core import (ApplyMerge3, make_merge_changeset,
 from bzrlib._changeset import Inventory, apply_changeset, invert_dict, \
     get_contents, ReplaceContents, ChangeExecFlag, Diff3Merge
 from bzrlib.clone import copy_branch
-from bzrlib.merge import merge
+from bzrlib.builtins import merge
 from bzrlib.workingtree import WorkingTree
 
 
@@ -549,8 +549,6 @@ class FunctionalMergeTest(TestCaseInTempDir):
     def test_trivial_star_merge(self):
         """Test that merges in a star shape Just Work.""" 
         from bzrlib.add import smart_add_tree
-        from bzrlib.clone import copy_branch
-        from bzrlib.merge import merge
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
         branch = Branch.initialize("original")

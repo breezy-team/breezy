@@ -22,7 +22,7 @@ from bzrlib.tests.test_revision import make_branches
 from bzrlib.trace import mutter
 from bzrlib.branch import Branch
 from bzrlib.fetch import greedy_fetch
-from bzrlib.merge import merge
+from bzrlib.builtins import merge
 from bzrlib.clone import copy_branch
 
 from bzrlib.tests import TestCaseInTempDir

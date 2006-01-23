@@ -20,7 +20,7 @@ from bzrlib.commit import commit
 from bzrlib.add import smart_add
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
-from bzrlib.merge import merge
+from bzrlib.builtins import merge
 from bzrlib.workingtree import WorkingTree
 from bzrlib.delta import compare_trees
 
