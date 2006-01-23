@@ -97,9 +97,7 @@ class SFTPLockTests (TestCaseWithSFTPServer):
 
     def test_multiple_connections(self):
         t = self.get_transport()
-        self.assertEquals(self.server.logs, 
-                ['sftpserver - authorizing: foo'
-               , 'sftpserver - channel request: session, 1'])
+        self.assertTrue('sftpserver - new connection' in self.server.logs)
         self.server.logs = []
         # The second request should reuse the first connection
         # SingleListener only allows for a single connection,
