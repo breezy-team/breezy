@@ -118,7 +118,7 @@ class StubSFTPServer (SFTPServerInterface):
         try:
             if hasattr(os, 'O_BINARY'):
                 flags |= os.O_BINARY
-            if getattr(attr, 'st_mode', None) is not None:
+            if getattr(attr, 'st_mode', None):
                 fd = os.open(path, flags, attr.st_mode)
             else:
                 fd = os.open(path, flags)
