@@ -65,8 +65,10 @@ MODULES_TO_DOCTEST = [
                       ]
 def packages_to_test():
     import bzrlib.tests.blackbox
+    import bzrlib.tests.branch_implementations
     return [
-            bzrlib.tests.blackbox
+            bzrlib.tests.blackbox,
+            bzrlib.tests.branch_implementations,
             ]
 
 
@@ -812,8 +814,6 @@ def test_suite():
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_xml',
                    ]
-    test_branch_implementations = [
-        'bzrlib.tests.test_branch_implementations']
     test_transport_implementations = [
         'bzrlib.tests.test_transport_implementations']
 
@@ -830,21 +830,7 @@ def test_suite():
     loader = TestLoader()
     from bzrlib.transport import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
-    for mod_name in test_transport_implementations:
-        mod = _load_module_by_name(mod_name)
-        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
-            suite.addTests(adapter.adapt(test))
-    from bzrlib.branch import BranchTestProviderAdapter
-    adapter = BranchTestProviderAdapter(
-        bzrlib.transport.local.LocalRelpathServer,
-        # None here will cause a readonly decorator to be created
-        # by the TestCaseWithTransport.get_readonly_transport method.
-        None,
-        bzrlib.branch.BzrBranchFormat._formats.values())
-    for mod_name in test_branch_implementations:
-        mod = _load_module_by_name(mod_name)
-        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
-            suite.addTests(adapter.adapt(test))
+    adapt_modules(test_transport_implementations, adapter, loader, suite)
     for mod_name in testmod_names:
         mod = _load_module_by_name(mod_name)
         suite.addTest(loader.loadTestsFromModule(mod))
@@ -858,6 +844,14 @@ def test_suite():
         if getattr(plugin, 'test_suite', None) is not None:
             suite.addTest(plugin.test_suite())
     return suite
+
+
+def adapt_modules(mods_list, adapter, loader, suite):
+    """Adapt the modules in mods_list using adapter and add to suite."""
+    for mod_name in mods_list:
+        mod = _load_module_by_name(mod_name)
+        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
+            suite.addTests(adapter.adapt(test))
 
 
 def _load_module_by_name(mod_name):
