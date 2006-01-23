@@ -14,7 +14,7 @@ from bzrlib import changeset
 from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
                                BackupBeforeChange, ExecFlagMerge, WeaveMerge)
 from bzrlib.changeset import Inventory, apply_changeset, invert_dict, \
-    get_contents, ReplaceContents, ChangeExecFlag
+    get_contents, ReplaceContents, ChangeExecFlag, Diff3Merge
 from bzrlib.clone import copy_branch
 from bzrlib.merge import merge
 from bzrlib.workingtree import WorkingTree
@@ -530,6 +530,18 @@ class MergeTest(TestCase):
             self.assert_(os.lstat(builder.this.full_path("2")).st_mode &0100 == 0100)
             self.assert_(os.lstat(builder.this.full_path("3")).st_mode &0100 == 0000)
         builder.cleanup();
+
+    def test_new_suffix(self):
+        for merge_type in ApplyMerge3, Diff3Merge:
+            builder = MergeBuilder()
+            builder.add_file("1", "0", "name1", "text1", 0755)
+            builder.change_contents("1", other="text3")
+            builder.add_file("2", "0", "name1.new", "text2", 0777)
+            cset = builder.merge_changeset(ApplyMerge3)
+            os.lstat(builder.this.full_path("2"))
+            builder.apply_changeset(cset)
+            os.lstat(builder.this.full_path("2"))
+            builder.cleanup()
 
 
 class FunctionalMergeTest(TestCaseInTempDir):
