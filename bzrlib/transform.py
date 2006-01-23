@@ -1053,7 +1053,8 @@ class Merge3Merger(object):
         """Perform a three-way text merge on a file_id"""
         # it's possible that we got here with base as a different type.
         # if so, we just want two-way text conflicts.
-        if self.base_tree.kind(file_id) == "file":
+        if file_id in self.base_tree and \
+            self.base_tree.kind(file_id) == "file":
             base_lines = self.get_lines(self.base_tree, file_id)
         else:
             base_lines = []
@@ -1090,12 +1091,15 @@ class Merge3Merger(object):
     def _dump_conflicts(self, trans_id, file_id, this_lines=None, 
                         base_lines=None, other_lines=None):
         file_group = [trans_id]
-        file_group.append(self._conflict_file(trans_id, self.this_tree,
-                          file_id, "THIS", this_lines))
-        file_group.append(self._conflict_file(trans_id, self.base_tree, 
-                          file_id, "BASE", base_lines))
-        file_group.append(self._conflict_file(trans_id, self.other_tree,
-                          file_id, "OTHER", other_lines))
+        if file_id in self.this_tree:
+            file_group.append(self._conflict_file(trans_id, self.this_tree,
+                              file_id, "THIS", this_lines))
+        if file_id in self.base_tree:
+            file_group.append(self._conflict_file(trans_id, self.base_tree, 
+                              file_id, "BASE", base_lines))
+        if file_id in self.other_tree:
+            file_group.append(self._conflict_file(trans_id, self.other_tree,
+                              file_id, "OTHER", other_lines))
 
            
     def _conflict_file(self, trans_id, tree, file_id, suffix, lines=None):

@@ -359,6 +359,7 @@ class TestTransformMerge(TestCaseInTempDir):
         other.tt.new_file('f', other.root, 'f', 'f')
         other.tt.new_file('g', other.root, 'g', 'g')
         other.tt.new_file('h', other.root, 'h\ni\nj\nk\n', 'h')
+        other.tt.new_file('i', other.root, 'h\ni\nj\nk\n', 'i')
         other.tt.apply()
         this = TransformGroup("this")
         this.tt.new_file('a', this.root, 'a\nb\nc\nd\bz\n', 'a')
@@ -369,6 +370,7 @@ class TestTransformMerge(TestCaseInTempDir):
         this.tt.new_file('f', this.root, 'f', 'f')
         this.tt.new_file('g', this.root, 'g', 'g')
         this.tt.new_file('h', this.root, '1\n2\n3\n4\n', 'h')
+        this.tt.new_file('i', this.root, '1\n2\n3\n4\n', 'i')
         this.tt.apply()
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
         # textual merge
@@ -394,4 +396,10 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(this.wt.get_file_byname('h.OTHER').read(),
                          'h\ni\nj\nk\n')
         self.assertEqual(file_kind(this.wt.abspath('h.BASE')), 'directory')
-
+        self.assertEqual(this.wt.get_file('i').read(), 
+                         conflict_text('1\n2\n3\n4\n', 'h\ni\nj\nk\n'))
+        self.assertEqual(this.wt.get_file_byname('i.THIS').read(),
+                         '1\n2\n3\n4\n')
+        self.assertEqual(this.wt.get_file_byname('i.OTHER').read(),
+                         'h\ni\nj\nk\n')
+        self.assertEqual(os.path.exists(this.wt.abspath('i.BASE')), False)
