@@ -20,7 +20,7 @@ from bzrlib.commit import commit
 from bzrlib.add import smart_add
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
-from bzrlib.merge import merge
+from bzrlib.builtins import merge
 from bzrlib.workingtree import WorkingTree
 from bzrlib.delta import compare_trees
 
@@ -33,7 +33,7 @@ class TestFileIdInvolved(TestCaseInTempDir):
         f.close( )
 
     def merge( self, branch_from, force=False ):
-        from bzrlib.merge_core import ApplyMerge3
+        from bzrlib._merge_core import ApplyMerge3
 
         merge([branch_from,-1],[None,None], merge_type=ApplyMerge3,
             check_clean=(not force) )

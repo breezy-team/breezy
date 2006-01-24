@@ -28,7 +28,7 @@ import codecs
 
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib.merge import merge
+from bzrlib.builtins import merge
 from bzrlib.status import show_status
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
