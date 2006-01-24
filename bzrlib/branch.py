@@ -63,10 +63,6 @@ BZR_BRANCH_FORMAT_6 = "Bazaar-NG branch, format 6\n"
 # cache in memory to make this faster.  In general anything can be
 # cached in memory between lock and unlock operations.
 
-# FIXME: At the moment locking the Branch locks both the repository and the
-# control files, representing the two aspects currently controlled by one
-# object.  However, they currently both map to the same lockfile. 
-
 def find_branch(*ignored, **ignored_too):
     # XXX: leave this here for about one release, then remove it
     raise NotImplementedError('find_branch() is not supported anymore, '
@@ -133,6 +129,8 @@ class Branch(object):
         """Subclasses that care about caching should override this, and set
         up cached stores located under cache_root.
         """
+        # seems to be unused, 2006-01-13 mbp
+        warn('%s is deprecated' % self.setup_caching)
         self.cache_root = cache_root
 
     def _get_nick(self):
@@ -161,7 +159,7 @@ class Branch(object):
 
     def peek_lock_mode(self):
         """Return lock mode for the Branch: 'r', 'w' or None"""
-        raise NotImplementedError(self.is_locked)
+        raise NotImplementedError(self.peek_lock_mode)
 
     def abspath(self, name):
         """Return absolute filename for something in the branch
@@ -378,6 +376,9 @@ class Branch(object):
         to_branch_type
             Branch type of destination branch
         """
+        # circular import protection
+        from bzrlib.merge import build_working_dir
+
         assert isinstance(to_location, basestring)
         if not bzrlib.osutils.lexists(to_location):
             os.mkdir(to_location)
@@ -392,8 +393,6 @@ class Branch(object):
             revision = self.last_revision()
         br_to.update_revisions(self, stop_revision=revision)
         br_to.set_parent(self.base)
-        # circular import protection
-        from bzrlib.merge import build_working_dir
         build_working_dir(to_location)
         mutter("copied")
         return br_to
@@ -479,6 +478,7 @@ class BzrBranch(Branch):
         # Alternatively, we could have the Transport objects cache requests
         # See the earlier discussion about how major objects (like Branch)
         # should never expect their __del__ function to run.
+        # XXX: cache_root seems to be unused, 2006-01-13 mbp
         if hasattr(self, 'cache_root') and self.cache_root is not None:
             try:
                 shutil.rmtree(self.cache_root)

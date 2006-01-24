@@ -38,6 +38,8 @@ def needs_read_lock(unbound):
             return unbound(self, *args, **kwargs)
         finally:
             self.unlock()
+    decorated.__doc__ = unbound.__doc__
+    decorated.__name__ = unbound.__name__
     return decorated
 
 
@@ -49,5 +51,7 @@ def needs_write_lock(unbound):
             return unbound(self, *args, **kwargs)
         finally:
             self.unlock()
+    decorated.__doc__ = unbound.__doc__
+    decorated.__name__ = unbound.__name__
     return decorated
 
