@@ -537,7 +537,11 @@ class Merger(object):
                                   " type. %s" % merge_type)
         else:
             kwargs['reprocess'] = self.reprocess
-
+        if self.show_base and not self.merge_type.supports_show_base:
+            raise BzrCommandError("Showing base is not supported for this"
+                                  " merge type. %s" % merge_type)
+        else:
+            kwargs['show_base'] = self.show_base
         merge = self.merge_type(**kwargs)
         return len(merge.conflicts)
 

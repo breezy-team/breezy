@@ -949,15 +949,17 @@ def conflict_pass(tt, conflicts):
 class Merge3Merger(object):
     requires_base = True
     supports_reprocess = True
+    supports_show_base = True
     history_based = False
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
-                 reprocess=False):
+                 reprocess=False, show_base=False):
         object.__init__(self)
         self.this_tree = working_tree
         self.base_tree = base_tree
         self.other_tree = other_tree
         self.conflicts = []
         self.reprocess = reprocess
+        self.show_base = show_base
 
         all_ids = set(base_tree)
         all_ids.update(other_tree)
@@ -1132,7 +1134,7 @@ class Merge3Merger(object):
         this_lines = self.get_lines(self.this_tree, file_id)
         m3 = Merge3(base_lines, this_lines, other_lines)
         start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
-        if False is True:
+        if self.show_base is True:
             base_marker = '|' * 7
         else:
             base_marker = None
@@ -1144,7 +1146,7 @@ class Merge3Merger(object):
                                        name_base = "BASE-REVISION",
                                        start_marker=start_marker, 
                                        base_marker=base_marker,
-                                       reprocess = self.reprocess):
+                                       reprocess=self.reprocess):
                 if line.startswith(start_marker):
                     retval["text_conflicts"] = True
                     yield line.replace(start_marker, '<' * 7)
