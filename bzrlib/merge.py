@@ -196,7 +196,7 @@ class _MergeConflictHandler(ExceptionConflictHandler):
 
     def create(self, file_id, path, tree):
         """Uses tree data to create a filesystem object for the file_id"""
-        from _changeset import get_contents
+        from bzrlib._changeset import get_contents
         get_contents(tree, file_id)(path, self)
 
     def missing_for_merge(self, file_id, other_path):

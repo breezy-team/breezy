@@ -3,12 +3,12 @@ import os.path
 from tempfile import mkstemp
 
 from bzrlib import _changeset
-from _changeset import Inventory, apply_changeset, invert_dict
+from bzrlib._changeset import Inventory, apply_changeset, invert_dict
 from bzrlib.osutils import backup_file, rename, pathjoin
 from bzrlib.merge3 import Merge3
 import bzrlib
 from bzrlib.atomicfile import AtomicFile
-from _changeset import get_contents
+from bzrlib._changeset import get_contents
 
 
 class ApplyMerge3:
