@@ -16,7 +16,7 @@ class TestTreeTransform(TestCaseInTempDir):
 
     def get_transform(self):
         transform = TreeTransform(self.wt)
-        self.addCleanup(transform.finalize)
+        #self.addCleanup(transform.finalize)
         return transform, transform.get_id_tree(self.wt.get_root_id())
 
 
@@ -47,11 +47,11 @@ class TestTreeTransform(TestCaseInTempDir):
         transform.set_executability(False, trans_id2)
         transform.version_file('my_pretties2', trans_id2)
         transform.apply()
-        self.assertEqual('contents', file('name').read())
+        self.assertEqual('contents', self.wt.get_file_byname('name').read())
         self.assertEqual(self.wt.path2id('name'), 'my_pretties')
         self.assertIs(self.wt.is_executable('my_pretties'), True)
         self.assertIs(self.wt.is_executable('my_pretties2'), False)
-        self.assertEqual('directory', file_kind('oz'))
+        self.assertEqual('directory', file_kind(self.wt.abspath('oz')))
         # is it safe to finalize repeatedly?
         transform.finalize()
         transform.finalize()
@@ -68,14 +68,15 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertEqual(len(transform.find_conflicts()), 0)
         transform.apply()
         self.assertRaises(ReusingTransform, transform.find_conflicts)
-        self.assertEqual('contents', file('name').read())
+        self.assertEqual('contents', file(self.wt.abspath('name')).read())
         self.assertEqual(self.wt.path2id('name'), 'my_pretties')
         self.assertIs(self.wt.is_executable('my_pretties'), True)
         self.assertEqual(self.wt.path2id('oz'), 'oz-id')
         self.assertEqual(self.wt.path2id('oz/dorothy'), 'dorothy-id')
         self.assertEqual(self.wt.path2id('oz/dorothy/toto'), 'toto-id')
 
-        self.assertEqual('toto-contents', file('oz/dorothy/toto').read())
+        self.assertEqual('toto-contents', 
+                         self.wt.get_file_byname('oz/dorothy/toto').read())
         self.assertIs(self.wt.is_executable('toto-id'), False)
 
     def test_conflicts(self):
@@ -271,9 +272,11 @@ class TestTreeTransform(TestCaseInTempDir):
         transform.set_executability(None, wiz_id)
         transform.apply()
         self.assertEqual(self.wt.path2id('oz/wizard'), 'wizard-id')
-        self.assertEqual(file_kind('oz/wizard'), 'symlink')
-        self.assertEqual(os.readlink('oz/wizard2'), 'behind_curtain')
-        self.assertEqual(os.readlink('oz/wizard'), 'wizard-target')
+        self.assertEqual(file_kind(self.wt.abspath('oz/wizard')), 'symlink')
+        self.assertEqual(os.readlink(self.wt.abspath('oz/wizard2')), 
+                         'behind_curtain')
+        self.assertEqual(os.readlink(self.wt.abspath('oz/wizard')),
+                         'wizard-target')
 
     def test_conflict_resolution(self):
         create,root = self.get_transform()
