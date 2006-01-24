@@ -417,10 +417,10 @@ class TestTransformMerge(TestCaseInTempDir):
             tg.tt.new_symlink('b', tg.root, 'b', 'b')
             tg.tt.new_file('c', tg.root, 'c', 'c')
             tg.tt.new_symlink('d', tg.root, tg.name, 'd')
+        for tg, target in ((base, 'base-e'), (this, 'other-e'), 
+                           (other, 'other-e')):
+            tg.tt.new_symlink('e', tg.root, target, 'e')
 
-        base.tt.new_symlink('e', base.root, 'base-e', 'e')
-        other.tt.new_symlink('e', other.root, 'other-e', 'e')
-        this.tt.new_symlink('e', this.root, 'other-e', 'e')
         for tg in this, base, other:
             tg.tt.apply()
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
@@ -434,4 +434,3 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertIs(os.path.lexists(this.wt.abspath('e.THIS')), False)
         self.assertIs(os.path.lexists(this.wt.abspath('e.OTHER')), False)
         self.assertIs(os.path.lexists(this.wt.abspath('e.BASE')), False)
-
