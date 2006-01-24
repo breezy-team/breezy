@@ -1000,6 +1000,8 @@ class Merge3Merger(object):
     def executable(tree, file_id):
         if file_id not in tree:
             return None
+        if tree.kind(file_id) != "file":
+            return False
         return tree.is_executable(file_id)
 
     @staticmethod
