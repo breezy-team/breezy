@@ -17,7 +17,7 @@
 import os
 from cStringIO import StringIO
 
-from bzrlib.tests import BzrTestBase, TestCaseInTempDir
+from bzrlib.tests import BzrTestBase, TestCaseWithTransport
 from bzrlib.log import LogFormatter, show_log, LongLogFormatter, ShortLogFormatter
 from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionNumber
@@ -49,7 +49,7 @@ class LogCatcher(LogFormatter):
         self.logs.append(le)
 
 
-class SimpleLogTest(TestCaseInTempDir):
+class SimpleLogTest(TestCaseWithTransport):
 
     def checkDelta(self, delta, **kw):
         """Check the filenames touched by a delta are as expected."""
@@ -65,10 +65,11 @@ class SimpleLogTest(TestCaseInTempDir):
             self.assertEquals(expected, got)
 
     def test_cur_revno(self):
-        b = Branch.initialize('.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
 
         lf = LogCatcher()
-        b.working_tree().commit('empty commit')
+        wt.commit('empty commit')
         show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
         self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
                           start_revision=2, end_revision=1) 
@@ -84,10 +85,11 @@ class SimpleLogTest(TestCaseInTempDir):
                           start_revision=1, end_revision=-1) 
 
     def test_cur_revno(self):
-        b = Branch.initialize('.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
 
         lf = LogCatcher()
-        b.working_tree().commit('empty commit')
+        wt.commit('empty commit')
         show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
         self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
                           start_revision=2, end_revision=1) 
@@ -105,7 +107,8 @@ class SimpleLogTest(TestCaseInTempDir):
     def test_simple_log(self):
         eq = self.assertEquals
         
-        b = Branch.initialize('.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
 
         lf = LogCatcher()
         show_log(b, lf)
@@ -175,7 +178,8 @@ class SimpleLogTest(TestCaseInTempDir):
         self.assert_(msg == committed_msg)
 
     def test_trailing_newlines(self):
-        b = Branch.initialize('.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
         b.nick='test'
         wt = b.working_tree()
         open('a', 'wb').write('hello moto\n')
@@ -246,9 +250,9 @@ message:
         
         bug #4676
         """
-        b = Branch.initialize('.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
         self.build_tree(['a'])
-        wt = b.working_tree()
         wt.add('a')
         # XXX: why does a longer nick show up?
         b.nick = 'test_verbose_log'

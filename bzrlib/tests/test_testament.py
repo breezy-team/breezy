@@ -22,20 +22,21 @@ import os
 from sha import sha
 import sys
 
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter
 from bzrlib.osutils import has_symlinks
 
 
-class TestamentTests(TestCaseInTempDir):
+class TestamentTests(TestCaseWithTransport):
 
     def setUp(self):
         super(TestamentTests, self).setUp()
-        b = self.b = Branch.initialize(u'.')
+        wt = self.make_branch_and_tree('.')
+        b = self.b = wt.branch
         b.nick = "test branch"
-        b.working_tree().commit(message='initial null commit',
+        wt.commit(message='initial null commit',
                  committer='test@user',
                  timestamp=1129025423, # 'Tue Oct 11 20:10:23 2005'
                  timezone=0,
@@ -43,9 +44,9 @@ class TestamentTests(TestCaseInTempDir):
         self.build_tree_contents([('hello', 'contents of hello file'),
                              ('src/', ),
                              ('src/foo.c', 'int main()\n{\n}\n')])
-        b.working_tree().add(['hello', 'src', 'src/foo.c'],
+        wt.add(['hello', 'src', 'src/foo.c'],
                              ['hello-id', 'src-id', 'foo.c-id'])
-        b.working_tree().commit(message='add files and directories',
+        wt.commit(message='add files and directories',
                  timestamp=1129025483,
                  timezone=36000,
                  rev_id='test@user-2',

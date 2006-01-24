@@ -25,6 +25,7 @@ __all__ = ['deprecated_function',
            'deprecated_nonce',
            'deprecated_passed',
            'warn', 'set_warning_method', 'zero_seven',
+           'zero_eight',
            ]
 
 from warnings import warn
@@ -32,6 +33,7 @@ from warnings import warn
 
 deprecated_nonce = "A deprecated parameter marker."
 zero_seven = "%s was deprecated in version 0.7."
+zero_eight = "%s was deprecated in version 0.8."
 
 
 def set_warning_method(method):
@@ -59,7 +61,7 @@ def deprecated_function(deprecation_version):
             symbol = "%s.%s" % (callable.__module__, 
                                 callable.__name__
                                 )
-            warn(deprecation_version % symbol, DeprecationWarning)
+            warn(deprecation_version % symbol, DeprecationWarning, stacklevel=2)
             return callable(*args, **kwargs)
         _populate_decorated(callable, deprecation_version, "function",
                             decorated_function)
@@ -82,7 +84,7 @@ def deprecated_method(deprecation_version):
                                    self.__class__.__name__,
                                    callable.__name__
                                    )
-            warn(deprecation_version % symbol, DeprecationWarning)
+            warn(deprecation_version % symbol, DeprecationWarning, stacklevel=2)
             return callable(self, *args, **kwargs)
         _populate_decorated(callable, deprecation_version, "method",
                             decorated_method)

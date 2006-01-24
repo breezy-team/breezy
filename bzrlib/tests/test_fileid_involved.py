@@ -14,29 +14,37 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.tests import TestCaseInTempDir
 import os
-from bzrlib.commit import commit
+
 from bzrlib.add import smart_add
 from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
-from bzrlib.merge import merge
-from bzrlib.workingtree import WorkingTree
 from bzrlib.delta import compare_trees
+from bzrlib.fetch import greedy_fetch
+from bzrlib.merge import merge_inner
+from bzrlib.revision import common_ancestor
+from bzrlib.tests import TestCaseWithTransport
+from bzrlib.workingtree import WorkingTree
 
 
-class TestFileIdInvolved(TestCaseInTempDir):
+class TestFileIdInvolved(TestCaseWithTransport):
 
     def touch(self,filename):
         f = file(filename,"a")
         f.write("appended line\n")
         f.close( )
 
-    def merge( self, branch_from, force=False ):
-        from bzrlib.merge_core import ApplyMerge3
-
-        merge([branch_from,-1],[None,None], merge_type=ApplyMerge3,
-            check_clean=(not force) )
+    def merge(self, branch_from, wt_to):
+        # minimal ui-less merge.
+        greedy_fetch(to_branch=wt_to.branch, from_branch=branch_from,
+                     revision=branch_from.last_revision())
+        base_rev = common_ancestor(branch_from.last_revision(),
+                                    wt_to.branch.last_revision(),
+                                    wt_to.branch)
+        merge_inner(wt_to.branch, branch_from.working_tree(), 
+                    wt_to.branch.revision_tree(base_rev),
+                    this_tree=wt_to)
+        wt_to.add_pending_merge(branch_from.last_revision())
 
     def setUp(self):
         super(TestFileIdInvolved, self).setUp()
@@ -48,84 +56,63 @@ class TestFileIdInvolved(TestCaseInTempDir):
         #  \           /      /
         #   \---> E---/----> F                 (branch1)
 
-        os.mkdir("main")
-        os.chdir("main")
+        main_wt = self.make_branch_and_tree('main')
+        main_branch = main_wt.branch
+        self.build_tree(["main/a","main/b","main/c"])
 
-        main_branch = Branch.initialize('.')
-        self.build_tree(["a","b","c"])
-
-        b = Branch.open('.')
-        wt = b.working_tree()
-        wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
+        main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
                                  'c-funky<file-id> quiji%bo'])
-        commit(b, "Commit one", rev_id="rev-A")
-        del b, wt
+        main_wt.commit("Commit one", rev_id="rev-A")
         #-------- end A -----------
 
-        copy_branch(main_branch,"../branch1")
-        os.chdir("../branch1")
-
-        #branch1_branch = Branch.open(".")
-        self.build_tree(["d"])
-        smart_add(".")
-        commit(Branch.open("."), "branch1, Commit one", rev_id="rev-E")
+        b1 = copy_branch(main_branch, "branch1")
+        self.build_tree(["branch1/d"])
+        b1.working_tree().add('d')
+        b1.working_tree().commit("branch1, Commit one", rev_id="rev-E")
 
         #-------- end E -----------
 
-        os.chdir("../main")
-        self.touch("a")
-        commit(Branch.open("."), "Commit two", rev_id="rev-B")
+        self.touch("main/a")
+        main_wt.commit("Commit two", rev_id="rev-B")
 
         #-------- end B -----------
 
-        copy_branch(Branch.open("."),"../branch2")
-        os.chdir("../branch2")
-
-        branch2_branch = Branch.open(".")
-        os.chmod("b",0770)
-        commit(Branch.open("."), "branch2, Commit one", rev_id="rev-J")
+        branch2_branch = copy_branch(main_branch, "branch2")
+        os.chmod("branch2/b",0770)
+        branch2_branch.working_tree().commit("branch2, Commit one", 
+                                             rev_id="rev-J")
 
         #-------- end J -----------
 
-        os.chdir("../main")
-
-        self.merge("../branch1")
-        commit(Branch.open("."), "merge branch1, rev-11", rev_id="rev-C")
+        self.merge(b1, main_wt)
+        main_wt.commit("merge branch1, rev-11", rev_id="rev-C")
 
         #-------- end C -----------
 
-        os.chdir("../branch1")
-        tree = WorkingTree('.', Branch.open("."))
+        tree = WorkingTree('branch1', b1)
         tree.rename_one("d","e")
-        commit(Branch.open("."), "branch1, commit two", rev_id="rev-F")
-
+        tree.commit("branch1, commit two", rev_id="rev-F")
 
         #-------- end F -----------
 
-        os.chdir("../branch2")
-
-        self.touch("c")
-        commit(Branch.open("."), "branch2, commit two", rev_id="rev-K")
+        self.touch("branch2/c")
+        branch2_branch.working_tree().commit("branch2, commit two", rev_id="rev-K")
 
         #-------- end K -----------
 
-        os.chdir("../main")
-
-        self.touch("b")
-        self.merge("../branch1",force=True)
-
+        self.touch("main/b")
+        self.merge(b1, main_wt)
         # D gets some funky characters to make sure the unescaping works
-        commit(Branch.open("."), "merge branch1, rev-12", rev_id="rev-<D>")
+        main_wt.commit("merge branch1, rev-12", rev_id="rev-<D>")
 
         # end D
 
-        self.merge("../branch2")
-        commit(Branch.open("."), "merge branch1, rev-22",  rev_id="rev-G")
+        self.merge(branch2_branch, main_wt)
+        main_wt.commit("merge branch1, rev-22",  rev_id="rev-G")
 
         # end G
-        os.chdir("../main")
-        self.branch = Branch.open(".")
+        self.branch = main_branch
 
 
     def test_fileid_involved_all_revs(self):
@@ -188,12 +175,12 @@ class TestFileIdInvolved(TestCaseInTempDir):
                 new_tree = self.branch.revision_tree(history[end])
                 delta = compare_trees(old_tree, new_tree )
 
-                l2 = [ id for path, id, kind in delta.added ] + \
-                     [ id for oldpath, newpath, id, kind, text_modified, \
-                            meta_modified in delta.renamed ] + \
-                     [ id for path, id, kind, text_modified, meta_modified in \
-                            delta.modified ]
+                l2 = [id for path, id, kind in delta.added] + \
+                     [id for oldpath, newpath, id, kind, text_modified, \
+                        meta_modified in delta.renamed] + \
+                     [id for path, id, kind, text_modified, meta_modified in \
+                        delta.modified]
 
-                self.assertEquals( l1, set(l2) )
+                self.assertEquals(l1, set(l2))
 
 

@@ -18,6 +18,9 @@
 """Tests of status command.
 
 Most of these depend on the particular formatting used.
+As such they really are blackbox tests even though some of the 
+tests are not using self.capture. If we add tests for the programmatic
+interface later, they will be non blackbox tests.
 """
 
 
@@ -26,21 +29,21 @@ from os import mkdir
 from tempfile import TemporaryFile
 import codecs
 
-from bzrlib.tests import TestCaseInTempDir
-from bzrlib.revisionspec import RevisionSpec
-from bzrlib.merge import merge
-from bzrlib.status import show_status
-from bzrlib.branch import Branch
 from bzrlib.clone import copy_branch
+from bzrlib.branch import Branch
+from bzrlib.merge import merge
+from bzrlib.revisionspec import RevisionSpec
+from bzrlib.status import show_status
+from bzrlib.tests import TestCaseInTempDir
+from bzrlib.workingtree import WorkingTree
+
 
 class BranchStatus(TestCaseInTempDir):
     
     def test_branch_status(self): 
         """Test basic branch status"""
-        from bzrlib.status import show_status
-        from bzrlib.branch import Branch
-        
-        b = Branch.initialize(u'.')
+        wt = WorkingTree.create_standalone('.')
+        b = wt.branch
 
         # status with nothing
         tof = StringIO()
@@ -49,7 +52,7 @@ class BranchStatus(TestCaseInTempDir):
 
         tof = StringIO()
         self.build_tree(['hello.c', 'bye.c'])
-        b.working_tree().add_pending_merge('pending@pending-0-0')
+        wt.add_pending_merge('pending@pending-0-0')
         show_status(b, to_file=tof)
         tof.seek(0)
         self.assertEquals(tof.readlines(),
@@ -62,14 +65,14 @@ class BranchStatus(TestCaseInTempDir):
 
     def test_branch_status_revisions(self):
         """Tests branch status with revisions"""
-        
-        b = Branch.initialize(u'.')
+        wt = WorkingTree.create_standalone('.')
+        b = wt.branch
 
         tof = StringIO()
         self.build_tree(['hello.c', 'bye.c'])
-        b.working_tree().add('hello.c')
-        b.working_tree().add('bye.c')
-        b.working_tree().commit('Test message')
+        wt.add('hello.c')
+        wt.add('bye.c')
+        wt.commit('Test message')
 
         tof = StringIO()
         revs =[]
@@ -84,8 +87,8 @@ class BranchStatus(TestCaseInTempDir):
                            '  hello.c\n'])
 
         self.build_tree(['more.c'])
-        b.working_tree().add('more.c')
-        b.working_tree().commit('Another test message')
+        wt.add('more.c')
+        wt.commit('Another test message')
         
         tof = StringIO()
         revs.append(RevisionSpec(1))
@@ -109,10 +112,11 @@ class BranchStatus(TestCaseInTempDir):
     def test_pending(self):
         """Pending merges display works, including Unicode"""
         mkdir("./branch")
-        b = Branch.initialize('./branch')
-        b.working_tree().commit("Empty commit 1")
+        wt = WorkingTree.create_standalone('.')
+        b = wt.branch
+        wt.commit("Empty commit 1")
         b_2 = copy_branch(b, './copy')
-        b.working_tree().commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
+        wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)
         self.assert_(message.startswith("pending merges:\n"))
@@ -129,16 +133,13 @@ class BranchStatus(TestCaseInTempDir):
 
     def test_branch_status_specific_files(self): 
         """Tests branch status with given specific files"""
-        from cStringIO import StringIO
-        from bzrlib.status import show_status
-        from bzrlib.branch import Branch
-        
-        b = Branch.initialize(u'.')
+        wt = WorkingTree.create_standalone('.')
+        b = wt.branch
 
         self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
-        b.working_tree().add('directory')
-        b.working_tree().add('test.c')
-        b.working_tree().commit('testing')
+        wt.add('directory')
+        wt.add('test.c')
+        wt.commit('testing')
         
         tof = StringIO()
         show_status(b, to_file=tof)

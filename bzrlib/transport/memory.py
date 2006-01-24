@@ -22,7 +22,7 @@ from stat import *
 from cStringIO import StringIO
 
 from bzrlib.trace import mutter
-from bzrlib.errors import TransportError, NoSuchFile, FileExists
+from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
 from bzrlib.transport import Transport, register_transport, Server
 
 class MemoryStat(object):
@@ -50,6 +50,7 @@ class MemoryTransport(Transport):
         self._cwd = url[url.find(':') + 1:]
         self._dirs = {}
         self._files = {}
+        self._locks = {}
 
     def clone(self, offset=None):
         """See Transport.clone()."""
@@ -70,11 +71,12 @@ class MemoryTransport(Transport):
         result = MemoryTransport(url)
         result._dirs = self._dirs
         result._files = self._files
+        result._locks = self._locks
         return result
 
     def abspath(self, relpath):
         """See Transport.abspath()."""
-        return self.base[:-1] + self._abspath(relpath)
+        return self.base[:-1] + self._abspath(relpath)[len(self._cwd) - 1:]
 
     def append(self, relpath, f):
         """See Transport.append()."""
@@ -176,13 +178,15 @@ class MemoryTransport(Transport):
         elif _abspath in self._dirs:
             return MemoryStat(0, True, self._dirs[_abspath])
         else:
-            raise NoSuchFile(relpath)
+            raise NoSuchFile(_abspath)
 
-#    def lock_read(self, relpath):
-#   TODO if needed
-#
-#    def lock_write(self, relpath):
-#   TODO if needed
+    def lock_read(self, relpath):
+        """See Transport.lock_read()."""
+        return _MemoryLock(self._abspath(relpath), self)
+
+    def lock_write(self, relpath):
+        """See Transport.lock_write()."""
+        return _MemoryLock(self._abspath(relpath), self)
 
     def _abspath(self, relpath):
         """Generate an internal absolute path."""
@@ -197,13 +201,44 @@ class MemoryTransport(Transport):
         return self._cwd + relpath
 
 
+class _MemoryLock(object):
+    """This makes a lock."""
+
+    def __init__(self, path, transport):
+        assert isinstance(transport, MemoryTransport)
+        self.path = path
+        self.transport = transport
+        if self.path in self.transport._locks:
+            raise LockError('File %r already locked' % (self.path,))
+        self.transport._locks[self.path] = self
+
+    def __del__(self):
+        # Should this warn, or actually try to cleanup?
+        if self.transport:
+            warn("MemoryLock %r not explicitly unlocked" % (self.path,))
+            self.unlock()
+
+    def unlock(self):
+        del self.transport._locks[self.path]
+        self.transport = None
+
+
 class MemoryServer(Server):
     """Server for the MemoryTransport for testing with."""
 
     def setUp(self):
         """See bzrlib.transport.Server.setUp."""
+        self._dirs = {}
+        self._files = {}
+        self._locks = {}
         self._scheme = "memory+%s:" % id(self)
-        register_transport(self._scheme, MemoryTransport)
+        def memory_factory(url):
+            result = MemoryTransport(url)
+            result._dirs = self._dirs
+            result._files = self._files
+            result._locks = self._locks
+            return result
+        register_transport(self._scheme, memory_factory)
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""

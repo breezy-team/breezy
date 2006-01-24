@@ -47,6 +47,7 @@ from bzrlib.osutils import has_symlinks, pathjoin
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.workingtree import WorkingTree
 
 class TestCommands(ExternalBase):
 
@@ -164,8 +165,7 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m newstuff branch', retcode=3)
 
     def test_ignore_patterns(self):
-        from bzrlib.branch import Branch
-        Branch.initialize('.')
+        self.runbzr('init')
         self.assertEquals(self.capture('unknowns'), '')
 
         file('foo.tmp', 'wt').write('tmp files are ignored')
@@ -259,8 +259,7 @@ class TestCommands(ExternalBase):
 
     def test_mv_modes(self):
         """Test two modes of operation for mv"""
-        from bzrlib.branch import Branch
-        b = Branch.initialize('.')
+        self.runbzr('init')
         self.build_tree(['a', 'c', 'subdir/'])
         self.run_bzr_captured(['add', self.test_dir])
         self.run_bzr_captured(['mv', 'a', 'b'])
@@ -626,7 +625,7 @@ class TestCommands(ExternalBase):
         
     def test_add_reports(self):
         """add command prints the names of added files."""
-        b = Branch.initialize('.')
+        self.runbzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
         out = self.run_bzr_captured(['add'], retcode=0)[0]
         # the ordering is not defined at the moment
@@ -647,7 +646,7 @@ class TestCommands(ExternalBase):
 
     def test_add_quiet_is(self):
         """add -q does not print the names of added files."""
-        b = Branch.initialize('.')
+        self.runbzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
         out = self.run_bzr_captured(['add', '-q'], retcode=0)[0]
         # the ordering is not defined at the moment
@@ -659,8 +658,7 @@ class TestCommands(ExternalBase):
 
         "bzr add" should add the parent(s) as necessary.
         """
-        from bzrlib.branch import Branch
-        Branch.initialize('.')
+        self.runbzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
         self.run_bzr('add', 'inertiatic/esp')
@@ -683,8 +681,7 @@ class TestCommands(ExternalBase):
 
         "bzr add" should do this happily.
         """
-        from bzrlib.branch import Branch
-        Branch.initialize('.')
+        self.runbzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
         self.run_bzr('add', '--no-recurse', 'inertiatic')
@@ -694,14 +691,14 @@ class TestCommands(ExternalBase):
 
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
-        from bzrlib.branch import Branch
+        from bzrlib.workingtree import WorkingTree
         
         eq = self.assertEqual
         ass = self.assert_
         chdir = os.chdir
         
-        b = Branch.initialize('.')
-        t = b.working_tree()
+        t = WorkingTree.create_standalone('.')
+        b = t.branch
         self.build_tree(['src/', 'README'])
         
         eq(sorted(t.unknowns()),
@@ -815,8 +812,9 @@ class TestCommands(ExternalBase):
         """Test re signing of data."""
         import bzrlib.gpg
         oldstrategy = bzrlib.gpg.GPGStrategy
-        branch = Branch.initialize('.')
-        branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
+        wt = WorkingTree.create_standalone('.')
+        branch = wt.branch
+        wt.commit("base", allow_pointless=True, rev_id='A')
         try:
             # monkey patch gpg signing mechanism
             from bzrlib.testament import Testament
@@ -830,10 +828,11 @@ class TestCommands(ExternalBase):
     def test_resign_range(self):
         import bzrlib.gpg
         oldstrategy = bzrlib.gpg.GPGStrategy
-        branch = Branch.initialize('.')
-        branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
-        branch.working_tree().commit("base", allow_pointless=True, rev_id='B')
-        branch.working_tree().commit("base", allow_pointless=True, rev_id='C')
+        wt = WorkingTree.create_standalone('.')
+        branch = wt.branch
+        wt.commit("base", allow_pointless=True, rev_id='A')
+        wt.commit("base", allow_pointless=True, rev_id='B')
+        wt.commit("base", allow_pointless=True, rev_id='C')
         try:
             # monkey patch gpg signing mechanism
             from bzrlib.testament import Testament
@@ -1228,8 +1227,9 @@ class RemoteTests(object):
 
     def test_branch(self):
         os.mkdir('from')
-        branch = Branch.initialize('from')
-        branch.working_tree().commit('empty commit for nonsense', allow_pointless=True)
+        wt = WorkingTree.create_standalone('from')
+        branch = wt.branch
+        wt.commit('empty commit for nonsense', allow_pointless=True)
         url = self.get_remote_url('from')
         self.run_bzr('branch', url, 'to')
         branch = Branch.open('to')
@@ -1237,18 +1237,18 @@ class RemoteTests(object):
 
     def test_log(self):
         self.build_tree(['branch/', 'branch/file'])
-        branch = Branch.initialize('branch')
-        branch.working_tree().add(['file'])
-        branch.working_tree().commit('add file', rev_id='A')
+        self.capture('init branch')
+        self.capture('add branch/file')
+        self.capture('commit -m foo branch')
         url = self.get_remote_url('branch/file')
         output = self.capture('log %s' % url)
         self.assertEqual(8, len(output.split('\n')))
         
     def test_check(self):
         self.build_tree(['branch/', 'branch/file'])
-        branch = Branch.initialize('branch')
-        branch.working_tree().add(['file'])
-        branch.working_tree().commit('add file', rev_id='A')
+        self.capture('init branch')
+        self.capture('add branch/file')
+        self.capture('commit -m foo branch')
         url = self.get_remote_url('branch/')
         self.run_bzr('check', url)
     

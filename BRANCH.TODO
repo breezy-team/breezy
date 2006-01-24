@@ -13,3 +13,5 @@
  * cleanup remnans of check_format in the BzrBranch constructor.
  * fixup test_outside_wt.test_http_log
  * upgrade from .bzr to a '.bzr-new', then do a bait and switch.
+ * document WorkingTree.create, branch.create, workingtree.create_standalone, branch.init deprecation.
+ * merge in storage, use lockable files to reinstate permissions for checkout control files.

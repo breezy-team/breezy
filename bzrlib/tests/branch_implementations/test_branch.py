@@ -53,12 +53,12 @@ class TestCaseWithBranch(TestCaseWithTransport):
 
     def get_branch(self):
         if self.branch is None:
-            self.branch = self.make_branch(self.get_url())
+            self.branch = self.make_branch(None)
         return self.branch
 
     def make_branch(self, relpath):
         try:
-            return self.branch_format.initialize(relpath)
+            return self.branch_format.initialize(self.get_url(relpath))
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
@@ -76,12 +76,12 @@ class TestBranch(TestCaseWithBranch):
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
         from bzrlib.fetch import Fetcher
-        os.mkdir('b1')
-        os.mkdir('b2')
+        get_transport(self.get_url()).mkdir('b1')
+        get_transport(self.get_url()).mkdir('b2')
         b1 = self.make_branch('b1')
         b2 = self.make_branch('b2')
+        wt = WorkingTree.create(b1, 'b1')
         file('b1/foo', 'w').write('hello')
-        wt = WorkingTree('b1', b1)
         wt.add(['foo'], ['foo-id'])
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
@@ -97,7 +97,7 @@ class TestBranch(TestCaseWithBranch):
 
     def test_revision_tree(self):
         b1 = self.get_branch()
-        wt = WorkingTree('.', b1)
+        wt = WorkingTree.create(b1, '.')
         wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = b1.revision_tree('revision-1')
         tree = b1.revision_tree(None)
@@ -105,26 +105,31 @@ class TestBranch(TestCaseWithBranch):
         tree = b1.revision_tree(NULL_REVISION)
         self.assertEqual(len(tree.list_files()), 0)
 
-    def get_unbalanced_branch_pair(self):
+    def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
-        os.mkdir('a')
+        get_transport(self.get_url()).mkdir('a')
         br_a = self.make_branch('a')
+        tree_a = WorkingTree.create(br_a, 'a')
         file('a/b', 'wb').write('b')
-        WorkingTree("a", br_a).add('b')
-        commit(br_a, "silly commit", rev_id='A')
-        os.mkdir('b')
+        tree_a.add('b')
+        tree_a.commit("silly commit", rev_id='A')
+
+        get_transport(self.get_url()).mkdir('b')
         br_b = self.make_branch('b')
-        return br_a, br_b
+        tree_b = WorkingTree.create(br_b, 'b')
+        return tree_a, tree_b
 
     def get_balanced_branch_pair(self):
         """Returns br_a, br_b as with one commit in a, and b has a's stores."""
-        br_a, br_b = self.get_unbalanced_branch_pair()
-        br_a.push_stores(br_b)
-        return br_a, br_b
+        tree_a, tree_b = self.get_unbalanced_tree_pair()
+        tree_a.branch.push_stores(tree_b.branch)
+        return tree_a, tree_b
 
     def test_push_stores(self):
         """Copy the stores from one branch to another"""
-        br_a, br_b = self.get_unbalanced_branch_pair()
+        tree_a, tree_b = self.get_unbalanced_tree_pair()
+        br_a = tree_a.branch
+        br_b = tree_b.branch
         # ensure the revision is missing.
         self.assertRaises(NoSuchRevision, br_b.get_revision, 
                           br_a.revision_history()[0])
@@ -135,21 +140,22 @@ class TestBranch(TestCaseWithBranch):
         for file_id in tree:
             if tree.inventory[file_id].kind == "file":
                 tree.get_file(file_id).read()
-        return br_a, br_b
 
     def test_copy_branch(self):
         """Copy the stores from one branch to another"""
-        br_a, br_b = self.get_balanced_branch_pair()
-        commit(br_b, "silly commit")
+        tree_a, tree_b = self.get_balanced_branch_pair()
+        tree_b.commit("silly commit")
         os.mkdir('c')
-        br_c = copy_branch(br_a, 'c', basis_branch=br_b)
-        self.assertEqual(br_a.revision_history(), br_c.revision_history())
+        br_c = copy_branch(tree_a.branch, 'c', basis_branch=tree_b.branch)
+        self.assertEqual(tree_a.branch.revision_history(),
+                         br_c.revision_history())
 
     def test_copy_partial(self):
         """Copy only part of the history of a branch."""
-        self.build_tree(['a/', 'a/one'])
+        get_transport(self.get_url()).mkdir('a')
         br_a = self.make_branch('a')
-        wt = WorkingTree("a", br_a)
+        wt = WorkingTree.create(br_a, "a")
+        self.build_tree(['a/one'])
         wt.add(['one'])
         wt.commit('commit one', rev_id='u@d-1')
         self.build_tree(['a/two'])
@@ -163,7 +169,7 @@ class TestBranch(TestCaseWithBranch):
     def test_record_initial_ghost_merge(self):
         """A pending merge with no revision present is still a merge."""
         branch = self.get_branch()
-        wt = WorkingTree(".", branch)
+        wt = WorkingTree.create(branch, ".")
         wt.add_pending_merge('non:existent@rev--ision--0--2')
         wt.commit('pretend to merge nonexistent-revision', rev_id='first')
         rev = branch.get_revision(branch.last_revision())
@@ -183,7 +189,7 @@ class TestBranch(TestCaseWithBranch):
     def test_pending_merges(self):
         """Tracking pending-merged revisions."""
         b = self.get_branch()
-        wt = WorkingTree(".", b)
+        wt = WorkingTree.create(b, '.')
         self.assertEquals(wt.pending_merges(), [])
         wt.add_pending_merge('foo@azkhazan-123123-abcabc')
         self.assertEquals(wt.pending_merges(), ['foo@azkhazan-123123-abcabc'])
@@ -205,8 +211,8 @@ class TestBranch(TestCaseWithBranch):
 
     def test_sign_existing_revision(self):
         branch = self.get_branch()
-        WorkingTree(".", branch).commit("base", allow_pointless=True,
-                                        rev_id='A')
+        wt = WorkingTree.create(branch, ".")
+        wt.commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
         branch.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
         self.assertEqual(Testament.from_revision(branch, 'A').as_short_text(),
@@ -226,28 +232,29 @@ class TestBranch(TestCaseWithBranch):
 
     def test_nicks(self):
         """Branch nicknames"""
-        os.mkdir('bzr.dev')
+        t = get_transport(self.get_url())
+        t.mkdir('bzr.dev')
         branch = self.make_branch('bzr.dev')
         self.assertEqual(branch.nick, 'bzr.dev')
-        os.rename('bzr.dev', 'bzr.ab')
-        branch = Branch.open('bzr.ab')
+        t.move('bzr.dev', 'bzr.ab')
+        branch = Branch.open(self.get_url('bzr.ab'))
         self.assertEqual(branch.nick, 'bzr.ab')
         branch.nick = "Aaron's branch"
         branch.nick = "Aaron's branch"
-        self.failUnless(os.path.exists(branch.controlfilename("branch.conf")))
+        self.failUnless(t.has(t.relpath(branch.controlfilename("branch.conf"))))
         self.assertEqual(branch.nick, "Aaron's branch")
-        os.rename('bzr.ab', 'integration')
-        branch = Branch.open('integration')
+        t.move('bzr.ab', 'integration')
+        branch = Branch.open(self.get_url('integration'))
         self.assertEqual(branch.nick, "Aaron's branch")
         branch.nick = u"\u1234"
         self.assertEqual(branch.nick, u"\u1234")
 
     def test_commit_nicks(self):
         """Nicknames are committed to the revision"""
-        os.mkdir('bzr.dev')
-        branch = self.get_branch()
+        get_transport(self.get_url()).mkdir('bzr.dev')
+        branch = self.make_branch('bzr.dev')
         branch.nick = "My happy branch"
-        WorkingTree('.', branch).commit('My commit respect da nick.')
+        WorkingTree.create(branch, 'bzr.dev').commit('My commit respect da nick.')
         committed = branch.get_revision(branch.last_revision())
         self.assertEqual(committed.properties["branch-nick"], 
                          "My happy branch")
@@ -255,7 +262,7 @@ class TestBranch(TestCaseWithBranch):
     def test_no_ancestry_weave(self):
         # We no longer need to create the ancestry.weave file
         # since it is *never* used.
-        branch = Branch.initialize(u'.')
+        branch = Branch.create('.')
         self.failIfExists('.bzr/ancestry.weave')
 
 
@@ -269,7 +276,7 @@ class ChrootedTests(TestCaseWithBranch):
 
     def setUp(self):
         super(ChrootedTests, self).setUp()
-        if not isinstance(self.transport_server, MemoryServer):
+        if not self.transport_server == MemoryServer:
             self.transport_readonly_server = HttpServer
 
     def test_open_containing(self):

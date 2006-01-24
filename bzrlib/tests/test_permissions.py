@@ -38,6 +38,7 @@ from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
+from bzrlib.workingtree import WorkingTree
 
 
 def chmod_r(base, file_mode, dir_mode):
@@ -86,8 +87,8 @@ class TestPermissions(TestCaseInTempDir):
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
 
-        b = Branch.initialize(u'.')
-        t = b.working_tree()
+        t = WorkingTree.create_standalone('.')
+        b = t.branch
         open('a', 'wb').write('foo\n')
         t.add('a')
         t.commit('foo')
@@ -156,7 +157,8 @@ class TestPermissions(TestCaseInTempDir):
         #                    extra chmod calls aren't being made
         import bzrlib.branch
         try:
-            b = Branch.initialize(u'.')
+            t = WorkingTree.create_standalone('.')
+            b = t.branch
             self.assertNotEqual(None, b._dir_mode)
             self.assertNotEqual(None, b._file_mode)
 
@@ -189,27 +191,28 @@ class TestPermissions(TestCaseInTempDir):
 
         os.mkdir('a')
         mode = stat.S_IMODE(os.stat('a').st_mode)
-        b = Branch.initialize('a')
+        t = WorkingTree.create_standalone('.')
+        b = t.branch
         assertEqualMode(self, mode, b._dir_mode)
         assertEqualMode(self, mode & ~07111, b._file_mode)
 
         os.mkdir('b')
         os.chmod('b', 02777)
-        b = Branch.initialize('b')
+        b = Branch.create('b')
         assertEqualMode(self, 02777, b._dir_mode)
         assertEqualMode(self, 00666, b._file_mode)
         check_mode_r(self, 'b/.bzr', 00666, 02777)
 
         os.mkdir('c')
         os.chmod('c', 02750)
-        b = Branch.initialize('c')
+        b = Branch.create('c')
         assertEqualMode(self, 02750, b._dir_mode)
         assertEqualMode(self, 00640, b._file_mode)
         check_mode_r(self, 'c/.bzr', 00640, 02750)
 
         os.mkdir('d')
         os.chmod('d', 0700)
-        b = Branch.initialize('d')
+        b = Branch.create('d')
         assertEqualMode(self, 0700, b._dir_mode)
         assertEqualMode(self, 0600, b._file_mode)
         check_mode_r(self, 'd/.bzr', 00600, 0700)
@@ -231,8 +234,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         _transport = SFTPTransport(self._sftp_url)
 
         os.mkdir('local')
-        b_local = Branch.initialize(u'local')
-        t_local = b_local.working_tree()
+        t_local = WorkingTree.create_standalone('local')
+        b_local = t_local.branch
         open('local/a', 'wb').write('foo\n')
         t_local.add('a')
         t_local.commit('foo')
@@ -249,7 +252,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
 
         os.mkdir('sftp')
         sftp_url = self.get_remote_url('sftp')
-        b_sftp = Branch.initialize(sftp_url)
+        b_sftp = Branch.create(sftp_url)
 
         b_sftp.pull(b_local)
         del b_sftp
@@ -317,5 +320,3 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
             self.assertTransportMode(t, 'd', 0777)
         finally:
             os.umask(original_umask)
-
-

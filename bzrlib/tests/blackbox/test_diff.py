@@ -52,14 +52,13 @@ class TestDiff(ExternalBase):
         self.runbzr('diff')
 
     def test_diff_branches(self):
-        self.build_tree(['branch1/', 'branch1/file', 'branch2/'], line_endings='binary')
-        branch = Branch.initialize('branch1')
-        branch.working_tree().add(['file'])
-        branch.working_tree().commit('add file')
-        copy_branch(branch, 'branch2')
+        self.build_tree(['branch1/', 'branch1/file'], line_endings='binary')
+        self.capture('init branch1')
+        self.capture('add branch1/file')
+        self.run_bzr_captured(['commit', '-m', 'add file', 'branch1'])
+        self.capture('branch branch1 branch2')
         print >> open('branch2/file', 'wb'), 'new content'
-        branch2 = Branch.open('branch2')
-        branch2.working_tree().commit('update file')
+        self.run_bzr_captured(['commit', '-m', 'update file', 'branch2'])
         # should open branch1 and diff against branch2, 
         output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 
                                         'branch1'],
@@ -83,13 +82,13 @@ class TestDiff(ExternalBase):
 
     def test_diff_to_working_tree(self):
         self.build_tree(['branch1/', 'branch1/file1'], line_endings='binary')
-        branch = Branch.initialize('branch1')
-        branch.working_tree().add(['file1'])
+        self.capture('init branch1')
+        self.capture('add branch1/file1')
         print >> open('branch1/file1', 'wb'), 'original line'
-        branch.working_tree().commit('first commit')
+        self.run_bzr_captured(['commit', '-m', 'first commit', 'branch1'])
         
         print >> open('branch1/file1', 'wb'), 'repo line'
-        branch.working_tree().commit('second commit')
+        self.run_bzr_captured(['commit', '-m', 'second commit', 'branch1'])
         
         print >> open('branch1/file1', 'wb'), 'new line'
         output = self.run_bzr_captured(['diff', '-r', '1..', 'branch1'], retcode=1)

@@ -2,73 +2,73 @@ import os
 
 from bzrlib.branch import Branch
 from bzrlib.commit import commit
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.merge import merge, transform_tree
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
 from bzrlib.revision import common_ancestor
 from bzrlib.fetch import fetch
 from bzrlib.osutils import pathjoin
+from bzrlib.workingtree import WorkingTree
 
 
-class TestMerge(TestCaseInTempDir):
+class TestMerge(TestCaseWithTransport):
     """Test appending more than one revision"""
+
     def test_pending(self):
-        br = Branch.initialize(u".")
-        commit(br, "lala!")
-        self.assertEquals(len(br.working_tree().pending_merges()), 0)
+        wt = self.make_branch_and_tree('.')
+        wt.commit("lala!")
+        self.assertEquals(len(wt.pending_merges()), 0)
         merge([u'.', -1], [None, None])
-        self.assertEquals(len(br.working_tree().pending_merges()), 0)
+        self.assertEquals(len(wt.pending_merges()), 0)
 
     def test_nocommits(self):
         self.test_pending()
-        os.mkdir('branch2')
-        br2 = Branch.initialize('branch2')
+        wt2 = self.make_branch_and_tree('branch2')
         self.assertRaises(NoCommits, merge, ['branch2', -1], 
                           [None, None])
-        return br2
+        return wt2
 
     def test_unrelated(self):
-        br2 = self.test_nocommits()
-        commit(br2, "blah")
+        wt2 = self.test_nocommits()
+        wt2.commit("blah")
         self.assertRaises(UnrelatedBranches, merge, ['branch2', -1], 
                           [None, None])
-        return br2
+        return wt2
 
     def test_pending_with_null(self):
         """When base is forced to revno 0, pending_merges is set"""
-        br2 = self.test_unrelated()
-        br1 = Branch.open(u'.')
-        fetch(from_branch=br2, to_branch=br1)
+        wt2 = self.test_unrelated()
+        wt1 = WorkingTree('.')
+        br1 = wt1.branch
+        fetch(from_branch=wt2.branch, to_branch=br1)
         # merge all of branch 2 into branch 1 even though they 
         # are not related.
         self.assertRaises(BzrCommandError, merge, ['branch2', -1], 
                           ['branch2', 0], reprocess=True, show_base=True)
         merge(['branch2', -1], ['branch2', 0], reprocess=True)
-        self.assertEquals(len(br1.working_tree().pending_merges()), 1)
-        return (br1, br2)
+        self.assertEquals(len(wt1.pending_merges()), 1)
+        return (wt1, wt2.branch)
 
     def test_two_roots(self):
         """Merge base is sane when two unrelated branches are merged"""
-        br1, br2 = self.test_pending_with_null()
-        commit(br1, "blah")
-        last = br1.last_revision()
-        self.assertEquals(common_ancestor(last, last, br1), last)
+        wt1, br2 = self.test_pending_with_null()
+        wt1.commit("blah")
+        last = wt1.branch.last_revision()
+        self.assertEquals(common_ancestor(last, last, wt1.branch), last)
 
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
-        b = Branch.initialize(u'.')
+        tree =self.make_branch_and_tree('.')
         file('name1', 'wb').write('Hello')
-        tree = b.working_tree()
         tree.add('name1')
         tree.commit(message="hello")
         tree.rename_one('name1', 'name2')
         os.unlink('name2')
-        transform_tree(tree, b.basis_tree())
+        transform_tree(tree, tree.branch.basis_tree())
 
     def test_layered_rename(self):
         """Rename both child and parent at same time"""
-        b = Branch.initialize(u'.')
-        tree = b.working_tree()
+        tree =self.make_branch_and_tree('.')
         os.mkdir('dirname1')
         tree.add('dirname1')
         filename = pathjoin('dirname1', 'name1')
@@ -78,4 +78,4 @@ class TestMerge(TestCaseInTempDir):
         filename2 = pathjoin('dirname1', 'name2')
         tree.rename_one(filename, filename2)
         tree.rename_one('dirname1', 'dirname2')
-        transform_tree(tree, b.basis_tree())
+        transform_tree(tree, tree.branch.basis_tree())

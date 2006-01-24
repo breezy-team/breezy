@@ -34,12 +34,13 @@ import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch)
+from bzrlib.log import show_one_log
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
+from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree
-from bzrlib.log import show_one_log
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -502,7 +503,10 @@ class cmd_push(Command):
                         if new_transport.base == transport.base:
                             raise BzrCommandError("Could not creeate "
                                                   "path prefix.")
-            br_to = Branch.initialize(location)
+            if isinstance(transport, LocalTransport):
+                br_to = WorkingTree.create_standalone(location).branch
+            else:
+                br_to = Branch.create(location)
         old_rh = br_to.revision_history()
         try:
             try:
@@ -740,7 +744,7 @@ class cmd_init(Command):
             # locations if the user supplies an extended path
             if not os.path.exists(location):
                 os.mkdir(location)
-        Branch.initialize(location)
+        WorkingTree.create_standalone(location)
 
 
 class cmd_diff(Command):
@@ -1433,6 +1437,9 @@ class cmd_selftest(Command):
         if typestring == "sftp":
             from bzrlib.transport.sftp import SFTPAbsoluteServer
             return SFTPAbsoluteServer
+        if typestring == "memory":
+            from bzrlib.transport.memory import MemoryServer
+            return MemoryServer
         msg = "No known transport type %s. Supported types are: sftp\n" %\
             (typestring)
         raise BzrCommandError(msg)

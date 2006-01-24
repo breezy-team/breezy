@@ -52,7 +52,7 @@ from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions,
 from bzrlib.store import copy_all
 from bzrlib.store.text import TextStore
 from bzrlib.store.weave import WeaveStore
-from bzrlib.symbol_versioning import deprecated_nonce, deprecated_passed
+from bzrlib.symbol_versioning import *
 from bzrlib.testament import Testament
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
@@ -168,13 +168,22 @@ class Branch(object):
             t = new_t
 
     @staticmethod
-    def initialize(base):
-        """Create a new branch, rooted at 'base' (url)
+    def create(base):
+        """Create a new Branch at the url 'bzr'.
         
         This will call the current default initializer with base
         as the only parameter.
         """
         return Branch._default_initializer(safe_unicode(base))
+
+    @staticmethod
+    @deprecated_function(zero_eight)
+    def initialize(base):
+        """Create a new working tree and branch, rooted at 'base' (url)
+        """
+        # imported here to prevent scope creep as this is going.
+        from bzrlib.workingtree import WorkingTree
+        return WorkingTree.create_standalone(safe_unicode(base)).branch
 
     @staticmethod
     def get_default_initializer():
@@ -374,24 +383,23 @@ class Branch(object):
         If self and other have not diverged, return a list of the revisions
         present in other, but missing from self.
 
-        >>> from bzrlib.commit import commit
         >>> bzrlib.trace.silent = True
         >>> br1 = ScratchBranch()
         >>> br2 = ScratchBranch()
         >>> br1.missing_revisions(br2)
         []
-        >>> commit(br2, "lala!", rev_id="REVISION-ID-1")
+        >>> br2.working_tree().commit("lala!", rev_id="REVISION-ID-1")
         >>> br1.missing_revisions(br2)
         [u'REVISION-ID-1']
         >>> br2.missing_revisions(br1)
         []
-        >>> commit(br1, "lala!", rev_id="REVISION-ID-1")
+        >>> br1.working_tree().commit("lala!", rev_id="REVISION-ID-1")
         >>> br1.missing_revisions(br2)
         []
-        >>> commit(br2, "lala!", rev_id="REVISION-ID-2A")
+        >>> br2.working_tree().commit("lala!", rev_id="REVISION-ID-2A")
         >>> br1.missing_revisions(br2)
         [u'REVISION-ID-2A']
-        >>> commit(br1, "lala!", rev_id="REVISION-ID-2B")
+        >>> br1.working_tree().commit("lala!", rev_id="REVISION-ID-2B")
         >>> br1.missing_revisions(br2)
         Traceback (most recent call last):
         DivergedBranches: These branches have diverged.  Try merge.
@@ -630,17 +638,10 @@ class BzrBranchFormat(object):
     def initialize(self, url):
         """Create a branch of this format at url and return an open branch."""
         t = get_transport(url)
-        from bzrlib.inventory import Inventory
         from bzrlib.weavefile import write_weave_v5
         from bzrlib.weave import Weave
         
-        # Create an empty inventory
-        sio = StringIO()
-        # if we want per-tree root ids then this is the place to set
-        # them; they're not needed for now and so ommitted for
-        # simplicity.
-        bzrlib.xml5.serializer_v5.write_inventory(Inventory(), sio)
-        empty_inv = sio.getvalue()
+        # Create an empty weave
         sio = StringIO()
         bzrlib.weavefile.write_weave_v5(Weave(), sio)
         empty_weave = sio.getvalue()
@@ -659,8 +660,6 @@ class BzrBranchFormat(object):
             ('revision-history', StringIO('')),
             ('branch-name', StringIO('')),
             ('branch-lock', StringIO('')),
-            ('pending-merges', StringIO('')),
-            ('inventory', StringIO(empty_inv)),
             ('inventory.weave', StringIO(empty_weave)),
         ]
         control.mkdir_multi(dirs, mode=dir_mode)
@@ -836,8 +835,9 @@ class BzrBranch(Branch):
         self._transport = transport
         if deprecated_passed(init):
             warn("BzrBranch.__init__(..., init=XXX): The init parameter is "
-                 "deprecated as of bzr 0.8. Please use Branch.initialize().",
-                 DeprecationWarning)
+                 "deprecated as of bzr 0.8. Please use Branch.create().",
+                 DeprecationWarning,
+                 stacklevel=2)
             if init:
                 # this is slower than before deprecation, oh well never mind.
                 # -> its deprecated.
@@ -848,7 +848,9 @@ class BzrBranch(Branch):
             warn("BzrBranch.__init__(..., relax_version_check=XXX_: The "
                  "relax_version_check parameter is deprecated as of bzr 0.8. "
                  "Please use Branch.open_downlevel, or a BzrBranchFormat's "
-                 "open() method.", DeprecationWarning)
+                 "open() method.",
+                 DeprecationWarning,
+                 stacklevel=2)
             if (not relax_version_check
                 and not self._branch_format.is_supported()):
                 raise errors.UnsupportedFormatError(
@@ -1044,7 +1046,7 @@ class BzrBranch(Branch):
         for path, f in files:
             if encode:
                 if isinstance(f, basestring):
-                    f = f.encode('utf-8', 'replace')
+                    f = StringIO(f.encode('utf-8', 'replace'))
                 else:
                     f = codecs.getwriter('utf-8')(f, errors='replace')
             path = self._rel_controlfilename(path)
@@ -1123,10 +1125,6 @@ class BzrBranch(Branch):
         old_revision = self.last_revision()
         new_revision = rev_history[-1]
         self.put_controlfile('revision-history', '\n'.join(rev_history))
-        try:
-            self.working_tree().set_last_revision(new_revision, old_revision)
-        except NoWorkingTree:
-            mutter('Unable to set_last_revision without a working tree.')
 
     def has_revision(self, revision_id):
         """See Branch.has_revision."""
@@ -1286,7 +1284,9 @@ class BzrBranch(Branch):
     def working_tree(self):
         """See Branch.working_tree."""
         from bzrlib.workingtree import WorkingTree
-        if self._transport.base.find('://') != -1:
+        from bzrlib.transport.local import LocalTransport
+        if (self._transport.base.find('://') != -1 or 
+            not isinstance(self._transport, LocalTransport)):
             raise NoWorkingTree(self.base)
         return WorkingTree(self.base, branch=self)
 
@@ -1502,7 +1502,9 @@ class ScratchBranch(BzrBranch):
         """
         if transport is None:
             transport = bzrlib.transport.local.ScratchTransport()
-            Branch.initialize(transport.base)
+            # local import for scope restriction
+            from bzrlib.workingtree import WorkingTree
+            WorkingTree.create_standalone(transport.base)
             super(ScratchBranch, self).__init__(transport)
         else:
             super(ScratchBranch, self).__init__(transport)

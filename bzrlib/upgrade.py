@@ -215,24 +215,10 @@ class Convert(object):
 
     def _backup_control_dir(self):
         note('making backup of tree history')
-        source = self.transport.clone('.bzr')
-        self.transport.mkdir('.bzr.backup')
-        backup = self.transport.clone('.bzr.backup')
-        files = []
-        directories = ['.']
-        while directories:
-            dir = directories.pop()
-            if dir != '.':
-                backup.mkdir(dir)
-            for path in source.list_dir(dir):
-                path = dir + '/' + path
-                stat = source.stat(path)
-                if S_ISDIR(stat.st_mode):
-                    directories.append(path)
-                else:
-                    files.append(path)
-        source.copy_to(files, backup)
-        note('%s has been backed up to %s', source.base, backup.base)
+        self.transport.copy_tree('.bzr', '.bzr.backup')
+        note('%s.bzr has been backed up to %s.bzr.backup',
+             self.transport.base,
+             self.transport.base)
         note('if conversion fails, you can move this directory back to .bzr')
         note('if it succeeds, you can remove this directory if you wish')
 

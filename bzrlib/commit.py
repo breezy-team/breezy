@@ -212,7 +212,7 @@ class Commit(object):
         if deprecated_passed(branch):
             warn("Commit.commit (branch, ...): The branch parameter is "
                  "deprecated as of bzr 0.8. Please use working_tree= instead.",
-                 DeprecationWarning)
+                 DeprecationWarning, stacklevel=2)
             self.branch = branch
             self.work_tree = WorkingTree(branch.base, branch)
         elif working_tree is None:
@@ -294,6 +294,11 @@ class Commit(object):
             self._make_revision()
             self.work_tree.set_pending_merges([])
             self.branch.append_revision(self.rev_id)
+            if len(self.parents):
+                precursor = self.parents[0]
+            else:
+                precursor = None
+            self.work_tree.set_last_revision(self.rev_id, precursor)
             self.reporter.completed(self.branch.revno()+1, self.rev_id)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')

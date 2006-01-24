@@ -106,11 +106,13 @@ class ReadonlyTransportDecorator(Transport):
         """See Transport.stat()."""
         return self._decorated.stat(relpath)
 
-#    def lock_read(self, relpath):
-#   TODO if needed / when tested
-#
-#    def lock_write(self, relpath):
-#   TODO if needed / when tested.
+    def lock_read(self, relpath):
+        """See Transport.lock_read."""
+        return self._decorated.lock_read(relpath)
+
+    def lock_write(self, relpath):
+        """See Transport.lock_write."""
+        raise TransportNotPossible('readonly transport')
 
 
 class ReadonlyServer(Server):

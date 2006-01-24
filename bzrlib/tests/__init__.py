@@ -37,7 +37,10 @@ import codecs
 
 import bzrlib.branch
 import bzrlib.commands
-from bzrlib.errors import BzrError
+from bzrlib.errors import (BzrError,
+                           FileExists,
+                           UninitializableFormat,
+                           )
 import bzrlib.inventory
 import bzrlib.merge3
 import bzrlib.osutils
@@ -52,6 +55,7 @@ from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.tests.treeshape import build_tree_contents
+from bzrlib.workingtree import WorkingTree
 
 default_transport = LocalRelpathServer
 
@@ -658,7 +662,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         super(TestCaseWithTransport, self).__init__(methodName)
         self.__readonly_server = None
         self.__server = None
-        self.transport_server = bzrlib.transport.local.LocalRelpathServer
+        self.transport_server = default_transport
         self.transport_readonly_server = None
 
     def get_readonly_url(self, relpath=None):
@@ -700,11 +704,35 @@ class TestCaseWithTransport(TestCaseInTempDir):
             self.__server.setUp()
             self.addCleanup(self.__server.tearDown)
         base = self.__server.get_url()
-        if relpath is not None:
+        if relpath is not None and relpath != '.':
             if not base.endswith('/'):
                 base = base + '/'
             base = base + relpath
         return base
+
+    def make_branch(self, relpath):
+        """Create a branch on the transport at relpath."""
+        try:
+            url = self.get_url(relpath)
+            segments = relpath.split('/')
+            if segments and segments[-1] not in ('', '.'):
+                parent = self.get_url('/'.join(segments[:-1]))
+                t = bzrlib.transport.get_transport(parent)
+                try:
+                    t.mkdir(segments[-1])
+                except FileExists:
+                    pass
+            return bzrlib.branch.Branch.create(url)
+        except UninitializableFormat:
+            raise TestSkipped("Format %s is not initializable.")
+
+    def make_branch_and_tree(self, relpath):
+        """Create a branch on the transport and a tree locally.
+
+        Returns the tree.
+        """
+        b = self.make_branch(relpath)
+        return WorkingTree.create(b, relpath)
 
 
 def filter_suite_by_re(suite, pattern):
@@ -752,10 +780,13 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
     old_transport = default_transport
     default_transport = transport
     suite = test_suite()
-    default_transport = old_transport
-    return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
+    try:
+        return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
                      stop_on_failure=stop_on_failure, keep_output=keep_output,
                      transport=transport)
+    finally:
+        default_transport = old_transport
+
 
 
 def test_suite():
@@ -797,7 +828,6 @@ def test_suite():
                    'bzrlib.tests.test_parent',
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
-                   'bzrlib.tests.test_remove',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revprops',
@@ -809,7 +839,6 @@ def test_suite():
                    'bzrlib.tests.test_sftp_transport',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_source',
-                   'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_testament',

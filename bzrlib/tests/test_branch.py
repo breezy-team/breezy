@@ -43,7 +43,7 @@ class TestDefaultFormat(TestCase):
             return "a branch %s" % url
         branch.Branch.set_default_initializer(recorder)
         try:
-            b = branch.Branch.initialize("memory:/")
+            b = branch.Branch.create("memory:/")
             self.assertEqual("a branch memory:/", b)
         finally:
             branch.Branch.set_default_initializer(old_initializer)

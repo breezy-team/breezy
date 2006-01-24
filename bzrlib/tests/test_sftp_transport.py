@@ -23,6 +23,7 @@ import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin, lexists
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 import bzrlib.transport
+from bzrlib.workingtree import WorkingTree
 
 try:
     import paramiko
@@ -211,7 +212,7 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
 
     def test_lock_file(self):
         """Make sure that a Branch accessed over sftp tries to lock itself."""
-        b = Branch.initialize(self._sftp_url)
+        b = Branch.create(self._sftp_url)
         self.failUnlessExists('.bzr/')
         self.failUnlessExists('.bzr/branch-format')
         self.failUnlessExists('.bzr/branch-lock')
@@ -223,18 +224,18 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         self.failIf(lexists('.bzr/branch-lock.write-lock'))
 
     def test_no_working_tree(self):
-        b = Branch.initialize(self._sftp_url)
+        b = Branch.create(self._sftp_url)
         self.assertRaises(errors.NoWorkingTree, b.working_tree)
 
     def test_push_support(self):
         self.build_tree(['a/', 'a/foo'])
-        b = Branch.initialize('a')
-        t = b.working_tree()
+        t = WorkingTree.create_standalone('a')
+        b = t.branch
         t.add('foo')
         t.commit('foo', rev_id='a1')
 
         os.mkdir('b')
-        b2 = Branch.initialize(self._sftp_url + '/b')
+        b2 = Branch.create(self._sftp_url + '/b')
         b2.pull(b)
 
         self.assertEquals(b2.revision_history(), ['a1'])

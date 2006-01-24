@@ -334,14 +334,42 @@ class Transport(object):
 
         return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
 
+    def copy_tree(self, from_relpath, to_relpath):
+        """Copy a subtree from one relpath to another.
+
+        If a faster implementation is available, specific transports should 
+        implement it.
+        """
+        source = self.clone(from_relpath)
+        self.mkdir(to_relpath)
+        target = self.clone(to_relpath)
+        files = []
+        directories = ['.']
+        while directories:
+            dir = directories.pop()
+            if dir != '.':
+                target.mkdir(dir)
+            for path in source.list_dir(dir):
+                path = dir + '/' + path
+                stat = source.stat(path)
+                if S_ISDIR(stat.st_mode):
+                    directories.append(path)
+                else:
+                    files.append(path)
+        source.copy_to(files, target)
+
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to.
         
         If a transport can directly implement this it is suggested that
         it do so for efficiency.
         """
-        self.copy(rel_from, rel_to)
-        self.delete(rel_from)
+        if S_ISDIR(self.stat(rel_from).st_mode):
+            self.copy_tree(rel_from, rel_to)
+            self.delete_tree(rel_from)
+        else:
+            self.copy(rel_from, rel_to)
+            self.delete(rel_from)
 
     def move_multi(self, relpaths, pb=None):
         """Move a bunch of entries.

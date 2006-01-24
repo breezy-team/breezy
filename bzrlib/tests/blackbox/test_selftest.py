@@ -36,6 +36,15 @@ class TestOptions(TestCase):
         self.assertEqual(bzrlib.transport.sftp.SFTPAbsoluteServer,
                          bzrlib.tests.default_transport)
 
+    def test_transport_set_to_memory(self):
+        # test the --transport option has taken effect from within the
+        # test_transport test
+        import bzrlib.transport.memory
+        if TestOptions.current_test != "test_transport_set_to_memory":
+            return
+        self.assertEqual(bzrlib.transport.memory.MemoryServer,
+                         bzrlib.tests.default_transport)
+
     def test_transport(self):
         # test that --transport=sftp works
         # FIXME RBC 20060123 this should raise TestSkipped if sftp is not
@@ -46,6 +55,12 @@ class TestOptions(TestCase):
         try:
             TestOptions.current_test = "test_transport_set_to_sftp"
             stdout = self.capture('selftest --transport=sftp test_transport_set_to_sftp')
+            
+            self.assertContainsRe(stdout, 'Ran 1 test')
+            self.assertEqual(old_transport, bzrlib.tests.default_transport)
+
+            TestOptions.current_test = "test_transport_set_to_memory"
+            stdout = self.capture('selftest --transport=memory test_transport_set_to_memory')
             self.assertContainsRe(stdout, 'Ran 1 test')
             self.assertEqual(old_transport, bzrlib.tests.default_transport)
         finally:

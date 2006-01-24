@@ -24,7 +24,8 @@ from bzrlib.diff import internal_diff
 from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.inventory as inventory
 from bzrlib.osutils import has_symlinks, rename, pathjoin
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.workingtree import WorkingTree
 
 
 class TestInventory(TestCase):
@@ -133,17 +134,17 @@ class TestInventoryEntry(TestCase):
         self.failIf(link.has_text())
 
 
-class TestEntryDiffing(TestCaseInTempDir):
+class TestEntryDiffing(TestCaseWithTransport):
 
     def setUp(self):
         super(TestEntryDiffing, self).setUp()
-        self.branch = Branch.initialize(u'.')
-        self.wt = self.branch.working_tree()
+        self.wt = self.make_branch_and_tree('.')
+        self.branch = self.wt.branch
         print >> open('file', 'wb'), 'foo'
-        self.branch.working_tree().add(['file'], ['fileid'])
+        self.wt.add(['file'], ['fileid'])
         if has_symlinks():
             os.symlink('target1', 'symlink')
-            self.branch.working_tree().add(['symlink'], ['linkid'])
+            self.wt.add(['symlink'], ['linkid'])
         self.wt.commit('message_1', rev_id = '1')
         print >> open('file', 'wb'), 'bar'
         if has_symlinks():
@@ -230,7 +231,7 @@ class TestEntryDiffing(TestCaseInTempDir):
                          "=== target changed 'target1' => 'target2'\n")
 
 
-class TestSnapshot(TestCaseInTempDir):
+class TestSnapshot(TestCaseWithTransport):
 
     def setUp(self):
         # for full testing we'll need a branch
@@ -240,24 +241,23 @@ class TestSnapshot(TestCaseInTempDir):
         # to change, and then test merge patterns
         # with fake parent entries.
         super(TestSnapshot, self).setUp()
-        self.branch = Branch.initialize(u'.')
+        self.wt = self.make_branch_and_tree('.')
+        self.branch = self.wt.branch
         self.build_tree(['subdir/', 'subdir/file'], line_endings='binary')
-        self.branch.working_tree().add(['subdir', 'subdir/file'],
+        self.wt.add(['subdir', 'subdir/file'],
                                        ['dirid', 'fileid'])
         if has_symlinks():
             pass
-        self.wt = self.branch.working_tree()
         self.wt.commit('message_1', rev_id = '1')
         self.tree_1 = self.branch.revision_tree('1')
         self.inv_1 = self.branch.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
-        self.work_tree = self.branch.working_tree()
-        self.file_active = self.work_tree.inventory['fileid']
+        self.file_active = self.wt.inventory['fileid']
 
     def test_snapshot_new_revision(self):
         # This tests that a simple commit with no parents makes a new
         # revision value in the inventory entry
-        self.file_active.snapshot('2', 'subdir/file', {}, self.work_tree, 
+        self.file_active.snapshot('2', 'subdir/file', {}, self.wt, 
                                   self.branch.weave_store,
                                   self.branch.get_transaction())
         # expected outcome - file_1 has a revision id of '2', and we can get
@@ -273,7 +273,7 @@ class TestSnapshot(TestCaseInTempDir):
         #This tests that a simple commit does not make a new entry for
         # an unchanged inventory entry
         self.file_active.snapshot('2', 'subdir/file', {'1':self.file_1},
-                                  self.work_tree, self.branch.weave_store,
+                                  self.wt, self.branch.weave_store,
                                   self.branch.get_transaction())
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '1')
@@ -297,7 +297,7 @@ class TestSnapshot(TestCaseInTempDir):
             self.branch.get_transaction())
         self.file_active.snapshot('2', 'subdir/file', 
                                   {'1':self.file_1, 'other':other_ie},
-                                  self.work_tree, self.branch.weave_store,
+                                  self.wt, self.branch.weave_store,
                                   self.branch.get_transaction())
         self.assertEqual(self.file_active.revision, '2')
 
@@ -307,14 +307,14 @@ class TestSnapshot(TestCaseInTempDir):
         self.file_active.name='newname'
         rename('subdir/file', 'subdir/newname')
         self.file_active.snapshot('2', 'subdir/newname', {'1':self.file_1}, 
-                                  self.work_tree, 
+                                  self.wt, 
                                   self.branch.weave_store,
                                   self.branch.get_transaction())
         # expected outcome - file_1 has a revision id of '2'
         self.assertEqual(self.file_active.revision, '2')
 
 
-class TestPreviousHeads(TestCaseInTempDir):
+class TestPreviousHeads(TestCaseWithTransport):
 
     def setUp(self):
         # we want several inventories, that respectively
@@ -326,12 +326,12 @@ class TestPreviousHeads(TestCaseInTempDir):
         # D) fileid present in two inventories and one is
         #   a descendent of the other. (B, D)
         super(TestPreviousHeads, self).setUp()
+        self.wt = self.make_branch_and_tree('.')
+        self.branch = self.wt.branch
         self.build_tree(['file'])
-        self.branch = Branch.initialize(u'.')
-        self.wt = self.branch.working_tree()
         self.wt.commit('new branch', allow_pointless=True, rev_id='A')
         self.inv_A = self.branch.get_inventory('A')
-        self.branch.working_tree().add(['file'], ['fileid'])
+        self.wt.add(['file'], ['fileid'])
         self.wt.commit('add file', rev_id='B')
         self.inv_B = self.branch.get_inventory('B')
         self.branch.put_controlfile('revision-history', 'A\n')
@@ -376,7 +376,7 @@ class TestPreviousHeads(TestCaseInTempDir):
     # TODO: test two inventories with the same file revision 
 
 
-class TestExecutable(TestCaseInTempDir):
+class TestExecutable(TestCaseWithTransport):
 
     def test_stays_executable(self):
         basic_inv = """<inventory format="5">
@@ -384,8 +384,8 @@ class TestExecutable(TestCaseInTempDir):
 <file file_id="b-20051208024829-849e76f7968d7a86" name="b" />
 </inventory>
 """
-        os.mkdir('b1')
-        b = Branch.initialize('b1')
+        wt = self.make_branch_and_tree('b1')
+        b = wt.branch
         open('b1/a', 'wb').write('a test\n')
         open('b1/b', 'wb').write('b test\n')
         os.chmod('b1/a', 0755)
@@ -396,7 +396,7 @@ class TestExecutable(TestCaseInTempDir):
 
         a_id = "a-20051208024829-849e76f7968d7a86"
         b_id = "b-20051208024829-849e76f7968d7a86"
-        t = b.working_tree()
+        t = WorkingTree('b1', b)
         self.assertEqual(['a', 'b'], [cn for cn,ie in t.inventory.iter_entries()])
 
         self.failUnless(t.is_executable(a_id), "'a' lost the execute bit")
@@ -448,7 +448,7 @@ class TestExecutable(TestCaseInTempDir):
         # This seems to happen any time you do a merge operation on the
         # working tree
         del t
-        t = b.working_tree()
+        t = WorkingTree('b1', b)
 
         self.assertEqual(['a', 'b'], [cn for cn,ie in t.inventory.iter_entries()])
 

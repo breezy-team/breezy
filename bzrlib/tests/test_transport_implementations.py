@@ -26,6 +26,7 @@ import stat
 import sys
 
 from bzrlib.errors import (NoSuchFile, FileExists,
+                           LockError,
                            TransportNotPossible, ConnectionError)
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.transport import memory, urlescape
@@ -687,6 +688,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.build_tree(['subdir/', 'subdir/file'], transport=t)
         subdir = t.clone('subdir')
         subdir.stat('./file')
+        subdir.stat('.')
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
@@ -800,3 +802,44 @@ class TestTransportImplementation(TestCaseInTempDir):
         transport = transport.clone('isolated')
         paths = set(transport.iter_files_recursive())
         self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
+
+    def test_connect_twice_is_same_content(self):
+        # check that our server (whatever it is) is accessable reliably
+        # via get_transport and multiple connections share content.
+        transport = self.get_transport()
+        if transport.is_readonly():
+            return
+        transport.put('foo', StringIO('bar'))
+        transport2 = self.get_transport()
+        self.check_transport_contents('bar', transport2, 'foo')
+        # its base should be usable.
+        transport2 = bzrlib.transport.get_transport(transport.base)
+        self.check_transport_contents('bar', transport2, 'foo')
+
+        # now opening at a relative url should give use a sane result:
+        transport.mkdir('newdir')
+        transport2 = bzrlib.transport.get_transport(transport.base + "newdir")
+        transport2 = transport2.clone('..')
+        self.check_transport_contents('bar', transport2, 'foo')
+
+    def test_lock_write(self):
+        transport = self.get_transport()
+        if transport.is_readonly():
+            self.assertRaises(TransportNotPossible, transport.lock_write, 'foo')
+            return
+        transport.put('lock', StringIO())
+        lock = transport.lock_write('lock')
+        # TODO make this consistent on all platforms:
+        # self.assertRaises(LockError, transport.lock_write, 'lock')
+        lock.unlock()
+
+    def test_lock_read(self):
+        transport = self.get_transport()
+        if transport.is_readonly():
+            file('lock', 'w').close()
+        else:
+            transport.put('lock', StringIO())
+        lock = transport.lock_read('lock')
+        # TODO make this consistent on all platforms:
+        # self.assertRaises(LockError, transport.lock_read, 'lock')
+        lock.unlock()

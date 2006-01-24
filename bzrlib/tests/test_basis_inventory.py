@@ -16,17 +16,17 @@
 
 import os
 
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
 from bzrlib.xml5 import serializer_v5
 
 
-class TestBasisInventory(TestCaseInTempDir):
+class TestBasisInventory(TestCaseWithTransport):
 
     def test_create(self):
         # Make sure the basis file is created by a commit
-        b = Branch.initialize(u'.')
-        t = b.working_tree()
+        t = self.make_branch_and_tree('.')
+        b = t.branch
         open('a', 'wb').write('a\n')
         t.add('a')
         t.commit('a', rev_id='r1')

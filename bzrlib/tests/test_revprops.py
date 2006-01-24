@@ -2,17 +2,18 @@
 
 """Tests for revision properties."""
 
-from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 
-class TestRevProps(TestCaseInTempDir):
+class TestRevProps(TestCaseWithTransport):
+
     def test_simple_revprops(self):
         """Simple revision properties"""
-        b = Branch.initialize(u'.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
         b.nick = 'Nicholas'
         props = dict(flavor='choc-mint', 
                      condiment='orange\n  mint\n\tcandy')
-        b.working_tree().commit(message='initial null commit', 
+        wt.commit(message='initial null commit', 
                  revprops=props,
                  allow_pointless=True,
                  rev_id='test@user-1')
@@ -26,12 +27,13 @@ class TestRevProps(TestCaseInTempDir):
 
     def test_invalid_revprops(self):
         """Invalid revision properties"""
-        b = Branch.initialize(u'.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
         self.assertRaises(ValueError,
-                          b.working_tree().commit, 
+                          wt.commit, 
                           message='invalid',
                           revprops={'what a silly property': 'fine'})
         self.assertRaises(ValueError,
-                          b.working_tree().commit, 
+                          wt.commit, 
                           message='invalid',
                           revprops=dict(number=13))
