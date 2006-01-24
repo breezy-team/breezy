@@ -38,16 +38,23 @@ class TestCaseWithSFTPServer(TestCaseInTempDir):
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
         super(TestCaseWithSFTPServer, self).setUp()
-        from bzrlib.transport.sftp import SFTPAbsoluteServer, SFTPHomeDirServer
-        if getattr(self, '_get_remote_is_absolute', None) is None:
-            self._get_remote_is_absolute = True
-        if self._get_remote_is_absolute:
-            self.server = SFTPAbsoluteServer()
+        from bzrlib.transport.sftp import SFTPAbsoluteServer, SFTPHomeDirServer, SFTPServer
+        if getattr(self, '_full_handshake', False):
+            self.server = SFTPServer()
         else:
-            self.server = SFTPHomeDirServer()
+            self._full_handshake = False
+            if getattr(self, '_get_remote_is_absolute', None) is None:
+                self._get_remote_is_absolute = True
+            if self._get_remote_is_absolute:
+                self.server = SFTPAbsoluteServer()
+            else:
+                self.server = SFTPHomeDirServer()
         self.server.setUp()
         self.addCleanup(self.server.tearDown)
-        self._sftp_url = self.server.get_url()
+        if self._full_handshake:
+            self._sftp_url = self.server._get_sftp_url("")
+        else:
+            self._sftp_url = self.server.get_url()
         self._root = self.test_dir
         # Set to a string in setUp to give sftp server a new homedir.
         self._override_home = None
@@ -97,9 +104,7 @@ class SFTPLockTests (TestCaseWithSFTPServer):
 
     def test_multiple_connections(self):
         t = self.get_transport()
-        self.assertEquals(self.server.logs, 
-                ['sftpserver - authorizing: foo'
-               , 'sftpserver - channel request: session, 1'])
+        self.assertTrue('sftpserver - new connection' in self.server.logs)
         self.server.logs = []
         # The second request should reuse the first connection
         # SingleListener only allows for a single connection,
@@ -246,3 +251,9 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         self.assertEquals(b2.revision_history(), ['a1', 'a2'])
 
 
+class SFTPFullHandshakingTest(TestCaseWithSFTPServer):
+    """Verify that a full-handshake (SSH over loopback TCP) sftp connection works."""
+    _full_handshake = True
+    
+    def test_connection(self):
+        self.get_transport()
