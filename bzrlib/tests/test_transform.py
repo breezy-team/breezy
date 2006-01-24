@@ -330,6 +330,7 @@ class TestTreeTransform(TestCaseInTempDir):
 
 class TransformGroup(object):
     def __init__(self, dirname):
+        self.name = dirname
         os.mkdir(dirname)
         self.b = Branch.initialize(dirname)
         self.wt = self.b.working_tree()
@@ -406,3 +407,22 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(this.wt.get_file_byname('i.OTHER').read(),
                          'h\ni\nj\nk\n')
         self.assertEqual(os.path.exists(this.wt.abspath('i.BASE')), False)
+
+    def test_file_merge(self):
+        base = TransformGroup("BASE")
+        this = TransformGroup("THIS")
+        other = TransformGroup("OTHER")
+        for tg in this, base, other:
+            tg.tt.new_directory('a', tg.root, 'a')
+            tg.tt.new_symlink('b', tg.root, 'b', 'b')
+            tg.tt.new_file('c', tg.root, 'c', 'c')
+            tg.tt.new_symlink('d', tg.root, tg.name, 'd')
+            tg.tt.apply()
+        Merge3Merger(this.wt, this.wt, base.wt, other.wt)
+        self.assertIs(os.path.isdir(this.wt.abspath('a')), True)
+        self.assertIs(os.path.islink(this.wt.abspath('b')), True)
+        self.assertIs(os.path.isfile(this.wt.abspath('c')), True)
+        for suffix in ('THIS', 'BASE', 'OTHER'):
+            self.assertEqual(os.readlink(this.wt.abspath('d.'+suffix)), suffix)
+        self.assertIs(os.path.exists(this.wt.abspath('d')), False)
+            

@@ -760,7 +760,7 @@ def create_by_entry(tt, entry, tree, trans_id, lines=None):
             lines = tree.get_file(entry.file_id).readlines()
         tt.create_file(lines, trans_id)
     elif entry.kind == "symlink":
-        tt.create_symlink(entry.symlink_target, trans_id)
+        tt.create_symlink(tree.get_symlink_target(entry.file_id), trans_id)
     elif entry.kind == "directory":
         tt.create_directory(trans_id)
 
@@ -1040,8 +1040,13 @@ class Merge3Merger(object):
                 self.text_merge(file_id, trans_id)
                 return "modified"
             else:
-                print file_id, this_pair, other_pair, base_pair
-                self.emit_conflicts(file_id, trans_id)
+                trans_id = self.tt.get_id_tree(file_id)
+                name = self.tt.final_name(trans_id)
+                parent_id = self.tt.final_parent(trans_id)
+                if file_id in self.this_tree.inventory:
+                    self.tt.unversion_file(trans_id)
+                file_group = self._dump_conflicts(name, parent_id, file_id, 
+                                                  set_version=True)
 
     def get_lines(self, tree, file_id):
         if file_id in tree:
@@ -1085,26 +1090,33 @@ class Merge3Merger(object):
         self.tt.create_file(merge3_iterator, trans_id)
         if retval["text_conflicts"] is True:
             self.conflicts.append(('text conflict', (file_id)))
-            file_group = self._dump_conflicts(trans_id, file_id, this_lines,
-                                              base_lines, other_lines)
+            name = self.tt.final_name(trans_id)
+            parent_id = self.tt.final_parent(trans_id)
+            file_group = self._dump_conflicts(name, parent_id, file_id, 
+                                              this_lines, base_lines,
+                                              other_lines)
+            file_group.append(trans_id)
 
-    def _dump_conflicts(self, trans_id, file_id, this_lines=None, 
-                        base_lines=None, other_lines=None):
-        file_group = [trans_id]
-        if file_id in self.this_tree:
-            file_group.append(self._conflict_file(trans_id, self.this_tree,
-                              file_id, "THIS", this_lines))
-        if file_id in self.base_tree:
-            file_group.append(self._conflict_file(trans_id, self.base_tree, 
-                              file_id, "BASE", base_lines))
-        if file_id in self.other_tree:
-            file_group.append(self._conflict_file(trans_id, self.other_tree,
-                              file_id, "OTHER", other_lines))
-
+    def _dump_conflicts(self, name, parent_id, file_id, this_lines=None, 
+                        base_lines=None, other_lines=None, set_version=False):
+        data = (('OTHER', self.other_tree, other_lines), 
+                ('THIS', self.this_tree, this_lines),
+                ('BASE', self.base_tree, base_lines))
+        versioned = False
+        file_group = []
+        for suffix, tree, lines in data:
+            if file_id in tree:
+                trans_id = self._conflict_file(name, parent_id, tree, file_id,
+                                               suffix, lines)
+                file_group.append(trans_id)
+            if set_version and not versioned:
+                self.tt.version_file(file_id, trans_id)
+                versioned = True
+        return file_group
            
-    def _conflict_file(self, trans_id, tree, file_id, suffix, lines=None):
-        name = self.tt.final_name(trans_id) + "." + suffix
-        parent_id = self.tt.final_parent(trans_id)
+    def _conflict_file(self, name, parent_id, tree, file_id, suffix, 
+                       lines=None):
+        name = name + '.' + suffix
         trans_id = self.tt.create_path(name, parent_id)
         entry = tree.inventory[file_id]
         create_by_entry(self.tt, entry, tree, trans_id, lines)
