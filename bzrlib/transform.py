@@ -1045,6 +1045,7 @@ class Merge3Merger(object):
                 parent_id = self.tt.final_parent(trans_id)
                 if file_id in self.this_tree.inventory:
                     self.tt.unversion_file(trans_id)
+                    self.tt.delete_contents(trans_id)
                 file_group = self._dump_conflicts(name, parent_id, file_id, 
                                                   set_version=True)
 
