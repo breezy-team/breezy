@@ -154,6 +154,8 @@ bzr 0.7rc1 2006-01-09
     * Remove Makefile.in from default ignore list.  (#6413, Tollef Fog 
       Heen, Martin Pool)
 
+    * Fix failure in 'bzr added'.  (Nathan McCallum, Martin Pool)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
