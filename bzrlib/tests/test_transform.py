@@ -447,3 +447,66 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertIs(os.path.lexists(this.wt.abspath('h.BASE')), False)
         self.assertIs(os.path.lexists(this.wt.abspath('h.THIS')), True)
         self.assertIs(os.path.lexists(this.wt.abspath('h.OTHER')), True)
+
+    def test_filename_merge(self):
+        base = TransformGroup("BASE")
+        this = TransformGroup("THIS")
+        other = TransformGroup("OTHER")
+        base_a, this_a, other_a = [t.tt.new_directory('a', t.root, 'a') 
+                                   for t in [base, this, other]]
+        base_b, this_b, other_b = [t.tt.new_directory('b', t.root, 'b') 
+                                   for t in [base, this, other]]
+        base.tt.new_directory('c', base_a, 'c')
+        this.tt.new_directory('c1', this_a, 'c')
+        other.tt.new_directory('c', other_b, 'c')
+
+        base.tt.new_directory('d', base_a, 'd')
+        this.tt.new_directory('d1', this_b, 'd')
+        other.tt.new_directory('d', other_a, 'd')
+
+        base.tt.new_directory('e', base_a, 'e')
+        this.tt.new_directory('e', this_a, 'e')
+        other.tt.new_directory('e1', other_b, 'e')
+
+        base.tt.new_directory('f', base_a, 'f')
+        this.tt.new_directory('f1', this_b, 'f')
+        other.tt.new_directory('f1', other_b, 'f')
+
+        for tg in [this, base, other]:
+            tg.tt.apply()
+        Merge3Merger(this.wt, this.wt, base.wt, other.wt)
+        self.assertEqual(this.wt.id2path('c'), os.path.join('b/c1'))
+        self.assertEqual(this.wt.id2path('d'), os.path.join('b/d1'))
+        self.assertEqual(this.wt.id2path('e'), os.path.join('b/e1'))
+        self.assertEqual(this.wt.id2path('f'), os.path.join('b/f1'))
+
+    def test_filename_merge_conflicts(self):
+        base = TransformGroup("BASE")
+        this = TransformGroup("THIS")
+        other = TransformGroup("OTHER")
+        base_a, this_a, other_a = [t.tt.new_directory('a', t.root, 'a') 
+                                   for t in [base, this, other]]
+        base_b, this_b, other_b = [t.tt.new_directory('b', t.root, 'b') 
+                                   for t in [base, this, other]]
+
+        base.tt.new_file('g', base_a, 'g', 'g')
+        other.tt.new_file('g1', other_b, 'g1', 'g')
+
+        base.tt.new_file('h', base_a, 'h', 'h')
+        this.tt.new_file('h1', this_b, 'h1', 'h')
+
+        base.tt.new_file('i', base.root, 'i', 'i')
+        this.tt.new_directory('i1', this_a, 'i')
+        other.tt.new_symlink('i', this_b, 'i', 'i')
+
+        for tg in [this, base, other]:
+            tg.tt.apply()
+        Merge3Merger(this.wt, this.wt, base.wt, other.wt)
+
+        self.assertEqual(this.wt.id2path('g'), os.path.join('b/g1.OTHER'))
+        self.assertIs(os.path.lexists(this.wt.abspath('b/g1.BASE')), True)
+        self.assertIs(os.path.lexists(this.wt.abspath('b/g1.THIS')), False)
+        self.assertEqual(this.wt.id2path('h'), os.path.join('b/h1.THIS'))
+        self.assertIs(os.path.lexists(this.wt.abspath('b/h1.BASE')), True)
+        self.assertIs(os.path.lexists(this.wt.abspath('b/h1.OTHER')), False)
+        self.assertEqual(this.wt.id2path('i'), os.path.join('b/i1.OTHER'))

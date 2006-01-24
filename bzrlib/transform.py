@@ -213,6 +213,12 @@ class TreeTransform(object):
         unique_add(self._new_id, trans_id, file_id)
         unique_add(self._r_new_id, file_id, trans_id)
 
+    def cancel_versioning(self, trans_id):
+        """Undo a previous versioning of a file"""
+        file_id = self._new_id[trans_id]
+        del self._new_id[trans_id]
+        del self._r_new_id[file_id]
+
     def new_paths(self):
         """Determine the paths of all new and changed files"""
         new_ids = set()
@@ -942,6 +948,7 @@ class Merge3Merger(object):
         self.tt = TreeTransform(working_tree)
         try:
             for file_id in all_ids:
+                self.merge_names(file_id)
                 file_status = self.merge_contents(file_id)
                 self.merge_executable(file_id, file_status)
                 
@@ -955,10 +962,14 @@ class Merge3Merger(object):
        
     @staticmethod
     def parent(entry, file_id):
-        return entry.parent
+        if entry is None:
+            return None
+        return entry.parent_id
 
     @staticmethod
     def name(entry, file_id):
+        if entry is None:
+            return None
         return entry.name
     
     @staticmethod
@@ -998,6 +1009,41 @@ class Merge3Merger(object):
         else:
             assert key_this == key_base
             return "other"
+
+    def merge_names(self, file_id):
+        def get_entry(tree):
+            if file_id in tree.inventory:
+                return tree.inventory[file_id]
+            else:
+                return None
+        this_entry = get_entry(self.this_tree)
+        other_entry = get_entry(self.other_tree)
+        base_entry = get_entry(self.base_tree)
+        name_winner = self.scalar_three_way(this_entry, base_entry, 
+                                            other_entry, file_id, self.name)
+        parent_id_winner = self.scalar_three_way(this_entry, base_entry, 
+                                                 other_entry, file_id, 
+                                                 self.parent)
+        if this_entry is None:
+            if name_winner == "this":
+                name_winner = "other"
+            if parent_id_winner == "this":
+                parent_id_winner = "other"
+        if name_winner == "this" and parent_id_winner == "this":
+            return
+        if other_entry is None:
+            # it doesn't matter whether the result was 'other' or 
+            # 'conflict'-- if there's no 'other', we leave it alone.
+            return
+        # if we get here, name_winner and parent_winner are set to safe values.
+        winner_entry = {"this": this_entry, "other": other_entry, 
+                        "conflict": other_entry}
+        trans_id = self.tt.get_trans_id(file_id)
+        parent_id = winner_entry[parent_id_winner].parent_id
+        parent_trans_id = self.tt.get_trans_id(parent_id)
+        self.tt.adjust_path(winner_entry[name_winner].name, parent_trans_id,
+                            trans_id)
+
 
     def merge_contents(self, file_id):
         def contents_pair(tree):
@@ -1040,12 +1086,14 @@ class Merge3Merger(object):
                 self.text_merge(file_id, trans_id)
                 return "modified"
             else:
-                trans_id = self.tt.get_id_tree(file_id)
+                trans_id = self.tt.get_trans_id(file_id)
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
                 if file_id in self.this_tree.inventory:
                     self.tt.unversion_file(trans_id)
                     self.tt.delete_contents(trans_id)
+                else:
+                    self.tt.cancel_versioning(trans_id)
                 file_group = self._dump_conflicts(name, parent_id, file_id, 
                                                   set_version=True)
 
