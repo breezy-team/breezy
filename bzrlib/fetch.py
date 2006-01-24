@@ -108,12 +108,12 @@ class Fetcher(object):
             self.pb = pb
         self.from_branch.lock_read()
         try:
-            revs = self._revids_to_fetch(last_revision )
+            revs = self._revids_to_fetch(last_revision)
             # nothing to do
             if revs: 
-                self._fetch_revision_texts( revs )
-                self._fetch_weave_texts( revs )
-                self._fetch_inventory_weave( revs )
+                self._fetch_weave_texts(revs)
+                self._fetch_inventory_weave(revs)
+                self._fetch_revision_texts(revs)
                 self.count_copied += len(revs)
         finally:
             self.from_branch.unlock()
@@ -133,18 +133,18 @@ class Fetcher(object):
         self.dest_last_rev = self.to_branch.last_revision()
         branch_to_revs = set(self.to_branch.get_ancestry(self.dest_last_rev))
 
-        return branch_from_revs.difference( branch_to_revs )
+        return branch_from_revs.difference(branch_to_revs)
 
-    def _fetch_revision_texts( self, revs ):
+    def _fetch_revision_texts(self, revs):
         self.to_branch.revision_store.copy_multi(
-            self.from_branch.revision_store, revs )
+            self.from_branch.revision_store, revs)
 
-    def _fetch_weave_texts( self, revs ):
-        file_ids = self.from_branch.fileid_involved_by_set( revs )
+    def _fetch_weave_texts(self, revs):
+        file_ids = self.from_branch.fileid_involved_by_set(revs)
         count = 0
         num_file_ids = len(file_ids)
         for file_id in file_ids:
-            self.pb.update( "merge weave merge",count,num_file_ids)
+            self.pb.update("merge weave merge", count, num_file_ids)
             count +=1
             to_weave = self.to_weaves.get_weave_or_empty(file_id,
                 self.to_branch.get_transaction())
@@ -159,15 +159,15 @@ class Fetcher(object):
                     to_weave.reweave(from_weave)
             else:
                 # destination is empty, just replace it
-                to_weave = from_weave.copy( )
+                to_weave = from_weave.copy()
 
             self.to_weaves.put_weave(file_id, to_weave,
                 self.to_branch.get_transaction())
 
-        self.pb.clear( )
+        self.pb.clear()
 
-    def _fetch_inventory_weave( self, revs ):
-        self.pb.update( "inventory merge",0,1)
+    def _fetch_inventory_weave(self, revs):
+        self.pb.update("inventory merge", 0, 1)
 
         from_weave = self.from_control.get_weave('inventory',
                 self.from_branch.get_transaction())
@@ -182,12 +182,12 @@ class Fetcher(object):
                 to_weave.reweave(from_weave)
         else:
             # destination is empty, just replace it
-            to_weave = from_weave.copy( )
+            to_weave = from_weave.copy()
 
         self.to_control.put_weave('inventory', to_weave,
             self.to_branch.get_transaction())
 
-        self.pb.clear( )
+        self.pb.clear()
 
     def _find_last_revision(self, last_revision):
         """Find the limiting source revision.

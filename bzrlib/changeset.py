@@ -401,9 +401,9 @@ class Diff3Merge(object):
 
     def apply(self, filename, conflict_handler):
         import bzrlib.patch
-        temp_dir = mkdtemp(prefix="bzr-")
+        temp_dir = mkdtemp(prefix="bzr-", dir=os.path.dirname(filename))
         try:
-            new_file = filename+".new"
+            new_file = os.path.join(temp_dir, filename)
             base_file = self.dump_file(temp_dir, "base", self.base)
             other_file = self.dump_file(temp_dir, "other", self.other)
             base = base_file

@@ -164,7 +164,9 @@ class StubSFTPServer (SFTPServerInterface):
     def mkdir(self, path, attr):
         path = self._realpath(path)
         try:
-            if attr is not None and hasattr(attr, 'st_mode'):
+            # Using getattr() in case st_mode is None or 0
+            # both evaluate to False
+            if getattr(attr, 'st_mode', None):
                 os.mkdir(path, attr.st_mode)
             else:
                 os.mkdir(path)
