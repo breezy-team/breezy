@@ -1205,8 +1205,9 @@ class Merge3Merger(object):
         if winner == "this":
             if file_status == "modified":
                 executability = self.this_tree.is_executable(file_id)
-                trans_id = self.tt.get_trans_id(file_id)
-                self.tt.set_executability(executability, trans_id)
+                if executability is not None:
+                    trans_id = self.tt.get_trans_id(file_id)
+                    self.tt.set_executability(executability, trans_id)
         else:
             assert winner == "other"
             if file_status == "modified":
@@ -1216,5 +1217,6 @@ class Merge3Merger(object):
                     executability = self.this_tree.is_executable(file_id)
                 elif file_id in self.base_tree:
                     executability = self.base_tree.is_executable(file_id)
-                trans_id = self.tt.get_trans_id(file_id)
-                self.tt.set_executability(executability, trans_id)
+                if executability is not None:
+                    trans_id = self.tt.get_trans_id(file_id)
+                    self.tt.set_executability(executability, trans_id)
