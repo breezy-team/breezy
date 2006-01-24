@@ -1110,9 +1110,9 @@ class Merge3Merger(object):
                 trans_id = self._conflict_file(name, parent_id, tree, file_id,
                                                suffix, lines)
                 file_group.append(trans_id)
-            if set_version and not versioned:
-                self.tt.version_file(file_id, trans_id)
-                versioned = True
+                if set_version and not versioned:
+                    self.tt.version_file(file_id, trans_id)
+                    versioned = True
         return file_group
            
     def _conflict_file(self, name, parent_id, tree, file_id, suffix, 
@@ -1143,6 +1143,12 @@ class Merge3Merger(object):
                 self.tt.set_executability(executability, trans_id)
         else:
             assert winner == "other"
-            executability = self.other_tree.is_executable(file_id)    
-            trans_id = self.tt.get_trans_id(file_id)
-            self.tt.set_executability(executability, trans_id)
+            if file_status == "modified":
+                if file_id in self.other_tree:
+                    executability = self.other_tree.is_executable(file_id)
+                elif file_id in self.this_tree:
+                    executability = self.this_tree.is_executable(file_id)
+                elif file_id in self.base_tree:
+                    executability = self.base_tree.is_executable(file_id)
+                trans_id = self.tt.get_trans_id(file_id)
+                self.tt.set_executability(executability, trans_id)

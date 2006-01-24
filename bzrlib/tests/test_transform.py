@@ -417,9 +417,14 @@ class TestTransformMerge(TestCaseInTempDir):
             tg.tt.new_symlink('b', tg.root, 'b', 'b')
             tg.tt.new_file('c', tg.root, 'c', 'c')
             tg.tt.new_symlink('d', tg.root, tg.name, 'd')
-        for tg, target in ((base, 'base-e'), (this, 'other-e'), 
-                           (other, 'other-e')):
-            tg.tt.new_symlink('e', tg.root, target, 'e')
+        targets = ((base, 'base-e', 'base-f', None, None), 
+                   (this, 'other-e', 'this-f', 'other-g', 'this-h'), 
+                   (other, 'other-e', None, 'other-g', 'other-h'))
+        for tg, e_target, f_target, g_target, h_target in targets:
+            for link, target in (('e', e_target), ('f', f_target), 
+                                 ('g', g_target), ('h', h_target)):
+                if target is not None:
+                    tg.tt.new_symlink(link, tg.root, target, link)
 
         for tg in this, base, other:
             tg.tt.apply()
@@ -430,7 +435,15 @@ class TestTransformMerge(TestCaseInTempDir):
         for suffix in ('THIS', 'BASE', 'OTHER'):
             self.assertEqual(os.readlink(this.wt.abspath('d.'+suffix)), suffix)
         self.assertIs(os.path.lexists(this.wt.abspath('d')), False)
+        self.assertEqual(this.wt.id2path('d'), 'd.OTHER')
+        self.assertEqual(this.wt.id2path('f'), 'f.THIS')
         self.assertEqual(os.readlink(this.wt.abspath('e')), 'other-e')
         self.assertIs(os.path.lexists(this.wt.abspath('e.THIS')), False)
         self.assertIs(os.path.lexists(this.wt.abspath('e.OTHER')), False)
         self.assertIs(os.path.lexists(this.wt.abspath('e.BASE')), False)
+        self.assertIs(os.path.lexists(this.wt.abspath('g')), True)
+        self.assertIs(os.path.lexists(this.wt.abspath('g.BASE')), False)
+        self.assertIs(os.path.lexists(this.wt.abspath('h')), False)
+        self.assertIs(os.path.lexists(this.wt.abspath('h.BASE')), False)
+        self.assertIs(os.path.lexists(this.wt.abspath('h.THIS')), True)
+        self.assertIs(os.path.lexists(this.wt.abspath('h.OTHER')), True)
