@@ -422,7 +422,7 @@ class TestExecutable(TestCaseInTempDir):
         # Make sure that revert is able to bring them back,
         # and sets 'a' back to being executable
 
-        t.revert(['b1/a', 'b1/b'], rev_tree, backups=False)
+        t.revert(['a', 'b'], rev_tree, backups=False)
         self.assertEqual(['a', 'b'], [cn for cn,ie in t.inventory.iter_entries()])
 
         self.failUnless(t.is_executable(a_id), "'a' lost the execute bit")

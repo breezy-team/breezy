@@ -472,8 +472,7 @@ class Merger(object):
             return
 
         interesting_ids = set()
-        for fname in file_list:
-            path = self.this_tree.relpath(fname)
+        for path in file_list:
             found_id = False
             for tree in (self.this_tree, self.base_tree, self.other_tree):
                 file_id = tree.inventory.path2id(path)
@@ -481,7 +480,7 @@ class Merger(object):
                     interesting_ids.add(file_id)
                     found_id = True
             if not found_id:
-                raise NotVersionedError(path=fname)
+                raise NotVersionedError(path=path)
         self.interesting_ids = interesting_ids
 
     def set_pending(self):

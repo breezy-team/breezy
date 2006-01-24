@@ -1708,18 +1708,17 @@ class cmd_revert(Command):
                 raise BzrCommandError("No files specified")
         else:
             file_list = []
+        
+        tree, file_list = tree_files(file_list)
         if revision is None:
-            revno = -1
-            tree = WorkingTree.open_containing(u'.')[0]
             # FIXME should be tree.last_revision
             rev_id = tree.branch.last_revision()
         elif len(revision) != 1:
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:
-            tree, file_list = tree_files(file_list)
             rev_id = revision[0].in_history(tree.branch).rev_id
         tree.revert(file_list, tree.branch.revision_tree(rev_id),
-                                not no_backup)
+                    not no_backup)
 
 
 class cmd_assert_fail(Command):
