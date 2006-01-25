@@ -38,7 +38,8 @@ import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
 from bzrlib.revision import common_ancestor, MultipleRevisionSources
 from bzrlib.revision import is_ancestor, NULL_REVISION
-from bzrlib.transform import Merge3Merger as ApplyMerge3, WeaveMerger
+from bzrlib.transform import (Merge3Merger as ApplyMerge3, WeaveMerger, 
+                              Diff3Merger)
 from bzrlib.trace import mutter, warning, note
 
 # TODO: Report back as changes are merged in
@@ -606,6 +607,6 @@ class Merger(object):
 
 
 merge_types = {     "merge3": (ApplyMerge3, "Native diff3-style merge"), 
-                     "diff3": (Diff3Merge,  "Merge using external diff3"),
+                     "diff3": (Diff3Merger,  "Merge using external diff3"),
                      'weave': (WeaveMerger, "Weave-based merge")
               }

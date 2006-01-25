@@ -16,12 +16,14 @@
 
 import os
 import errno
+from tempfile import mkdtemp
+from shutil import rmtree
 
 from bzrlib import BZRDIR
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot)
 from bzrlib.inventory import InventoryEntry
-from bzrlib.osutils import file_kind, supports_executable
+from bzrlib.osutils import file_kind, supports_executable, pathjoin
 from bzrlib.merge3 import Merge3
 
 ROOT_PARENT = "root-parent"
@@ -1261,3 +1263,34 @@ class WeaveMerger(Merge3Merger):
             file_group = self._dump_conflicts(name, parent_id, file_id, 
                                               no_base=True)
             file_group.append(trans_id)
+
+
+class Diff3Merger(Merge3Merger):
+    """Use good ol' diff3 to do text merges"""
+    def dump_file(self, temp_dir, name, tree, file_id):
+        out_path = pathjoin(temp_dir, name)
+        out_file = file(out_path, "wb")
+        in_file = tree.get_file(file_id)
+        for line in in_file:
+            out_file.write(line)
+        return out_path
+
+    def text_merge(self, file_id, trans_id):
+        import bzrlib.patch
+        temp_dir = mkdtemp(prefix="bzr-")
+        try:
+            new_file = os.path.join(temp_dir, "new")
+            this = self.dump_file(temp_dir, "this", self.this_tree, file_id)
+            base = self.dump_file(temp_dir, "base", self.base_tree, file_id)
+            other = self.dump_file(temp_dir, "other", self.other_tree, file_id)
+            status = bzrlib.patch.diff3(new_file, this, base, other)
+            if status not in (0, 1):
+                raise BzrError("Unhandled diff3 exit code")
+            self.tt.create_file(file(new_file, "rb"), trans_id)
+            if status == 1:
+                name = self.tt.final_name(trans_id)
+                parent_id = self.tt.final_parent(trans_id)
+                self._dump_conflicts(name, parent_id, file_id)
+            self.conflicts.append(('text conflict', (file_id)))
+        finally:
+            rmtree(temp_dir)
