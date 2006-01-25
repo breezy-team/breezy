@@ -1195,6 +1195,8 @@ class Merge3Merger(object):
     def merge_executable(self, file_id, file_status):
         if file_status == "deleted":
             return
+        if self.tt.final_kind != "file":
+            return
         winner = self.scalar_three_way(self.this_tree, self.base_tree, 
                                        self.other_tree, file_id, 
                                        self.executable)
