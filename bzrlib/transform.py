@@ -1092,13 +1092,14 @@ class Merge3Merger(object):
             if this_pair == base_pair:
                 if file_id in self.this_tree:
                     self.tt.delete_contents(trans_id)
-                else:
-                    entry = self.other_tree.inventory[file_id]
-                    parent_id = self.tt.get_trans_id(entry.parent_id)
-                    self.tt.adjust_path(entry.name, parent_id, trans_id)
-                create_by_entry(self.tt, self.other_tree.inventory[file_id], 
-                                self.other_tree, trans_id)
-                return "modified"
+                if file_id in self.other_tree.inventory:
+                    create_by_entry(self.tt, 
+                                    self.other_tree.inventory[file_id], 
+                                    self.other_tree, trans_id)
+                    return "modified"
+                if file_id in self.this_tree:
+                    self.tt.unversion_file(trans_id)
+                    return "deleted"
             elif this_pair[0] == "file" and other_pair[0] == "file":
                 # If this and other are both files, either base is a file, or
                 # both converted to files, so at least we have agreement that
