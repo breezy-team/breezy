@@ -898,7 +898,7 @@ class SingleListener(threading.Thread):
             self._callback(s, self.stop_event)
         except Exception, x:
             # probably a failed test
-            warn('Exception from within unit test server thread: %r' % x)
+            warning('Exception from within unit test server thread: %r' % x)
 
     def stop(self):
         self.stop_event.set()
