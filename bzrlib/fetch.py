@@ -167,19 +167,21 @@ class Fetcher(object):
         self.pb.clear()
 
     def _fetch_inventory_weave(self, revs):
-        self.pb.update("inventory merge", 0, 1)
+        self.pb.update("inventory fetch", 0, 2)
 
         from_weave = self.from_control.get_weave('inventory',
                 self.from_branch.get_transaction())
+        self.pb.update("inventory fetch", 1, 2)
         to_weave = self.to_control.get_weave('inventory',
                 self.to_branch.get_transaction())
+        self.pb.update("inventory fetch", 2, 2)
 
         if to_weave.numversions() > 0:
             # destination has contents, must merge
             try:
-                to_weave.join(from_weave)
+                to_weave.join(from_weave, pb=self.pb, msg='merge inventory')
             except errors.WeaveParentMismatch:
-                to_weave.reweave(from_weave)
+                to_weave.reweave(from_weave, pb=self.pb, msg='reweave inventory')
         else:
             # destination is empty, just replace it
             to_weave = from_weave.copy()
