@@ -102,15 +102,13 @@ class TestWorkingTree(TestCaseInTempDir):
         branch = Branch.initialize(u'.')
         tree = WorkingTree(branch.base)
         tree.lock_read()
-        self.assertEqual(1, tree.branch._lock_count)
-        self.assertEqual('r', tree.branch._lock_mode)
+        self.assertEqual('r', tree.branch.peek_lock_mode())
         tree.unlock()
-        self.assertEqual(None, tree.branch._lock_count)
+        self.assertEqual(None, tree.branch.peek_lock_mode())
         tree.lock_write()
-        self.assertEqual(1, tree.branch._lock_count)
-        self.assertEqual('w', tree.branch._lock_mode)
+        self.assertEqual('w', tree.branch.peek_lock_mode())
         tree.unlock()
-        self.assertEqual(None, tree.branch._lock_count)
+        self.assertEqual(None, tree.branch.peek_lock_mode())
  
     def get_pullable_branches(self):
         self.build_tree(['from/', 'from/file', 'to/'])
@@ -124,7 +122,7 @@ class TestWorkingTree(TestCaseInTempDir):
     def test_pull(self):
         br_a, br_b = self.get_pullable_branches()
         br_b.working_tree().pull(br_a)
-        self.failUnless(br_b.has_revision('A'))
+        self.failUnless(br_b.repository.has_revision('A'))
         self.assertEqual(['A'], br_b.revision_history())
 
     def test_pull_overwrites(self):
@@ -132,8 +130,8 @@ class TestWorkingTree(TestCaseInTempDir):
         br_b.working_tree().commit('foo', rev_id='B')
         self.assertEqual(['B'], br_b.revision_history())
         br_b.working_tree().pull(br_a, overwrite=True)
-        self.failUnless(br_b.has_revision('A'))
-        self.failUnless(br_b.has_revision('B'))
+        self.failUnless(br_b.repository.has_revision('A'))
+        self.failUnless(br_b.repository.has_revision('B'))
         self.assertEqual(['A'], br_b.revision_history())
 
     def test_revert(self):

@@ -19,7 +19,6 @@ import os
 from bzrlib.commit import commit
 from bzrlib.add import smart_add
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 from bzrlib.merge import merge
 from bzrlib.workingtree import WorkingTree
 from bzrlib.delta import compare_trees
@@ -63,7 +62,7 @@ class TestFileIdInvolved(TestCaseInTempDir):
         del b, wt
         #-------- end A -----------
 
-        copy_branch(main_branch,"../branch1")
+        main_branch.clone("../branch1")
         os.chdir("../branch1")
 
         #branch1_branch = Branch.open(".")
@@ -79,7 +78,7 @@ class TestFileIdInvolved(TestCaseInTempDir):
 
         #-------- end B -----------
 
-        copy_branch(Branch.open("."),"../branch2")
+        Branch.open(".").clone("../branch2")
         os.chdir("../branch2")
 
         branch2_branch = Branch.open(".")
@@ -184,8 +183,8 @@ class TestFileIdInvolved(TestCaseInTempDir):
                 l1 = self.branch.fileid_involved_between_revs(
                     history[start], history[end])
 
-                old_tree = self.branch.revision_tree(history[start])
-                new_tree = self.branch.revision_tree(history[end])
+                old_tree = self.branch.repository.revision_tree(history[start])
+                new_tree = self.branch.repository.revision_tree(history[end])
                 delta = compare_trees(old_tree, new_tree )
 
                 l2 = [ id for path, id, kind in delta.added ] + \

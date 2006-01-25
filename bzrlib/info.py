@@ -33,7 +33,8 @@ def _countiter(it):
 def show_info(b):
     import diff
     
-    print 'branch format:', b.controlfile('branch-format', 'r').readline().rstrip('\n')
+    print 'branch format:', b.control_files.get_utf8(
+        'branch-format').readline().rstrip('\n')
 
     def plural(n, base='', pl=None):
         if n == 1:
@@ -83,16 +84,16 @@ def show_info(b):
     print '  %8d revision%s' % (revno, plural(revno))
     committers = {}
     for rev in history:
-        committers[b.get_revision(rev).committer] = True
+        committers[b.repository.get_revision(rev).committer] = True
     print '  %8d committer%s' % (len(committers), plural(len(committers)))
     if revno > 0:
-        firstrev = b.get_revision(history[0])
+        firstrev = b.repository.get_revision(history[0])
         age = int((time.time() - firstrev.timestamp) / 3600 / 24)
         print '  %8d day%s old' % (age, plural(age))
         print '   first revision: %s' % format_date(firstrev.timestamp,
                                                     firstrev.timezone)
 
-        lastrev = b.get_revision(history[-1])
+        lastrev = b.repository.get_revision(history[-1])
         print '  latest revision: %s' % format_date(lastrev.timestamp,
                                                     lastrev.timezone)
 
@@ -104,7 +105,7 @@ def show_info(b):
 
     print
     print 'revision store:'
-    c, t = b.revision_store.total_size()
+    c, t = b.repository.revision_store.total_size()
     print '  %8d revisions' % c
     print '  %8d kB' % (t/1024)
 
