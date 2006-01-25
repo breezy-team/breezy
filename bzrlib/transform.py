@@ -178,10 +178,10 @@ class TreeTransform(object):
         to the target destination.
         """
         f = file(self._limbo_name(trans_id), 'wb')
+        unique_add(self._new_contents, trans_id, 'file')
         for segment in contents:
             f.write(segment)
         f.close()
-        unique_add(self._new_contents, trans_id, 'file')
 
     def create_directory(self, trans_id):
         """Schedule creation of a new directory.
