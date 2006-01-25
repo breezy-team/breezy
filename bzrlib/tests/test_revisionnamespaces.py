@@ -17,11 +17,11 @@
 import os
 import time
 
+from bzrlib.builtins import merge
 from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.errors import NoCommonAncestor, NoCommits
 from bzrlib.errors import NoSuchRevision
-from bzrlib.merge import merge
 from bzrlib.revisionspec import RevisionSpec
 
 class TestRevisionNamespaces(TestCaseInTempDir):

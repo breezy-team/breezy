@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 from bzrlib.missing import find_unmerged
 from bzrlib.branch import Branch
-from bzrlib.merge import merge
+from bzrlib.builtins import merge
 from bzrlib.tests import TestCaseInTempDir
 import os
 

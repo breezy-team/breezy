@@ -3,7 +3,8 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.commit import commit
 from bzrlib.tests import TestCaseInTempDir
-from bzrlib.merge import merge, transform_tree
+from bzrlib.builtins import merge
+from bzrlib.merge import transform_tree
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
 from bzrlib.revision import common_ancestor
 from bzrlib.fetch import fetch

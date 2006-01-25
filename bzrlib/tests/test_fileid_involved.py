@@ -14,14 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.tests import TestCaseInTempDir
 import os
-from bzrlib.commit import commit
+
 from bzrlib.add import smart_add
 from bzrlib.branch import Branch
-from bzrlib.merge import merge
-from bzrlib.workingtree import WorkingTree
+from bzrlib.builtins import merge
+from bzrlib.commit import commit
 from bzrlib.delta import compare_trees
+from bzrlib.tests import TestCaseInTempDir
+from bzrlib.workingtree import WorkingTree
 
 
 class TestFileIdInvolved(TestCaseInTempDir):
@@ -32,7 +33,7 @@ class TestFileIdInvolved(TestCaseInTempDir):
         f.close( )
 
     def merge( self, branch_from, force=False ):
-        from bzrlib.merge_core import ApplyMerge3
+        from bzrlib._merge_core import ApplyMerge3
 
         merge([branch_from,-1],[None,None], merge_type=ApplyMerge3,
             check_clean=(not force) )

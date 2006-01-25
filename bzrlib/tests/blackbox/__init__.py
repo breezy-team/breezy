@@ -35,6 +35,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_missing',
                      'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pull',
+                     'bzrlib.tests.blackbox.test_revert',
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_info',
                      'bzrlib.tests.blackbox.test_too_much',

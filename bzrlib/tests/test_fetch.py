@@ -17,15 +17,14 @@
 import os
 import sys
 
-import bzrlib.errors
-from bzrlib.tests.test_revision import make_branches
-from bzrlib.trace import mutter
 from bzrlib.branch import Branch
+from bzrlib.builtins import merge
+import bzrlib.errors
 from bzrlib.fetch import greedy_fetch
-from bzrlib.merge import merge
-
+from bzrlib.tests.test_revision import make_branches
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.trace import mutter
 
 
 def has_revision(branch, revision_id):

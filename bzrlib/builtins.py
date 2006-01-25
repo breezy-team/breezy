@@ -22,6 +22,7 @@ import sys
 
 import bzrlib
 from bzrlib import BZRDIR
+from bzrlib._merge_core import ApplyMerge3
 from bzrlib.commands import Command, display_command
 from bzrlib.branch import Branch
 from bzrlib.revision import common_ancestor
@@ -394,7 +395,6 @@ class cmd_pull(Command):
     takes_args = ['location?']
 
     def run(self, location=None, remember=False, overwrite=False, verbose=False):
-        from bzrlib.merge import merge
         from shutil import rmtree
         import errno
         # FIXME: too much stuff is in the command class        
@@ -1576,8 +1576,7 @@ class cmd_merge(Command):
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False):
-        from bzrlib.merge import merge
-        from bzrlib.merge_core import ApplyMerge3
+        from bzrlib._merge_core import ApplyMerge3
         if merge_type is None:
             merge_type = ApplyMerge3
         if branch is None:
@@ -1634,7 +1633,7 @@ class cmd_remerge(Command):
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
         from bzrlib.merge import merge_inner, transform_tree
-        from bzrlib.merge_core import ApplyMerge3
+        from bzrlib._merge_core import ApplyMerge3
         if merge_type is None:
             merge_type = ApplyMerge3
         tree, file_list = tree_files(file_list)
@@ -1696,22 +1695,20 @@ class cmd_revert(Command):
     aliases = ['merge-revert']
 
     def run(self, revision=None, no_backup=False, file_list=None):
-        from bzrlib.merge import merge_inner
         from bzrlib.commands import parse_spec
         if file_list is not None:
             if len(file_list) == 0:
                 raise BzrCommandError("No files specified")
         else:
             file_list = []
+        
+        tree, file_list = tree_files(file_list)
         if revision is None:
-            revno = -1
-            tree = WorkingTree.open_containing(u'.')[0]
             # FIXME should be tree.last_revision
             rev_id = tree.branch.last_revision()
         elif len(revision) != 1:
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:
-            tree, file_list = tree_files(file_list)
             rev_id = revision[0].in_history(tree.branch).rev_id
         tree.revert(file_list, tree.branch.repository.revision_tree(rev_id),
                     not no_backup)
@@ -2012,6 +2009,70 @@ class cmd_uncommit(bzrlib.commands.Command):
 
         uncommit(b, dry_run=dry_run, verbose=verbose,
                 revno=revno)
+
+
+def merge(other_revision, base_revision,
+          check_clean=True, ignore_zero=False,
+          this_dir=None, backup_files=False, merge_type=ApplyMerge3,
+          file_list=None, show_base=False, reprocess=False):
+    """Merge changes into a tree.
+
+    base_revision
+        list(path, revno) Base for three-way merge.  
+        If [None, None] then a base will be automatically determined.
+    other_revision
+        list(path, revno) Other revision for three-way merge.
+    this_dir
+        Directory to merge changes into; '.' by default.
+    check_clean
+        If true, this_dir must have no uncommitted changes before the
+        merge begins.
+    ignore_zero - If true, suppress the "zero conflicts" message when 
+        there are no conflicts; should be set when doing something we expect
+        to complete perfectly.
+    file_list - If supplied, merge only changes to selected files.
+
+    All available ancestors of other_revision and base_revision are
+    automatically pulled into the branch.
+
+    The revno may be -1 to indicate the last revision on the branch, which is
+    the typical case.
+
+    This function is intended for use from the command line; programmatic
+    clients might prefer to call merge.merge_inner(), which has less magic 
+    behavior.
+    """
+    from bzrlib.merge import Merger, _MergeConflictHandler
+    if this_dir is None:
+        this_dir = u'.'
+    this_branch = Branch.open_containing(this_dir)[0]
+    if show_base and not merge_type is ApplyMerge3:
+        raise BzrCommandError("Show-base is not supported for this merge"
+                              " type. %s" % merge_type)
+    if reprocess and not merge_type is ApplyMerge3:
+        raise BzrCommandError("Reprocess is not supported for this merge"
+                              " type. %s" % merge_type)
+    if reprocess and show_base:
+        raise BzrCommandError("Cannot reprocess and show base.")
+    merger = Merger(this_branch)
+    merger.check_basis(check_clean)
+    merger.set_other(other_revision)
+    merger.set_base(base_revision)
+    if merger.base_rev_id == merger.other_rev_id:
+        note('Nothing to do.')
+        return 0
+    merger.backup_files = backup_files
+    merger.merge_type = merge_type 
+    merger.set_interesting_files(file_list)
+    merger.show_base = show_base 
+    merger.reprocess = reprocess
+    merger.conflict_handler = _MergeConflictHandler(merger.this_tree, 
+                                                    merger.base_tree, 
+                                                    merger.other_tree,
+                                                    ignore_zero=ignore_zero)
+    conflicts = merger.do_merge()
+    merger.set_pending()
+    return conflicts
 
 
 # these get imported and then picked up by the scan for cmd_*
