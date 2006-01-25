@@ -12,6 +12,7 @@ from bzrlib.osutils import pathjoin
 
 class TestMerge(TestCaseInTempDir):
     """Test appending more than one revision"""
+
     def test_pending(self):
         br = Branch.initialize(u".")
         commit(br, "lala!")

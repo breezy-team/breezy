@@ -85,7 +85,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
         self.assertFalse(has_revision(br_a3, br_a.revision_history()[revno]))
     self.assertEqual(greedy_fetch(br_a3, br_a2, br_a.revision_history()[2])[0], 3)
     fetched = greedy_fetch(br_a3, br_a2, br_a.revision_history()[3])[0]
-    self.assertEquals(fetched, 3, "fetched %d instead of 3" % fetched)
+    self.assertEquals(fetched, 6, "fetched %d instead of 6" % fetched)
     # InstallFailed should be raised if the branch is missing the revision
     # that was requested.
     self.assertRaises(bzrlib.errors.InstallFailed, greedy_fetch, br_a3,

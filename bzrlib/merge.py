@@ -244,7 +244,8 @@ def get_revid_tree(branch, revision, local_branch):
         base_tree = branch.working_tree()
     else:
         if local_branch is not None:
-            greedy_fetch(local_branch, branch, revision)
+            if local_branch.base != branch.base:
+                greedy_fetch(local_branch, branch, revision)
             base_tree = local_branch.repository.revision_tree(revision)
         else:
             base_tree = branch.repository.revision_tree(revision)
@@ -510,8 +511,9 @@ class Merger(object):
             self.other_basis = other_branch.last_revision()
             if self.other_basis is None:
                 raise NoCommits(other_branch)
-        fetch(from_branch=other_branch, to_branch=self.this_branch, 
-              last_revision=self.other_basis)
+        if other_branch.base != self.this_branch.base:
+            fetch(from_branch=other_branch, to_branch=self.this_branch, 
+                  last_revision=self.other_basis)
 
     def set_base(self, base_revision):
         mutter("doing merge() with no base_revision specified")

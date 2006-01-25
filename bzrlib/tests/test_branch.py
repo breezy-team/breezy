@@ -218,6 +218,12 @@ class TestBranch(TestCaseInTempDir):
         self.assertEqual(committed.properties["branch-nick"], 
                          "My happy branch")
 
+    def test_no_ancestry_weave(self):
+        # We no longer need to create the ancestry.weave file
+        # since it is *never* used.
+        branch = Branch.initialize(u'.')
+        self.failIfExists('.bzr/ancestry.weave')
+
 
 class TestRemote(TestCaseWithWebserver):
 

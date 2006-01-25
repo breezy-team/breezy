@@ -84,6 +84,11 @@ from bzrlib.trace import mutter, note, warning
 from bzrlib.osutils import sha_strings, sha_string, pathjoin, abspath
 
 
+# TODO: jam 20060108 Create a new branch format, and as part of upgrade
+#       make sure that ancestry.weave is deleted (it is never used, but
+#       used to be created)
+
+
 class Convert(object):
     def __init__(self, base_dir):
         self.base = base_dir

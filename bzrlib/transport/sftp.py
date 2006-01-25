@@ -144,6 +144,25 @@ class SFTPSubprocess:
         self.proc.wait()
 
 
+class LoopbackSFTP(object):
+    """Simple wrapper for a socket that pretends to be a paramiko Channel."""
+
+    def __init__(self, sock):
+        self.__socket = sock
+ 
+    def send(self, data):
+        return self.__socket.send(data)
+
+    def recv(self, n):
+        return self.__socket.recv(n)
+
+    def recv_ready(self):
+        return True
+
+    def close(self):
+        self.__socket.close()
+
+
 SYSTEM_HOSTKEYS = {}
 BZR_HOSTKEYS = {}
 
@@ -152,6 +171,7 @@ BZR_HOSTKEYS = {}
 # sort of expiration policy, such as disconnect if inactive for
 # X seconds. But that requires a lot more fanciness.
 _connected_hosts = weakref.WeakValueDictionary()
+
 
 def load_host_keys():
     """
@@ -169,6 +189,7 @@ def load_host_keys():
     except Exception, e:
         mutter('failed to load bzr host keys: ' + str(e))
         save_host_keys()
+
 
 def save_host_keys():
     """
@@ -209,7 +230,7 @@ class SFTPLock(object):
     def __del__(self):
         """Should this warn, or actually try to cleanup?"""
         if self.lock_file:
-            warn("SFTPLock %r not explicitly unlocked" % (self.path,))
+            warning("SFTPLock %r not explicitly unlocked" % (self.path,))
             self.unlock()
 
     def unlock(self):
@@ -222,7 +243,6 @@ class SFTPLock(object):
         except (NoSuchFile,):
             # What specific errors should we catch here?
             pass
-
 
 
 class SFTPTransport (Transport):
@@ -673,7 +693,11 @@ class SFTPTransport (Transport):
             pass
         
         vendor = _get_ssh_vendor()
-        if vendor != 'none':
+        if vendor == 'loopback':
+            sock = socket.socket()
+            sock.connect((self._host, self._port))
+            self._sftp = SFTPClient(LoopbackSFTP(sock))
+        elif vendor != 'none':
             sock = SFTPSubprocess(self._host, vendor, self._port,
                                   self._username)
             self._sftp = SFTPClient(sock)
@@ -689,6 +713,7 @@ class SFTPTransport (Transport):
 
         try:
             t = paramiko.Transport((self._host, self._port or 22))
+            t.set_log_channel('bzr.paramiko')
             t.start_client()
         except paramiko.SSHException, e:
             raise ConnectionError('Unable to reach SSH host %s:%d' %
@@ -869,23 +894,21 @@ class SingleListener(threading.Thread):
         s, _ = self._socket.accept()
         # now close the listen socket
         self._socket.close()
-        self._callback(s, self.stop_event)
-    
+        try:
+            self._callback(s, self.stop_event)
+        except Exception, x:
+            # probably a failed test
+            warning('Exception from within unit test server thread: %r' % x)
+
     def stop(self):
         self.stop_event.set()
-        # We should consider waiting for the other thread
-        # to stop, because otherwise we get spurious
-        #   bzr: ERROR: Socket exception: Connection reset by peer (54)
-        # because the test suite finishes before the thread has a chance
-        # to close. (Especially when only running a few tests)
-        
-        
+        # use a timeout here, because if the test fails, the server thread may
+        # never notice the stop_event.
+        self.join(5.0)
+
+
 class SFTPServer(Server):
     """Common code for SFTP server facilities."""
-
-    def _get_sftp_url(self, path):
-        """Calculate a sftp url to this server for path."""
-        return 'sftp://foo:bar@localhost:%d/%s' % (self._listener.port, path)
 
     def __init__(self):
         self._original_vendor = None
@@ -893,11 +916,16 @@ class SFTPServer(Server):
         self._server_homedir = None
         self._listener = None
         self._root = None
+        self._vendor = 'none'
         # sftp server logs
         self.logs = []
 
+    def _get_sftp_url(self, path):
+        """Calculate an sftp url to this server for path."""
+        return 'sftp://foo:bar@localhost:%d/%s' % (self._listener.port, path)
+
     def log(self, message):
-        """What to do here? do we need this? Its for the StubServer.."""
+        """StubServer uses this to log when a new server is created."""
         self.logs.append(message)
 
     def _run_server(self, s, stop_event):
@@ -914,15 +942,11 @@ class SFTPServer(Server):
         ssh_server.start_server(event, server)
         event.wait(5.0)
         stop_event.wait(30.0)
-
+    
     def setUp(self):
-        """See bzrlib.transport.Server.setUp."""
-        # XXX: 20051124 jamesh
-        # The tests currently pop up a password prompt when an external ssh
-        # is used.  This forces the use of the paramiko implementation.
         global _ssh_vendor
         self._original_vendor = _ssh_vendor
-        _ssh_vendor = 'none'
+        _ssh_vendor = self._vendor
         self._homedir = os.getcwdu()
         if self._server_homedir is None:
             self._server_homedir = self._homedir
@@ -939,7 +963,34 @@ class SFTPServer(Server):
         _ssh_vendor = self._original_vendor
 
 
-class SFTPAbsoluteServer(SFTPServer):
+class SFTPServerWithoutSSH(SFTPServer):
+    """
+    Common code for an SFTP server over a clear TCP loopback socket,
+    instead of over an SSH secured socket.
+    """
+
+    def __init__(self):
+        super(SFTPServerWithoutSSH, self).__init__()
+        self._vendor = 'loopback'
+
+    def _run_server(self, sock, stop_event):
+        class FakeChannel(object):
+            def get_transport(self):
+                return self
+            def get_log_channel(self):
+                return 'paramiko'
+            def get_name(self):
+                return '1'
+            def get_hexdump(self):
+                return False
+
+        server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
+                                     root=self._root, home=self._server_homedir)
+        server.start_subsystem('sftp', None, sock)
+        server.finish_subsystem()
+
+
+class SFTPAbsoluteServer(SFTPServerWithoutSSH):
     """A test server for sftp transports, using absolute urls."""
 
     def get_url(self):
@@ -947,7 +998,7 @@ class SFTPAbsoluteServer(SFTPServer):
         return self._get_sftp_url(urlescape(self._homedir[1:]))
 
 
-class SFTPHomeDirServer(SFTPServer):
+class SFTPHomeDirServer(SFTPServerWithoutSSH):
     """A test server for sftp transports, using homedir relative urls."""
 
     def get_url(self):

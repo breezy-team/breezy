@@ -4,8 +4,14 @@ bzr development edition
   
     * The internal storage of history, and logical branch identity have now
       been split into Branch, and Repository. The common locking and file 
-      management routines are now in bzrlib.lockablefiles.
-      
+      management routines are now in bzrlib.lockablefiles. 
+      (Aaron Bentley, Robert Collins, Martin Pool)
+
+  TESTING:
+
+    * SFTP tests now shortcut the SSH negotiation, reducing test overhead
+      for testing SFTP protocol support. (Robey Pointer)
+
 bzr 0.7rc1 2006-01-09
 
   CHANGES:
@@ -161,6 +167,8 @@ bzr 0.7rc1 2006-01-09
 
     * Remove Makefile.in from default ignore list.  (#6413, Tollef Fog 
       Heen, Martin Pool)
+
+    * Fix failure in 'bzr added'.  (Nathan McCallum, Martin Pool)
 
   TESTING:
 
