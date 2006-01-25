@@ -830,10 +830,10 @@ class Weave(object):
 
             processed += 1
            
-            if name in self._names:
+            if name in self._name_map:
                 idx = self.lookup(name)
-                n1 = map(other.idx_to_name, other._parents[other_idx] )
-                n2 = map(self.idx_to_name, self._parents[other_idx] )
+                n1 = set(map(other.idx_to_name, other._parents[other_idx]))
+                n2 = set(map(self.idx_to_name, self._parents[idx]))
                 if sha1 ==  self._sha1s[idx] and n1 == n2:
                         continue
 
@@ -879,10 +879,8 @@ class Weave(object):
                                  % (name))
             self_parents = self._parents[this_idx]
             other_parents = other._parents[other_idx]
-            n1 = [self._names[i] for i in self_parents]
-            n2 = [other._names[i] for i in other_parents]
-            n1.sort()
-            n2.sort()
+            n1 = set([self._names[i] for i in self_parents])
+            n2 = set([other._names[i] for i in other_parents])
             if n1 != n2:
                 raise WeaveParentMismatch("inconsistent parents "
                     "for version {%s}: %s vs %s" % (name, n1, n2))
